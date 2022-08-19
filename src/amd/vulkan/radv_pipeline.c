@@ -2544,6 +2544,21 @@ radv_lower_multiview(nir_shader *nir)
 }
 
 static bool
+radv_should_export_implicit_primitive_id(const struct radv_pipeline_stage *producer,
+                                         const struct radv_pipeline_stage *consumer)
+{
+   /* When the primitive ID is read by FS, we must ensure that it's exported by the previous vertex
+    * stage because it's implicit for VS or TES (but required by the Vulkan spec for GS or MS). Note
+    * that when the pipeline uses NGG, it's exported later during the lowering pass.
+    */
+   assert(producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL);
+   return (consumer->stage == MESA_SHADER_FRAGMENT &&
+           (consumer->nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID) &&
+           !(producer->nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID) &&
+           !producer->info.is_ngg);
+}
+
+static bool
 radv_export_implicit_primitive_id(nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -2604,236 +2619,320 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
 }
 
 static void
-radv_link_shaders(struct radv_pipeline *pipeline,
-                  const struct radv_pipeline_key *pipeline_key,
-                  const struct radv_pipeline_stage *stages,
-                  gl_shader_stage last_vgt_api_stage)
+radv_lower_io_to_scalar_early(nir_shader *nir, nir_variable_mode mask)
 {
-   const struct radv_physical_device *pdevice = pipeline->device->physical_device;
-   nir_shader *ordered_shaders[MESA_VULKAN_SHADER_STAGES];
-   int shader_count = 0;
+   bool progress = false;
 
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_FRAGMENT].nir;
-   }
-   if (stages[MESA_SHADER_GEOMETRY].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_GEOMETRY].nir;
-   }
-   if (stages[MESA_SHADER_TESS_EVAL].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_TESS_EVAL].nir;
-   }
-   if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_TESS_CTRL].nir;
-   }
-   if (stages[MESA_SHADER_VERTEX].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_VERTEX].nir;
-   }
-   if (stages[MESA_SHADER_MESH].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_MESH].nir;
-   }
-   if (stages[MESA_SHADER_TASK].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_TASK].nir;
-   }
-   if (stages[MESA_SHADER_COMPUTE].nir) {
-      ordered_shaders[shader_count++] = stages[MESA_SHADER_COMPUTE].nir;
-   }
+   NIR_PASS(progress, nir, nir_lower_io_to_scalar_early, mask);
+   if (progress) {
+      /* Optimize the new vector code and then remove dead vars */
+      NIR_PASS(_, nir, nir_copy_prop);
+      NIR_PASS(_, nir, nir_opt_shrink_vectors);
 
-   if (stages[MESA_SHADER_MESH].nir && stages[MESA_SHADER_FRAGMENT].nir) {
-      nir_shader *ps = stages[MESA_SHADER_FRAGMENT].nir;
+      if (mask & nir_var_shader_out) {
+         /* Optimize swizzled movs of load_const for nir_link_opt_varyings's constant propagation. */
+         NIR_PASS(_, nir, nir_opt_constant_folding);
 
-      nir_foreach_shader_in_variable(var, ps) {
-         /* These variables are per-primitive when used with a mesh shader. */
-         if (var->data.location == VARYING_SLOT_PRIMITIVE_ID ||
-             var->data.location == VARYING_SLOT_VIEWPORT ||
-             var->data.location == VARYING_SLOT_LAYER)
-            var->data.per_primitive = true;
+         /* For nir_link_opt_varyings's duplicate input opt */
+         NIR_PASS(_, nir, nir_opt_cse);
+      }
+
+      /* Run copy-propagation to help remove dead output variables (some shaders have useless copies
+       * to/from an output), so compaction later will be more effective.
+       *
+       * This will have been done earlier but it might not have worked because the outputs were
+       * vector.
+       */
+      if (nir->info.stage == MESA_SHADER_TESS_CTRL)
+         NIR_PASS(_, nir, nir_opt_copy_prop_vars);
+
+      NIR_PASS(_, nir, nir_opt_dce);
+      NIR_PASS(_, nir, nir_remove_dead_variables,
+               nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
+   }
+}
+
+static void
+radv_pipeline_link_shaders(const struct radv_device *device,
+                           nir_shader *producer, nir_shader *consumer,
+                           const struct radv_pipeline_key *pipeline_key)
+{
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+   bool progress;
+
+   if (consumer->info.stage == MESA_SHADER_FRAGMENT) {
+      /* Lower the viewport index to zero when the last vertex stage doesn't export it. */
+      if ((consumer->info.inputs_read & VARYING_BIT_VIEWPORT) &&
+          !(producer->info.outputs_written & VARYING_BIT_VIEWPORT)) {
+         NIR_PASS(_, consumer, radv_lower_viewport_to_zero);
+      }
+
+      /* Export the layer in the last VGT stage if multiview is used. */
+      if (pipeline_key->has_multiview_view_index &&
+          !(producer->info.outputs_written & VARYING_BIT_LAYER)) {
+         NIR_PASS(_, producer, radv_lower_multiview);
       }
    }
 
-   bool has_geom_tess = stages[MESA_SHADER_GEOMETRY].nir || stages[MESA_SHADER_TESS_CTRL].nir;
-   bool merged_gs = stages[MESA_SHADER_GEOMETRY].nir && pdevice->rad_info.gfx_level >= GFX9;
+   if (pipeline_key->optimisations_disabled)
+      return;
 
-   if (!pipeline_key->optimisations_disabled && shader_count > 1) {
-      unsigned first = ordered_shaders[shader_count - 1]->info.stage;
-      unsigned last = ordered_shaders[0]->info.stage;
-
-      if (ordered_shaders[0]->info.stage == MESA_SHADER_FRAGMENT &&
-          ordered_shaders[1]->info.has_transform_feedback_varyings)
-         nir_link_xfb_varyings(ordered_shaders[1], ordered_shaders[0]);
-
-      for (int i = 1; i < shader_count; ++i) {
-         nir_lower_io_arrays_to_elements(ordered_shaders[i], ordered_shaders[i - 1]);
-         nir_validate_shader(ordered_shaders[i], "after nir_lower_io_arrays_to_elements");
-         nir_validate_shader(ordered_shaders[i - 1], "after nir_lower_io_arrays_to_elements");
-      }
-
-      for (int i = 0; i < shader_count; ++i) {
-         nir_variable_mode mask = 0;
-
-         if (ordered_shaders[i]->info.stage != first)
-            mask = mask | nir_var_shader_in;
-
-         if (ordered_shaders[i]->info.stage != last)
-            mask = mask | nir_var_shader_out;
-
-         bool progress = false;
-         NIR_PASS(progress, ordered_shaders[i], nir_lower_io_to_scalar_early, mask);
-         if (progress) {
-            /* Optimize the new vector code and then remove dead vars */
-            NIR_PASS(_, ordered_shaders[i], nir_copy_prop);
-            NIR_PASS(_, ordered_shaders[i], nir_opt_shrink_vectors);
-
-            if (ordered_shaders[i]->info.stage != last) {
-               /* Optimize swizzled movs of load_const for
-                * nir_link_opt_varyings's constant propagation
-                */
-               NIR_PASS(_, ordered_shaders[i], nir_opt_constant_folding);
-               /* For nir_link_opt_varyings's duplicate input opt */
-               NIR_PASS(_, ordered_shaders[i], nir_opt_cse);
-            }
-
-            /* Run copy-propagation to help remove dead
-             * output variables (some shaders have useless
-             * copies to/from an output), so compaction
-             * later will be more effective.
-             *
-             * This will have been done earlier but it might
-             * not have worked because the outputs were vector.
-             */
-            if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL)
-               NIR_PASS(_, ordered_shaders[i], nir_opt_copy_prop_vars);
-
-            NIR_PASS(_, ordered_shaders[i], nir_opt_dce);
-            NIR_PASS(_, ordered_shaders[i], nir_remove_dead_variables,
-                     nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
-         }
-      }
+   if (consumer->info.stage == MESA_SHADER_FRAGMENT &&
+       producer->info.has_transform_feedback_varyings) {
+      nir_link_xfb_varyings(producer, consumer);
    }
 
-   /* Export the primitive ID when VS or TES don't export it because it's implicit, while it's
-    * required for GS or MS. The primitive ID is added during lowering for NGG.
+   nir_lower_io_arrays_to_elements(producer, consumer);
+   nir_validate_shader(producer, "after nir_lower_io_arrays_to_elements");
+   nir_validate_shader(consumer, "after nir_lower_io_arrays_to_elements");
+
+   radv_lower_io_to_scalar_early(producer, nir_var_shader_out);
+   radv_lower_io_to_scalar_early(consumer, nir_var_shader_in);
+
+   /* Remove PSIZ from shaders when it's not needed.
+    * This is typically produced by translation layers like Zink or D9VK.
     */
-   if (stages[MESA_SHADER_FRAGMENT].nir &&
-       (stages[MESA_SHADER_FRAGMENT].nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID) &&
-       !(stages[last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID) &&
-       ((last_vgt_api_stage == MESA_SHADER_VERTEX && !stages[MESA_SHADER_VERTEX].info.is_ngg) ||
-        (last_vgt_api_stage == MESA_SHADER_TESS_EVAL && !stages[MESA_SHADER_TESS_EVAL].info.is_ngg))) {
-      nir_shader *last_vgt_shader = stages[last_vgt_api_stage].nir;
-      NIR_PASS(_, last_vgt_shader, radv_export_implicit_primitive_id);
+   radv_remove_point_size(pipeline_key, producer, consumer);
+
+   if (nir_link_opt_varyings(producer, consumer)) {
+      nir_validate_shader(producer, "after nir_link_opt_varyings");
+      nir_validate_shader(consumer, "after nir_link_opt_varyings");
+
+      NIR_PASS(_, consumer, nir_opt_constant_folding);
+      NIR_PASS(_, consumer, nir_opt_algebraic);
+      NIR_PASS(_, consumer, nir_opt_dce);
    }
 
-   if (!pipeline_key->optimisations_disabled) {
-      for (unsigned i = 0; i < shader_count; ++i) {
-         shader_info *info = &ordered_shaders[i]->info;
+   NIR_PASS(_, producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+   NIR_PASS(_, consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
-         /* Remove exports without color attachment or writemask. */
-         if (info->stage == MESA_SHADER_FRAGMENT) {
-            bool fixup_derefs = false;
-            nir_foreach_variable_with_modes(var, ordered_shaders[i], nir_var_shader_out) {
-               int idx = var->data.location;
-               idx -= FRAG_RESULT_DATA0;
-               if (idx < 0)
-                  continue;
+   progress = nir_remove_unused_varyings(producer, consumer);
 
-               unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
-               unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
+   nir_compact_varyings(producer, consumer, true);
+   nir_validate_shader(producer, "after nir_compact_varyings");
+   nir_validate_shader(consumer, "after nir_compact_varyings");
 
-               if (col_format == V_028714_SPI_SHADER_ZERO ||
-                   (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
-                    !pipeline_key->ps.mrt0_is_dual_src)) {
-                  /* Remove the color export if it's unused or in presence of holes. */
-                  info->outputs_written &= ~BITFIELD64_BIT(var->data.location);
-                  var->data.location = 0;
-                  var->data.mode = nir_var_shader_temp;
-                  fixup_derefs = true;
-               }
-            }
-            if (fixup_derefs) {
-               NIR_PASS_V(ordered_shaders[i], nir_fixup_deref_modes);
-               NIR_PASS(_, ordered_shaders[i], nir_remove_dead_variables, nir_var_shader_temp,
-                        NULL);
-               NIR_PASS(_, ordered_shaders[i], nir_opt_dce);
-            }
-            continue;
-         }
-
-         /* Remove PSIZ from shaders when it's not needed.
-          * This is typically produced by translation layers like Zink or D9VK.
-          */
-         if (i != 0)
-            radv_remove_point_size(pipeline_key, ordered_shaders[i], ordered_shaders[i - 1]);
-      }
+   if (producer->info.stage == MESA_SHADER_MESH) {
+      /* nir_compact_varyings can change the location of per-vertex and per-primitive outputs */
+      nir_shader_gather_info(producer, nir_shader_get_entrypoint(producer));
    }
 
-   /* Lower the viewport index to zero when the last vertex stage doesn't export it. */
-   if (stages[MESA_SHADER_FRAGMENT].nir &&
-       (stages[MESA_SHADER_FRAGMENT].nir->info.inputs_read & VARYING_BIT_VIEWPORT) &&
-       !(stages[last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_VIEWPORT)) {
-      NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_lower_viewport_to_zero);
+   const bool has_geom_or_tess = consumer->info.stage == MESA_SHADER_GEOMETRY ||
+                                 consumer->info.stage == MESA_SHADER_TESS_CTRL;
+   const bool merged_gs = consumer->info.stage == MESA_SHADER_GEOMETRY && gfx_level >= GFX9;
+
+   if (producer->info.stage == MESA_SHADER_TESS_CTRL ||
+       producer->info.stage == MESA_SHADER_MESH ||
+       (producer->info.stage == MESA_SHADER_VERTEX && has_geom_or_tess) ||
+       (producer->info.stage == MESA_SHADER_TESS_EVAL && merged_gs)) {
+      NIR_PASS(_, producer, nir_lower_io_to_vector, nir_var_shader_out);
+
+      if (producer->info.stage == MESA_SHADER_TESS_CTRL)
+         NIR_PASS(_, producer, nir_vectorize_tess_levels);
+
+      NIR_PASS(_, producer, nir_opt_combine_stores, nir_var_shader_out);
    }
 
-   /* Export the layer in the last VGT stage if multiview is used. */
-   if (pipeline_key->has_multiview_view_index && last_vgt_api_stage != -1 &&
-       !(stages[last_vgt_api_stage].nir->info.outputs_written &
-         VARYING_BIT_LAYER)) {
-      nir_shader *last_vgt_shader = stages[last_vgt_api_stage].nir;
-      NIR_PASS(_, last_vgt_shader, radv_lower_multiview);
+   if (consumer->info.stage == MESA_SHADER_GEOMETRY ||
+       consumer->info.stage == MESA_SHADER_TESS_CTRL ||
+       consumer->info.stage == MESA_SHADER_TESS_EVAL) {
+      NIR_PASS(_, consumer, nir_lower_io_to_vector, nir_var_shader_in);
    }
 
-   for (int i = 1; !pipeline_key->optimisations_disabled && (i < shader_count); ++i) {
-      if (nir_link_opt_varyings(ordered_shaders[i], ordered_shaders[i - 1])) {
-         nir_validate_shader(ordered_shaders[i], "after nir_link_opt_varyings");
-         nir_validate_shader(ordered_shaders[i - 1], "after nir_link_opt_varyings");
-
-         NIR_PASS(_, ordered_shaders[i - 1], nir_opt_constant_folding);
-         NIR_PASS(_, ordered_shaders[i - 1], nir_opt_algebraic);
-         NIR_PASS(_, ordered_shaders[i - 1], nir_opt_dce);
-      }
-
-      NIR_PASS(_, ordered_shaders[i], nir_remove_dead_variables, nir_var_shader_out, NULL);
-      NIR_PASS(_, ordered_shaders[i - 1], nir_remove_dead_variables, nir_var_shader_in, NULL);
-
-      bool progress = nir_remove_unused_varyings(ordered_shaders[i], ordered_shaders[i - 1]);
-
-      nir_compact_varyings(ordered_shaders[i], ordered_shaders[i - 1], true);
-      nir_validate_shader(ordered_shaders[i], "after nir_compact_varyings");
-      nir_validate_shader(ordered_shaders[i - 1], "after nir_compact_varyings");
-      if (ordered_shaders[i]->info.stage == MESA_SHADER_MESH) {
-         /* nir_compact_varyings can change the location of per-vertex and per-primitive outputs */
-         nir_shader_gather_info(ordered_shaders[i], nir_shader_get_entrypoint(ordered_shaders[i]));
-      }
-
-      if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL ||
-          ordered_shaders[i]->info.stage == MESA_SHADER_MESH ||
-          (ordered_shaders[i]->info.stage == MESA_SHADER_VERTEX && has_geom_tess) ||
-          (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_EVAL && merged_gs)) {
-         NIR_PASS(_, ordered_shaders[i], nir_lower_io_to_vector, nir_var_shader_out);
-         if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL)
-            NIR_PASS(_, ordered_shaders[i], nir_vectorize_tess_levels);
-         NIR_PASS(_, ordered_shaders[i], nir_opt_combine_stores, nir_var_shader_out);
-      }
-      if (ordered_shaders[i - 1]->info.stage == MESA_SHADER_GEOMETRY ||
-          ordered_shaders[i - 1]->info.stage == MESA_SHADER_TESS_CTRL ||
-          ordered_shaders[i - 1]->info.stage == MESA_SHADER_TESS_EVAL) {
-         NIR_PASS(_, ordered_shaders[i - 1], nir_lower_io_to_vector, nir_var_shader_in);
-      }
-
+   if (progress) {
+      progress = false;
+      NIR_PASS(progress, producer, nir_lower_global_vars_to_local);
       if (progress) {
-         progress = false;
-         NIR_PASS(progress, ordered_shaders[i], nir_lower_global_vars_to_local);
-         if (progress) {
-            ac_nir_lower_indirect_derefs(ordered_shaders[i], pdevice->rad_info.gfx_level);
-            /* remove dead writes, which can remove input loads */
-            NIR_PASS(_, ordered_shaders[i], nir_lower_vars_to_ssa);
-            NIR_PASS(_, ordered_shaders[i], nir_opt_dce);
-         }
-
-         progress = false;
-         NIR_PASS(progress, ordered_shaders[i - 1], nir_lower_global_vars_to_local);
-         if (progress) {
-            ac_nir_lower_indirect_derefs(ordered_shaders[i - 1], pdevice->rad_info.gfx_level);
-         }
+         ac_nir_lower_indirect_derefs(producer, gfx_level);
+         /* remove dead writes, which can remove input loads */
+         NIR_PASS(_, producer, nir_lower_vars_to_ssa);
+         NIR_PASS(_, producer, nir_opt_dce);
       }
+
+      progress = false;
+      NIR_PASS(progress, consumer, nir_lower_global_vars_to_local);
+      if (progress) {
+         ac_nir_lower_indirect_derefs(consumer, gfx_level);
+      }
+   }
+}
+
+static const gl_shader_stage graphics_shader_order[] = {
+   MESA_SHADER_VERTEX,
+   MESA_SHADER_TESS_CTRL,
+   MESA_SHADER_TESS_EVAL,
+   MESA_SHADER_GEOMETRY,
+
+   MESA_SHADER_TASK,
+   MESA_SHADER_MESH,
+
+   MESA_SHADER_FRAGMENT,
+};
+
+static void
+radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_stage *vs_stage,
+                      struct radv_pipeline_stage *next_stage,
+                      const struct radv_pipeline_key *pipeline_key)
+{
+   assert(vs_stage->nir->info.stage == MESA_SHADER_VERTEX);
+   assert(next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL ||
+          next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
+          next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   if (radv_should_export_implicit_primitive_id(vs_stage, next_stage)) {
+      NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
+   }
+
+   radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_tcs(const struct radv_device *device, struct radv_pipeline_stage *tcs_stage,
+                       struct radv_pipeline_stage *tes_stage,
+                       const struct radv_pipeline_key *pipeline_key)
+{
+   assert(tcs_stage->nir->info.stage == MESA_SHADER_TESS_CTRL);
+   assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
+
+   radv_pipeline_link_shaders(device, tcs_stage->nir, tes_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_stage *tes_stage,
+                       struct radv_pipeline_stage *next_stage,
+                       const struct radv_pipeline_key *pipeline_key)
+{
+   assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
+   assert(next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
+          next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   if (radv_should_export_implicit_primitive_id(tes_stage, next_stage)) {
+      NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
+   }
+
+   radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_stage *gs_stage,
+                      struct radv_pipeline_stage *fs_stage,
+                      const struct radv_pipeline_key *pipeline_key)
+{
+   assert(gs_stage->nir->info.stage == MESA_SHADER_GEOMETRY);
+   assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_task(const struct radv_device *device, struct radv_pipeline_stage *task_stage,
+                        struct radv_pipeline_stage *mesh_stage,
+                        const struct radv_pipeline_key *pipeline_key)
+{
+   assert(task_stage->nir->info.stage == MESA_SHADER_TASK);
+   assert(mesh_stage->nir->info.stage == MESA_SHADER_MESH);
+
+   /* Linking task and mesh shaders shouldn't do anything for now but keep it for consistency. */
+   radv_pipeline_link_shaders(device, task_stage->nir, mesh_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_mesh(const struct radv_device *device, struct radv_pipeline_stage *mesh_stage,
+                        struct radv_pipeline_stage *fs_stage,
+                        const struct radv_pipeline_key *pipeline_key)
+{
+   assert(mesh_stage->nir->info.stage == MESA_SHADER_MESH);
+   assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   nir_foreach_shader_in_variable(var, fs_stage->nir) {
+      /* These variables are per-primitive when used with a mesh shader. */
+      if (var->data.location == VARYING_SLOT_PRIMITIVE_ID ||
+          var->data.location == VARYING_SLOT_VIEWPORT ||
+          var->data.location == VARYING_SLOT_LAYER) {
+         var->data.per_primitive = true;
+      }
+   }
+
+   radv_pipeline_link_shaders(device, mesh_stage->nir, fs_stage->nir, pipeline_key);
+}
+
+static void
+radv_pipeline_link_fs(struct radv_pipeline_stage *fs_stage,
+                      const struct radv_pipeline_key *pipeline_key)
+{
+   assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   bool fixup_derefs = false;
+
+   nir_foreach_shader_out_variable(var, fs_stage->nir) {
+      int idx = var->data.location;
+      idx -= FRAG_RESULT_DATA0;
+
+      if (idx < 0)
+         continue;
+
+      unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
+      unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
+
+      if (col_format == V_028714_SPI_SHADER_ZERO ||
+          (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
+           !pipeline_key->ps.mrt0_is_dual_src)) {
+         /* Remove the color export if it's unused or in presence of holes. */
+         fs_stage->nir->info.outputs_written &= ~BITFIELD64_BIT(var->data.location);
+         var->data.location = 0;
+         var->data.mode = nir_var_shader_temp;
+         fixup_derefs = true;
+      }
+   }
+
+   if (fixup_derefs) {
+      NIR_PASS_V(fs_stage->nir, nir_fixup_deref_modes);
+      NIR_PASS(_, fs_stage->nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+      NIR_PASS(_, fs_stage->nir, nir_opt_dce);
+   }
+}
+
+static void
+radv_graphics_pipeline_link(const struct radv_pipeline *pipeline,
+                            const struct radv_pipeline_key *pipeline_key,
+                            struct radv_pipeline_stage *stages)
+{
+   const struct radv_device *device = pipeline->device;
+
+   /* Walk backwards to link */
+   struct radv_pipeline_stage *next_stage = NULL;
+   for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {
+      gl_shader_stage s = graphics_shader_order[i];
+      if (!stages[s].nir)
+         continue;
+
+      switch (s) {
+      case MESA_SHADER_VERTEX:
+         radv_pipeline_link_vs(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_TESS_CTRL:
+         radv_pipeline_link_tcs(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_TESS_EVAL:
+         radv_pipeline_link_tes(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_GEOMETRY:
+         radv_pipeline_link_gs(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_TASK:
+         radv_pipeline_link_task(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_MESH:
+         radv_pipeline_link_mesh(device, &stages[s], next_stage, pipeline_key);
+         break;
+      case MESA_SHADER_FRAGMENT:
+         radv_pipeline_link_fs(&stages[s], pipeline_key);
+         break;
+      default:
+         unreachable("Invalid graphics shader stage");
+      }
+
+      next_stage = &stages[s];
    }
 }
 
@@ -4617,7 +4716,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
    }
 
-   radv_link_shaders(pipeline, pipeline_key, stages, *last_vgt_api_stage);
+   radv_graphics_pipeline_link(pipeline, pipeline_key, stages);
    radv_set_driver_locations(pipeline, stages, *last_vgt_api_stage);
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
