@@ -2810,17 +2810,13 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
 
-   bool multi_patch =
-      vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH;
-
    fs_reg dst;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dst = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
-      bld.MOV(dst, fs_reg(multi_patch ? brw_vec8_grf(2, 0)
-                                      : brw_vec1_grf(0, 1)));
+      bld.MOV(dst, tcs_payload().primitive_id);
       break;
    case nir_intrinsic_load_invocation_id:
       bld.MOV(retype(dst, invocation_id.type), invocation_id);
@@ -2847,9 +2843,12 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       unsigned imm_offset = nir_intrinsic_base(instr);
       fs_inst *inst;
 
-      fs_reg icp_handle =
-         multi_patch ? get_tcs_multi_patch_icp_handle(bld, instr)
-                     : get_tcs_single_patch_icp_handle(bld, instr);
+      const bool multi_patch =
+         vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH;
+
+      fs_reg icp_handle = multi_patch ?
+         get_tcs_multi_patch_icp_handle(bld, instr) :
+         get_tcs_single_patch_icp_handle(bld, instr);
 
       /* We can only read two double components with each URB read, so
        * we send two read messages in that case, each one loading up to
