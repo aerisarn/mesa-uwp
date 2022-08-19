@@ -630,6 +630,15 @@ bi_reads_temps(bi_instr *ins, unsigned src)
         case BI_OPCODE_CLPER_I32:
         case BI_OPCODE_CLPER_OLD_I32:
                 return src != 0;
+
+        /* ATEST isn't supposed to be restricted, but in practice it always
+         * wants to source its coverage mask input (source 0) from register 60,
+         * which won't work properly if we put the input in a temp. This
+         * requires workarounds in both RA and clause scheduling.
+         */
+        case BI_OPCODE_ATEST:
+                return src != 0;
+
         case BI_OPCODE_IMULD:
                 return false;
         default:
