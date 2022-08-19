@@ -164,6 +164,11 @@ component(fs_reg reg, unsigned idx)
 {
    reg = horiz_offset(reg, idx);
    reg.stride = 0;
+   if (reg.file == ARF || reg.file == FIXED_GRF) {
+      reg.vstride = BRW_VERTICAL_STRIDE_0;
+      reg.width = BRW_WIDTH_1;
+      reg.hstride = BRW_HORIZONTAL_STRIDE_0;
+   }
    return reg;
 }
 
