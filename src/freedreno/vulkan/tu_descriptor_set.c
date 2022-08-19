@@ -145,8 +145,7 @@ tu_CreateDescriptorSetLayout(
       immutable_sampler_count * sizeof(struct tu_sampler) +
       ycbcr_sampler_count * sizeof(struct tu_sampler_ycbcr_conversion);
 
-   set_layout = vk_object_zalloc(&device->vk, NULL, size,
-                                 VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
+   set_layout = vk_descriptor_set_layout_zalloc(&device->vk, size);
    if (!set_layout)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -165,7 +164,6 @@ tu_CreateDescriptorSetLayout(
       return vk_error(device, result);
    }
 
-   set_layout->ref_cnt = 1;
    set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
    set_layout->has_immutable_samplers = false;
@@ -262,28 +260,6 @@ tu_CreateDescriptorSetLayout(
    *pSetLayout = tu_descriptor_set_layout_to_handle(set_layout);
 
    return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-tu_DestroyDescriptorSetLayout(VkDevice _device,
-                              VkDescriptorSetLayout _set_layout,
-                              const VkAllocationCallbacks *pAllocator)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout, _set_layout);
-
-   if (!set_layout)
-      return;
-
-   tu_descriptor_set_layout_unref(device, set_layout);
-}
-
-void
-tu_descriptor_set_layout_destroy(struct tu_device *device,
-                                 struct tu_descriptor_set_layout *layout)
-{
-   assert(layout->ref_cnt == 0);
-   vk_object_free(&device->vk, NULL, layout);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -463,7 +439,7 @@ tu_CreatePipelineLayout(VkDevice _device,
       assert(set < MAX_SETS);
       layout->set[set].layout = set_layout;
       layout->set[set].dynamic_offset_start = dynamic_offset_size;
-      tu_descriptor_set_layout_ref(set_layout);
+      vk_descriptor_set_layout_ref(&set_layout->vk);
 
       dynamic_offset_size += set_layout->dynamic_offset_size;
    }
@@ -508,7 +484,7 @@ tu_DestroyPipelineLayout(VkDevice _device,
       return;
 
    for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      tu_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
+      vk_descriptor_set_layout_unref(&device->vk, &pipeline_layout->set[i].layout->vk);
 
    vk_object_free(&device->vk, pAllocator, pipeline_layout);
 }
@@ -651,7 +627,7 @@ tu_descriptor_set_create(struct tu_device *device,
       }
    }
 
-   tu_descriptor_set_layout_ref(layout);
+   vk_descriptor_set_layout_ref(&layout->vk);
    list_addtail(&set->pool_link, &pool->desc_sets);
 
    *out_set = set;
@@ -808,7 +784,7 @@ tu_DestroyDescriptorPool(VkDevice _device,
 
    list_for_each_entry_safe(struct tu_descriptor_set, set,
                             &pool->desc_sets, pool_link) {
-      tu_descriptor_set_layout_unref(device, set->layout);
+      vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
    }
 
    if (!pool->host_memory_base) {
@@ -837,7 +813,7 @@ tu_ResetDescriptorPool(VkDevice _device,
 
    list_for_each_entry_safe(struct tu_descriptor_set, set,
                             &pool->desc_sets, pool_link) {
-      tu_descriptor_set_layout_unref(device, set->layout);
+      vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
    }
    list_inithead(&pool->desc_sets);
 
@@ -915,7 +891,7 @@ tu_FreeDescriptorSets(VkDevice _device,
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
 
       if (set) {
-         tu_descriptor_set_layout_unref(device, set->layout);
+         vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
          list_del(&set->pool_link);
       }
 

@@ -1643,8 +1643,8 @@ tu_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       if (cmd_buffer->descriptors[i].push_set.layout)
-         tu_descriptor_set_layout_unref(cmd_buffer->device,
-                                        cmd_buffer->descriptors[i].push_set.layout);
+         vk_descriptor_set_layout_unref(&cmd_buffer->device->vk,
+                                        &cmd_buffer->descriptors[i].push_set.layout->vk);
    }
 
    vk_command_buffer_finish(&cmd_buffer->vk);
@@ -1673,9 +1673,10 @@ tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       memset(&cmd_buffer->descriptors[i].sets, 0, sizeof(cmd_buffer->descriptors[i].sets));
-      if (cmd_buffer->descriptors[i].push_set.layout)
-         tu_descriptor_set_layout_unref(cmd_buffer->device,
-                                        cmd_buffer->descriptors[i].push_set.layout);
+      if (cmd_buffer->descriptors[i].push_set.layout) {
+         vk_descriptor_set_layout_unref(&cmd_buffer->device->vk,
+                                        &cmd_buffer->descriptors[i].push_set.layout->vk);
+      }
       memset(&cmd_buffer->descriptors[i].push_set, 0, sizeof(cmd_buffer->descriptors[i].push_set));
       cmd_buffer->descriptors[i].push_set.base.type = VK_OBJECT_TYPE_DESCRIPTOR_SET;
       cmd_buffer->descriptors[i].max_sets_bound = 0;
@@ -2184,8 +2185,8 @@ tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
 
    if (set->layout != layout) {
       if (set->layout)
-         tu_descriptor_set_layout_unref(cmd->device, set->layout);
-      tu_descriptor_set_layout_ref(layout);
+         vk_descriptor_set_layout_unref(&cmd->device->vk, &set->layout->vk);
+      vk_descriptor_set_layout_ref(&layout->vk);
       set->layout = layout;
    }
 
@@ -2229,8 +2230,8 @@ tu_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
 
    if (set->layout != layout) {
       if (set->layout)
-         tu_descriptor_set_layout_unref(cmd->device, set->layout);
-      tu_descriptor_set_layout_ref(layout);
+         vk_descriptor_set_layout_unref(&cmd->device->vk, &set->layout->vk);
+      vk_descriptor_set_layout_ref(&layout->vk);
       set->layout = layout;
    }
 

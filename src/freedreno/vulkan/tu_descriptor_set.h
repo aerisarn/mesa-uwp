@@ -8,6 +8,8 @@
 
 #include "tu_common.h"
 
+#include "vk_descriptor_set_layout.h"
+
 /* The hardware supports 5 descriptor sets, but we reserve 1 for dynamic
  * descriptors and input attachments.
  */
@@ -52,10 +54,7 @@ struct tu_descriptor_set_binding_layout
 
 struct tu_descriptor_set_layout
 {
-   struct vk_object_base base;
-
-   /* Descriptor set layouts can be destroyed at almost any time */
-   uint32_t ref_cnt;
+   struct vk_descriptor_set_layout vk;
 
    /* The create flags for this descriptor set layout */
    VkDescriptorSetLayoutCreateFlags flags;
@@ -79,7 +78,7 @@ struct tu_descriptor_set_layout
    /* Bindings in this descriptor set */
    struct tu_descriptor_set_binding_layout binding[0];
 };
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout, base,
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout, vk.base,
                                VkDescriptorSetLayout,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 
@@ -202,25 +201,6 @@ struct tu_sampler_ycbcr_conversion {
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, base, VkSamplerYcbcrConversion,
                                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
-
-void tu_descriptor_set_layout_destroy(struct tu_device *device,
-                                      struct tu_descriptor_set_layout *layout);
-
-static inline void
-tu_descriptor_set_layout_ref(struct tu_descriptor_set_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   p_atomic_inc(&layout->ref_cnt);
-}
-
-static inline void
-tu_descriptor_set_layout_unref(struct tu_device *device,
-                               struct tu_descriptor_set_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&layout->ref_cnt))
-      tu_descriptor_set_layout_destroy(device, layout);
-}
 
 void
 tu_update_descriptor_sets(const struct tu_device *device,
