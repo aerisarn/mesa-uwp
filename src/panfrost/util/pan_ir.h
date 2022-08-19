@@ -292,6 +292,7 @@ struct pan_shader_info {
                         bool sample_shading;
                         bool early_fragment_tests;
                         bool can_early_z, can_fpk;
+                        bool untyped_color_outputs;
                         BITSET_WORD outputs_read;
                         BITSET_WORD outputs_written;
                 } fs;

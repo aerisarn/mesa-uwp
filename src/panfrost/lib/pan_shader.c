@@ -184,6 +184,19 @@ bifrost_blend_type_from_nir(nir_alu_type nir_type)
                 return 0;
         }
 }
+
+#if PAN_ARCH <= 7
+enum mali_register_file_format
+GENX(pan_fixup_blend_type)(nir_alu_type T_size, enum pipe_format format)
+{
+        const struct util_format_description *desc = util_format_description(format);
+        unsigned size = nir_alu_type_get_type_size(T_size);
+        nir_alu_type T_format = pan_unpacked_type_for_format(desc);
+        nir_alu_type T = nir_alu_type_get_base_type(T_format) | size;
+
+        return bifrost_blend_type_from_nir(T);
+}
+#endif
 #endif
 
 void
@@ -253,6 +266,7 @@ GENX(pan_shader_compile)(nir_shader *s,
                 info->fs.outputs_read = s->info.outputs_read >> FRAG_RESULT_DATA0;
                 info->fs.outputs_written = s->info.outputs_written >> FRAG_RESULT_DATA0;
                 info->fs.sample_shading = s->info.fs.uses_sample_shading;
+                info->fs.untyped_color_outputs = s->info.fs.untyped_color_outputs;
 
                 info->fs.can_discard = s->info.fs.uses_discard;
                 info->fs.early_fragment_tests = s->info.fs.early_fragment_tests;
