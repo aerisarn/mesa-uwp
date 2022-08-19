@@ -116,9 +116,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
 
    compiler->precise_trig = env_var_as_boolean("INTEL_PRECISE_TRIG", false);
 
-   compiler->use_tcs_8_patch =
-      devinfo->ver >= 12 ||
-      (devinfo->ver >= 9 && INTEL_DEBUG(DEBUG_TCS_EIGHT_PATCH));
+   compiler->use_tcs_8_patch = devinfo->ver >= 12;
 
    /* Default to the sampler since that's what we've done since forever */
    compiler->indirect_ubos_use_sampler = true;

@@ -394,15 +394,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    prog_data->patch_count_threshold = brw::get_patch_count_threshold(key->input_vertices);
 
-   if (compiler->use_tcs_8_patch &&
-       nir->info.tess.tcs_vertices_out <= (devinfo->ver >= 12 ? 32 : 16) &&
-       2 + has_primitive_id + key->input_vertices <= (devinfo->ver >= 12 ? 63 : 31)) {
-      /* 3DSTATE_HS imposes two constraints on using 8_PATCH mode. First, the
-       * "Instance" field limits the number of output vertices to [1, 16] on
-       * gfx11 and below, or [1, 32] on gfx12 and above. Secondly, the
-       * "Dispatch GRF Start Register for URB Data" field is limited to [0,
-       * 31] - which imposes a limit on the input vertices.
-       */
+   if (compiler->use_tcs_8_patch) {
       vue_prog_data->dispatch_mode = DISPATCH_MODE_TCS_8_PATCH;
       prog_data->instances = nir->info.tess.tcs_vertices_out;
       prog_data->include_primitive_id = has_primitive_id;
