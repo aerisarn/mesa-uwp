@@ -1826,21 +1826,19 @@ emit_intrinsic_barycentric(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
    gl_system_value sysval = nir_intrinsic_barycentric_sysval(intr);
 
-   if (!ctx->so->key.msaa) {
+   if (!ctx->so->key.msaa && ctx->compiler->gen < 6) {
       switch (sysval) {
       case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
          sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
-         if (ctx->compiler->gen < 6)
-            sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
+         sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
          sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
-         if (ctx->compiler->gen < 6)
-            sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
+         sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
          break;
       default:
          break;

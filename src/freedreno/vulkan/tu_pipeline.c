@@ -2473,14 +2473,6 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
       return;
 
    const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
-   const struct VkPipelineSampleLocationsStateCreateInfoEXT *sample_locations =
-      vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
-   if (msaa_info->rasterizationSamples > 1 ||
-       /* also set msaa key when sample location is not the default
-        * since this affects varying interpolation */
-       (sample_locations && sample_locations->sampleLocationsEnable)) {
-      key->msaa = true;
-   }
 
    /* The 1.3.215 spec says:
     *

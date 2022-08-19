@@ -544,11 +544,11 @@ ir3_setup_used_key(struct ir3_shader *shader)
       }
 
       /* Only used for deciding on behavior of
-       * nir_intrinsic_load_barycentric_sample, or the centroid demotion
+       * nir_intrinsic_load_barycentric_sample and the centroid demotion
        * on older HW.
        */
-      key->msaa = info->fs.uses_sample_qualifier ||
-                  (shader->compiler->gen < 6 &&
+      key->msaa = shader->compiler->gen < 6 &&
+                  (info->fs.uses_sample_qualifier ||
                    (BITSET_TEST(info->system_values_read,
                                 SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID) ||
                     BITSET_TEST(info->system_values_read,
