@@ -351,6 +351,21 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
    if (sscreen->options.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
 
+   /* Lower large variables that are always constant with load_constant intrinsics, which
+    * get turned into PC-relative loads from a data section next to the shader.
+    *
+    * Run this once before lcssa because the added phis may prevent this
+    * pass from operating correctly.
+    *
+    * nir_opt_large_constants may use op_amul (see nir_build_deref_offset),
+    * or may create unneeded code, so run si_nir_opts if needed.
+    */
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   bool progress = false;
+   NIR_PASS(progress, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
+   if (progress)
+      si_nir_opts(sscreen, nir, false);
+
    NIR_PASS_V(nir, nir_convert_to_lcssa, true, true); /* required by divergence analysis */
    NIR_PASS_V(nir, nir_divergence_analysis); /* to find divergent loops */
 
