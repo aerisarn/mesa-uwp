@@ -4571,6 +4571,10 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS(progress, nir, nir_opt_cse);
         }
 
+        /* This opt currently helps on Bifrost but not Valhall */
+        if (gpu_id < 0x9000)
+                NIR_PASS(progress, nir, bifrost_nir_opt_boolean_bitwise);
+
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, bi_scalarize_filter, NULL);
         NIR_PASS(progress, nir, nir_lower_phis_to_scalar, true);
         NIR_PASS(progress, nir, nir_opt_vectorize, bi_vectorize_filter, NULL);
