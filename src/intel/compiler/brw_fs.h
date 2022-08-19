@@ -93,6 +93,10 @@ struct thread_payload {
    virtual ~thread_payload() = default;
 };
 
+struct tcs_thread_payload : public thread_payload {
+   tcs_thread_payload(const fs_visitor &v);
+};
+
 struct fs_thread_payload : public thread_payload {
    fs_thread_payload(const fs_visitor &v,
                      bool &source_depth_to_render_target,
@@ -419,6 +423,11 @@ public:
 
    thread_payload &payload() {
       return *this->payload_;
+   }
+
+   tcs_thread_payload &tcs_payload() {
+      assert(stage == MESA_SHADER_TESS_CTRL);
+      return *static_cast<tcs_thread_payload *>(this->payload_);
    }
 
    fs_thread_payload &fs_payload() {

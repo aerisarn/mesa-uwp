@@ -6623,27 +6623,13 @@ bool
 fs_visitor::run_tcs()
 {
    assert(stage == MESA_SHADER_TESS_CTRL);
-   thread_payload &payload = this->payload();
 
    struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(prog_data);
-   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
-   struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
 
    assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH ||
           vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
 
-   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
-      /* r1-r4 contain the ICP handles. */
-      payload.num_regs = 5;
-   } else {
-      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
-      assert(tcs_key->input_vertices > 0);
-      /* r1 contains output handles, r2 may contain primitive ID, then the
-       * ICP handles occupy the next 1-32 registers.
-       */
-      payload.num_regs = 2 + tcs_prog_data->include_primitive_id +
-                         tcs_key->input_vertices;
-   }
+   payload_ = new tcs_thread_payload(*this);
 
    /* Initialize gl_InvocationID */
    set_tcs_invocation_id();

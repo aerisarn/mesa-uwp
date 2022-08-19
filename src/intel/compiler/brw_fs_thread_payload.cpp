@@ -25,6 +25,26 @@
 
 using namespace brw;
 
+tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
+{
+   struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(v.prog_data);
+   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(v.prog_data);
+   struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) v.key;
+
+   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
+      /* r1-r4 contain the ICP handles. */
+      num_regs = 5;
+   } else {
+      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
+      assert(tcs_key->input_vertices > 0);
+      /* r1 contains output handles, r2 may contain primitive ID, then the
+       * ICP handles occupy the next 1-32 registers.
+       */
+      num_regs = 2 + tcs_prog_data->include_primitive_id +
+                 tcs_key->input_vertices;
+   }
+}
+
 static inline void
 setup_fs_payload_gfx6(fs_thread_payload &payload,
                       const fs_visitor &v,
