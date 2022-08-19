@@ -32,11 +32,16 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) v.key;
 
    if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
+      patch_urb_output = retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
+
       /* r1-r4 contain the ICP handles. */
       num_regs = 5;
    } else {
       assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
       assert(tcs_key->input_vertices > 0);
+
+      patch_urb_output = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+
       /* r1 contains output handles, r2 may contain primitive ID, then the
        * ICP handles occupy the next 1-32 registers.
        */

@@ -2801,19 +2801,6 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
    return icp_handle;
 }
 
-struct brw_reg
-fs_visitor::get_tcs_output_urb_handle()
-{
-   struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(prog_data);
-
-   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
-      return retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
-   } else {
-      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
-      return retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
-   }
-}
-
 void
 fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
@@ -2934,15 +2921,13 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       unsigned imm_offset = nir_intrinsic_base(instr);
       unsigned first_component = nir_intrinsic_component(instr);
 
-      struct brw_reg output_handles = get_tcs_output_urb_handle();
-
       fs_inst *inst;
       if (indirect_offset.file == BAD_FILE) {
          /* This MOV replicates the output handle to all enabled channels
           * is SINGLE_PATCH mode.
           */
          fs_reg patch_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-         bld.MOV(patch_handle, output_handles);
+         bld.MOV(patch_handle, tcs_payload().patch_urb_output);
 
          {
             fs_reg srcs[URB_LOGICAL_NUM_SRCS];
@@ -2970,7 +2955,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       } else {
          /* Indirect indexing - use per-slot offsets as well. */
          fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-         srcs[URB_LOGICAL_SRC_HANDLE] = output_handles;
+         srcs[URB_LOGICAL_SRC_HANDLE] = tcs_payload().patch_urb_output;
          srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
 
          if (first_component != 0) {
@@ -3032,7 +3017,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       const unsigned length = num_components + first_component;
 
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-      srcs[URB_LOGICAL_SRC_HANDLE] = get_tcs_output_urb_handle();
+      srcs[URB_LOGICAL_SRC_HANDLE] = tcs_payload().patch_urb_output;
       srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
       srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = mask_reg;
       srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, length);

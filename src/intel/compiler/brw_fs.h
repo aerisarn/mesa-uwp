@@ -95,6 +95,8 @@ struct thread_payload {
 
 struct tcs_thread_payload : public thread_payload {
    tcs_thread_payload(const fs_visitor &v);
+
+   fs_reg patch_urb_output;
 };
 
 struct fs_thread_payload : public thread_payload {
