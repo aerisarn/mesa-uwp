@@ -139,6 +139,15 @@ u_transfer_helper_resource_create(struct pipe_screen *pscreen,
          return NULL;
 
       prsc->format = format;  /* frob the format back to the "external" format */
+   } else if (format == PIPE_FORMAT_Z24X8_UNORM && helper->z24_in_z32f) {
+      struct pipe_resource t = *templ;
+      t.format = PIPE_FORMAT_Z32_FLOAT;
+
+      prsc = helper->vtbl->resource_create(pscreen, &t);
+      if (!prsc)
+         return NULL;
+
+      prsc->format = format;  /* frob the format back to the "external" format */
    } else {
       /* normal case, no special handling: */
       prsc = helper->vtbl->resource_create(pscreen, templ);
@@ -356,6 +365,11 @@ u_transfer_helper_transfer_map(struct pipe_context *pctx,
             break;
          }
       }
+   } else if (prsc->format == PIPE_FORMAT_Z24X8_UNORM) {
+         assert(helper->z24_in_z32f);
+         util_format_z24x8_unorm_pack_z_float(trans->staging, ptrans->stride,
+                                              trans->ptr, trans->trans->stride,
+                                              width, height);
    } else {
       unreachable("bleh");
    }
