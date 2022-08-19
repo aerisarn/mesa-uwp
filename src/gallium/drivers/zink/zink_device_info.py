@@ -89,6 +89,7 @@ EXTENSIONS = [
     Extension("VK_EXT_shader_subgroup_ballot"),
     Extension("VK_EXT_shader_subgroup_vote"),
     Extension("VK_EXT_shader_atomic_float", alias="atomic_float", features=True),
+    Extension("VK_KHR_shader_atomic_int64", alias="atomic_int", features=True),
     Extension("VK_KHR_8bit_storage",
               alias="storage_8bit",
               features=True,
