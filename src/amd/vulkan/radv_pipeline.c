@@ -2619,6 +2619,50 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
 }
 
 static void
+merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
+{
+   /* The Vulkan 1.0.38 spec, section 21.1 Tessellator says:
+    *
+    *    "PointMode. Controls generation of points rather than triangles
+    *     or lines. This functionality defaults to disabled, and is
+    *     enabled if either shader stage includes the execution mode.
+    *
+    * and about Triangles, Quads, IsoLines, VertexOrderCw, VertexOrderCcw,
+    * PointMode, SpacingEqual, SpacingFractionalEven, SpacingFractionalOdd,
+    * and OutputVertices, it says:
+    *
+    *    "One mode must be set in at least one of the tessellation
+    *     shader stages."
+    *
+    * So, the fields can be set in either the TCS or TES, but they must
+    * agree if set in both.  Our backend looks at TES, so bitwise-or in
+    * the values from the TCS.
+    */
+   assert(tcs_info->tess.tcs_vertices_out == 0 || tes_info->tess.tcs_vertices_out == 0 ||
+          tcs_info->tess.tcs_vertices_out == tes_info->tess.tcs_vertices_out);
+   tes_info->tess.tcs_vertices_out |= tcs_info->tess.tcs_vertices_out;
+
+   assert(tcs_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
+          tes_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
+          tcs_info->tess.spacing == tes_info->tess.spacing);
+   tes_info->tess.spacing |= tcs_info->tess.spacing;
+
+   assert(tcs_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
+          tes_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
+          tcs_info->tess._primitive_mode == tes_info->tess._primitive_mode);
+   tes_info->tess._primitive_mode |= tcs_info->tess._primitive_mode;
+   tes_info->tess.ccw |= tcs_info->tess.ccw;
+   tes_info->tess.point_mode |= tcs_info->tess.point_mode;
+
+   /* Copy the merged info back to the TCS */
+   tcs_info->tess.tcs_vertices_out = tes_info->tess.tcs_vertices_out;
+   tcs_info->tess.spacing = tes_info->tess.spacing;
+   tcs_info->tess._primitive_mode = tes_info->tess._primitive_mode;
+   tcs_info->tess.ccw = tes_info->tess.ccw;
+   tcs_info->tess.point_mode = tes_info->tess.point_mode;
+}
+
+static void
 radv_lower_io_to_scalar_early(nir_shader *nir, nir_variable_mode mask)
 {
    bool progress = false;
@@ -2817,6 +2861,11 @@ radv_pipeline_link_tcs(const struct radv_device *device, struct radv_pipeline_st
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
 
    radv_pipeline_link_shaders(device, tcs_stage->nir, tes_stage->nir, pipeline_key);
+
+   nir_lower_patch_vertices(tes_stage->nir, tcs_stage->nir->info.tess.tcs_vertices_out, NULL);
+
+   /* Copy TCS info into the TES info */
+   merge_tess_info(&tes_stage->nir->info, &tcs_stage->nir->info);
 
    nir_linked_io_var_info tcs2tes =
       nir_assign_linked_io_var_locations(tcs_stage->nir, tes_stage->nir);
@@ -3528,56 +3577,9 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
 }
 
 static void
-merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
-{
-   /* The Vulkan 1.0.38 spec, section 21.1 Tessellator says:
-    *
-    *    "PointMode. Controls generation of points rather than triangles
-    *     or lines. This functionality defaults to disabled, and is
-    *     enabled if either shader stage includes the execution mode.
-    *
-    * and about Triangles, Quads, IsoLines, VertexOrderCw, VertexOrderCcw,
-    * PointMode, SpacingEqual, SpacingFractionalEven, SpacingFractionalOdd,
-    * and OutputVertices, it says:
-    *
-    *    "One mode must be set in at least one of the tessellation
-    *     shader stages."
-    *
-    * So, the fields can be set in either the TCS or TES, but they must
-    * agree if set in both.  Our backend looks at TES, so bitwise-or in
-    * the values from the TCS.
-    */
-   assert(tcs_info->tess.tcs_vertices_out == 0 || tes_info->tess.tcs_vertices_out == 0 ||
-          tcs_info->tess.tcs_vertices_out == tes_info->tess.tcs_vertices_out);
-   tes_info->tess.tcs_vertices_out |= tcs_info->tess.tcs_vertices_out;
-
-   assert(tcs_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
-          tes_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
-          tcs_info->tess.spacing == tes_info->tess.spacing);
-   tes_info->tess.spacing |= tcs_info->tess.spacing;
-
-   assert(tcs_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
-          tes_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
-          tcs_info->tess._primitive_mode == tes_info->tess._primitive_mode);
-   tes_info->tess._primitive_mode |= tcs_info->tess._primitive_mode;
-   tes_info->tess.ccw |= tcs_info->tess.ccw;
-   tes_info->tess.point_mode |= tcs_info->tess.point_mode;
-
-   /* Copy the merged info back to the TCS */
-   tcs_info->tess.tcs_vertices_out = tes_info->tess.tcs_vertices_out;
-   tcs_info->tess.spacing = tes_info->tess.spacing;
-   tcs_info->tess._primitive_mode = tes_info->tess._primitive_mode;
-   tcs_info->tess.ccw = tes_info->tess.ccw;
-   tcs_info->tess.point_mode = tes_info->tess.point_mode;
-}
-
-static void
 gather_tess_info(struct radv_device *device, struct radv_pipeline_stage *stages,
                  const struct radv_pipeline_key *pipeline_key)
 {
-   merge_tess_info(&stages[MESA_SHADER_TESS_EVAL].nir->info,
-                   &stages[MESA_SHADER_TESS_CTRL].nir->info);
-
    unsigned tess_in_patch_size = pipeline_key->tcs.tess_input_vertices;
    unsigned tess_out_patch_size = stages[MESA_SHADER_TESS_CTRL].nir->info.tess.tcs_vertices_out;
 
@@ -4724,8 +4726,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      nir_lower_patch_vertices(stages[MESA_SHADER_TESS_EVAL].nir,
-                               stages[MESA_SHADER_TESS_CTRL].nir->info.tess.tcs_vertices_out, NULL);
       gather_tess_info(device, stages, pipeline_key);
    }
 
