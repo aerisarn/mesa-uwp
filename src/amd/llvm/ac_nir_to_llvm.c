@@ -560,7 +560,7 @@ static LLVMValueRef exit_waterfall(struct ac_nir_context *ctx, struct waterfall_
    return ret;
 }
 
-static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
+static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 {
    LLVMValueRef src[16], result = NULL;
    unsigned num_components = instr->dest.dest.ssa.num_components;
@@ -1361,7 +1361,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       fprintf(stderr, "Unknown NIR alu instr: ");
       nir_print_instr(&instr->instr, stderr);
       fprintf(stderr, "\n");
-      abort();
+      return false;
    }
 
    if (result) {
@@ -1369,9 +1369,10 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = ac_to_integer_or_pointer(&ctx->ac, result);
       ctx->ssa_defs[instr->dest.dest.ssa.index] = result;
    }
+   return true;
 }
 
-static void visit_load_const(struct ac_nir_context *ctx, const nir_load_const_instr *instr)
+static bool visit_load_const(struct ac_nir_context *ctx, const nir_load_const_instr *instr)
 {
    LLVMValueRef values[4], value = NULL;
    LLVMTypeRef element_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
@@ -1395,7 +1396,7 @@ static void visit_load_const(struct ac_nir_context *ctx, const nir_load_const_in
          break;
       default:
          fprintf(stderr, "unsupported nir load_const bit_size: %d\n", instr->def.bit_size);
-         abort();
+         return false;
       }
    }
    if (instr->def.num_components > 1) {
@@ -1404,6 +1405,7 @@ static void visit_load_const(struct ac_nir_context *ctx, const nir_load_const_in
       value = values[0];
 
    ctx->ssa_defs[instr->def.index] = value;
+   return true;
 }
 
 /* Gather4 should follow the same rules as bilinear filtering, but the hardware
@@ -3536,7 +3538,7 @@ emit_load_frag_coord(struct ac_nir_context *ctx)
    return ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
 }
 
-static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
+static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    LLVMValueRef result = NULL;
 
@@ -4308,12 +4310,12 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);
       fprintf(stderr, "\n");
-      abort();
-      break;
+      return false;
    }
    if (result) {
       ctx->ssa_defs[instr->dest.ssa.index] = result;
    }
+   return true;
 }
 
 static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx, unsigned base_index,
@@ -4988,7 +4990,7 @@ static void visit_ssa_undef(struct ac_nir_context *ctx, const nir_ssa_undef_inst
    }
 }
 
-static void visit_jump(struct ac_llvm_context *ctx, const nir_jump_instr *instr)
+static bool visit_jump(struct ac_llvm_context *ctx, const nir_jump_instr *instr)
 {
    switch (instr->type) {
    case nir_jump_break:
@@ -5001,8 +5003,9 @@ static void visit_jump(struct ac_llvm_context *ctx, const nir_jump_instr *instr)
       fprintf(stderr, "Unknown NIR jump instr: ");
       nir_print_instr(&instr->instr, stderr);
       fprintf(stderr, "\n");
-      abort();
+      return false;
    }
+   return true;
 }
 
 static LLVMTypeRef glsl_base_to_llvm_type(struct ac_llvm_context *ac, enum glsl_base_type type)
@@ -5065,10 +5068,10 @@ static LLVMTypeRef glsl_to_llvm_type(struct ac_llvm_context *ac, const struct gl
    return LLVMStructTypeInContext(ac->context, member_types, glsl_get_length(type), false);
 }
 
-static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
+static bool visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
 {
    if (!nir_deref_mode_is_one_of(instr, nir_var_mem_shared | nir_var_mem_global))
-      return;
+      return true;
 
    LLVMValueRef result = NULL;
    switch (instr->deref_type) {
@@ -5147,7 +5150,9 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
          address_space = AC_ADDR_SPACE_GLOBAL;
          break;
       default:
-         unreachable("Unhandled address space");
+         nir_print_instr(&instr->instr, stderr);
+         fprintf(stderr, "Unhandled address space %x\n", instr->modes);
+         return false;
       }
 
       LLVMTypeRef type = LLVMPointerType(pointee_type, address_space);
@@ -5162,15 +5167,19 @@ static void visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
       break;
    }
    default:
-      unreachable("Unhandled deref_instr deref type");
+      fprintf(stderr, "Unhandled deref_instr deref type: ");
+      nir_print_instr(&instr->instr, stderr);
+      fprintf(stderr, "\n");
+      return false;
    }
 
    ctx->ssa_defs[instr->dest.ssa.index] = result;
+   return true;
 }
 
-static void visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list);
+static bool visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list);
 
-static void visit_block(struct ac_nir_context *ctx, nir_block *block)
+static bool visit_block(struct ac_nir_context *ctx, nir_block *block)
 {
    LLVMBasicBlockRef blockref = LLVMGetInsertBlock(ctx->ac.builder);
    LLVMValueRef first = LLVMGetFirstInstruction(blockref);
@@ -5190,13 +5199,16 @@ static void visit_block(struct ac_nir_context *ctx, nir_block *block)
    nir_foreach_instr (instr, block) {
       switch (instr->type) {
       case nir_instr_type_alu:
-         visit_alu(ctx, nir_instr_as_alu(instr));
+         if (!visit_alu(ctx, nir_instr_as_alu(instr)))
+            return false;
          break;
       case nir_instr_type_load_const:
-         visit_load_const(ctx, nir_instr_as_load_const(instr));
+         if (!visit_load_const(ctx, nir_instr_as_load_const(instr)))
+            return false;
          break;
       case nir_instr_type_intrinsic:
-         visit_intrinsic(ctx, nir_instr_as_intrinsic(instr));
+         if (!visit_intrinsic(ctx, nir_instr_as_intrinsic(instr)))
+            return false;
          break;
       case nir_instr_type_tex:
          visit_tex(ctx, nir_instr_as_tex(instr));
@@ -5207,23 +5219,27 @@ static void visit_block(struct ac_nir_context *ctx, nir_block *block)
          visit_ssa_undef(ctx, nir_instr_as_ssa_undef(instr));
          break;
       case nir_instr_type_jump:
-         visit_jump(&ctx->ac, nir_instr_as_jump(instr));
+         if (!visit_jump(&ctx->ac, nir_instr_as_jump(instr)))
+            return false;
          break;
       case nir_instr_type_deref:
-         visit_deref(ctx, nir_instr_as_deref(instr));
+         if (!visit_deref(ctx, nir_instr_as_deref(instr)))
+            return false;
          break;
       default:
          fprintf(stderr, "Unknown NIR instr type: ");
          nir_print_instr(instr, stderr);
          fprintf(stderr, "\n");
-         abort();
+         return false;
       }
    }
 
    _mesa_hash_table_insert(ctx->defs, block, LLVMGetInsertBlock(ctx->ac.builder));
+
+   return true;
 }
 
-static void visit_if(struct ac_nir_context *ctx, nir_if *if_stmt)
+static bool visit_if(struct ac_nir_context *ctx, nir_if *if_stmt)
 {
    LLVMValueRef value = get_src(ctx, if_stmt->condition);
 
@@ -5231,50 +5247,59 @@ static void visit_if(struct ac_nir_context *ctx, nir_if *if_stmt)
 
    ac_build_ifcc(&ctx->ac, value, then_block->index);
 
-   visit_cf_list(ctx, &if_stmt->then_list);
+   if (!visit_cf_list(ctx, &if_stmt->then_list))
+      return false;
 
    if (!exec_list_is_empty(&if_stmt->else_list)) {
       nir_block *else_block = (nir_block *)exec_list_get_head(&if_stmt->else_list);
 
       ac_build_else(&ctx->ac, else_block->index);
-      visit_cf_list(ctx, &if_stmt->else_list);
+      if (!visit_cf_list(ctx, &if_stmt->else_list))
+         return false;
    }
 
    ac_build_endif(&ctx->ac, then_block->index);
+   return true;
 }
 
-static void visit_loop(struct ac_nir_context *ctx, nir_loop *loop)
+static bool visit_loop(struct ac_nir_context *ctx, nir_loop *loop)
 {
    nir_block *first_loop_block = (nir_block *)exec_list_get_head(&loop->body);
 
    ac_build_bgnloop(&ctx->ac, first_loop_block->index);
 
-   visit_cf_list(ctx, &loop->body);
+   if (!visit_cf_list(ctx, &loop->body))
+      return false;
 
    ac_build_endloop(&ctx->ac, first_loop_block->index);
+   return true;
 }
 
-static void visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list)
+static bool visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list)
 {
    foreach_list_typed(nir_cf_node, node, node, list)
    {
       switch (node->type) {
       case nir_cf_node_block:
-         visit_block(ctx, nir_cf_node_as_block(node));
+         if (!visit_block(ctx, nir_cf_node_as_block(node)))
+            return false;
          break;
 
       case nir_cf_node_if:
-         visit_if(ctx, nir_cf_node_as_if(node));
+         if (!visit_if(ctx, nir_cf_node_as_if(node)))
+            return false;
          break;
 
       case nir_cf_node_loop:
-         visit_loop(ctx, nir_cf_node_as_loop(node));
+         if (!visit_loop(ctx, nir_cf_node_as_loop(node)))
+            return false;
          break;
 
       default:
-         assert(0);
+         return false;
       }
    }
+   return true;
 }
 
 void ac_handle_shader_output_decl(struct ac_llvm_context *ctx, struct ac_shader_abi *abi,
@@ -5379,7 +5404,7 @@ static void setup_gds(struct ac_nir_context *ctx, nir_function_impl *impl)
       ac_llvm_add_target_dep_function_attr(ctx->main_function, "amdgpu-gds-size", gds_size);
 }
 
-void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
+bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
                       const struct ac_shader_args *args, struct nir_shader *nir)
 {
    struct ac_nir_context ctx = {0};
@@ -5428,7 +5453,9 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
       ctx.ac.postponed_kill = ac_build_alloca_init(&ctx.ac, ctx.ac.i1true, "");
    }
 
-   visit_cf_list(&ctx, &func->impl->body);
+   if (!visit_cf_list(&ctx, &func->impl->body))
+      return false;
+
    phi_post_pass(&ctx);
 
    if (ctx.ac.postponed_kill)
@@ -5440,4 +5467,6 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    ralloc_free(ctx.vars);
    if (ctx.abi->kill_ps_if_inf_interp)
       ralloc_free(ctx.verified_interp);
+
+   return true;
 }
