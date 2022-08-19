@@ -72,7 +72,7 @@ struct vn_queue_submission {
    } temp;
 };
 
-static void
+static VkResult
 vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
                                            uint32_t batch_index)
 {
@@ -103,19 +103,45 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
       struct vn_semaphore *sem = vn_semaphore_from_handle(wait_sems[i]);
       const struct vn_sync_payload *payload = sem->payload;
 
-      if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD)
+      if (payload->type != VN_SYNC_TYPE_IMPORTED_SYNC_FD)
+         continue;
+
+      struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+      struct vn_device *dev = queue->device;
+      if (dev->physical_device->renderer_sync_fd_semaphore_features &
+          VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) {
+         if (!vn_semaphore_wait_external(dev, sem))
+            return VK_ERROR_DEVICE_LOST;
+
+         const VkImportSemaphoreResourceInfo100000MESA res_info = {
+            .sType =
+               VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
+            .semaphore = wait_sems[i],
+            .resourceId = 0,
+         };
+         vn_async_vkImportSemaphoreResource100000MESA(
+            dev->instance, vn_device_to_handle(dev), &res_info);
+      } else {
          submit->wait_external_count++;
+      }
    }
+
+   return VK_SUCCESS;
 }
 
-static void
+static VkResult
 vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
 {
    submit->wait_semaphore_count = 0;
    submit->wait_external_count = 0;
 
-   for (uint32_t i = 0; i < submit->batch_count; i++)
-      vn_queue_submission_count_batch_semaphores(submit, i);
+   for (uint32_t i = 0; i < submit->batch_count; i++) {
+      VkResult result = vn_queue_submission_count_batch_semaphores(submit, i);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -290,9 +316,11 @@ vn_queue_submission_prepare_submit(struct vn_queue_submission *submit,
    submit->submit_batches = submit_batches;
    submit->fence = fence;
 
-   vn_queue_submission_count_semaphores(submit);
+   VkResult result = vn_queue_submission_count_semaphores(submit);
+   if (result != VK_SUCCESS)
+      return result;
 
-   VkResult result = vn_queue_submission_alloc_storage(submit);
+   result = vn_queue_submission_alloc_storage(submit);
    if (result != VK_SUCCESS)
       return result;
 
@@ -317,9 +345,11 @@ vn_queue_submission_prepare_bind_sparse(
    submit->bind_sparse_batches = bind_sparse_batches;
    submit->fence = fence;
 
-   vn_queue_submission_count_semaphores(submit);
+   VkResult result = vn_queue_submission_count_semaphores(submit);
+   if (result != VK_SUCCESS)
+      return result;
 
-   VkResult result = vn_queue_submission_alloc_storage(submit);
+   result = vn_queue_submission_alloc_storage(submit);
    if (result != VK_SUCCESS)
       return result;
 
