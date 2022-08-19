@@ -198,14 +198,15 @@ struct AccelerationStructureInstance {
 };
 TYPE(AccelerationStructureInstance, 64);
 
-void
+/* Returns whether the instance is active. */
+bool
 build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t global_id)
 {
    REF(radv_bvh_instance_node) node = REF(radv_bvh_instance_node)(dst_ptr);
 
    AccelerationStructureInstance instance = DEREF(REF(AccelerationStructureInstance)(src_ptr));
    if (instance.accelerationStructureReference == 0)
-      return;
+      return false;
 
    mat4 transform = mat4(1.0);
    for (uint32_t col = 0; col < 4; col++)
@@ -251,6 +252,8 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
    DEREF(node).aabb[1][0] = bounds.max.x;
    DEREF(node).aabb[1][1] = bounds.max.y;
    DEREF(node).aabb[1][2] = bounds.max.z;
+
+   return true;
 }
 
 void
@@ -275,12 +278,10 @@ main(void)
    }
 
    uint32_t dst_offset = args.dst_offset + global_id * dst_stride;
-
-   DEREF(id_ptr).id = pack_node_id(dst_offset, node_type);
-
    VOID_REF dst_ptr = OFFSET(args.bvh, dst_offset);
 
    AABB bounds;
+   bool is_active = true;
    if (args.geometry_type == VK_GEOMETRY_TYPE_TRIANGLES_KHR) {
       triangle_indices indices = load_indices(args.indices, args.index_format, global_id);
 
@@ -339,8 +340,10 @@ main(void)
          src_ptr = DEREF(REF(VOID_REF)(src_ptr));
       }
 
-      build_instance(bounds, src_ptr, dst_ptr, global_id);
+      is_active = build_instance(bounds, src_ptr, dst_ptr, global_id);
    }
+
+   DEREF(id_ptr).id = is_active ? pack_node_id(dst_offset, node_type) : NULL_NODE_ID;
 
    min_float_emulated(INDEX(int32_t, args.bounds, 0), bounds.min.x);
    min_float_emulated(INDEX(int32_t, args.bounds, 1), bounds.min.y);

@@ -64,6 +64,7 @@ main(void)
    total_bounds.min = vec3(INFINITY);
    total_bounds.max = vec3(-INFINITY);
 
+   bool is_active = false;
    for (uint32_t i = 0; i < 4; i++) {
       AABB bounds;
       bounds.min = vec3(NAN);
@@ -71,13 +72,16 @@ main(void)
 
       uint32_t child_id = DEREF(INDEX(key_id_pair, args.src_ids, src_index + i)).id;
 
-      if (i < child_count) {
-         DEREF(dst_node).children[i] = child_id;
-
+      if (i < child_count && child_id != NULL_NODE_ID) {
          bounds = calculate_node_bounds(args.bvh, child_id);
          total_bounds.min = min(total_bounds.min, bounds.min);
          total_bounds.max = max(total_bounds.max, bounds.max);
+         is_active = true;
+      } else {
+         child_id = NULL_NODE_ID;
       }
+
+      DEREF(dst_node).children[i] = child_id;
 
       DEREF(dst_node).coords[i][0][0] = bounds.min.x;
       DEREF(dst_node).coords[i][0][1] = bounds.min.y;
@@ -88,7 +92,10 @@ main(void)
    }
 
    uint32_t node_id = pack_node_id(dst_offset, radv_bvh_node_internal);
-   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = node_id;
+   /* An internal node is considered inactive if it has no children. Set the resulting scratch node
+    * id to NULL_NODE_ID for more internal nodes to become inactive.
+    */
+   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? node_id : NULL_NODE_ID;
 
    if (fill_header) {
       REF(radv_accel_struct_header) header = REF(radv_accel_struct_header)(args.bvh);

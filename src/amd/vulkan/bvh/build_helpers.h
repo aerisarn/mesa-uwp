@@ -259,6 +259,8 @@ pack_node_id(uint32_t offset, uint32_t type)
    return (offset >> 3) | type;
 }
 
+#define NULL_NODE_ID 0xFFFFFFFF
+
 AABB
 calculate_node_bounds(VOID_REF bvh, uint32_t id)
 {
