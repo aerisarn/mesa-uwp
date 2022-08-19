@@ -25,7 +25,6 @@ libasahi_lib_files = files(
   'agx_device.c',
   'agx_formats.c',
   'pool.c',
-  'tiling.c',
 )
 
 libasahi_decode_files = files(

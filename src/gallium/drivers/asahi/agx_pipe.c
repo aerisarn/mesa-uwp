@@ -46,7 +46,6 @@
 #include "magic.h"
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/lib/decode.h"
-#include "asahi/lib/tiling.h"
 #include "asahi/lib/agx_formats.h"
 
 static const struct debug_named_value agx_debug_options[] = {
@@ -260,7 +259,6 @@ agx_transfer_map(struct pipe_context *pctx,
 {
    struct agx_context *ctx = agx_context(pctx);
    struct agx_resource *rsrc = agx_resource(resource);
-   unsigned blocksize = util_format_get_blocksize(resource->format);
 
    /* Can't map tiled/compressed directly */
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
@@ -280,8 +278,13 @@ agx_transfer_map(struct pipe_context *pctx,
    *out_transfer = &transfer->base;
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-      transfer->base.stride = box->width * blocksize;
-      transfer->base.layer_stride = transfer->base.stride * box->height;
+      transfer->base.stride =
+         util_format_get_stride(resource->format, box->width);
+
+      transfer->base.layer_stride =
+         util_format_get_2d_size(resource->format, transfer->base.stride,
+                                 box->height);
+
       transfer->map = calloc(transfer->base.layer_stride, box->depth);
 
       if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
@@ -290,11 +293,8 @@ agx_transfer_map(struct pipe_context *pctx,
             uint8_t *dst = (uint8_t *) transfer->map +
                            transfer->base.layer_stride * z;
 
-            agx_detile(map, dst,
-               u_minify(resource->width0, level), blocksize * 8,
-               transfer->base.stride / blocksize,
-               box->x, box->y, box->x + box->width, box->y + box->height,
-               agx_select_tile_shift(resource->width0, resource->height0, level, blocksize));
+            ail_detile(map, dst, &rsrc->layout, level, transfer->base.stride,
+                       box->x, box->y, box->width, box->height);
          }
       }
 
@@ -326,7 +326,6 @@ agx_transfer_unmap(struct pipe_context *pctx,
    struct agx_transfer *trans = agx_transfer(transfer);
    struct pipe_resource *prsrc = transfer->resource;
    struct agx_resource *rsrc = (struct agx_resource *) prsrc;
-   unsigned blocksize = util_format_get_blocksize(prsrc->format);
 
    if (transfer->usage & PIPE_MAP_WRITE)
       BITSET_SET(rsrc->data_valid, transfer->level);
@@ -342,16 +341,9 @@ agx_transfer_unmap(struct pipe_context *pctx,
          uint8_t *src = (uint8_t *) trans->map +
                         transfer->layer_stride * z;
 
-         agx_tile(map, src,
-            u_minify(transfer->resource->width0, transfer->level),
-            blocksize * 8,
-            transfer->stride / blocksize,
-            transfer->box.x, transfer->box.y,
-            transfer->box.x + transfer->box.width,
-            transfer->box.y + transfer->box.height,
-            agx_select_tile_shift(transfer->resource->width0,
-                                  transfer->resource->height0,
-                                  transfer->level, blocksize));
+         ail_tile(map, src, &rsrc->layout, transfer->level,
+                  transfer->stride, transfer->box.x, transfer->box.y,
+                  transfer->box.width, transfer->box.height);
       }
    }
 
@@ -668,9 +660,8 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
    assert(map != NULL);
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-      agx_detile(rsrc->bo->ptr.cpu, map,
-                 rsrc->base.width0, 32, rsrc->dt_stride / 4,
-                 0, 0, rsrc->base.width0, rsrc->base.height0, 6);
+      ail_detile(rsrc->bo->ptr.cpu, map, &rsrc->layout, 0, rsrc->dt_stride,
+                 0, 0, rsrc->base.width0, rsrc->base.height0);
    } else {
       memcpy(map, rsrc->bo->ptr.cpu, rsrc->dt_stride * rsrc->base.height0);
    }

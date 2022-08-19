@@ -152,6 +152,18 @@ ail_get_linear_pixel_B(struct ail_layout *layout, ASSERTED unsigned level,
 
 void ail_make_miptree(struct ail_layout *layout);
 
+void
+ail_detile(void *_tiled, void *_linear,
+           struct ail_layout *tiled_layout, unsigned level,
+           unsigned linear_pitch_B, unsigned sx_px, unsigned sy_px,
+           unsigned width_px, unsigned height_px);
+
+void
+ail_tile(void *_tiled, void *_linear,
+         struct ail_layout *tiled_layout, unsigned level,
+         unsigned linear_pitch_B,
+         unsigned sx_px, unsigned sy_px, unsigned width_px, unsigned height_px);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
