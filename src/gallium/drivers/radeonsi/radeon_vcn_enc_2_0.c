@@ -73,9 +73,22 @@
 #define RENCODE_COLOR_PACKING_FORMAT_NV12          0
 #define RENCODE_COLOR_PACKING_FORMAT_P010          1
 
-static void radeon_enc_op_balance(struct radeon_encoder *enc)
+static void radeon_enc_op_preset(struct radeon_encoder *enc)
 {
-   RADEON_ENC_BEGIN(RENCODE_IB_OP_SET_BALANCE_ENCODING_MODE);
+   uint32_t preset_mode;
+
+   if (enc->enc_pic.quality_modes.preset_mode == RENCODE_PRESET_MODE_SPEED &&
+         (enc->enc_pic.sample_adaptive_offset_enabled_flag &&
+         (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC)))
+      preset_mode = RENCODE_IB_OP_SET_BALANCE_ENCODING_MODE;
+   else if (enc->enc_pic.quality_modes.preset_mode == RENCODE_PRESET_MODE_QUALITY)
+      preset_mode = RENCODE_IB_OP_SET_QUALITY_ENCODING_MODE;
+   else if (enc->enc_pic.quality_modes.preset_mode == RENCODE_PRESET_MODE_BALANCE)
+      preset_mode = RENCODE_IB_OP_SET_BALANCE_ENCODING_MODE;
+   else
+      preset_mode = RENCODE_IB_OP_SET_SPEED_ENCODING_MODE;
+
+   RADEON_ENC_BEGIN(preset_mode);
    RADEON_ENC_END();
 }
 
@@ -489,7 +502,7 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
    enc->input_format = radeon_enc_input_format;
    enc->output_format = radeon_enc_output_format;
    enc->ctx = radeon_enc_ctx;
-   enc->op_preset = radeon_enc_op_balance;
+   enc->op_preset = radeon_enc_op_preset;
 
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC) {
       enc->deblocking_filter = radeon_enc_loop_filter_hevc;
