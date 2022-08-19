@@ -64,6 +64,10 @@ parser.add_argument(
     help="Number of processes/threads to use.",
     default=multiprocessing.cpu_count(),
 )
+
+# The path to above the mesa directory, i.e. ../../../../../..
+path_above_mesa = os.path.realpath(os.path.join(os.path.dirname(__file__), *['..'] * 6))
+
 parser.add_argument("--piglit-path", type=str, help="Path to piglit source folder.")
 parser.add_argument("--glcts-path", type=str, help="Path to GLCTS source folder.")
 parser.add_argument("--deqp-path", type=str, help="Path to dEQP source folder.")
@@ -71,7 +75,7 @@ parser.add_argument(
     "--parent-path",
     type=str,
     help="Path to folder containing piglit/GLCTS and dEQP source folders.",
-    default=os.getenv("MAREKO_BUILD_PATH"),
+    default=os.getenv('MAREKO_BUILD_PATH', path_above_mesa),
 )
 parser.add_argument("--verbose", "-v", action="count", default=0)
 parser.add_argument(
@@ -138,7 +142,9 @@ parser.add_argument(
     nargs="?",
     help="Output folder (logs, etc)",
     default=os.path.join(
-        tempfile.gettempdir(), datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        # Default is ../../../../../../test-results/datetime
+        os.path.join(path_above_mesa, 'test-results',
+                     datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
     ),
 )
 
@@ -246,7 +252,7 @@ while os.path.exists(output_folder):
     output_folder = "{}.{}".format(os.path.abspath(args.output_folder), count)
     count += 1
 
-os.mkdir(output_folder)
+os.makedirs(output_folder, exist_ok=True)
 new_baseline_folder = os.path.join(output_folder, "new_baseline")
 os.mkdir(new_baseline_folder)
 
