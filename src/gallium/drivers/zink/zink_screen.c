@@ -522,6 +522,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
       return screen->info.feats.features.multiDrawIndirect;
 
+   case PIPE_CAP_IMAGE_ATOMIC_FLOAT_ADD:
+      return screen->info.have_EXT_shader_atomic_float;
+
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return screen->info.have_KHR_draw_indirect_count;
 
