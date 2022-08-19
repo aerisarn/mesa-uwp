@@ -67,6 +67,7 @@
 static void
 vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 {
+   const uint32_t renderer_version = physical_dev->renderer_version;
    struct vn_physical_device_features *feats = &physical_dev->features;
    struct vn_instance *instance = physical_dev->instance;
    const struct vk_device_extension_table *exts =
@@ -102,9 +103,15 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceVulkanMemoryModelFeatures vulkan_memory_model;
    } local_feats;
 
+   /* Clear the structs so that all unqueried features will be VK_FALSE. */
+   memset(feats, 0, sizeof(*feats));
+   memset(&local_feats, 0, sizeof(local_feats));
+
+   assert(renderer_version >= VK_API_VERSION_1_1);
+
    /* clang-format off */
 
-   if (physical_dev->renderer_version >= VK_API_VERSION_1_2) {
+   if (renderer_version >= VK_API_VERSION_1_2) {
       VN_ADD_TO_PNEXT_OF(features2, VULKAN_1_1_FEATURES, feats->vulkan_1_1);
       VN_ADD_TO_PNEXT_OF(features2, VULKAN_1_2_FEATURES, feats->vulkan_1_2);
    } else {
@@ -117,19 +124,19 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT_OF(features2, VARIABLE_POINTERS_FEATURES, local_feats.variable_pointers);
 
       /* Vulkan 1.2 */
-      VN_ADD_TO_PNEXT_OF(features2, 8BIT_STORAGE_FEATURES, local_feats._8bit_storage);
-      VN_ADD_TO_PNEXT_OF(features2, BUFFER_DEVICE_ADDRESS_FEATURES, local_feats.buffer_device_address);
-      VN_ADD_TO_PNEXT_OF(features2, DESCRIPTOR_INDEXING_FEATURES, local_feats.descriptor_indexing);
-      VN_ADD_TO_PNEXT_OF(features2, HOST_QUERY_RESET_FEATURES, local_feats.host_query_reset);
-      VN_ADD_TO_PNEXT_OF(features2, IMAGELESS_FRAMEBUFFER_FEATURES, local_feats.imageless_framebuffer);
-      VN_ADD_TO_PNEXT_OF(features2, SCALAR_BLOCK_LAYOUT_FEATURES, local_feats.scalar_block_layout);
-      VN_ADD_TO_PNEXT_OF(features2, SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, local_feats.separate_depth_stencil_layouts);
-      VN_ADD_TO_PNEXT_OF(features2, SHADER_ATOMIC_INT64_FEATURES, local_feats.shader_atomic_int64);
-      VN_ADD_TO_PNEXT_OF(features2, SHADER_FLOAT16_INT8_FEATURES, local_feats.shader_float16_int8);
-      VN_ADD_TO_PNEXT_OF(features2, SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES, local_feats.shader_subgroup_extended_types);
-      VN_ADD_TO_PNEXT_OF(features2, TIMELINE_SEMAPHORE_FEATURES, local_feats.timeline_semaphore);
-      VN_ADD_TO_PNEXT_OF(features2, UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES, local_feats.uniform_buffer_standard_layout);
-      VN_ADD_TO_PNEXT_OF(features2, VULKAN_MEMORY_MODEL_FEATURES, local_feats.vulkan_memory_model);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, 8BIT_STORAGE_FEATURES, local_feats._8bit_storage, KHR_8bit_storage);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, BUFFER_DEVICE_ADDRESS_FEATURES, local_feats.buffer_device_address, KHR_buffer_device_address);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, DESCRIPTOR_INDEXING_FEATURES, local_feats.descriptor_indexing, EXT_descriptor_indexing);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, HOST_QUERY_RESET_FEATURES, local_feats.host_query_reset, EXT_host_query_reset);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, IMAGELESS_FRAMEBUFFER_FEATURES, local_feats.imageless_framebuffer, KHR_imageless_framebuffer);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SCALAR_BLOCK_LAYOUT_FEATURES, local_feats.scalar_block_layout, EXT_scalar_block_layout);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, local_feats.separate_depth_stencil_layouts, KHR_separate_depth_stencil_layouts);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_ATOMIC_INT64_FEATURES, local_feats.shader_atomic_int64, KHR_shader_atomic_int64);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_FLOAT16_INT8_FEATURES, local_feats.shader_float16_int8, KHR_shader_float16_int8);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES, local_feats.shader_subgroup_extended_types, KHR_shader_subgroup_extended_types);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, TIMELINE_SEMAPHORE_FEATURES, local_feats.timeline_semaphore, KHR_timeline_semaphore);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES, local_feats.uniform_buffer_standard_layout, KHR_uniform_buffer_standard_layout);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, VULKAN_MEMORY_MODEL_FEATURES, local_feats.vulkan_memory_model, KHR_vulkan_memory_model);
    }
 
    /* Vulkan 1.3 */
@@ -205,7 +212,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
    }
 
-   if (physical_dev->renderer_version < VK_API_VERSION_1_2) {
+   if (renderer_version < VK_API_VERSION_1_2) {
+      /* Vulkan 1.1 */
       VN_SET_CORE_FIELD(vk11_feats, storageBuffer16BitAccess, local_feats._16bit_storage);
       VN_SET_CORE_FIELD(vk11_feats, uniformAndStorageBuffer16BitAccess, local_feats._16bit_storage);
       VN_SET_CORE_FIELD(vk11_feats, storagePushConstant16, local_feats._16bit_storage);
@@ -356,6 +364,7 @@ vn_physical_device_init_uuids(struct vn_physical_device *physical_dev)
 static void
 vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
 {
+   const uint32_t renderer_version = physical_dev->renderer_version;
    struct vn_physical_device_properties *props = &physical_dev->properties;
    struct vn_instance *instance = physical_dev->instance;
    const struct vk_device_extension_table *exts =
@@ -381,9 +390,15 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceTimelineSemaphoreProperties timeline_semaphore;
    } local_props;
 
+   /* Clear the structs so all unqueried properties will be well-defined. */
+   memset(props, 0, sizeof(*props));
+   memset(&local_props, 0, sizeof(local_props));
+
+   assert(renderer_version >= VK_API_VERSION_1_1);
+
    /* clang-format off */
 
-   if (physical_dev->renderer_version >= VK_API_VERSION_1_2) {
+   if (renderer_version >= VK_API_VERSION_1_2) {
       VN_ADD_TO_PNEXT_OF(properties2, VULKAN_1_1_PROPERTIES, props->vulkan_1_1);
       VN_ADD_TO_PNEXT_OF(properties2, VULKAN_1_2_PROPERTIES, props->vulkan_1_2);
    } else {
@@ -396,12 +411,12 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT_OF(properties2, SUBGROUP_PROPERTIES, local_props.subgroup);
 
       /* Vulkan 1.2 */
-      VN_ADD_TO_PNEXT_OF(properties2, DEPTH_STENCIL_RESOLVE_PROPERTIES, local_props.depth_stencil_resolve);
-      VN_ADD_TO_PNEXT_OF(properties2, DESCRIPTOR_INDEXING_PROPERTIES, local_props.descriptor_indexing);
-      VN_ADD_TO_PNEXT_OF(properties2, DRIVER_PROPERTIES, local_props.driver);
-      VN_ADD_TO_PNEXT_OF(properties2, FLOAT_CONTROLS_PROPERTIES, local_props.float_controls);
-      VN_ADD_TO_PNEXT_OF(properties2, SAMPLER_FILTER_MINMAX_PROPERTIES, local_props.sampler_filter_minmax);
-      VN_ADD_TO_PNEXT_OF(properties2, TIMELINE_SEMAPHORE_PROPERTIES, local_props.timeline_semaphore);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, DEPTH_STENCIL_RESOLVE_PROPERTIES, local_props.depth_stencil_resolve, KHR_depth_stencil_resolve);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, DESCRIPTOR_INDEXING_PROPERTIES, local_props.descriptor_indexing, EXT_descriptor_indexing);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, DRIVER_PROPERTIES, local_props.driver, KHR_driver_properties);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, FLOAT_CONTROLS_PROPERTIES, local_props.float_controls, KHR_shader_float_controls);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, SAMPLER_FILTER_MINMAX_PROPERTIES, local_props.sampler_filter_minmax, EXT_sampler_filter_minmax);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, TIMELINE_SEMAPHORE_PROPERTIES, local_props.timeline_semaphore, KHR_timeline_semaphore);
    }
 
    /* Vulkan 1.3 */
@@ -439,7 +454,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
       VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
    }
-   if (physical_dev->renderer_version < VK_API_VERSION_1_2) {
+   if (renderer_version < VK_API_VERSION_1_2) {
+      /* Vulkan 1.1 */
       VN_SET_CORE_ARRAY(vk11_props, deviceUUID, local_props.id);
       VN_SET_CORE_ARRAY(vk11_props, driverUUID, local_props.id);
       VN_SET_CORE_ARRAY(vk11_props, deviceLUID, local_props.id);
@@ -462,6 +478,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_SET_CORE_FIELD(vk11_props, maxPerSetDescriptors, local_props.maintenance_3);
       VN_SET_CORE_FIELD(vk11_props, maxMemoryAllocationSize, local_props.maintenance_3);
 
+      /* Vulkan 1.2 */
       if (exts->KHR_driver_properties) {
          VN_SET_CORE_FIELD(vk12_props, driverID, local_props.driver);
          VN_SET_CORE_ARRAY(vk12_props, driverName, local_props.driver);
