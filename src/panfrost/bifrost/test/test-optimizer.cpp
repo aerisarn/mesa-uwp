@@ -438,3 +438,32 @@ TEST_F(Optimizer, VarTexCoord32)
          bi_var_tex_f32_to(b, reg, false, BI_SAMPLE_CENTER, BI_UPDATE_STORE, 0, 0);
    });
 }
+
+TEST_F(Optimizer, Int8ToFloat32)
+{
+   for (unsigned i = 0; i < 4; ++i) {
+      CASE(bi_s32_to_f32_to(b, reg, bi_s8_to_s32(b, bi_byte(x, i))),
+           bi_s8_to_f32_to(b, reg, bi_byte(x, i)));
+
+      CASE(bi_s32_to_f32_to(b, reg, bi_u8_to_u32(b, bi_byte(x, i))),
+           bi_u8_to_f32_to(b, reg, bi_byte(x, i)));
+
+      CASE(bi_u32_to_f32_to(b, reg, bi_u8_to_u32(b, bi_byte(x, i))),
+           bi_u8_to_f32_to(b, reg, bi_byte(x, i)));
+   }
+}
+
+
+TEST_F(Optimizer, Int16ToFloat32)
+{
+   for (unsigned i = 0; i < 2; ++i) {
+      CASE(bi_s32_to_f32_to(b, reg, bi_s16_to_s32(b, bi_half(x, i))),
+           bi_s16_to_f32_to(b, reg, bi_half(x, i)));
+
+      CASE(bi_s32_to_f32_to(b, reg, bi_u16_to_u32(b, bi_half(x, i))),
+           bi_u16_to_f32_to(b, reg, bi_half(x, i)));
+
+      CASE(bi_u32_to_f32_to(b, reg, bi_u16_to_u32(b, bi_half(x, i))),
+           bi_u16_to_f32_to(b, reg, bi_half(x, i)));
+   }
+}
