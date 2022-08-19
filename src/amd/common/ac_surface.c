@@ -1884,14 +1884,19 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->tile_swizzle = xout.pipeBankXor;
       }
 
+      bool use_dcc = false;
+      if (surf->modifier != DRM_FORMAT_MOD_INVALID) {
+         use_dcc = ac_modifier_has_dcc(surf->modifier);
+      } else {
+         use_dcc = info->has_graphics && !(surf->flags & RADEON_SURF_DISABLE_DCC) && !compressed &&
+                   is_dcc_supported_by_CB(info, in->swizzleMode) &&
+                   (!in->flags.display ||
+                    is_dcc_supported_by_DCN(info, config, surf, !in->flags.metaRbUnaligned,
+                                            !in->flags.metaPipeUnaligned));
+      }
+
       /* DCC */
-      if (info->has_graphics && !(surf->flags & RADEON_SURF_DISABLE_DCC) && !compressed &&
-          is_dcc_supported_by_CB(info, in->swizzleMode) &&
-          (!in->flags.display ||
-           is_dcc_supported_by_DCN(info, config, surf, !in->flags.metaRbUnaligned,
-                                   !in->flags.metaPipeUnaligned)) &&
-          (surf->modifier == DRM_FORMAT_MOD_INVALID ||
-           ac_modifier_has_dcc(surf->modifier))) {
+      if (use_dcc) {
          ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
          ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};
          ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {0};
@@ -2392,7 +2397,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
       assert(is_dcc_supported_by_L2(info, surf));
       if (AddrSurfInfoIn.flags.color)
          assert(is_dcc_supported_by_CB(info, surf->u.gfx9.swizzle_mode));
-      if (AddrSurfInfoIn.flags.display) {
+      if (AddrSurfInfoIn.flags.display && surf->modifier == DRM_FORMAT_MOD_INVALID) {
          assert(is_dcc_supported_by_DCN(info, config, surf, surf->u.gfx9.color.dcc.rb_aligned,
                                         surf->u.gfx9.color.dcc.pipe_aligned));
       }
@@ -2403,8 +2408,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
        (1 << surf->surf_alignment_log2) >= 64 * 1024 && /* 64KB tiling */
        !(surf->flags & (RADEON_SURF_DISABLE_DCC | RADEON_SURF_FORCE_SWIZZLE_MODE |
                         RADEON_SURF_FORCE_MICRO_TILE_MODE)) &&
-       (surf->modifier == DRM_FORMAT_MOD_INVALID ||
-        ac_modifier_has_dcc(surf->modifier)) &&
+       surf->modifier == DRM_FORMAT_MOD_INVALID &&
        is_dcc_supported_by_DCN(info, config, surf, surf->u.gfx9.color.dcc.rb_aligned,
                                surf->u.gfx9.color.dcc.pipe_aligned)) {
       /* Validate that DCC is enabled if DCN can do it. */
@@ -2421,6 +2425,10 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    if (!surf->meta_size) {
       /* Unset this if HTILE is not present. */
       surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
+   }
+
+   if (surf->modifier != DRM_FORMAT_MOD_INVALID) {
+      assert((surf->num_meta_levels != 0) == ac_modifier_has_dcc(surf->modifier));
    }
 
    switch (surf->u.gfx9.swizzle_mode) {
