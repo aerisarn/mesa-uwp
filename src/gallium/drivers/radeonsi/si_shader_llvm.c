@@ -1069,7 +1069,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       }
    }
 
-   ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
+   if (!ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir))
+      return false;
 
    switch (sel->stage) {
    case MESA_SHADER_VERTEX:
