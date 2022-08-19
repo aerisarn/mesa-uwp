@@ -536,6 +536,8 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
                   CP_SET_DRAW_STATE__0_GROUP_ID(id) |
                   COND(!state.size, CP_SET_DRAW_STATE__0_DISABLE));
    tu_cs_emit_qw(cs, state.iova);
+
+   assert(!state.size || state.iova);
 }
 
 static bool
