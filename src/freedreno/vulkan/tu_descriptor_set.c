@@ -655,33 +655,35 @@ tu_CreateDescriptorPool(VkDevice _device,
          MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
-      if (pCreateInfo->pPoolSizes[i].type != VK_DESCRIPTOR_TYPE_SAMPLER)
-         bo_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+      const VkDescriptorPoolSize *pool_size = &pCreateInfo->pPoolSizes[i];
 
-      switch(pCreateInfo->pPoolSizes[i].type) {
+      if (pool_size->type != VK_DESCRIPTOR_TYPE_SAMPLER)
+         bo_count += pool_size->descriptorCount;
+
+      switch (pool_size->type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         dynamic_size += descriptor_size(device, pCreateInfo->pPoolSizes[i].type) *
-            pCreateInfo->pPoolSizes[i].descriptorCount;
+         dynamic_size += descriptor_size(device, pool_size->type) *
+            pool_size->descriptorCount;
          break;
       case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
              mutable_info->pMutableDescriptorTypeLists[i].descriptorTypeCount > 0) {
             bo_size +=
                mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[i]) *
-                  pCreateInfo->pPoolSizes[i].descriptorCount;
+                  pool_size->descriptorCount;
          } else {
             /* Allocate the maximum size possible. */
             bo_size += 2 * A6XX_TEX_CONST_DWORDS * 4 *
-                  pCreateInfo->pPoolSizes[i].descriptorCount;
+                  pool_size->descriptorCount;
          }
          continue;
       default:
          break;
       }
 
-      bo_size += descriptor_size(device, pCreateInfo->pPoolSizes[i].type) *
-                           pCreateInfo->pPoolSizes[i].descriptorCount;
+      bo_size += descriptor_size(device, pool_size->type) *
+                           pool_size->descriptorCount;
    }
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
