@@ -285,7 +285,12 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_index_type_uint8                  = true,
       .EXT_inline_uniform_block              = true,
       .EXT_line_rasterization                = true,
-      .EXT_memory_budget                     = device->sys.available,
+      /* Enable the extension only if we have support on both the local &
+       * system memory
+       */
+      .EXT_memory_budget                     = (!device->info.has_local_mem ||
+                                                device->vram_mappable.available > 0) &&
+                                               device->sys.available,
       .EXT_non_seamless_cube_map             = true,
       .EXT_pci_bus_info                      = true,
       .EXT_physical_device_drm               = true,
@@ -2746,6 +2751,9 @@ anv_get_memory_budget(VkPhysicalDevice physicalDevice,
                       VkPhysicalDeviceMemoryBudgetPropertiesEXT *memoryBudget)
 {
    ANV_FROM_HANDLE(anv_physical_device, device, physicalDevice);
+
+   if (!device->vk.supported_extensions.EXT_memory_budget)
+      return;
 
    anv_update_meminfo(device, device->local_fd);
 
