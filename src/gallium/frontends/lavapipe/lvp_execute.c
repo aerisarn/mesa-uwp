@@ -534,6 +534,7 @@ static void emit_state(struct rendering_state *state)
          continue;
 
       cso_set_samplers(state->cso, sh, state->num_sampler_states[sh], state->cso_ss_ptr[sh]);
+      state->ss_dirty[sh] = false;
    }
 
    if (state->vp_dirty) {
