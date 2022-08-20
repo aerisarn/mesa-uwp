@@ -1,8 +1,3 @@
-# 3D isn't supported by radv yet: #5822
-KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
-KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
-KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
-
 dEQP-GLES3.functional.shaders.texture_functions.textureprojlodoffset.sampler2dshadow_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojoffset.sampler2dshadow_vertex,Fail
 

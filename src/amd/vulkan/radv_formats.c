@@ -1612,7 +1612,7 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
       if (physical_device->rad_info.gfx_level < GFX8)
          goto unsupported;
 
-      if (vk_format_get_plane_count(format) > 1 || info->type != VK_IMAGE_TYPE_2D ||
+      if (vk_format_get_plane_count(format) > 1 || info->type == VK_IMAGE_TYPE_1D ||
           info->tiling != VK_IMAGE_TILING_OPTIMAL || vk_format_is_depth_or_stencil(format))
          goto unsupported;
    }
