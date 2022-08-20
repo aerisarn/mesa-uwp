@@ -2720,21 +2720,24 @@ fs_visitor::get_tcs_single_patch_icp_handle(const fs_builder &bld,
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    const nir_src &vertex_src = instr->src[0];
    nir_intrinsic_instr *vertex_intrin = nir_src_as_intrinsic(vertex_src);
+
+   /* ICP Handles start in r1. */
+   fs_reg start = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+
    fs_reg icp_handle;
 
    if (nir_src_is_const(vertex_src)) {
       /* Emit a MOV to resolve <0,1,0> regioning. */
       icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
       unsigned vertex = nir_src_as_uint(vertex_src);
-      bld.MOV(icp_handle,
-              retype(brw_vec1_grf(1 + (vertex >> 3), vertex & 7),
-                     BRW_REGISTER_TYPE_UD));
+      bld.MOV(icp_handle, component(start, vertex));
    } else if (tcs_prog_data->instances == 1 && vertex_intrin &&
               vertex_intrin->intrinsic == nir_intrinsic_load_invocation_id) {
       /* For the common case of only 1 instance, an array index of
-       * gl_InvocationID means reading g1.  Skip all the indirect work.
+       * gl_InvocationID means reading the handles from the start.  Skip all
+       * the indirect work.
        */
-      icp_handle = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+      icp_handle = start;
    } else {
       /* The vertex index is non-constant.  We need to use indirect
        * addressing to fetch the proper URB handle.
@@ -2747,9 +2750,9 @@ fs_visitor::get_tcs_single_patch_icp_handle(const fs_builder &bld,
               retype(get_nir_src(vertex_src), BRW_REGISTER_TYPE_UD),
               brw_imm_ud(2u));
 
-      /* Start at g1.  We might read up to 4 registers. */
+      /* We might read up to 4 registers. */
       bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
-               retype(brw_vec8_grf(1, 0), icp_handle.type), vertex_offset_bytes,
+               start, vertex_offset_bytes,
                brw_imm_ud(4 * REG_SIZE));
    }
 
@@ -2764,13 +2767,11 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    const nir_src &vertex_src = instr->src[0];
 
-   unsigned first_icp_handle = tcs_prog_data->include_primitive_id ? 3 : 2;
+   fs_reg start = retype(brw_vec8_grf(tcs_prog_data->include_primitive_id ? 3 : 2, 0),
+                         BRW_REGISTER_TYPE_UD);
 
-   if (nir_src_is_const(vertex_src)) {
-      return fs_reg(retype(brw_vec8_grf(first_icp_handle +
-                                        nir_src_as_uint(vertex_src), 0),
-                           BRW_REGISTER_TYPE_UD));
-   }
+   if (nir_src_is_const(vertex_src))
+      return byte_offset(start, nir_src_as_uint(vertex_src) * REG_SIZE);
 
    /* The vertex index is non-constant.  We need to use indirect
     * addressing to fetch the proper URB handle.
@@ -2799,12 +2800,11 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
            brw_imm_ud(5u));
    bld.ADD(icp_offset_bytes, vertex_offset_bytes, channel_offsets);
 
-   /* Use first_icp_handle as the base offset.  There is one register
+   /* Use start of ICP handles as the base offset.  There is one register
     * of URB handles per vertex, so inform the register allocator that
     * we might read up to nir->info.gs.vertices_in registers.
     */
-   bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
-            retype(brw_vec8_grf(first_icp_handle, 0), icp_handle.type),
+   bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
             icp_offset_bytes, brw_imm_ud(tcs_key->input_vertices * REG_SIZE));
 
    return icp_handle;
