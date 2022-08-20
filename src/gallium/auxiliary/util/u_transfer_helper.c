@@ -324,14 +324,26 @@ u_transfer_helper_transfer_map(struct pipe_context *pctx,
                                                           width, height);
             break;
          case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-            assert(!helper->z24_in_z32f);
-            util_format_z24_unorm_s8_uint_pack_separate(trans->staging,
-                                                        ptrans->stride,
-                                                        trans->ptr,
-                                                        trans->trans->stride,
-                                                        trans->ptr2,
-                                                        trans->trans2->stride,
-                                                        width, height);
+            if (helper->z24_in_z32f) {
+               util_format_z24_unorm_s8_uint_pack_z_float(trans->staging,
+                                                          ptrans->stride,
+                                                          trans->ptr,
+                                                          trans->trans->stride,
+                                                          width, height);
+               util_format_z24_unorm_s8_uint_pack_s_8uint(trans->staging,
+                                                          ptrans->stride,
+                                                          trans->ptr2,
+                                                          trans->trans2->stride,
+                                                          width, height);
+            } else {
+               util_format_z24_unorm_s8_uint_pack_separate(trans->staging,
+                                                           ptrans->stride,
+                                                           trans->ptr,
+                                                           trans->trans->stride,
+                                                           trans->ptr2,
+                                                           trans->trans2->stride,
+                                                           width, height);
+            }
             break;
          default:
             unreachable("Unexpected format");
