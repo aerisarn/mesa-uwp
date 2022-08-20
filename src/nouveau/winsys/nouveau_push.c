@@ -94,6 +94,9 @@ nouveau_ws_push_append(struct nouveau_ws_push *push,
    assert(other->bos.size == 0);
 
    size_t count = other->map - other->orig_map;
+
+   assert(push->map + count <= push->end);
+
    memcpy(push->map, other->orig_map, count * sizeof(*push->map));
    push->map += count;
    push->last_size = NULL;
