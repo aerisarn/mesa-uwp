@@ -3410,6 +3410,9 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    } else if (radv_thread_trace_enabled()) {
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &sqtt_device_entrypoints, true);
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, false);
+   } else if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
+      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &rra_device_entrypoints, true);
+      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, false);
    } else {
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, true);
    }
@@ -3691,6 +3694,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       }
    }
 
+   if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
+      radv_rra_trace_init(device);
+   }
+
    *pDevice = radv_device_to_handle(device);
    return VK_SUCCESS;
 
@@ -3788,6 +3795,8 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    radv_destroy_shader_arenas(device);
 
    radv_thread_trace_finish(device);
+
+   radv_rra_trace_finish(_device, &device->rra_trace);
 
    radv_spm_finish(device);
 
