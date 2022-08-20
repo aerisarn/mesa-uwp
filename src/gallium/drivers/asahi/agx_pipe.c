@@ -169,6 +169,10 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->mipmapped = (templ->last_level > 0);
    nresource->internal_format = nresource->base.format;
 
+   assert(templ->format != PIPE_FORMAT_Z24X8_UNORM &&
+          templ->format != PIPE_FORMAT_Z24_UNORM_S8_UINT &&
+          "u_transfer_helper should have lowered");
+
    nresource->layout = (struct ail_layout) {
       .tiling = (nresource->modifier == DRM_FORMAT_MOD_LINEAR) ?
                 AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
