@@ -42,6 +42,7 @@
 #include "lp_bld_struct.h"
 
 
+/* Deprecated (used only by llvmpipe); use lp_build_struct_get_ptr2() instead. */
 LLVMValueRef
 lp_build_struct_get_ptr(struct gallivm_state *gallivm,
                         LLVMValueRef ptr,
@@ -60,6 +61,7 @@ lp_build_struct_get_ptr(struct gallivm_state *gallivm,
    return member_ptr;
 }
 
+/* Deprecated (used only by llvmpipe); use lp_build_struct_get2() instead. */
 LLVMValueRef
 lp_build_struct_get(struct gallivm_state *gallivm,
                     LLVMValueRef ptr,

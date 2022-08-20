@@ -55,6 +55,7 @@
 
 /**
  * Get value pointer to a structure member.
+ * Deprecated (used only by llvmpipe); use lp_build_struct_get_ptr2() instead.
  */
 LLVMValueRef
 lp_build_struct_get_ptr(struct gallivm_state *gallivm,
@@ -64,6 +65,7 @@ lp_build_struct_get_ptr(struct gallivm_state *gallivm,
 
 /**
  * Get the value of a structure member.
+ * Deprecated (used only by llvmpipe); use lp_build_struct_get2() instead.
  */
 LLVMValueRef
 lp_build_struct_get(struct gallivm_state *gallivm,
