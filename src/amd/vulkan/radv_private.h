@@ -789,6 +789,16 @@ struct radv_notifier {
    thrd_t thread;
 };
 
+struct radv_rra_trace_data {
+   int elapsed_frames;
+   int trace_frame;
+   char *trigger_file;
+   struct hash_table *accel_structs;
+   struct hash_table_u64 *accel_struct_vas;
+   simple_mtx_t data_mtx;
+   bool validate_as;
+};
+
 struct radv_device {
    struct vk_device vk;
 
@@ -878,6 +888,9 @@ struct radv_device {
 
    /* SPM. */
    struct ac_spm_trace_data spm_trace;
+
+   /* Radeon Raytracing Analyzer trace. */
+   struct radv_rra_trace_data rra_trace;
 
    /* Trap handler. */
    struct radv_trap_handler_shader *trap_handler_shader;
@@ -2808,6 +2821,15 @@ bool radv_is_instruction_timing_enabled(void);
 void radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs,
                                    bool inhibit);
 void radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
+
+int radv_rra_trace_frame(void);
+char *radv_rra_trace_trigger_file(void);
+bool radv_rra_trace_enabled(void);
+
+void radv_rra_trace_init(struct radv_device *device);
+
+VkResult radv_rra_dump_trace(VkQueue vk_queue, char *filename);
+void radv_rra_trace_finish(VkDevice vk_device, struct radv_rra_trace_data *data);
 
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                           struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
