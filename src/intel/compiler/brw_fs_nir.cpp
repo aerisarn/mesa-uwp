@@ -2714,8 +2714,7 @@ fs_visitor::get_tcs_single_patch_icp_handle(const fs_builder &bld,
    const nir_src &vertex_src = instr->src[0];
    nir_intrinsic_instr *vertex_intrin = nir_src_as_intrinsic(vertex_src);
 
-   /* ICP Handles start in r1. */
-   fs_reg start = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+   const fs_reg start = tcs_payload().icp_handle_start;
 
    fs_reg icp_handle;
 
@@ -2757,11 +2756,9 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
                                            nir_intrinsic_instr *instr)
 {
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
-   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    const nir_src &vertex_src = instr->src[0];
 
-   fs_reg start = retype(brw_vec8_grf(tcs_prog_data->include_primitive_id ? 3 : 2, 0),
-                         BRW_REGISTER_TYPE_UD);
+   const fs_reg start = tcs_payload().icp_handle_start;
 
    if (nir_src_is_const(vertex_src))
       return byte_offset(start, nir_src_as_uint(vertex_src) * REG_SIZE);

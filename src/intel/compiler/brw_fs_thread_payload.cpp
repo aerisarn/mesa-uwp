@@ -36,6 +36,8 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
       primitive_id = brw_vec1_grf(0, 1);
 
       /* r1-r4 contain the ICP handles. */
+      icp_handle_start = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+
       num_regs = 5;
    } else {
       assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
@@ -43,14 +45,16 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
 
       patch_urb_output = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
 
-      if (tcs_prog_data->include_primitive_id)
-         primitive_id = brw_vec8_grf(2, 0);
+      unsigned r = 2;
 
-      /* r1 contains output handles, r2 may contain primitive ID, then the
-       * ICP handles occupy the next 1-32 registers.
-       */
-      num_regs = 2 + tcs_prog_data->include_primitive_id +
-                 tcs_key->input_vertices;
+      if (tcs_prog_data->include_primitive_id)
+         primitive_id = brw_vec8_grf(r++, 0);
+
+      /* ICP handles occupy the next 1-32 registers. */
+      icp_handle_start = retype(brw_vec8_grf(r, 0), BRW_REGISTER_TYPE_UD);
+      r += tcs_key->input_vertices;
+
+      num_regs = r;
    }
 }
 

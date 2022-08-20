@@ -98,6 +98,7 @@ struct tcs_thread_payload : public thread_payload {
 
    fs_reg patch_urb_output;
    fs_reg primitive_id;
+   fs_reg icp_handle_start;
 };
 
 struct fs_thread_payload : public thread_payload {
