@@ -69,8 +69,8 @@
     <value name="Linear" value="0"/>
     <!-- Default layout if no other layout is set -->
     <value name="Null" value="1"/>
-    <!-- Morton order with 64x64 tiles -->
-    <value name="Tiled 64x64" value="2"/>
+    <!-- Morton order -->
+    <value name="Twiddled" value="2"/>
     <!-- With a metadata buffer -->
     <value name="Compressed" value="3"/>
   </enum>
@@ -222,7 +222,7 @@
     <field name="Unk mipmapped" size="1" start="102" type="bool"/>
     <!-- This is set when no texture is bound, with layout 1 -->
     <field name="Null" size="1" start="105" type="bool"/>
-    <field name="Compression" size="2" start="106" type="hex"/> <!-- 0 for 64x64 tiling -->
+    <field name="Compression" size="2" start="106" type="hex"/> <!-- 0 for uncompressed -->
     <field name="sRGB" size="1" start="108" type="bool"/>
     <field name="Unk 2" size="1" start="109" type="bool"/>
     <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>

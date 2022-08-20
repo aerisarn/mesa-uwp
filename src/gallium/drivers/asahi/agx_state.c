@@ -409,7 +409,7 @@ agx_translate_layout(uint64_t modifier)
 {
    switch (modifier) {
    case DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER:
-      return AGX_LAYOUT_TILED_64X64;
+      return AGX_LAYOUT_TWIDDLED;
    case DRM_FORMAT_MOD_LINEAR:
       return AGX_LAYOUT_LINEAR;
    default:
