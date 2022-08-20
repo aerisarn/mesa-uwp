@@ -1475,7 +1475,7 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
    if (deref_var != var)
       return false;
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *zero = zero = nir_imm_zero(b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest));
+   nir_ssa_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest));
    if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
       case VARYING_SLOT_COL0:
