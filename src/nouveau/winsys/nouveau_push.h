@@ -14,8 +14,7 @@ struct nouveau_ws_push_bo {
    enum nouveau_ws_bo_map_flags flags;
 };
 
-struct nouveau_ws_push {
-   struct util_dynarray bos;
+struct nouveau_ws_push_buffer {
    struct nouveau_ws_bo *bo;
    uint32_t *orig_map;
    uint32_t *map;
@@ -24,18 +23,36 @@ struct nouveau_ws_push {
    uint32_t *last_size;
 };
 
+struct nouveau_ws_push {
+   /* struct nouveau_ws_push_bo */
+   struct util_dynarray bos;
+
+   /* struct nouveau_ws_push_buffer */
+   struct util_dynarray pushs;
+
+   struct nouveau_ws_device *dev;
+};
+
 struct nouveau_ws_push *nouveau_ws_push_new(struct nouveau_ws_device *, uint64_t size);
 void nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
                               void *data, size_t size_bytes);
 void nouveau_ws_push_destroy(struct nouveau_ws_push *);
-void nouveau_ws_push_append(struct nouveau_ws_push *,
+int nouveau_ws_push_append(struct nouveau_ws_push *,
                             const struct nouveau_ws_push *);
+struct nouveau_ws_push_buffer *
+nouveau_ws_push_space(struct nouveau_ws_push *, uint32_t size);
 int nouveau_ws_push_submit(struct nouveau_ws_push *, struct nouveau_ws_device *, struct nouveau_ws_context *);
 void nouveau_ws_push_ref(struct nouveau_ws_push *, struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags);
 void nouveau_ws_push_reset(struct nouveau_ws_push *);
 unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push);
 void nouveau_ws_push_reset_refs(struct nouveau_ws_push *push,
                                 unsigned num_refs);
+
+static inline struct nouveau_ws_push_buffer *
+_nouveau_ws_push_top(const struct nouveau_ws_push *push)
+{
+   return util_dynarray_top_ptr(&push->pushs, struct nouveau_ws_push_buffer);
+}
 
 #define SUBC_NV9097 0
 #define SUBC_NVA097 0
@@ -61,7 +78,7 @@ NVC0_FIFO_PKHDR_SQ(int subc, int mthd, unsigned size)
 }
 
 static inline void
-__push_verify(struct nouveau_ws_push *push)
+__push_verify(struct nouveau_ws_push_buffer *push)
 {
    if (!push->last_size)
       return;
@@ -78,17 +95,18 @@ __push_verify(struct nouveau_ws_push *push)
 }
 
 static inline void
-__push_mthd_size(struct nouveau_ws_push *push,
+__push_mthd_size(struct nouveau_ws_push_buffer *push,
                  int subc, uint32_t mthd, unsigned size)
 {
    __push_verify(push);
+
    push->last_size = push->map;
    *push->map = NVC0_FIFO_PKHDR_SQ(subc, mthd, size);
    push->map++;
 }
 
 static inline void
-__push_mthd(struct nouveau_ws_push *push, int subc, uint32_t mthd)
+__push_mthd(struct nouveau_ws_push_buffer *push, int subc, uint32_t mthd)
 {
    __push_mthd_size(push, subc, mthd, 0);
 }
@@ -103,7 +121,7 @@ NVC0_FIFO_PKHDR_IL(int subc, int mthd, uint16_t data)
 }
 
 static inline void
-__push_immd(struct nouveau_ws_push *push, int subc, uint32_t mthd, uint32_t val)
+__push_immd(struct nouveau_ws_push_buffer *push, int subc, uint32_t mthd, uint32_t val)
 {
    __push_verify(push);
    push->last_size = push->map;
@@ -117,9 +135,8 @@ __push_immd(struct nouveau_ws_push *push, int subc, uint32_t mthd, uint32_t val)
    if (__builtin_constant_p(__val & ~0x1fff) && !(__val & ~0x1fff)) {   \
       __push_immd(push, SUBC_##class, class##_##mthd, __val);           \
    } else {                                                             \
-      __push_mthd_size(push, SUBC_##class, class##_##mthd, 1);          \
-      *push->map = __val;                                               \
-      push->map++;                                                      \
+      __push_mthd_size(push, SUBC_##class, class##_##mthd, 0);          \
+      nvk_push_val(push, class##_##mthd, __val);                        \
    }                                                                    \
 } while(0)
 
@@ -130,7 +147,7 @@ NVC0_FIFO_PKHDR_1I(int subc, int mthd, unsigned size)
 }
 
 static inline void
-__push_1inc(struct nouveau_ws_push *push, int subc, uint32_t mthd)
+__push_1inc(struct nouveau_ws_push_buffer *push, int subc, uint32_t mthd)
 {
    __push_verify(push);
    push->last_size = push->map;
@@ -147,7 +164,7 @@ NVC0_FIFO_PKHDR_0I(int subc, int mthd, unsigned size)
 }
 
 static inline void
-__push_0inc(struct nouveau_ws_push *push, int subc, uint32_t mthd)
+__push_0inc(struct nouveau_ws_push_buffer *push, int subc, uint32_t mthd)
 {
    __push_verify(push);
    push->last_size = push->map;
@@ -158,7 +175,7 @@ __push_0inc(struct nouveau_ws_push *push, int subc, uint32_t mthd)
 #define P_0INC(push, class, mthd) __push_0inc(push, SUBC_##class, class##_##mthd)
 
 static inline bool
-nvk_push_update_count(struct nouveau_ws_push *push, uint16_t count)
+nvk_push_update_count(struct nouveau_ws_push_buffer *push, uint16_t count)
 {
    uint32_t last_hdr_val = *push->last_size;
 
@@ -181,7 +198,7 @@ nvk_push_update_count(struct nouveau_ws_push *push, uint16_t count)
 }
 
 static inline void
-P_INLINE_DATA(struct nouveau_ws_push *push, uint32_t value)
+P_INLINE_DATA(struct nouveau_ws_push_buffer *push, uint32_t value)
 {
    if (nvk_push_update_count(push, 1)) {
       /* push new value */
@@ -191,7 +208,7 @@ P_INLINE_DATA(struct nouveau_ws_push *push, uint32_t value)
 }
 
 static inline void
-P_INLINE_FLOAT(struct nouveau_ws_push *push, float value)
+P_INLINE_FLOAT(struct nouveau_ws_push_buffer *push, float value)
 {
    if (nvk_push_update_count(push, 1)) {
       /* push new value */
@@ -201,7 +218,7 @@ P_INLINE_FLOAT(struct nouveau_ws_push *push, float value)
 }
 
 static inline void
-P_INLINE_ARRAY(struct nouveau_ws_push *push, const uint32_t *data, int num_dw)
+P_INLINE_ARRAY(struct nouveau_ws_push_buffer *push, const uint32_t *data, int num_dw)
 {
    if (nvk_push_update_count(push, num_dw)) {
       /* push new value */
@@ -212,7 +229,7 @@ P_INLINE_ARRAY(struct nouveau_ws_push *push, const uint32_t *data, int num_dw)
 
 /* internally used by generated inlines. */
 static inline void
-nvk_push_val(struct nouveau_ws_push *push, uint32_t idx, uint32_t val)
+nvk_push_val(struct nouveau_ws_push_buffer *push, uint32_t idx, uint32_t val)
 {
    UNUSED uint32_t last_hdr_val = *push->last_size;
    UNUSED bool is_0inc = (last_hdr_val & 0xe0000000) == 0x60000000;
@@ -235,4 +252,11 @@ nvk_push_val(struct nouveau_ws_push *push, uint32_t idx, uint32_t val)
 
    P_INLINE_DATA(push, val);
 }
+
+static inline struct nouveau_ws_push_buffer *
+P_SPACE(struct nouveau_ws_push *push, uint32_t size)
+{
+   return nouveau_ws_push_space(push, size);
+}
+
 #endif

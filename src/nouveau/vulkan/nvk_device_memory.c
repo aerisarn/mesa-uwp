@@ -15,11 +15,13 @@
 static VkResult
 zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 {
-   struct nouveau_ws_push *push = nouveau_ws_push_new(dev->pdev->dev, 4096);
-   if (push == NULL)
+   struct nouveau_ws_push *p = nouveau_ws_push_new(dev->pdev->dev, 4096);
+   if (p == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   nouveau_ws_push_ref(push, bo, NOUVEAU_WS_BO_WR);
+   struct nouveau_ws_push_buffer *push = P_SPACE(p, 4096);
+
+   nouveau_ws_push_ref(p, bo, NOUVEAU_WS_BO_WR);
    uint64_t addr = bo->offset;
 
    /* can't go higher for whatever reason */
@@ -63,8 +65,8 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
    P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, extra / 4);
    P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, height);
 
-   nouveau_ws_push_submit(push, dev->pdev->dev, dev->ctx);
-   nouveau_ws_push_destroy(push);
+   nouveau_ws_push_submit(p, dev->pdev->dev, dev->ctx);
+   nouveau_ws_push_destroy(p);
 
    return VK_SUCCESS;
 }

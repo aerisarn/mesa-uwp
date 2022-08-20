@@ -26,10 +26,8 @@ nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
 }
 
 static void
-magic_3d_init(struct nvk_cmd_buffer *cmd)
+magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
 {
-   struct nouveau_ws_push *p = cmd->push;
-
    P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_ENABLE, V_FALSE);
    P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_UNORM8, {
       .all_covered_all_hit_once = 0xff,
@@ -171,7 +169,8 @@ void
 nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                               const VkCommandBufferBeginInfo *pBeginInfo)
 {
-   struct nouveau_ws_push *p = cmd->push;
+   /* TODO: proper size */
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 0x1000);
 
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
@@ -209,7 +208,7 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    P_IMMD(p, NV9097, SET_L1_CONFIGURATION,
                      DIRECTLY_ADDRESSABLE_MEMORY_SIZE_48KB);
 
-   magic_3d_init(cmd);
+   magic_3d_init(cmd, p);
 
    /* TODO: Vertex runout */
    /* TODO: temp */
@@ -350,7 +349,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
-   struct nouveau_ws_push *p = cmd->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 23 + pRenderingInfo->colorAttachmentCount * 10);
 
    memset(render, 0, sizeof(*render));
 
@@ -590,9 +589,10 @@ nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
 {
    struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
    struct nvk_physical_device *pdev = nvk_device_physical(dev);
-   struct nouveau_ws_push *p = cmd->push;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 256);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI)) {
       u_foreach_bit(a, dyn->vi->attributes_valid) {
@@ -630,13 +630,13 @@ nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
 static void
 nvk_flush_ia_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
    /** Nothing to do for MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY */
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
+      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
       P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART,
              dyn->ia.primitive_restart_enable);
    }
@@ -645,20 +645,23 @@ nvk_flush_ia_state(struct nvk_cmd_buffer *cmd)
 static void
 nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS))
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
+      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
       P_IMMD(p, NV9097, SET_PATCH, dyn->ts.patch_control_points);
+   }
 }
 
 static void
 nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   struct nouveau_ws_push_buffer *p =
+      P_SPACE(cmd->push, 14 * dyn->vp.viewport_count + 4 * NVK_MAX_VIEWPORTS);
 
    /* Nothing to do for MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT */
 
@@ -766,7 +769,8 @@ vk_to_nv9097_front_face(VkFrontFace vk_face)
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 23);
+
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
@@ -859,7 +863,8 @@ vk_to_nv9097_stencil_op(VkStencilOp vk_op)
 static void
 nvk_flush_ds_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 35);
+
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
@@ -949,7 +954,8 @@ vk_to_nv9097_logic_op(VkLogicOp vk_op)
 static void
 nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push *p = cmd->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 7);
+
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
@@ -997,7 +1003,6 @@ static void
 nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 {
    const struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
-   struct nouveau_ws_push *p = cmd->push;
 
    uint32_t root_table_size = sizeof(desc->root);
    void *root_table_map;
@@ -1007,6 +1012,8 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
       return; /* TODO: Error */
 
    memcpy(root_table_map, &desc->root, sizeof(desc->root));
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 26);
 
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, root_table_size);
@@ -1075,7 +1082,8 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
-   struct nouveau_ws_push *p = cmd->push;
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 10);
 
    uint64_t addr, range;
    if (buffer) {
@@ -1110,7 +1118,7 @@ void
 nvk_cmd_bind_vertex_buffer(struct nvk_cmd_buffer *cmd, uint32_t vb_idx,
                            struct nvk_addr_range addr_range)
 {
-   struct nouveau_ws_push *p = cmd->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6);
 
    P_MTHD(p, NV9097, SET_VERTEX_STREAM_A_LOCATION_A(vb_idx));
    P_NV9097_SET_VERTEX_STREAM_A_LOCATION_A(p, vb_idx, addr_range.addr >> 32);
@@ -1208,12 +1216,13 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
-   struct nouveau_ws_push *p = cmd->push;
 
    nvk_flush_gfx_state(cmd);
 
    const uint32_t begin_op =
       vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2 + 7 * instanceCount);
 
    P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);
 
@@ -1245,13 +1254,13 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
-   struct nouveau_ws_push *p = cmd->push;
 
    nvk_flush_gfx_state(cmd);
 
    const uint32_t begin_op =
       vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
 
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6 + 7 * instanceCount);
    P_IMMD(p, NV9097, SET_GLOBAL_BASE_VERTEX_INDEX, vertexOffset);
    P_IMMD(p, NV9097, SET_VERTEX_ID_BASE, vertexOffset);
    P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);

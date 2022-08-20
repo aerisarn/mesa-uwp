@@ -40,16 +40,17 @@ nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
    if (!push)
       goto fail_alloc;
 
-   push->bo = bo;
-   push->map = map;
-   push->orig_map = map;
-   push->end = map + size;
-
-   struct nouveau_ws_push_bo push_bo;
-   push_bo.bo = bo;
-   push_bo.flags = NOUVEAU_WS_BO_RD;
+   struct nouveau_ws_push_buffer push_buf;
+   push_buf.bo = bo;
+   push_buf.map = map;
+   push_buf.orig_map = map;
+   push_buf.end = map;
+   push_buf.last_size = NULL;
 
    util_dynarray_init(&push->bos, NULL);
+   util_dynarray_init(&push->pushs, NULL);
+   util_dynarray_append(&push->pushs, struct nouveau_ws_push_buffer, push_buf);
+   push->dev = dev;
 
    return push;
 
@@ -65,208 +66,270 @@ void
 nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
                          void *data, size_t size_bytes)
 {
-   push->map = data;
-   push->orig_map = push->map;
-   push->end = push->map + (size_bytes / sizeof(uint32_t));
+   struct nouveau_ws_push_buffer push_buf;
+   push_buf.bo = NULL;
+   push_buf.map = data;
+   push_buf.orig_map = data;
+   push_buf.end = data + size_bytes;
+   push_buf.last_size = NULL;
 
    util_dynarray_init(&push->bos, NULL);
+   util_dynarray_init(&push->pushs, NULL);
+   util_dynarray_append(&push->pushs, struct nouveau_ws_push_buffer, push_buf);
 }
 
 void
 nouveau_ws_push_destroy(struct nouveau_ws_push *push)
 {
-   util_dynarray_fini(&push->bos);
-   if (push->bo) {
-      nouveau_ws_bo_unmap(push->bo, push->orig_map);
-      nouveau_ws_bo_destroy(push->bo);
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
+      nouveau_ws_bo_unmap(buf->bo, buf->orig_map);
+      nouveau_ws_bo_destroy(buf->bo);
    }
+
+   util_dynarray_fini(&push->bos);
+   util_dynarray_fini(&push->pushs);
 }
 
-void
+struct nouveau_ws_push_buffer *
+nouveau_ws_push_space(struct nouveau_ws_push *push,
+                      uint32_t count)
+{
+   struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
+
+   if (!count)
+      return buf;
+
+   if (buf->map + count < buf->orig_map + (buf->bo->size / 4)) {
+      buf->end = buf->map + count;
+      return buf;
+   }
+
+   uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
+   uint32_t size = buf->bo->size;
+
+   assert(count <= size / 4);
+
+   struct nouveau_ws_bo *bo = nouveau_ws_bo_new(push->dev, size, 0, flags);
+   if (!bo)
+      return NULL;
+
+   void *map = nouveau_ws_bo_map(bo, NOUVEAU_WS_BO_RDWR);
+   if (!map)
+      goto fail_map;
+
+   struct nouveau_ws_push_buffer push_buf;
+   push_buf.bo = bo;
+   push_buf.map = map;
+   push_buf.orig_map = map;
+   push_buf.end = map + count;
+   push_buf.last_size = NULL;
+
+   util_dynarray_append(&push->pushs, struct nouveau_ws_push_buffer, push_buf);
+   return _nouveau_ws_push_top(push);
+
+fail_map:
+   nouveau_ws_bo_destroy(bo);
+   return NULL;
+}
+
+int
 nouveau_ws_push_append(struct nouveau_ws_push *push,
                        const struct nouveau_ws_push *other)
 {
+   struct nouveau_ws_push_buffer *other_buf = _nouveau_ws_push_top(other);
+   size_t count = other_buf->map - other_buf->orig_map;
+
+   struct nouveau_ws_push_buffer *push_buf = P_SPACE(push, count);
+   if (!push_buf)
+      return -ENOMEM;
+
    /* We only use this for CPU pushes. */
-   assert(other->bo == NULL);
+   assert(other_buf->bo == NULL);
 
    /* We don't support BO refs for now */
    assert(other->bos.size == 0);
 
-   size_t count = other->map - other->orig_map;
+   assert(push_buf->map + count <= push_buf->end);
 
-   assert(push->map + count <= push->end);
+   memcpy(push_buf->map, other_buf->orig_map, count * sizeof(*push_buf->map));
+   push_buf->map += count;
+   push_buf->last_size = NULL;
 
-   memcpy(push->map, other->orig_map, count * sizeof(*push->map));
-   push->map += count;
-   push->last_size = NULL;
+   return 0;
 }
 
 static void
 nouveau_ws_push_valid(struct nouveau_ws_push *push) {
-   uint32_t *cur = push->orig_map;
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
+      struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
 
-   /* submitting empty push buffers is probably a bug */
-   assert(push->map != push->orig_map);
+      uint32_t *cur = buf->orig_map;
 
-   /* make sure we don't overrun the bo */
-   assert(push->map <= push->end);
+      /* submitting empty push buffers is probably a bug */
+      assert(buf->map != buf->orig_map);
 
-   /* parse all the headers to see if we get to push->map */
-   while (cur < push->map) {
-      uint32_t hdr = *cur;
-      uint32_t mthd = hdr >> 29;
+      /* make sure we don't overrun the bo */
+      assert(buf->map <= buf->end);
 
-      switch (mthd) {
-      /* immd */
-      case 4:
-         break;
-      case 1:
-      case 3:
-      case 5: {
-         uint32_t count = (hdr >> 16) & 0x1fff;
-         assert(count);
-         cur += count;
-         break;
+      /* parse all the headers to see if we get to buf->map */
+      while (cur < buf->map) {
+         uint32_t hdr = *cur;
+         uint32_t mthd = hdr >> 29;
+
+         switch (mthd) {
+         /* immd */
+         case 4:
+            break;
+         case 1:
+         case 3:
+         case 5: {
+            uint32_t count = (hdr >> 16) & 0x1fff;
+            assert(count);
+            cur += count;
+            break;
+         }
+         default:
+            assert(!"unknown method found");
+         }
+
+         cur++;
+         assert(cur <= buf->map);
       }
-      default:
-         assert(!"unknown method found");
-      }
-
-      cur++;
-      assert(cur <= push->map);
    }
 }
 
 static void
 nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ctx)
 {
-   uint32_t *cur = push->orig_map;
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
+      uint32_t *cur = buf->orig_map;
 
-   while (cur < push->map) {
-      uint32_t hdr = *cur;
-      uint32_t type = hdr >> 29;
-      uint32_t inc;
-      uint32_t count = (hdr >> 16) & 0x1fff;
-      uint32_t subchan = (hdr >> 13) & 0x7;
-      uint32_t mthd = (hdr & 0xfff) << 2;
-      uint32_t value = 0;
-      bool is_immd = false;
+      while (cur < buf->map) {
+         uint32_t hdr = *cur;
+         uint32_t type = hdr >> 29;
+         uint32_t inc;
+         uint32_t count = (hdr >> 16) & 0x1fff;
+         uint32_t subchan = (hdr >> 13) & 0x7;
+         uint32_t mthd = (hdr & 0xfff) << 2;
+         uint32_t value = 0;
+         bool is_immd = false;
 
-      printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - push->orig_map, hdr, subchan);
-      cur++;
+         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->orig_map, hdr, subchan);
+         cur++;
 
-      switch (type) {
-      case 4:
-         printf(" IMMD\n");
-         inc = 0;
-         is_immd = true;
-         value = count;
-         count = 1;
-         break;
-      case 1:
-         printf(" NINC\n");
-         inc = count;
-         break;
-      case 3:
-         printf(" 0INC\n");
-         inc = 0;
-         break;
-      case 5:
-         printf(" 1INC\n");
-         inc = 1;
-         break;
-      }
-
-      while (count--) {
-         const char *mthd_name = "";
-         switch (subchan) {
-         case 0:
-            if (ctx->compute.cls >= 0xc597)
-               mthd_name = P_PARSE_NVC597_MTHD(mthd);
-            else if (ctx->compute.cls >= 0xc397)
-               mthd_name = P_PARSE_NVC397_MTHD(mthd);
-            else if (ctx->compute.cls >= 0xb197)
-               mthd_name = P_PARSE_NVB197_MTHD(mthd);
-            else if (ctx->compute.cls >= 0xa097)
-               mthd_name = P_PARSE_NVA097_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NV9097_MTHD(mthd);
+         switch (type) {
+         case 4:
+            printf(" IMMD\n");
+            inc = 0;
+            is_immd = true;
+            value = count;
+            count = 1;
             break;
          case 1:
-            if (ctx->compute.cls >= 0xc3c0)
-               mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
-            else if (ctx->compute.cls >= 0xc0c0)
-               mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
+            printf(" NINC\n");
+            inc = count;
             break;
          case 3:
-            mthd_name = P_PARSE_NV902D_MTHD(mthd);
+            printf(" 0INC\n");
+            inc = 0;
             break;
-         case 4:
-            if (ctx->copy.cls >= 0xc1b5)
-               mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
-            else if (ctx->copy.cls >= 0xa0b5)
-               mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NV90B5_MTHD(mthd);
-            break;
-         default:
-            mthd_name = "";
+         case 5:
+            printf(" 1INC\n");
+            inc = 1;
             break;
          }
 
-         if (!is_immd)
-            value = *cur;
+         while (count--) {
+            const char *mthd_name = "";
+            switch (subchan) {
+            case 0:
+               if (ctx->compute.cls >= 0xc597)
+                  mthd_name = P_PARSE_NVC597_MTHD(mthd);
+               else if (ctx->compute.cls >= 0xc397)
+                  mthd_name = P_PARSE_NVC397_MTHD(mthd);
+               else if (ctx->compute.cls >= 0xb197)
+                  mthd_name = P_PARSE_NVB197_MTHD(mthd);
+               else if (ctx->compute.cls >= 0xa097)
+                  mthd_name = P_PARSE_NVA097_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NV9097_MTHD(mthd);
+               break;
+            case 1:
+               if (ctx->compute.cls >= 0xc3c0)
+                  mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
+               else if (ctx->compute.cls >= 0xc0c0)
+                  mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
+               break;
+            case 3:
+               mthd_name = P_PARSE_NV902D_MTHD(mthd);
+               break;
+            case 4:
+               if (ctx->copy.cls >= 0xc1b5)
+                  mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
+               else if (ctx->copy.cls >= 0xa0b5)
+                  mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NV90B5_MTHD(mthd);
+               break;
+            default:
+               mthd_name = "";
+               break;
+            }
 
-         printf("\tmthd %04x %s\n", mthd, mthd_name);
-         switch (subchan) {
-         case 0:
-            if (ctx->compute.cls >= 0xc597)
-               P_DUMP_NVC597_MTHD_DATA(mthd, value, "\t\t");
-            else if (ctx->compute.cls >= 0xc397)
-               P_DUMP_NVC397_MTHD_DATA(mthd, value, "\t\t");
-            else if (ctx->compute.cls >= 0xb197)
-               P_DUMP_NVB197_MTHD_DATA(mthd, value, "\t\t");
-            else if (ctx->compute.cls >= 0xa097)
-               P_DUMP_NVA097_MTHD_DATA(mthd, value, "\t\t");
-            else
-               P_DUMP_NV9097_MTHD_DATA(mthd, value, "\t\t");
-            break;
-         case 1:
-            if (ctx->compute.cls >= 0xc3c0)
-               P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");
-            else if (ctx->compute.cls >= 0xc0c0)
-               P_DUMP_NVC0C0_MTHD_DATA(mthd, value, "\t\t");
-            else
-               P_DUMP_NVA0C0_MTHD_DATA(mthd, value, "\t\t");
-            break;
-         case 3:
-            P_DUMP_NV902D_MTHD_DATA(mthd, value, "\t\t");
-            break;
-         case 4:
-            if (ctx->copy.cls >= 0xc1b5)
-               P_DUMP_NVC1B5_MTHD_DATA(mthd, value, "\t\t");
-            else if (ctx->copy.cls >= 0xa0b5)
-               P_DUMP_NVA0B5_MTHD_DATA(mthd, value, "\t\t");
-            else
-               P_DUMP_NV90B5_MTHD_DATA(mthd, value, "\t\t");
-            break;
-         default:
-            mthd_name = "";
-            break;
+            if (!is_immd)
+               value = *cur;
+
+            printf("\tmthd %04x %s\n", mthd, mthd_name);
+            switch (subchan) {
+            case 0:
+               if (ctx->compute.cls >= 0xc597)
+                  P_DUMP_NVC597_MTHD_DATA(mthd, value, "\t\t");
+               else if (ctx->compute.cls >= 0xc397)
+                  P_DUMP_NVC397_MTHD_DATA(mthd, value, "\t\t");
+               else if (ctx->compute.cls >= 0xb197)
+                  P_DUMP_NVB197_MTHD_DATA(mthd, value, "\t\t");
+               else if (ctx->compute.cls >= 0xa097)
+                  P_DUMP_NVA097_MTHD_DATA(mthd, value, "\t\t");
+               else
+                  P_DUMP_NV9097_MTHD_DATA(mthd, value, "\t\t");
+               break;
+            case 1:
+               if (ctx->compute.cls >= 0xc3c0)
+                  P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");
+               else if (ctx->compute.cls >= 0xc0c0)
+                  P_DUMP_NVC0C0_MTHD_DATA(mthd, value, "\t\t");
+               else
+                  P_DUMP_NVA0C0_MTHD_DATA(mthd, value, "\t\t");
+               break;
+            case 3:
+               P_DUMP_NV902D_MTHD_DATA(mthd, value, "\t\t");
+               break;
+            case 4:
+               if (ctx->copy.cls >= 0xc1b5)
+                  P_DUMP_NVC1B5_MTHD_DATA(mthd, value, "\t\t");
+               else if (ctx->copy.cls >= 0xa0b5)
+                  P_DUMP_NVA0B5_MTHD_DATA(mthd, value, "\t\t");
+               else
+                  P_DUMP_NV90B5_MTHD_DATA(mthd, value, "\t\t");
+               break;
+            default:
+               mthd_name = "";
+               break;
+            }
+
+            if (!is_immd)
+               cur++;
+
+            if (inc) {
+               inc--;
+               mthd += 4;
+            }
          }
 
-         if (!is_immd)
-            cur++;
-
-         if (inc) {
-            inc--;
-            mthd += 4;
-         }
+         printf("\n");
       }
-
-      printf("\n");
    }
 }
 
@@ -277,19 +340,35 @@ nouveau_ws_push_submit(
    struct nouveau_ws_context *ctx
 ) {
    struct drm_nouveau_gem_pushbuf_bo req_bo[NOUVEAU_GEM_MAX_BUFFERS] = {};
+   struct drm_nouveau_gem_pushbuf_push req_push[NOUVEAU_GEM_MAX_PUSH] = {};
    struct drm_nouveau_gem_pushbuf req = {};
-   struct drm_nouveau_gem_pushbuf_push req_push = {};
-
-   /* Can't submit a CPU push */
-   assert(push->bo);
-
-   if (push->map == push->orig_map)
-      return 0;
 
    /* make sure we don't submit nonsense */
    nouveau_ws_push_valid(push);
 
    int i = 0;
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
+      /* Can't submit a CPU push */
+      assert(buf->bo);
+
+      if (buf->map == buf->orig_map)
+         continue;
+
+      req_bo[i].handle = buf->bo->handle;
+      req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
+      req_bo[i].read_domains |= NOUVEAU_GEM_DOMAIN_GART;
+
+      req_push[i].bo_index = i;
+      req_push[i].offset = 0;
+      req_push[i].length = (buf->map - buf->orig_map) * 4;
+
+      i++;
+   }
+
+   if (i == 0)
+      return 0;
+
+   uint32_t pushs = i;
    util_dynarray_foreach(&push->bos, struct nouveau_ws_push_bo, push_bo) {
       struct nouveau_ws_bo *bo = push_bo->bo;
       enum nouveau_ws_bo_map_flags flags = push_bo->flags;
@@ -319,18 +398,10 @@ nouveau_ws_push_submit(
       i++;
    }
 
-   req_bo[i].handle = push->bo->handle;
-   req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
-   req_bo[i].read_domains |= NOUVEAU_GEM_DOMAIN_GART;
-
-   req_push.bo_index = i;
-   req_push.offset = 0;
-   req_push.length = (push->map - push->orig_map) * 4;
-
    req.channel = ctx->channel;
    req.nr_buffers = i;
    req.buffers = (uintptr_t)&req_bo;
-   req.nr_push = 1;
+   req.nr_push = pushs;
    req.push = (uintptr_t)&req_push;
 
    if (dev->debug_flags & NVK_DEBUG_PUSH_SYNC)
@@ -371,8 +442,20 @@ nouveau_ws_push_ref(
 
 void nouveau_ws_push_reset(struct nouveau_ws_push *push)
 {
+   bool first = true;
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
+      if (first) {
+         buf->map = buf->orig_map;
+         first = false;
+         continue;
+      }
+
+      nouveau_ws_bo_unmap(buf->bo, buf->orig_map);
+      nouveau_ws_bo_destroy(buf->bo);
+   }
+
    util_dynarray_clear(&push->bos);
-   push->map = push->orig_map;
+   util_dynarray_resize(&push->pushs, struct nouveau_ws_push_buffer, 1);
 }
 
 unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push)

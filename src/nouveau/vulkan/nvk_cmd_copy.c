@@ -142,10 +142,10 @@ to_90b5_remap_num_comps(uint8_t num_comps)
 static void
 nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
-   struct nouveau_ws_push *p = cmd->push;
-
    uint32_t src_bw, dst_bw;
    if (copy->remap.comp_size > 0) {
+      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
+
       assert(copy->src.bpp % copy->remap.comp_size == 0);
       assert(copy->dst.bpp % copy->remap.comp_size == 0);
       uint32_t num_src_comps = copy->src.bpp / copy->remap.comp_size;
@@ -192,6 +192,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       }
 
       for (unsigned z = 0; z < copy->extent_el.depth; z++) {
+         struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 31);
+
          P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
          P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
          P_NV90B5_OFFSET_IN_LOWER(p, src_addr & 0xffffffff);
@@ -297,7 +299,7 @@ nvk_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
       uint64_t size = region->size;
 
       while (size) {
-         struct nouveau_ws_push *p = cmd->push;
+         struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 10);
 
          P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
          P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
@@ -651,7 +653,7 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *p = cmd->push;
+
    fillSize = vk_buffer_range(&dst->vk, dstOffset, fillSize);
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
@@ -661,6 +663,8 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    /* can't go higher for whatever reason */
    uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 33);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
@@ -729,12 +733,13 @@ nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *p = cmd->push;
    uint32_t pitch = 65536;
 
    assert(dataSize <= 65536);
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 26 + dataSize / 4);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 

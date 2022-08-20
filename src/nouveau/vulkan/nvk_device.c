@@ -204,12 +204,13 @@ nvk_queue_state_update(struct nvk_device *dev,
    if (!dirty)
       return VK_SUCCESS;
 
-   struct nouveau_ws_push *p = nouveau_ws_push_new(dev->pdev->dev, 256);
+   struct nouveau_ws_push *pb = nouveau_ws_push_new(dev->pdev->dev, 256);
+   struct nouveau_ws_push_buffer *p = P_SPACE(pb, 256);
    if (p == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    if (qs->images.bo) {
-      nouveau_ws_push_ref(p, qs->images.bo, NOUVEAU_WS_BO_RD);
+      nouveau_ws_push_ref(pb, qs->images.bo, NOUVEAU_WS_BO_RD);
 
       /* Compute */
       P_MTHD(p, NVA0C0, SET_TEX_HEADER_POOL_A);
@@ -231,7 +232,7 @@ nvk_queue_state_update(struct nvk_device *dev,
    }
 
    if (qs->samplers.bo) {
-      nouveau_ws_push_ref(p, qs->samplers.bo, NOUVEAU_WS_BO_RD);
+      nouveau_ws_push_ref(pb, qs->samplers.bo, NOUVEAU_WS_BO_RD);
 
       /* Compute */
       P_MTHD(p, NVA0C0, SET_TEX_SAMPLER_POOL_A);
@@ -253,7 +254,7 @@ nvk_queue_state_update(struct nvk_device *dev,
    }
 
    if (qs->slm.bo) {
-      nouveau_ws_push_ref(p, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
+      nouveau_ws_push_ref(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
       const uint64_t slm_addr = qs->slm.bo->offset;
       const uint64_t slm_size = qs->slm.bo->size;
       const uint64_t slm_per_warp = qs->slm.bytes_per_warp;
@@ -323,7 +324,7 @@ nvk_queue_state_update(struct nvk_device *dev,
 
    if (qs->push)
       nouveau_ws_push_destroy(qs->push);
-   qs->push = p;
+   qs->push = pb;
 
    return VK_SUCCESS;
 }
@@ -363,8 +364,10 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
    if (!queue->empty_push) {
       queue->empty_push = nouveau_ws_push_new(device->pdev->dev, 4096);
 
-      P_MTHD(queue->empty_push, NV90B5, NOP);
-      P_NV90B5_NOP(queue->empty_push, 0);
+      struct nouveau_ws_push_buffer *p = P_SPACE(queue->empty_push, 2);
+
+      P_MTHD(p, NV90B5, NOP);
+      P_NV90B5_NOP(p, 0);
    }
 
    result = nvk_queue_state_update(device, &queue->state);

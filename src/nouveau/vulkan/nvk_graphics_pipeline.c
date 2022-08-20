@@ -23,7 +23,7 @@ static void
 emit_pipeline_vp_state(struct nvk_graphics_pipeline *pipeline,
                        const struct vk_viewport_state *vp)
 {
-   struct nouveau_ws_push *p = &pipeline->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(&pipeline->push, 0);
 
    P_IMMD(p, NV9097, SET_VIEWPORT_Z_CLIP, vp->depth_clip_negative_one_to_one ?
                                           RANGE_NEGATIVE_W_TO_POSITIVE_W :
@@ -59,7 +59,7 @@ static void
 emit_pipeline_rs_state(struct nvk_graphics_pipeline *pipeline,
                        const struct vk_rasterization_state *rs)
 {
-   struct nouveau_ws_push *p = &pipeline->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(&pipeline->push, 0);
 
    /* TODO: Depth clip/clamp? */
    P_IMMD(p, NV9097, SET_VIEWPORT_CLIP_CONTROL, {
@@ -91,7 +91,7 @@ static void
 emit_pipeline_ms_state(struct nvk_graphics_pipeline *pipeline,
                        const struct vk_multisample_state *ms)
 {
-   struct nouveau_ws_push *p = &pipeline->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(&pipeline->push, 0);
 
    P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(ms->rasterization_samples) - 1);
    P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, ms->sample_shading_enable);
@@ -157,7 +157,7 @@ static void
 emit_pipeline_cb_state(struct nvk_graphics_pipeline *pipeline,
                        const struct vk_color_blend_state *cb)
 {
-   struct nouveau_ws_push *p = &pipeline->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(&pipeline->push, 0);
 
    P_IMMD(p, NV9097, SET_BLEND_STATE_PER_TARGET, ENABLE_TRUE);
 
@@ -246,7 +246,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
    nouveau_ws_push_init_cpu(&pipeline->push, &pipeline->push_data,
                             sizeof(pipeline->push_data));
-   struct nouveau_ws_push *p = &pipeline->push;
+   struct nouveau_ws_push_buffer *p = P_SPACE(&pipeline->push, 0);
 
    struct nvk_shader *last_geom = NULL;
    for (gl_shader_stage stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
