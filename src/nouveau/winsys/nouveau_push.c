@@ -50,7 +50,6 @@ nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
    push_bo.flags = NOUVEAU_WS_BO_RD;
 
    util_dynarray_init(&push->bos, NULL);
-   util_dynarray_append(&push->bos, struct nouveau_ws_push_bo, push_bo);
 
    return push;
 
@@ -320,7 +319,11 @@ nouveau_ws_push_submit(
       i++;
    }
 
-   req_push.bo_index = 0;
+   req_bo[i].handle = push->bo->handle;
+   req_bo[i].valid_domains |= NOUVEAU_GEM_DOMAIN_GART;
+   req_bo[i].read_domains |= NOUVEAU_GEM_DOMAIN_GART;
+
+   req_push.bo_index = i;
    req_push.offset = 0;
    req_push.length = (push->map - push->orig_map) * 4;
 
@@ -369,8 +372,6 @@ nouveau_ws_push_ref(
 void nouveau_ws_push_reset(struct nouveau_ws_push *push)
 {
    util_dynarray_clear(&push->bos);
-
-   nouveau_ws_push_ref(push, push->bo, NOUVEAU_WS_BO_RD);
    push->map = push->orig_map;
 }
 
