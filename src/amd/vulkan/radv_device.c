@@ -4860,7 +4860,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 
    for (uint32_t i = 0; i < bind->bindCount; ++i) {
       struct radv_device_memory *mem = NULL;
-      uint32_t offset, pitch;
+      uint32_t offset, pitch, depth_pitch;
       uint32_t mem_offset = bind->pBinds[i].memoryOffset;
       const uint32_t layer = bind->pBinds[i].subresource.arrayLayer;
       const uint32_t level = bind->pBinds[i].subresource.mipLevel;
@@ -4881,36 +4881,47 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
       if (device->physical_device->rad_info.gfx_level >= GFX9) {
          offset = surface->u.gfx9.surf_slice_size * layer + surface->u.gfx9.prt_level_offset[level];
          pitch = surface->u.gfx9.prt_level_pitch[level];
+         depth_pitch = surface->u.gfx9.surf_slice_size;
       } else {
-         offset = (uint64_t)surface->u.legacy.level[level].offset_256B * 256 +
-                  surface->u.legacy.level[level].slice_size_dw * 4 * layer;
+         depth_pitch = surface->u.legacy.level[level].slice_size_dw * 4;
+         offset = (uint64_t)surface->u.legacy.level[level].offset_256B * 256 + depth_pitch * layer;
          pitch = surface->u.legacy.level[level].nblk_x;
       }
 
-      offset += (bind_offset.y * pitch * bs) + (bind_offset.x * surface->prt_tile_height * bs);
+      offset += bind_offset.z * depth_pitch +
+                (bind_offset.y * pitch * surface->prt_tile_depth +
+                 bind_offset.x * surface->prt_tile_height * surface->prt_tile_depth) *
+                   bs;
 
       uint32_t aligned_extent_width = ALIGN(bind_extent.width, surface->prt_tile_width);
+      uint32_t aligned_extent_height = ALIGN(bind_extent.height, surface->prt_tile_height);
+      uint32_t aligned_extent_depth = ALIGN(bind_extent.depth, surface->prt_tile_depth);
 
-      bool whole_subres = bind_offset.x == 0 && aligned_extent_width == pitch;
+      bool whole_subres =
+         (bind_extent.height <= surface->prt_tile_height || aligned_extent_width == pitch) &&
+         (bind_extent.depth <= surface->prt_tile_depth ||
+          aligned_extent_width * aligned_extent_height * bs == depth_pitch);
 
       if (whole_subres) {
-         uint32_t aligned_extent_height = ALIGN(bind_extent.height, surface->prt_tile_height);
-
-         uint32_t size = aligned_extent_width * aligned_extent_height * bs;
+         uint32_t size = aligned_extent_width * aligned_extent_height * aligned_extent_depth * bs;
          result = device->ws->buffer_virtual_bind(device->ws, image->bindings[0].bo, offset, size,
                                                   mem ? mem->bo : NULL, mem_offset);
          if (result != VK_SUCCESS)
             return result;
       } else {
-         uint32_t img_increment = pitch * bs;
-         uint32_t mem_increment = aligned_extent_width * bs;
-         uint32_t size = mem_increment * surface->prt_tile_height;
-         for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
-            result = device->ws->buffer_virtual_bind(device->ws,
-               image->bindings[0].bo, offset + img_increment * y, size, mem ? mem->bo : NULL,
-               mem_offset + mem_increment * y);
-            if (result != VK_SUCCESS)
-               return result;
+         uint32_t img_y_increment = pitch * bs * surface->prt_tile_depth;
+         uint32_t mem_y_increment = aligned_extent_width * bs * surface->prt_tile_depth;
+         uint32_t mem_z_increment = aligned_extent_width * aligned_extent_height * bs;
+         uint32_t size = mem_y_increment * surface->prt_tile_height;
+         for (unsigned z = 0; z < bind_extent.depth;
+              z += surface->prt_tile_depth, offset += depth_pitch * surface->prt_tile_depth) {
+            for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
+               result = device->ws->buffer_virtual_bind(
+                  device->ws, image->bindings[0].bo, offset + img_y_increment * y, size,
+                  mem ? mem->bo : NULL, mem_offset + mem_y_increment * y + mem_z_increment * z);
+               if (result != VK_SUCCESS)
+                  return result;
+            }
          }
       }
    }
