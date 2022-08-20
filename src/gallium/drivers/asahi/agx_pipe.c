@@ -145,7 +145,7 @@ agx_select_modifier(const struct agx_resource *pres)
       return DRM_FORMAT_MOD_LINEAR;
 
    /* Default to tiled */
-   return DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER;
+   return DRM_FORMAT_MOD_APPLE_TWIDDLED;
 }
 
 static struct pipe_resource *
@@ -277,7 +277,7 @@ agx_transfer_map(struct pipe_context *pctx,
    pipe_resource_reference(&transfer->base.resource, resource);
    *out_transfer = &transfer->base;
 
-   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
       transfer->base.stride =
          util_format_get_stride(resource->format, box->width);
 
@@ -332,7 +332,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
 
    /* Tiling will occur in software from a staging cpu buffer */
    if ((transfer->usage & PIPE_MAP_WRITE) &&
-         rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+         rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
       assert(trans->map != NULL);
 
       for (unsigned z = 0; z < transfer->box.depth; ++z) {
@@ -659,7 +659,7 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
    void *map = winsys->displaytarget_map(winsys, rsrc->dt, PIPE_USAGE_DEFAULT);
    assert(map != NULL);
 
-   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
+   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
       ail_detile(rsrc->bo->ptr.cpu, map, &rsrc->layout, 0, rsrc->dt_stride,
                  0, 0, rsrc->base.width0, rsrc->base.height0);
    } else {

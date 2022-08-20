@@ -229,7 +229,7 @@ agx_device(struct pipe_screen *p)
 #ifndef DRM_FORMAT_MOD_LINEAR
 #define DRM_FORMAT_MOD_LINEAR 1
 #endif
-#define DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER (2)
+#define DRM_FORMAT_MOD_APPLE_TWIDDLED (2)
 
 struct agx_resource {
    struct pipe_resource	base;

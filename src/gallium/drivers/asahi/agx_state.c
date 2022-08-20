@@ -408,7 +408,7 @@ static enum agx_layout
 agx_translate_layout(uint64_t modifier)
 {
    switch (modifier) {
-   case DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER:
+   case DRM_FORMAT_MOD_APPLE_TWIDDLED:
       return AGX_LAYOUT_TWIDDLED;
    case DRM_FORMAT_MOD_LINEAR:
       return AGX_LAYOUT_LINEAR;
@@ -486,7 +486,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
       } else {
-         assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER);
+         assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
          cfg.stride = AGX_RT_STRIDE_TILED;
       }
    }
