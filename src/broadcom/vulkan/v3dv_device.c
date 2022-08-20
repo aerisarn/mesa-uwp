@@ -198,6 +198,10 @@ v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
       &instance_extensions, pPropertyCount, pProperties);
 }
 
+static VkResult enumerate_devices(struct vk_instance *vk_instance);
+
+static void destroy_physical_device(struct vk_physical_device *device);
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
@@ -234,7 +238,8 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    v3d_process_debug_variable();
 
-   instance->physicalDeviceCount = -1;
+   instance->vk.physical_devices.enumerate = enumerate_devices;
+   instance->vk.physical_devices.destroy = destroy_physical_device;
 
    /* We start with the default values for the pipeline_cache envvars */
    instance->pipeline_cache_enabled = true;
@@ -307,6 +312,13 @@ physical_device_finish(struct v3dv_physical_device *device)
    mtx_destroy(&device->mutex);
 }
 
+static void
+destroy_physical_device(struct vk_physical_device *device)
+{
+   physical_device_finish((struct v3dv_physical_device *)device);
+   vk_free(&device->instance->alloc, device);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyInstance(VkInstance _instance,
                      const VkAllocationCallbacks *pAllocator)
@@ -315,12 +327,6 @@ v3dv_DestroyInstance(VkInstance _instance,
 
    if (!instance)
       return;
-
-   if (instance->physicalDeviceCount > 0) {
-      /* We support at most one physical device. */
-      assert(instance->physicalDeviceCount == 1);
-      physical_device_finish(&instance->physicalDevice);
-   }
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
@@ -714,14 +720,20 @@ v3dv_physical_device_init_disk_cache(struct v3dv_physical_device *device)
 }
 
 static VkResult
-physical_device_init(struct v3dv_physical_device *device,
-                     struct v3dv_instance *instance,
-                     drmDevicePtr drm_render_device,
-                     drmDevicePtr drm_primary_device)
+create_physical_device(struct v3dv_instance *instance,
+                       drmDevicePtr drm_render_device,
+                       drmDevicePtr drm_primary_device)
 {
    VkResult result = VK_SUCCESS;
    int32_t master_fd = -1;
    int32_t render_fd = -1;
+
+   struct v3dv_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+
+   if (!device)
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints
@@ -921,10 +933,13 @@ physical_device_init(struct v3dv_physical_device *device,
 
    mtx_init(&device->mutex, mtx_plain);
 
+   list_addtail(&device->vk.link, &instance->vk.physical_devices.list);
+
    return VK_SUCCESS;
 
 fail:
    vk_physical_device_finish(&device->vk);
+   vk_free(&instance->vk.alloc, device);
 
    if (render_fd >= 0)
       close(render_fd);
@@ -935,14 +950,15 @@ fail:
 }
 
 static VkResult
-enumerate_devices(struct v3dv_instance *instance)
+enumerate_devices(struct vk_instance *vk_instance)
 {
+   struct v3dv_instance *instance =
+      container_of(vk_instance, struct v3dv_instance, vk);
+
    /* TODO: Check for more devices? */
    drmDevicePtr devices[8];
    VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
    int max_devices;
-
-   instance->physicalDeviceCount = 0;
 
    max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
    if (max_devices < 1)
@@ -960,8 +976,7 @@ enumerate_devices(struct v3dv_instance *instance)
            devices[i]->bustype == DRM_BUS_PCI &&
           (devices[i]->deviceinfo.pci->vendor_id == 0x8086 ||
            devices[i]->deviceinfo.pci->vendor_id == 0x1002)) {
-         result = physical_device_init(&instance->physicalDevice, instance,
-                                       devices[i], NULL);
+         result = create_physical_device(instance, devices[i], NULL);
          if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
             break;
       }
@@ -1005,84 +1020,12 @@ enumerate_devices(struct v3dv_instance *instance)
    if (v3d_idx == -1 || vc4_idx == -1)
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
    else
-      result = physical_device_init(&instance->physicalDevice, instance,
-                                    devices[v3d_idx], devices[vc4_idx]);
+      result = create_physical_device(instance, devices[v3d_idx], devices[vc4_idx]);
 #endif
 
    drmFreeDevices(devices, max_devices);
 
-   if (result == VK_SUCCESS)
-      instance->physicalDeviceCount = 1;
-
    return result;
-}
-
-static VkResult
-instance_ensure_physical_device(struct v3dv_instance *instance)
-{
-   if (instance->physicalDeviceCount < 0) {
-      VkResult result = enumerate_devices(instance);
-      if (result != VK_SUCCESS &&
-          result != VK_ERROR_INCOMPATIBLE_DRIVER)
-         return result;
-   }
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR VkResult  VKAPI_CALL
-v3dv_EnumeratePhysicalDevices(VkInstance _instance,
-                              uint32_t *pPhysicalDeviceCount,
-                              VkPhysicalDevice *pPhysicalDevices)
-{
-   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
-                          pPhysicalDevices, pPhysicalDeviceCount);
- 
-   VkResult result = instance_ensure_physical_device(instance);
-   if (result != VK_SUCCESS)
-      return result;
-
-   if (instance->physicalDeviceCount == 0)
-      return VK_SUCCESS;
-
-   assert(instance->physicalDeviceCount == 1);
-   vk_outarray_append_typed(VkPhysicalDevice, &out, i) {
-      *i = v3dv_physical_device_to_handle(&instance->physicalDevice);
-   }
-
-   return vk_outarray_status(&out);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-v3dv_EnumeratePhysicalDeviceGroups(
-    VkInstance _instance,
-    uint32_t *pPhysicalDeviceGroupCount,
-    VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
-{
-   V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
-                          pPhysicalDeviceGroupProperties,
-                          pPhysicalDeviceGroupCount);
-
-   VkResult result = instance_ensure_physical_device(instance);
-   if (result != VK_SUCCESS)
-      return result;
-
-   assert(instance->physicalDeviceCount == 1);
-
-   vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p) {
-      p->physicalDeviceCount = 1;
-      memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
-      p->physicalDevices[0] =
-         v3dv_physical_device_to_handle(&instance->physicalDevice);
-      p->subsetAllocation = false;
-
-      vk_foreach_struct(ext, p->pNext)
-         v3dv_debug_ignored_stype(ext->sType);
-   }
-
-   return vk_outarray_status(&out);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2109,8 +2052,7 @@ device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
     * display device to free the allocated dumb BO.
     */
    if (mem->is_for_wsi) {
-      device_free_wsi_dumb(device->instance->physicalDevice.display_fd,
-                           mem->bo->dumb_handle);
+      device_free_wsi_dumb(device->pdevice->display_fd, mem->bo->dumb_handle);
    }
 
    v3dv_bo_free(device, mem->bo);
@@ -2214,7 +2156,7 @@ device_alloc_for_wsi(struct v3dv_device *device,
     */
    VkResult result;
    struct v3dv_instance *instance = device->instance;
-   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct v3dv_physical_device *pdevice = device->pdevice;
    if (unlikely(pdevice->display_fd < 0)) {
       result = v3dv_physical_device_acquire_display(instance, pdevice, NULL);
       if (result != VK_SUCCESS)
@@ -2285,7 +2227,7 @@ v3dv_AllocateMemory(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    struct v3dv_device_memory *mem;
-   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct v3dv_physical_device *pdevice = device->pdevice;
 
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
@@ -2771,7 +2713,7 @@ v3dv_GetMemoryFdPropertiesKHR(VkDevice _device,
                               VkMemoryFdPropertiesKHR *pMemoryFdProperties)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
+   struct v3dv_physical_device *pdevice = device->pdevice;
 
    switch (handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:

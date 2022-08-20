@@ -284,7 +284,7 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    assert(state->pass);
 
    const struct v3dv_physical_device *physical_device =
-      &cmd_buffer->device->instance->physicalDevice;
+      cmd_buffer->device->pdevice;
 
    if (cmd_buffer->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       return false;

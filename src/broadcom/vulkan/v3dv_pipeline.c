@@ -1647,8 +1647,7 @@ pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
    int64_t stage_start = os_time_get_nano();
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
-   struct v3dv_physical_device *physical_device =
-      &pipeline->device->instance->physicalDevice;
+   struct v3dv_physical_device *physical_device = pipeline->device->pdevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
 
    if (V3D_DBG(NIR) ||
@@ -2287,8 +2286,7 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
 
    /* Attach the geometry shader to the  pipeline */
    struct v3dv_device *device = pipeline->device;
-   struct v3dv_physical_device *physical_device =
-      &device->instance->physicalDevice;
+   struct v3dv_physical_device *physical_device = device->pdevice;
 
    struct v3dv_pipeline_stage *p_stage =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*p_stage), 8,
@@ -2355,8 +2353,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    int64_t pipeline_start = os_time_get_nano();
 
    struct v3dv_device *device = pipeline->device;
-   struct v3dv_physical_device *physical_device =
-      &device->instance->physicalDevice;
+   struct v3dv_physical_device *physical_device = device->pdevice;
 
    /* First pass to get some common info from the shader, and create the
     * individual pipeline_stage objects
@@ -3148,8 +3145,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    int64_t pipeline_start = os_time_get_nano();
 
    struct v3dv_device *device = pipeline->device;
-   struct v3dv_physical_device *physical_device =
-      &device->instance->physicalDevice;
+   struct v3dv_physical_device *physical_device = device->pdevice;
 
    const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
    gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);

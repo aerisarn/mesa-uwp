@@ -223,9 +223,6 @@ bool v3dv_meta_can_use_tlb(struct v3dv_image *image,
 struct v3dv_instance {
    struct vk_instance vk;
 
-   int physicalDeviceCount;
-   struct v3dv_physical_device physicalDevice;
-
    bool pipeline_cache_enabled;
    bool default_pipeline_cache_enabled;
 };
