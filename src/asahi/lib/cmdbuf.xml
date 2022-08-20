@@ -105,20 +105,22 @@
     <value name="EAC R11" value="0x5B"/>
     <value name="EAC RG11" value="0x5C"/>
 
-    <value name="ASTC 4x4 LDR" value="0x60"/>
-    <value name="ASTC 5x4 LDR" value="0x61"/>
-    <value name="ASTC 5x5 LDR" value="0x62"/>
-    <value name="ASTC 6x5 LDR" value="0x63"/>
-    <value name="ASTC 6x6 LDR" value="0x64"/>
-    <value name="ASTC 8x5 LDR" value="0x65"/>
-    <value name="ASTC 8x6 LDR" value="0x66"/>
-    <value name="ASTC 8x8 LDR" value="0x67"/>
-    <value name="ASTC 10x5 LDR" value="0x68"/>
-    <value name="ASTC 10x6 LDR" value="0x69"/>
-    <value name="ASTC 10x8 LDR" value="0x6A"/>
-    <value name="ASTC 10x10 LDR" value="0x6B"/>
-    <value name="ASTC 12x10 LDR" value="0x6C"/>
-    <value name="ASTC 12x12 LDR" value="0x6D"/>
+    <!-- For LDR use with UNORM/no-sRGB, for sRGB use with UNORM/sRGB, for HDR
+         use with FLOAT/no-sRGB -->
+    <value name="ASTC 4x4" value="0x60"/>
+    <value name="ASTC 5x4" value="0x61"/>
+    <value name="ASTC 5x5" value="0x62"/>
+    <value name="ASTC 6x5" value="0x63"/>
+    <value name="ASTC 6x6" value="0x64"/>
+    <value name="ASTC 8x5" value="0x65"/>
+    <value name="ASTC 8x6" value="0x66"/>
+    <value name="ASTC 8x8" value="0x67"/>
+    <value name="ASTC 10x5" value="0x68"/>
+    <value name="ASTC 10x6" value="0x69"/>
+    <value name="ASTC 10x8" value="0x6A"/>
+    <value name="ASTC 10x10" value="0x6B"/>
+    <value name="ASTC 12x10" value="0x6C"/>
+    <value name="ASTC 12x12" value="0x6D"/>
 
     <value name="BC1" value="0x74"/>
     <value name="BC2" value="0x75"/>
