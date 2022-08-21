@@ -262,8 +262,37 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
    return true;
 }
 
-/* Generic DrawArrays structure NOT supporting user buffers. Ignore the name. */
+/* DrawArrays non-instanced and NOT supporting user buffers. Ignore the name. */
 struct marshal_cmd_DrawArrays
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum mode;
+   GLint first;
+   GLsizei count;
+};
+
+uint32_t
+_mesa_unmarshal_DrawArrays(struct gl_context *ctx,
+                           const struct marshal_cmd_DrawArrays *cmd,
+                           const uint64_t *last)
+{
+   /* Ignore the function name. We use DISPATCH_CMD_DrawArrays{Instanced}
+    * for all DrawArrays variants without user buffers, and
+    * DISPATCH_CMD_DrawArraysInstancedBaseInstance for all DrawArrays
+    * variants with user buffers.
+    */
+   const GLenum mode = cmd->mode;
+   const GLint first = cmd->first;
+   const GLsizei count = cmd->count;
+
+   CALL_DrawArrays(ctx->CurrentServerDispatch, (mode, first, count));
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+/* DrawArraysInstancedBaseInstance and NOT supporting user buffers. Ignore the name. */
+struct marshal_cmd_DrawArraysInstancedARB
 {
    struct marshal_cmd_base cmd_base;
    GLenum mode;
@@ -274,14 +303,14 @@ struct marshal_cmd_DrawArrays
 };
 
 uint32_t
-_mesa_unmarshal_DrawArrays(struct gl_context *ctx,
-                           const struct marshal_cmd_DrawArrays *cmd,
-                           const uint64_t *last)
+_mesa_unmarshal_DrawArraysInstancedARB(struct gl_context *ctx,
+                                       const struct marshal_cmd_DrawArraysInstancedARB *cmd,
+                                       const uint64_t *last)
 {
-   /* Ignore the function name. We use DISPATCH_CMD_DrawArrays
+   /* Ignore the function name. We use DISPATCH_CMD_DrawArrays{Instanced}
     * for all DrawArrays variants without user buffers, and
     * DISPATCH_CMD_DrawArraysInstancedBaseInstance for all DrawArrays
-    * variants with user buffrs.
+    * variants with user buffers.
     */
    const GLenum mode = cmd->mode;
    const GLint first = cmd->first;
@@ -301,15 +330,25 @@ static ALWAYS_INLINE void
 draw_arrays_async(struct gl_context *ctx, GLenum mode, GLint first,
                   GLsizei count, GLsizei instance_count, GLuint baseinstance)
 {
-   int cmd_size = sizeof(struct marshal_cmd_DrawArrays);
-   struct marshal_cmd_DrawArrays *cmd =
-      _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArrays, cmd_size);
+   if (instance_count == 1 && baseinstance == 0) {
+      int cmd_size = sizeof(struct marshal_cmd_DrawArrays);
+      struct marshal_cmd_DrawArrays *cmd =
+         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArrays, cmd_size);
 
-   cmd->mode = mode;
-   cmd->first = first;
-   cmd->count = count;
-   cmd->instance_count = instance_count;
-   cmd->baseinstance = baseinstance;
+      cmd->mode = mode;
+      cmd->first = first;
+      cmd->count = count;
+   } else {
+      int cmd_size = sizeof(struct marshal_cmd_DrawArraysInstancedARB);
+      struct marshal_cmd_DrawArraysInstancedARB *cmd =
+         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysInstancedARB, cmd_size);
+
+      cmd->mode = mode;
+      cmd->first = first;
+      cmd->count = count;
+      cmd->instance_count = instance_count;
+      cmd->baseinstance = baseinstance;
+   }
 }
 
 /* Generic DrawArrays structure supporting user buffers. Ignore the name. */
@@ -329,10 +368,10 @@ _mesa_unmarshal_DrawArraysInstancedBaseInstance(struct gl_context *ctx,
                                                 const struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd,
                                                 const uint64_t *last)
 {
-   /* Ignore the function name. We use DISPATCH_CMD_DrawArrays
+   /* Ignore the function name. We use DISPATCH_CMD_DrawArrays{Instanced}
     * for all DrawArrays variants without user buffers, and
     * DISPATCH_CMD_DrawArraysInstancedBaseInstance for all DrawArrays
-    * variants with user buffrs.
+    * variants with user buffers.
     */
    const GLenum mode = cmd->mode;
    const GLint first = cmd->first;
@@ -573,10 +612,84 @@ sync:
                         (mode, first, count, draw_count));
 }
 
+/* DrawElementsInstanced not supporting user buffers. */
+struct marshal_cmd_DrawElementsInstancedARB
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   GLsizei count;
+   GLsizei instance_count;
+   const GLvoid *indices;
+};
+
 /* DrawElementsInstancedBaseVertexBaseInstance not supporting user buffers.
  * Ignore the name.
  */
-struct marshal_cmd_DrawElementsInstancedARB
+
+uint32_t
+_mesa_unmarshal_DrawElementsInstancedARB(struct gl_context *ctx,
+                                         const struct marshal_cmd_DrawElementsInstancedARB *cmd,
+                                         const uint64_t *last)
+{
+   /* Ignore the function name. We use DISPATCH_CMD_DrawElementsInstanced-
+    * BaseVertexBaseInstance for all DrawElements variants with user buffers,
+    * and DISPATCH_CMD_{DrawElementsInstancedARB,DrawElementsBaseVertex,
+    * DrawElementsInstancedBaseVertex,DrawRangeElementsBaseVertex} for all
+    * draw elements variants without user buffers.
+    */
+   const GLenum mode = cmd->mode;
+   const GLsizei count = cmd->count;
+   const GLenum type = cmd->type;
+   const GLvoid *indices = cmd->indices;
+   const GLsizei instance_count = cmd->instance_count;
+
+   CALL_DrawElementsInstancedARB(ctx->CurrentServerDispatch,
+                                 (mode, count, type, indices, instance_count));
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+/* DrawElementsBaseVertex not supporting user buffers. */
+struct marshal_cmd_DrawElementsBaseVertex
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   GLsizei count;
+   GLint basevertex;
+   const GLvoid *indices;
+};
+
+uint32_t
+_mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx,
+                                       const struct marshal_cmd_DrawElementsBaseVertex *cmd,
+                                       const uint64_t *last)
+{
+   /* Ignore the function name. We use DISPATCH_CMD_DrawElementsInstanced-
+    * BaseVertexBaseInstance for all DrawElements variants with user buffers,
+    * and DISPATCH_CMD_{DrawElementsInstancedARB,DrawElementsBaseVertex,
+    * DrawElementsInstancedBaseVertex,DrawRangeElementsBaseVertex} for all
+    * draw elements variants without user buffers.
+    */
+   const GLenum mode = cmd->mode;
+   const GLsizei count = cmd->count;
+   const GLenum type = cmd->type;
+   const GLvoid *indices = cmd->indices;
+   const GLint basevertex = cmd->basevertex;
+
+   CALL_DrawElementsBaseVertex(ctx->CurrentServerDispatch,
+                               (mode, count, type, indices, basevertex));
+   const unsigned cmd_size = align(sizeof(*cmd), 8) / 8;
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+/* DrawElementsInstancedBaseVertexBaseInstance not supporting user buffers.
+ * Ignore the name.
+ */
+struct marshal_cmd_DrawElementsInstancedBaseVertex
 {
    struct marshal_cmd_base cmd_base;
    GLenum16 mode;
@@ -589,15 +702,15 @@ struct marshal_cmd_DrawElementsInstancedARB
 };
 
 uint32_t
-_mesa_unmarshal_DrawElementsInstancedARB(struct gl_context *ctx,
-                                         const struct marshal_cmd_DrawElementsInstancedARB *cmd,
-                                         const uint64_t *last)
+_mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx,
+                                                const struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd,
+                                                const uint64_t *last)
 {
    /* Ignore the function name. We use DISPATCH_CMD_DrawElementsInstanced-
     * BaseVertexBaseInstance for all DrawElements variants with user buffers,
-    * and both DISPATCH_CMD_DrawElementsInstancedARB and DISPATCH_CMD_Draw-
-    * RangeElementsBaseVertex for all draw elements variants without user
-    * buffers.
+    * and DISPATCH_CMD_{DrawElementsInstancedARB,DrawElementsBaseVertex,
+    * DrawElementsInstancedBaseVertex,DrawRangeElementsBaseVertex} for all
+    * draw elements variants without user buffers.
     */
    const GLenum mode = cmd->mode;
    const GLsizei count = cmd->count;
@@ -655,30 +768,54 @@ draw_elements_async(struct gl_context *ctx, GLenum mode, GLsizei count,
                     GLint basevertex, GLuint baseinstance,
                     bool index_bounds_valid, GLuint min_index, GLuint max_index)
 {
-   if (index_bounds_valid) {
-      int cmd_size = sizeof(struct marshal_cmd_DrawRangeElementsBaseVertex);
-      struct marshal_cmd_DrawRangeElementsBaseVertex *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawRangeElementsBaseVertex, cmd_size);
+   if (instance_count == 1 && baseinstance == 0) {
+      if (index_bounds_valid) {
+         int cmd_size = sizeof(struct marshal_cmd_DrawRangeElementsBaseVertex);
+         struct marshal_cmd_DrawRangeElementsBaseVertex *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawRangeElementsBaseVertex, cmd_size);
 
-      cmd->mode = MIN2(mode, 0xffff);
-      cmd->type = MIN2(type, 0xffff);
-      cmd->count = count;
-      cmd->indices = indices;
-      cmd->basevertex = basevertex;
-      cmd->min_index = min_index;
-      cmd->max_index = max_index;
+         cmd->mode = MIN2(mode, 0xffff);
+         cmd->type = MIN2(type, 0xffff);
+         cmd->count = count;
+         cmd->indices = indices;
+         cmd->basevertex = basevertex;
+         cmd->min_index = min_index;
+         cmd->max_index = max_index;
+      } else {
+         int cmd_size = sizeof(struct marshal_cmd_DrawElementsBaseVertex);
+         struct marshal_cmd_DrawElementsBaseVertex *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsBaseVertex, cmd_size);
+
+         cmd->mode = MIN2(mode, 0xffff);
+         cmd->type = MIN2(type, 0xffff);
+         cmd->count = count;
+         cmd->indices = indices;
+         cmd->basevertex = basevertex;
+      }
    } else {
-      int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstancedARB);
-      struct marshal_cmd_DrawElementsInstancedARB *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedARB, cmd_size);
+      if (basevertex == 0 && baseinstance == 0) {
+         int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstancedARB);
+         struct marshal_cmd_DrawElementsInstancedARB *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedARB, cmd_size);
 
-      cmd->mode = MIN2(mode, 0xffff);
-      cmd->type = MIN2(type, 0xffff);
-      cmd->count = count;
-      cmd->indices = indices;
-      cmd->instance_count = instance_count;
-      cmd->basevertex = basevertex;
-      cmd->baseinstance = baseinstance;
+         cmd->mode = MIN2(mode, 0xffff);
+         cmd->type = MIN2(type, 0xffff);
+         cmd->count = count;
+         cmd->instance_count = instance_count;
+         cmd->indices = indices;
+      } else {
+         int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstancedBaseVertex);
+         struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedBaseVertex, cmd_size);
+
+         cmd->mode = MIN2(mode, 0xffff);
+         cmd->type = MIN2(type, 0xffff);
+         cmd->count = count;
+         cmd->instance_count = instance_count;
+         cmd->basevertex = basevertex;
+         cmd->baseinstance = baseinstance;
+         cmd->indices = indices;
+      }
    }
 }
 
@@ -1255,13 +1392,6 @@ _mesa_marshal_MultiDrawElementsEXT(GLenum mode, const GLsizei *count,
 }
 
 uint32_t
-_mesa_unmarshal_DrawArraysInstancedARB(struct gl_context *ctx, const struct marshal_cmd_DrawArraysInstancedARB *cmd, const uint64_t *last)
-{
-   unreachable("never used - DrawArraysInstancedBaseInstance is used instead");
-   return 0;
-}
-
-uint32_t
 _mesa_unmarshal_DrawElements(struct gl_context *ctx, const struct marshal_cmd_DrawElements *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
@@ -1270,20 +1400,6 @@ _mesa_unmarshal_DrawElements(struct gl_context *ctx, const struct marshal_cmd_Dr
 
 uint32_t
 _mesa_unmarshal_DrawRangeElements(struct gl_context *ctx, const struct marshal_cmd_DrawRangeElements *cmd, const uint64_t *last)
-{
-   unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
-   return 0;
-}
-
-uint32_t
-_mesa_unmarshal_DrawElementsBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsBaseVertex *cmd, const uint64_t *last)
-{
-   unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
-   return 0;
-}
-
-uint32_t
-_mesa_unmarshal_DrawElementsInstancedBaseVertex(struct gl_context *ctx, const struct marshal_cmd_DrawElementsInstancedBaseVertex *cmd, const uint64_t *last)
 {
    unreachable("never used - DrawElementsInstancedBaseVertexBaseInstance is used instead");
    return 0;
