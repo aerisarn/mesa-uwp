@@ -483,6 +483,11 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
       return 1;
 
    switch (alu->op) {
+   case nir_op_f2f16: {
+      nir_shader *shader = nir_cf_node_get_function(&instr->block->cf_node)->function->shader;
+      unsigned execution_mode = shader->info.float_controls_execution_mode;
+      return nir_is_rounding_mode_rtz(execution_mode, 16) ? 2 : 1;
+   }
    case nir_op_fadd:
    case nir_op_fsub:
    case nir_op_fmul:
@@ -494,6 +499,7 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
    case nir_op_fsat:
    case nir_op_fmin:
    case nir_op_fmax:
+   case nir_op_f2f16_rtz:
    case nir_op_iabs:
    case nir_op_iadd:
    case nir_op_iadd_sat:
