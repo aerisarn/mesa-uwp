@@ -12940,6 +12940,18 @@
     <function name="InternalSetError" es1="1.0" es2="2.0">
         <param name="error" type="GLenum"/>
     </function>
+
+    <function name="DrawArraysUserBuf" es1="1.0" es2="2.0" marshal="custom">
+    </function>
+
+    <function name="DrawElementsUserBuf" es1="1.0" es2="2.0" marshal="custom">
+    </function>
+
+    <function name="MultiDrawArraysUserBuf" es1="1.0" es2="2.0" marshal="custom">
+    </function>
+
+    <function name="MultiDrawElementsUserBuf" es1="1.0" es2="2.0" marshal="custom">
+    </function>
 </category>
 
 <xi:include href="OES_EGL_image.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>

@@ -1697,6 +1697,10 @@ offsets = {
     "ImportSemaphoreWin32NameEXT": 1661,
     "GetObjectLabelEXT": 1662,
     "LabelObjectEXT": 1663,
+    "DrawArraysUserBuf": 1664,
+    "DrawElementsUserBuf": 1665,
+    "MultiDrawArraysUserBuf": 1666,
+    "MultiDrawElementsUserBuf": 1667,
 }
 
 functions = [
