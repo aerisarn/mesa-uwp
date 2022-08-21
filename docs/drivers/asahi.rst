@@ -172,3 +172,106 @@ the required coefficients are preloaded before the shader begins execution.
 That means the iterate instruction executes in constant time, does not signal
 a data fence, and does not require the shader to wait on a data fence before
 using the value.
+
+Image layouts
+-------------
+
+AGX supports several image layouts, described here. To work with image layouts
+in the drivers, use the ail library, located in ``src/asahi/layout``.
+
+The simplest layout is **strided linear**. Pixels are stored in raster-order in
+memory with a software-controlled stride. Strided linear images are useful for
+working with modifier-unaware window systems, however performance will suffer.
+Strided linear images have numerous limitations:
+
+- Strides must be a multiple of 16 bytes.
+- Strides must be nonzero. For 1D images where the stride is logically
+  irrelevant, ail will internally select the minimal stride.
+- Only 1D and 2D images may be linear. In particular, no 3D or cubemaps.
+- Array texture may not be linear. No 2D arrays or cubemap arrays.
+- 2D images must not be mipmapped.
+- Block-compressed formats and multisampled images are unsupported. Elements of
+  a strided linear image are simply pixels.
+
+With these limitations, addressing into a strided linear image is as simple as
+
+.. math::
+
+   \text{address} = (y \cdot \text{stride}) + (x \cdot \text{bytes per pixel})
+
+In practice, this suffices for window system integration and little else.
+
+The most common uncompressed layout is **twiddled**. The image is divided into
+power-of-two sized tiles. The tiles themselves are stored in raster-order.
+Within each tile, elements (pixels/blocks) are stored in Morton (Z) order.
+
+The tile size used depends on both the image size and the block size of the
+image format. For large images, :math:`n \times n` or :math:`2n \times n` tiles
+are used (:math:`n` power-of-two). :math:`n` is such that each page contains
+exactly one tile. Only power-of-two block sizes are supported in hardware,
+ensuring such a tile size always exists. The hardware uses 16 KiB pages, so tile
+sizes are as follows:
+
+.. list-table:: Tile sizes for large images
+   :widths: 50 50
+   :header-rows: 1
+
+   * - Bytes per block
+     - Tile size
+   * - 1
+     - 128 x 128
+   * - 2
+     - 128 x 64
+   * - 4
+     - 64 x 64
+   * - 8
+     - 64 x 32
+   * - 16
+     - 32 x 32
+
+The dimensions of large images are rounded up to be multiples of the tile size.
+In addition, non-power-of-two large images have extra padding tiles when
+mipmapping is used, see below.
+
+That rounding would waste a great deal of memory for small images. If
+an image is smaller than this tile size, a smaller tile size is used to reduce
+the memory footprint. For small images, the tile size is :math:`m \times m`
+where
+
+.. math::
+
+   m = 2^{\lceil \log_2( \min \{ \text{width}, \text{ height} \}) \rceil}
+
+In other words, small images use the smallest square power-of-two tile such that
+the image's minor axis fits in one tile.
+
+For mipmapped images, tile sizes are determined independently for each level.
+Typically, the first levels of an image are "large" and the remaining levels are
+"small". This scheme reduces the memory footprint of mipmapping, compared to a
+fixed tile size for the whole image. Each mip level are padded to fill at least
+one cache line (128 bytes), ensure no cache line contains multiple mip levels.
+
+There is a wrinkle: the dimensions of large mip levels in tiles are determined
+by the dimensions of level 0. For power-of-two images, the two calculations are
+equivalent. However, they differ subtlely for non-power-of-two images. To
+determine the number of tiles to allocate for level :math:`l`, the number of
+tiles for level 0 should be right-shifted by :math:`2l`. That appears to divide
+by :math:`2^l` in both width and height, matching the definition of mipmapping,
+however it rounds down incorrectly. To compensate, the level contains one extra
+row, column, or both (with the corner) as required if any of the first :math:`l`
+levels were rounded down. This hurt the memory footprint. However, it means
+non-power-of-two integer multiplication is only required for level 0.
+Calculating the sizes for subsequent levels requires only addition and bitwise
+math. That simplifies the hardware (but complicates software).
+
+A 2D image consists of a full miptree (constructed as above) rounded up to the
+page size (16 KiB).
+
+3D images consist simply of an array of 2D layers (constructed as above). That
+means cube maps, 2D arrays, cube map arrays, and 3D images all use the same
+layout. The only difference is the number of layers. Notably, 3D images (like
+``GL_TEXTURE_3D``) reserve space even for mip levels that do not exist
+logically. These extra levels pad out layers of 3D images to the size of the
+first layer, simplifying layout calculations for both software and hardware.
+Although the padding is logically unnecessary, it wastes little space compared
+to the sizes of large mipmapped 3D textures.
