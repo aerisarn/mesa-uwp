@@ -812,6 +812,19 @@ RADV driver environment variables
    `export RADV_THREAD_TRACE_TRIGGER=/tmp/radv_sqtt_trigger` and then
    `touch /tmp/radv_sqtt_trigger` to capture a frame)
 
+:envvar:`RADV_RRA_TRACE`
+   enable frame based Radeon Raytracing Analyzer captures
+   (e.g. `export RADV_RRA_TRACE=100` will capture the frame #100)
+
+:envvar:`RADV_RRA_TRACE_TRIGGER`
+   enable trigger file based RRA captures (eg.
+   `export RADV_RRA_TRACE_TRIGGER=/tmp/radv_rra_trigger` and then
+   `touch /tmp/radv_rra_trigger` to capture a frame)
+
+:envvar:`RADV_RRA_TRACE_VALIDATE`
+   enable validation of captured acceleration structures. Can be
+   useful if RRA crashes upon opening a trace.
+
 :envvar:`ACO_DEBUG`
    a comma-separated list of named flags, which do various things:
 
