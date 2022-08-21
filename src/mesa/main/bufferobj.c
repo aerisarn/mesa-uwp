@@ -1079,25 +1079,22 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
          if (p_atomic_dec_zero(&oldObj->RefCount)) {
             _mesa_delete_buffer_object(ctx, oldObj);
          }
-      } else if (ctx == oldObj->Ctx) {
+      } else {
          /* Update the private ref count. */
          assert(oldObj->CtxRefCount >= 1);
          oldObj->CtxRefCount--;
       }
-
-      *ptr = NULL;
    }
-   assert(!*ptr);
 
    if (bufObj) {
       /* reference new buffer */
       if (shared_binding || ctx != bufObj->Ctx)
          p_atomic_inc(&bufObj->RefCount);
-      else if (ctx == bufObj->Ctx)
+      else
          bufObj->CtxRefCount++;
-
-      *ptr = bufObj;
    }
+
+   *ptr = bufObj;
 }
 
 
