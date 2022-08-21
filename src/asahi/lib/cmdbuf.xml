@@ -200,8 +200,15 @@
   <enum name="Texture dimension">
     <value name="2D" value="2"/>
     <value name="2D Array" value="3"/>
+    <value name="2D Multisampled" value="4"/>
     <value name="3D" value="5"/>
     <value name="Cube" value="6"/>
+    <value name="2D Array Multisampled" value="8"/>
+  </enum>
+
+  <enum name="Sample Count">
+    <value name="2" value="0"/>
+    <value name="4" value="1"/>
   </enum>
 
   <struct name="Texture" size="24">
@@ -214,7 +221,9 @@
     <field name="Swizzle A" size="3" start="25" type="Channel" default="A"/>
     <field name="Width" size="14" start="28" type="uint" modifier="minus(1)"/>
     <field name="Height" size="14" start="42" type="uint" modifier="minus(1)"/>
+    <!-- Note multisampled textures can't be mipmapped -->
     <field name="Levels" size="6" start="60" type="uint" modifier="minus(1)"/>
+    <field name="Samples" size="1" start="64" type="Sample Count"/>
     <field name="Address" size="36" start="66" type="hex" modifier="shr(4)"/>
     <!-- Unknown bit set by Metal when mipmapping. Might relate to a mechanism
     to switch tile size (or disable tiling altogether?) at small mip levels to
