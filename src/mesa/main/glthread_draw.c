@@ -568,8 +568,8 @@ sync:
 struct marshal_cmd_DrawElementsInstancedARB
 {
    struct marshal_cmd_base cmd_base;
-   GLenum mode;
-   GLenum type;
+   GLenum16 mode;
+   GLenum16 type;
    GLsizei count;
    GLsizei instance_count;
    GLint basevertex;
@@ -606,8 +606,8 @@ _mesa_unmarshal_DrawElementsInstancedARB(struct gl_context *ctx,
 struct marshal_cmd_DrawRangeElementsBaseVertex
 {
    struct marshal_cmd_base cmd_base;
-   GLenum mode;
-   GLenum type;
+   GLenum16 mode;
+   GLenum16 type;
    GLsizei count;
    GLint basevertex;
    GLuint min_index;
@@ -645,9 +645,9 @@ draw_elements_async(struct gl_context *ctx, GLenum mode, GLsizei count,
       struct marshal_cmd_DrawRangeElementsBaseVertex *cmd =
          _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawRangeElementsBaseVertex, cmd_size);
 
-      cmd->mode = mode;
+      cmd->mode = MIN2(mode, 0xffff);
+      cmd->type = MIN2(type, 0xffff);
       cmd->count = count;
-      cmd->type = type;
       cmd->indices = indices;
       cmd->basevertex = basevertex;
       cmd->min_index = min_index;
@@ -657,9 +657,9 @@ draw_elements_async(struct gl_context *ctx, GLenum mode, GLsizei count,
       struct marshal_cmd_DrawElementsInstancedARB *cmd =
          _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedARB, cmd_size);
 
-      cmd->mode = mode;
+      cmd->mode = MIN2(mode, 0xffff);
+      cmd->type = MIN2(type, 0xffff);
       cmd->count = count;
-      cmd->type = type;
       cmd->indices = indices;
       cmd->instance_count = instance_count;
       cmd->basevertex = basevertex;
@@ -671,8 +671,8 @@ struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance
 {
    struct marshal_cmd_base cmd_base;
    bool index_bounds_valid;
-   GLenum mode;
-   GLenum type;
+   GLenum16 mode;
+   GLenum16 type;
    GLsizei count;
    GLsizei instance_count;
    GLint basevertex;
@@ -756,9 +756,9 @@ draw_elements_async_user(struct gl_context *ctx, GLenum mode, GLsizei count,
    struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd;
 
    cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedBaseVertexBaseInstance, cmd_size);
-   cmd->mode = mode;
+   cmd->mode = MIN2(mode, 0xffff);
+   cmd->type = MIN2(type, 0xffff);
    cmd->count = count;
-   cmd->type = type;
    cmd->indices = indices;
    cmd->instance_count = instance_count;
    cmd->basevertex = basevertex;
@@ -887,8 +887,8 @@ struct marshal_cmd_MultiDrawElementsBaseVertex
 {
    struct marshal_cmd_base cmd_base;
    bool has_base_vertex;
-   GLenum mode;
-   GLenum type;
+   GLenum16 mode;
+   GLenum16 type;
    GLsizei draw_count;
    GLuint user_buffer_mask;
    struct gl_buffer_object *index_buffer;
@@ -972,8 +972,8 @@ multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
    }
 
    cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawElementsBaseVertex, cmd_size);
-   cmd->mode = mode;
-   cmd->type = type;
+   cmd->mode = MIN2(mode, 0xffff);
+   cmd->type = MIN2(type, 0xffff);
    cmd->draw_count = draw_count;
    cmd->user_buffer_mask = user_buffer_mask;
    cmd->index_buffer = index_buffer;

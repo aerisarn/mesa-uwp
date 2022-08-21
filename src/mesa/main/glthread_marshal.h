@@ -613,7 +613,7 @@ _mesa_glthread_MatrixMode(struct gl_context *ctx, GLenum mode)
       return;
 
    ctx->GLThread.MatrixIndex = _mesa_get_matrix_index(ctx, mode);
-   ctx->GLThread.MatrixMode = mode;
+   ctx->GLThread.MatrixMode = MIN2(mode, 0xffff);
 }
 
 static inline void
@@ -756,10 +756,10 @@ _mesa_glthread_CallLists(struct gl_context *ctx, GLsizei n, GLenum type,
 }
 
 static inline void
-_mesa_glthread_NewList(struct gl_context *ctx, GLuint list, GLuint mode)
+_mesa_glthread_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
 {
    if (!ctx->GLThread.ListMode)
-      ctx->GLThread.ListMode = mode;
+      ctx->GLThread.ListMode = MIN2(mode, 0xffff);
 }
 
 static inline void

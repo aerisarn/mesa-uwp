@@ -52,6 +52,7 @@
 #include "GL/gl.h"
 #include "compiler/shader_enums.h"
 #include "main/config.h"
+#include "glheader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,7 +129,7 @@ struct glthread_client_attrib {
 struct glthread_attrib_node {
    GLbitfield Mask;
    int ActiveTexture;
-   GLenum MatrixMode;
+   GLenum16 MatrixMode;
    bool CullFace;
    bool DepthTest;
 };
@@ -157,7 +158,7 @@ struct glthread_state
    bool inside_begin_end;
 
    /** Display lists. */
-   GLenum ListMode; /**< Zero if not inside display list, else list mode. */
+   GLenum16 ListMode; /**< Zero if not inside display list, else list mode. */
    unsigned ListBase;
    unsigned ListCallDepth;
 
@@ -226,7 +227,7 @@ struct glthread_state
 
    /** Basic matrix state tracking. */
    int ActiveTexture;
-   GLenum MatrixMode;
+   GLenum16 MatrixMode;
    gl_matrix_index MatrixIndex;
    struct glthread_attrib_node AttribStack[MAX_ATTRIB_STACK_DEPTH];
    int AttribStackDepth;

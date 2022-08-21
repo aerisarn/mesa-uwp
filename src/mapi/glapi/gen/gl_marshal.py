@@ -127,6 +127,8 @@ class PrintCode(gl_XML.gl_print_base):
             if p.count:
                 out('memcpy(cmd->{0}, {0}, {1});'.format(
                         p.name, p.size_string()))
+            elif p.type_string() == 'GLenum':
+                out('cmd->{0} = MIN2({0}, 0xffff); /* clamped to 0xffff (invalid enum) */'.format(p.name))
             else:
                 out('cmd->{0} = {0};'.format(p.name))
         if variable_params:
@@ -164,10 +166,10 @@ class PrintCode(gl_XML.gl_print_base):
             'GLboolean': 1,
             'GLbyte': 1,
             'GLubyte': 1,
+            'GLenum': 2, # uses GLenum16, clamped to 0xffff (invalid enum)
             'GLshort': 2,
             'GLushort': 2,
             'GLhalfNV': 2,
-            'GLenum': 4,
             'GLint': 4,
             'GLuint': 4,
             'GLbitfield': 4,
@@ -212,7 +214,10 @@ class PrintCode(gl_XML.gl_print_base):
                     out('{0} {1}[{2}];'.format(
                             p.get_base_type_string(), p.name, p.count))
                 else:
-                    out('{0} {1};'.format(p.type_string(), p.name))
+                    type = p.type_string()
+                    if type == 'GLenum':
+                        type = 'GLenum16'
+                    out('{0} {1};'.format(type, p.name))
 
             for p in variable_params:
                 if p.img_null_flag:
