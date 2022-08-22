@@ -192,7 +192,6 @@ BEGIN_TEST(regalloc.linear_vgpr.live_range_split.fixed_def)
       return;
 
    PhysReg reg_v0{256};
-   PhysReg reg_v1{257};
 
    //! lv1: %tmp1:v[0] = p_unit_test
    Temp tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(v1.as_linear(), reg_v0));
