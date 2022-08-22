@@ -3501,6 +3501,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          return;
 
       int total_offset = 0;
+      unsigned offset = 0;
       while (num_draws) {
          struct tc_batch *next = &tc->batch_slots[tc->next];
 
@@ -3528,7 +3529,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          p->num_draws = dr;
 
          /* Upload index buffers. */
-         for (unsigned i = 0, offset = 0; i < dr; i++) {
+         for (unsigned i = 0; i < dr; i++) {
             unsigned count = draws[i + total_offset].count;
 
             if (!count) {
