@@ -39,24 +39,6 @@ enum tu_dynamic_state
 
 struct cache_entry;
 
-struct tu_pipeline_cache
-{
-   struct vk_object_base base;
-
-   struct tu_device *device;
-   pthread_mutex_t mutex;
-
-   uint32_t total_size;
-   uint32_t table_size;
-   uint32_t kernel_count;
-   struct cache_entry **hash_table;
-   bool modified;
-
-   VkAllocationCallbacks alloc;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,
-                               VK_OBJECT_TYPE_PIPELINE_CACHE)
-
 struct tu_lrz_pipeline
 {
    uint32_t force_disable_mask;
