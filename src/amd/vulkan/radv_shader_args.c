@@ -98,7 +98,7 @@ count_ms_user_sgprs(const struct radv_shader_info *info)
 
    if (info->vs.needs_draw_id)
       count++;
-   if (info->cs.uses_task_rings)
+   if (info->ms.has_task)
       count++;
 
    return count;
@@ -179,7 +179,7 @@ allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info 
          user_sgpr_count += 2;
       if (info->vs.needs_draw_id)
          user_sgpr_count += 1;
-      if (info->cs.uses_task_rings)
+      if (stage == MESA_SHADER_TASK)
          user_sgpr_count += 4; /* ring_entry, 2x ib_addr, ib_stride */
       break;
    case MESA_SHADER_FRAGMENT:
@@ -392,7 +392,7 @@ declare_ms_input_sgprs(const struct radv_shader_info *info, struct radv_shader_a
    if (info->vs.needs_draw_id) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
    }
-   if (info->cs.uses_task_rings) {
+   if (info->ms.has_task) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
    }
 }
@@ -592,7 +592,7 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
       }
 
-      if (info->cs.uses_task_rings) {
+      if (stage == MESA_SHADER_TASK) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_INT, &args->task_ib_addr);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->task_ib_stride);

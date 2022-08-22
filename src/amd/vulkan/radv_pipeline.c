@@ -3576,8 +3576,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
    if (stages[MESA_SHADER_TASK].nir) {
       /* Task/mesh I/O uses the task ring buffers. */
-      stages[MESA_SHADER_TASK].info.cs.uses_task_rings = true;
-      stages[MESA_SHADER_MESH].info.cs.uses_task_rings = true;
+      stages[MESA_SHADER_MESH].info.ms.has_task = true;
 
       stages[MESA_SHADER_TASK].info.workgroup_size =
          ac_compute_cs_workgroup_size(

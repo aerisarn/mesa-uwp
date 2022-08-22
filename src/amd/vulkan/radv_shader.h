@@ -349,7 +349,6 @@ struct radv_shader_info {
 
       bool uses_sbt;
       bool uses_ray_launch_size;
-      bool uses_task_rings;
    } cs;
    struct {
       uint64_t tes_inputs_read;
@@ -365,6 +364,7 @@ struct radv_shader_info {
       struct radv_vs_output_info outinfo;
       enum shader_prim output_prim;
       bool needs_ms_scratch_ring;
+      bool has_task; /* If mesh shader is used together with a task shader. */
    } ms;
 
    struct radv_streamout_info so;
