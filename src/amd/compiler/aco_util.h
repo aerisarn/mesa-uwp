@@ -31,7 +31,10 @@
 
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <iterator>
+#include <map>
+#include <unordered_map>
 #include <vector>
 
 namespace aco {
@@ -423,7 +426,7 @@ public:
       free(buffer);
    }
 
-   /* delete copy-constructor and -assigment to avoid double free() */
+   /* Delete copy-constructor and -assigment to avoid double free() */
    monotonic_buffer_resource(const monotonic_buffer_resource&) = delete;
    monotonic_buffer_resource& operator=(const monotonic_buffer_resource&) = delete;
 
@@ -475,6 +478,84 @@ private:
    static constexpr size_t minimum_size = 128;
    static_assert(minimum_size > sizeof(Buffer));
 };
+
+/*
+ * Small memory allocator which wraps monotonic_buffer_resource
+ * in order to implement <allocator_traits>.
+ *
+ * This class mimics std::pmr::polymorphic_allocator with monotonic_buffer_resource
+ * as memory resource. The advantage of this specialization is the absence of
+ * virtual function calls and the propagation on swap, copy- and move assignment.
+ */
+template <typename T> class monotonic_allocator final {
+public:
+   monotonic_allocator() = delete;
+   monotonic_allocator(monotonic_buffer_resource& m) : memory_resource(m) {}
+   template <typename U>
+   explicit monotonic_allocator(const monotonic_allocator<U>& rhs)
+       : memory_resource(rhs.memory_resource)
+   {}
+
+   /* Memory Allocation */
+   T* allocate(size_t size)
+   {
+      uint32_t bytes = sizeof(T) * size;
+      return (T*)memory_resource.get().allocate(bytes, alignof(T));
+   }
+
+   /* Memory will be freed on destruction of memory_resource */
+   void deallocate(T* ptr, size_t size) {}
+
+   /* Implement <allocator_traits> */
+   using value_type = T;
+   template <class U> struct rebind {
+      using other = monotonic_allocator<U>;
+   };
+
+   typedef std::true_type propagate_on_container_copy_assignment;
+   typedef std::true_type propagate_on_container_move_assignment;
+   typedef std::true_type propagate_on_container_swap;
+
+   template <typename> friend class monotonic_allocator;
+   template <typename X, typename Y>
+   friend bool operator==(monotonic_allocator<X> const& a, monotonic_allocator<Y> const& b);
+   template <typename X, typename Y>
+   friend bool operator!=(monotonic_allocator<X> const& a, monotonic_allocator<Y> const& b);
+
+private:
+   std::reference_wrapper<monotonic_buffer_resource> memory_resource;
+};
+
+/* Necessary for <allocator_traits>. */
+template <typename X, typename Y>
+inline bool
+operator==(monotonic_allocator<X> const& a, monotonic_allocator<Y> const& b)
+{
+   return a.memory_resource.get() == b.memory_resource.get();
+}
+template <typename X, typename Y>
+inline bool
+operator!=(monotonic_allocator<X> const& a, monotonic_allocator<Y> const& b)
+{
+   return !(a == b);
+}
+
+/*
+ * aco::map - alias for std::map with monotonic_allocator
+ *
+ * This template specialization mimics std::pmr::map.
+ */
+template <class Key, class T, class Compare = std::less<Key>>
+using map = std::map<Key, T, Compare, aco::monotonic_allocator<std::pair<const Key, T>>>;
+
+/*
+ * aco::unordered_map - alias for std::unordered_map with monotonic_allocator
+ *
+ * This template specialization mimics std::pmr::unordered_map.
+ */
+template <class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
+using unordered_map =
+   std::unordered_map<Key, T, Hash, Pred, aco::monotonic_allocator<std::pair<const Key, T>>>;
 
 } // namespace aco
 
