@@ -332,9 +332,11 @@ public:
    fs_reg emit_work_group_id_setup();
 
    void emit_task_mesh_store(const brw::fs_builder &bld,
-                             nir_intrinsic_instr *instr);
+                             nir_intrinsic_instr *instr,
+                             const fs_reg &urb_handle);
    void emit_task_mesh_load(const brw::fs_builder &bld,
-                            nir_intrinsic_instr *instr);
+                            nir_intrinsic_instr *instr,
+                            const fs_reg &urb_handle);
 
    void emit_barrier();
 

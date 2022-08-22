@@ -1096,33 +1096,17 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
    }
 }
 
-static fs_reg
-get_mesh_urb_handle(const fs_builder &bld, nir_intrinsic_op op)
-{
-   unsigned subreg;
-   if (bld.shader->stage == MESA_SHADER_TASK) {
-      subreg = 6;
-   } else {
-      assert(bld.shader->stage == MESA_SHADER_MESH);
-      subreg = op == nir_intrinsic_load_task_payload ? 7 : 6;
-   }
-
-   fs_builder ubld8 = bld.group(8, 0).exec_all();
-
-   fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   ubld8.MOV(h, retype(brw_vec1_grf(0, subreg), BRW_REGISTER_TYPE_UD));
-   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
-
-   return h;
-}
-
 void
-fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *instr)
+fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *instr,
+                                 const fs_reg &urb_handle)
 {
    fs_reg src = get_nir_src(instr->src[0]);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
+   fs_builder ubld8 = bld.group(8, 0).exec_all();
+   fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   ubld8.MOV(h, urb_handle);
+   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
     * the non-array-index offset, we could use to decide if we can perform
@@ -1130,18 +1114,22 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
     */
 
    if (nir_src_is_const(*offset_nir_src))
-      emit_urb_direct_writes(bld, instr, src, urb_handle);
+      emit_urb_direct_writes(bld, instr, src, h);
    else
-      emit_urb_indirect_writes(bld, instr, src, get_nir_src(*offset_nir_src), urb_handle);
+      emit_urb_indirect_writes(bld, instr, src, get_nir_src(*offset_nir_src), h);
 }
 
 void
-fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *instr)
+fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *instr,
+                                const fs_reg &urb_handle)
 {
    fs_reg dest = get_nir_dest(instr->dest);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
+   fs_builder ubld8 = bld.group(8, 0).exec_all();
+   fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   ubld8.MOV(h, urb_handle);
+   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
     * the non-array-index offset, we could use to decide if we can perform
@@ -1149,9 +1137,9 @@ fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *inst
     */
 
    if (nir_src_is_const(*offset_nir_src))
-      emit_urb_direct_reads(bld, instr, dest, urb_handle);
+      emit_urb_direct_reads(bld, instr, dest, h);
    else
-      emit_urb_indirect_reads(bld, instr, dest, get_nir_src(*offset_nir_src), urb_handle);
+      emit_urb_indirect_reads(bld, instr, dest, get_nir_src(*offset_nir_src), h);
 }
 
 void
@@ -1160,15 +1148,17 @@ fs_visitor::nir_emit_task_intrinsic(const fs_builder &bld,
 {
    assert(stage == MESA_SHADER_TASK);
 
+   fs_reg urb_handle = retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD);
+
    switch (instr->intrinsic) {
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_task_payload:
-      emit_task_mesh_store(bld, instr);
+      emit_task_mesh_store(bld, instr, urb_handle);
       break;
 
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr);
+      emit_task_mesh_load(bld, instr, urb_handle);
       break;
 
    default:
@@ -1183,18 +1173,24 @@ fs_visitor::nir_emit_mesh_intrinsic(const fs_builder &bld,
 {
    assert(stage == MESA_SHADER_MESH);
 
+   unsigned subreg = instr->intrinsic == nir_intrinsic_load_task_payload ? 7 : 6;
+   fs_reg urb_handle = retype(brw_vec1_grf(0, subreg), BRW_REGISTER_TYPE_UD);
+
    switch (instr->intrinsic) {
    case nir_intrinsic_store_per_primitive_output:
    case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_output:
-      emit_task_mesh_store(bld, instr);
+      emit_task_mesh_store(bld, instr, urb_handle);
       break;
 
    case nir_intrinsic_load_per_vertex_output:
    case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_load_output:
+      emit_task_mesh_load(bld, instr, urb_handle);
+      break;
+
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr);
+      emit_task_mesh_load(bld, instr, urb_handle);
       break;
 
    default:
