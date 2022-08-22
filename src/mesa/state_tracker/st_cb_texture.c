@@ -507,6 +507,10 @@ st_MapTextureImage(struct gl_context *ctx,
          unsigned z = transfer->box.z;
          struct st_texture_image_transfer *itransfer = &texImage->transfer[z];
 
+         assert(itransfer->box.depth == 0);
+         if (transfer_flags & PIPE_MAP_WRITE)
+            u_box_2d_zslice(x, y, z, w, h, &itransfer->box);
+
          unsigned blk_w, blk_h;
          _mesa_get_format_block_size(texImage->TexFormat, &blk_w, &blk_h);
 
@@ -551,7 +555,9 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       assert(z == transfer->box.z);
 
-      if (transfer->usage & PIPE_MAP_WRITE) {
+      if (itransfer->box.depth != 0) {
+         assert(itransfer->box.depth == 1);
+
          if (util_format_is_compressed(texImage->pt->format)) {
             /* Transcode into a different compressed format. */
             unsigned size =
@@ -631,6 +637,8 @@ st_UnmapTextureImage(struct gl_context *ctx,
                unreachable("unexpected format for a compressed format fallback");
             }
          }
+
+         memset(&itransfer->box, 0, sizeof(struct pipe_box));
       }
 
       itransfer->temp_data = NULL;

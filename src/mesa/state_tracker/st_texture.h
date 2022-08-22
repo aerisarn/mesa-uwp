@@ -47,6 +47,7 @@ struct st_texture_image_transfer
    GLubyte *temp_data; /**< Temporary compressed texture storage. */
    unsigned temp_stride; /**< Stride of the compressed texture storage. */
    GLubyte *map; /**< Saved map pointer of the uncompressed transfer. */
+   struct pipe_box box; /**< Region of the transfer's resource to write. */
 };
 
 
