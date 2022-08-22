@@ -178,6 +178,14 @@ st_texture_match_image(struct st_context *st,
                        const struct pipe_resource *pt,
                        const struct gl_texture_image *image);
 
+/* Insert a transfer pointer into the image's transfer array at the specified
+ * index. The array is reallocated if necessary.
+ */
+void
+st_texture_image_insert_transfer(struct gl_texture_image *stImage,
+                                 unsigned index,
+                                 struct pipe_transfer *transfer);
+
 /* Return a pointer to an image within a texture.  Return image stride as
  * well.
  */

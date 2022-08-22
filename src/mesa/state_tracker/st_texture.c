@@ -238,6 +238,26 @@ st_texture_match_image(struct st_context *st,
    return GL_TRUE;
 }
 
+void
+st_texture_image_insert_transfer(struct gl_texture_image *stImage,
+                                 unsigned index,
+                                 struct pipe_transfer *transfer)
+{
+   /* Enlarge the transfer array if it's not large enough. */
+   if (index >= stImage->num_transfers) {
+      unsigned new_size = index + 1;
+
+      stImage->transfer = realloc(stImage->transfer,
+                  new_size * sizeof(struct st_texture_image_transfer));
+      memset(&stImage->transfer[stImage->num_transfers], 0,
+             (new_size - stImage->num_transfers) *
+             sizeof(struct st_texture_image_transfer));
+      stImage->num_transfers = new_size;
+   }
+
+   assert(!stImage->transfer[index].transfer);
+   stImage->transfer[index].transfer = transfer;
+}
 
 /**
  * Map a texture image and return the address for a particular 2D face/slice/
@@ -279,22 +299,10 @@ st_texture_image_map(struct st_context *st, struct gl_texture_image *stImage,
 
    map = pipe_texture_map_3d(st->pipe, stImage->pt, level, usage,
                               x, y, z, w, h, d, transfer);
-   if (map) {
-      /* Enlarge the transfer array if it's not large enough. */
-      if (z >= stImage->num_transfers) {
-         unsigned new_size = z + 1;
 
-         stImage->transfer = realloc(stImage->transfer,
-                     new_size * sizeof(struct st_texture_image_transfer));
-         memset(&stImage->transfer[stImage->num_transfers], 0,
-                (new_size - stImage->num_transfers) *
-                sizeof(struct st_texture_image_transfer));
-         stImage->num_transfers = new_size;
-      }
+   if (map)
+      st_texture_image_insert_transfer(stImage, z, *transfer);
 
-      assert(!stImage->transfer[z].transfer);
-      stImage->transfer[z].transfer = *transfer;
-   }
    return map;
 }
 
