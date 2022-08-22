@@ -3614,7 +3614,6 @@ gather_tess_info(struct radv_device *device, struct radv_pipeline_stage *stages,
    stages[MESA_SHADER_TESS_EVAL].info.num_tess_patches = num_patches;
    stages[MESA_SHADER_GEOMETRY].info.num_tess_patches = num_patches;
    stages[MESA_SHADER_VERTEX].info.num_tess_patches = num_patches;
-   stages[MESA_SHADER_TESS_CTRL].info.tcs.tcs_vertices_out = tess_out_patch_size;
    stages[MESA_SHADER_VERTEX].info.tcs.tcs_vertices_out = tess_out_patch_size;
 
    if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
