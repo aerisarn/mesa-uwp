@@ -3613,7 +3613,6 @@ gather_tess_info(struct radv_device *device, struct radv_pipeline_stage *stages,
 
    stages[MESA_SHADER_TESS_EVAL].info.num_tess_patches = num_patches;
    stages[MESA_SHADER_GEOMETRY].info.num_tess_patches = num_patches;
-   stages[MESA_SHADER_VERTEX].info.num_tess_patches = num_patches;
 
    if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
       /* When the number of TCS input and output vertices are the same (typically 3):
