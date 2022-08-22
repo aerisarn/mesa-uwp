@@ -606,7 +606,7 @@ anv_physical_device_free_disk_cache(struct anv_physical_device *device)
       device->vk.disk_cache = NULL;
    }
 #else
-   assert(device->disk_cache == NULL);
+   assert(device->vk.disk_cache == NULL);
 #endif
 }
 
