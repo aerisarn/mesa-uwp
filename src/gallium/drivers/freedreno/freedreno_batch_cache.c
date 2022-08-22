@@ -380,7 +380,7 @@ alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx,
          struct fd_batch *other = cache->batches[i];
          if (!other)
             continue;
-         if (other->dependents_mask & (1 << flush_batch->idx)) {
+         if (fd_batch_has_dep(other, flush_batch)) {
             other->dependents_mask &= ~(1 << flush_batch->idx);
             struct fd_batch *ref = flush_batch;
             fd_batch_reference_locked(&ref, NULL);

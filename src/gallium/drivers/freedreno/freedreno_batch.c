@@ -403,12 +403,18 @@ recursive_dependents_mask(struct fd_batch *batch)
    return dependents_mask;
 }
 
+bool
+fd_batch_has_dep(struct fd_batch *batch, struct fd_batch *dep)
+{
+   return !!(batch->dependents_mask & (1 << dep->idx));
+}
+
 void
 fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep)
 {
    fd_screen_assert_locked(batch->ctx->screen);
 
-   if (batch->dependents_mask & (1 << dep->idx))
+   if (fd_batch_has_dep(batch, dep))
       return;
 
    /* a loop should not be possible */
