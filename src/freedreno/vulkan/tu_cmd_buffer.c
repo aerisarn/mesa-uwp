@@ -779,9 +779,6 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    const struct tu_render_pass *pass = cmd->state.pass;
    const struct tu_subpass *subpass = &pass->subpasses[pass->subpass_count-1];
 
-   tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
-   tu_cs_emit(cs, 0x0);
-
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 
@@ -1371,6 +1368,8 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
       tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       tu_cs_emit(cs, 0x1);
+      tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_LOCAL, 1);
+      tu_cs_emit(cs, 0x1);
    } else {
       tu6_emit_bin_size(cs, tiling->tile0.width, tiling->tile0.height,
                         A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
@@ -1418,6 +1417,9 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
    /* Predicate is changed in draw_cs so we have to re-emit it */
    if (cmd->state.rp.draw_cs_writes_to_cond_pred)
       tu6_emit_cond_for_load_stores(cmd, cs, pipe, slot, false);
+
+   tu_cs_emit_pkt7(cs, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
+   tu_cs_emit(cs, 0x0);
 
    tu_cs_emit_call(cs, &cmd->tile_store_cs);
 
