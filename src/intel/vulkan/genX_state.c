@@ -869,7 +869,7 @@ vk_to_intel_tex_filter(VkFilter filter, bool anisotropyEnable)
 {
    switch (filter) {
    default:
-      assert(!"Invalid filter");
+      unreachable("Invalid filter");
    case VK_FILTER_NEAREST:
       return anisotropyEnable ? MAPFILTER_ANISOTROPIC : MAPFILTER_NEAREST;
    case VK_FILTER_LINEAR:
