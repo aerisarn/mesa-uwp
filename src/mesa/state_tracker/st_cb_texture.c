@@ -491,46 +491,45 @@ st_MapTextureImage(struct gl_context *ctx,
    const enum pipe_map_flags transfer_flags =
       _mesa_access_flags_to_transfer_flags(mode, false);
 
-      if (st_compressed_format_fallback(st, texImage->TexFormat)) {
-         /* Some compressed formats don't have to be supported by drivers,
-          * and st/mesa transparently handles decompression on upload (Unmap),
-          * so that drivers don't see the compressed formats.
-          *
-          * We store the compressed data (it's needed for glGetCompressedTex-
-          * Image and image copies in OES_copy_image).
-          */
-         unsigned z = slice + texImage->Face +
-                      texImage->TexObject->Attrib.MinLayer;
+   if (st_compressed_format_fallback(st, texImage->TexFormat)) {
+      /* Some compressed formats don't have to be supported by drivers,
+       * and st/mesa transparently handles decompression on upload (Unmap),
+       * so that drivers don't see the compressed formats.
+       *
+       * We store the compressed data (it's needed for glGetCompressedTexImage
+       * and image copies in OES_copy_image).
+       */
+      unsigned z = slice + texImage->Face +
+                   texImage->TexObject->Attrib.MinLayer;
 
-         /* Enlarge the transfer array if it's not large enough. */
-         st_texture_image_insert_transfer(texImage, z, NULL);
+      /* Enlarge the transfer array if it's not large enough. */
+      st_texture_image_insert_transfer(texImage, z, NULL);
 
-         struct st_texture_image_transfer *itransfer = &texImage->transfer[z];
+      struct st_texture_image_transfer *itransfer = &texImage->transfer[z];
 
-         assert(itransfer->box.depth == 0);
-         if (transfer_flags & PIPE_MAP_WRITE)
-            u_box_2d_zslice(x, y, z, w, h, &itransfer->box);
+      assert(itransfer->box.depth == 0);
+      if (transfer_flags & PIPE_MAP_WRITE)
+         u_box_2d_zslice(x, y, z, w, h, &itransfer->box);
 
-         unsigned blk_w, blk_h;
-         _mesa_get_format_block_size(texImage->TexFormat, &blk_w, &blk_h);
+      unsigned blk_w, blk_h;
+      _mesa_get_format_block_size(texImage->TexFormat, &blk_w, &blk_h);
 
-         unsigned y_blocks = DIV_ROUND_UP(texImage->Height2, blk_h);
-         unsigned stride = *rowStrideOut = itransfer->temp_stride =
-            _mesa_format_row_stride(texImage->TexFormat, texImage->Width2);
-         unsigned block_size = _mesa_get_format_bytes(texImage->TexFormat);
+      unsigned y_blocks = DIV_ROUND_UP(texImage->Height2, blk_h);
+      unsigned stride = *rowStrideOut = itransfer->temp_stride =
+         _mesa_format_row_stride(texImage->TexFormat, texImage->Width2);
+      unsigned block_size = _mesa_get_format_bytes(texImage->TexFormat);
 
-         assert(texImage->compressed_data);
-         *mapOut = itransfer->temp_data =
-            texImage->compressed_data->ptr +
-            (z * y_blocks + (y / blk_h)) * stride +
-            (x / blk_w) * block_size;
-      }
-      else {
-         struct pipe_transfer *transfer;
-         *mapOut = st_texture_image_map(st, texImage, transfer_flags,
-                                        x, y, slice, w, h, 1, &transfer);
-         *rowStrideOut = *mapOut ? transfer->stride : 0;
-      }
+      assert(texImage->compressed_data);
+      *mapOut = itransfer->temp_data =
+         texImage->compressed_data->ptr +
+         (z * y_blocks + (y / blk_h)) * stride +
+         (x / blk_w) * block_size;
+   } else {
+      struct pipe_transfer *transfer;
+      *mapOut = st_texture_image_map(st, texImage, transfer_flags,
+                                     x, y, slice, w, h, 1, &transfer);
+      *rowStrideOut = *mapOut ? transfer->stride : 0;
+   }
 }
 
 
