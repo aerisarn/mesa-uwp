@@ -309,71 +309,12 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
          urb.VSNumberofURBEntries      = entries[i];
       }
    }
-#if GFX_VERx10 >= 125
-   if (device->physical->vk.supported_extensions.NV_mesh_shader) {
-      anv_batch_emit(batch, GENX(3DSTATE_URB_ALLOC_MESH), zero);
-      anv_batch_emit(batch, GENX(3DSTATE_URB_ALLOC_TASK), zero);
-   }
-#endif
 }
-
-#if GFX_VERx10 >= 125
-static void
-emit_urb_setup_mesh(struct anv_graphics_pipeline *pipeline,
-                    enum intel_urb_deref_block_size *deref_block_size)
-{
-   const struct intel_device_info *devinfo = pipeline->base.device->info;
-
-   const struct brw_task_prog_data *task_prog_data =
-      anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK) ?
-      get_task_prog_data(pipeline) : NULL;
-   const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-
-   const struct intel_mesh_urb_allocation alloc =
-      intel_get_mesh_urb_config(devinfo, pipeline->base.l3_config,
-                                task_prog_data ? task_prog_data->map.size_dw : 0,
-                                mesh_prog_data->map.size_dw);
-
-   /* Zero out the primitive pipeline URB allocations. */
-   for (int i = 0; i <= MESA_SHADER_GEOMETRY; i++) {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_URB_VS), urb) {
-         urb._3DCommandSubOpcode += i;
-      }
-   }
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_URB_ALLOC_TASK), urb) {
-      if (task_prog_data) {
-         urb.TASKURBEntryAllocationSize   = alloc.task_entry_size_64b - 1;
-         urb.TASKNumberofURBEntriesSlice0 = alloc.task_entries;
-         urb.TASKNumberofURBEntriesSliceN = alloc.task_entries;
-         urb.TASKURBStartingAddressSlice0 = alloc.task_starting_address_8kb;
-         urb.TASKURBStartingAddressSliceN = alloc.task_starting_address_8kb;
-      }
-   }
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_URB_ALLOC_MESH), urb) {
-      urb.MESHURBEntryAllocationSize   = alloc.mesh_entry_size_64b - 1;
-      urb.MESHNumberofURBEntriesSlice0 = alloc.mesh_entries;
-      urb.MESHNumberofURBEntriesSliceN = alloc.mesh_entries;
-      urb.MESHURBStartingAddressSlice0 = alloc.mesh_starting_address_8kb;
-      urb.MESHURBStartingAddressSliceN = alloc.mesh_starting_address_8kb;
-   }
-
-   *deref_block_size = alloc.deref_block_size;
-}
-#endif
 
 static void
 emit_urb_setup(struct anv_graphics_pipeline *pipeline,
                enum intel_urb_deref_block_size *deref_block_size)
 {
-#if GFX_VERx10 >= 125
-   if (anv_pipeline_is_mesh(pipeline)) {
-      emit_urb_setup_mesh(pipeline, deref_block_size);
-      return;
-   }
-#endif
-
    unsigned entry_size[4];
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
       const struct brw_vue_prog_data *prog_data =
@@ -398,10 +339,6 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SBE), sbe);
 #if GFX_VER >= 8
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SBE_SWIZ), sbe);
-#endif
-#if GFX_VERx10 >= 125
-      if (anv_pipeline_is_mesh(pipeline))
-         anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SBE_MESH), sbe_mesh);
 #endif
       return;
    }
@@ -431,122 +368,74 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
 #  define swiz sbe
 #endif
 
-   if (anv_pipeline_is_primitive(pipeline)) {
-      const struct brw_vue_map *fs_input_map =
-         &anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map;
+   const struct brw_vue_map *fs_input_map =
+      &anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map;
 
-      int first_slot = brw_compute_first_urb_slot_required(wm_prog_data->inputs,
-                                                           fs_input_map);
-      assert(first_slot % 2 == 0);
-      unsigned urb_entry_read_offset = first_slot / 2;
-      int max_source_attr = 0;
-      for (uint8_t idx = 0; idx < wm_prog_data->urb_setup_attribs_count; idx++) {
-         uint8_t attr = wm_prog_data->urb_setup_attribs[idx];
-         int input_index = wm_prog_data->urb_setup[attr];
+   int first_slot = brw_compute_first_urb_slot_required(wm_prog_data->inputs,
+                                                        fs_input_map);
+   assert(first_slot % 2 == 0);
+   unsigned urb_entry_read_offset = first_slot / 2;
+   int max_source_attr = 0;
+   for (uint8_t idx = 0; idx < wm_prog_data->urb_setup_attribs_count; idx++) {
+      uint8_t attr = wm_prog_data->urb_setup_attribs[idx];
+      int input_index = wm_prog_data->urb_setup[attr];
 
-         assert(0 <= input_index);
+      assert(0 <= input_index);
 
-         /* gl_Viewport, gl_Layer and FragmentShadingRateKHR are stored in the
-          * VUE header
-          */
-         if (attr == VARYING_SLOT_VIEWPORT ||
-             attr == VARYING_SLOT_LAYER ||
-             attr == VARYING_SLOT_PRIMITIVE_SHADING_RATE) {
-            continue;
-         }
-
-         if (attr == VARYING_SLOT_PNTC) {
-            sbe.PointSpriteTextureCoordinateEnable = 1 << input_index;
-            continue;
-         }
-
-         const int slot = fs_input_map->varying_to_slot[attr];
-
-         if (slot == -1) {
-            /* This attribute does not exist in the VUE--that means that the
-             * vertex shader did not write to it.  It could be that it's a
-             * regular varying read by the fragment shader but not written by
-             * the vertex shader or it's gl_PrimitiveID. In the first case the
-             * value is undefined, in the second it needs to be
-             * gl_PrimitiveID.
-             */
-            swiz.Attribute[input_index].ConstantSource = PRIM_ID;
-            swiz.Attribute[input_index].ComponentOverrideX = true;
-            swiz.Attribute[input_index].ComponentOverrideY = true;
-            swiz.Attribute[input_index].ComponentOverrideZ = true;
-            swiz.Attribute[input_index].ComponentOverrideW = true;
-            continue;
-         }
-
-         /* We have to subtract two slots to account for the URB entry output
-          * read offset in the VS and GS stages.
-          */
-         const int source_attr = slot - 2 * urb_entry_read_offset;
-         assert(source_attr >= 0 && source_attr < 32);
-         max_source_attr = MAX2(max_source_attr, source_attr);
-         /* The hardware can only do overrides on 16 overrides at a time, and the
-          * other up to 16 have to be lined up so that the input index = the
-          * output index. We'll need to do some tweaking to make sure that's the
-          * case.
-          */
-         if (input_index < 16)
-            swiz.Attribute[input_index].SourceAttribute = source_attr;
-         else
-            assert(source_attr == input_index);
+      /* gl_Viewport, gl_Layer and FragmentShadingRateKHR are stored in the
+       * VUE header
+       */
+      if (attr == VARYING_SLOT_VIEWPORT ||
+          attr == VARYING_SLOT_LAYER ||
+          attr == VARYING_SLOT_PRIMITIVE_SHADING_RATE) {
+         continue;
       }
 
-      sbe.VertexURBEntryReadOffset = urb_entry_read_offset;
-      sbe.VertexURBEntryReadLength = DIV_ROUND_UP(max_source_attr + 1, 2);
-#if GFX_VER >= 8
-      sbe.ForceVertexURBEntryReadOffset = true;
-      sbe.ForceVertexURBEntryReadLength = true;
-#endif
-   } else {
-      assert(anv_pipeline_is_mesh(pipeline));
-#if GFX_VERx10 >= 125
-      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SBE_MESH), sbe_mesh) {
-         const struct brw_mue_map *mue = &mesh_prog_data->map;
-
-         assert(mue->per_vertex_header_size_dw % 8 == 0);
-         sbe_mesh.PerVertexURBEntryOutputReadOffset = mue->per_vertex_header_size_dw / 8;
-         sbe_mesh.PerVertexURBEntryOutputReadLength = DIV_ROUND_UP(mue->per_vertex_data_size_dw, 8);
-
-         /* Clip distance array is passed in the per-vertex header so that
-          * it can be consumed by the HW. If user wants to read it in the FS,
-          * adjust the offset and length to cover it. Conveniently it is at
-          * the end of the per-vertex header, right before per-vertex
-          * attributes.
-          *
-          * Note that FS attribute reading must be aware that the clip
-          * distances have fixed position.
-          */
-         if (mue->per_vertex_header_size_dw > 8 &&
-               (wm_prog_data->urb_setup[VARYING_SLOT_CLIP_DIST0] >= 0 ||
-                wm_prog_data->urb_setup[VARYING_SLOT_CLIP_DIST1] >= 0)) {
-            sbe_mesh.PerVertexURBEntryOutputReadOffset -= 1;
-            sbe_mesh.PerVertexURBEntryOutputReadLength += 1;
-         }
-
-         assert(mue->per_primitive_header_size_dw % 8 == 0);
-         sbe_mesh.PerPrimitiveURBEntryOutputReadOffset = mue->per_primitive_header_size_dw / 8;
-         sbe_mesh.PerPrimitiveURBEntryOutputReadLength = DIV_ROUND_UP(mue->per_primitive_data_size_dw, 8);
-
-         /* Just like with clip distances, if Primitive Shading Rate,
-          * Viewport Index or Layer is read back in the FS, adjust
-          * the offset and length to cover the Primitive Header, where
-          * PSR, Viewport Index & Layer are stored.
-          */
-         if (wm_prog_data->urb_setup[VARYING_SLOT_VIEWPORT] >= 0 ||
-             wm_prog_data->urb_setup[VARYING_SLOT_PRIMITIVE_SHADING_RATE] >= 0 ||
-             wm_prog_data->urb_setup[VARYING_SLOT_LAYER] >= 0) {
-            assert(sbe_mesh.PerPrimitiveURBEntryOutputReadOffset > 0);
-            sbe_mesh.PerPrimitiveURBEntryOutputReadOffset -= 1;
-            sbe_mesh.PerPrimitiveURBEntryOutputReadLength += 1;
-         }
+      if (attr == VARYING_SLOT_PNTC) {
+         sbe.PointSpriteTextureCoordinateEnable = 1 << input_index;
+         continue;
       }
-#endif
+
+      const int slot = fs_input_map->varying_to_slot[attr];
+
+      if (slot == -1) {
+         /* This attribute does not exist in the VUE--that means that the
+          * vertex shader did not write to it. It could be that it's a regular
+          * varying read by the fragment shader but not written by the vertex
+          * shader or it's gl_PrimitiveID. In the first case the value is
+          * undefined, in the second it needs to be gl_PrimitiveID.
+          */
+         swiz.Attribute[input_index].ConstantSource = PRIM_ID;
+         swiz.Attribute[input_index].ComponentOverrideX = true;
+         swiz.Attribute[input_index].ComponentOverrideY = true;
+         swiz.Attribute[input_index].ComponentOverrideZ = true;
+         swiz.Attribute[input_index].ComponentOverrideW = true;
+         continue;
+      }
+
+      /* We have to subtract two slots to account for the URB entry output
+       * read offset in the VS and GS stages.
+       */
+      const int source_attr = slot - 2 * urb_entry_read_offset;
+      assert(source_attr >= 0 && source_attr < 32);
+      max_source_attr = MAX2(max_source_attr, source_attr);
+      /* The hardware can only do overrides on 16 overrides at a time, and the
+       * other up to 16 have to be lined up so that the input index = the
+       * output index. We'll need to do some tweaking to make sure that's the
+       * case.
+       */
+      if (input_index < 16)
+         swiz.Attribute[input_index].SourceAttribute = source_attr;
+      else
+         assert(source_attr == input_index);
    }
+
+   sbe.VertexURBEntryReadOffset = urb_entry_read_offset;
+   sbe.VertexURBEntryReadLength = DIV_ROUND_UP(max_source_attr + 1, 2);
+#if GFX_VER >= 8
+   sbe.ForceVertexURBEntryReadOffset = true;
+   sbe.ForceVertexURBEntryReadLength = true;
+#endif
 
    uint32_t *dw = anv_batch_emit_dwords(&pipeline->base.batch,
                                         GENX(3DSTATE_SBE_length));
@@ -571,18 +460,7 @@ VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
                           VkPrimitiveTopology primitive_topology)
 {
-   if (anv_pipeline_is_mesh(pipeline)) {
-      switch (get_mesh_prog_data(pipeline)->primitive_type) {
-      case SHADER_PRIM_POINTS:
-         return VK_POLYGON_MODE_POINT;
-      case SHADER_PRIM_LINES:
-         return VK_POLYGON_MODE_LINE;
-      case SHADER_PRIM_TRIANGLES:
-         return pipeline->polygon_mode;
-      default:
-         unreachable("invalid primitive type for mesh");
-      }
-   } else if (anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+   if (anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
       switch (get_gs_prog_data(pipeline)->output_topology) {
       case _3DPRIM_POINTLIST:
          return VK_POLYGON_MODE_POINT;
@@ -779,15 +657,9 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 #endif
 
    bool point_from_shader;
-   if (anv_pipeline_is_primitive(pipeline)) {
-      const struct brw_vue_prog_data *last_vue_prog_data =
-         anv_pipeline_get_last_vue_prog_data(pipeline);
-      point_from_shader = last_vue_prog_data->vue_map.slots_valid & VARYING_BIT_PSIZ;
-   } else {
-      assert(anv_pipeline_is_mesh(pipeline));
-      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      point_from_shader = mesh_prog_data->map.start_dw[VARYING_SLOT_PSIZ] >= 0;
-   }
+   const struct brw_vue_prog_data *last_vue_prog_data =
+      anv_pipeline_get_last_vue_prog_data(pipeline);
+   point_from_shader = last_vue_prog_data->vue_map.slots_valid & VARYING_BIT_PSIZ;
 
    if (point_from_shader) {
       sf.PointWidthSource = Vertex;
@@ -1198,44 +1070,35 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.MinimumPointWidth = 0.125;
    clip.MaximumPointWidth = 255.875;
 
-   /* TODO(mesh): Multiview. */
-   if (anv_pipeline_is_primitive(pipeline)) {
-      const struct brw_vue_prog_data *last =
-         anv_pipeline_get_last_vue_prog_data(pipeline);
+   const struct brw_vue_prog_data *last =
+      anv_pipeline_get_last_vue_prog_data(pipeline);
 
-      /* From the Vulkan 1.0.45 spec:
-       *
-       *    "If the last active vertex processing stage shader entry point's
-       *    interface does not include a variable decorated with
-       *    ViewportIndex, then the first viewport is used."
-       */
-      if (vp && (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT)) {
-         clip.MaximumVPIndex = vp->viewport_count > 0 ?
-                               vp->viewport_count - 1 : 0;
-      } else {
-         clip.MaximumVPIndex = 0;
-      }
+   /* From the Vulkan 1.0.45 spec:
+    *
+    *    "If the last active vertex processing stage shader entry point's
+    *    interface does not include a variable decorated with ViewportIndex,
+    *    then the first viewport is used."
+    */
+   if (vp && (last->vue_map.slots_valid & VARYING_BIT_VIEWPORT)) {
+      clip.MaximumVPIndex = vp->viewport_count > 0 ?
+         vp->viewport_count - 1 : 0;
+   } else {
+      clip.MaximumVPIndex = 0;
+   }
 
-      /* From the Vulkan 1.0.45 spec:
-       *
-       *    "If the last active vertex processing stage shader entry point's
-       *    interface does not include a variable decorated with Layer, then
-       *    the first layer is used."
-       */
-      clip.ForceZeroRTAIndexEnable =
-         !(last->vue_map.slots_valid & VARYING_BIT_LAYER);
+   /* From the Vulkan 1.0.45 spec:
+    *
+    *    "If the last active vertex processing stage shader entry point's
+    *    interface does not include a variable decorated with Layer, then the
+    *    first layer is used."
+    */
+   clip.ForceZeroRTAIndexEnable =
+      !(last->vue_map.slots_valid & VARYING_BIT_LAYER);
 
 #if GFX_VER == 7
-      clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
-      clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
+   clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
+   clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
 #endif
-   } else if (anv_pipeline_is_mesh(pipeline)) {
-      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      if (vp && vp->viewport_count > 0 &&
-          mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
-         clip.MaximumVPIndex = vp->viewport_count - 1;
-      }
-   }
 
 #if GFX_VER == 7
    clip.FrontWinding            = genX(vk_to_intel_front_face)[rs->front_face];
@@ -1247,17 +1110,6 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 #endif
 
    GENX(3DSTATE_CLIP_pack)(NULL, pipeline->gfx7.clip, &clip);
-
-#if GFX_VERx10 >= 125
-   if (anv_pipeline_is_mesh(pipeline)) {
-      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_CLIP_MESH), clip_mesh) {
-         clip_mesh.PrimitiveHeaderEnable = mesh_prog_data->map.per_primitive_header_size_dw > 0;
-         clip_mesh.UserClipDistanceClipTestEnableBitmask = mesh_prog_data->clip_distance_mask;
-         clip_mesh.UserClipDistanceCullTestEnableBitmask = mesh_prog_data->cull_distance_mask;
-      }
-   }
-#endif
 }
 
 static void
@@ -2168,141 +2020,6 @@ emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
 }
 #endif
 
-#if GFX_VERx10 >= 125
-static void
-emit_task_state(struct anv_graphics_pipeline *pipeline)
-{
-   assert(anv_pipeline_is_mesh(pipeline));
-
-   if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_CONTROL), zero);
-      return;
-   }
-
-   const struct anv_shader_bin *task_bin = pipeline->shaders[MESA_SHADER_TASK];
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_CONTROL), tc) {
-      tc.TaskShaderEnable = true;
-      tc.ScratchSpaceBuffer =
-         get_scratch_surf(&pipeline->base, MESA_SHADER_TASK, task_bin);
-   }
-
-   const struct intel_device_info *devinfo = pipeline->base.device->info;
-   const struct brw_task_prog_data *task_prog_data = get_task_prog_data(pipeline);
-   const struct brw_cs_dispatch_info task_dispatch =
-      brw_cs_get_dispatch_info(devinfo, &task_prog_data->base, NULL);
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_SHADER), task) {
-      task.KernelStartPointer                = task_bin->kernel.offset;
-      task.SIMDSize                          = task_dispatch.simd_size / 16;
-      task.MessageSIMD                       = task.SIMDSize;
-      task.NumberofThreadsinGPGPUThreadGroup = task_dispatch.threads;
-      task.ExecutionMask                     = task_dispatch.right_mask;
-      task.LocalXMaximum                     = task_dispatch.group_size - 1;
-      task.EmitLocalIDX                      = true;
-
-      task.NumberofBarriers                  = task_prog_data->base.uses_barrier;
-      task.SharedLocalMemorySize             =
-         encode_slm_size(GFX_VER, task_prog_data->base.base.total_shared);
-
-      /*
-       * 3DSTATE_TASK_SHADER_DATA.InlineData[0:1] will be used for an address
-       * of a buffer with push constants and descriptor set table and
-       * InlineData[2:7] will be used for first few push constants.
-       */
-      task.EmitInlineParameter = true;
-
-      task.XP0Required = task_prog_data->uses_drawid;
-   }
-
-   /* Recommended values from "Task and Mesh Distribution Programming". */
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_REDISTRIB), redistrib) {
-      redistrib.LocalBOTAccumulatorThreshold = MULTIPLIER_1;
-      redistrib.SmallTaskThreshold = 1; /* 2^N */
-      redistrib.TargetMeshBatchSize = devinfo->num_slices > 2 ? 3 : 5; /* 2^N */
-      redistrib.TaskRedistributionLevel = TASKREDISTRIB_BOM;
-
-      /* TODO: We have an unknown issue with Task Payload when task redistribution
-       * is enabled. Disable it for now.
-       * See https://gitlab.freedesktop.org/mesa/mesa/-/issues/7141
-       */
-      redistrib.TaskRedistributionMode = TASKREDISTRIB_OFF;
-   }
-}
-
-static void
-emit_mesh_state(struct anv_graphics_pipeline *pipeline)
-{
-   assert(anv_pipeline_is_mesh(pipeline));
-
-   const struct anv_shader_bin *mesh_bin = pipeline->shaders[MESA_SHADER_MESH];
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_CONTROL), mc) {
-      mc.MeshShaderEnable = true;
-      mc.ScratchSpaceBuffer =
-         get_scratch_surf(&pipeline->base, MESA_SHADER_MESH, mesh_bin);
-
-      /* TODO(mesh): MaximumNumberofThreadGroups. */
-   }
-
-   const struct intel_device_info *devinfo = pipeline->base.device->info;
-   const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-   const struct brw_cs_dispatch_info mesh_dispatch =
-      brw_cs_get_dispatch_info(devinfo, &mesh_prog_data->base, NULL);
-
-   const unsigned output_topology =
-      mesh_prog_data->primitive_type == SHADER_PRIM_POINTS ? OUTPUT_POINT :
-      mesh_prog_data->primitive_type == SHADER_PRIM_LINES  ? OUTPUT_LINE :
-                                                             OUTPUT_TRI;
-
-   uint32_t index_format;
-   switch (mesh_prog_data->index_format) {
-   case BRW_INDEX_FORMAT_U32:
-      index_format = INDEX_U32;
-      break;
-   default:
-      unreachable("invalid index format");
-   }
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_SHADER), mesh) {
-      mesh.KernelStartPointer                = mesh_bin->kernel.offset;
-      mesh.SIMDSize                          = mesh_dispatch.simd_size / 16;
-      mesh.MessageSIMD                       = mesh.SIMDSize;
-      mesh.NumberofThreadsinGPGPUThreadGroup = mesh_dispatch.threads;
-      mesh.ExecutionMask                     = mesh_dispatch.right_mask;
-      mesh.LocalXMaximum                     = mesh_dispatch.group_size - 1;
-      mesh.EmitLocalIDX                      = true;
-
-      mesh.MaximumPrimitiveCount             = mesh_prog_data->map.max_primitives - 1;
-      mesh.OutputTopology                    = output_topology;
-      mesh.PerVertexDataPitch                = mesh_prog_data->map.per_vertex_pitch_dw / 8;
-      mesh.PerPrimitiveDataPresent           = mesh_prog_data->map.per_primitive_pitch_dw > 0;
-      mesh.PerPrimitiveDataPitch             = mesh_prog_data->map.per_primitive_pitch_dw / 8;
-      mesh.IndexFormat                       = index_format;
-
-      mesh.NumberofBarriers                  = mesh_prog_data->base.uses_barrier;
-      mesh.SharedLocalMemorySize             =
-         encode_slm_size(GFX_VER, mesh_prog_data->base.base.total_shared);
-
-      /*
-       * 3DSTATE_MESH_SHADER_DATA.InlineData[0:1] will be used for an address
-       * of a buffer with push constants and descriptor set table and
-       * InlineData[2:7] will be used for first few push constants.
-       */
-      mesh.EmitInlineParameter = true;
-
-      mesh.XP0Required = mesh_prog_data->uses_drawid;
-   }
-
-   /* Recommended values from "Task and Mesh Distribution Programming". */
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_DISTRIB), distrib) {
-      distrib.DistributionMode = MESH_RR_FREE;
-      distrib.TaskDistributionBatchSize = devinfo->num_slices > 2 ? 8 : 9; /* 2^N thread groups */
-      distrib.MeshDistributionBatchSize = devinfo->num_slices > 2 ? 5 : 3; /* 2^N thread groups */
-   }
-}
-#endif
-
 void
 genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
                              const struct vk_graphics_pipeline_state *state)
@@ -2342,38 +2059,15 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
       gfx7_emit_vs_workaround_flush(brw);
 #endif
 
-   if (anv_pipeline_is_primitive(pipeline)) {
-      emit_vertex_input(pipeline, state->vi);
+   emit_vertex_input(pipeline, state->vi);
 
-      emit_3dstate_vs(pipeline);
-      emit_3dstate_hs_te_ds(pipeline, state->ts);
-      emit_3dstate_gs(pipeline);
+   emit_3dstate_vs(pipeline);
+   emit_3dstate_hs_te_ds(pipeline, state->ts);
+   emit_3dstate_gs(pipeline);
 
-      emit_3dstate_vf_statistics(pipeline);
+   emit_3dstate_vf_statistics(pipeline);
 
-      emit_3dstate_streamout(pipeline, state->rs);
-
-#if GFX_VERx10 >= 125
-      const struct anv_device *device = pipeline->base.device;
-      /* Disable Mesh. */
-      if (device->physical->vk.supported_extensions.NV_mesh_shader) {
-         anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_CONTROL), zero);
-         anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TASK_CONTROL), zero);
-      }
-#endif
-   } else {
-      assert(anv_pipeline_is_mesh(pipeline));
-
-      /* BSpec 46303 forbids both 3DSTATE_MESH_CONTROL.MeshShaderEnable
-       * and 3DSTATE_STREAMOUT.SOFunctionEnable to be 1.
-       */
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), so) {}
-
-#if GFX_VERx10 >= 125
-      emit_task_state(pipeline);
-      emit_mesh_state(pipeline);
-#endif
-   }
+   emit_3dstate_streamout(pipeline, state->rs);
 
    emit_3dstate_sbe(pipeline);
    emit_3dstate_wm(pipeline, state->ia, state->rs,

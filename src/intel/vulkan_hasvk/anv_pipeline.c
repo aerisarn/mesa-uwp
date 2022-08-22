@@ -88,7 +88,6 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .int64 = pdevice->info.ver >= 8,
          .int64_atomics = pdevice->info.ver >= 9 && pdevice->use_softpin,
          .integer_functions2 = pdevice->info.ver >= 8,
-         .mesh_shading_nv = pdevice->vk.supported_extensions.NV_mesh_shader,
          .min_lod = true,
          .multiview = true,
          .physical_storage_buffer_address = pdevice->has_a64_buffer_access,
@@ -396,26 +395,6 @@ pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
       return false;
 
    return true;
-}
-
-static void
-populate_task_prog_key(const struct anv_device *device,
-                       bool robust_buffer_access,
-                       struct brw_task_prog_key *key)
-{
-   memset(key, 0, sizeof(*key));
-
-   populate_base_prog_key(device, robust_buffer_access, &key->base);
-}
-
-static void
-populate_mesh_prog_key(const struct anv_device *device,
-                       bool robust_buffer_access,
-                       struct brw_mesh_prog_key *key)
-{
-   memset(key, 0, sizeof(*key));
-
-   populate_base_prog_key(device, robust_buffer_access, &key->base);
 }
 
 static void
@@ -742,8 +721,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
       }
    }
 
-   if (gl_shader_stage_is_compute(nir->info.stage) ||
-       gl_shader_stage_is_mesh(nir->info.stage))
+   if (gl_shader_stage_is_compute(nir->info.stage))
       NIR_PASS(_, nir, brw_nir_lower_cs_intrinsics);
 
    stage->nir = nir;
@@ -955,70 +933,6 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
 }
 
 static void
-anv_pipeline_link_task(const struct brw_compiler *compiler,
-                       struct anv_pipeline_stage *task_stage,
-                       struct anv_pipeline_stage *next_stage)
-{
-   assert(next_stage);
-   assert(next_stage->stage == MESA_SHADER_MESH);
-   brw_nir_link_shaders(compiler, task_stage->nir, next_stage->nir);
-}
-
-static void
-anv_pipeline_compile_task(const struct brw_compiler *compiler,
-                          void *mem_ctx,
-                          struct anv_device *device,
-                          struct anv_pipeline_stage *task_stage)
-{
-   task_stage->num_stats = 1;
-
-   struct brw_compile_task_params params = {
-      .nir = task_stage->nir,
-      .key = &task_stage->key.task,
-      .prog_data = &task_stage->prog_data.task,
-      .stats = task_stage->stats,
-      .log_data = device,
-   };
-
-   task_stage->code = brw_compile_task(compiler, mem_ctx, &params);
-}
-
-static void
-anv_pipeline_link_mesh(const struct brw_compiler *compiler,
-                       struct anv_pipeline_stage *mesh_stage,
-                       struct anv_pipeline_stage *next_stage)
-{
-   if (next_stage) {
-      brw_nir_link_shaders(compiler, mesh_stage->nir, next_stage->nir);
-   }
-}
-
-static void
-anv_pipeline_compile_mesh(const struct brw_compiler *compiler,
-                          void *mem_ctx,
-                          struct anv_device *device,
-                          struct anv_pipeline_stage *mesh_stage,
-                          struct anv_pipeline_stage *prev_stage)
-{
-   mesh_stage->num_stats = 1;
-
-   struct brw_compile_mesh_params params = {
-      .nir = mesh_stage->nir,
-      .key = &mesh_stage->key.mesh,
-      .prog_data = &mesh_stage->prog_data.mesh,
-      .stats = mesh_stage->stats,
-      .log_data = device,
-   };
-
-   if (prev_stage) {
-      assert(prev_stage->stage == MESA_SHADER_TASK);
-      params.tue_map = &prev_stage->prog_data.task.map;
-   }
-
-   mesh_stage->code = brw_compile_mesh(compiler, mem_ctx, &params);
-}
-
-static void
 anv_pipeline_link_fs(const struct brw_compiler *compiler,
                      struct anv_pipeline_stage *stage,
                      const struct vk_render_pass_state *rp)
@@ -1102,13 +1016,8 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
       .log_data = device,
    };
 
-   if (prev_stage->stage == MESA_SHADER_MESH) {
-      params.mue_map = &prev_stage->prog_data.mesh.map;
-      /* TODO(mesh): Slots valid, do we even use/rely on it? */
-   } else {
-      fs_stage->key.wm.input_slots_valid =
-         prev_stage->prog_data.vue.vue_map.slots_valid;
-   }
+   fs_stage->key.wm.input_slots_valid =
+      prev_stage->prog_data.vue.vue_map.slots_valid;
 
    fs_stage->code = brw_compile_fs(compiler, mem_ctx, &params);
 
@@ -1291,16 +1200,6 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
                               &stages[s].key.wm);
          break;
       }
-      case MESA_SHADER_TASK:
-         populate_task_prog_key(device,
-                                pipeline->base.device->robust_buffer_access,
-                                &stages[s].key.task);
-         break;
-      case MESA_SHADER_MESH:
-         populate_mesh_prog_key(device,
-                                pipeline->base.device->robust_buffer_access,
-                                &stages[s].key.mesh);
-         break;
       default:
          unreachable("Invalid graphics shader stage");
       }
@@ -1309,8 +1208,7 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
    }
 
-   assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT ||
-          pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV);
+   assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT);
 }
 
 static bool
@@ -1393,9 +1291,6 @@ static const gl_shader_stage graphics_shader_order[] = {
    MESA_SHADER_TESS_CTRL,
    MESA_SHADER_TESS_EVAL,
    MESA_SHADER_GEOMETRY,
-
-   MESA_SHADER_TASK,
-   MESA_SHADER_MESH,
 
    MESA_SHADER_FRAGMENT,
 };
@@ -1509,12 +1404,6 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_GEOMETRY:
          anv_pipeline_link_gs(compiler, &stages[s], next_stage);
          break;
-      case MESA_SHADER_TASK:
-         anv_pipeline_link_task(compiler, &stages[s], next_stage);
-         break;
-      case MESA_SHADER_MESH:
-         anv_pipeline_link_mesh(compiler, &stages[s], next_stage);
-         break;
       case MESA_SHADER_FRAGMENT:
          anv_pipeline_link_fs(compiler, &stages[s], state->rp);
          break;
@@ -1584,8 +1473,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
        stages[MESA_SHADER_FRAGMENT].info &&
        stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
-       !stages[MESA_SHADER_FRAGMENT].nir->info.fs.uses_sample_shading &&
-       stages[MESA_SHADER_MESH].info == NULL) {
+       !stages[MESA_SHADER_FRAGMENT].nir->info.fs.uses_sample_shading) {
       struct anv_pipeline_stage *last_psr = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
@@ -1630,14 +1518,6 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_GEOMETRY:
          anv_pipeline_compile_gs(compiler, stage_ctx, pipeline->base.device,
                                  &stages[s], prev_stage);
-         break;
-      case MESA_SHADER_TASK:
-         anv_pipeline_compile_task(compiler, stage_ctx, pipeline->base.device,
-                                   &stages[s]);
-         break;
-      case MESA_SHADER_MESH:
-         anv_pipeline_compile_mesh(compiler, stage_ctx, pipeline->base.device,
-                                   &stages[s], prev_stage);
          break;
       case MESA_SHADER_FRAGMENT:
          anv_pipeline_compile_fs(compiler, stage_ctx, pipeline->base.device,
@@ -2008,9 +1888,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
       pipeline->active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 
-   if (anv_pipeline_is_mesh(pipeline))
-      assert(device->physical->vk.supported_extensions.NV_mesh_shader);
-
    pipeline->dynamic_state.ms.sample_locations = &pipeline->sample_locations;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic_state, state);
 
@@ -2026,37 +1903,32 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    anv_pipeline_setup_l3_config(&pipeline->base, false);
 
-   if (anv_pipeline_is_primitive(pipeline)) {
-      const uint64_t inputs_read = get_vs_prog_data(pipeline)->inputs_read;
+   const uint64_t inputs_read = get_vs_prog_data(pipeline)->inputs_read;
 
-      u_foreach_bit(a, state->vi->attributes_valid) {
-         if (inputs_read & BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + a))
-            pipeline->vb_used |= BITFIELD64_BIT(state->vi->attributes[a].binding);
-      }
-
-      u_foreach_bit(b, state->vi->bindings_valid) {
-         pipeline->vb[b].stride = state->vi->bindings[b].stride;
-         pipeline->vb[b].instanced = state->vi->bindings[b].input_rate ==
-                                      VK_VERTEX_INPUT_RATE_INSTANCE;
-         pipeline->vb[b].instance_divisor = state->vi->bindings[b].divisor;
-      }
-
-      /* Our implementation of VK_KHR_multiview uses instancing to draw the
-       * different views when primitive replication cannot be used.  If the
-       * client asks for instancing, we need to multiply by the client's
-       * instance count at draw time and instance divisor in the vertex
-       * bindings by the number of views ensure that we repeat the client's
-       * per-instance data once for each view.
-       */
-      const bool uses_primitive_replication =
-         anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map.num_pos_slots > 1;
-      pipeline->instance_multiplier = 1;
-      if (pipeline->view_mask && !uses_primitive_replication)
-         pipeline->instance_multiplier = util_bitcount(pipeline->view_mask);
-   } else {
-      assert(anv_pipeline_is_mesh(pipeline));
-      /* TODO(mesh): Mesh vs. Multiview with Instancing. */
+   u_foreach_bit(a, state->vi->attributes_valid) {
+      if (inputs_read & BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + a))
+         pipeline->vb_used |= BITFIELD64_BIT(state->vi->attributes[a].binding);
    }
+
+   u_foreach_bit(b, state->vi->bindings_valid) {
+      pipeline->vb[b].stride = state->vi->bindings[b].stride;
+      pipeline->vb[b].instanced = state->vi->bindings[b].input_rate ==
+         VK_VERTEX_INPUT_RATE_INSTANCE;
+      pipeline->vb[b].instance_divisor = state->vi->bindings[b].divisor;
+   }
+
+   /* Our implementation of VK_KHR_multiview uses instancing to draw the
+    * different views when primitive replication cannot be used. If the client
+    * asks for instancing, we need to multiply by the client's instance count
+    * at draw time and instance divisor in the vertex bindings by the number
+    * of views ensure that we repeat the client's per-instance data once for
+    * each view.
+    */
+   const bool uses_primitive_replication =
+      anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map.num_pos_slots > 1;
+   pipeline->instance_multiplier = 1;
+   if (pipeline->view_mask && !uses_primitive_replication)
+      pipeline->instance_multiplier = util_bitcount(pipeline->view_mask);
 
    pipeline->negative_one_to_one =
       state->vp != NULL && state->vp->negative_one_to_one;

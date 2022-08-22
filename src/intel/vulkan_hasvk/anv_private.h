@@ -3132,12 +3132,6 @@ anv_pipeline_is_primitive(const struct anv_graphics_pipeline *pipeline)
 }
 
 static inline bool
-anv_pipeline_is_mesh(const struct anv_graphics_pipeline *pipeline)
-{
-   return anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH);
-}
-
-static inline bool
 anv_cmd_buffer_all_color_write_masked(const struct anv_cmd_buffer *cmd_buffer)
 {
    const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
@@ -3175,8 +3169,6 @@ ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tcs, MESA_SHADER_TESS_CTRL)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(tes, MESA_SHADER_TESS_EVAL)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(gs, MESA_SHADER_GEOMETRY)
 ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(wm, MESA_SHADER_FRAGMENT)
-ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(mesh, MESA_SHADER_MESH)
-ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(task, MESA_SHADER_TASK)
 
 static inline const struct brw_cs_prog_data *
 get_cs_prog_data(const struct anv_compute_pipeline *pipeline)
