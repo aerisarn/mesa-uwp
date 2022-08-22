@@ -1899,14 +1899,10 @@ gfx9_get_gs_info(const struct radv_pipeline_key *key, const struct radv_pipeline
 {
    const struct radv_physical_device *pdevice = pipeline->device->physical_device;
    struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
-   struct radv_es_output_info *es_info;
+   struct radv_shader_info *es_info;
    bool has_tess = !!stages[MESA_SHADER_TESS_CTRL].nir;
 
-   if (pdevice->rad_info.gfx_level >= GFX9)
-      es_info = has_tess ? &gs_info->tes.es_info : &gs_info->vs.es_info;
-   else
-      es_info = has_tess ? &stages[MESA_SHADER_TESS_EVAL].info.tes.es_info
-                         : &stages[MESA_SHADER_VERTEX].info.vs.es_info;
+   es_info = has_tess ? &stages[MESA_SHADER_TESS_EVAL].info : &stages[MESA_SHADER_VERTEX].info;
 
    unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
    bool uses_adjacency;
@@ -2116,8 +2112,9 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
 {
    const struct radv_physical_device *pdevice = pipeline->device->physical_device;
    struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
-   struct radv_es_output_info *es_info =
-      stages[MESA_SHADER_TESS_CTRL].nir ? &gs_info->tes.es_info : &gs_info->vs.es_info;
+   struct radv_shader_info *es_info =
+      stages[MESA_SHADER_TESS_CTRL].nir ? &stages[MESA_SHADER_TESS_EVAL].info
+                                        : &stages[MESA_SHADER_VERTEX].info;
    unsigned gs_type = stages[MESA_SHADER_GEOMETRY].nir ? MESA_SHADER_GEOMETRY : MESA_SHADER_VERTEX;
    unsigned max_verts_per_prim = radv_get_num_input_vertices(stages);
    unsigned min_verts_per_prim = gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
