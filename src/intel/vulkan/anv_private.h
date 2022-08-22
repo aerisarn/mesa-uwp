@@ -1410,6 +1410,14 @@ VkResult anv_device_set_bo_tiling(struct anv_device *device,
 void anv_device_release_bo(struct anv_device *device,
                            struct anv_bo *bo);
 
+static inline void anv_device_set_physical(struct anv_device *device,
+                                           struct anv_physical_device *physical_device)
+{
+   device->physical = physical_device;
+   device->info = &physical_device->info;
+   device->isl_dev = physical_device->isl_dev;
+}
+
 static inline struct anv_bo *
 anv_device_lookup_bo(struct anv_device *device, uint32_t gem_handle)
 {

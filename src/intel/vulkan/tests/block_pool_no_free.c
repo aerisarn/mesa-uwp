@@ -113,11 +113,10 @@ static void run_test()
    struct anv_physical_device physical_device = {
       .use_relocations = true,
    };
-   struct anv_device device = {
-      .physical = &physical_device,
-   };
+   struct anv_device device = {};
    struct anv_block_pool pool;
 
+   anv_device_set_physical(&device, &physical_device);
    pthread_mutex_init(&device.mutex, NULL);
    anv_bo_cache_init(&device.bo_cache, &device);
    anv_block_pool_init(&pool, &device, "test", 4096, 4096);

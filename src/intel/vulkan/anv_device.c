@@ -3146,7 +3146,7 @@ VkResult anv_CreateDevice(
          INSTRUCTION_STATE_POOL_MIN_ADDRESS;
    }
 
-   device->physical = physical_device;
+   anv_device_set_physical(device, physical_device);
 
    /* XXX(chadv): Can we dup() physicalDevice->fd here? */
    device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);
@@ -3271,8 +3271,6 @@ VkResult anv_CreateDevice(
       }
    }
 
-   device->info = &physical_device->info;
-   device->isl_dev = physical_device->isl_dev;
 
    /* On Broadwell and later, we can use batch chaining to more efficiently
     * implement growing command buffers.  Prior to Haswell, the kernel
