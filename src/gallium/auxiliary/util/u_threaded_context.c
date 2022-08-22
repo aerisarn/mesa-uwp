@@ -3517,7 +3517,14 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
                                    dr);
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
-         p->info.index.resource = buffer;
+
+         if (total_offset == 0)
+            /* the first slot inherits the reference from u_upload_alloc() */
+            p->info.index.resource = buffer;
+         else
+            /* all following slots need a new reference */
+            tc_set_resource_reference(&p->info.index.resource, buffer);
+
          p->num_draws = dr;
 
          /* Upload index buffers. */
