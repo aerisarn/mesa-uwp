@@ -1349,29 +1349,33 @@ bind_buffer_object(struct gl_context *ctx,
                    bool no_error)
 {
    struct gl_buffer_object *oldBufObj;
-   struct gl_buffer_object *newBufObj = NULL;
+   struct gl_buffer_object *newBufObj;
 
    assert(bindTarget);
 
-   /* Get pointer to old buffer object (to be unbound) */
-   oldBufObj = *bindTarget;
-   if ((oldBufObj && oldBufObj->Name == buffer && !oldBufObj->DeletePending) ||
-       (!oldBufObj && buffer == 0))
-      return;   /* rebinding the same buffer object- no change */
-
-   /*
-    * Get pointer to new buffer object (newBufObj)
+   /* Fast path that unbinds. It's better when NULL is a literal, so that
+    * the compiler can simplify this code after inlining.
     */
-   if (buffer != 0) {
-      /* non-default buffer object */
-      newBufObj = _mesa_lookup_bufferobj(ctx, buffer);
-      if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
-                                        &newBufObj, "glBindBuffer",
-                                        no_error))
-         return;
+   if (buffer == 0) {
+      _mesa_reference_buffer_object(ctx, bindTarget, NULL);
+      return;
    }
 
-   /* bind new buffer */
+   /* Get pointer to old buffer object (to be unbound) */
+   oldBufObj = *bindTarget;
+   GLuint old_name = oldBufObj && !oldBufObj->DeletePending ? oldBufObj->Name : 0;
+   if (old_name == buffer)
+      return;   /* rebinding the same buffer object- no change */
+
+   newBufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   /* Get a new buffer object if it hasn't been created. */
+   if (!handle_bind_buffer_gen(ctx, buffer, &newBufObj, "glBindBuffer",
+                               no_error))
+      return;
+
+   /* At this point, the compiler should deduce that newBufObj is non-NULL if
+    * everything has been inlined, so the compiler should simplify this.
+    */
    _mesa_reference_buffer_object(ctx, bindTarget, newBufObj);
 }
 
