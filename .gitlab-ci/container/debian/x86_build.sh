@@ -41,7 +41,6 @@ apt-get install -y --no-remove \
       libxml2-dev \
       llvm-13-dev \
       llvm-11-dev \
-      llvm-9-dev \
       ocl-icd-opencl-dev \
       python3-freezegun \
       python3-pytest \

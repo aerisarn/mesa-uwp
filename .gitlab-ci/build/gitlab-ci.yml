@@ -438,7 +438,7 @@ debian-clover:
       -D glx=disabled
       -D egl=disabled
       -D gbm=disabled
-    GALLIUM_DRIVERS: "r600,radeonsi"
+    GALLIUM_DRIVERS: "r600,radeonsi,swrast"
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -450,9 +450,6 @@ debian-clover:
       -D gallium-opencl=icd
     EXTRA_OPTION: >
       -D valgrind=false
-  script:
-    - LLVM_VERSION=9 GALLIUM_DRIVERS=r600,swrast .gitlab-ci/meson/build.sh
-    - .gitlab-ci/meson/build.sh
 
 debian-vulkan:
   extends: .meson-build

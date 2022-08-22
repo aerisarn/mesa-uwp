@@ -1,9 +1,9 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-08-17-bump"
+   DEBIAN_BASE_TAG: "2022-08-22-drop-llvm9"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-08-17-bump"
+   DEBIAN_BUILD_TAG: "2022-08-22-drop-llvm9"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2022-08-17-bump"

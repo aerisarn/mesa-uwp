@@ -62,7 +62,6 @@ apt-get install -y --no-remove \
       libexpat1 \
       libllvm13 \
       libllvm11 \
-      libllvm9 \
       liblz4-1 \
       libpng16-16 \
       libpython3.9 \
