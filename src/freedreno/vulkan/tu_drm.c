@@ -817,8 +817,18 @@ tu_drm_device_init(struct tu_physical_device *device,
       goto fail;
    }
 
-   device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
-                                              &device->va_size);
+   /*
+    * device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
+    *                                            &device->va_size);
+    *
+    * If BO is freed while kernel considers it busy, our VMA state gets
+    * desynchronized from kernel's VMA state, because kernel waits
+    * until BO stops being busy. And whether BO is busy decided at
+    * submission granularity.
+    *
+    * Disable this capability until solution is found.
+    */
+   device->has_set_iova = false;
 
    struct stat st;
 
