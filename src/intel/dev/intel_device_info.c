@@ -1112,8 +1112,8 @@ UNUSED static const struct intel_device_info intel_device_info_mtl_p = {
    .platform = INTEL_PLATFORM_MTL_P,
 };
 
-static void
-reset_masks(struct intel_device_info *devinfo)
+void
+intel_device_info_topology_reset_masks(struct intel_device_info *devinfo)
 {
    devinfo->subslice_slice_stride = 0;
    devinfo->eu_subslice_stride = 0;
@@ -1128,8 +1128,8 @@ reset_masks(struct intel_device_info *devinfo)
    memset(devinfo->ppipe_subslices, 0, sizeof(devinfo->ppipe_subslices));
 }
 
-static void
-update_slice_subslice_counts(struct intel_device_info *devinfo)
+void
+intel_device_info_topology_update_counts(struct intel_device_info *devinfo)
 {
    devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
    devinfo->subslice_total = 0;
@@ -1147,8 +1147,8 @@ update_slice_subslice_counts(struct intel_device_info *devinfo)
    assert(devinfo->subslice_total > 0);
 }
 
-static void
-update_pixel_pipes(struct intel_device_info *devinfo, uint8_t *subslice_masks)
+void
+intel_device_info_update_pixel_pipes(struct intel_device_info *devinfo, uint8_t *subslice_masks)
 {
    if (devinfo->ver < 11)
       return;
@@ -1183,8 +1183,8 @@ update_pixel_pipes(struct intel_device_info *devinfo, uint8_t *subslice_masks)
    }
 }
 
-static void
-update_l3_banks(struct intel_device_info *devinfo)
+void
+intel_device_info_update_l3_banks(struct intel_device_info *devinfo)
 {
    if (devinfo->ver != 12)
       return;
@@ -1234,7 +1234,7 @@ update_from_single_slice_topology(struct intel_device_info *devinfo,
 
    assert(devinfo->verx10 >= 125);
 
-   reset_masks(devinfo);
+   intel_device_info_topology_reset_masks(devinfo);
 
    assert(topology->max_slices == 1);
    assert(topology->max_subslices > 0);
@@ -1294,16 +1294,16 @@ update_from_single_slice_topology(struct intel_device_info *devinfo,
       }
    }
 
-   update_slice_subslice_counts(devinfo);
-   update_pixel_pipes(devinfo, geom_subslice_masks);
-   update_l3_banks(devinfo);
+   intel_device_info_topology_update_counts(devinfo);
+   intel_device_info_update_pixel_pipes(devinfo, geom_subslice_masks);
+   intel_device_info_update_l3_banks(devinfo);
 }
 
 static void
 update_from_topology(struct intel_device_info *devinfo,
                      const struct drm_i915_query_topology_info *topology)
 {
-   reset_masks(devinfo);
+   intel_device_info_topology_reset_masks(devinfo);
 
    assert(topology->max_slices > 0);
    assert(topology->max_subslices > 0);
@@ -1332,9 +1332,9 @@ update_from_topology(struct intel_device_info *devinfo,
    memcpy(devinfo->eu_masks, &topology->data[topology->eu_offset], eu_mask_len);
 
    /* Now that all the masks are in place, update the counts. */
-   update_slice_subslice_counts(devinfo);
-   update_pixel_pipes(devinfo, devinfo->subslice_masks);
-   update_l3_banks(devinfo);
+   intel_device_info_topology_update_counts(devinfo);
+   intel_device_info_update_pixel_pipes(devinfo, devinfo->subslice_masks);
+   intel_device_info_update_l3_banks(devinfo);
 }
 
 /* Generate detailed mask from the I915_PARAM_SLICE_MASK,
@@ -1452,8 +1452,8 @@ get_context_param(int fd, uint32_t context, uint32_t param, uint64_t *value)
    return true;
 }
 
-static void
-update_cs_workgroup_threads(struct intel_device_info *devinfo)
+void
+intel_device_info_update_cs_workgroup_threads(struct intel_device_info *devinfo)
 {
    /* GPGPU_WALKER::ThreadWidthCounterMaximum is U6-1 so the most threads we
     * can program is 64 without going up to a rectangular group. This only
@@ -1544,7 +1544,7 @@ intel_get_device_info_from_pci_id(int pci_id,
    if (devinfo->display_ver == 0)
       devinfo->display_ver = devinfo->ver;
 
-   update_cs_workgroup_threads(devinfo);
+   intel_device_info_update_cs_workgroup_threads(devinfo);
 
    return true;
 }
@@ -1693,8 +1693,8 @@ i915_query_regions(struct intel_device_info *devinfo, int fd, bool update)
    return true;
 }
 
-static bool
-compute_system_memory(struct intel_device_info *devinfo, bool update)
+bool
+intel_device_info_compute_system_memory(struct intel_device_info *devinfo, bool update)
 {
    uint64_t total_phys;
    if (!os_get_total_physical_memory(&total_phys))
@@ -1828,7 +1828,7 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
    if (max_cs_threads > devinfo->max_cs_threads)
       devinfo->max_cs_threads = max_cs_threads;
 
-   update_cs_workgroup_threads(devinfo);
+   intel_device_info_update_cs_workgroup_threads(devinfo);
 
    /* Braswell is even more annoying.  Its marketing name isn't determinable
     * from the PCI ID and is also dependent on fusing.
@@ -1998,7 +1998,7 @@ intel_i915_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       devinfo->max_cs_threads =
          devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
 
-      update_cs_workgroup_threads(devinfo);
+      intel_device_info_update_cs_workgroup_threads(devinfo);
    }
 
    int val;
@@ -2028,7 +2028,7 @@ intel_i915_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
     * numbers out of os_* utils for sram only.
     */
    if (!i915_query_regions(devinfo, fd, false))
-      compute_system_memory(devinfo, false);
+      intel_device_info_compute_system_memory(devinfo, false);
 
    if (devinfo->platform == INTEL_PLATFORM_CHV)
       fixup_chv_device_info(devinfo);
@@ -2106,7 +2106,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       /* Provide some sensible values for NO_HW. */
       devinfo->gtt_size =
          devinfo->ver >= 8 ? (1ull << 48) : 2ull * 1024 * 1024 * 1024;
-      compute_system_memory(devinfo, false);
+      intel_device_info_compute_system_memory(devinfo, false);
       return true;
    }
 
@@ -2134,5 +2134,5 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
 bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
 {
-   return i915_query_regions(devinfo, fd, true) || compute_system_memory(devinfo, true);
+   return i915_query_regions(devinfo, fd, true) || intel_device_info_compute_system_memory(devinfo, true);
 }
