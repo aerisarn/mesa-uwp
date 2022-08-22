@@ -1001,6 +1001,121 @@ primitive_to_tess(enum shader_prim primitive) {
    }
 }
 
+static int
+tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
+                     const struct ir3_shader_variant *last_shader,
+                     uint32_t index,
+                     uint8_t *interp_mode,
+                     uint8_t *ps_repl_mode)
+{
+   enum
+   {
+      INTERP_SMOOTH = 0,
+      INTERP_FLAT = 1,
+      INTERP_ZERO = 2,
+      INTERP_ONE = 3,
+   };
+   enum
+   {
+      PS_REPL_NONE = 0,
+      PS_REPL_S = 1,
+      PS_REPL_T = 2,
+      PS_REPL_ONE_MINUS_T = 3,
+   };
+
+   const uint32_t compmask = fs->inputs[index].compmask;
+
+   /* NOTE: varyings are packed, so if compmask is 0xb then first, second, and
+    * fourth component occupy three consecutive varying slots
+    */
+   int shift = 0;
+   *interp_mode = 0;
+   *ps_repl_mode = 0;
+   if (fs->inputs[index].slot == VARYING_SLOT_PNTC) {
+      if (compmask & 0x1) {
+         *ps_repl_mode |= PS_REPL_S << shift;
+         shift += 2;
+      }
+      if (compmask & 0x2) {
+         *ps_repl_mode |= PS_REPL_T << shift;
+         shift += 2;
+      }
+      if (compmask & 0x4) {
+         *interp_mode |= INTERP_ZERO << shift;
+         shift += 2;
+      }
+      if (compmask & 0x8) {
+         *interp_mode |= INTERP_ONE << 6;
+         shift += 2;
+      }
+   } else if (fs->inputs[index].slot == VARYING_SLOT_LAYER ||
+              fs->inputs[index].slot == VARYING_SLOT_VIEWPORT) {
+      /* If the last geometry shader doesn't statically write these, they're
+       * implicitly zero and the FS is supposed to read zero.
+       */
+      if (ir3_find_output(last_shader, fs->inputs[index].slot) < 0 &&
+          (compmask & 0x1)) {
+         *interp_mode |= INTERP_ZERO;
+      } else {
+         *interp_mode |= INTERP_FLAT;
+      }
+   } else if (fs->inputs[index].flat) {
+      for (int i = 0; i < 4; i++) {
+         if (compmask & (1 << i)) {
+            *interp_mode |= INTERP_FLAT << shift;
+            shift += 2;
+         }
+      }
+   }
+
+   return shift;
+}
+
+static void
+tu6_emit_vpc_varying_modes(struct tu_cs *cs,
+                           const struct ir3_shader_variant *fs,
+                           const struct ir3_shader_variant *last_shader)
+{
+   uint32_t interp_modes[8] = { 0 };
+   uint32_t ps_repl_modes[8] = { 0 };
+   uint32_t interp_regs = 0;
+
+   if (fs) {
+      for (int i = -1;
+           (i = ir3_next_varying(fs, i)) < (int) fs->inputs_count;) {
+
+         /* get the mode for input i */
+         uint8_t interp_mode;
+         uint8_t ps_repl_mode;
+         const int bits =
+            tu6_vpc_varying_mode(fs, last_shader, i, &interp_mode, &ps_repl_mode);
+
+         /* OR the mode into the array */
+         const uint32_t inloc = fs->inputs[i].inloc * 2;
+         uint32_t n = inloc / 32;
+         uint32_t shift = inloc % 32;
+         interp_modes[n] |= interp_mode << shift;
+         ps_repl_modes[n] |= ps_repl_mode << shift;
+         if (shift + bits > 32) {
+            n++;
+            shift = 32 - shift;
+
+            interp_modes[n] |= interp_mode >> shift;
+            ps_repl_modes[n] |= ps_repl_mode >> shift;
+         }
+         interp_regs = MAX2(interp_regs, n + 1);
+      }
+   }
+
+   if (interp_regs) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), interp_regs);
+      tu_cs_emit_array(cs, interp_modes, interp_regs);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), interp_regs);
+      tu_cs_emit_array(cs, ps_repl_modes, interp_regs);
+   }
+}
+
 void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
@@ -1367,108 +1482,8 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
       tu_cs_emit(cs, prim_size);
    }
-}
 
-static int
-tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
-                     uint32_t index,
-                     uint8_t *interp_mode,
-                     uint8_t *ps_repl_mode)
-{
-   enum
-   {
-      INTERP_SMOOTH = 0,
-      INTERP_FLAT = 1,
-      INTERP_ZERO = 2,
-      INTERP_ONE = 3,
-   };
-   enum
-   {
-      PS_REPL_NONE = 0,
-      PS_REPL_S = 1,
-      PS_REPL_T = 2,
-      PS_REPL_ONE_MINUS_T = 3,
-   };
-
-   const uint32_t compmask = fs->inputs[index].compmask;
-
-   /* NOTE: varyings are packed, so if compmask is 0xb then first, second, and
-    * fourth component occupy three consecutive varying slots
-    */
-   int shift = 0;
-   *interp_mode = 0;
-   *ps_repl_mode = 0;
-   if (fs->inputs[index].slot == VARYING_SLOT_PNTC) {
-      if (compmask & 0x1) {
-         *ps_repl_mode |= PS_REPL_S << shift;
-         shift += 2;
-      }
-      if (compmask & 0x2) {
-         *ps_repl_mode |= PS_REPL_T << shift;
-         shift += 2;
-      }
-      if (compmask & 0x4) {
-         *interp_mode |= INTERP_ZERO << shift;
-         shift += 2;
-      }
-      if (compmask & 0x8) {
-         *interp_mode |= INTERP_ONE << 6;
-         shift += 2;
-      }
-   } else if (fs->inputs[index].flat) {
-      for (int i = 0; i < 4; i++) {
-         if (compmask & (1 << i)) {
-            *interp_mode |= INTERP_FLAT << shift;
-            shift += 2;
-         }
-      }
-   }
-
-   return shift;
-}
-
-static void
-tu6_emit_vpc_varying_modes(struct tu_cs *cs,
-                           const struct ir3_shader_variant *fs)
-{
-   uint32_t interp_modes[8] = { 0 };
-   uint32_t ps_repl_modes[8] = { 0 };
-   uint32_t interp_regs = 0;
-
-   if (fs) {
-      for (int i = -1;
-           (i = ir3_next_varying(fs, i)) < (int) fs->inputs_count;) {
-
-         /* get the mode for input i */
-         uint8_t interp_mode;
-         uint8_t ps_repl_mode;
-         const int bits =
-            tu6_vpc_varying_mode(fs, i, &interp_mode, &ps_repl_mode);
-
-         /* OR the mode into the array */
-         const uint32_t inloc = fs->inputs[i].inloc * 2;
-         uint32_t n = inloc / 32;
-         uint32_t shift = inloc % 32;
-         interp_modes[n] |= interp_mode << shift;
-         ps_repl_modes[n] |= ps_repl_mode << shift;
-         if (shift + bits > 32) {
-            n++;
-            shift = 32 - shift;
-
-            interp_modes[n] |= interp_mode >> shift;
-            ps_repl_modes[n] |= ps_repl_mode >> shift;
-         }
-         interp_regs = MAX2(interp_regs, n + 1);
-      }
-   }
-
-   if (interp_regs) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_INTERP_MODE(0), interp_regs);
-      tu_cs_emit_array(cs, interp_modes, interp_regs);
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VARYING_PS_REPL_MODE(0), interp_regs);
-      tu_cs_emit_array(cs, ps_repl_modes, interp_regs);
-   }
+   tu6_emit_vpc_varying_modes(cs, fs, last_shader);
 }
 
 void
@@ -1854,7 +1869,6 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_vfd_dest(cs, vs);
 
    tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
-   tu6_emit_vpc_varying_modes(cs, fs);
 
    bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT;
    uint32_t mrt_count = builder->color_attachment_count;
@@ -3002,11 +3016,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       last_shader = shaders[MESA_SHADER_TESS_EVAL];
    if (!last_shader)
       last_shader = shaders[MESA_SHADER_VERTEX];
-
-   uint64_t outputs_written = last_shader->ir3_shader->nir->info.outputs_written;
-
-   ir3_key.layer_zero = !(outputs_written & VARYING_BIT_LAYER);
-   ir3_key.view_zero = !(outputs_written & VARYING_BIT_VIEWPORT);
 
    compiled_shaders =
       tu_shaders_init(builder->device, &pipeline_sha1, sizeof(pipeline_sha1));
