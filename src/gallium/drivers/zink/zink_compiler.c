@@ -2911,7 +2911,7 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
    if (in->type != nir_instr_type_tex)
       return false;
    nir_tex_instr *tex = nir_instr_as_tex(in);
-   if (tex->op == nir_texop_txs)
+   if (tex->op == nir_texop_txs || tex->op == nir_texop_lod)
       return false;
    int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
    nir_variable *var = NULL;
