@@ -811,26 +811,6 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    return g.get_assembly();
 }
 
-static fs_reg
-get_mesh_urb_handle(const fs_builder &bld, nir_intrinsic_op op)
-{
-   unsigned subreg;
-   if (bld.shader->stage == MESA_SHADER_TASK) {
-      subreg = 6;
-   } else {
-      assert(bld.shader->stage == MESA_SHADER_MESH);
-      subreg = op == nir_intrinsic_load_task_payload ? 7 : 6;
-   }
-
-   fs_builder ubld8 = bld.group(8, 0).exec_all();
-
-   fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   ubld8.MOV(h, retype(brw_vec1_grf(0, subreg), BRW_REGISTER_TYPE_UD));
-   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
-
-   return h;
-}
-
 static unsigned
 component_from_intrinsic(nir_intrinsic_instr *instr)
 {
@@ -859,14 +839,12 @@ adjust_handle_and_offset(const fs_builder &bld,
 
 static void
 emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
-                       const fs_reg &src)
+                       const fs_reg &src, fs_reg urb_handle)
 {
    assert(nir_src_bit_size(instr->src[0]) == 32);
 
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset_nir_src));
-
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
    assert(comps <= 4);
@@ -952,14 +930,13 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
 static void
 emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
-                         const fs_reg &src, const fs_reg &offset_src)
+                         const fs_reg &src, const fs_reg &offset_src,
+                         fs_reg urb_handle)
 {
    assert(nir_src_bit_size(instr->src[0]) == 32);
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
    assert(comps <= 4);
-
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
 
    const unsigned base_in_dwords = nir_intrinsic_base(instr) +
                                    component_from_intrinsic(instr);
@@ -1017,7 +994,7 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
 static void
 emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
-                      const fs_reg &dest)
+                      const fs_reg &dest, fs_reg urb_handle)
 {
    assert(nir_dest_bit_size(instr->dest) == 32);
 
@@ -1027,8 +1004,6 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset_nir_src));
-
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
 
    const unsigned offset_in_dwords = nir_intrinsic_base(instr) +
                                      nir_src_as_uint(*offset_nir_src) +
@@ -1061,7 +1036,7 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
 static void
 emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
-                        const fs_reg &dest, const fs_reg &offset_src)
+                        const fs_reg &dest, const fs_reg &offset_src, fs_reg urb_handle)
 {
    assert(nir_dest_bit_size(instr->dest) == 32);
 
@@ -1078,8 +1053,6 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
       ubld8.MOV(seq_ud, seq_uw);
       ubld8.SHL(seq_ud, seq_ud, brw_imm_ud(2));
    }
-
-   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
 
    const unsigned base_in_dwords = nir_intrinsic_base(instr) +
                                    component_from_intrinsic(instr);
@@ -1123,11 +1096,33 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
    }
 }
 
+static fs_reg
+get_mesh_urb_handle(const fs_builder &bld, nir_intrinsic_op op)
+{
+   unsigned subreg;
+   if (bld.shader->stage == MESA_SHADER_TASK) {
+      subreg = 6;
+   } else {
+      assert(bld.shader->stage == MESA_SHADER_MESH);
+      subreg = op == nir_intrinsic_load_task_payload ? 7 : 6;
+   }
+
+   fs_builder ubld8 = bld.group(8, 0).exec_all();
+
+   fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+   ubld8.MOV(h, retype(brw_vec1_grf(0, subreg), BRW_REGISTER_TYPE_UD));
+   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
+
+   return h;
+}
+
 void
 fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *instr)
 {
    fs_reg src = get_nir_src(instr->src[0]);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
+
+   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
     * the non-array-index offset, we could use to decide if we can perform
@@ -1135,9 +1130,9 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
     */
 
    if (nir_src_is_const(*offset_nir_src))
-      emit_urb_direct_writes(bld, instr, src);
+      emit_urb_direct_writes(bld, instr, src, urb_handle);
    else
-      emit_urb_indirect_writes(bld, instr, src, get_nir_src(*offset_nir_src));
+      emit_urb_indirect_writes(bld, instr, src, get_nir_src(*offset_nir_src), urb_handle);
 }
 
 void
@@ -1146,15 +1141,17 @@ fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *inst
    fs_reg dest = get_nir_dest(instr->dest);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
+   fs_reg urb_handle = get_mesh_urb_handle(bld, instr->intrinsic);
+
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
     * the non-array-index offset, we could use to decide if we can perform
     * a single large aligned read instead one per component.
     */
 
    if (nir_src_is_const(*offset_nir_src))
-      emit_urb_direct_reads(bld, instr, dest);
+      emit_urb_direct_reads(bld, instr, dest, urb_handle);
    else
-      emit_urb_indirect_reads(bld, instr, dest, get_nir_src(*offset_nir_src));
+      emit_urb_indirect_reads(bld, instr, dest, get_nir_src(*offset_nir_src), urb_handle);
 }
 
 void
