@@ -107,8 +107,8 @@ struct aco_shader_info {
    bool has_ngg_early_prim_export;
    uint32_t num_tess_patches;
    unsigned workgroup_size;
+   struct aco_vp_output_info outinfo;
    struct {
-      struct aco_vp_output_info outinfo;
       bool as_es;
       bool as_ls;
       bool tcs_in_out_eq;
@@ -128,7 +128,6 @@ struct aco_shader_info {
       uint32_t num_lds_blocks;
    } tcs;
    struct {
-      struct aco_vp_output_info outinfo;
       bool as_es;
    } tes;
    struct {
@@ -142,9 +141,6 @@ struct aco_shader_info {
    struct {
       uint8_t subgroup_size;
    } cs;
-   struct {
-      struct aco_vp_output_info outinfo;
-   } ms;
    struct aco_streamout_info so;
 
    uint32_t gfx9_gs_ring_lds_size;

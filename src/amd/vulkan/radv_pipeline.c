@@ -2193,7 +2193,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
        * corresponding to the ES thread of the provoking vertex. All
        * ES threads load and export PrimitiveID for their thread.
        */
-      if (!stages[MESA_SHADER_TESS_CTRL].nir && stages[MESA_SHADER_VERTEX].info.vs.outinfo.export_prim_id)
+      if (!stages[MESA_SHADER_TESS_CTRL].nir && stages[MESA_SHADER_VERTEX].info.outinfo.export_prim_id)
          esvert_lds_size = MAX2(esvert_lds_size, 1);
    }
 
@@ -2397,15 +2397,15 @@ get_vs_output_info(const struct radv_graphics_pipeline *pipeline)
 {
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
       if (radv_pipeline_has_ngg(pipeline))
-         return &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.vs.outinfo;
+         return &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.outinfo;
       else
-         return &pipeline->base.gs_copy_shader->info.vs.outinfo;
+         return &pipeline->base.gs_copy_shader->info.outinfo;
    else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL))
-      return &pipeline->base.shaders[MESA_SHADER_TESS_EVAL]->info.tes.outinfo;
+      return &pipeline->base.shaders[MESA_SHADER_TESS_EVAL]->info.outinfo;
    else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
-      return &pipeline->base.shaders[MESA_SHADER_MESH]->info.ms.outinfo;
+      return &pipeline->base.shaders[MESA_SHADER_MESH]->info.outinfo;
    else
-      return &pipeline->base.shaders[MESA_SHADER_VERTEX]->info.vs.outinfo;
+      return &pipeline->base.shaders[MESA_SHADER_VERTEX]->info.outinfo;
 }
 
 static bool
@@ -3244,7 +3244,7 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
 
       unsigned lds_bytes_if_culling_off = 0;
       /* We need LDS space when VS needs to export the primitive ID. */
-      if (es_stage == MESA_SHADER_VERTEX && stages[es_stage].info.vs.outinfo.export_prim_id)
+      if (es_stage == MESA_SHADER_VERTEX && stages[es_stage].info.outinfo.export_prim_id)
          lds_bytes_if_culling_off = max_vtx_in * 4u;
       stages[es_stage].info.num_lds_blocks_when_not_culling =
          DIV_ROUND_UP(lds_bytes_if_culling_off, pdevice->rad_info.lds_encode_granularity);
@@ -3255,7 +3255,7 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
       stages[es_stage].info.is_ngg_passthrough = stages[es_stage].info.is_ngg_passthrough &&
                                                 !stages[es_stage].info.has_ngg_culling &&
                                                  !(es_stage == MESA_SHADER_VERTEX &&
-                                                   stages[es_stage].info.vs.outinfo.export_prim_id);
+                                                   stages[es_stage].info.outinfo.export_prim_id);
    }
 }
 
@@ -3359,15 +3359,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       assert(last_vgt_api_stage != MESA_SHADER_NONE);
       struct radv_shader_info *pre_ps_info = &stages[last_vgt_api_stage].info;
-      struct radv_vs_output_info *outinfo = NULL;
-      if (last_vgt_api_stage == MESA_SHADER_VERTEX ||
-          last_vgt_api_stage == MESA_SHADER_GEOMETRY) {
-         outinfo = &pre_ps_info->vs.outinfo;
-      } else if (last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
-         outinfo = &pre_ps_info->tes.outinfo;
-      } else if (last_vgt_api_stage == MESA_SHADER_MESH) {
-         outinfo = &pre_ps_info->ms.outinfo;
-      }
+      struct radv_vs_output_info *outinfo = &pre_ps_info->outinfo;
 
       /* Add PS input requirements to the output of the pre-PS stage. */
       bool ps_prim_id_in = stages[MESA_SHADER_FRAGMENT].info.ps.prim_id_input;
@@ -4253,8 +4245,8 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    struct radv_device *device = pipeline->device;
    struct radv_shader_info info = {0};
 
-   if (stages[MESA_SHADER_GEOMETRY].info.vs.outinfo.export_clip_dists)
-      info.vs.outinfo.export_clip_dists = true;
+   if (stages[MESA_SHADER_GEOMETRY].info.outinfo.export_clip_dists)
+      info.outinfo.export_clip_dists = true;
 
    radv_nir_shader_info_pass(device, stages[MESA_SHADER_GEOMETRY].nir, pipeline_layout, pipeline_key,
                              &info);

@@ -247,9 +247,10 @@ get_reg_class(isel_context* ctx, RegType type, unsigned components, unsigned bit
 }
 
 void
-setup_vs_output_info(isel_context* ctx, nir_shader* nir,
-                     const aco_vp_output_info* outinfo)
+setup_vs_output_info(isel_context* ctx, nir_shader* nir)
 {
+   const aco_vp_output_info* outinfo = &ctx->program->info.outinfo;
+
    ctx->export_clip_dists = outinfo->export_clip_dists;
    ctx->num_clip_distances = util_bitcount(outinfo->clip_dist_mask);
    ctx->num_cull_distances = util_bitcount(outinfo->cull_dist_mask);
@@ -269,7 +270,7 @@ void
 setup_vs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_vs || ctx->stage == vertex_ngg) {
-      setup_vs_output_info(ctx, nir, &ctx->program->info.vs.outinfo);
+      setup_vs_output_info(ctx, nir);
 
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
@@ -291,7 +292,7 @@ setup_gs_variables(isel_context* ctx, nir_shader* nir)
       ctx->program->config->lds_size =
          ctx->program->info.gfx9_gs_ring_lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
-      setup_vs_output_info(ctx, nir, &ctx->program->info.vs.outinfo);
+      setup_vs_output_info(ctx, nir);
 
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
@@ -313,7 +314,7 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
    ctx->tcs_num_patches = ctx->program->info.num_tess_patches;
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
-      setup_vs_output_info(ctx, nir, &ctx->program->info.tes.outinfo);
+      setup_vs_output_info(ctx, nir);
 
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
@@ -331,7 +332,7 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
 void
 setup_ms_variables(isel_context* ctx, nir_shader* nir)
 {
-   setup_vs_output_info(ctx, nir, &ctx->program->info.ms.outinfo);
+   setup_vs_output_info(ctx, nir);
 
    ctx->program->config->lds_size =
       DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
@@ -920,7 +921,7 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
    unsigned scratch_size = 0;
    if (program->stage == gs_copy_vs) {
       assert(shader_count == 1);
-      setup_vs_output_info(&ctx, shaders[0], &program->info.vs.outinfo);
+      setup_vs_output_info(&ctx, shaders[0]);
    } else {
       for (unsigned i = 0; i < shader_count; i++) {
          nir_shader* nir = shaders[i];

@@ -1012,9 +1012,10 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
 }
 
 static void
-handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_clip_dists,
-                       const struct radv_vs_output_info *outinfo)
+handle_vs_outputs_post(struct radv_shader_context *ctx)
 {
+   const struct radv_vs_output_info *outinfo = &ctx->shader_info->outinfo;
+   const bool export_clip_dists = outinfo->export_clip_dists;
    struct radv_shader_output_values *outputs;
    unsigned noutput = 0;
 
@@ -1157,8 +1158,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->shader_info->is_ngg)
          break; /* Lowered in NIR */
       else
-         handle_vs_outputs_post(ctx, ctx->shader_info->vs.outinfo.export_clip_dists,
-                                &ctx->shader_info->vs.outinfo);
+         handle_vs_outputs_post(ctx);
       break;
    case MESA_SHADER_FRAGMENT:
       handle_fs_outputs_post(ctx);
@@ -1177,8 +1177,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->shader_info->is_ngg)
          break; /* Lowered in NIR */
       else
-         handle_vs_outputs_post(ctx, ctx->shader_info->tes.outinfo.export_clip_dists,
-                                &ctx->shader_info->tes.outinfo);
+         handle_vs_outputs_post(ctx);
       break;
    default:
       break;
@@ -1198,11 +1197,8 @@ static void
 radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   const struct radv_vs_output_info *outinfo = ctx->stage == MESA_SHADER_TESS_EVAL
-                                         ? &ctx->shader_info->tes.outinfo
-                                         : &ctx->shader_info->vs.outinfo;
 
-   handle_vs_outputs_post(ctx, outinfo->export_clip_dists, outinfo);
+   handle_vs_outputs_post(ctx);
 }
 
 static void
@@ -1692,8 +1688,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
          radv_emit_streamout(ctx, stream);
 
       if (stream == 0) {
-         handle_vs_outputs_post(ctx, ctx->shader_info->vs.outinfo.export_clip_dists,
-                                &ctx->shader_info->vs.outinfo);
+         handle_vs_outputs_post(ctx);
       }
 
       LLVMBuildBr(ctx->ac.builder, end_bb);

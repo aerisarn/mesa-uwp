@@ -10910,10 +10910,7 @@ export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos)
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
 
    const uint8_t *vs_output_param_offset =
-      ctx->stage.has(SWStage::GS) ? ctx->program->info.vs.outinfo.vs_output_param_offset :
-      ctx->stage.has(SWStage::TES) ? ctx->program->info.tes.outinfo.vs_output_param_offset :
-      ctx->stage.has(SWStage::MS) ? ctx->program->info.ms.outinfo.vs_output_param_offset :
-      ctx->program->info.vs.outinfo.vs_output_param_offset;
+      ctx->program->info.outinfo.vs_output_param_offset;
 
    assert(vs_output_param_offset);
 
@@ -10994,11 +10991,7 @@ static void
 create_vs_exports(isel_context* ctx)
 {
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
-   const aco_vp_output_info* outinfo =
-      ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
-      ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
-      ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :
-      &ctx->program->info.vs.outinfo;
+   const aco_vp_output_info* outinfo = &ctx->program->info.outinfo;
 
    assert(outinfo);
    ctx->block->kind |= block_kind_export_end;
@@ -11043,11 +11036,7 @@ static void
 create_primitive_exports(isel_context *ctx, Temp prim_ch1)
 {
    assert(ctx->stage.hw == HWStage::NGG);
-   const aco_vp_output_info* outinfo =
-      ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
-      ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
-      ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :
-      &ctx->program->info.vs.outinfo;
+   const aco_vp_output_info* outinfo = &ctx->program->info.outinfo;
 
    Builder bld(ctx->program, ctx->block);
 

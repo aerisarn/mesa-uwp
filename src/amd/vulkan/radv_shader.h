@@ -253,6 +253,7 @@ struct radv_shader_info {
    uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
    uint32_t esgs_itemsize; /* Only for VS or TES as ES */
+   struct radv_vs_output_info outinfo;
    unsigned workgroup_size;
    bool force_vrs_per_vertex;
    struct {
@@ -260,7 +261,6 @@ struct radv_shader_info {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
       bool needs_draw_id;
       bool needs_instance_id;
-      struct radv_vs_output_info outinfo;
       bool as_es;
       bool as_ls;
       bool tcs_in_out_eq;
@@ -288,7 +288,6 @@ struct radv_shader_info {
    } gs;
    struct {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
-      struct radv_vs_output_info outinfo;
       bool as_es;
       enum tess_primitive_mode _primitive_mode;
       enum gl_tess_spacing spacing;
@@ -361,7 +360,6 @@ struct radv_shader_info {
       bool tes_reads_tess_factors : 1;
    } tcs;
    struct {
-      struct radv_vs_output_info outinfo;
       enum shader_prim output_prim;
       bool needs_ms_scratch_ring;
       bool has_task; /* If mesh shader is used together with a task shader. */

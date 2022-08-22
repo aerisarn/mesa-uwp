@@ -357,23 +357,10 @@ gather_info_output_decl_gs(const nir_shader *nir, const nir_variable *var,
 static struct radv_vs_output_info *
 get_vs_output_info(const nir_shader *nir, struct radv_shader_info *info)
 {
-
-   switch (nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-      if (!info->vs.as_ls && !info->vs.as_es)
-         return &info->vs.outinfo;
-      break;
-   case MESA_SHADER_GEOMETRY:
-      return &info->vs.outinfo;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      if (!info->tes.as_es)
-         return &info->tes.outinfo;
-      break;
-   case MESA_SHADER_MESH:
-      return &info->ms.outinfo;
-   default:
-      break;
+   if ((nir->info.stage == MESA_SHADER_VERTEX && !info->vs.as_ls && !info->vs.as_es) ||
+       (nir->info.stage == MESA_SHADER_TESS_EVAL && !info->tes.as_es) ||
+       nir->info.stage == MESA_SHADER_GEOMETRY || nir->info.stage == MESA_SHADER_MESH) {
+      return &info->outinfo;
    }
 
    return NULL;
