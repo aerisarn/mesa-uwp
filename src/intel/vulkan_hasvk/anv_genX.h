@@ -175,6 +175,3 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 
 void
 genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline);
-
-void
-genX(ray_tracing_pipeline_emit)(struct anv_ray_tracing_pipeline *pipeline);

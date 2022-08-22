@@ -1215,25 +1215,6 @@ struct anv_device {
     struct anv_queue  *                         queues;
 
     struct anv_scratch_pool                     scratch_pool;
-    struct anv_bo                              *rt_scratch_bos[16];
-
-    /** Shadow ray query BO
-     *
-     * The ray_query_bo only holds the current ray being traced. When using
-     * more than 1 ray query per thread, we cannot fit all the queries in
-     * there, so we need a another buffer to hold query data that is not
-     * currently being used by the HW for tracing, similar to a scratch space.
-     *
-     * The size of the shadow buffer depends on the number of queries per
-     * shader.
-     */
-    struct anv_bo                              *ray_query_shadow_bos[16];
-    /** Ray query buffer used to communicated with HW unit.
-     */
-    struct anv_bo                              *ray_query_bo;
-
-    struct anv_shader_bin                      *rt_trampoline;
-    struct anv_shader_bin                      *rt_trivial_return;
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -2690,19 +2671,6 @@ struct anv_cmd_compute_state {
    struct anv_address num_workgroups;
 };
 
-struct anv_cmd_ray_tracing_state {
-   struct anv_cmd_pipeline_state base;
-
-   struct anv_ray_tracing_pipeline *pipeline;
-
-   bool pipeline_dirty;
-
-   struct {
-      struct anv_bo *bo;
-      struct brw_rt_scratch_layout layout;
-   } scratch;
-};
-
 /** State required while building cmd buffer */
 struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
@@ -2712,7 +2680,6 @@ struct anv_cmd_state {
 
    struct anv_cmd_graphics_state                gfx;
    struct anv_cmd_compute_state                 compute;
-   struct anv_cmd_ray_tracing_state             rt;
 
    enum anv_pipe_bits                           pending_pipe_bits;
    VkShaderStageFlags                           descriptors_dirty;
@@ -3034,20 +3001,6 @@ anv_shader_bin_unref(struct anv_device *device, struct anv_shader_bin *shader)
    vk_pipeline_cache_object_unref(&shader->base);
 }
 
-#define anv_shader_bin_get_bsr(bin, local_arg_offset) ({             \
-   assert((local_arg_offset) % 8 == 0);                              \
-   const struct brw_bs_prog_data *prog_data =                        \
-      brw_bs_prog_data_const(bin->prog_data);                        \
-   assert(prog_data->simd_size == 8 || prog_data->simd_size == 16);  \
-                                                                     \
-   (struct GFX_BINDLESS_SHADER_RECORD) {                             \
-      .OffsetToLocalArguments = (local_arg_offset) / 8,              \
-      .BindlessShaderDispatchMode =                                  \
-         prog_data->simd_size == 16 ? RT_SIMD16 : RT_SIMD8,          \
-      .KernelStartPointer = bin->kernel.offset,                      \
-   };                                                                \
-})
-
 struct anv_pipeline_executable {
    gl_shader_stage stage;
 
@@ -3060,7 +3013,6 @@ struct anv_pipeline_executable {
 enum anv_pipeline_type {
    ANV_PIPELINE_GRAPHICS,
    ANV_PIPELINE_COMPUTE,
-   ANV_PIPELINE_RAY_TRACING,
 };
 
 struct anv_pipeline {
@@ -3155,34 +3107,6 @@ struct anv_compute_pipeline {
    uint32_t                                     interface_descriptor_data[8];
 };
 
-struct anv_rt_shader_group {
-   VkRayTracingShaderGroupTypeKHR type;
-
-   struct anv_shader_bin *general;
-   struct anv_shader_bin *closest_hit;
-   struct anv_shader_bin *any_hit;
-   struct anv_shader_bin *intersection;
-
-   /* VK_KHR_ray_tracing requires shaderGroupHandleSize == 32 */
-   uint32_t handle[8];
-};
-
-struct anv_ray_tracing_pipeline {
-   struct anv_pipeline                          base;
-
-   /* All shaders in the pipeline */
-   struct util_dynarray                         shaders;
-
-   uint32_t                                     group_count;
-   struct anv_rt_shader_group *                 groups;
-
-   /* If non-zero, this is the default computed stack size as per the stack
-    * size computation in the Vulkan spec.  If zero, that indicates that the
-    * client has requested a dynamic stack size.
-    */
-   uint32_t                                     stack_size;
-};
-
 #define ANV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)             \
    static inline struct anv_##pipe_type##_pipeline *                 \
    anv_pipeline_to_##pipe_type(struct anv_pipeline *pipeline)      \
@@ -3193,7 +3117,6 @@ struct anv_ray_tracing_pipeline {
 
 ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
 ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
-ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_PIPELINE_RAY_TRACING)
 
 static inline bool
 anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
@@ -3272,12 +3195,6 @@ anv_pipeline_get_last_vue_prog_data(const struct anv_graphics_pipeline *pipeline
    else
       return &get_vs_prog_data(pipeline)->base;
 }
-
-VkResult
-anv_device_init_rt_shaders(struct anv_device *device);
-
-void
-anv_device_finish_rt_shaders(struct anv_device *device);
 
 VkResult
 anv_pipeline_init(struct anv_pipeline *pipeline,

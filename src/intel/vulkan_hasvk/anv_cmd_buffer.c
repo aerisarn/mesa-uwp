@@ -309,71 +309,6 @@ ilog2_round_up(uint32_t value)
    return 32 - __builtin_clz(value - 1);
 }
 
-static void
-anv_cmd_buffer_set_ray_query_buffer(struct anv_cmd_buffer *cmd_buffer,
-                                    struct anv_cmd_pipeline_state *pipeline_state,
-                                    struct anv_pipeline *pipeline,
-                                    VkShaderStageFlags stages)
-{
-   struct anv_device *device = cmd_buffer->device;
-
-   uint64_t ray_shadow_size =
-      align_u64(brw_rt_ray_queries_shadow_stacks_size(device->info,
-                                                      pipeline->ray_queries),
-                4096);
-   if (ray_shadow_size > 0 &&
-       (!cmd_buffer->state.ray_query_shadow_bo ||
-        cmd_buffer->state.ray_query_shadow_bo->size < ray_shadow_size)) {
-      unsigned shadow_size_log2 = MAX2(ilog2_round_up(ray_shadow_size), 16);
-      unsigned bucket = shadow_size_log2 - 16;
-      assert(bucket < ARRAY_SIZE(device->ray_query_shadow_bos));
-
-      struct anv_bo *bo = p_atomic_read(&device->ray_query_shadow_bos[bucket]);
-      if (bo == NULL) {
-         struct anv_bo *new_bo;
-         VkResult result = anv_device_alloc_bo(device, "RT queries shadow",
-                                               ray_shadow_size,
-                                               0, /* alloc_flags */
-                                               0, /* explicit_address */
-                                               &new_bo);
-         if (result != VK_SUCCESS) {
-            anv_batch_set_error(&cmd_buffer->batch, result);
-            return;
-         }
-
-         bo = p_atomic_cmpxchg(&device->ray_query_shadow_bos[bucket], NULL, new_bo);
-         if (bo != NULL) {
-            anv_device_release_bo(device, bo);
-         } else {
-            bo = new_bo;
-         }
-      }
-      cmd_buffer->state.ray_query_shadow_bo = bo;
-
-      /* Add the ray query buffers to the batch list. */
-      anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                            cmd_buffer->batch.alloc,
-                            cmd_buffer->state.ray_query_shadow_bo);
-   }
-
-   /* Add the HW buffer to the list of BO used. */
-   anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                         cmd_buffer->batch.alloc,
-                         device->ray_query_bo);
-
-   /* Fill the push constants & mark them dirty. */
-   struct anv_state ray_query_global_state =
-      anv_genX(device->info, cmd_buffer_ray_query_globals)(cmd_buffer);
-
-   struct anv_address ray_query_globals_addr = (struct anv_address) {
-      .bo = device->dynamic_state_pool.block_pool.bo,
-      .offset = ray_query_global_state.offset,
-   };
-   pipeline_state->push_constants.ray_query_globals =
-      anv_address_physical(ray_query_globals_addr);
-   cmd_buffer->state.push_constants_dirty |= stages;
-}
-
 void anv_CmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
@@ -381,8 +316,6 @@ void anv_CmdBindPipeline(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
-   struct anv_cmd_pipeline_state *state;
-   VkShaderStageFlags stages = 0;
 
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_COMPUTE: {
@@ -395,9 +328,6 @@ void anv_CmdBindPipeline(
       cmd_buffer->state.compute.pipeline_dirty = true;
       set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE,
                              &compute_pipeline->cs->bind_map);
-
-      state = &cmd_buffer->state.compute.base;
-      stages = VK_SHADER_STAGE_COMPUTE_BIT;
       break;
    }
 
@@ -419,27 +349,6 @@ void anv_CmdBindPipeline(
       /* Apply the non dynamic state from the pipeline */
       vk_cmd_set_dynamic_graphics_state(&cmd_buffer->vk,
                                         &gfx_pipeline->dynamic_state);
-
-      state = &cmd_buffer->state.gfx.base;
-      stages = gfx_pipeline->active_stages;
-      break;
-   }
-
-   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: {
-      struct anv_ray_tracing_pipeline *rt_pipeline =
-         anv_pipeline_to_ray_tracing(pipeline);
-      if (cmd_buffer->state.rt.pipeline == rt_pipeline)
-         return;
-
-      cmd_buffer->state.rt.pipeline = rt_pipeline;
-      cmd_buffer->state.rt.pipeline_dirty = true;
-
-      if (rt_pipeline->stack_size > 0) {
-         anv_CmdSetRayTracingPipelineStackSizeKHR(commandBuffer,
-                                                  rt_pipeline->stack_size);
-      }
-
-      state = &cmd_buffer->state.rt.base;
       break;
    }
 
@@ -447,9 +356,6 @@ void anv_CmdBindPipeline(
       unreachable("invalid bind point");
       break;
    }
-
-   if (pipeline->ray_queries > 0)
-      anv_cmd_buffer_set_ray_query_buffer(cmd_buffer, state, pipeline, stages);
 }
 
 static void
@@ -492,16 +398,6 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       pipe_state = &cmd_buffer->state.compute.base;
       break;
 
-   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
-      stages &= VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-                VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                VK_SHADER_STAGE_MISS_BIT_KHR |
-                VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
-                VK_SHADER_STAGE_CALLABLE_BIT_KHR;
-      pipe_state = &cmd_buffer->state.rt.base;
-      break;
-
    default:
       unreachable("invalid bind point");
    }
@@ -520,13 +416,7 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
        * as an 64-bit address in the push constants.
        */
       bool update_desc_sets = stages & (VK_SHADER_STAGE_TASK_BIT_NV |
-                                        VK_SHADER_STAGE_MESH_BIT_NV |
-                                        VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-                                        VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                                        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                                        VK_SHADER_STAGE_MISS_BIT_KHR |
-                                        VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
-                                        VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+                                        VK_SHADER_STAGE_MESH_BIT_NV);
 
       if (update_desc_sets) {
          struct anv_push_constants *push = &pipe_state->push_constants;
@@ -818,17 +708,6 @@ void anv_CmdPushConstants(
 
       memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
    }
-   if (stageFlags & (VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-                     VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                     VK_SHADER_STAGE_MISS_BIT_KHR |
-                     VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
-                     VK_SHADER_STAGE_CALLABLE_BIT_KHR)) {
-      struct anv_cmd_pipeline_state *pipe_state =
-         &cmd_buffer->state.rt.base;
-
-      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
-   }
 
    cmd_buffer->state.push_constants_dirty |= stageFlags;
 }
@@ -848,10 +727,6 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
    case VK_PIPELINE_BIND_POINT_COMPUTE:
       pipe_state = &cmd_buffer->state.compute.base;
-      break;
-
-   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
-      pipe_state = &cmd_buffer->state.rt.base;
       break;
 
    default:
@@ -1042,55 +917,4 @@ void anv_CmdSetDeviceMask(
     uint32_t                                    deviceMask)
 {
    /* No-op */
-}
-
-void anv_CmdSetRayTracingPipelineStackSizeKHR(
-    VkCommandBuffer                             commandBuffer,
-    uint32_t                                    pipelineStackSize)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct anv_cmd_ray_tracing_state *rt = &cmd_buffer->state.rt;
-   struct anv_device *device = cmd_buffer->device;
-
-   if (anv_batch_has_error(&cmd_buffer->batch))
-      return;
-
-   uint32_t stack_ids_per_dss = 2048; /* TODO */
-
-   unsigned stack_size_log2 = ilog2_round_up(pipelineStackSize);
-   if (stack_size_log2 < 10)
-      stack_size_log2 = 10;
-
-   if (rt->scratch.layout.total_size == 1 << stack_size_log2)
-      return;
-
-   brw_rt_compute_scratch_layout(&rt->scratch.layout, device->info,
-                                 stack_ids_per_dss, 1 << stack_size_log2);
-
-   unsigned bucket = stack_size_log2 - 10;
-   assert(bucket < ARRAY_SIZE(device->rt_scratch_bos));
-
-   struct anv_bo *bo = p_atomic_read(&device->rt_scratch_bos[bucket]);
-   if (bo == NULL) {
-      struct anv_bo *new_bo;
-      VkResult result = anv_device_alloc_bo(device, "RT scratch",
-                                            rt->scratch.layout.total_size,
-                                            0, /* alloc_flags */
-                                            0, /* explicit_address */
-                                            &new_bo);
-      if (result != VK_SUCCESS) {
-         rt->scratch.layout.total_size = 0;
-         anv_batch_set_error(&cmd_buffer->batch, result);
-         return;
-      }
-
-      bo = p_atomic_cmpxchg(&device->rt_scratch_bos[bucket], NULL, new_bo);
-      if (bo != NULL) {
-         anv_device_release_bo(device, bo);
-      } else {
-         bo = new_bo;
-      }
-   }
-
-   rt->scratch.bo = bo;
 }
