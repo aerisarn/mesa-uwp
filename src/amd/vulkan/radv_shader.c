@@ -1165,8 +1165,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
          return true;
       } else if (info->vs.as_es) {
          NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL,
-                    device->physical_device->rad_info.gfx_level,
-                    info->vs.num_linked_outputs * 16u);
+                    device->physical_device->rad_info.gfx_level, info->esgs_itemsize);
          return true;
       }
    } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
@@ -1184,8 +1183,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
 
       if (info->tes.as_es) {
          NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL,
-                    device->physical_device->rad_info.gfx_level,
-                    info->tes.num_linked_outputs * 16u);
+                    device->physical_device->rad_info.gfx_level, info->esgs_itemsize);
       }
 
       return true;
