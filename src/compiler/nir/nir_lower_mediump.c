@@ -524,7 +524,7 @@ can_fold_16bit_src(nir_ssa_def *ssa, nir_alu_type src_type, bool sext_matters)
    bool can_fold = fold_f16 || fold_u16 || fold_i16 || fold_i16_u16;
    for (unsigned i = 0; can_fold && i < ssa->num_components; i++) {
       nir_ssa_scalar comp = nir_ssa_scalar_resolved(ssa, i);
-      if (comp.def->parent_instr->type == nir_instr_type_ssa_undef)
+      if (nir_ssa_scalar_is_undef(comp))
          continue;
       else if (nir_ssa_scalar_is_const(comp)) {
          if (fold_f16)
@@ -560,7 +560,7 @@ fold_16bit_src(nir_builder *b, nir_instr *instr, nir_src *src, nir_alu_type src_
    for (unsigned i = 0; i < src->ssa->num_components; i++) {
       nir_ssa_scalar comp = nir_ssa_scalar_resolved(src->ssa, i);
 
-      if (comp.def->parent_instr->type == nir_instr_type_ssa_undef)
+      if (nir_ssa_scalar_is_undef(comp))
          new_comps[i] = nir_get_ssa_scalar(nir_ssa_undef(b, 1, 16), 0);
       else if (nir_ssa_scalar_is_const(comp)) {
          nir_ssa_def *constant;

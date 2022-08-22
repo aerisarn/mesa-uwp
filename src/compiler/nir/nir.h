@@ -2544,6 +2544,12 @@ nir_ssa_scalar_is_const(nir_ssa_scalar s)
    return s.def->parent_instr->type == nir_instr_type_load_const;
 }
 
+static inline bool
+nir_ssa_scalar_is_undef(nir_ssa_scalar s)
+{
+   return s.def->parent_instr->type == nir_instr_type_ssa_undef;
+}
+
 static inline nir_const_value
 nir_ssa_scalar_as_const_value(nir_ssa_scalar s)
 {

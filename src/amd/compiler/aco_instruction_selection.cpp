@@ -6399,8 +6399,8 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    if (instr->src[3].ssa->bit_size == 32 || instr->src[3].ssa->bit_size == 16) {
       for (uint32_t i = 0; i < instr->num_components; i++) {
          nir_ssa_scalar comp = nir_ssa_scalar_resolved(instr->src[3].ssa, i);
-         if (comp.def->parent_instr->type == nir_instr_type_ssa_undef ||
-             (nir_ssa_scalar_is_const(comp) && nir_ssa_scalar_as_uint(comp) == 0))
+         if ((nir_ssa_scalar_is_const(comp) && nir_ssa_scalar_as_uint(comp) == 0) ||
+             nir_ssa_scalar_is_undef(comp))
             dmask &= ~BITFIELD_BIT(i);
       }
 
