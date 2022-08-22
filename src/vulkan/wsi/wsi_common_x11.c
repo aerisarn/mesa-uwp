@@ -343,6 +343,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    free(xwl_reply);
    free(amd_reply);
    free(nv_reply);
+   free(xfixes_reply);
    if (wants_shm)
       free(shm_reply);
 
