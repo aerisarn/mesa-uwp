@@ -770,10 +770,19 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
    fs_reg sources[8];
    fs_reg urb_handle;
 
-   if (stage == MESA_SHADER_TESS_EVAL)
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      urb_handle = vs_payload().urb_handles;
+      break;
+   case MESA_SHADER_TESS_EVAL:
       urb_handle = tes_payload().urb_output;
-   else
+      break;
+   case MESA_SHADER_GEOMETRY:
       urb_handle = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      break;
+   default:
+      unreachable("invalid stage");
+   }
 
    int header_size = 1;
    fs_reg per_slot_offsets;

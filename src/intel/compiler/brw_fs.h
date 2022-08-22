@@ -93,6 +93,12 @@ struct thread_payload {
    virtual ~thread_payload() = default;
 };
 
+struct vs_thread_payload : public thread_payload {
+   vs_thread_payload();
+
+   fs_reg urb_handles;
+};
+
 struct tcs_thread_payload : public thread_payload {
    tcs_thread_payload(const fs_visitor &v);
 
@@ -173,7 +179,6 @@ public:
    bool run_mesh(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
-   void setup_vs_payload();
    void setup_gs_payload();
    void setup_cs_payload();
    bool fixup_sends_duplicate_payload();
@@ -436,6 +441,11 @@ public:
 
    thread_payload &payload() {
       return *this->payload_;
+   }
+
+   vs_thread_payload &vs_payload() {
+      assert(stage == MESA_SHADER_VERTEX);
+      return *static_cast<vs_thread_payload *>(this->payload_);
    }
 
    tcs_thread_payload &tcs_payload() {

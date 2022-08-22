@@ -5853,15 +5853,6 @@ fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) con
 }
 
 void
-fs_visitor::setup_vs_payload()
-{
-   thread_payload &payload = this->payload();
-
-   /* R0: thread header, R1: urb handles */
-   payload.num_regs = 2;
-}
-
-void
 fs_visitor::setup_gs_payload()
 {
    assert(stage == MESA_SHADER_GEOMETRY);
@@ -6550,7 +6541,7 @@ fs_visitor::run_vs()
 {
    assert(stage == MESA_SHADER_VERTEX);
 
-   setup_vs_payload();
+   payload_ = new vs_thread_payload();
 
    emit_nir_code();
 

@@ -25,6 +25,13 @@
 
 using namespace brw;
 
+vs_thread_payload::vs_thread_payload()
+{
+   urb_handles = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+
+   num_regs = 2;
+}
+
 tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
 {
    struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(v.prog_data);
