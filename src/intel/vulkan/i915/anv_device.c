@@ -204,3 +204,41 @@ fail_context:
    intel_gem_destroy_context(device->fd, device->context_id);
    return result;
 }
+
+static int
+anv_gem_context_get_reset_stats(int fd, int context,
+                                uint32_t *active, uint32_t *pending)
+{
+   struct drm_i915_reset_stats stats = {
+      .ctx_id = context,
+   };
+
+   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats);
+   if (ret == 0) {
+      *active = stats.batch_active;
+      *pending = stats.batch_pending;
+   }
+
+   return ret;
+}
+
+VkResult
+anv_i915_device_check_status(struct vk_device *vk_device)
+{
+   struct anv_device *device = container_of(vk_device, struct anv_device, vk);
+   uint32_t active = 0, pending = 0;
+   int ret = anv_gem_context_get_reset_stats(device->fd, device->context_id,
+                                             &active, &pending);
+   if (ret == -1) {
+      /* We don't know the real error. */
+      return vk_device_set_lost(&device->vk, "get_reset_stats failed: %m");
+   }
+
+   if (active) {
+      return vk_device_set_lost(&device->vk, "GPU hung on one of our command buffers");
+   } else if (pending) {
+      return vk_device_set_lost(&device->vk, "GPU hung with commands in-flight");
+   }
+
+   return VK_SUCCESS;
+}

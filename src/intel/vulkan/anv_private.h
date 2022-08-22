@@ -1351,8 +1351,6 @@ int anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeou
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,
                        uint32_t stride, uint32_t tiling);
 int anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
-int anv_gem_context_get_reset_stats(int fd, int context,
-                                    uint32_t *active, uint32_t *pending);
 int anv_gem_handle_to_fd(struct anv_device *device, uint32_t gem_handle);
 uint32_t anv_gem_fd_to_handle(struct anv_device *device, int fd);
 int anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle, uint32_t caching);

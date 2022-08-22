@@ -3111,8 +3111,6 @@ static struct intel_mapped_pinned_buffer_alloc aux_map_allocator = {
    .free = intel_aux_map_buffer_free,
 };
 
-static VkResult anv_device_check_status(struct vk_device *vk_device);
-
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -3218,7 +3216,7 @@ VkResult anv_CreateDevice(
    }
 
    device->vk.command_buffer_ops = &anv_cmd_buffer_ops;
-   device->vk.check_status = anv_device_check_status;
+   device->vk.check_status = anv_i915_device_check_status;
    device->vk.create_sync_for_memory = anv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->fd);
 
@@ -3719,28 +3717,6 @@ VkResult anv_EnumerateInstanceLayerProperties(
 
    /* None supported at this time */
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
-}
-
-static VkResult
-anv_device_check_status(struct vk_device *vk_device)
-{
-   struct anv_device *device = container_of(vk_device, struct anv_device, vk);
-
-   uint32_t active, pending;
-   int ret = anv_gem_context_get_reset_stats(device->fd, device->context_id,
-                                             &active, &pending);
-   if (ret == -1) {
-      /* We don't know the real error. */
-      return vk_device_set_lost(&device->vk, "get_reset_stats failed: %m");
-   }
-
-   if (active) {
-      return vk_device_set_lost(&device->vk, "GPU hung on one of our command buffers");
-   } else if (pending) {
-      return vk_device_set_lost(&device->vk, "GPU hung with commands in-flight");
-   }
-
-   return VK_SUCCESS;
 }
 
 VkResult

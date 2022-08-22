@@ -269,23 +269,6 @@ anv_gem_set_tiling(struct anv_device *device,
 }
 
 int
-anv_gem_context_get_reset_stats(int fd, int context,
-                                uint32_t *active, uint32_t *pending)
-{
-   struct drm_i915_reset_stats stats = {
-      .ctx_id = context,
-   };
-
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats);
-   if (ret == 0) {
-      *active = stats.batch_active;
-      *pending = stats.batch_pending;
-   }
-
-   return ret;
-}
-
-int
 anv_gem_handle_to_fd(struct anv_device *device, uint32_t gem_handle)
 {
    struct drm_prime_handle args = {

@@ -23,6 +23,7 @@
 #pragma once
 
 #include "vulkan/vulkan_core.h"
+#include "vk_device.h"
 
 struct anv_device;
 struct anv_physical_device;
@@ -34,3 +35,5 @@ VkResult
 anv_i915_device_setup_context(struct anv_device *device,
                               const VkDeviceCreateInfo *pCreateInfo,
                               const uint32_t num_queues);
+
+VkResult anv_i915_device_check_status(struct vk_device *vk_device);
