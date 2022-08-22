@@ -2296,6 +2296,7 @@ struct gl_ati_fragment_shader_state
 #define GLSL_DUMP_ON_ERROR 0x80 /**< Dump shaders to stderr on compile error */
 #define GLSL_CACHE_INFO 0x100 /**< Print debug information about shader cache */
 #define GLSL_CACHE_FALLBACK 0x200 /**< Force shader cache fallback paths */
+#define GLSL_SOURCE 0x400 /**< Only dump GLSL */
 
 
 /**
