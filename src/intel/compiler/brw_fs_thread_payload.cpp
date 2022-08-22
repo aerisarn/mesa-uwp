@@ -318,3 +318,43 @@ fs_thread_payload::fs_thread_payload(const fs_visitor &v,
       setup_fs_payload_gfx4(*this, v, source_depth_to_render_target,
                             runtime_check_aads_emit);
 }
+
+task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
+{
+   /* Task and Mesh Shader Payloads (SIMD8 and SIMD16)
+    *
+    *  R0: Header
+    *  R1: Local_ID.X[0-7 or 0-15]
+    *  R2: Inline Parameter
+    *
+    * Task and Mesh Shader Payloads (SIMD32)
+    *
+    *  R0: Header
+    *  R1: Local_ID.X[0-15]
+    *  R2: Local_ID.X[16-31]
+    *  R3: Inline Parameter
+    *
+    * Local_ID.X values are 16 bits.
+    *
+    * Inline parameter is optional but always present since we use it to pass
+    * the address to descriptors.
+    */
+
+   unsigned r = 0;
+   extended_parameter_0 = retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD);
+   urb_output = retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD);
+
+   if (v.stage == MESA_SHADER_MESH)
+      task_urb_input = retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD);
+   r++;
+
+   local_index = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW);
+   r++;
+   if (v.dispatch_width == 32)
+      r++;
+
+   inline_parameter = retype(brw_vec1_grf(r, 0), BRW_REGISTER_TYPE_UD);
+   r++;
+
+   num_regs = r;
+}

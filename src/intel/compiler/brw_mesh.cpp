@@ -1147,18 +1147,17 @@ fs_visitor::nir_emit_task_intrinsic(const fs_builder &bld,
                                     nir_intrinsic_instr *instr)
 {
    assert(stage == MESA_SHADER_TASK);
-
-   fs_reg urb_handle = retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD);
+   const task_mesh_thread_payload &payload = task_mesh_payload();
 
    switch (instr->intrinsic) {
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_task_payload:
-      emit_task_mesh_store(bld, instr, urb_handle);
+      emit_task_mesh_store(bld, instr, payload.urb_output);
       break;
 
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr, urb_handle);
+      emit_task_mesh_load(bld, instr, payload.urb_output);
       break;
 
    default:
@@ -1172,25 +1171,23 @@ fs_visitor::nir_emit_mesh_intrinsic(const fs_builder &bld,
                                     nir_intrinsic_instr *instr)
 {
    assert(stage == MESA_SHADER_MESH);
-
-   unsigned subreg = instr->intrinsic == nir_intrinsic_load_task_payload ? 7 : 6;
-   fs_reg urb_handle = retype(brw_vec1_grf(0, subreg), BRW_REGISTER_TYPE_UD);
+   const task_mesh_thread_payload &payload = task_mesh_payload();
 
    switch (instr->intrinsic) {
    case nir_intrinsic_store_per_primitive_output:
    case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_output:
-      emit_task_mesh_store(bld, instr, urb_handle);
+      emit_task_mesh_store(bld, instr, payload.urb_output);
       break;
 
    case nir_intrinsic_load_per_vertex_output:
    case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_load_output:
-      emit_task_mesh_load(bld, instr, urb_handle);
+      emit_task_mesh_load(bld, instr, payload.urb_output);
       break;
 
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr, urb_handle);
+      emit_task_mesh_load(bld, instr, payload.task_urb_input);
       break;
 
    default:
@@ -1204,30 +1201,27 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
                                          nir_intrinsic_instr *instr)
 {
    assert(stage == MESA_SHADER_MESH || stage == MESA_SHADER_TASK);
+   const task_mesh_thread_payload &payload = task_mesh_payload();
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_mesh_inline_data_intel:
-      assert(payload().num_regs == 3 || payload().num_regs == 4);
-      /* Inline Parameter is the last element of the payload. */
-      bld.MOV(dest, retype(brw_vec1_grf(payload().num_regs - 1,
-                                        nir_intrinsic_align_offset(instr)),
-                           dest.type));
+   case nir_intrinsic_load_mesh_inline_data_intel: {
+      fs_reg data = offset(payload.inline_parameter, 1, nir_intrinsic_align_offset(instr));
+      bld.MOV(dest, retype(data, dest.type));
       break;
+   }
 
    case nir_intrinsic_load_draw_id:
-      /* DrawID comes from Extended Parameter 0 (XP0). */
-      bld.MOV(dest, brw_vec1_grf(0, 3));
+      bld.MOV(dest, payload.extended_parameter_0);
       break;
 
    case nir_intrinsic_load_local_invocation_index:
    case nir_intrinsic_load_local_invocation_id:
-      /* Local_ID.X is given by the HW in the shader payload. */
       dest = retype(dest, BRW_REGISTER_TYPE_UD);
-      bld.MOV(dest, retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+      bld.MOV(dest, payload.local_index);
       /* Task/Mesh only use one dimension. */
       if (instr->intrinsic == nir_intrinsic_load_local_invocation_id) {
          bld.MOV(offset(dest, bld, 1), brw_imm_uw(0));

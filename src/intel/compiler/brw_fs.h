@@ -133,6 +133,19 @@ struct fs_thread_payload : public thread_payload {
    uint8_t local_invocation_id_reg[2];
 };
 
+struct task_mesh_thread_payload : public thread_payload {
+   task_mesh_thread_payload(const fs_visitor &v);
+
+   fs_reg extended_parameter_0;
+   fs_reg local_index;
+   fs_reg inline_parameter;
+
+   fs_reg urb_output;
+
+   /* URB to read Task memory inputs. Only valid for MESH stage. */
+   fs_reg task_urb_input;
+};
+
 /**
  * The fragment shader front-end.
  *
@@ -462,6 +475,11 @@ public:
       assert(stage == MESA_SHADER_FRAGMENT);
       return *static_cast<fs_thread_payload *>(this->payload_);
    };
+
+   task_mesh_thread_payload &task_mesh_payload() {
+      assert(stage == MESA_SHADER_TASK || stage == MESA_SHADER_MESH);
+      return *static_cast<task_mesh_thread_payload *>(this->payload_);
+   }
 
    bool source_depth_to_render_target;
    bool runtime_check_aads_emit;

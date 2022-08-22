@@ -6910,25 +6910,7 @@ fs_visitor::run_task(bool allow_spilling)
 {
    assert(stage == MESA_SHADER_TASK);
 
-   /* Task Shader Payloads (SIMD8 and SIMD16)
-    *
-    *  R0: Header
-    *  R1: Local_ID.X[0-7 or 0-15]
-    *  R2: Inline Parameter
-    *
-    * Task Shader Payloads (SIMD32)
-    *
-    *  R0: Header
-    *  R1: Local_ID.X[0-15]
-    *  R2: Local_ID.X[16-31]
-    *  R3: Inline Parameter
-    *
-    * Local_ID.X values are 16 bits.
-    *
-    * Inline parameter is optional but always present since we use it to pass
-    * the address to descriptors.
-    */
-   payload().num_regs = dispatch_width == 32 ? 4 : 3;
+   payload_ = new task_mesh_thread_payload(*this);
 
    emit_nir_code();
 
@@ -6957,25 +6939,7 @@ fs_visitor::run_mesh(bool allow_spilling)
 {
    assert(stage == MESA_SHADER_MESH);
 
-   /* Mesh Shader Payloads (SIMD8 and SIMD16)
-    *
-    *  R0: Header
-    *  R1: Local_ID.X[0-7 or 0-15]
-    *  R2: Inline Parameter
-    *
-    * Mesh Shader Payloads (SIMD32)
-    *
-    *  R0: Header
-    *  R1: Local_ID.X[0-15]
-    *  R2: Local_ID.X[16-31]
-    *  R3: Inline Parameter
-    *
-    * Local_ID.X values are 16 bits.
-    *
-    * Inline parameter is optional but always present since we use it to pass
-    * the address to descriptors.
-    */
-   payload().num_regs = dispatch_width == 32 ? 4 : 3;
+   payload_ = new task_mesh_thread_payload(*this);
 
    emit_nir_code();
 
