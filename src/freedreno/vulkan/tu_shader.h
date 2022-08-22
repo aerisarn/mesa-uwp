@@ -24,7 +24,6 @@ struct tu_shader
 
    struct tu_push_constant_range push_consts;
    uint8_t active_desc_sets;
-   bool multi_pos_output;
 };
 
 struct tu_shader_key {
@@ -34,8 +33,7 @@ struct tu_shader_key {
 };
 
 bool
-tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
-                       struct tu_device *dev);
+tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, struct tu_device *dev);
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,

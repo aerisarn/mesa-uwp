@@ -1814,7 +1814,7 @@ tu6_emit_program(struct tu_cs *cs,
    gl_shader_stage stage = MESA_SHADER_VERTEX;
    uint32_t cps_per_patch = builder->create_info->pTessellationState ?
       builder->create_info->pTessellationState->patchControlPoints : 0;
-   bool multi_pos_output = builder->shaders->multi_pos_output;
+   bool multi_pos_output = vs->multi_pos_output;
 
   /* Don't use the binning pass variant when GS is present because we don't
    * support compiling correct binning pass variants with GS.
@@ -2782,7 +2782,6 @@ tu_shaders_serialize(struct vk_pipeline_cache_object *object,
 
    blob_write_bytes(blob, shaders->push_consts, sizeof(shaders->push_consts));
    blob_write_uint8(blob, shaders->active_desc_sets);
-   blob_write_uint8(blob, shaders->multi_pos_output);
 
    for (unsigned i = 0; i < ARRAY_SIZE(shaders->variants); i++) {
       if (shaders->variants[i]) {
@@ -2810,7 +2809,6 @@ tu_shaders_deserialize(struct vk_device *_device,
 
    blob_copy_bytes(blob, shaders->push_consts, sizeof(shaders->push_consts));
    shaders->active_desc_sets = blob_read_uint8(blob);
-   shaders->multi_pos_output = blob_read_uint8(blob);
 
    for (unsigned i = 0; i < ARRAY_SIZE(shaders->variants); i++) {
       bool has_shader = blob_read_uint8(blob);
@@ -3026,8 +3024,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    }
 
    compiled_shaders->active_desc_sets = desc_sets;
-   compiled_shaders->multi_pos_output =
-      shaders[MESA_SHADER_VERTEX]->multi_pos_output;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < ARRAY_SIZE(shaders); stage++) {

@@ -56,7 +56,6 @@ struct tu_compiled_shaders
 
    struct tu_push_constant_range push_consts[MESA_SHADER_STAGES];
    uint8_t active_desc_sets;
-   bool multi_pos_output;
 
    struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
 };

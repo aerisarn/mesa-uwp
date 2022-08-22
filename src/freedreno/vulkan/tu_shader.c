@@ -780,8 +780,7 @@ tu_shader_create(struct tu_device *dev,
    ir3_nir_lower_io_to_temporaries(nir);
 
    if (nir->info.stage == MESA_SHADER_VERTEX && key->multiview_mask) {
-      tu_nir_lower_multiview(nir, key->multiview_mask,
-                             &shader->multi_pos_output, dev);
+      tu_nir_lower_multiview(nir, key->multiview_mask, dev);
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT && key->force_sample_interp) {

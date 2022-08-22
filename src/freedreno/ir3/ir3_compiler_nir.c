@@ -4130,6 +4130,9 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
     */
    unsigned slot = io.location + (io.per_view ? 0 : offset);
 
+   if (io.per_view && offset > 0)
+      so->multi_pos_output = true;
+
    if (ctx->so->type == MESA_SHADER_FRAGMENT) {
       switch (slot) {
       case FRAG_RESULT_DEPTH:
