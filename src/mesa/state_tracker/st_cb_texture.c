@@ -482,8 +482,6 @@ st_MapTextureImage(struct gl_context *ctx,
                    GLubyte **mapOut, GLint *rowStrideOut)
 {
    struct st_context *st = st_context(ctx);
-   GLubyte *map;
-   struct pipe_transfer *transfer;
 
    /* Check for unexpected flags */
    assert((mode & ~(GL_MAP_READ_BIT |
@@ -493,9 +491,6 @@ st_MapTextureImage(struct gl_context *ctx,
    const enum pipe_map_flags transfer_flags =
       _mesa_access_flags_to_transfer_flags(mode, false);
 
-   map = st_texture_image_map(st, texImage, transfer_flags, x, y, slice, w, h, 1,
-                              &transfer);
-   if (map) {
       if (st_compressed_format_fallback(st, texImage->TexFormat)) {
          /* Some compressed formats don't have to be supported by drivers,
           * and st/mesa transparently handles decompression on upload (Unmap),
@@ -504,7 +499,12 @@ st_MapTextureImage(struct gl_context *ctx,
           * We store the compressed data (it's needed for glGetCompressedTex-
           * Image and image copies in OES_copy_image).
           */
-         unsigned z = transfer->box.z;
+         unsigned z = slice + texImage->Face +
+                      texImage->TexObject->Attrib.MinLayer;
+
+         /* Enlarge the transfer array if it's not large enough. */
+         st_texture_image_insert_transfer(texImage, z, NULL);
+
          struct st_texture_image_transfer *itransfer = &texImage->transfer[z];
 
          assert(itransfer->box.depth == 0);
@@ -524,18 +524,13 @@ st_MapTextureImage(struct gl_context *ctx,
             texImage->compressed_data->ptr +
             (z * y_blocks + (y / blk_h)) * stride +
             (x / blk_w) * block_size;
-         itransfer->map = map;
       }
       else {
-         /* supported mapping */
-         *mapOut = map;
-         *rowStrideOut = transfer->stride;
+         struct pipe_transfer *transfer;
+         *mapOut = st_texture_image_map(st, texImage, transfer_flags,
+                                        x, y, slice, w, h, 1, &transfer);
+         *rowStrideOut = *mapOut ? transfer->stride : 0;
       }
-   }
-   else {
-      *mapOut = NULL;
-      *rowStrideOut = 0;
-   }
 }
 
 
@@ -551,12 +546,28 @@ st_UnmapTextureImage(struct gl_context *ctx,
        * support the compressed format. */
       unsigned z = slice + texImage->Face;
       struct st_texture_image_transfer *itransfer = &texImage->transfer[z];
-      struct pipe_transfer *transfer = itransfer->transfer;
-
-      assert(z == transfer->box.z);
 
       if (itransfer->box.depth != 0) {
          assert(itransfer->box.depth == 1);
+
+         struct pipe_transfer *transfer;
+         GLubyte *map = st_texture_image_map(st, texImage,
+                                             PIPE_MAP_WRITE |
+                                             PIPE_MAP_DISCARD_RANGE,
+                                             itransfer->box.x,
+                                             itransfer->box.y, slice,
+                                             itransfer->box.width,
+                                             itransfer->box.height, 1,
+                                             &transfer);
+
+         if (!map) {
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "compressed fallback map");
+            return;
+         }
+
+         assert(z == transfer->box.z);
+
+         itransfer->map = map;
 
          if (util_format_is_compressed(texImage->pt->format)) {
             /* Transcode into a different compressed format. */
@@ -638,15 +649,16 @@ st_UnmapTextureImage(struct gl_context *ctx,
             }
          }
 
+         st_texture_image_unmap(st, texImage, slice);
          memset(&itransfer->box, 0, sizeof(struct pipe_box));
       }
 
       itransfer->temp_data = NULL;
       itransfer->temp_stride = 0;
       itransfer->map = NULL;
+   } else {
+      st_texture_image_unmap(st, texImage, slice);
    }
-
-   st_texture_image_unmap(st, texImage, slice);
 }
 
 
