@@ -566,8 +566,6 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
          assert(z == transfer->box.z);
 
-         itransfer->map = map;
-
          if (util_format_is_compressed(texImage->pt->format)) {
             /* Transcode into a different compressed format. */
             unsigned size =
@@ -609,7 +607,7 @@ st_UnmapTextureImage(struct gl_context *ctx,
             pack.Alignment = 4;
 
             _mesa_texstore(ctx, 2, GL_RGBA, texImage->pt->format,
-                           transfer->stride, &itransfer->map,
+                           transfer->stride, &map,
                            transfer->box.width,
                            transfer->box.height, 1, GL_RGBA,
                            GL_UNSIGNED_BYTE, tmp, &pack);
@@ -617,7 +615,7 @@ st_UnmapTextureImage(struct gl_context *ctx,
          } else {
             /* Decompress into an uncompressed format. */
             if (texImage->TexFormat == MESA_FORMAT_ETC1_RGB8) {
-               _mesa_etc1_unpack_rgba8888(itransfer->map, transfer->stride,
+               _mesa_etc1_unpack_rgba8888(map, transfer->stride,
                                           itransfer->temp_data,
                                           itransfer->temp_stride,
                                           transfer->box.width,
@@ -625,20 +623,20 @@ st_UnmapTextureImage(struct gl_context *ctx,
             } else if (_mesa_is_format_etc2(texImage->TexFormat)) {
                bool bgra = texImage->pt->format == PIPE_FORMAT_B8G8R8A8_SRGB;
 
-               _mesa_unpack_etc2_format(itransfer->map, transfer->stride,
+               _mesa_unpack_etc2_format(map, transfer->stride,
                                         itransfer->temp_data,
                                         itransfer->temp_stride,
                                         transfer->box.width, transfer->box.height,
                                         texImage->TexFormat,
                                         bgra);
             } else if (_mesa_is_format_astc_2d(texImage->TexFormat)) {
-               _mesa_unpack_astc_2d_ldr(itransfer->map, transfer->stride,
+               _mesa_unpack_astc_2d_ldr(map, transfer->stride,
                                         itransfer->temp_data,
                                         itransfer->temp_stride,
                                         transfer->box.width, transfer->box.height,
                                         texImage->TexFormat);
             } else if (_mesa_is_format_bptc(texImage->TexFormat)) {
-               _mesa_unpack_bptc(itransfer->map, transfer->stride,
+               _mesa_unpack_bptc(map, transfer->stride,
                                  itransfer->temp_data,
                                  itransfer->temp_stride,
                                  transfer->box.width, transfer->box.height,
@@ -654,7 +652,6 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       itransfer->temp_data = NULL;
       itransfer->temp_stride = 0;
-      itransfer->map = NULL;
    } else {
       st_texture_image_unmap(st, texImage, slice);
    }
