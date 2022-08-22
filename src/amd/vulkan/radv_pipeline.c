@@ -4529,6 +4529,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
          .rounding_mode = nir_rounding_mode_rtne,
          .fold_tex_dest = true,
          .fold_image_load_store_data = true,
+         .fold_image_srcs = !radv_use_llvm_for_stage(device, stage->stage),
          .fold_srcs_options_count = separate_g16 ? 2 : 1,
          .fold_srcs_options = fold_srcs_options,
       };
