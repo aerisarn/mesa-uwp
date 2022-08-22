@@ -1053,51 +1053,6 @@ _mesa_delete_buffer_object(struct gl_context *ctx,
 }
 
 
-
-/**
- * Set ptr to bufObj w/ reference counting.
- * This is normally only called from the _mesa_reference_buffer_object() macro
- * when there's a real pointer change.
- */
-void
-_mesa_reference_buffer_object_(struct gl_context *ctx,
-                               struct gl_buffer_object **ptr,
-                               struct gl_buffer_object *bufObj,
-                               bool shared_binding)
-{
-   if (*ptr) {
-      /* Unreference the old buffer */
-      struct gl_buffer_object *oldObj = *ptr;
-
-      assert(oldObj->RefCount >= 1);
-
-      /* Count references only if the context doesn't own the buffer or if
-       * ptr is a binding point shared by multiple contexts (such as a texture
-       * buffer object being a buffer bound within a texture object).
-       */
-      if (shared_binding || ctx != oldObj->Ctx) {
-         if (p_atomic_dec_zero(&oldObj->RefCount)) {
-            _mesa_delete_buffer_object(ctx, oldObj);
-         }
-      } else {
-         /* Update the private ref count. */
-         assert(oldObj->CtxRefCount >= 1);
-         oldObj->CtxRefCount--;
-      }
-   }
-
-   if (bufObj) {
-      /* reference new buffer */
-      if (shared_binding || ctx != bufObj->Ctx)
-         p_atomic_inc(&bufObj->RefCount);
-      else
-         bufObj->CtxRefCount++;
-   }
-
-   *ptr = bufObj;
-}
-
-
 /**
  * Get the value of MESA_NO_MINMAX_CACHE.
  */
