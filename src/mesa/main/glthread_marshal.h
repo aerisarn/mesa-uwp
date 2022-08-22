@@ -74,6 +74,15 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
 }
 
 static inline bool
+_mesa_glthread_call_is_last(struct glthread_state *glthread,
+                            struct marshal_cmd_base *last)
+{
+   return last &&
+          (uint64_t*)last + last->cmd_size ==
+          &glthread->next_batch->buffer[glthread->used];
+}
+
+static inline bool
 _mesa_glthread_has_no_pack_buffer(const struct gl_context *ctx)
 {
    return ctx->GLThread.CurrentPixelPackBufferName == 0;

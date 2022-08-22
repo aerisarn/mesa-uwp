@@ -246,6 +246,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
 
       glthread->LastCallList = NULL;
+      glthread->LastBindBuffer = NULL;
       return;
    }
 
@@ -260,6 +261,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    glthread->used = 0;
 
    glthread->LastCallList = NULL;
+   glthread->LastBindBuffer = NULL;
 }
 
 /**
@@ -298,6 +300,7 @@ _mesa_glthread_finish(struct gl_context *ctx)
       glthread->used = 0;
 
       glthread->LastCallList = NULL;
+      glthread->LastBindBuffer = NULL;
 
       /* Since glthread_unmarshal_batch changes the dispatch to direct,
        * restore it after it's done.

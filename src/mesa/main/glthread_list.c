@@ -57,9 +57,7 @@ _mesa_marshal_CallList(GLuint list)
    _mesa_glthread_CallList(ctx, list);
 
    /* If the last call is CallList and there is enough space to append another list... */
-   if (last &&
-       (uint64_t*)last + last->cmd_base.cmd_size ==
-       &glthread->next_batch->buffer[glthread->used] &&
+   if (_mesa_glthread_call_is_last(glthread, &last->cmd_base) &&
        glthread->used + 1 <= MARSHAL_MAX_CMD_SIZE / 8) {
       STATIC_ASSERT(sizeof(*last) == 8);
 

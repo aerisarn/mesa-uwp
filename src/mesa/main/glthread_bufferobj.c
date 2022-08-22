@@ -173,7 +173,7 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
  * feature that if you pass a bad name, it just gens a buffer object for you,
  * so we escape without having to know if things are valid or not.
  */
-void
+static void
 _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
 {
    struct glthread_state *glthread = &ctx->GLThread;
@@ -202,6 +202,84 @@ _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
       glthread->CurrentQueryBufferName = buffer;
       break;
    }
+}
+
+/* This can hold up to 2 BindBuffer calls. This is used to eliminate
+ * duplicated BindBuffer calls, which are plentiful in viewperf2020/catia.
+ * In this example, the first 2 calls are eliminated by glthread by keeping
+ * track of the last 2 BindBuffer calls and overwriting them if the target
+ * matches.
+ *
+ *   glBindBuffer(GL_ARRAY_BUFFER, 0);
+ *   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+ *   glBindBuffer(GL_ARRAY_BUFFER, 6);
+ *   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 7);
+ */
+struct marshal_cmd_BindBuffer
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 target[2];
+   GLuint buffer[2];
+};
+
+uint32_t
+_mesa_unmarshal_BindBuffer(struct gl_context *ctx,
+                           const struct marshal_cmd_BindBuffer *cmd,
+                           const uint64_t *last)
+{
+   CALL_BindBuffer(ctx->CurrentServerDispatch, (cmd->target[0], cmd->buffer[0]));
+
+   if (cmd->target[1])
+      CALL_BindBuffer(ctx->CurrentServerDispatch, (cmd->target[1], cmd->buffer[1]));
+
+   const unsigned cmd_size = (align(sizeof(struct marshal_cmd_BindBuffer), 8) / 8);
+   assert (cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_BindBuffer(GLenum target, GLuint buffer)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_state *glthread = &ctx->GLThread;
+   struct marshal_cmd_BindBuffer *last = glthread->LastBindBuffer;
+
+   _mesa_glthread_BindBuffer(ctx, target, buffer);
+
+   /* If the last call is BindBuffer... */
+   if (_mesa_glthread_call_is_last(glthread, &last->cmd_base)) {
+      /* If the target is in the last call and unbinding the buffer, overwrite
+       * the buffer ID there.
+       *
+       * We can't optimize out binding non-zero buffers because binding also
+       * creates the GL objects (like glCreateBuffers), which can't be skipped.
+       */
+      if (target == last->target[0] && !last->buffer[0]) {
+         last->buffer[0] = buffer;
+         return;
+      }
+      if (target == last->target[1] && !last->buffer[1]) {
+         last->buffer[1] = buffer;
+         return;
+      }
+
+      /* If the last call has an unused buffer field, add this call to it. */
+      if (last->target[1] == 0) {
+         last->target[1] = MIN2(target, 0xffff); /* clamped to 0xffff (invalid enum) */
+         last->buffer[1] = buffer;
+         return;
+      }
+   }
+
+   int cmd_size = sizeof(struct marshal_cmd_BindBuffer);
+   struct marshal_cmd_BindBuffer *cmd =
+      _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_BindBuffer, cmd_size);
+
+   cmd->target[0] = MIN2(target, 0xffff); /* clamped to 0xffff (invalid enum) */
+   cmd->target[1] = 0;
+   cmd->buffer[0] = buffer;
+
+   glthread->LastBindBuffer = cmd;
 }
 
 void

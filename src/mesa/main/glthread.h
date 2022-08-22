@@ -243,6 +243,7 @@ struct glthread_state
 
    /** The last added call of the given function. */
    struct marshal_cmd_CallList *LastCallList;
+   struct marshal_cmd_BindBuffer *LastBindBuffer;
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);
@@ -278,8 +279,6 @@ void _mesa_error_glthread_safe(struct gl_context *ctx, GLenum error,
                                bool glthread, const char *format, ...);
 void _mesa_glthread_execute_list(struct gl_context *ctx, GLuint list);
 
-void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
-                               GLuint buffer);
 void _mesa_glthread_DeleteBuffers(struct gl_context *ctx, GLsizei n,
                                   const GLuint *buffers);
 
