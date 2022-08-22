@@ -865,10 +865,4 @@ _mesa_glthread_DeleteFramebuffers(struct gl_context *ctx, GLsizei n,
    }
 }
 
-struct marshal_cmd_CallList
-{
-   struct marshal_cmd_base cmd_base;
-   GLuint list;
-};
-
 #endif /* MARSHAL_H */

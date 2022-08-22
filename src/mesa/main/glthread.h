@@ -240,6 +240,9 @@ struct glthread_state
    GLuint CurrentDrawFramebuffer;
    GLuint CurrentReadFramebuffer;
    GLuint CurrentProgram;
+
+   /** The last added call of the given function. */
+   struct marshal_cmd_CallList *LastCallList;
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);

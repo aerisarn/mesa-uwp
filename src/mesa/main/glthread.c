@@ -244,6 +244,8 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    if (false) {
       glthread_unmarshal_batch(next, NULL, 0);
       _glapi_set_dispatch(ctx->CurrentClientDispatch);
+
+      glthread->LastCallList = NULL;
       return;
    }
 
@@ -256,6 +258,8 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    glthread->next = (glthread->next + 1) % MARSHAL_MAX_BATCHES;
    glthread->next_batch = &glthread->batches[glthread->next];
    glthread->used = 0;
+
+   glthread->LastCallList = NULL;
 }
 
 /**
@@ -292,6 +296,8 @@ _mesa_glthread_finish(struct gl_context *ctx)
       p_atomic_add(&glthread->stats.num_direct_items, glthread->used);
       next->used = glthread->used;
       glthread->used = 0;
+
+      glthread->LastCallList = NULL;
 
       /* Since glthread_unmarshal_batch changes the dispatch to direct,
        * restore it after it's done.
