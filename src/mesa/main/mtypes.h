@@ -1441,9 +1441,7 @@ struct gl_buffer_object
    GLenum16 Usage;      /**< GL_STREAM_DRAW_ARB, GL_STREAM_READ_ARB, etc. */
    GLbitfield StorageFlags; /**< GL_MAP_PERSISTENT_BIT, etc. */
    GLsizeiptrARB Size;  /**< Size of buffer storage in bytes */
-   GLubyte *Data;       /**< Location of storage either in RAM or VRAM. */
    GLboolean DeletePending;   /**< true if buffer object is removed from the hash */
-   GLboolean Written;   /**< Ever written to? (for debugging) */
    GLboolean Immutable; /**< GL_ARB_buffer_storage */
    gl_buffer_usage UsageHistory; /**< How has this buffer been used so far? */
 

@@ -1041,7 +1041,6 @@ _mesa_delete_buffer_object(struct gl_context *ctx,
    _mesa_bufferobj_release_buffer(bufObj);
 
    vbo_delete_minmax_cache(bufObj);
-   align_free(bufObj->Data);
 
    /* assign strange values here to help w/ debugging */
    bufObj->RefCount = -1000;
@@ -2170,7 +2169,6 @@ buffer_storage(struct gl_context *ctx, struct gl_buffer_object *bufObj,
 
    FLUSH_VERTICES(ctx, 0, 0);
 
-   bufObj->Written = GL_TRUE;
    bufObj->Immutable = GL_TRUE;
    bufObj->MinMaxCacheDirty = true;
 
@@ -2416,7 +2414,6 @@ buffer_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
 
    FLUSH_VERTICES(ctx, 0, 0);
 
-   bufObj->Written = GL_TRUE;
    bufObj->MinMaxCacheDirty = true;
 
 #ifdef VBO_DEBUG
@@ -2604,7 +2601,6 @@ _mesa_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
       return;
 
    bufObj->NumSubDataCalls++;
-   bufObj->Written = GL_TRUE;
    bufObj->MinMaxCacheDirty = true;
 
    _mesa_bufferobj_subdata(ctx, offset, size, data, bufObj);
@@ -3724,7 +3720,6 @@ map_buffer_range(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    }
 
    if (access & GL_MAP_WRITE_BIT) {
-      bufObj->Written = GL_TRUE;
       bufObj->MinMaxCacheDirty = true;
    }
 
