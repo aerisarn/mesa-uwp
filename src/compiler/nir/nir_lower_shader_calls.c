@@ -1463,7 +1463,7 @@ nir_lower_shader_calls(nir_shader *shader,
    NIR_PASS_V(shader, spill_ssa_defs_and_lower_shader_calls,
               num_calls, stack_alignment);
 
-   nir_opt_remove_phis(shader);
+   NIR_PASS_V(shader, nir_opt_remove_phis);
 
    /* Make N copies of our shader */
    nir_shader **resume_shaders = ralloc_array(mem_ctx, nir_shader *, num_calls);
