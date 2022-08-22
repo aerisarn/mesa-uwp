@@ -23,8 +23,8 @@
  */
 
 #include "aco_ir.h"
+#include "aco_util.h"
 
-#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -297,12 +297,13 @@ struct InstrPred {
    }
 };
 
-using expr_set = std::unordered_map<Instruction*, uint32_t, InstrHash, InstrPred>;
+using expr_set = aco::unordered_map<Instruction*, uint32_t, InstrHash, InstrPred>;
 
 struct vn_ctx {
    Program* program;
+   monotonic_buffer_resource m;
    expr_set expr_values;
-   std::map<uint32_t, Temp> renames;
+   aco::unordered_map<uint32_t, Temp> renames;
 
    /* The exec id should be the same on the same level of control flow depth.
     * Together with the check for dominator relations, it is safe to assume
@@ -311,7 +312,7 @@ struct vn_ctx {
     */
    uint32_t exec_id = 1;
 
-   vn_ctx(Program* program_) : program(program_)
+   vn_ctx(Program* program_) : program(program_), m(), expr_values(m), renames(m)
    {
       static_assert(sizeof(Temp) == 4, "Temp must fit in 32bits");
       unsigned size = 0;
@@ -446,7 +447,7 @@ process_block(vn_ctx& ctx, Block& block)
 }
 
 void
-rename_phi_operands(Block& block, std::map<uint32_t, Temp>& renames)
+rename_phi_operands(Block& block, aco::unordered_map<uint32_t, Temp>& renames)
 {
    for (aco_ptr<Instruction>& phi : block.instructions) {
       if (phi->opcode != aco_opcode::p_phi && phi->opcode != aco_opcode::p_linear_phi)
