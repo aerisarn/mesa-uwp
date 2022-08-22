@@ -820,8 +820,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE_UINT:
       /* 1<<27 is required by VK spec */
       assert(screen->info.props.limits.maxStorageBufferRange >= 1 << 27);
-      /* but Gallium can't handle values that are too big, so clamp to VK spec minimum */
-      return MIN2(get_smallest_buffer_heap(screen), 1 << 27);
+      /* clamp to VK spec minimum */
+      return MIN2(get_smallest_buffer_heap(screen), screen->info.props.limits.maxStorageBufferRange);
 
    case PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT:
    case PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
