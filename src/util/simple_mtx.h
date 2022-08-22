@@ -40,6 +40,14 @@
 #  define HG(x)
 #endif
 
+#endif /* UTIL_FUTEX_SUPPORTED */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if UTIL_FUTEX_SUPPORTED
+
 /* mtx_t - Fast, simple mutex
  *
  * While modern pthread mutexes are very fast (implemented using futex), they
@@ -135,7 +143,7 @@ simple_mtx_assert_locked(simple_mtx_t *mtx)
    assert(mtx->val);
 }
 
-#else
+#else /* !UTIL_FUTEX_SUPPORTED */
 
 typedef mtx_t simple_mtx_t;
 
@@ -181,6 +189,10 @@ simple_mtx_assert_locked(simple_mtx_t *mtx)
 #endif
 }
 
+#endif /* UTIL_FUTEX_SUPPORTED */
+
+#ifdef __cplusplus
+}
 #endif
 
-#endif
+#endif /* _SIMPLE_MTX_H */
