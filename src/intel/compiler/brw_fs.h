@@ -101,6 +101,15 @@ struct tcs_thread_payload : public thread_payload {
    fs_reg icp_handle_start;
 };
 
+struct tes_thread_payload : public thread_payload {
+   tes_thread_payload();
+
+   fs_reg patch_urb_input;
+   fs_reg primitive_id;
+   fs_reg coords[3];
+   fs_reg urb_output;
+};
+
 struct fs_thread_payload : public thread_payload {
    fs_thread_payload(const fs_visitor &v,
                      bool &source_depth_to_render_target,
@@ -432,6 +441,11 @@ public:
    tcs_thread_payload &tcs_payload() {
       assert(stage == MESA_SHADER_TESS_CTRL);
       return *static_cast<tcs_thread_payload *>(this->payload_);
+   }
+
+   tes_thread_payload &tes_payload() {
+      assert(stage == MESA_SHADER_TESS_EVAL);
+      return *static_cast<tes_thread_payload *>(this->payload_);
    }
 
    fs_thread_payload &fs_payload() {

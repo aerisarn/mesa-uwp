@@ -58,6 +58,22 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
    }
 }
 
+tes_thread_payload::tes_thread_payload()
+{
+   /* R0: Thread Header. */
+   patch_urb_input = retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
+   primitive_id = brw_vec1_grf(0, 1);
+
+   /* R1-3: gl_TessCoord.xyz. */
+   for (unsigned i = 0; i < 3; i++)
+      coords[i] = brw_vec8_grf(1 + i, 0);
+
+   /* R4: URB output handles. */
+   urb_output = retype(brw_vec8_grf(4, 0), BRW_REGISTER_TYPE_UD);
+
+   num_regs = 5;
+}
+
 static inline void
 setup_fs_payload_gfx6(fs_thread_payload &payload,
                       const fs_visitor &v,

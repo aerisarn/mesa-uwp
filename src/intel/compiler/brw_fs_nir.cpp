@@ -3045,13 +3045,12 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_primitive_id:
-      bld.MOV(dest, fs_reg(brw_vec1_grf(0, 1)));
+      bld.MOV(dest, tes_payload().primitive_id);
       break;
+
    case nir_intrinsic_load_tess_coord:
-      /* gl_TessCoord is part of the payload in g1-3 */
-      for (unsigned i = 0; i < 3; i++) {
-         bld.MOV(offset(dest, bld, i), fs_reg(brw_vec8_grf(1 + i, 0)));
-      }
+      for (unsigned i = 0; i < 3; i++)
+         bld.MOV(offset(dest, bld, i), tes_payload().coords[i]);
       break;
 
    case nir_intrinsic_load_input:
@@ -3080,8 +3079,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
          } else {
             /* Replicate the patch handle to all enabled channels */
             fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-            srcs[URB_LOGICAL_SRC_HANDLE] =
-               retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
+            srcs[URB_LOGICAL_SRC_HANDLE] = tes_payload().patch_urb_input;
 
             if (first_component != 0) {
                unsigned read_components =
@@ -3112,8 +3110,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
          unsigned num_components = instr->num_components;
 
          fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-         srcs[URB_LOGICAL_SRC_HANDLE] =
-            retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
+         srcs[URB_LOGICAL_SRC_HANDLE] = tes_payload().patch_urb_input;
          srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
 
          if (first_component != 0) {

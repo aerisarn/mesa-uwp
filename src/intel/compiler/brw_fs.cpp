@@ -6683,8 +6683,7 @@ fs_visitor::run_tes()
 {
    assert(stage == MESA_SHADER_TESS_EVAL);
 
-   /* R0: thread header, R1-3: gl_TessCoord.xyz, R4: URB handles */
-   payload().num_regs = 5;
+   payload_ = new tes_thread_payload();
 
    emit_nir_code();
 

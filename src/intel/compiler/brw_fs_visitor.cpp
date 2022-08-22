@@ -771,7 +771,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
    fs_reg urb_handle;
 
    if (stage == MESA_SHADER_TESS_EVAL)
-      urb_handle = fs_reg(retype(brw_vec8_grf(4, 0), BRW_REGISTER_TYPE_UD));
+      urb_handle = tes_payload().urb_output;
    else
       urb_handle = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
 
