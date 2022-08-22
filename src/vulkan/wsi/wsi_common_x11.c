@@ -1313,7 +1313,6 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
    int stride_b = image->base.row_pitches[0];
    size_t size = (hdr_len + stride_b * chain->extent.height) >> 2;
    uint64_t max_req_len = xcb_get_maximum_request_length(chain->conn);
-   chain->images[image_index].busy = false;
 
    if (size < max_req_len) {
       cookie = xcb_put_image(chain->conn, XCB_IMAGE_FORMAT_Z_PIXMAP,
@@ -1345,6 +1344,7 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
       }
    }
 
+   chain->images[image_index].busy = false;
    xcb_flush(chain->conn);
    return x11_swapchain_result(chain, VK_SUCCESS);
 }
