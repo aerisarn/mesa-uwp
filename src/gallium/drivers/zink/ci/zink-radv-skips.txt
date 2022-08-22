@@ -13,3 +13,6 @@ KHR-GL46.texture_swizzle.smoke
 
 #these need format conversions that gallium doesn't implement yet
 spec@arb_texture_buffer_object@formats.*arb.*
+
+# These randomly hang.
+spec@ext_external_objects@*
