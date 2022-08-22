@@ -511,10 +511,16 @@ vn_QueueSubmit(VkQueue queue_h,
    if (submit.wsi_mem) {
       /* XXX this is always false and kills the performance */
       if (dev->instance->renderer->info.has_implicit_fencing) {
-         vn_renderer_submit(dev->renderer, &(const struct vn_renderer_submit){
-                                              .bos = &submit.wsi_mem->base_bo,
-                                              .bo_count = 1,
-                                           });
+         vn_renderer_submit(dev->renderer,
+                            &(const struct vn_renderer_submit){
+                               .bos = &submit.wsi_mem->base_bo,
+                               .bo_count = 1,
+                               .batches =
+                                  &(struct vn_renderer_submit_batch){
+                                     .ring_idx = queue->ring_idx,
+                                  },
+                               .batch_count = 1,
+                            });
       } else {
          vn_queue_wait_idle_before_present(queue);
       }
@@ -683,10 +689,16 @@ vn_QueueSubmit2(VkQueue queue_h,
             vn_device_memory_from_handle(wsi_info->memory);
          assert(!wsi_mem->base_memory && wsi_mem->base_bo);
 
-         vn_renderer_submit(dev->renderer, &(const struct vn_renderer_submit){
-                                              .bos = &wsi_mem->base_bo,
-                                              .bo_count = 1,
-                                           });
+         vn_renderer_submit(dev->renderer,
+                            &(const struct vn_renderer_submit){
+                               .bos = &wsi_mem->base_bo,
+                               .bo_count = 1,
+                               .batches =
+                                  &(struct vn_renderer_submit_batch){
+                                     .ring_idx = queue->ring_idx,
+                                  },
+                               .batch_count = 1,
+                            });
       } else {
          vn_queue_wait_idle_before_present(queue);
       }
