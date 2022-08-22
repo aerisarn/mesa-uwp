@@ -1386,16 +1386,6 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
-         VkPhysicalDeviceAccelerationStructureFeaturesKHR *features = (void *)ext;
-         features->accelerationStructure = false;
-         features->accelerationStructureCaptureReplay = false;
-         features->accelerationStructureIndirectBuild = false;
-         features->accelerationStructureHostCommands = false;
-         features->descriptorBindingAccelerationStructureUpdateAfterBind = true;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
          VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features = (void *)ext;
          features->bufferDeviceAddress = pdevice->has_a64_buffer_access;
@@ -2234,19 +2224,6 @@ void anv_GetPhysicalDeviceProperties2(
          continue;
 
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
-         VkPhysicalDeviceAccelerationStructurePropertiesKHR *props = (void *)ext;
-         props->maxGeometryCount = (1u << 24) - 1;
-         props->maxInstanceCount = (1u << 24) - 1;
-         props->maxPrimitiveCount = (1u << 29) - 1;
-         props->maxPerStageDescriptorAccelerationStructures = UINT16_MAX;
-         props->maxPerStageDescriptorUpdateAfterBindAccelerationStructures = UINT16_MAX;
-         props->maxDescriptorSetAccelerationStructures = UINT16_MAX;
-         props->maxDescriptorSetUpdateAfterBindAccelerationStructures = UINT16_MAX;
-         props->minAccelerationStructureScratchOffsetAlignment = 64;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
          /* TODO: Real limits */
          VkPhysicalDeviceConservativeRasterizationPropertiesEXT *properties =
@@ -4754,9 +4731,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     *
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
-    * 
+    *
     *    - Loader interface v5 differs from v4 in:
-    *        - The ICD must support Vulkan API version 1.1 and must not return 
+    *        - The ICD must support Vulkan API version 1.1 and must not return
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.

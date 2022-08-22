@@ -91,10 +91,6 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       data = ANV_DESCRIPTOR_INLINE_UNIFORM;
       break;
 
-   case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-      data = ANV_DESCRIPTOR_ADDRESS_RANGE;
-      break;
-
    default:
       unreachable("Unsupported descriptor type");
    }
@@ -141,9 +137,6 @@ anv_descriptor_data_for_mutable_type(const struct anv_physical_device *device,
 
          desc_data |= anv_descriptor_data_for_type(device, i);
       }
-
-      desc_data |= anv_descriptor_data_for_type(
-         device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
       return desc_data;
    }
@@ -233,10 +226,6 @@ anv_descriptor_size_for_mutable_type(const struct anv_physical_device *device,
             anv_descriptor_data_for_type(device, i);
          size = MAX2(size, anv_descriptor_data_size(desc_data));
       }
-
-      enum anv_descriptor_data desc_data = anv_descriptor_data_for_type(
-         device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
-      size = MAX2(size, anv_descriptor_data_size(desc_data));
 
       return size;
    }
@@ -1674,39 +1663,6 @@ anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
    memcpy(desc_map + offset, data, size);
 }
 
-void
-anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
-                                                struct anv_descriptor_set *set,
-                                                struct anv_acceleration_structure *accel,
-                                                uint32_t binding,
-                                                uint32_t element)
-{
-   const struct anv_descriptor_set_binding_layout *bind_layout =
-      &set->layout->binding[binding];
-   struct anv_descriptor *desc =
-      &set->descriptors[bind_layout->descriptor_index + element];
-
-   assert(bind_layout->data & ANV_DESCRIPTOR_ADDRESS_RANGE);
-   *desc = (struct anv_descriptor) {
-      .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-      .accel_struct = accel,
-   };
-
-   if (set->pool && set->pool->host_only)
-      return;
-
-   struct anv_address_range_descriptor desc_data = { };
-   if (accel != NULL) {
-      desc_data.address = anv_address_physical(accel->address);
-      desc_data.range = accel->size;
-   }
-   assert(sizeof(desc_data) <= bind_layout->descriptor_stride);
-
-   void *desc_map = set->desc_mem.map + bind_layout->descriptor_offset +
-                    element * bind_layout->descriptor_stride;
-   memcpy(desc_map, &desc_data, sizeof(desc_data));
-}
-
 void anv_UpdateDescriptorSets(
     VkDevice                                    _device,
     uint32_t                                    descriptorWriteCount,
@@ -1780,21 +1736,6 @@ void anv_UpdateDescriptorSets(
          break;
       }
 
-      case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
-         const VkWriteDescriptorSetAccelerationStructureKHR *accel_write =
-            vk_find_struct_const(write, WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR);
-         assert(accel_write->accelerationStructureCount ==
-                write->descriptorCount);
-         for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            ANV_FROM_HANDLE(anv_acceleration_structure, accel,
-                            accel_write->pAccelerationStructures[j]);
-            anv_descriptor_set_write_acceleration_structure(device, set, accel,
-                                                            write->dstBinding,
-                                                            write->dstArrayElement + j);
-         }
-         break;
-      }
-
       default:
          break;
       }
@@ -1864,14 +1805,6 @@ void anv_UpdateDescriptorSets(
                                             copy->dstArrayElement + j,
                                             src_desc[j].offset,
                                             src_desc[j].range);
-            break;
-         }
-
-         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
-            anv_descriptor_set_write_acceleration_structure(device, dst,
-                                                            src_desc[j].accel_struct,
-                                                            copy->dstBinding,
-                                                            copy->dstArrayElement + j);
             break;
          }
 
@@ -1953,19 +1886,6 @@ anv_descriptor_set_write_template(struct anv_device *device,
                                                       data + entry->offset,
                                                       entry->array_element,
                                                       entry->array_count);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-         for (uint32_t j = 0; j < entry->array_count; j++) {
-            VkAccelerationStructureKHR *accel_obj =
-               (VkAccelerationStructureKHR *)(data + entry->offset + j * entry->stride);
-            ANV_FROM_HANDLE(anv_acceleration_structure, accel, *accel_obj);
-
-            anv_descriptor_set_write_acceleration_structure(device, set,
-                                                            accel,
-                                                            entry->binding,
-                                                            entry->array_element + j);
-         }
          break;
 
       default:

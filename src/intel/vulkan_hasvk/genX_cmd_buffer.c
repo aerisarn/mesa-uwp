@@ -2680,7 +2680,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          const struct anv_descriptor *desc = &set->descriptors[binding->index];
 
          switch (desc->type) {
-         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
          case VK_DESCRIPTOR_TYPE_SAMPLER:
             /* Nothing for us to do here */
             continue;
