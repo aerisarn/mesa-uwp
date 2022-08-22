@@ -109,7 +109,8 @@ lp_build_struct_get2(struct gallivm_state *gallivm,
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
    assert(LLVM_VERSION_MAJOR >= 15 || LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(ptr))) == LLVMStructTypeKind);
    member_ptr = lp_build_struct_get_ptr2(gallivm, ptr_type, ptr, member, name);
-   res = LLVMBuildLoad(gallivm->builder, member_ptr, "");
+   LLVMTypeRef member_type = LLVMStructGetTypeAtIndex(ptr_type, member);
+   res = LLVMBuildLoad2(gallivm->builder, member_type, member_ptr, "");
    lp_build_name(res, "%s.%s", LLVMGetValueName(ptr), name);
    return res;
 }
