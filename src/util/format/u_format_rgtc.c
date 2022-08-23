@@ -38,6 +38,30 @@ util_format_rgtc1_unorm_fetch_rgba_8unorm(uint8_t *restrict dst, const uint8_t *
 }
 
 void
+util_format_rgtc1_unorm_unpack_r_8unorm(uint8_t *restrict dst_row, unsigned dst_stride, const uint8_t *restrict src_row, unsigned src_stride, unsigned width, unsigned height)
+{
+   const unsigned bw = 4, bh = 4, comps = 1;
+   unsigned x, y, i, j;
+   unsigned block_size = 8;
+
+   for(y = 0; y < height; y += bh) {
+      const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
+      for(x = 0; x < width; x += bw) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
+               uint8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
+               util_format_unsigned_fetch_texel_rgtc(0, src, i, j, dst, 1);
+            }
+         }
+         src += block_size;
+      }
+      src_row += src_stride;
+   }
+}
+
+void
 util_format_rgtc1_unorm_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride, const uint8_t *restrict src_row, unsigned src_stride, unsigned width, unsigned height)
 {
    const unsigned bw = 4, bh = 4, comps = 4;
@@ -164,6 +188,32 @@ util_format_rgtc1_snorm_unpack_rgba_8unorm(UNUSED uint8_t *restrict dst_row, UNU
 }
 
 void
+util_format_rgtc1_snorm_unpack_r_8snorm(int8_t *restrict dst_row, unsigned dst_stride,
+                                        const uint8_t *restrict src_row, unsigned src_stride,
+                                        unsigned width, unsigned height)
+{
+   const unsigned bw = 4, bh = 4, comps = 1;
+   unsigned x, y, i, j;
+   unsigned block_size = 8;
+
+   for(y = 0; y < height; y += bh) {
+      const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
+      for(x = 0; x < width; x += bw) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
+               int8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
+               util_format_signed_fetch_texel_rgtc(0, (const int8_t *)src, i, j, dst, 1);
+            }
+         }
+         src += block_size;
+      }
+      src_row += src_stride;
+   }
+}
+
+void
 util_format_rgtc1_snorm_pack_rgba_8unorm(UNUSED uint8_t *restrict dst_row, UNUSED unsigned dst_stride,
                                          UNUSED const uint8_t *restrict src_row, UNUSED unsigned src_stride,
                                          UNUSED unsigned width, UNUSED unsigned height)
@@ -240,6 +290,31 @@ util_format_rgtc2_unorm_fetch_rgba_8unorm(uint8_t *restrict dst, const uint8_t *
    util_format_unsigned_fetch_texel_rgtc(0, src + 8, i, j, dst + 1, 2);
    dst[2] = 0;
    dst[3] = 255;
+}
+
+void
+util_format_rgtc2_unorm_unpack_rg_8unorm(uint8_t *restrict dst_row, unsigned dst_stride, const uint8_t *restrict src_row, unsigned src_stride, unsigned width, unsigned height)
+{
+   const unsigned bw = 4, bh = 4, comps = 2;
+   unsigned x, y, i, j;
+   unsigned block_size = 16;
+
+   for(y = 0; y < height; y += bh) {
+      const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
+      for(x = 0; x < width; x += bw) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
+               uint8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
+               util_format_unsigned_fetch_texel_rgtc(0, src, i, j, dst, 2);
+               util_format_unsigned_fetch_texel_rgtc(0, src + 8, i, j, dst + 1, 2);
+            }
+         }
+         src += block_size;
+      }
+      src_row += src_stride;
+   }
 }
 
 void
@@ -380,6 +455,33 @@ util_format_rgtc2_snorm_unpack_rgba_8unorm(UNUSED uint8_t *restrict dst_row, UNU
                                            UNUSED unsigned width, UNUSED unsigned height)
 {
    fprintf(stderr,"%s\n", __func__);
+}
+
+void
+util_format_rgtc2_snorm_unpack_rg_8snorm(int8_t *restrict dst_row, unsigned dst_stride,
+                                         const uint8_t *restrict src_row, unsigned src_stride,
+                                         unsigned width, unsigned height)
+{
+   const unsigned bw = 4, bh = 4, comps = 2;
+   unsigned x, y, i, j;
+   unsigned block_size = 16;
+
+   for(y = 0; y < height; y += bh) {
+      const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
+      for(x = 0; x < width; x += bw) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
+               int8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
+               util_format_signed_fetch_texel_rgtc(0, (const int8_t *)src, i, j, (int8_t *)dst, 2);
+               util_format_signed_fetch_texel_rgtc(0, (const int8_t *)src + 8, i, j, (int8_t *)dst + 1, 2);
+            }
+         }
+         src += block_size;
+      }
+      src_row += src_stride;
+   }
 }
 
 void
