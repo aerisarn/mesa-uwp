@@ -2642,7 +2642,6 @@ static void
 radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 {
    int i;
-   struct vk_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    bool disable_constant_encode_ac01 = false;
    unsigned color_invalid = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
@@ -2762,8 +2761,6 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
                                   S_028040_NUM_SAMPLES(num_samples));
       radeon_emit(cmd_buffer->cs, S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* DB_STENCIL_INFO */
    }
-   radeon_set_context_reg(cmd_buffer->cs, R_028208_PA_SC_WINDOW_SCISSOR_BR,
-                          S_028208_BR_X(framebuffer->width) | S_028208_BR_Y(framebuffer->height));
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX8) {
       bool disable_constant_encode =
@@ -6231,6 +6228,15 @@ radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    result = radv_cmd_state_setup_sample_locations(cmd_buffer, pass, pRenderPassBeginInfo);
    if (result != VK_SUCCESS)
       return;
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028204_PA_SC_WINDOW_SCISSOR_TL,
+                          S_028204_TL_X(cmd_buffer->state.render_area.offset.x) |
+                          S_028204_TL_Y(cmd_buffer->state.render_area.offset.y));
+   radeon_set_context_reg(cmd_buffer->cs, R_028208_PA_SC_WINDOW_SCISSOR_BR,
+                          S_028208_BR_X(cmd_buffer->state.render_area.offset.x +
+                                        cmd_buffer->state.render_area.extent.width) |
+                          S_028208_BR_Y(cmd_buffer->state.render_area.offset.y +
+                                        cmd_buffer->state.render_area.extent.height));
 
    radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
