@@ -2507,7 +2507,7 @@ static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
 static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
                                      struct pvr_sub_cmd_gfx *sub_cmd,
                                      struct pvr_load_op *load_op,
-                                     uint32_t userpass_spawn)
+                                     uint32_t isp_userpass)
 {
    const struct pvr_device *device = cmd_buffer->device;
    struct pvr_static_clear_ppp_template template =
@@ -2523,7 +2523,7 @@ static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return result;
 
-   template.config.ispctl.upass = userpass_spawn;
+   template.config.ispctl.upass = isp_userpass;
 
    /* It might look odd that we aren't specifying the code segment's
     * address anywhere. This is because the hardware always assumes that the
@@ -2613,8 +2613,8 @@ void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    state->render_pass_info.current_hw_subpass = 0;
    state->render_pass_info.pipeline_bind_point =
       pass->subpasses[0].pipeline_bind_point;
-   state->render_pass_info.userpass_spawn = pass->subpasses[0].userpass_spawn;
-   state->dirty.userpass_spawn = true;
+   state->render_pass_info.isp_userpass = pass->subpasses[0].isp_userpass;
+   state->dirty.isp_userpass = true;
 
    result = pvr_cmd_buffer_setup_attachments(cmd_buffer, pass, framebuffer);
    if (result != VK_SUCCESS)
@@ -2701,8 +2701,8 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       state->render_pass_info.framebuffer =
          pvr_framebuffer_from_handle(inheritance_info->framebuffer);
       state->render_pass_info.subpass_idx = inheritance_info->subpass;
-      state->render_pass_info.userpass_spawn =
-         pass->subpasses[inheritance_info->subpass].userpass_spawn;
+      state->render_pass_info.isp_userpass =
+         pass->subpasses[inheritance_info->subpass].isp_userpass;
 
       result =
          pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
@@ -3644,7 +3644,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
       header->pres_ispctl_fb = true;
 
    pvr_csb_pack (&isp_control, TA_STATE_ISPCTL, ispctl) {
-      ispctl.upass = pass_info->userpass_spawn;
+      ispctl.upass = pass_info->isp_userpass;
 
       /* TODO: is bo ever NULL? Figure out what to do. */
       ispctl.tagwritedisable = raster_discard_enabled ||
@@ -4544,7 +4544,7 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    if (!(dirty_stencil || state->dirty.depth_bias ||
          state->dirty.fragment_descriptors || state->dirty.line_width ||
          state->dirty.gfx_pipeline_binding || state->dirty.scissor ||
-         state->dirty.userpass_spawn || state->dirty.viewport ||
+         state->dirty.isp_userpass || state->dirty.viewport ||
          pvr_ppp_state_update_required(state))) {
       return VK_SUCCESS;
    }
@@ -4556,7 +4556,7 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       pvr_setup_isp_faces_and_control(cmd_buffer, &ispa);
       pvr_setup_triangle_merging_flag(cmd_buffer, &ispa);
    } else if (dirty_stencil || state->dirty.line_width ||
-              state->dirty.userpass_spawn) {
+              state->dirty.isp_userpass) {
       pvr_setup_isp_faces_and_control(cmd_buffer, NULL);
    }
 
@@ -4964,7 +4964,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    state->dirty.gfx_pipeline_binding = false;
    state->dirty.reference = false;
    state->dirty.scissor = false;
-   state->dirty.userpass_spawn = false;
+   state->dirty.isp_userpass = false;
    state->dirty.vertex_bindings = false;
    state->dirty.viewport = false;
    state->dirty.write_mask = false;
@@ -5534,8 +5534,7 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
 
    clear.config.pds_state = &pds_state;
 
-   clear.config.ispctl.upass =
-      cmd_buffer->state.render_pass_info.userpass_spawn;
+   clear.config.ispctl.upass = cmd_buffer->state.render_pass_info.isp_userpass;
 
    /* Emit PPP state from template. */
 

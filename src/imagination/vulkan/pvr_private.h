@@ -795,7 +795,7 @@ struct pvr_render_pass_info {
 
    bool process_empty_tiles;
    bool enable_bg_tag;
-   uint32_t userpass_spawn;
+   uint32_t isp_userpass;
 
    /* Have we had to scissor a depth/stencil clear because render area was not
     * tile aligned?
@@ -1012,7 +1012,7 @@ struct pvr_cmd_buffer_state {
       bool write_mask : 1;
       bool reference : 1;
 
-      bool userpass_spawn : 1;
+      bool isp_userpass : 1;
 
       /* Some draw state needs to be tracked for changes between draw calls
        * i.e. if we get a draw with baseInstance=0, followed by a call with
@@ -1383,7 +1383,7 @@ struct pvr_render_subpass {
 
    uint32_t index;
 
-   uint32_t userpass_spawn;
+   uint32_t isp_userpass;
 
    VkPipelineBindPoint pipeline_bind_point;
 };

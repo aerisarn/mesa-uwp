@@ -121,19 +121,19 @@ static bool pvr_is_subpass_initops_flush_needed(
 }
 
 static void
-pvr_init_subpass_userpass_spawn(struct pvr_renderpass_hwsetup *hw_setup,
-                                struct pvr_render_pass *pass,
-                                struct pvr_render_subpass *subpasses)
+pvr_init_subpass_isp_userpass(struct pvr_renderpass_hwsetup *hw_setup,
+                              struct pvr_render_pass *pass,
+                              struct pvr_render_subpass *subpasses)
 {
    uint32_t subpass_idx = 0;
 
    for (uint32_t i = 0; i < hw_setup->render_count; i++) {
       struct pvr_renderpass_hwsetup_render *hw_render = &hw_setup->renders[i];
-      uint32_t initial_userpass_spawn =
+      const uint32_t initial_isp_userpass =
          (uint32_t)pvr_is_subpass_initops_flush_needed(pass, hw_render);
 
       for (uint32_t j = 0; j < hw_render->subpass_count; j++) {
-         subpasses[subpass_idx].userpass_spawn = (j + initial_userpass_spawn);
+         subpasses[subpass_idx].isp_userpass = (j + initial_isp_userpass);
          subpass_idx++;
       }
    }
@@ -503,7 +503,7 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
    if (result != VK_SUCCESS)
       goto err_free_pass;
 
-   pvr_init_subpass_userpass_spawn(pass->hw_setup, pass, pass->subpasses);
+   pvr_init_subpass_isp_userpass(pass->hw_setup, pass, pass->subpasses);
 
    for (uint32_t i = 0; i < pass->hw_setup->render_count; i++) {
       struct pvr_renderpass_hwsetup_render *hw_render =
