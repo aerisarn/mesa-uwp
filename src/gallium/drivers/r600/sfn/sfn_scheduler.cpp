@@ -913,7 +913,8 @@ bool BlockSheduler::collect_ready_type(std::list<T *>& ready, std::list<T *>& av
    auto i = available.begin();
    auto e = available.end();
 
-   while (i != e) {
+   int lookahead = 16;
+   while (i != e && ready.size() < 16 && lookahead-- > 0) {
       if ((*i)->ready()) {
          ready.push_back(*i);
          auto old_i = i;
