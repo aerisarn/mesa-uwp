@@ -2726,11 +2726,10 @@ tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
          clear_gmem_attachment(cmd, cs, PIPE_FORMAT_Z32_FLOAT, 0xf, tu_attachment_gmem_offset(cmd, att), value);
       if (mask & VK_IMAGE_ASPECT_STENCIL_BIT)
          clear_gmem_attachment(cmd, cs, PIPE_FORMAT_S8_UINT, 0xf, tu_attachment_gmem_offset_stencil(cmd, att), value);
-      return;
+   } else {
+      clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask),
+                            tu_attachment_gmem_offset(cmd, att), value);
    }
-
-   clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask),
-                         tu_attachment_gmem_offset(cmd, att), value);
 
    trace_end_gmem_clear(&cmd->trace, cs, att->format, att->samples);
 }
