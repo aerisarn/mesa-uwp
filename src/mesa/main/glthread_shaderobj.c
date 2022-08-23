@@ -155,6 +155,15 @@ _mesa_marshal_GetActiveUniform(GLuint program, GLuint index, GLsizei bufSize,
 {
    GET_CURRENT_CONTEXT(ctx);
 
+   /* This will generate GL_INVALID_OPERATION, as it should. */
+   if (ctx->GLThread.inside_begin_end) {
+      _mesa_glthread_finish_before(ctx, "GetActiveUniform");
+      CALL_GetActiveUniform(ctx->CurrentServerDispatch,
+                            (program, index, bufSize, length, size, type,
+                             name));
+      return;
+   }
+
    wait_for_glLinkProgram(ctx);
 
    /* We can execute glGetActiveUniform without syncing if we are sync'd to
@@ -181,6 +190,12 @@ GLint GLAPIENTRY
 _mesa_marshal_GetUniformLocation(GLuint program, const GLchar *name)
 {
    GET_CURRENT_CONTEXT(ctx);
+
+   /* This will generate GL_INVALID_OPERATION, as it should. */
+   if (ctx->GLThread.inside_begin_end) {
+      _mesa_glthread_finish_before(ctx, "GetUniformLocation");
+      return CALL_GetUniformLocation(ctx->CurrentServerDispatch, (program, name));
+   }
 
    wait_for_glLinkProgram(ctx);
 
