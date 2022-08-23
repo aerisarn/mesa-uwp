@@ -51,6 +51,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod;
    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8;
    VkPhysicalDeviceLineRasterizationFeaturesEXT line_rasterization;
+   VkPhysicalDeviceMultiDrawFeaturesEXT multi_draw;
    VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
       primitive_topology_list_restart;
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
@@ -82,6 +83,7 @@ struct vn_physical_device_properties {
       conservative_rasterization;
    VkPhysicalDeviceCustomBorderColorPropertiesEXT custom_border_color;
    VkPhysicalDeviceLineRasterizationPropertiesEXT line_rasterization;
+   VkPhysicalDeviceMultiDrawPropertiesEXT multi_draw;
    VkPhysicalDeviceProvokingVertexPropertiesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2PropertiesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;

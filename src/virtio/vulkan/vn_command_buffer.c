@@ -1775,3 +1775,35 @@ vn_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 {
    VN_CMD_ENQUEUE(vkCmdEndConditionalRenderingEXT, commandBuffer);
 }
+
+void
+vn_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
+                   uint32_t drawCount,
+                   const VkMultiDrawInfoEXT *pVertexInfo,
+                   uint32_t instanceCount,
+                   uint32_t firstInstance,
+                   uint32_t stride)
+{
+   VN_CMD_ENQUEUE(vkCmdDrawMultiEXT, commandBuffer, drawCount, pVertexInfo,
+                  instanceCount, firstInstance, stride);
+
+   vn_cmd_count_draw_and_submit_on_batch_limit(
+      vn_command_buffer_from_handle(commandBuffer));
+}
+
+void
+vn_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
+                          uint32_t drawCount,
+                          const VkMultiDrawIndexedInfoEXT *pIndexInfo,
+                          uint32_t instanceCount,
+                          uint32_t firstInstance,
+                          uint32_t stride,
+                          const int32_t *pVertexOffset)
+{
+   VN_CMD_ENQUEUE(vkCmdDrawMultiIndexedEXT, commandBuffer, drawCount,
+                  pIndexInfo, instanceCount, firstInstance, stride,
+                  pVertexOffset);
+
+   vn_cmd_count_draw_and_submit_on_batch_limit(
+      vn_command_buffer_from_handle(commandBuffer));
+}

@@ -179,6 +179,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        feats->line_rasterization,
                        LINE_RASTERIZATION_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_multi_draw, feats->multi_draw,
+                       MULTI_DRAW_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_primitive_topology_list_restart,
                        feats->primitive_topology_list_restart,
                        PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT,
@@ -536,6 +538,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        props->line_rasterization,
                        LINE_RASTERIZATION_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_multi_draw, props->multi_draw,
+                       MULTI_DRAW_PROPERTIES_EXT, properties2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, props->provoking_vertex,
                        PROVOKING_VERTEX_PROPERTIES_EXT, properties2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, props->robustness_2,
@@ -1122,6 +1126,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
+      .EXT_multi_draw = true,
       .EXT_primitive_topology_list_restart = true,
       /* TODO(VK_EXT_private_data): Support natively.
        *
@@ -1758,6 +1763,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(DEPTH_CLIP_ENABLE_FEATURES_EXT, depth_clip_enable);
       CASE(INDEX_TYPE_UINT8_FEATURES_EXT, index_type_uint8);
       CASE(LINE_RASTERIZATION_FEATURES_EXT, line_rasterization);
+      CASE(MULTI_DRAW_FEATURES_EXT, multi_draw);
       CASE(PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, primitive_topology_list_restart);
       CASE(PROVOKING_VERTEX_FEATURES_EXT, provoking_vertex);
       CASE(ROBUSTNESS_2_FEATURES_EXT, robustness_2);
@@ -1815,6 +1821,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);
       CASE(CUSTOM_BORDER_COLOR_PROPERTIES_EXT, custom_border_color);
       CASE(LINE_RASTERIZATION_PROPERTIES_EXT, line_rasterization);
+      CASE(MULTI_DRAW_PROPERTIES_EXT, multi_draw);
       CASE(MAINTENANCE_4_PROPERTIES, maintenance4);
       CASE(PROVOKING_VERTEX_PROPERTIES_EXT, provoking_vertex);
       CASE(ROBUSTNESS_2_PROPERTIES_EXT, robustness_2);
