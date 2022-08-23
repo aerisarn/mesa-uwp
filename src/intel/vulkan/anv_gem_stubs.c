@@ -86,12 +86,6 @@ anv_gem_userptr(struct anv_device *device, void *mem, size_t size)
 }
 
 int
-anv_gem_busy(struct anv_device *device, uint32_t gem_handle)
-{
-   return 0;
-}
-
-int
 anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns)
 {
    return 0;
@@ -120,13 +114,6 @@ anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle)
 int
 anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle,
                     uint32_t caching)
-{
-   return 0;
-}
-
-int
-anv_gem_set_domain(struct anv_device *device, uint32_t gem_handle,
-                   uint32_t read_domains, uint32_t write_domain)
 {
    return 0;
 }

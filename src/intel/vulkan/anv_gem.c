@@ -198,36 +198,6 @@ anv_gem_set_caching(struct anv_device *device,
    return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &gem_caching);
 }
 
-int
-anv_gem_set_domain(struct anv_device *device, uint32_t gem_handle,
-                   uint32_t read_domains, uint32_t write_domain)
-{
-   struct drm_i915_gem_set_domain gem_set_domain = {
-      .handle = gem_handle,
-      .read_domains = read_domains,
-      .write_domain = write_domain,
-   };
-
-   return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &gem_set_domain);
-}
-
-/**
- * Returns 0, 1, or negative to indicate error
- */
-int
-anv_gem_busy(struct anv_device *device, uint32_t gem_handle)
-{
-   struct drm_i915_gem_busy busy = {
-      .handle = gem_handle,
-   };
-
-   int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_BUSY, &busy);
-   if (ret < 0)
-      return ret;
-
-   return busy.busy != 0;
-}
-
 /**
  * On error, \a timeout_ns holds the remaining time.
  */
