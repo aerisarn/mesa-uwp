@@ -1198,7 +1198,7 @@ _mesa_marshal_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
                                           GLsizei count, GLenum type,
                                           const GLvoid *indices, GLint basevertex)
 {
-   draw_elements(mode, count, type, indices, 1, basevertex, 0, true, start, end, false);
+   draw_elements(mode, count, type, indices, 1, basevertex, 0, true, start, end, true);
 }
 
 void GLAPIENTRY

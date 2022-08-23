@@ -1874,6 +1874,21 @@ save_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
    save_DrawElements(mode, count, type, indices);
 }
 
+void GLAPIENTRY
+save_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
+                                 GLsizei count, GLenum type,
+                                 const GLvoid *indices, GLint basevertex)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (end < start) {
+      _mesa_compile_error(ctx, GL_INVALID_VALUE,
+                          "glDrawRangeElementsBaseVertex(end < start)");
+      return;
+   }
+
+   save_DrawElementsBaseVertex(mode, count, type, indices, basevertex);
+}
 
 void GLAPIENTRY
 save_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
