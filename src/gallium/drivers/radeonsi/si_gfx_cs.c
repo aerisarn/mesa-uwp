@@ -520,6 +520,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       si_mark_atom_dirty(ctx, &ctx->atoms.s.scissors);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.viewports);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.vgt_pipeline_state);
+      si_mark_atom_dirty(ctx, &ctx->atoms.s.tess_io_layout);
 
       if (has_clear_state) {
          si_set_tracked_regs_to_clear_state(ctx);

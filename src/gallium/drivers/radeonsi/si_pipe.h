@@ -1187,6 +1187,12 @@ struct si_context {
    unsigned last_tes_sh_base;
    bool last_tess_uses_primid;
    unsigned num_patches_per_workgroup;
+   unsigned tcs_out_layout;
+   unsigned tcs_out_offsets;
+   unsigned tcs_offchip_layout;
+   unsigned tes_offchip_ring_va_sgpr;
+   unsigned ls_hs_rsrc2;
+   unsigned ls_hs_config;
    unsigned last_ls_hs_config;
 
    /* Debug state. */

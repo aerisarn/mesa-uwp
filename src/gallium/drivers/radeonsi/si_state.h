@@ -210,6 +210,7 @@ union si_state_atoms {
       struct si_atom shader_query;
       struct si_atom ngg_cull_state;
       struct si_atom vgt_pipeline_state;
+      struct si_atom tess_io_layout;
    } s;
    struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
@@ -586,6 +587,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx);
 bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes);
 unsigned si_get_shader_prefetch_size(struct si_shader *shader);
 bool si_set_tcs_to_fixed_func_shader(struct si_context *sctx);
+void si_update_tess_io_layout_state(struct si_context *sctx);
 
 /* si_state_draw.cpp */
 void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,

@@ -295,6 +295,9 @@ static bool si_update_shaders(struct si_context *sctx)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.sample_locations);
    }
 
+   if (HAS_TESS)
+      si_update_tess_io_layout_state(sctx);
+
    if (GFX_VERSION >= GFX9 && unlikely(sctx->sqtt)) {
       /* Pretend the bound shaders form a vk pipeline. Include the scratch size in
        * the hash calculation to force re-emitting the pipeline if the scratch bo
@@ -626,14 +629,23 @@ static void si_prefetch_shaders(struct si_context *sctx)
    sctx->prefetch_L2_mask = 0;
 }
 
+#if GFX_VER == 6 /* declare these functions only once because they support all chips. */
+
 /**
  * This calculates the LDS size for tessellation shaders (VS, TCS, TES).
  * LS.LDS_SIZE is shared by all 3 shader stages.
  *
  * The information about LDS and other non-compile-time parameters is then
  * written to userdata SGPRs.
+ *
+ * This depends on:
+ * - patch_vertices
+ * - VS and the currently selected shader variant (called by si_update_shaders)
+ * - TCS and the currently selected shader variant (called by si_update_shaders)
+ * - tess_uses_prim_id (called by si_update_shaders)
+ * - sh_base[TESS_EVAL] depending on GS on/off (called by si_update_shaders)
  */
-static void si_emit_derived_tess_state(struct si_context *sctx)
+void si_update_tess_io_layout_state(struct si_context *sctx)
 {
    struct si_shader *ls_current;
    struct si_shader_selector *ls;
@@ -642,6 +654,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
    bool has_primid_instancing_bug = sctx->gfx_level == GFX6 && sctx->screen->info.max_se == 1;
    unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
    uint8_t num_tcs_input_cp = sctx->patch_vertices;
+
+   assert(sctx->shader.tcs.current);
 
    /* Since GFX9 has merged LS-HS in the TCS state, set LS = TCS. */
    if (sctx->gfx_level >= GFX9) {
@@ -782,9 +796,10 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
       si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
-   unsigned tcs_out_layout = (num_tcs_input_cp << 13) | ring_va;
-   unsigned tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
-   unsigned offchip_layout =
+   sctx->tes_offchip_ring_va_sgpr = ring_va;
+   sctx->tcs_out_layout = (num_tcs_input_cp << 13) | ring_va;
+   sctx->tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
+   sctx->tcs_offchip_layout =
       (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
       ((pervertex_output_patch_size * num_patches) << 11);
 
@@ -807,70 +822,87 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
     * been tested. */
    assert(ls_current->config.lds_size == 0);
 
+   unsigned ls_hs_rsrc2;
+
+   if (sctx->gfx_level >= GFX9) {
+      ls_hs_rsrc2 = sctx->shader.tcs.current->config.rsrc2;
+
+      if (sctx->gfx_level >= GFX10)
+         ls_hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX10(lds_size);
+      else
+         ls_hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX9(lds_size);
+   } else {
+      ls_hs_rsrc2 = sctx->shader.vs.current->config.rsrc2;
+
+      si_multiwave_lds_size_workaround(sctx->screen, &lds_size);
+      ls_hs_rsrc2 |= S_00B52C_LDS_SIZE(lds_size);
+   }
+
+   sctx->ls_hs_rsrc2 = ls_hs_rsrc2;
+   sctx->ls_hs_config =
+         S_028B58_NUM_PATCHES(sctx->num_patches_per_workgroup) |
+         S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
+         S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
+
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.tess_io_layout);
+}
+
+static void si_emit_tess_io_layout_state(struct si_context *sctx)
+{
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    radeon_begin(cs);
 
+   if (!sctx->shader.tes.cso || !sctx->shader.tcs.current)
+      return;
+
    if (sctx->gfx_level >= GFX9) {
-      unsigned hs_rsrc2 = ls_current->config.rsrc2;
-
-      if (sctx->gfx_level >= GFX10)
-         hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX10(lds_size);
-      else
-         hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX9(lds_size);
-
-      radeon_set_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS, hs_rsrc2);
+      radeon_set_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
       /* Set userdata SGPRs for merged LS-HS. */
       radeon_set_sh_reg_seq(
          R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
-      radeon_emit(offchip_layout);
-      radeon_emit(tcs_out_offsets);
-      radeon_emit(tcs_out_layout);
+      radeon_emit(sctx->tcs_offchip_layout);
+      radeon_emit(sctx->tcs_out_offsets);
+      radeon_emit(sctx->tcs_out_layout);
    } else {
-      unsigned ls_rsrc2 = ls_current->config.rsrc2;
-
-      si_multiwave_lds_size_workaround(sctx->screen, &lds_size);
-      ls_rsrc2 |= S_00B52C_LDS_SIZE(lds_size);
-
       /* Due to a hw bug, RSRC2_LS must be written twice with another
        * LS register written in between. */
       if (sctx->gfx_level == GFX7 && sctx->family != CHIP_HAWAII)
-         radeon_set_sh_reg(R_00B52C_SPI_SHADER_PGM_RSRC2_LS, ls_rsrc2);
+         radeon_set_sh_reg(R_00B52C_SPI_SHADER_PGM_RSRC2_LS, sctx->ls_hs_rsrc2);
       radeon_set_sh_reg_seq(R_00B528_SPI_SHADER_PGM_RSRC1_LS, 2);
-      radeon_emit(ls_current->config.rsrc1);
-      radeon_emit(ls_rsrc2);
+      radeon_emit(sctx->shader.vs.current->config.rsrc1);
+      radeon_emit(sctx->ls_hs_rsrc2);
 
       /* Set userdata SGPRs for TCS. */
       radeon_set_sh_reg_seq(
          R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 4);
-      radeon_emit(offchip_layout);
-      radeon_emit(tcs_out_offsets);
-      radeon_emit(tcs_out_layout);
+      radeon_emit(sctx->tcs_offchip_layout);
+      radeon_emit(sctx->tcs_out_offsets);
+      radeon_emit(sctx->tcs_out_layout);
       radeon_emit(sctx->current_vs_state);
    }
 
    /* Set userdata SGPRs for TES. */
+   unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
+   assert(tes_sh_base);
+
    radeon_set_sh_reg_seq(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4, 2);
-   radeon_emit(offchip_layout);
-   radeon_emit(ring_va);
+   radeon_emit(sctx->tcs_offchip_layout);
+   radeon_emit(sctx->tes_offchip_ring_va_sgpr);
    radeon_end();
 
-   unsigned ls_hs_config =
-         S_028B58_NUM_PATCHES(num_patches) |
-         S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
-         S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
-
-   if (sctx->last_ls_hs_config != ls_hs_config) {
+   if (sctx->last_ls_hs_config != sctx->ls_hs_config) {
       radeon_begin(cs);
       if (sctx->gfx_level >= GFX7) {
-         radeon_set_context_reg_idx(R_028B58_VGT_LS_HS_CONFIG, 2, ls_hs_config);
+         radeon_set_context_reg_idx(R_028B58_VGT_LS_HS_CONFIG, 2, sctx->ls_hs_config);
       } else {
-         radeon_set_context_reg(R_028B58_VGT_LS_HS_CONFIG, ls_hs_config);
+         radeon_set_context_reg(R_028B58_VGT_LS_HS_CONFIG, sctx->ls_hs_config);
       }
       radeon_end_update_context_roll(sctx);
-      sctx->last_ls_hs_config = ls_hs_config;
+      sctx->last_ls_hs_config = sctx->ls_hs_config;
    }
 }
+#endif
 
 static unsigned si_num_prims_for_vertices(enum mesa_prim prim,
                                           unsigned count, unsigned vertices_per_patch)
@@ -2128,8 +2160,6 @@ ALWAYS_INLINE
 static void si_emit_all_states(struct si_context *sctx, unsigned skip_atom_mask)
 {
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_GS, NGG>(sctx);
-   if (HAS_TESS)
-      si_emit_derived_tess_state(sctx);
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
@@ -2728,6 +2758,8 @@ void si_init_spi_map_functions(struct si_context *sctx)
    sctx->emit_spi_map[30] = si_emit_spi_map<30>;
    sctx->emit_spi_map[31] = si_emit_spi_map<31>;
    sctx->emit_spi_map[32] = si_emit_spi_map<32>;
+
+   sctx->atoms.s.tess_io_layout.emit = si_emit_tess_io_layout_state;
 }
 
 #endif
