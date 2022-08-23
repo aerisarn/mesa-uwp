@@ -122,6 +122,7 @@ HEADERS = []
 class HeaderScope(IntEnum):
     HEADER = (1 << 0)
     SOURCE = (1 << 1)
+    PERFETTO = (1 << 2)
 
 class Header(object):
     """Class that represents a header file dependency of generated tracepoints
@@ -514,6 +515,10 @@ perfetto_utils_hdr_template = """\
 
 #include <perfetto.h>
 
+% for header in HEADERS:
+#include "${header.hdr}"
+% endfor
+
 % for trace_name, trace in TRACEPOINTS.items():
 static void UNUSED
 trace_payload_as_extra_${trace_name}(perfetto::protos::pbzero::GpuRenderStageEvent *event,
@@ -550,4 +555,5 @@ def utrace_generate_perfetto_utils(hpath):
         with open(hpath, 'wb') as f:
             f.write(Template(perfetto_utils_hdr_template, output_encoding='utf-8').render(
                 hdrname=hdr.rstrip('.h').upper(),
+                HEADERS=[h for h in HEADERS if h.scope & HeaderScope.PERFETTO],
                 TRACEPOINTS=TRACEPOINTS))
