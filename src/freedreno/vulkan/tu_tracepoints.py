@@ -24,6 +24,15 @@ from u_trace import TracepointArgStruct as ArgStruct
 from u_trace import utrace_generate
 from u_trace import utrace_generate_perfetto_utils
 
+Header('vk_format.h')
+Header('tu_device.h', scope=HeaderScope.SOURCE)
+
+# we can't use tu_common.h because it includes ir3 headers which are not
+# compatible with C++
+ForwardDecl('struct tu_device')
+ForwardDecl('struct tu_framebuffer')
+ForwardDecl('struct tu_tiling_config')
+
 # List of the default tracepoints enabled. By default tracepoints are enabled,
 # set tp_default_enabled=False to disable them by default.
 tu_default_tps = []
@@ -31,13 +40,6 @@ tu_default_tps = []
 #
 # Tracepoint definitions:
 #
-
-Header('util/u_dump.h')
-Header('vk_format.h')
-Header('freedreno/vulkan/tu_device.h', scope=HeaderScope.SOURCE)
-
-ForwardDecl('struct tu_device')
-
 
 def begin_end_tp(name, args=[], tp_struct=None, tp_print=None,
                  tp_default_enabled=True):
