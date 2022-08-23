@@ -3420,34 +3420,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
    radv_nir_shader_info_link(device, pipeline_key, stages, last_vgt_api_stage);
 
-   if (stages[MESA_SHADER_COMPUTE].nir) {
-      unsigned subgroup_size = pipeline_key->cs.compute_subgroup_size;
-      unsigned req_subgroup_size = subgroup_size;
-      bool require_full_subgroups = pipeline_key->cs.require_full_subgroups;
-
-      if (!subgroup_size)
-         subgroup_size = device->physical_device->cs_wave_size;
-
-      unsigned local_size = stages[MESA_SHADER_COMPUTE].nir->info.workgroup_size[0] *
-                            stages[MESA_SHADER_COMPUTE].nir->info.workgroup_size[1] *
-                            stages[MESA_SHADER_COMPUTE].nir->info.workgroup_size[2];
-
-      /* Games don't always request full subgroups when they should,
-       * which can cause bugs if cswave32 is enabled.
-       */
-      if (device->physical_device->cs_wave_size == 32 &&
-          stages[MESA_SHADER_COMPUTE].nir->info.cs.uses_wide_subgroup_intrinsics && !req_subgroup_size &&
-          local_size % RADV_SUBGROUP_SIZE == 0)
-         require_full_subgroups = true;
-
-      if (require_full_subgroups && !req_subgroup_size) {
-         /* don't use wave32 pretending to be wave64 */
-         subgroup_size = RADV_SUBGROUP_SIZE;
-      }
-
-      stages[MESA_SHADER_COMPUTE].info.cs.subgroup_size = subgroup_size;
-   }
-
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (stages[i].nir) {
          stages[i].info.wave_size = radv_get_wave_size(device, i, &stages[i].info);
