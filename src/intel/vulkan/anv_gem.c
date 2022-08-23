@@ -230,6 +230,9 @@ anv_gem_execbuffer(struct anv_device *device,
 int
 anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle)
 {
+   if (!device->info->has_tiling_uapi)
+      return -1;
+
    struct drm_i915_gem_get_tiling get_tiling = {
       .handle = gem_handle,
    };
