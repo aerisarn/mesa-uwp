@@ -1822,6 +1822,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    /* setup initial configuration into command buffer */
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      trace_start_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs);
+
       switch (cmd_buffer->queue_family_index) {
       case TU_QUEUE_GENERAL:
          tu6_init_hw(cmd_buffer, &cmd_buffer->cs);
@@ -2511,6 +2513,9 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
          TU_CMD_FLAG_CCU_FLUSH_DEPTH;
       tu_emit_cache_flush(cmd_buffer, &cmd_buffer->cs);
    }
+
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs, cmd_buffer);
 
    tu_cs_end(&cmd_buffer->cs);
    tu_cs_end(&cmd_buffer->draw_cs);

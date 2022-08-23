@@ -37,6 +37,7 @@ enum {
  * Render-stage id's
  */
 enum tu_stage_id {
+   CMD_BUFFER_STAGE_ID,
    RENDER_PASS_STAGE_ID,
    BINNING_STAGE_ID,
    GMEM_STAGE_ID,
@@ -62,6 +63,7 @@ static const struct {
    const char *name;
    const char *desc;
 } stages[] = {
+   [CMD_BUFFER_STAGE_ID]     = { "Command Buffer" },
    [RENDER_PASS_STAGE_ID]    = { "Render Pass" },
    [BINNING_STAGE_ID]        = { "Binning", "Perform Visibility pass and determine target bins" },
    [GMEM_STAGE_ID]           = { "GMEM", "Rendering to GMEM" },
@@ -419,6 +421,7 @@ tu_end_##event_name(struct tu_device *dev, uint64_t ts_ns,                    \
       (trace_payload_as_extra_func) &trace_payload_as_extra_end_##event_name);     \
 }
 
+CREATE_EVENT_CALLBACK(cmd_buffer, CMD_BUFFER_STAGE_ID)
 CREATE_EVENT_CALLBACK(render_pass, RENDER_PASS_STAGE_ID)
 CREATE_EVENT_CALLBACK(binning_ib, BINNING_STAGE_ID)
 CREATE_EVENT_CALLBACK(draw_ib_gmem, GMEM_STAGE_ID)
