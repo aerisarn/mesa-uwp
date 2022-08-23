@@ -350,6 +350,16 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+nvk_GetImageSparseMemoryRequirements2(VkDevice device,
+                                      const VkImageSparseMemoryRequirementsInfo2* pInfo,
+                                      uint32_t* pSparseMemoryRequirementCount,
+                                      VkSparseImageMemoryRequirements2* pSparseMemoryRequirements)
+{
+   /* We dont support sparse images yet, this is a stub to get KHR_get_memory_requirements2 */
+   *pSparseMemoryRequirementCount = 0;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 nvk_GetImageSubresourceLayout(VkDevice device,
                               VkImage _image,
                               const VkImageSubresource *pSubresource,
