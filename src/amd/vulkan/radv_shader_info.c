@@ -511,6 +511,27 @@ gather_shader_info_cs(const nir_shader *nir, struct radv_shader_info *info)
    info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE_ADDR_AMD);
 }
 
+static void
+gather_shader_info_task(const nir_shader *nir, struct radv_shader_info *info)
+{
+   /* Task shaders always need these for the I/O lowering even if the API shader doesn't actually
+    * use them.
+    */
+
+   /* Needed to address the IB to read firstTask in NV_mesh_shader. */
+   info->vs.needs_draw_id |=
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID);
+
+   /* Needed to address the task draw/payload rings. */
+   info->cs.uses_block_id[0] = true;
+   info->cs.uses_block_id[1] = true;
+   info->cs.uses_block_id[2] = true;
+   info->cs.uses_grid_size = true;
+
+   /* Needed for storing draw ready only on the 1st thread. */
+   info->cs.uses_local_invocation_idx = true;
+}
+
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
@@ -627,26 +648,10 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK:
       gather_shader_info_cs(nir, info);
-
-      /* Task shaders always need these for the I/O lowering even if
-       * the API shader doesn't actually use them.
-       */
-      if (nir->info.stage == MESA_SHADER_TASK) {
-         /* Needed to address the IB to read firstTask. */
-         info->vs.needs_draw_id |=
-            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID);
-
-         /* Needed to address the task draw/payload rings. */
-         info->cs.uses_block_id[0] = true;
-         info->cs.uses_block_id[1] = true;
-         info->cs.uses_block_id[2] = true;
-         info->cs.uses_grid_size = true;
-
-         /* Needed for storing draw ready only on the 1st thread. */
-         info->cs.uses_local_invocation_idx = true;
-      }
+      break;
+   case MESA_SHADER_TASK:
+      gather_shader_info_task(nir, info);
       break;
    case MESA_SHADER_FRAGMENT:
       gather_shader_info_fs(nir, pipeline_key, info);
