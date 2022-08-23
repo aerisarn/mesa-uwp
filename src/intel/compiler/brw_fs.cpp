@@ -1543,13 +1543,13 @@ fs_visitor::emit_gs_thread_end()
          }
       }
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-      srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      srcs[URB_LOGICAL_SRC_HANDLE] = gs_payload().urb_handles;
       inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                        srcs, ARRAY_SIZE(srcs));
       inst->mlen = 1;
    } else {
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-      srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      srcs[URB_LOGICAL_SRC_HANDLE] = gs_payload().urb_handles;
       srcs[URB_LOGICAL_SRC_DATA] = this->final_gs_vertex_count;
       inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                        srcs, ARRAY_SIZE(srcs));
@@ -5853,50 +5853,6 @@ fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) con
 }
 
 void
-fs_visitor::setup_gs_payload()
-{
-   assert(stage == MESA_SHADER_GEOMETRY);
-   thread_payload &payload = this->payload();
-
-   struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(prog_data);
-   struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(prog_data);
-
-   /* R0: thread header, R1: output URB handles */
-   payload.num_regs = 2;
-
-   if (gs_prog_data->include_primitive_id) {
-      /* R2: Primitive ID 0..7 */
-      payload.num_regs++;
-   }
-
-   /* Always enable VUE handles so we can safely use pull model if needed.
-    *
-    * The push model for a GS uses a ton of register space even for trivial
-    * scenarios with just a few inputs, so just make things easier and a bit
-    * safer by always having pull model available.
-    */
-   gs_prog_data->base.include_vue_handles = true;
-
-   /* R3..RN: ICP Handles for each incoming vertex (when using pull model) */
-   payload.num_regs += nir->info.gs.vertices_in;
-
-   /* Use a maximum of 24 registers for push-model inputs. */
-   const unsigned max_push_components = 24;
-
-   /* If pushing our inputs would take too many registers, reduce the URB read
-    * length (which is in HWords, or 8 registers), and resort to pulling.
-    *
-    * Note that the GS reads <URB Read Length> HWords for every vertex - so we
-    * have to multiply by VerticesIn to obtain the total storage requirement.
-    */
-   if (8 * vue_prog_data->urb_read_length * nir->info.gs.vertices_in >
-       max_push_components) {
-      vue_prog_data->urb_read_length =
-         ROUND_DOWN_TO(max_push_components / nir->info.gs.vertices_in, 8) / 8;
-   }
-}
-
-void
 fs_visitor::setup_cs_payload()
 {
    thread_payload &payload = this->payload();
@@ -6702,7 +6658,7 @@ fs_visitor::run_gs()
 {
    assert(stage == MESA_SHADER_GEOMETRY);
 
-   setup_gs_payload();
+   payload_ = new gs_thread_payload(*this);
 
    this->final_gs_vertex_count = vgrf(glsl_type::uint_type);
 

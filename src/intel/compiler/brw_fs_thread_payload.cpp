@@ -81,6 +81,52 @@ tes_thread_payload::tes_thread_payload()
    num_regs = 5;
 }
 
+gs_thread_payload::gs_thread_payload(const fs_visitor &v)
+{
+   struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(v.prog_data);
+   struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(v.prog_data);
+
+   /* R0: thread header. */
+   unsigned r = 1;
+
+   /* R1: output URB handles. */
+   urb_handles = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+   r++;
+
+   if (gs_prog_data->include_primitive_id) {
+      primitive_id = retype(brw_vec8_grf(2, 0), BRW_REGISTER_TYPE_UD);
+      r++;
+   }
+
+   /* Always enable VUE handles so we can safely use pull model if needed.
+    *
+    * The push model for a GS uses a ton of register space even for trivial
+    * scenarios with just a few inputs, so just make things easier and a bit
+    * safer by always having pull model available.
+    */
+   gs_prog_data->base.include_vue_handles = true;
+
+   /* R3..RN: ICP Handles for each incoming vertex (when using pull model) */
+   r += v.nir->info.gs.vertices_in;
+
+   num_regs = r;
+
+   /* Use a maximum of 24 registers for push-model inputs. */
+   const unsigned max_push_components = 24;
+
+   /* If pushing our inputs would take too many registers, reduce the URB read
+    * length (which is in HWords, or 8 registers), and resort to pulling.
+    *
+    * Note that the GS reads <URB Read Length> HWords for every vertex - so we
+    * have to multiply by VerticesIn to obtain the total storage requirement.
+    */
+   if (8 * vue_prog_data->urb_read_length * v.nir->info.gs.vertices_in >
+       max_push_components) {
+      vue_prog_data->urb_read_length =
+         ROUND_DOWN_TO(max_push_components / v.nir->info.gs.vertices_in, 8) / 8;
+   }
+}
+
 static inline void
 setup_fs_payload_gfx6(fs_thread_payload &payload,
                       const fs_visitor &v,

@@ -2337,7 +2337,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
       sources[i] = this->control_data_bits;
 
    fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-   srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+   srcs[URB_LOGICAL_SRC_HANDLE] = gs_payload().urb_handles;
    srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = per_slot_offset;
    srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = channel_mask;
    srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, length);
@@ -3155,8 +3155,7 @@ fs_visitor::nir_emit_gs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_primitive_id:
       assert(stage == MESA_SHADER_GEOMETRY);
       assert(brw_gs_prog_data(prog_data)->include_primitive_id);
-      bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD),
-              retype(fs_reg(brw_vec8_grf(2, 0)), BRW_REGISTER_TYPE_UD));
+      bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD), gs_payload().primitive_id);
       break;
 
    case nir_intrinsic_load_input:

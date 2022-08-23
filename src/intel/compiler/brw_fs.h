@@ -116,6 +116,13 @@ struct tes_thread_payload : public thread_payload {
    fs_reg urb_output;
 };
 
+struct gs_thread_payload : public thread_payload {
+   gs_thread_payload(const fs_visitor &v);
+
+   fs_reg urb_handles;
+   fs_reg primitive_id;
+};
+
 struct fs_thread_payload : public thread_payload {
    fs_thread_payload(const fs_visitor &v,
                      bool &source_depth_to_render_target,
@@ -192,7 +199,6 @@ public:
    bool run_mesh(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
-   void setup_gs_payload();
    void setup_cs_payload();
    bool fixup_sends_duplicate_payload();
    void fixup_3src_null_dest();
@@ -469,6 +475,11 @@ public:
    tes_thread_payload &tes_payload() {
       assert(stage == MESA_SHADER_TESS_EVAL);
       return *static_cast<tes_thread_payload *>(this->payload_);
+   }
+
+   gs_thread_payload &gs_payload() {
+      assert(stage == MESA_SHADER_GEOMETRY);
+      return *static_cast<gs_thread_payload *>(this->payload_);
    }
 
    fs_thread_payload &fs_payload() {

@@ -778,7 +778,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       urb_handle = tes_payload().urb_output;
       break;
    case MESA_SHADER_GEOMETRY:
-      urb_handle = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
+      urb_handle = gs_payload().urb_handles;
       break;
    default:
       unreachable("invalid stage");
