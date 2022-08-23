@@ -2523,14 +2523,13 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
    assert(gs_prog_data->base.include_vue_handles);
 
    unsigned first_icp_handle = gs_prog_data->include_primitive_id ? 3 : 2;
+   fs_reg start = retype(brw_vec8_grf(first_icp_handle, 0), BRW_REGISTER_TYPE_UD);
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
    if (gs_prog_data->invocations == 1) {
       if (nir_src_is_const(vertex_src)) {
          /* The vertex index is constant; just select the proper URB handle. */
-         icp_handle =
-            retype(brw_vec8_grf(first_icp_handle + nir_src_as_uint(vertex_src), 0),
-                   BRW_REGISTER_TYPE_UD);
+         icp_handle = offset(start, bld, nir_src_as_uint(vertex_src));
       } else {
          /* The vertex index is non-constant.  We need to use indirect
           * addressing to fetch the proper URB handle.
@@ -2562,8 +2561,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
           * of URB handles per vertex, so inform the register allocator that
           * we might read up to nir->info.gs.vertices_in registers.
           */
-         bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
-                  retype(brw_vec8_grf(first_icp_handle, 0), icp_handle.type),
+         bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
                   fs_reg(icp_offset_bytes),
                   brw_imm_ud(nir->info.gs.vertices_in * REG_SIZE));
       }
@@ -2573,9 +2571,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       if (nir_src_is_const(vertex_src)) {
          unsigned vertex = nir_src_as_uint(vertex_src);
          assert(devinfo->ver >= 9 || vertex <= 5);
-         bld.MOV(icp_handle,
-                 retype(brw_vec1_grf(first_icp_handle + vertex / 8, vertex % 8),
-                        BRW_REGISTER_TYPE_UD));
+         bld.MOV(icp_handle, component(start, vertex));
       } else {
          /* The vertex index is non-constant.  We need to use indirect
           * addressing to fetch the proper URB handle.
@@ -2592,8 +2588,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
           * of URB handles per vertex, so inform the register allocator that
           * we might read up to ceil(nir->info.gs.vertices_in / 8) registers.
           */
-         bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
-                  retype(brw_vec8_grf(first_icp_handle, 0), icp_handle.type),
+         bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
                   fs_reg(icp_offset_bytes),
                   brw_imm_ud(DIV_ROUND_UP(nir->info.gs.vertices_in, 8) *
                              REG_SIZE));
