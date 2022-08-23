@@ -1498,7 +1498,7 @@ dri2_initialize_x11_swrast(_EGLDisplay *disp)
       disp->Extensions.ANGLE_sync_control_rate = EGL_TRUE;
    }
 
-   if (!dri2_x11_add_configs_for_visuals(dri2_dpy, disp, true))
+   if (!dri2_x11_add_configs_for_visuals(dri2_dpy, disp, !disp->Options.Zink))
       goto cleanup;
 
    /* Fill vtbl last to prevent accidentally calling virtual function during
