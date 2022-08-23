@@ -429,7 +429,7 @@ fd_msaa_samples(unsigned samples)
 {
    switch (samples) {
    default:
-      assert(0);
+      unreachable("Unsupported samples");
    case 0:
    case 1:
       return MSAA_ONE;
