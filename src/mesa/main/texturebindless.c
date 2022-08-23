@@ -423,7 +423,7 @@ _mesa_init_shared_handles(struct gl_shared_state *shared)
 {
    shared->TextureHandles = _mesa_hash_table_u64_create(NULL);
    shared->ImageHandles = _mesa_hash_table_u64_create(NULL);
-   mtx_init(&shared->HandlesMutex, mtx_recursive);
+   mtx_init(&shared->HandlesMutex, mtx_plain | mtx_recursive);
 }
 
 void
