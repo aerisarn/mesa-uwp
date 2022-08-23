@@ -354,18 +354,6 @@ gather_info_output_decl_gs(const nir_shader *nir, const nir_variable *var,
    info->gs.output_streams[idx] = stream;
 }
 
-static struct radv_vs_output_info *
-get_vs_output_info(const nir_shader *nir, struct radv_shader_info *info)
-{
-   if ((nir->info.stage == MESA_SHADER_VERTEX && !info->vs.as_ls && !info->vs.as_es) ||
-       (nir->info.stage == MESA_SHADER_TESS_EVAL && !info->tes.as_es) ||
-       nir->info.stage == MESA_SHADER_GEOMETRY || nir->info.stage == MESA_SHADER_MESH) {
-      return &info->outinfo;
-   }
-
-   return NULL;
-}
-
 static void
 gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
                         struct radv_shader_info *info)
@@ -491,8 +479,10 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
        nir->info.stage == MESA_SHADER_GEOMETRY)
       gather_xfb_info(nir, info);
 
-   struct radv_vs_output_info *outinfo = get_vs_output_info(nir, info);
-   if (outinfo) {
+   if (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       nir->info.stage == MESA_SHADER_GEOMETRY || nir->info.stage == MESA_SHADER_MESH) {
+      struct radv_vs_output_info *outinfo = &info->outinfo;
+
       /* These are not compiled into neither output param nor position exports. */
       uint64_t special_mask = BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
                               BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) |
