@@ -118,7 +118,7 @@ void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
 void ac_compute_late_alloc(const struct radeon_info *info, bool ngg, bool ngg_culling,
                            bool uses_scratch, unsigned *late_alloc_wave64, unsigned *cu_mask);
 
-unsigned ac_compute_cs_workgroup_size(uint16_t sizes[3], bool variable, unsigned max);
+unsigned ac_compute_cs_workgroup_size(const uint16_t sizes[3], bool variable, unsigned max);
 
 unsigned ac_compute_lshs_workgroup_size(enum amd_gfx_level gfx_level, gl_shader_stage stage,
                                         unsigned tess_num_patches,

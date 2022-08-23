@@ -720,7 +720,7 @@ void ac_compute_late_alloc(const struct radeon_info *info, bool ngg, bool ngg_cu
       *late_alloc_wave64 = MIN2(*late_alloc_wave64, G_00B11C_LIMIT(~0u));
 }
 
-unsigned ac_compute_cs_workgroup_size(uint16_t sizes[3], bool variable, unsigned max)
+unsigned ac_compute_cs_workgroup_size(const uint16_t sizes[3], bool variable, unsigned max)
 {
    if (variable)
       return max;
