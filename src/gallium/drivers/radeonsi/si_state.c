@@ -5314,7 +5314,10 @@ static void si_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertic
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
-   sctx->patch_vertices = patch_vertices;
+   if (sctx->patch_vertices != patch_vertices) {
+      sctx->patch_vertices = patch_vertices;
+      si_update_tess_in_out_patch_vertices(sctx);
+   }
 }
 
 static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)

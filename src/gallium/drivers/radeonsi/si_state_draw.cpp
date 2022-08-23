@@ -2148,48 +2148,6 @@ static void si_draw(struct pipe_context *ctx,
    si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));
    si_need_gfx_cs_space(sctx, num_draws);
 
-   if (HAS_TESS) {
-      if (sctx->is_user_tcs) {
-         struct si_shader_selector *tcs = sctx->shader.tcs.cso;
-
-         bool same_patch_vertices =
-            GFX_VERSION >= GFX9 &&
-            sctx->patch_vertices == tcs->info.base.tess.tcs_vertices_out;
-
-         if (sctx->shader.tcs.key.ge.opt.same_patch_vertices != same_patch_vertices) {
-            sctx->shader.tcs.key.ge.opt.same_patch_vertices = same_patch_vertices;
-            sctx->do_update_shaders = true;
-         }
-
-         if (GFX_VERSION == GFX9 && sctx->screen->info.has_ls_vgpr_init_bug) {
-            /* Determine whether the LS VGPR fix should be applied.
-             *
-             * It is only required when num input CPs > num output CPs,
-             * which cannot happen with the fixed function TCS.
-             */
-            bool ls_vgpr_fix =
-               sctx->patch_vertices > tcs->info.base.tess.tcs_vertices_out;
-
-            if (ls_vgpr_fix != sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix) {
-               sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix = ls_vgpr_fix;
-               sctx->do_update_shaders = true;
-            }
-         }
-      } else {
-         /* These fields are static for fixed function TCS. So no need to set
-          * do_update_shaders between fixed-TCS draws. As fixed-TCS to user-TCS
-          * or opposite, do_update_shaders should already be set by bind state.
-          */
-         sctx->shader.tcs.key.ge.opt.same_patch_vertices = GFX_VERSION >= GFX9;
-         sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix = false;
-
-         /* User may only change patch vertices, needs to update fixed func TCS. */
-         if (sctx->shader.tcs.cso &&
-             sctx->shader.tcs.cso->info.base.tess.tcs_vertices_out != sctx->patch_vertices)
-            sctx->do_update_shaders = true;
-      }
-   }
-
    unsigned instance_count = info->instance_count;
 
    /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is

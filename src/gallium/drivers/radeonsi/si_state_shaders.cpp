@@ -3491,6 +3491,7 @@ static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
    sctx->shader.tcs.key.ge.part.tcs.epilog.invoc0_tess_factors_are_def =
       sel ? sel->info.tessfactors_are_def_in_all_invocs : 0;
    si_update_tess_uses_prim_id(sctx);
+   si_update_tess_in_out_patch_vertices(sctx);
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_TESS_CTRL);
 
@@ -4282,6 +4283,49 @@ bool si_set_tcs_to_fixed_func_shader(struct si_context *sctx)
       tcs->info.tessfactors_are_def_in_all_invocs;
 
    return true;
+}
+
+void si_update_tess_in_out_patch_vertices(struct si_context *sctx)
+{
+   if (sctx->is_user_tcs) {
+      struct si_shader_selector *tcs = sctx->shader.tcs.cso;
+
+      bool same_patch_vertices =
+         sctx->gfx_level >= GFX9 &&
+         sctx->patch_vertices == tcs->info.base.tess.tcs_vertices_out;
+
+      if (sctx->shader.tcs.key.ge.opt.same_patch_vertices != same_patch_vertices) {
+         sctx->shader.tcs.key.ge.opt.same_patch_vertices = same_patch_vertices;
+         sctx->do_update_shaders = true;
+      }
+
+      if (sctx->gfx_level == GFX9 && sctx->screen->info.has_ls_vgpr_init_bug) {
+         /* Determine whether the LS VGPR fix should be applied.
+          *
+          * It is only required when num input CPs > num output CPs,
+          * which cannot happen with the fixed function TCS.
+          */
+         bool ls_vgpr_fix =
+            sctx->patch_vertices > tcs->info.base.tess.tcs_vertices_out;
+
+         if (ls_vgpr_fix != sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix) {
+            sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix = ls_vgpr_fix;
+            sctx->do_update_shaders = true;
+         }
+      }
+   } else {
+      /* These fields are static for fixed function TCS. So no need to set
+       * do_update_shaders between fixed-TCS draws. As fixed-TCS to user-TCS
+       * or opposite, do_update_shaders should already be set by bind state.
+       */
+      sctx->shader.tcs.key.ge.opt.same_patch_vertices = sctx->gfx_level >= GFX9;
+      sctx->shader.tcs.key.ge.part.tcs.ls_prolog.ls_vgpr_fix = false;
+
+      /* User may only change patch vertices, needs to update fixed func TCS. */
+      if (sctx->shader.tcs.cso &&
+          sctx->shader.tcs.cso->info.base.tess.tcs_vertices_out != sctx->patch_vertices)
+         sctx->do_update_shaders = true;
+   }
 }
 
 void si_init_screen_live_shader_cache(struct si_screen *sscreen)
