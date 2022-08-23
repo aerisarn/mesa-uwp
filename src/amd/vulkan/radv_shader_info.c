@@ -537,8 +537,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
       /* Per-vertex outputs */
       assign_outinfo_params(outinfo, per_vtx_mask, &total_param_exports);
-      if (outinfo->writes_layer)
-         assign_outinfo_param(outinfo, VARYING_SLOT_LAYER, &total_param_exports);
       if (outinfo->export_prim_id)
          assign_outinfo_param(outinfo, VARYING_SLOT_PRIMITIVE_ID, &total_param_exports);
 
@@ -546,10 +544,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
       /* Per-primitive outputs: the HW needs these to be last. */
       assign_outinfo_params(outinfo, per_prim_mask, &total_param_exports);
-      if (outinfo->writes_layer_per_primitive)
-         assign_outinfo_param(outinfo, VARYING_SLOT_LAYER, &total_param_exports);
-      if (outinfo->writes_viewport_index_per_primitive)
-         assign_outinfo_param(outinfo, VARYING_SLOT_VIEWPORT, &total_param_exports);
 
       outinfo->prim_param_exports = total_param_exports - outinfo->param_exports;
    }
