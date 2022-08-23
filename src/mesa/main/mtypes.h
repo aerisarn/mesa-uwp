@@ -2791,6 +2791,7 @@ struct gl_matrix_stack
    GLuint Depth;       /**< 0 <= Depth < MaxDepth */
    GLuint MaxDepth;    /**< size of Stack[] array */
    GLuint DirtyFlag;   /**< _NEW_MODELVIEW or _NEW_PROJECTION, for example */
+   bool ChangedSincePush;
 };
 
 
