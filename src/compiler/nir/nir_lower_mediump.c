@@ -381,6 +381,189 @@ nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes)
 }
 
 static bool
+is_mediump_or_lowp(unsigned precision)
+{
+   return precision == GLSL_PRECISION_LOW || precision == GLSL_PRECISION_MEDIUM;
+}
+
+static bool
+try_lower_mediump_var(nir_variable *var, nir_variable_mode modes)
+{
+   if (!(var->data.mode & modes) || !is_mediump_or_lowp(var->data.precision))
+      return false;
+
+   const struct glsl_type *new_type = glsl_type_to_16bit(var->type);
+   if (var->type == new_type)
+      return false;
+
+   var->type = new_type;
+   return true;
+}
+
+static bool
+nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
+                            bool any_lowered)
+{
+   bool progress = false;
+
+   if (modes & nir_var_function_temp) {
+      nir_foreach_function_temp_variable(var, impl) {
+         any_lowered = try_lower_mediump_var(var, modes) || any_lowered;
+      }
+   }
+   if (!any_lowered)
+      return false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_deref: {
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+
+            if (deref->modes & modes) {
+               switch (deref->deref_type) {
+               case nir_deref_type_var:
+                  deref->type = deref->var->type;
+                  break;
+               case nir_deref_type_array:
+               case nir_deref_type_array_wildcard:
+                  deref->type = glsl_get_array_element(nir_deref_instr_parent(deref)->type);
+                  break;
+               case nir_deref_type_struct:
+                  deref->type = glsl_get_struct_field(nir_deref_instr_parent(deref)->type, deref->strct.index);
+                  break;
+               default:
+                  nir_print_instr(instr, stderr);
+                  unreachable("unsupported deref type");
+               }
+            }
+
+            break;
+         }
+
+         case nir_instr_type_intrinsic: {
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            switch (intrin->intrinsic) {
+            case nir_intrinsic_load_deref: {
+
+               if (intrin->dest.ssa.bit_size != 32)
+                  break;
+
+               nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+               nir_ssa_def *replace = NULL;
+
+               b.cursor = nir_after_instr(&intrin->instr);
+               switch (glsl_get_base_type(deref->type)) {
+               case GLSL_TYPE_FLOAT16:
+                  replace = nir_f2f32(&b, &intrin->dest.ssa);
+                  break;
+               case GLSL_TYPE_INT16:
+                  replace = nir_i2i32(&b, &intrin->dest.ssa);
+                  break;
+               case GLSL_TYPE_UINT16:
+                  replace = nir_u2u32(&b, &intrin->dest.ssa);
+                  break;
+               default:
+                  break;
+               }
+               if (!replace)
+                  break;
+
+               intrin->dest.ssa.bit_size = 16;
+               nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
+                                              replace,
+                                              replace->parent_instr);
+               progress = true;
+               break;
+            }
+
+            case nir_intrinsic_store_deref: {
+               nir_ssa_def *data = intrin->src[1].ssa;
+               if (data->bit_size != 32)
+                  break;
+
+               b.cursor = nir_before_instr(&intrin->instr);
+               nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+               nir_ssa_def *replace = NULL;
+               switch (glsl_get_base_type(deref->type)) {
+               case GLSL_TYPE_FLOAT16:
+                  replace = nir_f2fmp(&b, data);
+                  break;
+               case GLSL_TYPE_INT16:
+               case GLSL_TYPE_UINT16:
+                  replace = nir_i2imp(&b, data);
+                  break;
+               default:
+                  break;
+               }
+               if (!replace)
+                  break;
+
+               nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],
+                                     nir_src_for_ssa(replace));
+               progress = true;
+               break;
+            }
+
+            case nir_intrinsic_copy_deref: {
+               nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
+               nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
+               /* If we convert once side of a copy and not the other, that
+                * would be very bad.
+                */
+               if (nir_deref_mode_may_be(dst, modes) ||
+                   nir_deref_mode_may_be(src, modes)) {
+                  assert(nir_deref_mode_must_be(dst, modes));
+                  assert(nir_deref_mode_must_be(src, modes));
+               }
+               break;
+            }
+
+            default:
+               break;
+            }
+            break;
+         }
+
+         default:
+            break;
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   return progress;
+}
+
+bool
+nir_lower_mediump_vars(nir_shader *shader, nir_variable_mode modes)
+{
+   bool progress = false;
+
+   if (modes & ~nir_var_function_temp) {
+      nir_foreach_variable_in_shader(var, shader) {
+         progress = try_lower_mediump_var(var, modes) || progress;
+      }
+   }
+
+   nir_foreach_function(function, shader) {
+      if (function->impl && nir_lower_mediump_vars_impl(function->impl, modes, progress))
+         progress = true;
+   }
+
+   return progress;
+}
+
+static bool
 is_n_to_m_conversion(nir_instr *instr, unsigned n, nir_op m)
 {
    if (instr->type != nir_instr_type_alu)
