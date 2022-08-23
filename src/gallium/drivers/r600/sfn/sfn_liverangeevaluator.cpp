@@ -308,14 +308,14 @@ void LiveRangeInstrVisitor::visit(StreamOutInstr *instr)
 {
    sfn_log << SfnLog::merge << "Visit " << *instr << "\n";
    auto src = instr->value();
-   record_read(src, LiveRangeEntry::use_export);
+   record_read(src, LiveRangeEntry::use_unspecified);
 }
 
 void LiveRangeInstrVisitor::visit(MemRingOutInstr *instr)
 {
    sfn_log << SfnLog::merge << "Visit " << *instr << "\n";
    auto src = instr->value();
-   record_read(src, LiveRangeEntry::use_export);
+   record_read(src, LiveRangeEntry::use_unspecified);
 
    auto idx = instr->export_index();
    if (idx && idx->as_register())
