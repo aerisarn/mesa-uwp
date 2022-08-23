@@ -505,6 +505,12 @@ gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pip
    }
 }
 
+static void
+gather_shader_info_cs(const nir_shader *nir, struct radv_shader_info *info)
+{
+   info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE_ADDR_AMD);
+}
+
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
@@ -622,7 +628,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_TASK:
-      info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE_ADDR_AMD);
+      gather_shader_info_cs(nir, info);
 
       /* Task shaders always need these for the I/O lowering even if
        * the API shader doesn't actually use them.
