@@ -186,7 +186,7 @@ st_gl_texture_dims_to_pipe_dims(GLenum texture,
       *layersOut = util_align_npot(depthIn, 6);
       break;
    default:
-      assert(0 && "Unexpected texture in st_gl_texture_dims_to_pipe_dims()");
+      unreachable("Unexpected texture in st_gl_texture_dims_to_pipe_dims()");
    case GL_TEXTURE_3D:
    case GL_PROXY_TEXTURE_3D:
       *widthOut = widthIn;
