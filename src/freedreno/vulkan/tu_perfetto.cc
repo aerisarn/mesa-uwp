@@ -37,7 +37,7 @@ enum {
  * Render-stage id's
  */
 enum tu_stage_id {
-   SURFACE_STAGE_ID, /* Surface is a sort of meta-stage for render-target info */
+   RENDER_PASS_STAGE_ID,
    BINNING_STAGE_ID,
    GMEM_STAGE_ID,
    BYPASS_STAGE_ID,
@@ -48,9 +48,7 @@ enum tu_stage_id {
    GMEM_LOAD_STAGE_ID,
    GMEM_STORE_STAGE_ID,
    SYSMEM_RESOLVE_STAGE_ID,
-   // TODO add the rest
-
-   NUM_STAGES
+   // TODO add the rest from fd_stage_id
 };
 
 static const struct {
@@ -64,17 +62,17 @@ static const struct {
    const char *name;
    const char *desc;
 } stages[] = {
-   [SURFACE_STAGE_ID] = {"Surface"},
-   [BINNING_STAGE_ID] = {"Binning", "Perform Visibility pass and determine target bins"},
-   [GMEM_STAGE_ID]    = {"Render", "Rendering to GMEM"},
-   [BYPASS_STAGE_ID]  = {"Render", "Rendering to system memory"},
-   [BLIT_STAGE_ID]    = {"Blit", "Performing a Blit operation"},
-   [COMPUTE_STAGE_ID] = {"Compute", "Compute job"},
-   [CLEAR_SYSMEM_STAGE_ID] = {"Clear Sysmem", ""},
-   [CLEAR_GMEM_STAGE_ID] = {"Clear GMEM", "Per-tile (GMEM) clear"},
-   [GMEM_LOAD_STAGE_ID] = {"GMEM Load", "Per tile system memory to GMEM load"},
-   [GMEM_STORE_STAGE_ID] = {"GMEM Store", "Per tile GMEM to system memory store"},
-   [SYSMEM_RESOLVE_STAGE_ID] = {"SysMem Resolve", "System memory MSAA resolve"},
+   [RENDER_PASS_STAGE_ID]    = { "Render Pass" },
+   [BINNING_STAGE_ID]        = { "Binning", "Perform Visibility pass and determine target bins" },
+   [GMEM_STAGE_ID]           = { "GMEM", "Rendering to GMEM" },
+   [BYPASS_STAGE_ID]         = { "Bypass", "Rendering to system memory" },
+   [BLIT_STAGE_ID]           = { "Blit", "Performing a Blit operation" },
+   [COMPUTE_STAGE_ID]        = { "Compute", "Compute job" },
+   [CLEAR_SYSMEM_STAGE_ID]   = { "Clear Sysmem", "" },
+   [CLEAR_GMEM_STAGE_ID]     = { "Clear GMEM", "Per-tile (GMEM) clear" },
+   [GMEM_LOAD_STAGE_ID]      = { "GMEM Load", "Per tile system memory to GMEM load" },
+   [GMEM_STORE_STAGE_ID]     = { "GMEM Store", "Per tile GMEM to system memory store" },
+   [SYSMEM_RESOLVE_STAGE_ID] = { "SysMem Resolve", "System memory MSAA resolve" },
    // TODO add the rest
 };
 
@@ -421,7 +419,7 @@ tu_end_##event_name(struct tu_device *dev, uint64_t ts_ns,                    \
       (trace_payload_as_extra_func) &trace_payload_as_extra_end_##event_name);     \
 }
 
-CREATE_EVENT_CALLBACK(render_pass, SURFACE_STAGE_ID)
+CREATE_EVENT_CALLBACK(render_pass, RENDER_PASS_STAGE_ID)
 CREATE_EVENT_CALLBACK(binning_ib, BINNING_STAGE_ID)
 CREATE_EVENT_CALLBACK(draw_ib_gmem, GMEM_STAGE_ID)
 CREATE_EVENT_CALLBACK(draw_ib_sysmem, BYPASS_STAGE_ID)
