@@ -790,7 +790,6 @@ BEGIN_TEST(to_hw_instr.copy_linear_vgpr_scc)
       return;
 
    PhysReg reg_s0{0};
-   PhysReg reg_s1{1};
    PhysReg v0_lo{256};
    PhysReg v0_b3{256};
    v0_b3.reg_b += 3;
