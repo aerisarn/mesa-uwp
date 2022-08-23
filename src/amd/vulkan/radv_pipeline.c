@@ -3329,11 +3329,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       /* Copy data to merged stage. */
       if (pre_stage == MESA_SHADER_VERTEX) {
-         stages[MESA_SHADER_GEOMETRY].info.vs.as_es = stages[MESA_SHADER_VERTEX].info.vs.as_es;
          stages[MESA_SHADER_GEOMETRY].info.vs.num_linked_outputs =
             stages[MESA_SHADER_VERTEX].info.vs.num_linked_outputs;
       } else {
-         stages[MESA_SHADER_GEOMETRY].info.tes.as_es = stages[MESA_SHADER_TESS_EVAL].info.tes.as_es;
          stages[MESA_SHADER_GEOMETRY].info.tes.num_linked_outputs =
             stages[MESA_SHADER_TESS_EVAL].info.tes.num_linked_outputs;
          stages[MESA_SHADER_GEOMETRY].info.tes.num_linked_inputs =
@@ -3350,6 +3348,11 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       }
 
       stages[pre_stage].info = stages[MESA_SHADER_GEOMETRY].info;
+      if (pre_stage == MESA_SHADER_VERTEX) {
+         stages[MESA_SHADER_VERTEX].info.vs.as_es = true;
+      } else {
+         stages[MESA_SHADER_TESS_EVAL].info.tes.as_es = true;
+      }
 
       filled_stages |= (1 << pre_stage);
       filled_stages |= (1 << MESA_SHADER_GEOMETRY);
