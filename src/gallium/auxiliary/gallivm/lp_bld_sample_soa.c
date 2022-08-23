@@ -2669,7 +2669,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
 
    switch (mip_filter) {
    default:
-      assert(0 && "bad mip_filter value in lp_build_sample_soa()");
+      unreachable("Bad mip_filter value in lp_build_sample_soa()");
    case PIPE_TEX_MIPFILTER_NONE:
       /* always use mip level 0 */
       first_level = bld->dynamic_state->first_level(bld->gallivm, bld->context_ptr,
