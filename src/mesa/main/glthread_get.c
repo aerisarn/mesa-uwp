@@ -58,7 +58,7 @@ _mesa_marshal_GetIntegerv(GLenum pname, GLint *p)
       *p = ctx->GLThread.AttribStackDepth;
       return;
    case GL_CLIENT_ACTIVE_TEXTURE:
-      *p = ctx->GLThread.ClientActiveTexture;
+      *p = GL_TEXTURE0 + ctx->GLThread.ClientActiveTexture;
       return;
    case GL_CLIENT_ATTRIB_STACK_DEPTH:
       *p = ctx->GLThread.ClientAttribStackTop;
