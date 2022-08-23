@@ -134,7 +134,6 @@ BEGIN_TEST(optimizer_postRA.scc_nocmp_opt)
     assert(setup_ok);
 
     PhysReg reg_s0{0};
-    PhysReg reg_s1{1};
     PhysReg reg_s2{2};
     PhysReg reg_s3{3};
     PhysReg reg_s4{4};
