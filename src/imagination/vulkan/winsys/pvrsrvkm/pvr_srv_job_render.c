@@ -752,8 +752,10 @@ pvr_srv_fragment_cmd_stream_load(struct rogue_fwif_cmd_3d *const cmd,
    regs->isp_stencil_load_store_base = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_ISP_STENCIL_LOAD_BASE);
 
-   regs->fb_cdc_zls = *(const uint64_t *)stream_ptr;
-   stream_ptr += 2U;
+   if (PVR_HAS_FEATURE(dev_info, requires_fb_cdc_zls_setup)) {
+      regs->fb_cdc_zls = *(const uint64_t *)stream_ptr;
+      stream_ptr += 2U;
+   }
 
    STATIC_ASSERT(ARRAY_SIZE(regs->pbe_word) == 8U);
    STATIC_ASSERT(ARRAY_SIZE(regs->pbe_word[0]) == 3U);

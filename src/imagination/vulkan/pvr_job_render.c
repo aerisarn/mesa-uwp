@@ -1170,8 +1170,10 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    }
    stream_ptr += pvr_cmd_length(CR_ISP_STENCIL_LOAD_BASE);
 
-   *(uint64_t *)stream_ptr = 0;
-   stream_ptr += 2U;
+   if (PVR_HAS_FEATURE(dev_info, requires_fb_cdc_zls_setup)) {
+      *(uint64_t *)stream_ptr = 0;
+      stream_ptr += 2U;
+   }
 
    STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words) == 8U);
    STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words[0]) == 3U);
