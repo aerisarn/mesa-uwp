@@ -2056,57 +2056,6 @@ gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
 }
 
 static void
-gfx10_get_ngg_ms_info(struct radv_pipeline_stage *stage, struct gfx10_ngg_info *ngg)
-{
-   /* Special case for mesh shader workgroups.
-    *
-    * Mesh shaders don't have any real vertex input, but they can produce
-    * an arbitrary number of vertices and primitives (up to 256).
-    * We need to precisely control the number of mesh shader workgroups
-    * that are launched from draw calls.
-    *
-    * To achieve that, we set:
-    * - input primitive topology to point list
-    * - input vertex and primitive count to 1
-    * - max output vertex count and primitive amplification factor
-    *   to the boundaries of the shader
-    *
-    * With that, in the draw call:
-    * - drawing 1 input vertex ~ launching 1 mesh shader workgroup
-    *
-    * In the shader:
-    * - base vertex ~ first workgroup index (firstTask in NV_mesh_shader)
-    * - input vertex id ~ workgroup id (in 1D - shader needs to calculate in 3D)
-    *
-    * Notes:
-    * - without GS_EN=1 PRIM_AMP_FACTOR and MAX_VERTS_PER_SUBGROUP don't seem to work
-    * - with GS_EN=1 we must also set VGT_GS_MAX_VERT_OUT (otherwise the GPU hangs)
-    * - with GS_FAST_LAUNCH=1 every lane's VGPRs are initialized to the same input vertex index
-    *
-    */
-   nir_shader *ms = stage->nir;
-
-   ngg->enable_vertex_grouping = true;
-   ngg->esgs_ring_size = 1;
-   ngg->hw_max_esverts = 1;
-   ngg->max_gsprims = 1;
-   ngg->max_out_verts = ms->info.mesh.max_vertices_out;
-   ngg->max_vert_out_per_gs_instance = false;
-   ngg->ngg_emit_size = 0;
-   ngg->prim_amp_factor = ms->info.mesh.max_primitives_out;
-   ngg->vgt_esgs_ring_itemsize = 1;
-
-   unsigned min_ngg_workgroup_size =
-      ac_compute_ngg_workgroup_size(ngg->hw_max_esverts, ngg->max_gsprims,
-                                    ngg->max_out_verts, ngg->prim_amp_factor);
-
-   unsigned api_workgroup_size =
-      ac_compute_cs_workgroup_size(ms->info.workgroup_size, false, UINT32_MAX);
-
-   stage->info.workgroup_size = MAX2(min_ngg_workgroup_size, api_workgroup_size);
-}
-
-static void
 gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pipeline,
                    struct radv_pipeline_stage *stages, struct gfx10_ngg_info *ngg)
 {
@@ -4624,9 +4573,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       else
          unreachable("Missing NGG shader stage.");
 
-      if (*last_vgt_api_stage == MESA_SHADER_MESH)
-         gfx10_get_ngg_ms_info(&stages[MESA_SHADER_MESH], ngg_info);
-      else
+      if (*last_vgt_api_stage != MESA_SHADER_MESH)
          gfx10_get_ngg_info(pipeline_key, pipeline, stages, ngg_info);
    } else if (stages[MESA_SHADER_GEOMETRY].nir) {
       struct gfx9_gs_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info.gs_ring_info;

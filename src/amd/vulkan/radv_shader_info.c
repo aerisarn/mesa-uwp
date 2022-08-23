@@ -414,7 +414,54 @@ gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
 static void
 gather_shader_info_mesh(const nir_shader *nir, struct radv_shader_info *info)
 {
+   struct gfx10_ngg_info *ngg_info = &info->ngg_info;
+
    info->ms.output_prim = nir->info.mesh.primitive_type;
+
+   /* Special case for mesh shader workgroups.
+    *
+    * Mesh shaders don't have any real vertex input, but they can produce
+    * an arbitrary number of vertices and primitives (up to 256).
+    * We need to precisely control the number of mesh shader workgroups
+    * that are launched from draw calls.
+    *
+    * To achieve that, we set:
+    * - input primitive topology to point list
+    * - input vertex and primitive count to 1
+    * - max output vertex count and primitive amplification factor
+    *   to the boundaries of the shader
+    *
+    * With that, in the draw call:
+    * - drawing 1 input vertex ~ launching 1 mesh shader workgroup
+    *
+    * In the shader:
+    * - base vertex ~ first workgroup index (firstTask in NV_mesh_shader)
+    * - input vertex id ~ workgroup id (in 1D - shader needs to calculate in 3D)
+    *
+    * Notes:
+    * - without GS_EN=1 PRIM_AMP_FACTOR and MAX_VERTS_PER_SUBGROUP don't seem to work
+    * - with GS_EN=1 we must also set VGT_GS_MAX_VERT_OUT (otherwise the GPU hangs)
+    * - with GS_FAST_LAUNCH=1 every lane's VGPRs are initialized to the same input vertex index
+    *
+    */
+   ngg_info->enable_vertex_grouping = true;
+   ngg_info->esgs_ring_size = 1;
+   ngg_info->hw_max_esverts = 1;
+   ngg_info->max_gsprims = 1;
+   ngg_info->max_out_verts = nir->info.mesh.max_vertices_out;
+   ngg_info->max_vert_out_per_gs_instance = false;
+   ngg_info->ngg_emit_size = 0;
+   ngg_info->prim_amp_factor = nir->info.mesh.max_primitives_out;
+   ngg_info->vgt_esgs_ring_itemsize = 1;
+
+   unsigned min_ngg_workgroup_size =
+      ac_compute_ngg_workgroup_size(ngg_info->hw_max_esverts, ngg_info->max_gsprims,
+                                    ngg_info->max_out_verts, ngg_info->prim_amp_factor);
+
+   unsigned api_workgroup_size =
+      ac_compute_cs_workgroup_size(nir->info.workgroup_size, false, UINT32_MAX);
+
+   info->workgroup_size = MAX2(min_ngg_workgroup_size, api_workgroup_size);
 }
 
 static void
