@@ -414,9 +414,7 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 {
    u_foreach_bit64(idx, mask) {
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
-          idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
-          ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) &&
-           outinfo->export_clip_dists))
+          idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT)
          assign_outinfo_param(outinfo, idx, total_param_exports);
    }
 }
@@ -537,8 +535,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
       /* Per-vertex outputs */
       assign_outinfo_params(outinfo, per_vtx_mask, &total_param_exports);
-      if (outinfo->export_prim_id)
-         assign_outinfo_param(outinfo, VARYING_SLOT_PRIMITIVE_ID, &total_param_exports);
 
       outinfo->param_exports = total_param_exports;
 
@@ -688,8 +684,38 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
 void
 radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                          struct radv_pipeline_stage *stages)
+                          struct radv_pipeline_stage *stages, gl_shader_stage last_vgt_api_stage)
 {
+   if (stages[MESA_SHADER_FRAGMENT].nir) {
+      assert(last_vgt_api_stage != MESA_SHADER_NONE);
+      struct radv_shader_info *pre_ps_info = &stages[last_vgt_api_stage].info;
+      struct radv_vs_output_info *outinfo = &pre_ps_info->outinfo;
+
+      /* Add PS input requirements to the output of the pre-PS stage. */
+      bool ps_prim_id_in = stages[MESA_SHADER_FRAGMENT].info.ps.prim_id_input;
+      bool ps_clip_dists_in = !!stages[MESA_SHADER_FRAGMENT].info.ps.num_input_clips_culls;
+
+      assert(outinfo);
+
+      if (ps_prim_id_in &&
+          (last_vgt_api_stage == MESA_SHADER_VERTEX || last_vgt_api_stage == MESA_SHADER_TESS_EVAL)) {
+         /* Mark the primitive ID as output when it's implicitly exported by VS or TES with NGG. */
+         if (outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED)
+            outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = outinfo->param_exports++;
+
+         outinfo->export_prim_id = true;
+      }
+
+      if (ps_clip_dists_in) {
+         if (stages[last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
+            outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST0] = outinfo->param_exports++;
+         if (stages[last_vgt_api_stage].nir->info.outputs_written & VARYING_BIT_CLIP_DIST1)
+            outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST1] = outinfo->param_exports++;
+
+         outinfo->export_clip_dists = true;
+      }
+   }
+
    if (stages[MESA_SHADER_TESS_CTRL].nir) {
       stages[MESA_SHADER_TESS_CTRL].info.tcs.tes_reads_tess_factors =
          !!(stages[MESA_SHADER_TESS_EVAL].nir->info.inputs_read &

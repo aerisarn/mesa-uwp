@@ -3357,21 +3357,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       radv_nir_shader_info_pass(device, stages[MESA_SHADER_FRAGMENT].nir, pipeline_layout,
                                 pipeline_key, &stages[MESA_SHADER_FRAGMENT].info);
 
-      assert(last_vgt_api_stage != MESA_SHADER_NONE);
-      struct radv_shader_info *pre_ps_info = &stages[last_vgt_api_stage].info;
-      struct radv_vs_output_info *outinfo = &pre_ps_info->outinfo;
-
-      /* Add PS input requirements to the output of the pre-PS stage. */
-      bool ps_prim_id_in = stages[MESA_SHADER_FRAGMENT].info.ps.prim_id_input;
-      bool ps_clip_dists_in = !!stages[MESA_SHADER_FRAGMENT].info.ps.num_input_clips_culls;
-
-      assert(outinfo);
-      outinfo->export_clip_dists |= ps_clip_dists_in;
-      if (last_vgt_api_stage == MESA_SHADER_VERTEX ||
-          last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
-         outinfo->export_prim_id |= ps_prim_id_in;
-      }
-
       filled_stages |= (1 << MESA_SHADER_FRAGMENT);
    }
 
@@ -3441,7 +3426,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                                 &stages[i].info);
    }
 
-   radv_nir_shader_info_link(device, pipeline_key, stages);
+   radv_nir_shader_info_link(device, pipeline_key, stages, last_vgt_api_stage);
 
    if (stages[MESA_SHADER_COMPUTE].nir) {
       unsigned subgroup_size = pipeline_key->cs.compute_subgroup_size;
@@ -4177,14 +4162,20 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    struct radv_device *device = pipeline->device;
    struct radv_shader_info info = {0};
 
-   if (stages[MESA_SHADER_GEOMETRY].info.outinfo.export_clip_dists)
-      info.outinfo.export_clip_dists = true;
-
    radv_nir_shader_info_pass(device, stages[MESA_SHADER_GEOMETRY].nir, pipeline_layout, pipeline_key,
                              &info);
    info.wave_size = 64; /* Wave32 not supported. */
    info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    info.ballot_bit_size = 64;
+
+   if (stages[MESA_SHADER_GEOMETRY].info.outinfo.export_clip_dists) {
+      if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
+         info.outinfo.vs_output_param_offset[VARYING_SLOT_CLIP_DIST0] = info.outinfo.param_exports++;
+      if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST1)
+         info.outinfo.vs_output_param_offset[VARYING_SLOT_CLIP_DIST1] = info.outinfo.param_exports++;
+
+      info.outinfo.export_clip_dists = true;
+   }
 
    struct radv_shader_args gs_copy_args = {0};
    gs_copy_args.is_gs_copy_shader = true;
