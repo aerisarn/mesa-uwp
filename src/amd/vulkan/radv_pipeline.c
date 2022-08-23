@@ -3304,7 +3304,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       radv_nir_shader_info_init(&stages[MESA_SHADER_TESS_CTRL].info);
 
       /* Copy data to merged stage. */
-      stages[MESA_SHADER_TESS_CTRL].info.vs.as_ls = true;
       stages[MESA_SHADER_TESS_CTRL].info.vs.num_linked_outputs =
             stages[MESA_SHADER_VERTEX].info.vs.num_linked_outputs;
 
@@ -3314,6 +3313,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       }
 
       stages[MESA_SHADER_VERTEX].info = stages[MESA_SHADER_TESS_CTRL].info;
+      stages[MESA_SHADER_VERTEX].info.vs.as_ls = true;
 
       filled_stages |= (1 << MESA_SHADER_VERTEX);
       filled_stages |= (1 << MESA_SHADER_TESS_CTRL);
