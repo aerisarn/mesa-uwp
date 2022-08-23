@@ -120,13 +120,13 @@ class TracepointArg(object):
 HEADERS = []
 
 class HeaderScope(IntEnum):
-   HEADER = (1 << 0)
-   SOURCE = (1 << 1)
+    HEADER = (1 << 0)
+    SOURCE = (1 << 1)
 
 class Header(object):
     """Class that represents a header file dependency of generated tracepoints
     """
-    def __init__(self, hdr, scope=HeaderScope.HEADER|HeaderScope.SOURCE):
+    def __init__(self, hdr, scope=HeaderScope.HEADER):
         """Parameters:
 
         - hdr: the required header path
@@ -301,11 +301,11 @@ src_template = """\
  * IN THE SOFTWARE.
  */
 
+#include "${hdr}"
+
 % for header in HEADERS:
 #include "${header.hdr}"
 % endfor
-
-#include "${hdr}"
 
 #define __NEEDS_TRACE_PRIV
 #include "util/debug.h"
