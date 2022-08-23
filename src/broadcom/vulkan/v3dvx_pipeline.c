@@ -60,11 +60,6 @@ blend_factor(VkBlendFactor factor, bool dst_alpha_one, bool *needs_constants)
    default:
       unreachable("Unknown blend factor.");
    }
-
-   /* Should be handled by the switch, added to avoid a "end of non-void
-    * function" error
-    */
-   unreachable("Unknown blend factor.");
 }
 
 static void
