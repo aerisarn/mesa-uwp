@@ -37,6 +37,8 @@
 #include "util/u_prim.h"
 #include "tgsi/tgsi_from_mesa.h"
 
+static void si_update_tess_in_out_patch_vertices(struct si_context *sctx);
+
 unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *shader)
 {
    /* There are a few uses that pass shader=NULL here, expecting the default compute wave size. */
@@ -4285,7 +4287,7 @@ bool si_set_tcs_to_fixed_func_shader(struct si_context *sctx)
    return true;
 }
 
-void si_update_tess_in_out_patch_vertices(struct si_context *sctx)
+static void si_update_tess_in_out_patch_vertices(struct si_context *sctx)
 {
    if (sctx->is_user_tcs) {
       struct si_shader_selector *tcs = sctx->shader.tcs.cso;
@@ -4328,6 +4330,16 @@ void si_update_tess_in_out_patch_vertices(struct si_context *sctx)
    }
 }
 
+static void si_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertices)
+{
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   if (sctx->patch_vertices != patch_vertices) {
+      sctx->patch_vertices = patch_vertices;
+      si_update_tess_in_out_patch_vertices(sctx);
+   }
+}
+
 void si_init_screen_live_shader_cache(struct si_screen *sscreen)
 {
    util_live_shader_cache_init(&sscreen->live_shader_cache, si_create_shader_selector,
@@ -4355,4 +4367,6 @@ void si_init_shader_functions(struct si_context *sctx)
    sctx->b.delete_tes_state = si_delete_shader_selector;
    sctx->b.delete_gs_state = si_delete_shader_selector;
    sctx->b.delete_fs_state = si_delete_shader_selector;
+
+   sctx->b.set_patch_vertices = si_set_patch_vertices;
 }

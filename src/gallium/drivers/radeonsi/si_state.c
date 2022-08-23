@@ -5310,16 +5310,6 @@ static void si_set_tess_state(struct pipe_context *ctx, const float default_oute
    si_set_internal_const_buffer(sctx, SI_HS_CONST_DEFAULT_TESS_LEVELS, &cb);
 }
 
-static void si_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertices)
-{
-   struct si_context *sctx = (struct si_context *)ctx;
-
-   if (sctx->patch_vertices != patch_vertices) {
-      sctx->patch_vertices = patch_vertices;
-      si_update_tess_in_out_patch_vertices(sctx);
-   }
-}
-
 static void si_texture_barrier(struct pipe_context *ctx, unsigned flags)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -5456,7 +5446,6 @@ void si_init_state_functions(struct si_context *sctx)
    sctx->b.texture_barrier = si_texture_barrier;
    sctx->b.set_min_samples = si_set_min_samples;
    sctx->b.set_tess_state = si_set_tess_state;
-   sctx->b.set_patch_vertices = si_set_patch_vertices;
 
    sctx->b.set_active_query_state = si_set_active_query_state;
 }
