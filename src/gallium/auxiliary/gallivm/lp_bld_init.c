@@ -450,22 +450,6 @@ lp_build_init(void)
    lp_native_vector_width = debug_get_num_option("LP_NATIVE_VECTOR_WIDTH",
                                                  lp_native_vector_width);
 
-#if LLVM_VERSION_MAJOR < 4
-   if (lp_native_vector_width <= 128) {
-      /* Hide AVX support, as often LLVM AVX intrinsics are only guarded by
-       * "util_get_cpu_caps()->has_avx" predicate, and lack the
-       * "lp_native_vector_width > 128" predicate. And also to ensure a more
-       * consistent behavior, allowing one to test SSE2 on AVX machines.
-       * XXX: should not play games with util_cpu_caps directly as it might
-       * get used for other things outside llvm too.
-       */
-      util_get_cpu_caps()->has_avx = 0;
-      util_get_cpu_caps()->has_avx2 = 0;
-      util_get_cpu_caps()->has_f16c = 0;
-      util_get_cpu_caps()->has_fma = 0;
-   }
-#endif
-
 #ifdef PIPE_ARCH_PPC_64
    /* Set the NJ bit in VSCR to 0 so denormalized values are handled as
     * specified by IEEE standard (PowerISA 2.06 - Section 6.3). This guarantees
