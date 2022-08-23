@@ -401,7 +401,6 @@ debian-clang:
       -Wno-error=unused-function
     CPP_ARGS: >
       -Wno-error=c99-designator
-      -Wno-error=deprecated-declarations
       -Wno-error=implicit-const-int-float-conversion
       -Wno-error=missing-braces
       -Wno-error=overloaded-virtual
