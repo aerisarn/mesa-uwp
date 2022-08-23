@@ -3441,6 +3441,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                                 &stages[i].info);
    }
 
+   radv_nir_shader_info_link(device, pipeline_key, stages);
+
    if (stages[MESA_SHADER_COMPUTE].nir) {
       unsigned subgroup_size = pipeline_key->cs.compute_subgroup_size;
       unsigned req_subgroup_size = subgroup_size;
@@ -3477,79 +3479,12 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    }
 
    if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      stages[MESA_SHADER_TESS_CTRL].info.tcs.tes_reads_tess_factors =
-         !!(stages[MESA_SHADER_TESS_EVAL].nir->info.inputs_read &
-            (VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER));
-      stages[MESA_SHADER_TESS_CTRL].info.tcs.tes_inputs_read =
-         stages[MESA_SHADER_TESS_EVAL].nir->info.inputs_read;
-      stages[MESA_SHADER_TESS_CTRL].info.tcs.tes_patch_inputs_read =
-         stages[MESA_SHADER_TESS_EVAL].nir->info.patch_inputs_read;
-
-      stages[MESA_SHADER_TESS_EVAL].info.num_tess_patches =
-         stages[MESA_SHADER_TESS_CTRL].info.num_tess_patches;
-      stages[MESA_SHADER_GEOMETRY].info.num_tess_patches =
-         stages[MESA_SHADER_TESS_CTRL].info.num_tess_patches;
-
-      if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
-         /* When the number of TCS input and output vertices are the same (typically 3):
-          * - There is an equal amount of LS and HS invocations
-          * - In case of merged LSHS shaders, the LS and HS halves of the shader
-          *   always process the exact same vertex. We can use this knowledge to optimize them.
-          *
-          * We don't set tcs_in_out_eq if the float controls differ because that might
-          * involve different float modes for the same block and our optimizer
-          * doesn't handle a instruction dominating another with a different mode.
-          */
-         stages[MESA_SHADER_VERTEX].info.vs.tcs_in_out_eq =
-            device->physical_device->rad_info.gfx_level >= GFX9 &&
-            pipeline_key->tcs.tess_input_vertices == stages[MESA_SHADER_TESS_CTRL].info.tcs.tcs_vertices_out &&
-            stages[MESA_SHADER_VERTEX].nir->info.float_controls_execution_mode ==
-               stages[MESA_SHADER_TESS_CTRL].nir->info.float_controls_execution_mode;
-
-         if (stages[MESA_SHADER_VERTEX].info.vs.tcs_in_out_eq)
-            stages[MESA_SHADER_VERTEX].info.vs.tcs_temp_only_input_mask =
-               stages[MESA_SHADER_TESS_CTRL].nir->info.inputs_read &
-               stages[MESA_SHADER_VERTEX].nir->info.outputs_written &
-               ~stages[MESA_SHADER_TESS_CTRL].nir->info.tess.tcs_cross_invocation_inputs_read &
-               ~stages[MESA_SHADER_TESS_CTRL].nir->info.inputs_read_indirectly &
-               ~stages[MESA_SHADER_VERTEX].nir->info.outputs_accessed_indirectly;
-
-         /* Copy data to TCS so it can be accessed by the backend if they are merged. */
-         stages[MESA_SHADER_TESS_CTRL].info.vs.tcs_in_out_eq =
-            stages[MESA_SHADER_VERTEX].info.vs.tcs_in_out_eq;
-         stages[MESA_SHADER_TESS_CTRL].info.vs.tcs_temp_only_input_mask =
-            stages[MESA_SHADER_VERTEX].info.vs.tcs_temp_only_input_mask;
-      }
-
       for (gl_shader_stage s = MESA_SHADER_VERTEX; s <= MESA_SHADER_TESS_CTRL; ++s) {
          stages[s].info.workgroup_size =
             ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level, s,
                                            stages[MESA_SHADER_TESS_CTRL].info.num_tess_patches,
                                            pipeline_key->tcs.tess_input_vertices,
                                            stages[MESA_SHADER_TESS_CTRL].info.tcs.tcs_vertices_out);
-      }
-   }
-
-   /* Compute the ESGS item size for VS or TES as ES. */
-   if ((stages[MESA_SHADER_VERTEX].nir && stages[MESA_SHADER_VERTEX].info.vs.as_es) ||
-       (stages[MESA_SHADER_TESS_EVAL].nir && stages[MESA_SHADER_TESS_EVAL].info.tes.as_es)) {
-      uint32_t num_outputs_written;
-      gl_shader_stage es_stage;
-
-      if (stages[MESA_SHADER_TESS_EVAL].nir) {
-         es_stage = MESA_SHADER_TESS_EVAL;
-         num_outputs_written = stages[MESA_SHADER_TESS_EVAL].info.tes.num_linked_outputs;
-      } else {
-         es_stage = MESA_SHADER_VERTEX;
-         num_outputs_written = stages[MESA_SHADER_VERTEX].info.vs.num_linked_outputs;
-      }
-
-      stages[es_stage].info.esgs_itemsize = num_outputs_written * 16;
-
-      /* Copy data to merged stage. */
-      if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-          stages[MESA_SHADER_GEOMETRY].nir) {
-         stages[MESA_SHADER_GEOMETRY].info.esgs_itemsize = stages[es_stage].info.esgs_itemsize;
       }
    }
 
@@ -3567,9 +3502,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    }
 
    if (stages[MESA_SHADER_TASK].nir) {
-      /* Task/mesh I/O uses the task ring buffers. */
-      stages[MESA_SHADER_MESH].info.ms.has_task = true;
-
       stages[MESA_SHADER_TASK].info.workgroup_size =
          ac_compute_cs_workgroup_size(
             stages[MESA_SHADER_TASK].nir->info.workgroup_size, false, UINT32_MAX);
