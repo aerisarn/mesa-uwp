@@ -138,6 +138,12 @@ vn_sizeof_VkPipelineShaderStageCreateInfo_pnext(const void *val)
 
     while (pnext) {
         switch ((int32_t)pnext->sType) {
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO:
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkPipelineShaderStageCreateInfo_pnext(pnext->pNext);
+            size += vn_sizeof_VkShaderModuleCreateInfo_self((const VkShaderModuleCreateInfo *)pnext);
+            return size;
         case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
             if (!vn_cs_renderer_protocol_has_extension(226 /* VK_EXT_subgroup_size_control */))
                 break;
@@ -196,6 +202,12 @@ vn_encode_VkPipelineShaderStageCreateInfo_pnext(struct vn_cs_encoder *enc, const
 
     while (pnext) {
         switch ((int32_t)pnext->sType) {
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO:
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkPipelineShaderStageCreateInfo_pnext(enc, pnext->pNext);
+            vn_encode_VkShaderModuleCreateInfo_self(enc, (const VkShaderModuleCreateInfo *)pnext);
+            return;
         case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
             if (!vn_cs_renderer_protocol_has_extension(226 /* VK_EXT_subgroup_size_control */))
                 break;
