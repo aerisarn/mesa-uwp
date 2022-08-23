@@ -243,27 +243,6 @@ gather_info_block(const nir_shader *nir, const nir_block *block, struct radv_sha
 }
 
 static void
-gather_info_input_decl_vs(const nir_shader *nir, const nir_variable *var,
-                          const struct radv_pipeline_key *key, struct radv_shader_info *info)
-{
-   unsigned attrib_count = glsl_count_attribute_slots(var->type, true);
-
-   for (unsigned i = 0; i < attrib_count; ++i) {
-      unsigned attrib_index = var->data.location + i - VERT_ATTRIB_GENERIC0;
-
-      if (key->vs.instance_rate_inputs & (1u << attrib_index)) {
-         info->vs.needs_instance_id = true;
-         info->vs.needs_base_instance = true;
-      }
-
-      if (info->vs.use_per_attribute_vb_descs)
-         info->vs.vb_desc_usage_mask |= 1u << attrib_index;
-      else
-         info->vs.vb_desc_usage_mask |= 1u << key->vs.vertex_attribute_bindings[attrib_index];
-   }
-}
-
-static void
 mark_16bit_ps_input(struct radv_shader_info *info, const struct glsl_type *type, int location)
 {
    if (glsl_type_is_scalar(type) || glsl_type_is_vector(type) || glsl_type_is_matrix(type)) {
@@ -282,19 +261,6 @@ mark_16bit_ps_input(struct radv_shader_info *info, const struct glsl_type *type,
          mark_16bit_ps_input(info, glsl_get_struct_field(type, i), location);
          location += glsl_count_attribute_slots(glsl_get_struct_field(type, i), false);
       }
-   }
-}
-
-static void
-gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
-                       const struct radv_pipeline_key *key, struct radv_shader_info *info)
-{
-   switch (nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-      gather_info_input_decl_vs(nir, var, key, info);
-      break;
-   default:
-      break;
    }
 }
 
@@ -343,6 +309,46 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
           idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT)
          assign_outinfo_param(outinfo, idx, total_param_exports);
+   }
+}
+
+static void
+gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
+                      const struct radv_pipeline_key *pipeline_key, struct radv_shader_info *info)
+{
+   if (pipeline_key->vs.dynamic_input_state && nir->info.inputs_read) {
+      info->vs.has_prolog = true;
+      info->vs.dynamic_inputs = true;
+   }
+
+   /* Use per-attribute vertex descriptors to prevent faults and for correct bounds checking. */
+   info->vs.use_per_attribute_vb_descs = device->robust_buffer_access || info->vs.dynamic_inputs;
+
+   /* We have to ensure consistent input register assignments between the main shader and the
+    * prolog.
+    */
+   info->vs.needs_instance_id |= info->vs.has_prolog;
+   info->vs.needs_base_instance |= info->vs.has_prolog;
+   info->vs.needs_draw_id |= info->vs.has_prolog;
+
+   nir_foreach_shader_in_variable(var, nir) {
+      unsigned attrib_count = glsl_count_attribute_slots(var->type, true);
+
+      for (unsigned i = 0; i < attrib_count; ++i) {
+         unsigned attrib_index = var->data.location + i - VERT_ATTRIB_GENERIC0;
+
+         if (pipeline_key->vs.instance_rate_inputs & (1u << attrib_index)) {
+            info->vs.needs_instance_id = true;
+            info->vs.needs_base_instance = true;
+         }
+
+         if (info->vs.use_per_attribute_vb_descs) {
+            info->vs.vb_desc_usage_mask |= 1u << attrib_index;
+         } else {
+            info->vs.vb_desc_usage_mask |=
+               1u << pipeline_key->vs.vertex_attribute_bindings[attrib_index];
+         }
+      }
    }
 }
 
@@ -520,27 +526,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->loads_dynamic_offsets = true;
    }
 
-   if (nir->info.stage == MESA_SHADER_VERTEX) {
-      if (pipeline_key->vs.dynamic_input_state && nir->info.inputs_read) {
-         info->vs.has_prolog = true;
-         info->vs.dynamic_inputs = true;
-      }
-
-      /* Use per-attribute vertex descriptors to prevent faults and
-       * for correct bounds checking.
-       */
-      info->vs.use_per_attribute_vb_descs = device->robust_buffer_access || info->vs.dynamic_inputs;
-   }
-
-   /* We have to ensure consistent input register assignments between the main shader and the
-    * prolog. */
-   info->vs.needs_instance_id |= info->vs.has_prolog;
-   info->vs.needs_base_instance |= info->vs.has_prolog;
-   info->vs.needs_draw_id |= info->vs.has_prolog;
-
-   nir_foreach_shader_in_variable (variable, nir)
-      gather_info_input_decl(nir, variable, pipeline_key, info);
-
    nir_foreach_block (block, func->impl) {
       gather_info_block(nir, block, info);
    }
@@ -670,6 +655,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_tcs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_VERTEX:
+      gather_shader_info_vs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_MESH:
       gather_shader_info_mesh(nir, info);
