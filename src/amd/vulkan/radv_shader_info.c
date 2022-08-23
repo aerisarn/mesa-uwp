@@ -284,45 +284,6 @@ mark_16bit_ps_input(struct radv_shader_info *info, const struct glsl_type *type,
       }
    }
 }
-static void
-gather_info_input_decl_ps(const nir_shader *nir, const nir_variable *var,
-                          struct radv_shader_info *info)
-{
-   unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
-   int idx = var->data.location;
-
-   switch (idx) {
-   case VARYING_SLOT_CLIP_DIST0:
-   case VARYING_SLOT_CLIP_DIST1:
-      info->ps.num_input_clips_culls += attrib_count;
-      break;
-   default:
-      break;
-   }
-
-   if (var->data.compact) {
-      unsigned component_count = var->data.location_frac + glsl_get_length(var->type);
-      attrib_count = (component_count + 3) / 4;
-   } else {
-      mark_16bit_ps_input(info, var->type, var->data.driver_location);
-   }
-
-   uint64_t mask = ((1ull << attrib_count) - 1);
-
-   if (!var->data.per_primitive) {
-      if (var->data.interpolation == INTERP_MODE_FLAT)
-         info->ps.flat_shaded_mask |= mask << var->data.driver_location;
-      else if (var->data.interpolation == INTERP_MODE_EXPLICIT)
-         info->ps.explicit_shaded_mask |= mask << var->data.driver_location;
-   }
-
-   if (var->data.location >= VARYING_SLOT_VAR0) {
-      if (var->data.per_primitive)
-         info->ps.input_per_primitive_mask |= mask << (var->data.location - VARYING_SLOT_VAR0);
-      else
-         info->ps.input_mask |= mask << (var->data.location - VARYING_SLOT_VAR0);
-   }
-}
 
 static void
 gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
@@ -331,9 +292,6 @@ gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
       gather_info_input_decl_vs(nir, var, key, info);
-      break;
-   case MESA_SHADER_FRAGMENT:
-      gather_info_input_decl_ps(nir, var, info);
       break;
    default:
       break;
@@ -419,6 +377,94 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
    }
 }
 
+static void
+gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
+                      struct radv_shader_info *info)
+{
+   uint64_t per_primitive_input_mask = nir->info.inputs_read & nir->info.per_primitive_inputs;
+   unsigned num_per_primitive_inputs = util_bitcount64(per_primitive_input_mask);
+   assert(num_per_primitive_inputs <= nir->num_inputs);
+
+   info->ps.num_interp = nir->num_inputs - num_per_primitive_inputs;
+   info->ps.num_prim_interp = num_per_primitive_inputs;
+   info->ps.can_discard = nir->info.fs.uses_discard;
+   info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
+   info->ps.post_depth_coverage = nir->info.fs.post_depth_coverage;
+   info->ps.depth_layout = nir->info.fs.depth_layout;
+   info->ps.uses_sample_shading = nir->info.fs.uses_sample_shading;
+   info->ps.writes_memory = nir->info.writes_memory;
+   info->ps.has_pcoord = nir->info.inputs_read & VARYING_BIT_PNTC;
+   info->ps.prim_id_input = nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
+   info->ps.layer_input = nir->info.inputs_read & VARYING_BIT_LAYER;
+   info->ps.viewport_index_input = nir->info.inputs_read & VARYING_BIT_VIEWPORT;
+   info->ps.writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+   info->ps.writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+   info->ps.writes_sample_mask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+   info->ps.reads_sample_mask_in = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
+   info->ps.reads_sample_id = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+   info->ps.reads_frag_shading_rate = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_SHADING_RATE);
+   info->ps.reads_front_face = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
+   info->ps.reads_barycentric_model = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL);
+
+   bool uses_persp_or_linear_interp = info->ps.reads_persp_center ||
+                                      info->ps.reads_persp_centroid ||
+                                      info->ps.reads_persp_sample ||
+                                      info->ps.reads_linear_center ||
+                                      info->ps.reads_linear_centroid ||
+                                      info->ps.reads_linear_sample;
+
+   info->ps.allow_flat_shading =
+      !(uses_persp_or_linear_interp || info->ps.needs_sample_positions ||
+        info->ps.writes_memory || nir->info.fs.needs_quad_helper_invocations ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_POINT_COORD) ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
+        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
+
+   info->ps.spi_ps_input = radv_compute_spi_ps_input(pipeline_key, info);
+
+   info->ps.has_epilog = pipeline_key->ps.has_epilog;
+
+   nir_foreach_shader_in_variable(var, nir) {
+      unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
+      int idx = var->data.location;
+
+      switch (idx) {
+      case VARYING_SLOT_CLIP_DIST0:
+      case VARYING_SLOT_CLIP_DIST1:
+         info->ps.num_input_clips_culls += attrib_count;
+         break;
+      default:
+         break;
+      }
+
+      if (var->data.compact) {
+         unsigned component_count = var->data.location_frac + glsl_get_length(var->type);
+         attrib_count = (component_count + 3) / 4;
+      } else {
+         mark_16bit_ps_input(info, var->type, var->data.driver_location);
+      }
+
+      uint64_t mask = ((1ull << attrib_count) - 1);
+
+      if (!var->data.per_primitive) {
+         if (var->data.interpolation == INTERP_MODE_FLAT)
+            info->ps.flat_shaded_mask |= mask << var->data.driver_location;
+         else if (var->data.interpolation == INTERP_MODE_EXPLICIT)
+            info->ps.explicit_shaded_mask |= mask << var->data.driver_location;
+      }
+
+      if (var->data.location >= VARYING_SLOT_VAR0) {
+         if (var->data.per_primitive)
+            info->ps.input_per_primitive_mask |= mask << (var->data.location - VARYING_SLOT_VAR0);
+         else
+            info->ps.input_mask |= mask << (var->data.location - VARYING_SLOT_VAR0);
+      }
+   }
+}
+
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
@@ -450,12 +496,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
        * for correct bounds checking.
        */
       info->vs.use_per_attribute_vb_descs = device->robust_buffer_access || info->vs.dynamic_inputs;
-   }
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      if (pipeline_key->ps.has_epilog) {
-         info->ps.has_epilog = true;
-      }
    }
 
    /* We have to ensure consistent input register assignments between the main shader and the
@@ -544,15 +584,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       outinfo->prim_param_exports = total_param_exports - outinfo->param_exports;
    }
 
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      uint64_t per_primitive_input_mask = nir->info.inputs_read & nir->info.per_primitive_inputs;
-      unsigned num_per_primitive_inputs = util_bitcount64(per_primitive_input_mask);
-      assert(num_per_primitive_inputs <= nir->num_inputs);
-
-      info->ps.num_interp = nir->num_inputs - num_per_primitive_inputs;
-      info->ps.num_prim_interp = num_per_primitive_inputs;
-   }
-
    info->vs.needs_draw_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
    info->vs.needs_base_instance |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BASE_INSTANCE);
    info->vs.needs_instance_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
@@ -595,24 +626,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       }
       break;
    case MESA_SHADER_FRAGMENT:
-      info->ps.can_discard = nir->info.fs.uses_discard;
-      info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
-      info->ps.post_depth_coverage = nir->info.fs.post_depth_coverage;
-      info->ps.depth_layout = nir->info.fs.depth_layout;
-      info->ps.uses_sample_shading = nir->info.fs.uses_sample_shading;
-      info->ps.writes_memory = nir->info.writes_memory;
-      info->ps.has_pcoord = nir->info.inputs_read & VARYING_BIT_PNTC;
-      info->ps.prim_id_input = nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
-      info->ps.layer_input = nir->info.inputs_read & VARYING_BIT_LAYER;
-      info->ps.viewport_index_input = nir->info.inputs_read & VARYING_BIT_VIEWPORT;
-      info->ps.writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
-      info->ps.writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
-      info->ps.writes_sample_mask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
-      info->ps.reads_sample_mask_in = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
-      info->ps.reads_sample_id = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
-      info->ps.reads_frag_shading_rate = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_SHADING_RATE);
-      info->ps.reads_front_face = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
-      info->ps.reads_barycentric_model = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL);
+      gather_shader_info_fs(nir, pipeline_key, info);
       break;
    case MESA_SHADER_GEOMETRY:
       info->gs.vertices_in = nir->info.gs.vertices_in;
@@ -662,27 +676,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
          nir->info.clip_distance_array_size + nir->info.cull_distance_array_size > 4;
       info->gs.gsvs_vertex_size = (util_bitcount64(nir->info.outputs_written) + add_clip) * 16;
       info->gs.max_gsvs_emit_size = info->gs.gsvs_vertex_size * nir->info.gs.vertices_out;
-   }
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      bool uses_persp_or_linear_interp = info->ps.reads_persp_center ||
-                                         info->ps.reads_persp_centroid ||
-                                         info->ps.reads_persp_sample ||
-                                         info->ps.reads_linear_center ||
-                                         info->ps.reads_linear_centroid ||
-                                         info->ps.reads_linear_sample;
-
-      info->ps.allow_flat_shading =
-         !(uses_persp_or_linear_interp || info->ps.needs_sample_positions ||
-           info->ps.writes_memory || nir->info.fs.needs_quad_helper_invocations ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_POINT_COORD) ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
-           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
-
-      info->ps.spi_ps_input = radv_compute_spi_ps_input(pipeline_key, info);
    }
 }
 
