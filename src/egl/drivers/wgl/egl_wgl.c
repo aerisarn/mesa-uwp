@@ -43,6 +43,7 @@
 #include <pipe/p_context.h>
 
 #include <mapi/glapi/glapi.h>
+#include "util/u_call_once.h"
 
 static EGLBoolean
 wgl_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
@@ -524,15 +525,19 @@ wgl_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static void
+wgl_gl_flush_get(_glapi_proc *glFlush)
+{
+   *glFlush = _glapi_get_proc_address("glFlush");
+}
+
+static void
 wgl_gl_flush()
 {
    static void (*glFlush)(void);
-   static mtx_t glFlushMutex = _MTX_INITIALIZER_NP;
+   static util_once_flag once = UTIL_ONCE_FLAG_INIT;
 
-   mtx_lock(&glFlushMutex);
-   if (!glFlush)
-      glFlush = _glapi_get_proc_address("glFlush");
-   mtx_unlock(&glFlushMutex);
+   util_call_once_data(&once,
+      (util_call_once_data_func)wgl_gl_flush_get, &glFlush);
 
    /* if glFlush is not available things are horribly broken */
    if (!glFlush) {
