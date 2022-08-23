@@ -276,3 +276,13 @@ nvk_InvalidateMappedMemoryRanges(
 {
    return VK_SUCCESS;
 }
+
+VKAPI_ATTR void VKAPI_CALL nvk_GetDeviceMemoryCommitment(
+   VkDevice device,
+   VkDeviceMemory _mem,
+   VkDeviceSize* pCommittedMemoryInBytes)
+{
+   VK_FROM_HANDLE(nvk_device_memory, mem, _mem);
+
+   *pCommittedMemoryInBytes = mem->bo->size;
+}
