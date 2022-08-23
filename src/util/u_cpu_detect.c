@@ -797,6 +797,12 @@ util_cpu_detect_once(void)
    if (debug_get_bool_option("GALLIUM_NOSSE", false)) {
       util_cpu_caps.has_sse = 0;
    }
+#ifdef DEBUG
+   /* For simulating less capable machines */
+   if (debug_get_bool_option("LP_FORCE_SSE2", false)) {
+      util_cpu_caps.has_sse3 = 0;
+   }
+#endif
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
