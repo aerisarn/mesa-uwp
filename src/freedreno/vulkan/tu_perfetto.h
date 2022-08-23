@@ -12,6 +12,8 @@ extern "C" {
 
 #ifdef HAVE_PERFETTO
 
+#define TU_PERFETTO_MAX_STACK_DEPTH 8
+
 /**
  * Render-stage id's
  */
@@ -64,8 +66,15 @@ static const struct {
    [DEFAULT_HW_QUEUE_ID] = {"GPU Queue 0", "Default Adreno Hardware Queue"},
 };
 
+struct tu_perfetto_stage {
+   int stage_id;
+   uint64_t start_ts;
+};
+
 struct tu_perfetto_state {
-   uint64_t start_ts[NUM_STAGES];
+   struct tu_perfetto_stage stages[TU_PERFETTO_MAX_STACK_DEPTH];
+   unsigned stage_depth;
+   unsigned skipped_depth;
 };
 
 void tu_perfetto_init(void);
