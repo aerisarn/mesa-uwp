@@ -46,9 +46,11 @@ util_format_rgtc1_unorm_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned d
 
    for(y = 0; y < height; y += bh) {
       const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
       for(x = 0; x < width; x += bw) {
-         for(j = 0; j < bh; ++j) {
-            for(i = 0; i < bw; ++i) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                uint8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
                util_format_unsigned_fetch_texel_rgtc(0, src, i, j, dst, 1);
                dst[1] = 0;
@@ -92,9 +94,11 @@ util_format_rgtc1_unorm_unpack_rgba_float(void *restrict dst_row, unsigned dst_s
    int block_size = 8;
    for(y = 0; y < height; y += 4) {
       const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, 4);
       for(x = 0; x < width; x += 4) {
-         for(j = 0; j < 4; ++j) {
-            for(i = 0; i < 4; ++i) {
+         const unsigned w = MIN2(width - x, 4);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                float *dst = (float *)((uint8_t *)dst_row + (y + j)*dst_stride + (x + i)*16);
                uint8_t tmp_r;
                util_format_unsigned_fetch_texel_rgtc(0, src, i, j, &tmp_r, 1);
@@ -196,9 +200,11 @@ util_format_rgtc1_snorm_unpack_rgba_float(void *restrict dst_row, unsigned dst_s
    int block_size = 8;
    for(y = 0; y < height; y += 4) {
       const int8_t *src = (int8_t *)src_row;
+      const unsigned h = MIN2(height - y, 4);
       for(x = 0; x < width; x += 4) {
-         for(j = 0; j < 4; ++j) {
-            for(i = 0; i < 4; ++i) {
+         const unsigned w = MIN2(width - x, 4);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                float *dst = (float *)((uint8_t *)dst_row + (y + j)*dst_stride + (x + i)*16);
                int8_t tmp_r;
                util_format_signed_fetch_texel_rgtc(0, src, i, j, &tmp_r, 1);
@@ -245,9 +251,11 @@ util_format_rgtc2_unorm_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned d
 
    for(y = 0; y < height; y += bh) {
       const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, bh);
       for(x = 0; x < width; x += bw) {
-         for(j = 0; j < bh; ++j) {
-            for(i = 0; i < bw; ++i) {
+         const unsigned w = MIN2(width - x, bw);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                uint8_t *dst = dst_row + (y + j)*dst_stride/sizeof(*dst_row) + (x + i)*comps;
                util_format_unsigned_fetch_texel_rgtc(0, src, i, j, dst, 2);
                util_format_unsigned_fetch_texel_rgtc(0, src + 8, i, j, dst + 1, 2);
@@ -324,9 +332,11 @@ util_format_rgtc2_unorm_unpack_rgba_float(void *restrict dst_row, unsigned dst_s
    int block_size = 16;
    for(y = 0; y < height; y += 4) {
       const uint8_t *src = src_row;
+      const unsigned h = MIN2(height - y, 4);
       for(x = 0; x < width; x += 4) {
-         for(j = 0; j < 4; ++j) {
-            for(i = 0; i < 4; ++i) {
+         const unsigned w = MIN2(width - x, 4);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                float *dst = (float *)((uint8_t *)dst_row + (y + j)*dst_stride + (x + i)*16);
                uint8_t tmp_r, tmp_g;
                util_format_unsigned_fetch_texel_rgtc(0, src, i, j, &tmp_r, 2);
@@ -387,9 +397,11 @@ util_format_rgtc2_snorm_unpack_rgba_float(void *restrict dst_row, unsigned dst_s
    int block_size = 16;
    for(y = 0; y < height; y += 4) {
       const int8_t *src = (int8_t *)src_row;
+      const unsigned h = MIN2(height - y, 4);
       for(x = 0; x < width; x += 4) {
-         for(j = 0; j < 4; ++j) {
-            for(i = 0; i < 4; ++i) {
+         const unsigned w = MIN2(width - x, 4);
+         for(j = 0; j < h; ++j) {
+            for(i = 0; i < w; ++i) {
                float *dst = (float *)((uint8_t *)dst_row + (y + j)*dst_stride + (x + i)*16);
                int8_t tmp_r, tmp_g;
                util_format_signed_fetch_texel_rgtc(0, src, i, j, &tmp_r, 2);
