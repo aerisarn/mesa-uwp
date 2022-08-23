@@ -378,6 +378,12 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 }
 
 static void
+gather_shader_info_mesh(const nir_shader *nir, struct radv_shader_info *info)
+{
+   info->ms.output_prim = nir->info.mesh.primitive_type;
+}
+
+static void
 gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
                       struct radv_shader_info *info)
 {
@@ -665,7 +671,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    case MESA_SHADER_VERTEX:
       break;
    case MESA_SHADER_MESH:
-      info->ms.output_prim = nir->info.mesh.primitive_type;
+      gather_shader_info_mesh(nir, info);
       break;
    default:
       break;
