@@ -189,10 +189,15 @@ sync_timestamp(struct tu_device *dev)
    if (cpu_ts < next_clock_sync_ns)
       return;
 
-    if (tu_device_get_gpu_timestamp(dev, &gpu_ts)) {
+   if (tu_device_get_gpu_timestamp(dev, &gpu_ts)) {
       PERFETTO_ELOG("Could not sync CPU and GPU clocks");
       return;
-    }
+   }
+
+   /* get cpu timestamp again because tu_device_get_gpu_timestamp can take
+    * >100us
+    */
+   cpu_ts = perfetto::base::GetBootTimeNs().count();
 
    uint64_t current_suspend_count = 0;
    /* If we fail to get it we will use a fallback */
