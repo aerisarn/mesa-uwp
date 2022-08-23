@@ -17,6 +17,19 @@
 #include "tu_image.h"
 #include "tu_tracepoints.h"
 
+static void
+tu_clone_trace_range(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+                     struct u_trace_iterator begin, struct u_trace_iterator end)
+{
+   if (u_trace_iterator_equal(begin, end))
+      return;
+
+   tu_cs_emit_wfi(cs);
+   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+   u_trace_clone_append(begin, end, &cmd->trace, cs,
+         tu_copy_timestamp_buffer);
+}
+
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -1400,14 +1413,8 @@ tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
    tu_cs_emit_call(cs, &cmd->tile_store_cs);
 
-   if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end)) {
-      tu_cs_emit_wfi(cs);
-      tu_cs_emit_pkt7(&cmd->cs, CP_WAIT_FOR_ME, 0);
-      u_trace_clone_append(cmd->trace_renderpass_start,
-                           cmd->trace_renderpass_end,
-                           &cmd->trace,
-                           cs, tu_copy_timestamp_buffer);
-   }
+   tu_clone_trace_range(cmd, cs, cmd->trace_renderpass_start,
+         cmd->trace_renderpass_end);
 
    tu_cs_sanity_check(cs);
 
@@ -3515,17 +3522,11 @@ tu_append_pre_chain(struct tu_cmd_buffer *cmd,
    tu_cs_add_entries(&cmd->draw_cs, &secondary->pre_chain.draw_cs);
    tu_cs_add_entries(&cmd->draw_epilogue_cs,
                      &secondary->pre_chain.draw_epilogue_cs);
+
    tu_render_pass_state_merge(&cmd->state.rp,
                               &secondary->pre_chain.state);
-   if (!u_trace_iterator_equal(secondary->pre_chain.trace_renderpass_start,
-                               secondary->pre_chain.trace_renderpass_end)) {
-      tu_cs_emit_wfi(&cmd->draw_cs);
-      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
-      u_trace_clone_append(secondary->pre_chain.trace_renderpass_start,
-                           secondary->pre_chain.trace_renderpass_end,
-                           &cmd->trace, &cmd->draw_cs,
-                           tu_copy_timestamp_buffer);
-   }
+   tu_clone_trace_range(cmd, &cmd->draw_cs, secondary->pre_chain.trace_renderpass_start,
+         secondary->pre_chain.trace_renderpass_end);
 }
 
 /* Take the saved post-chain in "secondary" and copy it to "cmd".
@@ -3536,15 +3537,9 @@ tu_append_post_chain(struct tu_cmd_buffer *cmd,
 {
    tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
    tu_cs_add_entries(&cmd->draw_epilogue_cs, &secondary->draw_epilogue_cs);
-   if (!u_trace_iterator_equal(secondary->trace_renderpass_start,
-                               secondary->trace_renderpass_end)) {
-      tu_cs_emit_wfi(&cmd->draw_cs);
-      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
-      u_trace_clone_append(secondary->trace_renderpass_start,
-                           secondary->trace_renderpass_end,
-                           &cmd->trace, &cmd->draw_cs,
-                           tu_copy_timestamp_buffer);
-   }
+
+   tu_clone_trace_range(cmd, &cmd->draw_cs, secondary->trace_renderpass_start,
+         secondary->trace_renderpass_end);
    cmd->state.rp = secondary->state.rp;
 }
 
@@ -3560,15 +3555,9 @@ tu_append_pre_post_chain(struct tu_cmd_buffer *cmd,
 {
    tu_cs_add_entries(&cmd->draw_cs, &secondary->draw_cs);
    tu_cs_add_entries(&cmd->draw_epilogue_cs, &secondary->draw_epilogue_cs);
-   if (!u_trace_iterator_equal(secondary->trace_renderpass_start,
-                               secondary->trace_renderpass_end)) {
-      tu_cs_emit_wfi(&cmd->draw_cs);
-      tu_cs_emit_pkt7(&cmd->draw_cs, CP_WAIT_FOR_ME, 0);
-      u_trace_clone_append(secondary->trace_renderpass_start,
-                           secondary->trace_renderpass_end,
-                           &cmd->trace, &cmd->draw_cs,
-                           tu_copy_timestamp_buffer);
-   }
+
+   tu_clone_trace_range(cmd, &cmd->draw_cs, secondary->trace_renderpass_start,
+         secondary->trace_renderpass_end);
    tu_render_pass_state_merge(&cmd->state.rp,
                               &secondary->state.rp);
 }
