@@ -1329,12 +1329,6 @@ radv_link_shaders_info(struct radv_device *device,
                ~tcs_stage->nir->info.tess.tcs_cross_invocation_inputs_read &
                ~tcs_stage->nir->info.inputs_read_indirectly &
                ~vs_stage->nir->info.outputs_accessed_indirectly;
-
-         /* Copy data to TCS so it can be accessed by the backend if they are merged. */
-         tcs_stage->info.vs.tcs_in_out_eq =
-            vs_stage->info.vs.tcs_in_out_eq;
-         tcs_stage->info.vs.tcs_temp_only_input_mask =
-            vs_stage->info.vs.tcs_temp_only_input_mask;
       }
    }
 
@@ -1354,6 +1348,39 @@ radv_link_shaders_info(struct radv_device *device,
    /* Task/mesh I/O uses the task ring buffers. */
    if (producer->stage == MESA_SHADER_TASK) {
       consumer->info.ms.has_task = true;
+   }
+}
+
+static void
+radv_nir_shader_info_merge(const struct radv_pipeline_stage *src, struct radv_pipeline_stage *dst)
+{
+   const struct radv_shader_info *src_info = &src->info;
+   struct radv_shader_info *dst_info = &dst->info;
+
+   assert((src->stage == MESA_SHADER_VERTEX && dst->stage == MESA_SHADER_TESS_CTRL) ||
+          (src->stage == MESA_SHADER_VERTEX && dst->stage == MESA_SHADER_GEOMETRY) ||
+          (src->stage == MESA_SHADER_TESS_EVAL && dst->stage == MESA_SHADER_GEOMETRY));
+
+   dst_info->loads_push_constants |= src_info->loads_push_constants;
+   dst_info->loads_dynamic_offsets |= src_info->loads_dynamic_offsets;
+   dst_info->desc_set_used_mask |= src_info->desc_set_used_mask;
+   dst_info->uses_view_index |= src_info->uses_view_index;
+   dst_info->uses_invocation_id |= src_info->uses_invocation_id;
+   dst_info->uses_prim_id |= src_info->uses_prim_id;
+   dst_info->inline_push_constant_mask |= src_info->inline_push_constant_mask;
+
+   /* Only inline all push constants if both allows it. */
+   dst_info->can_inline_all_push_constants &= src_info->can_inline_all_push_constants;
+
+   if (src->stage == MESA_SHADER_VERTEX) {
+      dst_info->vs = src_info->vs;
+   } else {
+      dst_info->tes = src_info->tes;
+   }
+
+   if (dst->stage == MESA_SHADER_GEOMETRY) {
+      dst_info->is_ngg = src_info->is_ngg;
+      dst_info->gs.es_type = src->stage;
    }
 }
 
@@ -1381,5 +1408,20 @@ radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline
 
       radv_link_shaders_info(device, &stages[s], next_stage, pipeline_key);
       next_stage = &stages[s];
+   }
+
+   if (device->physical_device->rad_info.gfx_level >= GFX9) {
+      /* Merge shader info for VS+TCS. */
+      if (stages[MESA_SHADER_TESS_CTRL].nir) {
+         radv_nir_shader_info_merge(&stages[MESA_SHADER_VERTEX], &stages[MESA_SHADER_TESS_CTRL]);
+      }
+
+      /* Merge shader info for VS+GS or TES+GS. */
+      if (stages[MESA_SHADER_GEOMETRY].nir) {
+         gl_shader_stage pre_stage =
+            stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+
+         radv_nir_shader_info_merge(&stages[pre_stage], &stages[MESA_SHADER_GEOMETRY]);
+      }
    }
 }
