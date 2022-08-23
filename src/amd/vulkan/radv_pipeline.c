@@ -3279,7 +3279,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                       struct radv_pipeline_layout *pipeline_layout,
                       const struct radv_pipeline_key *pipeline_key,
                       struct radv_pipeline_stage *stages,
-                      gl_shader_stage last_vgt_api_stage)
+                      gl_shader_stage last_vgt_api_stage,
+                      bool pipeline_has_ngg)
 {
    struct radv_device *device = pipeline->device;
    unsigned active_stages = 0;
@@ -3404,6 +3405,34 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          ac_compute_cs_workgroup_size(
             stages[MESA_SHADER_TASK].nir->info.workgroup_size, false, UINT32_MAX);
    }
+
+   if (pipeline_has_ngg) {
+      struct gfx10_ngg_info *ngg_info;
+
+      if (stages[MESA_SHADER_GEOMETRY].nir)
+         ngg_info = &stages[MESA_SHADER_GEOMETRY].info.ngg_info;
+      else if (stages[MESA_SHADER_TESS_CTRL].nir)
+         ngg_info = &stages[MESA_SHADER_TESS_EVAL].info.ngg_info;
+      else if (stages[MESA_SHADER_VERTEX].nir)
+         ngg_info = &stages[MESA_SHADER_VERTEX].info.ngg_info;
+      else if (stages[MESA_SHADER_MESH].nir)
+         ngg_info = &stages[MESA_SHADER_MESH].info.ngg_info;
+      else
+         unreachable("Missing NGG shader stage.");
+
+      if (last_vgt_api_stage != MESA_SHADER_MESH)
+         gfx10_get_ngg_info(pipeline_key, pipeline, stages, ngg_info);
+   } else if (stages[MESA_SHADER_GEOMETRY].nir) {
+      struct gfx9_gs_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info.gs_ring_info;
+
+      gfx9_get_gs_info(pipeline_key, pipeline, stages, gs_info);
+   } else {
+      gl_shader_stage hw_vs_api_stage =
+         stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+      stages[hw_vs_api_stage].info.workgroup_size = stages[hw_vs_api_stage].info.wave_size;
+   }
+
+   radv_determine_ngg_settings(pipeline, pipeline_key, stages, last_vgt_api_stage);
 }
 
 static void
@@ -4557,35 +4586,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_lower_fs_output, pipeline_key);
    }
 
-   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, *last_vgt_api_stage);
-
-   if (pipeline_has_ngg) {
-      struct gfx10_ngg_info *ngg_info;
-
-      if (stages[MESA_SHADER_GEOMETRY].nir)
-         ngg_info = &stages[MESA_SHADER_GEOMETRY].info.ngg_info;
-      else if (stages[MESA_SHADER_TESS_CTRL].nir)
-         ngg_info = &stages[MESA_SHADER_TESS_EVAL].info.ngg_info;
-      else if (stages[MESA_SHADER_VERTEX].nir)
-         ngg_info = &stages[MESA_SHADER_VERTEX].info.ngg_info;
-      else if (stages[MESA_SHADER_MESH].nir)
-         ngg_info = &stages[MESA_SHADER_MESH].info.ngg_info;
-      else
-         unreachable("Missing NGG shader stage.");
-
-      if (*last_vgt_api_stage != MESA_SHADER_MESH)
-         gfx10_get_ngg_info(pipeline_key, pipeline, stages, ngg_info);
-   } else if (stages[MESA_SHADER_GEOMETRY].nir) {
-      struct gfx9_gs_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info.gs_ring_info;
-
-      gfx9_get_gs_info(pipeline_key, pipeline, stages, gs_info);
-   } else {
-      gl_shader_stage hw_vs_api_stage =
-         stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
-      stages[hw_vs_api_stage].info.workgroup_size = stages[hw_vs_api_stage].info.wave_size;
-   }
-
-   radv_determine_ngg_settings(pipeline, pipeline_key, stages, *last_vgt_api_stage);
+   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, *last_vgt_api_stage,
+                         pipeline_has_ngg);
 
    radv_declare_pipeline_args(device, stages, pipeline_key);
 
