@@ -2932,7 +2932,8 @@
         <glx rop="179"/>
     </function>
 
-    <function name="MultMatrixf" es1="1.0" deprecated="3.1" exec="dlist">
+    <function name="MultMatrixf" es1="1.0" deprecated="3.1" exec="dlist"
+              marshal_call_before="if (_mesa_matrix_is_identity(m)) return;">
         <param name="m" type="const GLfloat *" count="16"/>
         <glx rop="180"/>
     </function>

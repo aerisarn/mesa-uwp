@@ -441,6 +441,19 @@ _mesa_get_matrix_index(struct gl_context *ctx, GLenum mode)
    return M_DUMMY;
 }
 
+static inline bool
+_mesa_matrix_is_identity(const float *m)
+{
+   static float identity[16] = {
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+   };
+
+   return !memcmp(m, identity, sizeof(identity));
+}
+
 static inline void
 _mesa_glthread_Enable(struct gl_context *ctx, GLenum cap)
 {
