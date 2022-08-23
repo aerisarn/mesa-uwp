@@ -3352,14 +3352,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          stages[MESA_SHADER_VERTEX].info.vs.as_es = true;
    }
 
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      radv_nir_shader_info_init(&stages[MESA_SHADER_FRAGMENT].info);
-      radv_nir_shader_info_pass(device, stages[MESA_SHADER_FRAGMENT].nir, pipeline_layout,
-                                pipeline_key, &stages[MESA_SHADER_FRAGMENT].info);
-
-      filled_stages |= (1 << MESA_SHADER_FRAGMENT);
-   }
-
    if (device->physical_device->rad_info.gfx_level >= GFX9 &&
        stages[MESA_SHADER_TESS_CTRL].nir) {
       struct nir_shader *combined_nir[] = {stages[MESA_SHADER_VERTEX].nir, stages[MESA_SHADER_TESS_CTRL].nir};
