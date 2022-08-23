@@ -299,37 +299,6 @@ gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
 }
 
 static void
-gather_info_output_decl_gs(const nir_shader *nir, const nir_variable *var,
-                           struct radv_shader_info *info)
-{
-   unsigned num_components = glsl_get_component_slots(var->type);
-   unsigned stream = var->data.stream;
-   unsigned idx = var->data.location;
-
-   assert(stream < 4);
-
-   info->gs.num_stream_output_components[stream] += num_components;
-   info->gs.output_streams[idx] = stream;
-}
-
-static void
-gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
-                        struct radv_shader_info *info)
-{
-   switch (nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-      break;
-   case MESA_SHADER_GEOMETRY:
-      gather_info_output_decl_gs(nir, var, info);
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      break;
-   default:
-      break;
-   }
-}
-
-static void
 gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
 {
    struct radv_streamout_info *so = &info->so;
@@ -374,6 +343,32 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
           idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT)
          assign_outinfo_param(outinfo, idx, total_param_exports);
+   }
+}
+
+static void
+gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
+{
+   unsigned add_clip = nir->info.clip_distance_array_size + nir->info.cull_distance_array_size > 4;
+   info->gs.gsvs_vertex_size = (util_bitcount64(nir->info.outputs_written) + add_clip) * 16;
+   info->gs.max_gsvs_emit_size = info->gs.gsvs_vertex_size * nir->info.gs.vertices_out;
+
+   info->gs.vertices_in = nir->info.gs.vertices_in;
+   info->gs.vertices_out = nir->info.gs.vertices_out;
+   info->gs.output_prim = nir->info.gs.output_primitive;
+   info->gs.invocations = nir->info.gs.invocations;
+   info->gs.max_stream =
+      nir->info.gs.active_stream_mask ? util_last_bit(nir->info.gs.active_stream_mask) - 1 : 0;
+
+   nir_foreach_shader_out_variable(var, nir) {
+      unsigned num_components = glsl_get_component_slots(var->type);
+      unsigned stream = var->data.stream;
+      unsigned idx = var->data.location;
+
+      assert(stream < 4);
+
+      info->gs.num_stream_output_components[stream] += num_components;
+      info->gs.output_streams[idx] = stream;
    }
 }
 
@@ -517,8 +512,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_info_block(nir, block, info);
    }
 
-   nir_foreach_shader_out_variable(variable, nir) gather_info_output_decl(nir, variable, info);
-
    if (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL ||
        nir->info.stage == MESA_SHADER_GEOMETRY)
       gather_xfb_info(nir, info);
@@ -635,12 +628,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_fs(nir, pipeline_key, info);
       break;
    case MESA_SHADER_GEOMETRY:
-      info->gs.vertices_in = nir->info.gs.vertices_in;
-      info->gs.vertices_out = nir->info.gs.vertices_out;
-      info->gs.output_prim = nir->info.gs.output_primitive;
-      info->gs.invocations = nir->info.gs.invocations;
-      info->gs.max_stream =
-         nir->info.gs.active_stream_mask ? util_last_bit(nir->info.gs.active_stream_mask) - 1 : 0;
+      gather_shader_info_gs(nir, info);
       break;
    case MESA_SHADER_TESS_EVAL:
       info->tes._primitive_mode = nir->info.tess._primitive_mode;
@@ -675,13 +663,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       break;
    default:
       break;
-   }
-
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      unsigned add_clip =
-         nir->info.clip_distance_array_size + nir->info.cull_distance_array_size > 4;
-      info->gs.gsvs_vertex_size = (util_bitcount64(nir->info.outputs_written) + add_clip) * 16;
-      info->gs.max_gsvs_emit_size = info->gs.gsvs_vertex_size * nir->info.gs.vertices_out;
    }
 }
 
