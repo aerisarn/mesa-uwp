@@ -977,11 +977,11 @@ handle_pipeline_access(struct rendering_state *state, gl_shader_stage stage)
       state->iv[pstage][i].access = 0;
       state->iv[pstage][i].shader_access = 0;
    }
-   u_foreach_bit(idx, state->access[stage].images_read) {
+   u_foreach_bit64(idx, state->access[stage].images_read) {
       state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_READ;
       state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
    }
-   u_foreach_bit(idx, state->access[stage].images_written) {
+   u_foreach_bit64(idx, state->access[stage].images_written) {
       state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
       state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
    }
