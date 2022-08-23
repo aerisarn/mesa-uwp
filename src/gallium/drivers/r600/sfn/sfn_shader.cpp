@@ -1085,6 +1085,9 @@ void Shader::InstructionChain::visit(RatInstr *instr)
 
    if (prepare_mem_barrier)
       instr->set_ack();
+
+   if (this_shader->m_current_block->inc_rat_emitted() > 15)
+      this_shader->start_new_block(0);
 }
 
 void Shader::InstructionChain::apply(Instr *current, Instr **last) {
