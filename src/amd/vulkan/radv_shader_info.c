@@ -347,6 +347,15 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 }
 
 static void
+gather_shader_info_tes(const nir_shader *nir, struct radv_shader_info *info)
+{
+   info->tes._primitive_mode = nir->info.tess._primitive_mode;
+   info->tes.spacing = nir->info.tess.spacing;
+   info->tes.ccw = nir->info.tess.ccw;
+   info->tes.point_mode = nir->info.tess.point_mode;
+}
+
+static void
 gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
 {
    unsigned add_clip = nir->info.clip_distance_array_size + nir->info.cull_distance_array_size > 4;
@@ -631,10 +640,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_gs(nir, info);
       break;
    case MESA_SHADER_TESS_EVAL:
-      info->tes._primitive_mode = nir->info.tess._primitive_mode;
-      info->tes.spacing = nir->info.tess.spacing;
-      info->tes.ccw = nir->info.tess.ccw;
-      info->tes.point_mode = nir->info.tess.point_mode;
+      gather_shader_info_tes(nir, info);
       break;
    case MESA_SHADER_TESS_CTRL:
       info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
