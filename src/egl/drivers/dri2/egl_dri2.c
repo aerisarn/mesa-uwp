@@ -65,6 +65,7 @@
 #include "util/libsync.h"
 #include "util/os_file.h"
 #include "util/u_atomic.h"
+#include "util/u_call_once.h"
 #include "util/u_vector.h"
 #include "mapi/glapi/glapi.h"
 #include "util/bitscan.h"
@@ -133,15 +134,19 @@ dri_set_background_context(void *loaderPrivate)
 }
 
 static void
+dri2_gl_flush_get(_glapi_proc *glFlush)
+{
+   *glFlush = _glapi_get_proc_address("glFlush");
+}
+
+static void
 dri2_gl_flush()
 {
    static void (*glFlush)(void);
-   static mtx_t glFlushMutex = _MTX_INITIALIZER_NP;
+   static util_once_flag once = UTIL_ONCE_FLAG_INIT;
 
-   mtx_lock(&glFlushMutex);
-   if (!glFlush)
-      glFlush = _glapi_get_proc_address("glFlush");
-   mtx_unlock(&glFlushMutex);
+   util_call_once_data(&once,
+      (util_call_once_data_func)dri2_gl_flush_get, &glFlush);
 
    /* if glFlush is not available things are horribly broken */
    if (!glFlush) {
