@@ -3538,6 +3538,29 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       }
    }
 
+   /* Compute the ESGS item size for VS or TES as ES. */
+   if ((stages[MESA_SHADER_VERTEX].nir && stages[MESA_SHADER_VERTEX].info.vs.as_es) ||
+       (stages[MESA_SHADER_TESS_EVAL].nir && stages[MESA_SHADER_TESS_EVAL].info.tes.as_es)) {
+      uint32_t num_outputs_written;
+      gl_shader_stage es_stage;
+
+      if (stages[MESA_SHADER_TESS_EVAL].nir) {
+         es_stage = MESA_SHADER_TESS_EVAL;
+         num_outputs_written = stages[MESA_SHADER_TESS_EVAL].info.tes.num_linked_outputs;
+      } else {
+         es_stage = MESA_SHADER_VERTEX;
+         num_outputs_written = stages[MESA_SHADER_VERTEX].info.vs.num_linked_outputs;
+      }
+
+      stages[es_stage].info.esgs_itemsize = num_outputs_written * 16;
+
+      /* Copy data to merged stage. */
+      if (device->physical_device->rad_info.gfx_level >= GFX9 &&
+          stages[MESA_SHADER_GEOMETRY].nir) {
+         stages[MESA_SHADER_GEOMETRY].info.esgs_itemsize = stages[es_stage].info.esgs_itemsize;
+      }
+   }
+
    /* PS always operates without workgroups. */
    if (stages[MESA_SHADER_FRAGMENT].nir)
       stages[MESA_SHADER_FRAGMENT].info.workgroup_size = stages[MESA_SHADER_FRAGMENT].info.wave_size;

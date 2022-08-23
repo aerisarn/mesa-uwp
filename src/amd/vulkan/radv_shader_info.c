@@ -693,15 +693,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->gs.max_gsvs_emit_size = info->gs.gsvs_vertex_size * nir->info.gs.vertices_out;
    }
 
-   /* Compute the ESGS item size for VS or TES as ES. */
-   if ((nir->info.stage == MESA_SHADER_VERTEX && info->vs.as_es) ||
-       (nir->info.stage == MESA_SHADER_TESS_EVAL && info->tes.as_es)) {
-      uint32_t num_outputs_written = nir->info.stage == MESA_SHADER_VERTEX
-                                        ? info->vs.num_linked_outputs
-                                        : info->tes.num_linked_outputs;
-      info->esgs_itemsize = num_outputs_written * 16;
-   }
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       bool uses_persp_or_linear_interp = info->ps.reads_persp_center ||
                                          info->ps.reads_persp_centroid ||
