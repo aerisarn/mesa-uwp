@@ -366,7 +366,37 @@ fs_thread_payload::fs_thread_payload(const fs_visitor &v,
                             runtime_check_aads_emit);
 }
 
+cs_thread_payload::cs_thread_payload(const fs_visitor &v)
+{
+   /* See nir_setup_uniforms for subgroup_id in earlier versions. */
+   if (v.devinfo->verx10 >= 125)
+      subgroup_id_ = retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD);
+
+   /* TODO: Fill out uses_btd_stack_ids automatically */
+   num_regs = 1 + brw_cs_prog_data(v.prog_data)->uses_btd_stack_ids;
+}
+
+void
+cs_thread_payload::load_subgroup_id(const fs_builder &bld,
+                                    fs_reg &dest) const
+{
+   auto devinfo = bld.shader->devinfo;
+   dest = retype(dest, BRW_REGISTER_TYPE_UD);
+
+   if (subgroup_id_.file != BAD_FILE) {
+      assert(devinfo->verx10 >= 125);
+      bld.AND(dest, subgroup_id_, brw_imm_ud(INTEL_MASK(7, 0)));
+   } else {
+      assert(devinfo->verx10 < 125);
+      assert(gl_shader_stage_is_compute(bld.shader->stage));
+      int index = brw_get_subgroup_id_param_index(devinfo,
+                                                  bld.shader->stage_prog_data);
+      bld.MOV(dest, fs_reg(UNIFORM, index, BRW_REGISTER_TYPE_UD));
+   }
+}
+
 task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
+   : cs_thread_payload(v)
 {
    /* Task and Mesh Shader Payloads (SIMD8 and SIMD16)
     *
@@ -388,6 +418,7 @@ task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
     */
 
    unsigned r = 0;
+   assert(subgroup_id_.file != BAD_FILE);
    extended_parameter_0 = retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD);
    urb_output = retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD);
 

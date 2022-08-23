@@ -1146,7 +1146,6 @@ fs_visitor::import_uniforms(fs_visitor *v)
 {
    this->push_constant_loc = v->push_constant_loc;
    this->uniforms = v->uniforms;
-   this->subgroup_id = v->subgroup_id;
 }
 
 void
@@ -5852,16 +5851,6 @@ fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) con
    fprintf(file, "\n");
 }
 
-void
-fs_visitor::setup_cs_payload()
-{
-   thread_payload &payload = this->payload();
-
-   assert(devinfo->ver >= 7);
-   /* TODO: Fill out uses_btd_stack_ids automatically */
-   payload.num_regs = 1 + brw_cs_prog_data(prog_data)->uses_btd_stack_ids;
-}
-
 brw::register_pressure::register_pressure(const fs_visitor *v)
 {
    const fs_live_variables &live = v->live_analysis.require();
@@ -6802,8 +6791,9 @@ bool
 fs_visitor::run_cs(bool allow_spilling)
 {
    assert(gl_shader_stage_is_compute(stage));
+   assert(devinfo->ver >= 7);
 
-   setup_cs_payload();
+   payload_ = new cs_thread_payload(*this);
 
    if (devinfo->platform == INTEL_PLATFORM_HSW && prog_data->total_shared > 0) {
       /* Move SLM index from g0.0[27:24] to sr0.1[11:8] */

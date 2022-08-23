@@ -118,7 +118,7 @@ fs_visitor::nir_setup_uniforms()
        */
       uint32_t *param = brw_stage_prog_data_add_params(prog_data, 1);
       *param = BRW_PARAM_BUILTIN_SUBGROUP_ID;
-      subgroup_id = fs_reg(UNIFORM, uniforms++, BRW_REGISTER_TYPE_UD);
+      uniforms++;
    }
 }
 
@@ -3762,12 +3762,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       break;
 
    case nir_intrinsic_load_subgroup_id:
-      if (devinfo->verx10 >= 125)
-         bld.AND(retype(dest, BRW_REGISTER_TYPE_UD),
-                 retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
-                 brw_imm_ud(INTEL_MASK(7, 0)));
-      else
-         bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD), subgroup_id);
+      cs_payload().load_subgroup_id(bld, dest);
       break;
 
    case nir_intrinsic_load_local_invocation_id:

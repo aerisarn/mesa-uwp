@@ -141,7 +141,16 @@ struct fs_thread_payload : public thread_payload {
    uint8_t local_invocation_id_reg[2];
 };
 
-struct task_mesh_thread_payload : public thread_payload {
+struct cs_thread_payload : public thread_payload {
+   cs_thread_payload(const fs_visitor &v);
+
+   void load_subgroup_id(const brw::fs_builder &bld, fs_reg &dest) const;
+
+protected:
+   fs_reg subgroup_id_;
+};
+
+struct task_mesh_thread_payload : public cs_thread_payload {
    task_mesh_thread_payload(const fs_visitor &v);
 
    fs_reg extended_parameter_0;
@@ -209,7 +218,6 @@ public:
    bool run_mesh(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
-   void setup_cs_payload();
    bool fixup_sends_duplicate_payload();
    void fixup_3src_null_dest();
    void emit_dummy_memory_fence_before_eot();
@@ -448,7 +456,6 @@ public:
     */
    int *push_constant_loc;
 
-   fs_reg subgroup_id;
    fs_reg scratch_base;
    fs_reg frag_depth;
    fs_reg frag_stencil;
@@ -496,6 +503,11 @@ public:
       assert(stage == MESA_SHADER_FRAGMENT);
       return *static_cast<fs_thread_payload *>(this->payload_);
    };
+
+   cs_thread_payload &cs_payload() {
+      assert(gl_shader_stage_uses_workgroup(stage));
+      return *static_cast<cs_thread_payload *>(this->payload_);
+   }
 
    task_mesh_thread_payload &task_mesh_payload() {
       assert(stage == MESA_SHADER_TASK || stage == MESA_SHADER_MESH);
