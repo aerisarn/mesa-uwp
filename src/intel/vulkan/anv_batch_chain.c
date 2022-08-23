@@ -2419,11 +2419,10 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
     */
    assert(vk_queue_is_empty(&queue->vk));
 
-   const uint32_t batch_size = batch->next - batch->start;
-   const uint32_t batch_bo_size = align_u32(batch_size, 8);
+   uint32_t batch_size = align_u32(batch->next - batch->start, 8);
 
    struct anv_bo *batch_bo = NULL;
-   result = anv_bo_pool_alloc(&device->batch_bo_pool, batch_bo_size, &batch_bo);
+   result = anv_bo_pool_alloc(&device->batch_bo_pool, batch_size, &batch_bo);
    if (result != VK_SUCCESS)
       return result;
 
