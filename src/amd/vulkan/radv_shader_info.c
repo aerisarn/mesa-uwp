@@ -347,6 +347,30 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 }
 
 static void
+gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir,
+                       const struct radv_pipeline_key *pipeline_key, struct radv_shader_info *info)
+{
+   info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
+
+   /* Number of tessellation patches per workgroup processed by the current pipeline. */
+   info->num_tess_patches =
+      get_tcs_num_patches(pipeline_key->tcs.tess_input_vertices, nir->info.tess.tcs_vertices_out,
+                          info->tcs.num_linked_inputs, info->tcs.num_linked_outputs,
+                          info->tcs.num_linked_patch_outputs,
+                          device->physical_device->hs.tess_offchip_block_dw_size,
+                          device->physical_device->rad_info.gfx_level,
+                          device->physical_device->rad_info.family);
+
+   /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
+   info->tcs.num_lds_blocks =
+      calculate_tess_lds_size(device->physical_device->rad_info.gfx_level,
+                              pipeline_key->tcs.tess_input_vertices,
+                              nir->info.tess.tcs_vertices_out, info->tcs.num_linked_inputs,
+                              info->num_tess_patches, info->tcs.num_linked_outputs,
+                              info->tcs.num_linked_patch_outputs);
+}
+
+static void
 gather_shader_info_tes(const nir_shader *nir, struct radv_shader_info *info)
 {
    info->tes._primitive_mode = nir->info.tess._primitive_mode;
@@ -643,24 +667,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_tes(nir, info);
       break;
    case MESA_SHADER_TESS_CTRL:
-      info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
-
-      /* Number of tessellation patches per workgroup processed by the current pipeline. */
-      info->num_tess_patches =
-         get_tcs_num_patches(pipeline_key->tcs.tess_input_vertices, nir->info.tess.tcs_vertices_out,
-                             info->tcs.num_linked_inputs, info->tcs.num_linked_outputs,
-                             info->tcs.num_linked_patch_outputs,
-                             device->physical_device->hs.tess_offchip_block_dw_size,
-                             device->physical_device->rad_info.gfx_level,
-                             device->physical_device->rad_info.family);
-
-      /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
-      info->tcs.num_lds_blocks =
-         calculate_tess_lds_size(device->physical_device->rad_info.gfx_level,
-                                 pipeline_key->tcs.tess_input_vertices,
-                                 nir->info.tess.tcs_vertices_out, info->tcs.num_linked_inputs,
-                                 info->num_tess_patches, info->tcs.num_linked_outputs,
-                                 info->tcs.num_linked_patch_outputs);
+      gather_shader_info_tcs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_VERTEX:
       break;
