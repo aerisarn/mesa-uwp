@@ -824,12 +824,8 @@ dri_set_background_context(struct st_context_iface *st,
    const __DRIbackgroundCallableExtension *backgroundCallable =
       ctx->sPriv->dri2.backgroundCallable;
 
-   /* Note: Mesa will only call this function if GL multithreading is enabled
-    * We only do that if the loader exposed the __DRI_BACKGROUND_CALLABLE
-    * extension. So we know that backgroundCallable is not NULL.
-    */
-   assert(backgroundCallable);
-   backgroundCallable->setBackgroundContext(ctx->cPriv->loaderPrivate);
+   if (backgroundCallable)
+      backgroundCallable->setBackgroundContext(ctx->cPriv->loaderPrivate);
 
    if (ctx->hud)
       hud_add_queue_for_monitoring(ctx->hud, queue_info);
