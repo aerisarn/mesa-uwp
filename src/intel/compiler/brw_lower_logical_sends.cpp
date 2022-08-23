@@ -953,8 +953,10 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
       length++;
       break;
    case SHADER_OPCODE_TXD:
-      /* TXD should have been lowered in SIMD16 mode. */
-      assert(bld.dispatch_width() == 8);
+      /* TXD should have been lowered in SIMD16 mode (in SIMD32 mode in
+       * Xe2+).
+       */
+      assert(bld.dispatch_width() == (8 * reg_unit(devinfo)));
 
       /* Load dPdx and the coordinate together:
        * [hdr], [ref], x, dPdx.x, dPdy.x, y, dPdx.y, dPdy.y, z, dPdx.z, dPdy.z
