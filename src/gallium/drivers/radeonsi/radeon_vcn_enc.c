@@ -78,9 +78,13 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
       enc->enc_pic.pic_order_cnt_type = pic->pic_order_cnt_type;
       enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0_list[0];
+      enc->enc_pic.ref_idx_l0_is_ltr = pic->l0_is_long_term[0];
       enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1_list[0];
+      enc->enc_pic.ref_idx_l1_is_ltr = pic->l1_is_long_term[0];
       enc->enc_pic.not_referenced = pic->not_referenced;
       enc->enc_pic.is_idr = (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR);
+      enc->enc_pic.is_ltr = pic->is_ltr;
+      enc->enc_pic.ltr_idx = pic->is_ltr ? pic->ltr_index : 0;
       if (pic->pic_ctrl.enc_frame_cropping_flag) {
          enc->enc_pic.crop_left = pic->pic_ctrl.enc_frame_crop_left_offset;
          enc->enc_pic.crop_right = pic->pic_ctrl.enc_frame_crop_right_offset;
@@ -362,6 +366,7 @@ static int setup_dpb(struct radeon_encoder *enc)
    enc_pic->ctx_buf.num_reconstructed_pictures = num_reconstructed_pictures;
    enc_pic->ctx_buf.colloc_buffer_offset = 0;
    enc->dpb_size = offset;
+   enc->max_ltr_idx = 0;
 
    return offset;
 }
