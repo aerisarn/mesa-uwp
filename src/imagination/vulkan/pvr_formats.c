@@ -163,6 +163,12 @@ pvr_get_image_format_properties(struct pvr_physical_device *pdevice,
    return VK_SUCCESS;
 }
 
+/* FIXME: Should this be returning VK_ERROR_FORMAT_NOT_SUPPORTED when tiling is
+ * linear and the image type is 3D or flags contains
+ * VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT? This should avoid well behaved apps
+ * attempting to create invalid image views, as pvr_pack_tex_state() will return
+ * VK_ERROR_FORMAT_NOT_SUPPORTED in these cases.
+ */
 VkResult pvr_GetPhysicalDeviceImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,

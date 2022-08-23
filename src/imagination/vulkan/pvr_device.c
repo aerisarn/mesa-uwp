@@ -1388,7 +1388,6 @@ static VkResult pvr_device_init_compute_idfwdf_state(struct pvr_device *device)
       .format = VK_FORMAT_R32G32B32A32_SFLOAT,
       .mem_layout = PVR_MEMLAYOUT_LINEAR,
       .flags = PVR_TEXFLAGS_INDEX_LOOKUP,
-      /* TODO: Is this correct? Is it 2D, 3D, or 2D_ARRAY? */
       .type = VK_IMAGE_VIEW_TYPE_2D,
       .extent = { .width = 4, .height = 2, .depth = 0 },
       .mip_levels = 1,

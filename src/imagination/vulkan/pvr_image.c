@@ -309,10 +309,11 @@ VkResult pvr_CreateImageView(VkDevice _device,
       goto err_vk_image_view_destroy;
 
    /* Create an additional texture state for cube type if storage
-    * usage flat is set.
+    * usage flag is set.
     */
    if (info.is_cube && image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       info.tex_state_type = PVR_TEXTURE_STATE_STORAGE;
+
       result = pvr_pack_tex_state(device,
                                   &info,
                                   iview->texture_state[info.tex_state_type]);
@@ -334,6 +335,13 @@ VkResult pvr_CreateImageView(VkDevice _device,
    info.stride = u_minify(image->physical_extent.width, info.base_level);
    info.base_level = 0;
    info.tex_state_type = PVR_TEXTURE_STATE_ATTACHMENT;
+
+   if (iview->vk.image->image_type == VK_IMAGE_TYPE_3D &&
+       iview->vk.view_type == VK_IMAGE_VIEW_TYPE_2D) {
+      info.type = VK_IMAGE_VIEW_TYPE_3D;
+   } else {
+      info.type = iview->vk.view_type;
+   }
 
    result = pvr_pack_tex_state(device,
                                &info,
@@ -408,6 +416,7 @@ VkResult pvr_CreateBufferView(VkDevice _device,
    info.addr = PVR_DEV_ADDR_OFFSET(buffer->dev_addr, pCreateInfo->offset);
    info.mem_layout = PVR_MEMLAYOUT_LINEAR;
    info.is_cube = false;
+   info.type = VK_IMAGE_VIEW_TYPE_2D;
    info.tex_state_type = PVR_TEXTURE_STATE_SAMPLE;
    info.format = bview->format;
    info.flags = PVR_TEXFLAGS_INDEX_LOOKUP;
