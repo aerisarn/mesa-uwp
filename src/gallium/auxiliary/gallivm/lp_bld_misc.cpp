@@ -379,11 +379,10 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 
    llvm::SmallVector<std::string, 16> MAttrs;
 
-#if LLVM_VERSION_MAJOR >= 4 && (defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64) || defined(PIPE_ARCH_ARM))
-   /* llvm-3.3+ implements sys::getHostCPUFeatures for Arm
-    * and llvm-3.7+ for x86, which allows us to enable/disable
-    * code generation based on the results of cpuid on these
-    * architectures.
+#if defined(PIPE_ARCH_ARM)
+   /* llvm-3.3+ implements sys::getHostCPUFeatures for Arm,
+    * which allows us to enable/disable code generation based
+    * on the results of cpuid on these architectures.
     */
    llvm::StringMap<bool> features;
    llvm::sys::getHostCPUFeatures(features);
@@ -395,13 +394,9 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    }
 #elif defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
    /*
-    * We need to unset attributes because sometimes LLVM mistakenly assumes
-    * certain features are present given the processor name.
-    *
-    * https://bugs.freedesktop.org/show_bug.cgi?id=92214
-    * http://llvm.org/PR25021
-    * http://llvm.org/PR19429
-    * http://llvm.org/PR16721
+    * Because we can override cpu caps with environment variables,
+    * so we do not use llvm::sys::getHostCPUFeatures to detect cpu features
+    * but using util_get_cpu_caps() instead.
     */
    MAttrs.push_back(util_get_cpu_caps()->has_sse    ? "+sse"    : "-sse"   );
    MAttrs.push_back(util_get_cpu_caps()->has_sse2   ? "+sse2"   : "-sse2"  );
