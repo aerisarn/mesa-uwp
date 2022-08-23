@@ -491,9 +491,8 @@ bool FragmentShader::emit_export_pixel(nir_intrinsic_instr& intr)
       ShaderOutput output(driver_location, TGSI_SEMANTIC_COLOR, write_mask);
       add_output(output);
 
-      unsigned color_outputs = m_fs_write_all && chip_class() >= ISA_CC_EVERGREEN ?
+      unsigned color_outputs = m_fs_write_all && chip_class() >= ISA_CC_R700 ?
                                   m_max_color_exports : 1;
-
 
       for (unsigned k = 0; k < color_outputs; ++k) {
 
