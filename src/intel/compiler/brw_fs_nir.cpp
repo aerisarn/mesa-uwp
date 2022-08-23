@@ -2521,8 +2521,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
    /* Resort to the pull model.  Ensure the VUE handles are provided. */
    assert(gs_prog_data->base.include_vue_handles);
 
-   unsigned first_icp_handle = gs_prog_data->include_primitive_id ? 3 : 2;
-   fs_reg start = retype(brw_vec8_grf(first_icp_handle, 0), BRW_REGISTER_TYPE_UD);
+   fs_reg start = gs_payload().icp_handle_start;
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
    if (gs_prog_data->invocations == 1) {

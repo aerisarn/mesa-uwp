@@ -121,6 +121,7 @@ struct gs_thread_payload : public thread_payload {
 
    fs_reg urb_handles;
    fs_reg primitive_id;
+   fs_reg icp_handle_start;
 };
 
 struct fs_thread_payload : public thread_payload {

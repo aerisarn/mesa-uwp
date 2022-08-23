@@ -107,6 +107,7 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
    gs_prog_data->base.include_vue_handles = true;
 
    /* R3..RN: ICP Handles for each incoming vertex (when using pull model) */
+   icp_handle_start = retype(brw_vec8_grf(r, 0), BRW_REGISTER_TYPE_UD);
    r += v.nir->info.gs.vertices_in;
 
    num_regs = r;
