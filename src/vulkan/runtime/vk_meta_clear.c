@@ -210,7 +210,7 @@ vk_meta_clear_attachments(struct vk_command_buffer *cmd,
    memset(&key, 0, sizeof(key));
    vk_meta_rendering_info_copy(&key.render, render);
 
-   struct vk_meta_clear_push_data push = { };
+   struct vk_meta_clear_push_data push = {0};
    float depth_value = 1.0f;
    uint32_t stencil_value = 0;
 
