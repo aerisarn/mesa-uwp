@@ -1276,6 +1276,9 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
       else if (strcmp(name, "API-thread-num-syncs") == 0) {
          hud_thread_counter_install(pane, name, HUD_COUNTER_SYNCS);
       }
+      else if (strcmp(name, "API-thread-num-batches") == 0) {
+         hud_thread_counter_install(pane, name, HUD_COUNTER_BATCHES);
+      }
       else if (strcmp(name, "main-thread-busy") == 0) {
          hud_thread_busy_install(pane, name, true);
       }
