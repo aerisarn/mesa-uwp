@@ -561,13 +561,17 @@ _mesa_MatrixLoadfEXT( GLenum matrixMode, const GLfloat *m )
 static void
 matrix_mult(struct gl_matrix_stack *stack, const GLfloat *m, const char* caller)
 {
+   static float identity[16] = {
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+   };
+
    GET_CURRENT_CONTEXT(ctx);
-   if (!m ||
-       (m[0]  == 1 && m[1]  == 0 && m[2]  == 0 && m[3]  == 0 &&
-        m[4]  == 0 && m[5]  == 1 && m[6]  == 0 && m[7]  == 0 &&
-        m[8]  == 0 && m[9]  == 0 && m[10] == 1 && m[11] == 0 &&
-        m[12] == 0 && m[13] == 0 && m[14] == 0 && m[15] == 1))
+   if (!m || !memcmp(m, identity, sizeof(identity)))
       return;
+
    if (MESA_VERBOSE & VERBOSE_API)
       _mesa_debug(ctx,
           "%s(%f %f %f %f, %f %f %f %f, %f %f %f %f, %f %f %f %f\n",
