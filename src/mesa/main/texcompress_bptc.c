@@ -26,8 +26,6 @@
  * GL_ARB_texture_compression_bptc support.
  */
 
-#define BPTC_BLOCK_DECODE
-
 #include <stdbool.h>
 #include "texcompress.h"
 #include "texcompress_bptc.h"

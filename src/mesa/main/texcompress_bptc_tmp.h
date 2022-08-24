@@ -652,7 +652,6 @@ fetch_rgba_unorm_from_block(const uint8_t *block,
    apply_rotation(rotation, result);
 }
 
-#ifdef BPTC_BLOCK_DECODE
 static void
 decompress_rgba_unorm_block(int src_width, int src_height,
                             const uint8_t *block,
@@ -816,7 +815,6 @@ decompress_rgba_unorm(int width, int height,
       src += src_row_diff;
    }
 }
-#endif // BPTC_BLOCK_DECODE
 
 static int
 signed_unquantize(int value, int n_endpoint_bits)
@@ -1029,7 +1027,6 @@ fetch_rgb_float_from_block(const uint8_t *block,
    result[3] = 1.0f;
 }
 
-#ifdef BPTC_BLOCK_DECODE
 static void
 decompress_rgb_float_block(unsigned src_width, unsigned src_height,
                            const uint8_t *block,
@@ -1158,7 +1155,6 @@ decompress_rgb_float(int width, int height,
       src += src_row_diff;
    }
 }
-#endif // BPTC_BLOCK_DECODE
 
 static void
 write_bits(struct bit_writer *writer, int n_bits, int value)
