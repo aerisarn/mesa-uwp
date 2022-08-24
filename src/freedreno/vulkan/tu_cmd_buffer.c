@@ -4282,7 +4282,8 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                  : A6XX_LATE_Z;
    }
 
-   if (cmd->state.pipeline->lrz.fs.force_late_z || !depth_test_enable)
+   if ((cmd->state.pipeline->lrz.force_late_z &&
+        !cmd->state.pipeline->lrz.fs.force_early_z) || !depth_test_enable)
       zmode = A6XX_LATE_Z;
 
    /* User defined early tests take precedence above all else */

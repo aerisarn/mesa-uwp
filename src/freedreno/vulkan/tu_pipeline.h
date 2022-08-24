@@ -45,9 +45,11 @@ struct tu_lrz_pipeline
 
    struct {
       bool has_kill;
-      bool force_late_z;
+      bool force_early_z;
       bool early_fragment_tests;
    } fs;
+
+   bool force_late_z;
 };
 
 struct tu_compiled_shaders

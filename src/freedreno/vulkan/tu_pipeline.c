@@ -260,7 +260,6 @@ struct tu_pipeline_builder
    /* these states are affectd by rasterizer_discard */
    bool depth_clip_disable;
    bool use_color_attachments;
-   bool alpha_to_coverage;
    VkFormat color_attachment_formats[MAX_RTS];
    VkFormat depth_attachment_format;
    uint32_t multiview_mask;
@@ -1610,7 +1609,6 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
-                    bool no_earlyz,
                     struct tu_pipeline *pipeline)
 {
    uint32_t smask_regid, posz_regid, stencilref_regid;
@@ -1669,9 +1667,11 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
       pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
 
       if (!fs->fs.early_fragment_tests &&
-          (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
-         pipeline->lrz.fs.force_late_z = true;
+          (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
+         pipeline->lrz.force_late_z = true;
       }
+
+      pipeline->lrz.fs.force_early_z = fs->fs.early_fragment_tests;
    }
 }
 
@@ -1855,21 +1855,14 @@ tu6_emit_program(struct tu_cs *cs,
 
    tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
 
-   bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT;
-
-   if (builder->alpha_to_coverage) {
-      /* alpha to coverage can behave like a discard */
-      no_earlyz = true;
-   }
-
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
-      tu6_emit_fs_outputs(cs, fs, no_earlyz, pipeline);
+      tu6_emit_fs_outputs(cs, fs, pipeline);
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs(cs, &dummy_variant);
-      tu6_emit_fs_outputs(cs, &dummy_variant, no_earlyz, NULL);
+      tu6_emit_fs_outputs(cs, &dummy_variant, NULL);
    }
 
    if (gs || hs) {
@@ -3644,7 +3637,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 
    if (builder->shaders->variants[MESA_SHADER_FRAGMENT]) {
       const struct ir3_shader_variant *fs = builder->shaders->variants[MESA_SHADER_FRAGMENT];
-      if (fs->has_kill || builder->alpha_to_coverage) {
+      if (fs->has_kill) {
          pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
       if (fs->no_earlyz || fs->writes_pos) {
@@ -3686,6 +3679,11 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    const VkPipelineColorBlendStateCreateInfo *blend_info =
       builder->use_color_attachments ? builder->create_info->pColorBlendState
                                      : &dummy_blend_info;
+
+   bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT ||
+      /* alpha to coverage can behave like a discard */
+      msaa_info->alphaToCoverageEnable;
+   pipeline->lrz.force_late_z |= no_earlyz;
 
    struct tu_cs cs;
    tu6_emit_rb_mrt_controls(pipeline, blend_info,
@@ -4051,10 +4049,6 @@ tu_pipeline_builder_init_graphics(
    if (builder->create_info->flags & VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) {
       builder->subpass_feedback_loop_ds = true;
       builder->feedback_loop_may_involve_textures = true;
-   }
-
-   if (!builder->rasterizer_discard) {
-      builder->alpha_to_coverage = create_info->pMultisampleState->alphaToCoverageEnable;
    }
 }
 
