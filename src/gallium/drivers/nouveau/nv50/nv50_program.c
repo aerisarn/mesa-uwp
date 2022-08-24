@@ -506,10 +506,10 @@ nv50_program_upload_code(struct nv50_context *nv50, struct nv50_program *prog)
 
    if (prog->type == PIPE_SHADER_COMPUTE) {
       /* CP code must be uploaded in FP code segment. */
-      prog_type = 1;
+      prog_type = NV50_SHADER_STAGE_FRAGMENT;
    } else {
       prog->code_base = prog->mem->start;
-      prog_type = prog->type;
+      prog_type = nv50_context_shader_stage(prog->type);
    }
 
    ret = nv50_tls_realloc(nv50->screen, prog->tls_space);

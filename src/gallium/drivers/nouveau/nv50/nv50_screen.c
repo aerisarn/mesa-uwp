@@ -785,16 +785,16 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    PUSH_DATA (push, 0x3f);
 
    BEGIN_NV04(push, NV50_3D(VP_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->code->offset + (0 << NV50_CODE_BO_SIZE_LOG2));
-   PUSH_DATA (push, screen->code->offset + (0 << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATAh(push, screen->code->offset + (NV50_SHADER_STAGE_VERTEX << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATA (push, screen->code->offset + (NV50_SHADER_STAGE_VERTEX << NV50_CODE_BO_SIZE_LOG2));
 
    BEGIN_NV04(push, NV50_3D(FP_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->code->offset + (1 << NV50_CODE_BO_SIZE_LOG2));
-   PUSH_DATA (push, screen->code->offset + (1 << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATAh(push, screen->code->offset + (NV50_SHADER_STAGE_FRAGMENT << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATA (push, screen->code->offset + (NV50_SHADER_STAGE_FRAGMENT << NV50_CODE_BO_SIZE_LOG2));
 
    BEGIN_NV04(push, NV50_3D(GP_ADDRESS_HIGH), 2);
-   PUSH_DATAh(push, screen->code->offset + (2 << NV50_CODE_BO_SIZE_LOG2));
-   PUSH_DATA (push, screen->code->offset + (2 << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATAh(push, screen->code->offset + (NV50_SHADER_STAGE_GEOMETRY << NV50_CODE_BO_SIZE_LOG2));
+   PUSH_DATA (push, screen->code->offset + (NV50_SHADER_STAGE_GEOMETRY << NV50_CODE_BO_SIZE_LOG2));
 
    BEGIN_NV04(push, NV50_3D(LOCAL_ADDRESS_HIGH), 3);
    PUSH_DATAh(push, screen->tls_bo->offset);
