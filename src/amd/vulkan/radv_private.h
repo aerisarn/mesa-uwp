@@ -1369,6 +1369,8 @@ struct radv_dynamic_state {
    VkConservativeRasterizationModeEXT conservative_rast_mode;
 
    bool depth_clip_negative_one_to_one;
+
+   VkProvokingVertexModeEXT provoking_vertex_mode;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2049,7 +2051,6 @@ struct radv_graphics_pipeline {
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
-   unsigned pa_su_sc_mode_cntl;
    unsigned cb_color_control;
    uint32_t binding_stride[MAX_VBS];
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];

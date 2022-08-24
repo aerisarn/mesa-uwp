@@ -1897,6 +1897,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
    }
 
+   if (states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) {
+      dynamic->provoking_vertex_mode = state->rs->provoking_vertex;
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -1905,9 +1909,6 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
                                 const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_device *device = pipeline->base.device;
-
-   pipeline->pa_su_sc_mode_cntl =
-      S_028814_PROVOKING_VTX_LAST(state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
 
    pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_VIEWPORT;
    if (!state->rs->depth_clamp_enable) {
