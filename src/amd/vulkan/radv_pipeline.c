@@ -63,7 +63,6 @@ struct radv_blend_state {
    uint32_t col_format_is_int10;
    uint32_t col_format_is_float32;
    uint32_t cb_shader_mask;
-   uint32_t db_alpha_to_mask;
 
    uint32_t commutative_4bit;
 
@@ -717,21 +716,12 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
-   if (device->instance->debug_flags & RADV_DEBUG_NO_ATOC_DITHERING)
-   {
-      blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
-                               S_028B70_ALPHA_TO_MASK_OFFSET2(2) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
-                               S_028B70_OFFSET_ROUND(0);
-   }
-   else
-   {
-      blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
-                               S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
-                               S_028B70_OFFSET_ROUND(1);
-   }
-
-   if (state->ms && state->ms->alpha_to_coverage_enable) {
-      blend.db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(1);
+   if (state->ms && ((pipeline->dynamic_states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) ||
+                     state->ms->alpha_to_coverage_enable)) {
+      /* When alpha to coverage is enabled, the driver needs to select a color export format with
+       * alpha. When this state is dynamic, always select a format with alpha because it's hard to
+       * change color export formats dynamically (note that it's suboptimal).
+       */
       blend.need_src_alpha |= 0x1;
    }
 
@@ -1902,6 +1892,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
       dynamic->stippled_line_enable = state->rs->line.stipple.enable;
+   }
+
+   if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
+      dynamic->alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -4792,7 +4786,6 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
 
    radeon_set_context_reg_seq(ctx_cs, R_028780_CB_BLEND0_CONTROL, 8);
    radeon_emit_array(ctx_cs, blend->cb_blend_control, 8);
-   radeon_set_context_reg(ctx_cs, R_028B70_DB_ALPHA_TO_MASK, blend->db_alpha_to_mask);
 
    if (pdevice->rad_info.has_rbplus) {
 

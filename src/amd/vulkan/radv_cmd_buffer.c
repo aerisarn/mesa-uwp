@@ -126,6 +126,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .tess_domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
    .logic_op_enable = 0u,
    .stippled_line_enable = 0u,
+   .alpha_to_coverage_enable = 0u,
 };
 
 static void
@@ -266,6 +267,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(logic_op_enable, RADV_DYNAMIC_LOGIC_OP_ENABLE);
 
    RADV_CMP_COPY(stippled_line_enable, RADV_DYNAMIC_LINE_STIPPLE_ENABLE);
+
+   RADV_CMP_COPY(alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1460,7 +1463,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
-                                 RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
+                                 RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS |
+                                 RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->negative_one_to_one != pipeline->negative_one_to_one ||
@@ -3359,6 +3363,27 @@ radv_emit_line_stipple_enable(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_alpha_to_coverage_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned db_alpha_to_mask = 0;
+
+   if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_ATOC_DITHERING) {
+      db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET2(2) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                         S_028B70_OFFSET_ROUND(0);
+   } else {
+      db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                         S_028B70_OFFSET_ROUND(1);
+   }
+
+   db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(d->alpha_to_coverage_enable);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028B70_DB_ALPHA_TO_MASK, db_alpha_to_mask);
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
@@ -3439,6 +3464,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE)
       radv_emit_line_stipple_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE)
+      radv_emit_alpha_to_coverage_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -5876,6 +5904,17 @@ radv_CmdSetLineStippleEnableEXT(VkCommandBuffer commandBuffer, VkBool32 stippled
    state->dynamic.stippled_line_enable = stippledLineEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetAlphaToCoverageEnableEXT(VkCommandBuffer commandBuffer, VkBool32 alphaToCoverageEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.alpha_to_coverage_enable = alphaToCoverageEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

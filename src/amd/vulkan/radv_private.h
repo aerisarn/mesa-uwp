@@ -1359,6 +1359,8 @@ struct radv_dynamic_state {
    bool logic_op_enable;
 
    bool stippled_line_enable;
+
+   bool alpha_to_coverage_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
