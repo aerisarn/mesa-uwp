@@ -123,7 +123,7 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       switch (mesaFormat) {
       case MESA_FORMAT_BPTC_RGB_SIGNED_FLOAT:
       case MESA_FORMAT_BPTC_RGB_UNSIGNED_FLOAT:
-         return PIPE_FORMAT_R32G32B32X32_FLOAT;
+         return PIPE_FORMAT_R16G16B16X16_FLOAT;
       default:
          return _mesa_is_format_srgb(mesaFormat) ? PIPE_FORMAT_R8G8B8A8_SRGB :
                                                    PIPE_FORMAT_R8G8B8A8_UNORM;

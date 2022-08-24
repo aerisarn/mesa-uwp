@@ -253,17 +253,17 @@ _mesa_unpack_bptc(uint8_t *dst_row,
 {
    switch (format) {
    case MESA_FORMAT_BPTC_RGB_SIGNED_FLOAT:
-      decompress_rgb_float(src_width, src_height,
-                           src_row, src_stride,
-                           (float *)dst_row, dst_stride,
+      decompress_rgb_fp16(src_width, src_height,
+                          src_row, src_stride,
+                          (uint16_t *)dst_row, dst_stride,
                            true);
       break;
 
    case MESA_FORMAT_BPTC_RGB_UNSIGNED_FLOAT:
-      decompress_rgb_float(src_width, src_height,
-                           src_row, src_stride,
-                           (float *)dst_row, dst_stride,
-                           false);
+      decompress_rgb_fp16(src_width, src_height,
+                          src_row, src_stride,
+                          (uint16_t *)dst_row, dst_stride,
+                          false);
       break;
 
    default:

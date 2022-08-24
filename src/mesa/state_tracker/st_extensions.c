@@ -979,7 +979,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { { o(ARB_texture_compression_bptc) },
         { PIPE_FORMAT_R8G8B8A8_UNORM,
           PIPE_FORMAT_R8G8B8A8_SRGB,
-          PIPE_FORMAT_R32G32B32X32_FLOAT } },
+          PIPE_FORMAT_R16G16B16X16_FLOAT } },
 
       { { o(TDFX_texture_compression_FXT1) },
         { PIPE_FORMAT_FXT1_RGB,
