@@ -2395,6 +2395,8 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    if (ctx.uses[instr->definitions[1].tempId()])
       return false;
+   if (!instr->operands[0].isTemp() || ctx.uses[instr->operands[0].tempId()] != 1)
+      return false;
 
    Instruction* cmp = follow_operand(ctx, instr->operands[0]);
    if (!cmp)
@@ -2404,65 +2406,12 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (new_opcode == aco_opcode::num_opcodes)
       return false;
 
-   if (cmp->operands[0].isTemp())
-      ctx.uses[cmp->operands[0].tempId()]++;
-   if (cmp->operands[1].isTemp())
-      ctx.uses[cmp->operands[1].tempId()]++;
-   decrease_uses(ctx, cmp);
+   /* Invert compare instruction and assign this instruction's definition */
+   cmp->opcode = new_opcode;
+   ctx.info[instr->definitions[0].tempId()] = ctx.info[cmp->definitions[0].tempId()];
+   std::swap(instr->definitions[0], cmp->definitions[0]);
 
-   /* This creates a new instruction instead of modifying the existing
-    * comparison so that the comparison is done with the correct exec mask. */
-   Instruction* new_instr;
-   if (cmp->isVOP3()) {
-      VOP3_instruction* new_vop3 =
-         create_instruction<VOP3_instruction>(new_opcode, asVOP3(Format::VOPC), 2, 1);
-      VOP3_instruction& cmp_vop3 = cmp->vop3();
-      memcpy(new_vop3->abs, cmp_vop3.abs, sizeof(new_vop3->abs));
-      memcpy(new_vop3->neg, cmp_vop3.neg, sizeof(new_vop3->neg));
-      new_vop3->clamp = cmp_vop3.clamp;
-      new_vop3->omod = cmp_vop3.omod;
-      new_vop3->opsel = cmp_vop3.opsel;
-      new_instr = new_vop3;
-   } else if (cmp->isSDWA()) {
-      SDWA_instruction* new_sdwa = create_instruction<SDWA_instruction>(
-         new_opcode, (Format)((uint16_t)Format::SDWA | (uint16_t)Format::VOPC), 2, 1);
-      SDWA_instruction& cmp_sdwa = cmp->sdwa();
-      memcpy(new_sdwa->abs, cmp_sdwa.abs, sizeof(new_sdwa->abs));
-      memcpy(new_sdwa->sel, cmp_sdwa.sel, sizeof(new_sdwa->sel));
-      memcpy(new_sdwa->neg, cmp_sdwa.neg, sizeof(new_sdwa->neg));
-      new_sdwa->dst_sel = cmp_sdwa.dst_sel;
-      new_sdwa->clamp = cmp_sdwa.clamp;
-      new_sdwa->omod = cmp_sdwa.omod;
-      new_instr = new_sdwa;
-   } else if (cmp->isDPP16()) {
-      DPP16_instruction* new_dpp = create_instruction<DPP16_instruction>(
-         new_opcode, (Format)((uint16_t)Format::DPP16 | (uint16_t)Format::VOPC), 2, 1);
-      DPP16_instruction& cmp_dpp = cmp->dpp16();
-      memcpy(new_dpp->abs, cmp_dpp.abs, sizeof(new_dpp->abs));
-      memcpy(new_dpp->neg, cmp_dpp.neg, sizeof(new_dpp->neg));
-      new_dpp->dpp_ctrl = cmp_dpp.dpp_ctrl;
-      new_dpp->row_mask = cmp_dpp.row_mask;
-      new_dpp->bank_mask = cmp_dpp.bank_mask;
-      new_dpp->bound_ctrl = cmp_dpp.bound_ctrl;
-      new_instr = new_dpp;
-   } else if (cmp->isDPP8()) {
-      DPP8_instruction* new_dpp = create_instruction<DPP8_instruction>(
-         new_opcode, (Format)((uint16_t)Format::DPP8 | (uint16_t)Format::VOPC), 2, 1);
-      DPP8_instruction& cmp_dpp = cmp->dpp8();
-      memcpy(new_dpp->lane_sel, cmp_dpp.lane_sel, sizeof(new_dpp->lane_sel));
-      new_instr = new_dpp;
-   } else {
-      new_instr = create_instruction<VOPC_instruction>(new_opcode, Format::VOPC, 2, 1);
-   }
-   new_instr->operands[0] = cmp->operands[0];
-   new_instr->operands[1] = cmp->operands[1];
-   new_instr->definitions[0] = instr->definitions[0];
-
-   ctx.info[instr->definitions[0].tempId()].label = 0;
-   ctx.info[instr->definitions[0].tempId()].set_vopc(new_instr);
-
-   instr.reset(new_instr);
-
+   ctx.uses[instr->operands[0].tempId()]--;
    return true;
 }
 
