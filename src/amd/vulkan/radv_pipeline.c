@@ -678,13 +678,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
-   if (state->cb) {
-      if (state->cb->logic_op_enable)
-         cb_color_control |= S_028808_ROP3(si_translate_blend_logic_op(state->cb->logic_op));
-      else
-         cb_color_control |= S_028808_ROP3(V_028808_ROP3_COPY);
-   }
-
    if (device->instance->debug_flags & RADV_DEBUG_NO_ATOC_DITHERING)
    {
       blend.db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
