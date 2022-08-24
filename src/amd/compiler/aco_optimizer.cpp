@@ -1218,8 +1218,13 @@ can_eliminate_and_exec(opt_ctx& ctx, Temp tmp, unsigned pass_flags)
          return false;
       if (!(instr->operands[0].isTemp() && instr->operands[1].isTemp()))
          return false;
-      return can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), pass_flags) &&
-             can_eliminate_and_exec(ctx, instr->operands[1].getTemp(), pass_flags);
+      if (instr->opcode == aco_opcode::s_and_b32 || instr->opcode == aco_opcode::s_and_b64) {
+         return can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), pass_flags) ||
+                can_eliminate_and_exec(ctx, instr->operands[1].getTemp(), pass_flags);
+      } else {
+         return can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), pass_flags) &&
+                can_eliminate_and_exec(ctx, instr->operands[1].getTemp(), pass_flags);
+      }
    }
    return false;
 }
