@@ -1031,7 +1031,9 @@ static void
 radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_sample_locations_state *sample_location = &cmd_buffer->state.dynamic.sample_location;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    uint32_t num_samples = (uint32_t)sample_location->per_pixel;
+   unsigned pa_sc_aa_config = pipeline->ms.pa_sc_aa_config;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t sample_locs_pixel[4][2] = {0};
    VkOffset2D sample_locs[4][8]; /* 8 is the max. sample count supported */
@@ -1099,8 +1101,10 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
    }
 
    /* Emit the maximum sample distance and the centroid priority. */
-   radeon_set_context_reg_rmw(cs, R_028BE0_PA_SC_AA_CONFIG,
-                              S_028BE0_MAX_SAMPLE_DIST(max_sample_dist), ~C_028BE0_MAX_SAMPLE_DIST);
+   pa_sc_aa_config &= C_028BE0_MAX_SAMPLE_DIST;
+   pa_sc_aa_config |= S_028BE0_MAX_SAMPLE_DIST(max_sample_dist);
+
+   radeon_set_context_reg(cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
 
    radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
    radeon_emit(cs, centroid_priority);
