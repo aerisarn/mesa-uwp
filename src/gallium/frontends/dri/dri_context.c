@@ -236,6 +236,12 @@ dri_destroy_context(__DRIcontext * cPriv)
 {
    struct dri_context *ctx = dri_context(cPriv);
 
+   /* Wait for glthread to finish because we can't use pipe_context from
+    * multiple threads.
+    */
+   if (ctx->st->thread_finish)
+      ctx->st->thread_finish(ctx->st);
+
    if (ctx->hud) {
       hud_destroy(ctx->hud, ctx->st->cso_context);
    }
@@ -288,6 +294,12 @@ dri_make_current(__DRIcontext * cPriv,
    struct dri_context *ctx = dri_context(cPriv);
    struct dri_drawable *draw = dri_drawable(driDrawPriv);
    struct dri_drawable *read = dri_drawable(driReadPriv);
+
+   /* Wait for glthread to finish because we can't use st_context from
+    * multiple threads.
+    */
+   if (ctx->st->thread_finish)
+      ctx->st->thread_finish(ctx->st);
 
    if (!draw && !read)
       return ctx->stapi->make_current(ctx->stapi, ctx->st, NULL, NULL);
