@@ -265,7 +265,6 @@ struct tu_pipeline_builder
    uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
    VkFormat depth_attachment_format;
-   uint32_t render_components;
    uint32_t multiview_mask;
 
    bool subpass_raster_order_attachment_access;
@@ -1614,7 +1613,6 @@ static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
                     uint32_t mrt_count, bool dual_src_blend,
-                    uint32_t render_components,
                     bool no_earlyz,
                     struct tu_pipeline *pipeline)
 {
@@ -1624,15 +1622,14 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
    stencilref_regid = ir3_find_output_regid(fs, FRAG_RESULT_STENCIL);
 
-   int output_reg_count = MAX2(mrt_count, 1);
-   uint32_t fragdata_regid[output_reg_count];
-   if (fs->color0_mrt) {
-      fragdata_regid[0] = ir3_find_output_regid(fs, FRAG_RESULT_COLOR);
-      for (uint32_t i = 1; i < output_reg_count; i++)
-         fragdata_regid[i] = fragdata_regid[0];
-   } else {
-      for (uint32_t i = 0; i < output_reg_count; i++)
-         fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
+   int output_reg_count = 0;
+   uint32_t fragdata_regid[8];
+
+   assert(!fs->color0_mrt);
+   for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++) {
+      fragdata_regid[i] = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + i);
+      if (VALIDREG(fragdata_regid[i]))
+         output_reg_count = i + 1;
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
@@ -1642,6 +1639,10 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                   COND(dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
+   /* There is no point in having component enabled which is not written
+    * by the shader. Per VK spec it is an UB, however a few apps depend on
+    * attachment not being changed if FS doesn't have corresponding output.
+    */
    uint32_t fs_render_components = 0;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), output_reg_count);
@@ -1654,17 +1655,6 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
          fs_render_components |= 0xf << (i * 4);
       }
    }
-
-   /* dual source blending has an extra fs output in the 2nd slot */
-   if (dual_src_blend) {
-      fs_render_components |= 0xf << 4;
-   }
-
-   /* There is no point in having component enabled which is not written
-    * by the shader. Per VK spec it is an UB, however a few apps depend on
-    * attachment not being changed if FS doesn't have corresponding output.
-    */
-   fs_render_components &= render_components;
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = fs_render_components));
@@ -1872,13 +1862,10 @@ tu6_emit_program(struct tu_cs *cs,
 
    bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT;
    uint32_t mrt_count = builder->color_attachment_count;
-   uint32_t render_components = builder->render_components;
 
    if (builder->alpha_to_coverage) {
       /* alpha to coverage can behave like a discard */
       no_earlyz = true;
-      /* alpha value comes from first mrt */
-      render_components |= 0xf;
       if (!mrt_count) {
          mrt_count = 1;
          /* Disable memory write for dummy mrt because it doesn't get set otherwise */
@@ -1890,7 +1877,6 @@ tu6_emit_program(struct tu_cs *cs,
       tu6_emit_fs_inputs(cs, fs);
       tu6_emit_fs_outputs(cs, fs, mrt_count,
                           builder->use_dual_src_blend,
-                          render_components,
                           no_earlyz,
                           pipeline);
    } else {
@@ -1899,7 +1885,6 @@ tu6_emit_program(struct tu_cs *cs,
       tu6_emit_fs_inputs(cs, &dummy_variant);
       tu6_emit_fs_outputs(cs, &dummy_variant, mrt_count,
                           builder->use_dual_src_blend,
-                          render_components,
                           no_earlyz,
                           NULL);
    }
@@ -4033,7 +4018,6 @@ tu_pipeline_builder_init_graphics(
                rendering_info->pColorAttachmentFormats[i];
             if (builder->color_attachment_formats[i] != VK_FORMAT_UNDEFINED) {
                builder->use_color_attachments = true;
-               builder->render_components |= 0xf << (i * 4);
             }
          }
       }
@@ -4066,7 +4050,6 @@ tu_pipeline_builder_init_graphics(
 
             builder->color_attachment_formats[i] = pass->attachments[a].format;
             builder->use_color_attachments = true;
-            builder->render_components |= 0xf << (i * 4);
          }
       }
    }
@@ -4087,9 +4070,6 @@ tu_pipeline_builder_init_graphics(
       if (tu_blend_state_is_dual_src(create_info->pColorBlendState)) {
          builder->color_attachment_count++;
          builder->use_dual_src_blend = true;
-         /* dual source blending has an extra fs output in the 2nd slot */
-         if (builder->color_attachment_formats[0] != VK_FORMAT_UNDEFINED)
-            builder->render_components |= 0xf << 4;
       }
    }
 }
