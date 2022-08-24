@@ -1939,9 +1939,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
              * s_and is unnecessary. */
             ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
             break;
-         } else if (can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), instr->pass_flags)) {
-            ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
-            break;
          }
       }
       FALLTHROUGH;
@@ -4487,6 +4484,20 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
 
       return;
+   }
+
+   /* This optimization is done late in order to be able to apply otherwise
+    * unsafe optimizations such as the inverse comparison optimization.
+    */
+   if (instr->opcode == aco_opcode::s_and_b32 || instr->opcode == aco_opcode::s_and_b64) {
+      if (instr->operands[0].isTemp() && fixed_to_exec(instr->operands[1]) &&
+          ctx.uses[instr->operands[0].tempId()] == 1 && ctx.uses[instr->definitions[1].tempId()] == 0 &&
+          can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), instr->pass_flags)) {
+         ctx.uses[instr->operands[0].tempId()]--;
+         ctx.info[instr->operands[0].tempId()].instr->definitions[0].setTemp(instr->definitions[0].getTemp());
+         instr.reset();
+         return;
+      }
    }
 
    /* Combine DPP copies into VALU. This should be done after creating MAD/FMA. */
