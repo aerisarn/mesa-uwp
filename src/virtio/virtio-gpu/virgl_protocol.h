@@ -238,7 +238,7 @@ enum virgl_shader_stage {
 #define VIRGL_OBJ_RS_S0_LINE_LAST_PIXEL(x) (((x) & 0x1) << 28)
 #define VIRGL_OBJ_RS_S0_HALF_PIXEL_CENTER(x) (((x) & 0x1) << 29)
 #define VIRGL_OBJ_RS_S0_BOTTOM_EDGE_RULE(x) (((x) & 0x1) << 30)
-#define VIRGL_OBJ_RS_S0_FORCE_PERSAMPLE_INTERP(x) (((x) & 0x1) << 31)
+#define VIRGL_OBJ_RS_S0_FORCE_PERSAMPLE_INTERP(x) (((x) & 0x1u) << 31)
 
 #define VIRGL_OBJ_RS_POINT_SIZE 3
 #define VIRGL_OBJ_RS_SPRITE_COORD_ENABLE 4

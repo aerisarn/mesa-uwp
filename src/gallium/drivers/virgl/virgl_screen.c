@@ -679,7 +679,7 @@ virgl_format_check_bitmask(enum pipe_format format,
    enum virgl_formats vformat = pipe_to_virgl_format(format);
    int big = vformat / 32;
    int small = vformat % 32;
-   if ((bitmask[big] & (1 << small)))
+   if ((bitmask[big] & (1u << small)))
       return true;
 
    /* On GLES hosts we don't advertise BGRx_SRGB, but we may be able

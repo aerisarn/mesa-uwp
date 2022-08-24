@@ -434,7 +434,7 @@ enum virgl_formats {
 #define VIRGL_CAP_APP_TWEAK_SUPPORT    (1 << 28)
 #define VIRGL_CAP_BGRA_SRGB_IS_EMULATED (1 << 29)
 #define VIRGL_CAP_CLEAR_TEXTURE        (1 << 30)
-#define VIRGL_CAP_ARB_BUFFER_STORAGE   (1 << 31)
+#define VIRGL_CAP_ARB_BUFFER_STORAGE   (1u << 31)
 
 /* These are used by the capability_bits_v2 field in virgl_caps_v2. */
 #define VIRGL_CAP_V2_BLEND_EQUATION       (1 << 0)
