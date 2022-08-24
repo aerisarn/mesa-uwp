@@ -46,8 +46,6 @@ dEQP-GLES31.functional.separate_shader.random.79,Fail
 dEQP-GLES31.functional.separate_shader.random.80,Fail
 dEQP-GLES31.functional.separate_shader.random.89,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.ivec2_lowp_compute,Fail
-dEQP-GLES31.functional.shaders.builtin_functions.integer.imulextended.ivec3_highp_fragment,Fail
-dEQP-GLES31.functional.shaders.builtin_functions.integer.imulextended.ivec3_highp_vertex,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.image_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_write,Crash
@@ -75,6 +73,3 @@ dEQP-GLES31.functional.texture.gather.basic.cube.rgba8ui.base_level.level_1,Fail
 dEQP-GLES31.functional.texture.gather.basic.cube.rgba8ui.no_corners.size_pot.clamp_to_edge_repeat,Fail
 dEQP-GLES31.functional.texture.gather.basic.cube.rgba8ui.no_corners.size_pot.mirrored_repeat_clamp_to_edge,Fail
 dEQP-GLES31.functional.texture.gather.basic.cube.rgba8ui.no_corners.size_pot.repeat_mirrored_repeat,Fail
-
-dEQP-GLES31.functional.shaders.builtin_functions.integer.imulextended.ivec4_highp_vertex,Fail
-dEQP-GLES31.functional.shaders.builtin_functions.integer.umulextended.uvec4_highp_vertex,Fail
