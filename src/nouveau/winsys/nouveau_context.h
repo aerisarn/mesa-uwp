@@ -22,6 +22,7 @@ struct nouveau_ws_context {
 };
 
 int nouveau_ws_context_create(struct nouveau_ws_device *, struct nouveau_ws_context **out);
+bool nouveau_ws_context_killed(struct nouveau_ws_context *);
 void nouveau_ws_context_destroy(struct nouveau_ws_context *);
 
 #endif

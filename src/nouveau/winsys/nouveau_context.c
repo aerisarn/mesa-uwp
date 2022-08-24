@@ -192,3 +192,19 @@ nouveau_ws_context_destroy(struct nouveau_ws_context *context)
    nouveau_ws_channel_dealloc(context->dev->fd, context->channel);
    FREE(context);
 }
+
+bool
+nouveau_ws_context_killed(struct nouveau_ws_context *context)
+{
+   /* we are using the normal pushbuf submission ioctl as this is how nouveau implemented this on
+    * the kernel side.
+    * And as long as we submit nothing (e.g. nr_push is 0) it's more or less a noop on the kernel
+    * side.
+    */
+   struct drm_nouveau_gem_pushbuf req = {
+      .channel = context->channel,
+   };
+   int ret = drmCommandWriteRead(context->dev->fd, DRM_NOUVEAU_GEM_PUSHBUF, &req, sizeof(req));
+   /* nouveau returns ENODEV once the channel was killed */
+   return ret == -ENODEV;
+}
