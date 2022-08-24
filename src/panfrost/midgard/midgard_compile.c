@@ -661,10 +661,27 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigne
         ins->src[to] = nir_src_index(NULL, &src.src);
         ins->src_types[to] = nir_op_infos[instr->op].input_types[i] | bits;
 
+        /* Figure out which component we should fill unused channels with. This
+         * doesn't matter too much in the non-broadcast case, but it makes
+         * should that scalar sources are packed with replicated swizzles,
+         * which works around issues seen with the combination of source
+         * expansion and destination shrinking.
+         */
+        unsigned replicate_c = 0;
+        if (bcast_count) {
+                replicate_c = bcast_count - 1;
+        } else {
+                for (unsigned c = 0; c < NIR_MAX_VEC_COMPONENTS; ++c) {
+                        if (nir_alu_instr_channel_used(instr, i, c))
+                                replicate_c = c;
+                }
+        }
+
         for (unsigned c = 0; c < NIR_MAX_VEC_COMPONENTS; ++c) {
                 ins->swizzle[to][c] = src.swizzle[
-                        (!bcast_count || c < bcast_count) ? c :
-                                (bcast_count - 1)];
+                        ((!bcast_count || c < bcast_count) &&
+                          nir_alu_instr_channel_used(instr, i, c)) ?
+                        c : replicate_c];
         }
 }
 
