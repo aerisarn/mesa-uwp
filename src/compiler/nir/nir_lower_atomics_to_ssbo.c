@@ -44,7 +44,7 @@ deref_offset_var(nir_builder *b, unsigned binding, unsigned offset_align_state)
    }
 
    nir_variable *var = nir_variable_create(b->shader, nir_var_uniform, glsl_uint_type(), "offset");
-   var->state_slots = ralloc_array(var, nir_state_slot, 1);
+   var->state_slots = rzalloc_array(var, nir_state_slot, 1);
    var->state_slots[0].tokens[0] = offset_align_state;
    var->state_slots[0].tokens[1] = binding;
    var->num_state_slots = 1;
