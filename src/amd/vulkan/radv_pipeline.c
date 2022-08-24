@@ -1894,6 +1894,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->sample_mask = state->ms->sample_mask & 0xffff;
    }
 
+   if (states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE) {
+      dynamic->depth_clip_enable = state->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -1908,8 +1912,6 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
 
    pipeline->pa_cl_clip_cntl =
       S_028810_DX_CLIP_SPACE_DEF(!pipeline->negative_one_to_one) |
-      S_028810_ZCLIP_NEAR_DISABLE(!state->rs->depth_clip_enable) |
-      S_028810_ZCLIP_FAR_DISABLE(!state->rs->depth_clip_enable) |
       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
    pipeline->uses_conservative_overestimate =
@@ -1921,7 +1923,8 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
        * application disables clamping explicitly or uses depth values outside of the [0.0, 1.0]
        * range.
        */
-      if (!state->rs->depth_clip_enable ||
+      if ((!state->rs->depth_clip_enable &&
+           !(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE)) ||
           device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
          pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
       } else {

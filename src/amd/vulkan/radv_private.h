@@ -1363,6 +1363,8 @@ struct radv_dynamic_state {
    bool alpha_to_coverage_enable;
 
    uint16_t sample_mask;
+
+   bool depth_clip_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

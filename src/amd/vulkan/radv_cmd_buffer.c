@@ -128,6 +128,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .stippled_line_enable = 0u,
    .alpha_to_coverage_enable = 0u,
    .sample_mask = 0u,
+   .depth_clip_enable = 0u,
 };
 
 static void
@@ -272,6 +273,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
 
    RADV_CMP_COPY(sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
+
+   RADV_CMP_COPY(depth_clip_enable, RADV_DYNAMIC_DEPTH_CLIP_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1487,7 +1490,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->pa_cl_clip_cntl != pipeline->pa_cl_clip_cntl)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control)
@@ -1885,12 +1889,14 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_rasterizer_discard_enable(struct radv_cmd_buffer *cmd_buffer)
+radv_emit_clipping(struct radv_cmd_buffer *cmd_buffer)
 {
    unsigned pa_cl_clip_cntl = cmd_buffer->state.graphics_pipeline->pa_cl_clip_cntl;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable);
+   pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable) |
+                      S_028810_ZCLIP_NEAR_DISABLE(!d->depth_clip_enable) |
+                      S_028810_ZCLIP_FAR_DISABLE(!d->depth_clip_enable);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL, pa_cl_clip_cntl);
 }
@@ -3457,8 +3463,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)
       radv_emit_primitive_restart_enable(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
-      radv_emit_rasterizer_discard_enable(cmd_buffer);
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE))
+      radv_emit_clipping(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE))
       radv_emit_logic_op(cmd_buffer);
@@ -5943,6 +5950,17 @@ radv_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer, VkSampleCountFlagBits sa
    state->dynamic.sample_mask = pSampleMask[0] & 0xffff;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_MASK;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDepthClipEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthClipEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.depth_clip_enable = depthClipEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
