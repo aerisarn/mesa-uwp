@@ -846,7 +846,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_DBG_ECO_CNTL, 0x00100000);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_FLOAT_CNTL, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_SP_DBG_ECO_CNTL, 0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_DBG_ECO_CNTL,
+                        phys_dev->info->a6xx.magic.SP_DBG_ECO_CNTL);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_PERFCTR_ENABLE, 0x3f);
    tu_cs_emit_write_reg(cs, REG_A6XX_TPL1_UNKNOWN_B605, 0x44);
    tu_cs_emit_write_reg(cs, REG_A6XX_TPL1_DBG_ECO_CNTL,
@@ -854,16 +855,23 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BE00, 0x80);
    tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UNKNOWN_BE01, 0);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_DBG_ECO_CNTL, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_DBG_ECO_CNTL, 0x880);
-   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_DBG_ECO_CNTL, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_SP_CHICKEN_BITS, 0x00000410);
+   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_DBG_ECO_CNTL,
+                        phys_dev->info->a6xx.magic.VPC_DBG_ECO_CNTL);
+   tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_DBG_ECO_CNTL,
+                        phys_dev->info->a6xx.magic.GRAS_DBG_ECO_CNTL);
+   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_DBG_ECO_CNTL,
+                        phys_dev->info->a6xx.magic.HLSQ_DBG_ECO_CNTL);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_CHICKEN_BITS,
+                        phys_dev->info->a6xx.magic.SP_CHICKEN_BITS);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_IBO_COUNT, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_B182, 0);
    tu_cs_emit_regs(cs, A6XX_HLSQ_SHARED_CONSTS(.enable = false));
-   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_UNKNOWN_0E12, 0x3200000);
-   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_CLIENT_PF, 4);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E01, 0x0);
+   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_UNKNOWN_0E12,
+                        phys_dev->info->a6xx.magic.UCHE_UNKNOWN_0E12);
+   tu_cs_emit_write_reg(cs, REG_A6XX_UCHE_CLIENT_PF,
+                        phys_dev->info->a6xx.magic.UCHE_CLIENT_PF);
+   tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E01,
+                        phys_dev->info->a6xx.magic.RB_UNKNOWN_8E01);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A9A8, 0);
    tu_cs_emit_regs(cs, A6XX_SP_MODE_CONTROL(.constant_demotion_enable = true,
                                             .isammode = ISAMMODE_GL,
@@ -872,7 +880,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    /* TODO: set A6XX_VFD_ADD_OFFSET_INSTANCE and fix ir3 to avoid adding base instance */
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_ADD_OFFSET, A6XX_VFD_ADD_OFFSET_VERTEX);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8811, 0x00000010);
-   tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x1f);
+   tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL,
+                        phys_dev->info->a6xx.magic.PC_MODE_CNTL);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8110, 0);
 
