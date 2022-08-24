@@ -124,7 +124,6 @@ shaders@glsl-bug-110796,Fail
 shaders@glsl-max-vertex-attrib,Fail
 shaders@glsl-predication-on-large-array,Fail
 spec@!opengl 1.0@gl-1.0-bitmap-heart-dance,Fail
-spec@!opengl 1.0@gl-1.0-dlist-bitmap,Crash
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag-const,Fail

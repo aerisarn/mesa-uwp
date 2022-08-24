@@ -544,6 +544,7 @@ spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
 spec@oes_point_sprite@arb_point_sprite-checkerboard_gles1,Fail
+spec@!opengl 1.0@gl-1.0-dlist-bitmap,Fail
 spec@!opengl 1.0@gl-1.0-dlist-materials,Fail
 spec@!opengl 1.0@gl-1.0-dlist-shademodel,Fail
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail

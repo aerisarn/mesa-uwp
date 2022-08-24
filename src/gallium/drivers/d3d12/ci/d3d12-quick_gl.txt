@@ -51,7 +51,6 @@ shaders/useshaderprogram-bad-type: skip
 shaders/useshaderprogram-flushverts-1: skip
 spec/!opengl 1.0/gl-1.0-beginend-coverage/glflush: fail
 spec/!opengl 1.0/gl-1.0-blend-func: fail
-spec/!opengl 1.0/gl-1.0-dlist-bitmap: fail
 spec/!opengl 1.0/gl-1.0-long-line-loop: fail
 spec/!opengl 1.0/gl-1.0-no-op-paths: fail
 spec/!opengl 1.0/gl-1.0-simple-readbuffer: fail
@@ -3521,8 +3520,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17863
-       fail:     2045
+       pass:    17864
+       fail:     2044
       crash:       11
        skip:     1445
     timeout:        0
