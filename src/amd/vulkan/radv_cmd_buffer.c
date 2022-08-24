@@ -129,6 +129,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .alpha_to_coverage_enable = 0u,
    .sample_mask = 0u,
    .depth_clip_enable = 0u,
+   .conservative_rast_mode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT,
 };
 
 static void
@@ -275,6 +276,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
 
    RADV_CMP_COPY(depth_clip_enable, RADV_DYNAMIC_DEPTH_CLIP_ENABLE);
+
+   RADV_CMP_COPY(conservative_rast_mode, RADV_DYNAMIC_CONSERVATIVE_RAST_MODE);
 
 #undef RADV_CMP_COPY
 
@@ -1510,6 +1513,11 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_mode_cntl_0 != pipeline->ms.pa_sc_mode_cntl_0)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE;
 
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_aa_config != pipeline->ms.pa_sc_aa_config ||
+       cmd_buffer->state.emitted_graphics_pipeline->ms.db_eqaa != pipeline->ms.db_eqaa)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
+
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
    if (pipeline->has_ngg_culling &&
@@ -1983,6 +1991,49 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    base_reg = pipeline->base.user_data_0[MESA_SHADER_TESS_EVAL];
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
                      cmd_buffer->state.tess_num_patches);
+}
+
+static void
+radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned pa_sc_aa_config = pipeline->ms.pa_sc_aa_config;
+   unsigned db_eqaa = pipeline->ms.db_eqaa;
+
+   if (pdevice->rad_info.gfx_level >= GFX9) {
+      uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
+
+      if (d->conservative_rast_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+         pa_sc_conservative_rast = S_028C4C_PREZ_AA_MASK_ENABLE(1) | S_028C4C_POSTZ_AA_MASK_ENABLE(1) |
+                                   S_028C4C_CENTROID_SAMPLE_OVERRIDE(1);
+
+         if (d->conservative_rast_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT) {
+            pa_sc_conservative_rast |=
+               S_028C4C_OVER_RAST_ENABLE(1) | S_028C4C_OVER_RAST_SAMPLE_SELECT(0) |
+               S_028C4C_UNDER_RAST_ENABLE(0) | S_028C4C_UNDER_RAST_SAMPLE_SELECT(1) |
+               S_028C4C_PBB_UNCERTAINTY_REGION_ENABLE(1);
+         } else {
+            assert(d->conservative_rast_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT);
+            pa_sc_conservative_rast |=
+               S_028C4C_OVER_RAST_ENABLE(0) | S_028C4C_OVER_RAST_SAMPLE_SELECT(1) |
+               S_028C4C_UNDER_RAST_ENABLE(1) | S_028C4C_UNDER_RAST_SAMPLE_SELECT(0) |
+               S_028C4C_PBB_UNCERTAINTY_REGION_ENABLE(0);
+         }
+
+         /* Adjust MSAA state if conservative rasterization is enabled. */
+         pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
+         db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) |
+                    S_028804_OVERRASTERIZATION_AMOUNT(4);
+      }
+
+      radeon_set_context_reg(cmd_buffer->cs, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
+                             pa_sc_conservative_rast);
+   }
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
+   radeon_set_context_reg(cmd_buffer->cs, R_028804_DB_EQAA, db_eqaa);
 }
 
 static void
@@ -3434,6 +3485,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE)
       radv_emit_discard_rectangle(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE)
+      radv_emit_conservative_rast_mode(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
       radv_emit_sample_locations(cmd_buffer);
@@ -5964,6 +6018,18 @@ radv_CmdSetDepthClipEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthClipE
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetConservativeRasterizationModeEXT(VkCommandBuffer commandBuffer,
+                                            VkConservativeRasterizationModeEXT conservativeRasterizationMode)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.conservative_rast_mode = conservativeRasterizationMode;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
@@ -7353,7 +7419,9 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    /* Small primitive culling is only valid when conservative overestimation is not used. It's also
     * disabled for user sample locations because small primitive culling assumes a sample
     * position at (0.5, 0.5). */
-   if (!pipeline->uses_conservative_overestimate && !pipeline->uses_user_sample_locations) {
+   bool uses_conservative_overestimate =
+      d->conservative_rast_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+   if (!uses_conservative_overestimate && !pipeline->uses_user_sample_locations) {
       nggc_settings |= radv_nggc_small_primitives;
 
       /* small_prim_precision = num_samples / 2^subpixel_bits
