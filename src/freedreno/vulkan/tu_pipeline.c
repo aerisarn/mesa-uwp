@@ -260,7 +260,6 @@ struct tu_pipeline_builder
    /* these states are affectd by rasterizer_discard */
    bool depth_clip_disable;
    bool use_color_attachments;
-   bool use_dual_src_blend;
    bool alpha_to_coverage;
    uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
@@ -1612,7 +1611,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
-                    uint32_t mrt_count, bool dual_src_blend,
+                    uint32_t mrt_count,
                     bool no_earlyz,
                     struct tu_pipeline *pipeline)
 {
@@ -1636,7 +1635,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_STENCILREF_REGID(stencilref_regid) |
-                  COND(dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
+                  COND(fs->dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    /* There is no point in having component enabled which is not written
@@ -1663,7 +1662,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
                   COND(fs->writes_smask, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK) |
                   COND(fs->writes_stencilref, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_STENCILREF) |
-                  COND(dual_src_blend, A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
+                  COND(fs->dual_src_blend, A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    tu_cs_emit_regs(cs,
@@ -1876,7 +1875,6 @@ tu6_emit_program(struct tu_cs *cs,
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
       tu6_emit_fs_outputs(cs, fs, mrt_count,
-                          builder->use_dual_src_blend,
                           no_earlyz,
                           pipeline);
    } else {
@@ -1884,7 +1882,6 @@ tu6_emit_program(struct tu_cs *cs,
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs(cs, &dummy_variant);
       tu6_emit_fs_outputs(cs, &dummy_variant, mrt_count,
-                          builder->use_dual_src_blend,
                           no_earlyz,
                           NULL);
    }
@@ -3713,7 +3710,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       pipeline->blend.color_write_enable :
       pipeline->blend.blend_enable;
    tu6_emit_blend_control(pipeline, blend_enable_mask,
-                          builder->use_dual_src_blend, msaa_info);
+                          tu_blend_state_is_dual_src(blend_info), msaa_info);
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_BLEND,
                                 blend_info->attachmentCount * 3 + 4)) {
@@ -4066,11 +4063,6 @@ tu_pipeline_builder_init_graphics(
 
    if (!builder->rasterizer_discard) {
       builder->alpha_to_coverage = create_info->pMultisampleState->alphaToCoverageEnable;
-
-      if (tu_blend_state_is_dual_src(create_info->pColorBlendState)) {
-         builder->color_attachment_count++;
-         builder->use_dual_src_blend = true;
-      }
    }
 }
 

@@ -571,6 +571,9 @@ struct ir3_shader_variant {
    /* Whether multi-position output is enabled. */
    bool multi_pos_output;
 
+   /* Whether dual-source blending is enabled. */
+   bool dual_src_blend;
+
    /* Size in bytes of required shared memory */
    unsigned shared_size;
 

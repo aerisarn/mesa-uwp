@@ -4143,6 +4143,8 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
             so->color0_mrt = 1;
          } else {
             slot = FRAG_RESULT_DATA0 + io.dual_source_blend_index;
+            if (io.dual_source_blend_index > 0)
+               so->dual_src_blend = true;
          }
          break;
       case FRAG_RESULT_SAMPLE_MASK:
@@ -4153,6 +4155,8 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          break;
       default:
          slot += io.dual_source_blend_index; /* For dual-src blend */
+         if (io.dual_source_blend_index > 0)
+            so->dual_src_blend = true;
          if (slot >= FRAG_RESULT_DATA0)
             break;
          ir3_context_error(ctx, "unknown FS output name: %s\n",
