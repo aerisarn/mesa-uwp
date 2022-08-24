@@ -125,6 +125,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .polygon_mode = 0,
    .tess_domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
    .logic_op_enable = 0u,
+   .stippled_line_enable = 0u,
 };
 
 static void
@@ -263,6 +264,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(tess_domain_origin, RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
 
    RADV_CMP_COPY(logic_op_enable, RADV_DYNAMIC_LOGIC_OP_ENABLE);
+
+   RADV_CMP_COPY(stippled_line_enable, RADV_DYNAMIC_LINE_STIPPLE_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1491,6 +1494,10 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->vgt_tf_param != pipeline->vgt_tf_param)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
+
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_mode_cntl_0 != pipeline->ms.pa_sc_mode_cntl_0)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE;
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
@@ -3340,6 +3347,18 @@ radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_line_stipple_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned pa_sc_mode_cntl_0 = pipeline->ms.pa_sc_mode_cntl_0;
+
+   pa_sc_mode_cntl_0 |= S_028A48_LINE_STIPPLE_ENABLE(d->stippled_line_enable);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028A48_PA_SC_MODE_CNTL_0, pa_sc_mode_cntl_0);
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
@@ -3417,6 +3436,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN)
       radv_emit_tess_domain_origin(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE)
+      radv_emit_line_stipple_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -5843,6 +5865,17 @@ radv_CmdSetLogicOpEnableEXT(VkCommandBuffer commandBuffer, VkBool32 logicOpEnabl
    state->dynamic.logic_op_enable = logicOpEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetLineStippleEnableEXT(VkCommandBuffer commandBuffer, VkBool32 stippledLineEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.stippled_line_enable = stippledLineEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

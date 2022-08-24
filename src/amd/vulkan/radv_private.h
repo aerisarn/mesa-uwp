@@ -1357,6 +1357,8 @@ struct radv_dynamic_state {
    VkTessellationDomainOrigin tess_domain_origin;
 
    bool logic_op_enable;
+
+   bool stippled_line_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

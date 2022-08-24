@@ -1151,8 +1151,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       S_028A4C_TILE_WALK_ORDER_ENABLE(1) | S_028A4C_MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE(1) |
       S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) | S_028A4C_FORCE_EOV_REZ_ENABLE(1);
    ms->pa_sc_mode_cntl_0 = S_028A48_ALTERNATE_RBS_PER_TILE(pdevice->rad_info.gfx_level >= GFX9) |
-                           S_028A48_VPORT_SCISSOR_ENABLE(1) |
-                           S_028A48_LINE_STIPPLE_ENABLE(state->rs->line.stipple.enable);
+                           S_028A48_VPORT_SCISSOR_ENABLE(1);
 
    if (state->rs->line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
        radv_rast_prim_is_line(rast_prim)) {
@@ -1421,7 +1420,8 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
    if (!state->ms || !state->ms->sample_locations_enable)
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
-   if (!state->rs->line.stipple.enable)
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) &&
+       !state->rs->line.stipple.enable)
       states &= ~RADV_DYNAMIC_LINE_STIPPLE;
 
    if (!radv_is_vrs_enabled(pipeline, state))
@@ -1898,6 +1898,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
       dynamic->logic_op_enable = state->cb->logic_op_enable;
+   }
+
+   if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
+      dynamic->stippled_line_enable = state->rs->line.stipple.enable;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -4849,9 +4853,7 @@ radv_pipeline_emit_multisample_state(struct radeon_cmdbuf *ctx_cs,
    radeon_set_context_reg(ctx_cs, R_028804_DB_EQAA, ms->db_eqaa);
    radeon_set_context_reg(ctx_cs, R_028BE0_PA_SC_AA_CONFIG, ms->pa_sc_aa_config);
 
-   radeon_set_context_reg_seq(ctx_cs, R_028A48_PA_SC_MODE_CNTL_0, 2);
-   radeon_emit(ctx_cs, ms->pa_sc_mode_cntl_0);
-   radeon_emit(ctx_cs, ms->pa_sc_mode_cntl_1);
+   radeon_set_context_reg(ctx_cs, R_028A4C_PA_SC_MODE_CNTL_1, ms->pa_sc_mode_cntl_1);
 
    /* The exclusion bits can be set to improve rasterization efficiency
     * if no sample lies on the pixel boundary (-8 sample offset). It's
