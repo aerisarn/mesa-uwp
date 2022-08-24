@@ -1048,9 +1048,7 @@ optimizations.extend([
    (('ior', ('ieq', a, 0), ('ieq', a, 1)), ('uge', 1, a)),
    (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
    (('ior', ('uge', 2, a), ('ieq', a, 3)), ('uge', 3, a)),
-
    (('ior', a, ('ieq', a, False)), True),
-   (('ior', a, ('inot', a)), -1),
 
    (('ine', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))), ('ine', a, b)),
    (('b2i', ('ine', 'a@1', 'b@1')), ('b2i', ('ixor', a, b))),
@@ -1217,11 +1215,13 @@ optimizations.extend([
    (('fneu', 'a(is_a_number)', a), False),
    # Logical and bit operations
    (('iand', a, a), a),
-   (('iand', a, ~0), a),
    (('iand', a, 0), 0),
+   (('iand', a, -1), a),
+   (('iand', a, ('inot', a)), 0),
    (('ior', a, a), a),
    (('ior', a, 0), a),
-   (('ior', a, True), True),
+   (('ior', a, -1), -1),
+   (('ior', a, ('inot', a)), -1),
    (('ixor', a, a), 0),
    (('ixor', a, 0), a),
    (('ixor', a, ('ixor', a, b)), b),
