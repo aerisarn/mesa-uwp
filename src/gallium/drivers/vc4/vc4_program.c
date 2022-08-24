@@ -45,6 +45,10 @@ ntq_get_src(struct vc4_compile *c, nir_src src, int i);
 static void
 ntq_emit_cf_list(struct vc4_compile *c, struct exec_list *list);
 
+static struct vc4_compiled_shader *
+vc4_get_compiled_shader(struct vc4_context *vc4, enum qstage stage,
+                        struct vc4_key *key);
+
 static int
 type_size(const struct glsl_type *type, bool bindless)
 {
@@ -2428,6 +2432,103 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
         return c;
 }
 
+static void
+vc4_setup_shared_precompile_key(struct vc4_uncompiled_shader *uncompiled,
+                                struct vc4_key *key)
+{
+        nir_shader *s = uncompiled->base.ir.nir;
+
+        for (int i = 0; i < s->info.num_textures; i++) {
+                key->tex[i].format = PIPE_FORMAT_R8G8B8A8_UNORM;
+                key->tex[i].swizzle[0] = PIPE_SWIZZLE_X;
+                key->tex[i].swizzle[1] = PIPE_SWIZZLE_Y;
+                key->tex[i].swizzle[2] = PIPE_SWIZZLE_Z;
+                key->tex[i].swizzle[3] = PIPE_SWIZZLE_W;
+        }
+}
+
+static inline struct vc4_varying_slot
+vc4_slot_from_slot_and_component(uint8_t slot, uint8_t component)
+{
+        assume(slot < 255 / 4);
+        return (struct vc4_varying_slot){ (slot << 2) + component };
+}
+
+static void
+precompile_all_fs_inputs(nir_shader *s,
+                         struct vc4_fs_inputs *fs_inputs)
+{
+        /* Assume all VS outputs will actually be used by the FS and output
+         * them (the two sides have to match exactly) */
+        nir_foreach_shader_out_variable(var, s) {
+                const int array_len = MAX2(glsl_get_length(var->type), 1);
+                for (int j = 0; j < array_len; j++) {
+                        const int slot = var->data.location + j;
+                        const int num_components =
+                                glsl_get_components(var->type);
+                        for (int i = 0; i < num_components; i++) {
+                                const int swiz = var->data.location_frac + i;
+                                fs_inputs->input_slots[fs_inputs->num_inputs++] =
+                                        vc4_slot_from_slot_and_component(slot,
+                                                                         swiz);
+                        }
+                }
+        }
+}
+
+/**
+ * Precompiles a shader variant at shader state creation time if
+ * VC4_DEBUG=shaderdb is set.
+ */
+static void
+vc4_shader_precompile(struct vc4_context *vc4,
+                      struct vc4_uncompiled_shader *so)
+{
+        nir_shader *s = so->base.ir.nir;
+
+        if (s->info.stage == MESA_SHADER_FRAGMENT) {
+                struct vc4_fs_key key = {
+                        .base.shader_state = so,
+                        .depth_enabled = true,
+                        .logicop_func = PIPE_LOGICOP_COPY,
+                        .color_format = PIPE_FORMAT_R8G8B8A8_UNORM,
+                        .blend = {
+                                .blend_enable = false,
+                                .colormask = PIPE_MASK_RGBA,
+                        },
+                };
+
+                vc4_setup_shared_precompile_key(so, &key.base);
+                vc4_get_compiled_shader(vc4, QSTAGE_FRAG, &key.base);
+        } else {
+                assert(s->info.stage == MESA_SHADER_VERTEX);
+                struct vc4_varying_slot input_slots[64] = {};
+                struct vc4_fs_inputs fs_inputs = {
+                        .input_slots = input_slots,
+                        .num_inputs = 0,
+                };
+                struct vc4_vs_key key = {
+                        .base.shader_state = so,
+                        .fs_inputs = &fs_inputs,
+                };
+
+                vc4_setup_shared_precompile_key(so, &key.base);
+                precompile_all_fs_inputs(s, &fs_inputs);
+                vc4_get_compiled_shader(vc4, QSTAGE_VERT, &key.base);
+
+                /* Compile VS bin shader: only position (XXX: include TF) */
+                key.is_coord = true;
+                fs_inputs.num_inputs = 0;
+                precompile_all_fs_inputs(s, &fs_inputs);
+                for (int i = 0; i < 4; i++) {
+                        fs_inputs.input_slots[fs_inputs.num_inputs++] =
+                                vc4_slot_from_slot_and_component(VARYING_SLOT_POS,
+                                                                 i);
+                }
+                vc4_get_compiled_shader(vc4, QSTAGE_VERT, &key.base);
+        }
+}
+
 static void *
 vc4_shader_state_create(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
@@ -2486,6 +2587,10 @@ vc4_shader_state_create(struct pipe_context *pctx,
                         so->program_id);
                 nir_print_shader(s, stderr);
                 fprintf(stderr, "\n");
+        }
+
+        if (VC4_DBG(SHADERDB)) {
+                vc4_shader_precompile(vc4, so);
         }
 
         return so;
