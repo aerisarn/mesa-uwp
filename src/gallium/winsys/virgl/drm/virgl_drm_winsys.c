@@ -579,7 +579,7 @@ virgl_drm_winsys_resource_set_type(struct virgl_winsys *qws,
                                    const uint32_t *plane_offsets)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
-   uint32_t cmd[VIRGL_PIPE_RES_SET_TYPE_SIZE(VIRGL_MAX_PLANE_COUNT)];
+   uint32_t cmd[VIRGL_PIPE_RES_SET_TYPE_SIZE(VIRGL_MAX_PLANE_COUNT) + 1];
    struct drm_virtgpu_execbuffer eb;
    int ret;
 
