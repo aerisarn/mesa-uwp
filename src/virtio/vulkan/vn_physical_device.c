@@ -839,7 +839,7 @@ vn_physical_device_init_external_fence_handles(
    /* The current code manipulates the host-side VkFence directly.
     * vkWaitForFences is translated to repeated vkGetFenceStatus.
     *
-    * External fence is not possible currently.  At best, we could cheat by
+    * External fence is not possible currently.  Instead, we cheat by
     * translating vkGetFenceFdKHR to an empty renderer submission for the
     * out fence, along with a venus protocol command to fix renderer side
     * fence payload.
@@ -887,9 +887,9 @@ vn_physical_device_init_external_semaphore_handles(
     * But for timeline semaphores, the situation is similar to that of fences.
     * vkWaitSemaphores is translated to repeated vkGetSemaphoreCounterValue.
     *
-    * External semaphore is not possible currently.  We could cheat when the
-    * semaphore is binary and the handle type is sync file. We could do an
-    * empty renderer submission for the out fence, along with a venus protocol
+    * External semaphore is not possible currently.  Instead, we cheat when
+    * the semaphore is binary and the handle type is sync file. We do an empty
+    * renderer submission for the out fence, along with a venus protocol
     * command to fix renderer side semaphore payload.
     *
     * We would like to create a vn_renderer_sync from a host-side VkSemaphore,
