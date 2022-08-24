@@ -2489,6 +2489,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        */
       cmd->state.rp.disable_gmem = true;
    }
+   cmd->state.rp.sysmem_single_prim_mode |= pipeline->sysmem_single_prim_mode;
 
    struct tu_cs *cs = &cmd->draw_cs;
 
@@ -3440,6 +3441,7 @@ tu_render_pass_state_merge(struct tu_render_pass_state *dst,
    dst->has_tess |= src->has_tess;
    dst->has_prim_generated_query_in_rp |= src->has_prim_generated_query_in_rp;
    dst->disable_gmem |= src->disable_gmem;
+   dst->sysmem_single_prim_mode |= src->sysmem_single_prim_mode;
    dst->draw_cs_writes_to_cond_pred |= src->draw_cs_writes_to_cond_pred;
 
    dst->drawcall_count += src->drawcall_count;

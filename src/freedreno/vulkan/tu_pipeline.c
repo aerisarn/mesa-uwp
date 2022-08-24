@@ -3840,6 +3840,7 @@ tu_pipeline_builder_parse_rasterization_order(
        */
       sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
       gmem_prim_mode = FLUSH_PER_OVERLAP;
+      pipeline->sysmem_single_prim_mode = true;
    } else {
       /* If there is a feedback loop, then the shader can read the previous value
        * of a pixel being written out. It can also write some components and then
@@ -3850,8 +3851,10 @@ tu_pipeline_builder_parse_rasterization_order(
        * for advanced_blend in sysmem mode if a feedback loop is detected.
        */
       if (builder->subpass_feedback_loop_color ||
-          builder->subpass_feedback_loop_ds) {
+          (builder->subpass_feedback_loop_ds &&
+           (ds_info->depthWriteEnable || ds_info->stencilTestEnable))) {
          sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
+         pipeline->sysmem_single_prim_mode = true;
       }
    }
 

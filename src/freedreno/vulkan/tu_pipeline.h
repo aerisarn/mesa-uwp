@@ -192,6 +192,8 @@ struct tu_pipeline
    bool raster_order_attachment_access;
    bool subpass_feedback_loop_ds;
    bool feedback_loop_may_involve_textures;
+   /* If the pipeline sets SINGLE_PRIM_MODE for sysmem. */
+   bool sysmem_single_prim_mode;
 
    bool z_negative_one_to_one;
 

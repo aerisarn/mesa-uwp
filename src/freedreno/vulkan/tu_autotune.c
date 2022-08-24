@@ -513,18 +513,13 @@ tu_autotune_use_bypass(struct tu_autotune *at,
    const struct tu_render_pass *pass = cmd_buffer->state.pass;
    const struct tu_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 
-   for (unsigned i = 0; i < pass->subpass_count; i++) {
-      const struct tu_subpass *subpass = &pass->subpasses[i];
-      /* GMEM works much faster in this case */
-      if (subpass->raster_order_attachment_access)
-         return false;
-
-      /* Would be very slow in sysmem mode because we have to enable
-       * SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP_AND_OVERWRITE)
-       */
-      if (subpass->feedback_loop_color || subpass->feedback_loop_ds)
-         return false;
-   }
+   /* If a feedback loop in the subpass caused one of the pipelines used to set
+    * SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP_AND_OVERWRITE) or even
+    * SINGLE_PRIM_MODE(FLUSH), then that should cause significantly increased
+    * sysmem bandwidth (though we haven't quantified it).
+    */
+   if (cmd_buffer->state.rp.sysmem_single_prim_mode)
+      return false;
 
    /* For VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT buffers
     * we would have to allocate GPU memory at the submit time and copy
