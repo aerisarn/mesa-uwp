@@ -3,7 +3,6 @@ variables:
    DEBIAN_BASE_TAG: "2022-08-22-drop-llvm9"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-08-22-drop-llvm9"
    DEBIAN_BUILD_TAG: "2022-08-23-mold"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
