@@ -615,10 +615,11 @@ fallback_copy_image(struct st_context *st,
          st_MapTextureImage(
                st->ctx, dst_image, dst_z,
                dst_x, dst_y, dst_w, dst_h,
-               GL_MAP_WRITE_BIT, &dst, &dst_stride);
+               GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT,
+               &dst, &dst_stride);
       } else {
          dst = pipe_texture_map(st->pipe, dst_res, 0, dst_z,
-                                 PIPE_MAP_WRITE,
+                                 PIPE_MAP_WRITE | PIPE_MAP_DISCARD_RANGE,
                                  dst_x, dst_y, dst_w, dst_h,
                                  &dst_transfer);
          dst_stride = dst_transfer->stride;
