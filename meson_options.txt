@@ -164,6 +164,12 @@ option(
   description : 'build gallium "clover" OpenCL frontend.',
 )
 option(
+  'gallium-windows-dll-name',
+  type : 'string',
+  value : 'libgallium_wgl',
+  description : 'name of gallium megadriver DLL built for Windows. defaults to libgallium_wgl.dll to match DRI',
+)
+option(
   'opencl-spirv',
   type : 'boolean',
   value : false,
