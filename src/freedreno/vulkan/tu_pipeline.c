@@ -261,7 +261,6 @@ struct tu_pipeline_builder
    bool depth_clip_disable;
    bool use_color_attachments;
    bool alpha_to_coverage;
-   uint32_t color_attachment_count;
    VkFormat color_attachment_formats[MAX_RTS];
    VkFormat depth_attachment_format;
    uint32_t multiview_mask;
@@ -1611,7 +1610,6 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
                     const struct ir3_shader_variant *fs,
-                    uint32_t mrt_count,
                     bool no_earlyz,
                     struct tu_pipeline *pipeline)
 {
@@ -1631,12 +1629,11 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
          output_reg_count = i + 1;
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_STENCILREF_REGID(stencilref_regid) |
                   COND(fs->dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
-   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    /* There is no point in having component enabled which is not written
     * by the shader. Per VK spec it is an UB, however a few apps depend on
@@ -1658,12 +1655,11 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = fs_render_components));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 1);
    tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
                   COND(fs->writes_smask, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK) |
                   COND(fs->writes_stencilref, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_STENCILREF) |
                   COND(fs->dual_src_blend, A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
-   tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_RENDER_COMPONENTS(.dword = fs_render_components));
@@ -1860,30 +1856,20 @@ tu6_emit_program(struct tu_cs *cs,
    tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
 
    bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT;
-   uint32_t mrt_count = builder->color_attachment_count;
 
    if (builder->alpha_to_coverage) {
       /* alpha to coverage can behave like a discard */
       no_earlyz = true;
-      if (!mrt_count) {
-         mrt_count = 1;
-         /* Disable memory write for dummy mrt because it doesn't get set otherwise */
-         tu_cs_emit_regs(cs, A6XX_RB_MRT_CONTROL(0, .component_enable = 0));
-      }
    }
 
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
-      tu6_emit_fs_outputs(cs, fs, mrt_count,
-                          no_earlyz,
-                          pipeline);
+      tu6_emit_fs_outputs(cs, fs, no_earlyz, pipeline);
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs(cs, &dummy_variant);
-      tu6_emit_fs_outputs(cs, &dummy_variant, mrt_count,
-                          no_earlyz,
-                          NULL);
+      tu6_emit_fs_outputs(cs, &dummy_variant, no_earlyz, NULL);
    }
 
    if (gs || hs) {
@@ -2312,6 +2298,8 @@ static void
 tu6_emit_blend(struct tu_cs *cs,
                struct tu_pipeline *pipeline)
 {
+   tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
+   tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
    tu_cs_emit_regs(cs, A6XX_SP_BLEND_CNTL(.dword = pipeline->blend.sp_blend_cntl));
    tu_cs_emit_regs(cs, A6XX_RB_BLEND_CNTL(.dword = pipeline->blend.rb_blend_cntl));
 
@@ -3705,6 +3693,14 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                             &pipeline->blend.rop_reads_dst,
                             &pipeline->output.color_bandwidth_per_sample);
 
+   if (msaa_info->alphaToCoverageEnable && pipeline->blend.num_rts == 0) {
+      /* In addition to changing the *_OUTPUT_CNTL1 registers, this will also
+       * make sure we disable memory writes for MRT0 rather than using
+       * whatever setting was leftover.
+       */
+      pipeline->blend.num_rts = 1;
+   }
+
    uint32_t blend_enable_mask =
       pipeline->blend.rop_reads_dst ? 
       pipeline->blend.color_write_enable :
@@ -3713,7 +3709,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                           tu_blend_state_is_dual_src(blend_info), msaa_info);
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_BLEND,
-                                blend_info->attachmentCount * 3 + 4)) {
+                                pipeline->blend.num_rts * 3 + 8)) {
       tu6_emit_blend(&cs, pipeline);
       assert(cs.cur == cs.end); /* validate draw state size */
    }
@@ -4007,9 +4003,6 @@ tu_pipeline_builder_init_graphics(
             rendering_info->stencilAttachmentFormat :
             rendering_info->depthAttachmentFormat;
 
-         builder->color_attachment_count =
-            rendering_info->colorAttachmentCount;
-
          for (unsigned i = 0; i < rendering_info->colorAttachmentCount; i++) {
             builder->color_attachment_formats[i] =
                rendering_info->pColorAttachmentFormats[i];
@@ -4039,7 +4032,6 @@ tu_pipeline_builder_init_graphics(
          assert(subpass->color_count == 0 ||
                 !create_info->pColorBlendState ||
                 subpass->color_count == create_info->pColorBlendState->attachmentCount);
-         builder->color_attachment_count = subpass->color_count;
          for (uint32_t i = 0; i < subpass->color_count; i++) {
             const uint32_t a = subpass->color_attachments[i].attachment;
             if (a == VK_ATTACHMENT_UNUSED)

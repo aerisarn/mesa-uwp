@@ -4325,6 +4325,8 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
       color_write_enable : (cmd->state.pipeline_blend_enable &
                             cmd->state.color_write_enable);
 
+   tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
+   tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
    tu_cs_emit(cs, cmd->state.sp_blend_cntl |
                   (A6XX_SP_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) &
@@ -4440,7 +4442,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 
    if (cmd->state.dirty & TU_CMD_DIRTY_BLEND) {
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_BLEND,
-                                             4 + 3 * cmd->state.pipeline->blend.num_rts);
+                                             8 + 3 * cmd->state.pipeline->blend.num_rts);
       tu6_emit_blend(&cs, cmd);
    }
 
