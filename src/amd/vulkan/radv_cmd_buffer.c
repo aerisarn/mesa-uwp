@@ -1678,13 +1678,6 @@ radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer)
    unsigned pa_su_sc_mode_cntl = cmd_buffer->state.graphics_pipeline->pa_su_sc_mode_cntl;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   pa_su_sc_mode_cntl &= C_028814_CULL_FRONT &
-                         C_028814_CULL_BACK &
-                         C_028814_FACE &
-                         C_028814_POLY_OFFSET_FRONT_ENABLE &
-                         C_028814_POLY_OFFSET_BACK_ENABLE &
-                         C_028814_POLY_OFFSET_PARA_ENABLE;
-
    pa_su_sc_mode_cntl |= S_028814_CULL_FRONT(!!(d->cull_mode & VK_CULL_MODE_FRONT_BIT)) |
                          S_028814_CULL_BACK(!!(d->cull_mode & VK_CULL_MODE_BACK_BIT)) |
                          S_028814_FACE(d->front_face) |
@@ -1836,7 +1829,6 @@ radv_emit_rasterizer_discard_enable(struct radv_cmd_buffer *cmd_buffer)
    unsigned pa_cl_clip_cntl = cmd_buffer->state.graphics_pipeline->pa_cl_clip_cntl;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   pa_cl_clip_cntl &= C_028810_DX_RASTERIZATION_KILL;
    pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL, pa_cl_clip_cntl);
@@ -1848,7 +1840,6 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
    unsigned cb_color_control = cmd_buffer->state.graphics_pipeline->cb_color_control;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   cb_color_control &= C_028808_ROP3;
    cb_color_control |= S_028808_ROP3(d->logic_op);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
