@@ -1371,6 +1371,8 @@ struct radv_dynamic_state {
    bool depth_clip_negative_one_to_one;
 
    VkProvokingVertexModeEXT provoking_vertex_mode;
+
+   bool depth_clamp_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2073,7 +2075,6 @@ struct radv_graphics_pipeline {
    bool disable_out_of_order_rast_for_occlusion;
    bool uses_drawid;
    bool uses_baseinstance;
-   enum radv_depth_clamp_mode depth_clamp_mode;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;

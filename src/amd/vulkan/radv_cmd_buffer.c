@@ -132,6 +132,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .conservative_rast_mode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT,
    .depth_clip_negative_one_to_one = 0u,
    .provoking_vertex_mode = VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT,
+   .depth_clamp_enable = 0u,
 };
 
 static void
@@ -284,6 +285,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(depth_clip_negative_one_to_one, RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE);
 
    RADV_CMP_COPY(provoking_vertex_mode, RADV_DYNAMIC_PROVOKING_VERTEX_MODE);
+
+   RADV_CMP_COPY(depth_clamp_enable, RADV_DYNAMIC_DEPTH_CLAMP_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1487,11 +1490,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
                                  RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE |
-                                 RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->depth_clamp_mode != pipeline->depth_clamp_mode)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
+                                 RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE |
+                                 RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim))
@@ -1584,12 +1585,34 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_PIPELINE;
 }
 
+static enum radv_depth_clamp_mode
+radv_get_depth_clamp_mode(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_device *device = cmd_buffer->device;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   enum radv_depth_clamp_mode mode;
+
+   mode = RADV_DEPTH_CLAMP_MODE_VIEWPORT;
+   if (!d->depth_clamp_enable) {
+      /* For optimal performance, depth clamping should always be enabled except if the application
+       * disables clamping explicitly or uses depth values outside of the [0.0, 1.0] range.
+       */
+      if (!d->depth_clip_enable || device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
+         mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
+      } else {
+         mode = RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE;
+      }
+   }
+
+   return mode;
+}
+
 static void
 radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    const struct radv_viewport_state *viewport = &cmd_buffer->state.dynamic.viewport;
+   enum radv_depth_clamp_mode depth_clamp_mode = radv_get_depth_clamp_mode(cmd_buffer);
    int i;
    const unsigned count = viewport->count;
 
@@ -1619,7 +1642,7 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
    for (i = 0; i < count; i++) {
       float zmin, zmax;
 
-      if (pipeline->depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE) {
+      if (depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE) {
          zmin = 0.0f;
          zmax = 1.0f;
       } else {
@@ -2037,6 +2060,17 @@ radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
    radeon_set_context_reg(cmd_buffer->cs, R_028804_DB_EQAA, db_eqaa);
+}
+
+static void
+radv_emit_depth_clamp_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   enum radv_depth_clamp_mode mode = radv_get_depth_clamp_mode(cmd_buffer);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_02800C_DB_RENDER_OVERRIDE,
+                          S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
+                          S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE) |
+                          S_02800C_DISABLE_VIEWPORT_CLAMP(mode == RADV_DEPTH_CLAMP_MODE_DISABLED));
 }
 
 static void
@@ -3463,7 +3497,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE))
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE))
       radv_emit_viewport(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_SCISSOR | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
@@ -3550,6 +3586,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_MASK)
       radv_emit_sample_mask(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE)
+      radv_emit_depth_clamp_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -6056,6 +6095,17 @@ radv_CmdSetProvokingVertexModeEXT(VkCommandBuffer commandBuffer,
    state->dynamic.provoking_vertex_mode = provokingVertexMode;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthClampEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.depth_clamp_enable = depthClampEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

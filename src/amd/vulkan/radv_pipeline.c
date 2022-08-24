@@ -71,7 +71,6 @@ struct radv_blend_state {
 
 struct radv_depth_stencil_state {
    uint32_t db_render_control;
-   uint32_t db_render_override;
    uint32_t db_render_override2;
 };
 
@@ -1901,29 +1900,11 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->provoking_vertex_mode = state->rs->provoking_vertex;
    }
 
-   pipeline->dynamic_state.mask = states;
-}
-
-static void
-radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
-                                const struct vk_graphics_pipeline_state *state)
-{
-   const struct radv_device *device = pipeline->base.device;
-
-   pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_VIEWPORT;
-   if (!state->rs->depth_clamp_enable) {
-      /* For optimal performance, depth clamping should always be enabled except if the
-       * application disables clamping explicitly or uses depth values outside of the [0.0, 1.0]
-       * range.
-       */
-      if ((!state->rs->depth_clip_enable &&
-           !(pipeline->dynamic_states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE)) ||
-          device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
-         pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
-      } else {
-         pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE;
-      }
+   if (states & RADV_DYNAMIC_DEPTH_CLAMP_ENABLE) {
+      dynamic->depth_clamp_enable = state->rs->depth_clamp_enable;
    }
+
+   pipeline->dynamic_state.mask = states;
 }
 
 static struct radv_depth_stencil_state
@@ -1943,12 +1924,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
       if (pdevice->rad_info.gfx_level >= GFX10_3)
          ds_state.db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
    }
-
-   ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
-                                  S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
-
-   if (pipeline->depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_DISABLED)
-      ds_state.db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;
@@ -4764,9 +4739,7 @@ radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 {
    radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, ds_state->db_render_control);
 
-   radeon_set_context_reg_seq(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, 2);
-   radeon_emit(ctx_cs, ds_state->db_render_override);
-   radeon_emit(ctx_cs, ds_state->db_render_override2);
+   radeon_set_context_reg(ctx_cs, R_028010_DB_RENDER_OVERRIDE2, ds_state->db_render_override2);
 }
 
 static void
@@ -6162,8 +6135,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(pipeline);
    radv_pipeline_init_dynamic_state(pipeline, &state);
-
-   radv_pipeline_init_raster_state(pipeline, &state);
 
    struct radv_depth_stencil_state ds_state =
       radv_pipeline_init_depth_stencil_state(pipeline, &state);
