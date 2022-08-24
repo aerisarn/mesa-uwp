@@ -1367,6 +1367,8 @@ struct radv_dynamic_state {
    bool depth_clip_enable;
 
    VkConservativeRasterizationModeEXT conservative_rast_mode;
+
+   bool depth_clip_negative_one_to_one;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2048,7 +2050,6 @@ struct radv_graphics_pipeline {
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
    unsigned pa_su_sc_mode_cntl;
-   unsigned pa_cl_clip_cntl;
    unsigned cb_color_control;
    uint32_t binding_stride[MAX_VBS];
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
@@ -2071,7 +2072,6 @@ struct radv_graphics_pipeline {
    bool disable_out_of_order_rast_for_occlusion;
    bool uses_drawid;
    bool uses_baseinstance;
-   bool negative_one_to_one;
    enum radv_depth_clamp_mode depth_clamp_mode;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;

@@ -1893,6 +1893,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->conservative_rast_mode = state->rs->conservative_mode;
    }
 
+   if (states & RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) {
+      dynamic->depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -1904,10 +1908,6 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
 
    pipeline->pa_su_sc_mode_cntl =
       S_028814_PROVOKING_VTX_LAST(state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
-
-   pipeline->pa_cl_clip_cntl =
-      S_028810_DX_CLIP_SPACE_DEF(!pipeline->negative_one_to_one) |
-      S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
    pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_VIEWPORT;
    if (!state->rs->depth_clamp_enable) {
@@ -6161,9 +6161,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(pipeline);
    radv_pipeline_init_dynamic_state(pipeline, &state);
-
-   if (state.vp)
-      pipeline->negative_one_to_one = state.vp->depth_clip_negative_one_to_one;
 
    radv_pipeline_init_raster_state(pipeline, &state);
 

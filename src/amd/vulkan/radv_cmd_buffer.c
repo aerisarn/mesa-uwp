@@ -130,6 +130,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .sample_mask = 0u,
    .depth_clip_enable = 0u,
    .conservative_rast_mode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT,
+   .depth_clip_negative_one_to_one = 0u,
 };
 
 static void
@@ -278,6 +279,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(depth_clip_enable, RADV_DYNAMIC_DEPTH_CLIP_ENABLE);
 
    RADV_CMP_COPY(conservative_rast_mode, RADV_DYNAMIC_CONSERVATIVE_RAST_MODE);
+
+   RADV_CMP_COPY(depth_clip_negative_one_to_one, RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE);
 
 #undef RADV_CMP_COPY
 
@@ -1473,10 +1476,12 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
                                  RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS |
-                                 RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE;
+                                 RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->negative_one_to_one != pipeline->negative_one_to_one ||
        cmd_buffer->state.emitted_graphics_pipeline->depth_clamp_mode != pipeline->depth_clamp_mode)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 
@@ -1490,11 +1495,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
                                  RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->pa_cl_clip_cntl != pipeline->pa_cl_clip_cntl)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
-                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control)
@@ -1587,6 +1587,7 @@ static void
 radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    const struct radv_viewport_state *viewport = &cmd_buffer->state.dynamic.viewport;
    int i;
    const unsigned count = viewport->count;
@@ -1601,7 +1602,7 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
       radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[1]));
 
       double scale_z, translate_z;
-      if (pipeline->negative_one_to_one) {
+      if (d->depth_clip_negative_one_to_one) {
          scale_z = viewport->xform[i].scale[2] * 0.5f;
          translate_z = (viewport->xform[i].translate[2] + viewport->viewports[i].maxDepth) * 0.5f;
       } else {
@@ -1899,14 +1900,14 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_clipping(struct radv_cmd_buffer *cmd_buffer)
 {
-   unsigned pa_cl_clip_cntl = cmd_buffer->state.graphics_pipeline->pa_cl_clip_cntl;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable) |
-                      S_028810_ZCLIP_NEAR_DISABLE(!d->depth_clip_enable) |
-                      S_028810_ZCLIP_FAR_DISABLE(!d->depth_clip_enable);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL, pa_cl_clip_cntl);
+   radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL,
+                          S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable) |
+                          S_028810_ZCLIP_NEAR_DISABLE(!d->depth_clip_enable) |
+                          S_028810_ZCLIP_FAR_DISABLE(!d->depth_clip_enable) |
+                          S_028810_DX_CLIP_SPACE_DEF(!d->depth_clip_negative_one_to_one) |
+                          S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 }
 
 static void
@@ -3459,7 +3460,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    uint64_t states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
 
-   if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT))
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE))
       radv_emit_viewport(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_SCISSOR | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
@@ -3518,7 +3520,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
       radv_emit_primitive_restart_enable(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
-                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE))
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE))
       radv_emit_clipping(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE))
@@ -6027,6 +6030,17 @@ radv_CmdSetConservativeRasterizationModeEXT(VkCommandBuffer commandBuffer,
    state->dynamic.conservative_rast_mode = conservativeRasterizationMode;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDepthClipNegativeOneToOneEXT(VkCommandBuffer commandBuffer, VkBool32 negativeOneToOne)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.depth_clip_negative_one_to_one = negativeOneToOne;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
