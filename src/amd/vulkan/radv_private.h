@@ -1361,6 +1361,8 @@ struct radv_dynamic_state {
    bool stippled_line_enable;
 
    bool alpha_to_coverage_enable;
+
+   uint16_t sample_mask;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1925,7 +1927,6 @@ struct radv_multisample_state {
    uint32_t pa_sc_mode_cntl_0;
    uint32_t pa_sc_mode_cntl_1;
    uint32_t pa_sc_aa_config;
-   uint32_t pa_sc_aa_mask[2];
    unsigned num_samples;
 };
 

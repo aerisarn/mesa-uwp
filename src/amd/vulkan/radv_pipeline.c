@@ -1080,7 +1080,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    unsigned num_tile_pipes = pdevice->rad_info.num_tile_pipes;
    const VkConservativeRasterizationModeEXT mode = state->rs->conservative_mode;
    bool out_of_order_rast = false;
-   uint32_t sample_mask = 0xffff;
    int ps_iter_samples = 1;
 
    ms->num_samples = state->ms ? state->ms->rasterization_samples : 1;
@@ -1176,13 +1175,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       if (ps_iter_samples > 1)
          pipeline->spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
    }
-
-   if (state->ms) {
-      sample_mask = state->ms->sample_mask & 0xffff;
-   }
-
-   ms->pa_sc_aa_mask[0] = sample_mask | ((uint32_t)sample_mask << 16);
-   ms->pa_sc_aa_mask[1] = sample_mask | ((uint32_t)sample_mask << 16);
 }
 
 static void
@@ -1896,6 +1888,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
       dynamic->alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
+   }
+
+   if (states & RADV_DYNAMIC_SAMPLE_MASK) {
+      dynamic->sample_mask = state->ms->sample_mask & 0xffff;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -4838,10 +4834,6 @@ radv_pipeline_emit_multisample_state(struct radeon_cmdbuf *ctx_cs,
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    const struct radv_multisample_state *ms = &pipeline->ms;
-
-   radeon_set_context_reg_seq(ctx_cs, R_028C38_PA_SC_AA_MASK_X0Y0_X1Y0, 2);
-   radeon_emit(ctx_cs, ms->pa_sc_aa_mask[0]);
-   radeon_emit(ctx_cs, ms->pa_sc_aa_mask[1]);
 
    radeon_set_context_reg(ctx_cs, R_028804_DB_EQAA, ms->db_eqaa);
    radeon_set_context_reg(ctx_cs, R_028BE0_PA_SC_AA_CONFIG, ms->pa_sc_aa_config);

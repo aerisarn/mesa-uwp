@@ -127,6 +127,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .logic_op_enable = 0u,
    .stippled_line_enable = 0u,
    .alpha_to_coverage_enable = 0u,
+   .sample_mask = 0u,
 };
 
 static void
@@ -269,6 +270,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(stippled_line_enable, RADV_DYNAMIC_LINE_STIPPLE_ENABLE);
 
    RADV_CMP_COPY(alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
+
+   RADV_CMP_COPY(sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
 
 #undef RADV_CMP_COPY
 
@@ -3384,6 +3387,16 @@ radv_emit_alpha_to_coverage_enable(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_sample_mask(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   radeon_set_context_reg_seq(cmd_buffer->cs, R_028C38_PA_SC_AA_MASK_X0Y0_X1Y0, 2);
+   radeon_emit(cmd_buffer->cs, d->sample_mask | ((uint32_t)d->sample_mask << 16));
+   radeon_emit(cmd_buffer->cs, d->sample_mask | ((uint32_t)d->sample_mask << 16));
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
@@ -3467,6 +3480,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE)
       radv_emit_alpha_to_coverage_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_MASK)
+      radv_emit_sample_mask(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -5915,6 +5931,18 @@ radv_CmdSetAlphaToCoverageEnableEXT(VkCommandBuffer commandBuffer, VkBool32 alph
    state->dynamic.alpha_to_coverage_enable = alphaToCoverageEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer, VkSampleCountFlagBits samples,
+                         const VkSampleMask *pSampleMask)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.sample_mask = pSampleMask[0] & 0xffff;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_MASK;
 }
 
 VKAPI_ATTR void VKAPI_CALL
