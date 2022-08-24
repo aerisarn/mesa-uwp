@@ -3431,9 +3431,6 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
-   pipeline->output.feedback_loop_may_involve_textures =
-      builder->feedback_loop_may_involve_textures;
-
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
    builder->depth_clip_disable = rast_info->depthClampEnable;
@@ -3595,6 +3592,14 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 
       pipeline->output.stencil_cpp_per_sample = util_format_get_component_bits(
             pipe_format, UTIL_FORMAT_COLORSPACE_ZS, 1) / 8;
+
+      pipeline->ds.raster_order_attachment_access =
+         ds_info->flags &
+         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
+          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
+
+      pipeline->ds.write_enable = 
+         ds_info->depthWriteEnable || ds_info->stencilTestEnable;
    }
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
@@ -3671,6 +3676,9 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       return;
    }
 
+   pipeline->output.feedback_loop_may_involve_textures =
+      builder->feedback_loop_may_involve_textures;
+
    static const VkPipelineColorBlendStateCreateInfo dummy_blend_info;
    const VkPipelineMultisampleStateCreateInfo *msaa_info =
       builder->create_info->pMultisampleState;
@@ -3684,6 +3692,17 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       /* alpha to coverage can behave like a discard */
       msaa_info->alphaToCoverageEnable;
    pipeline->lrz.force_late_z |= no_earlyz;
+
+   pipeline->output.subpass_feedback_loop_color =
+      builder->subpass_feedback_loop_color;
+   pipeline->output.subpass_feedback_loop_ds =
+      builder->subpass_feedback_loop_ds;
+
+   if (builder->use_color_attachments) {
+      pipeline->blend.raster_order_attachment_access =
+         blend_info->flags &
+         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM;
+   }
 
    struct tu_cs cs;
    tu6_emit_rb_mrt_controls(pipeline, blend_info,
@@ -3764,29 +3783,10 @@ tu_pipeline_builder_parse_rasterization_order(
    if (builder->rasterizer_discard)
       return;
 
-   pipeline->output.subpass_feedback_loop_ds = builder->subpass_feedback_loop_ds;
-
-   const VkPipelineColorBlendStateCreateInfo *blend_info =
-      builder->create_info->pColorBlendState;
-
-   const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      builder->create_info->pDepthStencilState;
-
-   if (builder->use_color_attachments) {
-      pipeline->output.raster_order_attachment_access =
-         blend_info->flags &
-         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
-   }
-
-   if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
-      pipeline->output.raster_order_attachment_access |=
-         ds_info->flags &
-         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT |
-          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT);
-   }
-
-   if (unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER))
-      pipeline->output.raster_order_attachment_access = true;
+   bool raster_order_attachment_access =
+      pipeline->blend.raster_order_attachment_access ||
+      pipeline->ds.raster_order_attachment_access ||
+      unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER);
 
    /* VK_EXT_blend_operation_advanced would also require ordered access
     * when implemented in the future.
@@ -3795,7 +3795,7 @@ tu_pipeline_builder_parse_rasterization_order(
    uint32_t sysmem_prim_mode = NO_FLUSH;
    uint32_t gmem_prim_mode = NO_FLUSH;
 
-   if (pipeline->output.raster_order_attachment_access) {
+   if (raster_order_attachment_access) {
       /* VK_EXT_rasterization_order_attachment_access:
        *
        * This extension allow access to framebuffer attachments when used as
@@ -3814,9 +3814,9 @@ tu_pipeline_builder_parse_rasterization_order(
        * setting the SINGLE_PRIM_MODE field to the same value that the blob does
        * for advanced_blend in sysmem mode if a feedback loop is detected.
        */
-      if (builder->subpass_feedback_loop_color ||
-          (builder->subpass_feedback_loop_ds &&
-           (ds_info->depthWriteEnable || ds_info->stencilTestEnable))) {
+      if (pipeline->output.subpass_feedback_loop_color ||
+          (pipeline->output.subpass_feedback_loop_ds &&
+           pipeline->ds.write_enable)) {
          sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
          pipeline->prim_order.sysmem_single_prim_mode = true;
       }

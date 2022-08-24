@@ -126,6 +126,8 @@ struct tu_pipeline
       uint32_t rb_depth_cntl, rb_depth_cntl_mask;
       uint32_t rb_stencil_cntl, rb_stencil_cntl_mask;
       uint32_t stencil_wrmask;
+      bool raster_order_attachment_access;
+      bool write_enable;
    } ds;
 
    struct {
@@ -136,6 +138,7 @@ struct tu_pipeline
       uint32_t rb_blend_cntl, rb_blend_cntl_mask;
       uint32_t color_write_enable, blend_enable;
       bool logic_op_enabled, rop_reads_dst;
+      bool raster_order_attachment_access;
    } blend;
 
    /* Misc. info from the fragment output interface state that is used
@@ -151,8 +154,7 @@ struct tu_pipeline
 
       VkSampleCountFlagBits samples;
 
-      bool raster_order_attachment_access;
-      bool subpass_feedback_loop_ds;
+      bool subpass_feedback_loop_color, subpass_feedback_loop_ds;
       bool feedback_loop_may_involve_textures;
    } output;
 
