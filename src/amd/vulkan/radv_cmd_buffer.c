@@ -1430,6 +1430,18 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       MAX2(cmd_buffer->scratch_size_per_wave_needed, pipeline->base.scratch_bytes_per_wave);
    cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted, pipeline->base.max_waves);
 
+   if (!cmd_buffer->state.emitted_graphics_pipeline)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
+                                 RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim) ||
        cmd_buffer->state.emitted_graphics_pipeline->line_width != pipeline->line_width)
@@ -1449,25 +1461,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 
-   if (!cmd_buffer->state.emitted_graphics_pipeline)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
-                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
-                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
-                                 RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline)
-      cmd_buffer->state.dirty |=
-         RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
-         RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
-         RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE | RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
-
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->cb_target_mask != pipeline->cb_target_mask) {
+       cmd_buffer->state.emitted_graphics_pipeline->cb_target_mask != pipeline->cb_target_mask)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
-   }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
