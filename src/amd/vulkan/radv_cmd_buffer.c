@@ -1223,8 +1223,15 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
          radv_emit_shader_prefetch(cmd_buffer, pipeline->base.gs_copy_shader);
    }
 
-   if (mask & RADV_PREFETCH_PS)
+   if (mask & RADV_PREFETCH_PS) {
       radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_FRAGMENT]);
+      if (pipeline->ps_epilog) {
+         struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
+         uint64_t va = radv_buffer_get_va(ps_epilog->bo) + ps_epilog->alloc->offset;
+
+         si_cp_dma_prefetch(cmd_buffer, va, ps_epilog->code_size);
+      }
+   }
 
    state->prefetch_L2_mask &= ~mask;
 }
@@ -1396,6 +1403,36 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_shader *ps_shader = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+   struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
+   uint64_t ps_epilog_va;
+
+   if (!ps_epilog)
+      return;
+
+   /* The main shader must not use less VGPRs than the epilog, otherwise shared vgprs might not
+    * work.
+    */
+   assert(G_00B848_VGPRS(ps_shader->config.rsrc1) >= G_00B848_VGPRS(ps_epilog->rsrc1));
+
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, ps_epilog->bo);
+
+   ps_epilog_va = radv_buffer_get_va(ps_epilog->bo) + ps_epilog->alloc->offset;
+   assert((ps_epilog_va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
+
+   struct radv_userdata_info *loc =
+      &ps_shader->info.user_sgprs_locs.shader_data[AC_UD_PS_EPILOG_PC];
+   uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_FRAGMENT];
+   assert(loc->sgpr_idx != -1);
+   assert(loc->num_sgprs == 1);
+   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
+                            ps_epilog_va, false);
+}
+
+static void
 radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
@@ -1486,6 +1523,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
          radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
       }
    }
+
+   radv_emit_ps_epilog(cmd_buffer);
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
 
