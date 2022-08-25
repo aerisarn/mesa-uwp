@@ -2191,6 +2191,39 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
 }
 
 static void
+radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shader *nir)
+{
+   bool fixup_derefs = false;
+
+   nir_foreach_shader_out_variable(var, nir) {
+      int idx = var->data.location;
+      idx -= FRAG_RESULT_DATA0;
+
+      if (idx < 0)
+         continue;
+
+      unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
+      unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
+
+      if (col_format == V_028714_SPI_SHADER_ZERO ||
+          (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
+           !pipeline_key->ps.mrt0_is_dual_src)) {
+         /* Remove the color export if it's unused or in presence of holes. */
+         nir->info.outputs_written &= ~BITFIELD64_BIT(var->data.location);
+         var->data.location = 0;
+         var->data.mode = nir_var_shader_temp;
+         fixup_derefs = true;
+      }
+   }
+
+   if (fixup_derefs) {
+      NIR_PASS_V(nir, nir_fixup_deref_modes);
+      NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+      NIR_PASS(_, nir, nir_opt_dce);
+   }
+}
+
+static void
 merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 {
    /* The Vulkan 1.0.38 spec, section 21.1 Tessellator says:
@@ -2539,34 +2572,7 @@ radv_pipeline_link_fs(struct radv_pipeline_stage *fs_stage,
 {
    assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   bool fixup_derefs = false;
-
-   nir_foreach_shader_out_variable(var, fs_stage->nir) {
-      int idx = var->data.location;
-      idx -= FRAG_RESULT_DATA0;
-
-      if (idx < 0)
-         continue;
-
-      unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
-      unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
-
-      if (col_format == V_028714_SPI_SHADER_ZERO ||
-          (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
-           !pipeline_key->ps.mrt0_is_dual_src)) {
-         /* Remove the color export if it's unused or in presence of holes. */
-         fs_stage->nir->info.outputs_written &= ~BITFIELD64_BIT(var->data.location);
-         var->data.location = 0;
-         var->data.mode = nir_var_shader_temp;
-         fixup_derefs = true;
-      }
-   }
-
-   if (fixup_derefs) {
-      NIR_PASS_V(fs_stage->nir, nir_fixup_deref_modes);
-      NIR_PASS(_, fs_stage->nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-      NIR_PASS(_, fs_stage->nir, nir_opt_dce);
-   }
+   radv_remove_color_exports(pipeline_key, fs_stage->nir);
 
    nir_foreach_shader_out_variable(var, fs_stage->nir) {
       var->data.driver_location = var->data.location + var->data.index;
