@@ -2934,6 +2934,16 @@ v3dv_GetImageSparseMemoryRequirements2(
    *pSparseMemoryRequirementCount = 0;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+v3dv_GetDeviceImageSparseMemoryRequirementsKHR(
+    VkDevice device,
+    const VkDeviceImageMemoryRequirements *pInfo,
+    uint32_t *pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+{
+   *pSparseMemoryRequirementCount = 0;
+}
+
 /* vk_icd.h does not declare this function, so we declare it here to
  * suppress Wmissing-prototypes.
  */
