@@ -710,7 +710,10 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
       pipe_resource_reference(&trans->staging_prsc, NULL);
    }
 
-   if (!(ptrans->usage & PIPE_MAP_UNSYNCHRONIZED)) {
+   if (trans->upload_ptr) {
+      fd_bo_upload(rsc->bo, trans->upload_ptr, ptrans->box.x, ptrans->box.width);
+      free(trans->upload_ptr);
+   } else if (!(ptrans->usage & PIPE_MAP_UNSYNCHRONIZED)) {
       fd_bo_cpu_fini(rsc->bo);
    }
 
@@ -788,6 +791,13 @@ resource_transfer_map_unsync(struct pipe_context *pctx,
    enum pipe_format format = prsc->format;
    uint32_t offset;
    char *buf;
+
+   if ((prsc->target == PIPE_BUFFER) &&
+       !(usage & (PIPE_MAP_READ | PIPE_MAP_DIRECTLY | PIPE_MAP_PERSISTENT)) &&
+       fd_bo_prefer_upload(rsc->bo, box->width)) {
+      trans->upload_ptr = malloc(box->width);
+      return trans->upload_ptr;
+   }
 
    buf = fd_bo_map(rsc->bo);
 
