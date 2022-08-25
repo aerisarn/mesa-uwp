@@ -210,39 +210,12 @@ regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_size)
    return a_reg > b_reg ? (a_reg - b_reg < b_size) : (b_reg - a_reg < a_size);
 }
 
-template <bool Valu, bool Vintrp, bool Salu>
-bool
-handle_raw_hazard_instr(aco_ptr<Instruction>& pred, PhysReg reg, int* nops_needed, uint32_t* mask)
-{
-   unsigned mask_size = util_last_bit(*mask);
-
-   uint32_t writemask = 0;
-   for (Definition& def : pred->definitions) {
-      if (regs_intersect(reg, mask_size, def.physReg(), def.size())) {
-         unsigned start = def.physReg() > reg ? def.physReg() - reg : 0;
-         unsigned end = MIN2(mask_size, start + def.size());
-         writemask |= u_bit_consecutive(start, end - start);
-      }
-   }
-
-   bool is_hazard = writemask != 0 && ((pred->isVALU() && Valu) || (pred->isVINTRP() && Vintrp) ||
-                                       (pred->isSALU() && Salu));
-   if (is_hazard)
-      return true;
-
-   *mask &= ~writemask;
-   *nops_needed = MAX2(*nops_needed - get_wait_states(pred), 0);
-
-   if (*mask == 0)
-      *nops_needed = 0;
-
-   return *nops_needed == 0;
-}
-
-template <bool Valu, bool Vintrp, bool Salu>
-int
-handle_raw_hazard_internal(State& state, Block* block, int nops_needed, PhysReg reg, uint32_t mask,
-                           bool start_at_end)
+template <typename GlobalState, typename BlockState,
+          bool (*block_cb)(GlobalState&, BlockState&, Block*),
+          bool (*instr_cb)(GlobalState&, BlockState&, aco_ptr<Instruction>&)>
+void
+search_backwards_internal(State& state, GlobalState& global_state, BlockState block_state,
+                          Block* block, bool start_at_end)
 {
    if (block == state.block && start_at_end) {
       /* If it's the current block, block->instructions is incomplete. */
@@ -250,27 +223,78 @@ handle_raw_hazard_internal(State& state, Block* block, int nops_needed, PhysReg 
          aco_ptr<Instruction>& instr = state.old_instructions[pred_idx];
          if (!instr)
             break; /* Instruction has been moved to block->instructions. */
-         if (handle_raw_hazard_instr<Valu, Vintrp, Salu>(instr, reg, &nops_needed, &mask))
-            return nops_needed;
+         if (instr_cb(global_state, block_state, instr))
+            return;
       }
    }
+
    for (int pred_idx = block->instructions.size() - 1; pred_idx >= 0; pred_idx--) {
-      if (handle_raw_hazard_instr<Valu, Vintrp, Salu>(block->instructions[pred_idx], reg,
-                                                      &nops_needed, &mask))
-         return nops_needed;
+      if (instr_cb(global_state, block_state, block->instructions[pred_idx]))
+         return;
    }
 
-   int res = 0;
+PRAGMA_DIAGNOSTIC_PUSH
+PRAGMA_DIAGNOSTIC_IGNORED(-Waddress)
+   if (block_cb != nullptr && !block_cb(global_state, block_state, block))
+      return;
+PRAGMA_DIAGNOSTIC_POP
 
-   /* Loops require branch instructions, which count towards the wait
-    * states. So even with loops this should finish unless nops_needed is some
-    * huge value. */
    for (unsigned lin_pred : block->linear_preds) {
-      res =
-         std::max(res, handle_raw_hazard_internal<Valu, Vintrp, Salu>(
-                          state, &state.program->blocks[lin_pred], nops_needed, reg, mask, true));
+      search_backwards_internal<GlobalState, BlockState, block_cb, instr_cb>(
+         state, global_state, block_state, &state.program->blocks[lin_pred], true);
    }
-   return res;
+}
+
+template <typename GlobalState, typename BlockState,
+          bool (*block_cb)(GlobalState&, BlockState&, Block*),
+          bool (*instr_cb)(GlobalState&, BlockState&, aco_ptr<Instruction>&)>
+void
+search_backwards(State& state, GlobalState& global_state, BlockState& block_state)
+{
+   search_backwards_internal<GlobalState, BlockState, block_cb, instr_cb>(
+      state, global_state, block_state, state.block, false);
+}
+
+struct HandleRawHazardGlobalState {
+   PhysReg reg;
+   int nops_needed;
+};
+
+struct HandleRawHazardBlockState {
+   uint32_t mask;
+   int nops_needed;
+};
+
+template <bool Valu, bool Vintrp, bool Salu>
+bool
+handle_raw_hazard_instr(HandleRawHazardGlobalState& global_state,
+                        HandleRawHazardBlockState& block_state, aco_ptr<Instruction>& pred)
+{
+   unsigned mask_size = util_last_bit(block_state.mask);
+
+   uint32_t writemask = 0;
+   for (Definition& def : pred->definitions) {
+      if (regs_intersect(global_state.reg, mask_size, def.physReg(), def.size())) {
+         unsigned start = def.physReg() > global_state.reg ? def.physReg() - global_state.reg : 0;
+         unsigned end = MIN2(mask_size, start + def.size());
+         writemask |= u_bit_consecutive(start, end - start);
+      }
+   }
+
+   bool is_hazard = writemask != 0 && ((pred->isVALU() && Valu) || (pred->isVINTRP() && Vintrp) ||
+                                       (pred->isSALU() && Salu));
+   if (is_hazard) {
+      global_state.nops_needed = MAX2(global_state.nops_needed, block_state.nops_needed);
+      return true;
+   }
+
+   block_state.mask &= ~writemask;
+   block_state.nops_needed = MAX2(block_state.nops_needed - get_wait_states(pred), 0);
+
+   if (block_state.mask == 0)
+      block_state.nops_needed = 0;
+
+   return block_state.nops_needed == 0;
 }
 
 template <bool Valu, bool Vintrp, bool Salu>
@@ -279,9 +303,17 @@ handle_raw_hazard(State& state, int* NOPs, int min_states, Operand op)
 {
    if (*NOPs >= min_states)
       return;
-   int res = handle_raw_hazard_internal<Valu, Vintrp, Salu>(
-      state, state.block, min_states, op.physReg(), u_bit_consecutive(0, op.size()), false);
-   *NOPs = MAX2(*NOPs, res);
+
+   HandleRawHazardGlobalState global = {op.physReg(), 0};
+   HandleRawHazardBlockState block = {u_bit_consecutive(0, op.size()), min_states};
+
+   /* Loops require branch instructions, which count towards the wait
+    * states. So even with loops this should finish unless nops_needed is some
+    * huge value. */
+   search_backwards<HandleRawHazardGlobalState, HandleRawHazardBlockState, nullptr,
+                    handle_raw_hazard_instr<Valu, Vintrp, Salu>>(state, global, block);
+
+   *NOPs = MAX2(*NOPs, global.nops_needed);
 }
 
 static auto handle_valu_then_read_hazard = handle_raw_hazard<true, true, false>;
