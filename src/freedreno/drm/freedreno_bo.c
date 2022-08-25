@@ -487,14 +487,14 @@ fd_bo_map(struct fd_bo *bo)
 }
 
 void
-fd_bo_upload(struct fd_bo *bo, void *src, unsigned len)
+fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
 {
    if (bo->funcs->upload) {
-      bo->funcs->upload(bo, src, len);
+      bo->funcs->upload(bo, src, off, len);
       return;
    }
 
-   memcpy(bo_map(bo), src, len);
+   memcpy((uint8_t *)bo_map(bo) + off, src, len);
 }
 
 bool

@@ -202,9 +202,8 @@ bo_upload(struct fd_bo *bo, unsigned off, void *src, unsigned len)
 }
 
 static void
-virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
+virtio_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len)
 {
-   unsigned off = 0;
    while (len > 0) {
       unsigned sz = MIN2(len, 0x1000);
       bo_upload(bo, off, src, sz);

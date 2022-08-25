@@ -312,7 +312,7 @@ struct fd_bo_funcs {
     * Optional, copy data into bo, falls back to mmap+memcpy.  If not
     * implemented, it must be possible to mmap all buffers
     */
-   void (*upload)(struct fd_bo *bo, void *src, unsigned len);
+   void (*upload)(struct fd_bo *bo, void *src, unsigned off, unsigned len);
 
    /**
     * Optional, if upload is supported, should upload be preferred?
