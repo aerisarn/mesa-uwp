@@ -1012,7 +1012,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
 }
 
 static void
-handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_prim_id, bool export_clip_dists,
+handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_clip_dists,
                        const struct radv_vs_output_info *outinfo)
 {
    struct radv_shader_output_values *outputs;
@@ -1157,8 +1157,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->shader_info->is_ngg)
          break; /* Lowered in NIR */
       else
-         handle_vs_outputs_post(ctx, ctx->shader_info->vs.outinfo.export_prim_id,
-                                ctx->shader_info->vs.outinfo.export_clip_dists,
+         handle_vs_outputs_post(ctx, ctx->shader_info->vs.outinfo.export_clip_dists,
                                 &ctx->shader_info->vs.outinfo);
       break;
    case MESA_SHADER_FRAGMENT:
@@ -1178,8 +1177,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->shader_info->is_ngg)
          break; /* Lowered in NIR */
       else
-         handle_vs_outputs_post(ctx, ctx->shader_info->tes.outinfo.export_prim_id,
-                                ctx->shader_info->tes.outinfo.export_clip_dists,
+         handle_vs_outputs_post(ctx, ctx->shader_info->tes.outinfo.export_clip_dists,
                                 &ctx->shader_info->tes.outinfo);
       break;
    default:
@@ -1204,9 +1202,7 @@ radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
                                          ? &ctx->shader_info->tes.outinfo
                                          : &ctx->shader_info->vs.outinfo;
 
-   handle_vs_outputs_post(ctx, false,
-                          outinfo->export_clip_dists,
-                          outinfo);
+   handle_vs_outputs_post(ctx, outinfo->export_clip_dists, outinfo);
 }
 
 static void
@@ -1696,7 +1692,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
          radv_emit_streamout(ctx, stream);
 
       if (stream == 0) {
-         handle_vs_outputs_post(ctx, false, ctx->shader_info->vs.outinfo.export_clip_dists,
+         handle_vs_outputs_post(ctx, ctx->shader_info->vs.outinfo.export_clip_dists,
                                 &ctx->shader_info->vs.outinfo);
       }
 
