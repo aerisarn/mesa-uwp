@@ -1842,6 +1842,11 @@ struct v3dv_pipeline_layout {
    uint32_t dynamic_offset_count;
    uint32_t push_constant_size;
 
+   /* Pipeline layouts can be destroyed after creating pipelines since
+    * maintenance4.
+    */
+   uint32_t ref_cnt;
+
    unsigned char sha1[20];
 };
 
@@ -1849,6 +1854,23 @@ void
 v3dv_pipeline_layout_destroy(struct v3dv_device *device,
                              struct v3dv_pipeline_layout *layout,
                              const VkAllocationCallbacks *alloc);
+
+static inline void
+v3dv_pipeline_layout_ref(struct v3dv_pipeline_layout *layout)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   p_atomic_inc(&layout->ref_cnt);
+}
+
+static inline void
+v3dv_pipeline_layout_unref(struct v3dv_device *device,
+                           struct v3dv_pipeline_layout *layout,
+                           const VkAllocationCallbacks *alloc)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&layout->ref_cnt))
+      v3dv_pipeline_layout_destroy(device, layout, alloc);
+}
 
 /*
  * We are using descriptor maps for ubo/ssbo and texture/samplers, so we need

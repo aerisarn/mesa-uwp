@@ -150,6 +150,9 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
    if (pipeline->executables.mem_ctx)
       ralloc_free(pipeline->executables.mem_ctx);
 
+   if (pipeline->layout)
+      v3dv_pipeline_layout_unref(device, pipeline->layout, pAllocator);
+
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
@@ -3025,6 +3028,8 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    /* This must be done after the pipeline has been compiled */
    pipeline_set_ez_state(pipeline, ds_info);
 
+   v3dv_pipeline_layout_ref(pipeline->layout);
+
    return result;
 }
 
@@ -3265,6 +3270,10 @@ compute_pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->layout = layout;
 
    VkResult result = pipeline_compile_compute(pipeline, cache, info, alloc);
+   if (result != VK_SUCCESS)
+      return result;
+
+   v3dv_pipeline_layout_ref(pipeline->layout);
 
    return result;
 }

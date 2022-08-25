@@ -339,6 +339,7 @@ v3dv_CreatePipelineLayout(VkDevice _device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    layout->num_sets = pCreateInfo->setLayoutCount;
+   layout->ref_cnt = 1;
 
    uint32_t dynamic_offset_count = 0;
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
@@ -405,7 +406,7 @@ v3dv_DestroyPipelineLayout(VkDevice _device,
    if (!pipeline_layout)
       return;
 
-   v3dv_pipeline_layout_destroy(device, pipeline_layout, pAllocator);
+   v3dv_pipeline_layout_unref(device, pipeline_layout, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
