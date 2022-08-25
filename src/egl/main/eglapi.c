@@ -95,8 +95,8 @@
 #include <string.h>
 #include "c11/threads.h"
 #include "util/debug.h"
-#include "util/log.h"
 #include "util/macros.h"
+#include "util/perf/cpu_trace.h"
 
 #include "egldefines.h"
 #include "eglglobals.h"

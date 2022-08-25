@@ -28,6 +28,7 @@
 
 #include "freedreno_priv.h"
 
+#include "util/perf/cpu_trace.h"
 #include "util/u_atomic.h"
 #include "util/slab.h"
 #include "util/timespec.h"
