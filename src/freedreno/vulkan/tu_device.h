@@ -21,6 +21,7 @@
 #include "tu_util.h"
 
 #include "util/vma.h"
+#include "util/u_vector.h"
 
 /* queue types */
 #define TU_QUEUE_GENERAL 0
@@ -153,7 +154,7 @@ struct tu_queue
 
    uint32_t msm_queue_id;
 
-   int64_t last_submit_timestamp; /* timestamp of the last queue submission for kgsl */
+   int fence;           /* timestamp/fence of the last queue submission */
 };
 VK_DEFINE_HANDLE_CASTS(tu_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
@@ -316,6 +317,12 @@ struct tu_device
     * allocated on the device.
     */
    struct util_sparse_array bo_map;
+
+   /* We cannot immediately free VMA when freeing BO, kernel truly
+    * frees BO when it stops being busy.
+    * So we have to free our VMA only after the kernel does it.
+    */
+   struct u_vector zombie_vmas;
 
    /* Command streams to set pass index to a scratch reg */
    struct tu_cs *perfcntrs_pass_cs;

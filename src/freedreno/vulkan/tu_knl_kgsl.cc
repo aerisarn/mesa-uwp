@@ -941,11 +941,11 @@ kgsl_queue_submit(struct tu_queue *queue, struct vk_queue_submit *vk_submit)
       }
 
       struct kgsl_syncobj last_submit_sync;
-      if (queue->last_submit_timestamp >= 0)
+      if (queue->fence >= 0)
          last_submit_sync = (struct kgsl_syncobj) {
             .state = KGSL_SYNCOBJ_STATE_TS,
             .queue = queue,
-            .timestamp = queue->last_submit_timestamp,
+            .timestamp = queue->fence,
          };
       else
          last_submit_sync = (struct kgsl_syncobj) {
@@ -1124,7 +1124,7 @@ kgsl_queue_submit(struct tu_queue *queue, struct vk_queue_submit *vk_submit)
       return result;
    }
 
-   queue->last_submit_timestamp = req.timestamp;
+   p_atomic_set(&queue->fence, req.timestamp);
 
    for (uint32_t i = 0; i < vk_submit->signal_count; i++) {
       struct kgsl_syncobj *signal_sync =

@@ -273,6 +273,100 @@ sync_cache_bo(struct tu_device *dev,
               VkDeviceSize size,
               enum tu_mem_sync_op op);
 
+static inline void
+get_abs_timeout(struct drm_msm_timespec *tv, uint64_t ns)
+{
+   struct timespec t;
+   clock_gettime(CLOCK_MONOTONIC, &t);
+   tv->tv_sec = t.tv_sec + ns / 1000000000;
+   tv->tv_nsec = t.tv_nsec + ns % 1000000000;
+}
+
+static VkResult
+tu_wait_fence(struct tu_device *dev,
+              uint32_t queue_id,
+              int fence,
+              uint64_t timeout_ns)
+{
+   /* fence was created when no work was yet submitted */
+   if (fence < 0)
+      return VK_SUCCESS;
+
+   struct drm_msm_wait_fence req = {
+      .fence = fence,
+      .queueid = queue_id,
+   };
+   int ret;
+
+   get_abs_timeout(&req.timeout, timeout_ns);
+
+   ret = drmCommandWrite(dev->fd, DRM_MSM_WAIT_FENCE, &req, sizeof(req));
+   if (ret) {
+      if (ret == -ETIMEDOUT) {
+         return VK_TIMEOUT;
+      } else {
+         mesa_loge("tu_wait_fence failed! %d (%s)", ret, strerror(errno));
+         return VK_ERROR_UNKNOWN;
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+tu_free_zombie_vma_locked(struct tu_device *dev, bool wait)
+{
+   if (!u_vector_length(&dev->zombie_vmas))
+      return VK_SUCCESS;
+
+   if (wait) {
+      struct tu_zombie_vma *vma = (struct tu_zombie_vma *)
+            u_vector_head(&dev->zombie_vmas);
+      /* Wait for 3s (arbitrary timeout) */
+      VkResult ret = tu_wait_fence(dev, dev->queues[0]->msm_queue_id,
+                                   vma->fence, 3000000000);
+
+      if (ret != VK_SUCCESS)
+         return ret;
+   }
+
+   int last_signaled_fence = -1;
+   while (u_vector_length(&dev->zombie_vmas) > 0) {
+      struct tu_zombie_vma *vma = (struct tu_zombie_vma *)
+            u_vector_tail(&dev->zombie_vmas);
+      if (vma->fence > last_signaled_fence) {
+         VkResult ret =
+            tu_wait_fence(dev, dev->queues[0]->msm_queue_id, vma->fence, 0);
+         if (ret != VK_SUCCESS)
+            return ret;
+
+         last_signaled_fence = vma->fence;
+      }
+
+      /* Ensure that internal kernel's vma is freed. */
+      struct drm_msm_gem_info req = {
+         .handle = vma->gem_handle,
+         .info = MSM_INFO_SET_IOVA,
+         .value = 0,
+      };
+
+      int ret =
+         drmCommandWriteRead(dev->fd, DRM_MSM_GEM_INFO, &req, sizeof(req));
+      if (ret < 0) {
+         mesa_loge("MSM_INFO_SET_IOVA(0) failed! %d (%s)", ret,
+                   strerror(errno));
+         return VK_ERROR_UNKNOWN;
+      }
+
+      tu_gem_close(dev, vma->gem_handle);
+
+      util_vma_heap_free(&dev->vma, vma->iova, vma->size);
+      u_vector_remove(&dev->zombie_vmas);
+   }
+
+   return VK_SUCCESS;
+}
+
 static VkResult
 tu_allocate_userspace_iova(struct tu_device *dev,
                            uint32_t gem_handle,
@@ -285,13 +379,24 @@ tu_allocate_userspace_iova(struct tu_device *dev,
 
    *iova = 0;
 
+   tu_free_zombie_vma_locked(dev, false);
+
    if (flags & TU_BO_ALLOC_REPLAYABLE) {
       if (client_iova) {
-         if (util_vma_heap_alloc_addr(&dev->vma, client_iova,
-                                      size)) {
+         if (util_vma_heap_alloc_addr(&dev->vma, client_iova, size)) {
             *iova = client_iova;
          } else {
-            return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+            /* Address may be already freed by us, but not considered as
+             * freed by the kernel. We have to wait until all work that
+             * may hold the address is done. Since addresses are meant to
+             * be replayed only by debug tooling, it should be ok to wait.
+             */
+            if (tu_free_zombie_vma_locked(dev, true) == VK_SUCCESS &&
+                util_vma_heap_alloc_addr(&dev->vma, client_iova, size)) {
+               *iova = client_iova;
+            } else {
+               return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+            }
          }
       } else {
          /* We have to separate replayable IOVAs from ordinary one in order to
@@ -299,8 +404,7 @@ tu_allocate_userspace_iova(struct tu_device *dev,
           * them from the other end of the address space.
           */
          dev->vma.alloc_high = true;
-         *iova =
-            util_vma_heap_alloc(&dev->vma, size, 0x1000);
+         *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
       }
    } else {
       dev->vma.alloc_high = false;
@@ -320,8 +424,10 @@ tu_allocate_userspace_iova(struct tu_device *dev,
 
    int ret =
       drmCommandWriteRead(dev->fd, DRM_MSM_GEM_INFO, &req, sizeof(req));
-   if (ret < 0)
+   if (ret < 0) {
+      mesa_loge("MSM_INFO_SET_IOVA failed! %d (%s)", ret, strerror(errno));
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
 
    return VK_SUCCESS;
 }
@@ -620,18 +726,25 @@ msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
 
    if (dev->physical_device->has_set_iova) {
       mtx_lock(&dev->vma_mutex);
-      util_vma_heap_free(&dev->vma, bo->iova, bo->size);
+      struct tu_zombie_vma *vma = (struct tu_zombie_vma *)
+            u_vector_add(&dev->zombie_vmas);
+      vma->gem_handle = bo->gem_handle;
+      vma->iova = bo->iova;
+      vma->size = bo->size;
+      vma->fence = p_atomic_read(&dev->queues[0]->fence);
       mtx_unlock(&dev->vma_mutex);
+
+      memset(bo, 0, sizeof(*bo));
+   } else {
+      /* Our BO structs are stored in a sparse array in the physical device,
+       * so we don't want to free the BO pointer, instead we want to reset it
+       * to 0, to signal that array entry as being free.
+       */
+      uint32_t gem_handle = bo->gem_handle;
+      memset(bo, 0, sizeof(*bo));
+
+      tu_gem_close(dev, gem_handle);
    }
-
-   /* Our BO structs are stored in a sparse array in the physical device,
-    * so we don't want to free the BO pointer, instead we want to reset it
-    * to 0, to signal that array entry as being free.
-    */
-   uint32_t gem_handle = bo->gem_handle;
-   memset(bo, 0, sizeof(*bo));
-
-   tu_gem_close(dev, gem_handle);
 
    u_rwlock_rdunlock(&dev->dma_bo_lock);
 }
@@ -1166,6 +1279,8 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
    if (ret)
       return vk_device_set_lost(&queue->device->vk, "submit failed: %m");
 
+   p_atomic_set(&queue->fence, req.fence);
+
 #if HAVE_PERFETTO
    tu_perfetto_submit(queue->device, queue->device->submit_count);
 #endif
@@ -1230,33 +1345,10 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
    return VK_SUCCESS;
 }
 
-static inline void
-get_abs_timeout(struct drm_msm_timespec *tv, uint64_t ns)
-{
-   struct timespec t;
-   clock_gettime(CLOCK_MONOTONIC, &t);
-   tv->tv_sec = t.tv_sec + ns / 1000000000;
-   tv->tv_nsec = t.tv_nsec + ns % 1000000000;
-}
-
 static VkResult
 msm_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
 {
-   struct drm_msm_wait_fence req = {
-      .fence = syncobj->fence,
-      .queueid = syncobj->msm_queue_id,
-   };
-   int ret;
-
-   get_abs_timeout(&req.timeout, 1000000000);
-
-   ret = drmCommandWrite(dev->fd, DRM_MSM_WAIT_FENCE, &req, sizeof(req));
-   if (ret && (ret != -ETIMEDOUT)) {
-      fprintf(stderr, "wait-fence failed! %d (%s)", ret, strerror(errno));
-      return VK_TIMEOUT;
-   }
-
-   return VK_SUCCESS;
+   return tu_wait_fence(dev, syncobj->msm_queue_id, syncobj->fence, 1000000000);
 }
 
 static VkResult
@@ -1413,18 +1505,8 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
       goto fail;
    }
 
-   /*
-    * device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
-    *                                            &device->va_size);
-    *
-    * If BO is freed while kernel considers it busy, our VMA state gets
-    * desynchronized from kernel's VMA state, because kernel waits
-    * until BO stops being busy. And whether BO is busy decided at
-    * submission granularity.
-    *
-    * Disable this capability until solution is found.
-    */
-   device->has_set_iova = false;
+   device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
+                                              &device->va_size);
 
    /* Even if kernel is new enough, the GPU itself may not support it. */
    device->has_cached_coherent_memory =

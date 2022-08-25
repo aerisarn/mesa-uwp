@@ -78,6 +78,13 @@ struct tu_knl {
    const struct vk_device_entrypoint_table *device_entrypoints;
 };
 
+struct tu_zombie_vma {
+   int fence;
+   uint32_t gem_handle;
+   uint64_t iova;
+   uint64_t size;
+};
+
 struct tu_timeline_sync {
    struct vk_sync base;
 
