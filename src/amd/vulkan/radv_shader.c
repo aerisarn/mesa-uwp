@@ -2348,6 +2348,7 @@ upload_shader_part(struct radv_device *device, struct radv_shader_part_binary *b
       return NULL;
 
    shader_part->ref_count = 1;
+   shader_part->code_size = code_size;
 
    shader_part->alloc = radv_alloc_shader_memory(device, code_size, NULL);
    if (!shader_part->alloc) {

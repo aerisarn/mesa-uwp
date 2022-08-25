@@ -505,6 +505,7 @@ struct radv_shader_part {
 
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
+   uint32_t code_size;
    uint32_t rsrc1;
    uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
