@@ -673,6 +673,10 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          wait_imm imm(state.program->gfx_level, instr->sopp().imm);
          if (imm.vm == 0)
             ctx.sgprs_read_by_VMEM.reset();
+         if (imm.lgkm == 0)
+            ctx.sgprs_read_by_DS.reset();
+      } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt && instr->sopk().imm == 0) {
+         ctx.sgprs_read_by_VMEM_store.reset();
       } else if (instr->opcode == aco_opcode::s_waitcnt_depctr && instr->sopp().imm == 0xffe3) {
          /* Hazard is mitigated by a s_waitcnt_depctr with a magic imm */
          ctx.sgprs_read_by_VMEM.reset();
