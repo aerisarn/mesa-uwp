@@ -28,9 +28,20 @@
 
 #if __has_attribute(cleanup) && __has_attribute(unused)
 
-#define MESA_TRACE_SCOPE(name)                                                \
-   int _mesa_trace_scope_##__LINE__                                           \
-      __attribute__((cleanup(mesa_trace_scope_end), unused)) =                \
+#define _MESA_TRACE_SCOPE_VAR_CONCAT(name, suffix) name##suffix
+#define _MESA_TRACE_SCOPE_VAR(suffix)                                        \
+   _MESA_TRACE_SCOPE_VAR_CONCAT(_mesa_trace_scope_, suffix)
+
+/* This must expand to a single non-scoped statement for
+ *
+ *    if (cond)
+ *       MESA_TRACE_SCOPE(...)
+ *
+ * to work.
+ */
+#define MESA_TRACE_SCOPE(name)                                               \
+   int _MESA_TRACE_SCOPE_VAR(__LINE__)                                       \
+      __attribute__((cleanup(mesa_trace_scope_end), unused)) =               \
          mesa_trace_scope_begin(name)
 
 static inline int
