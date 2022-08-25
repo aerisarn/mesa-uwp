@@ -2058,7 +2058,6 @@ struct radv_graphics_pipeline {
    struct radv_shader *streamout_shader;
 
    unsigned rast_prim;
-   float line_width;
 
    /* For vk_graphics_pipeline_state */
    void *state_data;

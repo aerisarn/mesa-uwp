@@ -1429,8 +1429,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim) ||
-       cmd_buffer->state.emitted_graphics_pipeline->line_width != pipeline->line_width)
+       radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim))
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
@@ -3210,7 +3209,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT))
       radv_emit_viewport(cmd_buffer);
 
-   if (states & (RADV_CMD_DIRTY_DYNAMIC_SCISSOR | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_SCISSOR | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+                 RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH) &&
        !cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
       radv_emit_scissor(cmd_buffer);
 
@@ -5552,9 +5552,6 @@ VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-
-   if (cmd_buffer->state.dynamic.line_width != lineWidth)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 
    cmd_buffer->state.dynamic.line_width = lineWidth;
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
