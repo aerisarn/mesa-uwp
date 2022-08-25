@@ -657,6 +657,31 @@ radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
    pdevice->num_queues = idx;
 }
 
+static void
+radv_get_binning_settings(const struct radv_physical_device *pdevice,
+                          struct radv_binning_settings *settings)
+{
+   if (pdevice->rad_info.has_dedicated_vram) {
+      if (pdevice->rad_info.max_render_backends > 4) {
+         settings->context_states_per_bin = 1;
+         settings->persistent_states_per_bin = 1;
+      } else {
+         settings->context_states_per_bin = 3;
+         settings->persistent_states_per_bin = 8;
+      }
+      settings->fpovs_per_batch = 63;
+   } else {
+      /* The context states are affected by the scissor bug. */
+      settings->context_states_per_bin = 6;
+      /* 32 causes hangs for RAVEN. */
+      settings->persistent_states_per_bin = 16;
+      settings->fpovs_per_batch = 63;
+   }
+
+   if (pdevice->rad_info.has_gfx9_scissor_bug)
+      settings->context_states_per_bin = 1;
+}
+
 static VkResult
 radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm_device,
                                 struct radv_physical_device **device_out)
@@ -901,6 +926,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    ac_get_hs_info(&device->rad_info, &device->hs);
    ac_get_task_info(&device->rad_info, &device->task_info);
+   radv_get_binning_settings(device, &device->binning_settings);
 
    *device_out = device;
 

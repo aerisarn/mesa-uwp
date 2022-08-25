@@ -1401,16 +1401,15 @@ radv_emit_batch_break_on_new_ps(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->device->pbb_allowed)
       return;
 
-   struct radv_binning_settings settings =
-      radv_get_binning_settings(cmd_buffer->device->physical_device);
+   struct radv_binning_settings *settings = &cmd_buffer->device->physical_device->binning_settings;
    bool break_for_new_ps =
       (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT] !=
           cmd_buffer->state.graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT]) &&
-      (settings.context_states_per_bin > 1 || settings.persistent_states_per_bin > 1);
+      (settings->context_states_per_bin > 1 || settings->persistent_states_per_bin > 1);
    bool break_for_new_cb_target_mask =
       (cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE) &&
-      settings.context_states_per_bin > 1;
+      settings->context_states_per_bin > 1;
 
    if (!break_for_new_ps && !break_for_new_cb_target_mask)
       return;

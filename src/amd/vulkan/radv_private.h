@@ -262,6 +262,12 @@ enum radv_queue_family {
 
 struct radv_perfcounter_desc;
 
+struct radv_binning_settings {
+   unsigned context_states_per_bin;    /* allowed range: [1, 6] */
+   unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
+   unsigned fpovs_per_batch;           /* allowed range: [0, 255], 0 = unlimited */
+};
+
 struct radv_physical_device {
    struct vk_physical_device vk;
 
@@ -338,6 +344,8 @@ struct radv_physical_device {
 
    struct ac_hs_info hs;
    struct ac_task_info task_info;
+
+   struct radv_binning_settings binning_settings;
 
    /* Performance counters. */
    struct ac_perfcounters ac_perfcounters;
@@ -2173,14 +2181,6 @@ VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
-
-struct radv_binning_settings {
-   unsigned context_states_per_bin;    /* allowed range: [1, 6] */
-   unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
-   unsigned fpovs_per_batch;           /* allowed range: [0, 255], 0 = unlimited */
-};
-
-struct radv_binning_settings radv_get_binning_settings(const struct radv_physical_device *pdev);
 
 struct vk_format_description;
 uint32_t radv_translate_buffer_dataformat(const struct util_format_description *desc,

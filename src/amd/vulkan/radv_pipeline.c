@@ -5128,33 +5128,6 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
    pipeline->binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
 }
 
-struct radv_binning_settings
-radv_get_binning_settings(const struct radv_physical_device *pdev)
-{
-   struct radv_binning_settings settings;
-   if (pdev->rad_info.has_dedicated_vram) {
-      if (pdev->rad_info.max_render_backends > 4) {
-         settings.context_states_per_bin = 1;
-         settings.persistent_states_per_bin = 1;
-      } else {
-         settings.context_states_per_bin = 3;
-         settings.persistent_states_per_bin = 8;
-      }
-      settings.fpovs_per_batch = 63;
-   } else {
-      /* The context states are affected by the scissor bug. */
-      settings.context_states_per_bin = 6;
-      /* 32 causes hangs for RAVEN. */
-      settings.persistent_states_per_bin = 16;
-      settings.fpovs_per_batch = 63;
-   }
-
-   if (pdev->rad_info.has_gfx9_scissor_bug)
-      settings.context_states_per_bin = 1;
-
-   return settings;
-}
-
 static void
 radv_pipeline_init_binning_state(struct radv_graphics_pipeline *pipeline,
                                  const struct radv_blend_state *blend,
@@ -5174,17 +5147,17 @@ radv_pipeline_init_binning_state(struct radv_graphics_pipeline *pipeline,
       unreachable("Unhandled generation for binning bin size calculation");
 
    if (device->pbb_allowed && bin_size.width && bin_size.height) {
-      struct radv_binning_settings settings = radv_get_binning_settings(device->physical_device);
+      struct radv_binning_settings *settings = &device->physical_device->binning_settings;
 
       const uint32_t pa_sc_binner_cntl_0 =
          S_028C44_BINNING_MODE(V_028C44_BINNING_ALLOWED) |
          S_028C44_BIN_SIZE_X(bin_size.width == 16) | S_028C44_BIN_SIZE_Y(bin_size.height == 16) |
          S_028C44_BIN_SIZE_X_EXTEND(util_logbase2(MAX2(bin_size.width, 32)) - 5) |
          S_028C44_BIN_SIZE_Y_EXTEND(util_logbase2(MAX2(bin_size.height, 32)) - 5) |
-         S_028C44_CONTEXT_STATES_PER_BIN(settings.context_states_per_bin - 1) |
-         S_028C44_PERSISTENT_STATES_PER_BIN(settings.persistent_states_per_bin - 1) |
+         S_028C44_CONTEXT_STATES_PER_BIN(settings->context_states_per_bin - 1) |
+         S_028C44_PERSISTENT_STATES_PER_BIN(settings->persistent_states_per_bin - 1) |
          S_028C44_DISABLE_START_OF_PRIM(1) |
-         S_028C44_FPOVS_PER_BATCH(settings.fpovs_per_batch) | S_028C44_OPTIMAL_BIN_SELECTION(1);
+         S_028C44_FPOVS_PER_BATCH(settings->fpovs_per_batch) | S_028C44_OPTIMAL_BIN_SELECTION(1);
 
       pipeline->binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
    } else
