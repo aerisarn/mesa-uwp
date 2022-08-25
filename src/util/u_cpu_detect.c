@@ -589,6 +589,7 @@ util_cpu_detect_once(void)
 {
    int available_cpus = 0;
    int total_cpus = 0;
+   const char *override_cpu_caps = debug_get_option("GALLIUM_OVERRIDE_CPU_CAPS", NULL);
 
    memset(&util_cpu_caps, 0, sizeof util_cpu_caps);
 
@@ -804,6 +805,22 @@ util_cpu_detect_once(void)
    }
 #endif
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+
+   if (override_cpu_caps != NULL) {
+#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+      if (!strcmp(override_cpu_caps, "nosse")) {
+         util_cpu_caps.has_sse = 0;
+      } else if (!strcmp(override_cpu_caps, "sse")) {
+         util_cpu_caps.has_sse2 = 0;
+      } else if (!strcmp(override_cpu_caps, "sse2")) {
+         util_cpu_caps.has_sse3 = 0;
+      } else if (!strcmp(override_cpu_caps, "sse3")) {
+         util_cpu_caps.has_sse4_1 = 0;
+      } else if (!strcmp(override_cpu_caps, "sse4.1")) {
+         util_cpu_caps.has_avx = 0;
+      }
+#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+   }
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
    if (!util_cpu_caps.has_sse) {
