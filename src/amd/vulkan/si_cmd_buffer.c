@@ -715,12 +715,10 @@ si_intersect_scissor(const VkRect2D *a, const VkRect2D *b)
 
 void
 si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors,
-                  const VkViewport *viewports, unsigned rast_prim, float line_width)
+                  const VkViewport *viewports)
 {
    int i;
-   float scale[3], translate[3], guardband_x = INFINITY, guardband_y = INFINITY;
-   float discard_x = 1.0f, discard_y = 1.0f;
-   const float max_range = 32767.0f;
+
    if (!count)
       return;
 
@@ -729,6 +727,25 @@ si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors,
       VkRect2D viewport_scissor = si_scissor_from_viewport(viewports + i);
       VkRect2D scissor = si_intersect_scissor(&scissors[i], &viewport_scissor);
 
+      radeon_emit(cs, S_028250_TL_X(scissor.offset.x) | S_028250_TL_Y(scissor.offset.y) |
+                         S_028250_WINDOW_OFFSET_DISABLE(1));
+      radeon_emit(cs, S_028254_BR_X(scissor.offset.x + scissor.extent.width) |
+                         S_028254_BR_Y(scissor.offset.y + scissor.extent.height));
+   }
+}
+
+void
+si_write_guardband(struct radeon_cmdbuf *cs, int count, const VkViewport *viewports,
+                   unsigned rast_prim, float line_width)
+{
+   int i;
+   float scale[3], translate[3], guardband_x = INFINITY, guardband_y = INFINITY;
+   float discard_x = 1.0f, discard_y = 1.0f;
+   const float max_range = 32767.0f;
+   if (!count)
+      return;
+
+   for (i = 0; i < count; i++) {
       radv_get_viewport_xform(viewports + i, scale, translate);
       scale[0] = fabsf(scale[0]);
       scale[1] = fabsf(scale[1]);
@@ -740,11 +757,6 @@ si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors,
 
       guardband_x = MIN2(guardband_x, (max_range - fabsf(translate[0])) / scale[0]);
       guardband_y = MIN2(guardband_y, (max_range - fabsf(translate[1])) / scale[1]);
-
-      radeon_emit(cs, S_028250_TL_X(scissor.offset.x) | S_028250_TL_Y(scissor.offset.y) |
-                         S_028250_WINDOW_OFFSET_DISABLE(1));
-      radeon_emit(cs, S_028254_BR_X(scissor.offset.x + scissor.extent.width) |
-                         S_028254_BR_Y(scissor.offset.y + scissor.extent.height));
 
       if (radv_rast_prim_is_points_or_lines(rast_prim)) {
          /* When rendering wide points or lines, we need to be more conservative about when to

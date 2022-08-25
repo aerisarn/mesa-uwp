@@ -1564,8 +1564,10 @@ radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs
    }
 
    si_write_scissors(cs, count, cmd_buffer->state.dynamic.scissor.scissors,
-                     cmd_buffer->state.dynamic.viewport.viewports, rast_prim,
-                     cmd_buffer->state.dynamic.line_width);
+                     cmd_buffer->state.dynamic.viewport.viewports);
+
+   si_write_guardband(cs, count, cmd_buffer->state.dynamic.viewport.viewports, rast_prim,
+                      cmd_buffer->state.dynamic.line_width);
 }
 
 static void
