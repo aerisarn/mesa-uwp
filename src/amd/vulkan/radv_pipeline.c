@@ -197,6 +197,9 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
+      if (graphics_pipeline->ps_epilog)
+         radv_shader_part_unref(device, graphics_pipeline->ps_epilog);
+
       vk_free(&device->vk.alloc, graphics_pipeline->state_data);
    } else if (pipeline->type == RADV_PIPELINE_COMPUTE) {
       struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
@@ -1610,6 +1613,12 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
       pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
    }
 
+   /* Import the PS epilog if present. */
+   if (lib->base.ps_epilog) {
+      assert(!pipeline->ps_epilog);
+      pipeline->ps_epilog = radv_shader_part_ref(lib->base.ps_epilog);
+   }
+
    /* Import the pipeline layout. */
    struct radv_pipeline_layout *lib_layout = &lib->layout;
    for (uint32_t s = 0; s < lib_layout->num_sets; s++) {
@@ -2766,7 +2775,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (device->primitives_generated_query)
       key.primitives_generated_query = true;
 
-   key.ps.has_epilog = false; /* TODO: hook up PS epilogs */
+   key.ps.has_epilog = !!pipeline->ps_epilog;
 
    return key;
 }
