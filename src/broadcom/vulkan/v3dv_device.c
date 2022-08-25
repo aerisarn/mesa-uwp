@@ -1581,6 +1581,7 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          MAX_INLINE_UNIFORM_BUFFERS,
       .maxDescriptorSetUpdateAfterBindInlineUniformBlocks =
          MAX_INLINE_UNIFORM_BUFFERS,
+      .maxBufferSize = V3D_MAX_BUFFER_RANGE,
    };
 
    VkPhysicalDeviceVulkan12Properties vk12 = {
