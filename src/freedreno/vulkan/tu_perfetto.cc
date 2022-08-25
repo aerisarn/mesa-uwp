@@ -7,8 +7,8 @@
 
 #include "tu_perfetto.h"
 
-#include "util/u_perfetto.h"
 #include "util/hash_table.h"
+#include "util/perf/u_perfetto.h"
 
 #include "tu_tracepoints.h"
 #include "tu_tracepoints_perfetto.h"

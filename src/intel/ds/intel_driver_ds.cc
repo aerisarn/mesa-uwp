@@ -36,7 +36,7 @@
 
 #ifdef HAVE_PERFETTO
 
-#include "util/u_perfetto.h"
+#include "util/perf/u_perfetto.h"
 
 #include "intel_tracepoints_perfetto.h"
 

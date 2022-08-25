@@ -23,7 +23,7 @@
 
 #include <perfetto.h>
 
-#include "util/u_perfetto.h"
+#include "util/perf/u_perfetto.h"
 
 #include "freedreno_tracepoints.h"
 
