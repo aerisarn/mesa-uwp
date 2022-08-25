@@ -836,6 +836,17 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
 
    Builder bld(state.program, &new_instructions);
 
+   unsigned vm_vsrc = 7;
+   unsigned sa_sdst = 1;
+   if (debug_flags & DEBUG_FORCE_WAITDEPS) {
+      bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0000);
+      vm_vsrc = 0;
+      sa_sdst = 0;
+   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
+      vm_vsrc = (instr->sopp().imm >> 2) & 0x7;
+      sa_sdst = instr->sopp().imm & 0x1;
+   }
+
    /* VMEMtoScalarWriteHazard
     * Handle EXEC/M0/SGPR write following a VMEM/DS instruction without a VALU or "waitcnt vmcnt(0)"
     * in-between.
@@ -857,8 +868,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
             ctx.sgprs_read_by_DS.reset();
       } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt && instr->sopk().imm == 0) {
          ctx.sgprs_read_by_VMEM_store.reset();
-      } else if (instr->opcode == aco_opcode::s_waitcnt_depctr && instr->sopp().imm == 0xffe3) {
-         /* Hazard is mitigated by a s_waitcnt_depctr with a magic imm */
+      } else if (vm_vsrc == 0) {
          ctx.sgprs_read_by_VMEM.reset();
          ctx.sgprs_read_by_DS.reset();
          ctx.sgprs_read_by_VMEM_store.reset();
@@ -914,10 +924,8 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          /* Any VALU instruction that writes an SGPR mitigates the problem */
          ctx.has_nonVALU_exec_read = false;
       }
-   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
-      /* s_waitcnt_depctr can mitigate the problem if it has a magic imm */
-      if ((instr->sopp().imm & 0xfffe) == 0xfffe)
-         ctx.has_nonVALU_exec_read = false;
+   } else if (sa_sdst == 0) {
+      ctx.has_nonVALU_exec_read = false;
    }
 
    /* SMEMtoVectorWriteHazard
@@ -1260,18 +1268,35 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
       ctx.has_Vcmpx = false;
    }
 
+   unsigned va_vdst = parse_vdst_wait(instr);
+   unsigned vm_vsrc = 7;
+   unsigned sa_sdst = 1;
+
+   if (debug_flags & DEBUG_FORCE_WAITDEPS) {
+      bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0000);
+      va_vdst = 0;
+      vm_vsrc = 0;
+      sa_sdst = 0;
+   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
+      /* va_vdst already obtained through parse_vdst_wait(). */
+      vm_vsrc = (instr->sopp().imm >> 2) & 0x7;
+      sa_sdst = instr->sopp().imm & 0x1;
+   }
+
    if (instr->isLDSDIR()) {
       unsigned count = handle_lds_direct_valu_hazard(state, instr);
       LDSDIR_instruction* ldsdir = &instr->ldsdir();
-      ldsdir->wait_vdst = MIN2(ldsdir->wait_vdst, count);
+      if (count < va_vdst) {
+         ldsdir->wait_vdst = MIN2(ldsdir->wait_vdst, count);
+         va_vdst = MIN2(va_vdst, count);
+      }
    }
 
    /* VALUTransUseHazard
     * VALU reads VGPR written by transcendental instruction without 6+ VALU or 2+ transcendental
     * in-between.
     */
-   unsigned va_vdst = 15;
-   if (instr->isVALU() || instr->isVINTERP_INREG()) {
+   if (va_vdst > 0 && (instr->isVALU() || instr->isVINTERP_INREG())) {
       uint8_t num_valu = 15;
       uint8_t num_trans = 15;
       for (Operand& op : instr->operands) {
@@ -1303,16 +1328,16 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
    } else if (state.program->wave_size == 64 && instr->isSALU() &&
               check_read_regs(instr, ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu)) {
       bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xfffe);
-      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu.reset();
-   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr && (instr->sopp().imm & 0x1) == 0) {
-      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu.reset();
+      sa_sdst = 0;
    }
 
-   va_vdst = std::min(va_vdst, parse_vdst_wait(instr));
    if (va_vdst == 0) {
       ctx.valu_since_wr_by_trans.reset();
       ctx.trans_since_wr_by_trans.reset();
    }
+
+   if (sa_sdst == 0)
+      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu.reset();
 
    if (instr->isVALU() || instr->isVINTERP_INREG()) {
       instr_class cls = instr_info.classes[(int)instr->opcode];
@@ -1373,8 +1398,7 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
       for (Operand& op : instr->operands)
          fill_vgpr_bitset(ctx.vgpr_used_by_ds, op.physReg(), op.bytes());
    }
-   if (instr->isVALU() || instr->isVINTERP_INREG() || instr->isEXP() ||
-       (instr->opcode == aco_opcode::s_waitcnt_depctr && ((instr->sopp().imm >> 2) & 0x7) == 0)) {
+   if (instr->isVALU() || instr->isVINTERP_INREG() || instr->isEXP() || vm_vsrc == 0) {
       ctx.vgpr_used_by_vmem_load.reset();
       ctx.vgpr_used_by_vmem_store.reset();
       ctx.vgpr_used_by_ds.reset();
