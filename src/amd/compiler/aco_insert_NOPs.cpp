@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <set>
 #include <stack>
 #include <vector>
 
@@ -865,6 +866,96 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
    }
 }
 
+/* GFX11 */
+unsigned
+parse_vdst_wait(aco_ptr<Instruction>& instr)
+{
+   if (instr->isVMEM() || instr->isFlatLike() || instr->isDS() || instr->isEXP())
+      return 0;
+   else if (instr->isLDSDIR())
+      return instr->ldsdir().wait_vdst;
+   else if (instr->opcode == aco_opcode::s_waitcnt_depctr)
+      return (instr->sopp().imm >> 12) & 0xf;
+   else
+      return 15;
+}
+
+struct LdsDirectVALUHazardGlobalState {
+   unsigned wait_vdst = 15;
+   PhysReg vgpr;
+   std::set<unsigned> loop_headers_visited;
+};
+
+struct LdsDirectVALUHazardBlockState {
+   unsigned num_valu = 0;
+   bool has_trans = false;
+};
+
+bool
+handle_lds_direct_valu_hazard_instr(LdsDirectVALUHazardGlobalState& global_state,
+                                    LdsDirectVALUHazardBlockState& block_state,
+                                    aco_ptr<Instruction>& instr)
+{
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
+      instr_class cls = instr_info.classes[(int)instr->opcode];
+      block_state.has_trans |= cls == instr_class::valu_transcendental32 ||
+                               cls == instr_class::valu_double_transcendental;
+
+      bool uses_vgpr = false;
+      for (Definition& def : instr->definitions)
+         uses_vgpr |= regs_intersect(def.physReg(), def.size(), global_state.vgpr, 1);
+      for (Operand& op : instr->operands) {
+         uses_vgpr |=
+            !op.isConstant() && regs_intersect(op.physReg(), op.size(), global_state.vgpr, 1);
+      }
+      if (uses_vgpr) {
+         /* Transcendentals execute in parallel to other VALU and va_vdst count becomes unusable */
+         global_state.wait_vdst =
+            MIN2(global_state.wait_vdst, block_state.has_trans ? 0 : block_state.num_valu);
+         return true;
+      }
+
+      block_state.num_valu++;
+   }
+
+   if (parse_vdst_wait(instr) == 0)
+      return true;
+
+   return block_state.num_valu >= global_state.wait_vdst;
+}
+
+bool
+handle_lds_direct_valu_hazard_block(LdsDirectVALUHazardGlobalState& global_state,
+                                    LdsDirectVALUHazardBlockState& block_state, Block* block)
+{
+   if (block->kind & block_kind_loop_header) {
+      if (global_state.loop_headers_visited.count(block->index))
+         return false;
+      global_state.loop_headers_visited.insert(block->index);
+   }
+
+   return true;
+}
+
+unsigned
+handle_lds_direct_valu_hazard(State& state, aco_ptr<Instruction>& instr)
+{
+   /* LdsDirectVALUHazard
+    * Handle LDSDIR writing a VGPR after it's used by a VALU instruction.
+    */
+   if (instr->ldsdir().wait_vdst == 0)
+      return 0; /* early exit */
+
+   LdsDirectVALUHazardGlobalState global_state;
+   global_state.wait_vdst = instr->ldsdir().wait_vdst;
+   global_state.vgpr = instr->definitions[0].physReg();
+   LdsDirectVALUHazardBlockState block_state;
+   search_backwards<LdsDirectVALUHazardGlobalState, LdsDirectVALUHazardBlockState,
+                    &handle_lds_direct_valu_hazard_block, &handle_lds_direct_valu_hazard_instr>(
+      state, global_state, block_state);
+   return global_state.wait_vdst;
+}
+
 void
 handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>& instr,
                          std::vector<aco_ptr<Instruction>>& new_instructions)
@@ -885,6 +976,12 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
                Operand(instr->operands[0].physReg(), v1));
    } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
       ctx.has_Vcmpx = false;
+   }
+
+   if (instr->isLDSDIR()) {
+      unsigned count = handle_lds_direct_valu_hazard(state, instr);
+      LDSDIR_instruction* ldsdir = &instr->ldsdir();
+      ldsdir->wait_vdst = MIN2(ldsdir->wait_vdst, count);
    }
 }
 

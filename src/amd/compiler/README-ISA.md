@@ -294,3 +294,11 @@ stability issues: https://reviews.llvm.org/D103348
 ### VcmpxPermlaneHazard
 
 Same as GFX10.
+
+### LdsDirectVALUHazard
+
+Triggered by:
+LDSDIR instruction writing a VGPR soon after it's used by a VALU instruction.
+
+Mitigated by:
+A vdst wait, preferably using the LDSDIR's field.

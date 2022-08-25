@@ -306,3 +306,129 @@ BEGIN_TEST(insert_nops.vmem_to_scalar_write)
 
    finish_insert_nops_test();
 END_TEST
+
+BEGIN_TEST(insert_nops.lds_direct_valu)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   /* WaW */
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* WaR */
+   //! p_unit_test 1
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* No hazard. */
+   //! p_unit_test 2
+   //! v1: %0:v[1] = v_mov_b32 0
+   //! v1: %0:v[0] = lds_direct_load %0:m0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::zero());
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* multiples hazards, nearest should be considered */
+   //! p_unit_test 3
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* independent VALU increase wait_vdst */
+   //! p_unit_test 4
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v_nop
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:1
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.vop1(aco_opcode::v_nop);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   //! p_unit_test 5
+   //! v1: %0:v[0] = v_mov_b32 0
+   //; for i in range(10): insert_pattern('v_nop')
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:10
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   for (unsigned i = 0; i < 10; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   //! p_unit_test 6
+   //! v1: %0:v[0] = v_mov_b32 0
+   //; for i in range(20): insert_pattern('v_nop')
+   //! v1: %0:v[0] = lds_direct_load %0:m0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   for (unsigned i = 0; i < 20; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* transcendental requires wait_vdst=0 */
+   //! p_unit_test 7
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v_nop
+   //! v1: %0:v[1] = v_sqrt_f32 %0:v[1]
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(7));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(257), v1), Operand(PhysReg(257), v1));
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   //! p_unit_test 8
+   //! v1: %0:v[0] = v_sqrt_f32 %0:v[0]
+   //! v_nop
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(8));
+   bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* transcendental is fine if it's before the instruction */
+   //! p_unit_test 9
+   //! v1: %0:v[1] = v_sqrt_f32 %0:v[1]
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v_nop
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:1
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(9));
+   bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(257), v1), Operand(PhysReg(257), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.vop1(aco_opcode::v_nop);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* non-VALU does not increase wait_vdst */
+   //! p_unit_test 10
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s1: %0:m0 = s_mov_b32 0
+   //! v1: %0:v[0] = lds_direct_load %0:m0 wait_vdst:0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(10));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b32, Definition(m0, s1), Operand::zero());
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   /* consider instructions which wait on vdst */
+   //! p_unit_test 11
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! v_nop
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[0] = lds_direct_load %0:m0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(11));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.vop1(aco_opcode::v_nop);
+   bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0fff);
+   bld.ldsdir(aco_opcode::lds_direct_load, Definition(PhysReg(256), v1), Operand(m0, s1));
+
+   finish_insert_nops_test();
+END_TEST
