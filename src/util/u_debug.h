@@ -387,14 +387,8 @@ void debug_funclog_enter_exit(const char* f, const int line, const char* file);
 /**
  * Get option.
  *
- * It is an alias for getenv on Linux.
+ * It is an alias for getenv on Unix and Windows.
  *
- * On Windows it reads C:\gallium.cfg, which is a text file with CR+LF line
- * endings with one option per line as
- *
- *   NAME=value
- *
- * This file must be terminated with an extra empty line.
  */
 const char *
 debug_get_option(const char *name, const char *dfault);
