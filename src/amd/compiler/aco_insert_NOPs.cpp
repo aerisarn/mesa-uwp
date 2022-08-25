@@ -198,9 +198,26 @@ struct NOP_ctx_gfx11 {
    /* VcmpxPermlaneHazard */
    bool has_Vcmpx = false;
 
-   void join(const NOP_ctx_gfx11& other) { has_Vcmpx |= other.has_Vcmpx; }
+   /* LdsDirectVMEMHazard */
+   std::bitset<256> vgpr_used_by_vmem_load;
+   std::bitset<256> vgpr_used_by_vmem_store;
+   std::bitset<256> vgpr_used_by_ds;
 
-   bool operator==(const NOP_ctx_gfx11& other) { return has_Vcmpx == other.has_Vcmpx; }
+   void join(const NOP_ctx_gfx11& other)
+   {
+      has_Vcmpx |= other.has_Vcmpx;
+      vgpr_used_by_vmem_load |= other.vgpr_used_by_vmem_load;
+      vgpr_used_by_vmem_store |= other.vgpr_used_by_vmem_store;
+      vgpr_used_by_ds |= other.vgpr_used_by_ds;
+   }
+
+   bool operator==(const NOP_ctx_gfx11& other)
+   {
+      return has_Vcmpx == other.has_Vcmpx &&
+             vgpr_used_by_vmem_load == other.vgpr_used_by_vmem_load &&
+             vgpr_used_by_vmem_store == other.vgpr_used_by_vmem_store &&
+             vgpr_used_by_ds == other.vgpr_used_by_ds;
+   }
 };
 
 int
@@ -866,6 +883,15 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
    }
 }
 
+void
+fill_vgpr_bitset(std::bitset<256>& set, PhysReg reg, unsigned bytes)
+{
+   if (reg.reg() < 256)
+      return;
+   for (unsigned i = 0; i < DIV_ROUND_UP(bytes, 4); i++)
+      set.set(reg.reg() - 256 + i);
+}
+
 /* GFX11 */
 unsigned
 parse_vdst_wait(aco_ptr<Instruction>& instr)
@@ -982,6 +1008,51 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
       unsigned count = handle_lds_direct_valu_hazard(state, instr);
       LDSDIR_instruction* ldsdir = &instr->ldsdir();
       ldsdir->wait_vdst = MIN2(ldsdir->wait_vdst, count);
+   }
+
+   /* LdsDirectVMEMHazard
+    * Handle LDSDIR writing a VGPR after it's used by a VMEM/DS instruction.
+    */
+   if (instr->isVMEM() || instr->isFlatLike()) {
+      for (Definition& def : instr->definitions)
+         fill_vgpr_bitset(ctx.vgpr_used_by_vmem_store, def.physReg(), def.bytes());
+      if (instr->definitions.empty()) {
+         for (Operand& op : instr->operands)
+            fill_vgpr_bitset(ctx.vgpr_used_by_vmem_store, op.physReg(), op.bytes());
+      } else {
+         for (Operand& op : instr->operands)
+            fill_vgpr_bitset(ctx.vgpr_used_by_vmem_load, op.physReg(), op.bytes());
+      }
+   }
+   if (instr->isDS() || instr->isFlat()) {
+      for (Definition& def : instr->definitions)
+         fill_vgpr_bitset(ctx.vgpr_used_by_ds, def.physReg(), def.bytes());
+      for (Operand& op : instr->operands)
+         fill_vgpr_bitset(ctx.vgpr_used_by_ds, op.physReg(), op.bytes());
+   }
+   if (instr->isVALU() || instr->isVINTERP_INREG() || instr->isEXP() ||
+       (instr->opcode == aco_opcode::s_waitcnt_depctr && ((instr->sopp().imm >> 2) & 0x7) == 0)) {
+      ctx.vgpr_used_by_vmem_load.reset();
+      ctx.vgpr_used_by_vmem_store.reset();
+      ctx.vgpr_used_by_ds.reset();
+   } else if (instr->opcode == aco_opcode::s_waitcnt) {
+      wait_imm imm(GFX11, instr->sopp().imm);
+      if (imm.vm == 0)
+         ctx.vgpr_used_by_vmem_load.reset();
+      if (imm.lgkm == 0)
+         ctx.vgpr_used_by_ds.reset();
+   } else if (instr->opcode == aco_opcode::s_waitcnt_vscnt && instr->sopk().imm == 0) {
+      ctx.vgpr_used_by_vmem_store.reset();
+   }
+   if (instr->isLDSDIR()) {
+      if (ctx.vgpr_used_by_vmem_load[instr->definitions[0].physReg().reg() - 256] ||
+          ctx.vgpr_used_by_vmem_store[instr->definitions[0].physReg().reg() - 256] ||
+          ctx.vgpr_used_by_ds[instr->definitions[0].physReg().reg() - 256]) {
+         bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xffe3);
+         ctx.vgpr_used_by_vmem_load.reset();
+         ctx.vgpr_used_by_vmem_store.reset();
+         ctx.vgpr_used_by_ds.reset();
+      }
    }
 }
 

@@ -302,3 +302,12 @@ LDSDIR instruction writing a VGPR soon after it's used by a VALU instruction.
 
 Mitigated by:
 A vdst wait, preferably using the LDSDIR's field.
+
+### LdsDirectVMEMHazard
+
+Triggered by:
+LDSDIR instruction writing a VGPR after it's used by a VMEM/DS instruction.
+
+Mitigated by:
+Waiting for the VMEM/DS instruction to finish, a VALU or export instruction, or
+`s_waitcnt_depctr 0xffe3`.
