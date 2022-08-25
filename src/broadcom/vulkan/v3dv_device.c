@@ -144,6 +144,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
       .KHR_maintenance3                    = true,
+      .KHR_maintenance4                    = true,
       .KHR_multiview                       = true,
       .KHR_pipeline_executable_properties  = true,
       .KHR_separate_depth_stencil_layouts  = true,
@@ -1174,6 +1175,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
       .pipelineCreationCacheControl = true,
       .privateData = true,
+      .maintenance4 = true,
    };
 
    VkPhysicalDeviceVulkan12Features vk12 = {
