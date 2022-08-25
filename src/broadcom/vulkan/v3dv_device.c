@@ -2494,6 +2494,24 @@ v3dv_GetImageMemoryRequirements2(VkDevice device,
    get_image_memory_requirements(image, pMemoryRequirements);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+v3dv_GetDeviceImageMemoryRequirementsKHR(
+    VkDevice _device,
+    const VkDeviceImageMemoryRequirements *pInfo,
+    VkMemoryRequirements2 *pMemoryRequirements)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   struct v3dv_image image = { 0 };
+   vk_image_init(&device->vk, &image.vk, pInfo->pCreateInfo);
+
+   ASSERTED VkResult result =
+      v3dv_image_init(device, pInfo->pCreateInfo, NULL, &image);
+   assert(result == VK_SUCCESS);
+
+   get_image_memory_requirements(&image, pMemoryRequirements);
+}
+
 static void
 bind_image_memory(const VkBindImageMemoryInfo *info)
 {
