@@ -4270,8 +4270,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    }
 
    SpvId type_void = spirv_builder_type_void(&ctx.builder);
-   SpvId type_main = spirv_builder_type_function(&ctx.builder, type_void,
-                                                 NULL, 0);
+   SpvId type_void_func = spirv_builder_type_function(&ctx.builder, type_void,
+                                                      NULL, 0);
    SpvId entry_point = spirv_builder_new_id(&ctx.builder);
    spirv_builder_emit_name(&ctx.builder, entry_point, "main");
 
@@ -4412,8 +4412,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
                                    SpvExecutionModeXfb);
    }
    spirv_builder_function(&ctx.builder, entry_point, type_void,
-                                            SpvFunctionControlMaskNone,
-                                            type_main);
+                          SpvFunctionControlMaskNone,
+                          type_void_func);
 
    nir_function_impl *entry = nir_shader_get_entrypoint(s);
    nir_metadata_require(entry, nir_metadata_block_index);
