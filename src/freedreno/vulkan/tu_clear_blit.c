@@ -3323,6 +3323,8 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (!dst->store && !dst->store_stencil)
       return;
 
+   trace_start_gmem_store(&cmd->trace, cs);
+
    /* Unconditional store should happen only if attachment was cleared,
     * which could have happened either by load_op or via vkCmdClearAttachments.
     */
@@ -3350,8 +3352,6 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
 
    bool store_common = dst->store && !resolve_d32s8_s8;
    bool store_separate_stencil = dst->store_stencil || resolve_d32s8_s8;
-
-   trace_start_gmem_store(&cmd->trace, cs);
 
    /* use fast path when render area is aligned, except for unsupported resolve cases */
    if (!unaligned && !resolve_d24s8_s8 &&
