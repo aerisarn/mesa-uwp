@@ -654,3 +654,269 @@ BEGIN_TEST(insert_nops.valu_trans_use)
 
    finish_insert_nops_test();
 END_TEST
+
+BEGIN_TEST(insert_nops.valu_partial_forwarding.basic)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   /* Basic case. */
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   /* We should consider both the closest and further VALU after the exec write. */
+   //! p_unit_test 1
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //; for i in range(2): insert_pattern('v_nop')
+   //! v1: %0:v[2] = v_mov_b32 2
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max3_f32 %0:v[0], %0:v[1], %0:v[2]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(258), v1), Operand::c32(2));
+   bld.vop3(aco_opcode::v_max3_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1), Operand(PhysReg(258), v1));
+
+   //! p_unit_test 2
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! v1: %0:v[2] = v_mov_b32 2
+   //; for i in range(4): insert_pattern('v_nop')
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max3_f32 %0:v[0], %0:v[1], %0:v[2]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(258), v1), Operand::c32(2));
+   for (unsigned i = 0; i < 4; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.vop3(aco_opcode::v_max3_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1), Operand(PhysReg(258), v1));
+
+   /* If a VALU writes a read VGPR in-between the first and second writes, it should still be
+    * counted towards the distance between the first and second writes.
+    */
+   //! p_unit_test 3
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //; for i in range(2): insert_pattern('v_nop')
+   //! v1: %0:v[2] = v_mov_b32 2
+   //; for i in range(3): insert_pattern('v_nop')
+   //! v1: %0:v[2] = v_max3_f32 %0:v[0], %0:v[1], %0:v[2]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(258), v1), Operand::c32(2));
+   for (unsigned i = 0; i < 3; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.vop3(aco_opcode::v_max3_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1), Operand(PhysReg(258), v1));
+
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4));
+
+   finish_insert_nops_test();
+END_TEST
+
+BEGIN_TEST(insert_nops.valu_partial_forwarding.multiple_exec_writes)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(0));
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   //! p_unit_test 1
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 0
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! s2: %0:exec = s_mov_b64 -1
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(0));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   finish_insert_nops_test();
+END_TEST
+
+BEGIN_TEST(insert_nops.valu_partial_forwarding.control_flow)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   /* Control flow merges: one branch shouldn't interfere with the other (clobbering VALU closer
+    * than interesting one).
+    */
+   //>> p_unit_test 0
+   //! s_cbranch_scc1 block:BB2
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0u));
+   bld.sopp(aco_opcode::s_cbranch_scc1, 2);
+
+   //! BB1
+   //! /* logical preds: / linear preds: BB0, / kind: */
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v_nop
+   //! s_branch block:BB3
+   bld.reset(program->create_and_insert_block());
+   program->blocks[0].linear_succs.push_back(1);
+   program->blocks[1].linear_preds.push_back(0);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.sopp(aco_opcode::s_branch, 3);
+
+   //! BB2
+   //! /* logical preds: / linear preds: BB0, / kind: */
+   //! v1: %0:v[0] = v_mov_b32 0
+   bld.reset(program->create_and_insert_block());
+   program->blocks[0].linear_succs.push_back(2);
+   program->blocks[2].linear_preds.push_back(0);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+
+   //! BB3
+   //! /* logical preds: / linear preds: BB1, BB2, / kind: */
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.reset(program->create_and_insert_block());
+   program->blocks[1].linear_succs.push_back(3);
+   program->blocks[2].linear_succs.push_back(3);
+   program->blocks[3].linear_preds.push_back(1);
+   program->blocks[3].linear_preds.push_back(2);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   /* Control flow merges: one branch shouldn't interfere with the other (should consider furthest
+    * VALU writes after exec).
+    */
+   //! p_unit_test 1
+   //! s_cbranch_scc1 block:BB5
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
+   bld.sopp(aco_opcode::s_cbranch_scc1, 5);
+
+   //! BB4
+   //! /* logical preds: / linear preds: BB3, / kind: */
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //; for i in range(2): insert_pattern('v_nop')
+   //! v1: %0:v[1] = v_mov_b32 1
+   //! v_nop
+   //! s_branch block:BB6
+   bld.reset(program->create_and_insert_block());
+   program->blocks[3].linear_succs.push_back(4);
+   program->blocks[4].linear_preds.push_back(3);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.sopp(aco_opcode::s_branch, 6);
+
+   //! BB5
+   //! /* logical preds: / linear preds: BB3, / kind: */
+   //! v1: %0:v[1] = v_mov_b32 1
+   bld.reset(program->create_and_insert_block());
+   program->blocks[3].linear_succs.push_back(5);
+   program->blocks[5].linear_preds.push_back(3);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+
+   //! BB6
+   //! /* logical preds: / linear preds: BB4, BB5, / kind: */
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.reset(program->create_and_insert_block());
+   program->blocks[4].linear_succs.push_back(6);
+   program->blocks[5].linear_succs.push_back(6);
+   program->blocks[6].linear_preds.push_back(4);
+   program->blocks[6].linear_preds.push_back(5);
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   /* Control flow merges: one branch shouldn't interfere with the other (should consider closest
+    * VALU writes after exec).
+    */
+   //! p_unit_test 2
+   //! s_cbranch_scc1 block:BB8
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
+   bld.sopp(aco_opcode::s_cbranch_scc1, 8);
+
+   //! BB7
+   //! /* logical preds: / linear preds: BB6, / kind: */
+   //! v1: %0:v[0] = v_mov_b32 0
+   //! s2: %0:exec = s_mov_b64 -1
+   //! v1: %0:v[1] = v_mov_b32 1
+   //; for i in range(4): insert_pattern('v_nop')
+   //! s_branch block:BB9
+   bld.reset(program->create_and_insert_block());
+   program->blocks[6].linear_succs.push_back(7);
+   program->blocks[7].linear_preds.push_back(6);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(256), v1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   for (unsigned i = 0; i < 4; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.sopp(aco_opcode::s_branch, 9);
+
+   //! BB8
+   //! /* logical preds: / linear preds: BB6, / kind: */
+   //! v1: %0:v[1] = v_mov_b32 1
+   //; for i in range(5): insert_pattern('v_nop')
+   bld.reset(program->create_and_insert_block());
+   program->blocks[6].linear_succs.push_back(8);
+   program->blocks[8].linear_preds.push_back(6);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand::c32(1));
+   for (unsigned i = 0; i < 5; i++)
+      bld.vop1(aco_opcode::v_nop);
+
+   //! BB9
+   //! /* logical preds: / linear preds: BB7, BB8, / kind: uniform, */
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[2] = v_max_f32 %0:v[0], %0:v[1]
+   bld.reset(program->create_and_insert_block());
+   program->blocks[7].linear_succs.push_back(9);
+   program->blocks[8].linear_succs.push_back(9);
+   program->blocks[9].linear_preds.push_back(7);
+   program->blocks[9].linear_preds.push_back(8);
+   bld.vop2(aco_opcode::v_max_f32, Definition(PhysReg(258), v1), Operand(PhysReg(256), v1),
+            Operand(PhysReg(257), v1));
+
+   finish_insert_nops_test();
+END_TEST

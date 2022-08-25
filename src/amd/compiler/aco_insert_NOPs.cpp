@@ -1075,6 +1075,141 @@ handle_lds_direct_valu_hazard(State& state, aco_ptr<Instruction>& instr)
    return global_state.wait_vdst;
 }
 
+enum VALUPartialForwardingHazardState : uint8_t {
+   nothing_written,
+   written_after_exec_write,
+   exec_written,
+};
+
+struct VALUPartialForwardingHazardGlobalState {
+   bool hazard_found = false;
+   std::set<unsigned> loop_headers_visited;
+};
+
+struct VALUPartialForwardingHazardBlockState {
+   /* initialized by number of VGPRs read by VALU, decrement when encountered to return early */
+   uint8_t num_vgprs_read = 0;
+   BITSET_DECLARE(vgprs_read, 256) = {0};
+   enum VALUPartialForwardingHazardState state = nothing_written;
+   unsigned num_valu_since_read = 0;
+   unsigned num_valu_since_write = 0;
+};
+
+bool
+handle_valu_partial_forwarding_hazard_instr(VALUPartialForwardingHazardGlobalState& global_state,
+                                            VALUPartialForwardingHazardBlockState& block_state,
+                                            aco_ptr<Instruction>& instr)
+{
+   if (instr->isSALU() && !instr->definitions.empty()) {
+      if (block_state.state == written_after_exec_write && instr_writes_exec(instr))
+         block_state.state = exec_written;
+   } else if (instr->isVALU() || instr->isVINTERP_INREG()) {
+      bool vgpr_write = false;
+      for (Definition& def : instr->definitions) {
+         if (def.physReg().reg() < 256)
+            continue;
+
+         for (unsigned i = 0; i < def.size(); i++) {
+            unsigned reg = def.physReg().reg() - 256 + i;
+            if (!BITSET_TEST(block_state.vgprs_read, reg))
+               continue;
+
+            if (block_state.state == exec_written && block_state.num_valu_since_write < 3) {
+               global_state.hazard_found = true;
+               return true;
+            }
+
+            BITSET_CLEAR(block_state.vgprs_read, reg);
+            block_state.num_vgprs_read--;
+            vgpr_write = true;
+         }
+      }
+
+      if (vgpr_write) {
+         /* If the state is nothing_written: the check below should ensure that this write is
+          * close enough to the read.
+          *
+          * If the state is exec_written: the current choice of second write has failed. Reset and
+          * try with the current write as the second one, if it's close enough to the read.
+          *
+          * If the state is written_after_exec_write: a further second write would be better, if
+          * it's close enough to the read.
+          */
+         if (block_state.state == nothing_written || block_state.num_valu_since_read < 5) {
+            block_state.state = written_after_exec_write;
+            block_state.num_valu_since_write = 0;
+         } else {
+            block_state.num_valu_since_write++;
+         }
+      } else {
+         block_state.num_valu_since_write++;
+      }
+
+      block_state.num_valu_since_read++;
+   } else if (parse_vdst_wait(instr) == 0) {
+      return true;
+   }
+
+   if (block_state.num_valu_since_read >= (block_state.state == nothing_written ? 5 : 8))
+      return true; /* Hazard not possible at this distance. */
+   if (block_state.num_vgprs_read == 0)
+      return true; /* All VGPRs have been written and a hazard was never found. */
+
+   return false;
+}
+
+bool
+handle_valu_partial_forwarding_hazard_block(VALUPartialForwardingHazardGlobalState& global_state,
+                                            VALUPartialForwardingHazardBlockState& block_state,
+                                            Block* block)
+{
+   if (block->kind & block_kind_loop_header) {
+      if (global_state.loop_headers_visited.count(block->index))
+         return false;
+      global_state.loop_headers_visited.insert(block->index);
+   }
+
+   return true;
+}
+
+bool
+handle_valu_partial_forwarding_hazard(State& state, aco_ptr<Instruction>& instr)
+{
+   /* VALUPartialForwardingHazard
+    * VALU instruction reads two VGPRs: one written before an exec write by SALU and one after.
+    * For the hazard, there must be less than 3 VALU between the first and second VGPR writes.
+    * There also must be less than 5 VALU between the second VGPR write and the current instruction.
+    */
+   if (state.program->wave_size != 64 || (!instr->isVALU() && !instr->isVINTERP_INREG()))
+      return false;
+
+   unsigned num_vgprs = 0;
+   for (Operand& op : instr->operands)
+      num_vgprs += op.physReg().reg() < 256 ? op.size() : 1;
+   if (num_vgprs <= 1)
+      return false; /* early exit */
+
+   VALUPartialForwardingHazardBlockState block_state;
+
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      Operand& op = instr->operands[i];
+      if (op.physReg().reg() < 256)
+         continue;
+      for (unsigned j = 0; j < op.size(); j++)
+         BITSET_SET(block_state.vgprs_read, op.physReg().reg() - 256 + j);
+   }
+   block_state.num_vgprs_read = BITSET_COUNT(block_state.vgprs_read);
+
+   if (block_state.num_vgprs_read <= 1)
+      return false; /* early exit */
+
+   VALUPartialForwardingHazardGlobalState global_state;
+   search_backwards<VALUPartialForwardingHazardGlobalState, VALUPartialForwardingHazardBlockState,
+                    &handle_valu_partial_forwarding_hazard_block,
+                    &handle_valu_partial_forwarding_hazard_instr>(state, global_state, block_state);
+   return global_state.hazard_found;
+}
+
 void
 handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>& instr,
                          std::vector<aco_ptr<Instruction>>& new_instructions)
@@ -1123,6 +1258,11 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
          bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0fff);
          va_vdst = 0;
       }
+   }
+
+   if (va_vdst > 0 && handle_valu_partial_forwarding_hazard(state, instr)) {
+      bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0fff);
+      va_vdst = 0;
    }
 
    va_vdst = std::min(va_vdst, parse_vdst_wait(instr));

@@ -320,3 +320,13 @@ transcendental instructions in-between.
 
 Mitigated by:
 A va_vdst=0 wait: `s_waitcnt_deptr 0x0fff`
+
+### VALUPartialForwardingHazard
+
+Triggered by:
+A VALU instruction reading two VGPRs: one written before an exec write by SALU and one after. To
+trigger, there must be less than 3 VALU between the first and second VGPR writes and less than 5
+VALU between the second VGPR write and the current instruction.
+
+Mitigated by:
+A va_vdst=0 wait: `s_waitcnt_deptr 0x0fff`
