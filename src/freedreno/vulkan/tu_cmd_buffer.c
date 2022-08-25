@@ -30,6 +30,14 @@ tu_clone_trace_range(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
          tu_copy_timestamp_buffer);
 }
 
+static void
+tu_clone_trace(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+               struct u_trace *trace)
+{
+   tu_clone_trace_range(cmd, cs, u_trace_begin_iterator(trace),
+         u_trace_end_iterator(trace));
+}
+
 void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
@@ -1832,6 +1840,12 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          break;
       }
    } else if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      const bool pass_continue =
+         pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+
+      trace_start_cmd_buffer(&cmd_buffer->trace,
+            pass_continue ? &cmd_buffer->draw_cs : &cmd_buffer->cs);
+
       assert(pBeginInfo->pInheritanceInfo);
 
       cmd_buffer->inherited_pipeline_statistics =
@@ -1849,7 +1863,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          }
       }
 
-      if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
+      if (pass_continue) {
          const VkCommandBufferInheritanceRenderingInfo *rendering_info =
             vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext,
                                  COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
@@ -2506,16 +2520,17 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
    if (cmd_buffer->state.pass) {
       tu_flush_all_pending(&cmd_buffer->state.renderpass_cache);
       tu_emit_cache_flush_renderpass(cmd_buffer, &cmd_buffer->draw_cs);
+
+      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->draw_cs, cmd_buffer);
    } else {
       tu_flush_all_pending(&cmd_buffer->state.cache);
       cmd_buffer->state.cache.flush_bits |=
          TU_CMD_FLAG_CCU_FLUSH_COLOR |
          TU_CMD_FLAG_CCU_FLUSH_DEPTH;
       tu_emit_cache_flush(cmd_buffer, &cmd_buffer->cs);
-   }
 
-   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs, cmd_buffer);
+   }
 
    tu_cs_end(&cmd_buffer->cs);
    tu_cs_end(&cmd_buffer->draw_cs);
@@ -3629,6 +3644,7 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
          if (!secondary->state.lrz.valid)
             cmd->state.lrz.valid = false;
 
+         tu_clone_trace(cmd, &cmd->draw_cs, &secondary->trace);
          tu_render_pass_state_merge(&cmd->state.rp, &secondary->state.rp);
       } else {
          switch (secondary->state.suspend_resume) {
@@ -3636,6 +3652,7 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             assert(tu_cs_is_empty(&secondary->draw_cs));
             assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
             tu_cs_add_entries(&cmd->cs, &secondary->cs);
+            tu_clone_trace(cmd, &cmd->cs, &secondary->trace);
             break;
 
          case SR_IN_PRE_CHAIN:
