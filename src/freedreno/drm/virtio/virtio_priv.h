@@ -169,6 +169,7 @@ struct fd_submit *virtio_submit_new(struct fd_pipe *pipe);
 
 struct virtio_bo {
    struct fd_bo base;
+   uint64_t alloc_time_ns;
    uint64_t offset;
    uint32_t res_id;
    uint32_t blob_id;

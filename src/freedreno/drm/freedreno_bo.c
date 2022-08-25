@@ -497,6 +497,15 @@ fd_bo_upload(struct fd_bo *bo, void *src, unsigned len)
    memcpy(bo_map(bo), src, len);
 }
 
+bool
+fd_bo_prefer_upload(struct fd_bo *bo, unsigned len)
+{
+   if (bo->funcs->prefer_upload)
+      return bo->funcs->prefer_upload(bo, len);
+
+   return false;
+}
+
 /* a bit odd to take the pipe as an arg, but it's a, umm, quirk of kgsl.. */
 int
 fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)

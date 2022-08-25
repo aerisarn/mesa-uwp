@@ -313,6 +313,11 @@ struct fd_bo_funcs {
     * implemented, it must be possible to mmap all buffers
     */
    void (*upload)(struct fd_bo *bo, void *src, unsigned len);
+
+   /**
+    * Optional, if upload is supported, should upload be preferred?
+    */
+   bool (*prefer_upload)(struct fd_bo *bo, unsigned len);
 };
 
 struct fd_bo_fence {
