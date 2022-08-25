@@ -693,11 +693,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          ctx.sgprs_read_by_VMEM_store.reset();
 
          /* Insert s_waitcnt_depctr instruction with magic imm to mitigate the problem */
-         aco_ptr<SOPP_instruction> depctr{
-            create_instruction<SOPP_instruction>(aco_opcode::s_waitcnt_depctr, Format::SOPP, 0, 0)};
-         depctr->imm = 0xffe3;
-         depctr->block = -1;
-         new_instructions.emplace_back(std::move(depctr));
+         bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xffe3);
       }
    } else if (instr->isVALU()) {
       /* Hazard is mitigated by any VALU instruction */
@@ -717,11 +713,8 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
       ctx.has_VOPC_write_exec = false;
 
       /* v_nop would be discarded by SQ, so use v_mov with the first operand of the permlane */
-      aco_ptr<VOP1_instruction> v_mov{
-         create_instruction<VOP1_instruction>(aco_opcode::v_mov_b32, Format::VOP1, 1, 1)};
-      v_mov->definitions[0] = Definition(instr->operands[0].physReg(), v1);
-      v_mov->operands[0] = Operand(instr->operands[0].physReg(), v1);
-      new_instructions.emplace_back(std::move(v_mov));
+      bld.vop1(aco_opcode::v_mov_b32, Definition(instr->operands[0].physReg(), v1),
+               Operand(instr->operands[0].physReg(), v1));
    } else if (instr->isVALU() && instr->opcode != aco_opcode::v_nop) {
       ctx.has_VOPC_write_exec = false;
    }
@@ -736,11 +729,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          ctx.has_nonVALU_exec_read = false;
 
          /* Insert s_waitcnt_depctr instruction with magic imm to mitigate the problem */
-         aco_ptr<SOPP_instruction> depctr{
-            create_instruction<SOPP_instruction>(aco_opcode::s_waitcnt_depctr, Format::SOPP, 0, 0)};
-         depctr->imm = 0xfffe;
-         depctr->block = -1;
-         new_instructions.emplace_back(std::move(depctr));
+         bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xfffe);
       } else if (instr_writes_sgpr(instr)) {
          /* Any VALU instruction that writes an SGPR mitigates the problem */
          ctx.has_nonVALU_exec_read = false;
@@ -763,11 +752,7 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
          ctx.sgprs_read_by_SMEM.reset();
 
          /* Insert s_mov to mitigate the problem */
-         aco_ptr<SOP1_instruction> s_mov{
-            create_instruction<SOP1_instruction>(aco_opcode::s_mov_b32, Format::SOP1, 1, 1)};
-         s_mov->definitions[0] = Definition(sgpr_null, s1);
-         s_mov->operands[0] = Operand::zero();
-         new_instructions.emplace_back(std::move(s_mov));
+         bld.sop1(aco_opcode::s_mov_b32, Definition(sgpr_null, s1), Operand::zero());
       }
    } else if (instr->isSALU()) {
       if (instr->format != Format::SOPP) {
@@ -780,8 +765,8 @@ handle_instruction_gfx10(State& state, NOP_ctx_gfx10& ctx, aco_ptr<Instruction>&
             if (sopp.imm == 0 && sopp.definitions[0].physReg() == sgpr_null)
                ctx.sgprs_read_by_SMEM.reset();
          } else if (sopp.opcode == aco_opcode::s_waitcnt) {
-            unsigned lgkm = (sopp.imm >> 8) & 0x3f;
-            if (lgkm == 0)
+            wait_imm imm(state.program->gfx_level, instr->sopp().imm);
+            if (imm.lgkm == 0)
                ctx.sgprs_read_by_SMEM.reset();
          }
       }
