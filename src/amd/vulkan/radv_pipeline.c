@@ -227,6 +227,9 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
          ralloc_free(pipeline->retained_shaders[i].nir);
       }
 
+      if (gfx_pipeline_lib->base.ps_epilog)
+         radv_shader_part_unref(device, gfx_pipeline_lib->base.ps_epilog);
+
       vk_free(&device->vk.alloc, gfx_pipeline_lib->base.state_data);
    }
 
@@ -6202,9 +6205,32 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    result = radv_pipeline_import_graphics_info(&pipeline->base, state, pipeline_layout, pCreateInfo,
                                                imported_flags);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto fail_layout;
 
    radv_pipeline_layout_hash(pipeline_layout);
+
+   /* Compile a PS epilog if the fragment shader output interface is present without the main
+    * fragment shader.
+    */
+   if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
+       !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
+      struct radv_blend_state blend =
+         radv_pipeline_init_blend_state(&pipeline->base, state);
+
+      struct radv_pipeline_key key =
+         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
+
+      struct radv_ps_epilog_key epilog_key = {
+         .spi_shader_col_format = blend.spi_shader_col_format,
+         .color_is_int8 = blend.col_format_is_int8,
+         .color_is_int10 = blend.col_format_is_int10,
+         .enable_mrt_output_nan_fixup = key.ps.enable_mrt_output_nan_fixup,
+      };
+
+      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &epilog_key);
+      if (!pipeline->base.ps_epilog)
+         goto fail_layout;
+   }
 
    if (pipeline->base.active_stages != 0) {
       const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
@@ -6228,12 +6254,15 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
                                    creation_feedback, NULL, NULL,
                                    &pipeline->base.last_vgt_api_stage);
       if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED)
-         goto fail;
+         goto fail_shaders;
    }
 
    return VK_SUCCESS;
 
-fail:
+fail_shaders:
+   if (pipeline->base.ps_epilog)
+      radv_shader_part_unref(device, pipeline->base.ps_epilog);
+fail_layout:
    radv_pipeline_layout_finish(device, pipeline_layout);
    return result;
 }

@@ -2040,6 +2040,9 @@ struct radv_graphics_pipeline {
 
    /* For vk_graphics_pipeline_state */
    void *state_data;
+
+   /* Not NULL if graphics pipeline uses a PS epilog. */
+   struct radv_shader_part *ps_epilog;
 };
 
 struct radv_compute_pipeline {
