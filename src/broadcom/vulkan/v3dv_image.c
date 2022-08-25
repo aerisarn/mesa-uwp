@@ -242,18 +242,12 @@ v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer
       return image->mem_offset + slice->offset + layer * image->cube_map_stride;
 }
 
-static VkResult
-create_image(struct v3dv_device *device,
-             const VkImageCreateInfo *pCreateInfo,
-             const VkAllocationCallbacks *pAllocator,
-             VkImage *pImage)
+VkResult
+v3dv_image_init(struct v3dv_device *device,
+                const VkImageCreateInfo *pCreateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                struct v3dv_image *image)
 {
-   struct v3dv_image *image = NULL;
-
-   image = vk_image_create(&device->vk, pCreateInfo, pAllocator, sizeof(*image));
-   if (image == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
    /* When using the simulator the WSI common code will see that our
     * driver wsi device doesn't match the display device and because of that
     * it will not attempt to present directly from the swapchain images,
@@ -306,11 +300,10 @@ create_image(struct v3dv_device *device,
 
    if (native_buffer != NULL) {
       VkResult result = v3dv_gralloc_info(device, native_buffer, &native_buf_fd,
-                                          &native_buf_stride, &native_buf_size, &modifier);
-      if (result != VK_SUCCESS) {
-         vk_image_destroy(&device->vk, pAllocator, &image->vk);
+                                          &native_buf_stride, &native_buf_size,
+                                          &modifier);
+      if (result != VK_SUCCESS)
          return result;
-      }
 
       if (modifier != DRM_FORMAT_MOD_BROADCOM_UIF)
          tiling = VK_IMAGE_TILING_LINEAR;
@@ -349,12 +342,31 @@ create_image(struct v3dv_device *device,
       VkResult result = v3dv_import_native_buffer_fd(v3dv_device_to_handle(device),
                                                      native_buf_fd, pAllocator,
                                                      v3dv_image_to_handle(image));
-      if (result != VK_SUCCESS) {
-         vk_object_free(&device->vk, pAllocator, image);
+      if (result != VK_SUCCESS)
          return result;
-      }
    }
 #endif
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+create_image(struct v3dv_device *device,
+             const VkImageCreateInfo *pCreateInfo,
+             const VkAllocationCallbacks *pAllocator,
+             VkImage *pImage)
+{
+   struct v3dv_image *image = NULL;
+
+   image = vk_image_create(&device->vk, pCreateInfo, pAllocator, sizeof(*image));
+   if (image == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   VkResult result = v3dv_image_init(device, pCreateInfo, pAllocator, image);
+   if (result != VK_SUCCESS) {
+      vk_image_destroy(&device->vk, pAllocator, &image->vk);
+      return result;
+   }
 
    *pImage = v3dv_image_to_handle(image);
 

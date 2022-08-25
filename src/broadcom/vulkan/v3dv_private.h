@@ -607,6 +607,12 @@ struct v3dv_image {
 #endif
 };
 
+VkResult
+v3dv_image_init(struct v3dv_device *device,
+                const VkImageCreateInfo *pCreateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                struct v3dv_image *image);
+
 VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
 
 /* Pre-generating packets needs to consider changes in packet sizes across hw
