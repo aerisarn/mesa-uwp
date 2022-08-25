@@ -1563,7 +1563,7 @@ radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs
       rast_prim = si_conv_prim_to_gs_out(cmd_buffer->state.dynamic.primitive_topology);
    }
 
-   si_write_scissors(cs, 0, count, cmd_buffer->state.dynamic.scissor.scissors,
+   si_write_scissors(cs, count, cmd_buffer->state.dynamic.scissor.scissors,
                      cmd_buffer->state.dynamic.viewport.viewports, rast_prim,
                      cmd_buffer->state.dynamic.line_width);
 }

@@ -714,7 +714,7 @@ si_intersect_scissor(const VkRect2D *a, const VkRect2D *b)
 }
 
 void
-si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D *scissors,
+si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors,
                   const VkViewport *viewports, unsigned rast_prim, float line_width)
 {
    int i;
@@ -724,7 +724,7 @@ si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D
    if (!count)
       return;
 
-   radeon_set_context_reg_seq(cs, R_028250_PA_SC_VPORT_SCISSOR_0_TL + first * 4 * 2, count * 2);
+   radeon_set_context_reg_seq(cs, R_028250_PA_SC_VPORT_SCISSOR_0_TL, count * 2);
    for (i = 0; i < count; i++) {
       VkRect2D viewport_scissor = si_scissor_from_viewport(viewports + i);
       VkRect2D scissor = si_intersect_scissor(&scissors[i], &viewport_scissor);

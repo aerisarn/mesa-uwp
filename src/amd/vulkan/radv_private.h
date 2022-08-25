@@ -1684,7 +1684,7 @@ void si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs);
 
 void cik_create_gfx_config(struct radv_device *device);
 
-void si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkRect2D *scissors,
+void si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors,
                        const VkViewport *viewports, unsigned rast_prim, float line_width);
 
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
