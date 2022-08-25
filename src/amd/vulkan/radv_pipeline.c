@@ -1598,7 +1598,6 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
       radv_pipeline_layout_add_set(layout, s, lib_layout->set[s].layout);
    }
 
-   assert(layout->independent_sets == lib_layout->independent_sets);
    layout->independent_sets = lib_layout->independent_sets;
    layout->push_constant_size = MAX2(layout->push_constant_size, lib_layout->push_constant_size);
 }
