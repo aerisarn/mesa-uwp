@@ -2563,6 +2563,16 @@ v3dv_BindImageMemory2(VkDevice _device,
 }
 
 static void
+buffer_init(struct v3dv_device *device,
+            const VkBufferCreateInfo *pCreateInfo,
+            struct v3dv_buffer *buffer)
+{
+   buffer->size = pCreateInfo->size;
+   buffer->usage = pCreateInfo->usage;
+   buffer->alignment = V3D_NON_COHERENT_ATOM_SIZE;
+}
+
+static void
 get_buffer_memory_requirements(struct v3dv_buffer *buffer,
                                VkMemoryRequirements2 *pMemoryRequirements)
 {
@@ -2597,6 +2607,19 @@ v3dv_GetBufferMemoryRequirements2(VkDevice device,
    get_buffer_memory_requirements(buffer, pMemoryRequirements);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+v3dv_GetDeviceBufferMemoryRequirementsKHR(
+    VkDevice _device,
+    const VkDeviceBufferMemoryRequirements *pInfo,
+    VkMemoryRequirements2 *pMemoryRequirements)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   struct v3dv_buffer buffer = { 0 };
+   buffer_init(device, pInfo->pCreateInfo, &buffer);
+   get_buffer_memory_requirements(&buffer, pMemoryRequirements);
+}
+
 static void
 bind_buffer_memory(const VkBindBufferMemoryInfo *info)
 {
@@ -2626,16 +2649,6 @@ v3dv_BindBufferMemory2(VkDevice device,
       bind_buffer_memory(&pBindInfos[i]);
 
    return VK_SUCCESS;
-}
-
-static void
-buffer_init(struct v3dv_device *device,
-            const VkBufferCreateInfo *pCreateInfo,
-            struct v3dv_buffer *buffer)
-{
-   buffer->size = pCreateInfo->size;
-   buffer->usage = pCreateInfo->usage;
-   buffer->alignment = V3D_NON_COHERENT_ATOM_SIZE;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
