@@ -1033,8 +1033,16 @@ copy_converted_buffer(struct gl_context * ctx,
          zoffset = yoffset;
          yoffset = 0;
       }
+
       struct gl_pixelstore_attrib packing = *pack;
-      memset(&packing.RowLength, 0, offsetof(struct gl_pixelstore_attrib, SwapBytes) - offsetof(struct gl_pixelstore_attrib, RowLength));
+
+      /* source image is tightly packed */
+      packing.RowLength = 0;
+      packing.SkipPixels = 0;
+      packing.SkipRows = 0;
+      packing.ImageHeight = 0;
+      packing.SkipImages = 0;
+
       for (unsigned z = 0; z < depth; z++) {
          for (unsigned y = 0; y < height; y++) {
             GLubyte *dst = _mesa_image_address(dim, pack, pixels,
