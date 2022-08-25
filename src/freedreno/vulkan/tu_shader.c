@@ -104,9 +104,22 @@ tu_spirv_to_nir(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+
+   /* Older glslang missing bf6efd0316d8 ("SPV: Fix #2293: keep relaxed
+    * precision on arg passed to relaxed param") will pass function args through
+    * a highp temporary, so we need the nir_opt_find_array_copies() and a copy
+    * prop before we lower mediump vars, or you'll be unable to optimize out
+    * array copies after lowering.  We do this before splitting copies, since
+    * that works against nir_opt_find_array_copies().
+    * */
+   NIR_PASS_V(nir, nir_opt_find_array_copies);
+   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
+   NIR_PASS_V(nir, nir_opt_dce);
+
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
+   NIR_PASS_V(nir, nir_lower_mediump_vars, nir_var_function_temp | nir_var_shader_temp | nir_var_mem_shared);
    NIR_PASS_V(nir, nir_opt_copy_prop_vars);
    NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
 
