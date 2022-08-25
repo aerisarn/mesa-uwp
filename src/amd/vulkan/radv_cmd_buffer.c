@@ -1447,6 +1447,11 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       cmd_buffer->state.emitted_graphics_pipeline->negative_one_to_one != pipeline->negative_one_to_one ||
+       cmd_buffer->state.emitted_graphics_pipeline->depth_clamp_mode != pipeline->depth_clamp_mode)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
+
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
        radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim) ||
        cmd_buffer->state.emitted_graphics_pipeline->line_width != pipeline->line_width)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
