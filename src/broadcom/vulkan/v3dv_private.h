@@ -1845,6 +1845,11 @@ struct v3dv_pipeline_layout {
    unsigned char sha1[20];
 };
 
+void
+v3dv_pipeline_layout_destroy(struct v3dv_device *device,
+                             struct v3dv_pipeline_layout *layout,
+                             const VkAllocationCallbacks *alloc);
+
 /*
  * We are using descriptor maps for ubo/ssbo and texture/samplers, so we need
  * it to be big enough to include the max value for all of them.

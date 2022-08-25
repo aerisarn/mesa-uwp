@@ -381,6 +381,19 @@ v3dv_CreatePipelineLayout(VkDevice _device,
    return VK_SUCCESS;
 }
 
+void
+v3dv_pipeline_layout_destroy(struct v3dv_device *device,
+                             struct v3dv_pipeline_layout *layout,
+                             const VkAllocationCallbacks *alloc)
+{
+   assert(layout);
+
+   for (uint32_t i = 0; i < layout->num_sets; i++)
+      v3dv_descriptor_set_layout_unref(device, layout->set[i].layout);
+
+   vk_object_free(&device->vk, alloc, layout);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_DestroyPipelineLayout(VkDevice _device,
                           VkPipelineLayout _pipelineLayout,
@@ -392,10 +405,7 @@ v3dv_DestroyPipelineLayout(VkDevice _device,
    if (!pipeline_layout)
       return;
 
-   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      v3dv_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
-
-   vk_object_free(&device->vk, pAllocator, pipeline_layout);
+   v3dv_pipeline_layout_destroy(device, pipeline_layout, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
