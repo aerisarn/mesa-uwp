@@ -3022,6 +3022,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_discard(ctx, intr);
       break;
 
+   case nir_intrinsic_demote:
+      spirv_builder_emit_demote(&ctx->builder);
+      break;
+
    case nir_intrinsic_load_deref:
       emit_load_deref(ctx, intr);
       break;
@@ -4149,6 +4153,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleMaskPostDepthCoverage);
       if (s->info.fs.uses_sample_shading)
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
+      if (s->info.fs.uses_demote)
+         spirv_builder_emit_extension(&ctx.builder,
+                                      "SPV_EXT_demote_to_helper_invocation");
       break;
 
    case MESA_SHADER_VERTEX:
