@@ -323,5 +323,14 @@ int main(int argc, char** argv)
    }
 
    printf("%u/%u tests passed for translate_%s\n", passed, total, argv[1]);
+
+   for (i = 1; i < ARRAY_SIZE(buffer); ++i)
+      align_free(buffer[i]);
+
+   align_free(byte_buffer);
+   align_free(float_buffer);
+   align_free(double_buffer);
+   align_free(half_buffer);
+   align_free(elts);
    return passed != total;
 }
