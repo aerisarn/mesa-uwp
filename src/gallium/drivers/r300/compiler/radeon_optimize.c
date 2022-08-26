@@ -1166,18 +1166,21 @@ static void merge_channels(struct radeon_compiler * c, struct rc_instruction * i
 			cur->U.I.SaturateMode == inst->U.I.SaturateMode &&
 			(cur->U.I.DstReg.WriteMask & orig_dst_wmask) == 0) {
 
-			/* Skip the merge if one of the instructions writes just w channel
-			 * and we are compiling a fragment shader. We can pair-schedule it together
-			 * later anyway and it will also give the scheduler a bit more flexibility.
-			 */
-			if (c->has_omod && (cur->U.I.DstReg.WriteMask == RC_MASK_W ||
-				inst->U.I.DstReg.WriteMask == RC_MASK_W))
-				continue;
-
 			if (inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_MOV)) {
 				if (merge_movs(c, inst, cur))
 					return;
 			}
+
+			/* Skip the merge if one of the instructions writes just w channel
+			 * and we are compiling a fragment shader. We can pair-schedule it together
+			 * later anyway and it will also give the scheduler a bit more flexibility.
+			 * Only check this after merging MOVs as when we manage to merge two MOVs
+			 * into another MOV we can still copy propagate it away. So it is a win in
+			 * that case.
+			 */
+			if (c->has_omod && (cur->U.I.DstReg.WriteMask == RC_MASK_W ||
+				inst->U.I.DstReg.WriteMask == RC_MASK_W))
+				continue;
 
 			if (inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_ADD) ||
 				inst_combination(cur, inst, RC_OPCODE_MOV, RC_OPCODE_MUL)) {
@@ -1219,6 +1222,16 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 				cur->U.I.Opcode == RC_OPCODE_ADD ||
 				cur->U.I.Opcode == RC_OPCODE_MUL)
 				merge_channels(c, cur);
+		}
+	}
+
+	/* Copy propagate few extra movs from the merge_channels pass. */
+	inst = c->Program.Instructions.Next;
+	while(inst != &c->Program.Instructions) {
+		struct rc_instruction * cur = inst;
+		inst = inst->Next;
+		if (cur->U.I.Opcode == RC_OPCODE_MOV) {
+			copy_propagate(c, cur);
 		}
 	}
 
