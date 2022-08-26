@@ -155,6 +155,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_storage_buffer_storage_class     = true,
       .KHR_timeline_semaphore               = true,
       .KHR_uniform_buffer_standard_layout   = true,
+      .KHR_synchronization2                 = true,
 #ifdef V3DV_USE_WSI_PLATFORM
       .KHR_swapchain                        = true,
       .KHR_swapchain_mutable_format         = true,
@@ -1121,6 +1122,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .privateData = true,
       .maintenance4 = true,
       .shaderZeroInitializeWorkgroupMemory = true,
+      .synchronization2 = true,
    };
 
    VkPhysicalDeviceVulkan12Features vk12 = {
