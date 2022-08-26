@@ -2791,19 +2791,6 @@ radv_fill_shader_info_ngg(struct radv_pipeline *pipeline,
          else
            stages[MESA_SHADER_VERTEX].info.is_ngg = false;
       }
-
-      /* Determine if the pipeline is eligible for the NGG passthrough
-       * mode. It can't be enabled for geometry shaders, for NGG
-       * streamout or for vertex shaders that export the primitive ID
-       * (this is checked later because we don't have the info here.)
-       */
-      if (!stages[MESA_SHADER_GEOMETRY].nir && !uses_xfb) {
-         if (stages[MESA_SHADER_TESS_CTRL].nir && stages[MESA_SHADER_TESS_EVAL].info.is_ngg) {
-            stages[MESA_SHADER_TESS_EVAL].info.is_ngg_passthrough = true;
-         } else if (stages[MESA_SHADER_VERTEX].nir && stages[MESA_SHADER_VERTEX].info.is_ngg) {
-            stages[MESA_SHADER_VERTEX].info.is_ngg_passthrough = true;
-         }
-      }
    }
 }
 

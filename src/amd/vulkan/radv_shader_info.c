@@ -1215,9 +1215,8 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
    /* NGG passthrough mode should be disabled when culling and when the vertex shader
     * exports the primitive ID.
     */
-   es_stage->info.is_ngg_passthrough = es_stage->info.is_ngg_passthrough &&
-      !es_stage->info.has_ngg_culling && !(es_stage->stage == MESA_SHADER_VERTEX &&
-                                           es_stage->info.outinfo.export_prim_id);
+   es_stage->info.is_ngg_passthrough = !es_stage->info.has_ngg_culling &&
+      !(es_stage->stage == MESA_SHADER_VERTEX && es_stage->info.outinfo.export_prim_id);
 }
 
 static void
