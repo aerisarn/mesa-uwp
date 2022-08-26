@@ -240,10 +240,13 @@ pvr_process_graphics_cmd(struct pvr_device *device,
 
    /* Get any imported buffers used in framebuffer attachments. */
    for (uint32_t i = 0U; i < framebuffer->attachment_count; i++) {
-      if (!framebuffer->attachments[i]->image->vma->bo->is_imported)
+      const struct pvr_image *image =
+         vk_to_pvr_image(framebuffer->attachments[i]->vk.image);
+
+      if (!image->vma->bo->is_imported)
          continue;
 
-      bos[bo_count].bo = framebuffer->attachments[i]->image->vma->bo;
+      bos[bo_count].bo = image->vma->bo;
       bos[bo_count].flags = PVR_WINSYS_JOB_BO_FLAG_WRITE;
       bo_count++;
    }

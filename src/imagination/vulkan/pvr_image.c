@@ -258,11 +258,11 @@ VkResult pvr_CreateImageView(VkDevice _device,
                              const VkAllocationCallbacks *pAllocator,
                              VkImageView *pView)
 {
-   PVR_FROM_HANDLE(pvr_image, image, pCreateInfo->image);
    PVR_FROM_HANDLE(pvr_device, device, _device);
    struct pvr_texture_state_info info;
    unsigned char input_swizzle[4];
    const uint8_t *format_swizzle;
+   const struct pvr_image *image;
    struct pvr_image_view *iview;
    VkResult result;
 
@@ -274,7 +274,7 @@ VkResult pvr_CreateImageView(VkDevice _device,
    if (!iview)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   iview->image = image;
+   image = vk_to_pvr_image(iview->vk.image);
 
    info.type = iview->vk.view_type;
    info.base_level = iview->vk.base_mip_level;

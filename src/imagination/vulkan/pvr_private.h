@@ -349,9 +349,6 @@ struct pvr_buffer {
 struct pvr_image_view {
    struct vk_image_view vk;
 
-   /* Saved information from pCreateInfo. */
-   const struct pvr_image *image;
-
    /* Prepacked Texture Image dword 0 and 1. It will be copied to the
     * descriptor info during pvr_UpdateDescriptorSets().
     *
@@ -1352,6 +1349,12 @@ to_pvr_graphics_pipeline(struct pvr_pipeline *pipeline)
 {
    assert(pipeline->type == PVR_PIPELINE_TYPE_GRAPHICS);
    return container_of(pipeline, struct pvr_graphics_pipeline, base);
+}
+
+static inline const struct pvr_image *
+vk_to_pvr_image(const struct vk_image *image)
+{
+   return container_of(image, const struct pvr_image, vk);
 }
 
 static enum pvr_pipeline_stage_bits

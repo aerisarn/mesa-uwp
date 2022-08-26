@@ -1489,16 +1489,16 @@ pvr_write_image_descriptor_secondaries(const struct pvr_device_info *dev_info,
       iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
 
    if (!PVR_HAS_FEATURE(dev_info, tpu_array_textures)) {
-      uint64_t addr = iview->image->dev_addr.addr +
-                      iview->vk.base_array_layer * iview->image->layer_size;
+      const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+      uint64_t addr =
+         image->dev_addr.addr + iview->vk.base_array_layer * image->layer_size;
 
       secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE] = (uint32_t)addr;
       secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYBASE + 1U] =
          (uint32_t)(addr >> 32U);
 
       secondary[PVR_DESC_IMAGE_SECONDARY_OFFSET_ARRAYSTRIDE] =
-         cube_array_adjust ? iview->image->layer_size * 6
-                           : iview->image->layer_size;
+         cube_array_adjust ? image->layer_size * 6 : image->layer_size;
    }
 
    if (cube_array_adjust) {
