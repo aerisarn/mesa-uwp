@@ -238,11 +238,14 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_tooling_info = true,
       .EXT_inline_uniform_block = true,
       .EXT_mutable_descriptor_type = true,
+      .KHR_pipeline_library = true,
+      .EXT_graphics_pipeline_library = true,
    };
 }
 
 static const struct vk_pipeline_cache_object_ops *const cache_import_ops[] = {
    &tu_shaders_ops,
+   &tu_nir_shaders_ops,
    NULL,
 };
 
@@ -906,6 +909,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->multiDraw = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT: {
+         VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT *features =
+            (VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT *)ext;
+         features->graphicsPipelineLibrary = true;
+         break;
+      }
 
       default:
          break;
@@ -1369,6 +1378,13 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceMultiDrawPropertiesEXT *properties =
             (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
          properties->maxMultiDrawCount = 2048;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT: {
+         VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *props =
+            (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *)ext;
+         props->graphicsPipelineLibraryFastLinking = true;
+         props->graphicsPipelineLibraryIndependentInterpolationDecoration = true;
          break;
       }
       default:

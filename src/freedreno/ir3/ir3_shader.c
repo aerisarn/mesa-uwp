@@ -615,16 +615,18 @@ ir3_trim_constlen(struct ir3_shader_variant **variants,
 {
    unsigned constlens[MESA_SHADER_STAGES] = {};
 
+   bool shared_consts_enable = false;
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (variants[i])
+      if (variants[i]) {
          constlens[i] = variants[i]->constlen;
+         shared_consts_enable =
+            ir3_const_state(variants[i])->shared_consts_enable;
+      }
    }
 
    uint32_t trimmed = 0;
    STATIC_ASSERT(MESA_SHADER_STAGES <= 8 * sizeof(trimmed));
-
-   bool shared_consts_enable =
-      ir3_const_state(variants[MESA_SHADER_VERTEX])->shared_consts_enable;
 
    /* Use a hw quirk for geometry shared consts, not matched with actual
     * shared consts size (on a6xx).

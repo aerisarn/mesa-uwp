@@ -21,6 +21,7 @@ struct tu_push_constant_range
 struct tu_const_state
 {
    struct tu_push_constant_range push_consts;
+   uint32_t dynamic_offset_loc;
 };
 
 struct tu_shader

@@ -176,19 +176,32 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    struct tu_descriptor_set_layout *set_layout = layout->set[set].layout;
    struct tu_descriptor_set_binding_layout *binding_layout =
       &set_layout->binding[binding];
-   uint32_t base;
+   nir_ssa_def *base;
 
    shader->active_desc_sets |= 1u << set;
 
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      base = (layout->set[set].dynamic_offset_start +
-         binding_layout->dynamic_offset_offset) / (4 * A6XX_TEX_CONST_DWORDS);
+      if (layout->independent_sets) {
+         /* With independent sets, we don't know
+          * layout->set[set].dynamic_offset_start until after link time which
+          * with fast linking means after the shader is compiled. We have to
+          * get it from the const file instead.
+          */
+         base = nir_imm_int(b, binding_layout->dynamic_offset_offset / (4 * A6XX_TEX_CONST_DWORDS));
+         nir_ssa_def *dynamic_offset_start =
+            nir_load_uniform(b, 1, 32, nir_imm_int(b, 0),
+                             .base = shader->const_state.dynamic_offset_loc + set);
+         base = nir_iadd(b, base, dynamic_offset_start);
+      } else {
+         base = nir_imm_int(b, (layout->set[set].dynamic_offset_start +
+            binding_layout->dynamic_offset_offset) / (4 * A6XX_TEX_CONST_DWORDS));
+      }
       set = MAX_SETS;
       break;
    default:
-      base = binding_layout->offset / (4 * A6XX_TEX_CONST_DWORDS);
+      base = nir_imm_int(b, binding_layout->offset / (4 * A6XX_TEX_CONST_DWORDS));
       break;
    }
 
@@ -204,7 +217,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    }
 
    nir_ssa_def *def = nir_vec3(b, nir_imm_int(b, set),
-                               nir_iadd(b, nir_imm_int(b, base),
+                               nir_iadd(b, base,
                                         nir_ishl(b, vulkan_idx, shift)),
                                shift);
 
@@ -657,6 +670,13 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
    unsigned reserved_consts_vec4 =
       align(DIV_ROUND_UP(const_state->push_consts.dwords, 4),
             dev->compiler->const_upload_unit);
+
+   if (layout->independent_sets) {
+      const_state->dynamic_offset_loc = reserved_consts_vec4 * 4;
+      reserved_consts_vec4 += DIV_ROUND_UP(MAX_SETS, 4);
+   } else {
+      const_state->dynamic_offset_loc = UINT32_MAX;
+   }
 
    tu_shader->reserved_user_consts_vec4 = reserved_consts_vec4;
 

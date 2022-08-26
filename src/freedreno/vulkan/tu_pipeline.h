@@ -60,9 +60,22 @@ struct tu_compiled_shaders
    uint8_t active_desc_sets;
 
    struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+
+   struct ir3_shader_variant *safe_const_variants[MESA_SHADER_STAGES];
+};
+
+struct tu_nir_shaders
+{
+   struct vk_pipeline_cache_object base;
+
+   /* This is optional, and is only filled out when a library pipeline is
+    * compiled with RETAIN_LINK_TIME_OPTIMIZATION_INFO.
+    */
+   nir_shader *nir[MESA_SHADER_STAGES];
 };
 
 extern const struct vk_pipeline_cache_object_ops tu_shaders_ops;
+extern const struct vk_pipeline_cache_object_ops tu_nir_shaders_ops;
 
 static bool inline
 tu6_shared_constants_enable(const struct tu_pipeline_layout *layout,
@@ -111,6 +124,8 @@ struct tu_pipeline
    uint32_t dynamic_state_mask;
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
 
+   VkGraphicsPipelineLibraryFlagsEXT state;
+
    /* for dynamic states which use the same register: */
    struct {
       uint32_t gras_su_cntl, gras_su_cntl_mask;
@@ -118,6 +133,8 @@ struct tu_pipeline
       uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
       enum a5xx_line_mode line_mode;
       bool provoking_vertex_last;
+
+      uint32_t multiview_mask;
 
       struct tu_draw_state state;
    } rast;
@@ -208,6 +225,31 @@ struct tu_pipeline
    struct {
       bool z_negative_one_to_one;
    } viewport;
+
+   /* Used only for libraries. compiled_shaders only contains variants compiled
+    * by this pipeline, and it owns them, so when it is freed they disappear.
+    * Similarly, nir_shaders owns the link-time NIR. shaders points to the
+    * shaders from this pipeline and all libraries included in it, for
+    * convenience.
+    */
+   struct tu_compiled_shaders *compiled_shaders;
+   struct tu_nir_shaders *nir_shaders;
+   struct {
+      nir_shader *nir;
+      struct tu_shader_key key;
+      struct tu_const_state const_state;
+      struct ir3_shader_variant *variant, *safe_const_variant;
+   } shaders[MESA_SHADER_FRAGMENT + 1];
+
+   struct ir3_shader_key ir3_key;
+
+   /* Used for libraries, to stitch together an overall layout for the final
+    * pipeline.
+    */
+   struct tu_descriptor_set_layout *layouts[MAX_SETS];
+   unsigned num_sets;
+   unsigned push_constant_size;
+   bool independent_sets;
 
    void *executables_mem_ctx;
    /* tu_pipeline_executable */
