@@ -4064,6 +4064,7 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
 
          break;
 
+      case VK_CULL_MODE_FRONT_AND_BACK:
       case VK_CULL_MODE_NONE:
          control.cullmode = PVRX(TA_CULLMODE_NO_CULLING);
          break;
@@ -4339,8 +4340,23 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
    pvr_setup_ppp_control(cmd_buffer);
 
+   /* The hardware doesn't have an explicit mode for this so we use a
+    * negative viewport to make sure all objects are culled out early.
+    */
    if (gfx_pipeline->raster_state.cull_mode == VK_CULL_MODE_FRONT_AND_BACK) {
-      /* FIXME: Port SetNegativeViewport(). */
+      /* Shift the viewport out of the guard-band culling everything. */
+      const uint32_t negative_vp_val = fui(-2.0f);
+
+      state->ppp_state.viewports[0].a0 = negative_vp_val;
+      state->ppp_state.viewports[0].m0 = 0;
+      state->ppp_state.viewports[0].a1 = negative_vp_val;
+      state->ppp_state.viewports[0].m1 = 0;
+      state->ppp_state.viewports[0].a2 = negative_vp_val;
+      state->ppp_state.viewports[0].m2 = 0;
+
+      state->ppp_state.viewport_count = 1;
+
+      state->emit_state.viewport = true;
    }
 
    result = pvr_emit_ppp_state(cmd_buffer, sub_cmd);
