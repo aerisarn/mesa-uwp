@@ -3747,9 +3747,9 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
-                 VkEvent _event,
-                 VkPipelineStageFlags stageMask)
+v3dv_CmdSetEvent2(VkCommandBuffer commandBuffer,
+                  VkEvent _event,
+                  const VkDependencyInfo *pDependencyInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
@@ -3773,9 +3773,9 @@ v3dv_CmdSetEvent(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
-                   VkEvent _event,
-                   VkPipelineStageFlags stageMask)
+v3dv_CmdResetEvent2(VkCommandBuffer commandBuffer,
+                    VkEvent _event,
+                    VkPipelineStageFlags2 stageMask)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_event, event, _event);
@@ -3799,17 +3799,10 @@ v3dv_CmdResetEvent(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
-                   uint32_t eventCount,
-                   const VkEvent *pEvents,
-                   VkPipelineStageFlags srcStageMask,
-                   VkPipelineStageFlags dstStageMask,
-                   uint32_t memoryBarrierCount,
-                   const VkMemoryBarrier *pMemoryBarriers,
-                   uint32_t bufferMemoryBarrierCount,
-                   const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                   uint32_t imageMemoryBarrierCount,
-                   const VkImageMemoryBarrier *pImageMemoryBarriers)
+v3dv_CmdWaitEvents2(VkCommandBuffer commandBuffer,
+                    uint32_t eventCount,
+                    const VkEvent *pEvents,
+                    const VkDependencyInfo *pDependencyInfos)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -3852,10 +3845,10 @@ v3dv_CmdWaitEvents(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
-                       VkPipelineStageFlagBits pipelineStage,
-                       VkQueryPool queryPool,
-                       uint32_t query)
+v3dv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
+                        VkPipelineStageFlags2 stage,
+                        VkQueryPool queryPool,
+                        uint32_t query)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_query_pool, query_pool, queryPool);
