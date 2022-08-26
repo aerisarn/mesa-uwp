@@ -2338,7 +2338,7 @@ to upconvert to 32b float internally?
 	<!-- always 0x1 ? either doesn't exist for a650 or write-only: -->
 	<reg32 offset="0x8e01" name="RB_UNKNOWN_8E01"/>
 	<!-- 0x8e00-0x8e03 invalid -->
-	<reg32 offset="0x8e04" name="RB_UNKNOWN_8E04"/> <!-- TODO: valid mask 0xfffffeff -->
+	<reg32 offset="0x8e04" name="RB_DBG_ECO_CNTL"/> <!-- TODO: valid mask 0xfffffeff -->
 	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<!-- 0x8e06 invalid -->
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
@@ -2549,7 +2549,7 @@ to upconvert to 32b float internally?
 	<!-- 0x9307-0x95ff invalid -->
 
 	<!-- TODO: 0x9600-0x97ff range -->
-	<reg32 offset="0x9600" name="VPC_UNKNOWN_9600"/> <!-- always 0x0 ? TODO: 0x1fbf37ff valid mask -->
+	<reg32 offset="0x9600" name="VPC_DBG_ECO_CNTL"/> <!-- always 0x0 ? TODO: 0x1fbf37ff valid mask -->
 	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602" pos="0"/> <!-- always 0x0 ? -->
 	<reg32 offset="0x9603" name="VPC_UNKNOWN_9603" low="0" high="26"/>
@@ -3394,7 +3394,7 @@ to upconvert to 32b float internally?
 		<bitfield name="MASK" low="12" high="15"/>
 	</reg32>
 
-	<reg32 offset="0xae00" name="SP_UNKNOWN_AE00"/>
+	<reg32 offset="0xae00" name="SP_DBG_ECO_CNTL"/>
 	<reg32 offset="0xae01" name="SP_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<reg32 offset="0xae02" name="SP_NC_MODE_CNTL">
 		<!-- TODO: valid bits 0x3c3f, see kernel -->
@@ -3704,7 +3704,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xbe00" name="HLSQ_UNKNOWN_BE00"/> <!-- all bits valid except bit 29 -->
 	<reg32 offset="0xbe01" name="HLSQ_UNKNOWN_BE01" low="4" high="6"/>
-	<reg32 offset="0xbe04" name="HLSQ_UNKNOWN_BE04"/>
+	<reg32 offset="0xbe04" name="HLSQ_DBG_ECO_CNTL"/>
 	<reg32 offset="0xbe05" name="HLSQ_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xbe08" name="HLSQ_UNKNOWN_BE08" low="0" high="15"/>
 	<array offset="0xbe10" name="HLSQ_PERFCTR_HLSQ_SEL" stride="1" length="6"/>

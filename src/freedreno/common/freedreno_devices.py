@@ -109,7 +109,7 @@ class A6xxGPUInfo(GPUInfo):
        duplication of parameters that are unique to the sub-generation.
     """
     def __init__(self, template, num_sp_cores, num_ccu,
-                 RB_UNKNOWN_8E04_blit, PC_POWER_CNTL):
+                 RB_DBG_ECO_CNTL_blit, PC_POWER_CNTL):
         super().__init__(gmem_align_w = 16, gmem_align_h = 4,
                          tile_align_w = 32, tile_align_h = 32,
                          tile_max_w   = 1024, # max_bitfield_val(5, 0, 5)
@@ -130,7 +130,7 @@ class A6xxGPUInfo(GPUInfo):
             setattr(self.a6xx.magic, name, val)
 
         # Various "magic" register values:
-        self.a6xx.magic.RB_UNKNOWN_8E04_blit = RB_UNKNOWN_8E04_blit
+        self.a6xx.magic.RB_DBG_ECO_CNTL_blit = RB_DBG_ECO_CNTL_blit
         self.a6xx.magic.PC_POWER_CNTL = PC_POWER_CNTL
 
         # Things that earlier gens have and later gens remove, provide
@@ -291,7 +291,7 @@ add_gpus([
         a6xx_gen1,
         num_sp_cores = 1,
         num_ccu = 1,
-        RB_UNKNOWN_8E04_blit = 0x00100000,
+        RB_DBG_ECO_CNTL_blit = 0x00100000,
         PC_POWER_CNTL = 0,
     ))
 
@@ -301,7 +301,7 @@ add_gpus([
         a6xx_gen1,
         num_sp_cores = 2,
         num_ccu = 2,
-        RB_UNKNOWN_8E04_blit = 0x01000000,
+        RB_DBG_ECO_CNTL_blit = 0x01000000,
         PC_POWER_CNTL = 1,
     ))
 
@@ -311,7 +311,7 @@ add_gpus([
         a6xx_gen2,
         num_sp_cores = 2,
         num_ccu = 2,
-        RB_UNKNOWN_8E04_blit = 0x00100000,
+        RB_DBG_ECO_CNTL_blit = 0x00100000,
         PC_POWER_CNTL = 1,
     ))
 
@@ -321,7 +321,7 @@ add_gpus([
         a6xx_gen2,
         num_sp_cores = 4,
         num_ccu = 4,
-        RB_UNKNOWN_8E04_blit = 0x04100000,
+        RB_DBG_ECO_CNTL_blit = 0x04100000,
         PC_POWER_CNTL = 3,
     ))
 
@@ -331,7 +331,7 @@ add_gpus([
         a6xx_gen3,
         num_sp_cores = 3,
         num_ccu = 3,
-        RB_UNKNOWN_8E04_blit = 0x04100000,
+        RB_DBG_ECO_CNTL_blit = 0x04100000,
         PC_POWER_CNTL = 2,
     ))
 
@@ -345,7 +345,7 @@ add_gpus([
         a6xx_gen4,
         num_sp_cores = 2,
         num_ccu = 2,
-        RB_UNKNOWN_8E04_blit = 0x00100000,
+        RB_DBG_ECO_CNTL_blit = 0x00100000,
         PC_POWER_CNTL = 1,
     ))
 
@@ -355,7 +355,7 @@ add_gpus([
         a6xx_gen4,
         num_sp_cores = 3,
         num_ccu = 3,
-        RB_UNKNOWN_8E04_blit = 0x04100000,
+        RB_DBG_ECO_CNTL_blit = 0x04100000,
         PC_POWER_CNTL = 2,
     ))
 

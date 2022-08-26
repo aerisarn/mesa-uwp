@@ -146,7 +146,7 @@ struct fd_dev_info {
          bool lrz_track_quirk;
 
          struct {
-            uint32_t RB_UNKNOWN_8E04_blit;
+            uint32_t RB_DBG_ECO_CNTL_blit;
             uint32_t PC_POWER_CNTL;
             uint32_t TPL1_DBG_ECO_CNTL;
          } magic;
