@@ -1174,6 +1174,53 @@ gfx10_get_ngg_info(const struct radv_device *device, struct radv_pipeline_stage 
 }
 
 static void
+radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_stage *es_stage,
+                            struct radv_pipeline_stage *fs_stage,
+                            const struct radv_pipeline_key *pipeline_key)
+{
+   assert(es_stage->stage == MESA_SHADER_VERTEX || es_stage->stage == MESA_SHADER_TESS_EVAL);
+   assert(fs_stage->stage == MESA_SHADER_FRAGMENT);
+
+   uint64_t ps_inputs_read = fs_stage->nir->info.inputs_read;
+
+   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
+   if (es_stage->stage == MESA_SHADER_TESS_EVAL) {
+      num_vertices_per_prim = es_stage->nir->info.tess.point_mode ? 1 :
+         es_stage->nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES ? 2 : 3;
+   }
+
+   /* TODO: Enable culling for LLVM. */
+   es_stage->info.has_ngg_culling =
+      radv_consider_culling(device->physical_device, es_stage->nir, ps_inputs_read,
+                            num_vertices_per_prim, &es_stage->info) &&
+      !radv_use_llvm_for_stage(device, es_stage->stage);
+
+   nir_function_impl *impl = nir_shader_get_entrypoint(es_stage->nir);
+   es_stage->info.has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
+
+   /* Invocations that process an input vertex */
+   const struct gfx10_ngg_info *ngg_info = &es_stage->info.ngg_info;
+   unsigned max_vtx_in = MIN2(256, ngg_info->enable_vertex_grouping ?
+         ngg_info->hw_max_esverts : num_vertices_per_prim * ngg_info->max_gsprims);
+
+   unsigned lds_bytes_if_culling_off = 0;
+   /* We need LDS space when VS needs to export the primitive ID. */
+   if (es_stage->stage == MESA_SHADER_VERTEX && es_stage->info.outinfo.export_prim_id)
+      lds_bytes_if_culling_off = max_vtx_in * 4u;
+
+   es_stage->info.num_lds_blocks_when_not_culling =
+      DIV_ROUND_UP(lds_bytes_if_culling_off,
+                   device->physical_device->rad_info.lds_encode_granularity);
+
+   /* NGG passthrough mode should be disabled when culling and when the vertex shader
+    * exports the primitive ID.
+    */
+   es_stage->info.is_ngg_passthrough = es_stage->info.is_ngg_passthrough &&
+      !es_stage->info.has_ngg_culling && !(es_stage->stage == MESA_SHADER_VERTEX &&
+                                           es_stage->info.outinfo.export_prim_id);
+}
+
+static void
 radv_link_shaders_info(struct radv_device *device,
                        struct radv_pipeline_stage *producer, struct radv_pipeline_stage *consumer,
                        const struct radv_pipeline_key *pipeline_key)
@@ -1217,6 +1264,11 @@ radv_link_shaders_info(struct radv_device *device,
             consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
 
          gfx10_get_ngg_info(device, producer, gs_stage);
+
+         /* Determine other NGG settings like culling for VS or TES without GS. */
+         if (!gs_stage) {
+            radv_determine_ngg_settings(device, producer, consumer, pipeline_key);
+         }
       } else if (consumer->stage == MESA_SHADER_GEOMETRY) {
          gfx9_get_gs_info(device, producer, consumer);
       }
