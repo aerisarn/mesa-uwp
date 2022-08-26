@@ -1557,7 +1557,9 @@ choose_pdev(struct zink_screen *screen)
    screen->vk_version = MIN2(screen->info.device_version, screen->instance_info.loader_version);
 
    /* calculate SPIR-V version based on VK version */
-   if (screen->vk_version >= VK_MAKE_VERSION(1, 2, 0))
+   if (screen->vk_version >= VK_MAKE_VERSION(1, 3, 0))
+      screen->spirv_version = SPIRV_VERSION(1, 6);
+   else if (screen->vk_version >= VK_MAKE_VERSION(1, 2, 0))
       screen->spirv_version = SPIRV_VERSION(1, 5);
    else if (screen->vk_version >= VK_MAKE_VERSION(1, 1, 0))
       screen->spirv_version = SPIRV_VERSION(1, 3);
