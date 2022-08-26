@@ -244,7 +244,7 @@ lp_sampler_static_sampler_state(struct lp_static_sampler_state *state,
 /* build aniso pmin value */
 static LLVMValueRef
 lp_build_pmin(struct lp_build_sample_context *bld,
-              unsigned texture_unit,
+              LLVMValueRef first_level,
               LLVMValueRef s,
               LLVMValueRef t,
               LLVMValueRef max_aniso)
@@ -260,16 +260,12 @@ lp_build_pmin(struct lp_build_sample_context *bld,
    LLVMValueRef index1 = LLVMConstInt(i32t, 1, 0);
    LLVMValueRef ddx_ddy = lp_build_packed_ddx_ddy_twocoord(coord_bld, s, t);
    LLVMValueRef int_size, float_size;
-   LLVMValueRef first_level, first_level_vec;
    unsigned length = coord_bld->type.length;
    unsigned num_quads = length / 4;
    boolean pmin_per_quad = pmin_bld->type.length != length;
    unsigned i;
 
-   first_level = bld->dynamic_state->first_level(bld->gallivm, bld->context_type,
-                                                 bld->context_ptr, texture_unit, NULL);
-   first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
-   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
+   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level, TRUE);
    float_size = lp_build_int_to_float(float_size_bld, int_size);
    max_aniso = lp_build_broadcast_scalar(coord_bld, max_aniso);
    max_aniso = lp_build_mul(coord_bld, max_aniso, max_aniso);
@@ -338,7 +334,7 @@ lp_build_pmin(struct lp_build_sample_context *bld,
  */
 static LLVMValueRef
 lp_build_rho(struct lp_build_sample_context *bld,
-             unsigned texture_unit,
+             LLVMValueRef first_level,
              LLVMValueRef s,
              LLVMValueRef t,
              LLVMValueRef r,
@@ -360,7 +356,6 @@ lp_build_rho(struct lp_build_sample_context *bld,
    LLVMValueRef rho_vec;
    LLVMValueRef int_size, float_size;
    LLVMValueRef rho;
-   LLVMValueRef first_level, first_level_vec;
    unsigned length = coord_bld->type.length;
    unsigned num_quads = length / 4;
    boolean rho_per_quad = rho_bld->type.length != length;
@@ -376,10 +371,7 @@ lp_build_rho(struct lp_build_sample_context *bld,
     * the messy cube maps for now) when requested.
     */
 
-   first_level = bld->dynamic_state->first_level(bld->gallivm, bld->context_type,
-                                                 bld->context_ptr, texture_unit, NULL);
-   first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
-   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
+   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level, TRUE);
    float_size = lp_build_int_to_float(float_size_bld, int_size);
 
    if (derivs) {
@@ -806,8 +798,8 @@ lp_build_ilog2_sqrt(struct lp_build_context *bld,
 void
 lp_build_lod_selector(struct lp_build_sample_context *bld,
                       boolean is_lodq,
-                      unsigned texture_unit,
                       unsigned sampler_unit,
+                      LLVMValueRef first_level,
                       LLVMValueRef s,
                       LLVMValueRef t,
                       LLVMValueRef r,
@@ -873,10 +865,10 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
 
          if (bld->static_sampler_state->aniso &&
              !explicit_lod) {
-            rho = lp_build_pmin(bld, texture_unit, s, t, max_aniso);
+            rho = lp_build_pmin(bld, first_level, s, t, max_aniso);
             rho_squared = true;
          } else
-            rho = lp_build_rho(bld, texture_unit, s, t, r, derivs);
+            rho = lp_build_rho(bld, first_level, s, t, r, derivs);
 
          /*
           * Compute lod = log2(rho)
@@ -1023,21 +1015,14 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
  */
 void
 lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
-                           unsigned texture_unit,
+                           LLVMValueRef first_level,
+                           LLVMValueRef last_level,
                            LLVMValueRef lod_ipart,
                            LLVMValueRef *level_out,
                            LLVMValueRef *out_of_bounds)
 {
    struct lp_build_context *leveli_bld = &bld->leveli_bld;
-   struct lp_sampler_dynamic_state *dynamic_state = bld->dynamic_state;
-   LLVMValueRef first_level, last_level, level;
-
-   first_level = dynamic_state->first_level(bld->gallivm, bld->context_type,
-                                            bld->context_ptr, texture_unit, NULL);
-   last_level = dynamic_state->last_level(bld->gallivm, bld->context_type,
-                                          bld->context_ptr, texture_unit, NULL);
-   first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
-   last_level = lp_build_broadcast_scalar(leveli_bld, last_level);
+   LLVMValueRef level;
 
    level = lp_build_add(leveli_bld, lod_ipart, first_level);
 
@@ -1079,27 +1064,20 @@ lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
 void
 lp_build_linear_mip_levels(struct lp_build_sample_context *bld,
                            unsigned texture_unit,
+                           LLVMValueRef first_level,
+                           LLVMValueRef last_level,
                            LLVMValueRef lod_ipart,
                            LLVMValueRef *lod_fpart_inout,
                            LLVMValueRef *level0_out,
                            LLVMValueRef *level1_out)
 {
    LLVMBuilderRef builder = bld->gallivm->builder;
-   struct lp_sampler_dynamic_state *dynamic_state = bld->dynamic_state;
    struct lp_build_context *leveli_bld = &bld->leveli_bld;
    struct lp_build_context *levelf_bld = &bld->levelf_bld;
-   LLVMValueRef first_level, last_level;
    LLVMValueRef clamp_min;
    LLVMValueRef clamp_max;
 
    assert(bld->num_lods == bld->num_mips);
-
-   first_level = dynamic_state->first_level(bld->gallivm, bld->context_type,
-                                            bld->context_ptr, texture_unit, NULL);
-   last_level = dynamic_state->last_level(bld->gallivm, bld->context_type,
-                                          bld->context_ptr, texture_unit, NULL);
-   first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
-   last_level = lp_build_broadcast_scalar(leveli_bld, last_level);
 
    *level0_out = lp_build_add(leveli_bld, lod_ipart, first_level);
    *level1_out = lp_build_add(leveli_bld, *level0_out, leveli_bld->one);

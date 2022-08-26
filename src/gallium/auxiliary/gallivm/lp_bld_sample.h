@@ -598,8 +598,8 @@ lp_sampler_static_texture_state_image(struct lp_static_texture_state *state,
 void
 lp_build_lod_selector(struct lp_build_sample_context *bld,
                       boolean is_lodq,
-                      unsigned texture_index,
                       unsigned sampler_index,
+                      LLVMValueRef first_level,
                       LLVMValueRef s,
                       LLVMValueRef t,
                       LLVMValueRef r,
@@ -615,7 +615,8 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
 
 void
 lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
-                           unsigned texture_unit,
+                           LLVMValueRef first_level,
+                           LLVMValueRef last_level,
                            LLVMValueRef lod,
                            LLVMValueRef *level_out,
                            LLVMValueRef *out_of_bounds);
@@ -623,6 +624,8 @@ lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
 void
 lp_build_linear_mip_levels(struct lp_build_sample_context *bld,
                            unsigned texture_unit,
+                           LLVMValueRef first_level,
+                           LLVMValueRef last_level,
                            LLVMValueRef lod_ipart,
                            LLVMValueRef *lod_fpart_inout,
                            LLVMValueRef *level0_out,
