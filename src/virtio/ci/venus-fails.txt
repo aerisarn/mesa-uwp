@@ -13,4 +13,3 @@ dEQP-VK.pipeline.extended_dynamic_state.before_draw.enable_raster,Fail
 dEQP-VK.pipeline.extended_dynamic_state.between_pipelines.enable_raster,Fail
 dEQP-VK.pipeline.extended_dynamic_state.cmd_buffer_start.enable_raster,Fail
 dEQP-VK.pipeline.extended_dynamic_state.two_draws_dynamic.enable_raster,Fail
-dEQP-VK.pipeline.timestamp.calibrated.host_domain_test,Fail

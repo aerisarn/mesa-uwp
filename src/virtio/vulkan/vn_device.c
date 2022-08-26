@@ -547,8 +547,53 @@ vn_GetCalibratedTimestampsEXT(
    uint64_t *pMaxDeviation)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   uint64_t begin, end, max_clock_period = 0;
+   VkResult ret;
+   int domain;
 
-   return vn_call_vkGetCalibratedTimestampsEXT(
-      dev->instance, device, timestampCount, pTimestampInfos, pTimestamps,
-      pMaxDeviation);
+#ifdef CLOCK_MONOTONIC_RAW
+   begin = vk_clock_gettime(CLOCK_MONOTONIC_RAW);
+#else
+   begin = vk_clock_gettime(CLOCK_MONOTONIC);
+#endif
+
+   for (domain = 0; domain < timestampCount; domain++) {
+      switch (pTimestampInfos[domain].timeDomain) {
+      case VK_TIME_DOMAIN_DEVICE_EXT: {
+         uint64_t device_max_deviation = 0;
+
+         ret = vn_call_vkGetCalibratedTimestampsEXT(
+            dev->instance, device, 1, &pTimestampInfos[domain],
+            &pTimestamps[domain], &device_max_deviation);
+
+         if (ret != VK_SUCCESS)
+            return vn_error(dev->instance, ret);
+
+         max_clock_period = MAX2(max_clock_period, device_max_deviation);
+         break;
+      }
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
+         pTimestamps[domain] = vk_clock_gettime(CLOCK_MONOTONIC);
+         max_clock_period = MAX2(max_clock_period, 1);
+         break;
+#ifdef CLOCK_MONOTONIC_RAW
+      case VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT:
+         pTimestamps[domain] = begin;
+         break;
+#endif
+      default:
+         pTimestamps[domain] = 0;
+         break;
+      }
+   }
+
+#ifdef CLOCK_MONOTONIC_RAW
+   end = vk_clock_gettime(CLOCK_MONOTONIC_RAW);
+#else
+   end = vk_clock_gettime(CLOCK_MONOTONIC);
+#endif
+
+   *pMaxDeviation = vk_time_max_deviation(begin, end, max_clock_period);
+
+   return VK_SUCCESS;
 }
