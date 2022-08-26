@@ -31,6 +31,12 @@ void create_mubuf(unsigned offset)
              Operand(PhysReg(256), v1), Operand::zero(), offset, true);
 }
 
+void create_mubuf_store(PhysReg src=PhysReg(256))
+{
+   bld.mubuf(aco_opcode::buffer_store_dword, Operand(PhysReg(0), s4),
+             Operand(src, v1), Operand::zero(), Operand(src, v1), 0, true);
+}
+
 void create_mimg(bool nsa, unsigned addrs, unsigned instr_dwords)
 {
    aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(
@@ -161,6 +167,142 @@ BEGIN_TEST(insert_nops.writelane_to_nsa_bug)
    create_mimg(true, 2, 3);
    program->blocks[0].linear_succs.push_back(1);
    program->blocks[1].linear_preds.push_back(0);
+
+   finish_insert_nops_test();
+END_TEST
+
+BEGIN_TEST(insert_nops.vmem_to_scalar_write)
+   if (!setup_cs(NULL, GFX10))
+      return;
+
+   /* WaR: VMEM load */
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   create_mubuf(0);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   //! p_unit_test 1
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s2: %0:exec = s_mov_b64 -1
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   create_mubuf(0);
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+
+   /* no hazard: VMEM load */
+   //! p_unit_test 2
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! s1: %0:s[4] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2));
+   create_mubuf(0);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(4), s1), Operand::zero());
+
+   /* no hazard: VMEM load with VALU in-between */
+   //! p_unit_test 3
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! v_nop
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3));
+   create_mubuf(0);
+   bld.vop1(aco_opcode::v_nop);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   /* WaR: LDS */
+   //! p_unit_test 4
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s1: %0:m0 = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(m0, s1), Operand::zero());
+
+   //! p_unit_test 5
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s2: %0:exec = s_mov_b64 -1
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand::c64(-1));
+
+   /* no hazard: LDS */
+   //! p_unit_test 6
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   /* no hazard: LDS with VALU in-between */
+   //! p_unit_test 7
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! v_nop
+   //! s1: %0:m0 = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(7));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.vop1(aco_opcode::v_nop);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(m0, s1), Operand::zero());
+
+   /* no hazard: VMEM/LDS with the correct waitcnt in-between */
+   //! p_unit_test 8
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! s_waitcnt vmcnt(0)
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(8));
+   create_mubuf(0);
+   bld.sopp(aco_opcode::s_waitcnt, -1, 0x3f70);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   //! p_unit_test 9
+   //! buffer_store_dword %0:s[0-3], %0:v[0], 0, %0:v[0] offen
+   //! s1: %0:null = s_waitcnt_vscnt imm:0
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(9));
+   create_mubuf_store();
+   bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   //! p_unit_test 10
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! s_waitcnt lgkmcnt(0)
+   //! s1: %0:m0 = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(10));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.sopp(aco_opcode::s_waitcnt, -1, 0xc07f);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(m0, s1), Operand::zero());
+
+   /* VMEM/LDS with the wrong waitcnt in-between */
+   //! p_unit_test 11
+   //! v1: %0:v[0] = buffer_load_dword %0:s[0-3], %0:v[0], 0 offen
+   //! s1: %0:null = s_waitcnt_vscnt imm:0
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(11));
+   create_mubuf(0);
+   bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   //! p_unit_test 12
+   //! buffer_store_dword %0:s[0-3], %0:v[0], 0, %0:v[0] offen
+   //! s_waitcnt lgkmcnt(0)
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s1: %0:s[0] = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(12));
+   create_mubuf_store();
+   bld.sopp(aco_opcode::s_waitcnt, -1, 0xc07f);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(0), s1), Operand::zero());
+
+   //! p_unit_test 13
+   //! v1: %0:v[0] = ds_read_b32 %0:v[0], %0:m0
+   //! s_waitcnt vmcnt(0)
+   //! s_waitcnt_depctr vm_vsrc(0)
+   //! s1: %0:m0 = s_mov_b32 0
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(13));
+   bld.ds(aco_opcode::ds_read_b32, Definition(PhysReg(256), v1), Operand(PhysReg(256), v1), Operand(m0, s1));
+   bld.sopp(aco_opcode::s_waitcnt, -1, 0x3f70);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(m0, s1), Operand::zero());
 
    finish_insert_nops_test();
 END_TEST
