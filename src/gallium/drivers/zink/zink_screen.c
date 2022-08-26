@@ -449,7 +449,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_SHADER_GROUP_VOTE:
       if (screen->info.have_vulkan11 &&
-             (screen->info.subgroup.supportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) &&
+          (screen->info.subgroup.supportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) &&
           (screen->info.subgroup.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT))
          return true;
       if (screen->info.have_EXT_shader_subgroup_vote)
