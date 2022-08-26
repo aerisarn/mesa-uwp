@@ -863,12 +863,6 @@ radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline
       }
 
       stages[es_stage].info.esgs_itemsize = num_outputs_written * 16;
-
-      /* Copy data to merged stage. */
-      if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-          stages[MESA_SHADER_GEOMETRY].nir) {
-         stages[MESA_SHADER_GEOMETRY].info.esgs_itemsize = stages[es_stage].info.esgs_itemsize;
-      }
    }
 
    if (stages[MESA_SHADER_TASK].nir) {
