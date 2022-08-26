@@ -1268,9 +1268,17 @@ radv_link_shaders_info(struct radv_device *device,
 
    if (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL) {
       if (consumer->stage == MESA_SHADER_GEOMETRY) {
+         uint32_t num_outputs_written;
+
+         if (producer->stage == MESA_SHADER_TESS_EVAL) {
+            num_outputs_written = producer->info.tes.num_linked_outputs;
+            producer->info.tes.as_es = true;
+         } else {
+            num_outputs_written = producer->info.vs.num_linked_outputs;
+            producer->info.vs.as_es = true;
+         }
+
          /* Compute the ESGS item size for VS or TES as ES. */
-         uint32_t num_outputs_written = producer->stage == MESA_SHADER_TESS_EVAL
-            ? producer->info.tes.num_linked_outputs : producer->info.vs.num_linked_outputs;
          producer->info.esgs_itemsize = num_outputs_written * 16;
       }
 
@@ -1293,6 +1301,8 @@ radv_link_shaders_info(struct radv_device *device,
    if (producer->stage == MESA_SHADER_VERTEX && consumer->stage == MESA_SHADER_TESS_CTRL) {
       struct radv_pipeline_stage *vs_stage = producer;
       struct radv_pipeline_stage *tcs_stage = consumer;
+
+      vs_stage->info.vs.as_ls = true;
 
       vs_stage->info.workgroup_size =
          ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,

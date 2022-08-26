@@ -2802,17 +2802,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 {
    struct radv_device *device = pipeline->device;
 
-   if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      stages[MESA_SHADER_VERTEX].info.vs.as_ls = true;
-   }
-
-   if (stages[MESA_SHADER_GEOMETRY].nir) {
-      if (stages[MESA_SHADER_TESS_CTRL].nir)
-         stages[MESA_SHADER_TESS_EVAL].info.tes.as_es = true;
-      else
-         stages[MESA_SHADER_VERTEX].info.vs.as_es = true;
-   }
-
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (!stages[i].nir)
          continue;
