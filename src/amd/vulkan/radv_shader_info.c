@@ -1396,8 +1396,7 @@ static const gl_shader_stage graphics_shader_order[] = {
 
 void
 radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                          struct radv_pipeline_stage *stages, bool pipeline_has_ngg,
-                          gl_shader_stage last_vgt_api_stage)
+                          struct radv_pipeline_stage *stages)
 {
    /* Walk backwards to link */
    struct radv_pipeline_stage *next_stage = &stages[MESA_SHADER_FRAGMENT];

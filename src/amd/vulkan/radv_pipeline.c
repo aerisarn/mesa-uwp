@@ -2798,9 +2798,7 @@ static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
                       struct radv_pipeline_layout *pipeline_layout,
                       const struct radv_pipeline_key *pipeline_key,
-                      struct radv_pipeline_stage *stages,
-                      gl_shader_stage last_vgt_api_stage,
-                      bool pipeline_has_ngg)
+                      struct radv_pipeline_stage *stages)
 {
    struct radv_device *device = pipeline->device;
 
@@ -2824,7 +2822,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                                 &stages[i].info);
    }
 
-   radv_nir_shader_info_link(device, pipeline_key, stages, pipeline_has_ngg, last_vgt_api_stage);
+   radv_nir_shader_info_link(device, pipeline_key, stages);
 }
 
 static void
@@ -3979,8 +3977,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_lower_fs_output, pipeline_key);
    }
 
-   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, *last_vgt_api_stage,
-                         pipeline_has_ngg);
+   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages);
 
    radv_declare_pipeline_args(device, stages, pipeline_key);
 
