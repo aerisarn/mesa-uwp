@@ -22,7 +22,6 @@ lima-mali450-piglit-gpu:arm64:
     - .piglit-test
     - .lava-meson-gxl-s805x-libretech-ac
   variables:
-    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     PIGLIT_PLATFORM: gbm
     PIGLIT_PROFILES: gpu
   parallel: 2
