@@ -336,6 +336,7 @@ enum dxil_intr {
    DXIL_INTR_CREATE_HANDLE_FROM_BINDING = 217,
 
    DXIL_INTR_IS_HELPER_LANE = 221,
+   DXIL_INTR_SAMPLE_CMP_LEVEL = 224,
 };
 
 enum dxil_atomic_op {
@@ -4859,7 +4860,7 @@ emit_sample_cmp(struct ntd_context *ctx, struct texop_parameters *params)
    enum dxil_intr opcode;
    int numparam;
 
-   if (ctx->mod.shader_kind == DXIL_PIXEL_SHADER)  {
+   if (ctx->mod.shader_kind == DXIL_PIXEL_SHADER) {
       func = dxil_get_function(&ctx->mod, "dx.op.sampleCmp", DXIL_F32);
       opcode = DXIL_INTR_SAMPLE_CMP;
       numparam = 12;
@@ -4881,6 +4882,26 @@ emit_sample_cmp(struct ntd_context *ctx, struct texop_parameters *params)
    };
 
    return dxil_emit_call(&ctx->mod, func, args, numparam);
+}
+
+static const struct dxil_value *
+emit_sample_cmp_level(struct ntd_context *ctx, struct texop_parameters *params)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.sampleCmpLevel", params->overload);
+   if (!func)
+      return NULL;
+
+   assert(params->lod_or_sample != NULL);
+
+   const struct dxil_value *args[12] = {
+      dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_SAMPLE_CMP_LEVEL),
+      params->tex, params->sampler,
+      params->coord[0], params->coord[1], params->coord[2], params->coord[3],
+      params->offset[0], params->offset[1], params->offset[2],
+      params->cmp, params->lod_or_sample
+   };
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
 }
 
 static const struct dxil_value *
@@ -5129,7 +5150,10 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       params.lod_or_sample = dxil_module_get_float_const(&ctx->mod, 0);
       FALLTHROUGH;
    case nir_texop_txl:
-      sample = emit_sample_level(ctx, &params);
+      if (params.cmp != NULL)
+         sample = emit_sample_cmp_level(ctx, &params);
+      else
+         sample = emit_sample_level(ctx, &params);
       break;
 
    case nir_texop_txd:
