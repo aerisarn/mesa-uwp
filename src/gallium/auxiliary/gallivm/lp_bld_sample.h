@@ -458,7 +458,6 @@ struct lp_build_sample_context
    LLVMTypeRef mip_offsets_type;
    LLVMValueRef mip_offsets;
    LLVMValueRef cache;
-   LLVMValueRef sample_stride;
 
    /** Integer vector with texture width, height, depth */
    LLVMValueRef int_size;
