@@ -1227,6 +1227,7 @@ tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj
 VkResult
 tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 {
+   MESA_TRACE_FUNC();
    struct tu_queue *queue = container_of(vk_queue, struct tu_queue, vk);
    uint32_t perf_pass_index = queue->device->perfcntrs_pass_cs ?
                               submit->perf_pass_index : ~0;

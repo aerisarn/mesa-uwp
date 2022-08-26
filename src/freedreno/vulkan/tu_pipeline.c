@@ -4155,6 +4155,7 @@ tu_CreateGraphicsPipelines(VkDevice device,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipelines)
 {
+   MESA_TRACE_FUNC();
    VkResult final_result = VK_SUCCESS;
    uint32_t i = 0;
 
@@ -4362,6 +4363,7 @@ tu_CreateComputePipelines(VkDevice device,
                           const VkAllocationCallbacks *pAllocator,
                           VkPipeline *pPipelines)
 {
+   MESA_TRACE_FUNC();
    VkResult final_result = VK_SUCCESS;
    uint32_t i = 0;
 

@@ -358,6 +358,7 @@ tu_QueueSubmit2(VkQueue _queue,
                 const VkSubmitInfo2 *pSubmits,
                 VkFence _fence)
 {
+   MESA_TRACE_FUNC();
    TU_FROM_HANDLE(tu_queue, queue, _queue);
    TU_FROM_HANDLE(tu_syncobj, fence, _fence);
    VkResult result = VK_SUCCESS;
