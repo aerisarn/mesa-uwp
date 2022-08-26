@@ -48,22 +48,6 @@ struct llvm_geometry_shader;
 struct llvm_tess_ctrl_shader;
 struct llvm_tess_eval_shader;
 
-struct draw_jit_texture
-{
-   uint32_t width;
-   uint32_t height;
-   uint32_t depth;
-   const void *base;
-   uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t first_level;
-   uint32_t last_level;
-   uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t num_samples;
-   uint32_t sample_stride;
-};
-
-
 struct draw_sampler_static_state
 {
    /*
@@ -102,22 +86,6 @@ struct draw_jit_image
    uint32_t num_samples;
    uint32_t sample_stride;
 };
-
-enum {
-   DRAW_JIT_TEXTURE_WIDTH = 0,
-   DRAW_JIT_TEXTURE_HEIGHT,
-   DRAW_JIT_TEXTURE_DEPTH,
-   DRAW_JIT_TEXTURE_BASE,
-   DRAW_JIT_TEXTURE_ROW_STRIDE,
-   DRAW_JIT_TEXTURE_IMG_STRIDE,
-   DRAW_JIT_TEXTURE_FIRST_LEVEL,
-   DRAW_JIT_TEXTURE_LAST_LEVEL,
-   DRAW_JIT_TEXTURE_MIP_OFFSETS,
-   DRAW_JIT_TEXTURE_NUM_SAMPLES,
-   DRAW_JIT_TEXTURE_SAMPLE_STRIDE,
-   DRAW_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
-};
-
 
 enum {
    DRAW_JIT_SAMPLER_MIN_LOD,
@@ -164,7 +132,7 @@ struct draw_jit_context
    float (*planes) [DRAW_TOTAL_CLIP_PLANES][4];
    struct pipe_viewport_state *viewports;
 
-   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
@@ -249,7 +217,7 @@ struct draw_gs_jit_context
 
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
-   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
@@ -305,7 +273,7 @@ struct draw_tcs_jit_context {
    int dummy2;
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
-   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
@@ -342,7 +310,7 @@ struct draw_tes_jit_context {
    int dummy2;
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
-   struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
