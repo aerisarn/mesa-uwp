@@ -1752,7 +1752,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       goto out;
 
    if (!pipeline->variants) {
-      hres = ID3D12Device2_CreatePipelineState(device->dev, stream_desc,
+      hres = ID3D12Device4_CreatePipelineState(device->dev, stream_desc,
                                                &IID_ID3D12PipelineState,
                                                (void **)&pipeline->base.state);
       if (FAILED(hres)) {
@@ -1869,7 +1869,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
          }
       }
 
-      ASSERTED HRESULT hres = ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
+      ASSERTED HRESULT hres = ID3D12Device4_CreatePipelineState(device->dev, &stream_desc,
                                                                 &IID_ID3D12PipelineState,
                                                                 (void**)(&variant->state));
       assert(!FAILED(hres));
@@ -2195,7 +2195,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
    if (ret != VK_SUCCESS)
       goto out;
 
-   if (FAILED(ID3D12Device2_CreatePipelineState(device->dev, &stream_desc,
+   if (FAILED(ID3D12Device4_CreatePipelineState(device->dev, &stream_desc,
                                                 &IID_ID3D12PipelineState,
                                                 (void **)&pipeline->base.state)))
       ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);

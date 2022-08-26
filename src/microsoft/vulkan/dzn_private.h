@@ -200,7 +200,7 @@ struct dzn_physical_device {
    struct wsi_device wsi_device;
 
    mtx_t dev_lock;
-   ID3D12Device2 *dev;
+   ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
@@ -238,7 +238,7 @@ d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory 
 void
 d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory);
 
-ID3D12Device2 *
+ID3D12Device4 *
 d3d12_create_device(struct util_dl_library *d3d12_mod, IUnknown *adapter, ID3D12DeviceFactory *factory, bool experimental_features);
 
 struct dzn_queue {
@@ -254,7 +254,7 @@ struct dzn_device {
    struct vk_device_extension_table enabled_extensions;
    struct vk_device_dispatch_table cmd_dispatch;
 
-   ID3D12Device2 *dev;
+   ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    ID3D12DeviceConfiguration *dev_config;
 
@@ -363,7 +363,7 @@ struct dzn_buffer_desc {
 #define MAX_DESCS_PER_CBV_SRV_UAV_HEAP 1000000u
 
 struct dzn_descriptor_heap {
-   ID3D12Device2 *dev;
+   ID3D12Device4 *dev;
    ID3D12DescriptorHeap *heap;
    D3D12_DESCRIPTOR_HEAP_TYPE type;
    SIZE_T cpu_base;

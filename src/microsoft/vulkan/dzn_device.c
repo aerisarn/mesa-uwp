@@ -683,7 +683,7 @@ dzn_physical_device_get_max_array_layers()
    return dzn_physical_device_get_max_extent(false);
 }
 
-static ID3D12Device2 *
+static ID3D12Device4 *
 dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
 {
    struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
@@ -735,7 +735,7 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
      .Format = dzn_image_get_dxgi_format(format, usage, aspects),
    };
 
-   ID3D12Device2 *dev = dzn_physical_device_get_d3d12_dev(pdev);
+   ID3D12Device4 *dev = dzn_physical_device_get_d3d12_dev(pdev);
    ASSERTED HRESULT hres =
       ID3D12Device1_CheckFeatureSupport(dev, D3D12_FEATURE_FORMAT_SUPPORT,
                                         &dfmt_info, sizeof(dfmt_info));
@@ -933,7 +933,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    bool is_bgra4 = info->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16;
-   ID3D12Device2 *dev = dzn_physical_device_get_d3d12_dev(pdev);
+   ID3D12Device4 *dev = dzn_physical_device_get_d3d12_dev(pdev);
 
    if ((info->type == VK_IMAGE_TYPE_1D && !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE1D)) ||
        (info->type == VK_IMAGE_TYPE_2D && !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE2D)) ||
@@ -2050,7 +2050,7 @@ static VkResult
 dzn_device_query_init(struct dzn_device *device)
 {
    /* FIXME: create the resource in the default heap */
-   D3D12_HEAP_PROPERTIES hprops = dzn_ID3D12Device2_GetCustomHeapProperties(device->dev, 0, D3D12_HEAP_TYPE_UPLOAD);
+   D3D12_HEAP_PROPERTIES hprops = dzn_ID3D12Device4_GetCustomHeapProperties(device->dev, 0, D3D12_HEAP_TYPE_UPLOAD);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
