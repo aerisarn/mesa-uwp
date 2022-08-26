@@ -3116,31 +3116,6 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    return key;
 }
 
-static uint8_t
-radv_get_wave_size(struct radv_device *device,  gl_shader_stage stage,
-                   const struct radv_shader_info *info)
-{
-   if (stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
-      return 64;
-   else if (stage == MESA_SHADER_COMPUTE) {
-      return info->cs.subgroup_size;
-   } else if (stage == MESA_SHADER_FRAGMENT)
-      return device->physical_device->ps_wave_size;
-   else if (stage == MESA_SHADER_TASK)
-      return device->physical_device->cs_wave_size;
-   else
-      return device->physical_device->ge_wave_size;
-}
-
-static uint8_t
-radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage,
-                         const struct radv_shader_info *info)
-{
-   if (stage == MESA_SHADER_COMPUTE && info->cs.subgroup_size)
-      return info->cs.subgroup_size;
-   return 64;
-}
-
 static void
 radv_determine_ngg_settings(struct radv_pipeline *pipeline,
                             const struct radv_pipeline_key *pipeline_key,
@@ -3354,13 +3329,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    }
 
    radv_nir_shader_info_link(device, pipeline_key, stages, last_vgt_api_stage);
-
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
-      if (stages[i].nir) {
-         stages[i].info.wave_size = radv_get_wave_size(device, i, &stages[i].info);
-         stages[i].info.ballot_bit_size = radv_get_ballot_bit_size(device, i, &stages[i].info);
-      }
-   }
 
    if (stages[MESA_SHADER_TESS_CTRL].nir) {
       for (gl_shader_stage s = MESA_SHADER_VERTEX; s <= MESA_SHADER_TESS_CTRL; ++s) {
