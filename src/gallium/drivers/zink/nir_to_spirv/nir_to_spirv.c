@@ -4688,7 +4688,13 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
                              type_void_func);
       SpvId label = spirv_builder_new_id(&ctx.builder);
       spirv_builder_label(&ctx.builder, label);
-      spirv_builder_emit_kill(&ctx.builder);
+
+      /* kill is deprecated in SPIR-V 1.6, use terminate instead */
+      if (spirv_version >= SPIRV_VERSION(1, 6))
+         spirv_builder_emit_terminate(&ctx.builder);
+      else
+         spirv_builder_emit_kill(&ctx.builder);
+
       spirv_builder_function_end(&ctx.builder);
    }
 
