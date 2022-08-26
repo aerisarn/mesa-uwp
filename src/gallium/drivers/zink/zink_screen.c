@@ -683,7 +683,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return false;
 
    case PIPE_CAP_DEMOTE_TO_HELPER_INVOCATION:
-      return screen->info.have_EXT_shader_demote_to_helper_invocation;
+      return screen->spirv_version >= SPIRV_VERSION(1, 6) ||
+             screen->info.have_EXT_shader_demote_to_helper_invocation;
 
    case PIPE_CAP_SAMPLE_SHADING:
       return screen->info.feats.features.sampleRateShading;

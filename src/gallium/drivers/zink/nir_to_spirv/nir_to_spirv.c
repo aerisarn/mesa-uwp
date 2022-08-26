@@ -4379,7 +4379,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleMaskPostDepthCoverage);
       if (s->info.fs.uses_sample_shading)
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
-      if (s->info.fs.uses_demote)
+      if (s->info.fs.uses_demote && spirv_version < SPIRV_VERSION(1, 6))
          spirv_builder_emit_extension(&ctx.builder,
                                       "SPV_EXT_demote_to_helper_invocation");
       break;
