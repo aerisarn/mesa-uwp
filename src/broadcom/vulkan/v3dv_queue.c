@@ -810,15 +810,18 @@ handle_cl_job(struct v3dv_queue *queue,
    if (queue->last_job_syncs.first[V3DV_QUEUE_CL]) {
       for (int i = 0; !needs_bcl_sync && i < sync_info->wait_count; i++) {
          needs_bcl_sync = sync_info->waits[i].stage_mask &
-             (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
-              VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
-              VK_PIPELINE_STAGE_ALL_COMMANDS_BIT |
-              VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
-              VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
-              VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-              VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
-              VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
-              VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
+             (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+              VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |
+              VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+              VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+              VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+              VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+              VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
+              VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+              VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+              VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+              VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+              VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT);
       }
    }
 
