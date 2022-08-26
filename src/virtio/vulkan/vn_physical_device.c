@@ -163,6 +163,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        feats->line_rasterization,
                        LINE_RASTERIZATION_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_primitive_topology_list_restart,
+                       feats->primitive_topology_list_restart,
+                       PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, feats->provoking_vertex,
                        PROVOKING_VERTEX_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_robustness2, feats->robustness_2,
@@ -1059,6 +1062,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
+      .EXT_primitive_topology_list_restart = true,
       .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
       .EXT_robustness2 = true,
@@ -1686,6 +1690,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceDepthClipEnableFeaturesEXT *depth_clip_enable;
       VkPhysicalDeviceIndexTypeUint8FeaturesEXT *index_type_uint8;
       VkPhysicalDeviceLineRasterizationFeaturesEXT *line_rasterization;
+      VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
+         *primitive_topology_list_restart;
       VkPhysicalDeviceProvokingVertexFeaturesEXT *provoking_vertex;
       VkPhysicalDeviceRobustness2FeaturesEXT *robustness_2;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
@@ -1897,6 +1903,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
          *u.line_rasterization = feats->line_rasterization;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT:
+         *u.primitive_topology_list_restart = feats->primitive_topology_list_restart;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
          *u.provoking_vertex = feats->provoking_vertex;
