@@ -73,7 +73,6 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(is_ngg);
    ASSIGN_FIELD(has_ngg_culling);
    ASSIGN_FIELD(has_ngg_early_prim_export);
-   ASSIGN_FIELD(num_tess_patches);
    ASSIGN_FIELD(workgroup_size);
    radv_aco_convert_shader_vp_info(&aco_info->outinfo, &radv->outinfo);
    ASSIGN_FIELD(vs.as_es);

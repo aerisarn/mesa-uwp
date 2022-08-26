@@ -304,15 +304,12 @@ setup_tcs_info(isel_context* ctx, nir_shader* nir, nir_shader* vs)
 {
    ctx->tcs_in_out_eq = ctx->program->info.vs.tcs_in_out_eq;
    ctx->tcs_temp_only_inputs = ctx->program->info.vs.tcs_temp_only_input_mask;
-   ctx->tcs_num_patches = ctx->program->info.num_tess_patches;
    ctx->program->config->lds_size = ctx->program->info.tcs.num_lds_blocks;
 }
 
 void
 setup_tes_variables(isel_context* ctx, nir_shader* nir)
 {
-   ctx->tcs_num_patches = ctx->program->info.num_tess_patches;
-
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
       setup_vs_output_info(ctx, nir);
 

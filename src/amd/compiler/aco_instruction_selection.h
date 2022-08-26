@@ -103,7 +103,6 @@ struct isel_context {
 
    /* tessellation information */
    uint64_t tcs_temp_only_inputs;
-   uint32_t tcs_num_patches;
    bool tcs_in_out_eq = false;
 
    /* Fragment color output information */

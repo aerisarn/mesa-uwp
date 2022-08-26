@@ -105,7 +105,6 @@ struct aco_shader_info {
    bool is_ngg;
    bool has_ngg_culling;
    bool has_ngg_early_prim_export;
-   uint32_t num_tess_patches;
    unsigned workgroup_size;
    struct aco_vp_output_info outinfo;
    struct {
