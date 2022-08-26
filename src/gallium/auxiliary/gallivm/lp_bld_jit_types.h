@@ -85,4 +85,25 @@ enum {
 LLVMTypeRef
 lp_build_create_jit_texture_type(struct gallivm_state *gallivm);
 
+struct lp_jit_sampler
+{
+   float min_lod;
+   float max_lod;
+   float lod_bias;
+   float border_color[4];
+   float max_aniso;
+};
+
+enum {
+   LP_JIT_SAMPLER_MIN_LOD,
+   LP_JIT_SAMPLER_MAX_LOD,
+   LP_JIT_SAMPLER_LOD_BIAS,
+   LP_JIT_SAMPLER_BORDER_COLOR,
+   LP_JIT_SAMPLER_MAX_ANISO,
+   LP_JIT_SAMPLER_NUM_FIELDS  /* number of fields above */
+};
+
+LLVMTypeRef
+lp_build_create_jit_sampler_type(struct gallivm_state *gallivm);
+
 #endif

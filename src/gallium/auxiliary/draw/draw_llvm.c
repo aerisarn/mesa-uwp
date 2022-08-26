@@ -145,49 +145,6 @@ create_jit_dvbuffer_type(struct gallivm_state *gallivm,
 
 
 /**
- * Create LLVM type for struct draw_jit_sampler
- */
-static LLVMTypeRef
-create_jit_sampler_type(struct gallivm_state *gallivm, const char *struct_name)
-{
-   LLVMTargetDataRef target = gallivm->target;
-   LLVMTypeRef sampler_type;
-   LLVMTypeRef elem_types[DRAW_JIT_SAMPLER_NUM_FIELDS];
-
-   elem_types[DRAW_JIT_SAMPLER_MIN_LOD] =
-   elem_types[DRAW_JIT_SAMPLER_MAX_LOD] =
-   elem_types[DRAW_JIT_SAMPLER_LOD_BIAS] =
-   elem_types[DRAW_JIT_SAMPLER_MAX_ANISO] = LLVMFloatTypeInContext(gallivm->context);
-   elem_types[DRAW_JIT_SAMPLER_BORDER_COLOR] =
-      LLVMArrayType(LLVMFloatTypeInContext(gallivm->context), 4);
-
-   sampler_type = LLVMStructTypeInContext(gallivm->context, elem_types,
-                                          ARRAY_SIZE(elem_types), 0);
-
-   (void) target; /* silence unused var warning for non-debug build */
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, min_lod,
-                          target, sampler_type,
-                          DRAW_JIT_SAMPLER_MIN_LOD);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, max_lod,
-                          target, sampler_type,
-                          DRAW_JIT_SAMPLER_MAX_LOD);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, lod_bias,
-                          target, sampler_type,
-                          DRAW_JIT_SAMPLER_LOD_BIAS);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, border_color,
-                          target, sampler_type,
-                          DRAW_JIT_SAMPLER_BORDER_COLOR);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_sampler, max_aniso,
-                          target, sampler_type,
-                          DRAW_JIT_SAMPLER_MAX_ANISO);
-
-   LP_CHECK_STRUCT_SIZE(struct draw_jit_sampler, target, sampler_type);
-
-   return sampler_type;
-}
-
-
-/**
  * Create LLVM type for struct draw_jit_texture
  */
 static LLVMTypeRef
@@ -251,7 +208,7 @@ create_jit_context_type(struct gallivm_state *gallivm, const char *struct_name)
 {
    LLVMTypeRef buffer_type = lp_build_create_jit_buffer_type(gallivm);
    LLVMTypeRef texture_type = lp_build_create_jit_texture_type(gallivm);
-   LLVMTypeRef sampler_type = create_jit_sampler_type(gallivm, "sampler");
+   LLVMTypeRef sampler_type = lp_build_create_jit_sampler_type(gallivm);
    LLVMTypeRef image_type = create_jit_image_type(gallivm, "image");
 
    LLVMTargetDataRef target = gallivm->target;
@@ -2534,7 +2491,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
    switch (shader_type) {
    case PIPE_SHADER_VERTEX:
       for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_VERTEX]; i++) {
-         struct draw_jit_sampler *jit_sam = &draw->llvm->jit_context.samplers[i];
+         struct lp_jit_sampler *jit_sam = &draw->llvm->jit_context.samplers[i];
 
          if (draw->samplers[PIPE_SHADER_VERTEX][i]) {
             const struct pipe_sampler_state *s
@@ -2549,7 +2506,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
       break;
    case PIPE_SHADER_GEOMETRY:
       for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_GEOMETRY]; i++) {
-         struct draw_jit_sampler *jit_sam = &draw->llvm->gs_jit_context.samplers[i];
+         struct lp_jit_sampler *jit_sam = &draw->llvm->gs_jit_context.samplers[i];
 
          if (draw->samplers[PIPE_SHADER_GEOMETRY][i]) {
             const struct pipe_sampler_state *s
@@ -2564,7 +2521,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
       break;
    case PIPE_SHADER_TESS_CTRL:
       for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_CTRL]; i++) {
-         struct draw_jit_sampler *jit_sam = &draw->llvm->tcs_jit_context.samplers[i];
+         struct lp_jit_sampler *jit_sam = &draw->llvm->tcs_jit_context.samplers[i];
 
          if (draw->samplers[PIPE_SHADER_TESS_CTRL][i]) {
             const struct pipe_sampler_state *s
@@ -2579,7 +2536,7 @@ draw_llvm_set_sampler_state(struct draw_context *draw,
       break;
    case PIPE_SHADER_TESS_EVAL:
       for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_EVAL]; i++) {
-         struct draw_jit_sampler *jit_sam = &draw->llvm->tes_jit_context.samplers[i];
+         struct lp_jit_sampler *jit_sam = &draw->llvm->tes_jit_context.samplers[i];
 
          if (draw->samplers[PIPE_SHADER_TESS_EVAL][i]) {
             const struct pipe_sampler_state *s
@@ -2629,7 +2586,7 @@ create_gs_jit_types(struct draw_gs_llvm_variant *var)
    LLVMTypeRef texture_type, sampler_type, image_type, buffer_type;
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
-   sampler_type = create_jit_sampler_type(gallivm, "sampler");
+   sampler_type = lp_build_create_jit_sampler_type(gallivm);
    image_type = create_jit_image_type(gallivm, "image");
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 
@@ -3015,7 +2972,7 @@ create_tcs_jit_types(struct draw_tcs_llvm_variant *var)
    LLVMTypeRef texture_type, sampler_type, image_type, buffer_type;
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
-   sampler_type = create_jit_sampler_type(gallivm, "sampler");
+   sampler_type = lp_build_create_jit_sampler_type(gallivm);
    image_type = create_jit_image_type(gallivm, "image");
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 
@@ -3674,7 +3631,7 @@ create_tes_jit_types(struct draw_tes_llvm_variant *var)
    LLVMTypeRef texture_type, sampler_type, image_type, buffer_type;
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
-   sampler_type = create_jit_sampler_type(gallivm, "sampler");
+   sampler_type = lp_build_create_jit_sampler_type(gallivm);
    image_type = create_jit_image_type(gallivm, "image");
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 

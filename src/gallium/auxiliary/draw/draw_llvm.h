@@ -64,17 +64,6 @@ struct draw_image_static_state
    struct lp_static_texture_state image_state;
 };
 
-
-struct draw_jit_sampler
-{
-   float min_lod;
-   float max_lod;
-   float lod_bias;
-   float border_color[4];
-   float max_aniso;
-};
-
-
 struct draw_jit_image
 {
    uint32_t width;
@@ -86,16 +75,6 @@ struct draw_jit_image
    uint32_t num_samples;
    uint32_t sample_stride;
 };
-
-enum {
-   DRAW_JIT_SAMPLER_MIN_LOD,
-   DRAW_JIT_SAMPLER_MAX_LOD,
-   DRAW_JIT_SAMPLER_LOD_BIAS,
-   DRAW_JIT_SAMPLER_BORDER_COLOR,
-   DRAW_JIT_SAMPLER_MAX_ANISO,
-   DRAW_JIT_SAMPLER_NUM_FIELDS  /* number of fields above */
-};
-
 
 enum {
    DRAW_JIT_VERTEX_VERTEX_ID = 0,
@@ -133,7 +112,7 @@ struct draw_jit_context
    struct pipe_viewport_state *viewports;
 
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
@@ -218,7 +197,7 @@ struct draw_gs_jit_context
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    int **prim_lengths;
@@ -274,7 +253,7 @@ struct draw_tcs_jit_context {
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
@@ -311,7 +290,7 @@ struct draw_tes_jit_context {
    /* There two need to be exactly at DRAW_JIT_CTX_TEXTURES and
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
    struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];

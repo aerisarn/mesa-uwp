@@ -43,42 +43,6 @@
 #include "lp_jit.h"
 
 static LLVMTypeRef
-create_jit_sampler_type(struct gallivm_state *gallivm)
-{
-   LLVMContextRef lc = gallivm->context;
-   LLVMTypeRef sampler_type;
-   LLVMTypeRef elem_types[LP_JIT_SAMPLER_NUM_FIELDS];
-   elem_types[LP_JIT_SAMPLER_MIN_LOD] =
-   elem_types[LP_JIT_SAMPLER_MAX_LOD] =
-   elem_types[LP_JIT_SAMPLER_LOD_BIAS] =
-   elem_types[LP_JIT_SAMPLER_MAX_ANISO] = LLVMFloatTypeInContext(lc);
-   elem_types[LP_JIT_SAMPLER_BORDER_COLOR] =
-      LLVMArrayType(LLVMFloatTypeInContext(lc), 4);
-
-   sampler_type = LLVMStructTypeInContext(lc, elem_types,
-                                          ARRAY_SIZE(elem_types), 0);
-
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, min_lod,
-                          gallivm->target, sampler_type,
-                          LP_JIT_SAMPLER_MIN_LOD);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, max_lod,
-                          gallivm->target, sampler_type,
-                          LP_JIT_SAMPLER_MAX_LOD);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, lod_bias,
-                          gallivm->target, sampler_type,
-                          LP_JIT_SAMPLER_LOD_BIAS);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, border_color,
-                          gallivm->target, sampler_type,
-                          LP_JIT_SAMPLER_BORDER_COLOR);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, max_aniso,
-                          gallivm->target, sampler_type,
-                          LP_JIT_SAMPLER_MAX_ANISO);
-   LP_CHECK_STRUCT_SIZE(struct lp_jit_sampler,
-                        gallivm->target, sampler_type);
-   return sampler_type;
-}
-
-static LLVMTypeRef
 create_jit_image_type(struct gallivm_state *gallivm)
 {
    LLVMContextRef lc = gallivm->context;
@@ -152,7 +116,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
 
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
    texture_type = lp_build_create_jit_texture_type(gallivm);
-   sampler_type = create_jit_sampler_type(gallivm);
+   sampler_type = lp_build_create_jit_sampler_type(gallivm);
    image_type = create_jit_image_type(gallivm);
 
    /* struct lp_jit_context */
@@ -358,7 +322,7 @@ lp_jit_create_cs_types(struct lp_compute_shader_variant *lp)
 
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
    texture_type = lp_build_create_jit_texture_type(gallivm);
-   sampler_type = create_jit_sampler_type(gallivm);
+   sampler_type = lp_build_create_jit_sampler_type(gallivm);
    image_type = create_jit_image_type(gallivm);
 
    /* struct lp_jit_cs_thread_data */

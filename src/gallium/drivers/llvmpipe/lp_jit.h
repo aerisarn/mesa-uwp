@@ -50,22 +50,11 @@ struct lp_compute_shader_variant;
 struct lp_rast_state;
 struct llvmpipe_screen;
 
-struct lp_jit_sampler
-{
-   float min_lod;
-   float max_lod;
-   float lod_bias;
-   float border_color[4];
-   float max_aniso;
-};
-
-
 struct lp_jit_viewport
 {
    float min_depth;
    float max_depth;
 };
-
 
 struct lp_jit_image
 {
@@ -78,16 +67,6 @@ struct lp_jit_image
    uint32_t num_samples;
    uint32_t sample_stride;
 };
-
-enum {
-   LP_JIT_SAMPLER_MIN_LOD,
-   LP_JIT_SAMPLER_MAX_LOD,
-   LP_JIT_SAMPLER_LOD_BIAS,
-   LP_JIT_SAMPLER_BORDER_COLOR,
-   LP_JIT_SAMPLER_MAX_ANISO,
-   LP_JIT_SAMPLER_NUM_FIELDS  /* number of fields above */
-};
-
 
 enum {
    LP_JIT_VIEWPORT_MIN_DEPTH,
