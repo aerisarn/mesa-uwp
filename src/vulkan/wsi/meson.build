@@ -31,10 +31,7 @@ endif
 
 if with_platform_wayland
   files_vulkan_wsi += files('wsi_common_wayland.c')
-  files_vulkan_wsi += [
-    linux_dmabuf_unstable_v1_client_protocol_h,
-    linux_dmabuf_unstable_v1_protocol_c,
-  ]
+  files_vulkan_wsi += wp_files['linux-dmabuf-unstable-v1']
 endif
 
 if with_platform_windows
