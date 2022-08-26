@@ -405,3 +405,24 @@ task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
 
    num_regs = r;
 }
+
+bs_thread_payload::bs_thread_payload()
+{
+   /* R0: Thread header. */
+
+   /* R1: Stack IDs. */
+
+   /* R2: Argument addresses. */
+   global_arg_ptr = retype(brw_vec1_grf(2, 0), BRW_REGISTER_TYPE_UD);
+   local_arg_ptr = retype(brw_vec1_grf(2, 2), BRW_REGISTER_TYPE_UD);
+
+   num_regs = 3;
+}
+
+void
+bs_thread_payload::load_shader_type(const fs_builder &bld, fs_reg &dest) const
+{
+   fs_reg ud_dest = retype(dest, BRW_REGISTER_TYPE_UD);
+   bld.MOV(ud_dest, retype(brw_vec1_grf(0, 3), ud_dest.type));
+   bld.AND(ud_dest, ud_dest, brw_imm_ud(0xf));
+}

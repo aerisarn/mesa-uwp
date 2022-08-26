@@ -3956,6 +3956,7 @@ fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
                                   nir_intrinsic_instr *instr)
 {
    assert(brw_shader_stage_is_bindless(stage));
+   const bs_thread_payload &payload = bs_payload();
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -3963,19 +3964,16 @@ fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_btd_global_arg_addr_intel:
-      bld.MOV(dest, retype(brw_vec1_grf(2, 0), dest.type));
+      bld.MOV(dest, retype(payload.global_arg_ptr, dest.type));
       break;
 
    case nir_intrinsic_load_btd_local_arg_addr_intel:
-      bld.MOV(dest, retype(brw_vec1_grf(2, 2), dest.type));
+      bld.MOV(dest, retype(payload.local_arg_ptr, dest.type));
       break;
 
-   case nir_intrinsic_load_btd_shader_type_intel: {
-      fs_reg ud_dest = retype(dest, BRW_REGISTER_TYPE_UD);
-      bld.MOV(ud_dest, retype(brw_vec1_grf(0, 3), ud_dest.type));
-      bld.AND(ud_dest, ud_dest, brw_imm_ud(0xf));
+   case nir_intrinsic_load_btd_shader_type_intel:
+      payload.load_shader_type(bld, dest);
       break;
-   }
 
    default:
       nir_emit_intrinsic(bld, instr);

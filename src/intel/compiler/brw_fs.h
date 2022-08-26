@@ -154,6 +154,15 @@ struct task_mesh_thread_payload : public thread_payload {
    fs_reg task_urb_input;
 };
 
+struct bs_thread_payload : public thread_payload {
+   bs_thread_payload();
+
+   fs_reg global_arg_ptr;
+   fs_reg local_arg_ptr;
+
+   void load_shader_type(const brw::fs_builder &bld, fs_reg &dest) const;
+};
+
 /**
  * The fragment shader front-end.
  *
@@ -491,6 +500,11 @@ public:
    task_mesh_thread_payload &task_mesh_payload() {
       assert(stage == MESA_SHADER_TASK || stage == MESA_SHADER_MESH);
       return *static_cast<task_mesh_thread_payload *>(this->payload_);
+   }
+
+   bs_thread_payload &bs_payload() {
+      assert(stage >= MESA_SHADER_RAYGEN && stage <= MESA_SHADER_CALLABLE);
+      return *static_cast<bs_thread_payload *>(this->payload_);
    }
 
    bool source_depth_to_render_target;
