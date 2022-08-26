@@ -1301,8 +1301,8 @@ struct v3dv_barrier_state {
    /* For graphics barriers, access masks involved. Used to decide if we need
     * to execute a binning or render barrier.
     */
-   VkAccessFlags bcl_buffer_access;
-   VkAccessFlags bcl_image_access;
+   VkAccessFlags2 bcl_buffer_access;
+   VkAccessFlags2 bcl_image_access;
 };
 
 struct v3dv_cmd_buffer_state {
