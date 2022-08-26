@@ -143,63 +143,6 @@ create_jit_dvbuffer_type(struct gallivm_state *gallivm,
    return dvbuffer_type;
 }
 
-
-/**
- * Create LLVM type for struct draw_jit_texture
- */
-static LLVMTypeRef
-create_jit_image_type(struct gallivm_state *gallivm, const char *struct_name)
-{
-   LLVMTargetDataRef target = gallivm->target;
-   LLVMTypeRef image_type;
-   LLVMTypeRef elem_types[DRAW_JIT_IMAGE_NUM_FIELDS];
-   LLVMTypeRef int32_type = LLVMInt32TypeInContext(gallivm->context);
-
-   elem_types[DRAW_JIT_IMAGE_WIDTH]  =
-   elem_types[DRAW_JIT_IMAGE_HEIGHT] =
-   elem_types[DRAW_JIT_IMAGE_DEPTH] =
-   elem_types[DRAW_JIT_IMAGE_ROW_STRIDE] =
-   elem_types[DRAW_JIT_IMAGE_IMG_STRIDE] =
-   elem_types[DRAW_JIT_IMAGE_NUM_SAMPLES] =
-   elem_types[DRAW_JIT_IMAGE_SAMPLE_STRIDE] = int32_type;
-   elem_types[DRAW_JIT_IMAGE_BASE] =
-      LLVMPointerType(LLVMInt8TypeInContext(gallivm->context), 0);
-
-   image_type = LLVMStructTypeInContext(gallivm->context, elem_types,
-                                          ARRAY_SIZE(elem_types), 0);
-
-   (void) target; /* silence unused var warning for non-debug build */
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, width,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_WIDTH);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, height,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_HEIGHT);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, depth,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_DEPTH);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, base,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_BASE);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, row_stride,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_ROW_STRIDE);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, img_stride,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_IMG_STRIDE);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, num_samples,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_NUM_SAMPLES);
-   LP_CHECK_MEMBER_OFFSET(struct draw_jit_image, sample_stride,
-                          target, image_type,
-                          DRAW_JIT_IMAGE_SAMPLE_STRIDE);
-
-   LP_CHECK_STRUCT_SIZE(struct draw_jit_image, target, image_type);
-
-   return image_type;
-}
-
-
 /**
  * Create LLVM type for struct draw_jit_context
  */
@@ -209,7 +152,7 @@ create_jit_context_type(struct gallivm_state *gallivm, const char *struct_name)
    LLVMTypeRef buffer_type = lp_build_create_jit_buffer_type(gallivm);
    LLVMTypeRef texture_type = lp_build_create_jit_texture_type(gallivm);
    LLVMTypeRef sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   LLVMTypeRef image_type = create_jit_image_type(gallivm, "image");
+   LLVMTypeRef image_type = lp_build_create_jit_image_type(gallivm);
 
    LLVMTargetDataRef target = gallivm->target;
    LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
@@ -2448,7 +2391,7 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
                            uint32_t num_samples,
                            uint32_t sample_stride)
 {
-   struct draw_jit_image *jit_image;
+   struct lp_jit_image *jit_image;
 
    switch (shader_stage) {
    case PIPE_SHADER_VERTEX:
@@ -2587,7 +2530,7 @@ create_gs_jit_types(struct draw_gs_llvm_variant *var)
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
    sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   image_type = create_jit_image_type(gallivm, "image");
+   image_type = lp_build_create_jit_image_type(gallivm);
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 
    var->context_type = create_gs_jit_context_type(gallivm,
@@ -2973,7 +2916,7 @@ create_tcs_jit_types(struct draw_tcs_llvm_variant *var)
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
    sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   image_type = create_jit_image_type(gallivm, "image");
+   image_type = lp_build_create_jit_image_type(gallivm);
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 
    var->context_type = create_tcs_jit_context_type(gallivm,
@@ -3632,7 +3575,7 @@ create_tes_jit_types(struct draw_tes_llvm_variant *var)
 
    texture_type = lp_build_create_jit_texture_type(gallivm);
    sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   image_type = create_jit_image_type(gallivm, "image");
+   image_type = lp_build_create_jit_image_type(gallivm);
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
 
    var->context_type = create_tes_jit_context_type(gallivm,

@@ -42,50 +42,6 @@
 #include "lp_screen.h"
 #include "lp_jit.h"
 
-static LLVMTypeRef
-create_jit_image_type(struct gallivm_state *gallivm)
-{
-   LLVMContextRef lc = gallivm->context;
-   LLVMTypeRef image_type;
-   LLVMTypeRef elem_types[LP_JIT_IMAGE_NUM_FIELDS];
-   elem_types[LP_JIT_IMAGE_WIDTH] =
-   elem_types[LP_JIT_IMAGE_HEIGHT] =
-   elem_types[LP_JIT_IMAGE_DEPTH] = LLVMInt32TypeInContext(lc);
-   elem_types[LP_JIT_IMAGE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
-   elem_types[LP_JIT_IMAGE_ROW_STRIDE] =
-   elem_types[LP_JIT_IMAGE_IMG_STRIDE] =
-   elem_types[LP_JIT_IMAGE_NUM_SAMPLES] =
-   elem_types[LP_JIT_IMAGE_SAMPLE_STRIDE] = LLVMInt32TypeInContext(lc);
-
-   image_type = LLVMStructTypeInContext(lc, elem_types,
-                                        ARRAY_SIZE(elem_types), 0);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, width,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_WIDTH);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, height,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_HEIGHT);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, depth,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_DEPTH);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, base,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_BASE);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, row_stride,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_ROW_STRIDE);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, img_stride,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_IMG_STRIDE);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, num_samples,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_NUM_SAMPLES);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_image, sample_stride,
-                          gallivm->target, image_type,
-                          LP_JIT_IMAGE_SAMPLE_STRIDE);
-   return image_type;
-}
-
 static void
 lp_jit_create_types(struct lp_fragment_shader_variant *lp)
 {
@@ -117,7 +73,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
    texture_type = lp_build_create_jit_texture_type(gallivm);
    sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   image_type = create_jit_image_type(gallivm);
+   image_type = lp_build_create_jit_image_type(gallivm);
 
    /* struct lp_jit_context */
    {
@@ -323,7 +279,7 @@ lp_jit_create_cs_types(struct lp_compute_shader_variant *lp)
    buffer_type = lp_build_create_jit_buffer_type(gallivm);
    texture_type = lp_build_create_jit_texture_type(gallivm);
    sampler_type = lp_build_create_jit_sampler_type(gallivm);
-   image_type = create_jit_image_type(gallivm);
+   image_type = lp_build_create_jit_image_type(gallivm);
 
    /* struct lp_jit_cs_thread_data */
    {

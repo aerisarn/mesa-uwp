@@ -106,4 +106,31 @@ enum {
 LLVMTypeRef
 lp_build_create_jit_sampler_type(struct gallivm_state *gallivm);
 
+struct lp_jit_image
+{
+   uint32_t width;        /* same as number of elements */
+   uint32_t height;
+   uint32_t depth;
+   const void *base;
+   uint32_t row_stride;
+   uint32_t img_stride;
+   uint32_t num_samples;
+   uint32_t sample_stride;
+};
+
+enum {
+   LP_JIT_IMAGE_WIDTH = 0,
+   LP_JIT_IMAGE_HEIGHT,
+   LP_JIT_IMAGE_DEPTH,
+   LP_JIT_IMAGE_BASE,
+   LP_JIT_IMAGE_ROW_STRIDE,
+   LP_JIT_IMAGE_IMG_STRIDE,
+   LP_JIT_IMAGE_NUM_SAMPLES,
+   LP_JIT_IMAGE_SAMPLE_STRIDE,
+   LP_JIT_IMAGE_NUM_FIELDS  /* number of fields above */
+};
+
+LLVMTypeRef
+lp_build_create_jit_image_type(struct gallivm_state *gallivm);
+
 #endif

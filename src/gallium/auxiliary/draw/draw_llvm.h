@@ -64,34 +64,10 @@ struct draw_image_static_state
    struct lp_static_texture_state image_state;
 };
 
-struct draw_jit_image
-{
-   uint32_t width;
-   uint32_t height;
-   uint32_t depth;
-   const void *base;
-   uint32_t row_stride;
-   uint32_t img_stride;
-   uint32_t num_samples;
-   uint32_t sample_stride;
-};
-
 enum {
    DRAW_JIT_VERTEX_VERTEX_ID = 0,
    DRAW_JIT_VERTEX_CLIP_POS,
    DRAW_JIT_VERTEX_DATA
-};
-
-enum {
-   DRAW_JIT_IMAGE_WIDTH = 0,
-   DRAW_JIT_IMAGE_HEIGHT,
-   DRAW_JIT_IMAGE_DEPTH,
-   DRAW_JIT_IMAGE_BASE,
-   DRAW_JIT_IMAGE_ROW_STRIDE,
-   DRAW_JIT_IMAGE_IMG_STRIDE,
-   DRAW_JIT_IMAGE_NUM_SAMPLES,
-   DRAW_JIT_IMAGE_SAMPLE_STRIDE,
-   DRAW_JIT_IMAGE_NUM_FIELDS  /* number of fields above */
 };
 
 /**
@@ -113,7 +89,7 @@ struct draw_jit_context
 
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 
@@ -198,7 +174,7 @@ struct draw_gs_jit_context
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    int **prim_lengths;
    int *emitted_vertices;
@@ -254,7 +230,7 @@ struct draw_tcs_jit_context {
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 
@@ -291,7 +267,7 @@ struct draw_tes_jit_context {
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    struct lp_jit_buffer ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 
