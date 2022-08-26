@@ -255,6 +255,9 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    if (cmdbuf->cmdlist)
       ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
 
+   if (cmdbuf->cmdlist8)
+      ID3D12GraphicsCommandList8_Release(cmdbuf->cmdlist8);
+
    if (cmdbuf->cmdalloc)
       ID3D12CommandAllocator_Release(cmdbuf->cmdalloc);
 
@@ -474,6 +477,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
+
+   (void)ID3D12GraphicsCommandList_QueryInterface(cmdbuf->cmdlist, &IID_ID3D12GraphicsCommandList8, (void **)&cmdbuf->cmdlist8);
 
 out:
    if (result != VK_SUCCESS)
@@ -2435,14 +2440,23 @@ dzn_cmd_buffer_update_push_constants(struct dzn_cmd_buffer *cmdbuf, uint32_t bin
 static void
 dzn_cmd_buffer_update_zsa(struct dzn_cmd_buffer *cmdbuf)
 {
+   struct dzn_physical_device *pdev =
+      container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
    if (cmdbuf->state.dirty & DZN_CMD_DIRTY_STENCIL_REF) {
       const struct dzn_graphics_pipeline *gfx = (const struct dzn_graphics_pipeline *)
          cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
-      uint32_t ref =
-         gfx->zsa.stencil_test.front.uses_ref ?
-         cmdbuf->state.zsa.stencil_test.front.ref :
-         cmdbuf->state.zsa.stencil_test.back.ref;
-      ID3D12GraphicsCommandList1_OMSetStencilRef(cmdbuf->cmdlist, ref);
+      if (cmdbuf->cmdlist8 &&
+          pdev->options14.IndependentFrontAndBackStencilRefMaskSupported) {
+         ID3D12GraphicsCommandList8_OMSetFrontAndBackStencilRef(cmdbuf->cmdlist8,
+                                                                cmdbuf->state.zsa.stencil_test.front.ref,
+                                                                cmdbuf->state.zsa.stencil_test.back.ref);
+      } else {
+         uint32_t ref =
+            gfx->zsa.stencil_test.front.uses_ref ?
+            cmdbuf->state.zsa.stencil_test.front.ref :
+            cmdbuf->state.zsa.stencil_test.back.ref;
+         ID3D12GraphicsCommandList1_OMSetStencilRef(cmdbuf->cmdlist, ref);
+      }
    }
 }
 

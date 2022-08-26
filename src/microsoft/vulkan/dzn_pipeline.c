@@ -1259,10 +1259,6 @@ translate_stencil_test(struct dzn_graphics_pipeline *pipeline,
       in->pRasterizationState->cullMode == VK_CULL_MODE_NONE &&
       (pipeline->zsa.stencil_test.dynamic_write_mask ||
        in_zsa->back.writeMask != in_zsa->front.writeMask);
-   bool diff_ref =
-      in->pRasterizationState->cullMode == VK_CULL_MODE_NONE &&
-      (pipeline->zsa.stencil_test.dynamic_ref ||
-       in_zsa->back.reference != in_zsa->front.reference);
    bool diff_cmp_mask =
       back_test_uses_ref && front_test_uses_ref &&
       (pipeline->zsa.stencil_test.dynamic_compare_mask ||
@@ -1304,18 +1300,13 @@ translate_stencil_test(struct dzn_graphics_pipeline *pipeline,
    pipeline->zsa.stencil_test.front.uses_ref = front_test_uses_ref || front_wr_uses_ref;
    pipeline->zsa.stencil_test.back.uses_ref = back_test_uses_ref || back_wr_uses_ref;
 
-   if (diff_ref &&
-       pipeline->zsa.stencil_test.front.uses_ref &&
-       pipeline->zsa.stencil_test.back.uses_ref)
-      pipeline->zsa.stencil_test.independent_front_back = true;
-
    pipeline->zsa.stencil_test.front.ref =
       pipeline->zsa.stencil_test.dynamic_ref ? 0 : in_zsa->front.reference;
    pipeline->zsa.stencil_test.back.ref =
       pipeline->zsa.stencil_test.dynamic_ref ? 0 : in_zsa->back.reference;
 
-   /* FIXME: We don't support independent {compare,write}_mask and stencil
-    * reference. Until we have proper support for independent front/back
+   /* FIXME: We don't support independent {compare,write}_mask.
+    * Until we have proper support for independent front/back
     * stencil test, let's prioritize the front setup when both are active.
     */
    out->StencilReadMask =
