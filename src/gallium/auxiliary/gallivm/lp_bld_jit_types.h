@@ -54,31 +54,31 @@ lp_llvm_buffer_num_elements(struct gallivm_state *gallivm,
 
 struct lp_jit_texture
 {
+   const void *base;
    uint32_t width;        /* same as number of elements */
    uint32_t height;
    uint32_t depth;        /* doubles as array size */
-   const void *base;
+   uint32_t num_samples;
+   uint32_t sample_stride;
    uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t first_level;
    uint32_t last_level;
    uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
-   uint32_t num_samples;
-   uint32_t sample_stride;
 };
 
 enum {
-   LP_JIT_TEXTURE_WIDTH = 0,
+   LP_JIT_TEXTURE_BASE = 0,
+   LP_JIT_TEXTURE_WIDTH,
    LP_JIT_TEXTURE_HEIGHT,
    LP_JIT_TEXTURE_DEPTH,
-   LP_JIT_TEXTURE_BASE,
+   LP_JIT_TEXTURE_NUM_SAMPLES,
+   LP_JIT_TEXTURE_SAMPLE_STRIDE,
    LP_JIT_TEXTURE_ROW_STRIDE,
    LP_JIT_TEXTURE_IMG_STRIDE,
    LP_JIT_TEXTURE_FIRST_LEVEL,
    LP_JIT_TEXTURE_LAST_LEVEL,
    LP_JIT_TEXTURE_MIP_OFFSETS,
-   LP_JIT_TEXTURE_NUM_SAMPLES,
-   LP_JIT_TEXTURE_SAMPLE_STRIDE,
    LP_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
 };
 
@@ -108,25 +108,25 @@ lp_build_create_jit_sampler_type(struct gallivm_state *gallivm);
 
 struct lp_jit_image
 {
+   const void *base;
    uint32_t width;        /* same as number of elements */
    uint32_t height;
    uint32_t depth;
-   const void *base;
-   uint32_t row_stride;
-   uint32_t img_stride;
    uint32_t num_samples;
    uint32_t sample_stride;
+   uint32_t row_stride;
+   uint32_t img_stride;
 };
 
 enum {
-   LP_JIT_IMAGE_WIDTH = 0,
+   LP_JIT_IMAGE_BASE = 0,
+   LP_JIT_IMAGE_WIDTH,
    LP_JIT_IMAGE_HEIGHT,
    LP_JIT_IMAGE_DEPTH,
-   LP_JIT_IMAGE_BASE,
-   LP_JIT_IMAGE_ROW_STRIDE,
-   LP_JIT_IMAGE_IMG_STRIDE,
    LP_JIT_IMAGE_NUM_SAMPLES,
    LP_JIT_IMAGE_SAMPLE_STRIDE,
+   LP_JIT_IMAGE_ROW_STRIDE,
+   LP_JIT_IMAGE_IMG_STRIDE,
    LP_JIT_IMAGE_NUM_FIELDS  /* number of fields above */
 };
 
