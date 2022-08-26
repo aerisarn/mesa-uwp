@@ -42,6 +42,28 @@
          VN_ADD_TO_PNEXT_OF((head), s_type, (elem));                         \
    } while (0)
 
+/**
+ * Set member in core feature/property struct to value. (This provides visual
+ * parity with VN_SET_CORE_FIELD).
+ */
+#define VN_SET_CORE_VALUE(core_struct, member, val)                          \
+   do {                                                                      \
+      (core_struct)->member = (val);                                         \
+   } while (0)
+
+/** Copy member into core feature/property struct from extension struct. */
+#define VN_SET_CORE_FIELD(core_struct, member, ext_struct)                   \
+   VN_SET_CORE_VALUE((core_struct), member, (ext_struct).member)
+
+/**
+ * Copy array member into core feature/property struct from extension struct.
+ */
+#define VN_SET_CORE_ARRAY(core_struct, member, ext_struct)                   \
+   do {                                                                      \
+      memcpy((core_struct)->member, (ext_struct).member,                     \
+             sizeof((core_struct)->member));                                 \
+   } while (0)
+
 static void
 vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 {
@@ -151,7 +173,13 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
 
-   feats->vulkan_1_0 = features2.features;
+   VkPhysicalDeviceFeatures *vk10_feats = &feats->vulkan_1_0;
+   VkPhysicalDeviceVulkan11Features *vk11_feats = &feats->vulkan_1_1;
+   VkPhysicalDeviceVulkan12Features *vk12_feats = &feats->vulkan_1_2;
+
+   *vk10_feats = features2.features;
+
+   /* clang-format off */
 
    /* TODO allow sparse resource along with sync feedback
     *
@@ -166,191 +194,121 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
     * for simplicity.
     */
    if (!VN_PERF(NO_FENCE_FEEDBACK)) {
-      feats->vulkan_1_0.sparseBinding = false;
-      feats->vulkan_1_0.sparseResidencyBuffer = false;
-      feats->vulkan_1_0.sparseResidencyImage2D = false;
-      feats->vulkan_1_0.sparseResidencyImage3D = false;
-      feats->vulkan_1_0.sparseResidency2Samples = false;
-      feats->vulkan_1_0.sparseResidency4Samples = false;
-      feats->vulkan_1_0.sparseResidency8Samples = false;
-      feats->vulkan_1_0.sparseResidency16Samples = false;
-      feats->vulkan_1_0.sparseResidencyAliased = false;
+      VN_SET_CORE_VALUE(vk10_feats, sparseBinding, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyBuffer, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage2D, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage3D, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency2Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency4Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency8Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency16Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
    }
-
-   struct VkPhysicalDeviceVulkan11Features *vk11_feats = &feats->vulkan_1_1;
-   struct VkPhysicalDeviceVulkan12Features *vk12_feats = &feats->vulkan_1_2;
 
    if (physical_dev->renderer_version < VK_API_VERSION_1_2) {
-      vk11_feats->storageBuffer16BitAccess =
-         local_feats._16bit_storage.storageBuffer16BitAccess;
-      vk11_feats->uniformAndStorageBuffer16BitAccess =
-         local_feats._16bit_storage.uniformAndStorageBuffer16BitAccess;
-      vk11_feats->storagePushConstant16 =
-         local_feats._16bit_storage.storagePushConstant16;
-      vk11_feats->storageInputOutput16 =
-         local_feats._16bit_storage.storageInputOutput16;
+      VN_SET_CORE_FIELD(vk11_feats, storageBuffer16BitAccess, local_feats._16bit_storage);
+      VN_SET_CORE_FIELD(vk11_feats, uniformAndStorageBuffer16BitAccess, local_feats._16bit_storage);
+      VN_SET_CORE_FIELD(vk11_feats, storagePushConstant16, local_feats._16bit_storage);
+      VN_SET_CORE_FIELD(vk11_feats, storageInputOutput16, local_feats._16bit_storage);
 
-      vk11_feats->multiview = local_feats.multiview.multiview;
-      vk11_feats->multiviewGeometryShader =
-         local_feats.multiview.multiviewGeometryShader;
-      vk11_feats->multiviewTessellationShader =
-         local_feats.multiview.multiviewTessellationShader;
+      VN_SET_CORE_FIELD(vk11_feats, multiview, local_feats.multiview);
+      VN_SET_CORE_FIELD(vk11_feats, multiviewGeometryShader, local_feats.multiview);
+      VN_SET_CORE_FIELD(vk11_feats, multiviewTessellationShader, local_feats.multiview);
 
-      vk11_feats->variablePointersStorageBuffer =
-         local_feats.variable_pointers.variablePointersStorageBuffer;
-      vk11_feats->variablePointers =
-         local_feats.variable_pointers.variablePointers;
+      VN_SET_CORE_FIELD(vk11_feats, variablePointersStorageBuffer, local_feats.variable_pointers);
+      VN_SET_CORE_FIELD(vk11_feats, variablePointers, local_feats.variable_pointers);
 
-      vk11_feats->protectedMemory =
-         local_feats.protected_memory.protectedMemory;
+      VN_SET_CORE_FIELD(vk11_feats, protectedMemory, local_feats.protected_memory);
 
-      vk11_feats->samplerYcbcrConversion =
-         local_feats.sampler_ycbcr_conversion.samplerYcbcrConversion;
+      VN_SET_CORE_FIELD(vk11_feats, samplerYcbcrConversion, local_feats.sampler_ycbcr_conversion);
 
-      vk11_feats->shaderDrawParameters =
-         local_feats.shader_draw_parameters.shaderDrawParameters;
+      VN_SET_CORE_FIELD(vk11_feats, shaderDrawParameters, local_feats.shader_draw_parameters);
 
-      vk12_feats->samplerMirrorClampToEdge =
-         exts->KHR_sampler_mirror_clamp_to_edge;
-      vk12_feats->drawIndirectCount = exts->KHR_draw_indirect_count;
-
+      if (exts->KHR_sampler_mirror_clamp_to_edge) {
+         VN_SET_CORE_VALUE(vk12_feats, samplerMirrorClampToEdge, true);
+      }
+      if (exts->KHR_draw_indirect_count) {
+         VN_SET_CORE_VALUE(vk12_feats, drawIndirectCount, true);
+      }
       if (exts->KHR_8bit_storage) {
-         vk12_feats->storageBuffer8BitAccess =
-            local_feats._8bit_storage.storageBuffer8BitAccess;
-         vk12_feats->uniformAndStorageBuffer8BitAccess =
-            local_feats._8bit_storage.uniformAndStorageBuffer8BitAccess;
-         vk12_feats->storagePushConstant8 =
-            local_feats._8bit_storage.storagePushConstant8;
+         VN_SET_CORE_FIELD(vk12_feats, storageBuffer8BitAccess, local_feats._8bit_storage);
+         VN_SET_CORE_FIELD(vk12_feats, uniformAndStorageBuffer8BitAccess, local_feats._8bit_storage);
+         VN_SET_CORE_FIELD(vk12_feats, storagePushConstant8, local_feats._8bit_storage);
       }
       if (exts->KHR_shader_atomic_int64) {
-         vk12_feats->shaderBufferInt64Atomics =
-            local_feats.shader_atomic_int64.shaderBufferInt64Atomics;
-         vk12_feats->shaderSharedInt64Atomics =
-            local_feats.shader_atomic_int64.shaderSharedInt64Atomics;
+         VN_SET_CORE_FIELD(vk12_feats, shaderBufferInt64Atomics, local_feats.shader_atomic_int64);
+         VN_SET_CORE_FIELD(vk12_feats, shaderSharedInt64Atomics, local_feats.shader_atomic_int64);
       }
       if (exts->KHR_shader_float16_int8) {
-         vk12_feats->shaderFloat16 =
-            local_feats.shader_float16_int8.shaderFloat16;
-         vk12_feats->shaderInt8 = local_feats.shader_float16_int8.shaderInt8;
+         VN_SET_CORE_FIELD(vk12_feats, shaderFloat16, local_feats.shader_float16_int8);
+         VN_SET_CORE_FIELD(vk12_feats, shaderInt8, local_feats.shader_float16_int8);
       }
       if (exts->EXT_descriptor_indexing) {
-         vk12_feats->descriptorIndexing = true;
-         vk12_feats->shaderInputAttachmentArrayDynamicIndexing =
-            local_feats.descriptor_indexing
-               .shaderInputAttachmentArrayDynamicIndexing;
-         vk12_feats->shaderUniformTexelBufferArrayDynamicIndexing =
-            local_feats.descriptor_indexing
-               .shaderUniformTexelBufferArrayDynamicIndexing;
-         vk12_feats->shaderStorageTexelBufferArrayDynamicIndexing =
-            local_feats.descriptor_indexing
-               .shaderStorageTexelBufferArrayDynamicIndexing;
-         vk12_feats->shaderUniformBufferArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderUniformBufferArrayNonUniformIndexing;
-         vk12_feats->shaderSampledImageArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderSampledImageArrayNonUniformIndexing;
-         vk12_feats->shaderStorageBufferArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderStorageBufferArrayNonUniformIndexing;
-         vk12_feats->shaderStorageImageArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderStorageImageArrayNonUniformIndexing;
-         vk12_feats->shaderInputAttachmentArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderInputAttachmentArrayNonUniformIndexing;
-         vk12_feats->shaderUniformTexelBufferArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderUniformTexelBufferArrayNonUniformIndexing;
-         vk12_feats->shaderStorageTexelBufferArrayNonUniformIndexing =
-            local_feats.descriptor_indexing
-               .shaderStorageTexelBufferArrayNonUniformIndexing;
-         vk12_feats->descriptorBindingUniformBufferUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingUniformBufferUpdateAfterBind;
-         vk12_feats->descriptorBindingSampledImageUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingSampledImageUpdateAfterBind;
-         vk12_feats->descriptorBindingStorageImageUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingStorageImageUpdateAfterBind;
-         vk12_feats->descriptorBindingStorageBufferUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingStorageBufferUpdateAfterBind;
-         vk12_feats->descriptorBindingUniformTexelBufferUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingUniformTexelBufferUpdateAfterBind;
-         vk12_feats->descriptorBindingStorageTexelBufferUpdateAfterBind =
-            local_feats.descriptor_indexing
-               .descriptorBindingStorageTexelBufferUpdateAfterBind;
-         vk12_feats->descriptorBindingUpdateUnusedWhilePending =
-            local_feats.descriptor_indexing
-               .descriptorBindingUpdateUnusedWhilePending;
-         vk12_feats->descriptorBindingPartiallyBound =
-            local_feats.descriptor_indexing.descriptorBindingPartiallyBound;
-         vk12_feats->descriptorBindingVariableDescriptorCount =
-            local_feats.descriptor_indexing
-               .descriptorBindingVariableDescriptorCount;
-         vk12_feats->runtimeDescriptorArray =
-            local_feats.descriptor_indexing.runtimeDescriptorArray;
+         VN_SET_CORE_VALUE(vk12_feats, descriptorIndexing, true);
+         VN_SET_CORE_FIELD(vk12_feats, shaderInputAttachmentArrayDynamicIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderUniformTexelBufferArrayDynamicIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderStorageTexelBufferArrayDynamicIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderUniformBufferArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderSampledImageArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderStorageBufferArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderStorageImageArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderInputAttachmentArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderUniformTexelBufferArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, shaderStorageTexelBufferArrayNonUniformIndexing, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingUniformBufferUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingSampledImageUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingStorageImageUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingStorageBufferUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingUniformTexelBufferUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingStorageTexelBufferUpdateAfterBind, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingUpdateUnusedWhilePending, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingPartiallyBound, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, descriptorBindingVariableDescriptorCount, local_feats.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_feats, runtimeDescriptorArray, local_feats.descriptor_indexing);
       }
-
-      vk12_feats->samplerFilterMinmax = exts->EXT_sampler_filter_minmax;
-
+      if (exts->EXT_sampler_filter_minmax) {
+         VN_SET_CORE_VALUE(vk12_feats, samplerFilterMinmax, true);
+      }
       if (exts->EXT_scalar_block_layout) {
-         vk12_feats->scalarBlockLayout =
-            local_feats.scalar_block_layout.scalarBlockLayout;
+         VN_SET_CORE_FIELD(vk12_feats, scalarBlockLayout, local_feats.scalar_block_layout);
       }
       if (exts->KHR_imageless_framebuffer) {
-         vk12_feats->imagelessFramebuffer =
-            local_feats.imageless_framebuffer.imagelessFramebuffer;
+         VN_SET_CORE_FIELD(vk12_feats, imagelessFramebuffer, local_feats.imageless_framebuffer);
       }
       if (exts->KHR_uniform_buffer_standard_layout) {
-         vk12_feats->uniformBufferStandardLayout =
-            local_feats.uniform_buffer_standard_layout
-               .uniformBufferStandardLayout;
+         VN_SET_CORE_FIELD(vk12_feats, uniformBufferStandardLayout, local_feats.uniform_buffer_standard_layout);
       }
       if (exts->KHR_shader_subgroup_extended_types) {
-         vk12_feats->shaderSubgroupExtendedTypes =
-            local_feats.shader_subgroup_extended_types
-               .shaderSubgroupExtendedTypes;
+         VN_SET_CORE_FIELD(vk12_feats, shaderSubgroupExtendedTypes, local_feats.shader_subgroup_extended_types);
       }
       if (exts->KHR_separate_depth_stencil_layouts) {
-         vk12_feats->separateDepthStencilLayouts =
-            local_feats.separate_depth_stencil_layouts
-               .separateDepthStencilLayouts;
+         VN_SET_CORE_FIELD(vk12_feats, separateDepthStencilLayouts, local_feats.separate_depth_stencil_layouts);
       }
       if (exts->EXT_host_query_reset) {
-         vk12_feats->hostQueryReset =
-            local_feats.host_query_reset.hostQueryReset;
+         VN_SET_CORE_FIELD(vk12_feats, hostQueryReset, local_feats.host_query_reset);
       }
       if (exts->KHR_timeline_semaphore) {
-         vk12_feats->timelineSemaphore =
-            local_feats.timeline_semaphore.timelineSemaphore;
+         VN_SET_CORE_FIELD(vk12_feats, timelineSemaphore, local_feats.timeline_semaphore);
       }
       if (exts->KHR_buffer_device_address) {
-         vk12_feats->bufferDeviceAddress =
-            local_feats.buffer_device_address.bufferDeviceAddress;
-         vk12_feats->bufferDeviceAddressCaptureReplay =
-            local_feats.buffer_device_address.bufferDeviceAddressCaptureReplay;
-         vk12_feats->bufferDeviceAddressMultiDevice =
-            local_feats.buffer_device_address.bufferDeviceAddressMultiDevice;
+         VN_SET_CORE_FIELD(vk12_feats, bufferDeviceAddress, local_feats.buffer_device_address);
+         VN_SET_CORE_FIELD(vk12_feats, bufferDeviceAddressCaptureReplay, local_feats.buffer_device_address);
+         VN_SET_CORE_FIELD(vk12_feats, bufferDeviceAddressMultiDevice, local_feats.buffer_device_address);
       }
       if (exts->KHR_vulkan_memory_model) {
-         vk12_feats->vulkanMemoryModel =
-            local_feats.vulkan_memory_model.vulkanMemoryModel;
-         vk12_feats->vulkanMemoryModelDeviceScope =
-            local_feats.vulkan_memory_model.vulkanMemoryModelDeviceScope;
-         vk12_feats->vulkanMemoryModelAvailabilityVisibilityChains =
-            local_feats.vulkan_memory_model
-               .vulkanMemoryModelAvailabilityVisibilityChains;
+         VN_SET_CORE_FIELD(vk12_feats, vulkanMemoryModel, local_feats.vulkan_memory_model);
+         VN_SET_CORE_FIELD(vk12_feats, vulkanMemoryModelDeviceScope, local_feats.vulkan_memory_model);
+         VN_SET_CORE_FIELD(vk12_feats, vulkanMemoryModelAvailabilityVisibilityChains, local_feats.vulkan_memory_model);
       }
-
-      vk12_feats->shaderOutputViewportIndex =
-         exts->EXT_shader_viewport_index_layer;
-      vk12_feats->shaderOutputLayer = exts->EXT_shader_viewport_index_layer;
-      vk12_feats->subgroupBroadcastDynamicId = false;
+      if (exts->EXT_shader_viewport_index_layer) {
+         VN_SET_CORE_VALUE(vk12_feats, shaderOutputViewportIndex, true);
+      }
+      if (exts->EXT_shader_viewport_index_layer) {
+         VN_SET_CORE_VALUE(vk12_feats, shaderOutputLayer, true);
+      }
+      VN_SET_CORE_VALUE(vk12_feats, subgroupBroadcastDynamicId, false);
    }
+   /* clang-format on */
 }
 
 static void
@@ -468,192 +426,110 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    vn_call_vkGetPhysicalDeviceProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &properties2);
 
-   props->vulkan_1_0 = properties2.properties;
+   VkPhysicalDeviceProperties *vk10_props = &props->vulkan_1_0;
+   VkPhysicalDeviceVulkan11Properties *vk11_props = &props->vulkan_1_1;
+   VkPhysicalDeviceVulkan12Properties *vk12_props = &props->vulkan_1_2;
+
+   *vk10_props = properties2.properties;
+
+   /* clang-format off */
 
    /* TODO allow sparse resource along with sync feedback */
    if (!VN_PERF(NO_FENCE_FEEDBACK)) {
-      props->vulkan_1_0.limits.sparseAddressSpaceSize = 0;
-      props->vulkan_1_0.sparseProperties =
-         (VkPhysicalDeviceSparseProperties){ 0 };
+      VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
+      VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
    }
-
-   struct VkPhysicalDeviceProperties *vk10_props = &props->vulkan_1_0;
-   struct VkPhysicalDeviceVulkan11Properties *vk11_props = &props->vulkan_1_1;
-   struct VkPhysicalDeviceVulkan12Properties *vk12_props = &props->vulkan_1_2;
-
    if (physical_dev->renderer_version < VK_API_VERSION_1_2) {
-      memcpy(vk11_props->deviceUUID, local_props.id.deviceUUID,
-             sizeof(vk11_props->deviceUUID));
-      memcpy(vk11_props->driverUUID, local_props.id.driverUUID,
-             sizeof(vk11_props->driverUUID));
-      memcpy(vk11_props->deviceLUID, local_props.id.deviceLUID,
-             sizeof(vk11_props->deviceLUID));
-      vk11_props->deviceNodeMask = local_props.id.deviceNodeMask;
-      vk11_props->deviceLUIDValid = local_props.id.deviceLUIDValid;
+      VN_SET_CORE_ARRAY(vk11_props, deviceUUID, local_props.id);
+      VN_SET_CORE_ARRAY(vk11_props, driverUUID, local_props.id);
+      VN_SET_CORE_ARRAY(vk11_props, deviceLUID, local_props.id);
+      VN_SET_CORE_FIELD(vk11_props, deviceNodeMask, local_props.id);
+      VN_SET_CORE_FIELD(vk11_props, deviceLUIDValid, local_props.id);
 
+      /* Cannot use macro because names differ. */
       vk11_props->subgroupSize = local_props.subgroup.subgroupSize;
-      vk11_props->subgroupSupportedStages =
-         local_props.subgroup.supportedStages;
-      vk11_props->subgroupSupportedOperations =
-         local_props.subgroup.supportedOperations;
-      vk11_props->subgroupQuadOperationsInAllStages =
-         local_props.subgroup.quadOperationsInAllStages;
+      vk11_props->subgroupSupportedStages = local_props.subgroup.supportedStages;
+      vk11_props->subgroupSupportedOperations = local_props.subgroup.supportedOperations;
+      vk11_props->subgroupQuadOperationsInAllStages = local_props.subgroup.quadOperationsInAllStages;
 
-      vk11_props->pointClippingBehavior =
-         local_props.point_clipping.pointClippingBehavior;
+      VN_SET_CORE_FIELD(vk11_props, pointClippingBehavior, local_props.point_clipping);
 
-      vk11_props->maxMultiviewViewCount =
-         local_props.multiview.maxMultiviewViewCount;
-      vk11_props->maxMultiviewInstanceIndex =
-         local_props.multiview.maxMultiviewInstanceIndex;
+      VN_SET_CORE_FIELD(vk11_props, maxMultiviewViewCount, local_props.multiview);
+      VN_SET_CORE_FIELD(vk11_props, maxMultiviewInstanceIndex, local_props.multiview);
 
-      vk11_props->protectedNoFault =
-         local_props.protected_memory.protectedNoFault;
+      VN_SET_CORE_FIELD(vk11_props, protectedNoFault, local_props.protected_memory);
 
-      vk11_props->maxPerSetDescriptors =
-         local_props.maintenance_3.maxPerSetDescriptors;
-      vk11_props->maxMemoryAllocationSize =
-         local_props.maintenance_3.maxMemoryAllocationSize;
+      VN_SET_CORE_FIELD(vk11_props, maxPerSetDescriptors, local_props.maintenance_3);
+      VN_SET_CORE_FIELD(vk11_props, maxMemoryAllocationSize, local_props.maintenance_3);
 
       if (exts->KHR_driver_properties) {
-         vk12_props->driverID = local_props.driver.driverID;
-         memcpy(vk12_props->driverName, local_props.driver.driverName,
-                VK_MAX_DRIVER_NAME_SIZE);
-         memcpy(vk12_props->driverInfo, local_props.driver.driverInfo,
-                VK_MAX_DRIVER_INFO_SIZE);
-         vk12_props->conformanceVersion =
-            local_props.driver.conformanceVersion;
+         VN_SET_CORE_FIELD(vk12_props, driverID, local_props.driver);
+         VN_SET_CORE_ARRAY(vk12_props, driverName, local_props.driver);
+         VN_SET_CORE_ARRAY(vk12_props, driverInfo, local_props.driver);
+         VN_SET_CORE_FIELD(vk12_props, conformanceVersion, local_props.driver);
       }
       if (exts->KHR_shader_float_controls) {
-         vk12_props->denormBehaviorIndependence =
-            local_props.float_controls.denormBehaviorIndependence;
-         vk12_props->roundingModeIndependence =
-            local_props.float_controls.roundingModeIndependence;
-         vk12_props->shaderSignedZeroInfNanPreserveFloat16 =
-            local_props.float_controls.shaderSignedZeroInfNanPreserveFloat16;
-         vk12_props->shaderSignedZeroInfNanPreserveFloat32 =
-            local_props.float_controls.shaderSignedZeroInfNanPreserveFloat32;
-         vk12_props->shaderSignedZeroInfNanPreserveFloat64 =
-            local_props.float_controls.shaderSignedZeroInfNanPreserveFloat64;
-         vk12_props->shaderDenormPreserveFloat16 =
-            local_props.float_controls.shaderDenormPreserveFloat16;
-         vk12_props->shaderDenormPreserveFloat32 =
-            local_props.float_controls.shaderDenormPreserveFloat32;
-         vk12_props->shaderDenormPreserveFloat64 =
-            local_props.float_controls.shaderDenormPreserveFloat64;
-         vk12_props->shaderDenormFlushToZeroFloat16 =
-            local_props.float_controls.shaderDenormFlushToZeroFloat16;
-         vk12_props->shaderDenormFlushToZeroFloat32 =
-            local_props.float_controls.shaderDenormFlushToZeroFloat32;
-         vk12_props->shaderDenormFlushToZeroFloat64 =
-            local_props.float_controls.shaderDenormFlushToZeroFloat64;
-         vk12_props->shaderRoundingModeRTEFloat16 =
-            local_props.float_controls.shaderRoundingModeRTEFloat16;
-         vk12_props->shaderRoundingModeRTEFloat32 =
-            local_props.float_controls.shaderRoundingModeRTEFloat32;
-         vk12_props->shaderRoundingModeRTEFloat64 =
-            local_props.float_controls.shaderRoundingModeRTEFloat64;
-         vk12_props->shaderRoundingModeRTZFloat16 =
-            local_props.float_controls.shaderRoundingModeRTZFloat16;
-         vk12_props->shaderRoundingModeRTZFloat32 =
-            local_props.float_controls.shaderRoundingModeRTZFloat32;
-         vk12_props->shaderRoundingModeRTZFloat64 =
-            local_props.float_controls.shaderRoundingModeRTZFloat64;
+         VN_SET_CORE_FIELD(vk12_props, denormBehaviorIndependence, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, roundingModeIndependence, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderSignedZeroInfNanPreserveFloat16, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderSignedZeroInfNanPreserveFloat32, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderSignedZeroInfNanPreserveFloat64, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormPreserveFloat16, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormPreserveFloat32, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormPreserveFloat64, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormFlushToZeroFloat16, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormFlushToZeroFloat32, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderDenormFlushToZeroFloat64, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTEFloat16, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTEFloat32, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTEFloat64, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTZFloat16, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTZFloat32, local_props.float_controls);
+         VN_SET_CORE_FIELD(vk12_props, shaderRoundingModeRTZFloat64, local_props.float_controls);
       }
       if (exts->EXT_descriptor_indexing) {
-         vk12_props->maxUpdateAfterBindDescriptorsInAllPools =
-            local_props.descriptor_indexing
-               .maxUpdateAfterBindDescriptorsInAllPools;
-         vk12_props->shaderUniformBufferArrayNonUniformIndexingNative =
-            local_props.descriptor_indexing
-               .shaderUniformBufferArrayNonUniformIndexingNative;
-         vk12_props->shaderSampledImageArrayNonUniformIndexingNative =
-            local_props.descriptor_indexing
-               .shaderSampledImageArrayNonUniformIndexingNative;
-         vk12_props->shaderStorageBufferArrayNonUniformIndexingNative =
-            local_props.descriptor_indexing
-               .shaderStorageBufferArrayNonUniformIndexingNative;
-         vk12_props->shaderStorageImageArrayNonUniformIndexingNative =
-            local_props.descriptor_indexing
-               .shaderStorageImageArrayNonUniformIndexingNative;
-         vk12_props->shaderInputAttachmentArrayNonUniformIndexingNative =
-            local_props.descriptor_indexing
-               .shaderInputAttachmentArrayNonUniformIndexingNative;
-         vk12_props->robustBufferAccessUpdateAfterBind =
-            local_props.descriptor_indexing.robustBufferAccessUpdateAfterBind;
-         vk12_props->quadDivergentImplicitLod =
-            local_props.descriptor_indexing.quadDivergentImplicitLod;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindSamplers =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindSamplers;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindUniformBuffers =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindUniformBuffers;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindStorageBuffers =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindStorageBuffers;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindSampledImages =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindSampledImages;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindStorageImages =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindStorageImages;
-         vk12_props->maxPerStageDescriptorUpdateAfterBindInputAttachments =
-            local_props.descriptor_indexing
-               .maxPerStageDescriptorUpdateAfterBindInputAttachments;
-         vk12_props->maxPerStageUpdateAfterBindResources =
-            local_props.descriptor_indexing
-               .maxPerStageUpdateAfterBindResources;
-         vk12_props->maxDescriptorSetUpdateAfterBindSamplers =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindSamplers;
-         vk12_props->maxDescriptorSetUpdateAfterBindUniformBuffers =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindUniformBuffers;
-         vk12_props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindUniformBuffersDynamic;
-         vk12_props->maxDescriptorSetUpdateAfterBindStorageBuffers =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindStorageBuffers;
-         vk12_props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
-         vk12_props->maxDescriptorSetUpdateAfterBindSampledImages =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindSampledImages;
-         vk12_props->maxDescriptorSetUpdateAfterBindStorageImages =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindStorageImages;
-         vk12_props->maxDescriptorSetUpdateAfterBindInputAttachments =
-            local_props.descriptor_indexing
-               .maxDescriptorSetUpdateAfterBindInputAttachments;
+         VN_SET_CORE_FIELD(vk12_props, maxUpdateAfterBindDescriptorsInAllPools, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, shaderUniformBufferArrayNonUniformIndexingNative, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, shaderSampledImageArrayNonUniformIndexingNative, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, shaderStorageBufferArrayNonUniformIndexingNative, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, shaderStorageImageArrayNonUniformIndexingNative, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, shaderInputAttachmentArrayNonUniformIndexingNative, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, robustBufferAccessUpdateAfterBind, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, quadDivergentImplicitLod, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindSamplers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindUniformBuffers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindStorageBuffers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindSampledImages, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindStorageImages, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageDescriptorUpdateAfterBindInputAttachments, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxPerStageUpdateAfterBindResources, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindSamplers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindUniformBuffers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindUniformBuffersDynamic, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindStorageBuffers, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindStorageBuffersDynamic, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindSampledImages, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindStorageImages, local_props.descriptor_indexing);
+         VN_SET_CORE_FIELD(vk12_props, maxDescriptorSetUpdateAfterBindInputAttachments, local_props.descriptor_indexing);
       }
       if (exts->KHR_depth_stencil_resolve) {
-         vk12_props->supportedDepthResolveModes =
-            local_props.depth_stencil_resolve.supportedDepthResolveModes;
-         vk12_props->supportedStencilResolveModes =
-            local_props.depth_stencil_resolve.supportedStencilResolveModes;
-         vk12_props->independentResolveNone =
-            local_props.depth_stencil_resolve.independentResolveNone;
-         vk12_props->independentResolve =
-            local_props.depth_stencil_resolve.independentResolve;
+         VN_SET_CORE_FIELD(vk12_props, supportedDepthResolveModes, local_props.depth_stencil_resolve);
+         VN_SET_CORE_FIELD(vk12_props, supportedStencilResolveModes, local_props.depth_stencil_resolve);
+         VN_SET_CORE_FIELD(vk12_props, independentResolveNone, local_props.depth_stencil_resolve);
+         VN_SET_CORE_FIELD(vk12_props, independentResolve, local_props.depth_stencil_resolve);
       }
       if (exts->EXT_sampler_filter_minmax) {
-         vk12_props->filterMinmaxSingleComponentFormats =
-            local_props.sampler_filter_minmax
-               .filterMinmaxSingleComponentFormats;
-         vk12_props->filterMinmaxImageComponentMapping =
-            local_props.sampler_filter_minmax
-               .filterMinmaxImageComponentMapping;
+         VN_SET_CORE_FIELD(vk12_props, filterMinmaxSingleComponentFormats, local_props.sampler_filter_minmax);
+         VN_SET_CORE_FIELD(vk12_props, filterMinmaxImageComponentMapping, local_props.sampler_filter_minmax);
       }
       if (exts->KHR_timeline_semaphore) {
-         vk12_props->maxTimelineSemaphoreValueDifference =
-            local_props.timeline_semaphore.maxTimelineSemaphoreValueDifference;
+         VN_SET_CORE_FIELD(vk12_props, maxTimelineSemaphoreValueDifference, local_props.timeline_semaphore);
       }
 
-      vk12_props->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
+      VN_SET_CORE_VALUE(vk12_props, framebufferIntegerColorSampleCounts, VK_SAMPLE_COUNT_1_BIT);
    }
+
+   /* clang-format on */
 
    const uint32_t version_override = vk_get_version_override();
    if (version_override) {
