@@ -2172,7 +2172,7 @@ radv_aco_build_shader_binary(void **bin,
 
 static struct radv_shader *
 shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count, gl_shader_stage stage,
-               struct radv_shader_info *info, const struct radv_shader_args *args,
+               const struct radv_shader_info *info, const struct radv_shader_args *args,
                struct radv_nir_compiler_options *options, bool gs_copy_shader,
                bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info,
                struct radv_shader_binary **binary_out)
@@ -2267,7 +2267,7 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *p
 
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader,
-                           struct radv_shader_info *info, const struct radv_shader_args *args,
+                           const struct radv_shader_info *info, const struct radv_shader_args *args,
                            struct radv_shader_binary **binary_out, bool keep_shader_info,
                            bool keep_statistic_info, bool disable_optimizations)
 {
