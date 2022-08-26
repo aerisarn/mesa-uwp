@@ -6142,7 +6142,7 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
 
    if (gfx9_1d) {
       coords.emplace_back(emit_extract_vector(ctx, src0, 0, rc));
-      coords.emplace_back(bld.copy(bld.def(rc), Operand::zero(a16 ? 16 : 32)));
+      coords.emplace_back(bld.copy(bld.def(rc), Operand::zero(a16 ? 2 : 4)));
       if (is_array)
          coords.emplace_back(emit_extract_vector(ctx, src0, 1, rc));
    } else {
