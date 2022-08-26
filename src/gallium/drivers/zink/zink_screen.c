@@ -447,9 +447,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       return screen->vk_version >= VK_MAKE_VERSION(1,2,0);
 
-   case PIPE_CAP_DRAW_PARAMETERS:
-      return screen->info.feats11.shaderDrawParameters || screen->info.have_KHR_shader_draw_parameters;
-
    case PIPE_CAP_SHADER_GROUP_VOTE:
       if (screen->info.have_vulkan11 &&
              (screen->info.subgroup.supportedOperations & VK_SUBGROUP_FEATURE_VOTE_BIT) &&
@@ -483,6 +480,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.have_KHR_draw_indirect_count;
 
    case PIPE_CAP_START_INSTANCE:
+   case PIPE_CAP_DRAW_PARAMETERS:
       return (screen->info.have_vulkan12 && screen->info.feats11.shaderDrawParameters) ||
               screen->info.have_KHR_shader_draw_parameters;
 
