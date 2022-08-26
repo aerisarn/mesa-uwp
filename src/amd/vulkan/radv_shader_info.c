@@ -415,6 +415,7 @@ gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
 
    info->gs.vertices_in = nir->info.gs.vertices_in;
    info->gs.vertices_out = nir->info.gs.vertices_out;
+   info->gs.input_prim = nir->info.gs.input_primitive;
    info->gs.output_prim = nir->info.gs.output_primitive;
    info->gs.invocations = nir->info.gs.invocations;
    info->gs.max_stream =

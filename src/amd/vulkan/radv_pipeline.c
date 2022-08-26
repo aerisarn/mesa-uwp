@@ -1894,8 +1894,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 }
 
 static void
-gfx9_get_gs_info(const struct radv_pipeline_key *key, const struct radv_pipeline *pipeline,
-                 struct radv_pipeline_stage *stages, struct gfx9_gs_info *out)
+gfx9_get_gs_info(const struct radv_pipeline *pipeline, struct radv_pipeline_stage *stages,
+                 struct gfx9_gs_info *out)
 {
    const struct radv_physical_device *pdevice = pipeline->device->physical_device;
    struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
@@ -1905,18 +1905,8 @@ gfx9_get_gs_info(const struct radv_pipeline_key *key, const struct radv_pipeline
    es_info = has_tess ? &stages[MESA_SHADER_TESS_EVAL].info : &stages[MESA_SHADER_VERTEX].info;
 
    unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
-   bool uses_adjacency;
-   switch (key->vs.topology) {
-   case V_008958_DI_PT_LINELIST_ADJ:
-   case V_008958_DI_PT_LINESTRIP_ADJ:
-   case V_008958_DI_PT_TRILIST_ADJ:
-   case V_008958_DI_PT_TRISTRIP_ADJ:
-      uses_adjacency = true;
-      break;
-   default:
-      uses_adjacency = false;
-      break;
-   }
+   bool uses_adjacency = gs_info->gs.input_prim == SHADER_PRIM_LINES_ADJACENCY ||
+                         gs_info->gs.input_prim == SHADER_PRIM_TRIANGLES_ADJACENCY;
 
    /* All these are in dwords: */
    /* We can't allow using the whole LDS, because GS waves compete with
@@ -2055,9 +2045,31 @@ gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
       S_030980_OVERSUB_EN(oversub_pc_lines > 0) | S_030980_NUM_PC_LINES(oversub_pc_lines - 1));
 }
 
+static unsigned
+radv_get_pre_rast_input_topology(struct radv_pipeline_stage *stages)
+{
+   if (stages[MESA_SHADER_GEOMETRY].nir) {
+      struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
+
+      return gs_info->gs.input_prim;
+   }
+
+   if (stages[MESA_SHADER_TESS_CTRL].nir) {
+      struct radv_shader_info *tes_info = &stages[MESA_SHADER_TESS_EVAL].info;
+
+      if (tes_info->tes.point_mode)
+         return SHADER_PRIM_POINTS;
+      if (tes_info->tes._primitive_mode == TESS_PRIMITIVE_ISOLINES)
+         return SHADER_PRIM_LINES;
+      return SHADER_PRIM_TRIANGLES;
+   }
+
+   return SHADER_PRIM_TRIANGLES;
+}
+
 static void
-gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pipeline,
-                   struct radv_pipeline_stage *stages, struct gfx10_ngg_info *ngg)
+gfx10_get_ngg_info(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stages,
+                   struct gfx10_ngg_info *ngg)
 {
    const struct radv_physical_device *pdevice = pipeline->device->physical_device;
    struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
@@ -2068,18 +2080,10 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
    unsigned max_verts_per_prim = radv_get_num_input_vertices(stages);
    unsigned min_verts_per_prim = gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
    unsigned gs_num_invocations = stages[MESA_SHADER_GEOMETRY].nir ? MAX2(gs_info->gs.invocations, 1) : 1;
-   bool uses_adjacency;
-   switch (key->vs.topology) {
-   case V_008958_DI_PT_LINELIST_ADJ:
-   case V_008958_DI_PT_LINESTRIP_ADJ:
-   case V_008958_DI_PT_TRILIST_ADJ:
-   case V_008958_DI_PT_TRISTRIP_ADJ:
-      uses_adjacency = true;
-      break;
-   default:
-      uses_adjacency = false;
-      break;
-   }
+
+   const unsigned input_prim = radv_get_pre_rast_input_topology(stages);
+   const bool uses_adjacency = input_prim == SHADER_PRIM_LINES_ADJACENCY ||
+                               input_prim == SHADER_PRIM_TRIANGLES_ADJACENCY;
 
    /* All these are in dwords: */
    /* We can't allow using the whole LDS, because GS waves compete with
@@ -3412,11 +3416,11 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          unreachable("Missing NGG shader stage.");
 
       if (last_vgt_api_stage != MESA_SHADER_MESH)
-         gfx10_get_ngg_info(pipeline_key, pipeline, stages, ngg_info);
+         gfx10_get_ngg_info(pipeline, stages, ngg_info);
    } else if (stages[MESA_SHADER_GEOMETRY].nir) {
       struct gfx9_gs_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info.gs_ring_info;
 
-      gfx9_get_gs_info(pipeline_key, pipeline, stages, gs_info);
+      gfx9_get_gs_info(pipeline, stages, gs_info);
    } else {
       gl_shader_stage hw_vs_api_stage =
          stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;

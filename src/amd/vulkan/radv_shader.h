@@ -273,6 +273,7 @@ struct radv_shader_info {
       unsigned max_gsvs_emit_size;
       unsigned vertices_in;
       unsigned vertices_out;
+      unsigned input_prim;
       unsigned output_prim;
       unsigned invocations;
       unsigned es_type; /* GFX9: VS or TES */
