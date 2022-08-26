@@ -315,10 +315,6 @@ static void
 dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags flags)
 {
    struct dzn_cmd_buffer *cmdbuf = container_of(cbuf, struct dzn_cmd_buffer, vk);
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-   const struct dzn_physical_device *pdev =
-      container_of(device->vk.physical, struct dzn_physical_device, vk);
-   const struct vk_command_pool *pool = cmdbuf->vk.pool;
 
    /* Reset the state */
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
@@ -359,25 +355,13 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
    dzn_descriptor_heap_pool_reset(&cmdbuf->dsvs.pool);
    dzn_descriptor_heap_pool_reset(&cmdbuf->cbv_srv_uav_pool);
    dzn_descriptor_heap_pool_reset(&cmdbuf->sampler_pool);
+
+   if (cmdbuf->vk.state == MESA_VK_COMMAND_BUFFER_STATE_RECORDING)
+      ID3D12GraphicsCommandList1_Close(cmdbuf->cmdlist);
+
    vk_command_buffer_reset(&cmdbuf->vk);
 
-   /* cmdlist->Reset() doesn't return the memory back the the command list
-    * allocator, and cmdalloc->Reset() can only be called if there's no live
-    * cmdlist allocated from the allocator, so we need to release and create
-    * a new command list.
-    */
-   ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
-   cmdbuf->cmdlist = NULL;
    ID3D12CommandAllocator_Reset(cmdbuf->cmdalloc);
-   D3D12_COMMAND_LIST_TYPE type =
-      pdev->queue_families[pool->queue_family_index].desc.Type;
-   if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0,
-                                              type,
-                                              cmdbuf->cmdalloc, NULL,
-                                              &IID_ID3D12GraphicsCommandList1,
-                                              (void **)&cmdbuf->cmdlist))) {
-      vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-   }
 }
 
 static uint32_t
@@ -483,10 +467,10 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
       goto out;
    }
 
-   if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0, type,
-                                              cmdbuf->cmdalloc, NULL,
-                                              &IID_ID3D12GraphicsCommandList1,
-                                              (void **)&cmdbuf->cmdlist))) {
+   if (FAILED(ID3D12Device4_CreateCommandList1(device->dev, 0, type,
+                                               D3D12_COMMAND_LIST_FLAG_NONE,
+                                               &IID_ID3D12GraphicsCommandList1,
+                                               (void **)&cmdbuf->cmdlist))) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
@@ -532,6 +516,7 @@ dzn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    vk_command_buffer_begin(&cmdbuf->vk, info);
+   ID3D12GraphicsCommandList1_Reset(cmdbuf->cmdlist, cmdbuf->cmdalloc, NULL);
    return vk_command_buffer_get_record_result(&cmdbuf->vk);
 }
 
