@@ -716,6 +716,9 @@ enum dzn_register_space {
 #define D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(__type) \
    ALIGN_POT(ALIGN_POT(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE), alignof(__type)) + sizeof(__type), alignof(void *))
 
+static_assert(sizeof(D3D12_DEPTH_STENCIL_DESC2) > sizeof(D3D12_DEPTH_STENCIL_DESC1),
+              "Using just one of these descs in the max size calculation");
+
 #define MAX_GFX_PIPELINE_STATE_STREAM_SIZE \
    D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(ID3D12RootSignature *) + \
    (D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_SHADER_BYTECODE) * 5) + /* VS, PS, DS, HS, GS */ \
@@ -732,7 +735,7 @@ enum dzn_register_space {
    D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_NODE_MASK) + \
    D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_CACHED_PIPELINE_STATE) + \
    D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_PIPELINE_STATE_FLAGS) + \
-   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_DEPTH_STENCIL_DESC1) + \
+   D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_DEPTH_STENCIL_DESC2) + \
    D3D12_PIPELINE_STATE_STREAM_DESC_SIZE(D3D12_VIEW_INSTANCING_DESC)
 
 #define MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE \
@@ -799,7 +802,6 @@ struct dzn_graphics_pipeline {
    struct {
       struct {
          bool enable;
-         bool independent_front_back;
          bool dynamic_ref;
          bool dynamic_write_mask;
          bool dynamic_compare_mask;
