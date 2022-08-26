@@ -2804,7 +2804,7 @@ void radv_nir_shader_info_init(struct radv_shader_info *info);
 
 void radv_nir_shader_info_link(struct radv_device *device,
                                const struct radv_pipeline_key *pipeline_key,
-                               struct radv_pipeline_stage *stages,
+                               struct radv_pipeline_stage *stages, bool pipeline_has_ngg,
                                gl_shader_stage last_vgt_api_stage);
 
 bool radv_thread_trace_init(struct radv_device *device);
