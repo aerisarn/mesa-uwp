@@ -61,7 +61,7 @@ create_jit_texture_type(struct gallivm_state *gallivm)
    elem_types[LP_JIT_TEXTURE_ROW_STRIDE] =
    elem_types[LP_JIT_TEXTURE_IMG_STRIDE] =
    elem_types[LP_JIT_TEXTURE_MIP_OFFSETS] =
-      LLVMArrayType(LLVMInt32TypeInContext(lc), LP_MAX_TEXTURE_LEVELS);
+      LLVMArrayType(LLVMInt32TypeInContext(lc), PIPE_MAX_TEXTURE_LEVELS);
 
    texture_type = LLVMStructTypeInContext(lc, elem_types,
                                           ARRAY_SIZE(elem_types), 0);

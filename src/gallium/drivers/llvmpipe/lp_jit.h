@@ -57,11 +57,11 @@ struct lp_jit_texture
    uint32_t height;
    uint32_t depth;        /* doubles as array size */
    const void *base;
-   uint32_t row_stride[LP_MAX_TEXTURE_LEVELS];
-   uint32_t img_stride[LP_MAX_TEXTURE_LEVELS];
+   uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
+   uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t first_level;
    uint32_t last_level;
-   uint32_t mip_offsets[LP_MAX_TEXTURE_LEVELS];
+   uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t num_samples;
    uint32_t sample_stride;
 };
