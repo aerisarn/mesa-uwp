@@ -2892,41 +2892,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    }
 
    radv_nir_shader_info_link(device, pipeline_key, stages, pipeline_has_ngg, last_vgt_api_stage);
-
-   if (stages[MESA_SHADER_TESS_CTRL].nir) {
-      for (gl_shader_stage s = MESA_SHADER_VERTEX; s <= MESA_SHADER_TESS_CTRL; ++s) {
-         stages[s].info.workgroup_size =
-            ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level, s,
-                                           stages[MESA_SHADER_TESS_CTRL].info.num_tess_patches,
-                                           pipeline_key->tcs.tess_input_vertices,
-                                           stages[MESA_SHADER_TESS_CTRL].info.tcs.tcs_vertices_out);
-      }
-   }
-
-   /* PS always operates without workgroups. */
-   if (stages[MESA_SHADER_FRAGMENT].nir)
-      stages[MESA_SHADER_FRAGMENT].info.workgroup_size = stages[MESA_SHADER_FRAGMENT].info.wave_size;
-
-   if (stages[MESA_SHADER_COMPUTE].nir) {
-      /* Variable workgroup size is not supported by Vulkan. */
-      assert(!stages[MESA_SHADER_COMPUTE].nir->info.workgroup_size_variable);
-
-      stages[MESA_SHADER_COMPUTE].info.workgroup_size =
-         ac_compute_cs_workgroup_size(
-            stages[MESA_SHADER_COMPUTE].nir->info.workgroup_size, false, UINT32_MAX);
-   }
-
-   if (stages[MESA_SHADER_TASK].nir) {
-      stages[MESA_SHADER_TASK].info.workgroup_size =
-         ac_compute_cs_workgroup_size(
-            stages[MESA_SHADER_TASK].nir->info.workgroup_size, false, UINT32_MAX);
-   }
-
-   if (!pipeline_has_ngg && !stages[MESA_SHADER_GEOMETRY].nir) {
-      gl_shader_stage hw_vs_api_stage =
-         stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
-      stages[hw_vs_api_stage].info.workgroup_size = stages[hw_vs_api_stage].info.wave_size;
-   }
 }
 
 static void

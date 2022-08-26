@@ -796,6 +796,23 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
    info->wave_size = radv_get_wave_size(device, nir->info.stage, info);
    info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info);
+
+   switch (nir->info.stage) {
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
+      info->workgroup_size =
+         ac_compute_cs_workgroup_size(nir->info.workgroup_size, false, UINT32_MAX);
+      break;
+   case MESA_SHADER_MESH:
+      /* Already computed in gather_shader_info_mesh(). */
+      break;
+   default:
+      /* FS always operates without workgroups. Other stages are computed during linking but assume
+       * no workgroups by default.
+       */
+      info->workgroup_size = info->wave_size;
+      break;
+   }
 }
 
 static void
@@ -1273,39 +1290,52 @@ radv_link_shaders_info(struct radv_device *device,
       }
    }
 
-   if (producer->stage == MESA_SHADER_VERTEX && consumer->stage == MESA_SHADER_TESS_CTRL &&
-       !radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
+   if (producer->stage == MESA_SHADER_VERTEX && consumer->stage == MESA_SHADER_TESS_CTRL) {
       struct radv_pipeline_stage *vs_stage = producer;
       struct radv_pipeline_stage *tcs_stage = consumer;
 
-      /* When the number of TCS input and output vertices are the same (typically 3):
-       * - There is an equal amount of LS and HS invocations
-       * - In case of merged LSHS shaders, the LS and HS halves of the shader always process the
-       *   exact same vertex. We can use this knowledge to optimize them.
-       *
-       * We don't set tcs_in_out_eq if the float controls differ because that might involve
-       * different float modes for the same block and our optimizer doesn't handle a instruction
-       * dominating another with a different mode.
-       */
-      vs_stage->info.vs.tcs_in_out_eq =
-         device->physical_device->rad_info.gfx_level >= GFX9 &&
-         pipeline_key->tcs.tess_input_vertices == tcs_stage->info.tcs.tcs_vertices_out &&
-         vs_stage->nir->info.float_controls_execution_mode ==
-            tcs_stage->nir->info.float_controls_execution_mode;
+      vs_stage->info.workgroup_size =
+         ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
+                                        MESA_SHADER_VERTEX, tcs_stage->info.num_tess_patches,
+                                        pipeline_key->tcs.tess_input_vertices,
+                                        tcs_stage->info.tcs.tcs_vertices_out);
 
-      if (vs_stage->info.vs.tcs_in_out_eq)
-         vs_stage->info.vs.tcs_temp_only_input_mask =
-            tcs_stage->nir->info.inputs_read &
-            vs_stage->nir->info.outputs_written &
-            ~tcs_stage->nir->info.tess.tcs_cross_invocation_inputs_read &
-            ~tcs_stage->nir->info.inputs_read_indirectly &
-            ~vs_stage->nir->info.outputs_accessed_indirectly;
+      tcs_stage->info.workgroup_size =
+         ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
+                                        MESA_SHADER_TESS_CTRL, tcs_stage->info.num_tess_patches,
+                                        pipeline_key->tcs.tess_input_vertices,
+                                        tcs_stage->info.tcs.tcs_vertices_out);
 
-      /* Copy data to TCS so it can be accessed by the backend if they are merged. */
-      tcs_stage->info.vs.tcs_in_out_eq =
-         vs_stage->info.vs.tcs_in_out_eq;
-      tcs_stage->info.vs.tcs_temp_only_input_mask =
-         vs_stage->info.vs.tcs_temp_only_input_mask;
+      if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
+         /* When the number of TCS input and output vertices are the same (typically 3):
+          * - There is an equal amount of LS and HS invocations
+          * - In case of merged LSHS shaders, the LS and HS halves of the shader always process the
+          *   exact same vertex. We can use this knowledge to optimize them.
+          *
+          * We don't set tcs_in_out_eq if the float controls differ because that might involve
+          * different float modes for the same block and our optimizer doesn't handle a instruction
+          * dominating another with a different mode.
+          */
+         vs_stage->info.vs.tcs_in_out_eq =
+            device->physical_device->rad_info.gfx_level >= GFX9 &&
+            pipeline_key->tcs.tess_input_vertices == tcs_stage->info.tcs.tcs_vertices_out &&
+            vs_stage->nir->info.float_controls_execution_mode ==
+               tcs_stage->nir->info.float_controls_execution_mode;
+
+         if (vs_stage->info.vs.tcs_in_out_eq)
+            vs_stage->info.vs.tcs_temp_only_input_mask =
+               tcs_stage->nir->info.inputs_read &
+               vs_stage->nir->info.outputs_written &
+               ~tcs_stage->nir->info.tess.tcs_cross_invocation_inputs_read &
+               ~tcs_stage->nir->info.inputs_read_indirectly &
+               ~vs_stage->nir->info.outputs_accessed_indirectly;
+
+         /* Copy data to TCS so it can be accessed by the backend if they are merged. */
+         tcs_stage->info.vs.tcs_in_out_eq =
+            vs_stage->info.vs.tcs_in_out_eq;
+         tcs_stage->info.vs.tcs_temp_only_input_mask =
+            vs_stage->info.vs.tcs_temp_only_input_mask;
+      }
    }
 
    /* Copy shader info between TCS<->TES. */
