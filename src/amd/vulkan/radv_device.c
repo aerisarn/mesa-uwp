@@ -92,12 +92,6 @@ typedef void *drmDevicePtr;
 
 static VkResult radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission);
 
-uint64_t
-radv_get_current_time(void)
-{
-   return os_time_get_nano();
-}
-
 static void
 parse_hex(char *out, const char *in, unsigned length)
 {

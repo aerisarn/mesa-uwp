@@ -2932,32 +2932,6 @@ uint32_t radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info
 void radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
                       const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
 
-uint64_t radv_get_current_time(void);
-
-static inline uint32_t
-si_conv_gl_prim_to_vertices(enum shader_prim gl_prim)
-{
-   switch (gl_prim) {
-   case SHADER_PRIM_POINTS:
-      return 1;
-   case SHADER_PRIM_LINES:
-   case SHADER_PRIM_LINE_STRIP:
-      return 2;
-   case SHADER_PRIM_TRIANGLES:
-   case SHADER_PRIM_TRIANGLE_STRIP:
-      return 3;
-   case SHADER_PRIM_LINES_ADJACENCY:
-      return 4;
-   case SHADER_PRIM_TRIANGLES_ADJACENCY:
-      return 6;
-   case SHADER_PRIM_QUADS:
-      return V_028A6C_TRISTRIP;
-   default:
-      assert(0);
-      return 0;
-   }
-}
-
 static inline uint32_t
 si_conv_prim_to_gs_out(uint32_t topology)
 {
