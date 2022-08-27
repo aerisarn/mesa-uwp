@@ -87,6 +87,29 @@ To build everything on Linux invoke meson as:
 Using
 -----
 
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+``LP_NATIVE_VECTOR_WIDTH``
+   We can use it to override vector bits. Because sometimes it turns
+   out llvmpipe can be fastest by using 128 bit vectors,
+   yet use AVX instructions.
+``GALLIUM_OVERRIDE_CPU_CAPS``
+   Override cpu capabilities for llvmpipe and softpipe, possible values for x86:
+   `nosse`
+   `sse`
+   `sse2`
+   `sse3`
+   `ssse3`
+   `sse4.1`
+   `avx`
+``GALLIUM_NOSSE``
+   Deprecated in favor of `GALLIUM_OVERRIDE_CPU_CAPS`,
+   use `GALLIUM_OVERRIDE_CPU_CAPS=nosse` instead.
+``LP_FORCE_SSE2``
+   Deprecated in favor of `GALLIUM_OVERRIDE_CPU_CAPS`
+   use `GALLIUM_OVERRIDE_CPU_CAPS=sse2` instead.
+
 Linux
 ~~~~~
 
