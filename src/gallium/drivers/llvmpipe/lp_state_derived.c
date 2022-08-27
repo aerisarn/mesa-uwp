@@ -124,6 +124,18 @@ compute_vertex_info(struct llvmpipe_context *llvmpipe)
       }
    }
 
+   /*
+    * The new style front face is a system value, hence won't show up as
+    * ordinary fs register above. But we still need to assign a vs output
+    * location so draw can inject face info for unfilled tris.
+    */
+   if (llvmpipe->face_slot < 0 && fsInfo->uses_frontface) {
+      vs_index = draw_find_shader_output(llvmpipe->draw,
+                                         TGSI_SEMANTIC_FACE, 0);
+      llvmpipe->face_slot = (int)vinfo->num_attribs;
+      draw_emit_vertex_attr(vinfo, EMIT_4F, vs_index);
+   }
+
    /* Figure out if we need bcolor as well.
     */
    for (i = 0; i < 2; i++) {
