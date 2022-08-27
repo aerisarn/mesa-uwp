@@ -120,6 +120,7 @@ struct util_cpu_caps_t {
 
    unsigned num_L3_caches;
    unsigned num_cpu_mask_bits;
+   unsigned max_vector_bits;
 
    uint16_t cpu_to_L3[UTIL_MAX_CPUS];
    /* Affinity masks for each L3 cache. */

@@ -438,17 +438,8 @@ lp_build_init(void)
 
    lp_set_target_options();
 
-   if (util_get_cpu_caps()->has_avx2 || util_get_cpu_caps()->has_avx) {
-      lp_native_vector_width = 256;
-   } else {
-      /* Leave it at 128, even when no SIMD extensions are available.
-       * Really needs to be a multiple of 128 so can fit 4 floats.
-       */
-      lp_native_vector_width = 128;
-   }
-
    lp_native_vector_width = debug_get_num_option("LP_NATIVE_VECTOR_WIDTH",
-                                                 lp_native_vector_width);
+                                                 util_get_cpu_caps()->max_vector_bits);
 
 #ifdef PIPE_ARCH_PPC_64
    /* Set the NJ bit in VSCR to 0 so denormalized values are handled as

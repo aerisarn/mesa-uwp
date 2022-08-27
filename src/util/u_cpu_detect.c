@@ -663,6 +663,20 @@ void check_cpu_caps_override(void)
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
 }
 
+static
+void check_max_vector_bits(void)
+{
+   /* Leave it at 128, even when no SIMD extensions are available.
+    * Really needs to be a multiple of 128 so can fit 4 floats.
+    */
+   util_cpu_caps.max_vector_bits = 128;
+#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+   if (util_cpu_caps.has_avx) {
+      util_cpu_caps.max_vector_bits = 256;
+   }
+#endif
+}
+
 void _util_cpu_detect_once(void);
 
 void
@@ -894,6 +908,9 @@ _util_cpu_detect_once(void)
 #endif
 
    check_cpu_caps_override();
+
+   /* max_vector_bits should be checked after cpu caps override */
+   check_max_vector_bits();
 
    get_cpu_topology();
 
