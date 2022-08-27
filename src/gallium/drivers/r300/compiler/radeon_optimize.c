@@ -929,6 +929,23 @@ static unsigned int fill_swizzle(unsigned int orig_swz, unsigned int wmask, unsi
 	return orig_swz;
 }
 
+static int have_shared_source(struct rc_instruction * inst1, struct rc_instruction * inst2)
+{
+	int shared_src = -1;
+	const struct rc_opcode_info * opcode1 = rc_get_opcode_info(inst1->U.I.Opcode);
+	const struct rc_opcode_info * opcode2 = rc_get_opcode_info(inst2->U.I.Opcode);
+	for (unsigned i = 0; i < opcode1->NumSrcRegs; i++) {
+		for (unsigned j = 0; j < opcode2->NumSrcRegs; j++) {
+			if (inst1->U.I.SrcReg[i].File == inst2->U.I.SrcReg[j].File &&
+				inst1->U.I.SrcReg[i].Index == inst2->U.I.SrcReg[j].Index &&
+				inst1->U.I.SrcReg[i].RelAddr == inst2->U.I.SrcReg[j].RelAddr &&
+				inst1->U.I.SrcReg[i].Abs == inst2->U.I.SrcReg[j].Abs)
+				shared_src = i;
+		}
+	}
+	return shared_src;
+}
+
 /**
  * Merges two MOVs writing different channels of the same destination register
  * with the use of the constant swizzles.
@@ -967,6 +984,29 @@ static bool merge_movs(
 		}
 	}
 
+	/* Handle the trivial case where the MOVs share a source.
+	 *
+	 * For example
+	 *   MOV temp[0].x const[0].x
+	 *   MOV temp[0].y const[0].z
+	 *
+	 * becomes
+	 *   MOV temp[0].xy const[0].xz
+	 */
+	if (have_shared_source(inst, cur) == 0) {
+		struct rc_src_register src = cur->U.I.SrcReg[0];
+		src.Negate = merge_negates(inst->U.I.SrcReg[0], cur->U.I.SrcReg[0]);
+		src.Swizzle = merge_swizzles(cur->U.I.SrcReg[0].Swizzle,
+						inst->U.I.SrcReg[0].Swizzle);
+
+                if (c->SwizzleCaps->IsNative(RC_OPCODE_MOV, src)) {
+                        cur->U.I.DstReg.WriteMask |= orig_dst_wmask;
+                        cur->U.I.SrcReg[0] = src;
+                        rc_remove_instruction(inst);
+                        return true;
+                }
+	}
+
 	/* Otherwise, we can convert the MOVs into ADD.
 	 *
 	 * For example
@@ -996,23 +1036,6 @@ static bool merge_movs(
 	/* finally delete the original mov */
 	rc_remove_instruction(inst);
 	return true;
-}
-
-static int have_shared_source(struct rc_instruction * inst1, struct rc_instruction * inst2)
-{
-	int shared_src = -1;
-	const struct rc_opcode_info * opcode1 = rc_get_opcode_info(inst1->U.I.Opcode);
-	const struct rc_opcode_info * opcode2 = rc_get_opcode_info(inst2->U.I.Opcode);
-	for (unsigned i = 0; i < opcode1->NumSrcRegs; i++) {
-		for (unsigned j = 0; j < opcode2->NumSrcRegs; j++) {
-			if (inst1->U.I.SrcReg[i].File == inst2->U.I.SrcReg[j].File &&
-				inst1->U.I.SrcReg[i].Index == inst2->U.I.SrcReg[j].Index &&
-				inst1->U.I.SrcReg[i].RelAddr == inst2->U.I.SrcReg[j].RelAddr &&
-				inst1->U.I.SrcReg[i].Abs == inst2->U.I.SrcReg[j].Abs)
-				shared_src = i;
-		}
-	}
-	return shared_src;
 }
 
 /**
