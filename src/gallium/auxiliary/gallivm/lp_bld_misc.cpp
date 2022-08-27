@@ -414,14 +414,15 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    MAttrs.push_back(util_get_cpu_caps()->has_f16c ? "+f16c" : "-f16c");
    MAttrs.push_back(util_get_cpu_caps()->has_fma  ? "+fma"  : "-fma");
    MAttrs.push_back(util_get_cpu_caps()->has_avx2 ? "+avx2" : "-avx2");
-   /* disable avx512 and all subvariants */
-   MAttrs.push_back("-avx512cd");
-   MAttrs.push_back("-avx512er");
-   MAttrs.push_back("-avx512f");
-   MAttrs.push_back("-avx512pf");
-   MAttrs.push_back("-avx512bw");
-   MAttrs.push_back("-avx512dq");
-   MAttrs.push_back("-avx512vl");
+
+   /* All avx512 have avx512f */
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512f ? "+avx512f"  : "-avx512f");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512cd ? "+avx512cd"  : "-avx512cd");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512er ? "+avx512er"  : "-avx512er");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512pf ? "+avx512pf"  : "-avx512pf");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512bw ? "+avx512bw"  : "-avx512bw");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512dq ? "+avx512dq"  : "-avx512dq");
+   MAttrs.push_back(util_get_cpu_caps()->has_avx512vl ? "+avx512vl"  : "-avx512vl");
 #endif
 #if defined(PIPE_ARCH_ARM)
    if (!util_get_cpu_caps()->has_neon) {
