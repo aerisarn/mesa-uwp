@@ -8,6 +8,50 @@ $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
 
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "deps" | Out-Null
 
+$depsInstallPath="C:\mesa-deps"
+
+Write-Host "Cloning DirectX-Headers"
+git clone -b v1.606.4 --depth=1 https://github.com/microsoft/DirectX-Headers deps/DirectX-Headers
+if (!$?) {
+  Write-Host "Failed to clone DirectX-Headers repository"
+  Exit 1
+}
+Write-Host "Building DirectX-Headers"
+$dxheaders_build = New-Item -ItemType Directory -Path ".\deps\DirectX-Headers" -Name "build"
+Push-Location -Path $dxheaders_build.FullName
+meson .. --backend=ninja -Dprefix="$depsInstallPath" --buildtype=release -Db_vscrt=mt && `
+ninja -j32 install
+$buildstatus = $?
+Pop-Location
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $dxheaders_build
+if (!$buildstatus) {
+  Write-Host "Failed to compile DirectX-Headers"
+  Exit 1
+}
+
+Write-Host "Cloning zlib"
+git clone -b v1.2.11 --depth=1 https://github.com/madler/zlib deps/zlib
+if (!$?) {
+  Write-Host "Failed to clone zlib repository"
+  Exit 1
+}
+Write-Host "Downloading zlib meson build files"
+Invoke-WebRequest -Uri "https://github.com/mesonbuild/zlib/releases/download/1.2.11-5/zlib.zip" -OutFile deps/zlib.zip
+Expand-Archive -Path deps/zlib.zip -Destination deps/zlib
+# Wrap archive puts build files in a version subdir
+Move-Item deps/zlib/zlib-1.2.11/* deps/zlib
+$zlib_build = New-Item -ItemType Directory -Path ".\deps\zlib" -Name "build"
+Push-Location -Path $zlib_build.FullName
+meson .. --backend=ninja -Dprefix="$depsInstallPath" --default-library=static --buildtype=release -Db_vscrt=mt && `
+ninja -j32 install
+$buildstatus = $?
+Pop-Location
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $zlib_build
+if (!$buildstatus) {
+  Write-Host "Failed to compile zlib"
+  Exit 1
+}
+
 Get-Date
 Write-Host "Cloning LLVM release/12.x"
 git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project deps/llvm-project
@@ -29,8 +73,6 @@ if (!$?) {
 Push-Location deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
 git checkout 5b641633b3bcc3251a52260eee11db13a79d7258
 Pop-Location
-
-$depsInstallPath="C:\mesa-deps"
 
 Get-Date
 Write-Host "Cloning libva"

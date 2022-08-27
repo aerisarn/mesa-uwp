@@ -38,8 +38,8 @@ Push-Location $builddir
 
 meson `
 --default-library=shared `
--Dzlib:default_library=static `
 --buildtype=release `
+--wrap-mode=nodownload `
 -Db_ndebug=false `
 -Db_vscrt=mt `
 --cmake-prefix-path="$depsInstallPath" `
@@ -63,9 +63,8 @@ meson `
 -Dbuild-tests=true `
 -Dwerror=true `
 -Dwarning_level=2 `
--Dzlib:warning_level=1 `
 $sourcedir && `
-meson install --skip-subprojects && `
+meson install && `
 meson test --num-processes 32 --print-errorlogs
 
 $buildstatus = $?
