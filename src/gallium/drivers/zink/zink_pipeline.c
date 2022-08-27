@@ -142,6 +142,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    if (hw_rast_state->force_persample_interp) {
       ms_state.sampleShadingEnable = VK_TRUE;
       ms_state.minSampleShading = 1.0;
+   } else if (state->min_samples > 0) {
+      ms_state.sampleShadingEnable = VK_TRUE;
+      ms_state.minSampleShading = (float)(state->rast_samples + 1) / (state->min_samples + 1);
    }
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
@@ -457,6 +460,9 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    if (state->force_persample_interp) {
       ms_state.sampleShadingEnable = VK_TRUE;
       ms_state.minSampleShading = 1.0;
+   } else if (state->min_samples > 0) {
+      ms_state.sampleShadingEnable = VK_TRUE;
+      ms_state.minSampleShading = (float)(state->rast_samples + 1) / (state->min_samples + 1);
    }
 
    VkDynamicState dynamicStateEnables[30] = {

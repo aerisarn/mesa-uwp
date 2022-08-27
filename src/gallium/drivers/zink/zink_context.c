@@ -3009,6 +3009,14 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 }
 
 static void
+zink_set_min_samples(struct pipe_context *pctx, unsigned min_samples)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   ctx->gfx_pipeline_state.min_samples = min_samples - 1;
+   ctx->gfx_pipeline_state.dirty = true;
+}
+
+static void
 zink_set_sample_locations(struct pipe_context *pctx, size_t size, const uint8_t *locations)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -4481,6 +4489,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_tess_state = zink_set_tess_state;
    ctx->base.set_patch_vertices = zink_set_patch_vertices;
 
+   ctx->base.set_min_samples = zink_set_min_samples;
+   ctx->gfx_pipeline_state.min_samples = 0;
    ctx->base.set_sample_mask = zink_set_sample_mask;
    ctx->gfx_pipeline_state.sample_mask = UINT32_MAX;
 
