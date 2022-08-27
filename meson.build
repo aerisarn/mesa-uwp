@@ -1728,7 +1728,7 @@ if with_amd_vk or with_gallium_radeonsi or with_gallium_opencl
 elif with_clc
   _llvm_version = '>= 10.0.0'
 else
-  _llvm_version = '>= 3.9.0'
+  _llvm_version = '>= 5.0.0'
 endif
 
 _shared_llvm = get_option('shared-llvm')
