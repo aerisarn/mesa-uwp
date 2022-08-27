@@ -79,7 +79,7 @@ int main(int argc, char** argv)
    else
    {
       const char *translate_options[] = {
-         "nosse", "sse", "sse2", "sse3", "sse4.1",
+         "nosse", "sse", "sse2", "sse3", "ssse3", "sse4.1", "avx",
          NULL
       };
       const char **option;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 
    if (!create_fn)
    {
-      printf("Usage: ./translate_test [default|generic|x86|nosse|sse|sse2|sse3|sse4.1]\n");
+      printf("Usage: ./translate_test [default|generic|x86|nosse|sse|sse2|sse3|ssse3|sse4.1|avx]\n");
       return 2;
    }
 

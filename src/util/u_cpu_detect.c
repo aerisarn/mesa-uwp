@@ -615,9 +615,13 @@ void check_cpu_caps_override(void)
       } else if (!strcmp(override_cpu_caps, "sse2")) {
          util_cpu_caps.has_sse3 = 0;
       } else if (!strcmp(override_cpu_caps, "sse3")) {
+         util_cpu_caps.has_ssse3 = 0;
+      } else if (!strcmp(override_cpu_caps, "ssse3")) {
          util_cpu_caps.has_sse4_1 = 0;
       } else if (!strcmp(override_cpu_caps, "sse4.1")) {
          util_cpu_caps.has_avx = 0;
+      } else if (!strcmp(override_cpu_caps, "avx")) {
+         util_cpu_caps.has_avx512f = 0;
       }
 #endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
    }
@@ -631,6 +635,8 @@ void check_cpu_caps_override(void)
    }
    if (!util_cpu_caps.has_sse3) {
       util_cpu_caps.has_ssse3 = 0;
+   }
+   if (!util_cpu_caps.has_ssse3) {
       util_cpu_caps.has_sse4_1 = 0;
    }
    if (!util_cpu_caps.has_sse4_1) {
@@ -641,9 +647,10 @@ void check_cpu_caps_override(void)
       util_cpu_caps.has_avx2 = 0;
       util_cpu_caps.has_f16c = 0;
       util_cpu_caps.has_fma = 0;
-
+      util_cpu_caps.has_avx512f = 0;
+   }
+   if (!util_cpu_caps.has_avx512f) {
       /* avx512 are cleared */
-      util_cpu_caps.has_avx512f    = 0;
       util_cpu_caps.has_avx512dq   = 0;
       util_cpu_caps.has_avx512ifma = 0;
       util_cpu_caps.has_avx512pf   = 0;
