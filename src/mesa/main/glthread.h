@@ -131,8 +131,11 @@ struct glthread_attrib_node {
    GLbitfield Mask;
    int ActiveTexture;
    GLenum16 MatrixMode;
+   bool Blend;
    bool CullFace;
    bool DepthTest;
+   bool Lighting;
+   bool PolygonStipple;
 };
 
 typedef enum {
@@ -234,8 +237,11 @@ struct glthread_state
    int MatrixStackDepth[M_NUM_MATRIX_STACKS];
 
    /** Enable states. */
+   bool Blend;
    bool DepthTest;
    bool CullFace;
+   bool Lighting;
+   bool PolygonStipple;
 
    GLuint CurrentDrawFramebuffer;
    GLuint CurrentReadFramebuffer;
