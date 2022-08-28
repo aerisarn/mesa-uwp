@@ -780,8 +780,14 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
 }
 
 static ID3D12Debug *
-get_debug_interface(util_dl_library *d3d12_mod)
+get_debug_interface(util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
+   ID3D12Debug *debug = nullptr;
+   if (factory) {
+      factory->GetConfigurationInterface(CLSID_D3D12Debug, IID_PPV_ARGS(&debug));
+      return debug;
+   }
+
    typedef HRESULT(WINAPI *PFN_D3D12_GET_DEBUG_INTERFACE)(REFIID riid, void **ppFactory);
    PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface;
 
@@ -791,7 +797,6 @@ get_debug_interface(util_dl_library *d3d12_mod)
       return NULL;
    }
 
-   ID3D12Debug *debug;
    if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
       debug_printf("D3D12: D3D12GetDebugInterface failed\n");
       return NULL;
@@ -801,9 +806,9 @@ get_debug_interface(util_dl_library *d3d12_mod)
 }
 
 static void
-enable_d3d12_debug_layer(util_dl_library *d3d12_mod)
+enable_d3d12_debug_layer(util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
-   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod, factory);
    if (debug) {
       debug->EnableDebugLayer();
       debug->Release();
@@ -811,9 +816,9 @@ enable_d3d12_debug_layer(util_dl_library *d3d12_mod)
 }
 
 static void
-enable_gpu_validation(util_dl_library *d3d12_mod)
+enable_gpu_validation(util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
-   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod, factory);
    ID3D12Debug3 *debug3;
    if (debug) {
       if (SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3)))) {
@@ -825,37 +830,49 @@ enable_gpu_validation(util_dl_library *d3d12_mod)
 }
 
 static ID3D12Device3 *
-create_device(util_dl_library *d3d12_mod, IUnknown *adapter)
+create_device(util_dl_library *d3d12_mod, IUnknown *adapter, ID3D12DeviceFactory *factory)
 {
-   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
-   typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID*, void*, UINT*);
-   PFN_D3D12CREATEDEVICE D3D12CreateDevice;
-   PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures;
 
 #ifdef _WIN32
    if (d3d12_debug & D3D12_DEBUG_EXPERIMENTAL)
 #endif
    {
-      D3D12EnableExperimentalFeatures = (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
-      if (FAILED(D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
-         debug_printf("D3D12: failed to enable experimental shader models\n");
-         return nullptr;
+      if (factory) {
+         if (FAILED(factory->EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, nullptr, nullptr))) {
+            debug_printf("D3D12: failed to enable experimental shader models\n");
+            return nullptr;
+         }
+      } else {
+         typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID*, void*, UINT*);
+         PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures =
+            (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
+
+         if (!D3D12EnableExperimentalFeatures ||
+             FAILED(D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
+            debug_printf("D3D12: failed to enable experimental shader models\n");
+            return nullptr;
+         }
       }
    }
 
-   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
-   if (!D3D12CreateDevice) {
-      debug_printf("D3D12: failed to load D3D12CreateDevice from D3D12.DLL\n");
-      return NULL;
+   ID3D12Device3 *dev = nullptr;
+   if (factory) {
+      factory->SetFlags(D3D12_DEVICE_FACTORY_FLAG_ALLOW_RETURNING_EXISTING_DEVICE |
+         D3D12_DEVICE_FACTORY_FLAG_ALLOW_RETURNING_INCOMPATIBLE_EXISTING_DEVICE);
+      if (FAILED(factory->CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&dev))))
+         debug_printf("D3D12: D3D12CreateDevice failed\n");
+   } else {
+      typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
+      PFN_D3D12CREATEDEVICE D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
+      if (!D3D12CreateDevice) {
+         debug_printf("D3D12: failed to load D3D12CreateDevice from D3D12.DLL\n");
+         return NULL;
+      }
+      if (FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&dev))))
+         debug_printf("D3D12: D3D12CreateDevice failed\n");
    }
 
-   ID3D12Device3 *dev;
-   if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 IID_PPV_ARGS(&dev))))
-      return dev;
-
-   debug_printf("D3D12: D3D12CreateDevice failed\n");
-   return NULL;
+   return dev;
 }
 
 static bool
@@ -1152,21 +1169,45 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    return true;
 }
 
+static ID3D12DeviceFactory *
+try_create_device_factory(util_dl_library *d3d12_mod)
+{
+   /* A device factory allows us to isolate things like debug layer enablement from other callers,
+    * and can potentially even refer to a different D3D12 redist implementation from others.
+    */
+   ID3D12DeviceFactory *factory = nullptr;
+
+   typedef HRESULT(WINAPI *PFN_D3D12_GET_INTERFACE)(REFCLSID clsid, REFIID riid, void **ppFactory);
+   PFN_D3D12_GET_INTERFACE D3D12GetInterface = (PFN_D3D12_GET_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetInterface");
+   if (!D3D12GetInterface) {
+      debug_printf("D3D12: Failed to retrieve D3D12GetInterface");
+      return nullptr;
+   }
+
+
+   (void)D3D12GetInterface(CLSID_D3D12DeviceFactory, IID_PPV_ARGS(&factory));
+   return factory;
+}
+
 bool
 d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 {
    assert(screen->base.destroy != nullptr);
 
+   ID3D12DeviceFactory *factory = try_create_device_factory(screen->d3d12_mod);
+
 #ifndef DEBUG
    if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
 #endif
-      enable_d3d12_debug_layer(screen->d3d12_mod);
+      enable_d3d12_debug_layer(screen->d3d12_mod, factory);
 
    if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
-      enable_gpu_validation(screen->d3d12_mod);
+      enable_gpu_validation(screen->d3d12_mod, factory);
 
-   screen->dev = create_device(screen->d3d12_mod, adapter);
+   screen->dev = create_device(screen->d3d12_mod, adapter, factory);
 
+   if (factory)
+      factory->Release();
 
    if (!screen->dev) {
       debug_printf("D3D12: failed to create device\n");
