@@ -163,4 +163,11 @@ Copy-Item 'C:\warp\build\native\amd64\d3d10warp.dll' -Destination $vk_cts_bin
 Remove-Item -Recurse 'C:\warp'
 
 Get-Date
+Write-Host "Downloading DirectXShaderCompiler release"
+Invoke-WebRequest -Uri https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.7.2207/dxc_2022_07_18.zip -OutFile 'DXC.zip'
+Expand-Archive -Path 'DXC.zip' -DestinationPath 'C:\DXC'
+# No more need to get dxil.dll from the VS install
+Copy-Item 'C:\DXC\bin\x64\*.dll' -Destination 'C:\Windows\System32'
+
+Get-Date
 Write-Host "Complete"
