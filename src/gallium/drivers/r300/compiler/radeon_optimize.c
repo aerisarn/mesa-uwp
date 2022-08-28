@@ -504,25 +504,29 @@ static void presub_replace_add(
 {
 	rc_presubtract_op presub_opcode;
 
-	/* This function assumes that inst_add->U.I.SrcReg[0] and
-	 * inst_add->U.I.SrcReg[1] aren't both negative.
-	 */
-	assert(!(inst_add->U.I.SrcReg[1].Negate && inst_add->U.I.SrcReg[0].Negate));
+	unsigned int negates = 0;
+	if (inst_add->U.I.SrcReg[0].Negate)
+		negates++;
+	if (inst_add->U.I.SrcReg[1].Negate)
+		negates++;
+	assert(negates != 2 || inst_add->U.I.SrcReg[1].Negate == inst_add->U.I.SrcReg[0].Negate);
 
-	if (inst_add->U.I.SrcReg[1].Negate || inst_add->U.I.SrcReg[0].Negate)
+	if (negates == 1)
 		presub_opcode = RC_PRESUB_SUB;
 	else
 		presub_opcode = RC_PRESUB_ADD;
 
-	if (inst_add->U.I.SrcReg[1].Negate) {
+	if (inst_add->U.I.SrcReg[1].Negate && negates == 1) {
 		inst_reader->U.I.PreSub.SrcReg[0] = inst_add->U.I.SrcReg[1];
 		inst_reader->U.I.PreSub.SrcReg[1] = inst_add->U.I.SrcReg[0];
 	} else {
 		inst_reader->U.I.PreSub.SrcReg[0] = inst_add->U.I.SrcReg[0];
 		inst_reader->U.I.PreSub.SrcReg[1] = inst_add->U.I.SrcReg[1];
 	}
-	inst_reader->U.I.PreSub.SrcReg[0].Negate = 0;
-	inst_reader->U.I.PreSub.SrcReg[1].Negate = 0;
+	/* If both sources are negative we can move the negate to the presub. */
+	unsigned negate_mask = negates == 1 ? 0 : inst_add->U.I.SrcReg[0].Negate;
+	inst_reader->U.I.PreSub.SrcReg[0].Negate = negate_mask;
+	inst_reader->U.I.PreSub.SrcReg[1].Negate = negate_mask;
 	inst_reader->U.I.PreSub.Opcode = presub_opcode;
 	inst_reader->U.I.SrcReg[src_index] =
 			chain_srcregs(inst_reader->U.I.SrcReg[src_index],
@@ -594,10 +598,6 @@ static int peephole_add_presub_add(
 
 	/* src0 and src1 can't have absolute values */
 	if (inst_add->U.I.SrcReg[0].Abs || inst_add->U.I.SrcReg[1].Abs)
-	        return 0;
-
-	/* presub_replace_add() assumes only one is negative */
-	if (inst_add->U.I.SrcReg[0].Negate && inst_add->U.I.SrcReg[1].Negate)
 	        return 0;
 
         /* if src0 is negative, at least all bits of dstmask have to be set */
