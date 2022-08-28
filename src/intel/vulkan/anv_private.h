@@ -4113,28 +4113,6 @@ struct anv_acceleration_structure {
    struct anv_address                           address;
 };
 
-int anv_get_instance_entrypoint_index(const char *name);
-int anv_get_device_entrypoint_index(const char *name);
-int anv_get_physical_device_entrypoint_index(const char *name);
-
-const char *anv_get_instance_entry_name(int index);
-const char *anv_get_physical_device_entry_name(int index);
-const char *anv_get_device_entry_name(int index);
-
-bool
-anv_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                   const struct vk_instance_extension_table *instance);
-bool
-anv_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                          const struct vk_instance_extension_table *instance);
-bool
-anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                 const struct vk_instance_extension_table *instance,
-                                 const struct vk_device_extension_table *device);
-
-const struct vk_device_dispatch_table *
-anv_get_device_dispatch_table(const struct intel_device_info *devinfo);
-
 void
 anv_dump_pipe_bits(enum anv_pipe_bits bits);
 

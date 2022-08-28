@@ -93,22 +93,6 @@ extern "C" {
 #define lvp_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 #endif
 
-int lvp_get_instance_entrypoint_index(const char *name);
-int lvp_get_device_entrypoint_index(const char *name);
-int lvp_get_physical_device_entrypoint_index(const char *name);
-
-const char *lvp_get_instance_entry_name(int index);
-const char *lvp_get_physical_device_entry_name(int index);
-const char *lvp_get_device_entry_name(int index);
-
-bool lvp_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                         const struct vk_instance_extension_table *instance);
-bool lvp_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                                const struct vk_instance_extension_table *instance);
-bool lvp_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                       const struct vk_instance_extension_table *instance,
-                                       const struct vk_device_extension_table *device);
-
 #define LVP_DEBUG_ALL_ENTRYPOINTS (1 << 0)
 
 void __lvp_finishme(const char *file, int line, const char *format, ...)

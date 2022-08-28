@@ -242,14 +242,6 @@ struct radv_instance;
    } while (0)
 #endif
 
-int radv_get_instance_entrypoint_index(const char *name);
-int radv_get_device_entrypoint_index(const char *name);
-int radv_get_physical_device_entrypoint_index(const char *name);
-
-const char *radv_get_instance_entry_name(int index);
-const char *radv_get_physical_device_entry_name(int index);
-const char *radv_get_device_entry_name(int index);
-
 /* queue types */
 enum radv_queue_family {
    RADV_QUEUE_GENERAL,
