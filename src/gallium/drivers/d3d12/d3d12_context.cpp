@@ -79,6 +79,9 @@ d3d12_context_destroy(struct pipe_context *pctx)
       dxil_destroy_validator(ctx->dxil_validator);
 #endif
 
+   if (ctx->dev_config)
+      ctx->dev_config->Release();
+
    if (ctx->timestamp_query)
       pctx->destroy_query(pctx, ctx->timestamp_query);
 
@@ -2545,6 +2548,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->D3D12SerializeVersionedRootSignature =
       (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)util_dl_get_proc_address(screen->d3d12_mod, "D3D12SerializeVersionedRootSignature");
+   (void)screen->dev->QueryInterface(&ctx->dev_config);
 
    ctx->submit_id = (uint64_t)p_atomic_add_return(&screen->ctx_count, 1) << 32ull;
 
