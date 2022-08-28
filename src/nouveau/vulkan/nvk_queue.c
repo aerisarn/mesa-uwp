@@ -210,8 +210,6 @@ nvk_queue_state_update(struct nvk_device *dev,
 
       P_MTHD(p, NVA0C0, SET_SHADER_SHARED_MEMORY_WINDOW);
       P_NVA0C0_SET_SHADER_SHARED_MEMORY_WINDOW(p, 0xfe << 24);
-
-      // TODO CODE_ADDRESS_HIGH
    }
 
    /* From nvc0_screen.c:

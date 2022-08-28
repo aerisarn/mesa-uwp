@@ -13,6 +13,7 @@
 #include "nvk_cl9097.h"
 #include "nvk_cla0c0.h"
 #include "cla1c0.h"
+#include "clc0c0.h"
 #include "nvk_clc3c0.h"
 #include "nvk_clc597.h"
 
@@ -34,12 +35,22 @@ nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
 { }
 
 static void
-qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
-                      uint32_t x, uint32_t y, uint32_t z)
+nva0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
+                             uint32_t x, uint32_t y, uint32_t z)
 {
-   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_WIDTH, x);
-   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_HEIGHT, y);
-   NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_DEPTH, z);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_WIDTH, x);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_HEIGHT, y);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CTA_RASTER_DEPTH, z);
+}
+
+static void
+nvc0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
+                             uint32_t x, uint32_t y, uint32_t z)
+{
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_WIDTH, x);
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_HEIGHT, y);
+   /* this field is different from older QMD versions */
+   NVC0C0_QMDV02_01_VAL_SET(qmd, CTA_RASTER_DEPTH, z);
 }
 
 static uint32_t
@@ -54,8 +65,18 @@ qmd_dispatch_size_offset(struct nvk_device *dev)
 }
 
 static inline void
-gp100_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
-                            uint32_t size, uint64_t address)
+nva0c0_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
+                             uint32_t size, uint64_t address)
+{
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
+   NVA0C0_QMDV00_06_VAL_SET(qmd, CONSTANT_BUFFER_SIZE, index, size);
+   NVA0C0_QMDV00_06_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
+}
+
+static inline void
+nvc0c0_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
+                             uint32_t size, uint64_t address)
 {
    NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
    NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
@@ -90,6 +111,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    const struct nvk_compute_pipeline *pipeline = cmd->state.cs.pipeline;
    const struct nvk_shader *shader =
       &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+   const struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
    VkResult result;
 
@@ -112,13 +134,24 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    memset(qmd, 0, sizeof(qmd));
    memcpy(qmd, pipeline->qmd_template, sizeof(pipeline->qmd_template));
 
-   qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
-                         desc->root.cs.grid_size[0],
-                         desc->root.cs.grid_size[1],
-                         desc->root.cs.grid_size[2]);
+   if (dev->ctx->compute.cls >= PASCAL_COMPUTE_A) {
+      nvc0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
+                                   desc->root.cs.grid_size[0],
+                                   desc->root.cs.grid_size[1],
+                                   desc->root.cs.grid_size[2]);
 
-   gp100_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
-   gp100_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
+      nvc0c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
+      nvc0c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
+   } else {
+      assert(dev->ctx->compute.cls >= KEPLER_COMPUTE_A);
+      nva0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
+                                   desc->root.cs.grid_size[0],
+                                   desc->root.cs.grid_size[1],
+                                   desc->root.cs.grid_size[2]);
+
+      nva0c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
+      nva0c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
+   }
 
    uint64_t qmd_addr;
    result = nvk_cmd_buffer_upload_data(cmd, qmd, sizeof(qmd), 256, &qmd_addr);
