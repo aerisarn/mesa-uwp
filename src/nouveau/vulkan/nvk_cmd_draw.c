@@ -17,6 +17,7 @@
 
 #include "nvk_cl9097.h"
 #include "nvk_cla097.h"
+#include "nvk_clb097.h"
 #include "nvk_clb197.h"
 #include "nvk_clc397.h"
 #include "nvk_clc597.h"
@@ -129,7 +130,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .oldest_supported = 2,
    });
 
-   if (dev->ctx->eng3d.cls < VOLTA_A)
+   if (dev->ctx->eng3d.cls < MAXWELL_A)
       P_IMMD(p, NV9097, SET_SHADER_SCHEDULING, MODE_OLDEST_THREAD_FIRST);
 
    P_IMMD(p, NV9097, SET_L2_CACHE_CONTROL_FOR_ROP_PREFETCH_READ_REQUESTS,
@@ -170,11 +171,11 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_IMMD(p, NV9097, SET_BLEND_OPT_CONTROL, ALLOW_FLOAT_PIXEL_KILLS_TRUE);
    P_IMMD(p, NV9097, SET_BLEND_FLOAT_OPTION, ZERO_TIMES_ANYTHING_IS_ZERO_TRUE);
 
-   if (dev->ctx->eng3d.cls < VOLTA_A)
+   if (dev->ctx->eng3d.cls < MAXWELL_A)
       P_IMMD(p, NV9097, SET_MAX_TI_WARPS_PER_BATCH, 3);
 
    if (dev->ctx->eng3d.cls >= KEPLER_A &&
-       dev->ctx->eng3d.cls < VOLTA_A) {
+       dev->ctx->eng3d.cls < MAXWELL_A) {
       P_IMMD(p, NVA097, SET_TEXTURE_INSTRUCTION_OPERAND,
                         ORDERING_KEPLER_ORDER);
    }
