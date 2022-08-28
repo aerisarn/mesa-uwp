@@ -170,4 +170,15 @@ Expand-Archive -Path 'DXC.zip' -DestinationPath 'C:\DXC'
 Copy-Item 'C:\DXC\bin\x64\*.dll' -Destination 'C:\Windows\System32'
 
 Get-Date
+Write-Host "Enabling developer mode"
+# Create AppModelUnlock if it doesn't exist, required for enabling Developer Mode
+$RegistryKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+if (-not(Test-Path -Path $RegistryKeyPath)) {
+    New-Item -Path $RegistryKeyPath -ItemType Directory -Force
+}
+
+# Add registry value to enable Developer Mode
+New-ItemProperty -Path $RegistryKeyPath -Name AllowDevelopmentWithoutDevLicense -PropertyType DWORD -Value 1 -Force
+
+Get-Date
 Write-Host "Complete"
