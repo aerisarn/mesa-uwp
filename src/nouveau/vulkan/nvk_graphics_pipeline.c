@@ -270,10 +270,14 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
          last_geom = shader;
 
       uint64_t addr = nvk_shader_address(shader);
-      assert(device->ctx->eng3d.cls >= VOLTA_A);
-      P_MTHD(p, NVC397, SET_PIPELINE_PROGRAM_ADDRESS_A(idx));
-      P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_A(p, idx, addr >> 32 );
-      P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_B(p, idx, addr);
+      if (device->ctx->eng3d.cls >= VOLTA_A) {
+         P_MTHD(p, NVC397, SET_PIPELINE_PROGRAM_ADDRESS_A(idx));
+         P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_A(p, idx, addr >> 32);
+         P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_B(p, idx, addr);
+      } else {
+         assert(addr < 0xffffffff);
+         P_IMMD(p, NV9097, SET_PIPELINE_PROGRAM(idx), addr);
+      }
 
       P_IMMD(p, NV9097, SET_PIPELINE_REGISTER_COUNT(idx), shader->num_gprs);
 
