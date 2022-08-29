@@ -22,6 +22,7 @@
  */
 
 #include "vk_common_entrypoints.h"
+#include "wsi_common_entrypoints.h"
 #include "radv_private.h"
 #include "radv_shader.h"
 
@@ -404,7 +405,7 @@ sqtt_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
 {
    VkResult result;
 
-   result = radv_QueuePresentKHR(_queue, pPresentInfo);
+   result = wsi_QueuePresentKHR(_queue, pPresentInfo);
    if (result != VK_SUCCESS)
       return result;
 
