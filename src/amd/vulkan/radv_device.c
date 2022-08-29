@@ -7147,23 +7147,6 @@ radv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(VkPhysicalDevice physicalDevic
 }
 
 #ifndef _WIN32
-static uint64_t
-radv_clock_gettime(clockid_t clock_id)
-{
-   struct timespec current;
-   int ret;
-
-   ret = clock_gettime(clock_id, &current);
-#ifdef CLOCK_MONOTONIC_RAW
-   if (ret < 0 && clock_id == CLOCK_MONOTONIC_RAW)
-      ret = clock_gettime(CLOCK_MONOTONIC, &current);
-#endif
-   if (ret < 0)
-      return 0;
-
-   return (uint64_t)current.tv_sec * 1000000000ULL + current.tv_nsec;
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
                                 const VkCalibratedTimestampInfoEXT *pTimestampInfos,
@@ -7176,9 +7159,9 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
    uint64_t max_clock_period = 0;
 
 #ifdef CLOCK_MONOTONIC_RAW
-   begin = radv_clock_gettime(CLOCK_MONOTONIC_RAW);
+   begin = vk_clock_gettime(CLOCK_MONOTONIC_RAW);
 #else
-   begin = radv_clock_gettime(CLOCK_MONOTONIC);
+   begin = vk_clock_gettime(CLOCK_MONOTONIC);
 #endif
 
    for (d = 0; d < timestampCount; d++) {
@@ -7189,7 +7172,7 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
          max_clock_period = MAX2(max_clock_period, device_period);
          break;
       case VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT:
-         pTimestamps[d] = radv_clock_gettime(CLOCK_MONOTONIC);
+         pTimestamps[d] = vk_clock_gettime(CLOCK_MONOTONIC);
          max_clock_period = MAX2(max_clock_period, 1);
          break;
 
@@ -7205,49 +7188,12 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
    }
 
 #ifdef CLOCK_MONOTONIC_RAW
-   end = radv_clock_gettime(CLOCK_MONOTONIC_RAW);
+   end = vk_clock_gettime(CLOCK_MONOTONIC_RAW);
 #else
-   end = radv_clock_gettime(CLOCK_MONOTONIC);
+   end = vk_clock_gettime(CLOCK_MONOTONIC);
 #endif
 
-   /*
-    * The maximum deviation is the sum of the interval over which we
-    * perform the sampling and the maximum period of any sampled
-    * clock. That's because the maximum skew between any two sampled
-    * clock edges is when the sampled clock with the largest period is
-    * sampled at the end of that period but right at the beginning of the
-    * sampling interval and some other clock is sampled right at the
-    * begining of its sampling period and right at the end of the
-    * sampling interval. Let's assume the GPU has the longest clock
-    * period and that the application is sampling GPU and monotonic:
-    *
-    *                               s                 e
-    *			 w x y z 0 1 2 3 4 5 6 7 8 9 a b c d e f
-    *	Raw              -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
-    *
-    *                               g
-    *		  0         1         2         3
-    *	GPU       -----_____-----_____-----_____-----_____
-    *
-    *                                                m
-    *					    x y z 0 1 2 3 4 5 6 7 8 9 a b c
-    *	Monotonic                           -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
-    *
-    *	Interval                     <----------------->
-    *	Deviation           <-------------------------->
-    *
-    *		s  = read(raw)       2
-    *		g  = read(GPU)       1
-    *		m  = read(monotonic) 2
-    *		e  = read(raw)       b
-    *
-    * We round the sample interval up by one tick to cover sampling error
-    * in the interval clock
-    */
-
-   uint64_t sample_interval = end - begin + 1;
-
-   *pMaxDeviation = sample_interval + max_clock_period;
+   *pMaxDeviation = vk_time_max_deviation(begin, end, max_clock_period);
 
    return VK_SUCCESS;
 }
