@@ -196,7 +196,7 @@ class PrintCode(gl_XML.gl_print_base):
         with indent():
             for p in fixed_params:
                 if p.count:
-                    p_decl = '{0} * {1} = cmd->{1};'.format(
+                    p_decl = '{0} *{1} = cmd->{1};'.format(
                             p.get_base_type_string(), p.name)
                 else:
                     p_decl = '{0} {1} = cmd->{1};'.format(
@@ -211,7 +211,7 @@ class PrintCode(gl_XML.gl_print_base):
 
             if variable_params:
                 for p in variable_params:
-                    out('{0} * {1};'.format(
+                    out('{0} *{1};'.format(
                             p.get_base_type_string(), p.name))
                 out('const char *variable_data = (const char *) (cmd + 1);')
                 i = 1
@@ -237,7 +237,7 @@ class PrintCode(gl_XML.gl_print_base):
             else:
                 struct = 'struct marshal_cmd_{0}'.format(func.name)
                 out('const unsigned cmd_size = (align(sizeof({0}), 8) / 8);'.format(struct))
-                out('assert (cmd_size == cmd->cmd_base.cmd_size);')
+                out('assert(cmd_size == cmd->cmd_base.cmd_size);')
                 out('return cmd_size;')
         out('}')
 
