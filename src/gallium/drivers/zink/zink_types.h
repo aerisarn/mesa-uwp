@@ -433,6 +433,7 @@ struct zink_batch_state {
    struct util_dynarray acquires;
    struct util_dynarray acquire_flags;
    struct util_dynarray dead_swapchains;
+   struct util_dynarray unref_semaphores;
 
    struct util_queue_fence flush_completed;
 

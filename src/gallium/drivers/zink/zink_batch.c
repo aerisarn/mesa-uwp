@@ -92,8 +92,8 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    util_dynarray_clear(&bs->wait_semaphore_stages);
 
    bs->present = VK_NULL_HANDLE;
-   while (util_dynarray_contains(&bs->acquires, VkSemaphore))
-      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&bs->acquires, VkSemaphore), NULL);
+   memcpy(&bs->unref_semaphores, &bs->acquires, sizeof(struct util_dynarray));
+   util_dynarray_init(&bs->acquires, NULL);
    bs->swapchain = NULL;
 
    while (util_dynarray_contains(&bs->dead_swapchains, VkImageView))
@@ -119,6 +119,8 @@ unref_resources(struct zink_screen *screen, struct zink_batch_state *bs)
       struct zink_resource_object *obj = util_dynarray_pop(&bs->unref_resources, struct zink_resource_object*);
       zink_resource_object_reference(screen, &obj, NULL);
    }
+   while (util_dynarray_contains(&bs->unref_semaphores, VkSemaphore))
+      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&bs->unref_semaphores, VkSemaphore), NULL);
 }
 
 void
@@ -179,6 +181,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->bindless_releases[0]);
    util_dynarray_fini(&bs->bindless_releases[1]);
    util_dynarray_fini(&bs->acquires);
+   util_dynarray_fini(&bs->unref_semaphores);
    util_dynarray_fini(&bs->acquire_flags);
    util_dynarray_fini(&bs->dead_swapchains);
    zink_batch_descriptor_deinit(screen, bs);
@@ -236,6 +239,7 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->persistent_resources, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
+   util_dynarray_init(&bs->unref_semaphores, NULL);
    util_dynarray_init(&bs->acquire_flags, NULL);
    util_dynarray_init(&bs->dead_swapchains, NULL);
    util_dynarray_init(&bs->bindless_releases[0], NULL);
