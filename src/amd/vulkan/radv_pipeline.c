@@ -5625,38 +5625,6 @@ radv_pipeline_emit_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
-gfx10_pipeline_emit_ge_cntl(struct radeon_cmdbuf *ctx_cs,
-                            const struct radv_graphics_pipeline *pipeline)
-{
-   bool break_wave_at_eoi = false;
-   unsigned primgroup_size;
-   unsigned vertgroup_size = 256; /* 256 = disable vertex grouping */
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      primgroup_size = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
-   } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
-      const struct gfx9_gs_info *gs_state =
-         &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
-      unsigned vgt_gs_onchip_cntl = gs_state->vgt_gs_onchip_cntl;
-      primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
-   } else {
-      primgroup_size = 128; /* recommended without a GS and tess */
-   }
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
-          radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
-         break_wave_at_eoi = true;
-   }
-
-   radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL,
-                          S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
-                             S_03096C_VERT_GRP_SIZE(vertgroup_size) |
-                             S_03096C_PACKET_TO_ONE_PA(0) /* line stipple */ |
-                             S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
-}
-
-static void
 radv_pipeline_emit_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
                               const struct radv_graphics_pipeline *pipeline,
                               uint32_t vgt_gs_out_prim_type)
@@ -5791,9 +5759,6 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
    radv_pipeline_emit_vgt_shader_config(ctx_cs, pipeline);
    radv_pipeline_emit_cliprect_rule(ctx_cs, state);
    radv_pipeline_emit_vgt_gs_out(ctx_cs, pipeline, vgt_gs_out_prim_type);
-
-   if (pdevice->rad_info.gfx_level >= GFX10 && !radv_pipeline_has_ngg(pipeline))
-      gfx10_pipeline_emit_ge_cntl(ctx_cs, pipeline);
 
    if (pdevice->rad_info.gfx_level >= GFX10_3) {
       gfx103_pipeline_emit_vgt_draw_payload_cntl(ctx_cs, pipeline, state);

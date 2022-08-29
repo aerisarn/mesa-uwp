@@ -4011,6 +4011,44 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
 }
 
 static void
+gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   bool break_wave_at_eoi = false;
+   unsigned primgroup_size;
+   unsigned ge_cntl;
+
+   if (pipeline->is_ngg)
+      return;
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+      primgroup_size = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
+
+      if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
+          radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.uses_prim_id) {
+         break_wave_at_eoi = true;
+      }
+   } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+      const struct gfx9_gs_info *gs_state =
+         &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
+      primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(gs_state->vgt_gs_onchip_cntl);
+   } else {
+      primgroup_size = 128; /* recommended without a GS and tess */
+   }
+
+   ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
+             S_03096C_VERT_GRP_SIZE(256) | /* disable vertex grouping */
+             S_03096C_PACKET_TO_ONE_PA(0) /* line stipple */ |
+             S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+
+   if (state->last_ge_cntl != ge_cntl) {
+      radeon_set_uconfig_reg(cmd_buffer->cs, R_03096C_GE_CNTL, ge_cntl);
+      state->last_ge_cntl = ge_cntl;
+   }
+}
+
+static void
 radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *draw_info)
 {
    struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
@@ -4020,7 +4058,9 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
    bool disable_instance_packing = false;
 
    /* Draw state. */
-   if (info->gfx_level < GFX10) {
+   if (info->gfx_level >= GFX10) {
+      gfx10_emit_ge_cntl(cmd_buffer);
+   } else {
       si_emit_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1, draw_info->indirect,
                                  !!draw_info->strmout_buffer,
                                  draw_info->indirect ? 0 : draw_info->count);
@@ -5705,6 +5745,10 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
       if (secondary->state.last_ia_multi_vgt_param) {
          primary->state.last_ia_multi_vgt_param = secondary->state.last_ia_multi_vgt_param;
+      }
+
+      if (secondary->state.last_ge_cntl) {
+         primary->state.last_ge_cntl = secondary->state.last_ge_cntl;
       }
 
       primary->state.last_first_instance = secondary->state.last_first_instance;

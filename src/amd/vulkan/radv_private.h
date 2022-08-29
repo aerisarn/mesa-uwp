@@ -1487,6 +1487,7 @@ struct radv_cmd_state {
    bool prims_gen_query_enabled;
    uint32_t trace_id;
    uint32_t last_ia_multi_vgt_param;
+   uint32_t last_ge_cntl;
 
    uint32_t last_num_instances;
    uint32_t last_first_instance;
