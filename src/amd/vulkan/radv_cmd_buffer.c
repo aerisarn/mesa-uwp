@@ -3984,12 +3984,18 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
    bool prim_restart_enable = state->dynamic.primitive_restart_enable;
    unsigned patch_control_points = state->graphics_pipeline->tess_patch_control_points;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   unsigned num_tess_patches = 0;
    unsigned ia_multi_vgt_param;
+
+   if (radv_pipeline_has_stage(state->graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
+      struct radv_shader *tcs = state->graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+      num_tess_patches = tcs->info.num_tess_patches;
+   }
 
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw, indirect_draw, count_from_stream_output,
                                 draw_vertex_count, topology, prim_restart_enable,
-                                patch_control_points);
+                                patch_control_points, num_tess_patches);
 
    if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
       if (info->gfx_level == GFX9) {

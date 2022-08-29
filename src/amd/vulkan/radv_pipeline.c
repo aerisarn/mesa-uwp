@@ -1414,20 +1414,6 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_graphics_pipeline *pipeline)
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL))
-      ia_multi_vgt_param.primgroup_size =
-         pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
-   else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
-      ia_multi_vgt_param.primgroup_size = 64;
-   else
-      ia_multi_vgt_param.primgroup_size = 128; /* recommended without a GS */
-
-   /* GS requirement. */
-   ia_multi_vgt_param.partial_es_wave = false;
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && pdevice->rad_info.gfx_level <= GFX8)
-      if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pdevice->gs_table_depth - 3)
-         ia_multi_vgt_param.partial_es_wave = true;
-
    ia_multi_vgt_param.ia_switch_on_eoi = false;
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
       ia_multi_vgt_param.ia_switch_on_eoi = true;
@@ -1480,7 +1466,6 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_graphics_pipeline *pipeline)
    }
 
    ia_multi_vgt_param.base =
-      S_028AA8_PRIMGROUP_SIZE(ia_multi_vgt_param.primgroup_size - 1) |
       /* The following field was moved to VGT_SHADER_STAGES_EN in GFX9. */
       S_028AA8_MAX_PRIMGRP_IN_WAVE(pdevice->rad_info.gfx_level == GFX8 ? 2 : 0) |
       S_030960_EN_INST_OPT_BASIC(pdevice->rad_info.gfx_level >= GFX9) |

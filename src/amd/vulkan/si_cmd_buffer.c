@@ -816,7 +816,7 @@ uint32_t
 si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                           bool indirect_draw, bool count_from_stream_output,
                           uint32_t draw_vertex_count, unsigned topology, bool prim_restart_enable,
-                          unsigned patch_control_points)
+                          unsigned patch_control_points, unsigned num_tess_patches)
 {
    enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
@@ -830,6 +830,23 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
    bool partial_es_wave = cmd_buffer->state.graphics_pipeline->ia_multi_vgt_param.partial_es_wave;
    bool multi_instances_smaller_than_primgroup;
    struct radv_prim_vertex_count prim_vertex_count = prim_size_table[topology];
+   unsigned primgroup_size;
+
+   if (radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
+      primgroup_size = num_tess_patches;
+   } else if (radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_GEOMETRY)) {
+      primgroup_size = 64;
+   } else {
+      primgroup_size = 128; /* recommended without a GS */
+   }
+
+   /* GS requirement. */
+   if (radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_GEOMETRY) &&
+       gfx_level <= GFX8) {
+      unsigned gs_table_depth = cmd_buffer->device->physical_device->gs_table_depth;
+      if (SI_GS_PER_ES / primgroup_size >= gs_table_depth - 3)
+         partial_es_wave = true;
+   }
 
    if (radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
       if (topology == V_008958_DI_PT_PATCH) {
@@ -841,7 +858,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
    multi_instances_smaller_than_primgroup = indirect_draw;
    if (!multi_instances_smaller_than_primgroup && instanced_draw) {
       uint32_t num_prims = radv_prims_for_vertices(&prim_vertex_count, draw_vertex_count);
-      if (num_prims < cmd_buffer->state.graphics_pipeline->ia_multi_vgt_param.primgroup_size)
+      if (num_prims < primgroup_size)
          multi_instances_smaller_than_primgroup = true;
    }
 
@@ -930,6 +947,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
    }
 
    return cmd_buffer->state.graphics_pipeline->ia_multi_vgt_param.base |
+          S_028AA8_PRIMGROUP_SIZE(primgroup_size - 1) |
           S_028AA8_SWITCH_ON_EOP(ia_switch_on_eop) | S_028AA8_SWITCH_ON_EOI(ia_switch_on_eoi) |
           S_028AA8_PARTIAL_VS_WAVE_ON(partial_vs_wave) |
           S_028AA8_PARTIAL_ES_WAVE_ON(partial_es_wave) |
