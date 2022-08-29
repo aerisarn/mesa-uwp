@@ -253,6 +253,7 @@ struct dzn_device {
    struct vk_device_dispatch_table cmd_dispatch;
 
    ID3D12Device2 *dev;
+   ID3D12DeviceConfiguration *dev_config;
 
    struct dzn_meta_indirect_draw indirect_draws[DZN_NUM_INDIRECT_DRAW_TYPES];
    struct dzn_meta_triangle_fan_rewrite_index triangle_fan[DZN_NUM_INDEX_TYPE];
