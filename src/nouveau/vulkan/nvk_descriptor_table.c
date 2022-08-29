@@ -60,8 +60,10 @@ void
 nvk_descriptor_table_finish(struct nvk_device *device,
                             struct nvk_descriptor_table *table)
 {
-   if (table->bo != NULL)
+   if (table->bo != NULL) {
+      nouveau_ws_bo_unmap(table->bo, table->map);
       nouveau_ws_bo_destroy(table->bo);
+   }
    vk_free(&device->vk.alloc, table->free_table);
    simple_mtx_destroy(&table->mutex);
 }

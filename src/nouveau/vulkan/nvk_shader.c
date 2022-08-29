@@ -689,6 +689,7 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
    assert(hdr_size <= sizeof(shader->hdr));
    memcpy(ptr, shader->hdr, hdr_size);
    memcpy(ptr + hdr_size, shader->code_ptr, shader->code_size);
+   nouveau_ws_bo_unmap(shader->bo, ptr);
 
 #ifndef NDEBUG
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))

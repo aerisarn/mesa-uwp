@@ -26,6 +26,7 @@ nvk_cmd_buffer_upload_reset(struct nvk_cmd_buffer_upload *upload)
 {
    list_for_each_entry_safe(struct nvk_cmd_buffer_upload, child,
                             &upload->list, list) {
+      nouveau_ws_bo_unmap(child->upload_bo, child->map);
       nouveau_ws_bo_destroy(child->upload_bo);
       free(child);
    }
