@@ -374,6 +374,31 @@ get_smallest_buffer_heap(struct zink_screen *screen)
    return size;
 }
 
+static inline bool
+have_fp32_filter_linear(struct zink_screen *screen)
+{
+   const VkFormat fp32_formats[] = {
+      VK_FORMAT_R32_SFLOAT,
+      VK_FORMAT_R32G32_SFLOAT,
+      VK_FORMAT_R32G32B32_SFLOAT,
+      VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_FORMAT_D32_SFLOAT,
+   };
+   for (int i = 0; i < ARRAY_SIZE(fp32_formats); ++i) {
+      VkFormatProperties props;
+      VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev,
+                                               fp32_formats[i],
+                                               &props);
+      if (((props.linearTilingFeatures | props.optimalTilingFeatures) &
+           (VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) ==
+          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+         return false;
+      }
+   }
+   return true;
+}
+
 static int
 zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
@@ -734,6 +759,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
               screen->info.feats12.shaderOutputViewportIndex);
 
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
+      return have_fp32_filter_linear(screen);
+
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
       return 1;
 
