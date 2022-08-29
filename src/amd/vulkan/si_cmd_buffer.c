@@ -815,7 +815,8 @@ static const struct radv_prim_vertex_count prim_size_table[] = {
 uint32_t
 si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                           bool indirect_draw, bool count_from_stream_output,
-                          uint32_t draw_vertex_count, unsigned topology, bool prim_restart_enable)
+                          uint32_t draw_vertex_count, unsigned topology, bool prim_restart_enable,
+                          unsigned patch_control_points)
 {
    enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
@@ -832,7 +833,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
 
    if (radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
       if (topology == V_008958_DI_PT_PATCH) {
-         prim_vertex_count.min = cmd_buffer->state.graphics_pipeline->tess_patch_control_points;
+         prim_vertex_count.min = patch_control_points;
          prim_vertex_count.incr = 1;
       }
    }
