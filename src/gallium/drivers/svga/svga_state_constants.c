@@ -1437,6 +1437,14 @@ struct svga_tracked_state svga_hw_cs_constbufs =
 };
 
 
+static inline boolean
+has_raw_buffer_view(struct svga_buffer *sbuf)
+{
+   return (sbuf->uav ||
+           (sbuf->key.persistent &&
+            (sbuf->key.flags & SVGA3D_SURFACE_BIND_RAW_VIEWS) != 0));
+}
+
 /**
  * A helper function to update the rawbuf for constbuf mask
  */
@@ -1454,7 +1462,7 @@ update_rawbuf_mask(struct svga_context *svga, enum pipe_shader_type shader)
       struct svga_buffer *sbuf =
          svga_buffer(svga->curr.constbufs[shader][index].buffer);
 
-      if (sbuf && sbuf->uav) {
+      if (sbuf && has_raw_buffer_view(sbuf)) {
          svga->state.raw_constbufs[shader] |= (1 << index);
       } else {
          svga->state.raw_constbufs[shader] &= ~(1 << index);
