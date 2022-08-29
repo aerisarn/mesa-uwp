@@ -37,6 +37,7 @@
 #include "util/disk_cache.h"
 #include "util/macros.h"
 #include "util/mesa-sha1.h"
+#include "util/u_dl.h"
 
 #include "glsl_types.h"
 
@@ -167,6 +168,8 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
       dzn_physical_device_destroy(pdev);
    }
 
+   util_dl_close(instance->d3d12_mod);
+
    vk_instance_finish(&instance->vk);
    vk_free2(vk_default_allocator(), alloc, instance);
 }
@@ -226,18 +229,27 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    missing_validator = !instance->dxil_validator;
 #endif
 
-   instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig();
+   if (missing_validator) {
+      dzn_instance_destroy(instance, pAllocator);
+      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   }
 
-   if (missing_validator ||
-       !instance->d3d12.serialize_root_sig) {
+   instance->d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!instance->d3d12_mod) {
+      dzn_instance_destroy(instance, pAllocator);
+      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   }
+
+   instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig(instance->d3d12_mod);
+   if (!instance->d3d12.serialize_root_sig) {
       dzn_instance_destroy(instance, pAllocator);
       return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    if (instance->debug_flags & DZN_DEBUG_D3D12)
-      d3d12_enable_debug_layer();
+      d3d12_enable_debug_layer(instance->d3d12_mod);
    if (instance->debug_flags & DZN_DEBUG_GBV)
-      d3d12_enable_gpu_validation();
+      d3d12_enable_gpu_validation(instance->d3d12_mod);
 
    instance->sync_binary_type = vk_sync_binary_get_type(&dzn_sync_type);
 
@@ -585,7 +597,7 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
 
    mtx_lock(&pdev->dev_lock);
    if (!pdev->dev) {
-      pdev->dev = d3d12_create_device(pdev->adapter, !instance->dxil_validator);
+      pdev->dev = d3d12_create_device(instance->d3d12_mod, pdev->adapter, !instance->dxil_validator);
 
       dzn_physical_device_cache_caps(pdev);
       dzn_physical_device_init_memory(pdev);
