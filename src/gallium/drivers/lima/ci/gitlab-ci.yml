@@ -21,6 +21,7 @@ lima-mali450-piglit-gpu:arm64:
   extends:
     - .piglit-test
     - .lava-meson-gxl-s805x-libretech-ac
+    - .lava-piglit
   variables:
     PIGLIT_PLATFORM: gbm
     PIGLIT_PROFILES: gpu
