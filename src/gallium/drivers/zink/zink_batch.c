@@ -87,13 +87,14 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    bs->resource_size = 0;
    bs->signal_semaphore = VK_NULL_HANDLE;
-   while (util_dynarray_contains(&bs->wait_semaphores, VkSemaphore))
-      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&bs->wait_semaphores, VkSemaphore), NULL);
    util_dynarray_clear(&bs->wait_semaphore_stages);
 
    bs->present = VK_NULL_HANDLE;
    memcpy(&bs->unref_semaphores, &bs->acquires, sizeof(struct util_dynarray));
    util_dynarray_init(&bs->acquires, NULL);
+   while (util_dynarray_contains(&bs->wait_semaphores, VkSemaphore))
+      util_dynarray_append(&bs->unref_semaphores, VkSemaphore, util_dynarray_pop(&bs->wait_semaphores, VkSemaphore));
+   util_dynarray_init(&bs->wait_semaphores, NULL);
    bs->swapchain = NULL;
 
    while (util_dynarray_contains(&bs->dead_swapchains, VkImageView))
