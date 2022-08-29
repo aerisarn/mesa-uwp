@@ -298,7 +298,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return true;
 
         case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-                return 256;
+                return V3D_TMU_TEXEL_ALIGN;
 
         case PIPE_CAP_IMAGE_STORE_FORMATTED:
                 return false;

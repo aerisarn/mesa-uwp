@@ -53,6 +53,9 @@
 /* Size of a cache line */
 #define V3D_NON_COHERENT_ATOM_SIZE 256
 
+/* Minimum alignment for texel buffers */
+#define V3D_TMU_TEXEL_ALIGN 64
+
 #define V3D_MAX_IMAGE_DIMENSION 4096
 
 /* The HW can do 16384 (15), but we run into hangs when we expose that. Also,
