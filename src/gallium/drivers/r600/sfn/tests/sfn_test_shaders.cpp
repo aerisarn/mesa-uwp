@@ -3063,7 +3063,7 @@ Shader *TestShader::from_string(const std::string& s)
    istringstream is(s);
    string line;
 
-   r600_shader_key key = {0};
+   r600_shader_key key = { { 0 } };
    key.ps.nr_cbufs = 1;
 
    do {

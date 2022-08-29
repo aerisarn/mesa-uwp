@@ -907,7 +907,7 @@ Lower64BitToVec2::lower(nir_instr *instr)
    case nir_instr_type_load_const:  {
       auto lc = nir_instr_as_load_const(instr);
       assert(lc->def.num_components < 3);
-      nir_const_value val[4] = {0};
+      nir_const_value val[4] = { { 0 } };
       for (uint i = 0; i < lc->def.num_components; ++i) {
          uint64_t v = lc->value[i].u64;
          val[0].u32 = v & 0xffffffff;
@@ -1325,7 +1325,7 @@ r600_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
       b->cursor = nir_before_instr(&instr->instr);
 
       nir_ssa_def *src0 = instr->src[0].ssa;
-      nir_ssa_scalar channels[4] = { 0 };
+      nir_ssa_scalar channels[4] = { { 0 } };
       for (int i = 0; i < instr->num_components; i++)
          channels[i] = nir_get_ssa_scalar(src0, i);
 
