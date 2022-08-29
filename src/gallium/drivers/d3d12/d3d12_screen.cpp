@@ -1126,6 +1126,7 @@ d3d12_set_fence_timeline_value(struct pipe_screen *pscreen, struct pipe_fence_ha
 void
 d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
+   glsl_type_singleton_init_or_ref();
    d3d12_debug = debug_get_option_d3d12_debug();
 
    screen->winsys = winsys;
@@ -1135,6 +1136,7 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    mtx_init(&screen->submit_mutex, mtx_plain);
 
    list_inithead(&screen->context_list);
+   slab_create_parent(&screen->transfer_pool, sizeof(struct d3d12_transfer), 16);
 
    screen->base.get_vendor = d3d12_get_vendor;
    screen->base.get_device_vendor = d3d12_get_device_vendor;
@@ -1299,7 +1301,6 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 #ifdef HAVE_GALLIUM_D3D12_VIDEO
    d3d12_screen_video_init(&screen->base);
 #endif
-   slab_create_parent(&screen->transfer_pool, sizeof(struct d3d12_transfer), 16);
 
    struct pb_desc desc;
    desc.alignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
@@ -1389,6 +1390,5 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(screen->device_uuid, sha1, PIPE_UUID_SIZE);
 
-   glsl_type_singleton_init_or_ref();
    return true;
 }
