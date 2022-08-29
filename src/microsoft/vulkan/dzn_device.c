@@ -1566,13 +1566,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceType devtype = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
    if (pdevice->desc.is_warp)
       devtype = VK_PHYSICAL_DEVICE_TYPE_CPU;
-   else if (false) { // TODO: detect discreete GPUs
-      /* This is a tad tricky to get right, because we need to have the
-       * actual ID3D12Device before we can query the
-       * D3D12_FEATURE_DATA_ARCHITECTURE structure... So for now, let's
-       * just pretend everything is integrated, because... well, that's
-       * what I have at hand right now ;)
-       */
+   else if (!pdevice->architecture.UMA) {
       devtype = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
    }
 
