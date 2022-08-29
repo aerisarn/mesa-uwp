@@ -70,7 +70,8 @@ st_convert_sampler(const struct st_context *st,
 
    sampler->seamless_cube_map |= seamless_cube_map;
 
-   if (texobj->_IsIntegerFormat) {
+   if (texobj->_IsIntegerFormat ||
+       (texobj->_IsFloat && st->ctx->Const.ForceFloat32TexNearest)) {
       sampler->min_img_filter = PIPE_TEX_FILTER_NEAREST;
       sampler->min_mip_filter = PIPE_TEX_FILTER_NEAREST;
       sampler->mag_img_filter = PIPE_TEX_FILTER_NEAREST;
