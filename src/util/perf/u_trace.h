@@ -187,8 +187,6 @@ struct u_trace {
    struct u_trace_context *utctx;
 
    struct list_head trace_chunks;  /* list of unflushed trace chunks in fifo order */
-
-   bool enabled;
 };
 
 void u_trace_context_init(struct u_trace_context *utctx,
@@ -291,12 +289,6 @@ static inline bool
 u_trace_context_actively_tracing(struct u_trace_context *utctx)
 {
    return !!utctx->out || (ut_perfetto_enabled > 0);
-}
-
-static inline bool
-u_trace_context_instrumenting(struct u_trace_context *utctx)
-{
-   return !!utctx->out || ut_trace_instrument || (ut_perfetto_enabled > 0);
 }
 
 #ifdef __cplusplus

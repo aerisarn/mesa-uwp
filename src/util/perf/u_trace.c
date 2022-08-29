@@ -369,7 +369,7 @@ get_tracefile(void)
          tracefile = stdout;
       }
 
-      ut_trace_instrument = debug_get_option_trace_instrument();
+      ut_trace_instrument = tracefile || debug_get_option_trace_instrument();
 
       firsttime = false;
    }
@@ -595,7 +595,6 @@ u_trace_init(struct u_trace *ut, struct u_trace_context *utctx)
 {
    ut->utctx = utctx;
    list_inithead(&ut->trace_chunks);
-   ut->enabled = u_trace_context_instrumenting(utctx);
 }
 
 void
