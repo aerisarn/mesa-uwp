@@ -177,6 +177,39 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
    vk_free2(vk_default_allocator(), alloc, instance);
 }
 
+#ifdef _WIN32
+extern IMAGE_DOS_HEADER __ImageBase;
+static const char *
+try_find_d3d12core_next_to_self(char *path, size_t path_arr_size)
+{
+   uint32_t path_size = GetModuleFileNameA((HINSTANCE)&__ImageBase,
+                                           path, path_arr_size);
+   if (!path_arr_size || path_size == path_arr_size) {
+      mesa_loge("Unable to get path to self\n");
+      return NULL;
+   }
+
+   char *last_slash = strrchr(path, '\\');
+   if (!last_slash) {
+      mesa_loge("Unable to get path to self\n");
+      return NULL;
+   }
+
+   *(last_slash + 1) = '\0';
+   if (strcat_s(path, path_arr_size, "D3D12Core.dll") != 0) {
+      mesa_loge("Unable to get path to D3D12Core.dll next to self\n");
+      return NULL;
+   }
+
+   if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
+      mesa_logi("No D3D12Core.dll exists next to self\n");
+      return NULL;
+   }
+
+   return path;
+}
+#endif
+
 static ID3D12DeviceFactory *
 try_create_device_factory(struct util_dl_library *d3d12_mod)
 {
@@ -190,6 +223,39 @@ try_create_device_factory(struct util_dl_library *d3d12_mod)
       mesa_loge("Failed to retrieve D3D12GetInterface\n");
       return NULL;
    }
+
+#ifdef _WIN32
+   /* First, try to create a device factory from a DLL-parallel D3D12Core.dll */
+   ID3D12SDKConfiguration *sdk_config = NULL;
+   if (SUCCEEDED(D3D12GetInterface(&CLSID_D3D12SDKConfiguration, &IID_ID3D12SDKConfiguration, (void **)&sdk_config))) {
+      ID3D12SDKConfiguration1 *sdk_config1 = NULL;
+      if (SUCCEEDED(IUnknown_QueryInterface(sdk_config, &IID_ID3D12SDKConfiguration1, (void **)&sdk_config1))) {
+         char self_path[MAX_PATH];
+         const char *d3d12core_path = try_find_d3d12core_next_to_self(self_path, sizeof(self_path));
+         if (d3d12core_path) {
+            if (SUCCEEDED(ID3D12SDKConfiguration1_CreateDeviceFactory(sdk_config1, D3D12_PREVIEW_SDK_VERSION, d3d12core_path, &IID_ID3D12DeviceFactory, (void **)&factory)) ||
+                SUCCEEDED(ID3D12SDKConfiguration1_CreateDeviceFactory(sdk_config1, D3D12_SDK_VERSION, d3d12core_path, &IID_ID3D12DeviceFactory, (void **)&factory))) {
+               ID3D12SDKConfiguration_Release(sdk_config);
+               ID3D12SDKConfiguration1_Release(sdk_config1);
+               return factory;
+            }
+         }
+
+         /* Nope, seems we don't have a matching D3D12Core.dll next to ourselves */
+         ID3D12SDKConfiguration1_Release(sdk_config1);
+      }
+
+      /* It's possible there's a D3D12Core.dll next to the .exe, for development/testing purposes. If so, we'll be notified
+      * by environment variables what the relative path is and the version to use.
+      */
+      const char *d3d12core_relative_path = getenv("DZN_AGILITY_RELATIVE_PATH");
+      const char *d3d12core_sdk_version = getenv("DZN_AGILITY_SDK_VERSION");
+      if (d3d12core_relative_path && d3d12core_sdk_version) {
+         ID3D12SDKConfiguration_SetSDKVersion(sdk_config, atoi(d3d12core_sdk_version), d3d12core_relative_path);
+      }
+      ID3D12SDKConfiguration_Release(sdk_config);
+   }
+#endif
 
    (void)D3D12GetInterface(&CLSID_D3D12DeviceFactory, &IID_ID3D12DeviceFactory, (void **)&factory);
    return factory;
