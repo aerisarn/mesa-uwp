@@ -252,13 +252,8 @@ static inline void trace_${trace_name}(
    , ${arg.type} ${arg.var}
 %    endfor
 ) {
-%    if trace.tp_perfetto is not None:
-   if (!unlikely((ut_trace_instrument || ut_perfetto_enabled) &&
+   if (!unlikely(u_trace_instrument() &&
                  ${trace.enabled_expr(trace_toggle_name)}))
-%    else:
-   if (!unlikely(ut_trace_instrument &&
-                 ${trace.enabled_expr(trace_toggle_name)}))
-%    endif
       return;
    __trace_${trace_name}(
         ut

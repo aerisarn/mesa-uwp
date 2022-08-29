@@ -38,7 +38,7 @@
 #define TIMESTAMP_BUF_SIZE 0x1000
 #define TRACES_PER_CHUNK   (TIMESTAMP_BUF_SIZE / sizeof(uint64_t))
 
-bool ut_trace_instrument;
+bool _u_trace_instrument;
 
 #ifdef HAVE_PERFETTO
 int ut_perfetto_enabled;
@@ -369,7 +369,7 @@ get_tracefile(void)
          tracefile = stdout;
       }
 
-      ut_trace_instrument = tracefile || debug_get_option_trace_instrument();
+      _u_trace_instrument = tracefile || debug_get_option_trace_instrument();
 
       firsttime = false;
    }
