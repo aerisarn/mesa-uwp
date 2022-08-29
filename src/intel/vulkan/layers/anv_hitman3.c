@@ -29,5 +29,13 @@ hitman3_CreateBufferView(VkDevice _device,
                          const VkAllocationCallbacks *pAllocator,
                          VkBufferView *pView)
 {
+   ANV_FROM_HANDLE(anv_buffer, buffer, pCreateInfo->buffer);
+   if (pCreateInfo->format == VK_FORMAT_R32G32B32_SFLOAT &&
+       (buffer->vk.usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
+      ANV_FROM_HANDLE(anv_device, device, _device);
+      return vk_errorf(device, VK_ERROR_UNKNOWN,
+                       "invalid image format requested for storage");
+   }
+
    return anv_CreateBufferView(_device, pCreateInfo, pAllocator, pView);
 }
