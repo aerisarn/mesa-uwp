@@ -728,6 +728,7 @@ d3d12_destroy_screen(struct d3d12_screen *screen)
    slab_destroy_parent(&screen->transfer_pool);
    mtx_destroy(&screen->submit_mutex);
    mtx_destroy(&screen->descriptor_pool_mutex);
+   util_dl_close(screen->d3d12_mod);
    glsl_type_singleton_decref();
    FREE(screen);
 }
@@ -779,16 +780,10 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
 }
 
 static ID3D12Debug *
-get_debug_interface()
+get_debug_interface(util_dl_library *d3d12_mod)
 {
    typedef HRESULT(WINAPI *PFN_D3D12_GET_DEBUG_INTERFACE)(REFIID riid, void **ppFactory);
    PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface;
-
-   util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
-   if (!d3d12_mod) {
-      debug_printf("D3D12: failed to load D3D12.DLL\n");
-      return NULL;
-   }
 
    D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetDebugInterface");
    if (!D3D12GetDebugInterface) {
@@ -806,9 +801,9 @@ get_debug_interface()
 }
 
 static void
-enable_d3d12_debug_layer()
+enable_d3d12_debug_layer(util_dl_library *d3d12_mod)
 {
-   ID3D12Debug *debug = get_debug_interface();
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
    if (debug) {
       debug->EnableDebugLayer();
       debug->Release();
@@ -816,9 +811,9 @@ enable_d3d12_debug_layer()
 }
 
 static void
-enable_gpu_validation()
+enable_gpu_validation(util_dl_library *d3d12_mod)
 {
-   ID3D12Debug *debug = get_debug_interface();
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
    ID3D12Debug3 *debug3;
    if (debug) {
       if (SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3)))) {
@@ -830,18 +825,12 @@ enable_gpu_validation()
 }
 
 static ID3D12Device3 *
-create_device(IUnknown *adapter)
+create_device(util_dl_library *d3d12_mod, IUnknown *adapter)
 {
    typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
    typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID*, void*, UINT*);
    PFN_D3D12CREATEDEVICE D3D12CreateDevice;
    PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures;
-
-   util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
-   if (!d3d12_mod) {
-      debug_printf("D3D12: failed to load D3D12.DLL\n");
-      return NULL;
-   }
 
 #ifdef _WIN32
    if (d3d12_debug & D3D12_DEBUG_EXPERIMENTAL)
@@ -1123,7 +1112,7 @@ d3d12_set_fence_timeline_value(struct pipe_screen *pscreen, struct pipe_fence_ha
    d3d12_fence(pfence)->value = value;
 }
 
-void
+bool
 d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
    glsl_type_singleton_init_or_ref();
@@ -1154,6 +1143,13 @@ d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LU
    screen->base.get_device_node_mask = d3d12_get_node_mask;
    screen->base.create_fence_win32 = d3d12_create_fence_win32;
    screen->base.set_fence_timeline_value = d3d12_set_fence_timeline_value;
+
+   screen->d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!screen->d3d12_mod) {
+      debug_printf("D3D12: failed to load D3D12.DLL\n");
+      return false;
+   }
+   return true;
 }
 
 bool
@@ -1164,12 +1160,13 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 #ifndef DEBUG
    if (d3d12_debug & D3D12_DEBUG_DEBUG_LAYER)
 #endif
-      enable_d3d12_debug_layer();
+      enable_d3d12_debug_layer(screen->d3d12_mod);
 
    if (d3d12_debug & D3D12_DEBUG_GPU_VALIDATOR)
-      enable_gpu_validation();
+      enable_gpu_validation(screen->d3d12_mod);
 
-   screen->dev = create_device(adapter);
+   screen->dev = create_device(screen->d3d12_mod, adapter);
+
 
    if (!screen->dev) {
       debug_printf("D3D12: failed to create device\n");
