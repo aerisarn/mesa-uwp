@@ -121,6 +121,11 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    desc->root.cs.block_size[1] = shader->cp.block_size[1];
    desc->root.cs.block_size[2] = shader->cp.block_size[2];
 
+   /* pre Pascal the constant buffer sizes need to be 0x100 aligned. As we simply allocated a
+    * buffer and upload data to it, make sure its size is 0x100 aligned.
+    */
+   STATIC_ASSERT((sizeof(desc->root) & 0xff) == 0);
+
    uint64_t root_desc_addr;
    result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
                                        NVK_MIN_UBO_ALIGNMENT,
