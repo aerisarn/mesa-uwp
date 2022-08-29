@@ -176,6 +176,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_private_data                    = true,
       .EXT_provoking_vertex                = true,
       .EXT_separate_stencil_usage          = true,
+      .EXT_texel_buffer_alignment          = true,
       .EXT_vertex_attribute_divisor        = true,
 #ifdef ANDROID
       .ANDROID_native_buffer               = true,
@@ -1328,6 +1329,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *features =
+            (void *) ext;
+         features->texelBufferAlignment = true;
+         break;
+      }
+
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1715,6 +1723,15 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
           * never provide this extension.
           */
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *props =
+            (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
+         props->storageTexelBufferOffsetAlignmentBytes = V3D_TMU_TEXEL_ALIGN;
+         props->storageTexelBufferOffsetSingleTexelAlignment = false;
+         props->uniformTexelBufferOffsetAlignmentBytes = V3D_TMU_TEXEL_ALIGN;
+         props->uniformTexelBufferOffsetSingleTexelAlignment = false;
+         break;
+      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
