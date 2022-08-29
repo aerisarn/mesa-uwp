@@ -414,6 +414,10 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
          else
             swizzle_r_x = !i ? AMD_FMT_MOD_TILE_GFX9_64K_R_X : AMD_FMT_MOD_TILE_GFX11_256K_R_X;
 
+         /* Disable 256K on APUs because it doesn't work with DAL. */
+         if (!info->has_dedicated_vram && swizzle_r_x == AMD_FMT_MOD_TILE_GFX11_256K_R_X)
+            continue;
+
          uint64_t modifier_r_x = AMD_FMT_MOD |
                                  AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX11) |
                                  AMD_FMT_MOD_SET(TILE, swizzle_r_x) |
@@ -1432,8 +1436,15 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, const struct rad
    /* TODO: We could allow some of these: */
    sin.forbiddenBlock.micro = 1; /* don't allow the 256B swizzle modes */
 
-   if (info->gfx_level < GFX11)
+   if (info->gfx_level >= GFX11) {
+      /* Disable 256K on APUs because it doesn't work with DAL. */
+      if (!info->has_dedicated_vram) {
+         sin.forbiddenBlock.gfx11.thin256KB = 1;
+         sin.forbiddenBlock.gfx11.thick256KB = 1;
+      }
+   } else {
       sin.forbiddenBlock.var = 1;   /* don't allow the variable-sized swizzle modes */
+   }
 
    sin.bpp = in->bpp;
    sin.width = in->width;
