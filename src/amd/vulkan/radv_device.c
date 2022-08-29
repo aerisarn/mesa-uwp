@@ -1086,6 +1086,7 @@ static const struct debug_control radv_debug_options[] = {
    {"nodma", RADV_DEBUG_NO_DMA_BLIT},
    {"epilogs", RADV_DEBUG_DUMP_EPILOGS},
    {"nofmask", RADV_DEBUG_NO_FMASK},
+   {"shadowregs", RADV_DEBUG_SHADOW_REGS},
    {NULL, 0}};
 
 const char *

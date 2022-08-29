@@ -1042,6 +1042,8 @@ RADV driver environment variables
       dump shaders
    ``shaderstats``
       dump shader statistics
+   ``shadowregs``
+      enable register shadowing
    ``spirv``
       dump SPIR-V
    ``splitfma``
