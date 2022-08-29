@@ -94,6 +94,8 @@ radv_GetAccelerationStructureBuildSizesKHR(
 
    uint64_t size = boxes * 128 + instances * 128 + triangles * 64 + internal_nodes * 128 +
                    ALIGN(sizeof(struct radv_accel_struct_header), 64);
+   size +=
+      pBuildInfo->geometryCount * sizeof(struct radv_accel_struct_geometry_info);
 
    pSizeInfo->accelerationStructureSize = size;
 
@@ -657,6 +659,7 @@ struct bvh_state {
 
    uint32_t leaf_node_offset;
    uint32_t leaf_node_count;
+   uint32_t internal_node_count;
 };
 
 VKAPI_ATTR void VKAPI_CALL
@@ -890,6 +893,7 @@ radv_CmdBuildAccelerationStructuresKHR(
          if (!final_iter)
             bvh_states[i].node_offset += dst_node_count * 128;
          bvh_states[i].node_count = dst_node_count;
+         bvh_states[i].internal_node_count += dst_node_count;
          bvh_states[i].scratch_offset = dst_scratch_offset;
       }
    }
@@ -901,9 +905,12 @@ radv_CmdBuildAccelerationStructuresKHR(
 
       bool is_tlas = pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 
+      uint64_t geometry_infos_size =
+         pInfos[i].geometryCount * sizeof(struct radv_accel_struct_geometry_info);
+
       header.instance_offset = bvh_states[i].leaf_node_offset;
       header.instance_count = is_tlas ? bvh_states[i].leaf_node_count : 0;
-      header.compacted_size = bvh_states[i].node_offset;
+      header.compacted_size = bvh_states[i].node_offset + geometry_infos_size;
 
       header.copy_dispatch_size[0] = DIV_ROUND_UP(header.compacted_size, 16 * 64);
       header.copy_dispatch_size[1] = 1;
@@ -918,10 +925,31 @@ radv_CmdBuildAccelerationStructuresKHR(
                     sizeof(struct radv_accel_struct_serialization_header) -
                     sizeof(uint64_t) * header.instance_count;
 
+      header.build_flags = pInfos[i].flags;
+      header.geometry_count = pInfos[i].geometryCount;
+      header.internal_node_count = bvh_states[i].internal_node_count;
+
+      struct radv_accel_struct_geometry_info *geometry_infos = malloc(geometry_infos_size);
+      if (!geometry_infos)
+         goto fail;
+
+      for (uint32_t j = 0; j < pInfos[i].geometryCount; ++j) {
+         const VkAccelerationStructureGeometryKHR *geometry =
+            pInfos[i].pGeometries ? pInfos[i].pGeometries + j : pInfos[i].ppGeometries[j];
+         geometry_infos[j].type = geometry->geometryType;
+         geometry_infos[j].flags = geometry->flags;
+         geometry_infos[j].primitive_count = ppBuildRangeInfos[i][j].primitiveCount;
+      }
+
       radv_update_buffer_cp(cmd_buffer,
                             radv_buffer_get_va(accel_struct->bo) + accel_struct->mem_offset + base,
                             (const char *)&header + base, sizeof(header) - base);
+      radv_update_buffer_cp(cmd_buffer,
+                            radv_accel_struct_get_va(accel_struct) + bvh_states[i].node_offset,
+                            geometry_infos, geometry_infos_size);
    }
+
+fail:
    free(bvh_states);
    radv_meta_restore(&saved_state, cmd_buffer);
 }

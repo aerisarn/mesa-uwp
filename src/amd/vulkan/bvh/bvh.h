@@ -46,6 +46,12 @@ struct radv_accel_struct_serialization_header {
 #endif
 };
 
+struct radv_accel_struct_geometry_info {
+   uint32_t primitive_count;
+   uint32_t flags;
+   uint32_t type;
+};
+
 struct radv_accel_struct_header {
    uint32_t root_node_offset;
    uint32_t reserved;
@@ -55,10 +61,12 @@ struct radv_accel_struct_header {
    uint64_t compacted_size;
    uint64_t serialization_size;
    uint32_t copy_dispatch_size[3];
-   uint32_t reserved2;
+   uint32_t geometry_count;
    uint64_t instance_offset;
    uint64_t instance_count;
    uint64_t size;
+   uint32_t build_flags;
+   uint32_t internal_node_count;
 };
 
 struct radv_bvh_triangle_node {
