@@ -215,9 +215,9 @@ wgl_validate_egl_image(struct st_manager *smapi, void *image)
    _EGLDisplay *disp = wgl_dpy->parent;
    _EGLImage *img;
 
-   simple_mtx_lock(&disp->Mutex);
+   egl_lock(disp);
    img = _eglLookupImage(image, disp);
-   simple_mtx_unlock(&disp->Mutex);
+   egl_unlock(disp);
 
    if (img == NULL) {
       _eglError(EGL_BAD_PARAMETER, "wgl_validate_egl_image");

@@ -279,6 +279,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
       goto out;
 
    simple_mtx_init(&disp->Mutex, mtx_plain);
+   u_rwlock_init(&disp->TerminateLock);
    disp->Platform = plat;
    disp->PlatformDisplay = plat_dpy;
    num_attribs = _eglNumAttribs(attrib_list);

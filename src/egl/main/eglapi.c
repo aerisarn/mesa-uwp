@@ -250,7 +250,7 @@ _eglLockDisplay(EGLDisplay dpy)
 {
    _EGLDisplay *disp = _eglLookupDisplay(dpy);
    if (disp)
-      simple_mtx_lock(&disp->Mutex);
+      egl_lock(disp);
    return disp;
 }
 
@@ -261,7 +261,7 @@ _eglLockDisplay(EGLDisplay dpy)
 static inline void
 _eglUnlockDisplay(_EGLDisplay *disp)
 {
-   simple_mtx_unlock(&disp->Mutex);
+   egl_unlock(disp);
 }
 
 static void
@@ -689,12 +689,15 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
 EGLBoolean EGLAPIENTRY
 eglTerminate(EGLDisplay dpy)
 {
-   _EGLDisplay *disp = _eglLockDisplay(dpy);
+   _EGLDisplay *disp = _eglLookupDisplay(dpy);
 
    _EGL_FUNC_START(disp, EGL_OBJECT_DISPLAY_KHR, NULL);
 
    if (!disp)
       RETURN_EGL_ERROR(NULL, EGL_BAD_DISPLAY, EGL_FALSE);
+
+   u_rwlock_wrlock(&disp->TerminateLock);
+   simple_mtx_lock(&disp->Mutex);
 
    if (disp->Initialized) {
       disp->Driver->Terminate(disp);
@@ -707,7 +710,10 @@ eglTerminate(EGLDisplay dpy)
       disp->BlobCacheGet = NULL;
    }
 
-   RETURN_EGL_SUCCESS(disp, EGL_TRUE);
+   simple_mtx_unlock(&disp->Mutex);
+   u_rwlock_wrunlock(&disp->TerminateLock);
+
+   RETURN_EGL_SUCCESS(NULL, EGL_TRUE);
 }
 
 
@@ -1523,7 +1529,7 @@ _eglWaitClientCommon(void)
       RETURN_EGL_SUCCESS(NULL, EGL_TRUE);
 
    disp = ctx->Resource.Display;
-   simple_mtx_lock(&disp->Mutex);
+   egl_lock(disp);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||
@@ -1566,7 +1572,7 @@ eglWaitNative(EGLint engine)
    _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL);
 
    disp = ctx->Resource.Display;
-   simple_mtx_lock(&disp->Mutex);
+   egl_lock(disp);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||
@@ -1725,9 +1731,9 @@ eglReleaseThread(void)
    if (ctx) {
       _EGLDisplay *disp = ctx->Resource.Display;
 
-      simple_mtx_lock(&disp->Mutex);
+      egl_lock(disp);
       (void) disp->Driver->MakeCurrent(disp, NULL, NULL, NULL);
-      simple_mtx_unlock(&disp->Mutex);
+      egl_unlock(disp);
    }
 
    _eglDestroyCurrentThread();
