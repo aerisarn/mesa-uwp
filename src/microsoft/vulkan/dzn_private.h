@@ -231,13 +231,13 @@ PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(struct util_dl_library *d3d12_mod);
 
 void
-d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod);
+d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory);
 
 void
-d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod);
+d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory);
 
 ID3D12Device2 *
-d3d12_create_device(struct util_dl_library *d3d12_mod, IUnknown *adapter, bool experimental_features);
+d3d12_create_device(struct util_dl_library *d3d12_mod, IUnknown *adapter, ID3D12DeviceFactory *factory, bool experimental_features);
 
 struct dzn_queue {
    struct vk_queue vk;
@@ -1048,6 +1048,7 @@ struct dzn_instance {
 
    struct dxil_validator *dxil_validator;
    struct util_dl_library *d3d12_mod;
+   ID3D12DeviceFactory *factory;
    struct {
       PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE serialize_root_sig;
    } d3d12;

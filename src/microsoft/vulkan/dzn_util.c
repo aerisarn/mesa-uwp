@@ -297,30 +297,37 @@ dzn_translate_rect(D3D12_RECT *out,
 }
 
 static ID3D12Debug *
-get_debug_interface(struct util_dl_library *d3d12_mod)
+get_debug_interface(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
    typedef HRESULT(WINAPI *PFN_D3D12_GET_DEBUG_INTERFACE)(REFIID riid, void **ppFactory);
    PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface;
 
-   D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetDebugInterface");
-   if (!D3D12GetDebugInterface) {
-      mesa_loge("failed to load D3D12GetDebugInterface from D3D12.DLL\n");
-      return NULL;
-   }
-
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debug))) {
-      mesa_loge("D3D12GetDebugInterface failed\n");
-      return NULL;
+   if (factory) {
+      if (FAILED(ID3D12DeviceFactory_GetConfigurationInterface(factory, &CLSID_D3D12Debug, &IID_ID3D12Debug, (void **)&debug))) {
+         mesa_loge("Failed to retrieve ID3D12Debug from device factory\n");
+         return NULL;
+      }
+   } else {
+      D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetDebugInterface");
+      if (!D3D12GetDebugInterface) {
+         mesa_loge("failed to load D3D12GetDebugInterface from D3D12.DLL\n");
+         return NULL;
+      }
+
+      if (FAILED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debug))) {
+         mesa_loge("D3D12GetDebugInterface failed\n");
+         return NULL;
+      }
    }
 
    return debug;
 }
 
 void
-d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod)
+d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
-   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod, factory);
    if (debug) {
       ID3D12Debug_EnableDebugLayer(debug);
       ID3D12Debug_Release(debug);
@@ -328,9 +335,9 @@ d3d12_enable_debug_layer(struct util_dl_library *d3d12_mod)
 }
 
 void
-d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod)
+d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod, ID3D12DeviceFactory *factory)
 {
-   ID3D12Debug *debug = get_debug_interface(d3d12_mod);
+   ID3D12Debug *debug = get_debug_interface(d3d12_mod, factory);
    if (debug) {
       ID3D12Debug3 *debug3;
       if (SUCCEEDED(ID3D12Debug_QueryInterface(debug,
@@ -344,38 +351,54 @@ d3d12_enable_gpu_validation(struct util_dl_library *d3d12_mod)
 }
 
 ID3D12Device2 *
-d3d12_create_device(struct util_dl_library *d3d12_mod, IUnknown *adapter, bool experimental_features)
+d3d12_create_device(struct util_dl_library *d3d12_mod, IUnknown *adapter, ID3D12DeviceFactory *factory, bool experimental_features)
 {
-   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown *, D3D_FEATURE_LEVEL, REFIID, void **);
-   PFN_D3D12CREATEDEVICE D3D12CreateDevice;
-
 #ifdef _WIN32
    if (experimental_features)
 #endif
    {
-      typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID *, void *, UINT *);
-      PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures =
-         (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
-      if (FAILED(D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
-         mesa_loge("failed to enable experimental shader models\n");
-         return NULL;
+      if (factory) {
+         if (FAILED(ID3D12DeviceFactory_EnableExperimentalFeatures(factory, 1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
+            mesa_loge("failed to enable experimental shader models\n");
+            return NULL;
+         }
+      } else {
+         typedef HRESULT(WINAPI *PFN_D3D12ENABLEEXPERIMENTALFEATURES)(UINT, const IID *, void *, UINT *);
+         PFN_D3D12ENABLEEXPERIMENTALFEATURES D3D12EnableExperimentalFeatures =
+            (PFN_D3D12ENABLEEXPERIMENTALFEATURES)util_dl_get_proc_address(d3d12_mod, "D3D12EnableExperimentalFeatures");
+         if (FAILED(D3D12EnableExperimentalFeatures(1, &D3D12ExperimentalShaderModels, NULL, NULL))) {
+            mesa_loge("failed to enable experimental shader models\n");
+            return NULL;
+         }
       }
    }
 
-   D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
-   if (!D3D12CreateDevice) {
-      mesa_loge("failed to load D3D12CreateDevice from D3D12\n");
-      return NULL;
-   }
-
    ID3D12Device2 *dev;
-   if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 &IID_ID3D12Device2,
-                 (void **)&dev)))
-      return dev;
+   if (factory) {
+      if (FAILED(ID3D12DeviceFactory_CreateDevice(factory, adapter, D3D_FEATURE_LEVEL_11_0,
+                                                  &IID_ID3D12Device2,
+                                                  (void **)&dev))) {
+         mesa_loge("ID3D12DeviceFactory::CreateDevice failed\n");
+         return NULL;
+      }
+   } else {
+      typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown *, D3D_FEATURE_LEVEL, REFIID, void **);
+      PFN_D3D12CREATEDEVICE D3D12CreateDevice;
 
-   mesa_loge("D3D12CreateDevice failed\n");
-   return NULL;
+      D3D12CreateDevice = (PFN_D3D12CREATEDEVICE)util_dl_get_proc_address(d3d12_mod, "D3D12CreateDevice");
+      if (!D3D12CreateDevice) {
+         mesa_loge("failed to load D3D12CreateDevice from D3D12\n");
+         return NULL;
+      }
+
+      if (FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
+                                   &IID_ID3D12Device2,
+                                   (void **)&dev))) {
+         mesa_loge("D3D12CreateDevice failed\n");
+         return NULL;
+      }
+   }
+   return dev;
 }
 
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE

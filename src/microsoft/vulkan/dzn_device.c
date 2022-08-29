@@ -168,10 +168,31 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
       dzn_physical_device_destroy(pdev);
    }
 
+   if (instance->factory)
+      ID3D12DeviceFactory_Release(instance->factory);
+
    util_dl_close(instance->d3d12_mod);
 
    vk_instance_finish(&instance->vk);
    vk_free2(vk_default_allocator(), alloc, instance);
+}
+
+static ID3D12DeviceFactory *
+try_create_device_factory(struct util_dl_library *d3d12_mod)
+{
+   /* A device factory allows us to isolate things like debug layer enablement from other callers,
+   * and can potentially even refer to a different D3D12 redist implementation from others.
+   */
+   ID3D12DeviceFactory *factory = NULL;
+
+   PFN_D3D12_GET_INTERFACE D3D12GetInterface = (PFN_D3D12_GET_INTERFACE)util_dl_get_proc_address(d3d12_mod, "D3D12GetInterface");
+   if (!D3D12GetInterface) {
+      mesa_loge("Failed to retrieve D3D12GetInterface\n");
+      return NULL;
+   }
+
+   (void)D3D12GetInterface(&CLSID_D3D12DeviceFactory, &IID_ID3D12DeviceFactory, (void **)&factory);
+   return factory;
 }
 
 static VkResult
@@ -246,10 +267,12 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
       return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
    }
 
+   instance->factory = try_create_device_factory(instance->d3d12_mod);
+
    if (instance->debug_flags & DZN_DEBUG_D3D12)
-      d3d12_enable_debug_layer(instance->d3d12_mod);
+      d3d12_enable_debug_layer(instance->d3d12_mod, instance->factory);
    if (instance->debug_flags & DZN_DEBUG_GBV)
-      d3d12_enable_gpu_validation(instance->d3d12_mod);
+      d3d12_enable_gpu_validation(instance->d3d12_mod, instance->factory);
 
    instance->sync_binary_type = vk_sync_binary_get_type(&dzn_sync_type);
 
@@ -597,7 +620,10 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
 
    mtx_lock(&pdev->dev_lock);
    if (!pdev->dev) {
-      pdev->dev = d3d12_create_device(instance->d3d12_mod, pdev->adapter, !instance->dxil_validator);
+      pdev->dev = d3d12_create_device(instance->d3d12_mod,
+                                      pdev->adapter,
+                                      instance->factory,
+                                      !instance->dxil_validator);
 
       dzn_physical_device_cache_caps(pdev);
       dzn_physical_device_init_memory(pdev);
