@@ -86,6 +86,8 @@
 #define AMDGPU_VRAM_TYPE_DDR4  8
 #define AMDGPU_VRAM_TYPE_GDDR6 9
 #define AMDGPU_VRAM_TYPE_DDR5  10
+#define AMDGPU_VRAM_TYPE_LPDDR4 11
+#define AMDGPU_VRAM_TYPE_LPDDR5 12
 
 struct drm_amdgpu_heap_info {
    uint64_t total_heap_size;
@@ -1998,22 +2000,23 @@ uint32_t ac_memory_ops_per_clock(uint32_t vram_type)
 {
    /* Based on MemoryOpsPerClockTable from PAL. */
    switch (vram_type) {
+   case AMDGPU_VRAM_TYPE_GDDR1:
+   case AMDGPU_VRAM_TYPE_GDDR3: /* last in low-end Evergreen */
+   case AMDGPU_VRAM_TYPE_GDDR4: /* last in R7xx, not used much */
    case AMDGPU_VRAM_TYPE_UNKNOWN:
+   default:
       return 0;
    case AMDGPU_VRAM_TYPE_DDR2:
    case AMDGPU_VRAM_TYPE_DDR3:
-   case AMDGPU_VRAM_TYPE_DDR4: /* same for LPDDR4 */
+   case AMDGPU_VRAM_TYPE_DDR4:
+   case AMDGPU_VRAM_TYPE_LPDDR4:
    case AMDGPU_VRAM_TYPE_HBM: /* same for HBM2 and HBM3 */
       return 2;
-   case AMDGPU_VRAM_TYPE_DDR5: /* same for LPDDR5 */
-   case AMDGPU_VRAM_TYPE_GDDR5:
+   case AMDGPU_VRAM_TYPE_DDR5:
+   case AMDGPU_VRAM_TYPE_LPDDR5:
+   case AMDGPU_VRAM_TYPE_GDDR5: /* last in Polaris and low-end Navi14 */
       return 4;
    case AMDGPU_VRAM_TYPE_GDDR6:
       return 16;
-   case AMDGPU_VRAM_TYPE_GDDR1:
-   case AMDGPU_VRAM_TYPE_GDDR3:
-   case AMDGPU_VRAM_TYPE_GDDR4:
-   default:
-      unreachable("Invalid vram type");
    }
 }
