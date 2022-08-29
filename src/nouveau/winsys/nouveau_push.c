@@ -55,7 +55,7 @@ nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
    return push;
 
 fail_alloc:
-   munmap(map, bo->size);
+   nouveau_ws_bo_unmap(bo, map);
 fail_map:
    nouveau_ws_bo_destroy(bo);
 fail_bo:
@@ -78,7 +78,7 @@ nouveau_ws_push_destroy(struct nouveau_ws_push *push)
 {
    util_dynarray_fini(&push->bos);
    if (push->bo) {
-      munmap(push->orig_map, push->bo->size);
+      nouveau_ws_bo_unmap(push->bo, push->orig_map);
       nouveau_ws_bo_destroy(push->bo);
    }
 }

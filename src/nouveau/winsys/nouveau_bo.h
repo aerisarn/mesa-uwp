@@ -5,6 +5,8 @@
 
 #include "nouveau_device.h"
 
+#include <sys/mman.h>
+
 enum nouveau_ws_bo_flags {
    /* vram or gart depending on GPU */
    NOUVEAU_WS_BO_LOCAL = 0 << 0,
@@ -44,6 +46,12 @@ static inline void
 nouveau_ws_bo_ref(struct nouveau_ws_bo *bo)
 {
    bo->refcnt++;
+}
+
+static inline void
+nouveau_ws_bo_unmap(struct nouveau_ws_bo *bo, void *ptr)
+{
+   munmap(ptr, bo->size);
 }
 
 #endif

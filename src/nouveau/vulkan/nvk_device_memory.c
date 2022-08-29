@@ -118,7 +118,7 @@ nvk_allocate_memory(struct nvk_device *device,
             goto fail_bo;
          }
          memset(map, 0, mem->bo->size);
-         munmap(map, mem->bo->size);
+         nouveau_ws_bo_unmap(mem->bo, map);
       } else {
          VkResult result = zero_vram(device, mem->bo);
          if (result != VK_SUCCESS)
@@ -146,7 +146,7 @@ nvk_free_memory(struct nvk_device *device,
                 const VkAllocationCallbacks *pAllocator)
 {
    if (mem->map)
-      munmap(mem->map, mem->bo->size);
+      nouveau_ws_bo_unmap(mem->bo, mem->map);
 
    simple_mtx_lock(&device->memory_objects_lock);
    list_del(&mem->link);
@@ -255,7 +255,7 @@ nvk_UnmapMemory(
    if (mem == NULL)
       return;
 
-   munmap(mem->map, mem->bo->size);
+   nouveau_ws_bo_unmap(mem->bo, mem->map);
    mem->map = NULL;
 }
 
