@@ -454,23 +454,12 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    assert(((*bb_start >> 29) & 0x07) == 0);
    assert(((*bb_start >> 23) & 0x3f) == 49);
 
-   if (anv_use_relocations(cmd_buffer->device->physical)) {
-      uint32_t reloc_idx = prev_bbo->relocs.num_relocs - 1;
-      assert(prev_bbo->relocs.relocs[reloc_idx].offset == bb_start_offset + 4);
+   assert(anv_bo_is_pinned(prev_bbo->bo));
+   assert(anv_bo_is_pinned(next_bbo->bo));
 
-      prev_bbo->relocs.reloc_bos[reloc_idx] = next_bbo->bo;
-      prev_bbo->relocs.relocs[reloc_idx].delta = next_bbo_offset;
-
-      /* Use a bogus presumed offset to force a relocation */
-      prev_bbo->relocs.relocs[reloc_idx].presumed_offset = -1;
-   } else {
-      assert(anv_bo_is_pinned(prev_bbo->bo));
-      assert(anv_bo_is_pinned(next_bbo->bo));
-
-      write_reloc(cmd_buffer->device,
-                  prev_bbo->bo->map + bb_start_offset + 4,
-                  next_bbo->bo->offset + next_bbo_offset, true);
-   }
+   write_reloc(cmd_buffer->device,
+               prev_bbo->bo->map + bb_start_offset + 4,
+               next_bbo->bo->offset + next_bbo_offset, true);
 }
 
 static void
@@ -528,7 +517,7 @@ anv_cmd_buffer_current_batch_bo(struct anv_cmd_buffer *cmd_buffer)
 struct anv_address
 anv_cmd_buffer_surface_base_address(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_state_pool *pool = anv_binding_table_pool(cmd_buffer->device);
+   struct anv_state_pool *pool = &cmd_buffer->device->binding_table_pool;
    struct anv_state *bt_block = u_vector_head(&cmd_buffer->bt_block_states);
    return (struct anv_address) {
       .bo = pool->block_pool.bo,
@@ -589,8 +578,6 @@ static void
 anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
                                    struct anv_cmd_buffer *cmd_buffer_to)
 {
-   assert(!anv_use_relocations(cmd_buffer_from->device->physical));
-
    uint32_t *bb_start = cmd_buffer_from->batch_end;
 
    struct anv_batch_bo *last_bbo =
@@ -619,8 +606,6 @@ anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
 static void
 anv_cmd_buffer_record_end_submit(struct anv_cmd_buffer *cmd_buffer)
 {
-   assert(!anv_use_relocations(cmd_buffer->device->physical));
-
    struct anv_batch_bo *last_bbo =
       list_last_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
    last_bbo->chained = false;
@@ -1557,23 +1542,10 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       &cmd_buffer->device->surface_state_pool;
 
    VkResult result;
-   if (anv_use_relocations(cmd_buffer->device->physical)) {
-      /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
-       * will get added automatically by processing relocations on the batch
-       * buffer.  We have to add the surface state BO manually because it has
-       * relocations of its own that we need to be sure are processed.
-       */
-      result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                  ss_pool->block_pool.bo,
-                                  &cmd_buffer->surface_relocs, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   } else {
-      /* Add surface dependencies (BOs) to the execbuf */
-      anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
-                                cmd_buffer->surface_relocs.dep_words,
-                                cmd_buffer->surface_relocs.deps, 0);
-   }
+   /* Add surface dependencies (BOs) to the execbuf */
+   anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
+                             cmd_buffer->surface_relocs.dep_words,
+                             cmd_buffer->surface_relocs.deps, 0);
 
    /* First, we walk over all of the bos we've seen and add them and their
     * relocations to the validate list.
@@ -1629,56 +1601,49 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
    /* Add all the global BOs to the object list for softpin case. */
-   if (!anv_use_relocations(device->physical)) {
-      anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
-         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
+   anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
+      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
-      struct anv_block_pool *pool;
-      pool = &device->dynamic_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
+   struct anv_block_pool *pool;
+   pool = &device->dynamic_state_pool.block_pool;
+   anv_block_pool_foreach_bo(bo, pool) {
+      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
-      pool = &device->general_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
+   pool = &device->general_state_pool.block_pool;
+   anv_block_pool_foreach_bo(bo, pool) {
+      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
-      pool = &device->instruction_state_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
+   pool = &device->instruction_state_pool.block_pool;
+   anv_block_pool_foreach_bo(bo, pool) {
+      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
-      pool = &device->binding_table_pool.block_pool;
-      anv_block_pool_foreach_bo(bo, pool) {
-         result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
+   pool = &device->binding_table_pool.block_pool;
+   anv_block_pool_foreach_bo(bo, pool) {
+      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
-      /* Add the BOs for all user allocated memory objects because we can't
-       * track after binding updates of VK_EXT_descriptor_indexing.
-       */
-      list_for_each_entry(struct anv_device_memory, mem,
-                          &device->memory_objects, link) {
-         result = anv_execbuf_add_bo(device, execbuf, mem->bo, NULL, 0);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-   } else {
-      /* We do not support chaining primary command buffers without
-       * softpin.
-       */
-      assert(num_cmd_buffers == 1);
+   /* Add the BOs for all user allocated memory objects because we can't
+    * track after binding updates of VK_EXT_descriptor_indexing.
+    */
+   list_for_each_entry(struct anv_device_memory, mem,
+                       &device->memory_objects, link) {
+      result = anv_execbuf_add_bo(device, execbuf, mem->bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
    }
 
    bool no_reloc = true;
@@ -1757,8 +1722,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
    /* If we are pinning our BOs, we shouldn't have to relocate anything */
-   if (!anv_use_relocations(device->physical))
-      assert(!execbuf->has_relocs);
+   assert(!execbuf->has_relocs);
 
    /* Now we go through and fixup all of the relocation lists to point to the
     * correct indices in the object array (I915_EXEC_HANDLE_LUT).  We have to

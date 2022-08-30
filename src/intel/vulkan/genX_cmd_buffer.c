@@ -175,22 +175,10 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionMOCS = mocs;
       sba.InstructionBaseAddressModifyEnable = true;
 
-      /* Broadwell requires that we specify a buffer size for a bunch of
-       * these fields.  However, since we will be growing the BO's live, we
-       * just set them all to the maximum.
-       */
       sba.GeneralStateBufferSize       = 0xfffff;
       sba.IndirectObjectBufferSize     = 0xfffff;
-      if (anv_use_relocations(device->physical)) {
-         sba.DynamicStateBufferSize    = 0xfffff;
-         sba.InstructionBufferSize     = 0xfffff;
-      } else {
-         /* With softpin, we use fixed addresses so we actually know how big
-          * our base addresses are.
-          */
-         sba.DynamicStateBufferSize    = DYNAMIC_STATE_POOL_SIZE / 4096;
-         sba.InstructionBufferSize     = INSTRUCTION_STATE_POOL_SIZE / 4096;
-      }
+      sba.DynamicStateBufferSize       = DYNAMIC_STATE_POOL_SIZE / 4096;
+      sba.InstructionBufferSize        = INSTRUCTION_STATE_POOL_SIZE / 4096;
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
@@ -280,19 +268,9 @@ static void
 add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
                   struct anv_state state, struct anv_address addr)
 {
-   VkResult result;
-
-   if (anv_use_relocations(cmd_buffer->device->physical)) {
-      const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
-      result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                                  &cmd_buffer->vk.pool->alloc,
-                                  state.offset + isl_dev->ss.addr_offset,
-                                  addr.bo, addr.offset, NULL);
-   } else {
-      result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                     &cmd_buffer->vk.pool->alloc,
-                                     addr.bo);
-   }
+   VkResult result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
+                                           &cmd_buffer->vk.pool->alloc,
+                                           addr.bo);
 
    if (unlikely(result != VK_SUCCESS))
       anv_batch_set_error(&cmd_buffer->batch, result);
@@ -554,7 +532,6 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
                                                  address, &aux_entry_addr64);
 
-         assert(!anv_use_relocations(cmd_buffer->device->physical));
          struct anv_address aux_entry_address = {
             .bo = NULL,
             .offset = aux_entry_addr64,
@@ -2324,11 +2301,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    if (bt_state->map == NULL)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   /* We only need to emit relocs if we're not using softpin.  If we are using
-    * softpin then we always keep all user-allocated memory objects resident.
-    */
-   const bool need_client_mem_relocs =
-      anv_use_relocations(cmd_buffer->device->physical);
+   /* Note that we always keep all user-allocated memory objects resident. */
+
    struct anv_push_constants *push = &pipe_state->push_constants;
 
    for (uint32_t s = 0; s < map->surface_count; s++) {
@@ -2373,10 +2347,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          assert(surface_state.map);
          bt_map[s] = surface_state.offset + state_offset;
-         if (need_client_mem_relocs) {
-            add_surface_reloc(cmd_buffer, surface_state,
-                              cmd_buffer->state.compute.num_workgroups);
-         }
          break;
       }
 
@@ -2432,8 +2402,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
                surface_state = sstate.state;
                assert(surface_state.alloc_size);
-               if (need_client_mem_relocs)
-                  add_surface_state_relocs(cmd_buffer, sstate);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -2462,8 +2430,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                   "set and the image does not have a "
                                   "corresponding SPIR-V format enum.");
                }
-               if (surface_state.offset && need_client_mem_relocs)
-                  add_surface_state_relocs(cmd_buffer, sstate);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -2475,10 +2441,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->set_buffer_view) {
                surface_state = desc->set_buffer_view->surface_state;
                assert(surface_state.alloc_size);
-               if (need_client_mem_relocs) {
-                  add_surface_reloc(cmd_buffer, surface_state,
-                                    desc->set_buffer_view->address);
-               }
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -2488,10 +2450,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->buffer_view) {
                surface_state = desc->buffer_view->surface_state;
                assert(surface_state.alloc_size);
-               if (need_client_mem_relocs) {
-                  add_surface_reloc(cmd_buffer, surface_state,
-                                    desc->buffer_view->address);
-               }
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -2530,8 +2488,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
                                              format, ISL_SWIZZLE_IDENTITY,
                                              usage, address, range, 1);
-               if (need_client_mem_relocs)
-                  add_surface_reloc(cmd_buffer, surface_state, address);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -2544,10 +2500,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   ? desc->buffer_view->lowered_storage_surface_state
                   : desc->buffer_view->storage_surface_state;
                assert(surface_state.alloc_size);
-               if (need_client_mem_relocs) {
-                  add_surface_reloc(cmd_buffer, surface_state,
-                                    desc->buffer_view->address);
-               }
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
             }
@@ -5581,7 +5533,7 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
                                                struct anv_address vb_address,
                                                uint32_t vb_size)
 {
-   if (GFX_VER > 9 || anv_use_relocations(cmd_buffer->device->physical))
+   if (GFX_VER > 9)
       return;
 
    struct anv_vb_cache_range *bound, *dirty;
@@ -5611,7 +5563,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint32_t access_type,
                                                     uint64_t vb_used)
 {
-   if (GFX_VER > 9 || anv_use_relocations(cmd_buffer->device->physical))
+   if (GFX_VER > 9)
       return;
 
    if (access_type == RANDOM) {

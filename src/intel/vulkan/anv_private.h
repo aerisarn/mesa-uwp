@@ -962,7 +962,6 @@ struct anv_physical_device {
     bool                                        has_userptr_probe;
     uint64_t                                    gtt_size;
 
-    bool                                        use_relocations;
     bool                                        use_softpin;
     bool                                        always_use_bindless;
     bool                                        use_call_secondary;
@@ -1231,47 +1230,17 @@ struct anv_device {
 #define ANV_ALWAYS_SOFTPIN false
 #endif
 
-static inline bool
-anv_use_relocations(const struct anv_physical_device *pdevice)
-{
-#if defined(GFX_VERx10) && GFX_VERx10 >= 90
-   /* Sky Lake and later always uses softpin */
-   assert(!pdevice->use_relocations);
-   return false;
-#elif defined(GFX_VERx10) && GFX_VERx10 < 80
-   /* Haswell and earlier never use softpin */
-   assert(pdevice->use_relocations);
-   return true;
-#else
-   /* If we don't have a GFX_VERx10 #define, we need to look at the physical
-    * device.  Also, for GFX version 8, we need to look at the physical
-    * device because Broadwell softpins but Cherryview doesn't.
-    */
-   return pdevice->use_relocations;
-#endif
-}
-
-static inline struct anv_state_pool *
-anv_binding_table_pool(struct anv_device *device)
-{
-   if (anv_use_relocations(device->physical))
-      return &device->surface_state_pool;
-   else
-      return &device->binding_table_pool;
-}
-
 static inline struct anv_state
 anv_binding_table_pool_alloc(struct anv_device *device)
 {
-   assert(!anv_use_relocations(device->physical));
-
    return anv_state_pool_alloc(&device->binding_table_pool,
                                device->binding_table_pool.block_size, 0);
 }
 
 static inline void
-anv_binding_table_pool_free(struct anv_device *device, struct anv_state state) {
-   anv_state_pool_free(anv_binding_table_pool(device), state);
+anv_binding_table_pool_free(struct anv_device *device, struct anv_state state)
+{
+   anv_state_pool_free(&device->binding_table_pool, state);
 }
 
 static inline uint32_t
@@ -2821,8 +2790,8 @@ struct anv_cmd_buffer {
 static inline bool
 anv_cmd_buffer_is_chainable(struct anv_cmd_buffer *cmd_buffer)
 {
-   return !anv_use_relocations(cmd_buffer->device->physical) &&
-      !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+   return !(cmd_buffer->usage_flags &
+            VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 }
 
 VkResult anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);

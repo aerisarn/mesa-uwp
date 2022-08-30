@@ -242,7 +242,7 @@ genX(emit_so_memcpy)(struct anv_memcpy_state *state,
                      struct anv_address dst, struct anv_address src,
                      uint32_t size)
 {
-   if (GFX_VER == 9 && !anv_use_relocations(state->device->physical) &&
+   if (GFX_VER == 9 &&
        anv_gfx8_9_vb_cache_range_needs_workaround(&state->vb_bound,
                                                   &state->vb_dirty,
                                                   src, size)) {

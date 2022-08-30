@@ -219,7 +219,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_maintenance4                      = true,
       .KHR_multiview                         = true,
       .KHR_performance_query =
-         !anv_use_relocations(device) && device->perf &&
+         device->perf &&
          (device->perf->i915_perf_version >= 3 ||
           INTEL_DEBUG(DEBUG_NO_OACONFIG)) &&
          device->use_call_secondary,
@@ -827,10 +827,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       goto fail_base;
    }
 
-   device->use_relocations = false;
-
-   if (!device->use_relocations &&
-       !anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
+   if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                          "kernel missing softpin");
       goto fail_alloc;
@@ -871,8 +868,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (result != VK_SUCCESS)
       goto fail_base;
 
-   assert(device->supports_48bit_addresses == !device->use_relocations);
-   device->use_softpin = !device->use_relocations;
+   device->use_softpin = true;
 
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
@@ -3127,27 +3123,25 @@ VkResult anv_CreateDevice(
       }
    }
 
-   if (!anv_use_relocations(physical_device)) {
-      if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
-         result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
-         goto fail_queues;
-      }
-
-      /* keep the page with address zero out of the allocator */
-      util_vma_heap_init(&device->vma_lo,
-                         LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
-
-      util_vma_heap_init(&device->vma_cva, CLIENT_VISIBLE_HEAP_MIN_ADDRESS,
-                         CLIENT_VISIBLE_HEAP_SIZE);
-
-      /* Leave the last 4GiB out of the high vma range, so that no state
-       * base address + size can overflow 48 bits. For more information see
-       * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
-       */
-      util_vma_heap_init(&device->vma_hi, HIGH_HEAP_MIN_ADDRESS,
-                         physical_device->gtt_size - (1ull << 32) -
-                         HIGH_HEAP_MIN_ADDRESS);
+   if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      goto fail_queues;
    }
+
+   /* keep the page with address zero out of the allocator */
+   util_vma_heap_init(&device->vma_lo,
+                      LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
+
+   util_vma_heap_init(&device->vma_cva, CLIENT_VISIBLE_HEAP_MIN_ADDRESS,
+                      CLIENT_VISIBLE_HEAP_SIZE);
+
+   /* Leave the last 4GiB out of the high vma range, so that no state
+    * base address + size can overflow 48 bits. For more information see
+    * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
+    */
+   util_vma_heap_init(&device->vma_hi, HIGH_HEAP_MIN_ADDRESS,
+                      physical_device->gtt_size - (1ull << 32) -
+                      HIGH_HEAP_MIN_ADDRESS);
 
    list_inithead(&device->memory_objects);
 
@@ -3228,7 +3222,7 @@ VkResult anv_CreateDevice(
                                    "binding table pool",
                                    BINDING_TABLE_POOL_MIN_ADDRESS, 0,
                                    BINDING_TABLE_POOL_BLOCK_SIZE);
-   } else if (!anv_use_relocations(physical_device)) {
+   } else {
       int64_t bt_pool_offset = (int64_t)BINDING_TABLE_POOL_MIN_ADDRESS -
                                (int64_t)SURFACE_STATE_POOL_MIN_ADDRESS;
       assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
@@ -3387,8 +3381,7 @@ VkResult anv_CreateDevice(
       device->aux_map_ctx = NULL;
    }
  fail_binding_table_pool:
-   if (!anv_use_relocations(physical_device))
-      anv_state_pool_finish(&device->binding_table_pool);
+   anv_state_pool_finish(&device->binding_table_pool);
  fail_surface_state_pool:
    anv_state_pool_finish(&device->surface_state_pool);
  fail_instruction_state_pool:
@@ -3406,11 +3399,9 @@ VkResult anv_CreateDevice(
  fail_mutex:
    pthread_mutex_destroy(&device->mutex);
  fail_vmas:
-   if (!anv_use_relocations(physical_device)) {
-      util_vma_heap_finish(&device->vma_hi);
-      util_vma_heap_finish(&device->vma_cva);
-      util_vma_heap_finish(&device->vma_lo);
-   }
+   util_vma_heap_finish(&device->vma_hi);
+   util_vma_heap_finish(&device->vma_cva);
+   util_vma_heap_finish(&device->vma_lo);
  fail_queues:
    for (uint32_t i = 0; i < device->queue_count; i++)
       anv_queue_finish(&device->queues[i]);
@@ -3477,8 +3468,7 @@ void anv_DestroyDevice(
       device->aux_map_ctx = NULL;
    }
 
-   if (!anv_use_relocations(device->physical))
-      anv_state_pool_finish(&device->binding_table_pool);
+   anv_state_pool_finish(&device->binding_table_pool);
    anv_state_pool_finish(&device->surface_state_pool);
    anv_state_pool_finish(&device->instruction_state_pool);
    anv_state_pool_finish(&device->dynamic_state_pool);
@@ -3488,11 +3478,9 @@ void anv_DestroyDevice(
 
    anv_bo_cache_finish(&device->bo_cache);
 
-   if (!anv_use_relocations(device->physical)) {
-      util_vma_heap_finish(&device->vma_hi);
-      util_vma_heap_finish(&device->vma_cva);
-      util_vma_heap_finish(&device->vma_lo);
-   }
+   util_vma_heap_finish(&device->vma_hi);
+   util_vma_heap_finish(&device->vma_cva);
+   util_vma_heap_finish(&device->vma_lo);
 
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
