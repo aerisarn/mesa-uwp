@@ -60,6 +60,15 @@ struct vk_attachment_state {
 };
 
 struct vk_command_buffer_ops {
+   /** Resets the command buffer
+    *
+    * Used by the common command pool implementation.  This function MUST
+    * call `vk_command_buffer_reset()`.  Unlike `vkResetCommandBuffer()`,
+    * this function does not have a return value because it may be called on
+    * destruction paths.
+    */
+   void (*reset)(struct vk_command_buffer *, VkCommandBufferResetFlags);
+
    /** Destroys the command buffer
     *
     * Used by the common command pool implementation.  This function MUST

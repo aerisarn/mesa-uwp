@@ -72,6 +72,17 @@ vk_command_buffer_finish(struct vk_command_buffer *command_buffer)
    vk_object_base_finish(&command_buffer->base);
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_ResetCommandBuffer(VkCommandBuffer commandBuffer,
+                             VkCommandBufferResetFlags flags)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->ops->reset(cmd_buffer, flags);
+
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                              uint32_t commandBufferCount,
