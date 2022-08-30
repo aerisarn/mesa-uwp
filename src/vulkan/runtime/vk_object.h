@@ -83,6 +83,17 @@ void vk_object_base_init(struct vk_device *device,
  */
 void vk_object_base_finish(struct vk_object_base *base);
 
+/** Recycles a vk_object_base
+ *
+ * This should be called when an object is recycled and handed back to the
+ * client as if it were a new object.  When it's called is not important as
+ * long as it's called between when the client thinks the object was destroyed
+ * and when the client sees it again as a supposedly new object.
+ *
+ * @param[inout] base   The vk_object_base being recycled
+ */
+void vk_object_base_recycle(struct vk_object_base *base);
+
 static inline void
 vk_object_base_assert_valid(ASSERTED struct vk_object_base *base,
                             ASSERTED VkObjectType obj_type)
