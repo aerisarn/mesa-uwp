@@ -1107,6 +1107,9 @@ struct zink_screen {
 
    struct vk_dispatch_table vk;
 
+   void (*buffer_barrier)(struct zink_context *ctx, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+   void (*image_barrier)(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+
    bool compact_descriptors;
    uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS];
 
