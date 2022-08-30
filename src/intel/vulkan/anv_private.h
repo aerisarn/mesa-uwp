@@ -2097,11 +2097,10 @@ anv_descriptor_set_write_template(struct anv_device *device,
                                   const struct anv_descriptor_update_template *template,
                                   const void *data);
 
-#define ANV_DESCRIPTOR_SET_NULL             (UINT8_MAX - 5)
-#define ANV_DESCRIPTOR_SET_PUSH_CONSTANTS   (UINT8_MAX - 4)
-#define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 3)
-#define ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS  (UINT8_MAX - 2)
-#define ANV_DESCRIPTOR_SET_SHADER_CONSTANTS (UINT8_MAX - 1)
+#define ANV_DESCRIPTOR_SET_NULL             (UINT8_MAX - 4)
+#define ANV_DESCRIPTOR_SET_PUSH_CONSTANTS   (UINT8_MAX - 3)
+#define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 2)
+#define ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS  (UINT8_MAX - 1)
 #define ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS UINT8_MAX
 
 struct anv_pipeline_binding {

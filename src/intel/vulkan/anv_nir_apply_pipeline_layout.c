@@ -1057,35 +1057,24 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *offset = nir_iadd_imm(b, nir_ssa_for_src(b, intrin->src[0], 1),
                                       nir_intrinsic_base(intrin));
 
-   nir_ssa_def *data;
-   if (!anv_use_relocations(state->pdevice)) {
-      unsigned load_size = intrin->dest.ssa.num_components *
-                           intrin->dest.ssa.bit_size / 8;
-      unsigned load_align = intrin->dest.ssa.bit_size / 8;
+   unsigned load_size = intrin->dest.ssa.num_components *
+                        intrin->dest.ssa.bit_size / 8;
+   unsigned load_align = intrin->dest.ssa.bit_size / 8;
 
-      assert(load_size < b->shader->constant_data_size);
-      unsigned max_offset = b->shader->constant_data_size - load_size;
-      offset = nir_umin(b, offset, nir_imm_int(b, max_offset));
+   assert(load_size < b->shader->constant_data_size);
+   unsigned max_offset = b->shader->constant_data_size - load_size;
+   offset = nir_umin(b, offset, nir_imm_int(b, max_offset));
 
-      nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(b,
-         nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
-         nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
+   nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(b,
+      nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
+      nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
 
-      data = nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
-                                                     nir_u2u64(b, offset)),
-                                      load_align,
-                                      intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size);
-   } else {
-      nir_ssa_def *index = nir_imm_int(b, state->constants_offset);
-
-      data = nir_load_ubo(b, intrin->num_components, intrin->dest.ssa.bit_size,
-                          index, offset,
-                          .align_mul = intrin->dest.ssa.bit_size / 8,
-                          .align_offset =  0,
-                          .range_base = nir_intrinsic_base(intrin),
-                          .range = nir_intrinsic_range(intrin));
-   }
+   nir_ssa_def *data =
+      nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
+                                              nir_u2u64(b, offset)),
+                               load_align,
+                               intrin->dest.ssa.num_components,
+                               intrin->dest.ssa.bit_size);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, data);
 
@@ -1367,13 +1356,6 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
          state.set[s].desc_offset = map->surface_count;
          map->surface_count++;
       }
-   }
-
-   if (state.uses_constants && anv_use_relocations(pdevice)) {
-      state.constants_offset = map->surface_count;
-      map->surface_to_descriptor[map->surface_count].set =
-         ANV_DESCRIPTOR_SET_SHADER_CONSTANTS;
-      map->surface_count++;
    }
 
    unsigned used_binding_count = 0;

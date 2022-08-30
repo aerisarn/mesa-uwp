@@ -2355,31 +2355,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          bt_map[s] = surface_state.offset + state_offset;
          break;
 
-      case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS: {
-         struct anv_state surface_state =
-            anv_cmd_buffer_alloc_surface_state(cmd_buffer);
-
-         struct anv_address constant_data = {
-            .bo = cmd_buffer->device->instruction_state_pool.block_pool.bo,
-            .offset = shader->kernel.offset +
-                      shader->prog_data->const_data_offset,
-         };
-         unsigned constant_data_size = shader->prog_data->const_data_size;
-
-         const enum isl_format format =
-            anv_isl_format_for_descriptor_type(cmd_buffer->device,
-                                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-         anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                       format, ISL_SWIZZLE_IDENTITY,
-                                       ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
-                                       constant_data, constant_data_size, 1);
-
-         assert(surface_state.map);
-         bt_map[s] = surface_state.offset + state_offset;
-         add_surface_reloc(cmd_buffer, surface_state, constant_data);
-         break;
-      }
-
       case ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS: {
          /* This is always the first binding for compute shaders */
          assert(shader->stage == MESA_SHADER_COMPUTE && s == 0);
@@ -2778,13 +2753,6 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       };
    }
 
-   case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
-      return (struct anv_address) {
-         .bo = cmd_buffer->device->instruction_state_pool.block_pool.bo,
-         .offset = shader->kernel.offset +
-                   shader->prog_data->const_data_offset,
-      };
-
    default: {
       assert(range->set < MAX_SETS);
       struct anv_descriptor_set *set =
@@ -2846,9 +2814,6 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS:
       return (range->start + range->length) * 32;
-
-   case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
-      return ALIGN(shader->prog_data->const_data_size, ANV_UBO_ALIGNMENT);
 
    default: {
       assert(range->set < MAX_SETS);

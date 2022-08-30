@@ -1216,11 +1216,6 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
             case ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS:
                unreachable("gl_NumWorkgroups is never pushed");
 
-            case ANV_DESCRIPTOR_SET_SHADER_CONSTANTS:
-               fprintf(stream, "Inline shader constant data (start=%dB)",
-                       stage->bind_map.push_ranges[i].start * 32);
-               break;
-
             case ANV_DESCRIPTOR_SET_COLOR_ATTACHMENTS:
                unreachable("Color attachments can't be pushed");
 
