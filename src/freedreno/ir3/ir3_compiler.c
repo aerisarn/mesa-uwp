@@ -284,11 +284,11 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       compiler->nir_options.has_sudot_4x8 = true,
       compiler->nir_options.has_udot_4x8 = dev_info->a6xx.has_dp2acc;
       compiler->nir_options.has_sudot_4x8 = dev_info->a6xx.has_dp2acc;
-   } else {
-
+   } else if (compiler->gen >= 3 && compiler->gen <= 4) {
+      compiler->nir_options.vertex_id_zero_based = true;
+   } else if (compiler->gen <= 2) {
       /* a2xx compiler doesn't handle indirect: */
-      if (compiler->gen <= 2)
-         compiler->nir_options.force_indirect_unrolling = nir_var_all;
+      compiler->nir_options.force_indirect_unrolling = nir_var_all;
    }
 
    /* 16-bit ALU op generation is mostly controlled by frontend compiler options, but
