@@ -2718,6 +2718,11 @@ cmd_buffer_binning_sync_required(struct v3dv_cmd_buffer *cmd_buffer,
              vs_bin_maps->sampler_map.num_desc > 0) {
             return true;
          }
+
+         if (gs_bin_maps && (gs_bin_maps->texture_map.num_desc > 0 ||
+                             gs_bin_maps->sampler_map.num_desc > 0)) {
+            return true;
+         }
       }
    }
 
