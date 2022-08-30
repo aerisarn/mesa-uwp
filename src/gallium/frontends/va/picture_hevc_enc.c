@@ -94,6 +94,9 @@ vlVaHandleVAEncPictureParameterBufferTypeHEVC(vlVaDriver *drv, vlVaContext *cont
    context->desc.h265enc.num_slice_descriptors = 0;
    memset(&context->desc.h265enc.slices_descriptors, 0, sizeof(context->desc.h265enc.slices_descriptors));
 
+   context->desc.h265enc.num_ref_idx_l0_active_minus1 = h265->num_ref_idx_l0_default_active_minus1;
+   context->desc.h265enc.num_ref_idx_l1_active_minus1 = h265->num_ref_idx_l1_default_active_minus1;
+
    return VA_STATUS_SUCCESS;
 }
 
@@ -103,19 +106,22 @@ vlVaHandleVAEncSliceParameterBufferTypeHEVC(vlVaDriver *drv, vlVaContext *contex
    VAEncSliceParameterBufferHEVC *h265;
 
    h265 = buf->data;
-   context->desc.h265enc.ref_idx_l0 = VA_INVALID_ID;
-   context->desc.h265enc.ref_idx_l1 = VA_INVALID_ID;
+   memset(&context->desc.h265enc.ref_idx_l0_list, VA_INVALID_ID, sizeof(context->desc.h265enc.ref_idx_l0_list));
+   memset(&context->desc.h265enc.ref_idx_l1_list, VA_INVALID_ID, sizeof(context->desc.h265enc.ref_idx_l1_list));
+
+   if (h265->slice_fields.bits.num_ref_idx_active_override_flag) {
+      context->desc.h265enc.num_ref_idx_l0_active_minus1 = h265->num_ref_idx_l0_active_minus1;
+      context->desc.h265enc.num_ref_idx_l1_active_minus1 = h265->num_ref_idx_l1_active_minus1;
+   }
 
    for (int i = 0; i < 15; i++) {
       if (h265->ref_pic_list0[i].picture_id != VA_INVALID_ID) {
-         if (context->desc.h265enc.ref_idx_l0 == VA_INVALID_ID)
-            context->desc.h265enc.ref_idx_l0 = PTR_TO_UINT(util_hash_table_get(context->desc.h265enc.frame_idx,
-                                               UINT_TO_PTR(h265->ref_pic_list0[i].picture_id + 1)));
+         context->desc.h265enc.ref_idx_l0_list[i] = PTR_TO_UINT(util_hash_table_get(context->desc.h265enc.frame_idx,
+                                 UINT_TO_PTR(h265->ref_pic_list0[i].picture_id + 1)));
       }
-      if (h265->ref_pic_list1[i].picture_id != VA_INVALID_ID && h265->slice_type == 1) {
-         if (context->desc.h265enc.ref_idx_l1 == VA_INVALID_ID)
-            context->desc.h265enc.ref_idx_l1 = PTR_TO_UINT(util_hash_table_get(context->desc.h265enc.frame_idx,
-                                               UINT_TO_PTR(h265->ref_pic_list1[i].picture_id + 1)));
+      if (h265->ref_pic_list1[i].picture_id != VA_INVALID_ID && h265->slice_type == PIPE_H265_SLICE_TYPE_B) {
+         context->desc.h265enc.ref_idx_l1_list[i] = PTR_TO_UINT(util_hash_table_get(context->desc.h265enc.frame_idx,
+                                 UINT_TO_PTR(h265->ref_pic_list1[i].picture_id + 1)));
       }
    }
 
@@ -149,7 +155,7 @@ vlVaHandleVAEncSequenceParameterBufferTypeHEVC(vlVaDriver *drv, vlVaContext *con
    VAEncSequenceParameterBufferHEVC *h265 = (VAEncSequenceParameterBufferHEVC *)buf->data;
 
    if (!context->decoder) {
-      context->templat.max_references = 1;
+      context->templat.max_references = PIPE_H265_MAX_REFERENCES;
       context->templat.level = h265->general_level_idc;
       context->decoder = drv->pipe->create_video_codec(drv->pipe, &context->templat);
 

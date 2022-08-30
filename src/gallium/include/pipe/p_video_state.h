@@ -40,6 +40,8 @@
 extern "C" {
 #endif
 
+#define PIPE_H265_MAX_REFERENCES 15
+
 /*
  * see table 6-12 in the spec
  */
@@ -581,9 +583,11 @@ struct pipe_h265_enc_picture_desc
    unsigned frame_num;
    unsigned pic_order_cnt;
    unsigned pic_order_cnt_type;
-   unsigned ref_idx_l0;
-   unsigned ref_idx_l1;
    struct pipe_enc_quality_modes quality_modes;
+   unsigned num_ref_idx_l0_active_minus1;
+   unsigned num_ref_idx_l1_active_minus1;
+   unsigned ref_idx_l0_list[PIPE_H265_MAX_REFERENCES];
+   unsigned ref_idx_l1_list[PIPE_H265_MAX_REFERENCES];
    bool not_referenced;
    struct hash_table *frame_idx;
 
