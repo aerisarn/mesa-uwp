@@ -101,6 +101,26 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceTimelineSemaphoreFeatures timeline_semaphore;
       VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address;
       VkPhysicalDeviceVulkanMemoryModelFeatures vulkan_memory_model;
+
+      /* Vulkan 1.3 */
+      VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering;
+      VkPhysicalDeviceImageRobustnessFeatures image_robustness;
+      VkPhysicalDeviceInlineUniformBlockFeatures inline_uniform_block;
+      VkPhysicalDeviceMaintenance4Features maintenance4;
+      VkPhysicalDevicePipelineCreationCacheControlFeatures
+         pipeline_creation_cache_control;
+      VkPhysicalDevicePrivateDataFeatures private_data;
+      VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
+         shader_demote_to_helper_invocation;
+      VkPhysicalDeviceShaderIntegerDotProductFeatures
+         shader_integer_dot_product;
+      VkPhysicalDeviceShaderTerminateInvocationFeatures
+         shader_terminate_invocation;
+      VkPhysicalDeviceSubgroupSizeControlFeatures subgroup_size_control;
+      VkPhysicalDeviceTextureCompressionASTCHDRFeatures
+         texture_compression_astc_hdr;
+      VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures
+         zero_initialize_workgroup_memory;
    } local_feats;
 
    /* Clear the structs so that all unqueried features will be VK_FALSE. */
@@ -139,21 +159,31 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_EXT_TO_PNEXT_OF(features2, VULKAN_MEMORY_MODEL_FEATURES, local_feats.vulkan_memory_model, KHR_vulkan_memory_model);
    }
 
-   /* Vulkan 1.3 */
+   if (renderer_version >= VK_API_VERSION_1_3) {
+      VN_ADD_TO_PNEXT_OF(features2, VULKAN_1_3_FEATURES, feats->vulkan_1_3);
+   } else {
+      VN_ADD_EXT_TO_PNEXT_OF(features2, DYNAMIC_RENDERING_FEATURES, local_feats.dynamic_rendering, KHR_dynamic_rendering);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, IMAGE_ROBUSTNESS_FEATURES_EXT, local_feats.image_robustness, EXT_image_robustness);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, INLINE_UNIFORM_BLOCK_FEATURES, local_feats.inline_uniform_block, EXT_inline_uniform_block);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, MAINTENANCE_4_FEATURES, local_feats.maintenance4, KHR_maintenance4);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, PIPELINE_CREATION_CACHE_CONTROL_FEATURES, local_feats.pipeline_creation_cache_control, EXT_pipeline_creation_cache_control);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, PRIVATE_DATA_FEATURES, local_feats.private_data, EXT_private_data);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, local_feats.shader_demote_to_helper_invocation, EXT_shader_demote_to_helper_invocation);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_INTEGER_DOT_PRODUCT_FEATURES, local_feats.shader_integer_dot_product, KHR_shader_integer_dot_product);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_TERMINATE_INVOCATION_FEATURES, local_feats.shader_terminate_invocation, KHR_shader_terminate_invocation);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SUBGROUP_SIZE_CONTROL_FEATURES, local_feats.subgroup_size_control, EXT_subgroup_size_control);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, local_feats.texture_compression_astc_hdr, EXT_texture_compression_astc_hdr);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, local_feats.zero_initialize_workgroup_memory, KHR_zero_initialize_workgroup_memory);
+   }
+
+   /* Vulkan 1.3: The extensions for the below structs were promoted, but some
+    * struct members were omitted from VkPhysicalDeviceVulkan13Features.
+    */
    VN_ADD_EXT_TO_PNEXT_OF(features2, 4444_FORMATS_FEATURES_EXT, feats->_4444_formats, EXT_4444_formats);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, DYNAMIC_RENDERING_FEATURES, feats->dynamic_rendering, KHR_dynamic_rendering);
    VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, feats->extended_dynamic_state_2, EXT_extended_dynamic_state2);
    VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_FEATURES_EXT, feats->extended_dynamic_state, EXT_extended_dynamic_state);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, IMAGE_ROBUSTNESS_FEATURES_EXT, feats->image_robustness, EXT_image_robustness);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, INLINE_UNIFORM_BLOCK_FEATURES, feats->inline_uniform_block, EXT_inline_uniform_block);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, MAINTENANCE_4_FEATURES, feats->maintenance4, KHR_maintenance4);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, PIPELINE_CREATION_CACHE_CONTROL_FEATURES, feats->pipeline_creation_cache_control, EXT_pipeline_creation_cache_control);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, feats->shader_demote_to_helper_invocation, EXT_shader_demote_to_helper_invocation);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_INTEGER_DOT_PRODUCT_FEATURES, feats->shader_integer_dot_product, KHR_shader_integer_dot_product);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_TERMINATE_INVOCATION_FEATURES, feats->shader_terminate_invocation, KHR_shader_terminate_invocation);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, SUBGROUP_SIZE_CONTROL_FEATURES, feats->subgroup_size_control, EXT_subgroup_size_control);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, feats->texture_compression_astc_hdr, EXT_texture_compression_astc_hdr);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, feats->zero_initialize_workgroup_memory, KHR_zero_initialize_workgroup_memory);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, EXT_texel_buffer_alignment);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, EXT_ycbcr_2plane_444_formats);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT_OF(features2, CONDITIONAL_RENDERING_FEATURES_EXT, feats->conditional_rendering, EXT_conditional_rendering);
@@ -164,10 +194,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT_OF(features2, LINE_RASTERIZATION_FEATURES_EXT, feats->line_rasterization, EXT_line_rasterization);
    VN_ADD_EXT_TO_PNEXT_OF(features2, MULTI_DRAW_FEATURES_EXT, feats->multi_draw, EXT_multi_draw);
    VN_ADD_EXT_TO_PNEXT_OF(features2, PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, feats->primitive_topology_list_restart, EXT_primitive_topology_list_restart);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, PRIVATE_DATA_FEATURES, feats->private_data, EXT_private_data);
    VN_ADD_EXT_TO_PNEXT_OF(features2, PROVOKING_VERTEX_FEATURES_EXT, feats->provoking_vertex, EXT_provoking_vertex);
    VN_ADD_EXT_TO_PNEXT_OF(features2, ROBUSTNESS_2_FEATURES_EXT, feats->robustness_2, EXT_robustness2);
-   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, EXT_texel_buffer_alignment);
    VN_ADD_EXT_TO_PNEXT_OF(features2, TRANSFORM_FEEDBACK_FEATURES_EXT, feats->transform_feedback, EXT_transform_feedback);
    VN_ADD_EXT_TO_PNEXT_OF(features2, VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, feats->vertex_attribute_divisor, EXT_vertex_attribute_divisor);
    VN_ADD_EXT_TO_PNEXT_OF(features2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, EXT_ycbcr_2plane_444_formats);
@@ -183,6 +211,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VkPhysicalDeviceFeatures *vk10_feats = &feats->vulkan_1_0;
    VkPhysicalDeviceVulkan11Features *vk11_feats = &feats->vulkan_1_1;
    VkPhysicalDeviceVulkan12Features *vk12_feats = &feats->vulkan_1_2;
+   VkPhysicalDeviceVulkan13Features *vk13_feats = &feats->vulkan_1_3;
 
    *vk10_feats = features2.features;
 
@@ -316,6 +345,59 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       }
       VN_SET_CORE_VALUE(vk12_feats, subgroupBroadcastDynamicId, false);
    }
+
+   if (renderer_version < VK_API_VERSION_1_3) {
+      if (exts->EXT_image_robustness) {
+         VN_SET_CORE_FIELD(vk13_feats, robustImageAccess, local_feats.image_robustness);
+      }
+      if (exts->EXT_inline_uniform_block) {
+         VN_SET_CORE_FIELD(vk13_feats, inlineUniformBlock, local_feats.inline_uniform_block);
+         VN_SET_CORE_FIELD(vk13_feats, descriptorBindingInlineUniformBlockUpdateAfterBind, local_feats.inline_uniform_block);
+      }
+      if (exts->EXT_pipeline_creation_cache_control) {
+         VN_SET_CORE_FIELD(vk13_feats, pipelineCreationCacheControl, local_feats.pipeline_creation_cache_control);
+      }
+      if (exts->EXT_private_data) {
+         VN_SET_CORE_FIELD(vk13_feats, privateData, local_feats.private_data);
+      }
+      if (exts->EXT_shader_demote_to_helper_invocation) {
+         VN_SET_CORE_FIELD(vk13_feats, shaderDemoteToHelperInvocation, local_feats.shader_demote_to_helper_invocation);
+      }
+      if (exts->KHR_shader_terminate_invocation) {
+         VN_SET_CORE_FIELD(vk13_feats, shaderTerminateInvocation, local_feats.shader_terminate_invocation);
+      }
+      if (exts->EXT_subgroup_size_control) {
+         VN_SET_CORE_FIELD(vk13_feats, subgroupSizeControl, local_feats.subgroup_size_control);
+         VN_SET_CORE_FIELD(vk13_feats, computeFullSubgroups, local_feats.subgroup_size_control);
+      }
+      /* TODO(VK_KHR_synchronization2): Support extension */
+      VN_SET_CORE_VALUE(vk13_feats, synchronization2, false);
+      if (exts->EXT_texture_compression_astc_hdr) {
+         VN_SET_CORE_FIELD(vk13_feats, textureCompressionASTC_HDR, local_feats.texture_compression_astc_hdr);
+      }
+      if (exts->KHR_zero_initialize_workgroup_memory) {
+         VN_SET_CORE_FIELD(vk13_feats, shaderZeroInitializeWorkgroupMemory, local_feats.zero_initialize_workgroup_memory);
+      }
+      if (exts->KHR_dynamic_rendering) {
+         VN_SET_CORE_FIELD(vk13_feats, dynamicRendering, local_feats.dynamic_rendering);
+      }
+      if (exts->KHR_shader_integer_dot_product) {
+         VN_SET_CORE_FIELD(vk13_feats, shaderIntegerDotProduct, local_feats.shader_integer_dot_product);
+      }
+      if (exts->KHR_maintenance4) {
+         VN_SET_CORE_FIELD(vk13_feats, maintenance4, local_feats.maintenance4);
+      }
+   }
+
+   /* Vulkan 1.3: The extensions for the below structs were promoted, but some
+    * struct members were omitted from VkPhysicalDeviceVulkan13Features.
+    */
+   VN_ADD_EXT_TO_PNEXT_OF(features2, 4444_FORMATS_FEATURES_EXT, feats->_4444_formats, EXT_4444_formats);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, feats->extended_dynamic_state_2, EXT_extended_dynamic_state2);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, EXTENDED_DYNAMIC_STATE_FEATURES_EXT, feats->extended_dynamic_state, EXT_extended_dynamic_state);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, EXT_texel_buffer_alignment);
+   VN_ADD_EXT_TO_PNEXT_OF(features2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, EXT_ycbcr_2plane_444_formats);
+
    /* clang-format on */
 }
 
@@ -388,6 +470,14 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceDepthStencilResolveProperties depth_stencil_resolve;
       VkPhysicalDeviceSamplerFilterMinmaxProperties sampler_filter_minmax;
       VkPhysicalDeviceTimelineSemaphoreProperties timeline_semaphore;
+
+      /* Vulkan 1.3 */
+      VkPhysicalDeviceInlineUniformBlockProperties inline_uniform_block;
+      VkPhysicalDeviceMaintenance4Properties maintenance4;
+      VkPhysicalDeviceShaderIntegerDotProductProperties
+         shader_integer_dot_product;
+      VkPhysicalDeviceSubgroupSizeControlProperties subgroup_size_control;
+      VkPhysicalDeviceTexelBufferAlignmentProperties texel_buffer_alignment;
    } local_props;
 
    /* Clear the structs so all unqueried properties will be well-defined. */
@@ -419,17 +509,20 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_ADD_EXT_TO_PNEXT_OF(properties2, TIMELINE_SEMAPHORE_PROPERTIES, local_props.timeline_semaphore, KHR_timeline_semaphore);
    }
 
-   /* Vulkan 1.3 */
-   VN_ADD_EXT_TO_PNEXT_OF(properties2, INLINE_UNIFORM_BLOCK_PROPERTIES, props->inline_uniform_block, EXT_inline_uniform_block);
-   VN_ADD_EXT_TO_PNEXT_OF(properties2, SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, props->shader_integer_dot_product, KHR_shader_integer_dot_product);
-   VN_ADD_EXT_TO_PNEXT_OF(properties2, SUBGROUP_SIZE_CONTROL_PROPERTIES, props->subgroup_size_control, EXT_subgroup_size_control);
-   VN_ADD_EXT_TO_PNEXT_OF(properties2, TEXEL_BUFFER_ALIGNMENT_PROPERTIES, props->texel_buffer_alignment, EXT_texel_buffer_alignment);
+   if (renderer_version >= VK_API_VERSION_1_3) {
+      VN_ADD_TO_PNEXT_OF(properties2, VULKAN_1_3_PROPERTIES, props->vulkan_1_3);
+   } else {
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, INLINE_UNIFORM_BLOCK_PROPERTIES, local_props.inline_uniform_block, EXT_inline_uniform_block);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, MAINTENANCE_4_PROPERTIES, local_props.maintenance4, KHR_maintenance4);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, local_props.shader_integer_dot_product, KHR_shader_integer_dot_product);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, SUBGROUP_SIZE_CONTROL_PROPERTIES, local_props.subgroup_size_control, EXT_subgroup_size_control);
+      VN_ADD_EXT_TO_PNEXT_OF(properties2, TEXEL_BUFFER_ALIGNMENT_PROPERTIES, local_props.texel_buffer_alignment, EXT_texel_buffer_alignment);
+   }
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT_OF(properties2, CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, props->conservative_rasterization, EXT_conservative_rasterization);
    VN_ADD_EXT_TO_PNEXT_OF(properties2, CUSTOM_BORDER_COLOR_PROPERTIES_EXT, props->custom_border_color, EXT_custom_border_color);
    VN_ADD_EXT_TO_PNEXT_OF(properties2, LINE_RASTERIZATION_PROPERTIES_EXT, props->line_rasterization, EXT_line_rasterization);
-   VN_ADD_EXT_TO_PNEXT_OF(properties2, MAINTENANCE_4_PROPERTIES, props->maintenance4, KHR_maintenance4);
    VN_ADD_EXT_TO_PNEXT_OF(properties2, MULTI_DRAW_PROPERTIES_EXT, props->multi_draw, EXT_multi_draw);
    VN_ADD_EXT_TO_PNEXT_OF(properties2, PROVOKING_VERTEX_PROPERTIES_EXT, props->provoking_vertex, EXT_provoking_vertex);
    VN_ADD_EXT_TO_PNEXT_OF(properties2, ROBUSTNESS_2_PROPERTIES_EXT, props->robustness_2, EXT_robustness2);
@@ -444,6 +537,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VkPhysicalDeviceProperties *vk10_props = &props->vulkan_1_0;
    VkPhysicalDeviceVulkan11Properties *vk11_props = &props->vulkan_1_1;
    VkPhysicalDeviceVulkan12Properties *vk12_props = &props->vulkan_1_2;
+   VkPhysicalDeviceVulkan13Properties *vk13_props = &props->vulkan_1_3;
 
    *vk10_props = properties2.properties;
 
@@ -544,6 +638,63 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       }
 
       VN_SET_CORE_VALUE(vk12_props, framebufferIntegerColorSampleCounts, VK_SAMPLE_COUNT_1_BIT);
+   }
+
+   if (renderer_version < VK_API_VERSION_1_3) {
+      if (exts->EXT_subgroup_size_control) {
+         VN_SET_CORE_FIELD(vk13_props, minSubgroupSize, local_props.subgroup_size_control);
+         VN_SET_CORE_FIELD(vk13_props, maxSubgroupSize, local_props.subgroup_size_control);
+         VN_SET_CORE_FIELD(vk13_props, maxComputeWorkgroupSubgroups, local_props.subgroup_size_control);
+         VN_SET_CORE_FIELD(vk13_props, requiredSubgroupSizeStages, local_props.subgroup_size_control);
+      }
+      if (exts->EXT_inline_uniform_block) {
+         VN_SET_CORE_FIELD(vk13_props, maxInlineUniformBlockSize, local_props.inline_uniform_block);
+         VN_SET_CORE_FIELD(vk13_props, maxPerStageDescriptorInlineUniformBlocks, local_props.inline_uniform_block);
+         VN_SET_CORE_FIELD(vk13_props, maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks, local_props.inline_uniform_block);
+         VN_SET_CORE_FIELD(vk13_props, maxDescriptorSetInlineUniformBlocks, local_props.inline_uniform_block);
+         VN_SET_CORE_FIELD(vk13_props, maxDescriptorSetUpdateAfterBindInlineUniformBlocks, local_props.inline_uniform_block);
+      }
+      if (exts->KHR_shader_integer_dot_product) {
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct8BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct8BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct8BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct4x8BitPackedUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct4x8BitPackedSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct4x8BitPackedMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct16BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct16BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct16BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct32BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct32BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct32BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct64BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct64BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProduct64BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating8BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating8BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating16BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating16BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating32BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating32BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating64BitUnsignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating64BitSignedAccelerated, local_props.shader_integer_dot_product);
+         VN_SET_CORE_FIELD(vk13_props, integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated, local_props.shader_integer_dot_product);
+      }
+      if (exts->EXT_texel_buffer_alignment) {
+         VN_SET_CORE_FIELD(vk13_props, storageTexelBufferOffsetAlignmentBytes, local_props.texel_buffer_alignment);
+         VN_SET_CORE_FIELD(vk13_props, storageTexelBufferOffsetSingleTexelAlignment, local_props.texel_buffer_alignment);
+         VN_SET_CORE_FIELD(vk13_props, uniformTexelBufferOffsetAlignmentBytes, local_props.texel_buffer_alignment);
+         VN_SET_CORE_FIELD(vk13_props, uniformTexelBufferOffsetSingleTexelAlignment, local_props.texel_buffer_alignment);
+      }
+      if (exts->KHR_maintenance4) {
+         VN_SET_CORE_FIELD(vk13_props, maxBufferSize, local_props.maintenance4);
+      }
    }
 
    /* clang-format on */
@@ -1534,6 +1685,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                                       &in_feats->vulkan_1_2))
          continue;
 
+      if (vk_get_physical_device_core_1_3_feature_ext(out,
+                                                      &in_feats->vulkan_1_3))
+         continue;
+
       switch (out->sType) {
 
 #define CASE(stype, member)                                                  \
@@ -1546,22 +1701,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       /* Vulkan 1.3 */
       CASE(4444_FORMATS_FEATURES_EXT, _4444_formats);
-      CASE(DYNAMIC_RENDERING_FEATURES, dynamic_rendering);
       CASE(EXTENDED_DYNAMIC_STATE_FEATURES_EXT, extended_dynamic_state);
       CASE(EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, extended_dynamic_state_2);
-      CASE(IMAGE_ROBUSTNESS_FEATURES, image_robustness);
-      CASE(INLINE_UNIFORM_BLOCK_FEATURES, inline_uniform_block);
-      CASE(MAINTENANCE_4_FEATURES, maintenance4);
-      CASE(PIPELINE_CREATION_CACHE_CONTROL_FEATURES, pipeline_creation_cache_control);
-      CASE(PRIVATE_DATA_FEATURES, private_data);
-      CASE(SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, shader_demote_to_helper_invocation);
-      CASE(SHADER_INTEGER_DOT_PRODUCT_FEATURES, shader_integer_dot_product);
-      CASE(SHADER_TERMINATE_INVOCATION_FEATURES, shader_terminate_invocation);
-      CASE(SUBGROUP_SIZE_CONTROL_FEATURES, subgroup_size_control);
       CASE(TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, texel_buffer_alignment);
-      CASE(TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, texture_compression_astc_hdr);
       CASE(YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, ycbcr_2plane_444_formats);
-      CASE(ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, zero_initialize_workgroup_memory);
 
       /* EXT */
       CASE(CONDITIONAL_RENDERING_FEATURES_EXT, conditional_rendering);
@@ -1608,6 +1751,10 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                                        &in_props->vulkan_1_2))
          continue;
 
+      if (vk_get_physical_device_core_1_3_property_ext(out,
+                                                       &in_props->vulkan_1_3))
+         continue;
+
       /* Cast to avoid warnings for values outside VkStructureType. */
       switch ((int32_t)out->sType) {
 
@@ -1619,18 +1766,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
          /* clang-format off */
 
-      /* Vulkan 1.3 */
-      CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
-      CASE(SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, shader_integer_dot_product);
-      CASE(SUBGROUP_SIZE_CONTROL_PROPERTIES, subgroup_size_control);
-      CASE(TEXEL_BUFFER_ALIGNMENT_PROPERTIES, texel_buffer_alignment);
-
       /* EXT */
       CASE(CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, conservative_rasterization);
       CASE(CUSTOM_BORDER_COLOR_PROPERTIES_EXT, custom_border_color);
       CASE(LINE_RASTERIZATION_PROPERTIES_EXT, line_rasterization);
       CASE(MULTI_DRAW_PROPERTIES_EXT, multi_draw);
-      CASE(MAINTENANCE_4_PROPERTIES, maintenance4);
       CASE(PROVOKING_VERTEX_PROPERTIES_EXT, provoking_vertex);
       CASE(ROBUSTNESS_2_PROPERTIES_EXT, robustness_2);
       CASE(TRANSFORM_FEEDBACK_PROPERTIES_EXT, transform_feedback);

@@ -169,8 +169,8 @@ vn_buffer_get_max_buffer_size(struct vn_device *dev,
    uint8_t begin = 0;
    uint8_t end = 64;
 
-   if (pdev->features.maintenance4.maintenance4) {
-      *out_max_buffer_size = pdev->properties.maintenance4.maxBufferSize;
+   if (pdev->features.vulkan_1_3.maintenance4) {
+      *out_max_buffer_size = pdev->properties.vulkan_1_3.maxBufferSize;
       return VK_SUCCESS;
    }
 
