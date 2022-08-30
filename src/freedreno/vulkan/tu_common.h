@@ -98,8 +98,8 @@
 #define TU_MAX_DRM_DEVICES 8
 #define MAX_VIEWS 16
 #define MAX_BIND_POINTS 2 /* compute + graphics */
-/* The Qualcomm driver exposes 0x20000058 */
-#define MAX_STORAGE_BUFFER_RANGE 0x20000000
+/* match the latest Qualcomm driver which is also a hw limit on later gens */
+#define MAX_STORAGE_BUFFER_RANGE (1u << 27)
 /* We use ldc for uniform buffer loads, just like the Qualcomm driver, so
  * expose the same maximum range.
  * TODO: The SIZE bitfield is 15 bits, and in 4-dword units, so the actual
