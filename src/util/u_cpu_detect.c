@@ -90,6 +90,9 @@
 #include <sched.h>
 #endif
 
+// prevent inadvert infinite recursion
+#define util_get_cpu_caps() util_get_cpu_caps_DO_NOT_USE()
+
 DEBUG_GET_ONCE_BOOL_OPTION(dump_cpu, "GALLIUM_DUMP_CPU", false)
 
 static
