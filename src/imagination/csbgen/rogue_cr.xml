@@ -685,4 +685,21 @@ SOFTWARE.
     <field name="val" start="0" end="31" type="uint"/>
   </struct>
 
+  <!-- FIXME: When csbgen supports conditional structs, make this conditional
+       on FB_CDC.
+  -->
+  <struct name="FB_CDC_ZLS" length="2">
+    <condition type="if" check="!ROGUEXE"/>
+      <field name="fbc_iaddr_mode" start="42" end="42" type="bool"/>
+      <field name="fbdc_iaddr_mode" start="41" end="41" type="bool"/>
+    <condition type="endif" check="!ROGUEXE"/>
+    <!-- FIXME: should be dependent on !ROGUEXE || (ROGUEXE && FB_CDC_V4) -->
+    <field name="fbdc_stencil_fmt" start="34" end="40" type="uint"/>
+    <!-- FIXME: should be dependent on !ROGUEXE || (ROGUEXE && FB_CDC_V4) -->
+    <field name="fbdc_depth_fmt" start="27" end="33" type="uint"/>
+    <field name="fbc_num_tiles" start="4" end="26" type="uint"/>
+    <field name="fbc_iaddr" start="1" end="1" type="bool"/>
+    <field name="fbdc_iaddr" start="0" end="0" type="bool"/>
+  </struct>
+
 </csbgen>

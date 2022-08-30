@@ -1171,8 +1171,14 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    stream_ptr += pvr_cmd_length(CR_ISP_STENCIL_LOAD_BASE);
 
    if (PVR_HAS_FEATURE(dev_info, requires_fb_cdc_zls_setup)) {
-      *(uint64_t *)stream_ptr = 0;
-      stream_ptr += 2U;
+      /* Currently no support for FBC, so just go ahead and set the default
+       * values.
+       */
+      pvr_csb_pack ((uint64_t *)stream_ptr, CR_FB_CDC_ZLS, value) {
+         value.fbdc_depth_fmt = PVRX(TEXSTATE_FORMAT_F32);
+         value.fbdc_stencil_fmt = PVRX(TEXSTATE_FORMAT_U8);
+      }
+      stream_ptr += pvr_cmd_length(CR_FB_CDC_ZLS);
    }
 
    STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words) == 8U);
