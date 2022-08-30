@@ -205,21 +205,60 @@ VkResult pvr_pds_unitex_state_program_create_and_upload(
 }
 
 static VkResult
-pvr_load_op_create(struct pvr_device *device,
-                   const VkAllocationCallbacks *allocator,
-                   struct pvr_renderpass_hwsetup_render *hw_render,
-                   struct pvr_load_op **const load_op_out)
+pvr_create_subpass_load_op(struct pvr_device *device,
+                           const VkAllocationCallbacks *allocator,
+                           const struct pvr_render_pass *pass,
+                           struct pvr_renderpass_hwsetup_render *hw_render,
+                           uint32_t hw_subpass_idx,
+                           struct pvr_load_op **const load_op_out)
 {
-   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
-   const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
-   struct pvr_load_op *load_op;
-   VkResult result;
+   const struct pvr_renderpass_hwsetup_subpass *hw_subpass =
+      &hw_render->subpasses[hw_subpass_idx];
+   const struct pvr_render_subpass *subpass =
+      &pass->subpasses[hw_subpass->index];
 
-   load_op = vk_zalloc2(&device->vk.alloc,
-                        allocator,
-                        sizeof(*load_op),
-                        8,
-                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   struct pvr_load_op *load_op = vk_zalloc2(&device->vk.alloc,
+                                            allocator,
+                                            sizeof(*load_op),
+                                            8,
+                                            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!load_op)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   if (hw_subpass->z_replicate != -1 &&
+       hw_subpass->depth_initop == VK_ATTACHMENT_LOAD_OP_LOAD) {
+      pvr_finishme("Missing depth 'load' load op");
+      load_op->load_depth = true;
+   }
+
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      pvr_finishme("Missing color 'clear' and 'load' load ops");
+
+      if (hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_CLEAR)
+         load_op->clear_mask |= 1U << i;
+      else if (hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_LOAD)
+         pvr_finishme("Missing 'load' load op");
+   }
+
+   load_op->is_hw_object = false;
+   load_op->subpass = subpass;
+
+   *load_op_out = load_op;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+pvr_create_render_load_op(struct pvr_device *device,
+                          const VkAllocationCallbacks *allocator,
+                          struct pvr_renderpass_hwsetup_render *hw_render,
+                          struct pvr_load_op **const load_op_out)
+{
+   struct pvr_load_op *load_op = vk_zalloc2(&device->vk.alloc,
+                                            allocator,
+                                            sizeof(*load_op),
+                                            8,
+                                            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!load_op)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -232,13 +271,30 @@ pvr_load_op_create(struct pvr_device *device,
          pvr_finishme("Missing 'load' load op");
    }
 
-   result = pvr_gpu_upload_usc(device,
-                               pvr_usc_fragment_shader,
-                               sizeof(pvr_usc_fragment_shader),
-                               cache_line_size,
-                               &load_op->usc_frag_prog_bo);
+   load_op->is_hw_object = true;
+   load_op->hw_render = hw_render;
+
+   *load_op_out = load_op;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+pvr_generate_load_op_shader(struct pvr_device *device,
+                            const VkAllocationCallbacks *allocator,
+                            struct pvr_renderpass_hwsetup_render *hw_render,
+                            struct pvr_load_op *load_op)
+{
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
+
+   VkResult result = pvr_gpu_upload_usc(device,
+                                        pvr_usc_fragment_shader,
+                                        sizeof(pvr_usc_fragment_shader),
+                                        cache_line_size,
+                                        &load_op->usc_frag_prog_bo);
    if (result != VK_SUCCESS)
-      goto err_free_load_op;
+      return result;
 
    result = pvr_pds_fragment_program_create_and_upload(
       device,
@@ -260,7 +316,6 @@ pvr_load_op_create(struct pvr_device *device,
    if (result != VK_SUCCESS)
       goto err_free_pds_frag_prog;
 
-   load_op->is_hw_object = true;
    /* FIXME: These should be based on the USC and PDS programs, but are hard
     * coded for now.
     */
@@ -269,8 +324,6 @@ pvr_load_op_create(struct pvr_device *device,
    load_op->shareds_count = 1;
    load_op->temps_count = 1;
 
-   *load_op_out = load_op;
-
    return VK_SUCCESS;
 
 err_free_pds_frag_prog:
@@ -278,9 +331,6 @@ err_free_pds_frag_prog:
 
 err_free_usc_frag_prog_bo:
    pvr_bo_free(device, load_op->usc_frag_prog_bo);
-
-err_free_load_op:
-   vk_free2(&device->vk.alloc, allocator, load_op);
 
    return result;
 }
@@ -302,6 +352,35 @@ static void pvr_load_op_destroy(struct pvr_device *device,
          __ret = 3U;                                         \
       __ret;                                                 \
    })
+
+static bool
+pvr_is_load_op_needed(const struct pvr_render_pass *pass,
+                      struct pvr_renderpass_hwsetup_render *hw_render,
+                      const uint32_t subpass_idx)
+{
+   struct pvr_renderpass_hwsetup_subpass *hw_subpass =
+      &hw_render->subpasses[subpass_idx];
+   const struct pvr_render_subpass *subpass =
+      &pass->subpasses[hw_subpass->index];
+
+   if (hw_subpass->z_replicate != -1 &&
+       (hw_subpass->depth_initop == VK_ATTACHMENT_LOAD_OP_LOAD ||
+        hw_subpass->depth_initop == VK_ATTACHMENT_LOAD_OP_CLEAR)) {
+      return true;
+   }
+
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      if (subpass->color_attachments[i] == -1)
+         continue;
+
+      if (hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_LOAD ||
+          hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+         return true;
+      }
+   }
+
+   return false;
+}
 
 VkResult pvr_CreateRenderPass2(VkDevice _device,
                                const VkRenderPassCreateInfo2 *pCreateInfo,
@@ -513,51 +592,82 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
       if (hw_render->tile_buffers_count)
          pvr_finishme("Set up tile buffer table");
 
-      if (hw_render->color_init_count == 0U) {
-         assert(!hw_render->load_op);
-         continue;
-      }
+      assert(!hw_render->load_op);
 
-      /* Add a dummy output register use to the HW render setup if it has no
-       * output registers in use.
-       */
-      if (!pvr_has_output_register_writes(hw_render)) {
-         const uint32_t last = hw_render->init_setup.num_render_targets;
-         struct usc_mrt_resource *mrt_resources;
+      if (hw_render->color_init_count != 0U) {
+         /* Add a dummy output register use to the HW render setup if it has no
+          * output registers in use.
+          */
+         if (!pvr_has_output_register_writes(hw_render)) {
+            const uint32_t last = hw_render->init_setup.num_render_targets;
+            struct usc_mrt_resource *mrt_resources;
 
-         hw_render->init_setup.num_render_targets++;
+            hw_render->init_setup.num_render_targets++;
 
-         mrt_resources = vk_realloc(alloc,
-                                    hw_render->init_setup.mrt_resources,
-                                    hw_render->init_setup.num_render_targets *
-                                       sizeof(*mrt_resources),
-                                    8U,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-         if (!mrt_resources) {
-            result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+            mrt_resources =
+               vk_realloc(alloc,
+                          hw_render->init_setup.mrt_resources,
+                          hw_render->init_setup.num_render_targets *
+                             sizeof(*mrt_resources),
+                          8U,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+            if (!mrt_resources) {
+               result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+               goto err_load_op_destroy;
+            }
+
+            hw_render->init_setup.mrt_resources = mrt_resources;
+
+            mrt_resources[last].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+            mrt_resources[last].reg.output_reg = 0U;
+            mrt_resources[last].reg.offset = 0U;
+            mrt_resources[last].intermediate_size = 4U;
+            mrt_resources[last].mrt_desc.intermediate_size = 4U;
+            mrt_resources[last].mrt_desc.component_alignment = 4U;
+            mrt_resources[last].mrt_desc.priority = 0U;
+            mrt_resources[last].mrt_desc.valid_mask[0U] = ~0;
+            mrt_resources[last].mrt_desc.valid_mask[1U] = ~0;
+            mrt_resources[last].mrt_desc.valid_mask[2U] = ~0;
+            mrt_resources[last].mrt_desc.valid_mask[3U] = ~0;
+         }
+
+         result =
+            pvr_create_render_load_op(device, pAllocator, hw_render, &load_op);
+         if (result != VK_SUCCESS) {
+            vk_free2(&device->vk.alloc, pAllocator, load_op);
             goto err_load_op_destroy;
          }
 
-         hw_render->init_setup.mrt_resources = mrt_resources;
+         result =
+            pvr_generate_load_op_shader(device, pAllocator, hw_render, load_op);
+         if (result != VK_SUCCESS)
+            goto err_load_op_destroy;
 
-         mrt_resources[last].type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
-         mrt_resources[last].reg.output_reg = 0U;
-         mrt_resources[last].reg.offset = 0U;
-         mrt_resources[last].intermediate_size = 4U;
-         mrt_resources[last].mrt_desc.intermediate_size = 4U;
-         mrt_resources[last].mrt_desc.component_alignment = 4U;
-         mrt_resources[last].mrt_desc.priority = 0U;
-         mrt_resources[last].mrt_desc.valid_mask[0U] = ~0;
-         mrt_resources[last].mrt_desc.valid_mask[1U] = ~0;
-         mrt_resources[last].mrt_desc.valid_mask[2U] = ~0;
-         mrt_resources[last].mrt_desc.valid_mask[3U] = ~0;
+         hw_render->load_op = load_op;
       }
 
-      result = pvr_load_op_create(device, pAllocator, hw_render, &load_op);
-      if (result != VK_SUCCESS)
-         goto err_load_op_destroy;
+      for (uint32_t j = 0; j < hw_render->subpass_count; j++) {
+         if (!pvr_is_load_op_needed(pass, hw_render, j))
+            continue;
 
-      hw_render->load_op = load_op;
+         result = pvr_create_subpass_load_op(device,
+                                             pAllocator,
+                                             pass,
+                                             hw_render,
+                                             j,
+                                             &load_op);
+         if (result != VK_SUCCESS) {
+            vk_free2(&device->vk.alloc, pAllocator, load_op);
+            goto err_load_op_destroy;
+         }
+
+         result =
+            pvr_generate_load_op_shader(device, pAllocator, hw_render, load_op);
+         if (result != VK_SUCCESS)
+            goto err_load_op_destroy;
+
+         hw_render->subpasses[j].load_op = load_op;
+      }
    }
 
    *pRenderPass = pvr_render_pass_to_handle(pass);
@@ -568,6 +678,14 @@ err_load_op_destroy:
    for (uint32_t i = 0; i < pass->hw_setup->render_count; i++) {
       struct pvr_renderpass_hwsetup_render *hw_render =
          &pass->hw_setup->renders[i];
+
+      for (uint32_t j = 0; j < hw_render->subpass_count; j++) {
+         if (hw_render->subpasses[j].load_op) {
+            pvr_load_op_destroy(device,
+                                pAllocator,
+                                hw_render->subpasses[j].load_op);
+         }
+      }
 
       if (hw_render->load_op)
          pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
@@ -596,7 +714,16 @@ void pvr_DestroyRenderPass(VkDevice _device,
       struct pvr_renderpass_hwsetup_render *hw_render =
          &pass->hw_setup->renders[i];
 
-      pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
+      for (uint32_t j = 0; j < hw_render->subpass_count; j++) {
+         if (hw_render->subpasses[j].load_op) {
+            pvr_load_op_destroy(device,
+                                pAllocator,
+                                hw_render->subpasses[j].load_op);
+         }
+      }
+
+      if (hw_render->load_op)
+         pvr_load_op_destroy(device, pAllocator, hw_render->load_op);
    }
 
    pvr_destroy_renderpass_hwsetup(pAllocator ? pAllocator : &device->vk.alloc,

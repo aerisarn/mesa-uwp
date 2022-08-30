@@ -1421,6 +1421,8 @@ struct pvr_load_op {
 
    uint32_t clear_mask;
 
+   bool load_depth;
+
    struct pvr_bo *usc_frag_prog_bo;
    uint32_t const_shareds_count;
    uint32_t shareds_dest_offset;
@@ -1430,6 +1432,11 @@ struct pvr_load_op {
 
    struct pvr_pds_upload pds_tex_state_prog;
    uint32_t temps_count;
+
+   union {
+      const struct pvr_renderpass_hwsetup_render *hw_render;
+      const struct pvr_render_subpass *subpass;
+   };
 };
 
 uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
