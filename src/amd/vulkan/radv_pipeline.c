@@ -2773,6 +2773,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    key.ps.has_epilog = !!pipeline->ps_epilog;
 
+   key.dynamic_patch_control_points =
+      !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
+
    return key;
 }
 
