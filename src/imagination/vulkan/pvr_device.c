@@ -240,7 +240,8 @@ void pvr_DestroyInstance(VkInstance _instance,
    if (!instance)
       return;
 
-   pvr_physical_device_finish(&instance->physical_device);
+   if (instance->physical_devices_count > 0)
+      pvr_physical_device_finish(&instance->physical_device);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
