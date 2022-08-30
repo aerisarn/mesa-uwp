@@ -564,14 +564,8 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[set]);
 
-      /* From the Vulkan spec 1.3.211:
-       *
-       * "VUID-VkPipelineLayoutCreateInfo-flags-06562
-       *  If flags: does not include VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT, elements of
-       *  pSetLayouts must be valid VkDescriptorSetLayout objects"
-       */
       if (set_layout == NULL) {
-         assert(layout->independent_sets);
+         layout->set[set].layout = NULL;
          continue;
       }
 
