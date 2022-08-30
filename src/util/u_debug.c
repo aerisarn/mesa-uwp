@@ -26,7 +26,7 @@
  *
  **************************************************************************/
 
-
+#include "util/u_atomic.h"
 #include "util/u_debug.h"
 #include "util/u_string.h"
 #include "util/u_math.h"
@@ -101,20 +101,50 @@ debug_disable_win32_error_dialogs(void)
 #endif /* _WIN32 */
 
 static bool
+debug_get_bool_option_direct(const char *name, bool dfault)
+{
+   const char *str = os_get_option(name);
+   bool result;
+
+   if (str == NULL)
+      result = dfault;
+   else if (!strcmp(str, "0"))
+      result = false;
+   else if (!strcasecmp(str, "n"))
+      result = false;
+   else if (!strcasecmp(str, "no"))
+      result = false;
+   else if (!strcasecmp(str, "f"))
+      result = false;
+   else if (!strcasecmp(str, "false"))
+      result = false;
+   else if (!strcmp(str, "1"))
+      result = true;
+   else if (!strcasecmp(str, "y"))
+      result = true;
+   else if (!strcasecmp(str, "yes"))
+      result = true;
+   else if (!strcasecmp(str, "t"))
+      result = true;
+   else if (!strcasecmp(str, "true"))
+      result = true;
+   else
+      result = dfault;
+   return result;
+}
+
+static bool
 debug_get_option_should_print(void)
 {
    static bool initialized = false;
    static bool value = false;
 
-   if (initialized)
-      return value;
+   if (unlikely(!p_atomic_read_relaxed(&initialized))) {
+      value = debug_get_bool_option_direct("GALLIUM_PRINT_OPTIONS", false);
+      p_atomic_set(&initialized, true);
+   }
 
-   /* Oh hey this will call into this function,
-    * but its cool since we set first to false
-    */
-   initialized = true;
-   value = debug_get_bool_option("GALLIUM_PRINT_OPTIONS", false);
-   /* XXX should we print this option? Currently it wont */
+   /* We do not print value of GALLIUM_PRINT_OPTIONS intentionally. */
    return value;
 }
 
@@ -145,34 +175,7 @@ debug_get_option(const char *name, const char *dfault)
 bool
 debug_get_bool_option(const char *name, bool dfault)
 {
-   const char *str = os_get_option(name);
-   bool result;
-
-   if (str == NULL)
-      result = dfault;
-   else if (!strcmp(str, "0"))
-      result = false;
-   else if (!strcasecmp(str, "n"))
-      result = false;
-   else if (!strcasecmp(str, "no"))
-      result = false;
-   else if (!strcasecmp(str, "f"))
-      result = false;
-   else if (!strcasecmp(str, "false"))
-      result = false;
-   else if (!strcmp(str, "1"))
-      result = true;
-   else if (!strcasecmp(str, "y"))
-      result = true;
-   else if (!strcasecmp(str, "yes"))
-      result = true;
-   else if (!strcasecmp(str, "t"))
-      result = true;
-   else if (!strcasecmp(str, "true"))
-      result = true;
-   else
-      result = dfault;
-
+   bool result = debug_get_bool_option_direct(name, dfault);
    if (debug_get_option_should_print())
       debug_printf("%s: %s = %s\n", __FUNCTION__, name,
                    result ? "TRUE" : "FALSE");
