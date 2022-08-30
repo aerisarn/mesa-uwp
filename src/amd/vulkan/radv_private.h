@@ -1328,6 +1328,8 @@ struct radv_dynamic_state {
    unsigned logic_op;
 
    uint32_t color_write_enable;
+
+   uint32_t patch_control_points;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1553,6 +1555,10 @@ struct radv_cmd_state {
 
    /* Whether this commandbuffer uses performance counters. */
    bool uses_perf_counters;
+
+   /* Tessellation info when patch control points is dynamic. */
+   unsigned tess_num_patches;
+   unsigned tess_lds_size;
 };
 
 struct radv_cmd_buffer_upload {
@@ -2002,7 +2008,6 @@ struct radv_graphics_pipeline {
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
-   unsigned tess_patch_control_points;
    unsigned pa_su_sc_mode_cntl;
    unsigned pa_cl_clip_cntl;
    unsigned cb_color_control;

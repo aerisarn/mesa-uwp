@@ -1369,9 +1369,14 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
 
    /* Disable dynamic states that are useless when rasterization is disabled. */
    if (!raster_enabled) {
-      return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
-             RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
-             RADV_DYNAMIC_VERTEX_INPUT;
+      states = RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
+               RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+               RADV_DYNAMIC_VERTEX_INPUT;
+
+      if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+         states |= RADV_DYNAMIC_PATCH_CONTROL_POINTS;
+
+      return states;
    }
 
    if (!state->rs->depth_bias.enable &&
@@ -1404,6 +1409,9 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
 
    if (!has_color_att)
       states &= ~RADV_DYNAMIC_COLOR_WRITE_ENABLE;
+
+   if (!(pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT))
+      states &= ~RADV_DYNAMIC_PATCH_CONTROL_POINTS;
 
    return states;
 }
@@ -1803,6 +1811,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       u_foreach_bit(i, state->cb->color_write_enables) {
          dynamic->color_write_enable |= 0xfu << (i * 4);
       }
+   }
+
+   if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
+      dynamic->patch_control_points = state->ts->patch_control_points;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -4807,20 +4819,11 @@ static void
 radv_pipeline_emit_hw_ls(struct radeon_cmdbuf *cs, const struct radv_graphics_pipeline *pipeline,
                          const struct radv_shader *shader)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   unsigned num_lds_blocks = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
    uint64_t va = radv_shader_get_va(shader);
-   uint32_t rsrc2 = shader->config.rsrc2;
 
    radeon_set_sh_reg(cs, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
 
-   rsrc2 |= S_00B52C_LDS_SIZE(num_lds_blocks);
-   if (pdevice->rad_info.gfx_level == GFX7 && pdevice->rad_info.family != CHIP_HAWAII)
-      radeon_set_sh_reg(cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, rsrc2);
-
-   radeon_set_sh_reg_seq(cs, R_00B528_SPI_SHADER_PGM_RSRC1_LS, 2);
-   radeon_emit(cs, shader->config.rsrc1);
-   radeon_emit(cs, rsrc2);
+   radeon_set_sh_reg(cs, R_00B528_SPI_SHADER_PGM_RSRC1_LS, shader->config.rsrc1);
 }
 
 static void
@@ -5010,21 +5013,13 @@ radv_pipeline_emit_hw_hs(struct radeon_cmdbuf *cs, const struct radv_graphics_pi
    uint64_t va = radv_shader_get_va(shader);
 
    if (pdevice->rad_info.gfx_level >= GFX9) {
-      uint32_t rsrc2 = shader->config.rsrc2;
-
       if (pdevice->rad_info.gfx_level >= GFX10) {
-         rsrc2 |= S_00B42C_LDS_SIZE_GFX10(shader->info.tcs.num_lds_blocks);
-
          radeon_set_sh_reg(cs, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
       } else {
-         rsrc2 |= S_00B42C_LDS_SIZE_GFX9(shader->info.tcs.num_lds_blocks);
-
          radeon_set_sh_reg(cs, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
       }
 
-      radeon_set_sh_reg_seq(cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, 2);
-      radeon_emit(cs, shader->config.rsrc1);
-      radeon_emit(cs, rsrc2);
+      radeon_set_sh_reg(cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, shader->config.rsrc1);
    } else {
       radeon_set_sh_reg_seq(cs, R_00B420_SPI_SHADER_PGM_LO_HS, 4);
       radeon_emit(cs, va >> 8);
@@ -5092,22 +5087,6 @@ radv_pipeline_emit_tess_state(struct radeon_cmdbuf *ctx_cs,
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
    unsigned type = 0, partitioning = 0, topology = 0, distribution_mode = 0;
-   unsigned num_tcs_input_cp, num_tcs_output_cp, num_patches;
-   unsigned ls_hs_config;
-
-   num_tcs_input_cp = state->ts->patch_control_points;
-   num_tcs_output_cp =
-      pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; // TCS VERTICES OUT
-   num_patches = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
-
-   ls_hs_config = S_028B58_NUM_PATCHES(num_patches) | S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
-                  S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
-
-   if (pdevice->rad_info.gfx_level >= GFX7) {
-      radeon_set_context_reg_idx(ctx_cs, R_028B58_VGT_LS_HS_CONFIG, 2, ls_hs_config);
-   } else {
-      radeon_set_context_reg(ctx_cs, R_028B58_VGT_LS_HS_CONFIG, ls_hs_config);
-   }
 
    switch (tes->info.tes._primitive_mode) {
    case TESS_PRIMITIVE_TRIANGLES:
@@ -6085,10 +6064,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
 
       radv_pipeline_init_gs_ring_state(pipeline, &gs->info.gs_ring_info);
-   }
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      pipeline->tess_patch_control_points = state.ts->patch_control_points;
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))

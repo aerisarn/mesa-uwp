@@ -121,6 +121,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .rasterizer_discard_enable = 0u,
    .logic_op = 0u,
    .color_write_enable = 0u,
+   .patch_control_points = 0,
 };
 
 static void
@@ -251,6 +252,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(logic_op, RADV_DYNAMIC_LOGIC_OP);
 
    RADV_CMP_COPY(color_write_enable, RADV_DYNAMIC_COLOR_WRITE_ENABLE);
+
+   RADV_CMP_COPY(patch_control_points, RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
 #undef RADV_CMP_COPY
 
@@ -1442,7 +1445,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
                                  RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
-                                 RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
+                                 RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
+                                 RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->negative_one_to_one != pipeline->negative_one_to_one ||
@@ -1853,6 +1857,61 @@ radv_emit_color_write_enable(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg(cmd_buffer->cs, R_028238_CB_TARGET_MASK,
                           pipeline->cb_target_mask & d->color_write_enable);
+}
+
+static void
+radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_shader *tcs = pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned ls_hs_config, base_reg;
+   struct radv_userdata_info *loc;
+
+   ls_hs_config = S_028B58_NUM_PATCHES(cmd_buffer->state.tess_num_patches) |
+                  S_028B58_HS_NUM_INPUT_CP(d->patch_control_points) |
+                  S_028B58_HS_NUM_OUTPUT_CP(tcs->info.tcs.tcs_vertices_out);
+
+   if (pdevice->rad_info.gfx_level >= GFX7) {
+      radeon_set_context_reg_idx(cmd_buffer->cs, R_028B58_VGT_LS_HS_CONFIG, 2, ls_hs_config);
+   } else {
+      radeon_set_context_reg(cmd_buffer->cs, R_028B58_VGT_LS_HS_CONFIG, ls_hs_config);
+   }
+
+   if (pdevice->rad_info.gfx_level >= GFX9) {
+      unsigned hs_rsrc2 = tcs->config.rsrc2;
+
+      if (pdevice->rad_info.gfx_level >= GFX10) {
+         hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX10(cmd_buffer->state.tess_lds_size);
+      } else {
+         hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX9(cmd_buffer->state.tess_lds_size);
+      }
+
+      radeon_set_sh_reg(cmd_buffer->cs, R_00B42C_SPI_SHADER_PGM_RSRC2_HS, hs_rsrc2);
+   } else {
+      struct radv_shader *vs = pipeline->base.shaders[MESA_SHADER_VERTEX];
+      unsigned ls_rsrc2 = vs->config.rsrc2 | S_00B52C_LDS_SIZE(cmd_buffer->state.tess_lds_size);
+
+      radeon_set_sh_reg(cmd_buffer->cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, ls_rsrc2);
+   }
+
+   /* Emit user SGPRs for dynamic patch control points. */
+   loc = radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_TESS_CTRL, AC_UD_TCS_OFFCHIP_LAYOUT);
+   if (loc->sgpr_idx == -1)
+      return;
+   assert(loc->num_sgprs == 1);
+
+   base_reg = pipeline->base.user_data_0[MESA_SHADER_TESS_CTRL];
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
+                     (cmd_buffer->state.tess_num_patches << 6) | d->patch_control_points);
+
+   loc = radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_TESS_EVAL, AC_UD_TES_NUM_PATCHES);
+   assert(loc->sgpr_idx != -1 && loc->num_sgprs == 1);
+
+   base_reg = pipeline->base.user_data_0[MESA_SHADER_TESS_EVAL];
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
+                     cmd_buffer->state.tess_num_patches);
 }
 
 static void
@@ -3273,6 +3332,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT)
       radv_emit_vertex_input(cmd_buffer, pipeline_is_dirty);
 
+   if (states & RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS)
+      radv_emit_patch_control_points(cmd_buffer);
+
    cmd_buffer->state.dirty &= ~states;
 }
 
@@ -3982,20 +4044,14 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned topology = state->dynamic.primitive_topology;
    bool prim_restart_enable = state->dynamic.primitive_restart_enable;
-   unsigned patch_control_points = state->graphics_pipeline->tess_patch_control_points;
+   unsigned patch_control_points = state->dynamic.patch_control_points;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   unsigned num_tess_patches = 0;
    unsigned ia_multi_vgt_param;
-
-   if (radv_pipeline_has_stage(state->graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
-      struct radv_shader *tcs = state->graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
-      num_tess_patches = tcs->info.num_tess_patches;
-   }
 
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw, indirect_draw, count_from_stream_output,
                                 draw_vertex_count, topology, prim_restart_enable,
-                                patch_control_points, num_tess_patches);
+                                patch_control_points, state->tess_num_patches);
 
    if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
       if (info->gfx_level == GFX9) {
@@ -4023,7 +4079,7 @@ gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
       return;
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      primgroup_size = pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.num_tess_patches;
+      primgroup_size = state->tess_num_patches;
 
       if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
           radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.uses_prim_id) {
@@ -5109,6 +5165,19 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_FLUSH;
       }
 
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL) &&
+          !(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS)) {
+         /* Bind the tessellation state from the pipeline when it's not dynamic and make sure to
+          * emit it if the number of patches or the LDS size changed.
+          */
+         struct radv_shader *tcs = graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+
+         cmd_buffer->state.tess_num_patches = tcs->info.num_tess_patches;
+         cmd_buffer->state.tess_lds_size = tcs->info.tcs.num_lds_blocks;
+
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
+      }
+
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
 
       if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
@@ -5509,7 +5578,12 @@ radv_CmdSetRasterizerDiscardEnable(VkCommandBuffer commandBuffer, VkBool32 raste
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer, uint32_t patchControlPoints)
 {
-   /* not implemented */
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.patch_control_points = patchControlPoints;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -7192,6 +7266,37 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          /* Break the batch on CB_TARGET_MASK changes. */
          radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
+      }
+   }
+
+   /* Pre-compute some tessellation info that depend on the number of patch control points when the
+    * bound pipeline declared this state as dynamic.
+    */
+   if (cmd_buffer->state.graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
+      uint64_t dynamic_states =
+         cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
+
+      if (dynamic_states & RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS) {
+         const struct radv_physical_device *pdevice = device->physical_device;
+         const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+         const struct radv_shader *tcs = pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+         const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+         /* Compute the number of patches and emit the context register. */
+         cmd_buffer->state.tess_num_patches =
+            get_tcs_num_patches(d->patch_control_points, tcs->info.tcs.tcs_vertices_out,
+                                tcs->info.tcs.num_linked_inputs, tcs->info.tcs.num_linked_outputs,
+                                tcs->info.tcs.num_linked_patch_outputs,
+                                pdevice->hs.tess_offchip_block_dw_size, pdevice->rad_info.gfx_level,
+                                pdevice->rad_info.family);
+
+         /* Compute the LDS size and emit the shader register. */
+         cmd_buffer->state.tess_lds_size =
+            calculate_tess_lds_size(pdevice->rad_info.gfx_level, d->patch_control_points,
+                                    tcs->info.tcs.tcs_vertices_out, tcs->info.tcs.num_linked_inputs,
+                                    cmd_buffer->state.tess_num_patches,
+                                    tcs->info.tcs.num_linked_outputs,
+                                    tcs->info.tcs.num_linked_patch_outputs);
       }
    }
 
