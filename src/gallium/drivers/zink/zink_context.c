@@ -3210,6 +3210,36 @@ zink_resource_image_barrier_init(VkImageMemoryBarrier *imb, struct zink_resource
    return res->obj->needs_zs_evaluate || zink_resource_image_needs_barrier(res, new_layout, flags, pipeline);
 }
 
+static bool
+zink_resource_image_barrier2_init(VkImageMemoryBarrier2 *imb, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+{
+   if (!pipeline)
+      pipeline = pipeline_dst_stage(new_layout);
+   if (!flags)
+      flags = access_dst_flags(new_layout);
+
+   VkImageSubresourceRange isr = {
+      res->aspect,
+      0, VK_REMAINING_MIP_LEVELS,
+      0, VK_REMAINING_ARRAY_LAYERS
+   };
+   *imb = (VkImageMemoryBarrier2){
+      VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+      NULL,
+      res->obj->access_stage ? res->obj->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      res->obj->access ? res->obj->access : access_src_flags(res->layout),
+      pipeline,
+      flags,
+      res->layout,
+      new_layout,
+      VK_QUEUE_FAMILY_IGNORED,
+      VK_QUEUE_FAMILY_IGNORED,
+      res->obj->image,
+      isr
+   };
+   return res->obj->needs_zs_evaluate || zink_resource_image_needs_barrier(res, new_layout, flags, pipeline);
+}
+
 static inline bool
 is_shader_pipline_stage(VkPipelineStageFlags pipeline)
 {
@@ -3331,6 +3361,49 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    res->layout = new_layout;
 }
 
+void
+zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+{
+   VkImageMemoryBarrier2 imb;
+   if (!pipeline)
+      pipeline = pipeline_dst_stage(new_layout);
+
+   if (!zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline))
+      return;
+   /* only barrier if we're changing layout or doing something besides read -> read */
+   bool is_write = zink_resource_access_is_write(imb.dstAccessMask);
+   VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
+   assert(new_layout);
+   if (!res->obj->access_stage)
+      imb.srcAccessMask = 0;
+   if (res->obj->needs_zs_evaluate)
+      imb.pNext = &res->obj->zs_evaluate;
+   res->obj->needs_zs_evaluate = false;
+   if (res->dmabuf_acquire) {
+      imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+      imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
+      res->dmabuf_acquire = false;
+   }
+   VkDependencyInfo dep = {
+      VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+      NULL,
+      0,
+      0,
+      NULL,
+      0,
+      NULL,
+      1,
+      &imb
+   };
+   VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
+
+   resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
+
+   res->obj->access = imb.dstAccessMask;
+   res->obj->access_stage = pipeline;
+   res->layout = new_layout;
+}
+
 
 VkPipelineStageFlags
 zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage)
@@ -3411,6 +3484,44 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
       0, NULL,
       0, NULL
    );
+
+   resource_check_defer_buffer_barrier(ctx, res, pipeline);
+
+   res->obj->access = bmb.dstAccessMask;
+   res->obj->access_stage = pipeline;
+}
+
+void
+zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+{
+   VkMemoryBarrier2 bmb;
+   if (!pipeline)
+      pipeline = pipeline_access_stage(flags);
+   if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
+      return;
+   bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+   bmb.pNext = NULL;
+   bmb.srcStageMask = res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access);
+   bmb.srcAccessMask = res->obj->access;
+   bmb.dstStageMask = pipeline;
+   bmb.dstAccessMask = flags;
+   if (!res->obj->access_stage)
+      bmb.srcAccessMask = 0;
+   bool is_write = zink_resource_access_is_write(flags);
+   VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
+   VkDependencyInfo dep = {
+      VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+      NULL,
+      0,
+      1,
+      &bmb,
+      0,
+      NULL,
+      0,
+      NULL
+   };
+   /* only barrier if we're changing layout or doing something besides read -> read */
+   VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
 
