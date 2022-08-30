@@ -616,9 +616,6 @@ u_trace_has_points(struct u_trace *ut)
 struct u_trace_iterator
 u_trace_begin_iterator(struct u_trace *ut)
 {
-   if (!ut->enabled)
-      return (struct u_trace_iterator) {NULL, NULL, 0};
-
    if (list_is_empty(&ut->trace_chunks))
       return (struct u_trace_iterator) { ut, NULL, 0 };
 
@@ -631,9 +628,6 @@ u_trace_begin_iterator(struct u_trace *ut)
 struct u_trace_iterator
 u_trace_end_iterator(struct u_trace *ut)
 {
-   if (!ut->enabled)
-      return (struct u_trace_iterator) {NULL, NULL, 0};
-
    if (list_is_empty(&ut->trace_chunks))
       return (struct u_trace_iterator) { ut, NULL, 0 };
 
