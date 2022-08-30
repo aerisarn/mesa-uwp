@@ -513,14 +513,6 @@ anv_get_format_plane(const struct intel_device_info *devinfo,
       }
    }
 
-   /* The B4G4R4A4 format isn't available prior to Broadwell so we have to fall
-    * back to a format with a more complex swizzle.
-    */
-   if (vk_format == VK_FORMAT_B4G4R4A4_UNORM_PACK16 && devinfo->ver < 8) {
-      plane_format.isl_format = ISL_FORMAT_B4G4R4A4_UNORM;
-      plane_format.swizzle = ISL_SWIZZLE(GREEN, RED, ALPHA, BLUE);
-   }
-
    return plane_format;
 }
 
@@ -565,14 +557,11 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
                VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
                VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
 
-      if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-
-      if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && devinfo->ver >= 9)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
-
-      if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+      if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
+                  VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+      }
 
       return flags;
    }
@@ -602,10 +591,8 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
          return VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT |
                 VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
 
-      flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
-
-      if (devinfo->ver >= 9)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+      flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
+               VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
 
       if (isl_format_supports_filtering(devinfo, plane_format.isl_format))
          flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
@@ -1063,15 +1050,7 @@ anv_get_image_format_properties(
       maxExtent.width = 2048;
       maxExtent.height = 2048;
       maxExtent.depth = 2048;
-      /* Prior to SKL, the mipmaps for 3D surfaces are laid out in a way
-       * that make it impossible to represent in the way that
-       * VkSubresourceLayout expects. Since we can't tell users how to make
-       * sense of them, don't report them as available.
-       */
-      if (devinfo->ver < 9 && info->tiling == VK_IMAGE_TILING_LINEAR)
-         maxMipLevels = 1;
-      else
-         maxMipLevels = 12; /* log2(maxWidth) + 1 */
+      maxMipLevels = 12; /* log2(maxWidth) + 1 */
       maxArraySize = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
@@ -1248,14 +1227,10 @@ anv_get_image_format_properties(
    }
 
    /* From the bspec section entitled "Surface Layout and Tiling",
-    * pre-gfx9 has a 2 GB limitation of the size in bytes,
-    * gfx9 and gfx10 have a 256 GB limitation and gfx11+
-    * has a 16 TB limitation.
+    * Gfx9 has a 256 GB limitation and Gfx11+ has a 16 TB limitation.
     */
    uint64_t maxResourceSize = 0;
-   if (devinfo->ver < 9)
-      maxResourceSize = (uint64_t) 1 << 31;
-   else if (devinfo->ver < 11)
+   if (devinfo->ver < 11)
       maxResourceSize = (uint64_t) 1 << 38;
    else
       maxResourceSize = (uint64_t) 1 << 44;

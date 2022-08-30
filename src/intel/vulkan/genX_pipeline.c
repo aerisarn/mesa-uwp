@@ -386,10 +386,8 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
       .ConstantInterpolationEnable = wm_prog_data->flat_inputs,
    };
 
-#if GFX_VER >= 9
    for (unsigned i = 0; i < 32; i++)
       sbe.AttributeActiveComponentFormat[i] = ACF_XYZW;
-#endif
 
    /* On Broadwell, they broke 3DSTATE_SBE into two packets */
    struct GENX(3DSTATE_SBE_SWIZ) swiz = {
@@ -741,18 +739,11 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.BackFaceFillMode = genX(vk_to_intel_fillmode)[rs->polygon_mode];
    raster.ScissorRectangleEnable = true;
 
-#if GFX_VER >= 9
-   /* GFX9+ splits ViewportZClipTestEnable into near and far enable bits */
    raster.ViewportZFarClipTestEnable = pipeline->depth_clip_enable;
    raster.ViewportZNearClipTestEnable = pipeline->depth_clip_enable;
-#elif GFX_VER == 8
-   raster.ViewportZClipTestEnable = pipeline->depth_clip_enable;
-#endif
 
-#if GFX_VER >= 9
    raster.ConservativeRasterizationEnable =
       rs->conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-#endif
 
    GENX(3DSTATE_SF_pack)(NULL, pipeline->gfx8.sf, &sf);
    GENX(3DSTATE_RASTER_pack)(NULL, pipeline->gfx8.raster, &raster);
@@ -1494,10 +1485,8 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
 #endif
 
-#if GFX_VER >= 9
       hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
-#endif
    }
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TE), te) {
@@ -1606,12 +1595,7 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
       gs.IncludeVertexHandles    = gs_prog_data->base.include_vue_handles;
       gs.IncludePrimitiveID      = gs_prog_data->include_primitive_id;
 
-      if (GFX_VER == 8) {
-         /* Broadwell is weird.  It needs us to divide by 2. */
-         gs.MaximumNumberofThreads = devinfo->max_gs_threads / 2 - 1;
-      } else {
-         gs.MaximumNumberofThreads = devinfo->max_gs_threads - 1;
-      }
+      gs.MaximumNumberofThreads = devinfo->max_gs_threads - 1;
 
       gs.OutputVertexSize        = gs_prog_data->output_vertex_size_hwords * 2 - 1;
       gs.OutputTopology          = gs_prog_data->output_topology;
@@ -1733,7 +1717,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
        * Since 16x MSAA is first introduced on SKL, we don't need to apply
        * the workaround on any older hardware.
        */
-      if (GFX_VER >= 9 && !wm_prog_data->persample_dispatch &&
+      if (!wm_prog_data->persample_dispatch &&
           ms != NULL && ms->rasterization_samples == 16) {
          assert(ps._8PixelDispatchEnable || ps._16PixelDispatchEnable);
          ps._32PixelDispatchEnable = false;
@@ -1756,8 +1740,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.PositionXYOffsetSelect     = wm_prog_data->uses_pos_offset ?
                                       POSOFFSET_SAMPLE: POSOFFSET_NONE;
 
-      ps.MaximumNumberofThreadsPerPSD =
-         devinfo->max_threads_per_psd - (GFX_VER == 8 ? 2 : 1);
+      ps.MaximumNumberofThreadsPerPSD = devinfo->max_threads_per_psd - 1;
 
       ps.DispatchGRFStartRegisterForConstantSetupData0 =
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
@@ -1808,7 +1791,6 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
                                          rp->stencil_self_dependency ||
                                          wm_prog_data->uses_kill;
 
-#if GFX_VER >= 9
       ps.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
       ps.PixelShaderPullsBary    = wm_prog_data->pulls_bary;
 
@@ -1822,9 +1804,6 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
          ps.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
       else
          ps.InputCoverageMaskState = ICMS_NORMAL;
-#else
-      ps.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
-#endif
 
 #if GFX_VER >= 11
       ps.PixelShaderRequiresSourceDepthandorWPlaneCoefficients =
@@ -2154,9 +2133,6 @@ genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline)
       vfe.NumberofURBEntries     = 2;
 #if GFX_VER < 11
       vfe.ResetGatewayTimer      = true;
-#endif
-#if GFX_VER == 8
-      vfe.BypassGatewayControl   = true;
 #endif
       vfe.URBEntryAllocationSize = 2;
       vfe.CURBEAllocationSize    = vfe_curbe_allocation;

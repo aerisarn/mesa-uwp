@@ -123,7 +123,7 @@ blorp_get_surface_address(struct blorp_batch *blorp_batch,
    }
 }
 
-#if GFX_VER >= 8 && GFX_VER < 10
+#if GFX_VER == 9
 static struct blorp_address
 blorp_get_surface_base_address(struct blorp_batch *batch)
 {
@@ -308,8 +308,6 @@ blorp_exec_on_render(struct blorp_batch *batch,
 
    /* Apply any outstanding flushes in case pipeline select haven't. */
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
-
-   genX(cmd_buffer_emit_gfx7_depth_flush)(cmd_buffer);
 
    /* BLORP doesn't do anything fancy with depth such as discards, so we want
     * the PMA fix off.  Also, off is always the safe option.

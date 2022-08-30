@@ -36,15 +36,7 @@
 void
 anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
 {
-   const struct intel_device_info *devinfo = &device->info;
-
    device->perf = NULL;
-
-   /* We need self modifying batches. The i915 parser prevents it on
-    * Gfx7.5 :( maybe one day.
-    */
-   if (devinfo->ver < 8)
-      return;
 
    struct intel_perf_config *perf = intel_perf_new(NULL);
 
@@ -117,9 +109,7 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
    properties[p++] = metric_id;
 
    properties[p++] = DRM_I915_PERF_PROP_OA_FORMAT;
-   properties[p++] = device->info->ver >= 8 ?
-      I915_OA_FORMAT_A32u40_A4u32_B8_C8 :
-      I915_OA_FORMAT_A45_B8_C8;
+   properties[p++] = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
    properties[p++] = DRM_I915_PERF_PROP_OA_EXPONENT;
    properties[p++] = 31; /* slowest sampling period */

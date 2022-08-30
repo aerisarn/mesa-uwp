@@ -175,7 +175,6 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionMOCS = mocs;
       sba.InstructionBaseAddressModifyEnable = true;
 
-#  if (GFX_VER >= 8)
       /* Broadwell requires that we specify a buffer size for a bunch of
        * these fields.  However, since we will be growing the BO's live, we
        * just set them all to the maximum.
@@ -196,37 +195,17 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
-#  else
-      /* On gfx7, we have upper bounds instead.  According to the docs,
-       * setting an upper bound of zero means that no bounds checking is
-       * performed so, in theory, we should be able to leave them zero.
-       * However, border color is broken and the GPU bounds-checks anyway.
-       * To avoid this and other potential problems, we may as well set it
-       * for everything.
-       */
-      sba.GeneralStateAccessUpperBound =
-         (struct anv_address) { .bo = NULL, .offset = 0xfffff000 };
-      sba.GeneralStateAccessUpperBoundModifyEnable = true;
-      sba.DynamicStateAccessUpperBound =
-         (struct anv_address) { .bo = NULL, .offset = 0xfffff000 };
-      sba.DynamicStateAccessUpperBoundModifyEnable = true;
-      sba.InstructionAccessUpperBound =
-         (struct anv_address) { .bo = NULL, .offset = 0xfffff000 };
-      sba.InstructionAccessUpperBoundModifyEnable = true;
-#  endif
-#  if (GFX_VER >= 9)
       sba.BindlessSurfaceStateBaseAddress =
          (struct anv_address) { device->surface_state_pool.block_pool.bo, 0 };
       sba.BindlessSurfaceStateSize = (1 << 20) - 1;
       sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-#  endif
-#  if (GFX_VER >= 10)
+#if GFX_VER >= 11
       sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
       sba.BindlessSamplerStateMOCS = mocs;
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
-#  endif
+#endif
 #if GFX_VERx10 >= 125
       sba.L1CacheControl = L1CC_WB;
 #endif
@@ -413,11 +392,6 @@ anv_can_fast_clear_color_view(struct anv_device * device,
        render_area.offset.y != 0 ||
        render_area.extent.width != iview->vk.extent.width ||
        render_area.extent.height != iview->vk.extent.height)
-      return false;
-
-   /* On Broadwell and earlier, we can only handle 0/1 clear colors */
-   if (GFX_VER <= 8 &&
-       !isl_color_value_is_zero_one(clear_color, iview->planes[0].isl.format))
       return false;
 
    /* If the clear color is one that would require non-trivial format
@@ -955,29 +929,15 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
    struct anv_address addr =
       anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
 
-   if (GFX_VER >= 9) {
-      const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
-      const unsigned num_dwords = GFX_VER >= 10 ?
-                                  isl_dev->ss.clear_color_state_size / 4 :
-                                  isl_dev->ss.clear_value_size / 4;
-      for (unsigned i = 0; i < num_dwords; i++) {
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
-            sdi.Address = addr;
-            sdi.Address.offset += i * 4;
-            sdi.ImmediateData = 0;
-         }
-      }
-   } else {
+   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+   const unsigned num_dwords = GFX_VER >= 10 ?
+                               isl_dev->ss.clear_color_state_size / 4 :
+                               isl_dev->ss.clear_value_size / 4;
+   for (unsigned i = 0; i < num_dwords; i++) {
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
          sdi.Address = addr;
-         /* Pre-SKL, the dword containing the clear values also contains
-          * other fields, so we need to initialize those fields to match the
-          * values that would be in a color attachment.
-          */
-         sdi.ImmediateData = ISL_CHANNEL_SELECT_RED   << 25 |
-                             ISL_CHANNEL_SELECT_GREEN << 22 |
-                             ISL_CHANNEL_SELECT_BLUE  << 19 |
-                             ISL_CHANNEL_SELECT_ALPHA << 16;
+         sdi.Address.offset += i * 4;
+         sdi.ImmediateData = 0;
       }
    }
 }
@@ -1591,7 +1551,6 @@ genX(BeginCommandBuffer)(
       }
    }
 
-#if GFX_VER >= 8
    /* Emit the sample pattern at the beginning of the batch because the
     * default locations emitted at the device initialization might have been
     * changed by a previous command buffer.
@@ -1612,7 +1571,6 @@ genX(BeginCommandBuffer)(
       cmd_buffer->state.conditional_render_enabled =
          conditional_rendering_info && conditional_rendering_info->conditionalRenderingEnable;
    }
-#endif
 
    return VK_SUCCESS;
 }
@@ -1777,7 +1735,7 @@ genX(CmdExecuteCommands)(
    /* The secondary isn't counted in our VF cache tracking so we need to
     * invalidate the whole thing.
     */
-   if (GFX_VER >= 8 && GFX_VER <= 9) {
+   if (GFX_VER == 9) {
       anv_add_pending_pipe_bits(primary,
                                 ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
                                 "Secondary cmd buffer not tracked in VF cache");
@@ -2150,7 +2108,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    if (trace_flush)
       trace_intel_begin_stall(&cmd_buffer->trace);
 
-   if ((GFX_VER >= 8 && GFX_VER <= 9) &&
+   if (GFX_VER == 9 &&
        (bits & ANV_PIPE_CS_STALL_BIT) &&
        (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT)) {
       /* If we are doing a VF cache invalidate AND a CS stall (it must be
@@ -2959,12 +2917,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_VS), c) {
       c._3DCommandSubOpcode = push_constant_opcodes[stage];
 
-      /* Set MOCS, except on Gfx8, because the Broadwell PRM says:
-       *
-       *    "Constant Buffer Object Control State must be always
-       *     programmed to zero."
-       *
-       * This restriction does not exist on any newer platforms.
+      /* Set MOCS.
        *
        * We only have one MOCS field for the whole packet, not one per
        * buffer.  We could go out of our way here to walk over all of
@@ -2974,11 +2927,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
        *
        * Let's not bother and assume it's all internal.
        */
-#if GFX_VER >= 9
       c.MOCS = mocs;
-#elif GFX_VER < 8
-      c.ConstantBody.MOCS = mocs;
-#endif
 
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
@@ -3599,7 +3548,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             };
          }
 
-#if GFX_VER >= 8 && GFX_VER <= 9
+#if GFX_VER == 9
          genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer, vb,
                                                         state.BufferStartingAddress,
                                                         state.BufferSize);
@@ -3750,11 +3699,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
       cmd_buffer->state.gfx.primitive_topology = topology;
 
-#if (GFX_VER >= 8)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_TOPOLOGY), vft) {
          vft.PrimitiveTopologyType = topology;
       }
-#endif
    }
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
@@ -3779,13 +3726,8 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VER >= 12
          .L3BypassDisable = true,
 #endif
-#if (GFX_VER >= 8)
          .BufferStartingAddress = addr,
          .BufferSize = size
-#else
-         .BufferStartingAddress = addr,
-         .EndAddress = anv_address_add(addr, size),
-#endif
       });
 
    genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer,
@@ -5493,7 +5435,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.current_pipeline == pipeline)
       return;
 
-#if GFX_VER >= 8 && GFX_VER < 10
+#if GFX_VER == 9
    /* From the Broadwell PRM, Volume 2a: Instructions, PIPELINE_SELECT:
     *
     *   Software must clear the COLOR_CALC_STATE Valid field in
@@ -5505,9 +5447,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     */
    if (pipeline == GPGPU)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
-#endif
 
-#if GFX_VER == 9
    if (pipeline == _3D) {
       /* There is a mid-object preemption workaround which requires you to
        * re-emit MEDIA_VFE_STATE after switching from GPGPU to 3D.  However,
@@ -5558,10 +5498,8 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
       ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
       ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-#endif
       ps.PipelineSelection = pipeline;
    }
 
@@ -5595,41 +5533,6 @@ void
 genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer)
 {
    genX(flush_pipeline_select)(cmd_buffer, GPGPU);
-}
-
-void
-genX(cmd_buffer_emit_gfx7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
-{
-   if (GFX_VER >= 8)
-      return;
-
-   /* From the Haswell PRM, documentation for 3DSTATE_DEPTH_BUFFER:
-    *
-    *    "Restriction: Prior to changing Depth/Stencil Buffer state (i.e., any
-    *    combination of 3DSTATE_DEPTH_BUFFER, 3DSTATE_CLEAR_PARAMS,
-    *    3DSTATE_STENCIL_BUFFER, 3DSTATE_HIER_DEPTH_BUFFER) SW must first
-    *    issue a pipelined depth stall (PIPE_CONTROL with Depth Stall bit
-    *    set), followed by a pipelined depth cache flush (PIPE_CONTROL with
-    *    Depth Flush Bit set, followed by another pipelined depth stall
-    *    (PIPE_CONTROL with Depth Stall Bit set), unless SW can otherwise
-    *    guarantee that the pipeline from WM onwards is already flushed (e.g.,
-    *    via a preceding MI_FLUSH)."
-    */
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
-      pipe.DepthStallEnable = true;
-      anv_debug_dump_pc(pipe);
-   }
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
-      pipe.DepthCacheFlushEnable = true;
-#if GFX_VER >= 12
-      pipe.TileCacheFlushEnable = true;
-#endif
-      anv_debug_dump_pc(pipe);
-   }
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
-      pipe.DepthStallEnable = true;
-      anv_debug_dump_pc(pipe);
-   }
 }
 
 void
@@ -5713,8 +5616,7 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
                                                struct anv_address vb_address,
                                                uint32_t vb_size)
 {
-   if (GFX_VER < 8 || GFX_VER > 9 ||
-       anv_use_relocations(cmd_buffer->device->physical))
+   if (GFX_VER > 9 || anv_use_relocations(cmd_buffer->device->physical))
       return;
 
    struct anv_vb_cache_range *bound, *dirty;
@@ -5744,8 +5646,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint32_t access_type,
                                                     uint64_t vb_used)
 {
-   if (GFX_VER < 8 || GFX_VER > 9 ||
-       anv_use_relocations(cmd_buffer->device->physical))
+   if (GFX_VER > 9 || anv_use_relocations(cmd_buffer->device->physical))
       return;
 
    if (access_type == RANDOM) {
@@ -5875,8 +5776,6 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
    /* FIXME: Width and Height are wrong */
-
-   genX(cmd_buffer_emit_gfx7_depth_flush)(cmd_buffer);
 
    uint32_t *dw = anv_batch_emit_dwords(&cmd_buffer->batch,
                                         device->isl_dev.ds.size / 4);
@@ -6974,21 +6873,12 @@ VkResult genX(CmdSetPerformanceOverrideINTEL)(
 
    switch (pOverrideInfo->type) {
    case VK_PERFORMANCE_OVERRIDE_TYPE_NULL_HARDWARE_INTEL: {
-#if GFX_VER >= 9
       anv_batch_write_reg(&cmd_buffer->batch, GENX(CS_DEBUG_MODE2), csdm2) {
          csdm2._3DRenderingInstructionDisable = pOverrideInfo->enable;
          csdm2.MediaInstructionDisable = pOverrideInfo->enable;
          csdm2._3DRenderingInstructionDisableMask = true;
          csdm2.MediaInstructionDisableMask = true;
       }
-#else
-      anv_batch_write_reg(&cmd_buffer->batch, GENX(INSTPM), instpm) {
-         instpm._3DRenderingInstructionDisable = pOverrideInfo->enable;
-         instpm.MediaInstructionDisable = pOverrideInfo->enable;
-         instpm._3DRenderingInstructionDisableMask = true;
-         instpm.MediaInstructionDisableMask = true;
-      }
-#endif
       break;
    }
 

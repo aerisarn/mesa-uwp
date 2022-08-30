@@ -754,8 +754,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    if (total_push_constants_size == 0)
       return (struct anv_state) { .offset = 0 };
 
-   const unsigned push_constant_alignment =
-      cmd_buffer->device->info->ver < 8 ? 32 : 64;
+   const unsigned push_constant_alignment = 64;
    const unsigned aligned_total_push_constants_size =
       ALIGN(total_push_constants_size, push_constant_alignment);
    struct anv_state state;

@@ -76,10 +76,8 @@ emit_common_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       sbe.ForceVertexURBEntryReadLength = true;
       sbe.ForceVertexURBEntryReadOffset = true;
 
-#if GFX_VER >= 9
       for (unsigned i = 0; i < 32; i++)
          sbe.AttributeActiveComponentFormat[i] = ACF_XYZW;
-#endif
    }
 
    /* Emit URB setup.  We tell it that the VS is active because we want it to
@@ -219,10 +217,8 @@ genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
    genX(emit_l3_config)(batch, device, cfg);
 
    anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
       ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
       ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-#endif
       ps.PipelineSelection = _3D;
    }
 
@@ -246,8 +242,7 @@ genX(emit_so_memcpy)(struct anv_memcpy_state *state,
                      struct anv_address dst, struct anv_address src,
                      uint32_t size)
 {
-   if (GFX_VER >= 8 && GFX_VER <= 9 &&
-       !anv_use_relocations(state->device->physical) &&
+   if (GFX_VER == 9 && !anv_use_relocations(state->device->physical) &&
        anv_gfx8_9_vb_cache_range_needs_workaround(&state->vb_bound,
                                                   &state->vb_dirty,
                                                   src, size)) {

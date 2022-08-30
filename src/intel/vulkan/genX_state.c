@@ -242,10 +242,8 @@ init_render_queue_state(struct anv_queue *queue)
    };
 
    anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
       ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
       ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-#endif
       ps.PipelineSelection = _3D;
    }
 
@@ -271,7 +269,6 @@ init_render_queue_state(struct anv_queue *queue)
       rect.DrawingRectangleOriginX = 0;
    }
 
-#if GFX_VER >= 8
    anv_batch_emit(&batch, GENX(3DSTATE_WM_CHROMAKEY), ck);
 
    genX(emit_sample_pattern)(&batch, NULL);
@@ -285,7 +282,6 @@ init_render_queue_state(struct anv_queue *queue)
     * number of GPU hangs on ICL.
     */
    anv_batch_emit(&batch, GENX(3DSTATE_WM_HZ_OP), hzp);
-#endif
 
 #if GFX_VER == 11
    /* The default behavior of bit 5 "Headerless Message for Pre-emptable
@@ -387,18 +383,11 @@ init_render_queue_state(struct anv_queue *queue)
     *
     * This is only safe on kernels with context isolation support.
     */
-   if (GFX_VER >= 8 && device->physical->has_context_isolation) {
-#if GFX_VER >= 9
+   if (device->physical->has_context_isolation) {
       anv_batch_write_reg(&batch, GENX(CS_DEBUG_MODE2), csdm2) {
          csdm2.CONSTANT_BUFFERAddressOffsetDisable = true;
          csdm2.CONSTANT_BUFFERAddressOffsetDisableMask = true;
       }
-#elif GFX_VER == 8
-      anv_batch_write_reg(&batch, GENX(INSTPM), instpm) {
-         instpm.CONSTANT_BUFFERAddressOffsetDisable = true;
-         instpm.CONSTANT_BUFFERAddressOffsetDisableMask = true;
-      }
-#endif
    }
 
    init_common_queue_state(queue, &batch);
@@ -420,9 +409,7 @@ init_compute_queue_state(struct anv_queue *queue)
    batch.end = (void *) cmds + sizeof(cmds);
 
    anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
       ps.MaskBits = 3;
-#endif
 #if GFX_VER >= 11
       ps.MaskBits |= 0x10;
       ps.MediaSamplerDOPClockGateEnable = true;
@@ -637,35 +624,16 @@ genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
       ms.NumberofMultisamples       = __builtin_ffs(samples) - 1;
 
       ms.PixelLocation              = CENTER;
-#if GFX_VER >= 8
+
       /* The PRM says that this bit is valid only for DX9:
        *
        *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
        *    should not have any effect by setting or not setting this bit.
        */
       ms.PixelPositionOffsetEnable  = false;
-#else
-      switch (samples) {
-      case 1:
-         INTEL_SAMPLE_POS_1X_ARRAY(ms.Sample, sl->locations);
-         break;
-      case 2:
-         INTEL_SAMPLE_POS_2X_ARRAY(ms.Sample, sl->locations);
-         break;
-      case 4:
-         INTEL_SAMPLE_POS_4X_ARRAY(ms.Sample, sl->locations);
-         break;
-      case 8:
-         INTEL_SAMPLE_POS_8X_ARRAY(ms.Sample, sl->locations);
-         break;
-      default:
-            break;
-      }
-#endif
    }
 }
 
-#if GFX_VER >= 8
 void
 genX(emit_sample_pattern)(struct anv_batch *batch,
                           const struct vk_sample_locations_state *sl)
@@ -694,7 +662,7 @@ genX(emit_sample_pattern)(struct anv_batch *batch,
        * lit sample and that it's the same for all samples in a pixel; they
        * have no requirement that it be the one closest to center.
        */
-      for (uint32_t i = 1; i <= (GFX_VER >= 9 ? 16 : 8); i *= 2) {
+      for (uint32_t i = 1; i <= 16; i *= 2) {
          switch (i) {
          case VK_SAMPLE_COUNT_1_BIT:
             if (sl && sl->per_pixel == i) {
@@ -724,7 +692,6 @@ genX(emit_sample_pattern)(struct anv_batch *batch,
                INTEL_SAMPLE_POS_8X(sp._8xSample);
             }
             break;
-#if GFX_VER >= 9
          case VK_SAMPLE_COUNT_16_BIT:
             if (sl && sl->per_pixel == i) {
                INTEL_SAMPLE_POS_16X_ARRAY(sp._16xSample, sl->locations);
@@ -732,14 +699,12 @@ genX(emit_sample_pattern)(struct anv_batch *batch,
                INTEL_SAMPLE_POS_16X(sp._16xSample);
             }
             break;
-#endif
          default:
             unreachable("Invalid sample count");
          }
       }
    }
 }
-#endif
 
 #if GFX_VER >= 11
 void
@@ -841,13 +806,11 @@ static const uint32_t vk_to_intel_shadow_compare_op[] = {
    [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROP_NEVER,
 };
 
-#if GFX_VER >= 9
 static const uint32_t vk_to_intel_sampler_reduction_mode[] = {
    [VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE] = STD_FILTER,
    [VK_SAMPLER_REDUCTION_MODE_MIN]              = MINIMUM,
    [VK_SAMPLER_REDUCTION_MODE_MAX]              = MAXIMUM,
 };
-#endif
 
 VkResult genX(CreateSampler)(
     VkDevice                                    _device,
@@ -880,10 +843,8 @@ VkResult genX(CreateSampler)(
       border_color_offset = sampler->custom_border_color.offset;
    }
 
-#if GFX_VER >= 9
    unsigned sampler_reduction_mode = STD_FILTER;
    bool enable_sampler_reduction = false;
-#endif
 
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
@@ -905,7 +866,6 @@ VkResult genX(CreateSampler)(
          sampler->conversion = conversion;
          break;
       }
-#if GFX_VER >= 9
       case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
          VkSamplerReductionModeCreateInfo *sampler_reduction =
             (VkSamplerReductionModeCreateInfo *) ext;
@@ -914,7 +874,6 @@ VkResult genX(CreateSampler)(
          enable_sampler_reduction = true;
          break;
       }
-#endif
       case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
          VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color =
             (VkSamplerCustomBorderColorCreateInfoEXT *) ext;
@@ -1001,9 +960,6 @@ VkResult genX(CreateSampler)(
 
          .LODPreClampMode = CLAMP_MODE_OGL,
 
-#if GFX_VER == 8
-         .BaseMipLevel = 0.0,
-#endif
          .MipModeFilter = mip_filter_mode,
          .MagModeFilter = vk_to_intel_tex_filter(mag_filter, pCreateInfo->anisotropyEnable),
          .MinModeFilter = vk_to_intel_tex_filter(min_filter, pCreateInfo->anisotropyEnable),
@@ -1037,10 +993,8 @@ VkResult genX(CreateSampler)(
          .TCYAddressControlMode = vk_to_intel_tex_address[pCreateInfo->addressModeV],
          .TCZAddressControlMode = vk_to_intel_tex_address[pCreateInfo->addressModeW],
 
-#if GFX_VER >= 9
          .ReductionType = sampler_reduction_mode,
          .ReductionTypeEnable = enable_sampler_reduction,
-#endif
       };
 
       GENX(SAMPLER_STATE_pack)(NULL, sampler->state[p], &sampler_state);

@@ -2483,7 +2483,7 @@ anv_image_fill_surface_state(struct anv_device *device,
     * value (SKL+), define the clear value to the optimal constant.
     */
    union isl_color_value default_clear_color = { .u32 = { 0, } };
-   if (device->info->ver >= 9 && aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
+   if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
       default_clear_color.f32[0] = ANV_HZ_FC_VAL;
    if (!clear_color)
       clear_color = &default_clear_color;
@@ -2772,8 +2772,7 @@ anv_CreateImageView(VkDevice _device,
                                          general_aux_usage, NULL,
                                          ANV_IMAGE_VIEW_STATE_STORAGE_LOWERED,
                                          &iview->planes[vplane].lowered_storage_surface_state,
-                                         device->info->ver >= 9 ? NULL :
-                                         &iview->planes[vplane].lowered_storage_image_param);
+                                         NULL);
          } else {
             /* In this case, we support the format but, because there's no
              * SPIR-V format specifier corresponding to it, we only support it

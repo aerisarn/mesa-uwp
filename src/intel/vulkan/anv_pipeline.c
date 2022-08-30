@@ -69,13 +69,13 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .descriptor_indexing = true,
          .device_group = true,
          .draw_parameters = true,
-         .float16 = pdevice->info.ver >= 8,
+         .float16 = true,
          .float32_atomic_add = pdevice->info.has_lsc,
-         .float32_atomic_min_max = pdevice->info.ver >= 9,
-         .float64 = pdevice->info.ver >= 8,
+         .float32_atomic_min_max = true,
+         .float64 = true,
          .float64_atomic_min_max = pdevice->info.has_lsc,
-         .fragment_shader_sample_interlock = pdevice->info.ver >= 9,
-         .fragment_shader_pixel_interlock = pdevice->info.ver >= 9,
+         .fragment_shader_sample_interlock = true,
+         .fragment_shader_pixel_interlock = true,
          .geometry_streams = true,
          /* When using Vulkan 1.3 or KHR_format_feature_flags2 is enabled, the
           * read/write without format is per format, so just report true. It's
@@ -83,25 +83,25 @@ anv_shader_stage_to_nir(struct anv_device *device,
           */
          .image_read_without_format = instance->vk.app_info.api_version >= VK_API_VERSION_1_3 || device->vk.enabled_extensions.KHR_format_feature_flags2,
          .image_write_without_format = true,
-         .int8 = pdevice->info.ver >= 8,
-         .int16 = pdevice->info.ver >= 8,
-         .int64 = pdevice->info.ver >= 8,
-         .int64_atomics = pdevice->info.ver >= 9 && pdevice->use_softpin,
-         .integer_functions2 = pdevice->info.ver >= 8,
+         .int8 = true,
+         .int16 = true,
+         .int64 = true,
+         .int64_atomics = pdevice->use_softpin,
+         .integer_functions2 = true,
          .mesh_shading_nv = pdevice->vk.supported_extensions.NV_mesh_shader,
          .min_lod = true,
          .multiview = true,
          .physical_storage_buffer_address = pdevice->has_a64_buffer_access,
-         .post_depth_coverage = pdevice->info.ver >= 9,
+         .post_depth_coverage = true,
          .runtime_descriptor_array = true,
-         .float_controls = pdevice->info.ver >= 8,
+         .float_controls = true,
          .ray_query = pdevice->info.has_ray_tracing,
          .ray_tracing = pdevice->info.has_ray_tracing,
          .shader_clock = true,
          .shader_viewport_index_layer = true,
-         .stencil_export = pdevice->info.ver >= 9,
-         .storage_8bit = pdevice->info.ver >= 8,
-         .storage_16bit = pdevice->info.ver >= 8,
+         .stencil_export = true,
+         .storage_8bit = true,
+         .storage_16bit = true,
          .subgroup_arithmetic = true,
          .subgroup_basic = true,
          .subgroup_ballot = true,
@@ -111,7 +111,7 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .subgroup_shuffle = true,
          .subgroup_vote = true,
          .tessellation = true,
-         .transform_feedback = pdevice->info.ver >= 8,
+         .transform_feedback = true,
          .variable_pointers = true,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
@@ -290,10 +290,8 @@ populate_sampler_prog_key(const struct intel_device_info *devinfo,
     * so we can just use it unconditionally.  This may not be quite as
     * efficient but it saves us from recompiling.
     */
-   if (devinfo->ver >= 9)
-      key->msaa_16 = ~0;
+   key->msaa_16 = ~0;
 
-   /* XXX: Handle texture swizzle on HSW- */
    for (int i = 0; i < BRW_MAX_SAMPLERS; i++) {
       /* Assume color sampler, no swizzling. (Works for BDW+) */
       key->swizzles[i] = SWIZZLE_XYZW;
@@ -320,10 +318,6 @@ populate_vs_prog_key(const struct anv_device *device,
    memset(key, 0, sizeof(*key));
 
    populate_base_prog_key(device, robust_buffer_acccess, &key->base);
-
-   /* XXX: Handle vertex input work-arounds */
-
-   /* XXX: Handle sampler_prog_key */
 }
 
 static void
@@ -912,10 +906,6 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
     */
    tcs_stage->key.tcs._tes_primitive_mode =
       tes_stage->nir->info.tess._primitive_mode;
-   tcs_stage->key.tcs.quads_workaround =
-      compiler->devinfo->ver < 9 &&
-      tes_stage->nir->info.tess._primitive_mode == TESS_PRIMITIVE_QUADS &&
-      tes_stage->nir->info.tess.spacing == TESS_SPACING_EQUAL;
 }
 
 static void

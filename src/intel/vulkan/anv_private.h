@@ -1589,14 +1589,8 @@ anv_batch_emit_reloc(struct anv_batch *batch,
 static inline void
 write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
 {
-   unsigned reloc_size = 0;
-   if (device->info->ver >= 8) {
-      reloc_size = sizeof(uint64_t);
-      *(uint64_t *)p = intel_canonical_address(v);
-   } else {
-      reloc_size = sizeof(uint32_t);
-      *(uint32_t *)p = v;
-   }
+   unsigned reloc_size = sizeof(uint64_t);
+   *(uint64_t *)p = intel_canonical_address(v);
 
    if (flush && device->physical->memory.need_clflush)
       intel_flush_range(p, reloc_size);
