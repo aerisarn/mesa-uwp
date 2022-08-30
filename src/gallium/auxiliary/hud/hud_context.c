@@ -37,6 +37,20 @@
 #include <signal.h>
 #include <stdio.h>
 
+#include "util/detect_os.h"
+
+#if DETECT_OS_WINDOWS
+#include <io.h>
+
+/**
+ * Access flags W_OK are defined by mingw, but not defined by MSVC, we defined it according to
+ * https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/access-waccess
+ */
+#ifndef W_OK
+#define W_OK 02
+#endif
+#endif /* DETECT_OS_WINDOWS */
+
 #include "hud/hud_context.h"
 #include "hud/hud_private.h"
 
@@ -1011,14 +1025,7 @@ static void strcat_without_spaces(char *dst, const char *src)
 }
 
 
-#ifdef PIPE_OS_WINDOWS
-#define W_OK 0
-static int
-access(const char *pathname, int mode)
-{
-   /* no-op */
-   return 0;
-}
+#if DETECT_OS_WINDOWS
 
 #define PATH_SEP "\\"
 
