@@ -227,6 +227,12 @@ d3d12_wgl_create_framebuffer(struct pipe_screen *screen,
        (pfi->pfd.dwFlags & PFD_SUPPORT_GDI))
       return NULL;
 
+   if (pfi->stvis.color_format != PIPE_FORMAT_B8G8R8A8_UNORM &&
+       pfi->stvis.color_format != PIPE_FORMAT_R8G8B8A8_UNORM &&
+       pfi->stvis.color_format != PIPE_FORMAT_R10G10B10A2_UNORM &&
+       pfi->stvis.color_format != PIPE_FORMAT_R16G16B16A16_FLOAT)
+      return NULL;
+
    struct d3d12_wgl_framebuffer *fb = CALLOC_STRUCT(d3d12_wgl_framebuffer);
    if (!fb)
       return NULL;

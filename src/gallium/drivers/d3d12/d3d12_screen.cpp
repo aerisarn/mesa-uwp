@@ -653,17 +653,6 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
       } else
          fmt_info_sv = fmt_info;
 
-#ifdef _WIN32
-      if (bind & PIPE_BIND_DISPLAY_TARGET &&
-         (!(fmt_info.Support1 & D3D12_FORMAT_SUPPORT1_DISPLAY) ||
-            // Disable formats that don't support flip model
-            dxgi_format == DXGI_FORMAT_B8G8R8X8_UNORM ||
-            dxgi_format == DXGI_FORMAT_B5G5R5A1_UNORM ||
-            dxgi_format == DXGI_FORMAT_B5G6R5_UNORM ||
-            dxgi_format == DXGI_FORMAT_B4G4R4A4_UNORM))
-         return false;
-#endif
-
       if (bind & PIPE_BIND_DEPTH_STENCIL &&
           !(fmt_info.Support1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL))
             return false;
