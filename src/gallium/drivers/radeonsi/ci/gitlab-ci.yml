@@ -17,6 +17,7 @@ radeonsi-raven-skqp:amd64:
   extends:
     - .lava-test:amd64
     - .radeonsi-raven-test:amd64
+    - .radeonsi+radv-rules # SKQP VK needs to be triggered for any Vulkan changes
     - .skqp-test
   variables:
     # Possible skqp backends: gl, gles, unitTest and vk
