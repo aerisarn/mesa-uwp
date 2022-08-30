@@ -4249,6 +4249,23 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    struct pvr_bo *pvr_bo;
    VkResult result;
 
+#if !defined(NDEBUG)
+   struct PVRX(TA_STATE_HEADER) emit_mask = *header;
+   uint32_t packed_emit_mask;
+
+   static_assert(pvr_cmd_length(TA_STATE_HEADER) == 1,
+                 "EMIT_MASK_IS_CLEAR assumes 1 dword sized header.");
+
+#   define EMIT_MASK_GET(field) (emit_mask.field)
+#   define EMIT_MASK_SET(field, value) (emit_mask.field = (value))
+#   define EMIT_MASK_IS_CLEAR                                        \
+      (pvr_cmd_pack(TA_STATE_HEADER)(&packed_emit_mask, &emit_mask), \
+       packed_emit_mask == 0)
+#else
+#   define EMIT_MASK_GET(field)
+#   define EMIT_MASK_SET(field, value)
+#endif
+
    header->view_port_count =
       (ppp_state->viewport_count == 0) ? 0U : (ppp_state->viewport_count - 1);
    header->pres_ispctl_fa = header->pres_ispctl;
@@ -4261,7 +4278,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    pvr_csb_write_struct(buffer_ptr, TA_STATE_HEADER, header);
 
    static_assert(pvr_cmd_length(TA_STATE_HEADER) == 1,
-                 "Expected 1 dword header.");
+                 "Following header check assumes 1 dword sized header.");
    /* If the header is empty we exit early and prevent a bo alloc of 0 size. */
    if (ppp_state_words[0] == 0)
       return VK_SUCCESS;
@@ -4274,15 +4291,24 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
        * ISPB format.
        */
       pvr_csb_write_value(buffer_ptr, TA_STATE_ISPA, ppp_state->isp.front_a);
+      EMIT_MASK_SET(pres_ispctl_fa, false);
 
-      if (header->pres_ispctl_fb)
+      if (header->pres_ispctl_fb) {
          pvr_csb_write_value(buffer_ptr, TA_STATE_ISPB, ppp_state->isp.front_b);
+         EMIT_MASK_SET(pres_ispctl_fb, false);
+      }
 
-      if (header->pres_ispctl_ba)
+      if (header->pres_ispctl_ba) {
          pvr_csb_write_value(buffer_ptr, TA_STATE_ISPA, ppp_state->isp.back_a);
+         EMIT_MASK_SET(pres_ispctl_ba, false);
+      }
 
-      if (header->pres_ispctl_bb)
+      if (header->pres_ispctl_bb) {
          pvr_csb_write_value(buffer_ptr, TA_STATE_ISPB, ppp_state->isp.back_b);
+         EMIT_MASK_SET(pres_ispctl_bb, false);
+      }
+
+      EMIT_MASK_SET(pres_ispctl, false);
    }
 
    if (header->pres_ispctl_dbsc) {
@@ -4295,6 +4321,8 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
          ispdbsc.scindex = ppp_state->depthbias_scissor_indices.scissor_index;
       }
       buffer_ptr += pvr_cmd_length(TA_STATE_ISPDBSC);
+
+      EMIT_MASK_SET(pres_ispctl_dbsc, false);
    }
 
    if (header->pres_pds_state_ptr0) {
@@ -4312,12 +4340,15 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_PDS_SIZEINFO2,
                           ppp_state->pds.size_info2);
+
+      EMIT_MASK_SET(pres_pds_state_ptr0, false);
    }
 
    if (header->pres_pds_state_ptr1) {
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_PDS_VARYINGBASE,
                           ppp_state->pds.varying_base);
+      EMIT_MASK_SET(pres_pds_state_ptr1, false);
    }
 
    /* We don't use pds_state_ptr2 (texture state programs) control word, but
@@ -4332,6 +4363,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_PDS_UNIFORMDATABASE,
                           ppp_state->pds.uniform_state_data_base);
+      EMIT_MASK_SET(pres_pds_state_ptr3, false);
    }
 
    if (header->pres_region_clip) {
@@ -4341,10 +4373,13 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       pvr_csb_write_value(buffer_ptr,
                           TA_REGION_CLIP1,
                           ppp_state->region_clipping.word1);
+
+      EMIT_MASK_SET(pres_region_clip, false);
    }
 
    if (header->pres_viewport) {
       const uint32_t viewports = MAX2(1, ppp_state->viewport_count);
+      EMIT_MASK_SET(view_port_count, viewports);
 
       for (uint32_t i = 0; i < viewports; i++) {
          /* These don't have any definitions in the csbgen xml files and none
@@ -4356,7 +4391,11 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
          *buffer_ptr++ = ppp_state->viewports[i].m1;
          *buffer_ptr++ = ppp_state->viewports[i].a2;
          *buffer_ptr++ = ppp_state->viewports[i].m2;
+
+         EMIT_MASK_SET(view_port_count, EMIT_MASK_GET(view_port_count) - 1);
       }
+
+      EMIT_MASK_SET(pres_viewport, false);
    }
 
    if (header->pres_wclamp) {
@@ -4364,40 +4403,58 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
          wclamp.val = fui(0.00001f);
       }
       buffer_ptr += pvr_cmd_length(TA_WCLAMP);
+      EMIT_MASK_SET(pres_wclamp, false);
    }
 
-   if (header->pres_outselects)
+   if (header->pres_outselects) {
       pvr_csb_write_value(buffer_ptr, TA_OUTPUT_SEL, ppp_state->output_selects);
+      EMIT_MASK_SET(pres_outselects, false);
+   }
 
    if (header->pres_varying_word0) {
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_VARYING0,
                           ppp_state->varying_word[0]);
+      EMIT_MASK_SET(pres_varying_word0, false);
    }
 
    if (header->pres_varying_word1) {
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_VARYING1,
                           ppp_state->varying_word[1]);
+      EMIT_MASK_SET(pres_varying_word1, false);
    }
 
    /* We only emit this on the first draw of a render job to prevent us from
     * inheriting a non-zero value set elsewhere.
     */
-   if (header->pres_varying_word2)
+   if (header->pres_varying_word2) {
       pvr_csb_write_value(buffer_ptr, TA_STATE_VARYING2, 0);
+      EMIT_MASK_SET(pres_varying_word2, false);
+   }
 
    if (header->pres_ppp_ctrl) {
       pvr_csb_write_value(buffer_ptr,
                           TA_STATE_PPP_CTRL,
                           ppp_state->ppp_control);
+      EMIT_MASK_SET(pres_ppp_ctrl, false);
    }
 
    /* We only emit this on the first draw of a render job to prevent us from
     * inheriting a non-zero value set elsewhere.
     */
-   if (header->pres_stream_out_size)
+   if (header->pres_stream_out_size) {
       pvr_csb_write_value(buffer_ptr, TA_STATE_STREAM_OUT0, 0);
+      EMIT_MASK_SET(pres_stream_out_size, false);
+   }
+
+   assert(EMIT_MASK_IS_CLEAR);
+
+#undef EMIT_MASK_GET
+#undef EMIT_MASK_SET
+#if !defined(NDEBUG)
+#   undef EMIT_MASK_IS_CLEAR
+#endif
 
    ppp_state_words_count = buffer_ptr - ppp_state_words;
    assert(ppp_state_words_count <= PVR_MAX_PPP_STATE_DWORDS);
