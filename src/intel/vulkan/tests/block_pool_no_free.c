@@ -46,7 +46,8 @@ static void *alloc_blocks(void *_job)
    int32_t block, *data;
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
-      block = anv_block_pool_alloc(job->pool, block_size, NULL);
+      UNUSED uint32_t padding;
+      block = anv_block_pool_alloc(job->pool, block_size, &padding);
       data = anv_block_pool_map(job->pool, block, block_size);
       *data = block;
       ASSERT(block >= 0);
@@ -99,9 +100,7 @@ static void validate_monotonic(int32_t **blocks)
 
 static void run_test()
 {
-   struct anv_physical_device physical_device = {
-      .use_relocations = true,
-   };
+   struct anv_physical_device physical_device = {};
    struct anv_device device = {};
    struct anv_block_pool pool;
 
