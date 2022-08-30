@@ -272,6 +272,9 @@ void
 spirv_builder_emit_demote(struct spirv_builder *b);
 
 SpvId
+spirv_is_helper_invocation(struct spirv_builder *b);
+
+SpvId
 spirv_builder_emit_vote(struct spirv_builder *b, SpvOp op, SpvId src);
 
 SpvId

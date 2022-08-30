@@ -766,6 +766,20 @@ spirv_builder_emit_demote(struct spirv_builder *b)
 }
 
 SpvId
+spirv_is_helper_invocation(struct spirv_builder *b)
+{
+   SpvId result = spirv_builder_new_id(b);
+   SpvId result_type = spirv_builder_type_bool(b);
+
+   int words = 3;
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, words);
+   spirv_buffer_emit_word(&b->instructions, SpvOpIsHelperInvocationEXT | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   return result;
+}
+
+SpvId
 spirv_builder_emit_vote(struct spirv_builder *b, SpvOp op, SpvId src)
 {
    return spirv_builder_emit_binop(b, op, spirv_builder_type_bool(b),
