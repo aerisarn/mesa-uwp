@@ -72,6 +72,7 @@ st_convert_sampler(const struct st_context *st,
 
    if (texobj->_IsIntegerFormat && st->ctx->Const.ForceIntegerTexNearest) {
       sampler->min_img_filter = PIPE_TEX_FILTER_NEAREST;
+      sampler->min_mip_filter = PIPE_TEX_FILTER_NEAREST;
       sampler->mag_img_filter = PIPE_TEX_FILTER_NEAREST;
    }
 
