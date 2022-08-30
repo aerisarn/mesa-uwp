@@ -596,7 +596,6 @@ struct zink_shader {
    uint32_t ssbos_used; // bitfield of which ssbo indices are used
    bool bindless;
    bool can_inline;
-   bool has_cubes;
    struct spirv_shader *spirv;
 
    simple_mtx_t lock;
@@ -806,6 +805,8 @@ struct zink_compute_program {
    struct zink_program base;
 
    bool use_local_size;
+
+   nir_shader *nir;
 
    struct zink_shader_module *curr;
 

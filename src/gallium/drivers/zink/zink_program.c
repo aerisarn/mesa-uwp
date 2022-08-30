@@ -530,6 +530,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
 void
 zink_update_compute_program(struct zink_context *ctx)
 {
+   util_queue_fence_wait(&ctx->curr_compute->base.cache_fence);
    update_cs_shader_module(ctx, ctx->curr_compute);
 }
 
@@ -740,8 +741,29 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    struct zink_compute_program *comp = data;
    struct zink_screen *screen = gdata;
 
+   comp->shader = zink_shader_create(screen, comp->nir, NULL);
+   comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
+   assert(comp->module);
+   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->shader->nir, NULL);
+   assert(comp->module->shader);
+   util_dynarray_init(&comp->shader_cache[0], NULL);
+   util_dynarray_init(&comp->shader_cache[1], NULL);
+
+   struct blob blob = {0};
+   blob_init(&blob);
+   nir_serialize(&blob, comp->shader->nir, true);
+
+   struct mesa_sha1 sha1_ctx;
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, blob.data, blob.size);
+   _mesa_sha1_final(&sha1_ctx, comp->base.sha1);
+   blob_finish(&blob);
+
+   zink_descriptor_program_init(comp->base.ctx, &comp->base);
+
    zink_screen_get_pipeline_cache(screen, &comp->base, true);
-   comp->base_pipeline = zink_create_compute_pipeline(screen, comp, NULL);
+   if (comp->base.can_precompile)
+      comp->base_pipeline = zink_create_compute_pipeline(screen, comp, NULL);
    if (comp->base_pipeline)
       zink_screen_update_pipeline_cache(screen, &comp->base, true);
 }
@@ -752,49 +774,19 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_compute_program *comp = create_program(ctx, true);
    if (!comp)
-      goto fail;
-
-   comp->shader = zink_shader_create(screen, nir, NULL);
-   comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
-   assert(comp->module);
-   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->shader->nir, NULL);
-   assert(comp->module->shader);
-   util_dynarray_init(&comp->shader_cache[0], NULL);
-   util_dynarray_init(&comp->shader_cache[1], NULL);
+      return NULL;
+   comp->nir = nir;
 
    comp->use_local_size = !(nir->info.workgroup_size[0] ||
                             nir->info.workgroup_size[1] ||
                             nir->info.workgroup_size[2]);
-
+   comp->base.can_precompile = !comp->use_local_size && (screen->info.have_EXT_non_seamless_cube_map || !zink_shader_has_cubes(nir));
    _mesa_hash_table_init(&comp->pipelines, comp, NULL, comp->use_local_size ?
                                                        equals_compute_pipeline_state_local_size :
                                                        equals_compute_pipeline_state);
-
-   struct blob blob = {0};
-   blob_init(&blob);
-   nir_serialize(&blob, nir, true);
-
-   struct mesa_sha1 sha1_ctx;
-   _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, blob.data, blob.size);
-   _mesa_sha1_final(&sha1_ctx, comp->base.sha1);
-   blob_finish(&blob);
-
-   if (!zink_descriptor_program_init(ctx, &comp->base))
-      goto fail;
-
-   if (comp->use_local_size || (!screen->info.have_EXT_non_seamless_cube_map && comp->shader->has_cubes)) {
-      zink_screen_get_pipeline_cache(screen, &comp->base, false);
-   } else {
-      comp->base.can_precompile = true;
-      util_queue_add_job(&screen->cache_get_thread, comp, &comp->base.cache_fence, precompile_compute_job, NULL, 0);
-   }
+   util_queue_add_job(&screen->cache_get_thread, comp, &comp->base.cache_fence,
+                      precompile_compute_job, NULL, 0);
    return comp;
-
-fail:
-   if (comp)
-      zink_destroy_compute_program(ctx, comp);
-   return NULL;
 }
 
 uint32_t
@@ -988,6 +980,12 @@ zink_destroy_compute_program(struct zink_context *ctx,
    ralloc_free(comp);
 }
 
+ALWAYS_INLINE static bool
+compute_can_shortcut(const struct zink_compute_program *comp)
+{
+   return !comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless;
+}
+
 VkPipeline
 zink_get_compute_pipeline(struct zink_screen *screen,
                       struct zink_compute_program *comp,
@@ -1007,21 +1005,22 @@ zink_get_compute_pipeline(struct zink_screen *screen,
       state->dirty = false;
       state->final_hash ^= state->hash;
    }
-   if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless && comp->base_pipeline) {
+
+   util_queue_fence_wait(&comp->base.cache_fence);
+   if (comp->base_pipeline && compute_can_shortcut(comp)) {
       state->pipeline = comp->base_pipeline;
       return state->pipeline;
    }
    entry = _mesa_hash_table_search_pre_hashed(&comp->pipelines, state->final_hash, state);
 
    if (!entry) {
-      util_queue_fence_wait(&comp->base.cache_fence);
       VkPipeline pipeline = zink_create_compute_pipeline(screen, comp, state);
 
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
       zink_screen_update_pipeline_cache(screen, &comp->base, false);
-      if (!comp->use_local_size && !comp->curr->num_uniforms && !comp->curr->has_nonseamless) {
+      if (compute_can_shortcut(comp)) {
          /* don't add base pipeline to cache */
          state->pipeline = comp->base_pipeline = pipeline;
          return state->pipeline;
@@ -1234,7 +1233,7 @@ zink_bind_cs_state(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_compute_program *comp = cso;
-   if (comp && comp->shader->nir->info.num_inlinable_uniforms)
+   if (comp && comp->nir->info.num_inlinable_uniforms)
       ctx->shader_has_inlinable_uniforms_mask |= 1 << MESA_SHADER_COMPUTE;
    else
       ctx->shader_has_inlinable_uniforms_mask &= ~(1 << MESA_SHADER_COMPUTE);
@@ -1249,7 +1248,8 @@ zink_bind_cs_state(struct pipe_context *pctx,
    ctx->curr_compute = comp;
    if (comp && comp != ctx->curr_compute) {
       ctx->compute_pipeline_state.module_hash = ctx->curr_compute->curr->hash;
-      ctx->compute_pipeline_state.module = ctx->curr_compute->curr->shader;
+      if (util_queue_fence_is_signalled(&comp->base.cache_fence))
+         ctx->compute_pipeline_state.module = ctx->curr_compute->curr->shader;
       ctx->compute_pipeline_state.final_hash ^= ctx->compute_pipeline_state.module_hash;
       if (ctx->compute_pipeline_state.key.base.nonseamless_cube_mask)
          ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_COMPUTE);

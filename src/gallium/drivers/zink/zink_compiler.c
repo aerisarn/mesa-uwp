@@ -3120,7 +3120,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          } else {
             assert(var->data.mode == nir_var_uniform ||
                    var->data.mode == nir_var_image);
-            ret->has_cubes |= glsl_type_is_sampler(type) && glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_CUBE;
             if (var->data.bindless) {
                ret->bindless = true;
                handle_bindless_var(nir, var, type, &bindless);
