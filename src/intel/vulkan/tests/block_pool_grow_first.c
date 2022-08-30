@@ -26,9 +26,7 @@
 
 int main(void)
 {
-   struct anv_physical_device physical_device = {
-      .use_softpin = true,
-   };
+   struct anv_physical_device physical_device = {};
    struct anv_device device = {};
    struct anv_block_pool pool;
 

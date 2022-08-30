@@ -565,28 +565,6 @@ anv_bo_unwrap(struct anv_bo *bo)
    return bo;
 }
 
-static inline bool
-anv_bo_is_pinned(struct anv_bo *bo)
-{
-#if defined(GFX_VERx10) && GFX_VERx10 >= 90
-   /* Sky Lake and later always uses softpin */
-   assert(bo->flags & EXEC_OBJECT_PINNED);
-   return true;
-#elif defined(GFX_VERx10) && GFX_VERx10 < 80
-   /* Haswell and earlier never use softpin */
-   assert(!(bo->flags & EXEC_OBJECT_PINNED));
-   assert(!bo->has_fixed_address);
-   return false;
-#else
-   /* If we don't have a GFX_VERx10 #define, we need to look at the BO.  Also,
-    * for GFX version 8, we need to look at the BO because Broadwell softpins
-    * but Cherryview doesn't.
-    */
-   assert((bo->flags & EXEC_OBJECT_PINNED) || !bo->has_fixed_address);
-   return (bo->flags & EXEC_OBJECT_PINNED) != 0;
-#endif
-}
-
 struct anv_address {
    struct anv_bo *bo;
    int64_t offset;
@@ -613,11 +591,8 @@ anv_address_is_null(struct anv_address addr)
 static inline uint64_t
 anv_address_physical(struct anv_address addr)
 {
-   if (addr.bo && anv_bo_is_pinned(addr.bo)) {
-      return intel_canonical_address(addr.bo->offset + addr.offset);
-   } else {
-      return intel_canonical_address(addr.offset);
-   }
+   uint64_t address = (addr.bo ? addr.bo->offset : 0ull) + addr.offset;
+   return intel_canonical_address(address);
 }
 
 static inline struct anv_address
@@ -962,7 +937,6 @@ struct anv_physical_device {
     bool                                        has_userptr_probe;
     uint64_t                                    gtt_size;
 
-    bool                                        use_softpin;
     bool                                        always_use_bindless;
     bool                                        use_call_secondary;
 
@@ -1223,12 +1197,6 @@ struct anv_device {
 
     struct intel_ds_device                       ds;
 };
-
-#if defined(GFX_VERx10) && GFX_VERx10 >= 90
-#define ANV_ALWAYS_SOFTPIN true
-#else
-#define ANV_ALWAYS_SOFTPIN false
-#endif
 
 static inline struct anv_state
 anv_binding_table_pool_alloc(struct anv_device *device)
@@ -1504,17 +1472,9 @@ static inline uint64_t
 anv_batch_emit_reloc(struct anv_batch *batch,
                      void *location, struct anv_bo *bo, uint32_t delta)
 {
-   uint64_t address_u64 = 0;
-   VkResult result;
+   uint64_t address_u64 = bo->offset + delta;
+   VkResult result = anv_reloc_list_add_bo(batch->relocs, batch->alloc, bo);
 
-   if (ANV_ALWAYS_SOFTPIN) {
-      address_u64 = bo->offset + delta;
-      result = anv_reloc_list_add_bo(batch->relocs, batch->alloc, bo);
-   } else {
-      result = anv_reloc_list_add(batch->relocs, batch->alloc,
-                                  location - batch->start, bo, delta,
-                                  &address_u64);
-   }
    if (unlikely(result != VK_SUCCESS)) {
       anv_batch_set_error(batch, result);
       return 0;
@@ -1540,7 +1500,6 @@ _anv_combine_address(struct anv_batch *batch, void *location,
    if (address.bo == NULL) {
       return address.offset + delta;
    } else if (batch == NULL) {
-      assert(anv_bo_is_pinned(address.bo));
       return anv_address_physical(anv_address_add(address, delta));
    } else {
       assert(batch->start <= location && location < batch->end);
@@ -2505,7 +2464,7 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
       return false;
    }
 
-   assert(vb_address.bo && anv_bo_is_pinned(vb_address.bo));
+   assert(vb_address.bo);
    bound->start = intel_48b_address(anv_address_physical(vb_address));
    bound->end = bound->start + vb_size;
    assert(bound->end > bound->start); /* No overflow */

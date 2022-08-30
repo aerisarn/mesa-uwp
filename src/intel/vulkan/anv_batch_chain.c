@@ -184,7 +184,6 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list,
                       struct anv_bo *target_bo)
 {
    assert(!target_bo->is_wrapper);
-   assert(anv_bo_is_pinned(target_bo));
 
    uint32_t idx = target_bo->gem_handle;
    VkResult result = anv_reloc_list_grow_deps(list, alloc,
@@ -203,9 +202,6 @@ anv_reloc_list_add(struct anv_reloc_list *list,
                    uint32_t offset, struct anv_bo *target_bo, uint32_t delta,
                    uint64_t *address_u64_out)
 {
-   struct drm_i915_gem_relocation_entry *entry;
-   int index;
-
    struct anv_bo *unwrapped_target_bo = anv_bo_unwrap(target_bo);
    uint64_t target_bo_offset = READ_ONCE(unwrapped_target_bo->offset);
    if (address_u64_out)
@@ -214,26 +210,7 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    assert(unwrapped_target_bo->gem_handle > 0);
    assert(unwrapped_target_bo->refcount > 0);
 
-   if (anv_bo_is_pinned(unwrapped_target_bo))
-      return anv_reloc_list_add_bo(list, alloc, unwrapped_target_bo);
-
-   VkResult result = anv_reloc_list_grow(list, alloc, 1);
-   if (result != VK_SUCCESS)
-      return result;
-
-   /* XXX: Can we use I915_EXEC_HANDLE_LUT? */
-   index = list->num_relocs++;
-   list->reloc_bos[index] = target_bo;
-   entry = &list->relocs[index];
-   entry->target_handle = -1; /* See also anv_cmd_buffer_process_relocs() */
-   entry->delta = delta;
-   entry->offset = offset;
-   entry->presumed_offset = target_bo_offset;
-   entry->read_domains = 0;
-   entry->write_domain = 0;
-   VG(VALGRIND_CHECK_MEM_IS_DEFINED(entry, sizeof(*entry)));
-
-   return VK_SUCCESS;
+   return anv_reloc_list_add_bo(list, alloc, unwrapped_target_bo);
 }
 
 static void
@@ -453,9 +430,6 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    /* Make sure we're looking at a MI_BATCH_BUFFER_START */
    assert(((*bb_start >> 29) & 0x07) == 0);
    assert(((*bb_start >> 23) & 0x3f) == 49);
-
-   assert(anv_bo_is_pinned(prev_bbo->bo));
-   assert(anv_bo_is_pinned(next_bbo->bo));
 
    write_reloc(cmd_buffer->device,
                prev_bbo->bo->map + bb_start_offset + 4,
@@ -1861,13 +1835,6 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    if (ret)
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
 
-   struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
-   for (uint32_t k = 0; k < execbuf.bo_count; k++) {
-      if (anv_bo_is_pinned(execbuf.bos[k]))
-         assert(execbuf.bos[k]->offset == objects[k].offset);
-      execbuf.bos[k]->offset = objects[k].offset;
-   }
-
  error:
    anv_execbuf_finish(&execbuf);
 
@@ -2092,13 +2059,6 @@ anv_queue_exec_locked(struct anv_queue *queue,
                             VK_SYNC_WAIT_COMPLETE, UINT64_MAX);
       if (result != VK_SUCCESS)
          result = vk_queue_set_lost(&queue->vk, "sync wait failed");
-   }
-
-   struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
-   for (uint32_t k = 0; k < execbuf.bo_count; k++) {
-      if (anv_bo_is_pinned(execbuf.bos[k]))
-         assert(execbuf.bos[k]->offset == objects[k].offset);
-      execbuf.bos[k]->offset = objects[k].offset;
    }
 
  error:

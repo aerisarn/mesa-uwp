@@ -82,45 +82,23 @@ blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
                     struct blorp_address address, uint32_t delta)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
-   VkResult result;
 
-   if (ANV_ALWAYS_SOFTPIN) {
-      result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                     &cmd_buffer->vk.pool->alloc,
-                                     address.buffer);
-      if (unlikely(result != VK_SUCCESS))
-         anv_batch_set_error(&cmd_buffer->batch, result);
-      return;
-   }
-
-   uint64_t address_u64 = 0;
-   result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                               &cmd_buffer->vk.pool->alloc,
-                               ss_offset, address.buffer,
-                               address.offset + delta,
-                               &address_u64);
-   if (result != VK_SUCCESS)
+   VkResult result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
+                                           &cmd_buffer->vk.pool->alloc,
+                                           address.buffer);
+   if (unlikely(result != VK_SUCCESS))
       anv_batch_set_error(&cmd_buffer->batch, result);
-
-   void *dest = anv_block_pool_map(
-      &cmd_buffer->device->surface_state_pool.block_pool, ss_offset, 8);
-   write_reloc(cmd_buffer->device, dest, address_u64, false);
 }
 
 static uint64_t
 blorp_get_surface_address(struct blorp_batch *blorp_batch,
                           struct blorp_address address)
 {
-   if (ANV_ALWAYS_SOFTPIN) {
-      struct anv_address anv_addr = {
-         .bo = address.buffer,
-         .offset = address.offset,
-      };
-      return anv_address_physical(anv_addr);
-   } else {
-      /* We'll let blorp_surface_reloc write the address. */
-      return 0;
-   }
+   struct anv_address anv_addr = {
+      .bo = address.buffer,
+      .offset = address.offset,
+   };
+   return anv_address_physical(anv_addr);
 }
 
 #if GFX_VER == 9

@@ -1353,7 +1353,8 @@ anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
 {
    struct anv_physical_device *pdevice = device->physical;
 
-   uint64_t bo_flags = 0;
+   uint64_t bo_flags = EXEC_OBJECT_PINNED;
+
    if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS) &&
        pdevice->supports_48bit_addresses)
       bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
@@ -1369,16 +1370,13 @@ anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
    if (!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_SYNC) && pdevice->has_exec_async)
       bo_flags |= EXEC_OBJECT_ASYNC;
 
-   if (pdevice->use_softpin)
-      bo_flags |= EXEC_OBJECT_PINNED;
-
    return bo_flags;
 }
 
 static void
 anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
 {
-   if (bo->offset != 0 && anv_bo_is_pinned(bo) && !bo->has_fixed_address)
+   if (bo->offset != 0 && !bo->has_fixed_address)
       anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
 
    if (bo->map && !bo->from_host_ptr)
@@ -1394,7 +1392,6 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
                           enum anv_bo_alloc_flags alloc_flags,
                           uint64_t explicit_address)
 {
-   assert(anv_bo_is_pinned(bo));
    assert(explicit_address == intel_48b_address(explicit_address));
 
    uint32_t align = 4096;
@@ -1532,15 +1529,11 @@ anv_device_alloc_bo(struct anv_device *device,
       }
    }
 
-   if (anv_bo_is_pinned(&new_bo)) {
-      VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
-                                                  alloc_flags,
-                                                  explicit_address);
-      if (result != VK_SUCCESS)
-         return result;
-   } else {
-      assert(!new_bo.has_client_visible_address);
-   }
+   VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                               alloc_flags,
+                                               explicit_address);
+   if (result != VK_SUCCESS)
+      return result;
 
    if (new_bo._ccs_size > 0) {
       assert(device->info->has_aux_map);
@@ -1665,16 +1658,12 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      if (anv_bo_is_pinned(&new_bo)) {
-         VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
-                                                     alloc_flags,
-                                                     client_address);
-         if (result != VK_SUCCESS) {
-            pthread_mutex_unlock(&cache->mutex);
-            return result;
-         }
-      } else {
-         assert(!new_bo.has_client_visible_address);
+      VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                                  alloc_flags,
+                                                  client_address);
+      if (result != VK_SUCCESS) {
+         pthread_mutex_unlock(&cache->mutex);
+         return result;
       }
 
       *bo = new_bo;
@@ -1792,17 +1781,13 @@ anv_device_import_bo(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      if (anv_bo_is_pinned(&new_bo)) {
-         assert(new_bo._ccs_size == 0);
-         VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
-                                                     alloc_flags,
-                                                     client_address);
-         if (result != VK_SUCCESS) {
-            pthread_mutex_unlock(&cache->mutex);
-            return result;
-         }
-      } else {
-         assert(!new_bo.has_client_visible_address);
+      assert(new_bo._ccs_size == 0);
+      VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
+                                                  alloc_flags,
+                                                  client_address);
+      if (result != VK_SUCCESS) {
+         pthread_mutex_unlock(&cache->mutex);
+         return result;
       }
 
       *bo = new_bo;

@@ -868,8 +868,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (result != VK_SUCCESS)
       goto fail_base;
 
-   device->use_softpin = true;
-
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
 
@@ -903,13 +901,9 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);
 
    device->use_call_secondary =
-      device->use_softpin &&
       !env_var_as_boolean("ANV_DISABLE_SECONDARY_CMD_BUFFER_CALLS", false);
 
-   /* We first got the A64 messages on broadwell and we can only use them if
-    * we can pass addresses directly into the shader which requires softpin.
-    */
-   device->has_a64_buffer_access = device->use_softpin;
+   device->has_a64_buffer_access = true;
 
    device->has_bindless_images = true;
    device->has_bindless_samplers = true;
@@ -2882,8 +2876,7 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
       return NULL;
 
    struct anv_device *device = (struct anv_device*)driver_ctx;
-   assert(device->physical->supports_48bit_addresses &&
-          device->physical->use_softpin);
+   assert(device->physical->supports_48bit_addresses);
 
    struct anv_state_pool *pool = &device->dynamic_state_pool;
    buf->state = anv_state_pool_alloc(pool, size, size);
@@ -4401,7 +4394,6 @@ VkDeviceAddress anv_GetBufferDeviceAddress(
    ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
    assert(!anv_address_is_null(buffer->address));
-   assert(anv_bo_is_pinned(buffer->address.bo));
 
    return anv_address_physical(buffer->address);
 }
@@ -4419,7 +4411,6 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
 {
    ANV_FROM_HANDLE(anv_device_memory, memory, pInfo->memory);
 
-   assert(anv_bo_is_pinned(memory->bo));
    assert(memory->bo->has_client_visible_address);
 
    return intel_48b_address(memory->bo->offset);
