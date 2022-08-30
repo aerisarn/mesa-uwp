@@ -273,7 +273,7 @@ vn_device_fix_create_info(const struct vn_device *dev,
          }
          break;
       default:
-         unreachable("unexpected external memory handle type");
+         assert(!physical_dev->instance->renderer->info.has_dma_buf_import);
          break;
       }
    }
