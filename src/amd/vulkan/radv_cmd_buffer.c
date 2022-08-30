@@ -304,9 +304,9 @@ radv_emit_clear_data(struct radv_cmd_buffer *cmd_buffer, unsigned engine_sel, ui
 }
 
 static void
-radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
+radv_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
 {
-   list_del(&cmd_buffer->pool_link);
+   struct radv_cmd_buffer *cmd_buffer = container_of(vk_cmd_buffer, struct radv_cmd_buffer, vk);
 
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
@@ -340,38 +340,38 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    vk_object_base_finish(&cmd_buffer->meta_push_descriptors.base);
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
 static VkResult
-radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
-                       VkCommandBufferLevel level, VkCommandBuffer *pCommandBuffer)
+radv_create_cmd_buffer(struct vk_command_pool *pool,
+                       struct vk_command_buffer **cmd_buffer_out)
 {
+   struct radv_device *device = container_of(pool->base.device, struct radv_device, vk);
+
    struct radv_cmd_buffer *cmd_buffer;
    unsigned ring;
-   cmd_buffer = vk_zalloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
+   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result =
-      vk_command_buffer_init(&pool->vk, &cmd_buffer->vk, NULL, level);
+      vk_command_buffer_init(pool, &cmd_buffer->vk, &radv_cmd_buffer_ops, 0);
    if (result != VK_SUCCESS) {
-      vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+      vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
       return result;
    }
 
    cmd_buffer->device = device;
-   cmd_buffer->pool = pool;
 
-   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-   cmd_buffer->qf = vk_queue_to_radv(device->physical_device, pool->vk.queue_family_index);
+   cmd_buffer->qf = vk_queue_to_radv(device->physical_device, pool->queue_family_index);
 
    ring = radv_queue_family_to_ring(device->physical_device, cmd_buffer->qf);
 
    cmd_buffer->cs = device->ws->cs_create(device->ws, ring);
    if (!cmd_buffer->cs) {
-      radv_destroy_cmd_buffer(cmd_buffer);
+      radv_destroy_cmd_buffer(&cmd_buffer->vk);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -382,16 +382,19 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
       vk_object_base_init(&device->vk, &cmd_buffer->descriptors[i].push_set.set.base,
                           VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
-   *pCommandBuffer = radv_cmd_buffer_to_handle(cmd_buffer);
+   *cmd_buffer_out = &cmd_buffer->vk;
 
    list_inithead(&cmd_buffer->upload.list);
 
    return VK_SUCCESS;
 }
 
-static VkResult
-radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
+static void
+radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
+                      UNUSED VkCommandBufferResetFlags flags)
 {
+   struct radv_cmd_buffer *cmd_buffer = container_of(vk_cmd_buffer, struct radv_cmd_buffer, vk);
+
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    cmd_buffer->device->ws->cs_reset(cmd_buffer->cs);
@@ -477,9 +480,13 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    }
 
    cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
-
-   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
+
+const struct vk_command_buffer_ops radv_cmd_buffer_ops = {
+   .create = radv_create_cmd_buffer,
+   .reset = radv_reset_cmd_buffer,
+   .destroy = radv_destroy_cmd_buffer,
+};
 
 static bool
 radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t min_needed)
@@ -4566,7 +4573,7 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
    }
 
    state->subpass_sample_locs =
-      vk_alloc(&cmd_buffer->pool->vk.alloc,
+      vk_alloc(&cmd_buffer->vk.pool->alloc,
                sample_locs->postSubpassSampleLocationsCount * sizeof(state->subpass_sample_locs[0]),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->subpass_sample_locs == NULL) {
@@ -4611,7 +4618,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
    }
 
    state->attachments =
-      vk_alloc(&cmd_buffer->pool->vk.alloc, pass->attachment_count * sizeof(state->attachments[0]),
+      vk_alloc(&cmd_buffer->vk.pool->alloc, pass->attachment_count * sizeof(state->attachments[0]),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->attachments == NULL) {
       return vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -4669,83 +4676,6 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
    }
 
    return VK_SUCCESS;
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_AllocateCommandBuffers(VkDevice _device, const VkCommandBufferAllocateInfo *pAllocateInfo,
-                            VkCommandBuffer *pCommandBuffers)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_cmd_pool, pool, pAllocateInfo->commandPool);
-
-   VkResult result = VK_SUCCESS;
-   uint32_t i;
-
-   for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
-
-      if (!list_is_empty(&pool->free_cmd_buffers)) {
-         struct radv_cmd_buffer *cmd_buffer =
-            list_first_entry(&pool->free_cmd_buffers, struct radv_cmd_buffer, pool_link);
-
-         list_del(&cmd_buffer->pool_link);
-         list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-
-         result = radv_reset_cmd_buffer(cmd_buffer);
-         vk_command_buffer_finish(&cmd_buffer->vk);
-         VkResult init_result =
-            vk_command_buffer_init(&pool->vk, &cmd_buffer->vk, NULL, pAllocateInfo->level);
-         if (init_result != VK_SUCCESS)
-            result = init_result;
-
-         pCommandBuffers[i] = radv_cmd_buffer_to_handle(cmd_buffer);
-      } else {
-         result = radv_create_cmd_buffer(device, pool, pAllocateInfo->level, &pCommandBuffers[i]);
-      }
-      if (result != VK_SUCCESS)
-         break;
-   }
-
-   if (result != VK_SUCCESS) {
-      radv_FreeCommandBuffers(_device, pAllocateInfo->commandPool, i, pCommandBuffers);
-
-      /* From the Vulkan 1.0.66 spec:
-       *
-       * "vkAllocateCommandBuffers can be used to create multiple
-       *  command buffers. If the creation of any of those command
-       *  buffers fails, the implementation must destroy all
-       *  successfully created command buffer objects from this
-       *  command, set all entries of the pCommandBuffers array to
-       *  NULL and return the error."
-       */
-      memset(pCommandBuffers, 0, sizeof(*pCommandBuffers) * pAllocateInfo->commandBufferCount);
-   }
-
-   return result;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-radv_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
-                        const VkCommandBuffer *pCommandBuffers)
-{
-   RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
-
-   for (uint32_t i = 0; i < commandBufferCount; i++) {
-      RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
-
-      if (!cmd_buffer)
-         continue;
-      assert(cmd_buffer->pool == pool);
-
-      list_del(&cmd_buffer->pool_link);
-      list_addtail(&cmd_buffer->pool_link, &pool->free_cmd_buffers);
-   }
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_ResetCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferResetFlags flags)
-{
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   return radv_reset_cmd_buffer(cmd_buffer);
 }
 
 static void
@@ -4854,9 +4784,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       /* If the command buffer has already been resetted with
        * vkResetCommandBuffer, no need to do it again.
        */
-      result = radv_reset_cmd_buffer(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
+      radv_reset_cmd_buffer(&cmd_buffer->vk, 0);
    }
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
@@ -5308,8 +5236,8 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    radv_describe_end_cmd_buffer(cmd_buffer);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.subpass_sample_locs);
 
    VkResult result = cmd_buffer->device->ws->cs_finalize(cmd_buffer->cs);
    if (result != VK_SUCCESS)
@@ -6103,83 +6031,6 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       RADV_CMD_DIRTY_DYNAMIC_ALL;
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateInfo,
-                       const VkAllocationCallbacks *pAllocator, VkCommandPool *pCmdPool)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_cmd_pool *pool;
-
-   pool =
-      vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pool == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   VkResult result = vk_command_pool_init(&device->vk, &pool->vk, pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pool);
-      return result;
-   }
-
-   list_inithead(&pool->cmd_buffers);
-   list_inithead(&pool->free_cmd_buffers);
-
-   *pCmdPool = radv_cmd_pool_to_handle(pool);
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-radv_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
-                        const VkAllocationCallbacks *pAllocator)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
-
-   if (!pool)
-      return;
-
-   list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
-   {
-      radv_destroy_cmd_buffer(cmd_buffer);
-   }
-
-   list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
-   {
-      radv_destroy_cmd_buffer(cmd_buffer);
-   }
-
-   vk_command_pool_finish(&pool->vk);
-   vk_free2(&device->vk.alloc, pAllocator, pool);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_ResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolResetFlags flags)
-{
-   RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
-   VkResult result;
-
-   list_for_each_entry(struct radv_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
-   {
-      result = radv_reset_cmd_buffer(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-radv_TrimCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolTrimFlags flags)
-{
-   RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
-
-   list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
-   {
-      radv_destroy_cmd_buffer(cmd_buffer);
-   }
 }
 
 static void
@@ -8679,8 +8530,8 @@ radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pS
 
    radv_cmd_buffer_end_subpass(cmd_buffer);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.subpass_sample_locs);
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;

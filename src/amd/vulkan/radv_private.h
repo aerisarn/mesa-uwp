@@ -1553,12 +1553,6 @@ struct radv_cmd_state {
    bool uses_perf_counters;
 };
 
-struct radv_cmd_pool {
-   struct vk_command_pool vk;
-   struct list_head cmd_buffers;
-   struct list_head free_cmd_buffers;
-};
-
 struct radv_cmd_buffer_upload {
    uint8_t *map;
    unsigned offset;
@@ -1580,9 +1574,7 @@ struct radv_cmd_buffer {
 
    struct radv_device *device;
 
-   struct radv_cmd_pool *pool;
-   struct list_head pool_link;
-
+   struct util_dynarray cached_vertex_formats;
    VkCommandBufferUsageFlags usage_flags;
    enum radv_cmd_buffer_status status;
    struct radeon_cmdbuf *cs;
@@ -1655,6 +1647,8 @@ struct radv_cmd_buffer {
     */
    enum radv_cmd_flush_bits active_query_flush_bits;
 };
+
+extern const struct vk_command_buffer_ops radv_cmd_buffer_ops;
 
 struct radv_image;
 struct radv_image_view;
@@ -3124,8 +3118,6 @@ VK_DEFINE_HANDLE_CASTS(radv_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTAN
 VK_DEFINE_HANDLE_CASTS(radv_physical_device, vk.base, VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 VK_DEFINE_HANDLE_CASTS(radv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_buffer_view, base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)

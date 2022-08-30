@@ -3425,6 +3425,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       return result;
    }
 
+   device->vk.command_buffer_ops = &radv_cmd_buffer_ops;
+
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
    simple_mtx_init(&device->trace_mtx, mtx_plain);

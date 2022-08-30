@@ -874,7 +874,7 @@ rra_init_acceleration_structure_copy(VkDevice vk_device, uint32_t family_index,
       .queueFamilyIndex = family_index,
    };
 
-   VkResult result = radv_CreateCommandPool(vk_device, &pool_info, NULL, &dst->pool);
+   VkResult result = vk_common_CreateCommandPool(vk_device, &pool_info, NULL, &dst->pool);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -883,7 +883,7 @@ rra_init_acceleration_structure_copy(VkDevice vk_device, uint32_t family_index,
       .commandPool = dst->pool,
       .commandBufferCount = 1,
    };
-   result = radv_AllocateCommandBuffers(vk_device, &cmdbuf_alloc_info, &dst->cmd_buffer);
+   result = vk_common_AllocateCommandBuffers(vk_device, &cmdbuf_alloc_info, &dst->cmd_buffer);
    if (result != VK_SUCCESS)
       goto fail_pool;
 
@@ -941,7 +941,7 @@ fail_memory:
 fail_buffer:
    radv_DestroyBuffer(vk_device, dst->buffer, NULL);
 fail_pool:
-   radv_DestroyCommandPool(vk_device, dst->pool, NULL);
+   vk_common_DestroyCommandPool(vk_device, dst->pool, NULL);
 fail:
    return result;
 }
@@ -959,7 +959,7 @@ rra_copy_acceleration_structures(VkQueue vk_queue, struct rra_accel_struct_copy 
 
    RADV_FROM_HANDLE(radv_cmd_buffer, cmdbuf, dst->cmd_buffer);
 
-   radv_ResetCommandPool(vk_device, dst->pool, 0);
+   vk_common_ResetCommandPool(vk_device, dst->pool, 0);
 
    /*
     * Wait for possible AS build/trace calls on all queues.
@@ -1127,7 +1127,7 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
 copy_fail:
    radv_DestroyBuffer(vk_device, copy.buffer, NULL);
    radv_FreeMemory(vk_device, copy.memory, NULL);
-   radv_DestroyCommandPool(vk_device, copy.pool, NULL);
+   vk_common_DestroyCommandPool(vk_device, copy.pool, NULL);
 fail:
    free(accel_struct_offsets);
    return result;

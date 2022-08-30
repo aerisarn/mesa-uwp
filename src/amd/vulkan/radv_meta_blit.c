@@ -483,7 +483,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                          .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                          .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                       },
-                      &cmd_buffer->pool->vk.alloc, &sampler);
+                      &cmd_buffer->vk.pool->alloc, &sampler);
 
    /* VK_EXT_conditional_rendering says that blit commands should not be
     * affected by conditional rendering.
@@ -607,7 +607,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 
    radv_meta_restore(&saved_state, cmd_buffer);
 
-   radv_DestroySampler(radv_device_to_handle(device), sampler, &cmd_buffer->pool->vk.alloc);
+   radv_DestroySampler(radv_device_to_handle(device), sampler, &cmd_buffer->vk.pool->alloc);
 }
 
 VKAPI_ATTR void VKAPI_CALL
