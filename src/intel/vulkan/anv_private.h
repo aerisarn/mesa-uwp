@@ -494,7 +494,7 @@ struct anv_bo {
    /* Map for internally mapped BOs.
     *
     * If ANV_BO_ALLOC_MAPPED is set in flags, this is the map for the whole
-    * BO. If ANV_BO_WRAPPER is set in flags, map points to the wrapped BO.
+    * BO.
     */
    void *map;
 
@@ -528,15 +528,6 @@ struct anv_bo {
    /** True if this BO may be shared with other processes */
    bool is_external:1;
 
-   /** True if this BO is a wrapper
-    *
-    * When set to true, none of the fields in this BO are meaningful except
-    * for anv_bo::is_wrapper and anv_bo::map which points to the actual BO.
-    * See also anv_bo_unwrap().  Wrapper BOs are not allowed when use_softpin
-    * is set in the physical device.
-    */
-   bool is_wrapper:1;
-
    /** See also ANV_BO_ALLOC_FIXED_ADDRESS */
    bool has_fixed_address:1;
 
@@ -554,14 +545,6 @@ static inline struct anv_bo *
 anv_bo_ref(struct anv_bo *bo)
 {
    p_atomic_inc(&bo->refcount);
-   return bo;
-}
-
-static inline struct anv_bo *
-anv_bo_unwrap(struct anv_bo *bo)
-{
-   while (bo->is_wrapper)
-      bo = bo->map;
    return bo;
 }
 
@@ -645,13 +628,6 @@ struct anv_block_pool {
    const char *name;
 
    struct anv_device *device;
-
-   /* Wrapper BO for use in relocation lists.  This BO is simply a wrapper
-    * around the actual BO so that we grow the pool after the wrapper BO has
-    * been put in a relocation list.  This is only used in the non-softpin
-    * case.
-    */
-   struct anv_bo wrapper_bo;
 
    struct anv_bo *bos[ANV_MAX_BLOCK_POOL_BOS];
    struct anv_bo *bo;

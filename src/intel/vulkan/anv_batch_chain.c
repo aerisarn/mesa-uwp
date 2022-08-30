@@ -183,8 +183,6 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list,
                       const VkAllocationCallbacks *alloc,
                       struct anv_bo *target_bo)
 {
-   assert(!target_bo->is_wrapper);
-
    uint32_t idx = target_bo->gem_handle;
    VkResult result = anv_reloc_list_grow_deps(list, alloc,
                                               (idx / BITSET_WORDBITS) + 1);
@@ -1140,8 +1138,6 @@ anv_execbuf_add_bo(struct anv_device *device,
 {
    struct drm_i915_gem_exec_object2 *obj = NULL;
 
-   bo = anv_bo_unwrap(bo);
-
    if (bo->exec_obj_index < exec->bo_count &&
        exec->bos[bo->exec_obj_index] == bo)
       obj = &exec->objects[bo->exec_obj_index];
@@ -1262,8 +1258,7 @@ anv_cmd_buffer_process_relocs(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_reloc_list *list)
 {
    for (size_t i = 0; i < list->num_relocs; i++) {
-      list->relocs[i].target_handle =
-         anv_bo_unwrap(list->reloc_bos[i])->exec_obj_index;
+      list->relocs[i].target_handle = list->reloc_bos[i]->exec_obj_index;
    }
 }
 
@@ -1273,10 +1268,8 @@ anv_reloc_list_apply(struct anv_device *device,
                      struct anv_bo *bo,
                      bool always_relocate)
 {
-   bo = anv_bo_unwrap(bo);
-
    for (size_t i = 0; i < list->num_relocs; i++) {
-      struct anv_bo *target_bo = anv_bo_unwrap(list->reloc_bos[i]);
+      struct anv_bo *target_bo = list->reloc_bos[i];
       if (list->relocs[i].presumed_offset == target_bo->offset &&
           !always_relocate)
          continue;
@@ -1344,7 +1337,6 @@ execbuf_can_skip_relocations(struct anv_execbuf *exec)
     * Invalid offsets are indicated by anv_bo::offset == (uint64_t)-1.
     */
    for (uint32_t i = 0; i < exec->bo_count; i++) {
-      assert(!exec->bos[i]->is_wrapper);
       if (exec->bos[i]->offset == (uint64_t)-1)
          return false;
    }
@@ -1362,7 +1354,7 @@ relocate_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
     * given time.  The only option is to always relocate them.
     */
    struct anv_bo *surface_state_bo =
-      anv_bo_unwrap(cmd_buffer->device->surface_state_pool.block_pool.bo);
+      cmd_buffer->device->surface_state_pool.block_pool.bo;
    anv_reloc_list_apply(cmd_buffer->device, &cmd_buffer->surface_relocs,
                         surface_state_bo,
                         true /* always relocate surface states */);

@@ -1564,7 +1564,7 @@ anv_device_map_bo(struct anv_device *device,
                   uint32_t gem_flags,
                   void **map_out)
 {
-   assert(!bo->is_wrapper && !bo->from_host_ptr);
+   assert(!bo->from_host_ptr);
    assert(size > 0);
 
    void *map = anv_gem_mmap(device, bo->gem_handle, offset, size, gem_flags);
@@ -1584,7 +1584,7 @@ anv_device_unmap_bo(struct anv_device *device,
                     struct anv_bo *bo,
                     void *map, size_t map_size)
 {
-   assert(!bo->is_wrapper && !bo->from_host_ptr);
+   assert(!bo->from_host_ptr);
 
    anv_gem_munmap(device, map, map_size);
 }
