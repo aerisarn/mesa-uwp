@@ -9,6 +9,7 @@
 #include "util/mesa-sha1.h"
 #include "nir/nir_xfb_info.h"
 #include "nir/nir_vulkan.h"
+#include "vk_pipeline.h"
 #include "vk_util.h"
 
 #include "ir3/ir3_nir.h"
@@ -81,15 +82,10 @@ tu_spirv_to_nir(struct tu_device *dev,
    const nir_shader_compiler_options *nir_options =
       ir3_get_compiler_options(dev->compiler);
 
-   struct vk_shader_module *module =
-      vk_shader_module_from_handle(stage_info->module);
-
    nir_shader *nir;
-   VkResult result = vk_shader_module_to_nir(&dev->vk, module,
-                                             stage, stage_info->pName,
-                                             stage_info->pSpecializationInfo,
-                                             &spirv_options, nir_options,
-                                             mem_ctx, &nir);
+   VkResult result =
+      vk_pipeline_shader_stage_to_nir(&dev->vk, stage_info, &spirv_options,
+                                      nir_options, mem_ctx, &nir);
    if (result != VK_SUCCESS)
       return NULL;
 

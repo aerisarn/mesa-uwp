@@ -18,6 +18,7 @@
 #include "util/disk_cache.h"
 #include "util/driconf.h"
 #include "util/os_misc.h"
+#include "vk_shader_module.h"
 #include "vk_sampler.h"
 #include "vk_util.h"
 
