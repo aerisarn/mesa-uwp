@@ -65,6 +65,15 @@ struct radv_shader_args {
    /* PS epilogs */
    struct ac_arg ps_epilog_inputs[MAX_RTS];
 
+   /* TCS */
+   /* # [0:5] = the number of patch control points
+    * # [6:13] = the number of tessellation patches
+    */
+   struct ac_arg tcs_offchip_layout;
+
+   /* TES */
+   struct ac_arg tes_num_patches;
+
    struct radv_userdata_locations user_sgprs_locs;
    unsigned num_user_sgprs;
 

@@ -158,9 +158,11 @@ enum radv_ud_index {
    AC_UD_CS_TASK_IB,
    AC_UD_CS_MAX_UD,
    AC_UD_GS_MAX_UD,
+   AC_UD_TCS_OFFCHIP_LAYOUT = AC_UD_VS_MAX_UD,
    AC_UD_TCS_MAX_UD,
+   AC_UD_TES_NUM_PATCHES = AC_UD_SHADER_START,
    AC_UD_TES_MAX_UD,
-   AC_UD_MAX_UD = AC_UD_TCS_MAX_UD,
+   AC_UD_MAX_UD = AC_UD_CS_MAX_UD,
 };
 
 struct radv_stream_output {
