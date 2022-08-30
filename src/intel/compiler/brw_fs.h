@@ -91,6 +91,9 @@ struct thread_payload {
    uint8_t num_regs;
 
    virtual ~thread_payload() = default;
+
+protected:
+   thread_payload() : num_regs() {}
 };
 
 struct vs_thread_payload : public thread_payload {

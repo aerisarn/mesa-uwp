@@ -1241,7 +1241,7 @@ fs_visitor::init()
    this->nir_ssa_values = NULL;
    this->nir_system_values = NULL;
 
-   this->payload_ = new thread_payload();
+   this->payload_ = NULL;
    this->source_depth_to_render_target = false;
    this->runtime_check_aads_emit = false;
    this->first_non_payload_grf = 0;
