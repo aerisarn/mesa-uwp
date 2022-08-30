@@ -185,7 +185,7 @@ static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
    if (!cmd_buffer)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_buffer_init(&cmd_buffer->vk, pool, level);
+   result = vk_command_buffer_init(pool, &cmd_buffer->vk, level);
    if (result != VK_SUCCESS) {
       vk_free(&pool->alloc, cmd_buffer);
       return result;

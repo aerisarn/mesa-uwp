@@ -141,8 +141,8 @@ VK_DEFINE_HANDLE_CASTS(vk_command_buffer, base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 
 VkResult MUST_CHECK
-vk_command_buffer_init(struct vk_command_buffer *command_buffer,
-                       struct vk_command_pool *pool,
+vk_command_buffer_init(struct vk_command_pool *pool,
+                       struct vk_command_buffer *command_buffer,
                        VkCommandBufferLevel level);
 
 void

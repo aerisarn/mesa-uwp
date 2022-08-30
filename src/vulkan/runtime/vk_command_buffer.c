@@ -28,8 +28,8 @@
 #include "vk_device.h"
 
 VkResult
-vk_command_buffer_init(struct vk_command_buffer *command_buffer,
-                       struct vk_command_pool *pool,
+vk_command_buffer_init(struct vk_command_pool *pool,
+                       struct vk_command_buffer *command_buffer,
                        VkCommandBufferLevel level)
 {
    memset(command_buffer, 0, sizeof(*command_buffer));
