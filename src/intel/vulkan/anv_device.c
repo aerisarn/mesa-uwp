@@ -3151,13 +3151,6 @@ VkResult anv_CreateDevice(
 
    list_inithead(&device->memory_objects);
 
-   /* On Broadwell and later, we can use batch chaining to more efficiently
-    * implement growing command buffers.  Prior to Haswell, the kernel
-    * command parser gets in the way and we have to fall back to growing
-    * the batch.
-    */
-   device->can_chain_batches = true;
-
    device->robust_buffer_access = robust_buffer_access;
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {

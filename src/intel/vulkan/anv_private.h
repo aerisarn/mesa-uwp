@@ -1153,7 +1153,6 @@ struct anv_device {
     struct isl_device                           isl_dev;
     int                                         context_id;
     int                                         fd;
-    bool                                        can_chain_batches;
     bool                                        robust_buffer_access;
 
     pthread_mutex_t                             vma_mutex;
