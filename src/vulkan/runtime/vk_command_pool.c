@@ -53,7 +53,7 @@ vk_command_pool_finish(struct vk_command_pool *pool)
 {
    list_for_each_entry_safe(struct vk_command_buffer, cmd_buffer,
                             &pool->command_buffers, pool_link) {
-      cmd_buffer->destroy(cmd_buffer);
+      cmd_buffer->ops->destroy(cmd_buffer);
    }
    assert(list_is_empty(&pool->command_buffers));
 
@@ -143,7 +143,7 @@ vk_common_FreeCommandBuffers(VkDevice device,
       if (cmd_buffer == NULL)
          continue;
 
-      cmd_buffer->destroy(cmd_buffer);
+      cmd_buffer->ops->destroy(cmd_buffer);
    }
 }
 

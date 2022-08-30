@@ -30,6 +30,7 @@
 VkResult
 vk_command_buffer_init(struct vk_command_pool *pool,
                        struct vk_command_buffer *command_buffer,
+                       const struct vk_command_buffer_ops *ops,
                        VkCommandBufferLevel level)
 {
    memset(command_buffer, 0, sizeof(*command_buffer));
@@ -38,6 +39,7 @@ vk_command_buffer_init(struct vk_command_pool *pool,
 
    command_buffer->pool = pool;
    command_buffer->level = level;
+   command_buffer->ops = ops;
    vk_dynamic_graphics_state_init(&command_buffer->dynamic_graphics_state);
    command_buffer->record_result = VK_SUCCESS;
    vk_cmd_queue_init(&command_buffer->cmd_queue, &pool->alloc);

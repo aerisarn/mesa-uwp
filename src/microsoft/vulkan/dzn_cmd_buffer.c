@@ -335,6 +335,10 @@ dzn_cmd_buffer_dsv_key_equals_function(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct dzn_cmd_buffer_dsv_key)) == 0;
 }
 
+static const struct vk_command_buffer_ops cmd_buffer_ops = {
+   .destroy = dzn_cmd_buffer_destroy,
+};
+
 static VkResult
 dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
                       VkCommandBuffer *out)
@@ -355,7 +359,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
       return vk_error(pool->base.device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result =
-      vk_command_buffer_init(pool, &cmdbuf->vk, info->level);
+      vk_command_buffer_init(pool, &cmdbuf->vk, &cmd_buffer_ops, info->level);
    if (result != VK_SUCCESS) {
       vk_free(&pool->alloc, cmdbuf);
       return result;
@@ -401,8 +405,6 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
-
-   cmdbuf->vk.destroy = dzn_cmd_buffer_destroy;
 
    if (FAILED(ID3D12Device1_CreateCommandAllocator(device->dev, type,
                                                    &IID_ID3D12CommandAllocator,

@@ -84,6 +84,10 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
 
 static void anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer);
 
+static const struct vk_command_buffer_ops cmd_buffer_ops = {
+   .destroy = anv_cmd_buffer_destroy,
+};
+
 static VkResult anv_create_cmd_buffer(
     struct anv_device *                         device,
     struct vk_command_pool *                    pool,
@@ -98,11 +102,11 @@ static VkResult anv_create_cmd_buffer(
    if (cmd_buffer == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_buffer_init(pool, &cmd_buffer->vk, level);
+   result = vk_command_buffer_init(pool, &cmd_buffer->vk,
+                                   &cmd_buffer_ops, level);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   cmd_buffer->vk.destroy = anv_cmd_buffer_destroy;
    cmd_buffer->vk.dynamic_graphics_state.ms.sample_locations =
       &cmd_buffer->state.gfx.sample_locations;
 

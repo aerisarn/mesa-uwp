@@ -170,6 +170,10 @@ static void pvr_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
    vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
+static const struct vk_command_buffer_ops cmd_buffer_ops = {
+   .destroy = pvr_cmd_buffer_destroy,
+};
+
 static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
                                       struct vk_command_pool *pool,
                                       VkCommandBufferLevel level,
@@ -185,13 +189,13 @@ static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
    if (!cmd_buffer)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_buffer_init(pool, &cmd_buffer->vk, level);
+   result = vk_command_buffer_init(pool, &cmd_buffer->vk,
+                                   &cmd_buffer_ops, level);
    if (result != VK_SUCCESS) {
       vk_free(&pool->alloc, cmd_buffer);
       return result;
    }
 
-   cmd_buffer->vk.destroy = pvr_cmd_buffer_destroy;
    cmd_buffer->device = device;
 
    util_dynarray_init(&cmd_buffer->depth_bias_array, NULL);

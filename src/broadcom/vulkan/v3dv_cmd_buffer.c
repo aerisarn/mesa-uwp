@@ -76,6 +76,10 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
 
 static void cmd_buffer_destroy(struct vk_command_buffer *cmd_buffer);
 
+static const struct vk_command_buffer_ops cmd_buffer_ops = {
+   .destroy = cmd_buffer_destroy,
+};
+
 static VkResult
 cmd_buffer_create(struct v3dv_device *device,
                   struct vk_command_pool *pool,
@@ -91,13 +95,13 @@ cmd_buffer_create(struct v3dv_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result;
-   result = vk_command_buffer_init(pool, &cmd_buffer->vk, level);
+   result = vk_command_buffer_init(pool, &cmd_buffer->vk,
+                                   &cmd_buffer_ops, level);
    if (result != VK_SUCCESS) {
       vk_free(&pool->alloc, cmd_buffer);
       return result;
    }
 
-   cmd_buffer->vk.destroy = cmd_buffer_destroy;
    cmd_buffer_init(cmd_buffer, device);
 
    *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);

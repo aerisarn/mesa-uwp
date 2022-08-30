@@ -59,6 +59,15 @@ struct vk_attachment_state {
    VkClearValue clear_value;
 };
 
+struct vk_command_buffer_ops {
+   /** Destroys the command buffer
+    *
+    * Used by the common command pool implementation.  This function MUST
+    * call `vk_command_buffer_finish()`.
+    */
+   void (*destroy)(struct vk_command_buffer *);
+};
+
 struct vk_command_buffer {
    struct vk_object_base base;
 
@@ -67,6 +76,8 @@ struct vk_command_buffer {
    /** VkCommandBufferAllocateInfo::level */
    VkCommandBufferLevel level;
 
+   const struct vk_command_buffer_ops *ops;
+
    struct vk_dynamic_graphics_state dynamic_graphics_state;
 
    /** Command buffer recording error state. */
@@ -74,13 +85,6 @@ struct vk_command_buffer {
 
    /** Link in vk_command_pool::command_buffers if pool != NULL */
    struct list_head pool_link;
-
-   /** Destroys the command buffer
-    *
-    * Used by the common command pool implementation.  This function MUST
-    * call vk_command_buffer_finish().
-    */
-   void (*destroy)(struct vk_command_buffer *);
 
    /** Command list for emulated secondary command buffers */
    struct vk_cmd_queue cmd_queue;
@@ -143,6 +147,7 @@ VK_DEFINE_HANDLE_CASTS(vk_command_buffer, base, VkCommandBuffer,
 VkResult MUST_CHECK
 vk_command_buffer_init(struct vk_command_pool *pool,
                        struct vk_command_buffer *command_buffer,
+                       const struct vk_command_buffer_ops *ops,
                        VkCommandBufferLevel level);
 
 void
