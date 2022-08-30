@@ -768,11 +768,13 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       goto fail_fd;
    }
 
-   if (devinfo.ver >= 9 && devinfo.ver <= 12) {
-      /* Gfx8-12 fully supported */
-   } else {
+   if (devinfo.ver > 12) {
       result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                          "Vulkan not yet supported on %s", devinfo.name);
+      goto fail_fd;
+   } else if (devinfo.ver < 9) {
+      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                         "anv does not support %s; use hasvk", devinfo.name);
       goto fail_fd;
    }
 
