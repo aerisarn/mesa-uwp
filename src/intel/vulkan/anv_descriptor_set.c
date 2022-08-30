@@ -70,8 +70,6 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       data = ANV_DESCRIPTOR_SURFACE_STATE;
-      if (device->info.ver < 9)
-         data |= ANV_DESCRIPTOR_IMAGE_PARAM;
       if (device->has_bindless_images)
          data |= ANV_DESCRIPTOR_STORAGE_IMAGE;
       break;
@@ -155,9 +153,6 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 
    if (data & ANV_DESCRIPTOR_STORAGE_IMAGE)
       size += sizeof(struct anv_storage_image_descriptor);
-
-   if (data & ANV_DESCRIPTOR_IMAGE_PARAM)
-      size += BRW_IMAGE_PARAM_SIZE * 4;
 
    if (data & ANV_DESCRIPTOR_ADDRESS_RANGE)
       size += sizeof(struct anv_address_range_descriptor);
@@ -1317,24 +1312,6 @@ VkResult anv_FreeDescriptorSets(
    return VK_SUCCESS;
 }
 
-static void
-anv_descriptor_set_write_image_param(uint32_t *param_desc_map,
-                                     const struct brw_image_param *param)
-{
-#define WRITE_PARAM_FIELD(field, FIELD) \
-   for (unsigned i = 0; i < ARRAY_SIZE(param->field); i++) \
-      param_desc_map[BRW_IMAGE_PARAM_##FIELD##_OFFSET + i] = param->field[i]
-
-   WRITE_PARAM_FIELD(offset, OFFSET);
-   WRITE_PARAM_FIELD(size, SIZE);
-   WRITE_PARAM_FIELD(stride, STRIDE);
-   WRITE_PARAM_FIELD(tiling, TILING);
-   WRITE_PARAM_FIELD(swizzling, SWIZZLING);
-   WRITE_PARAM_FIELD(size, SIZE);
-
-#undef WRITE_PARAM_FIELD
-}
-
 static uint32_t
 anv_surface_state_to_handle(struct anv_state state)
 {
@@ -1443,7 +1420,6 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       return;
 
    if (data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
-      assert(!(data & ANV_DESCRIPTOR_IMAGE_PARAM));
       assert(image_view->n_planes == 1);
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
@@ -1452,15 +1428,6 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
                            image_view->planes[0].lowered_storage_surface_state.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
-   }
-
-   if (data & ANV_DESCRIPTOR_IMAGE_PARAM) {
-      /* Storage images can only ever have one plane */
-      assert(image_view->n_planes == 1);
-      const struct brw_image_param *image_param =
-         &image_view->planes[0].lowered_storage_image_param;
-
-      anv_descriptor_set_write_image_param(desc_map, image_param);
    }
 }
 
@@ -1509,7 +1476,6 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    }
 
    if (data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
-      assert(!(data & ANV_DESCRIPTOR_IMAGE_PARAM));
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
                            buffer_view->storage_surface_state),
@@ -1517,11 +1483,6 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
                            buffer_view->lowered_storage_surface_state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
-   }
-
-   if (data & ANV_DESCRIPTOR_IMAGE_PARAM) {
-      anv_descriptor_set_write_image_param(desc_map,
-         &buffer_view->lowered_storage_image_param);
    }
 }
 

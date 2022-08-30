@@ -1776,16 +1776,14 @@ enum anv_descriptor_data {
    ANV_DESCRIPTOR_SAMPLER_STATE  = (1 << 1),
    /** The descriptor contains an actual buffer view */
    ANV_DESCRIPTOR_BUFFER_VIEW    = (1 << 2),
-   /** The descriptor contains auxiliary image layout data */
-   ANV_DESCRIPTOR_IMAGE_PARAM    = (1 << 3),
-   /** The descriptor contains auxiliary image layout data */
-   ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 4),
+   /** The descriptor contains inline uniform data */
+   ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 3),
    /** anv_address_range_descriptor with a buffer address and range */
-   ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 5),
+   ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 4),
    /** Bindless surface handle */
-   ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 6),
+   ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 5),
    /** Storage image handles */
-   ANV_DESCRIPTOR_STORAGE_IMAGE  = (1 << 7),
+   ANV_DESCRIPTOR_STORAGE_IMAGE  = (1 << 6),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -1953,8 +1951,6 @@ struct anv_buffer_view {
    struct anv_state surface_state;
    struct anv_state storage_surface_state;
    struct anv_state lowered_storage_surface_state;
-
-   struct brw_image_param lowered_storage_image_param;
 };
 
 struct anv_push_descriptor_set {
@@ -3911,8 +3907,6 @@ struct anv_image_view {
        */
       struct anv_surface_state storage_surface_state;
       struct anv_surface_state lowered_storage_surface_state;
-
-      struct brw_image_param lowered_storage_image_param;
    } planes[3];
 };
 
@@ -3929,8 +3923,7 @@ void anv_image_fill_surface_state(struct anv_device *device,
                                   enum isl_aux_usage aux_usage,
                                   const union isl_color_value *clear_color,
                                   enum anv_image_view_state_flags flags,
-                                  struct anv_surface_state *state_inout,
-                                  struct brw_image_param *image_param_out);
+                                  struct anv_surface_state *state_inout);
 
 struct anv_image_create_info {
    const VkImageCreateInfo *vk_info;

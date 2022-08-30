@@ -2451,8 +2451,7 @@ anv_image_fill_surface_state(struct anv_device *device,
                              enum isl_aux_usage aux_usage,
                              const union isl_color_value *clear_color,
                              enum anv_image_view_state_flags flags,
-                             struct anv_surface_state *state_inout,
-                             struct brw_image_param *image_param_out)
+                             struct anv_surface_state *state_inout)
 {
    const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
@@ -2612,12 +2611,6 @@ anv_image_fill_surface_state(struct anv_device *device,
          state_inout->clear_address.offset |= *clear_addr_dw & 0x3f;
       }
    }
-
-   if (image_param_out) {
-      assert(view_usage == ISL_SURF_USAGE_STORAGE_BIT);
-      isl_surf_fill_image_param(&device->isl_dev, image_param_out,
-                                &surface->isl, &view);
-   }
 }
 
 static uint32_t
@@ -2735,16 +2728,14 @@ anv_CreateImageView(VkDevice _device,
                                       ISL_SURF_USAGE_TEXTURE_BIT,
                                       optimal_aux_usage, NULL,
                                       ANV_IMAGE_VIEW_STATE_TEXTURE_OPTIMAL,
-                                      &iview->planes[vplane].optimal_sampler_surface_state,
-                                      NULL);
+                                      &iview->planes[vplane].optimal_sampler_surface_state);
 
          anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
                                       &iview->planes[vplane].isl,
                                       ISL_SURF_USAGE_TEXTURE_BIT,
                                       general_aux_usage, NULL,
                                       0,
-                                      &iview->planes[vplane].general_sampler_surface_state,
-                                      NULL);
+                                      &iview->planes[vplane].general_sampler_surface_state);
       }
 
       /* NOTE: This one needs to go last since it may stomp isl_view.format */
@@ -2759,8 +2750,7 @@ anv_CreateImageView(VkDevice _device,
                                       ISL_SURF_USAGE_STORAGE_BIT,
                                       general_aux_usage, NULL,
                                       0,
-                                      &iview->planes[vplane].storage_surface_state,
-                                      NULL);
+                                      &iview->planes[vplane].storage_surface_state);
 
          if (isl_is_storage_image_format(format.isl_format)) {
             iview->planes[vplane].lowered_storage_surface_state.state =
@@ -2771,8 +2761,7 @@ anv_CreateImageView(VkDevice _device,
                                          ISL_SURF_USAGE_STORAGE_BIT,
                                          general_aux_usage, NULL,
                                          ANV_IMAGE_VIEW_STATE_STORAGE_LOWERED,
-                                         &iview->planes[vplane].lowered_storage_surface_state,
-                                         NULL);
+                                         &iview->planes[vplane].lowered_storage_surface_state);
          } else {
             /* In this case, we support the format but, because there's no
              * SPIR-V format specifier corresponding to it, we only support it
@@ -2899,10 +2888,6 @@ anv_CreateBufferView(VkDevice _device,
                                     view->address, view->range,
                                     (lowered_format == ISL_FORMAT_RAW ? 1 :
                                      isl_format_get_layout(lowered_format)->bpb / 8));
-
-      isl_buffer_fill_image_param(&device->isl_dev,
-                                  &view->lowered_storage_image_param,
-                                  format.isl_format, view->range);
    } else {
       view->storage_surface_state = (struct anv_state){ 0 };
       view->lowered_storage_surface_state = (struct anv_state){ 0 };

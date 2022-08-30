@@ -6150,8 +6150,7 @@ void genX(CmdBeginRendering)(
                                    ISL_SURF_USAGE_RENDER_TARGET_BIT,
                                    aux_usage, &fast_clear_color,
                                    0, /* anv_image_view_state_flags */
-                                   &gfx->color_att[i].surface_state,
-                                   NULL);
+                                   &gfx->color_att[i].surface_state);
 
       add_surface_state_relocs(cmd_buffer, gfx->color_att[i].surface_state);
 

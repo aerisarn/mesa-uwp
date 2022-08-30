@@ -1016,21 +1016,7 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   ASSERTED const bool use_bindless = state->pdevice->has_bindless_images;
-
-   if (intrin->intrinsic == nir_intrinsic_image_deref_load_param_intel) {
-      b->cursor = nir_instr_remove(&intrin->instr);
-
-      assert(!use_bindless); /* Otherwise our offsets would be wrong */
-      const unsigned param = nir_intrinsic_base(intrin);
-
-      nir_ssa_def *desc =
-         build_load_var_deref_descriptor_mem(b, deref, param * 16,
-                                             intrin->dest.ssa.num_components,
-                                             intrin->dest.ssa.bit_size, state);
-
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
-   } else if (binding_offset > MAX_BINDING_TABLE_SIZE) {
+   if (binding_offset > MAX_BINDING_TABLE_SIZE) {
       const unsigned desc_comp =
          image_binding_needs_lowered_surface(var) ? 1 : 0;
       nir_ssa_def *desc =
