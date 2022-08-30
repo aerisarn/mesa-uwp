@@ -652,6 +652,21 @@ v3d_lower_nir(struct v3d_compile *c)
 
         NIR_PASS(_, c->s, nir_lower_tex, &tex_options);
         NIR_PASS(_, c->s, nir_lower_system_values);
+
+        if (c->s->info.zero_initialize_shared_memory &&
+            c->s->info.shared_size > 0) {
+                /* All our BOs allocate full pages, so the underlying allocation
+                 * for shared memory will always be a multiple of 4KB. This
+                 * ensures that we can do an exact number of full chunk_size
+                 * writes to initialize the memory independently of the actual
+                 * shared_size used by the shader, which is a requirement of
+                 * the initialization pass.
+                 */
+                const unsigned chunk_size = 16; /* max single store size */
+                NIR_PASS(_, c->s, nir_zero_initialize_shared_memory,
+                         ALIGN(c->s->info.shared_size, chunk_size), chunk_size);
+        }
+
         NIR_PASS(_, c->s, nir_lower_compute_system_values, NULL);
 
         NIR_PASS(_, c->s, nir_lower_vars_to_scratch,
