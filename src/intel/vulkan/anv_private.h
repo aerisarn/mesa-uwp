@@ -670,7 +670,6 @@ struct anv_block_pool {
    const char *name;
 
    struct anv_device *device;
-   bool use_relocations;
 
    /* Wrapper BO for use in relocation lists.  This BO is simply a wrapper
     * around the actual BO so that we grow the pool after the wrapper BO has
@@ -696,27 +695,6 @@ struct anv_block_pool {
     * bo.map + center_bo_offset + offsets.
     */
    uint32_t center_bo_offset;
-
-   /* Current memory map of the block pool.  This pointer may or may not
-    * point to the actual beginning of the block pool memory.  If
-    * anv_block_pool_alloc_back has ever been called, then this pointer
-    * will point to the "center" position of the buffer and all offsets
-    * (negative or positive) given out by the block pool alloc functions
-    * will be valid relative to this pointer.
-    *
-    * In particular, map == bo.map + center_offset
-    *
-    * DO NOT access this pointer directly. Use anv_block_pool_map() instead,
-    * since it will handle the softpin case as well, where this points to NULL.
-    */
-   void *map;
-   int fd;
-
-   /**
-    * Array of mmaps and gem handles owned by the block pool, reclaimed when
-    * the block pool is destroyed.
-    */
-   struct u_vector mmap_cleanups;
 
    struct anv_block_state state;
 
