@@ -671,7 +671,9 @@ void check_max_vector_bits(void)
     */
    util_cpu_caps.max_vector_bits = 128;
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
-   if (util_cpu_caps.has_avx) {
+   if (util_cpu_caps.has_avx512f) {
+      util_cpu_caps.max_vector_bits = 512;
+   } else if (util_cpu_caps.has_avx) {
       util_cpu_caps.max_vector_bits = 256;
    }
 #endif
