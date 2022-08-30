@@ -1520,6 +1520,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    }
 
    vk_device_enable_threaded_submit(&device->vk);
+   device->vk.command_buffer_ops = &lvp_cmd_buffer_ops;
 
    device->instance = (struct lvp_instance *)physical_device->vk.instance;
    device->physical_device = physical_device;
