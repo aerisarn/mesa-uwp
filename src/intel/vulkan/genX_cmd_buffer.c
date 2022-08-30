@@ -1425,7 +1425,7 @@ genX(BeginCommandBuffer)(
     *    VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT not set. It then puts
     *    the command buffer in the recording state.
     */
-   anv_cmd_buffer_reset(cmd_buffer);
+   anv_cmd_buffer_reset(&cmd_buffer->vk, 0);
    anv_cmd_buffer_reset_rendering(cmd_buffer);
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
