@@ -11,6 +11,7 @@
 
 #include "vk_render_pass.h"
 #include "vk_util.h"
+#include "vk_common_entrypoints.h"
 
 #include "tu_clear_blit.h"
 #include "tu_cs.h"
@@ -1575,11 +1576,11 @@ static void tu_reset_render_pass(struct tu_cmd_buffer *cmd_buffer)
 }
 
 static VkResult
-tu_create_cmd_buffer(struct tu_device *device,
-                     struct tu_cmd_pool *pool,
-                     VkCommandBufferLevel level,
-                     VkCommandBuffer *pCommandBuffer)
+tu_create_cmd_buffer(struct vk_command_pool *pool,
+                     struct vk_command_buffer **cmd_buffer_out)
 {
+   struct tu_device *device =
+      container_of(pool->base.device, struct tu_device, vk);
    struct tu_cmd_buffer *cmd_buffer;
 
    cmd_buffer = vk_zalloc2(&device->vk.alloc, NULL, sizeof(*cmd_buffer), 8,
@@ -1588,28 +1589,14 @@ tu_create_cmd_buffer(struct tu_device *device,
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_buffer_init(&pool->vk, &cmd_buffer->vk,
-                                            NULL, level);
+   VkResult result = vk_command_buffer_init(pool, &cmd_buffer->vk,
+                                            &tu_cmd_buffer_ops, 0);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, NULL, cmd_buffer);
       return result;
    }
 
    cmd_buffer->device = device;
-   cmd_buffer->pool = pool;
-
-   if (pool) {
-      list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-      cmd_buffer->queue_family_index = pool->vk.queue_family_index;
-
-   } else {
-      /* Init the pool_link so we can safely call list_del when we destroy
-       * the command buffer
-       */
-      list_inithead(&cmd_buffer->pool_link);
-      cmd_buffer->queue_family_index = TU_QUEUE_GENERAL;
-   }
-
 
    u_trace_init(&cmd_buffer->trace, &device->trace_context);
    list_inithead(&cmd_buffer->renderpass_autotune_results);
@@ -1622,15 +1609,16 @@ tu_create_cmd_buffer(struct tu_device *device,
    tu_cs_init(&cmd_buffer->pre_chain.draw_cs, device, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->pre_chain.draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
 
-   *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
+   *cmd_buffer_out = &cmd_buffer->vk;
 
    return VK_SUCCESS;
 }
 
 static void
-tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
+tu_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 {
-   list_del(&cmd_buffer->pool_link);
+   struct tu_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct tu_cmd_buffer, vk);
 
    tu_cs_finish(&cmd_buffer->cs);
    tu_cs_finish(&cmd_buffer->draw_cs);
@@ -1651,13 +1639,17 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    }
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->vk.alloc,
+   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->vk.pool->alloc,
             cmd_buffer);
 }
 
-static VkResult
-tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
+static void
+tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
+                    UNUSED VkCommandBufferResetFlags flags)
 {
+   struct tu_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct tu_cmd_buffer, vk);
+
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    tu_cs_reset(&cmd_buffer->cs);
@@ -1687,94 +1679,13 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->state.max_vbs_bound = 0;
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
-
-   return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_AllocateCommandBuffers(VkDevice _device,
-                          const VkCommandBufferAllocateInfo *pAllocateInfo,
-                          VkCommandBuffer *pCommandBuffers)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_cmd_pool, pool, pAllocateInfo->commandPool);
-
-   VkResult result = VK_SUCCESS;
-   uint32_t i;
-
-   for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
-
-      if (!list_is_empty(&pool->free_cmd_buffers)) {
-         struct tu_cmd_buffer *cmd_buffer = list_first_entry(
-            &pool->free_cmd_buffers, struct tu_cmd_buffer, pool_link);
-
-         list_del(&cmd_buffer->pool_link);
-         list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-
-         result = tu_reset_cmd_buffer(cmd_buffer);
-         vk_command_buffer_finish(&cmd_buffer->vk);
-         VkResult init_result =
-            vk_command_buffer_init(&pool->vk, &cmd_buffer->vk, NULL,
-                                   pAllocateInfo->level);
-         if (init_result != VK_SUCCESS)
-            result = init_result;
-
-         pCommandBuffers[i] = tu_cmd_buffer_to_handle(cmd_buffer);
-      } else {
-         result = tu_create_cmd_buffer(device, pool, pAllocateInfo->level,
-                                       &pCommandBuffers[i]);
-      }
-      if (result != VK_SUCCESS)
-         break;
-   }
-
-   if (result != VK_SUCCESS) {
-      tu_FreeCommandBuffers(_device, pAllocateInfo->commandPool, i,
-                            pCommandBuffers);
-
-      /* From the Vulkan 1.0.66 spec:
-       *
-       * "vkAllocateCommandBuffers can be used to create multiple
-       *  command buffers. If the creation of any of those command
-       *  buffers fails, the implementation must destroy all
-       *  successfully created command buffer objects from this
-       *  command, set all entries of the pCommandBuffers array to
-       *  NULL and return the error."
-       */
-      memset(pCommandBuffers, 0,
-             sizeof(*pCommandBuffers) * pAllocateInfo->commandBufferCount);
-   }
-
-   return result;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-tu_FreeCommandBuffers(VkDevice device,
-                      VkCommandPool commandPool,
-                      uint32_t commandBufferCount,
-                      const VkCommandBuffer *pCommandBuffers)
-{
-   for (uint32_t i = 0; i < commandBufferCount; i++) {
-      TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
-
-      if (cmd_buffer) {
-         if (cmd_buffer->pool) {
-            list_del(&cmd_buffer->pool_link);
-            list_addtail(&cmd_buffer->pool_link,
-                         &cmd_buffer->pool->free_cmd_buffers);
-         } else
-            tu_cmd_buffer_destroy(cmd_buffer);
-      }
-   }
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                      VkCommandBufferResetFlags flags)
-{
-   TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   return tu_reset_cmd_buffer(cmd_buffer);
-}
+const struct vk_command_buffer_ops tu_cmd_buffer_ops = {
+   .create = tu_create_cmd_buffer,
+   .reset = tu_reset_cmd_buffer,
+   .destroy = tu_cmd_buffer_destroy,
+};
 
 /* Initialize the cache, assuming all necessary flushes have happened but *not*
  * invalidations.
@@ -1794,14 +1705,11 @@ VkResult
 tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
                     VkCommandBufferUsageFlags usage_flags)
 {
-   VkResult result = VK_SUCCESS;
    if (cmd_buffer->status != TU_CMD_BUFFER_STATUS_INITIAL) {
       /* If the command buffer has already been resetted with
        * vkResetCommandBuffer, no need to do it again.
        */
-      result = tu_reset_cmd_buffer(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
+      tu_reset_cmd_buffer(&cmd_buffer->vk, 0);
    }
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
@@ -3798,98 +3706,6 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    }
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_CreateCommandPool(VkDevice _device,
-                     const VkCommandPoolCreateInfo *pCreateInfo,
-                     const VkAllocationCallbacks *pAllocator,
-                     VkCommandPool *pCmdPool)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_cmd_pool *pool;
-
-   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (pool == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   VkResult result = vk_command_pool_init(&device->vk, &pool->vk,
-                                          pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pool);
-      return result;
-   }
-
-   list_inithead(&pool->cmd_buffers);
-   list_inithead(&pool->free_cmd_buffers);
-
-   *pCmdPool = tu_cmd_pool_to_handle(pool);
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-tu_DestroyCommandPool(VkDevice _device,
-                      VkCommandPool commandPool,
-                      const VkAllocationCallbacks *pAllocator)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
-
-   if (!pool)
-      return;
-
-   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
-                            &pool->cmd_buffers, pool_link)
-   {
-      tu_cmd_buffer_destroy(cmd_buffer);
-   }
-
-   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
-                            &pool->free_cmd_buffers, pool_link)
-   {
-      tu_cmd_buffer_destroy(cmd_buffer);
-   }
-
-   vk_command_pool_finish(&pool->vk);
-   vk_free2(&device->vk.alloc, pAllocator, pool);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_ResetCommandPool(VkDevice device,
-                    VkCommandPool commandPool,
-                    VkCommandPoolResetFlags flags)
-{
-   TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
-   VkResult result;
-
-   list_for_each_entry(struct tu_cmd_buffer, cmd_buffer, &pool->cmd_buffers,
-                       pool_link)
-   {
-      result = tu_reset_cmd_buffer(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-tu_TrimCommandPool(VkDevice device,
-                   VkCommandPool commandPool,
-                   VkCommandPoolTrimFlags flags)
-{
-   TU_FROM_HANDLE(tu_cmd_pool, pool, commandPool);
-
-   if (!pool)
-      return;
-
-   list_for_each_entry_safe(struct tu_cmd_buffer, cmd_buffer,
-                            &pool->free_cmd_buffers, pool_link)
-   {
-      tu_cmd_buffer_destroy(cmd_buffer);
-   }
-}
-
 static void
 tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
                    const struct tu_subpass_barrier *barrier,
@@ -3962,7 +3778,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
    cmd->state.attachments =
-      vk_alloc(&cmd->pool->vk.alloc, pass->attachment_count *
+      vk_alloc(&cmd->vk.pool->alloc, pass->attachment_count *
                sizeof(cmd->state.attachments[0]), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -5287,7 +5103,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
       cmd_buffer->state.renderpass_cache.pending_flush_bits;
    tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.attachments);
 
    tu_reset_render_pass(cmd_buffer);
 }

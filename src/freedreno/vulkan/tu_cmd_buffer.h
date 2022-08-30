@@ -506,16 +506,6 @@ struct tu_cmd_state
    struct tu_vs_params last_vs_params;
 };
 
-struct tu_cmd_pool
-{
-   struct vk_command_pool vk;
-
-   struct list_head cmd_buffers;
-   struct list_head free_cmd_buffers;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(tu_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
-
 enum tu_cmd_buffer_status
 {
    TU_CMD_BUFFER_STATUS_INVALID,
@@ -530,9 +520,6 @@ struct tu_cmd_buffer
    struct vk_command_buffer vk;
 
    struct tu_device *device;
-
-   struct tu_cmd_pool *pool;
-   struct list_head pool_link;
 
    struct u_trace trace;
    struct u_trace_iterator trace_renderpass_start;
@@ -593,6 +580,8 @@ struct tu_cmd_buffer
 };
 VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
+
+extern const struct vk_command_buffer_ops tu_cmd_buffer_ops;
 
 static inline uint32_t
 tu_attachment_gmem_offset(struct tu_cmd_buffer *cmd,
