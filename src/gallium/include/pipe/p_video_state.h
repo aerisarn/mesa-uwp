@@ -112,6 +112,15 @@ enum pipe_h264_slice_type
    PIPE_H264_SLICE_TYPE_SI = 0x4
 };
 
+enum pipe_h265_slice_type
+{
+   /* Values match Table 7-7 in HEVC spec
+    for Name association of slice_type */
+   PIPE_H265_SLICE_TYPE_B = 0x0,
+   PIPE_H265_SLICE_TYPE_P = 0x1,
+   PIPE_H265_SLICE_TYPE_I = 0x2,
+};
+
 /* Same enum for h264/h265 */
 enum pipe_h2645_enc_picture_type
 {
@@ -435,6 +444,16 @@ struct h264_slice_descriptor
    enum pipe_h264_slice_type slice_type;
 };
 
+struct h265_slice_descriptor
+{
+   /** Starting CTU address for this slice. */
+   uint32_t    slice_segment_address;
+   /** Number of CTUs in this slice. */
+   uint32_t    num_ctu_in_slice;
+   /** slice type. */
+   enum pipe_h265_slice_type slice_type;
+};
+
 struct pipe_h264_enc_picture_desc
 {
    struct pipe_picture_desc base;
@@ -479,6 +498,7 @@ struct pipe_h265_enc_seq_param
    uint8_t  general_level_idc;
    uint8_t  general_tier_flag;
    uint32_t intra_period;
+   uint32_t ip_period;
    uint16_t pic_width_in_luma_samples;
    uint16_t pic_height_in_luma_samples;
    uint32_t chroma_format_idc;
@@ -507,6 +527,8 @@ struct pipe_h265_enc_pic_param
    uint8_t log2_parallel_merge_level_minus2;
    uint8_t nal_unit_type;
    bool constrained_intra_pred_flag;
+   bool pps_loop_filter_across_slices_enabled_flag;
+   bool transform_skip_enabled_flag;
 };
 
 struct pipe_h265_enc_slice_param
@@ -529,6 +551,8 @@ struct pipe_h265_enc_rate_control
    unsigned frame_rate_num;
    unsigned frame_rate_den;
    unsigned quant_i_frames;
+   unsigned quant_p_frames;
+   unsigned quant_b_frames;
    unsigned vbv_buffer_size;
    unsigned vbv_buf_lv;
    unsigned target_bits_picture;
@@ -562,6 +586,9 @@ struct pipe_h265_enc_picture_desc
    struct pipe_enc_quality_modes quality_modes;
    bool not_referenced;
    struct hash_table *frame_idx;
+
+   unsigned num_slice_descriptors;
+   struct h265_slice_descriptor slices_descriptors[128];
 };
 
 struct pipe_h265_sps
