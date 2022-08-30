@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "util/u_atomic.h"
 #include "util/u_queue.h"
 
 #ifdef __cplusplus
@@ -286,8 +287,8 @@ void u_trace_perfetto_stop(void);
 static inline bool
 u_trace_instrument(void)
 {
-   extern bool _u_trace_instrument;
-   return _u_trace_instrument || ut_perfetto_enabled;
+   extern int _u_trace_instrument;
+   return p_atomic_read_relaxed(&_u_trace_instrument);
 }
 
 static inline bool
