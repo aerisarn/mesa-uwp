@@ -2371,9 +2371,9 @@ fs_visitor::compact_virtual_grfs()
    return progress;
 }
 
-static int
-get_subgroup_id_param_index(const intel_device_info *devinfo,
-                            const brw_stage_prog_data *prog_data)
+int
+brw_get_subgroup_id_param_index(const intel_device_info *devinfo,
+                                const brw_stage_prog_data *prog_data)
 {
    if (prog_data->nr_params == 0)
       return -1;
@@ -7498,7 +7498,7 @@ cs_fill_push_const_info(const struct intel_device_info *devinfo,
                         struct brw_cs_prog_data *cs_prog_data)
 {
    const struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
-   int subgroup_id_index = get_subgroup_id_param_index(devinfo, prog_data);
+   int subgroup_id_index = brw_get_subgroup_id_param_index(devinfo, prog_data);
    bool cross_thread_supported = devinfo->verx10 >= 75;
 
    /* The thread ID should be stored in the last param dword */

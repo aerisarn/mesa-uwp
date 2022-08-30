@@ -766,4 +766,8 @@ namespace brw {
 fs_reg brw_sample_mask_reg(const brw::fs_builder &bld);
 void brw_emit_predicate_on_sample_mask(const brw::fs_builder &bld, fs_inst *inst);
 
+int brw_get_subgroup_id_param_index(const intel_device_info *devinfo,
+                                    const brw_stage_prog_data *prog_data);
+
+
 #endif /* BRW_FS_H */
