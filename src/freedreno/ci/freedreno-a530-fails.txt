@@ -916,3 +916,9 @@ spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24_stencil8,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
 spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7159
+spec@arb_uniform_buffer_object@execution@shared-struct-array-array-array-struct,Fail
+spec@arb_uniform_buffer_object@execution@std140-struct-array-array-array-struct,Fail
+spec@arb_uniform_buffer_object@execution@shared-array-struct-array-struct,Fail
+spec@arb_uniform_buffer_object@execution@std140-array-struct-array-struct,Fail

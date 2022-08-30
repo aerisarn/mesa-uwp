@@ -34,7 +34,6 @@ spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-flo
 spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-drawpixels,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
-spec@arb_shader_draw_parameters@drawid-single-draw-display-list,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_sparse_buffer@buffer-data,Fail
 spec@arb_sparse_buffer@commit,Fail
@@ -66,7 +65,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
-spec@nv_alpha_to_coverage_dither_control@nv_alpha_to_coverage_dither_control 0,Fail
 
 CreateContext/VAAPICreateContext.CreateContext/1035,Crash
 CreateContext/VAAPICreateContext.CreateContext/1120,Crash
@@ -102,3 +100,6 @@ CreateContext/VAAPICreateContext.CreateContext/2990,Crash
 CreateContext/VAAPICreateContext.CreateContext/3160,Crash
 
 spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7152
+spec@ext_transform_feedback@builtin-varyings gl_culldistance,Fail
