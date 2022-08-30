@@ -276,13 +276,6 @@ The integer capabilities:
 * ``PIPE_CAP_CLIP_HALFZ``: Whether the driver supports the
   pipe_rasterizer_state::clip_halfz being set to true. This is required
   for enabling ARB_clip_control.
-* ``PIPE_CAP_VERTEXID_NOBASE``: If true, the driver only supports
-  TGSI_SEMANTIC_VERTEXID_NOBASE (and not TGSI_SEMANTIC_VERTEXID). This means
-  gallium frontends for APIs whose vertexIDs are offset by basevertex (such as GL)
-  will need to lower TGSI_SEMANTIC_VERTEXID to TGSI_SEMANTIC_VERTEXID_NOBASE
-  and TGSI_SEMANTIC_BASEVERTEX, so drivers setting this must handle both these
-  semantics. Only relevant if geometry shaders are supported.
-  (BASEVERTEX could be exposed separately too via ``PIPE_CAP_DRAW_PARAMETERS``).
 * ``PIPE_CAP_POLYGON_OFFSET_CLAMP``: If true, the driver implements support
   for ``pipe_rasterizer_state::offset_clamp``.
 * ``PIPE_CAP_MULTISAMPLE_Z_RESOLVE``: Whether the driver supports blitting

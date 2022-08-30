@@ -481,12 +481,6 @@ _mesa_init_constants(struct gl_constants *consts, gl_api api)
 
    consts->GLSLLowerConstArrays = true;
 
-   /* Assume that if GLSL 1.30+ (or GLSL ES 3.00+) is supported that
-    * gl_VertexID is implemented using a native hardware register with OpenGL
-    * semantics.
-    */
-   consts->VertexID_is_zero_based = false;
-
    /* GL_ARB_draw_buffers */
    consts->MaxDrawBuffers = MAX_DRAW_BUFFERS;
 
