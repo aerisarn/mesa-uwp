@@ -567,15 +567,13 @@ static uint32_t pvr_get_hw_clear_color(VkFormat vk_format,
 
 static VkResult
 pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
-                                        uint32_t idx,
+                                        const struct pvr_load_op *load_op,
                                         pvr_dev_addr_t *const addr_out)
 {
    const struct pvr_render_pass_info *render_pass_info =
       &cmd_buffer->state.render_pass_info;
    const struct pvr_render_pass *pass = render_pass_info->pass;
-   const struct pvr_renderpass_hwsetup_render *hw_render =
-      &pass->hw_setup->renders[idx];
-   ASSERTED const struct pvr_load_op *load_op = hw_render->load_op;
+   const struct pvr_renderpass_hwsetup_render *hw_render = load_op->hw_render;
    const struct pvr_renderpass_colorinit *color_init =
       &hw_render->color_init[0];
    const struct pvr_render_pass_attachment *attachment =
@@ -611,14 +609,10 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
 
 static VkResult pvr_load_op_pds_data_create_and_upload(
    struct pvr_cmd_buffer *cmd_buffer,
-   uint32_t idx,
+   const struct pvr_load_op *load_op,
    pvr_dev_addr_t constants_addr,
    struct pvr_pds_upload *const pds_upload_out)
 {
-   const struct pvr_render_pass_info *render_pass_info =
-      &cmd_buffer->state.render_pass_info;
-   const struct pvr_load_op *load_op =
-      render_pass_info->pass->hw_setup->renders[idx].load_op;
    struct pvr_device *device = cmd_buffer->device;
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    struct pvr_pds_pixel_shader_sa_program program = { 0 };
@@ -678,19 +672,20 @@ static VkResult pvr_load_op_pds_data_create_and_upload(
  */
 static VkResult
 pvr_load_op_data_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
-                                   uint32_t idx,
+                                   const struct pvr_load_op *load_op,
                                    struct pvr_pds_upload *const pds_upload_out)
 {
    pvr_dev_addr_t constants_addr;
    VkResult result;
 
-   result =
-      pvr_load_op_constants_create_and_upload(cmd_buffer, idx, &constants_addr);
+   result = pvr_load_op_constants_create_and_upload(cmd_buffer,
+                                                    load_op,
+                                                    &constants_addr);
    if (result != VK_SUCCESS)
       return result;
 
    return pvr_load_op_pds_data_create_and_upload(cmd_buffer,
-                                                 idx,
+                                                 load_op,
                                                  constants_addr,
                                                  pds_upload_out);
 }
@@ -986,7 +981,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
        * when the pool gets emptied?
        */
       result = pvr_load_op_data_create_and_upload(cmd_buffer,
-                                                  sub_cmd->hw_render_idx,
+                                                  load_op,
                                                   &load_op_program);
       if (result != VK_SUCCESS)
          return result;
@@ -2518,7 +2513,7 @@ static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
    VkResult result;
 
    result = pvr_load_op_data_create_and_upload(cmd_buffer,
-                                               0,
+                                               load_op,
                                                &shareds_update_program);
    if (result != VK_SUCCESS)
       return result;
