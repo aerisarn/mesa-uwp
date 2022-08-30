@@ -183,6 +183,20 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
     * those are relative to STATE_BASE_ADDRESS::DynamicStateBaseAddress.
     */
 #if GFX_VER >= 12
+
+#if GFX_VERx10 >= 125
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+      /* Wa_14016407139:
+       *
+       * "On Surface state base address modification, for 3D workloads, SW must
+       *  always program PIPE_CONTROL either with CS Stall or PS sync stall. In
+       *  both the cases set Render Target Cache Flush Enable".
+       */
+      pc.RenderTargetCacheFlushEnable = true;
+      pc.CommandStreamerStallEnable = true;
+   }
+#endif
+
    /* GEN:BUG:1607854226:
     *
     *  Non-pipelined state has issues with not applying in MEDIA/GPGPU mode.
