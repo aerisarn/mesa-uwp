@@ -60,6 +60,17 @@ struct vk_attachment_state {
 };
 
 struct vk_command_buffer_ops {
+   /** Creates a command buffer
+    *
+    * Used by the common command pool implementation.  This function MUST
+    * call `vk_command_buffer_finish()`.  Notably, this function does not
+    * receive any additional parameters such as the level.  The level will be
+    * set by `vk_common_AllocateCommandBuffers()` and the driver must not rely
+    * on it until `vkBeginCommandBuffer()` time.
+    */
+   VkResult (*create)(struct vk_command_pool *,
+                      struct vk_command_buffer **);
+
    /** Resets the command buffer
     *
     * Used by the common command pool implementation.  This function MUST

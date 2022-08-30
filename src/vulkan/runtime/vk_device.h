@@ -34,6 +34,7 @@
 extern "C" {
 #endif
 
+struct vk_command_buffer_ops;
 struct vk_sync;
 
 enum vk_queue_submit_mode {
@@ -123,6 +124,9 @@ struct vk_device {
     *     level dispatch table.
     */
    const struct vk_device_dispatch_table *command_dispatch_table;
+
+   /** Command buffer vtable when using the common command pool */
+   const struct vk_command_buffer_ops *command_buffer_ops;
 
    /* For VK_EXT_private_data */
    uint32_t private_data_next_index;

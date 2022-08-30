@@ -43,6 +43,7 @@ vk_command_pool_init(struct vk_device *device,
    pool->flags = pCreateInfo->flags;
    pool->queue_family_index = pCreateInfo->queueFamilyIndex;
    pool->alloc = pAllocator ? *pAllocator : device->alloc;
+   pool->command_buffer_ops = device->command_buffer_ops;
    list_inithead(&pool->command_buffers);
 
    return VK_SUCCESS;
@@ -129,6 +130,41 @@ vk_common_ResetCommandPool(VkDevice device,
    }
 
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_AllocateCommandBuffers(VkDevice device,
+                                 const VkCommandBufferAllocateInfo *pAllocateInfo,
+                                 VkCommandBuffer *pCommandBuffers)
+{
+   VK_FROM_HANDLE(vk_command_pool, pool, pAllocateInfo->commandPool);
+   VkResult result;
+   uint32_t i;
+
+   assert(device == vk_device_to_handle(pool->base.device));
+
+   for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
+      struct vk_command_buffer *cmd_buffer;
+      result = pool->command_buffer_ops->create(pool, &cmd_buffer);
+      if (unlikely(result != VK_SUCCESS))
+         goto fail;
+
+      cmd_buffer->level = pAllocateInfo->level;
+
+      pCommandBuffers[i] = vk_command_buffer_to_handle(cmd_buffer);
+   }
+
+   return VK_SUCCESS;
+
+fail:
+   while (i--) {
+      VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, pCommandBuffers[i]);
+      cmd_buffer->ops->destroy(cmd_buffer);
+   }
+   for (i = 0; i < pAllocateInfo->commandBufferCount; i++)
+      pCommandBuffers[i] = VK_NULL_HANDLE;
+
+   return result;
 }
 
 VKAPI_ATTR void VKAPI_CALL

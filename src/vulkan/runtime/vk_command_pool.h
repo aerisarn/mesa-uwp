@@ -43,6 +43,9 @@ struct vk_command_pool {
    /** Allocator passed to vkCreateCommandPool() */
    VkAllocationCallbacks alloc;
 
+   /** Command buffer vtable for command buffers allocated from this pool */
+   const struct vk_command_buffer_ops *command_buffer_ops;
+
    /** List of all command buffers */
    struct list_head command_buffers;
 };
