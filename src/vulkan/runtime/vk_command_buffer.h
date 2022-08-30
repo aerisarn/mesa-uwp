@@ -177,6 +177,9 @@ void
 vk_command_buffer_reset(struct vk_command_buffer *command_buffer);
 
 void
+vk_command_buffer_recycle(struct vk_command_buffer *command_buffer);
+
+void
 vk_command_buffer_finish(struct vk_command_buffer *command_buffer);
 
 static inline VkResult

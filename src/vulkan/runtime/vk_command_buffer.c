@@ -72,6 +72,20 @@ vk_command_buffer_finish(struct vk_command_buffer *command_buffer)
    vk_object_base_finish(&command_buffer->base);
 }
 
+void
+vk_command_buffer_recycle(struct vk_command_buffer *cmd_buffer)
+{
+   /* Reset, returning resources to the pool.  The command buffer object
+    * itself will be recycled but, if the driver supports returning other
+    * resources such as batch buffers to the pool, it should do so so they're
+    * not tied up in recycled command buffer objects.
+    */
+   cmd_buffer->ops->reset(cmd_buffer,
+      VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
+   vk_object_base_recycle(&cmd_buffer->base);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_ResetCommandBuffer(VkCommandBuffer commandBuffer,
                              VkCommandBufferResetFlags flags)

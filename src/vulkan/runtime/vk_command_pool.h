@@ -46,8 +46,14 @@ struct vk_command_pool {
    /** Command buffer vtable for command buffers allocated from this pool */
    const struct vk_command_buffer_ops *command_buffer_ops;
 
+   /** True if we should recycle command buffers */
+   bool recycle_command_buffers;
+
    /** List of all command buffers */
    struct list_head command_buffers;
+
+   /** List of freed command buffers for trimming. */
+   struct list_head free_command_buffers;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_command_pool, base, VkCommandPool,
@@ -61,6 +67,10 @@ vk_command_pool_init(struct vk_device *device,
 
 void
 vk_command_pool_finish(struct vk_command_pool *pool);
+
+void
+vk_command_pool_trim(struct vk_command_pool *pool,
+                     VkCommandPoolTrimFlags flags);
 
 #ifdef __cplusplus
 }
