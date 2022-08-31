@@ -532,6 +532,8 @@ typedef struct shader_info {
 
       /* Applies to MESH. */
       struct {
+         bool uses_wide_subgroup_intrinsics;
+
          /* Bit mask of MS outputs that are used
           * with an index that is NOT the local invocation index.
           */
