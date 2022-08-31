@@ -1014,6 +1014,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                       sub_cmd->hw_render_idx,
                                       dev_info);
 
+   /* Setup depth/stencil job information. */
    if (hw_render->ds_surface_id != -1) {
       struct pvr_image_view *iview =
          render_pass_info->attachments[hw_render->ds_surface_id];
@@ -1065,11 +1066,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       } else {
          job->stencil_addr = PVR_DEV_ADDR_INVALID;
       }
-
-      job->samples = image->vk.samples;
    } else {
-      pvr_finishme("Set up correct number of samples for render job");
-
       job->depth_addr = PVR_DEV_ADDR_INVALID;
       job->depth_stride = 0;
       job->depth_height = 0;
@@ -1081,8 +1078,39 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       job->depth_memlayout = PVR_MEMLAYOUT_LINEAR;
 
       job->stencil_addr = PVR_DEV_ADDR_INVALID;
+   }
 
-      job->samples = 1;
+   if (hw_render->ds_surface_id != -1) {
+      struct pvr_image_view *iview =
+         render_pass_info->attachments[hw_render->ds_surface_id];
+      const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+
+      /* If the HW render pass has a valid depth/stencil surface, determine the
+       * sample count from the attachment's image.
+       */
+      job->samples = image->vk.samples;
+   } else if (hw_render->output_regs_count) {
+      /* If the HW render pass has output registers, we have color attachments
+       * to write to, so determine the sample count from the count specified for
+       * every color attachment in this render.
+       */
+      job->samples = hw_render->sample_count;
+   } else if (cmd_buffer->state.gfx_pipeline) {
+      /* If the HW render pass has no color or depth/stencil attachments, we
+       * determine the sample count from the count given during pipeline
+       * creation.
+       */
+      job->samples = cmd_buffer->state.gfx_pipeline->rasterization_samples;
+   } else if (render_pass_info->pass->attachment_count > 0) {
+      /* If we get here, we have a render pass with subpasses containing no
+       * attachments. The next best thing is largest of the sample counts
+       * specified by the render pass attachment descriptions.
+       */
+      job->samples = render_pass_info->pass->max_sample_count;
+   } else {
+      /* No appropriate framebuffer attachment is available. */
+      mesa_logw("Defaulting render job sample count to 1.");
+      job->samples = VK_SAMPLE_COUNT_1_BIT;
    }
 
    if (sub_cmd->max_tiles_in_flight ==
