@@ -3033,13 +3033,13 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
 
          /* Compile the shader if it hasn't been loaded from the cache. */
          if (!si_compile_shader(sscreen, compiler, shader, debug)) {
-            FREE(shader);
             fprintf(stderr,
                "radeonsi: can't compile a main shader part (type: %s, name: %s).\n"
                "This is probably a driver bug, please report "
                "it to https://gitlab.freedesktop.org/mesa/mesa/-/issues.\n",
                gl_shader_stage_name(shader->selector->stage),
                shader->selector->info.base.name);
+            FREE(shader);
             return;
          }
 
