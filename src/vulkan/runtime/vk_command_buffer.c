@@ -39,6 +39,7 @@ vk_command_buffer_init(struct vk_command_buffer *command_buffer,
    command_buffer->pool = pool;
    command_buffer->level = level;
    vk_dynamic_graphics_state_init(&command_buffer->dynamic_graphics_state);
+   command_buffer->record_result = VK_SUCCESS;
    vk_cmd_queue_init(&command_buffer->cmd_queue, &pool->alloc);
    util_dynarray_init(&command_buffer->labels, NULL);
    command_buffer->region_begin = true;
@@ -52,6 +53,7 @@ void
 vk_command_buffer_reset(struct vk_command_buffer *command_buffer)
 {
    vk_dynamic_graphics_state_clear(&command_buffer->dynamic_graphics_state);
+   command_buffer->record_result = VK_SUCCESS;
    vk_command_buffer_reset_render_pass(command_buffer);
    vk_cmd_queue_reset(&command_buffer->cmd_queue);
    util_dynarray_clear(&command_buffer->labels);

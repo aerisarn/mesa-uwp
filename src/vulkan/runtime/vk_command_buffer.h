@@ -26,6 +26,7 @@
 
 #include "vk_cmd_queue.h"
 #include "vk_graphics_state.h"
+#include "vk_log.h"
 #include "vk_object.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
@@ -67,6 +68,9 @@ struct vk_command_buffer {
    VkCommandBufferLevel level;
 
    struct vk_dynamic_graphics_state dynamic_graphics_state;
+
+   /** Command buffer recording error state. */
+   VkResult record_result;
 
    /** Link in vk_command_pool::command_buffers if pool != NULL */
    struct list_head pool_link;
@@ -149,6 +153,29 @@ vk_command_buffer_reset(struct vk_command_buffer *command_buffer);
 
 void
 vk_command_buffer_finish(struct vk_command_buffer *command_buffer);
+
+static inline VkResult
+__vk_command_buffer_set_error(struct vk_command_buffer *command_buffer,
+                              VkResult error, const char *file, int line)
+{
+   assert(error != VK_SUCCESS);
+   error = __vk_errorf(command_buffer, error, file, line, NULL);
+   if (command_buffer->record_result == VK_SUCCESS)
+       command_buffer->record_result = error;
+   return error;
+}
+
+#define vk_command_buffer_set_error(command_buffer, error) \
+   __vk_command_buffer_set_error(command_buffer, error, __FILE__, __LINE__)
+
+static inline VkResult
+vk_command_buffer_get_record_result(struct vk_command_buffer *command_buffer)
+{
+   return command_buffer->record_result;
+}
+
+#define vk_command_buffer_has_error(command_buffer) \
+   unlikely((command_buffer)->record_result != VK_SUCCESS)
 
 #ifdef __cplusplus
 }
