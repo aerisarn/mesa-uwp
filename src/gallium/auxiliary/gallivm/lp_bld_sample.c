@@ -1175,7 +1175,7 @@ load_mip(struct gallivm_state *gallivm, LLVMValueRef offsets, LLVMValueRef index
    LLVMValueRef zero = lp_build_const_int32(gallivm, 0);
    LLVMValueRef indexes[2] = {zero, index1};
    LLVMValueRef ptr = LLVMBuildGEP(gallivm->builder, offsets, indexes, ARRAY_SIZE(indexes), "");
-   return LLVMBuildLoad(gallivm->builder, ptr, "");
+   return LLVMBuildLoad2(gallivm->builder, LLVMInt32TypeInContext(gallivm->context), ptr, "");
 }
 
 /**
