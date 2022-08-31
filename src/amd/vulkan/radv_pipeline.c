@@ -5022,15 +5022,21 @@ radv_pipeline_emit_hw_hs(struct radeon_cmdbuf *cs, const struct radv_graphics_pi
    uint64_t va = radv_shader_get_va(shader);
 
    if (pdevice->rad_info.gfx_level >= GFX9) {
+      uint32_t rsrc2 = shader->config.rsrc2;
+
       if (pdevice->rad_info.gfx_level >= GFX10) {
+         rsrc2 |= S_00B42C_LDS_SIZE_GFX10(shader->info.tcs.num_lds_blocks);
+
          radeon_set_sh_reg(cs, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
       } else {
+         rsrc2 |= S_00B42C_LDS_SIZE_GFX9(shader->info.tcs.num_lds_blocks);
+
          radeon_set_sh_reg(cs, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
       }
 
       radeon_set_sh_reg_seq(cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, 2);
       radeon_emit(cs, shader->config.rsrc1);
-      radeon_emit(cs, shader->config.rsrc2);
+      radeon_emit(cs, rsrc2);
    } else {
       radeon_set_sh_reg_seq(cs, R_00B420_SPI_SHADER_PGM_LO_HS, 4);
       radeon_emit(cs, va >> 8);
