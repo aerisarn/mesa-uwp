@@ -186,7 +186,7 @@ anv_reloc_list_clear(struct anv_reloc_list *list)
 static VkResult
 anv_reloc_list_append(struct anv_reloc_list *list,
                       const VkAllocationCallbacks *alloc,
-                      struct anv_reloc_list *other, uint32_t offset)
+                      struct anv_reloc_list *other)
 {
    VkResult result = anv_reloc_list_grow(list, alloc, other->num_relocs);
    if (result != VK_SUCCESS)
@@ -243,9 +243,7 @@ anv_batch_address(struct anv_batch *batch, void *batch_location)
 void
 anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other)
 {
-   uint32_t size, offset;
-
-   size = other->next - other->start;
+   uint32_t size = other->next - other->start;
    assert(size % 4 == 0);
 
    if (batch->next + size > batch->end) {
@@ -261,9 +259,8 @@ anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other)
    VG(VALGRIND_CHECK_MEM_IS_DEFINED(other->start, size));
    memcpy(batch->next, other->start, size);
 
-   offset = batch->next - batch->start;
    VkResult result = anv_reloc_list_append(batch->relocs, batch->alloc,
-                                           other->relocs, offset);
+                                           other->relocs);
    if (result != VK_SUCCESS) {
       anv_batch_set_error(batch, result);
       return;
@@ -1029,7 +1026,7 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
    }
 
    anv_reloc_list_append(&primary->surface_relocs, &primary->vk.pool->alloc,
-                         &secondary->surface_relocs, 0);
+                         &secondary->surface_relocs);
 }
 
 struct anv_execbuf {
