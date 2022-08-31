@@ -69,6 +69,7 @@ public:
       vpm,
       force_cf,
       ack_rat_return_write,
+      helper,
       nflags
       };
 

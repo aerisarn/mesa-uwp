@@ -701,6 +701,9 @@ bool RatInstr::emit_image_store(nir_intrinsic_instr *intrin, Shader& shader)
                              image_offset, 1, 0xf, 0);
 
    store->set_ack();
+   if (nir_intrinsic_access(intrin) & ACCESS_INCLUDE_HELPERS)
+      store->set_instr_flag(Instr::helper);
+
    shader.emit_instruction(store);
    return true;
 }

@@ -887,9 +887,13 @@ void AssamblerVisitor::visit(const ControlFlowInstr& instr)
    case ControlFlowInstr::cf_endif:
       emit_endif();
       break;
-   case ControlFlowInstr::cf_loop_begin:
-      emit_loop_begin(instr.has_instr_flag(Instr::vpm));
+   case ControlFlowInstr::cf_loop_begin: {
+      bool use_vpm = m_shader->processor_type == PIPE_SHADER_FRAGMENT &&
+            instr.has_instr_flag(Instr::vpm) &&
+            !instr.has_instr_flag(Instr::helper);
+      emit_loop_begin(use_vpm);
       break;
+   }
    case ControlFlowInstr::cf_loop_end:
       emit_loop_end();
       break;
