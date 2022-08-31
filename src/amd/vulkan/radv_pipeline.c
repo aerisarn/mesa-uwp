@@ -1367,11 +1367,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
                   RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_PRIMITIVE_TOPOLOGY);
    }
 
-   /* If rasterization is disabled we do not care about any of the
-    * dynamic states, since they are all rasterization related only,
-    * except primitive topology, primitive restart enable, vertex
-    * binding stride and rasterization discard itself.
-    */
+   /* Disable dynamic states that are useless when rasterization is disabled. */
    if (!raster_enabled) {
       return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
              RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
