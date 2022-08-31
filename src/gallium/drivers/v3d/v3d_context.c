@@ -32,6 +32,7 @@
 #include "util/u_blitter.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_prim.h"
+#include "util/u_debug_cb.h"
 #include "pipe/p_screen.h"
 
 #include "v3d_screen.h"
@@ -84,18 +85,6 @@ v3d_memory_barrier(struct pipe_context *pctx, unsigned int flags)
         /* We only need to flush jobs writing to SSBOs/images. */
         perf_debug("Flushing all jobs for glMemoryBarrier(), could do better");
         v3d_flush(pctx);
-}
-
-static void
-v3d_set_debug_callback(struct pipe_context *pctx,
-                       const struct util_debug_callback *cb)
-{
-        struct v3d_context *v3d = v3d_context(pctx);
-
-        if (cb)
-                v3d->debug = *cb;
-        else
-                memset(&v3d->debug, 0, sizeof(v3d->debug));
 }
 
 static void
@@ -360,7 +349,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->destroy = v3d_context_destroy;
         pctx->flush = v3d_pipe_flush;
         pctx->memory_barrier = v3d_memory_barrier;
-        pctx->set_debug_callback = v3d_set_debug_callback;
+        pctx->set_debug_callback = u_default_set_debug_callback;
         pctx->invalidate_resource = v3d_invalidate_resource;
         pctx->get_sample_position = v3d_get_sample_position;
 

@@ -345,9 +345,9 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
 static void
 v3d_shader_debug_output(const char *message, void *data)
 {
-        struct v3d_context *v3d = data;
+        struct pipe_context *ctx = data;
 
-        util_debug_message(&v3d->debug, SHADER_INFO, "%s", message);
+        util_debug_message(&ctx->debug, SHADER_INFO, "%s", message);
 }
 
 static void *
