@@ -4529,6 +4529,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    /* Force per-vertex VRS. */
    if (radv_consider_force_vrs(pipeline, noop_fs, stages, *last_vgt_api_stage)) {
       assert(*last_vgt_api_stage == MESA_SHADER_VERTEX ||
+             *last_vgt_api_stage == MESA_SHADER_TESS_EVAL ||
              *last_vgt_api_stage == MESA_SHADER_GEOMETRY);
       nir_shader *last_vgt_shader = stages[*last_vgt_api_stage].nir;
       NIR_PASS(_, last_vgt_shader, radv_force_primitive_shading_rate, device);
