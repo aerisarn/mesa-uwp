@@ -907,7 +907,8 @@ panvk_per_arch(EndCommandBuffer)(VkCommandBuffer commandBuffer)
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
    VkResult ret =
       cmdbuf->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ?
-      cmdbuf->vk.cmd_queue.error : cmdbuf->record_result;
+      vk_command_buffer_get_record_result(&cmdbuf->vk) :
+      cmdbuf->record_result;
 
    panvk_per_arch(cmd_close_batch)(cmdbuf);
    cmdbuf->status = ret == VK_SUCCESS ?

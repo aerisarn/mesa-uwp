@@ -879,7 +879,7 @@ dzn_EndCommandBuffer(VkCommandBuffer commandBuffer)
       if (FAILED(hres))
          cmdbuf->error = vk_error(cmdbuf->vk.base.device, VK_ERROR_OUT_OF_HOST_MEMORY);
    } else {
-      cmdbuf->error = cmdbuf->vk.cmd_queue.error;
+      cmdbuf->error = vk_command_buffer_get_record_result(&cmdbuf->vk);
    }
 
    return cmdbuf->error;

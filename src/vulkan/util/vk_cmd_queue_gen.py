@@ -78,7 +78,6 @@ struct vk_device_dispatch_table;
 struct vk_cmd_queue {
    const VkAllocationCallbacks *alloc;
    struct list_head cmds;
-   VkResult error;
 };
 
 enum vk_cmd_type {
@@ -141,7 +140,7 @@ struct vk_cmd_queue_entry {
 % if c.guard is not None:
 #ifdef ${c.guard}
 % endif
-  void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
+  VkResult vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 % for p in c.params[1:]:
    , ${p.decl}
 % endfor
@@ -159,7 +158,6 @@ vk_cmd_queue_init(struct vk_cmd_queue *queue, VkAllocationCallbacks *alloc)
 {
    queue->alloc = alloc;
    list_inithead(&queue->cmds);
-   queue->error = VK_SUCCESS;
 }
 
 static inline void
@@ -167,7 +165,6 @@ vk_cmd_queue_reset(struct vk_cmd_queue *queue)
 {
    vk_free_queue(queue);
    list_inithead(&queue->cmds);
-   queue->error = VK_SUCCESS;
 }
 
 static inline void
@@ -236,19 +233,16 @@ struct vk_cmd_queue_entry *cmd)
 }
 
 % if c.name not in manual_commands and c.name not in no_enqueue_commands:
-void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
+VkResult vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 % for p in c.params[1:]:
 , ${p.decl}
 % endfor
 )
 {
-   if (queue->error)
-      return;
-
    struct vk_cmd_queue_entry *cmd = vk_zalloc(queue->alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!cmd) { queue->error = VK_ERROR_OUT_OF_HOST_MEMORY; return; }
+   if (!cmd) return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    cmd->type = ${to_enum_name(c.name)};
    \
@@ -273,13 +267,13 @@ void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 % endfor
 
    list_addtail(&cmd->cmd_link, &queue->cmds);
-   return;
+   return VK_SUCCESS;
 
 % if need_error_handling:
 err:
-   queue->error = VK_ERROR_OUT_OF_HOST_MEMORY;
    if (cmd)
       vk_free_${to_underscore(c.name)}(queue, cmd);
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
 % endif
 }
 % endif
@@ -356,12 +350,16 @@ vk_cmd_enqueue_${c.name}(${c.decl_params()})
 {
    VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
 
+   if (vk_command_buffer_has_error(cmd_buffer))
+      return;
 % if len(c.params) == 1:
-   vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue);
+   VkResult result = vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue);
 % else:
-   vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue,
+   VkResult result = vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue,
                                        ${c.call_params(1)});
 % endif
+   if (unlikely(result != VK_SUCCESS))
+      vk_command_buffer_set_error(cmd_buffer, result);
 }
 % endif
 

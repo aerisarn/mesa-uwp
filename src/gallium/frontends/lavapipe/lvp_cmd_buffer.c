@@ -169,13 +169,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_EndCommandBuffer(
    VkCommandBuffer                             commandBuffer)
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   VkResult result = vk_command_buffer_get_record_result(&cmd_buffer->vk);
 
-   cmd_buffer->status =
-      cmd_buffer->vk.cmd_queue.error == VK_SUCCESS ?
+   cmd_buffer->status = result == VK_SUCCESS ?
       LVP_CMD_BUFFER_STATUS_EXECUTABLE :
       LVP_CMD_BUFFER_STATUS_INVALID;
 
-   return cmd_buffer->vk.cmd_queue.error;
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateCommandPool(
