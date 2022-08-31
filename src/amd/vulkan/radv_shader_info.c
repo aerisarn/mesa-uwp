@@ -408,22 +408,24 @@ gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir,
 {
    info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
 
-   /* Number of tessellation patches per workgroup processed by the current pipeline. */
-   info->num_tess_patches =
-      get_tcs_num_patches(pipeline_key->tcs.tess_input_vertices, nir->info.tess.tcs_vertices_out,
-                          info->tcs.num_linked_inputs, info->tcs.num_linked_outputs,
-                          info->tcs.num_linked_patch_outputs,
-                          device->physical_device->hs.tess_offchip_block_dw_size,
-                          device->physical_device->rad_info.gfx_level,
-                          device->physical_device->rad_info.family);
+   if (!(pipeline_key->dynamic_patch_control_points)) {
+      /* Number of tessellation patches per workgroup processed by the current pipeline. */
+      info->num_tess_patches =
+         get_tcs_num_patches(pipeline_key->tcs.tess_input_vertices, nir->info.tess.tcs_vertices_out,
+                             info->tcs.num_linked_inputs, info->tcs.num_linked_outputs,
+                             info->tcs.num_linked_patch_outputs,
+                             device->physical_device->hs.tess_offchip_block_dw_size,
+                             device->physical_device->rad_info.gfx_level,
+                             device->physical_device->rad_info.family);
 
-   /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
-   info->tcs.num_lds_blocks =
-      calculate_tess_lds_size(device->physical_device->rad_info.gfx_level,
-                              pipeline_key->tcs.tess_input_vertices,
-                              nir->info.tess.tcs_vertices_out, info->tcs.num_linked_inputs,
-                              info->num_tess_patches, info->tcs.num_linked_outputs,
-                              info->tcs.num_linked_patch_outputs);
+      /* LDS size used by VS+TCS for storing TCS inputs and outputs. */
+      info->tcs.num_lds_blocks =
+         calculate_tess_lds_size(device->physical_device->rad_info.gfx_level,
+                                 pipeline_key->tcs.tess_input_vertices,
+                                 nir->info.tess.tcs_vertices_out, info->tcs.num_linked_inputs,
+                                 info->num_tess_patches, info->tcs.num_linked_outputs,
+                                 info->tcs.num_linked_patch_outputs);
+   }
 }
 
 static void
@@ -1320,29 +1322,31 @@ radv_link_shaders_info(struct radv_device *device,
                                         pipeline_key->tcs.tess_input_vertices,
                                         tcs_stage->info.tcs.tcs_vertices_out);
 
-      if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
-         /* When the number of TCS input and output vertices are the same (typically 3):
-          * - There is an equal amount of LS and HS invocations
-          * - In case of merged LSHS shaders, the LS and HS halves of the shader always process the
-          *   exact same vertex. We can use this knowledge to optimize them.
-          *
-          * We don't set tcs_in_out_eq if the float controls differ because that might involve
-          * different float modes for the same block and our optimizer doesn't handle a instruction
-          * dominating another with a different mode.
-          */
-         vs_stage->info.vs.tcs_in_out_eq =
-            device->physical_device->rad_info.gfx_level >= GFX9 &&
-            pipeline_key->tcs.tess_input_vertices == tcs_stage->info.tcs.tcs_vertices_out &&
-            vs_stage->nir->info.float_controls_execution_mode ==
-               tcs_stage->nir->info.float_controls_execution_mode;
+      if (!(pipeline_key->dynamic_patch_control_points)) {
+         if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
+            /* When the number of TCS input and output vertices are the same (typically 3):
+             * - There is an equal amount of LS and HS invocations
+             * - In case of merged LSHS shaders, the LS and HS halves of the shader always process
+             *   the exact same vertex. We can use this knowledge to optimize them.
+             *
+             * We don't set tcs_in_out_eq if the float controls differ because that might involve
+             * different float modes for the same block and our optimizer doesn't handle a
+             * instruction dominating another with a different mode.
+             */
+            vs_stage->info.vs.tcs_in_out_eq =
+               device->physical_device->rad_info.gfx_level >= GFX9 &&
+               pipeline_key->tcs.tess_input_vertices == tcs_stage->info.tcs.tcs_vertices_out &&
+               vs_stage->nir->info.float_controls_execution_mode ==
+                  tcs_stage->nir->info.float_controls_execution_mode;
 
-         if (vs_stage->info.vs.tcs_in_out_eq)
-            vs_stage->info.vs.tcs_temp_only_input_mask =
-               tcs_stage->nir->info.inputs_read &
-               vs_stage->nir->info.outputs_written &
-               ~tcs_stage->nir->info.tess.tcs_cross_invocation_inputs_read &
-               ~tcs_stage->nir->info.inputs_read_indirectly &
-               ~vs_stage->nir->info.outputs_accessed_indirectly;
+            if (vs_stage->info.vs.tcs_in_out_eq)
+               vs_stage->info.vs.tcs_temp_only_input_mask =
+                  tcs_stage->nir->info.inputs_read &
+                  vs_stage->nir->info.outputs_written &
+                  ~tcs_stage->nir->info.tess.tcs_cross_invocation_inputs_read &
+                  ~tcs_stage->nir->info.inputs_read_indirectly &
+                  ~vs_stage->nir->info.outputs_accessed_indirectly;
+         }
       }
    }
 
