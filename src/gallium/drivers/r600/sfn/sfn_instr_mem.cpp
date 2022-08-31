@@ -700,8 +700,7 @@ bool RatInstr::emit_image_store(nir_intrinsic_instr *intrin, Shader& shader)
    auto store = new RatInstr(op, RatInstr::STORE_TYPED, value, coord, imageid,
                              image_offset, 1, 0xf, 0);
 
-   if (nir_intrinsic_has_access(intrin) & ACCESS_COHERENT)
-      store->set_ack();
+   store->set_ack();
    shader.emit_instruction(store);
    return true;
 }
