@@ -694,7 +694,9 @@ anv_pipeline_hash_graphics(struct anv_graphics_pipeline *pipeline,
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 
-   const bool rba = pipeline->base.device->robust_buffer_access;
+   const struct anv_device *device = pipeline->base.device;
+
+   const bool rba = device->robust_buffer_access;
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
    for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
@@ -703,6 +705,11 @@ anv_pipeline_hash_graphics(struct anv_graphics_pipeline *pipeline,
                            sizeof(stages[s].shader_sha1));
          _mesa_sha1_update(&ctx, &stages[s].key, brw_prog_key_size(s));
       }
+   }
+
+   if (stages[MESA_SHADER_MESH].info || stages[MESA_SHADER_TASK].info) {
+      const bool afs = device->physical->instance->assume_full_subgroups;
+      _mesa_sha1_update(&ctx, &afs, sizeof(afs));
    }
 
    _mesa_sha1_final(&ctx, sha1_out);
@@ -1634,6 +1641,48 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
+static void
+anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
+{
+   bool uses_wide_subgroup_intrinsics;
+
+   switch (info->stage) {
+   case MESA_SHADER_COMPUTE:
+      uses_wide_subgroup_intrinsics = info->cs.uses_wide_subgroup_intrinsics;
+      break;
+   case MESA_SHADER_TASK:
+   case MESA_SHADER_MESH:
+      uses_wide_subgroup_intrinsics = info->mesh.uses_wide_subgroup_intrinsics;
+      break;
+   default:
+      return;
+   }
+
+   unsigned local_size = info->workgroup_size[0] *
+                         info->workgroup_size[1] *
+                         info->workgroup_size[2];
+
+   /* Games don't always request full subgroups when they should,
+    * which can cause bugs, as they may expect bigger size of the
+    * subgroup than we choose for the execution.
+    */
+   if (device->physical->instance->assume_full_subgroups &&
+       uses_wide_subgroup_intrinsics &&
+       info->subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
+       local_size &&
+       local_size % BRW_SUBGROUP_SIZE == 0)
+      info->subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
+
+   /* If the client requests that we dispatch full subgroups but doesn't
+    * allow us to pick a subgroup size, we have to smash it to the API
+    * value of 32.  Performance will likely be terrible in this case but
+    * there's nothing we can do about that.  The client should have chosen
+    * a size.
+    */
+   if (info->subgroup_size == SUBGROUP_SIZE_FULL_SUBGROUPS)
+      info->subgroup_size = BRW_SUBGROUP_SIZE;
+}
+
 static VkResult
 anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
                               struct vk_pipeline_cache *cache,
@@ -1766,6 +1815,8 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       }
 
       ralloc_free(stage_ctx);
+
+      anv_fixup_subgroup_size(pipeline->base.device, &stages[s].nir->info);
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
 
@@ -1991,29 +2042,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout,
                              false /* use_primitive_replication */);
 
-      unsigned local_size = stage.nir->info.workgroup_size[0] *
-                            stage.nir->info.workgroup_size[1] *
-                            stage.nir->info.workgroup_size[2];
-
-      /* Games don't always request full subgroups when they should,
-       * which can cause bugs, as they may expect bigger size of the
-       * subgroup than we choose for the execution.
-       */
-      if (device->physical->instance->assume_full_subgroups &&
-          stage.nir->info.cs.uses_wide_subgroup_intrinsics &&
-          stage.nir->info.subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
-          local_size &&
-          local_size % BRW_SUBGROUP_SIZE == 0)
-         stage.nir->info.subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
-
-      /* If the client requests that we dispatch full subgroups but doesn't
-       * allow us to pick a subgroup size, we have to smash it to the API
-       * value of 32.  Performance will likely be terrible in this case but
-       * there's nothing we can do about that.  The client should have chosen
-       * a size.
-       */
-      if (stage.nir->info.subgroup_size == SUBGROUP_SIZE_FULL_SUBGROUPS)
-         stage.nir->info.subgroup_size = BRW_SUBGROUP_SIZE;
+      anv_fixup_subgroup_size(device, &stage.nir->info);
 
       stage.num_stats = 1;
 
