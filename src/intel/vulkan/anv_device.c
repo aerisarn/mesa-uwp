@@ -263,7 +263,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_custom_border_color               = true,
       .EXT_depth_clip_control                = true,
       .EXT_depth_clip_enable                 = true,
-      .EXT_descriptor_indexing               = device->has_bindless_images,
+      .EXT_descriptor_indexing               = true,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       .EXT_display_control                   = true,
 #endif
@@ -563,10 +563,6 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
                      sizeof(device->info.pci_device_id));
    _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
                      sizeof(device->always_use_bindless));
-   _mesa_sha1_update(&sha1_ctx, &device->has_bindless_images,
-                     sizeof(device->has_bindless_images));
-   _mesa_sha1_update(&sha1_ctx, &device->has_bindless_samplers,
-                     sizeof(device->has_bindless_samplers));
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
@@ -899,9 +895,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->use_call_secondary =
       !env_var_as_boolean("ANV_DISABLE_SECONDARY_CMD_BUFFER_CALLS", false);
-
-   device->has_bindless_images = true;
-   device->has_bindless_samplers = true;
 
    device->has_implicit_ccs = device->info.has_aux_map ||
                               device->info.verx10 >= 125;
@@ -1237,28 +1230,27 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->shaderFloat16                       = true;
    f->shaderInt8                          = true;
 
-   bool descIndexing = pdevice->has_bindless_images;
-   f->descriptorIndexing                                 = descIndexing;
+   f->descriptorIndexing                                 = true;
    f->shaderInputAttachmentArrayDynamicIndexing          = false;
-   f->shaderUniformTexelBufferArrayDynamicIndexing       = descIndexing;
-   f->shaderStorageTexelBufferArrayDynamicIndexing       = descIndexing;
+   f->shaderUniformTexelBufferArrayDynamicIndexing       = true;
+   f->shaderStorageTexelBufferArrayDynamicIndexing       = true;
    f->shaderUniformBufferArrayNonUniformIndexing         = false;
-   f->shaderSampledImageArrayNonUniformIndexing          = descIndexing;
-   f->shaderStorageBufferArrayNonUniformIndexing         = descIndexing;
-   f->shaderStorageImageArrayNonUniformIndexing          = descIndexing;
+   f->shaderSampledImageArrayNonUniformIndexing          = true;
+   f->shaderStorageBufferArrayNonUniformIndexing         = true;
+   f->shaderStorageImageArrayNonUniformIndexing          = true;
    f->shaderInputAttachmentArrayNonUniformIndexing       = false;
-   f->shaderUniformTexelBufferArrayNonUniformIndexing    = descIndexing;
-   f->shaderStorageTexelBufferArrayNonUniformIndexing    = descIndexing;
-   f->descriptorBindingUniformBufferUpdateAfterBind      = descIndexing;
-   f->descriptorBindingSampledImageUpdateAfterBind       = descIndexing;
-   f->descriptorBindingStorageImageUpdateAfterBind       = descIndexing;
-   f->descriptorBindingStorageBufferUpdateAfterBind      = descIndexing;
-   f->descriptorBindingUniformTexelBufferUpdateAfterBind = descIndexing;
-   f->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
-   f->descriptorBindingUpdateUnusedWhilePending          = descIndexing;
-   f->descriptorBindingPartiallyBound                    = descIndexing;
-   f->descriptorBindingVariableDescriptorCount           = descIndexing;
-   f->runtimeDescriptorArray                             = descIndexing;
+   f->shaderUniformTexelBufferArrayNonUniformIndexing    = true;
+   f->shaderStorageTexelBufferArrayNonUniformIndexing    = true;
+   f->descriptorBindingUniformBufferUpdateAfterBind      = true;
+   f->descriptorBindingSampledImageUpdateAfterBind       = true;
+   f->descriptorBindingStorageImageUpdateAfterBind       = true;
+   f->descriptorBindingStorageBufferUpdateAfterBind      = true;
+   f->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+   f->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+   f->descriptorBindingUpdateUnusedWhilePending          = true;
+   f->descriptorBindingPartiallyBound                    = true;
+   f->descriptorBindingVariableDescriptorCount           = true;
+   f->runtimeDescriptorArray                             = true;
 
    f->samplerFilterMinmax                 = true;
    f->scalarBlockLayout                   = true;
@@ -1713,19 +1705,12 @@ void anv_GetPhysicalDeviceProperties(
    const struct intel_device_info *devinfo = &pdevice->info;
 
    const uint32_t max_ssbos = UINT16_MAX;
-   const uint32_t max_textures =
-      pdevice->has_bindless_images ? UINT16_MAX : 128;
-   const uint32_t max_samplers =
-      pdevice->has_bindless_samplers ? UINT16_MAX : 128;
-   const uint32_t max_images =
-      pdevice->has_bindless_images ? UINT16_MAX : MAX_IMAGES;
+   const uint32_t max_textures = UINT16_MAX;
+   const uint32_t max_samplers = UINT16_MAX;
+   const uint32_t max_images = UINT16_MAX;
 
-   /* If we can use bindless for everything, claim a high per-stage limit,
-    * otherwise use the binding table size, minus the slots reserved for
-    * render targets and one slot for the descriptor buffer. */
-   const uint32_t max_per_stage =
-      pdevice->has_bindless_images
-      ? UINT32_MAX : MAX_BINDING_TABLE_SIZE - MAX_RTS - 1;
+   /* Claim a high per-stage limit since we have bindless. */
+   const uint32_t max_per_stage = UINT32_MAX;
 
    const uint32_t max_workgroup_size =
       MIN2(1024, 32 * devinfo->max_cs_workgroup_threads);

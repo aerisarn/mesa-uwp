@@ -916,16 +916,14 @@ VkResult genX(CreateSampler)(
 
    assert((sampler->custom_border_color.map == NULL) || has_custom_color);
 
-   if (device->physical->has_bindless_samplers) {
-      /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
-       * for each sampler instead of 16 bytes because we want all bindless
-       * samplers to be 32-byte aligned so we don't have to use indirect
-       * sampler messages on them.
-       */
-      sampler->bindless_state =
-         anv_state_pool_alloc(&device->dynamic_state_pool,
-                              sampler->n_planes * 32, 32);
-   }
+   /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
+    * for each sampler instead of 16 bytes because we want all bindless
+    * samplers to be 32-byte aligned so we don't have to use indirect
+    * sampler messages on them.
+    */
+   sampler->bindless_state =
+      anv_state_pool_alloc(&device->dynamic_state_pool,
+                           sampler->n_planes * 32, 32);
 
    const bool seamless_cube =
       !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);

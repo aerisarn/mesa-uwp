@@ -916,10 +916,6 @@ struct anv_physical_device {
     bool                                        always_use_bindless;
     bool                                        use_call_secondary;
 
-    /** True if we can use bindless access for images */
-    bool                                        has_bindless_images;
-    /** True if we can use bindless access for samplers */
-    bool                                        has_bindless_samplers;
     /** True if we can use timeline semaphores through execbuf */
     bool                                        has_exec_timeline;
 
