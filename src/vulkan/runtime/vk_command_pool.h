@@ -51,8 +51,8 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_command_pool, base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 
 VkResult MUST_CHECK
-vk_command_pool_init(struct vk_command_pool *pool,
-                     struct vk_device *device,
+vk_command_pool_init(struct vk_device *device,
+                     struct vk_command_pool *pool,
                      const VkCommandPoolCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator);
 

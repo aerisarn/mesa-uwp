@@ -192,7 +192,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateCommandPool(
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
+   VkResult result = vk_command_pool_init(&device->vk, &pool->vk,
                                           pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pool);

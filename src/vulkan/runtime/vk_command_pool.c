@@ -31,8 +31,8 @@
 #include "vk_log.h"
 
 VkResult MUST_CHECK
-vk_command_pool_init(struct vk_command_pool *pool,
-                     struct vk_device *device,
+vk_command_pool_init(struct vk_device *device,
+                     struct vk_command_pool *pool,
                      const VkCommandPoolCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator)
 {
@@ -75,7 +75,7 @@ vk_common_CreateCommandPool(VkDevice _device,
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_pool_init(pool, device, pCreateInfo, pAllocator);
+   result = vk_command_pool_init(device, pool, pCreateInfo, pAllocator);
    if (unlikely(result != VK_SUCCESS)) {
       vk_free2(&device->alloc, pAllocator, pool);
       return result;
