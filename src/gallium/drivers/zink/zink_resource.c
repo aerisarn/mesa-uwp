@@ -423,8 +423,10 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    /* pNext may already be set */
    if (util_format_get_num_planes(templ->format) > 1)
       ici->flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+   else if (bind & ZINK_BIND_MUTABLE)
+      ici->flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
    else
-      ici->flags = modifiers_count || dmabuf || bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+      ici->flags = 0;
    if (ici->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)
       /* unset VkImageFormatListCreateInfo if mutable */
       ici->pNext = NULL;
@@ -2164,11 +2166,11 @@ zink_resource_get_separate_stencil(struct pipe_resource *pres)
 
 }
 
-bool
-zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res)
+static bool
+resource_object_add_bind(struct zink_context *ctx, struct zink_resource *res, unsigned bind)
 {
    /* base resource already has the cap */
-   if (res->base.b.bind & PIPE_BIND_SHADER_IMAGE)
+   if (res->base.b.bind & bind)
       return true;
    if (res->obj->is_buffer) {
       unreachable("zink: all buffers should have this bit");
@@ -2176,11 +2178,23 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
    }
    assert(!res->obj->dt);
    zink_fb_clears_apply_region(ctx, &res->base.b, (struct u_rect){0, res->base.b.width0, 0, res->base.b.height0});
-   bool ret = add_resource_bind(ctx, res, PIPE_BIND_SHADER_IMAGE);
+   bool ret = add_resource_bind(ctx, res, bind);
    if (ret)
       zink_resource_rebind(ctx, res);
 
    return ret;
+}
+
+bool
+zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res)
+{
+   return resource_object_add_bind(ctx, res, PIPE_BIND_SHADER_IMAGE);
+}
+
+bool
+zink_resource_object_init_mutable(struct zink_context *ctx, struct zink_resource *res)
+{
+   return resource_object_add_bind(ctx, res, ZINK_BIND_MUTABLE);
 }
 
 void

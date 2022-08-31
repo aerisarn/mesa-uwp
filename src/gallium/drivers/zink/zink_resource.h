@@ -27,6 +27,7 @@
 #include "zink_types.h"
 
 #define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
+#define ZINK_BIND_MUTABLE (1u << 28)
 #define ZINK_BIND_DMABUF (1u << 29)
 #define ZINK_BIND_TRANSIENT (1u << 30) //transient fb attachment
 #define ZINK_BIND_VIDEO (1u << 31)
@@ -71,6 +72,8 @@ zink_resource_object_reference(struct zink_screen *screen,
 
 bool
 zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res);
+bool
+zink_resource_object_init_mutable(struct zink_context *ctx, struct zink_resource *res);
 
 static inline bool
 zink_resource_has_binds(const struct zink_resource *res)

@@ -1620,6 +1620,9 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
       break;
    default: break;
    }
+   if (!res->obj->dt && view->resource->format != view->format)
+      /* mutable not set by default */
+      zink_resource_object_init_mutable(ctx, res);
    VkImageViewCreateInfo ivci = create_ivci(screen, res, &tmpl, target);
    struct pipe_surface *psurf = zink_get_surface(ctx, view->resource, &tmpl, &ivci);
    if (!psurf)
@@ -1795,6 +1798,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
                update = true;
             zink_batch_resource_usage_set(&ctx->batch, res, false, true);
          } else if (!res->obj->is_buffer) {
+             if (res->base.b.format != b->image_view->base.format)
+                /* mutable not set by default */
+                zink_resource_object_init_mutable(ctx, res);
              if (res->obj != b->image_view->obj) {
                 struct pipe_surface *psurf = &b->image_view->base;
                 VkImageView iv = b->image_view->image_view;
