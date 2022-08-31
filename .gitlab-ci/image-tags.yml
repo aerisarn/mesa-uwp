@@ -3,10 +3,10 @@ variables:
    DEBIAN_BASE_TAG: "2022-10-04-vn-render-server"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-09-30-mkbootimg"
+   DEBIAN_BUILD_TAG: "2022-10-18-dx-headers"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
-   DEBIAN_BUILD_MINGW_TAG: "2022-10-17-add-libdrm-libva-deps.3"
+   DEBIAN_BUILD_MINGW_TAG: "2022-10-18-dx-headers-va"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
