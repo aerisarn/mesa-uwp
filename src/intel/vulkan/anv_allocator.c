@@ -357,8 +357,7 @@ anv_free_list_pop(union anv_free_list *list,
 }
 
 static VkResult
-anv_block_pool_expand_range(struct anv_block_pool *pool,
-                            uint32_t center_bo_offset, uint32_t size);
+anv_block_pool_expand_range(struct anv_block_pool *pool, uint32_t size);
 
 VkResult
 anv_block_pool_init(struct anv_block_pool *pool,
@@ -379,17 +378,14 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->device = device;
    pool->nbos = 0;
    pool->size = 0;
-   pool->center_bo_offset = 0;
    pool->start_address = intel_canonical_address(start_address);
 
    pool->bo = NULL;
 
    pool->state.next = 0;
    pool->state.end = 0;
-   pool->back_state.next = 0;
-   pool->back_state.end = 0;
 
-   result = anv_block_pool_expand_range(pool, 0, initial_size);
+   result = anv_block_pool_expand_range(pool, initial_size);
    if (result != VK_SUCCESS)
       return result;
 
@@ -411,15 +407,10 @@ anv_block_pool_finish(struct anv_block_pool *pool)
 }
 
 static VkResult
-anv_block_pool_expand_range(struct anv_block_pool *pool,
-                            uint32_t center_bo_offset, uint32_t size)
+anv_block_pool_expand_range(struct anv_block_pool *pool, uint32_t size)
 {
    /* Assert that we only ever grow the pool */
-   assert(center_bo_offset >= pool->back_state.end);
-   assert(size - center_bo_offset >= pool->state.end);
-
-   /* Assert that we don't go outside the bounds of the memfd */
-   assert(center_bo_offset <= BLOCK_POOL_MEMFD_CENTER);
+   assert(size >= pool->state.end);
 
    /* For state pool BOs we have to be a bit careful about where we place them
     * in the GTT.  There are two documented workarounds for state base address
@@ -451,7 +442,6 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 
    uint32_t new_bo_size = size - pool->size;
    struct anv_bo *new_bo = NULL;
-   assert(center_bo_offset == 0);
    VkResult result = anv_device_alloc_bo(pool->device,
                                          pool->name,
                                          new_bo_size,
@@ -514,14 +504,10 @@ anv_block_pool_map(struct anv_block_pool *pool, int32_t offset, uint32_t size)
  *     allocated for each end as we have used.  This way the pool doesn't
  *     grow too far in one direction or the other.
  *
- *  4) If the _alloc_back() has never been called, then the back portion of
- *     the pool retains a size of zero.  (This makes it easier for users of
- *     the block pool that only want a one-sided pool.)
- *
- *  5) We have enough space allocated for at least one more block in
+ *  4) We have enough space allocated for at least one more block in
  *     whichever side `state` points to.
  *
- *  6) The center of the pool is always aligned to both the block_size of
+ *  5) The center of the pool is always aligned to both the block_size of
  *     the pool and a 4K CPU page.
  */
 static uint32_t
@@ -532,10 +518,10 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state,
 
    pthread_mutex_lock(&pool->device->mutex);
 
-   assert(state == &pool->state || state == &pool->back_state);
+   assert(state == &pool->state);
 
    /* Gather a little usage information on the pool.  Since we may have
-    * threadsd waiting in queue to get some storage while we resize, it's
+    * threads waiting in queue to get some storage while we resize, it's
     * actually possible that total_used will be larger than old_size.  In
     * particular, block_pool_alloc() increments state->next prior to
     * calling block_pool_grow, so this ensures that we get enough space for
@@ -544,11 +530,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state,
     * We align to a page size because it makes it easier to do our
     * calculations later in such a way that we state page-aigned.
     */
-   uint32_t back_used = align_u32(pool->back_state.next, PAGE_SIZE);
-   uint32_t front_used = align_u32(pool->state.next, PAGE_SIZE);
-   uint32_t total_used = front_used + back_used;
-
-   assert(state == &pool->state || back_used > 0);
+   uint32_t total_used = align_u32(pool->state.next, PAGE_SIZE);
 
    uint32_t old_size = pool->size;
 
@@ -557,89 +539,38 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state,
     */
    assert(old_size > 0);
 
-   const uint32_t old_back = pool->center_bo_offset;
-   const uint32_t old_front = old_size - pool->center_bo_offset;
-
-   /* The back_used and front_used may actually be smaller than the actual
-    * requirement because they are based on the next pointers which are
-    * updated prior to calling this function.
+   /* total_used may actually be smaller than the actual requirement because
+    * they are based on the next pointers which are updated prior to calling
+    * this function.
     */
-   uint32_t back_required = MAX2(back_used, old_back);
-   uint32_t front_required = MAX2(front_used, old_front);
+   uint32_t required = MAX2(total_used, old_size);
 
    /* With softpin, the pool is made up of a bunch of buffers with separate
     * maps.  Make sure we have enough contiguous space that we can get a
     * properly contiguous map for the next chunk.
     */
-   assert(old_back == 0);
-   front_required = MAX2(front_required, old_front + contiguous_size);
+   required = MAX2(required, old_size + contiguous_size);
 
-   if (back_used * 2 <= back_required && front_used * 2 <= front_required) {
-      /* If we're in this case then this isn't the firsta allocation and we
-       * already have enough space on both sides to hold double what we
-       * have allocated.  There's nothing for us to do.
-       */
-      goto done;
+   if (total_used * 2 > required) {
+      uint32_t size = old_size * 2;
+      while (size < required)
+         size *= 2;
+
+      assert(size > pool->size);
+
+      result = anv_block_pool_expand_range(pool, size);
    }
 
-   uint32_t size = old_size * 2;
-   while (size < back_required + front_required)
-      size *= 2;
-
-   assert(size > pool->size);
-
-   /* We compute a new center_bo_offset such that, when we double the size
-    * of the pool, we maintain the ratio of how much is used by each side.
-    * This way things should remain more-or-less balanced.
-    */
-   uint32_t center_bo_offset;
-   if (back_used == 0) {
-      /* If we're in this case then we have never called alloc_back().  In
-       * this case, we want keep the offset at 0 to make things as simple
-       * as possible for users that don't care about back allocations.
-       */
-      center_bo_offset = 0;
-   } else {
-      /* Try to "center" the allocation based on how much is currently in
-       * use on each side of the center line.
-       */
-      center_bo_offset = ((uint64_t)size * back_used) / total_used;
-
-      /* Align down to a multiple of the page size */
-      center_bo_offset &= ~(PAGE_SIZE - 1);
-
-      assert(center_bo_offset >= back_used);
-
-      /* Make sure we don't shrink the back end of the pool */
-      if (center_bo_offset < back_required)
-         center_bo_offset = back_required;
-
-      /* Make sure that we don't shrink the front end of the pool */
-      if (size - center_bo_offset < front_required)
-         center_bo_offset = size - front_required;
-   }
-
-   assert(center_bo_offset % PAGE_SIZE == 0);
-
-   result = anv_block_pool_expand_range(pool, center_bo_offset, size);
-
-done:
    pthread_mutex_unlock(&pool->device->mutex);
 
-   if (result == VK_SUCCESS) {
-      /* Return the appropriate new size.  This function never actually
-       * updates state->next.  Instead, we let the caller do that because it
-       * needs to do so in order to maintain its concurrency model.
-       */
-      if (state == &pool->state) {
-         return pool->size - pool->center_bo_offset;
-      } else {
-         assert(pool->center_bo_offset > 0);
-         return pool->center_bo_offset;
-      }
-   } else {
+   if (result != VK_SUCCESS)
       return 0;
-   }
+
+   /* Return the appropriate new size.  This function never actually
+    * updates state->next.  Instead, we let the caller do that because it
+    * needs to do so in order to maintain its concurrency model.
+    */
+   return pool->size;
 }
 
 static uint32_t
@@ -704,31 +635,6 @@ anv_block_pool_alloc(struct anv_block_pool *pool,
    offset = anv_block_pool_alloc_new(pool, &pool->state, block_size, padding);
 
    return offset;
-}
-
-/* Allocates a block out of the back of the block pool.
- *
- * This will allocated a block earlier than the "start" of the block pool.
- * The offsets returned from this function will be negative but will still
- * be correct relative to the block pool's map pointer.
- *
- * If you ever use anv_block_pool_alloc_back, then you will have to do
- * gymnastics with the block pool's BO when doing relocations.
- */
-int32_t
-anv_block_pool_alloc_back(struct anv_block_pool *pool,
-                          uint32_t block_size)
-{
-   int32_t offset = anv_block_pool_alloc_new(pool, &pool->back_state,
-                                             block_size, NULL);
-
-   /* The offset we get out of anv_block_pool_alloc_new() is actually the
-    * number of bytes downwards from the middle to the end of the block.
-    * We need to turn it into a (negative) offset from the middle to the
-    * start of the block.
-    */
-   assert(offset >= 0);
-   return -(offset + block_size);
 }
 
 VkResult

@@ -697,8 +697,6 @@ struct anv_block_pool {
    uint32_t center_bo_offset;
 
    struct anv_block_state state;
-
-   struct anv_block_state back_state;
 };
 
 /* Block pools are backed by a fixed-size 1GB memfd */
@@ -712,7 +710,7 @@ struct anv_block_pool {
 static inline uint32_t
 anv_block_pool_size(struct anv_block_pool *pool)
 {
-   return pool->state.end + pool->back_state.end;
+   return pool->state.end;
 }
 
 struct anv_state {
@@ -797,8 +795,6 @@ VkResult anv_block_pool_init(struct anv_block_pool *pool,
 void anv_block_pool_finish(struct anv_block_pool *pool);
 int32_t anv_block_pool_alloc(struct anv_block_pool *pool,
                              uint32_t block_size, uint32_t *padding);
-int32_t anv_block_pool_alloc_back(struct anv_block_pool *pool,
-                                  uint32_t block_size);
 void* anv_block_pool_map(struct anv_block_pool *pool, int32_t offset, uint32_t
 size);
 
