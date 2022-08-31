@@ -71,7 +71,8 @@ panfrost_create_compute_state(
         }
 
         panfrost_shader_compile(pctx->screen, &ctx->shaders, &ctx->descs,
-                                deserialized ?: cso->prog, v);
+                                deserialized ?: cso->prog,
+                                &ctx->base.debug, v);
 
         /* There are no variants so we won't need the NIR again */
         ralloc_free(deserialized);

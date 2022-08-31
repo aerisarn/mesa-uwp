@@ -4191,8 +4191,8 @@ bi_shader_stage_name(bi_context *ctx)
                 return gl_shader_stage_name(ctx->stage);
 }
 
-static void
-bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
+static char *
+bi_print_stats(bi_context *ctx, unsigned size)
 {
         struct bi_stats stats = { 0 };
 
@@ -4231,11 +4231,10 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
         unsigned nr_threads = full_threads ? 2 : 1;
 
         /* Dump stats */
-        char *str = ralloc_asprintf(NULL, "%s - %s shader: "
+        char *str = ralloc_asprintf(NULL, "%s shader: "
                         "%u inst, %u tuples, %u clauses, "
                         "%f cycles, %f arith, %f texture, %f vary, %f ldst, "
                         "%u quadwords, %u threads",
-                        ctx->nir->info.label ?: "",
                         bi_shader_stage_name(ctx),
                         stats.nr_ins, stats.nr_tuples, stats.nr_clauses,
                         cycles_bound, cycles_arith, cycles_texture,
@@ -4246,15 +4245,14 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
                 ralloc_asprintf_append(&str, ", %u preloads", bi_count_preload_cost(ctx));
         }
 
-        ralloc_asprintf_append(&str, ", %u loops, %u:%u spills:fills\n",
+        ralloc_asprintf_append(&str, ", %u loops, %u:%u spills:fills",
                         ctx->loop_count, ctx->spills, ctx->fills);
 
-        fputs(str, stderr);
-        ralloc_free(str);
+        return str;
 }
 
-static void
-va_print_stats(bi_context *ctx, unsigned size, FILE *fp)
+static char *
+va_print_stats(bi_context *ctx, unsigned size)
 {
         unsigned nr_ins = 0;
         struct va_stats stats = { 0 };
@@ -4292,11 +4290,10 @@ va_print_stats(bi_context *ctx, unsigned size, FILE *fp)
         unsigned nr_threads = (ctx->info.work_reg_count <= 32) ? 2 : 1;
 
         /* Dump stats */
-        fprintf(stderr, "%s - %s shader: "
+        return ralloc_asprintf(NULL, "%s shader: "
                         "%u inst, %f cycles, %f fma, %f cvt, %f sfu, %f v, "
                         "%f t, %f ls, %u quadwords, %u threads, %u loops, "
-                        "%u:%u spills:fills\n",
-                        ctx->nir->info.label ?: "",
+                        "%u:%u spills:fills",
                         bi_shader_stage_name(ctx),
                         nr_ins, cycles, cycles_fma, cycles_cvt, cycles_sfu,
                         cycles_v, cycles_t, cycles_ls, size / 16, nr_threads,
@@ -5162,13 +5159,23 @@ bi_compile_variant_nir(nir_shader *nir,
                 fflush(stdout);
         }
 
-        if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
-            !skip_internal) {
+        if (!skip_internal &&
+            ((bifrost_debug & BIFROST_DBG_SHADERDB) || inputs->debug)) {
+                char *shaderdb;
+
                 if (ctx->arch >= 9) {
-                        va_print_stats(ctx, binary->size - offset, stderr);
+                        shaderdb = va_print_stats(ctx, binary->size - offset);
                 } else {
-                        bi_print_stats(ctx, binary->size - offset, stderr);
+                        shaderdb = bi_print_stats(ctx, binary->size - offset);
                 }
+
+                if (bifrost_debug & BIFROST_DBG_SHADERDB)
+                        fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
+
+                if (inputs->debug)
+                        util_debug_message(inputs->debug, SHADER_INFO, "%s", shaderdb);
+
+                ralloc_free(shaderdb);
         }
 
         return ctx;

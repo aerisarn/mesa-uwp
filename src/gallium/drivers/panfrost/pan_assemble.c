@@ -40,6 +40,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
                         struct panfrost_pool *desc_pool,
                         const nir_shader *ir,
+                        struct util_debug_callback *dbg,
                         struct panfrost_shader_state *state)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
@@ -54,7 +55,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 xfb->info.internal = true;
 
                 state->xfb = calloc(1, sizeof(struct panfrost_shader_state));
-                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, state->xfb);
+                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb);
 
                 /* Main shader no longer uses XFB */
                 s->info.has_transform_feedback_varyings = false;
@@ -80,8 +81,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 
         /* Call out to Midgard compiler given the above NIR */
         struct panfrost_compile_inputs inputs = {
+                .debug = dbg,
                 .gpu_id = dev->gpu_id,
-                .shaderdb = !!(dev->debug & PAN_DBG_PRECOMPILE),
                 .fixed_sysval_ubo = -1,
                 .fixed_varying_mask = state->key.fixed_varying_mask
         };

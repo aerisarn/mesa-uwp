@@ -3348,7 +3348,7 @@ midgard_compile_shader_nir(nir_shader *nir,
         if (binary->size)
                 memset(util_dynarray_grow(binary, uint8_t, 16), 0, 16);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->shaderdb) &&
+        if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->debug) &&
             !nir->info.internal) {
                 unsigned nr_bundles = 0, nr_ins = 0;
 
@@ -3373,19 +3373,28 @@ midgard_compile_shader_nir(nir_shader *nir,
                         (nr_registers <= 8) ? 2 :
                         1;
 
+                char *shaderdb = NULL;
+
                 /* Dump stats */
 
-                fprintf(stderr, "%s - %s shader: "
+                asprintf(&shaderdb, "%s shader: "
                         "%u inst, %u bundles, %u quadwords, "
                         "%u registers, %u threads, %u loops, "
-                        "%u:%u spills:fills\n",
-                        ctx->nir->info.label ?: "",
+                        "%u:%u spills:fills",
                         ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, ctx->quadword_count,
                         nr_registers, nr_threads,
                         ctx->loop_count,
                         ctx->spills, ctx->fills);
+
+                if (midgard_debug & MIDGARD_DBG_SHADERDB)
+                        fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
+
+                if (inputs->debug)
+                        util_debug_message(inputs->debug, SHADER_INFO, "%s", shaderdb);
+
+                free(shaderdb);
         }
 
         _mesa_hash_table_u64_destroy(ctx->ssa_constants);
