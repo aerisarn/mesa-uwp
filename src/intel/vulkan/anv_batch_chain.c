@@ -1344,6 +1344,20 @@ chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
 }
 
 static VkResult
+pin_state_pool(struct anv_device *device,
+               struct anv_execbuf *execbuf,
+               struct anv_state_pool *pool)
+{
+   anv_block_pool_foreach_bo(bo, &pool->block_pool) {
+      VkResult result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
                               struct anv_queue *queue,
                               struct anv_cmd_buffer **cmd_buffers,
@@ -1365,41 +1379,25 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
    /* Add all the global BOs to the object list for softpin case. */
-   struct anv_block_pool *pool;
-   pool = &device->surface_state_pool.block_pool;
-   anv_block_pool_foreach_bo(bo, pool) {
-      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
+   result = pin_state_pool(device, execbuf, &device->surface_state_pool);
+   if (result != VK_SUCCESS)
+      return result;
 
-   pool = &device->dynamic_state_pool.block_pool;
-   anv_block_pool_foreach_bo(bo, pool) {
-      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
+   result = pin_state_pool(device, execbuf, &device->dynamic_state_pool);
+   if (result != VK_SUCCESS)
+      return result;
 
-   pool = &device->general_state_pool.block_pool;
-   anv_block_pool_foreach_bo(bo, pool) {
-      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
+   result = pin_state_pool(device, execbuf, &device->general_state_pool);
+   if (result != VK_SUCCESS)
+      return result;
 
-   pool = &device->instruction_state_pool.block_pool;
-   anv_block_pool_foreach_bo(bo, pool) {
-      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
+   result = pin_state_pool(device, execbuf, &device->instruction_state_pool);
+   if (result != VK_SUCCESS)
+      return result;
 
-   pool = &device->binding_table_pool.block_pool;
-   anv_block_pool_foreach_bo(bo, pool) {
-      result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
-      if (result != VK_SUCCESS)
-         return result;
-   }
+   result = pin_state_pool(device, execbuf, &device->binding_table_pool);
+   if (result != VK_SUCCESS)
+      return result;
 
    /* Add the BOs for all user allocated memory objects because we can't
     * track after binding updates of VK_EXT_descriptor_indexing.
