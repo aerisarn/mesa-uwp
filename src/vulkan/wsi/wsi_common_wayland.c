@@ -489,14 +489,14 @@ registry_handle_global(void *data, struct wl_registry *registry,
    struct wsi_wl_display *display = data;
 
    if (display->sw) {
-      if (strcmp(interface, "wl_shm") == 0) {
+      if (strcmp(interface, wl_shm_interface.name) == 0) {
          display->wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
          wl_shm_add_listener(display->wl_shm, &shm_listener, display);
       }
       return;
    }
 
-   if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
+   if (strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0 && version >= 3) {
       display->wl_dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, 3);
       zwp_linux_dmabuf_v1_add_listener(display->wl_dmabuf,

@@ -1931,10 +1931,10 @@ registry_handle_global_drm(void *data, struct wl_registry *registry,
 {
    struct dri2_egl_display *dri2_dpy = data;
 
-   if (strcmp(interface, "wl_drm") == 0) {
+   if (strcmp(interface, wl_drm_interface.name) == 0) {
       dri2_dpy->wl_drm_version = MIN2(version, 2);
       dri2_dpy->wl_drm_name = name;
-   } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
+   } else if (strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0 && version >= 3) {
       dri2_dpy->wl_dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface,
                           MIN2(version, ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION));
@@ -2614,7 +2614,7 @@ registry_handle_global_swrast(void *data, struct wl_registry *registry,
 {
    struct dri2_egl_display *dri2_dpy = data;
 
-   if (strcmp(interface, "wl_shm") == 0) {
+   if (strcmp(interface, wl_shm_interface.name) == 0) {
       dri2_dpy->wl_shm =
          wl_registry_bind(registry, name, &wl_shm_interface, 1);
       wl_shm_add_listener(dri2_dpy->wl_shm, &shm_listener, dri2_dpy);
