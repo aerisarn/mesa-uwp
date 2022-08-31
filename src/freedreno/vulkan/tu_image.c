@@ -444,7 +444,27 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
       const VkImageFormatListCreateInfo *fmt_list =
          vk_find_struct_const(pCreateInfo->pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
       if (!tu6_mutable_format_list_ubwc_compatible(fmt_list)) {
-         ubwc_enabled = false;
+         if (ubwc_enabled) {
+            if (fmt_list && fmt_list->viewFormatCount == 2) {
+               perf_debug(
+                  device,
+                  "Disabling UBWC on %dx%d %s resource due to mutable formats "
+                  "(fmt list %s, %s)",
+                  image->vk.extent.width, image->vk.extent.height,
+                  util_format_name(vk_format_to_pipe_format(image->vk.format)),
+                  util_format_name(vk_format_to_pipe_format(fmt_list->pViewFormats[0])),
+                  util_format_name(vk_format_to_pipe_format(fmt_list->pViewFormats[1])));
+            } else {
+               perf_debug(
+                  device,
+                  "Disabling UBWC on %dx%d %s resource due to mutable formats "
+                  "(fmt list %s)",
+                  image->vk.extent.width, image->vk.extent.height,
+                  util_format_name(vk_format_to_pipe_format(image->vk.format)),
+                  fmt_list ? "present" : "missing");
+            }
+            ubwc_enabled = false;
+         }
 
          if (format_list_reinterprets_r8g8_r16(format, fmt_list) ||
             format_list_has_swaps(fmt_list)) {
