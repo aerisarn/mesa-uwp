@@ -197,6 +197,11 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        feats->ycbcr_2plane_444_formats,
                        YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, features2);
 
+   /* vendor */
+   VN_ADD_EXT_TO_PNEXT(exts->VALVE_mutable_descriptor_type,
+                       feats->mutable_descriptor_type,
+                       MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, features2);
+
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
 
@@ -1095,6 +1100,9 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
       .EXT_depth_clip_enable = true,
+
+      /* vendor */
+      .VALVE_mutable_descriptor_type = true,
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
 #endif
@@ -1739,6 +1747,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(ROBUSTNESS_2_FEATURES_EXT, robustness_2);
       CASE(TRANSFORM_FEEDBACK_FEATURES_EXT, transform_feedback);
       CASE(VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, vertex_attribute_divisor);
+
+      /* vendor */
+      CASE(MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, mutable_descriptor_type);
       /* clang-format on */
 
       default:

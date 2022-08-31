@@ -59,6 +59,9 @@ struct vn_physical_device_features {
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertex_attribute_divisor;
    VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT ycbcr_2plane_444_formats;
+
+   /* vendor */
+   VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE mutable_descriptor_type;
 };
 
 struct vn_physical_device_properties {
