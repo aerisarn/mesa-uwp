@@ -32,6 +32,7 @@
 #include "p_format.h"
 #include "p_video_enums.h"
 #include "p_defines.h"
+#include "util/u_debug.h"
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -103,6 +104,12 @@ struct pipe_context {
     */
    struct u_upload_mgr *stream_uploader; /* everything but shader constants */
    struct u_upload_mgr *const_uploader;  /* shader constants only */
+
+   /**
+    * Debug callback set by u_default_set_debug_callback. Frontends should use
+    * set_debug_callback in case drivers need to flush compiler queues.
+    */
+   struct util_debug_callback debug;
 
    void (*destroy)( struct pipe_context * );
 

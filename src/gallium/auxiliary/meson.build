@@ -230,6 +230,7 @@ files_libgallium = files(
   'util/u_cache.h',
   'util/u_compute.c',
   'util/u_compute.h',
+  'util/u_debug_cb.h',
   'util/u_debug_flush.c',
   'util/u_debug_flush.h',
   'util/u_debug_image.c',
