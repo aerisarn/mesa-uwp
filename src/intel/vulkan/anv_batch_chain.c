@@ -196,23 +196,6 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list,
    return VK_SUCCESS;
 }
 
-VkResult
-anv_reloc_list_add(struct anv_reloc_list *list,
-                   const VkAllocationCallbacks *alloc,
-                   uint32_t offset, struct anv_bo *target_bo, uint32_t delta,
-                   uint64_t *address_u64_out)
-{
-   struct anv_bo *unwrapped_target_bo = anv_bo_unwrap(target_bo);
-   uint64_t target_bo_offset = READ_ONCE(unwrapped_target_bo->offset);
-   if (address_u64_out)
-      *address_u64_out = target_bo_offset + delta;
-
-   assert(unwrapped_target_bo->gem_handle > 0);
-   assert(unwrapped_target_bo->refcount > 0);
-
-   return anv_reloc_list_add_bo(list, alloc, unwrapped_target_bo);
-}
-
 static void
 anv_reloc_list_clear(struct anv_reloc_list *list)
 {

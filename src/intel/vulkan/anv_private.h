@@ -1384,11 +1384,6 @@ VkResult anv_reloc_list_init(struct anv_reloc_list *list,
 void anv_reloc_list_finish(struct anv_reloc_list *list,
                            const VkAllocationCallbacks *alloc);
 
-VkResult anv_reloc_list_add(struct anv_reloc_list *list,
-                            const VkAllocationCallbacks *alloc,
-                            uint32_t offset, struct anv_bo *target_bo,
-                            uint32_t delta, uint64_t *address_u64_out);
-
 VkResult anv_reloc_list_add_bo(struct anv_reloc_list *list,
                                const VkAllocationCallbacks *alloc,
                                struct anv_bo *target_bo);
