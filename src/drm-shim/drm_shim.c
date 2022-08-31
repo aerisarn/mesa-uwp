@@ -632,6 +632,7 @@ readdir(DIR *dir)
    if (_mesa_set_search(opendir_set, dir)) {
       strcpy(render_node_dirent.d_name,
              render_node_dirent_name);
+      render_node_dirent.d_type = DT_CHR;
       ent = &render_node_dirent;
       _mesa_set_remove_key(opendir_set, dir);
    }
@@ -659,6 +660,7 @@ readdir64(DIR *dir)
    if (_mesa_set_search(opendir_set, dir)) {
       strcpy(render_node_dirent.d_name,
              render_node_dirent_name);
+      render_node_dirent.d_type = DT_CHR;
       ent = &render_node_dirent;
       _mesa_set_remove_key(opendir_set, dir);
    }
