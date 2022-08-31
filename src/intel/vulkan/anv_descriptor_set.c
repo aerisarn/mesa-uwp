@@ -97,14 +97,13 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       unreachable("Unsupported descriptor type");
    }
 
-   /* On gfx8 and above when we have softpin enabled, we also need to push
-    * SSBO address ranges so that we can use A64 messages in the shader.
+   /* We also need to push SSBO address ranges so that we can use A64
+    * messages in the shader.
     */
-   if (device->has_a64_buffer_access &&
-       (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-        type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
-        type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-        type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC))
+   if (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+       type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+       type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+       type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
       data |= ANV_DESCRIPTOR_ADDRESS_RANGE;
 
    return data;
@@ -236,10 +235,8 @@ anv_descriptor_data_supports_bindless(const struct anv_physical_device *pdevice,
                                       enum anv_descriptor_data data,
                                       bool sampler)
 {
-   if (data & ANV_DESCRIPTOR_ADDRESS_RANGE) {
-      assert(pdevice->has_a64_buffer_access);
+   if (data & ANV_DESCRIPTOR_ADDRESS_RANGE)
       return true;
-   }
 
    if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
       assert(pdevice->has_bindless_images || pdevice->has_bindless_samplers);

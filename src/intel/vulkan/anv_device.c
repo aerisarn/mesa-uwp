@@ -188,7 +188,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_8bit_storage                      = true,
       .KHR_16bit_storage                     = true,
       .KHR_bind_memory2                      = true,
-      .KHR_buffer_device_address             = device->has_a64_buffer_access,
+      .KHR_buffer_device_address             = true,
       .KHR_copy_commands2                    = true,
       .KHR_create_renderpass2                = true,
       .KHR_dedicated_allocation              = true,
@@ -255,7 +255,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_zero_initialize_workgroup_memory  = true,
       .EXT_4444_formats                      = true,
       .EXT_border_color_swizzle              = true,
-      .EXT_buffer_device_address             = device->has_a64_buffer_access,
+      .EXT_buffer_device_address             = true,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
       .EXT_color_write_enable                = true,
       .EXT_conditional_rendering             = true,
@@ -263,8 +263,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_custom_border_color               = true,
       .EXT_depth_clip_control                = true,
       .EXT_depth_clip_enable                 = true,
-      .EXT_descriptor_indexing               = device->has_a64_buffer_access &&
-                                               device->has_bindless_images,
+      .EXT_descriptor_indexing               = device->has_bindless_images,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       .EXT_display_control                   = true,
 #endif
@@ -564,8 +563,6 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
                      sizeof(device->info.pci_device_id));
    _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
                      sizeof(device->always_use_bindless));
-   _mesa_sha1_update(&sha1_ctx, &device->has_a64_buffer_access,
-                     sizeof(device->has_a64_buffer_access));
    _mesa_sha1_update(&sha1_ctx, &device->has_bindless_images,
                      sizeof(device->has_bindless_images));
    _mesa_sha1_update(&sha1_ctx, &device->has_bindless_samplers,
@@ -902,8 +899,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->use_call_secondary =
       !env_var_as_boolean("ANV_DISABLE_SECONDARY_CMD_BUFFER_CALLS", false);
-
-   device->has_a64_buffer_access = true;
 
    device->has_bindless_images = true;
    device->has_bindless_samplers = true;
@@ -1242,8 +1237,7 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->shaderFloat16                       = true;
    f->shaderInt8                          = true;
 
-   bool descIndexing = pdevice->has_a64_buffer_access &&
-                       pdevice->has_bindless_images;
+   bool descIndexing = pdevice->has_bindless_images;
    f->descriptorIndexing                                 = descIndexing;
    f->shaderInputAttachmentArrayDynamicIndexing          = false;
    f->shaderUniformTexelBufferArrayDynamicIndexing       = descIndexing;
@@ -1274,8 +1268,8 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->separateDepthStencilLayouts         = true;
    f->hostQueryReset                      = true;
    f->timelineSemaphore                   = true;
-   f->bufferDeviceAddress                 = pdevice->has_a64_buffer_access;
-   f->bufferDeviceAddressCaptureReplay    = pdevice->has_a64_buffer_access;
+   f->bufferDeviceAddress                 = true;
+   f->bufferDeviceAddressCaptureReplay    = true;
    f->bufferDeviceAddressMultiDevice      = false;
    f->vulkanMemoryModel                   = true;
    f->vulkanMemoryModelDeviceScope        = true;
@@ -1359,7 +1353,7 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
          VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features = (void *)ext;
-         features->bufferDeviceAddress = pdevice->has_a64_buffer_access;
+         features->bufferDeviceAddress = true;
          features->bufferDeviceAddressCaptureReplay = false;
          features->bufferDeviceAddressMultiDevice = false;
          break;
@@ -1718,7 +1712,7 @@ void anv_GetPhysicalDeviceProperties(
    ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
    const struct intel_device_info *devinfo = &pdevice->info;
 
-   const uint32_t max_ssbos = pdevice->has_a64_buffer_access ? UINT16_MAX : 64;
+   const uint32_t max_ssbos = UINT16_MAX;
    const uint32_t max_textures =
       pdevice->has_bindless_images ? UINT16_MAX : 128;
    const uint32_t max_samplers =
@@ -1730,7 +1724,7 @@ void anv_GetPhysicalDeviceProperties(
     * otherwise use the binding table size, minus the slots reserved for
     * render targets and one slot for the descriptor buffer. */
    const uint32_t max_per_stage =
-      pdevice->has_bindless_images && pdevice->has_a64_buffer_access
+      pdevice->has_bindless_images
       ? UINT32_MAX : MAX_BINDING_TABLE_SIZE - MAX_RTS - 1;
 
    const uint32_t max_workgroup_size =

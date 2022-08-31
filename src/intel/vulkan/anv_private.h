@@ -916,8 +916,6 @@ struct anv_physical_device {
     bool                                        always_use_bindless;
     bool                                        use_call_secondary;
 
-    /** True if we can access buffers using A64 messages */
-    bool                                        has_a64_buffer_access;
     /** True if we can use bindless access for images */
     bool                                        has_bindless_images;
     /** True if we can use bindless access for samplers */
