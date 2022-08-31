@@ -553,6 +553,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationCentroid);
       else if (var->data.sample)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
+      emit_interpolation(ctx, var_id, var->data.interpolation);
    } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, Position);
@@ -581,8 +582,6 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
 
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
-
-   emit_interpolation(ctx, var_id, var->data.interpolation);
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
@@ -631,6 +630,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          ctx->so_output_gl_types[idx] = var->type;
          ctx->so_output_types[idx] = var_type;
       }
+      emit_interpolation(ctx, var_id, var->data.interpolation);
    } else {
       if (var->data.location >= FRAG_RESULT_DATA0) {
          spirv_builder_emit_location(&ctx->builder, var_id,
@@ -666,8 +666,6 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.location_frac)
       spirv_builder_emit_component(&ctx->builder, var_id,
                                    var->data.location_frac);
-
-   emit_interpolation(ctx, var_id, var->data.interpolation);
 
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
