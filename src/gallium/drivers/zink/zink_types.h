@@ -414,6 +414,11 @@ struct zink_batch_usage {
    bool unflushed;
 };
 
+struct zink_batch_obj_list {
+   unsigned max_buffers;
+   unsigned num_buffers;
+   struct zink_resource_object **objs;
+};
 
 struct zink_batch_state {
    struct zink_fence fence;
@@ -439,7 +444,20 @@ struct zink_batch_state {
 
    struct set programs;
 
-   struct set resources[2];
+#define BUFFER_HASHLIST_SIZE 32768
+   /* buffer_indices_hashlist[hash(bo)] returns -1 if the bo
+    * isn't part of any buffer lists or the index where the bo could be found.
+    * Since 1) hash collisions of 2 different bo can happen and 2) we use a
+    * single hashlist for the 3 buffer list, this is only a hint.
+    * batch_find_resource uses this hint to speed up buffers look up.
+    */
+   int16_t buffer_indices_hashlist[BUFFER_HASHLIST_SIZE];
+   struct zink_batch_obj_list real_objs;
+   struct zink_batch_obj_list slab_objs;
+   struct zink_batch_obj_list sparse_objs;
+   struct zink_resource_object *last_added_obj;
+   struct util_dynarray swapchain_obj; //this doesn't have a zink_bo and must be handled differently
+
    struct set surfaces;
    struct set bufferviews;
 
