@@ -355,3 +355,9 @@ spec@!opengl 2.0@max-samplers border,Fail
 
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3759
 dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments4_more0,Crash
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3913
+dEQP-VK.compute.workgroup_memory_explicit_layout.copy_memory.two_invocations,Crash
+dEQP-VK.compute.workgroup_memory_explicit_layout.zero_ext.block,Crash
+dEQP-VK.compute.workgroup_memory_explicit_layout.zero_ext.other_block,Crash
+dEQP-VK.compute.workgroup_memory_explicit_layout.zero_ext.block_with_offset,Crash

@@ -182,6 +182,7 @@ static const struct spirv_to_nir_options default_spirv_options =  {
       .vk_memory_model = true,
       .vk_memory_model_device_scope = true,
       .physical_storage_buffer_address = true,
+      .workgroup_memory_explicit_layout = true,
     },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
@@ -3127,8 +3128,10 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 static void
 lower_cs_shared(struct nir_shader *nir)
 {
-   NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
-            nir_var_mem_shared, shared_type_info);
+   if (!nir->info.shared_memory_explicit_layout) {
+      NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
+               nir_var_mem_shared, shared_type_info);
+   }
    NIR_PASS(_, nir, nir_lower_explicit_io,
             nir_var_mem_shared, nir_address_format_32bit_offset);
 }
