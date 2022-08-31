@@ -4424,6 +4424,8 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
 {
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct pvr_graphics_pipeline *const gfx_pipeline = state->gfx_pipeline;
+   const struct pvr_pipeline_layout *const pipeline_layout =
+      gfx_pipeline->base.layout;
    const struct pvr_pipeline_stage_state *const fragment_state =
       &gfx_pipeline->fragment_shader_state.stage_state;
    struct pvr_sub_cmd_gfx *sub_cmd;
@@ -4527,6 +4529,17 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    state->dirty.vertex_descriptors = push_descriptors_dirty ||
                                      state->dirty.gfx_pipeline_binding;
    state->dirty.fragment_descriptors = state->dirty.vertex_descriptors;
+
+   /* Account for dirty descriptor set. */
+   state->dirty.vertex_descriptors |=
+      state->dirty.gfx_desc_dirty &&
+      pipeline_layout
+         ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY];
+   state->dirty.fragment_descriptors |=
+      state->dirty.gfx_desc_dirty &&
+      pipeline_layout->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_FRAGMENT];
+
+   state->dirty.fragment_descriptors |= state->dirty.blend_constants;
 
    if (state->dirty.fragment_descriptors) {
       result = pvr_setup_descriptor_mappings(
