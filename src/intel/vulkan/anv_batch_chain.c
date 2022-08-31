@@ -385,9 +385,11 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    assert(((*bb_start >> 29) & 0x07) == 0);
    assert(((*bb_start >> 23) & 0x3f) == 49);
 
-   write_reloc(cmd_buffer->device,
-               prev_bbo->bo->map + bb_start_offset + 4,
-               next_bbo->bo->offset + next_bbo_offset, true);
+   uint64_t *map = prev_bbo->bo->map + bb_start_offset + 4;
+   *map = intel_canonical_address(next_bbo->bo->offset + next_bbo_offset);
+
+   if (cmd_buffer->device->physical->memory.need_clflush)
+      intel_flush_range(map, sizeof(uint64_t));
 }
 
 static void

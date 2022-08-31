@@ -1447,16 +1447,6 @@ anv_batch_emit_reloc(struct anv_batch *batch,
    return address_u64;
 }
 
-static inline void
-write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
-{
-   unsigned reloc_size = sizeof(uint64_t);
-   *(uint64_t *)p = intel_canonical_address(v);
-
-   if (flush && device->physical->memory.need_clflush)
-      intel_flush_range(p, reloc_size);
-}
-
 static inline uint64_t
 _anv_combine_address(struct anv_batch *batch, void *location,
                      const struct anv_address address, uint32_t delta)
