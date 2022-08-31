@@ -77,6 +77,10 @@ gather_intrinsic_store_output_info(const nir_shader *nir, const nir_intrinsic_in
    case MESA_SHADER_GEOMETRY:
       output_usage_mask = info->gs.output_usage_mask;
       break;
+   case MESA_SHADER_FRAGMENT:
+      if (idx >= FRAG_RESULT_DATA0)
+         info->ps.colors_written |= 0xf << (4 * (idx - FRAG_RESULT_DATA0));
+      break;
    default:
       break;
    }

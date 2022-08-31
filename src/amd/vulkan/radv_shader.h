@@ -329,6 +329,7 @@ struct radv_shader_info {
       bool allow_flat_shading;
       bool has_epilog;
       unsigned spi_ps_input;
+      unsigned colors_written;
    } ps;
    struct {
       bool uses_grid_size;
