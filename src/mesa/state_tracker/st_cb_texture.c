@@ -1991,6 +1991,11 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
       goto fallback;
    }
 
+   /* We need both the compressed and non-compressed textures updated,
+    * which neither the PBO nor memcpy code-paths does */
+   if (st_compressed_format_fallback(st, texImage->TexFormat)) {
+      goto fallback;
+   }
 
    /* See if the destination format is supported. */
    if (format == GL_DEPTH_COMPONENT || format == GL_DEPTH_STENCIL)
@@ -2040,8 +2045,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
     * etc. */
    if (!_mesa_texstore_can_use_memcpy(ctx,
                              _mesa_get_format_base_format(mesa_src_format),
-                             mesa_src_format, format, type, unpack) ||
-       st_compressed_format_fallback(st, texImage->TexFormat)) {
+                             mesa_src_format, format, type, unpack)) {
       goto fallback;
    }
 
