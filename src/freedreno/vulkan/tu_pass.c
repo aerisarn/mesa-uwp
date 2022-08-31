@@ -639,6 +639,9 @@ tu_render_pass_gmem_config(struct tu_render_pass *pass,
 static void
 tu_render_pass_bandwidth_config(struct tu_render_pass *pass)
 {
+   pass->gmem_bandwidth_per_pixel = 0;
+   pass->sysmem_bandwidth_per_pixel = 0;
+
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
       const struct tu_render_pass_attachment *att = &pass->attachments[i];
 
