@@ -1310,19 +1310,25 @@ radv_link_shaders_info(struct radv_device *device,
 
       vs_stage->info.vs.as_ls = true;
 
-      vs_stage->info.workgroup_size =
-         ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
-                                        MESA_SHADER_VERTEX, tcs_stage->info.num_tess_patches,
-                                        pipeline_key->tcs.tess_input_vertices,
-                                        tcs_stage->info.tcs.tcs_vertices_out);
+      if (pipeline_key->dynamic_patch_control_points) {
+         /* Set the workgroup size to the maximum possible value to ensure that compilers don't
+          * optimize barriers.
+          */
+         vs_stage->info.workgroup_size = 256;
+         tcs_stage->info.workgroup_size = 256;
+      } else {
+         vs_stage->info.workgroup_size =
+            ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
+                                           MESA_SHADER_VERTEX, tcs_stage->info.num_tess_patches,
+                                           pipeline_key->tcs.tess_input_vertices,
+                                           tcs_stage->info.tcs.tcs_vertices_out);
 
-      tcs_stage->info.workgroup_size =
-         ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
-                                        MESA_SHADER_TESS_CTRL, tcs_stage->info.num_tess_patches,
-                                        pipeline_key->tcs.tess_input_vertices,
-                                        tcs_stage->info.tcs.tcs_vertices_out);
+         tcs_stage->info.workgroup_size =
+            ac_compute_lshs_workgroup_size(device->physical_device->rad_info.gfx_level,
+                                           MESA_SHADER_TESS_CTRL, tcs_stage->info.num_tess_patches,
+                                           pipeline_key->tcs.tess_input_vertices,
+                                           tcs_stage->info.tcs.tcs_vertices_out);
 
-      if (!(pipeline_key->dynamic_patch_control_points)) {
          if (!radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX)) {
             /* When the number of TCS input and output vertices are the same (typically 3):
              * - There is an equal amount of LS and HS invocations
