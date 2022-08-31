@@ -31,6 +31,7 @@
 extern "C" {
 #endif
 
+/** Base object for implementin VkCommandPool */
 struct vk_command_pool {
    struct vk_object_base base;
 
@@ -57,17 +58,41 @@ struct vk_command_pool {
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_command_pool, base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
+                               VK_OBJECT_TYPE_COMMAND_POOL);
 
+/** Initialize a vk_command_pool
+ *
+ * @param[in]  device      The Vulkan device
+ * @param[out] pool        The command pool to initialize
+ * @param[in]  pCreateInfo VkCommandPoolCreateInfo pointer passed to
+ *                         `vkCreateCommandPool()`
+ * @param[in]  pAllocator  Allocation callbacks passed to
+ *                         `vkCreateCommandPool()`
+ */
 VkResult MUST_CHECK
 vk_command_pool_init(struct vk_device *device,
                      struct vk_command_pool *pool,
                      const VkCommandPoolCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator);
 
+/** Tear down a vk_command_pool
+ *
+ * @param[inout]  pool     The command pool to tear down
+ */
 void
 vk_command_pool_finish(struct vk_command_pool *pool);
 
+/** Trim a vk_command_pool
+ *
+ * This discards any resources that may be cached by the common
+ * vk_command_pool code.  For driver-implemented command pools, drivers should
+ * call this function inside their `vkTrimCommandPool()` implementation.  This
+ * should be called before doing any driver-specific trimming in case it ends
+ * up returning driver-internal resources to the pool.
+ *
+ * @param[inout]  pool     The command pool to trim
+ * @param[in]     flags    Flags controling the trim operation
+ */
 void
 vk_command_pool_trim(struct vk_command_pool *pool,
                      VkCommandPoolTrimFlags flags);
