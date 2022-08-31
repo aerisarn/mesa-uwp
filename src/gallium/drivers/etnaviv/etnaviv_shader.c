@@ -461,7 +461,7 @@ etna_shader_variant(struct etna_shader *shader, struct etna_shader_key key,
 static inline bool
 initial_variants_synchronous(struct etna_context *ctx)
 {
-   return unlikely(ctx->debug.debug_message) || (etna_mesa_debug & ETNA_DBG_SHADERDB);
+   return unlikely(ctx->base.debug.debug_message) || (etna_mesa_debug & ETNA_DBG_SHADERDB);
 }
 
 static void
@@ -498,7 +498,7 @@ etna_create_shader_state(struct pipe_context *pctx,
 
    if (initial_variants_synchronous(ctx)) {
       struct etna_shader_key key = {};
-      etna_shader_variant(shader, key, &ctx->debug);
+      etna_shader_variant(shader, key, &ctx->base.debug);
    } else {
       struct etna_screen *screen = ctx->screen;
       util_queue_add_job(&screen->shader_compiler_queue, shader, &shader->ready,

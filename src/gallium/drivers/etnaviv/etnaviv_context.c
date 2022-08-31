@@ -55,6 +55,7 @@
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_upload_mgr.h"
+#include "util/u_debug_cb.h"
 
 #include "hw/common.xml.h"
 
@@ -164,7 +165,7 @@ etna_get_vs(struct etna_context *ctx, struct etna_shader_key key)
 {
    const struct etna_shader_variant *old = ctx->shader.vs;
 
-   ctx->shader.vs = etna_shader_variant(ctx->shader.bind_vs, key, &ctx->debug);
+   ctx->shader.vs = etna_shader_variant(ctx->shader.bind_vs, key, &ctx->base.debug);
 
    if (!ctx->shader.vs)
       return false;
@@ -200,7 +201,7 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
       }
    }
 
-   ctx->shader.fs = etna_shader_variant(ctx->shader.bind_fs, key, &ctx->debug);
+   ctx->shader.fs = etna_shader_variant(ctx->shader.bind_fs, key, &ctx->base.debug);
 
    if (!ctx->shader.fs)
       return false;
@@ -552,11 +553,7 @@ etna_set_debug_callback(struct pipe_context *pctx,
    struct etna_screen *screen = ctx->screen;
 
    util_queue_finish(&screen->shader_compiler_queue);
-
-   if (cb)
-      ctx->debug = *cb;
-   else
-      memset(&ctx->debug, 0, sizeof(ctx->debug));
+   u_default_set_debug_callback(pctx, cb);
 }
 
 struct pipe_context *
