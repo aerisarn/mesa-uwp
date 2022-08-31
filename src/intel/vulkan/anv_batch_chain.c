@@ -719,9 +719,6 @@ anv_cmd_buffer_chain_batch(struct anv_batch *batch, void *_data)
  * surface state offsets so that they are correct relative to out new surface
  * state base address at the bottom of the binding table block.
  *
- * \see adjust_relocations_from_block_pool()
- * \see adjust_relocations_too_block_pool()
- *
  * \param[in]  entries        The number of surface state entries the binding
  *                            table should be able to hold.
  *
@@ -841,7 +838,6 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
                                 &cmd_buffer->vk.pool->alloc);
    if (result != VK_SUCCESS)
       goto fail_bt_blocks;
-   cmd_buffer->last_ss_pool_center = 0;
 
    result = anv_cmd_buffer_new_binding_table_block(cmd_buffer);
    if (result != VK_SUCCESS)
@@ -904,7 +900,6 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->bt_next.offset = 0;
 
    anv_reloc_list_clear(&cmd_buffer->surface_relocs);
-   cmd_buffer->last_ss_pool_center = 0;
 
    /* Reset the list of seen buffers */
    cmd_buffer->seen_bbos.head = 0;
@@ -1331,63 +1326,6 @@ anv_cmd_buffer_process_relocs(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static void
-adjust_relocations_from_state_pool(struct anv_state_pool *pool,
-                                   struct anv_reloc_list *relocs,
-                                   uint32_t last_pool_center_bo_offset)
-{
-   assert(last_pool_center_bo_offset <= pool->block_pool.center_bo_offset);
-   uint32_t delta = pool->block_pool.center_bo_offset - last_pool_center_bo_offset;
-
-   for (size_t i = 0; i < relocs->num_relocs; i++) {
-      /* All of the relocations from this block pool to other BO's should
-       * have been emitted relative to the surface block pool center.  We
-       * need to add the center offset to make them relative to the
-       * beginning of the actual GEM bo.
-       */
-      relocs->relocs[i].offset += delta;
-   }
-}
-
-static void
-adjust_relocations_to_state_pool(struct anv_state_pool *pool,
-                                 struct anv_bo *from_bo,
-                                 struct anv_reloc_list *relocs,
-                                 uint32_t last_pool_center_bo_offset)
-{
-   assert(!from_bo->is_wrapper);
-   assert(last_pool_center_bo_offset <= pool->block_pool.center_bo_offset);
-   uint32_t delta = pool->block_pool.center_bo_offset - last_pool_center_bo_offset;
-
-   /* When we initially emit relocations into a block pool, we don't
-    * actually know what the final center_bo_offset will be so we just emit
-    * it as if center_bo_offset == 0.  Now that we know what the center
-    * offset is, we need to walk the list of relocations and adjust any
-    * relocations that point to the pool bo with the correct offset.
-    */
-   for (size_t i = 0; i < relocs->num_relocs; i++) {
-      if (relocs->reloc_bos[i] == pool->block_pool.bo) {
-         /* Adjust the delta value in the relocation to correctly
-          * correspond to the new delta.  Initially, this value may have
-          * been negative (if treated as unsigned), but we trust in
-          * uint32_t roll-over to fix that for us at this point.
-          */
-         relocs->relocs[i].delta += delta;
-
-         /* Since the delta has changed, we need to update the actual
-          * relocated value with the new presumed value.  This function
-          * should only be called on batch buffers, so we know it isn't in
-          * use by the GPU at the moment.
-          */
-         assert(relocs->relocs[i].offset < from_bo->size);
-         write_reloc(pool->block_pool.device,
-                     from_bo->map + relocs->relocs[i].offset,
-                     relocs->relocs[i].presumed_offset +
-                     relocs->relocs[i].delta, false);
-      }
-   }
-}
-
-static void
 anv_reloc_list_apply(struct anv_device *device,
                      struct anv_reloc_list *list,
                      struct anv_bo *bo,
@@ -1618,8 +1556,6 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    struct anv_state_pool *ss_pool =
       &cmd_buffer->device->surface_state_pool;
 
-   adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
-                                      cmd_buffer->last_ss_pool_center);
    VkResult result;
    if (anv_use_relocations(cmd_buffer->device->physical)) {
       /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
@@ -1644,20 +1580,11 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
     */
    struct anv_batch_bo **bbo;
    u_vector_foreach(bbo, &cmd_buffer->seen_bbos) {
-      adjust_relocations_to_state_pool(ss_pool, (*bbo)->bo, &(*bbo)->relocs,
-                                       cmd_buffer->last_ss_pool_center);
-
       result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
                                   (*bbo)->bo, &(*bbo)->relocs, 0);
       if (result != VK_SUCCESS)
          return result;
    }
-
-   /* Now that we've adjusted all of the surface state relocations, we need to
-    * record the surface state pool center so future executions of the command
-    * buffer can adjust correctly.
-    */
-   cmd_buffer->last_ss_pool_center = ss_pool->block_pool.center_bo_offset;
 
    return VK_SUCCESS;
 }

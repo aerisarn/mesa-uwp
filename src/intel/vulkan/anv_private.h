@@ -2765,8 +2765,6 @@ struct anv_cmd_buffer {
    struct anv_state                             bt_next;
 
    struct anv_reloc_list                        surface_relocs;
-   /** Last seen surface state block pool center bo offset */
-   uint32_t                                     last_ss_pool_center;
 
    /* Serial for tracking buffer completion */
    uint32_t                                     serial;
