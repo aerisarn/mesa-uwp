@@ -48,6 +48,7 @@
 #include <c11/threads.h>
 #include <drm-uapi/drm.h>
 
+#include "util/anon_file.h"
 #include "util/set.h"
 #include "util/u_debug.h"
 #include "drm_shim.h"
@@ -297,12 +298,11 @@ static int file_override_open(const char *path)
 {
    for (int i = 0; i < file_overrides_count; i++) {
       if (strcmp(file_overrides[i].path, path) == 0) {
-         int fds[2];
-         pipe(fds);
-         write(fds[1], file_overrides[i].contents,
+         int fd = os_create_anonymous_file(0, "shim file");
+         write(fd, file_overrides[i].contents,
                strlen(file_overrides[i].contents));
-         close(fds[1]);
-         return fds[0];
+         lseek(fd, 0, SEEK_SET);
+         return fd;
       }
    }
 
