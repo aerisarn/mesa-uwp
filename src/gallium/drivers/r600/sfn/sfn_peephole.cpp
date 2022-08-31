@@ -178,12 +178,11 @@ static EAluOp pred_from_op(EAluOp pred_op, EAluOp op)
    switch (pred_op) {
    case op2_pred_setne_int:
       switch (op) {
-      /*
-       case op2_setge_dx10 : return op2_pred_setge_int;
-       case op2_setgt_dx10 : return op2_pred_setgt_int;
-       case op2_sete_dx10 : return op2_prede_int;
-       case op2_setne_dx10 : return op2_pred_setne_int;
-      */
+      case op2_setge_dx10 : return op2_pred_setge;
+      case op2_setgt_dx10 : return op2_pred_setgt;
+      case op2_sete_dx10 : return op2_pred_sete;
+      case op2_setne_dx10 : return op2_pred_setne;
+
       case op2_setge_int : return op2_pred_setge_int;
       case op2_setgt_int : return op2_pred_setgt_int;
       case op2_setge_uint : return op2_pred_setge_uint;
@@ -197,6 +196,14 @@ static EAluOp pred_from_op(EAluOp pred_op, EAluOp op)
       switch (op) {
       case op2_sete_int : return op2_pred_setne_int;
       case op2_setne_int : return op2_prede_int;
+      default:
+         return op0_nop;
+      }
+   case op2_pred_setne:
+      switch (op) {
+      case op2_setge : return op2_pred_setge;
+      case op2_setgt : return op2_pred_setgt;
+      case op2_sete : return op2_pred_sete;
       default:
          return op0_nop;
       }
