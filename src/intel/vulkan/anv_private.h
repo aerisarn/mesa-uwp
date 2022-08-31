@@ -1433,34 +1433,16 @@ anv_batch_has_error(struct anv_batch *batch)
 }
 
 static inline uint64_t
-anv_batch_emit_reloc(struct anv_batch *batch,
-                     void *location, struct anv_bo *bo, uint32_t delta)
-{
-   uint64_t address_u64 = bo->offset + delta;
-   VkResult result = anv_reloc_list_add_bo(batch->relocs, batch->alloc, bo);
-
-   if (unlikely(result != VK_SUCCESS)) {
-      anv_batch_set_error(batch, result);
-      return 0;
-   }
-
-   return address_u64;
-}
-
-static inline uint64_t
 _anv_combine_address(struct anv_batch *batch, void *location,
                      const struct anv_address address, uint32_t delta)
 {
-   if (address.bo == NULL) {
+   if (address.bo == NULL)
       return address.offset + delta;
-   } else if (batch == NULL) {
-      return anv_address_physical(anv_address_add(address, delta));
-   } else {
-      assert(batch->start <= location && location < batch->end);
-      /* i915 relocations are signed. */
-      assert(INT32_MIN <= address.offset && address.offset <= INT32_MAX);
-      return anv_batch_emit_reloc(batch, location, address.bo, address.offset + delta);
-   }
+
+   if (batch)
+      anv_reloc_list_add_bo(batch->relocs, batch->alloc, address.bo);
+
+   return anv_address_physical(anv_address_add(address, delta));
 }
 
 #define __gen_address_type struct anv_address

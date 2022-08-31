@@ -71,10 +71,13 @@ blorp_emit_reloc(struct blorp_batch *batch,
                  void *location, struct blorp_address address, uint32_t delta)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
-   assert(cmd_buffer->batch.start <= location &&
-          location < cmd_buffer->batch.end);
-   return anv_batch_emit_reloc(&cmd_buffer->batch, location,
-                               address.buffer, address.offset + delta);
+   struct anv_address anv_addr = {
+      .bo = address.buffer,
+      .offset = address.offset,
+   };
+   anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                         cmd_buffer->batch.alloc, anv_addr.bo);
+   return anv_address_physical(anv_address_add(anv_addr, delta));
 }
 
 static void
