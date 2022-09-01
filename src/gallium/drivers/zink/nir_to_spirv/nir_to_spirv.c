@@ -701,8 +701,6 @@ emit_temp(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
-   assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
-   ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 }
 
 static SpvDim
