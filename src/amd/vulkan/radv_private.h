@@ -401,12 +401,10 @@ bool radv_create_shaders_from_pipeline_cache(
 
 void radv_pipeline_cache_insert_shaders(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_pipeline *pipeline, struct radv_shader_binary *const *binaries,
-   const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
+   struct radv_pipeline *pipeline, const struct radv_pipeline_shader_stack_size *stack_sizes,
+   uint32_t num_stack_sizes);
 
-VkResult radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
-                             struct radv_shader_binary **binaries,
-                             struct radv_shader_binary *gs_copy_binary);
+VkResult radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline);
 
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,

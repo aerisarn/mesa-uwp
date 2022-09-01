@@ -1990,7 +1990,7 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
 }
 
 struct radv_shader *
-radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary,
+radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary,
                    bool keep_shader_info, bool from_cache, const struct radv_shader_args *args)
 {
    struct ac_shader_config config = {0};
@@ -1999,6 +1999,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       return NULL;
 
    shader->ref_count = 1;
+   shader->binary = binary;
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
       struct ac_rtld_binary rtld_binary = {0};
@@ -2175,8 +2176,7 @@ static struct radv_shader *
 shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count, gl_shader_stage stage,
                const struct radv_shader_info *info, const struct radv_shader_args *args,
                struct radv_nir_compiler_options *options, bool gs_copy_shader,
-               bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info,
-               struct radv_shader_binary **binary_out)
+               bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info)
 {
    enum radeon_family chip_family = device->physical_device->rad_info.family;
    struct radv_shader_binary *binary = NULL;
@@ -2242,7 +2242,6 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    /* Copy the shader binary configuration to store it in the cache. */
    memcpy(&binary->config, &shader->config, sizeof(binary->config));
 
-   *binary_out = binary;
    return shader;
 }
 
@@ -2250,7 +2249,7 @@ struct radv_shader *
 radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
                        struct nir_shader *const *shaders, int shader_count,
                        const struct radv_pipeline_key *key, bool keep_shader_info,
-                       bool keep_statistic_info, struct radv_shader_binary **binary_out)
+                       bool keep_statistic_info)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
    struct radv_nir_compiler_options options = {0};
@@ -2263,14 +2262,14 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *p
 
    return shader_compile(device, shaders, shader_count, stage, &pl_stage->info,
                          &pl_stage->args, &options, false, false, keep_shader_info,
-                         keep_statistic_info, binary_out);
+                         keep_statistic_info);
 }
 
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader,
                            const struct radv_shader_info *info, const struct radv_shader_args *args,
-                           struct radv_shader_binary **binary_out, bool keep_shader_info,
-                           bool keep_statistic_info, bool disable_optimizations)
+                           bool keep_shader_info, bool keep_statistic_info,
+                           bool disable_optimizations)
 {
    struct radv_nir_compiler_options options = {0};
    gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -2278,7 +2277,7 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader
    options.key.optimisations_disabled = disable_optimizations;
 
    return shader_compile(device, &shader, 1, stage, info, args, &options, true, false,
-                         keep_shader_info, keep_statistic_info, binary_out);
+                         keep_shader_info, keep_statistic_info);
 }
 
 struct radv_trap_handler_shader *
@@ -2286,7 +2285,6 @@ radv_create_trap_handler_shader(struct radv_device *device)
 {
    struct radv_nir_compiler_options options = {0};
    struct radv_shader *shader = NULL;
-   struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
    struct radv_pipeline_key key = {0};
    struct radv_trap_handler_shader *trap;
@@ -2307,19 +2305,19 @@ radv_create_trap_handler_shader(struct radv_device *device)
                             MESA_SHADER_COMPUTE, false, MESA_SHADER_VERTEX, &args);
 
    shader = shader_compile(device, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &args, &options,
-                           false, true, false, false, &binary);
+                           false, true, false, false);
 
    trap->alloc = radv_alloc_shader_memory(device, shader->code_size, NULL);
 
    trap->bo = trap->alloc->arena->bo;
    char *dest_ptr = trap->alloc->arena->ptr + trap->alloc->offset;
 
-   struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
+   struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)shader->binary;
    memcpy(dest_ptr, bin->data, bin->code_size);
 
    ralloc_free(b.shader);
+   free(shader->binary);
    free(shader);
-   free(binary);
 
    return trap;
 }
@@ -2520,6 +2518,7 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 {
    assert(shader->ref_count == 0);
 
+   free(shader->binary);
    free(shader->spirv);
    free(shader->nir_string);
    free(shader->disasm_string);
