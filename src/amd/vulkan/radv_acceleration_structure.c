@@ -951,6 +951,8 @@ radv_CmdBuildAccelerationStructuresKHR(
       radv_CmdUpdateBuffer(commandBuffer, radv_buffer_to_handle(&accel_struct_buffer),
                            bvh_states[i].node_offset, geometry_infos_size, geometry_infos);
       radv_buffer_finish(&accel_struct_buffer);
+
+      free(geometry_infos);
    }
 
 fail:
