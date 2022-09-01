@@ -423,7 +423,7 @@ zink_gfx_program_update(struct zink_context *ctx)
       if (entry) {
          prog = (struct zink_gfx_program*)entry->data;
          for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
-            if (prog->stages_present & ctx->dirty_shader_stages & BITFIELD_BIT(i))
+            if (prog->stages_present & ~ctx->dirty_shader_stages & BITFIELD_BIT(i))
                ctx->gfx_pipeline_state.modules[i] = prog->modules[i]->shader;
          }
          /* ensure variants are always updated if keys have changed since last use */
