@@ -1083,6 +1083,20 @@ fs_visitor::emit_cs_terminate()
    inst->eot = true;
 }
 
+static void
+setup_barrier_message_payload_gfx125(const fs_builder &bld,
+                                     const fs_reg &msg_payload)
+{
+   assert(bld.shader->devinfo->ver >= 125);
+
+   /* From BSpec: 54006, mov r0.2[31:24] into m0.2[31:24] and m0.2[23:16] */
+   fs_reg m0_10ub = component(retype(msg_payload, BRW_REGISTER_TYPE_UB), 10);
+   fs_reg r0_11ub =
+      stride(suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UB), 11),
+             0, 1, 0);
+   bld.exec_all().group(2, 0).MOV(m0_10ub, r0_11ub);
+}
+
 void
 fs_visitor::emit_barrier()
 {
@@ -1095,12 +1109,7 @@ fs_visitor::emit_barrier()
    bld.exec_all().group(8, 0).MOV(payload, brw_imm_ud(0u));
 
    if (devinfo->verx10 >= 125) {
-      /* mov r0.2[31:24] into m0.2[31:24] and m0.2[23:16] */
-      fs_reg m0_10ub = component(retype(payload, BRW_REGISTER_TYPE_UB), 10);
-      fs_reg r0_11ub =
-         stride(suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UB), 11),
-                0, 1, 0);
-      bld.exec_all().group(2, 0).MOV(m0_10ub, r0_11ub);
+      setup_barrier_message_payload_gfx125(bld, payload);
    } else {
       assert(gl_shader_stage_is_compute(stage));
 
@@ -1145,12 +1154,7 @@ fs_visitor::emit_tcs_barrier()
    bld.exec_all().MOV(m0, brw_imm_ud(0u));
 
    if (devinfo->verx10 >= 125) {
-      /* From BSpec: 54006, mov r0.2[31:24] into m0.2[31:24] and m0.2[23:16] */
-      fs_reg m0_10ub = component(retype(m0, BRW_REGISTER_TYPE_UB), 10);
-      fs_reg r0_11ub =
-         stride(suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UB), 11),
-                0, 1, 0);
-      bld.exec_all().group(2, 0).MOV(m0_10ub, r0_11ub);
+      setup_barrier_message_payload_gfx125(bld, m0);
    } else if (devinfo->ver >= 11) {
       chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
                   brw_imm_ud(INTEL_MASK(30, 24)));
