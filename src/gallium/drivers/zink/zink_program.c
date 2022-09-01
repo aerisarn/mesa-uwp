@@ -298,6 +298,8 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
       state->modules[i] = zm->shader;
       prog->modules[i] = zm;
+      if (zm->num_uniforms)
+         prog->inline_variants |= BITFIELD_BIT(i);
       default_variants &= zm->default_variant;
       variant_hash ^= prog->modules[i]->hash;
    }
