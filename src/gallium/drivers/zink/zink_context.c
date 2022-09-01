@@ -709,7 +709,6 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                  (surface->base.format == PIPE_FORMAT_Z24_UNORM_S8_UINT && surface->ivci.format == VK_FORMAT_D32_SFLOAT_S8_UINT)))
                ctx->di.textures[shader][start_slot + i].sampler = state->sampler_clamped;
          }
-         zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
       } else {
          ctx->di.textures[shader][start_slot + i].sampler = VK_NULL_HANDLE;
       }
@@ -2634,10 +2633,6 @@ update_resource_refs_for_stage(struct zink_context *ctx, gl_shader_stage stage)
                res->obj->unordered_read = res->obj->unordered_write = false;
             else
                res->obj->unordered_read = false;
-
-            struct zink_sampler_state *sampler_state = ctx->sampler_states[stage][j];
-            if (sampler_state && i == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW && j <= ctx->di.num_samplers[stage])
-               zink_batch_usage_set(&sampler_state->batch_uses, ctx->batch.state);
          }
       }
    }
