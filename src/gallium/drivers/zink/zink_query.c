@@ -1164,20 +1164,6 @@ zink_stop_conditional_render(struct zink_context *ctx)
    ctx->render_condition.active = false;
 }
 
-bool
-zink_check_conditional_render(struct zink_context *ctx)
-{
-   if (!ctx->render_condition_active)
-      return true;
-   assert(ctx->render_condition.query);
-
-   union pipe_query_result result;
-   zink_get_query_result(&ctx->base, (struct pipe_query*)ctx->render_condition.query, true, &result);
-   return is_bool_query(ctx->render_condition.query) ?
-          ctx->render_condition.inverted != result.b :
-          ctx->render_condition.inverted != !!result.u64;
-}
-
 static void
 zink_render_condition(struct pipe_context *pctx,
                       struct pipe_query *pquery,
