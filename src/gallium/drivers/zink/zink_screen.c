@@ -1755,6 +1755,91 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
 }
 
 static void
+check_vertex_formats(struct zink_screen *screen)
+{
+   /* from vbuf */
+   enum pipe_format format_list[] = {
+      /* not supported by vk
+      PIPE_FORMAT_R32_FIXED,
+      PIPE_FORMAT_R32G32_FIXED,
+      PIPE_FORMAT_R32G32B32_FIXED,
+      PIPE_FORMAT_R32G32B32A32_FIXED,
+      */
+      PIPE_FORMAT_R16_FLOAT,
+      PIPE_FORMAT_R16G16_FLOAT,
+      PIPE_FORMAT_R16G16B16_FLOAT,
+      PIPE_FORMAT_R16G16B16A16_FLOAT,
+      /* not supported by vk
+      PIPE_FORMAT_R64_FLOAT,
+      PIPE_FORMAT_R64G64_FLOAT,
+      PIPE_FORMAT_R64G64B64_FLOAT,
+      PIPE_FORMAT_R64G64B64A64_FLOAT,
+      PIPE_FORMAT_R32_UNORM,
+      PIPE_FORMAT_R32G32_UNORM,
+      PIPE_FORMAT_R32G32B32_UNORM,
+      PIPE_FORMAT_R32G32B32A32_UNORM,
+      PIPE_FORMAT_R32_SNORM,
+      PIPE_FORMAT_R32G32_SNORM,
+      PIPE_FORMAT_R32G32B32_SNORM,
+      PIPE_FORMAT_R32G32B32A32_SNORM,
+      PIPE_FORMAT_R32_USCALED,
+      PIPE_FORMAT_R32G32_USCALED,
+      PIPE_FORMAT_R32G32B32_USCALED,
+      PIPE_FORMAT_R32G32B32A32_USCALED,
+      PIPE_FORMAT_R32_SSCALED,
+      PIPE_FORMAT_R32G32_SSCALED,
+      PIPE_FORMAT_R32G32B32_SSCALED,
+      PIPE_FORMAT_R32G32B32A32_SSCALED,
+      */
+      PIPE_FORMAT_R16_UNORM,
+      PIPE_FORMAT_R16G16_UNORM,
+      PIPE_FORMAT_R16G16B16_UNORM,
+      PIPE_FORMAT_R16G16B16A16_UNORM,
+      PIPE_FORMAT_R16_SNORM,
+      PIPE_FORMAT_R16G16_SNORM,
+      PIPE_FORMAT_R16G16B16_SNORM,
+      PIPE_FORMAT_R16G16B16_SINT,
+      PIPE_FORMAT_R16G16B16_UINT,
+      PIPE_FORMAT_R16G16B16A16_SNORM,
+      PIPE_FORMAT_R16_USCALED,
+      PIPE_FORMAT_R16G16_USCALED,
+      PIPE_FORMAT_R16G16B16_USCALED,
+      PIPE_FORMAT_R16G16B16A16_USCALED,
+      PIPE_FORMAT_R16_SSCALED,
+      PIPE_FORMAT_R16G16_SSCALED,
+      PIPE_FORMAT_R16G16B16_SSCALED,
+      PIPE_FORMAT_R16G16B16A16_SSCALED,
+      PIPE_FORMAT_R8_UNORM,
+      PIPE_FORMAT_R8G8_UNORM,
+      PIPE_FORMAT_R8G8B8_UNORM,
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+      PIPE_FORMAT_R8_SNORM,
+      PIPE_FORMAT_R8G8_SNORM,
+      PIPE_FORMAT_R8G8B8_SNORM,
+      PIPE_FORMAT_R8G8B8A8_SNORM,
+      PIPE_FORMAT_R8_USCALED,
+      PIPE_FORMAT_R8G8_USCALED,
+      PIPE_FORMAT_R8G8B8_USCALED,
+      PIPE_FORMAT_R8G8B8A8_USCALED,
+      PIPE_FORMAT_R8_SSCALED,
+      PIPE_FORMAT_R8G8_SSCALED,
+      PIPE_FORMAT_R8G8B8_SSCALED,
+      PIPE_FORMAT_R8G8B8A8_SSCALED,
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(format_list); i++) {
+      if (zink_is_format_supported(&screen->base, format_list[i], PIPE_BUFFER, 0, 0, PIPE_BIND_VERTEX_BUFFER))
+         continue;
+      if (util_format_get_nr_components(format_list[i]) == 1)
+         continue;
+      enum pipe_format decomposed = zink_decompose_vertex_format(format_list[i]);
+      if (zink_is_format_supported(&screen->base, decomposed, PIPE_BUFFER, 0, 0, PIPE_BIND_VERTEX_BUFFER)) {
+         screen->need_decompose_attrs = true;
+         mesa_logw("zink: this application would be much faster if %s supported vertex format %s", screen->info.props.deviceName, util_format_name(format_list[i]));
+      }
+   }
+}
+
+static void
 populate_format_props(struct zink_screen *screen)
 {
    for (unsigned i = 0; i < PIPE_FORMAT_COUNT; i++) {
@@ -1799,6 +1884,7 @@ populate_format_props(struct zink_screen *screen)
          screen->format_props[i].bufferFeatures = 0;
       }
    }
+   check_vertex_formats(screen);
    VkImageFormatProperties image_props;
    VkResult ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, VK_FORMAT_D32_SFLOAT,
                                                                 VK_IMAGE_TYPE_1D,
