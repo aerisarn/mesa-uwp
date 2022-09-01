@@ -1048,9 +1048,8 @@ zink_get_compute_pipeline(struct zink_screen *screen,
    return state->pipeline;
 }
 
-static inline void
-bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage,
-           struct zink_shader *shader)
+ALWAYS_INLINE static void
+bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader)
 {
    if (shader && shader->nir->info.num_inlinable_uniforms)
       ctx->shader_has_inlinable_uniforms_mask |= 1 << stage;
