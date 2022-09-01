@@ -141,6 +141,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_variable_pointers                 = true,
    .KHR_vulkan_memory_model               = true,
    .KHR_zero_initialize_workgroup_memory  = true,
+   .ARM_rasterization_order_attachment_access = true,
    .EXT_4444_formats                      = true,
    .EXT_attachment_feedback_loop_layout   = true,
    .EXT_border_color_swizzle              = true,
@@ -168,6 +169,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_private_data                      = true,
    .EXT_primitives_generated_query        = true,
    .EXT_primitive_topology_list_restart   = true,
+   .EXT_rasterization_order_attachment_access = true,
    .EXT_sampler_filter_minmax             = true,
    .EXT_scalar_block_layout               = true,
    .EXT_separate_stencil_usage            = true,
@@ -757,6 +759,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT *features =
             (VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT *)ext;
          features->attachmentFeedbackLoopLayout = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT: {
+         VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT *features =
+            (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT *)ext;
+         features->rasterizationOrderColorAttachmentAccess = true;
+         features->rasterizationOrderDepthAttachmentAccess = true;
+         features->rasterizationOrderStencilAttachmentAccess = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
