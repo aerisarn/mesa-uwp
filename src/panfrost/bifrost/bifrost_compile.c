@@ -655,6 +655,9 @@ bi_make_vec_to(bi_builder *b, bi_index dst,
         unsigned shift = (bitsize == 32) ? 0 : (bitsize == 16) ? 1 : 2;
         unsigned chan_per_word = 1 << shift;
 
+        assert(DIV_ROUND_UP(count * bitsize, 32) <= BI_MAX_SRCS &&
+               "unnecessarily large vector should have been lowered");
+
         bi_index srcs[BI_MAX_VEC];
 
         for (unsigned i = 0; i < count; i += chan_per_word) {
