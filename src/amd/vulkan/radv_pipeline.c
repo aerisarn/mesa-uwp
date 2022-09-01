@@ -2437,27 +2437,30 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
                       const struct radv_pipeline_key *pipeline_key)
 {
    assert(vs_stage->nir->info.stage == MESA_SHADER_VERTEX);
-   assert(next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL ||
-          next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
-          next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   if (radv_should_export_implicit_primitive_id(vs_stage, next_stage)) {
-      NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
+   if (next_stage) {
+      assert(next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL ||
+             next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
+             next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+      if (radv_should_export_implicit_primitive_id(vs_stage, next_stage)) {
+         NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
+      }
+
+      radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
    }
-
-   radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
 
    nir_foreach_shader_in_variable(var, vs_stage->nir) {
       var->data.driver_location = var->data.location;
    }
 
-   if (next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL) {
+   if (next_stage && next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL) {
       nir_linked_io_var_info vs2tcs =
          nir_assign_linked_io_var_locations(vs_stage->nir, next_stage->nir);
 
       vs_stage->info.vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
       next_stage->info.tcs.num_linked_inputs = vs2tcs.num_linked_io_vars;
-   } else if (next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
+   } else if (next_stage && next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
       nir_linked_io_var_info vs2gs =
          nir_assign_linked_io_var_locations(vs_stage->nir, next_stage->nir);
 
@@ -2500,16 +2503,19 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
                        const struct radv_pipeline_key *pipeline_key)
 {
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
-   assert(next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
-          next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   if (radv_should_export_implicit_primitive_id(tes_stage, next_stage)) {
-      NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
+   if (next_stage) {
+      assert(next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
+             next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+      if (radv_should_export_implicit_primitive_id(tes_stage, next_stage)) {
+         NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
+      }
+
+      radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
    }
 
-   radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
-
-   if (next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
+   if (next_stage && next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
       nir_linked_io_var_info tes2gs =
          nir_assign_linked_io_var_locations(tes_stage->nir, next_stage->nir);
 
@@ -2528,9 +2534,12 @@ radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_sta
                       const struct radv_pipeline_key *pipeline_key)
 {
    assert(gs_stage->nir->info.stage == MESA_SHADER_GEOMETRY);
-   assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
+   if (fs_stage) {
+      assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+      radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
+   }
 
    nir_foreach_shader_out_variable(var, gs_stage->nir) {
       var->data.driver_location = var->data.location;
@@ -2555,18 +2564,21 @@ radv_pipeline_link_mesh(const struct radv_device *device, struct radv_pipeline_s
                         const struct radv_pipeline_key *pipeline_key)
 {
    assert(mesh_stage->nir->info.stage == MESA_SHADER_MESH);
-   assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   nir_foreach_shader_in_variable(var, fs_stage->nir) {
-      /* These variables are per-primitive when used with a mesh shader. */
-      if (var->data.location == VARYING_SLOT_PRIMITIVE_ID ||
-          var->data.location == VARYING_SLOT_VIEWPORT ||
-          var->data.location == VARYING_SLOT_LAYER) {
-         var->data.per_primitive = true;
+   if (fs_stage) {
+      assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+      nir_foreach_shader_in_variable(var, fs_stage->nir) {
+         /* These variables are per-primitive when used with a mesh shader. */
+         if (var->data.location == VARYING_SLOT_PRIMITIVE_ID ||
+             var->data.location == VARYING_SLOT_VIEWPORT ||
+             var->data.location == VARYING_SLOT_LAYER) {
+            var->data.per_primitive = true;
+         }
       }
-   }
 
-   radv_pipeline_link_shaders(device, mesh_stage->nir, fs_stage->nir, pipeline_key);
+      radv_pipeline_link_shaders(device, mesh_stage->nir, fs_stage->nir, pipeline_key);
+   }
 
    /* ac_nir_lower_ngg ignores driver locations for mesh shaders, but set them to all zero just to
     * be on the safe side.

@@ -1251,7 +1251,7 @@ radv_link_shaders_info(struct radv_device *device,
                        const struct radv_pipeline_key *pipeline_key)
 {
    /* Export primitive ID or clip/cull distances if necessary. */
-   if (consumer->stage == MESA_SHADER_FRAGMENT) {
+   if (consumer && consumer->stage == MESA_SHADER_FRAGMENT) {
       struct radv_vs_output_info *outinfo = &producer->info.outinfo;
       const bool ps_prim_id_in = consumer->info.ps.prim_id_input;
       const bool ps_clip_dists_in = !!consumer->info.ps.num_input_clips_culls;
@@ -1276,7 +1276,7 @@ radv_link_shaders_info(struct radv_device *device,
    }
 
    if (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL) {
-      if (consumer->stage == MESA_SHADER_GEOMETRY) {
+      if (consumer && consumer->stage == MESA_SHADER_GEOMETRY) {
          uint32_t num_outputs_written;
 
          if (producer->stage == MESA_SHADER_TESS_EVAL) {
@@ -1294,20 +1294,21 @@ radv_link_shaders_info(struct radv_device *device,
       /* Compute NGG info (GFX10+) or GS info. */
       if (producer->info.is_ngg) {
          struct radv_pipeline_stage *gs_stage =
-            consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
+            consumer && consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
 
          gfx10_get_ngg_info(device, producer, gs_stage);
 
          /* Determine other NGG settings like culling for VS or TES without GS. */
-         if (!gs_stage) {
+         if (!gs_stage && consumer) {
             radv_determine_ngg_settings(device, producer, consumer, pipeline_key);
          }
-      } else if (consumer->stage == MESA_SHADER_GEOMETRY) {
+      } else if (consumer && consumer->stage == MESA_SHADER_GEOMETRY) {
          gfx9_get_gs_info(device, producer, consumer);
       }
    }
 
-   if (producer->stage == MESA_SHADER_VERTEX && consumer->stage == MESA_SHADER_TESS_CTRL) {
+   if (producer->stage == MESA_SHADER_VERTEX &&
+       consumer && consumer->stage == MESA_SHADER_TESS_CTRL) {
       struct radv_pipeline_stage *vs_stage = producer;
       struct radv_pipeline_stage *tcs_stage = consumer;
 
@@ -1426,7 +1427,9 @@ radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline
                           struct radv_pipeline_stage *stages)
 {
    /* Walk backwards to link */
-   struct radv_pipeline_stage *next_stage = &stages[MESA_SHADER_FRAGMENT];
+   struct radv_pipeline_stage *next_stage =
+      stages[MESA_SHADER_FRAGMENT].nir ? &stages[MESA_SHADER_FRAGMENT] : NULL;
+
    for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {
       gl_shader_stage s = graphics_shader_order[i];
       if (!stages[s].nir)
