@@ -593,6 +593,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GL_CLAMP:
       return 0;
 
+   case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
+      return 0; /* Assume that the vk driver is capable of moving imm arrays to some sort of constant storage on its own. */
+
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK: {
       enum pipe_quirk_texture_border_color_swizzle quirk = PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_ALPHA_NOT_W;
       if (!screen->info.border_color_feats.customBorderColorWithoutFormat)
