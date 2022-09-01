@@ -72,17 +72,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       zink_prune_query(screen, bs, query);
    }
 
-   set_foreach_remove(&bs->surfaces, entry) {
-      struct zink_surface *surf = (struct zink_surface *)entry->key;
-      zink_batch_usage_unset(&surf->batch_uses, bs);
-      zink_surface_reference(screen, &surf, NULL);
-   }
-   set_foreach_remove(&bs->bufferviews, entry) {
-      struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
-      zink_batch_usage_unset(&buffer_view->batch_uses, bs);
-      zink_buffer_view_reference(screen, &buffer_view, NULL);
-   }
-
    util_dynarray_foreach(&bs->dead_framebuffers, struct zink_framebuffer*, fb) {
       zink_framebuffer_reference(screen, fb, NULL);
    }
@@ -245,8 +234,6 @@ create_batch_state(struct zink_context *ctx)
 
    bs->ctx = ctx;
 
-   SET_CREATE_OR_FAIL(&bs->surfaces);
-   SET_CREATE_OR_FAIL(&bs->bufferviews);
    SET_CREATE_OR_FAIL(&bs->programs);
    SET_CREATE_OR_FAIL(&bs->active_queries);
    util_dynarray_init(&bs->wait_semaphores, NULL);
@@ -679,38 +666,6 @@ zink_batch_reference_resource_move(struct zink_batch *batch, struct zink_resourc
 }
 
 void
-zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view)
-{
-   if (!batch_ptr_add_usage(batch, &batch->state->bufferviews, buffer_view))
-      return;
-   pipe_reference(NULL, &buffer_view->reference);
-   batch->has_work = true;
-}
-
-void
-zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface)
-{
-   if (!batch_ptr_add_usage(batch, &batch->state->surfaces, surface))
-      return;
-   struct pipe_surface *surf = NULL;
-   pipe_surface_reference(&surf, &surface->base);
-   batch->has_work = true;
-}
-
-void
-zink_batch_reference_sampler_view(struct zink_batch *batch,
-                                  struct zink_sampler_view *sv)
-{
-   if (sv->base.target == PIPE_BUFFER)
-      zink_batch_reference_bufferview(batch, sv->buffer_view);
-   else {
-      zink_batch_reference_surface(batch, sv->image_view);
-      if (sv->cube_array)
-         zink_batch_reference_surface(batch, sv->cube_array);
-   }
-}
-
-void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
@@ -720,16 +675,6 @@ zink_batch_reference_program(struct zink_batch *batch,
    pipe_reference(NULL, &pg->reference);
    zink_batch_usage_set(&pg->batch_uses, batch->state);
    batch->has_work = true;
-}
-
-void
-zink_batch_reference_image_view(struct zink_batch *batch,
-                                struct zink_image_view *image_view)
-{
-   if (image_view->base.resource->target == PIPE_BUFFER)
-      zink_batch_reference_bufferview(batch, image_view->buffer_view);
-   else
-      zink_batch_reference_surface(batch, image_view->surface);
 }
 
 bool

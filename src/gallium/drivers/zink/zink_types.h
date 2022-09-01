@@ -458,9 +458,6 @@ struct zink_batch_state {
    struct zink_resource_object *last_added_obj;
    struct util_dynarray swapchain_obj; //this doesn't have a zink_bo and must be handled differently
 
-   struct set surfaces;
-   struct set bufferviews;
-
    struct util_dynarray unref_resources;
    struct util_dynarray bindless_releases[2];
 
@@ -914,6 +911,8 @@ struct zink_resource_object {
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
 
    VkBuffer storage_buffer;
+   simple_mtx_t view_lock;
+   struct util_dynarray views;
 
    union {
       VkBuffer buffer;
@@ -1191,7 +1190,6 @@ struct zink_surface {
    VkImageView simage_view;//old iview after storage replacement/rebind
    void *obj; //backing resource object
    uint32_t hash;
-   struct zink_batch_usage *batch_uses;
 };
 
 /* wrapper object that preserves the gallium expectation of having
@@ -1265,7 +1263,6 @@ struct zink_buffer_view {
    VkBufferViewCreateInfo bvci;
    VkBufferView buffer_view;
    uint32_t hash;
-   struct zink_batch_usage *batch_uses;
 };
 
 struct zink_sampler_view {
