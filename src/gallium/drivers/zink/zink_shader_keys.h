@@ -32,6 +32,7 @@ struct zink_vs_key_base {
    bool clip_halfz : 1;
    bool push_drawid : 1;
    bool last_vertex_stage : 1;
+   uint8_t pad : 5;
 };
 
 struct zink_vs_key {
@@ -61,6 +62,7 @@ struct zink_fs_key {
    bool force_dual_color_blend : 1;
    bool force_persample_interp : 1;
    bool fbfetch_ms : 1;
+   uint8_t pad : 3;
    uint8_t coord_replace_bits;
 };
 
