@@ -504,6 +504,8 @@ struct radv_trap_handler_shader {
 struct radv_shader_part {
    uint32_t ref_count;
 
+   uint64_t va;
+
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
    uint32_t code_size;

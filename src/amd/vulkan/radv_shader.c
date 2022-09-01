@@ -2355,6 +2355,8 @@ upload_shader_part(struct radv_device *device, struct radv_shader_part_binary *b
    }
 
    shader_part->bo = shader_part->alloc->arena->bo;
+   shader_part->va = radv_buffer_get_va(shader_part->bo) + shader_part->alloc->offset;
+
    char *dest_ptr = shader_part->alloc->arena->ptr + shader_part->alloc->offset;
 
    memcpy(dest_ptr, bin->data, bin->code_size);

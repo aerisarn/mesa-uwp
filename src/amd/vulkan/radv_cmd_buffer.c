@@ -1224,9 +1224,8 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
       radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_FRAGMENT]);
       if (pipeline->ps_epilog) {
          struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
-         uint64_t va = radv_buffer_get_va(ps_epilog->bo) + ps_epilog->alloc->offset;
 
-         si_cp_dma_prefetch(cmd_buffer, va, ps_epilog->code_size);
+         si_cp_dma_prefetch(cmd_buffer, ps_epilog->va, ps_epilog->code_size);
       }
    }
 
@@ -1397,7 +1396,6 @@ radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_shader *ps_shader = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
-   uint64_t ps_epilog_va;
 
    if (!ps_epilog)
       return;
@@ -1409,8 +1407,7 @@ radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, ps_epilog->bo);
 
-   ps_epilog_va = radv_buffer_get_va(ps_epilog->bo) + ps_epilog->alloc->offset;
-   assert((ps_epilog_va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
+   assert((ps_epilog->va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
 
    struct radv_userdata_info *loc =
       &ps_shader->info.user_sgprs_locs.shader_data[AC_UD_PS_EPILOG_PC];
@@ -1418,7 +1415,7 @@ radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    assert(loc->sgpr_idx != -1);
    assert(loc->num_sgprs == 1);
    radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
-                            ps_epilog_va, false);
+                            ps_epilog->va, false);
 }
 
 static void
@@ -3090,7 +3087,6 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
 
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   uint64_t prolog_va = radv_buffer_get_va(prolog->bo) + prolog->alloc->offset;
 
    assert(cmd_buffer->state.emitted_graphics_pipeline == cmd_buffer->state.graphics_pipeline);
 
@@ -3119,7 +3115,7 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
       rsrc1_reg = R_00B328_SPI_SHADER_PGM_RSRC1_ES;
    }
 
-   radeon_set_sh_reg(cmd_buffer->cs, pgm_lo_reg, prolog_va >> 8);
+   radeon_set_sh_reg(cmd_buffer->cs, pgm_lo_reg, prolog->va >> 8);
 
    if (chip < GFX10)
       radeon_set_sh_reg(cmd_buffer->cs, rsrc1_reg, rsrc1);
