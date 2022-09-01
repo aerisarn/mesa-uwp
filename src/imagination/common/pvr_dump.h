@@ -141,13 +141,21 @@ struct pvr_dump_buffer_ctx {
       pvr_dump_printf_cont(&_ctx->base, format "\n", ##args);   \
    } while (0)
 
-#define pvr_dump_error(ctx, format, args...)                  \
-   ({                                                         \
-      struct pvr_dump_ctx *_ctx = (ctx);                      \
-      pvr_dump_println(_ctx, "<!ERROR! " format ">", ##args); \
-      _ctx->ok = false;                                       \
-      false;                                                  \
+#define pvr_dump_msg(ctx, prefix, ret, format, args...)            \
+   ({                                                              \
+      bool _ret = (ret);                                           \
+      struct pvr_dump_ctx *_ctx = (ctx);                           \
+      pvr_dump_println(_ctx, "<!" prefix "! " format ">", ##args); \
+      if (!_ret)                                                   \
+         _ctx->ok = _ret;                                          \
+      _ret;                                                        \
    })
+
+#define pvr_dump_error(ctx, format, args...) \
+   pvr_dump_msg(ctx, "ERROR", false, format, ##args)
+
+#define pvr_dump_warn(ctx, format, args...) \
+   pvr_dump_msg(ctx, "WARN", true, format, ##args)
 
 static inline bool pvr_dump_ctx_require_top(struct pvr_dump_ctx *const ctx)
 {
@@ -306,6 +314,27 @@ static inline bool pvr_dump_buffer_advance(struct pvr_dump_buffer_ctx *ctx,
       return pvr_dump_error(&ctx->base, "advanced past end of context buffer");
 
    __pvr_dump_buffer_advance(ctx, nr_bytes);
+
+   return true;
+}
+
+static inline void __pvr_dump_buffer_rewind(struct pvr_dump_buffer_ctx *ctx,
+                                            const uint32_t nr_bytes)
+{
+   ctx->ptr -= nr_bytes;
+   ctx->remaining_size += nr_bytes;
+}
+
+static inline bool pvr_dump_buffer_rewind(struct pvr_dump_buffer_ctx *ctx,
+                                          const uint32_t nr_bytes)
+{
+   if (!ctx->base.ok || !pvr_dump_ctx_require_top(&ctx->base))
+      return false;
+
+   if (nr_bytes > ctx->capacity - ctx->remaining_size)
+      return pvr_dump_error(&ctx->base, "rewound past start of context buffer");
+
+   __pvr_dump_buffer_rewind(ctx, nr_bytes);
 
    return true;
 }

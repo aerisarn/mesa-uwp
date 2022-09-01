@@ -325,6 +325,16 @@ print_block_cdmctrl_kernel(struct pvr_dump_csb_ctx *const csb_ctx,
                                      &kernel1,
                                      data_addr,
                                      pds_heap_base);
+   ret = print_sub_buffer(
+      base_ctx,
+      device,
+      BUFFER_TYPE_NONE,
+      PVR_DEV_ADDR_OFFSET(pds_heap_base, kernel1.data_addr.addr),
+      kernel0.pds_data_size * PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE),
+      "pds_data_size");
+   if (!ret)
+      goto end_pop_ctx;
+
    pvr_dump_field_member_enum(base_ctx,
                               &kernel1,
                               sd_type,
@@ -335,6 +345,19 @@ print_block_cdmctrl_kernel(struct pvr_dump_csb_ctx *const csb_ctx,
                                      &kernel2,
                                      code_addr,
                                      pds_heap_base);
+   /* FIXME: Determine the exact size of the PDS code section once disassembly
+    * is implemented.
+    */
+   ret = print_sub_buffer(base_ctx,
+                          device,
+                          BUFFER_TYPE_NONE,
+                          PVR_DEV_ADDR_OFFSET(pds_heap_base,
+                                              kernel2.code_addr.addr),
+                          0,
+                          NULL);
+   if (!ret)
+      goto end_pop_ctx;
+
    pvr_dump_field_member_bool(base_ctx, &kernel2, one_wg_per_task);
 
    if (!kernel0.indirect_present) {
@@ -452,9 +475,6 @@ print_block_vdmctrl_ppp_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
    uint32_t words_read = 0;
    bool ret = false;
 
-   pvr_dev_addr_t ppp_addr;
-   uint32_t ppp_size;
-
    struct PVRX(VDMCTRL_PPP_STATE0) state0 = { 0 };
    struct PVRX(VDMCTRL_PPP_STATE1) state1 = { 0 };
 
@@ -467,17 +487,19 @@ print_block_vdmctrl_ppp_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
    }
    words_read += 2;
 
-   ppp_addr = PVR_DEV_ADDR(state0.addrmsb.addr | state1.addrlsb.addr);
-   ppp_size = state0.word_count ? state0.word_count : 256;
-
    pvr_dump_field_member_u32_zero(base_ctx, &state0, word_count, 256);
    pvr_dump_field_addr_split(base_ctx, "addr", state0.addrmsb, state1.addrlsb);
-   ret = print_sub_buffer(base_ctx,
-                          device,
-                          BUFFER_TYPE_PPP,
-                          ppp_addr,
-                          ppp_size * PVR_DUMP_CSB_WORD_SIZE,
-                          "word_count");
+   ret = print_sub_buffer(
+      base_ctx,
+      device,
+      BUFFER_TYPE_PPP,
+      PVR_DEV_ADDR(state0.addrmsb.addr | state1.addrlsb.addr),
+      (state0.word_count ? state0.word_count : 256) * PVR_DUMP_CSB_WORD_SIZE,
+      "word_count");
+   if (!ret)
+      goto end_pop_ctx;
+
+   ret = true;
 
 end_pop_ctx:
    pvr_dump_csb_block_ctx_pop(&ctx);
@@ -548,6 +570,16 @@ print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
                                      &state1,
                                      pds_data_addr,
                                      pds_heap_base);
+   ret = print_sub_buffer(
+      base_ctx,
+      device,
+      BUFFER_TYPE_NONE,
+      PVR_DEV_ADDR_OFFSET(pds_heap_base, state1.pds_data_addr.addr),
+      state0.pds_data_size * PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE),
+      "pds_data_size");
+   if (!ret)
+      goto end_pop_ctx;
+
    pvr_dump_field_member_enum(base_ctx,
                               &state1,
                               sd_type,
@@ -561,6 +593,18 @@ print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
                                      &state2,
                                      pds_code_addr,
                                      pds_heap_base);
+   /* FIXME: Determine the exact size of the PDS code section once disassembly
+    * is implemented.
+    */
+   ret = print_sub_buffer(base_ctx,
+                          device,
+                          BUFFER_TYPE_NONE,
+                          PVR_DEV_ADDR_OFFSET(pds_heap_base,
+                                              state2.pds_code_addr.addr),
+                          0,
+                          NULL);
+   if (!ret)
+      goto end_pop_ctx;
 
    ret = true;
 
@@ -628,6 +672,31 @@ print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
                                         &state2,
                                         vs_pds_data_base_addr,
                                         pds_heap_base);
+      if (state0.vs_other_present) {
+         ret = print_sub_buffer(
+            base_ctx,
+            device,
+            BUFFER_TYPE_NONE,
+            PVR_DEV_ADDR_OFFSET(pds_heap_base,
+                                state2.vs_pds_data_base_addr.addr),
+            state5.vs_pds_data_size *
+               PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE),
+            "pds_data_size");
+      } else {
+         /* FIXME: Determine the exact size of the PDS data section when no
+          * code section is present once disassembly is implemented.
+          */
+         ret = print_sub_buffer(
+            base_ctx,
+            device,
+            BUFFER_TYPE_NONE,
+            PVR_DEV_ADDR_OFFSET(pds_heap_base,
+                                state2.vs_pds_data_base_addr.addr),
+            0,
+            NULL);
+      }
+      if (!ret)
+         goto end_pop_ctx;
    } else {
       pvr_dump_field_member_not_present(base_ctx,
                                         &state2,
@@ -639,6 +708,18 @@ print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
                                         &state3,
                                         vs_pds_code_base_addr,
                                         pds_heap_base);
+      /* FIXME: Determine the exact size of the PDS code section once
+       * disassembly is implemented.
+       */
+      ret = print_sub_buffer(
+         base_ctx,
+         device,
+         BUFFER_TYPE_NONE,
+         PVR_DEV_ADDR_OFFSET(pds_heap_base, state3.vs_pds_code_base_addr.addr),
+         0,
+         NULL);
+      if (!ret)
+         goto end_pop_ctx;
 
       pvr_dump_field_member_u32_scaled_units(
          base_ctx,
@@ -832,6 +913,23 @@ print_block_vdmctrl_index_list(struct pvr_dump_csb_ctx *const csb_ctx,
                                 "index_base_addr",
                                 index_list0.index_base_addrmsb,
                                 index_list1.index_base_addrlsb);
+      const uint32_t index_size =
+         pvr_vdmctrl_index_size_nr_bytes(index_list0.index_size);
+
+      if (!index_list0.index_count_present) {
+         ret = pvr_dump_error(base_ctx, "index_addr requires index_count");
+         goto end_pop_ctx;
+      }
+
+      ret = print_sub_buffer(base_ctx,
+                             device,
+                             BUFFER_TYPE_NONE,
+                             PVR_DEV_ADDR(index_list0.index_base_addrmsb.addr |
+                                          index_list1.index_base_addrlsb.addr),
+                             index_list2.index_count * index_size,
+                             "index_count * index_size");
+      if (!ret)
+         goto end_pop_ctx;
    } else {
       pvr_dump_field_not_present(base_ctx, "index_base_addr");
    }
@@ -870,6 +968,16 @@ print_block_vdmctrl_index_list(struct pvr_dump_csb_ctx *const csb_ctx,
                                 "indirect_base_addr",
                                 index_list7.indirect_base_addrmsb,
                                 index_list8.indirect_base_addrlsb);
+      ret =
+         print_sub_buffer(base_ctx,
+                          device,
+                          BUFFER_TYPE_NONE,
+                          PVR_DEV_ADDR(index_list7.indirect_base_addrmsb.addr |
+                                       index_list8.indirect_base_addrlsb.addr),
+                          0,
+                          NULL);
+      if (!ret)
+         goto end_pop_ctx;
    } else {
       pvr_dump_field_not_present(base_ctx, "indirect_base_addr");
    }
@@ -1759,6 +1867,15 @@ print_block_ppp_state_stream_out(struct pvr_dump_csb_ctx *const csb_ctx,
                                         &stream_out2,
                                         pds_data_addr,
                                         pds_heap_base);
+      ret = print_sub_buffer(
+         base_ctx,
+         device,
+         BUFFER_TYPE_NONE,
+         PVR_DEV_ADDR_OFFSET(pds_heap_base, stream_out2.pds_data_addr.addr),
+         stream_out1.pds_data_size,
+         "pds_data_size");
+      if (!ret)
+         goto end_pop_ctx;
    } else {
       pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_temp_size);
       pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_data_size);
@@ -2127,7 +2244,21 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
 
    bo = pvr_bo_store_lookup(device, addr);
    if (!bo) {
-      pvr_dump_println(ctx, "<buffer does not exist>");
+      if (expected_size) {
+         pvr_dump_field(ctx,
+                        "<buffer size>",
+                        "%" PRIu64 " bytes (from %s)",
+                        expected_size,
+                        size_src);
+      } else {
+         pvr_dump_field(ctx, "<buffer size>", "<unknown>");
+      }
+
+      /* FIXME: Trace pvr_buffer allocations with pvr_bo_store. */
+      pvr_dump_warn(ctx, "no mapping found at " PVR_DEV_ADDR_FMT, addr.addr);
+
+      /* Not a fatal error; don't let a single bad address halt the dump. */
+      ret = true;
       goto end_out;
    }
 
@@ -2175,7 +2306,8 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
    switch (type) {
    case BUFFER_TYPE_NONE:
       pvr_dump_field(base_ctx, "<content>", "<not decoded>");
-      ret = true;
+      pvr_dump_indent(&sub_ctx.base.base);
+      ret = pvr_dump_buffer_hex(&sub_ctx.base, 0);
       break;
 
    case BUFFER_TYPE_PPP:
