@@ -5571,13 +5571,6 @@ void pvr_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
-                         const VkSubpassBeginInfo *pSubpassBeginInfo,
-                         const VkSubpassEndInfo *pSubpassEndInfo)
-{
-   assert(!"Unimplemented");
-}
-
 static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
                                        struct pvr_sub_cmd_gfx *const sub_cmd)
 {
@@ -5631,6 +5624,109 @@ pvr_get_current_subpass(const struct pvr_cmd_buffer_state *const state)
    const uint32_t subpass_idx = state->render_pass_info.subpass_idx;
 
    return &state->render_pass_info.pass->subpasses[subpass_idx];
+}
+
+void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
+                         const VkSubpassBeginInfo *pSubpassBeginInfo,
+                         const VkSubpassEndInfo *pSubpassEndInfo)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   struct pvr_render_pass_info *rp_info = &state->render_pass_info;
+   const struct pvr_renderpass_hwsetup_subpass *hw_subpass;
+   struct pvr_renderpass_hwsetup_render *next_hw_render;
+   const struct pvr_render_pass *pass = rp_info->pass;
+   const struct pvr_renderpass_hw_map *current_map;
+   const struct pvr_renderpass_hw_map *next_map;
+   struct pvr_load_op *hw_subpass_load_op;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   current_map = &pass->hw_setup->subpass_map[rp_info->subpass_idx];
+   next_map = &pass->hw_setup->subpass_map[rp_info->subpass_idx + 1];
+   next_hw_render = &pass->hw_setup->renders[next_map->render];
+
+   if (current_map->render != next_map->render) {
+      result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return;
+
+      result = pvr_resolve_unemitted_resolve_attachments(cmd_buffer, rp_info);
+      if (result != VK_SUCCESS)
+         return;
+
+      rp_info->current_hw_subpass = next_map->render;
+
+      result =
+         pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
+      if (result != VK_SUCCESS)
+         return;
+
+      rp_info->enable_bg_tag = false;
+      rp_info->process_empty_tiles = false;
+
+      /* If this subpass contains any load ops the HW Background Object must be
+       * run to do the clears/loads.
+       */
+      if (next_hw_render->color_init_count > 0) {
+         rp_info->enable_bg_tag = true;
+
+         for (uint32_t i = 0; i < next_hw_render->color_init_count; i++) {
+            /* Empty tiles need to be cleared too. */
+            if (next_hw_render->color_init[i].op ==
+                VK_ATTACHMENT_LOAD_OP_CLEAR) {
+               rp_info->process_empty_tiles = true;
+               break;
+            }
+         }
+      }
+
+      /* Set isp_userpass to zero for new hw_render. This will be used to set
+       * ROGUE_CR_ISP_CTL::upass_start.
+       */
+      rp_info->isp_userpass = 0;
+   }
+
+   hw_subpass = &next_hw_render->subpasses[next_map->subpass];
+   hw_subpass_load_op = hw_subpass->load_op;
+
+   if (hw_subpass_load_op) {
+      result = pvr_cs_write_load_op(cmd_buffer,
+                                    &state->current_sub_cmd->gfx,
+                                    hw_subpass_load_op,
+                                    rp_info->isp_userpass);
+   }
+
+   /* Pipelines are created for a particular subpass so unbind but leave the
+    * vertex and descriptor bindings intact as they are orthogonal to the
+    * subpass.
+    */
+   state->gfx_pipeline = NULL;
+
+   /* User-pass spawn is 4 bits so if the driver has to wrap it, it will emit a
+    * full screen transparent object to flush all tags up until now, then the
+    * user-pass spawn value will implicitly be reset to 0 because
+    * pvr_render_subpass::isp_userpass values are stored ANDed with
+    * ROGUE_CR_ISP_CTL_UPASS_START_SIZE_MAX.
+    */
+   /* If hw_subpass_load_op is valid then pvr_write_load_op_control_stream
+    * has already done a full-screen transparent object.
+    */
+   if (rp_info->isp_userpass == PVRX(CR_ISP_CTL_UPASS_START_SIZE_MAX) &&
+       !hw_subpass_load_op) {
+      pvr_insert_transparent_obj(cmd_buffer, &state->current_sub_cmd->gfx);
+   }
+
+   rp_info->subpass_idx++;
+
+   rp_info->isp_userpass = pass->subpasses[rp_info->subpass_idx].isp_userpass;
+   state->dirty.isp_userpass = true;
+
+   rp_info->pipeline_bind_point =
+      pass->subpasses[rp_info->subpass_idx].pipeline_bind_point;
+
+   pvr_stash_depth_format(state, &state->current_sub_cmd->gfx);
 }
 
 static bool
