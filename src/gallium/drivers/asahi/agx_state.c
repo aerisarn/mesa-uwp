@@ -1747,11 +1747,11 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
       agx_pack(out, INDEXED_DRAW, cfg) {
          cfg.restart_index = info->restart_index;
-         cfg.unk_2a = (ib >> 32);
          cfg.primitive = prim;
          cfg.restart_enable = info->primitive_restart;
          cfg.index_size = __builtin_ctz(idx_size);
-         cfg.index_buffer_offset = (ib & BITFIELD_MASK(32));
+         cfg.index_buffer_lo = (ib & BITFIELD_MASK(32));
+         cfg.index_buffer_hi = (ib >> 32);
          cfg.index_buffer_size = ALIGN_POT(draws->count * idx_size, 4);
          cfg.index_count = draws->count;
          cfg.instance_count = info->instance_count;
