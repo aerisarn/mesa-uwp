@@ -2517,35 +2517,17 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
                          (void **)&binary);
 
    epilog = radv_shader_part_create(binary, info.wave_size);
-   if (!epilog)
-      goto fail_create;
-
-   /* Allocate memory and upload the epilog. */
-   epilog->alloc = radv_alloc_shader_memory(device, epilog->code_size, NULL);
-   if (!epilog->alloc)
-      goto fail_alloc;
-
-   epilog->bo = epilog->alloc->arena->bo;
-   epilog->va = radv_buffer_get_va(epilog->bo) + epilog->alloc->offset;
-
-   void *dest_ptr = epilog->alloc->arena->ptr + epilog->alloc->offset;
-   radv_shader_part_binary_upload(binary, dest_ptr);
+   if (!epilog) {
+      free(binary);
+      return NULL;
+   }
 
    if (options.dump_shader) {
       fprintf(stderr, "Fragment epilog");
       fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
    }
 
-   free(epilog->binary);
-   epilog->binary = NULL;
-
    return epilog;
-
-fail_alloc:
-   radv_shader_part_destroy(device, epilog);
-fail_create:
-   free(binary);
-   return NULL;
 }
 
 void
