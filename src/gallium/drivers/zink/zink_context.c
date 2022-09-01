@@ -911,6 +911,9 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       struct pipe_surface templ = {0};
       templ.u.tex.level = state->u.tex.first_level;
       templ.format = state->format;
+      /* avoid needing mutable for depth/stencil sampling */
+      if (util_format_is_depth_and_stencil(pres->format))
+         templ.format = pres->format;
       if (state->target != PIPE_TEXTURE_3D) {
          templ.u.tex.first_layer = state->u.tex.first_layer;
          templ.u.tex.last_layer = state->u.tex.last_layer;
