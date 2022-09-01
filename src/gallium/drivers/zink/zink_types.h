@@ -804,7 +804,8 @@ struct zink_gfx_program {
    uint32_t stages_remaining; //mask of zink_shader remaining in this program
    struct nir_shader *nir[ZINK_GFX_SHADER_COUNT];
 
-   struct zink_shader_module *modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
+   VkShaderModule modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
+   uint32_t module_hash[ZINK_GFX_SHADER_COUNT];
 
    struct zink_shader *last_vertex_stage;
 

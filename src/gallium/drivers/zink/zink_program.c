@@ -252,19 +252,20 @@ update_gfx_shader_modules(struct zink_context *ctx,
          zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                              inline_size, nonseamless_size, has_inline, has_nonseamless);
       state->modules[i] = zm->shader;
-      if (prog->modules[i] == zm)
+      if (prog->modules[i] == zm->shader)
          continue;
-      variant_hash ^= prog->modules[i]->hash;
+      variant_hash ^= prog->module_hash[i];
       hash_changed = true;
       default_variants &= zm->default_variant;
-      prog->modules[i] = zm;
+      prog->modules[i] = zm->shader;
+      prog->module_hash[i] = zm->hash;
       if (has_inline) {
          if (zm->num_uniforms)
             prog->inline_variants |= BITFIELD_BIT(i);
          else
             prog->inline_variants &= ~BITFIELD_BIT(i);
       }
-      variant_hash ^= prog->modules[i]->hash;
+      variant_hash ^= prog->module_hash[i];
    }
 
    if (hash_changed && state) {
@@ -297,11 +298,12 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
                                                                      inline_size, nonseamless_size,
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
       state->modules[i] = zm->shader;
-      prog->modules[i] = zm;
+      prog->modules[i] = zm->shader;
+      prog->module_hash[i] = zm->hash;
       if (zm->num_uniforms)
          prog->inline_variants |= BITFIELD_BIT(i);
       default_variants &= zm->default_variant;
-      variant_hash ^= prog->modules[i]->hash;
+      variant_hash ^= prog->module_hash[i];
    }
 
    prog->last_variant_hash = variant_hash;
@@ -424,7 +426,7 @@ zink_gfx_program_update(struct zink_context *ctx)
          prog = (struct zink_gfx_program*)entry->data;
          for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
             if (prog->stages_present & ~ctx->dirty_shader_stages & BITFIELD_BIT(i))
-               ctx->gfx_pipeline_state.modules[i] = prog->modules[i]->shader;
+               ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
          }
          /* ensure variants are always updated if keys have changed since last use */
          ctx->dirty_shader_stages |= prog->stages_present;

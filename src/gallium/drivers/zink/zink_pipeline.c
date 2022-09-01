@@ -358,7 +358,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = prog->modules[i]->shader;
+      stage.module = prog->modules[i];
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }
@@ -761,7 +761,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = prog->modules[i]->shader;
+      stage.module = prog->modules[i];
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }
