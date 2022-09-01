@@ -944,9 +944,13 @@ radv_CmdBuildAccelerationStructuresKHR(
       radv_update_buffer_cp(cmd_buffer,
                             radv_buffer_get_va(accel_struct->bo) + accel_struct->mem_offset + base,
                             (const char *)&header + base, sizeof(header) - base);
-      radv_update_buffer_cp(cmd_buffer,
-                            radv_accel_struct_get_va(accel_struct) + bvh_states[i].node_offset,
-                            geometry_infos, geometry_infos_size);
+
+      struct radv_buffer accel_struct_buffer;
+      radv_buffer_init(&accel_struct_buffer, cmd_buffer->device, accel_struct->bo,
+                       accel_struct->size, accel_struct->mem_offset);
+      radv_CmdUpdateBuffer(commandBuffer, radv_buffer_to_handle(&accel_struct_buffer),
+                           bvh_states[i].node_offset, geometry_infos_size, geometry_infos);
+      radv_buffer_finish(&accel_struct_buffer);
    }
 
 fail:
