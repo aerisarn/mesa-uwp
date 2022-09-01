@@ -264,6 +264,9 @@ sync_timestamp(struct fd_context *ctx)
       return;
    }
 
+   /* get cpu timestamp again because FD_TIMESTAMP can take >100us */
+   cpu_ts = perfetto::base::GetBootTimeNs().count();
+
    /* convert GPU ts into ns: */
    gpu_ts = ctx->ts_to_ns(gpu_ts);
 
