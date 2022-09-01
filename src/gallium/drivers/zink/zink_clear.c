@@ -784,3 +784,27 @@ zink_fb_clears_apply_region(struct zink_context *ctx, struct pipe_resource *pres
       }
    }
 }
+
+void
+zink_fb_clear_rewrite(struct zink_context *ctx, unsigned idx, enum pipe_format before, enum pipe_format after)
+{
+   /* if the values for the clear color are incompatible, they must be rewritten;
+    * this occurs if:
+    * - the formats' srgb-ness does not match
+    * - the formats' signedness does not match
+    */
+   const struct util_format_description *bdesc = util_format_description(before);
+   const struct util_format_description *adesc = util_format_description(after);
+   bool bsigned = bdesc->channel[util_format_get_first_non_void_channel(before)].type == UTIL_FORMAT_TYPE_SIGNED;
+   bool asigned = adesc->channel[util_format_get_first_non_void_channel(after)].type == UTIL_FORMAT_TYPE_SIGNED;
+   if (util_format_is_srgb(before) == util_format_is_srgb(after) &&
+       bsigned == asigned)
+      return;
+   struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[idx];
+   for (int j = 0; j < zink_fb_clear_count(fb_clear); j++) {
+      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, j);
+      uint32_t data[4];
+      util_format_pack_rgba(before, data, clear->color.ui, 1);
+      util_format_unpack_rgba(after, clear->color.ui, data, 1);
+   }
+}

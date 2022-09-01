@@ -2853,9 +2853,22 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    bool flush_clears = ctx->clears_enabled &&
                        (ctx->dynamic_fb.info.layerCount != layers ||
                         state->width != w || state->height != h);
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      if (i >= state->nr_cbufs || ctx->fb_state.cbufs[i] != state->cbufs[i])
-         flush_clears |= zink_fb_clear_enabled(ctx, i);
+   if (ctx->clears_enabled && !flush_clears) {
+      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         if (i >= state->nr_cbufs || !ctx->fb_state.cbufs[i] || !state->cbufs[i])
+            flush_clears |= zink_fb_clear_enabled(ctx, i);
+         else if (zink_fb_clear_enabled(ctx, i) && ctx->fb_state.cbufs[i] != state->cbufs[i]) {
+            struct zink_surface *a = zink_csurface(ctx->fb_state.cbufs[i]);
+            struct zink_surface *b = zink_csurface(state->cbufs[i]);
+            if (a == b)
+               continue;
+            if (memcmp(&a->base.u.tex, &b->base.u.tex, sizeof(b->base.u.tex)) ||
+                a->base.texture != b->base.texture)
+               flush_clears = true;
+            else if (a->base.format != b->base.format)
+               zink_fb_clear_rewrite(ctx, i, a->base.format, b->base.format);
+         }
+      }
    }
    if (ctx->fb_state.zsbuf != state->zsbuf)
       flush_clears |= zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS);
