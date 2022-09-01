@@ -2544,9 +2544,6 @@ link_intrastage_shaders(void *mem_ctx,
       }
    }
 
-   if (ctx->Const.LowerCsDerivedVariables)
-      lower_cs_derived(linked);
-
    /* Set the linked source SHA1. */
    if (num_shaders == 1) {
       memcpy(linked->linked_source_sha1, shader_list[0]->compiled_source_sha1,

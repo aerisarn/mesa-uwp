@@ -4035,6 +4035,11 @@ static const nir_shader_compiler_options nir_to_tgsi_compiler_options = {
    .lower_vector_cmp = true,
    .lower_int64_options = nir_lower_imul_2x32_64,
    .use_interpolated_input_intrinsics = true,
+
+   /* TGSI doesn't have a semantic for local or global index, just local and
+    * workgroup id.
+    */
+   .lower_cs_local_index_to_id = true,
 };
 
 /* Returns a default compiler options for drivers with only nir-to-tgsi-based

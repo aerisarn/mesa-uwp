@@ -122,7 +122,6 @@ void optimize_dead_builtin_variables(exec_list *instructions,
                                      enum ir_variable_mode other);
 bool lower_tess_level(gl_linked_shader *shader);
 
-bool lower_cs_derived(gl_linked_shader *shader);
 bool lower_blend_equation_advanced(gl_linked_shader *shader, bool coherent);
 
 bool lower_builtins(exec_list *instructions);

@@ -156,7 +156,6 @@ files_libglsl = files(
   'list.h',
   'lower_blend_equation_advanced.cpp',
   'lower_builtins.cpp',
-  'lower_cs_derived.cpp',
   'lower_discard.cpp',
   'lower_discard_flow.cpp',
   'lower_distance.cpp',
