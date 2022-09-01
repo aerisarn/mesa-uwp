@@ -926,8 +926,21 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
          &hw_render->eot_setup.mrt_resources[surface->mrt_index];
       uint32_t samples = 1;
 
-      if (surface->need_resolve)
-         pvr_finishme("Set up job resolve information.");
+      if (surface->need_resolve) {
+         const struct pvr_image_view *resolve_src =
+            render_pass_info->attachments[surface->src_attachment_index];
+
+         /* Attachments that are the destination of resolve operations must be
+          * loaded before their next use.
+          */
+         render_pass_info->enable_bg_tag = true;
+         render_pass_info->process_empty_tiles = true;
+
+         if (surface->resolve_type != PVR_RESOLVE_TYPE_PBE)
+            continue;
+
+         samples = (uint32_t)resolve_src->vk.image->samples;
+      }
 
       pvr_setup_pbe_state(dev_info,
                           render_pass_info->framebuffer,
