@@ -36,26 +36,11 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-#include "build_helpers.h"
+#include "build_interface.h"
 
 layout(push_constant) uniform CONSTS {
-   VOID_REF bvh;
-   REF(AABB) bounds;
-   REF(key_id_pair) ids;
-
-   VOID_REF data;
-   VOID_REF indices;
-   VOID_REF transform;
-
-   uint32_t dst_offset;
-   uint32_t first_id;
-   uint32_t geometry_type;
-   uint32_t geometry_id;
-
-   uint32_t stride;
-   uint32_t vertex_format;
-   uint32_t index_format;
-} args;
+   leaf_args args;
+};
 
 /* Just a wrapper for 3 uints. */
 struct triangle_indices {

@@ -29,6 +29,8 @@
 
 #include "radix_sort/radv_radix_sort.h"
 
+#include "bvh/build_interface.h"
+
 static const uint32_t leaf_spv[] = {
 #include "bvh/leaf.comp.spv.h"
 };
@@ -205,39 +207,6 @@ create_accel_build_shader(struct radv_device *device, const char *name)
 
    return b;
 }
-
-struct leaf_constants {
-   uint64_t bvh_addr;
-   uint64_t bounds_addr;
-   uint64_t ids_addr;
-
-   uint64_t data_addr;
-   uint64_t indices_addr;
-   uint64_t transform_addr;
-
-   uint32_t dst_offset;
-   uint32_t first_id;
-   uint32_t geometry_type;
-   uint32_t geometry_id;
-
-   uint32_t stride;
-   uint32_t vertex_format;
-   uint32_t index_format;
-};
-
-struct morton_constants {
-   uint64_t bvh_addr;
-   uint64_t bounds_addr;
-   uint64_t ids_addr;
-};
-
-struct internal_constants {
-   uint64_t bvh_addr;
-   uint64_t src_ids_addr;
-   uint64_t dst_ids_addr;
-   uint32_t dst_offset;
-   uint32_t fill_count;
-};
 
 enum copy_mode {
    COPY_MODE_COPY,
@@ -609,15 +578,14 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    VkResult result;
    nir_shader *copy_cs = build_copy_shader(device);
 
-   result =
-      create_build_pipeline_spv(device, leaf_spv, sizeof(leaf_spv), sizeof(struct leaf_constants),
-                                &device->meta_state.accel_struct_build.leaf_pipeline,
-                                &device->meta_state.accel_struct_build.leaf_p_layout);
+   result = create_build_pipeline_spv(device, leaf_spv, sizeof(leaf_spv), sizeof(struct leaf_args),
+                                      &device->meta_state.accel_struct_build.leaf_pipeline,
+                                      &device->meta_state.accel_struct_build.leaf_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
    result = create_build_pipeline_spv(device, internal_spv, sizeof(internal_spv),
-                                      sizeof(struct internal_constants),
+                                      sizeof(struct internal_args),
                                       &device->meta_state.accel_struct_build.internal_pipeline,
                                       &device->meta_state.accel_struct_build.internal_p_layout);
    if (result != VK_SUCCESS)
@@ -630,10 +598,10 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   result = create_build_pipeline_spv(device, morton_spv, sizeof(morton_spv),
-                                      sizeof(struct morton_constants),
-                                      &device->meta_state.accel_struct_build.morton_pipeline,
-                                      &device->meta_state.accel_struct_build.morton_p_layout);
+   result =
+      create_build_pipeline_spv(device, morton_spv, sizeof(morton_spv), sizeof(struct morton_args),
+                                &device->meta_state.accel_struct_build.morton_pipeline,
+                                &device->meta_state.accel_struct_build.morton_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -700,10 +668,10 @@ radv_CmdBuildAccelerationStructuresKHR(
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
 
-      struct leaf_constants leaf_consts = {
-         .bvh_addr = radv_accel_struct_get_va(accel_struct),
-         .bounds_addr = pInfos[i].scratchData.deviceAddress,
-         .ids_addr = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
+      struct leaf_args leaf_consts = {
+         .bvh = radv_accel_struct_get_va(accel_struct),
+         .bounds = pInfos[i].scratchData.deviceAddress,
+         .ids = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
          .dst_offset =
             ALIGN(sizeof(struct radv_accel_struct_header), 64) + sizeof(struct radv_bvh_box32_node),
       };
@@ -725,19 +693,18 @@ radv_CmdBuildAccelerationStructuresKHR(
          case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
 
-            leaf_consts.data_addr =
-               geom->geometry.triangles.vertexData.deviceAddress +
-               buildRangeInfo->firstVertex * geom->geometry.triangles.vertexStride;
-            leaf_consts.indices_addr = geom->geometry.triangles.indexData.deviceAddress;
+            leaf_consts.data = geom->geometry.triangles.vertexData.deviceAddress +
+                               buildRangeInfo->firstVertex * geom->geometry.triangles.vertexStride;
+            leaf_consts.indices = geom->geometry.triangles.indexData.deviceAddress;
 
             if (geom->geometry.triangles.indexType == VK_INDEX_TYPE_NONE_KHR)
-               leaf_consts.data_addr += buildRangeInfo->primitiveOffset;
+               leaf_consts.data += buildRangeInfo->primitiveOffset;
             else
-               leaf_consts.indices_addr += buildRangeInfo->primitiveOffset;
+               leaf_consts.indices += buildRangeInfo->primitiveOffset;
 
-            leaf_consts.transform_addr = geom->geometry.triangles.transformData.deviceAddress;
-            if (leaf_consts.transform_addr)
-               leaf_consts.transform_addr += buildRangeInfo->transformOffset;
+            leaf_consts.transform = geom->geometry.triangles.transformData.deviceAddress;
+            if (leaf_consts.transform)
+               leaf_consts.transform += buildRangeInfo->transformOffset;
 
             leaf_consts.stride = geom->geometry.triangles.vertexStride;
             leaf_consts.vertex_format = geom->geometry.triangles.vertexFormat;
@@ -748,7 +715,7 @@ radv_CmdBuildAccelerationStructuresKHR(
          case VK_GEOMETRY_TYPE_AABBS_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR);
 
-            leaf_consts.data_addr =
+            leaf_consts.data =
                geom->geometry.aabbs.data.deviceAddress + buildRangeInfo->primitiveOffset;
             leaf_consts.stride = geom->geometry.aabbs.stride;
 
@@ -757,7 +724,7 @@ radv_CmdBuildAccelerationStructuresKHR(
          case VK_GEOMETRY_TYPE_INSTANCES_KHR:
             assert(pInfos[i].type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR);
 
-            leaf_consts.data_addr =
+            leaf_consts.data =
                geom->geometry.instances.data.deviceAddress + buildRangeInfo->primitiveOffset;
 
             if (geom->geometry.instances.arrayOfPointers)
@@ -793,10 +760,10 @@ radv_CmdBuildAccelerationStructuresKHR(
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
 
-      const struct morton_constants consts = {
-         .bvh_addr = radv_accel_struct_get_va(accel_struct),
-         .bounds_addr = pInfos[i].scratchData.deviceAddress,
-         .ids_addr = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
+      const struct morton_args consts = {
+         .bvh = radv_accel_struct_get_va(accel_struct),
+         .bounds = pInfos[i].scratchData.deviceAddress,
+         .ids = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
       };
 
       radv_CmdPushConstants(commandBuffer,
@@ -878,10 +845,10 @@ radv_CmdBuildAccelerationStructuresKHR(
          if (final_iter)
             dst_node_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64);
 
-         const struct internal_constants consts = {
-            .bvh_addr = radv_accel_struct_get_va(accel_struct),
-            .src_ids_addr = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
-            .dst_ids_addr = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
+         const struct internal_args consts = {
+            .bvh = radv_accel_struct_get_va(accel_struct),
+            .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
+            .dst_ids = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
             .dst_offset = dst_node_offset,
             .fill_count = bvh_states[i].node_count | (final_iter ? 0x80000000U : 0),
          };

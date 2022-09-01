@@ -35,15 +35,11 @@
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-#include "build_helpers.h"
+#include "build_interface.h"
 
 layout(push_constant) uniform CONSTS {
-   VOID_REF bvh;
-   REF(key_id_pair) src_ids;
-   REF(key_id_pair) dst_ids;
-   uint32_t dst_offset;
-   uint32_t fill_count;
-} args;
+   internal_args args;
+};
 
 void
 main(void)

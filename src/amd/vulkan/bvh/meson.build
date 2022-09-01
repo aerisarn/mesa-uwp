@@ -28,6 +28,7 @@ bvh_include_dir = meson.source_root() + '/src/amd/vulkan/bvh'
 
 bvh_includes = files(
   'build_helpers.h',
+  'build_interface.h',
   'bvh.h',
 )
 
