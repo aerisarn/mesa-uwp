@@ -223,6 +223,7 @@ struct zink_vertex_elements_hw_state {
 };
 
 struct zink_vertex_elements_state {
+   bool has_decomposed_attrs;
    struct {
       uint32_t binding;
       VkVertexInputRate inputRate;

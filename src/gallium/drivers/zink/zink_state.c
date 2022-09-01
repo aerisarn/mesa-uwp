@@ -104,6 +104,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
             ves->decomposed_attrs_without_w |= BITFIELD_BIT(i);
             ves->decomposed_attrs_without_w_size = size;
          }
+         ves->has_decomposed_attrs = true;
       }
 
       if (screen->info.have_EXT_vertex_input_dynamic_state) {
