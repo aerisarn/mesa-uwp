@@ -271,8 +271,14 @@ tu_lrz_begin_resumed_renderpass(struct tu_cmd_buffer *cmd,
 {
     /* Track LRZ valid state */
    memset(&cmd->state.lrz, 0, sizeof(cmd->state.lrz));
-   uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   if (a != VK_ATTACHMENT_UNUSED) {
+
+   uint32_t a;
+   for (a = 0; a < cmd->state.pass->attachment_count; a++) {
+      if (cmd->state.attachments[a]->image->lrz_height)
+         break;
+   }
+
+   if (a != cmd->state.pass->attachment_count) {
       const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
       tu_lrz_init_state(cmd, att, cmd->state.attachments[a]);
       if (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT)) {
