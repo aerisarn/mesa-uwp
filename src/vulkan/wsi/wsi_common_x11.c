@@ -539,7 +539,8 @@ visual_supported(xcb_visualtype_t *visual)
    if (!visual)
       return false;
 
-   return visual->bits_per_rgb_value == 8 || visual->bits_per_rgb_value == 10;
+   return visual->_class == XCB_VISUAL_CLASS_TRUE_COLOR ||
+          visual->_class == XCB_VISUAL_CLASS_DIRECT_COLOR;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -759,7 +760,9 @@ get_sorted_vk_formats(VkIcdSurfaceBase *surface, struct wsi_device *wsi_device,
 
    *count = 0;
    for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
-      if (formats[i].bits_per_rgb == visual->bits_per_rgb_value)
+      if (formats[i].bits_per_rgb == util_bitcount(visual->red_mask) &&
+          formats[i].bits_per_rgb == util_bitcount(visual->green_mask) &&
+          formats[i].bits_per_rgb == util_bitcount(visual->blue_mask))
          sorted_formats[(*count)++] = formats[i].format;
    }
 
