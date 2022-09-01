@@ -2998,7 +2998,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
 
-   nir_variable_mode indirect_derefs_modes = nir_var_function_temp;
+   nir_variable_mode indirect_derefs_modes = 0;
    if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
        nir->info.stage == MESA_SHADER_TESS_EVAL)
       indirect_derefs_modes |= nir_var_shader_in | nir_var_shader_out;
