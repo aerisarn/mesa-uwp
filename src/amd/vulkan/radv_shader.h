@@ -570,6 +570,8 @@ struct radv_shader *radv_shader_nir_to_asm(
 bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                                struct radv_shader *shader, void *dest_ptr);
 
+void radv_shader_part_binary_upload(const struct radv_shader_part_binary *binary, void *dest_ptr);
+
 union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size,
                                                         void *ptr);
 void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc);
