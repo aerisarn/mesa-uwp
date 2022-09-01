@@ -2102,6 +2102,7 @@ radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_si
       return NULL;
 
    shader_part->ref_count = 1;
+   shader_part->binary = binary;
    shader_part->code_size = code_size;
    shader_part->rsrc1 = S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
                         S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
@@ -2468,7 +2469,9 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
       fprintf(stderr, "\ndisasm:\n%s\n", prolog->disasm_string);
    }
 
-   free(binary);
+   free(prolog->binary);
+   prolog->binary = NULL;
+
    return prolog;
 
 fail_alloc:
@@ -2533,7 +2536,9 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
       fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
    }
 
-   free(binary);
+   free(epilog->binary);
+   epilog->binary = NULL;
+
    return epilog;
 
 fail_alloc:
@@ -2564,6 +2569,7 @@ radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *sh
 
    if (shader_part->alloc)
       radv_free_shader_memory(device, shader_part->alloc);
+   free(shader_part->binary);
    free(shader_part->disasm_string);
    free(shader_part);
 }

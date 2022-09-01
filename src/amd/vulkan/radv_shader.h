@@ -513,6 +513,8 @@ struct radv_shader_part {
    uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
 
+   struct radv_shader_part_binary *binary;
+
    /* debug only */
    char *disasm_string;
 };
