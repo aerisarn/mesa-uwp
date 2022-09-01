@@ -561,6 +561,20 @@ static inline void pvr_dump_field_addr_split(struct pvr_dump_ctx *const ctx,
    pvr_dump_dedent(ctx);
 }
 
+static inline void pvr_dump_field_addr_offset(struct pvr_dump_ctx *const ctx,
+                                              const char *const name,
+                                              const pvr_dev_addr_t value,
+                                              const pvr_dev_addr_t base)
+{
+   pvr_dump_field_computed(ctx,
+                           name,
+                           PVR_DEV_ADDR_FMT,
+                           PVR_DEV_ADDR_FMT " + " PVR_DEV_ADDR_FMT,
+                           PVR_DEV_ADDR_OFFSET(base, value.addr).addr,
+                           base.addr,
+                           value.addr);
+}
+
 /*****************************************************************************
    Field printers: enums
 *****************************************************************************/
@@ -640,6 +654,9 @@ static inline void pvr_dump_field_not_present(struct pvr_dump_ctx *const ctx,
 
 #define pvr_dump_field_member_addr(ctx, compound, member) \
    pvr_dump_field_addr(ctx, #member, (compound)->member)
+
+#define pvr_dump_field_member_addr_offset(ctx, compound, member, base) \
+   pvr_dump_field_addr_offset(ctx, #member, (compound)->member, base)
 
 #define pvr_dump_field_member_enum(ctx, compound, member, to_str) \
    pvr_dump_field_enum(ctx, #member, (compound)->member, to_str)

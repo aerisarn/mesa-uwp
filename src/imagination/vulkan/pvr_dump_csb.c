@@ -229,8 +229,11 @@ static bool print_sub_buffer(struct pvr_dump_ctx *ctx,
  ******************************************************************************/
 
 static uint32_t
-print_block_cdmctrl_kernel(struct pvr_dump_csb_ctx *const csb_ctx)
+print_block_cdmctrl_kernel(struct pvr_dump_csb_ctx *const csb_ctx,
+                           struct pvr_device *const device)
 {
+   const pvr_dev_addr_t pds_heap_base = device->heaps.pds_heap->base_addr;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -318,14 +321,20 @@ print_block_cdmctrl_kernel(struct pvr_dump_csb_ctx *const csb_ctx)
                               pvr_cmd_enum_to_str(CDMCTRL_USC_TARGET));
    pvr_dump_field_member_bool(base_ctx, &kernel0, fence);
 
-   pvr_dump_field_member_addr(base_ctx, &kernel1, data_addr);
+   pvr_dump_field_member_addr_offset(base_ctx,
+                                     &kernel1,
+                                     data_addr,
+                                     pds_heap_base);
    pvr_dump_field_member_enum(base_ctx,
                               &kernel1,
                               sd_type,
                               pvr_cmd_enum_to_str(CDMCTRL_SD_TYPE));
    pvr_dump_field_member_bool(base_ctx, &kernel1, usc_common_shared);
 
-   pvr_dump_field_member_addr(base_ctx, &kernel2, code_addr);
+   pvr_dump_field_member_addr_offset(base_ctx,
+                                     &kernel2,
+                                     code_addr,
+                                     pds_heap_base);
    pvr_dump_field_member_bool(base_ctx, &kernel2, one_wg_per_task);
 
    if (!kernel0.indirect_present) {
@@ -478,8 +487,11 @@ end_out:
 }
 
 static uint32_t
-print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
+print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
+                                     struct pvr_device *const device)
 {
+   const pvr_dev_addr_t pds_heap_base = device->heaps.pds_heap->base_addr;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -532,7 +544,10 @@ print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
       PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE),
       "bytes");
 
-   pvr_dump_field_member_addr(base_ctx, &state1, pds_data_addr);
+   pvr_dump_field_member_addr_offset(base_ctx,
+                                     &state1,
+                                     pds_data_addr,
+                                     pds_heap_base);
    pvr_dump_field_member_enum(base_ctx,
                               &state1,
                               sd_type,
@@ -542,7 +557,10 @@ print_block_vdmctrl_pds_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
                               sd_next_type,
                               pvr_cmd_enum_to_str(VDMCTRL_SD_TYPE));
 
-   pvr_dump_field_member_addr(base_ctx, &state2, pds_code_addr);
+   pvr_dump_field_member_addr_offset(base_ctx,
+                                     &state2,
+                                     pds_code_addr,
+                                     pds_heap_base);
 
    ret = true;
 
@@ -554,8 +572,11 @@ end_out:
 }
 
 static uint32_t
-print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
+print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
+                                     struct pvr_device *const device)
 {
+   const pvr_dev_addr_t pds_heap_base = device->heaps.pds_heap->base_addr;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -603,7 +624,10 @@ print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
    }
 
    if (state0.vs_data_addr_present) {
-      pvr_dump_field_member_addr(base_ctx, &state2, vs_pds_data_base_addr);
+      pvr_dump_field_member_addr_offset(base_ctx,
+                                        &state2,
+                                        vs_pds_data_base_addr,
+                                        pds_heap_base);
    } else {
       pvr_dump_field_member_not_present(base_ctx,
                                         &state2,
@@ -611,7 +635,10 @@ print_block_vdmctrl_vdm_state_update(struct pvr_dump_csb_ctx *const csb_ctx)
    }
 
    if (state0.vs_other_present) {
-      pvr_dump_field_member_addr(base_ctx, &state3, vs_pds_code_base_addr);
+      pvr_dump_field_member_addr_offset(base_ctx,
+                                        &state3,
+                                        vs_pds_code_base_addr,
+                                        pds_heap_base);
 
       pvr_dump_field_member_u32_scaled_units(
          base_ctx,
@@ -686,8 +713,10 @@ end_out:
 
 static uint32_t
 print_block_vdmctrl_index_list(struct pvr_dump_csb_ctx *const csb_ctx,
-                               const struct pvr_device_info *const dev_info)
+                               struct pvr_device *const device)
 {
+   const struct pvr_device_info *const dev_info = &device->pdevice->dev_info;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -1191,11 +1220,14 @@ end_out:
 
 static uint32_t
 print_block_ppp_state_pds(struct pvr_dump_csb_ctx *const csb_ctx,
+                          struct pvr_device *const device,
                           const bool has_initial_words,
                           const bool has_varying,
                           const bool has_texturedata,
                           const bool has_uniformdata)
 {
+   const pvr_dev_addr_t pds_heap_base = device->heaps.pds_heap->base_addr;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -1258,8 +1290,14 @@ print_block_ppp_state_pds(struct pvr_dump_csb_ctx *const csb_ctx,
    }
 
    if (has_initial_words) {
-      pvr_dump_field_addr(base_ctx, "shaderbase", shader_base.addr);
-      pvr_dump_field_addr(base_ctx, "texunicodebase", tex_unicode_base.addr);
+      pvr_dump_field_addr_offset(base_ctx,
+                                 "shaderbase",
+                                 shader_base.addr,
+                                 pds_heap_base);
+      pvr_dump_field_addr_offset(base_ctx,
+                                 "texunicodebase",
+                                 tex_unicode_base.addr,
+                                 pds_heap_base);
 
       pvr_dump_field_member_u32_scaled_units(
          base_ctx,
@@ -1318,19 +1356,28 @@ print_block_ppp_state_pds(struct pvr_dump_csb_ctx *const csb_ctx,
    }
 
    if (has_varying) {
-      pvr_dump_field_addr(base_ctx, "varyingbase", varying_base.addr);
+      pvr_dump_field_addr_offset(base_ctx,
+                                 "varyingbase",
+                                 varying_base.addr,
+                                 pds_heap_base);
    } else {
       pvr_dump_field_not_present(base_ctx, "varyingbase");
    }
 
    if (has_texturedata) {
-      pvr_dump_field_addr(base_ctx, "texturedatabase", texture_data_base.addr);
+      pvr_dump_field_addr_offset(base_ctx,
+                                 "texturedatabase",
+                                 texture_data_base.addr,
+                                 pds_heap_base);
    } else {
       pvr_dump_field_not_present(base_ctx, "texturedatabase");
    }
 
    if (has_uniformdata) {
-      pvr_dump_field_addr(base_ctx, "uniformdatabase", uniform_data_base.addr);
+      pvr_dump_field_addr_offset(base_ctx,
+                                 "uniformdatabase",
+                                 uniform_data_base.addr,
+                                 pds_heap_base);
    } else {
       pvr_dump_field_not_present(base_ctx, "uniformdatabase");
    }
@@ -1628,9 +1675,12 @@ end_out:
 
 static uint32_t
 print_block_ppp_state_stream_out(struct pvr_dump_csb_ctx *const csb_ctx,
+                                 struct pvr_device *const device,
                                  const bool has_word0,
                                  const bool has_words12)
 {
+   const pvr_dev_addr_t pds_heap_base = device->heaps.pds_heap->base_addr;
+
    struct pvr_dump_csb_block_ctx ctx;
    struct pvr_dump_ctx *const base_ctx = &ctx.base.base;
    uint32_t words_read = 0;
@@ -1705,7 +1755,10 @@ print_block_ppp_state_stream_out(struct pvr_dump_csb_ctx *const csb_ctx,
          PVRX(TA_STATE_STREAM_OUT1_PDS_DATA_SIZE_UNIT_SIZE),
          "bytes");
       pvr_dump_field_member_bool(base_ctx, &stream_out1, sync);
-      pvr_dump_field_member_addr(base_ctx, &stream_out2, pds_data_addr);
+      pvr_dump_field_member_addr_offset(base_ctx,
+                                        &stream_out2,
+                                        pds_data_addr,
+                                        pds_heap_base);
    } else {
       pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_temp_size);
       pvr_dump_field_member_not_present(base_ctx, &stream_out1, pds_data_size);
@@ -1799,7 +1852,8 @@ static bool print_block_hex(struct pvr_dump_buffer_ctx *const ctx,
    return true;
 }
 
-static bool print_cdmctrl_buffer(struct pvr_dump_buffer_ctx *const parent_ctx)
+static bool print_cdmctrl_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
+                                 struct pvr_device *const device)
 {
    struct pvr_dump_csb_ctx ctx;
    bool ret = true;
@@ -1828,7 +1882,7 @@ static bool print_cdmctrl_buffer(struct pvr_dump_buffer_ctx *const parent_ctx)
          pvr_csb_unpack(next_word, CDMCTRL_STREAM_TERMINATE).block_type;
       switch (block_type) {
       case PVRX(CDMCTRL_BLOCK_TYPE_COMPUTE_KERNEL):
-         words_read = print_block_cdmctrl_kernel(&ctx);
+         words_read = print_block_cdmctrl_kernel(&ctx, device);
          break;
 
       case PVRX(CDMCTRL_BLOCK_TYPE_STREAM_LINK):
@@ -1893,16 +1947,15 @@ static bool print_vdmctrl_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
          break;
 
       case PVRX(VDMCTRL_BLOCK_TYPE_PDS_STATE_UPDATE):
-         words_read = print_block_vdmctrl_pds_state_update(&ctx);
+         words_read = print_block_vdmctrl_pds_state_update(&ctx, device);
          break;
 
       case PVRX(VDMCTRL_BLOCK_TYPE_VDM_STATE_UPDATE):
-         words_read = print_block_vdmctrl_vdm_state_update(&ctx);
+         words_read = print_block_vdmctrl_vdm_state_update(&ctx, device);
          break;
 
       case PVRX(VDMCTRL_BLOCK_TYPE_INDEX_LIST):
-         words_read =
-            print_block_vdmctrl_index_list(&ctx, &device->pdevice->dev_info);
+         words_read = print_block_vdmctrl_index_list(&ctx, device);
          break;
 
       case PVRX(VDMCTRL_BLOCK_TYPE_STREAM_LINK):
@@ -1939,7 +1992,7 @@ end_pop_ctx:
 }
 
 static bool print_ppp_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
-                             const struct pvr_device_info *const dev_info)
+                             struct pvr_device *const device)
 {
    struct pvr_dump_csb_ctx ctx;
    uint32_t words_read;
@@ -1976,6 +2029,7 @@ static bool print_ppp_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
    if (header.pres_pds_state_ptr0 || header.pres_pds_state_ptr1 ||
        header.pres_pds_state_ptr2 || header.pres_pds_state_ptr3) {
       words_read = print_block_ppp_state_pds(&ctx,
+                                             device,
                                              header.pres_pds_state_ptr0,
                                              header.pres_pds_state_ptr1,
                                              header.pres_pds_state_ptr2,
@@ -2029,6 +2083,7 @@ static bool print_ppp_buffer(struct pvr_dump_buffer_ctx *const parent_ctx,
    if (header.pres_stream_out_size || header.pres_stream_out_program) {
       words_read =
          print_block_ppp_state_stream_out(&ctx,
+                                          device,
                                           header.pres_stream_out_size,
                                           header.pres_stream_out_program);
       if (!print_block_hex(&ctx.base, words_read))
@@ -2125,7 +2180,7 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
 
    case BUFFER_TYPE_PPP:
       pvr_dump_field(base_ctx, "<content>", "<decoded as PPP>");
-      ret = print_ppp_buffer(&sub_ctx.base, &device->pdevice->dev_info);
+      ret = print_ppp_buffer(&sub_ctx.base, device);
       break;
 
    default:
@@ -2159,7 +2214,7 @@ static bool dump_first_buffer(struct pvr_dump_buffer_ctx *const ctx,
       break;
 
    case PVR_CMD_STREAM_TYPE_COMPUTE:
-      ret = print_cdmctrl_buffer(ctx);
+      ret = print_cdmctrl_buffer(ctx, device);
       break;
 
    default:
