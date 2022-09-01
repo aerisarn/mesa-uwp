@@ -170,6 +170,9 @@ struct agx_shader_info {
 
    /* Does the shader control the sample mask? */
    bool writes_sample_mask;
+
+   /* Is colour output omitted? */
+   bool no_colour_output;
 };
 
 #define AGX_MAX_RTS (8)

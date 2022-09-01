@@ -1527,11 +1527,13 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
 }
 
 static uint64_t
-demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool reads_tib, bool sample_mask_from_shader)
+demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool
+      reads_tib, bool sample_mask_from_shader, bool no_colour_output)
 {
    struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_UNKNOWN_4A_LENGTH, 64);
 
    agx_pack(T.cpu, UNKNOWN_4A, cfg) {
+      cfg.no_colour_output = no_colour_output;
       cfg.lines_or_points = (prim_lines || prim_points);
       cfg.reads_tilebuffer = reads_tib;
       cfg.sample_mask_from_shader = sample_mask_from_shader;
@@ -1604,13 +1606,15 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    struct agx_pool *pool = &ctx->batch->pool;
    bool reads_tib = ctx->fs->info.reads_tib;
    bool sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
+   bool no_colour_output = ctx->fs->info.no_colour_output;
 
    agx_push_record(&out, 5, demo_interpolation(&ctx->vs->info.varyings.vs, pool));
    agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment,
             varyings, ctx->fs->info.varyings.fs.nr_bindings));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, ctx->fs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool, is_points));
-   agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib, sample_mask_from_shader));
+   agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib,
+            sample_mask_from_shader, no_colour_output));
 
    unsigned zbias = 0;
 

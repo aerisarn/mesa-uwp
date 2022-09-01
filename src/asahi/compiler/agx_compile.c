@@ -1678,6 +1678,8 @@ agx_compile_shader_nir(nir_shader *nir,
    if (ctx->stage == MESA_SHADER_VERTEX) {
       out->writes_psiz = nir->info.outputs_written &
          BITFIELD_BIT(VARYING_SLOT_PSIZ);
+   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
+      out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
    }
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
