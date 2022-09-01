@@ -2415,7 +2415,9 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    }
    SpvId result;
-   if (ctx->stage == MESA_SHADER_FRAGMENT && var->data.location == FRAG_RESULT_SAMPLE_MASK) {
+   if (ctx->stage == MESA_SHADER_FRAGMENT &&
+       var->data.mode == nir_var_shader_out &&
+       var->data.location == FRAG_RESULT_SAMPLE_MASK) {
       src = emit_bitcast(ctx, type, src);
       /* SampleMask is always an array in spirv, so we need to construct it into one */
       result = spirv_builder_emit_composite_construct(&ctx->builder, ctx->sample_mask_type, &src, 1);
