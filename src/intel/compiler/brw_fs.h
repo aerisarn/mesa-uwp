@@ -339,6 +339,7 @@ public:
                             const fs_reg &urb_handle);
 
    void emit_barrier();
+   void emit_tcs_barrier();
 
    fs_reg get_timestamp(const brw::fs_builder &bld);
 
