@@ -444,8 +444,6 @@ VkResult pvr_CreateDescriptorSetLayout(
       pvr_debug_ignored_stype(ext->sType);
    }
 
-   /* TODO: Add support for push descriptors. */
-
    if (pCreateInfo->bindingCount == 0) {
       layout = pvr_descriptor_set_layout_allocate(device, pAllocator, 0, 0, 0);
       if (!layout)

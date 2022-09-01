@@ -2624,15 +2624,6 @@ VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-static void
-pvr_validate_push_descriptors(struct pvr_cmd_buffer *cmd_buffer,
-                              bool *const push_descriptors_dirty_out)
-{
-   /* TODO: Implement this function, based on ValidatePushDescriptors. */
-   pvr_finishme("Add support for push descriptors!");
-   *push_descriptors_dirty_out = false;
-}
-
 #define PVR_WRITE(_buffer, _value, _offset, _max)                \
    do {                                                          \
       __typeof__(_value) __value = _value;                       \
@@ -2838,8 +2829,6 @@ static VkResult pvr_setup_descriptor_mappings(
          const struct pvr_descriptor *descriptor;
          pvr_dev_addr_t buffer_addr;
 
-         /* TODO: Handle push descriptors. */
-
          assert(desc_set < PVR_MAX_DESCRIPTOR_SETS);
          descriptor_set = desc_state->descriptor_sets[desc_set];
 
@@ -2910,8 +2899,6 @@ static VkResult pvr_setup_descriptor_mappings(
          }
 
          descriptor_set = desc_state->descriptor_sets[desc_set_num];
-
-         pvr_finishme("Handle push descriptor entry.");
 
          desc_set_addr = descriptor_set->pvr_bo->vma->dev_addr;
 
@@ -3164,7 +3151,6 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       state->compute_pipeline;
    const VkShaderStageFlags push_consts_stage_mask =
       compute_pipeline->base.layout->push_constants_shader_stages;
-   bool push_descriptors_dirty;
    struct pvr_sub_cmd_compute *sub_cmd;
    VkResult result;
 
@@ -3188,8 +3174,6 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       pvr_finishme("Add support for push constants.");
    }
 
-   pvr_validate_push_descriptors(cmd_buffer, &push_descriptors_dirty);
-
    if (compute_pipeline->state.shader.uses_num_workgroups) {
       struct pvr_bo *num_workgroups_bo;
 
@@ -3211,7 +3195,7 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
    } else if ((compute_pipeline->base.layout
                   ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
                state->dirty.compute_desc_dirty) ||
-              state->dirty.compute_pipeline_binding || push_descriptors_dirty) {
+              state->dirty.compute_pipeline_binding) {
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_COMPUTE,
@@ -4472,7 +4456,6 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    struct pvr_sub_cmd_gfx *sub_cmd;
    bool fstencil_writemask_zero;
    bool bstencil_writemask_zero;
-   bool push_descriptors_dirty;
    bool fstencil_keep;
    bool bstencil_keep;
    VkResult result;
@@ -4565,10 +4548,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
 
    /* TODO: Check for dirty push constants */
 
-   pvr_validate_push_descriptors(cmd_buffer, &push_descriptors_dirty);
-
-   state->dirty.vertex_descriptors = push_descriptors_dirty ||
-                                     state->dirty.gfx_pipeline_binding;
+   state->dirty.vertex_descriptors = state->dirty.gfx_pipeline_binding;
    state->dirty.fragment_descriptors = state->dirty.vertex_descriptors;
 
    /* Account for dirty descriptor set. */
