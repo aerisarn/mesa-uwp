@@ -1303,6 +1303,7 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
    if (shader == MESA_SHADER_COMPUTE) {
       key = &ctx->compute_pipeline_state.key;
    } else {
+      assert(!zink_screen(pctx->screen)->optimal_keys);
       key = &ctx->gfx_pipeline_state.shader_keys.key[shader];
    }
    inlinable_uniforms = key->base.inlined_uniform_values;
@@ -1353,6 +1354,7 @@ invalidate_inlined_uniforms(struct zink_context *ctx, gl_shader_stage pstage)
    if (pstage == MESA_SHADER_COMPUTE)
       return;
 
+   assert(!zink_screen(ctx->base.screen)->optimal_keys);
    struct zink_shader_key *key = &ctx->gfx_pipeline_state.shader_keys.key[pstage];
    key->inline_uniforms = false;
 }
@@ -4678,14 +4680,15 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          goto fail;
    }
 
-   ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base.last_vertex_stage = true;
-   ctx->last_vertex_stage_dirty = true;
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs.patch_vertices = 1;
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_EVAL].size = sizeof(struct zink_vs_key_base);
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].size = sizeof(struct zink_tcs_key);
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].size = sizeof(struct zink_vs_key_base);
-   ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].size = sizeof(struct zink_fs_key);
+   zink_set_last_vertex_key(ctx)->last_vertex_stage = true;
+   zink_set_tcs_key_patches(ctx, 1);
+   if (!screen->optimal_keys) {
+      ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
+      ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_EVAL].size = sizeof(struct zink_vs_key_base);
+      ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].size = sizeof(struct zink_tcs_key);
+      ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].size = sizeof(struct zink_vs_key_base);
+      ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].size = sizeof(struct zink_fs_key);
+   }
    _mesa_hash_table_init(&ctx->framebuffer_cache, ctx, hash_framebuffer_imageless, equals_framebuffer_imageless);
    if (!zink_init_render_pass(ctx))
       goto fail;

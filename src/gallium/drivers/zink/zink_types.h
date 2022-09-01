@@ -683,10 +683,15 @@ struct zink_gfx_pipeline_state {
    struct zink_vertex_elements_hw_state *element_state;
    bool sample_locations_enabled;
    uint8_t has_points; //either gs outputs points or prim type is points
-   struct {
-      struct zink_shader_key key[5];
-      struct zink_shader_key last_vertex;
-   } shader_keys;
+   union {
+      struct {
+         struct zink_shader_key key[5];
+         struct zink_shader_key last_vertex;
+      } shader_keys;
+      struct {
+         union zink_shader_key_optimal key;
+      } shader_keys_optimal;
+   };
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
    struct zink_render_pass *next_render_pass; //will be used next time rp is begun
@@ -1108,6 +1113,7 @@ struct zink_screen {
    struct zink_device_info info;
    struct nir_shader_compiler_options nir_options;
 
+   bool optimal_keys;
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
    bool have_D32_SFLOAT_S8_UINT;

@@ -2534,6 +2534,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
 
+   if (!screen->driver_workarounds.force_pipeline_library)
+      screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;
+   if (screen->optimal_keys)
+      screen->driver_workarounds.force_pipeline_library = false;
+
    return screen;
 
 fail:

@@ -93,6 +93,15 @@ struct zink_shader_key {
    uint32_t size;
 };
 
+union zink_shader_key_optimal {
+   struct {
+      struct zink_vs_key_base vs_base;
+      struct zink_tcs_key tcs;
+      struct zink_fs_key fs;
+   };
+   uint32_t val;
+};
+
 static inline const struct zink_fs_key *
 zink_fs_key(const struct zink_shader_key *key)
 {

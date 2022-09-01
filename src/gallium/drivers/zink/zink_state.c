@@ -185,6 +185,9 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
          ctx->vertex_state_changed = !zink_screen(pctx->screen)->info.have_EXT_vertex_input_dynamic_state;
          ctx->vertex_buffers_dirty = ctx->element_state->hw_state.num_bindings > 0;
       }
+      state->element_state = &ctx->element_state->hw_state;
+      if (zink_screen(pctx->screen)->optimal_keys)
+         return;
       const struct zink_vs_key *vs = zink_get_vs_key(ctx);
       uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
       switch (vs->size) {
@@ -224,7 +227,6 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
          key->key.vs.size = size;
          key->size += 2 * size;
       }
-      state->element_state = &ctx->element_state->hw_state;
    } else {
      state->element_state = NULL;
      ctx->vertex_buffers_dirty = false;
