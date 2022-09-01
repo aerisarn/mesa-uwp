@@ -203,6 +203,7 @@ struct intel_device_info
    bool has_userptr_probe;
    bool has_context_isolation;
    bool has_set_pat_uapi;
+   bool has_indirect_unroll;
 
    /**
     * \name Intel hardware quirks
