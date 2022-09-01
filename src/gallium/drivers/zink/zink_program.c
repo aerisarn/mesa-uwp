@@ -386,7 +386,6 @@ update_gfx_shader_modules_optimal(struct zink_context *ctx,
       struct zink_shader_module *zm = get_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
       if (!zm)
          zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      state->modules[i] = zm->shader;
       if (prog->modules[i] == zm->shader)
          continue;
       state->modules_changed = true;
@@ -443,7 +442,6 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
       assert(prog->shaders[i]);
 
       struct zink_shader_module *zm = zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      state->modules[i] = zm->shader;
       prog->modules[i] = zm->shader;
    }
 
@@ -462,6 +460,12 @@ static bool
 equals_pipeline_lib(const void *a, const void *b)
 {
    return !memcmp(a, b, offsetof(struct zink_gfx_library_key, pipeline));
+}
+
+static bool
+equals_pipeline_lib_optimal(const void *a, const void *b)
+{
+   return !memcmp(a, b, sizeof(uint32_t) * 2);
 }
 
 uint32_t
@@ -535,25 +539,20 @@ static void
 update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (screen->optimal_keys) {
-      update_gfx_shader_modules_optimal(ctx, screen, prog,
-                                        ctx->dirty_shader_stages & prog->stages_present,
-                                        &ctx->gfx_pipeline_state);
-   } else {
-      if (screen->info.have_EXT_non_seamless_cube_map)
-         update_gfx_program_nonseamless(ctx, prog, true);
-      else
-         update_gfx_program_nonseamless(ctx, prog, false);
-   }
+   if (screen->info.have_EXT_non_seamless_cube_map)
+      update_gfx_program_nonseamless(ctx, prog, true);
+   else
+      update_gfx_program_nonseamless(ctx, prog, false);
 }
 
 void
 zink_gfx_program_update(struct zink_context *ctx)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->last_vertex_stage_dirty) {
       gl_shader_stage pstage = ctx->last_vertex_stage->nir->info.stage;
       ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
-      if (!zink_screen(ctx->base.screen)->optimal_keys) {
+      if (!screen->optimal_keys) {
          memcpy(&ctx->gfx_pipeline_state.shader_keys.key[pstage].key.vs_base,
                 &ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base,
                 sizeof(struct zink_vs_key_base));
@@ -570,18 +569,31 @@ zink_gfx_program_update(struct zink_context *ctx)
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry) {
          prog = (struct zink_gfx_program*)entry->data;
-         for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
-            if (prog->stages_present & ~ctx->dirty_shader_stages & BITFIELD_BIT(i))
-               ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
+         if (screen->optimal_keys) {
+            ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+            if (ctx->gfx_pipeline_state.optimal_key != prog->last_variant_hash) {
+               ctx->dirty_shader_stages |= BITFIELD_BIT(ctx->last_vertex_stage->nir->info.stage);
+               ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+               if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
+                  ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+               update_gfx_shader_modules_optimal(ctx, screen, prog,
+                                                 ctx->dirty_shader_stages & prog->stages_present,
+                                                 &ctx->gfx_pipeline_state);
+            }
+         } else {
+            for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+               if (prog->stages_present & ~ctx->dirty_shader_stages & BITFIELD_BIT(i))
+                  ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
+            }
+            /* ensure variants are always updated if keys have changed since last use */
+            ctx->dirty_shader_stages |= prog->stages_present;
+            update_gfx_program(ctx, prog);
          }
-         /* ensure variants are always updated if keys have changed since last use */
-         ctx->dirty_shader_stages |= prog->stages_present;
-         update_gfx_program(ctx, prog);
       } else {
          ctx->dirty_shader_stages |= bits;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
-         if (zink_screen(ctx->base.screen)->optimal_keys)
+         if (screen->optimal_keys)
             generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
          else
             generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
@@ -597,7 +609,14 @@ zink_gfx_program_update(struct zink_context *ctx)
    } else if (ctx->dirty_shader_stages & bits) {
       /* remove old hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
-      update_gfx_program(ctx, ctx->curr_program);
+      if (screen->optimal_keys) {
+         if (ctx->gfx_pipeline_state.optimal_key != ctx->curr_program->last_variant_hash)
+            update_gfx_shader_modules_optimal(ctx, screen, ctx->curr_program,
+                                              ctx->dirty_shader_stages & ctx->curr_program->stages_present,
+                                              &ctx->gfx_pipeline_state);
+      } else {
+         update_gfx_program(ctx, ctx->curr_program);
+      }
       /* apply new hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    }
@@ -818,8 +837,12 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(prog->libs); i++)
-      _mesa_set_init(&prog->libs[i], prog, hash_pipeline_lib, equals_pipeline_lib);
+   for (unsigned i = 0; i < ARRAY_SIZE(prog->libs); i++) {
+      if (screen->optimal_keys)
+         _mesa_set_init(&prog->libs[i], prog, hash_pipeline_lib, equals_pipeline_lib_optimal);
+      else
+         _mesa_set_init(&prog->libs[i], prog, hash_pipeline_lib, equals_pipeline_lib);
+   }
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);

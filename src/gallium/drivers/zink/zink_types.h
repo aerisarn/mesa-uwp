@@ -662,7 +662,10 @@ struct zink_gfx_pipeline_state {
 
    uint32_t _pad;
    uint32_t gkey; //for pipeline library lookups
-   VkShaderModule modules[MESA_SHADER_STAGES - 1];
+   union {
+      VkShaderModule modules[MESA_SHADER_STAGES - 1];
+      uint32_t optimal_key;
+   };
    bool modules_changed;
 
    uint32_t vertex_hash;
@@ -766,11 +769,15 @@ struct zink_program {
    bool removed;
 };
 
+#define STAGE_MASK_OPTIMAL (1<<16)
 typedef bool (*equals_gfx_pipeline_state_func)(const void *a, const void *b);
 
 struct zink_gfx_library_key {
    uint32_t hw_rast_state;
-   VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
+   union {
+      VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
+      uint32_t optimal_key; //equals_pipeline_lib_optimal
+   };
    VkPipeline pipeline;
 };
 
