@@ -1139,10 +1139,6 @@ struct zink_screen {
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
    struct zink_modifier_prop modifier_props[PIPE_FORMAT_COUNT];
-   struct {
-      uint32_t image_view;
-      uint32_t buffer_view;
-   } null_descriptor_hashes;
 
    VkExtent2D maxSampleLocationGridSize[5];
 

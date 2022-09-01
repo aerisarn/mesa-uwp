@@ -2080,15 +2080,6 @@ zink_create_logical_device(struct zink_screen *screen)
 }
 
 static void
-pre_hash_descriptor_states(struct zink_screen *screen)
-{
-   VkImageViewCreateInfo null_info = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-   VkBufferViewCreateInfo null_binfo = {.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
-   screen->null_descriptor_hashes.image_view = _mesa_hash_data(&null_info, sizeof(VkImageViewCreateInfo));
-   screen->null_descriptor_hashes.buffer_view = _mesa_hash_data(&null_binfo, sizeof(VkBufferViewCreateInfo));
-}
-
-static void
 check_base_requirements(struct zink_screen *screen)
 {
    if (!screen->info.feats.features.logicOp ||
@@ -2385,7 +2376,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                         UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen))
       goto fail;
    populate_format_props(screen);
-   pre_hash_descriptor_states(screen);
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 
