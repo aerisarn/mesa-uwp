@@ -287,7 +287,7 @@ pvr_dump_buffer_ctx_pop(struct pvr_dump_buffer_ctx *const ctx)
    return pvr_dump_ctx_pop(&ctx->base);
 }
 
-bool pvr_dump_buffer_hex(struct pvr_dump_buffer_ctx *ctx, uint64_t nr_words);
+bool pvr_dump_buffer_hex(struct pvr_dump_buffer_ctx *ctx, uint64_t nr_bytes);
 
 static inline void __pvr_dump_buffer_advance(struct pvr_dump_buffer_ctx *ctx,
                                              const uint64_t nr_bytes)

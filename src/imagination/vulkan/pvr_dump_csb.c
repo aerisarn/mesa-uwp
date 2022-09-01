@@ -452,7 +452,7 @@ print_block_vdmctrl_ppp_state_update(struct pvr_dump_csb_ctx *const csb_ctx,
                           device,
                           BUFFER_TYPE_PPP,
                           ppp_addr,
-                          ppp_size,
+                          ppp_size * PVR_DUMP_CSB_WORD_SIZE,
                           "word_count");
 
 end_pop_ctx:
@@ -1882,28 +1882,23 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
    if (!expected_size) {
       pvr_dump_field(base_ctx,
                      "<buffer size>",
-                     "%" PRIu64 " words (%" PRIu64 " bytes) mapped",
-                     real_size,
-                     real_size * PVR_DUMP_CSB_WORD_SIZE);
+                     "%" PRIu64 " bytes mapped",
+                     real_size);
    } else if (expected_size > real_size) {
       pvr_dump_field(base_ctx,
                      "<buffer size>",
-                     "%" PRIu64 " (%" PRIu64 " bytes) mapped, expected %" PRIu64
-                     " (%" PRIu64 " bytes) from %s",
+                     "%" PRIu64 " bytes mapped, expected %" PRIu64
+                     " bytes (from %s)",
                      real_size,
-                     real_size * PVR_DUMP_CSB_WORD_SIZE,
                      expected_size,
-                     expected_size * PVR_DUMP_CSB_WORD_SIZE,
                      size_src);
    } else {
       pvr_dump_field(base_ctx,
                      "<buffer size>",
-                     "%" PRIu64 " (%" PRIu64 " bytes; from %s)",
+                     "%" PRIu64 " bytes (from %s)",
                      expected_size,
-                     expected_size * PVR_DUMP_CSB_WORD_SIZE,
                      size_src);
-      pvr_dump_buffer_truncate(&sub_ctx.base,
-                               expected_size * PVR_DUMP_CSB_WORD_SIZE);
+      pvr_dump_buffer_truncate(&sub_ctx.base, expected_size);
    }
 
    if (sub_ctx.bo_mapped_in_ctx)
