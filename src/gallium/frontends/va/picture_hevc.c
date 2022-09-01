@@ -179,6 +179,7 @@ void vlVaHandlePictureParameterBufferHEVC(vlVaDriver *drv, vlVaContext *context,
          context->desc.h265.RefPicSetLtCurr[iCurr++] = i;
          context->desc.h265.NumPocLtCurr++;
       }
+      context->desc.h265.IsLongTerm[i] = ((hevc->ReferenceFrames[i].flags & VA_PICTURE_HEVC_LONG_TERM_REFERENCE) != 0) ? 1 : 0;
    }
    context->desc.h265.pps->st_rps_bits = hevc->st_rps_bits;
    context->desc.h265.UseStRpsBits = true;
