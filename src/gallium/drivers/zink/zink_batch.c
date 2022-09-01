@@ -491,7 +491,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs;
 
-   if (ctx->oom_flush || ctx->batch_states_count > 10) {
+   if (ctx->oom_flush || ctx->batch_states_count > 25) {
       assert(!ctx->batch_states_count || ctx->batch_states);
       while (ctx->batch_states) {
          bs = ctx->batch_states;
