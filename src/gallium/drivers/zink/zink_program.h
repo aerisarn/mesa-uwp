@@ -292,6 +292,19 @@ zink_set_fs_point_coord_key(struct zink_context *ctx)
    }
 }
 
+static inline const struct zink_shader_key_base *
+zink_get_shader_key_base(struct zink_context *ctx, gl_shader_stage pstage)
+{
+   return &ctx->gfx_pipeline_state.shader_keys.key[pstage].base;
+}
+
+static inline struct zink_shader_key_base *
+zink_set_shader_key_base(struct zink_context *ctx, gl_shader_stage pstage)
+{
+   ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+   return &ctx->gfx_pipeline_state.shader_keys.key[pstage].base;
+}
+
 bool
 zink_set_rasterizer_discard(struct zink_context *ctx, bool disable);
 void

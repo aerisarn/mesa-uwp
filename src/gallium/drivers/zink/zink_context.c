@@ -678,16 +678,15 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
 static void
 update_nonseamless_shader_key(struct zink_context *ctx, gl_shader_stage pstage)
 {
-   uint32_t *mask;
-   if (pstage == MESA_SHADER_COMPUTE)
-      mask = &ctx->compute_pipeline_state.key.base.nonseamless_cube_mask;
-   else
-      mask = &ctx->gfx_pipeline_state.shader_keys.key[pstage].base.nonseamless_cube_mask;
-
    const uint32_t new_mask = ctx->di.emulate_nonseamless[pstage] & ctx->di.cubes[pstage];
-   if (new_mask != *mask)
-      ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
-   *mask = new_mask;
+   if (pstage == MESA_SHADER_COMPUTE) {
+      if (ctx->compute_pipeline_state.key.base.nonseamless_cube_mask != new_mask)
+         ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+      ctx->compute_pipeline_state.key.base.nonseamless_cube_mask = new_mask;
+   } else {
+      if (zink_get_shader_key_base(ctx, pstage)->nonseamless_cube_mask != new_mask)
+         zink_set_shader_key_base(ctx, pstage)->nonseamless_cube_mask = new_mask;
+   }
 }
 
 static void
