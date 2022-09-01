@@ -139,14 +139,13 @@ create_surface(struct pipe_context *pctx,
    if (!surface)
       return NULL;
 
-   VkImageViewUsageCreateInfo usage_info;
-   usage_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-   usage_info.pNext = NULL;
+   surface->usage_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+   surface->usage_info.pNext = NULL;
    VkFormatFeatureFlags feats = res->linear ?
                                 screen->format_props[templ->format].linearTilingFeatures :
                                 screen->format_props[templ->format].optimalTilingFeatures;
    VkImageUsageFlags attachment = (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-   usage_info.usage = res->obj->vkusage & ~attachment;
+   surface->usage_info.usage = res->obj->vkusage & ~attachment;
    if (res->obj->modifier_aspect) {
       feats = res->obj->vkfeats;
       /* intersect format features for current modifier */
@@ -157,7 +156,7 @@ create_surface(struct pipe_context *pctx,
    }
    if ((res->obj->vkusage & attachment) &&
        !(feats & (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))) {
-      ivci->pNext = &usage_info;
+      ivci->pNext = &surface->usage_info;
    }
 
    pipe_resource_reference(&surface->base.texture, pres);

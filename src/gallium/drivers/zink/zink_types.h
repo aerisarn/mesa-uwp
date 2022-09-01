@@ -1153,6 +1153,7 @@ struct zink_surface_info {
 struct zink_surface {
    struct pipe_surface base;
    VkImageViewCreateInfo ivci;
+   VkImageViewUsageCreateInfo usage_info;
    struct zink_surface_info info; //TODO: union with fb refs
    uint32_t info_hash;
    bool is_swapchain;
