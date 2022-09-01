@@ -318,6 +318,14 @@ tu_lrz_begin_renderpass(struct tu_cmd_buffer *cmd,
          struct tu_image *image = cmd->state.attachments[i]->image;
          tu_disable_lrz(cmd, &cmd->cs, image);
       }
+
+      /* We need a valid LRZ fast-clear base, in case the render pass contents
+       * are in secondaries that enable LRZ, so that they can read that LRZ is
+       * dynamically disabled. It doesn't matter which we use, so just leave
+       * the last one as emitted in tu_disable_lrz().
+       */
+      memset(&cmd->state.lrz, 0, sizeof(cmd->state.lrz));
+      return;
    }
 
     /* Track LRZ valid state */
