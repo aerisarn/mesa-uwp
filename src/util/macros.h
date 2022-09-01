@@ -24,9 +24,10 @@
 #ifndef UTIL_MACROS_H
 #define UTIL_MACROS_H
 
-#include <stdio.h>
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /* Compute the size of an array */
 #ifndef ARRAY_SIZE
