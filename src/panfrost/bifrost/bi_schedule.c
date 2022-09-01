@@ -2015,6 +2015,14 @@ bi_lower_fau(bi_context *ctx)
                 if (ins->op == BI_OPCODE_ATEST)
                         fau = ins->src[2];
 
+                /* Dual texturing requires the texture operation descriptor
+                 * encoded as an immediate so we can fix up.
+                 */
+                if (ins->op == BI_OPCODE_TEXC) {
+                        assert(ins->src[3].type == BI_INDEX_CONSTANT);
+                        constants[cwords++] = ins->src[3].value;
+                }
+
                 bi_foreach_src(ins, s) {
                         if (bi_check_fau_src(ins, s, constants, &cwords, &fau)) continue;
 
