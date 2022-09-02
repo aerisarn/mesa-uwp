@@ -243,7 +243,7 @@ void __trace_${trace_name}(
      , ${arg.type} ${arg.var}
 %    endfor
 );
-static inline void trace_${trace_name}(
+static ALWAYS_INLINE void trace_${trace_name}(
      struct u_trace *ut
 %    if need_cs_param:
    , void *cs

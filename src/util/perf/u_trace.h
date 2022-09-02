@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "util/macros.h"
 #include "util/u_atomic.h"
 #include "util/u_queue.h"
 
@@ -284,7 +285,7 @@ void u_trace_perfetto_stop(void);
  * Return whether instrumentations should be enabled or not.  This is called
  * from tracepoints.
  */
-static inline bool
+static ALWAYS_INLINE bool
 u_trace_instrument(void)
 {
    extern int _u_trace_instrument;
