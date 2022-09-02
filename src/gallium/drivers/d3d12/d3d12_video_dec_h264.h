@@ -224,7 +224,7 @@ d3d12_video_decoder_get_slice_count_h264(std::vector<uint8_t> &buf);
 
 void
 d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder *        pD3D12Dec,
-                                                     std::vector<DXVA_Slice_H264_Short> &pOutSliceControlBuffers,
+                                                     std::vector<uint8_t> &vecOutSliceControlBuffers,
                                                      struct pipe_h264_picture_desc* picture_h264);
 
 void

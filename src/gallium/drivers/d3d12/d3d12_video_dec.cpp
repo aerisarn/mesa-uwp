@@ -1274,53 +1274,18 @@ d3d12_video_decoder_prepare_dxva_slices_control(
    switch (profileType) {
       case d3d12_video_decode_profile_type_h264:
       {
-         
-         std::vector<DXVA_Slice_H264_Short> pOutSliceControlBuffers;
-         struct pipe_h264_picture_desc* picture_h264 = (struct pipe_h264_picture_desc*) picture;
-         d3d12_video_decoder_prepare_dxva_slices_control_h264(pD3D12Dec, pOutSliceControlBuffers, picture_h264);
-
-         assert(sizeof(pOutSliceControlBuffers.data()[0]) == sizeof(DXVA_Slice_H264_Short));
-         uint64_t DXVAStructSize = pOutSliceControlBuffers.size() * sizeof((pOutSliceControlBuffers.data()[0]));
-         assert((DXVAStructSize % sizeof(DXVA_Slice_H264_Short)) == 0);
-         d3d12_video_decoder_store_dxva_slicecontrol_in_slicecontrol_buffer(pD3D12Dec,
-                                                                            pOutSliceControlBuffers.data(),
-                                                                            DXVAStructSize);
-         assert(pD3D12Dec->m_SliceControlBuffer.size() == DXVAStructSize);
+         d3d12_video_decoder_prepare_dxva_slices_control_h264(pD3D12Dec, pD3D12Dec->m_SliceControlBuffer, (struct pipe_h264_picture_desc*) picture);
       } break;
 
       case d3d12_video_decode_profile_type_hevc:
       {
-         
-         std::vector<DXVA_Slice_HEVC_Short> pOutSliceControlBuffers;
-         struct pipe_h265_picture_desc* picture_hevc = (struct pipe_h265_picture_desc*) picture;
-         d3d12_video_decoder_prepare_dxva_slices_control_hevc(pD3D12Dec, pOutSliceControlBuffers, picture_hevc);
-
-         assert(sizeof(pOutSliceControlBuffers.front()) == sizeof(DXVA_Slice_HEVC_Short));
-         uint64_t DXVAStructSize = pOutSliceControlBuffers.size() * sizeof((pOutSliceControlBuffers.front()));
-         assert((DXVAStructSize % sizeof(DXVA_Slice_HEVC_Short)) == 0);
-         d3d12_video_decoder_store_dxva_slicecontrol_in_slicecontrol_buffer(pD3D12Dec,
-                                                                            pOutSliceControlBuffers.data(),
-                                                                            DXVAStructSize);
-         assert(pD3D12Dec->m_SliceControlBuffer.size() == DXVAStructSize);
+         d3d12_video_decoder_prepare_dxva_slices_control_hevc(pD3D12Dec, pD3D12Dec->m_SliceControlBuffer, (struct pipe_h265_picture_desc*) picture);
       } break;
       default:
       {
          unreachable("Unsupported d3d12_video_decode_profile_type");
       } break;
    }
-}
-
-void
-d3d12_video_decoder_store_dxva_slicecontrol_in_slicecontrol_buffer(struct d3d12_video_decoder *pD3D12Dec,
-                                                                   void *pDXVAStruct,
-                                                                   uint64_t DXVAStructSize)
-{
-   if (pD3D12Dec->m_SliceControlBuffer.capacity() < DXVAStructSize) {
-      pD3D12Dec->m_SliceControlBuffer.reserve(DXVAStructSize);
-   }
-
-   pD3D12Dec->m_SliceControlBuffer.resize(DXVAStructSize);
-   memcpy(pD3D12Dec->m_SliceControlBuffer.data(), pDXVAStruct, DXVAStructSize);
 }
 
 void

@@ -228,10 +228,6 @@ d3d12_video_decoder_store_dxva_qmatrix_in_qmatrix_buffer(struct d3d12_video_deco
                                                          uint64_t                    DXVAStructSize);
 void
 d3d12_video_decoder_prepare_dxva_slices_control(struct d3d12_video_decoder *pD3D12Dec, struct pipe_picture_desc *picture);
-void
-d3d12_video_decoder_store_dxva_slicecontrol_in_slicecontrol_buffer(struct d3d12_video_decoder *pD3D12Dec,
-                                                                   void *                      pDXVAStruct,
-                                                                   uint64_t                    DXVAStructSize);
 int
 d3d12_video_decoder_get_next_startcode_offset(std::vector<uint8_t> &buf,
                                               unsigned int          bufferOffset,

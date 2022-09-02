@@ -127,7 +127,7 @@ d3d12_video_decoder_prepare_current_frame_references_hevc(struct d3d12_video_dec
 
 void
 d3d12_video_decoder_prepare_dxva_slices_control_hevc(struct d3d12_video_decoder *pD3D12Dec,
-                                                     std::vector<DXVA_Slice_HEVC_Short> &pOutSliceControlBuffers,
+                                                     std::vector<uint8_t> &vecOutSliceControlBuffers,
                                                      struct pipe_h265_picture_desc *picture_hevc)
 {
    
@@ -139,6 +139,10 @@ d3d12_video_decoder_prepare_dxva_slices_control_hevc(struct d3d12_video_decoder 
    debug_printf("[d3d12_video_decoder_hevc] Upper layer reported %d slices for this frame, parsing them below...\n",
                   picture_hevc->slice_parameter.slice_count);
 
+   uint64_t TotalSlicesDXVAArrayByteSize = picture_hevc->slice_parameter.slice_count * sizeof(DXVA_Slice_HEVC_Short);
+   pD3D12Dec->m_SliceControlBuffer.resize(TotalSlicesDXVAArrayByteSize);
+
+   uint8_t* pData = vecOutSliceControlBuffers.data();
    for (uint32_t sliceIdx = 0; sliceIdx < picture_hevc->slice_parameter.slice_count; sliceIdx++)
    {
       DXVA_Slice_HEVC_Short currentSliceEntry = {};
@@ -185,9 +189,10 @@ d3d12_video_decoder_prepare_dxva_slices_control_hevc(struct d3d12_video_decoder 
                   currentSliceEntry.wBadSliceChopping,
                   pD3D12Dec->m_fenceValue);
 
-      pOutSliceControlBuffers.push_back(currentSliceEntry);
+      memcpy(pData, &currentSliceEntry, sizeof(DXVA_Slice_HEVC_Short));
+      pData += sizeof(DXVA_Slice_HEVC_Short);
    }
-   assert(pOutSliceControlBuffers.size() == picture_hevc->slice_parameter.slice_count);
+   assert(vecOutSliceControlBuffers.size() == TotalSlicesDXVAArrayByteSize);
 }
 
 static void

@@ -135,11 +135,15 @@ d3d12_video_decoder_prepare_current_frame_references_h264(struct d3d12_video_dec
 
 void
 d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder *pD3D12Dec,
-                                                     std::vector<DXVA_Slice_H264_Short> &pOutSliceControlBuffers,
+                                                     std::vector<uint8_t> &vecOutSliceControlBuffers,
                                                      struct pipe_h264_picture_desc *picture_h264)
 {
    debug_printf("[d3d12_video_decoder_h264] Upper layer reported %d slices for this frame, parsing them below...\n",
                   picture_h264->slice_count);
+
+   uint64_t TotalSlicesDXVAArrayByteSize = picture_h264->slice_count * sizeof(DXVA_Slice_H264_Short);
+   pD3D12Dec->m_SliceControlBuffer.resize(TotalSlicesDXVAArrayByteSize);
+   uint8_t* pData = vecOutSliceControlBuffers.data();
    size_t processedBitstreamBytes = 0u;
    uint32_t sliceIdx = 0;
    bool sliceFound = false;
@@ -168,10 +172,11 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
 
          sliceIdx++;
          processedBitstreamBytes += currentSliceEntry.SliceBytesInBuffer;
-         pOutSliceControlBuffers.push_back(currentSliceEntry);
+         memcpy(pData, &currentSliceEntry, sizeof(DXVA_Slice_H264_Short));
+         pData += sizeof(DXVA_Slice_H264_Short);
       }
    } while (sliceFound && (sliceIdx < picture_h264->slice_count));
-   assert(pOutSliceControlBuffers.size() == picture_h264->slice_count);
+   assert(vecOutSliceControlBuffers.size() == TotalSlicesDXVAArrayByteSize);
 }
 
 bool
