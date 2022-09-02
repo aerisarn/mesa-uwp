@@ -261,6 +261,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_conditional_rendering             = true,
       .EXT_conservative_rasterization        = true,
       .EXT_custom_border_color               = true,
+      .EXT_depth_clamp_zero_one              = true,
       .EXT_depth_clip_control                = true,
       .EXT_depth_clip_enable                 = true,
       .EXT_descriptor_indexing               = true,
@@ -1396,6 +1397,13 @@ void anv_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLAMP_ZERO_ONE_FEATURES_EXT: {
+         VkPhysicalDeviceDepthClampZeroOneFeaturesEXT *features =
+            (VkPhysicalDeviceDepthClampZeroOneFeaturesEXT *)ext;
+         features->depthClampZeroOne = true;
          break;
       }
 
