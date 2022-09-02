@@ -919,6 +919,8 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV = 1000327000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV = 1000327001,
     VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV = 1000327002,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT = 1000328000,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT = 1000328001,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT = 1000330000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT = 1000332000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT = 1000332001,
@@ -2284,14 +2286,16 @@ typedef enum VkPipelineStageFlagBits {
     VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT = 0x00040000,
     VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR = 0x02000000,
     VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR = 0x00200000,
-    VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV = 0x00080000,
-    VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV = 0x00100000,
     VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000,
     VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 0x00400000,
     VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV = 0x00020000,
+    VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT = 0x00080000,
+    VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT = 0x00100000,
     VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV = VK_PIPELINE_STAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
     VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
     VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+    VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV = VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT,
+    VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV = VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT,
     VK_PIPELINE_STAGE_NONE_KHR = VK_PIPELINE_STAGE_NONE,
     VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
 } VkPipelineStageFlagBits;
@@ -2490,8 +2494,8 @@ typedef enum VkShaderStageFlagBits {
     VK_SHADER_STAGE_MISS_BIT_KHR = 0x00000800,
     VK_SHADER_STAGE_INTERSECTION_BIT_KHR = 0x00001000,
     VK_SHADER_STAGE_CALLABLE_BIT_KHR = 0x00002000,
-    VK_SHADER_STAGE_TASK_BIT_NV = 0x00000040,
-    VK_SHADER_STAGE_MESH_BIT_NV = 0x00000080,
+    VK_SHADER_STAGE_TASK_BIT_EXT = 0x00000040,
+    VK_SHADER_STAGE_MESH_BIT_EXT = 0x00000080,
     VK_SHADER_STAGE_SUBPASS_SHADING_BIT_HUAWEI = 0x00004000,
     VK_SHADER_STAGE_RAYGEN_BIT_NV = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
     VK_SHADER_STAGE_ANY_HIT_BIT_NV = VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
@@ -2499,6 +2503,8 @@ typedef enum VkShaderStageFlagBits {
     VK_SHADER_STAGE_MISS_BIT_NV = VK_SHADER_STAGE_MISS_BIT_KHR,
     VK_SHADER_STAGE_INTERSECTION_BIT_NV = VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
     VK_SHADER_STAGE_CALLABLE_BIT_NV = VK_SHADER_STAGE_CALLABLE_BIT_KHR,
+    VK_SHADER_STAGE_TASK_BIT_NV = VK_SHADER_STAGE_TASK_BIT_EXT,
+    VK_SHADER_STAGE_MESH_BIT_NV = VK_SHADER_STAGE_MESH_BIT_EXT,
     VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
 } VkShaderStageFlagBits;
 
@@ -6443,6 +6449,8 @@ static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000ULL;
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV = 0x00080000ULL;
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_NV = 0x00100000ULL;
+static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT = 0x00080000ULL;
+static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT = 0x00100000ULL;
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_SUBPASS_SHADING_BIT_HUAWEI = 0x8000000000ULL;
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_INVOCATION_MASK_BIT_HUAWEI = 0x10000000000ULL;
 static const VkPipelineStageFlagBits2 VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR = 0x10000000ULL;
@@ -12989,6 +12997,7 @@ typedef enum VkIndirectCommandsTokenTypeNV {
     VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_INDEXED_NV = 5,
     VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_NV = 6,
     VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_TASKS_NV = 7,
+    VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_MESH_TASKS_NV = 1000328000,
     VK_INDIRECT_COMMANDS_TOKEN_TYPE_MAX_ENUM_NV = 0x7FFFFFFF
 } VkIndirectCommandsTokenTypeNV;
 
@@ -14986,6 +14995,87 @@ typedef struct VkPhysicalDeviceRayQueryFeaturesKHR {
     VkBool32           rayQuery;
 } VkPhysicalDeviceRayQueryFeaturesKHR;
 
+
+
+#define VK_EXT_mesh_shader 1
+#define VK_EXT_MESH_SHADER_SPEC_VERSION   1
+#define VK_EXT_MESH_SHADER_EXTENSION_NAME "VK_EXT_mesh_shader"
+typedef struct VkPhysicalDeviceMeshShaderFeaturesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           taskShader;
+    VkBool32           meshShader;
+    VkBool32           multiviewMeshShader;
+    VkBool32           primitiveFragmentShadingRateMeshShader;
+} VkPhysicalDeviceMeshShaderFeaturesEXT;
+
+typedef struct VkPhysicalDeviceMeshShaderPropertiesEXT {
+    VkStructureType                  sType;
+    void*                            pNext;
+    uint32_t                         maxTaskWorkGroupTotalCount;
+    uint32_t                         maxTaskWorkGroupCount[3];
+    uint32_t                         maxTaskWorkGroupInvocations;
+    uint32_t                         maxTaskWorkGroupSize[3];
+    uint32_t                         maxTaskPayloadSize;
+    uint32_t                         maxTaskSharedMemorySize;
+    uint32_t                         maxTaskPayloadAndSharedMemorySize;
+    uint32_t                         maxMeshWorkGroupTotalCount;
+    uint32_t                         maxMeshWorkGroupCount[3];
+    uint32_t                         maxMeshWorkGroupInvocations;
+    uint32_t                         maxMeshWorkGroupSize[3];
+    uint32_t                         maxMeshSharedMemorySize;
+    uint32_t                         maxMeshPayloadAndSharedMemorySize;
+    uint32_t                         maxMeshOutputMemorySize;
+    uint32_t                         maxMeshPayloadAndOutputMemorySize;
+    uint32_t                         maxMeshOutputComponents;
+    uint32_t                         maxMeshOutputVertices;
+    uint32_t                         maxMeshOutputPrimitives;
+    uint32_t                         maxMeshOutputLayers;
+    uint32_t                         maxMeshMultiviewViewCount;
+    uint32_t                         meshOutputPerVertexGranularity;
+    uint32_t                         meshOutputPerPrimitiveGranularity;
+    uint32_t                         maxPreferredTaskWorkGroupInvocations;
+    uint32_t                         maxPreferredMeshWorkGroupInvocations;
+    VkBool32                         prefersLocalInvocationVertexOutput;
+    VkBool32                         prefersLocalInvocationPrimitiveOutput;
+    VkBool32                         prefersCompactVertexOutput;
+    VkBool32                         prefersCompactPrimitiveOutput;
+    VkQueryPipelineStatisticFlags    meshShadingAffectedPipelineStatistics;
+} VkPhysicalDeviceMeshShaderPropertiesEXT;
+
+typedef struct VkDrawMeshTasksIndirectCommandEXT {
+    uint32_t    groupCountX;
+    uint32_t    groupCountY;
+    uint32_t    groupCountZ;
+} VkDrawMeshTasksIndirectCommandEXT;
+
+typedef void (VKAPI_PTR *PFN_vkCmdDrawMeshTasksEXT)(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+typedef void (VKAPI_PTR *PFN_vkCmdDrawMeshTasksIndirectEXT)(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride);
+typedef void (VKAPI_PTR *PFN_vkCmdDrawMeshTasksIndirectCountEXT)(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride);
+
+#ifndef VK_NO_PROTOTYPES
+VKAPI_ATTR void VKAPI_CALL vkCmdDrawMeshTasksEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    groupCountX,
+    uint32_t                                    groupCountY,
+    uint32_t                                    groupCountZ);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdDrawMeshTasksIndirectEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    uint32_t                                    drawCount,
+    uint32_t                                    stride);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdDrawMeshTasksIndirectCountEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkBuffer                                    countBuffer,
+    VkDeviceSize                                countBufferOffset,
+    uint32_t                                    maxDrawCount,
+    uint32_t                                    stride);
+#endif
 
 #ifdef __cplusplus
 }
