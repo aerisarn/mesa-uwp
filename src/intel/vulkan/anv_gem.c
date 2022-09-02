@@ -216,16 +216,6 @@ anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns
    return ret;
 }
 
-int
-anv_gem_execbuffer(struct anv_device *device,
-                   struct drm_i915_gem_execbuffer2 *execbuf)
-{
-   if (execbuf->flags & I915_EXEC_FENCE_OUT)
-      return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2_WR, execbuf);
-   else
-      return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, execbuf);
-}
-
 /** Return -1 on error. */
 int
 anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle)
