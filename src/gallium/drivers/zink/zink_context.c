@@ -681,7 +681,7 @@ update_nonseamless_shader_key(struct zink_context *ctx, gl_shader_stage pstage)
    const uint32_t new_mask = ctx->di.emulate_nonseamless[pstage] & ctx->di.cubes[pstage];
    if (pstage == MESA_SHADER_COMPUTE) {
       if (ctx->compute_pipeline_state.key.base.nonseamless_cube_mask != new_mask)
-         ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+         ctx->compute_dirty = true;
       ctx->compute_pipeline_state.key.base.nonseamless_cube_mask = new_mask;
    } else {
       if (zink_get_shader_key_base(ctx, pstage)->nonseamless_cube_mask != new_mask)
@@ -1310,7 +1310,10 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
    if (!(ctx->inlinable_uniforms_valid_mask & bit) ||
        memcmp(inlinable_uniforms, values, num_values * 4)) {
       memcpy(inlinable_uniforms, values, num_values * 4);
-      ctx->dirty_shader_stages |= bit;
+      if (shader == MESA_SHADER_COMPUTE)
+         ctx->compute_dirty = true;
+      else
+         ctx->dirty_gfx_stages |= bit;
       ctx->inlinable_uniforms_valid_mask |= bit;
       key->inline_uniforms = true;
    }
@@ -1350,11 +1353,12 @@ invalidate_inlined_uniforms(struct zink_context *ctx, gl_shader_stage pstage)
    if (!(ctx->inlinable_uniforms_valid_mask & bit))
       return;
    ctx->inlinable_uniforms_valid_mask &= ~bit;
-   ctx->dirty_shader_stages |= bit;
-   if (pstage == MESA_SHADER_COMPUTE)
+   if (pstage == MESA_SHADER_COMPUTE) {
+      ctx->compute_dirty = true;
       return;
-
+   }
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
+   ctx->dirty_gfx_stages |= bit;
    struct zink_shader_key *key = &ctx->gfx_pipeline_state.shader_keys.key[pstage];
    key->inline_uniforms = false;
 }

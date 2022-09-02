@@ -223,7 +223,7 @@ zink_program_has_descriptors(const struct zink_program *pg)
 static inline struct zink_fs_key *
 zink_set_fs_key(struct zink_context *ctx)
 {
-   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+   ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
    return zink_screen(ctx->base.screen)->optimal_keys ?
           &ctx->gfx_pipeline_state.shader_keys_optimal.key.fs :
           &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].key.fs;
@@ -245,7 +245,7 @@ zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
                               &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs;
    if (tcs->patch_vertices == patch_vertices)
       return false;
-   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+   ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    tcs->patch_vertices = patch_vertices;
    return true;
 }
@@ -264,7 +264,7 @@ zink_update_fs_key_samples(struct zink_context *ctx);
 static inline struct zink_vs_key *
 zink_set_vs_key(struct zink_context *ctx)
 {
-   ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_VERTEX);
+   ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_VERTEX);
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
    return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].key.vs;
 }
@@ -316,7 +316,7 @@ zink_get_shader_key_base(struct zink_context *ctx, gl_shader_stage pstage)
 static inline struct zink_shader_key_base *
 zink_set_shader_key_base(struct zink_context *ctx, gl_shader_stage pstage)
 {
-   ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+   ctx->dirty_gfx_stages |= BITFIELD_BIT(pstage);
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
    return &ctx->gfx_pipeline_state.shader_keys.key[pstage].base;
 }

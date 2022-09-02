@@ -527,11 +527,11 @@ update_gfx_program_nonseamless(struct zink_context *ctx, struct zink_gfx_program
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (screen->driconf.inline_uniforms)
       update_gfx_shader_modules(ctx, screen, prog,
-                                ctx->dirty_shader_stages & prog->stages_present, &ctx->gfx_pipeline_state,
+                                ctx->dirty_gfx_stages & prog->stages_present, &ctx->gfx_pipeline_state,
                                 true, has_nonseamless);
    else
       update_gfx_shader_modules(ctx, screen, prog,
-                                ctx->dirty_shader_stages & prog->stages_present, &ctx->gfx_pipeline_state,
+                                ctx->dirty_gfx_stages & prog->stages_present, &ctx->gfx_pipeline_state,
                                 false, has_nonseamless);
 }
 
@@ -551,7 +551,7 @@ zink_gfx_program_update(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->last_vertex_stage_dirty) {
       gl_shader_stage pstage = ctx->last_vertex_stage->nir->info.stage;
-      ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+      ctx->dirty_gfx_stages |= BITFIELD_BIT(pstage);
       if (!screen->optimal_keys) {
          memcpy(&ctx->gfx_pipeline_state.shader_keys.key[pstage].key.vs_base,
                 &ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base,
@@ -572,25 +572,25 @@ zink_gfx_program_update(struct zink_context *ctx)
          if (screen->optimal_keys) {
             ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
             if (ctx->gfx_pipeline_state.optimal_key != prog->last_variant_hash) {
-               ctx->dirty_shader_stages |= BITFIELD_BIT(ctx->last_vertex_stage->nir->info.stage);
-               ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+               ctx->dirty_gfx_stages |= BITFIELD_BIT(ctx->last_vertex_stage->nir->info.stage);
+               ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
                if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
-                  ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+                  ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
                update_gfx_shader_modules_optimal(ctx, screen, prog,
-                                                 ctx->dirty_shader_stages & prog->stages_present,
+                                                 ctx->dirty_gfx_stages & prog->stages_present,
                                                  &ctx->gfx_pipeline_state);
             }
          } else {
             for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
-               if (prog->stages_present & ~ctx->dirty_shader_stages & BITFIELD_BIT(i))
+               if (prog->stages_present & ~ctx->dirty_gfx_stages & BITFIELD_BIT(i))
                   ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
             }
             /* ensure variants are always updated if keys have changed since last use */
-            ctx->dirty_shader_stages |= prog->stages_present;
+            ctx->dirty_gfx_stages |= prog->stages_present;
             update_gfx_program(ctx, prog);
          }
       } else {
-         ctx->dirty_shader_stages |= bits;
+         ctx->dirty_gfx_stages |= bits;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          if (screen->optimal_keys)
@@ -606,13 +606,13 @@ zink_gfx_program_update(struct zink_context *ctx)
       ctx->curr_program = prog;
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       ctx->gfx_dirty = false;
-   } else if (ctx->dirty_shader_stages & bits) {
+   } else if (ctx->dirty_gfx_stages & bits) {
       /* remove old hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       if (screen->optimal_keys) {
          if (ctx->gfx_pipeline_state.optimal_key != ctx->curr_program->last_variant_hash)
             update_gfx_shader_modules_optimal(ctx, screen, ctx->curr_program,
-                                              ctx->dirty_shader_stages & ctx->curr_program->stages_present,
+                                              ctx->dirty_gfx_stages & ctx->curr_program->stages_present,
                                               &ctx->gfx_pipeline_state);
       } else {
          update_gfx_program(ctx, ctx->curr_program);
@@ -620,7 +620,7 @@ zink_gfx_program_update(struct zink_context *ctx)
       /* apply new hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    }
-   ctx->dirty_shader_stages &= ~bits;
+   ctx->dirty_gfx_stages &= ~bits;
 }
 
 static void
@@ -1260,7 +1260,7 @@ bind_last_vertex_stage(struct zink_context *ctx)
       if (!zink_screen(ctx->base.screen)->optimal_keys) {
          if (old != MESA_SHADER_STAGES) {
             memset(&ctx->gfx_pipeline_state.shader_keys.key[old].key.vs_base, 0, sizeof(struct zink_vs_key_base));
-            ctx->dirty_shader_stages |= BITFIELD_BIT(old);
+            ctx->dirty_gfx_stages |= BITFIELD_BIT(old);
          } else {
             /* always unset vertex shader values when changing to a non-vs last stage */
             memset(&ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].key.vs_base, 0, sizeof(struct zink_vs_key_base));
@@ -1431,7 +1431,7 @@ zink_bind_cs_state(struct pipe_context *pctx,
          ctx->compute_pipeline_state.module = ctx->curr_compute->curr->shader;
       ctx->compute_pipeline_state.final_hash ^= ctx->compute_pipeline_state.module_hash;
       if (ctx->compute_pipeline_state.key.base.nonseamless_cube_mask)
-         ctx->dirty_shader_stages |= BITFIELD_BIT(MESA_SHADER_COMPUTE);
+         ctx->compute_dirty = true;
    }
    zink_select_launch_grid(ctx);
 }
