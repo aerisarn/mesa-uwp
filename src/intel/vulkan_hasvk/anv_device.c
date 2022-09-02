@@ -774,8 +774,10 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       /* Gfx8 fully supported */
       is_alpha = false;
    } else {
-      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                         "Vulkan not yet supported on %s", devinfo.name);
+      /* Silently fail here, anv will either pick up this device or display an
+       * error message.
+       */
+      result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail_fd;
    }
 
