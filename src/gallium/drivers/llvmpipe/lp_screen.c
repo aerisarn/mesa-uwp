@@ -838,7 +838,8 @@ llvmpipe_flush_frontbuffer(struct pipe_screen *_screen,
    assert(texture->dt);
 
    if (texture->dt) {
-      llvmpipe_flush_resource(_pipe, resource, 0, true, true, false, "frontbuffer");
+      if (_pipe)
+         llvmpipe_flush_resource(_pipe, resource, 0, true, true, false, "frontbuffer");
       winsys->displaytarget_display(winsys, texture->dt, context_private, sub_box);
    }
 }
