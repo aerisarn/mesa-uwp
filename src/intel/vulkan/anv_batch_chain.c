@@ -1634,6 +1634,45 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    return result;
 }
 
+static void
+anv_exec_batch_debug(struct anv_queue *queue, uint32_t cmd_buffer_count,
+                     struct anv_cmd_buffer **cmd_buffers,
+                     struct anv_query_pool *perf_query_pool,
+                     uint32_t perf_query_pass)
+{
+   if (!INTEL_DEBUG(DEBUG_BATCH))
+      return;
+
+   struct anv_device *device = queue->device;
+   const bool has_perf_query = perf_query_pool && perf_query_pass >= 0 &&
+                               cmd_buffer_count;
+
+   fprintf(stderr, "Batch on queue %d\n", (int)(queue - device->queues));
+   if (cmd_buffer_count) {
+      if (has_perf_query) {
+         struct anv_bo *pass_batch_bo = perf_query_pool->bo;
+         uint64_t pass_batch_offset =
+            khr_perf_query_preamble_offset(perf_query_pool, perf_query_pass);
+
+         intel_print_batch(&device->decoder_ctx,
+                           pass_batch_bo->map + pass_batch_offset, 64,
+                           pass_batch_bo->offset + pass_batch_offset, false);
+      }
+
+      for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+         struct anv_batch_bo **bo = u_vector_tail(&cmd_buffers[i]->seen_bbos);
+         device->cmd_buffer_being_decoded = cmd_buffers[i];
+         intel_print_batch(&device->decoder_ctx, (*bo)->bo->map,
+                           (*bo)->bo->size, (*bo)->bo->offset, false);
+         device->cmd_buffer_being_decoded = NULL;
+      }
+   } else {
+      intel_print_batch(&device->decoder_ctx, device->trivial_batch_bo->map,
+                        device->trivial_batch_bo->size,
+                        device->trivial_batch_bo->offset, false);
+   }
+}
+
 /* We lock around execbuf for three main reasons:
  *
  *  1) When a block pool is resized, we create a new gem handle with a
@@ -1752,34 +1791,8 @@ anv_queue_exec_locked(struct anv_queue *queue,
       }
    }
 
-   if (INTEL_DEBUG(DEBUG_BATCH)) {
-      fprintf(stderr, "Batch on queue %d\n", (int)(queue - device->queues));
-      if (cmd_buffer_count) {
-         if (has_perf_query) {
-            struct anv_bo *pass_batch_bo = perf_query_pool->bo;
-            uint64_t pass_batch_offset =
-               khr_perf_query_preamble_offset(perf_query_pool, perf_query_pass);
-
-            intel_print_batch(&device->decoder_ctx,
-                              pass_batch_bo->map + pass_batch_offset, 64,
-                              pass_batch_bo->offset + pass_batch_offset, false);
-         }
-
-         for (uint32_t i = 0; i < cmd_buffer_count; i++) {
-            struct anv_batch_bo **bo =
-               u_vector_tail(&cmd_buffers[i]->seen_bbos);
-            device->cmd_buffer_being_decoded = cmd_buffers[i];
-            intel_print_batch(&device->decoder_ctx, (*bo)->bo->map,
-                              (*bo)->bo->size, (*bo)->bo->offset, false);
-            device->cmd_buffer_being_decoded = NULL;
-         }
-      } else {
-         intel_print_batch(&device->decoder_ctx,
-                           device->trivial_batch_bo->map,
-                           device->trivial_batch_bo->size,
-                           device->trivial_batch_bo->offset, false);
-      }
-   }
+   anv_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers, perf_query_pool,
+                        perf_query_pass);
 
    if (execbuf.syncobj_values) {
       execbuf.timeline_fences.fence_count = execbuf.syncobj_count;
