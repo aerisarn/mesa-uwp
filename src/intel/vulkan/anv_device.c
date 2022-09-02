@@ -805,8 +805,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->info = devinfo;
 
-   device->cmd_parser_version = -1;
-
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                          "kernel missing gem wait");

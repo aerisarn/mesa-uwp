@@ -905,7 +905,6 @@ struct anv_physical_device {
      * end.
      */
     uint32_t                                    n_perf_query_commands;
-    int                                         cmd_parser_version;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
     int                                         max_context_priority;
