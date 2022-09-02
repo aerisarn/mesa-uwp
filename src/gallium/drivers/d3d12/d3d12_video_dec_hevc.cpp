@@ -330,50 +330,50 @@ d3d12_video_decoder_log_pic_params_hevc(DXVA_PicParams_HEVC *pPicParams)
 }
 
 void
-d3d12_video_decoder_sort_rps_lists_by_refpoc(DXVA_PicParams_HEVC* pDXVAStruct, pipe_h265_picture_desc *pPipeDesc)
+d3d12_video_decoder_sort_rps_lists_by_refpoc(struct d3d12_video_decoder *pD3D12Dec, DXVA_PicParams_HEVC* pDXVAStruct, pipe_h265_picture_desc *pPipeDesc)
 {
    // Sort the RPS lists in pDXVAStruct in order by pPipeDesc->PicOrderCntVal for DXVA expectations.
    // Both arrays have parallel indices
-   struct RPSEntryWithPOC {
-      uint8_t refpicset_index;
-      int32_t poc_value;
-   };
 
-   std::vector<RPSEntryWithPOC> tmpVec;
+   pD3D12Dec->m_ReferencesConversionStorage.clear();
    for (uint8_t i = 0; i < pPipeDesc->NumPocStCurrBefore; i++)
-      tmpVec.push_back({ pDXVAStruct->RefPicSetStCurrBefore[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetStCurrBefore[i]] });
+      pD3D12Dec->m_ReferencesConversionStorage.push_back({ pDXVAStruct->RefPicSetStCurrBefore[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetStCurrBefore[i]] });
 
-   std::sort(std::begin(tmpVec), std::end(tmpVec), [](RPSEntryWithPOC entryI, RPSEntryWithPOC entryJ)
+   std::sort(std::begin(pD3D12Dec->m_ReferencesConversionStorage), std::end(pD3D12Dec->m_ReferencesConversionStorage),
+      [](d3d12_video_decoder_reference_poc_entry entryI, d3d12_video_decoder_reference_poc_entry entryJ)
                                                     { return entryI.poc_value /*desc order*/ > entryJ.poc_value; });
    for (uint8_t i = 0; i < pPipeDesc->NumPocStCurrBefore; i++)
-      pDXVAStruct->RefPicSetStCurrBefore[i] = tmpVec[i].refpicset_index;
+      pDXVAStruct->RefPicSetStCurrBefore[i] = pD3D12Dec->m_ReferencesConversionStorage[i].refpicset_index;
 
-   tmpVec.clear();
+   pD3D12Dec->m_ReferencesConversionStorage.clear();
    for (uint8_t i = 0; i < pPipeDesc->NumPocStCurrAfter; i++)
-      tmpVec.push_back({ pDXVAStruct->RefPicSetStCurrAfter[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetStCurrAfter[i]] });
+      pD3D12Dec->m_ReferencesConversionStorage.push_back({ pDXVAStruct->RefPicSetStCurrAfter[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetStCurrAfter[i]] });
 
-   std::sort(std::begin(tmpVec), std::end(tmpVec), [](RPSEntryWithPOC entryI, RPSEntryWithPOC entryJ)
+   std::sort(std::begin(pD3D12Dec->m_ReferencesConversionStorage), std::end(pD3D12Dec->m_ReferencesConversionStorage), 
+      [](d3d12_video_decoder_reference_poc_entry entryI, d3d12_video_decoder_reference_poc_entry entryJ)
                                                     { return entryI.poc_value /*ascending order*/ < entryJ.poc_value; });
    for (uint8_t i = 0; i < pPipeDesc->NumPocStCurrAfter; i++)
-      pDXVAStruct->RefPicSetStCurrAfter[i] = tmpVec[i].refpicset_index;
+      pDXVAStruct->RefPicSetStCurrAfter[i] = pD3D12Dec->m_ReferencesConversionStorage[i].refpicset_index;
 
-   tmpVec.clear();
+   pD3D12Dec->m_ReferencesConversionStorage.clear();
    for (uint8_t i = 0; i < pPipeDesc->NumPocLtCurr; i++)
-      tmpVec.push_back({ pDXVAStruct->RefPicSetLtCurr[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetLtCurr[i]] });
+      pD3D12Dec->m_ReferencesConversionStorage.push_back({ pDXVAStruct->RefPicSetLtCurr[i], pPipeDesc->PicOrderCntVal[pDXVAStruct->RefPicSetLtCurr[i]] });
 
    // The ordering of RefPicSetLtCurr is unclear from the DXVA spec, might need to be changed
-   std::sort(std::begin(tmpVec), std::end(tmpVec), [](RPSEntryWithPOC entryI, RPSEntryWithPOC entryJ)
+   std::sort(std::begin(pD3D12Dec->m_ReferencesConversionStorage), std::end(pD3D12Dec->m_ReferencesConversionStorage), 
+      [](d3d12_video_decoder_reference_poc_entry entryI, d3d12_video_decoder_reference_poc_entry entryJ)
                                                     { return entryI.poc_value /*ascending order*/ < entryJ.poc_value; });
    for (uint8_t i = 0; i < pPipeDesc->NumPocLtCurr; i++)
-      pDXVAStruct->RefPicSetLtCurr[i] = tmpVec[i].refpicset_index;
+      pDXVAStruct->RefPicSetLtCurr[i] = pD3D12Dec->m_ReferencesConversionStorage[i].refpicset_index;
 }
 
 DXVA_PicParams_HEVC
 d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(
-   uint32_t frameNum,
+   struct d3d12_video_decoder *pD3D12Dec,
    pipe_video_profile profile,
    pipe_h265_picture_desc *pPipeDesc)
 {
+   uint32_t frameNum = pD3D12Dec->m_fenceValue;
    pipe_h265_pps *pps = pPipeDesc->pps;
    pipe_h265_sps *sps = pPipeDesc->pps->sps;
 
@@ -496,7 +496,7 @@ d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(
    }
 
    // DXVA drivers expect these in POC order, VA/pipe sends them out of order.
-   d3d12_video_decoder_sort_rps_lists_by_refpoc(&dxvaStructure, pPipeDesc);
+   d3d12_video_decoder_sort_rps_lists_by_refpoc(pD3D12Dec, &dxvaStructure, pPipeDesc);
 
    for (uint32_t refIdx = 0; refIdx < DXVA_RPS_COUNT; refIdx++) {
       if ((refIdx < pPipeDesc->NumPocStCurrBefore) && (pPipeDesc->RefPicSetStCurrBefore[refIdx] != DXVA_HEVC_INVALID_PICTURE_ENTRY_VALUE)) {

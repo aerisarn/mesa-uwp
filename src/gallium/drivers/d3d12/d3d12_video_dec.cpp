@@ -1239,7 +1239,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
          size_t dxvaPicParamsBufferSize = sizeof(DXVA_PicParams_HEVC);
          pipe_h265_picture_desc *pPicControlHEVC = (pipe_h265_picture_desc *) picture;
          DXVA_PicParams_HEVC dxvaPicParamsHEVC =
-            d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(pD3D12Dec->m_fenceValue,
+            d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(pD3D12Dec,
                                                                         codec->base.profile,
                                                                         pPicControlHEVC);
 

@@ -211,9 +211,9 @@ typedef struct _DXVA_Status_HEVC {
 #pragma pack(pop, BeforeDXVApacking)
 
 DXVA_PicParams_HEVC
-d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(uint32_t                frameNum,
-                                                            pipe_video_profile      profile,
-                                                            pipe_h265_picture_desc *pipeDesc);
+d3d12_video_decoder_dxva_picparams_from_pipe_picparams_hevc(struct d3d12_video_decoder *pD3D12Dec,
+                                                            pipe_video_profile          profile,
+                                                            pipe_h265_picture_desc *    pipeDesc);
 void
 d3d12_video_decoder_get_frame_info_hevc(
    struct d3d12_video_decoder *pD3D12Dec, uint32_t *pWidth, uint32_t *pHeight, uint16_t *pMaxDPB, bool &isInterlaced);

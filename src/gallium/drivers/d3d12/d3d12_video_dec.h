@@ -85,6 +85,11 @@ d3d12_video_decoder_flush(struct pipe_video_codec *codec);
 /// d3d12_video_decoder functions starts
 ///
 
+struct d3d12_video_decoder_reference_poc_entry {
+   uint8_t refpicset_index;
+   int32_t poc_value;
+};
+
 struct d3d12_video_decoder
 {
    struct pipe_video_codec base;
@@ -165,6 +170,8 @@ struct d3d12_video_decoder
 
    // Indicates if GPU commands have not been flushed and are pending.
    bool m_needsGPUFlush = false;
+
+   std::vector<d3d12_video_decoder_reference_poc_entry> m_ReferencesConversionStorage;
 };
 
 bool
