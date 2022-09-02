@@ -2977,6 +2977,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
                                      PIPELINE_COLOR_WRITE_CREATE_INFO_EXT) :
                 NULL;
 
+   if (vp_info) {
+      const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
+         vk_find_struct_const(vp_info->pNext,
+                              PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
+      if (depth_clip_control)
+         pipeline->negative_one_to_one = depth_clip_control->negativeOneToOne;
+   }
+
    pipeline_init_dynamic_state(pipeline,
                                pCreateInfo->pDynamicState,
                                vp_info, ds_info, cb_info, rs_info, cw_info);

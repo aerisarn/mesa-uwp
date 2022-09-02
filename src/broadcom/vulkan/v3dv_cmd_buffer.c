@@ -2112,6 +2112,33 @@ v3dv_viewport_compute_xform(const VkViewport *viewport,
       scale[2] = min_abs_scale * (scale[2] < 0 ? -1.0f : 1.0f);
 }
 
+/* Considers the pipeline's negative_one_to_one state and applies it to the
+ * current viewport transform if needed to produce the resulting Z translate
+ * and scale parameters.
+ */
+void
+v3dv_cmd_buffer_state_get_viewport_z_xform(struct v3dv_cmd_buffer_state *state,
+                                           uint32_t vp_idx,
+                                           float *translate_z, float *scale_z)
+{
+   const struct v3dv_viewport_state *vp_state = &state->dynamic.viewport;
+
+   float t = vp_state->translate[vp_idx][2];
+   float s = vp_state->scale[vp_idx][2];
+
+   assert(state->gfx.pipeline);
+   if (state->gfx.pipeline->negative_one_to_one) {
+      t = (t + vp_state->viewports[vp_idx].maxDepth) * 0.5f;
+      s *= 0.5f;
+   }
+
+   if (translate_z)
+      *translate_z = t;
+
+   if (scale_z)
+      *scale_z = s;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
                     uint32_t firstViewport,

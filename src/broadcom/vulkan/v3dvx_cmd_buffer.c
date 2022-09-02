@@ -1008,6 +1008,9 @@ void
 v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   assert(pipeline);
+
    /* FIXME: right now we only support one viewport. viewporst[0] would work
     * now, would need to change if we allow multiple viewports
     */
@@ -1030,14 +1033,21 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
       clip.viewport_half_height_in_1_256th_of_pixel = vpscale[1] * 256.0f;
    }
 
+   float translate_z, scale_z;
+   v3dv_cmd_buffer_state_get_viewport_z_xform(&cmd_buffer->state, 0,
+                                              &translate_z, &scale_z);
+
    cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
-      clip.viewport_z_offset_zc_to_zs = vptranslate[2];
-      clip.viewport_z_scale_zc_to_zs = vpscale[2];
+      clip.viewport_z_offset_zc_to_zs = translate_z;
+      clip.viewport_z_scale_zc_to_zs = scale_z;
    }
    cl_emit(&job->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
-      /* Vulkan's Z NDC is [0..1], unlile OpenGL which is [-1, 1] */
-      float z1 = vptranslate[2];
-      float z2 = vptranslate[2] + vpscale[2];
+      /* Vulkan's default Z NDC is [0..1]. If 'negative_one_to_one' is enabled,
+       * we are using OpenGL's [-1, 1] instead.
+       */
+      float z1 = pipeline->negative_one_to_one ? translate_z - scale_z :
+                                                 translate_z;
+      float z2 = translate_z + scale_z;
       clip.minimum_zw = MIN2(z1, z2);
       clip.maximum_zw = MAX2(z1, z2);
    }

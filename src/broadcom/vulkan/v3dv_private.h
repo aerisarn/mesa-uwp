@@ -1432,6 +1432,11 @@ struct v3dv_cmd_buffer_state {
    } query;
 };
 
+void
+v3dv_cmd_buffer_state_get_viewport_z_xform(struct v3dv_cmd_buffer_state *state,
+                                           uint32_t vp_idx,
+                                           float *translate_z, float *scale_z);
+
 /* The following struct represents the info from a descriptor that we store on
  * the host memory. They are mostly links to other existing vulkan objects,
  * like the image_view in order to access to swizzle info, or the buffer used
@@ -2077,6 +2082,7 @@ struct v3dv_pipeline {
    uint32_t sample_mask;
 
    bool primitive_restart;
+   bool negative_one_to_one;
 
    /* Accessed by binding. So vb[binding]->stride is the stride of the vertex
     * array with such binding

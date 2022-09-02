@@ -169,6 +169,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_border_color_swizzle             = true,
       .EXT_color_write_enable               = true,
       .EXT_custom_border_color              = true,
+      .EXT_depth_clip_control               = true,
       .EXT_inline_uniform_block             = true,
       .EXT_external_memory_dma_buf          = true,
       .EXT_host_query_reset                 = true,
@@ -1311,6 +1312,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *features =
             (VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT *)ext;
          features->shaderModuleIdentifier = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+         VkPhysicalDeviceDepthClipControlFeaturesEXT *features =
+            (VkPhysicalDeviceDepthClipControlFeaturesEXT *)ext;
+         features->depthClipControl = true;
          break;
       }
 
