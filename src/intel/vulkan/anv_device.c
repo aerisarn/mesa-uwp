@@ -2455,7 +2455,6 @@ void anv_GetPhysicalDeviceProperties2(
          properties->prefersLocalInvocationPrimitiveOutput = false;
          properties->prefersCompactVertexOutput = false;
          properties->prefersCompactPrimitiveOutput = false;
-         properties->meshShadingAffectedPipelineStatistics = 0;
 
          /* Spec minimum values */
          assert(properties->maxTaskWorkGroupTotalCount >= (1U << 22));
