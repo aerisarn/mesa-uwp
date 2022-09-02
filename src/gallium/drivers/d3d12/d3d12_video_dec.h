@@ -109,6 +109,7 @@ struct d3d12_video_decoder
    ComPtr<ID3D12VideoDecodeCommandList1> m_spDecodeCommandList;
 
    std::vector<D3D12_RESOURCE_BARRIER> m_transitionsBeforeCloseCmdList;
+   std::vector<D3D12_RESOURCE_BARRIER> m_transitionsStorage;
 
    D3D12_VIDEO_DECODER_DESC               m_decoderDesc     = {};
    D3D12_VIDEO_DECODER_HEAP_DESC          m_decoderHeapDesc = {};

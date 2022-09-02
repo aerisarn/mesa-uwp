@@ -105,16 +105,14 @@ d3d12_video_decoder_prepare_current_frame_references_hevc(struct d3d12_video_dec
    //     When Index7Bits is used in the CurrPic and RefPicList members of the picture parameters structure, the value directly specifies the DXVA index of an uncompressed surface.
    //     When Index7Bits is 127 (0x7F), this indicates that it does not contain a valid index.
 
-   std::vector<D3D12_RESOURCE_BARRIER>
-      neededStateTransitions;   // Returned by update_entries to perform by the method caller
    pD3D12Dec->m_spDPBManager->update_entries(
       d3d12_video_decoder_get_current_dxva_picparams<DXVA_PicParams_HEVC>(pD3D12Dec)->RefPicList,
-      neededStateTransitions);
+      pD3D12Dec->m_transitionsStorage);
 
-   pD3D12Dec->m_spDecodeCommandList->ResourceBarrier(neededStateTransitions.size(), neededStateTransitions.data());
+   pD3D12Dec->m_spDecodeCommandList->ResourceBarrier(pD3D12Dec->m_transitionsStorage.size(), pD3D12Dec->m_transitionsStorage.data());
 
    // Schedule reverse (back to common) transitions before command list closes for current frame
-   for (auto BarrierDesc : neededStateTransitions) {
+   for (auto BarrierDesc : pD3D12Dec->m_transitionsStorage) {
       std::swap(BarrierDesc.Transition.StateBefore, BarrierDesc.Transition.StateAfter);
       pD3D12Dec->m_transitionsBeforeCloseCmdList.push_back(BarrierDesc);
    }

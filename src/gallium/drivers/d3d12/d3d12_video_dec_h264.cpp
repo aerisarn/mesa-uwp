@@ -113,16 +113,14 @@ d3d12_video_decoder_prepare_current_frame_references_h264(struct d3d12_video_dec
    //     RefFrameList array of the associated picture parameters structure.For more information, see section 6.2. In
    //     all cases, when Index7Bits does not contain a valid index, the value is 127.
 
-   std::vector<D3D12_RESOURCE_BARRIER>
-      neededStateTransitions;   // Returned by update_entries to perform by the method caller
    pD3D12Dec->m_spDPBManager->update_entries(
       d3d12_video_decoder_get_current_dxva_picparams<DXVA_PicParams_H264>(pD3D12Dec)->RefFrameList,
-      neededStateTransitions);
+      pD3D12Dec->m_transitionsStorage);
 
-   pD3D12Dec->m_spDecodeCommandList->ResourceBarrier(neededStateTransitions.size(), neededStateTransitions.data());
+   pD3D12Dec->m_spDecodeCommandList->ResourceBarrier(pD3D12Dec->m_transitionsStorage.size(), pD3D12Dec->m_transitionsStorage.data());
 
    // Schedule reverse (back to common) transitions before command list closes for current frame
-   for (auto BarrierDesc : neededStateTransitions) {
+   for (auto BarrierDesc : pD3D12Dec->m_transitionsStorage) {
       std::swap(BarrierDesc.Transition.StateBefore, BarrierDesc.Transition.StateAfter);
       pD3D12Dec->m_transitionsBeforeCloseCmdList.push_back(BarrierDesc);
    }
