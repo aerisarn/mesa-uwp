@@ -430,8 +430,8 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
    /* TODO: Reverse-engineer interactions with MRT */
-   if (b->shader->nir->info.internal) {
-      /* clear */
+   if (b->shader->key->fs.ignore_tib_dependencies) {
+      assert(b->shader->nir->info.internal && "only for clear shaders");
    } else if (b->shader->did_writeout) {
 	   agx_writeout(b, 0x0004);
    } else {
@@ -467,6 +467,7 @@ agx_emit_load_tile(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
    /* TODO: Reverse-engineer interactions with MRT */
+   assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
    agx_writeout(b, 0xC200);
    agx_writeout(b, 0x0008);
    b->shader->did_writeout = true;
@@ -563,6 +564,7 @@ agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
 static agx_instr *
 agx_emit_discard(agx_builder *b, nir_intrinsic_instr *instr)
 {
+   assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
    agx_writeout(b, 0xC200);
    agx_writeout(b, 0x0001);
    b->shader->did_writeout = true;

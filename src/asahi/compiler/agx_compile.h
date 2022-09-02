@@ -240,6 +240,18 @@ struct agx_vs_shader_key {
 
 struct agx_fs_shader_key {
    enum agx_format tib_formats[AGX_MAX_RTS];
+
+   /* Normally, access to the tilebuffer must be guarded by appropriate fencing
+    * instructions to ensure correct results in the presence of out-of-order
+    * hardware optimizations. However, specially dispatched clear shaders are
+    * not subject to these conditions and can omit the wait instructions.
+    *
+    * Must (only) be set for special clear shaders.
+    *
+    * Must not be used with sample mask writes (including discards) or
+    * tilebuffer loads (including blending).
+    */
+   bool ignore_tib_dependencies;
 };
 
 struct agx_shader_key {

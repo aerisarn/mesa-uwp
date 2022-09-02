@@ -66,7 +66,8 @@ agx_build_reload_shader(struct agx_device *dev)
       struct agx_shader_info info;
 
       struct agx_shader_key key = {
-         .fs.tib_formats[0] = i
+         .fs.tib_formats[0] = i,
+         .fs.ignore_tib_dependencies = true,
       };
 
       agx_compile_shader_nir(s, &key, &binary, &info);
