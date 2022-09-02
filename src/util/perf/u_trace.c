@@ -46,10 +46,10 @@ int ut_perfetto_enabled;
 /**
  * Global list of contexts, so we can defer starting the queue until
  * perfetto tracing is started.
- *
- * TODO locking
  */
-struct list_head ctx_list = { &ctx_list, &ctx_list };
+static struct list_head ctx_list = { &ctx_list, &ctx_list };
+
+static simple_mtx_t ctx_list_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 #endif
 
 struct u_trace_payload_buf {
@@ -428,13 +428,21 @@ u_trace_context_init(struct u_trace_context *utctx,
    }
 
 #ifdef HAVE_PERFETTO
+   simple_mtx_lock(&ctx_list_mutex);
    list_add(&utctx->node, &ctx_list);
+   simple_mtx_unlock(&ctx_list_mutex);
 #endif
 
    if (!u_trace_context_actively_tracing(utctx))
       return;
 
+#ifdef HAVE_PERFETTO
+   simple_mtx_lock(&ctx_list_mutex);
+#endif
    queue_init(utctx);
+#ifdef HAVE_PERFETTO
+   simple_mtx_unlock(&ctx_list_mutex);
+#endif
 
    if (utctx->out) {
       utctx->out_printer->start(utctx);
@@ -445,7 +453,9 @@ void
 u_trace_context_fini(struct u_trace_context *utctx)
 {
 #ifdef HAVE_PERFETTO
+   simple_mtx_lock(&ctx_list_mutex);
    list_del(&utctx->node);
+   simple_mtx_unlock(&ctx_list_mutex);
 #endif
 
    if (utctx->out) {
@@ -464,8 +474,11 @@ u_trace_context_fini(struct u_trace_context *utctx)
 void
 u_trace_perfetto_start(void)
 {
+   simple_mtx_lock(&ctx_list_mutex);
    list_for_each_entry (struct u_trace_context, utctx, &ctx_list, node)
       queue_init(utctx);
+   simple_mtx_unlock(&ctx_list_mutex);
+
    if (p_atomic_inc_return(&ut_perfetto_enabled) == 1)
       p_atomic_inc(&_u_trace_instrument);
 }
