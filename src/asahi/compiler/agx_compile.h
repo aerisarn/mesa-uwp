@@ -33,10 +33,12 @@ enum agx_push_type {
     * 16-bit sizes for optional bounds checking (SIZES) */
    AGX_PUSH_UBO_BASES,
    AGX_PUSH_UBO_SIZES,
-   AGX_PUSH_VBO_BASES,
    AGX_PUSH_VBO_SIZES,
    AGX_PUSH_SSBO_BASES,
    AGX_PUSH_SSBO_SIZES,
+
+   /* 64-bit VBO base pointer */
+   AGX_PUSH_VBO_BASE,
 
    /* Push the attached constant memory */
    AGX_PUSH_CONSTANTS,
@@ -79,6 +81,8 @@ struct agx_push {
          uint16_t ubo;
          uint16_t offset;
       } ubo_data;
+
+      uint32_t vbo;
    };
 };
 

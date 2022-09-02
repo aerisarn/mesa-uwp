@@ -1083,9 +1083,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 static bool
 agx_update_vs(struct agx_context *ctx)
 {
-   struct agx_vs_shader_key key = {
-      .num_vbufs = util_last_bit(ctx->vb_mask),
-   };
+   struct agx_vs_shader_key key = { 0 };
 
    memcpy(key.attributes, ctx->attributes,
           sizeof(key.attributes[0]) * AGX_MAX_ATTRIBS);

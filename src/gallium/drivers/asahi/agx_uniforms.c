@@ -66,21 +66,19 @@ agx_push_location_direct(struct agx_context *ctx, struct agx_push push,
       return ptr.gpu;
    }
 
-   case AGX_PUSH_VBO_BASES: {
-      unsigned count = util_last_bit(ctx->vb_mask);
-      struct agx_ptr ptr = agx_pool_alloc_aligned(&batch->pool, count * sizeof(uint64_t), 8);
-      uint64_t *addresses = ptr.cpu;
+   case AGX_PUSH_VBO_BASE: {
+      struct agx_ptr ptr = agx_pool_alloc_aligned(&batch->pool, sizeof(uint64_t), 8);
+      uint64_t *address = ptr.cpu;
 
-      u_foreach_bit(i, ctx->vb_mask) {
-         struct pipe_vertex_buffer vb = ctx->vertex_buffers[i];
-         assert(!vb.is_user_buffer);
+      assert(ctx->vb_mask & BITFIELD_BIT(push.vbo) && "oob");
 
-         struct agx_bo *bo = agx_resource(vb.buffer.resource)->bo;
-         agx_batch_add_bo(batch, bo);
+      struct pipe_vertex_buffer vb = ctx->vertex_buffers[push.vbo];
+      assert(!vb.is_user_buffer);
 
-         addresses[i] = bo->ptr.gpu + vb.buffer_offset;
-      }
+      struct agx_bo *bo = agx_resource(vb.buffer.resource)->bo;
+      agx_batch_add_bo(batch, bo);
 
+      *address = bo->ptr.gpu + vb.buffer_offset;
       return ptr.gpu;
    }
 

@@ -311,10 +311,7 @@ agx_emit_load_attr(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
    agx_index offset = agx_imad(b, element_id, shifted_stride, src_offset, 0);
 
    /* Each VBO has a 64-bit = 4 x 16-bit address, lookup the base address as a sysval */
-   unsigned num_vbos = key->vs.num_vbufs;
-   unsigned base_length = (num_vbos * 4);
-   agx_index base = agx_indexed_sysval(b->shader,
-                                       AGX_PUSH_VBO_BASES, AGX_SIZE_64, buf * 4, base_length);
+   agx_index base = agx_vbo_base(b->shader, buf);
 
    /* Load the data */
    assert(instr->num_components <= 4);
