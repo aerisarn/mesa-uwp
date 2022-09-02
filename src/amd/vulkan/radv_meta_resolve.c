@@ -600,8 +600,6 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
          };
 
          cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_img, &range, 0xffffffff);
-         saved_state.attachments[dst_att.attachment].current_layout =
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       }
 
       const VkRenderingAttachmentInfo color_atts[2] = {
