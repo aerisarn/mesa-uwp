@@ -559,7 +559,6 @@ zink_gfx_program_update(struct zink_context *ctx)
       }
       ctx->last_vertex_stage_dirty = false;
    }
-   unsigned bits = BITFIELD_MASK(MESA_SHADER_COMPUTE);
    if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
 
@@ -590,7 +589,7 @@ zink_gfx_program_update(struct zink_context *ctx)
             update_gfx_program(ctx, prog);
          }
       } else {
-         ctx->dirty_gfx_stages |= bits;
+         ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          if (screen->optimal_keys)
@@ -606,7 +605,7 @@ zink_gfx_program_update(struct zink_context *ctx)
       ctx->curr_program = prog;
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       ctx->gfx_dirty = false;
-   } else if (ctx->dirty_gfx_stages & bits) {
+   } else if (ctx->dirty_gfx_stages) {
       /* remove old hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       if (screen->optimal_keys) {
@@ -620,7 +619,7 @@ zink_gfx_program_update(struct zink_context *ctx)
       /* apply new hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    }
-   ctx->dirty_gfx_stages &= ~bits;
+   ctx->dirty_gfx_stages = 0;
 }
 
 static void
