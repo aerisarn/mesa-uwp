@@ -1945,6 +1945,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    mtx_init(&device->query_mutex, mtx_plain);
    cnd_init(&device->query_ended);
 
+   device->vk.command_buffer_ops = &v3dv_cmd_buffer_ops;
+
    vk_device_set_drm_fd(&device->vk, physical_device->render_fd);
    vk_device_enable_threaded_submit(&device->vk);
 

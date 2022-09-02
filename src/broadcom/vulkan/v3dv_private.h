@@ -1521,6 +1521,8 @@ struct v3dv_cmd_buffer_private_obj {
    v3dv_cmd_buffer_private_obj_destroy_cb destroy_cb;
 };
 
+extern const struct vk_command_buffer_ops v3dv_cmd_buffer_ops;
+
 struct v3dv_cmd_buffer {
    struct vk_command_buffer vk;
 
