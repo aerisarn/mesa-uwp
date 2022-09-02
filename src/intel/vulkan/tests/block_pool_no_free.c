@@ -35,7 +35,6 @@ struct job {
    unsigned id;
    struct anv_block_pool *pool;
    int32_t blocks[BLOCKS_PER_THREAD];
-   int32_t back_blocks[BLOCKS_PER_THREAD];
 } jobs[NUM_THREADS];
 
 
@@ -52,20 +51,10 @@ static void *alloc_blocks(void *_job)
       *data = block;
       ASSERT(block >= 0);
       job->blocks[i] = block;
-
-      block = anv_block_pool_alloc_back(job->pool, block_size);
-      data = anv_block_pool_map(job->pool, block, block_size);
-      *data = block;
-      ASSERT(block < 0);
-      job->back_blocks[i] = -block;
    }
 
    for (unsigned i = 0; i < BLOCKS_PER_THREAD; i++) {
       block = job->blocks[i];
-      data = anv_block_pool_map(job->pool, block, block_size);
-      ASSERT(*data == block);
-
-      block = -job->back_blocks[i];
       data = anv_block_pool_map(job->pool, block, block_size);
       ASSERT(*data == block);
    }
@@ -134,11 +123,6 @@ static void run_test()
    int32_t *block_ptrs[NUM_THREADS];
    for (unsigned i = 0; i < NUM_THREADS; i++)
       block_ptrs[i] = jobs[i].blocks;
-   validate_monotonic(block_ptrs);
-
-   /* Validate that the back block allocations were monotonic */
-   for (unsigned i = 0; i < NUM_THREADS; i++)
-      block_ptrs[i] = jobs[i].back_blocks;
    validate_monotonic(block_ptrs);
 
    anv_block_pool_finish(&pool);
