@@ -3618,6 +3618,16 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
       unsigned i = u_bit_scan(&mask);
       uint32_t *desc = &((uint32_t *)vb_ptr)[desc_index++ * 4];
       uint32_t offset, rsrc_word3;
+
+      if (vs_state && !(vs_state->attribute_mask & BITFIELD_BIT(i))) {
+         /* No vertex attribute description given: assume that the shader doesn't use this
+          * location (vb_desc_usage_mask can be larger than attribute usage) and use a null
+          * descriptor to avoid hangs (prologs load all attributes, even if there are holes).
+          */
+         memset(desc, 0, 4 * 4);
+         continue;
+      }
+
       unsigned binding =
          vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
                   : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
@@ -5656,7 +5666,14 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
    cmd_buffer->state.vbo_misaligned_mask = 0;
    cmd_buffer->state.vbo_misaligned_mask_invalid = 0;
 
-   memset(state, 0, sizeof(*state));
+   state->attribute_mask = 0;
+   state->instance_rate_inputs = 0;
+   state->nontrivial_divisors = 0;
+   state->zero_divisors = 0;
+   state->post_shuffle = 0;
+   state->alpha_adjust_lo = 0;
+   state->alpha_adjust_hi = 0;
+   state->nontrivial_formats = 0;
    state->bindings_match_attrib = true;
 
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
