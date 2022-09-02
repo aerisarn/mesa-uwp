@@ -31,30 +31,32 @@
 enum agx_push_type {
    /* Array of 64-bit pointers to the base addresses (BASES) and array of
     * 16-bit sizes for optional bounds checking (SIZES) */
-   AGX_PUSH_UBO_BASES = 0,
-   AGX_PUSH_UBO_SIZES = 1,
-   AGX_PUSH_VBO_BASES = 2,
-   AGX_PUSH_VBO_SIZES = 3,
-   AGX_PUSH_SSBO_BASES = 4,
-   AGX_PUSH_SSBO_SIZES = 5,
+   AGX_PUSH_UBO_BASES,
+   AGX_PUSH_UBO_SIZES,
+   AGX_PUSH_VBO_BASES,
+   AGX_PUSH_VBO_SIZES,
+   AGX_PUSH_SSBO_BASES,
+   AGX_PUSH_SSBO_SIZES,
 
    /* Push the attached constant memory */
-   AGX_PUSH_CONSTANTS = 6,
+   AGX_PUSH_CONSTANTS,
 
    /* Push the content of a UBO */
-   AGX_PUSH_UBO_DATA = 7,
+   AGX_PUSH_UBO_DATA,
 
    /* RGBA blend constant (FP32) */
-   AGX_PUSH_BLEND_CONST = 8,
+   AGX_PUSH_BLEND_CONST,
 
    /* Array of 16-bit (array_size - 1) for indexed array textures, used to
     * lower access to indexed array textures
     */
-   AGX_PUSH_ARRAY_SIZE_MINUS_1 = 9,
+   AGX_PUSH_ARRAY_SIZE_MINUS_1,
 
    /* Keep last */
    AGX_PUSH_NUM_TYPES
 };
+
+static_assert(AGX_PUSH_NUM_TYPES < (1 << 8), "type overflow");
 
 struct agx_push {
    /* Contents to push */
