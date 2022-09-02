@@ -99,6 +99,11 @@ union zink_shader_key_optimal {
       struct zink_tcs_key tcs;
       struct zink_fs_key fs;
    };
+   struct {
+      uint8_t vs_bits;
+      uint8_t tcs_bits;
+      uint16_t fs_bits;
+   };
    uint32_t val;
 };
 
