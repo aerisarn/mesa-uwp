@@ -121,6 +121,10 @@ enum pvr_event_type {
    PVR_EVENT_TYPE_BARRIER,
 };
 
+enum pvr_sub_command_flags {
+   PVR_SUB_COMMAND_FLAG_WAIT_ON_PREVIOUS_FRAG = BITFIELD_BIT(0),
+};
+
 enum pvr_depth_stencil_usage {
    PVR_DEPTH_STENCIL_USAGE_UNDEFINED = 0, /* explicitly treat 0 as undefined */
    PVR_DEPTH_STENCIL_USAGE_NEEDED,
@@ -768,6 +772,8 @@ struct pvr_sub_cmd {
    struct list_head link;
 
    enum pvr_sub_cmd_type type;
+
+   enum pvr_sub_command_flags flags;
 
    union {
       struct pvr_sub_cmd_gfx gfx;
@@ -1488,6 +1494,12 @@ VkResult pvr_emit_ppp_from_template(
    struct pvr_csb *const csb,
    const struct pvr_static_clear_ppp_template *const template,
    struct pvr_bo **const pvr_bo_out);
+
+VkResult
+pvr_copy_or_resolve_color_image_region(struct pvr_cmd_buffer *cmd_buffer,
+                                       const struct pvr_image *src,
+                                       const struct pvr_image *dst,
+                                       const VkImageCopy2 *region);
 
 void pvr_get_image_subresource_layout(const struct pvr_image *image,
                                       const VkImageSubresource *subresource,

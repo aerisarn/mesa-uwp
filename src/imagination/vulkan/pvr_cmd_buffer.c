@@ -5453,9 +5453,82 @@ void pvr_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 }
 
 static VkResult
-pvr_resolve_unemitted_resolve_attachments(struct pvr_cmd_buffer *cmd_buffer)
+pvr_resolve_unemitted_resolve_attachments(struct pvr_cmd_buffer *cmd_buffer,
+                                          struct pvr_render_pass_info *info)
 {
-   pvr_finishme("Add attachment resolve support!");
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct pvr_renderpass_hwsetup_render *hw_render =
+      &state->render_pass_info.pass->hw_setup->renders[info->current_hw_subpass];
+
+   for (uint32_t i = 0U; i < hw_render->eot_surface_count; i++) {
+      const struct pvr_renderpass_hwsetup_eot_surface *surface =
+         &hw_render->eot_surfaces[i];
+      const uint32_t color_attach_idx = surface->src_attachment_idx;
+      const uint32_t resolve_attach_idx = surface->attachment_idx;
+      VkImageSubresourceLayers src_subresource;
+      VkImageSubresourceLayers dst_subresource;
+      struct pvr_image_view *dst_view;
+      struct pvr_image_view *src_view;
+      VkFormat src_format;
+      VkFormat dst_format;
+      VkImageCopy2 region;
+      VkResult result;
+
+      if (!surface->need_resolve ||
+          surface->resolve_type != PVR_RESOLVE_TYPE_TRANSFER)
+         continue;
+
+      dst_view = info->attachments[resolve_attach_idx];
+      src_view = info->attachments[color_attach_idx];
+
+      src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      src_subresource.mipLevel = src_view->vk.base_mip_level;
+      src_subresource.baseArrayLayer = src_view->vk.base_array_layer;
+      src_subresource.layerCount = src_view->vk.layer_count;
+
+      dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      dst_subresource.mipLevel = dst_view->vk.base_mip_level;
+      dst_subresource.baseArrayLayer = dst_view->vk.base_array_layer;
+      dst_subresource.layerCount = dst_view->vk.layer_count;
+
+      region.srcOffset = (VkOffset3D){ info->render_area.offset.x,
+                                       info->render_area.offset.y,
+                                       0 };
+      region.dstOffset = (VkOffset3D){ info->render_area.offset.x,
+                                       info->render_area.offset.y,
+                                       0 };
+      region.extent = (VkExtent3D){ info->render_area.extent.width,
+                                    info->render_area.extent.height,
+                                    1 };
+
+      region.srcSubresource = src_subresource;
+      region.dstSubresource = dst_subresource;
+
+      /* TODO: if ERN_46863 is supported, Depth and stencil are sampled
+       * separately from images with combined depth+stencil. Add logic here to
+       * handle it using appropriate format from image view.
+       */
+      src_format = src_view->vk.image->format;
+      dst_format = dst_view->vk.image->format;
+      src_view->vk.image->format = src_view->vk.format;
+      dst_view->vk.image->format = dst_view->vk.format;
+
+      result = pvr_copy_or_resolve_color_image_region(
+         cmd_buffer,
+         vk_to_pvr_image(src_view->vk.image),
+         vk_to_pvr_image(dst_view->vk.image),
+         &region);
+
+      src_view->vk.image->format = src_format;
+      dst_view->vk.image->format = dst_format;
+
+      state->current_sub_cmd->flags |=
+         PVR_SUB_COMMAND_FLAG_WAIT_ON_PREVIOUS_FRAG;
+
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
    return pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
 
@@ -5481,7 +5554,8 @@ void pvr_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    if (result != VK_SUCCESS)
       return;
 
-   result = pvr_resolve_unemitted_resolve_attachments(cmd_buffer);
+   result = pvr_resolve_unemitted_resolve_attachments(cmd_buffer,
+                                                      &state->render_pass_info);
    if (result != VK_SUCCESS)
       return;
 
