@@ -1237,6 +1237,9 @@ enum anv_bo_alloc_flags {
 
    /** This buffer is allocated from local memory and should be cpu visible */
    ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 10),
+
+   /** For non device local allocations */
+   ANV_BO_ALLOC_NO_LOCAL_MEM = (1 << 11),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device,

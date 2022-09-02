@@ -1463,15 +1463,19 @@ anv_device_alloc_bo(struct anv_device *device,
       /* This always try to put the object in local memory. Here
        * vram_non_mappable & vram_mappable actually are the same region.
        */
-      regions[nregions++] = device->physical->vram_non_mappable.region;
+      if (alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)
+         regions[nregions++] = device->physical->sys.region;
+      else
+         regions[nregions++] = device->physical->vram_non_mappable.region;
 
       /* If the buffer is mapped on the host, add the system memory region.
        * This ensures that if the buffer cannot live in mappable local memory,
        * it can be spilled to system memory.
        */
       uint32_t flags = 0;
-      if ((alloc_flags & ANV_BO_ALLOC_MAPPED) ||
-          (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE)) {
+      if (!(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
+          ((alloc_flags & ANV_BO_ALLOC_MAPPED) ||
+           (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE))) {
          regions[nregions++] = device->physical->sys.region;
          if (device->physical->vram_non_mappable.size > 0)
             flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
@@ -1497,7 +1501,8 @@ anv_device_alloc_bo(struct anv_device *device,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
-      .has_implicit_ccs = ccs_size > 0 || device->info->verx10 >= 125,
+      .has_implicit_ccs = ccs_size > 0 ||
+                          (device->info->verx10 >= 125 && !(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)),
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
