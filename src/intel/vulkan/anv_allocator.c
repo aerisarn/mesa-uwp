@@ -1102,7 +1102,7 @@ anv_state_pool_alloc_no_vg(struct anv_state_pool *pool,
                                                 pool->block_size,
                                                 &padding);
    /* Every time we allocate a new state, add it to the state pool */
-   uint32_t idx;
+   uint32_t idx = 0;
    UNUSED VkResult result = anv_state_table_add(&pool->table, &idx, 1);
    assert(result == VK_SUCCESS);
 
