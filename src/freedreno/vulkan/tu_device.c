@@ -230,6 +230,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_color_write_enable = true,
       .EXT_load_store_op_none = true,
       .EXT_non_seamless_cube_map = true,
+      .EXT_tooling_info = true,
    };
 }
 
