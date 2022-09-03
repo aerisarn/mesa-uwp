@@ -868,13 +868,13 @@ vn_physical_device_init_external_memory(
       physical_dev->external_memory.renderer_handle_type =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
 
-#ifdef ANDROID
-      physical_dev->external_memory.supported_handle_types =
-         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
-#else
       physical_dev->external_memory.supported_handle_types =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+
+#ifdef ANDROID
+      physical_dev->external_memory.supported_handle_types |=
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 #endif
    }
 }
@@ -1002,7 +1002,8 @@ vn_physical_device_get_native_extensions(
       exts->KHR_external_fence_fd = true;
       exts->KHR_external_semaphore_fd = true;
    }
-#else /* ANDROID */
+#endif
+
    if (can_external_mem) {
       exts->KHR_external_memory_fd = true;
       exts->EXT_external_memory_dma_buf = true;
@@ -1016,7 +1017,6 @@ vn_physical_device_get_native_extensions(
       exts->KHR_swapchain_mutable_format = true;
    }
 #endif
-#endif /* ANDROID */
 
    exts->EXT_physical_device_drm = true;
    /* use common implementation */
@@ -1108,9 +1108,7 @@ vn_physical_device_get_passthrough_extensions(
 
       /* vendor */
       .VALVE_mutable_descriptor_type = true,
-#ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
-#endif
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
