@@ -373,12 +373,6 @@ anv_block_pool_init(struct anv_block_pool *pool,
 {
    VkResult result;
 
-   if (device->info->verx10 >= 125) {
-      /* Make sure VMA addresses are 2MiB aligned for the block pool */
-      assert(anv_is_aligned(start_address, 2 * 1024 * 1024));
-      assert(anv_is_aligned(initial_size, 2 * 1024 * 1024));
-   }
-
    pool->name = name;
    pool->device = device;
    pool->use_relocations = anv_use_relocations(device->physical);
@@ -843,8 +837,6 @@ anv_state_pool_init(struct anv_state_pool *pool,
    assert(start_offset < INT32_MAX - (int32_t)BLOCK_POOL_MEMFD_SIZE);
 
    uint32_t initial_size = block_size * 16;
-   if (device->info->verx10 >= 125)
-      initial_size = MAX2(initial_size, 2 * 1024 * 1024);
 
    VkResult result = anv_block_pool_init(&pool->block_pool, device, name,
                                          base_address + start_offset,
@@ -1472,10 +1464,8 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     *
     * so nothing will ever touch the top page.
     */
-   const enum anv_bo_alloc_flags alloc_flags =
-      devinfo->verx10 < 125 ? ANV_BO_ALLOC_32BIT_ADDRESS : 0;
    VkResult result = anv_device_alloc_bo(device, "scratch", size,
-                                         alloc_flags,
+                                         ANV_BO_ALLOC_32BIT_ADDRESS,
                                          0 /* explicit_address */,
                                          &bo);
    if (result != VK_SUCCESS)
