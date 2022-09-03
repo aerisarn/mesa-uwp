@@ -305,8 +305,7 @@ agxdecode_pipeline(const uint8_t *map, UNUSED bool verbose)
 {
    uint8_t zeroes[16] = { 0 };
 
-   if (map[0] == 0x4D && map[1] == 0xbd) {
-      /* TODO: Disambiguation for extended is a guess */
+   if (map[0] == 0x4D && (map[11] & BITFIELD_BIT(5))) {
       agx_unpack(agxdecode_dump_stream, map, SET_SHADER_EXTENDED, cmd);
       DUMP_UNPACKED(SET_SHADER_EXTENDED, cmd, "Set shader\n");
 

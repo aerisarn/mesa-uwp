@@ -1244,7 +1244,6 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
          cfg.unk_2 = 0x0d;
          cfg.loads_varyings = true;
          cfg.fragment_parameters.early_z_testing = !writes_sample_mask;
-         cfg.unk_3b = 0x1;
          cfg.unk_4 = 0x800;
          cfg.preshader_unk = 0xc080;
          cfg.spill_size = 0x2;
@@ -1288,19 +1287,15 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
    record += AGX_BIND_UNIFORM_LENGTH;
 
    /* TODO: Can we prepack this? */
-   agx_pack(record, SET_SHADER_EXTENDED, cfg) {
+   agx_pack(record, SET_SHADER, cfg) {
       cfg.code = code;
-      cfg.register_quadwords = 1;
-      cfg.unk_3 = 0x8d;
+      cfg.unk_1 = 0x2010bd;
       cfg.unk_2 = 0x0d;
-      cfg.fragment_parameters.unk_1 = 0x880100;
-      cfg.fragment_parameters.early_z_testing = false;
-      cfg.fragment_parameters.unk_2 = false;
-      cfg.fragment_parameters.unk_3 = 0;
-      cfg.preshader_mode = 0; // XXX
+      cfg.unk_3 = 0x8d;
+      cfg.register_quadwords = 1;
    }
 
-   record += AGX_SET_SHADER_EXTENDED_LENGTH;
+   record += AGX_SET_SHADER_LENGTH;
 
    /* End pipeline */
    memset(record, 0, 8);
