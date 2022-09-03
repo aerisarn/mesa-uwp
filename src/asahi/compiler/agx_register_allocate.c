@@ -38,6 +38,7 @@ agx_write_registers(agx_instr *I, unsigned d)
       return I->channels * size;
 
    case AGX_OPCODE_DEVICE_LOAD:
+   case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
    case AGX_OPCODE_LD_TILE:
       /* TODO: mask */

@@ -194,7 +194,10 @@ op("fcmpsel",
 # sources are coordinates, LOD, texture, sampler, offset
 # TODO: anything else?
 op("texture_sample",
-      encoding_32 = (0x32, 0x7F, 8, 10), # XXX WRONG SIZE
+      encoding_32 = (0x31, 0x7F, 8, 10), # XXX WRONG SIZE
+      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD])
+op("texture_load",
+      encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
       srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD])
 
 # sources are base, index

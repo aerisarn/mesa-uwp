@@ -970,6 +970,7 @@ agx_lod_mode_for_nir(nir_texop op)
    case nir_texop_tex: return AGX_LOD_MODE_AUTO_LOD;
    case nir_texop_txb: return AGX_LOD_MODE_AUTO_LOD_BIAS;
    case nir_texop_txl: return AGX_LOD_MODE_LOD_MIN;
+   case nir_texop_txf: return AGX_LOD_MODE_LOD_MIN;
    default: unreachable("Unhandled texture op");
    }
 }
@@ -979,6 +980,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
    switch (instr->op) {
    case nir_texop_tex:
+   case nir_texop_txf:
    case nir_texop_txl:
    case nir_texop_txb:
       break;
@@ -991,6 +993,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
              sampler = agx_immediate(instr->sampler_index),
              lod = agx_immediate(0),
              offset = agx_null();
+
+   bool txf = instr->op == nir_texop_txf;
 
    for (unsigned i = 0; i < instr->num_srcs; ++i) {
       agx_index index = agx_src_index(&instr->src[i].src);
@@ -1008,6 +1012,9 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
           *     max(0, min(d - 1, floor(layer + 0.5))) =
           *     max(0, min(d - 1, f32_to_u32(layer + 0.5))) =
           *     min(d - 1, f32_to_u32(layer + 0.5))
+          *
+          * For txf, the coordinates are already integers, so we only need to
+          * clamp (not convert).
           */
          if (instr->is_array) {
             unsigned nr = nir_src_num_components(instr->src[i].src);
@@ -1016,15 +1023,18 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
             for (unsigned i = 0; i < nr; ++i)
                channels[i] = agx_emit_extract(b, index, i);
 
-            agx_index layer = agx_fadd(b, channels[nr - 1],
-                                          agx_immediate_f(0.5f));
-
             agx_index d1 = agx_indexed_sysval(b->shader,
                   AGX_PUSH_ARRAY_SIZE_MINUS_1, AGX_SIZE_16,
                   instr->texture_index, 1);
 
-            layer = agx_convert(b, agx_immediate(AGX_CONVERT_F_TO_U32), layer,
-                                   AGX_ROUND_RTZ);
+            agx_index layer = channels[nr - 1];
+
+            if (!txf) {
+               layer = agx_fadd(b, channels[nr - 1], agx_immediate_f(0.5f));
+
+               layer = agx_convert(b, agx_immediate(AGX_CONVERT_F_TO_U32), layer,
+                                      AGX_ROUND_RTZ);
+            }
 
             agx_index layer16 = agx_temp(b->shader, AGX_SIZE_16);
             agx_mov_to(b, layer16, layer);
@@ -1058,11 +1068,15 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    }
 
    agx_index dst = agx_dest_index(&instr->dest);
-   agx_texture_sample_to(b, dst, coords, lod, texture, sampler, offset,
+
+   agx_instr *I = agx_texture_sample_to(b, dst, coords, lod, texture, sampler, offset,
          agx_tex_dim(instr->sampler_dim, instr->is_array),
          agx_lod_mode_for_nir(instr->op),
          0xF, /* TODO: wrmask */
          0);
+
+   if (txf)
+      I->op = AGX_OPCODE_TEXTURE_LOAD;
 
    agx_wait(b, 0);
    agx_emit_cached_split(b, dst, 4);

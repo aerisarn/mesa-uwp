@@ -570,6 +570,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       break;
    }
 
+   case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
    {
       assert(I->mask != 0);
@@ -611,6 +612,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
 
       uint64_t raw =
             0x31 |
+            ((I->op == AGX_OPCODE_TEXTURE_LOAD) ? (1 << 6) : 0) |
             (Rt ? (1 << 8) : 0) |
             ((R & BITFIELD_MASK(6)) << 9) |
             (L ? (1 << 15) : 0) |
