@@ -219,7 +219,7 @@ traces:
         Assertion `attrib->_EffRelativeOffset < binding->Stride' failed.
   nheko/nheko-colors.trace:
     gl-virgl:
-      label: [skip, no-perf]
+      label: [no-perf]
       checksum: 3a12c08087e16cfae4729f4e9d6c9387
   warzone2100/warzone2100-default.trace:
     gl-virgl:

@@ -8,6 +8,11 @@ MINIO_ARGS="--credentials=/tmp/.minio_credentials"
 RESULTS=$(realpath -s "$PWD"/results)
 mkdir -p "$RESULTS"
 
+if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
+    yq -i -Y '. | del(.traces[][] | select(.label[0,1,2,3,4,5,6,7,8,9] == "no-perf"))' \
+      "$PIGLIT_REPLAY_DESCRIPTION_FILE"  # label positions are a bit hack
+fi
+
 # WINE
 PATH="/opt/wine-stable/bin/:$PATH" # WineHQ path
 export WINEPREFIX="/dxvk-wine64" # hardcode DXVK for now
@@ -186,7 +191,7 @@ __PREFIX="trace/$PIGLIT_REPLAY_DEVICE_NAME"
 __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
 __MINIO_TRACES_PREFIX="traces"
 
-if [ "x$PIGLIT_REPLAY_SUBCOMMAND" != "xprofile" ]; then
+if [ "$PIGLIT_REPLAY_SUBCOMMAND" != "profile" ]; then
     quiet replay_minio_upload_images
 fi
 

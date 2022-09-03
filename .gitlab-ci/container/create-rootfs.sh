@@ -105,6 +105,9 @@ apt-get -y install --no-install-recommends \
 # MinIO and doesn't depend on git
 pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@34f4ade99434043f88e164933f570301fd18b125
 
+# Needed for manipulation with traces yaml files.
+pip3 install yq
+
 apt-get purge -y \
         $INSTALL_CI_FAIRY_PACKAGES
 
