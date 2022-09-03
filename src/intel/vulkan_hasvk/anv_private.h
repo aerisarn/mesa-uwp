@@ -2584,11 +2584,6 @@ struct anv_cmd_state {
     * genX(cmd_buffer_emit_hashing_mode)().
     */
    unsigned                                     current_hash_scale;
-
-   /**
-    * A buffer used for spill/fill of ray queries.
-    */
-   struct anv_bo *                              ray_query_shadow_bo;
 };
 
 #define ANV_MIN_CMD_BUFFER_BATCH_SIZE 8192
@@ -2891,8 +2886,6 @@ struct anv_pipeline {
 
    enum anv_pipeline_type                       type;
    VkPipelineCreateFlags                        flags;
-
-   uint32_t                                     ray_queries;
 
    struct util_dynarray                         executables;
 

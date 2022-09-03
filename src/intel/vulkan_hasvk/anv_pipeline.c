@@ -586,8 +586,6 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, brw_nir_lower_ray_queries, &pdevice->info);
-
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    NIR_PASS_V(nir, anv_nir_apply_pipeline_layout,
               pdevice, pipeline->device->robust_buffer_access,
@@ -1091,8 +1089,6 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    } else {
       anv_pipeline_add_executable(pipeline, stage, bin->stats, 0);
    }
-
-   pipeline->ray_queries = MAX2(pipeline->ray_queries, bin->prog_data->ray_queries);
 }
 
 static void
