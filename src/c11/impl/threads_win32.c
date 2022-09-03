@@ -44,28 +44,11 @@
 
 /*
 Configuration macro:
-
-  EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-    Use native WindowsAPI one-time initialization function.
-    (requires WinVista or later)
-    Otherwise emulate by mtx_trylock() + *busy loop* for WinXP.
-
   EMULATED_THREADS_TSS_DTOR_SLOTNUM
     Max registerable TSS dtor number.
 */
 
-#if _WIN32_WINNT >= 0x0600
-// Prefer native WindowsAPI on newer environment.
-#if !defined(__MINGW32__)
-#define EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-#endif
-#endif
 #define EMULATED_THREADS_TSS_DTOR_SLOTNUM 64  // see TLS_MINIMUM_AVAILABLE
-
-// check configuration
-#if defined(EMULATED_THREADS_USE_NATIVE_CALL_ONCE) && (_WIN32_WINNT < 0x0600)
-#error EMULATED_THREADS_USE_NATIVE_CALL_ONCE requires _WIN32_WINNT>=0x0600
-#endif
 
 
 static_assert(sizeof(cnd_t) == sizeof(CONDITION_VARIABLE), "The size of cnd_t must equal to CONDITION_VARIABLE");
@@ -76,8 +59,6 @@ static_assert(sizeof(once_flag) == sizeof(INIT_ONCE), "The size of once_flag mus
 
 /*
 Implementation limits:
-  - Conditionally emulation for "Initialization functions"
-    (see EMULATED_THREADS_USE_NATIVE_CALL_ONCE macro)
   - Emulated `mtx_timelock()' with mtx_trylock() + *busy loop*
 */
 
@@ -122,7 +103,6 @@ static DWORD impl_abs2relmsec(const struct timespec *abs_time)
     return rel_ms;
 }
 
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 struct impl_call_once_param { void (*func)(void); };
 static BOOL CALLBACK impl_call_once_callback(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context)
 {
@@ -131,7 +111,6 @@ static BOOL CALLBACK impl_call_once_callback(PINIT_ONCE InitOnce, PVOID Paramete
     ((void)InitOnce); ((void)Context);  // suppress warning
     return TRUE;
 }
-#endif  // ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 
 static struct impl_tss_dtor_entry {
     tss_t key;
@@ -171,23 +150,9 @@ void
 call_once(once_flag *flag, void (*func)(void))
 {
     assert(flag && func);
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-    {
     struct impl_call_once_param param;
     param.func = func;
     InitOnceExecuteOnce((PINIT_ONCE)flag, impl_call_once_callback, (PVOID)&param, NULL);
-    }
-#else
-    if (InterlockedCompareExchangePointer((PVOID volatile *)&flag->status, (PVOID)1, (PVOID)0) == 0) {
-        (func)();
-        InterlockedExchangePointer((PVOID volatile *)&flag->status, (PVOID)2);
-    } else {
-        while (flag->status == 1) {
-            // busy loop!
-            thrd_yield();
-        }
-    }
-#endif
 }
 
 
