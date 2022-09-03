@@ -686,6 +686,16 @@ display_field(struct decode_scope *scope, const char *field_name)
 			isa_print(print, "%u", (unsigned)val);
 		}
 		break;
+	case TYPE_BOOL_INV: {
+		if (field->display) {
+			if (!val) {
+				isa_print(print, "%s", field->display);
+			}
+		} else {
+			isa_print(print, "%u", (unsigned)!val);
+		}
+		break;
+	}
 	case TYPE_ENUM:
 		display_enum_field(scope, field, v);
 		break;
