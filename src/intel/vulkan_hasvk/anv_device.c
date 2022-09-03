@@ -268,8 +268,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_depth_clamp_zero_one              = true,
       .EXT_depth_clip_control                = true,
       .EXT_depth_clip_enable                 = true,
-      .EXT_descriptor_indexing               = device->has_a64_buffer_access &&
-                                               device->has_bindless_images,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       .EXT_display_control                   = true,
 #endif
@@ -494,8 +492,6 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
                      sizeof(device->always_use_bindless));
    _mesa_sha1_update(&sha1_ctx, &device->has_a64_buffer_access,
                      sizeof(device->has_a64_buffer_access));
-   _mesa_sha1_update(&sha1_ctx, &device->has_bindless_images,
-                     sizeof(device->has_bindless_images));
    _mesa_sha1_update(&sha1_ctx, &device->has_bindless_samplers,
                      sizeof(device->has_bindless_samplers));
    _mesa_sha1_final(&sha1_ctx, sha1);
@@ -857,10 +853,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->has_a64_buffer_access = device->info.ver >= 8 &&
                                    device->use_softpin;
 
-   /* We first get bindless image access on Skylake.
-    */
-   device->has_bindless_images = device->info.ver >= 9;
-
    /* We've had bindless samplers since Ivy Bridge (forever in Vulkan terms)
     * because it's just a matter of setting the sampler address in the sample
     * message header.  However, we've not bothered to wire it up for vec4 so
@@ -1194,29 +1186,27 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->shaderFloat16                       = pdevice->info.ver >= 8;
    f->shaderInt8                          = pdevice->info.ver >= 8;
 
-   bool descIndexing = pdevice->has_a64_buffer_access &&
-                       pdevice->has_bindless_images;
-   f->descriptorIndexing                                 = descIndexing;
+   f->descriptorIndexing                                 = false;
    f->shaderInputAttachmentArrayDynamicIndexing          = false;
-   f->shaderUniformTexelBufferArrayDynamicIndexing       = descIndexing;
-   f->shaderStorageTexelBufferArrayDynamicIndexing       = descIndexing;
+   f->shaderUniformTexelBufferArrayDynamicIndexing       = false;
+   f->shaderStorageTexelBufferArrayDynamicIndexing       = false;
    f->shaderUniformBufferArrayNonUniformIndexing         = false;
-   f->shaderSampledImageArrayNonUniformIndexing          = descIndexing;
-   f->shaderStorageBufferArrayNonUniformIndexing         = descIndexing;
-   f->shaderStorageImageArrayNonUniformIndexing          = descIndexing;
+   f->shaderSampledImageArrayNonUniformIndexing          = false;
+   f->shaderStorageBufferArrayNonUniformIndexing         = false;
+   f->shaderStorageImageArrayNonUniformIndexing          = false;
    f->shaderInputAttachmentArrayNonUniformIndexing       = false;
-   f->shaderUniformTexelBufferArrayNonUniformIndexing    = descIndexing;
-   f->shaderStorageTexelBufferArrayNonUniformIndexing    = descIndexing;
-   f->descriptorBindingUniformBufferUpdateAfterBind      = descIndexing;
-   f->descriptorBindingSampledImageUpdateAfterBind       = descIndexing;
-   f->descriptorBindingStorageImageUpdateAfterBind       = descIndexing;
-   f->descriptorBindingStorageBufferUpdateAfterBind      = descIndexing;
-   f->descriptorBindingUniformTexelBufferUpdateAfterBind = descIndexing;
-   f->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
-   f->descriptorBindingUpdateUnusedWhilePending          = descIndexing;
-   f->descriptorBindingPartiallyBound                    = descIndexing;
-   f->descriptorBindingVariableDescriptorCount           = descIndexing;
-   f->runtimeDescriptorArray                             = descIndexing;
+   f->shaderUniformTexelBufferArrayNonUniformIndexing    = false;
+   f->shaderStorageTexelBufferArrayNonUniformIndexing    = false;
+   f->descriptorBindingUniformBufferUpdateAfterBind      = false;
+   f->descriptorBindingSampledImageUpdateAfterBind       = false;
+   f->descriptorBindingStorageImageUpdateAfterBind       = false;
+   f->descriptorBindingStorageBufferUpdateAfterBind      = false;
+   f->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
+   f->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
+   f->descriptorBindingUpdateUnusedWhilePending          = false;
+   f->descriptorBindingPartiallyBound                    = false;
+   f->descriptorBindingVariableDescriptorCount           = false;
+   f->runtimeDescriptorArray                             = false;
 
    f->samplerFilterMinmax                 = pdevice->info.ver >= 9;
    f->scalarBlockLayout                   = true;
@@ -1654,20 +1644,16 @@ void anv_GetPhysicalDeviceProperties(
    const struct intel_device_info *devinfo = &pdevice->info;
 
    const uint32_t max_ssbos = pdevice->has_a64_buffer_access ? UINT16_MAX : 64;
-   const uint32_t max_textures =
-      pdevice->has_bindless_images ? UINT16_MAX : 128;
+   const uint32_t max_textures = 128;
    const uint32_t max_samplers =
       pdevice->has_bindless_samplers ? UINT16_MAX :
       (devinfo->verx10 >= 75) ? 128 : 16;
-   const uint32_t max_images =
-      pdevice->has_bindless_images ? UINT16_MAX : MAX_IMAGES;
+   const uint32_t max_images = MAX_IMAGES;
 
    /* If we can use bindless for everything, claim a high per-stage limit,
     * otherwise use the binding table size, minus the slots reserved for
     * render targets and one slot for the descriptor buffer. */
-   const uint32_t max_per_stage =
-      pdevice->has_bindless_images && pdevice->has_a64_buffer_access
-      ? UINT32_MAX : MAX_BINDING_TABLE_SIZE - MAX_RTS - 1;
+   const uint32_t max_per_stage = MAX_BINDING_TABLE_SIZE - MAX_RTS - 1;
 
    const uint32_t max_workgroup_size =
       MIN2(1024, 32 * devinfo->max_cs_workgroup_threads);

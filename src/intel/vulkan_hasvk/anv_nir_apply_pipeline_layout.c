@@ -967,12 +967,9 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   ASSERTED const bool use_bindless = state->pdevice->has_bindless_images;
-
    if (intrin->intrinsic == nir_intrinsic_image_deref_load_param_intel) {
       b->cursor = nir_instr_remove(&intrin->instr);
 
-      assert(!use_bindless); /* Otherwise our offsets would be wrong */
       const unsigned param = nir_intrinsic_base(intrin);
 
       nir_ssa_def *desc =
@@ -981,13 +978,6 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                                              intrin->dest.ssa.bit_size, state);
 
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
-   } else if (binding_offset > MAX_BINDING_TABLE_SIZE) {
-      const unsigned desc_comp =
-         image_binding_needs_lowered_surface(var) ? 1 : 0;
-      nir_ssa_def *desc =
-         build_load_var_deref_descriptor_mem(b, deref, 0, 2, 32, state);
-      nir_ssa_def *handle = nir_channel(b, desc, desc_comp);
-      nir_rewrite_image_intrinsic(intrin, handle, true);
    } else {
       unsigned array_size =
          state->layout->set[set].layout->binding[binding].array_size;
@@ -1472,39 +1462,32 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
          state.has_dynamic_buffers = true;
 
       if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
-         if (map->surface_count + array_size > MAX_BINDING_TABLE_SIZE ||
-             anv_descriptor_requires_bindless(pdevice, binding, false)) {
-            /* If this descriptor doesn't fit in the binding table or if it
-             * requires bindless for some reason, flag it as bindless.
-             */
-            assert(anv_descriptor_supports_bindless(pdevice, binding, false));
-            state.set[set].surface_offsets[b] = BINDLESS_OFFSET;
-         } else {
-            state.set[set].surface_offsets[b] = map->surface_count;
-            if (binding->dynamic_offset_index < 0) {
-               struct anv_sampler **samplers = binding->immutable_samplers;
-               for (unsigned i = 0; i < binding->array_size; i++) {
-                  uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-                  for (uint8_t p = 0; p < planes; p++) {
-                     map->surface_to_descriptor[map->surface_count++] =
-                        (struct anv_pipeline_binding) {
-                           .set = set,
-                           .index = binding->descriptor_index + i,
-                           .plane = p,
-                        };
-                  }
-               }
-            } else {
-               for (unsigned i = 0; i < binding->array_size; i++) {
+         assert(map->surface_count + array_size <= MAX_BINDING_TABLE_SIZE);
+         assert(!anv_descriptor_requires_bindless(pdevice, binding, false));
+         state.set[set].surface_offsets[b] = map->surface_count;
+         if (binding->dynamic_offset_index < 0) {
+            struct anv_sampler **samplers = binding->immutable_samplers;
+            for (unsigned i = 0; i < binding->array_size; i++) {
+               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
+               for (uint8_t p = 0; p < planes; p++) {
                   map->surface_to_descriptor[map->surface_count++] =
                      (struct anv_pipeline_binding) {
                         .set = set,
                         .index = binding->descriptor_index + i,
-                        .dynamic_offset_index =
-                           layout->set[set].dynamic_offset_start +
-                           binding->dynamic_offset_index + i,
+                        .plane = p,
                      };
                }
+            }
+         } else {
+            for (unsigned i = 0; i < binding->array_size; i++) {
+               map->surface_to_descriptor[map->surface_count++] =
+                  (struct anv_pipeline_binding) {
+                     .set = set,
+                     .index = binding->descriptor_index + i,
+                     .dynamic_offset_index =
+                        layout->set[set].dynamic_offset_start +
+                        binding->dynamic_offset_index + i,
+                  };
             }
          }
          assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
