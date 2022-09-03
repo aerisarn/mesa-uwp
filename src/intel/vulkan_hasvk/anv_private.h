@@ -1162,16 +1162,6 @@ struct anv_device {
 
     struct anv_state                            slice_hash;
 
-    /** An array of CPS_STATE structures grouped by MAX_VIEWPORTS elements
-     *
-     * We need to emit CPS_STATE structures for each viewport accessible by a
-     * pipeline. So rather than write many identical CPS_STATE structures
-     * dynamically, we can enumerate all possible combinaisons and then just
-     * emit a 3DSTATE_CPS_POINTERS instruction with the right offset into this
-     * array.
-     */
-    struct anv_state                            cps_states;
-
     uint32_t                                    queue_count;
     struct anv_queue  *                         queues;
 

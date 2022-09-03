@@ -113,7 +113,6 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
          .workgroup_memory_explicit_layout = true,
-         .fragment_shading_rate = pdevice->info.ver >= 11,
       },
       .ubo_addr_format =
          anv_nir_ubo_addr_format(pdevice, device->robust_buffer_access),
@@ -344,64 +343,11 @@ populate_gs_prog_key(const struct anv_device *device,
    populate_base_prog_key(device, robust_buffer_acccess, &key->base);
 }
 
-static bool
-pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
-                          const BITSET_WORD *dynamic,
-                          const struct vk_multisample_state *ms,
-                          const struct vk_fragment_shading_rate_state *fsr)
-{
-   /* The Vulkan 1.2.199 spec says:
-    *
-    *    "If any of the following conditions are met, Cxy' must be set to
-    *    {1,1}:
-    *
-    *     * If Sample Shading is enabled.
-    *     * [...]"
-    *
-    * And "sample shading" is defined as follows:
-    *
-    *    "Sample shading is enabled for a graphics pipeline:
-    *
-    *     * If the interface of the fragment shader entry point of the
-    *       graphics pipeline includes an input variable decorated with
-    *       SampleId or SamplePosition. In this case minSampleShadingFactor
-    *       takes the value 1.0.
-    *
-    *     * Else if the sampleShadingEnable member of the
-    *       VkPipelineMultisampleStateCreateInfo structure specified when
-    *       creating the graphics pipeline is set to VK_TRUE. In this case
-    *       minSampleShadingFactor takes the value of
-    *       VkPipelineMultisampleStateCreateInfo::minSampleShading.
-    *
-    *    Otherwise, sample shading is considered disabled."
-    *
-    * The first bullet above is handled by the back-end compiler because those
-    * inputs both force per-sample dispatch.  The second bullet is handled
-    * here.  Note that this sample shading being enabled has nothing to do
-    * with minSampleShading.
-    */
-   if (ms != NULL && ms->sample_shading_enable)
-      return false;
-
-   /* Not dynamic & pipeline has a 1x1 fragment shading rate with no
-    * possibility for element of the pipeline to change the value.
-    */
-   if (!BITSET_TEST(dynamic, MESA_VK_DYNAMIC_FSR) &&
-       fsr->fragment_size.width <= 1 &&
-       fsr->fragment_size.height <= 1 &&
-       fsr->combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
-       fsr->combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR)
-      return false;
-
-   return true;
-}
-
 static void
 populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
                      bool robust_buffer_acccess,
                      const BITSET_WORD *dynamic,
                      const struct vk_multisample_state *ms,
-                     const struct vk_fragment_shading_rate_state *fsr,
                      const struct vk_render_pass_state *rp,
                      struct brw_wm_prog_key *key)
 {
@@ -449,11 +395,6 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
       if (device->physical->instance->sample_mask_out_opengl_behaviour)
          key->ignore_sample_mask_out = !key->multisample_fbo;
    }
-
-   key->coarse_pixel =
-      !key->persample_interp &&
-      device->vk.enabled_extensions.KHR_fragment_shading_rate &&
-      pipeline_has_coarse_pixel(pipeline, dynamic, ms, fsr);
 }
 
 static void
@@ -1195,7 +1136,7 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_FRAGMENT: {
          populate_wm_prog_key(pipeline,
                               pipeline->base.device->robust_buffer_access,
-                              state->dynamic, state->ms, state->fsr, state->rp,
+                              state->dynamic, state->ms, state->rp,
                               &stages[s].key.wm);
          break;
       }
@@ -1458,37 +1399,6 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
 
       prev_stage = &stages[s];
-   }
-
-   /* In the case the platform can write the primitive variable shading rate,
-    * figure out the last geometry stage that should write the primitive
-    * shading rate, and ensure it is marked as used there. The backend will
-    * write a default value if the shader doesn't actually write it.
-    *
-    * We iterate backwards in the stage and stop on the first shader that can
-    * set the value.
-    */
-   const struct intel_device_info *devinfo = pipeline->base.device->info;
-   if (devinfo->has_coarse_pixel_primitive_and_cb &&
-       stages[MESA_SHADER_FRAGMENT].info &&
-       stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
-       !stages[MESA_SHADER_FRAGMENT].nir->info.fs.uses_sample_shading) {
-      struct anv_pipeline_stage *last_psr = NULL;
-
-      for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
-         gl_shader_stage s =
-            graphics_shader_order[ARRAY_SIZE(graphics_shader_order) - i - 1];
-
-         if (!stages[s].info ||
-             !gl_shader_stage_can_set_fragment_shading_rate(s))
-            continue;
-
-         last_psr = &stages[s];
-         break;
-      }
-
-      assert(last_psr);
-      last_psr->nir->info.outputs_written |= VARYING_BIT_PRIMITIVE_SHADING_RATE;
    }
 
    prev_stage = NULL;

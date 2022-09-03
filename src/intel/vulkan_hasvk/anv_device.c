@@ -3275,7 +3275,6 @@ void anv_DestroyDevice(
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->slice_hash);
-   anv_state_pool_free(&device->dynamic_state_pool, device->cps_states);
 #endif
 
    anv_scratch_pool_finish(device, &device->scratch_pool);
@@ -4490,73 +4489,4 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 5u);
    return VK_SUCCESS;
-}
-
-VkResult anv_GetPhysicalDeviceFragmentShadingRatesKHR(
-    VkPhysicalDevice                            physicalDevice,
-    uint32_t*                                   pFragmentShadingRateCount,
-    VkPhysicalDeviceFragmentShadingRateKHR*     pFragmentShadingRates)
-{
-   ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceFragmentShadingRateKHR, out,
-                          pFragmentShadingRates, pFragmentShadingRateCount);
-
-#define append_rate(_samples, _width, _height)                                      \
-   do {                                                                             \
-      vk_outarray_append_typed(VkPhysicalDeviceFragmentShadingRateKHR, &out, __r) { \
-         __r->sampleCounts = _samples;                                              \
-         __r->fragmentSize = (VkExtent2D) {                                         \
-            .width = _width,                                                        \
-            .height = _height,                                                      \
-         };                                                                         \
-      }                                                                             \
-   } while (0)
-
-   VkSampleCountFlags sample_counts =
-      isl_device_get_sample_counts(&physical_device->isl_dev);
-
-   /* BSpec 47003: There are a number of restrictions on the sample count
-    * based off the coarse pixel size.
-    */
-   static const VkSampleCountFlags cp_size_sample_limits[] = {
-      [1]  = ISL_SAMPLE_COUNT_16_BIT | ISL_SAMPLE_COUNT_8_BIT |
-             ISL_SAMPLE_COUNT_4_BIT | ISL_SAMPLE_COUNT_2_BIT | ISL_SAMPLE_COUNT_1_BIT,
-      [2]  = ISL_SAMPLE_COUNT_4_BIT | ISL_SAMPLE_COUNT_2_BIT | ISL_SAMPLE_COUNT_1_BIT,
-      [4]  = ISL_SAMPLE_COUNT_4_BIT | ISL_SAMPLE_COUNT_2_BIT | ISL_SAMPLE_COUNT_1_BIT,
-      [8]  = ISL_SAMPLE_COUNT_2_BIT | ISL_SAMPLE_COUNT_1_BIT,
-      [16] = ISL_SAMPLE_COUNT_1_BIT,
-   };
-
-   for (uint32_t x = 4; x >= 1; x /= 2) {
-       for (uint32_t y = 4; y >= 1; y /= 2) {
-          if (physical_device->info.has_coarse_pixel_primitive_and_cb) {
-             /* BSpec 47003:
-              *   "CPsize 1x4 and 4x1 are not supported"
-              */
-             if ((x == 1 && y == 4) || (x == 4 && y == 1))
-                continue;
-
-             /* For size {1, 1}, the sample count must be ~0
-              *
-              * 4x2 is also a specially case.
-              */
-             if (x == 1 && y == 1)
-                append_rate(~0, x, y);
-             else if (x == 4 && y == 2)
-                append_rate(ISL_SAMPLE_COUNT_1_BIT, x, y);
-             else
-                append_rate(cp_size_sample_limits[x * y], x, y);
-          } else {
-             /* For size {1, 1}, the sample count must be ~0 */
-             if (x == 1 && y == 1)
-                append_rate(~0, x, y);
-             else
-                append_rate(sample_counts, x, y);
-          }
-       }
-   }
-
-#undef append_rate
-
-   return vk_outarray_status(&out);
 }
