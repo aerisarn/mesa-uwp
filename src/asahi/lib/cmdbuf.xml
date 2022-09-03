@@ -205,6 +205,7 @@
     <value name="2D Multisampled" value="4"/>
     <value name="3D" value="5"/>
     <value name="Cube" value="6"/>
+    <value name="Cube Array" value="7"/>
     <value name="2D Array Multisampled" value="8"/>
   </enum>
 

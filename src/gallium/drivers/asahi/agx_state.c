@@ -476,10 +476,16 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
-      if (state->target == PIPE_TEXTURE_3D)
+      if (state->target == PIPE_TEXTURE_3D) {
          cfg.depth = u_minify(texture->depth0, level);
-      else
-         cfg.depth = state->u.tex.last_layer - state->u.tex.first_layer + 1;
+      } else {
+         unsigned layers = state->u.tex.last_layer - state->u.tex.first_layer + 1;
+
+         if ((state->target == PIPE_TEXTURE_CUBE) || (state->target == PIPE_TEXTURE_CUBE_ARRAY))
+            layers /= 6;
+
+         cfg.depth = layers;
+      }
 
       if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
