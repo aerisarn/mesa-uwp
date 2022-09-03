@@ -3442,13 +3442,6 @@ struct anv_image {
       struct anv_surface primary_surface;
 
       /**
-       * A surface which shadows the main surface and may have different
-       * tiling. This is used for sampling using a tiling that isn't supported
-       * for other operations.
-       */
-      struct anv_surface shadow_surface;
-
-      /**
        * The base aux usage for this image.  For color images, this can be
        * either CCS_E or CCS_D depending on whether or not we can reliably
        * leave CCS on all the time.
@@ -3756,13 +3749,6 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                  uint32_t base_layer, uint32_t layer_count,
                  enum isl_aux_op ccs_op, union isl_color_value *clear_value,
                  bool predicate);
-
-void
-anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
-                         const struct anv_image *image,
-                         VkImageAspectFlagBits aspect,
-                         uint32_t base_level, uint32_t level_count,
-                         uint32_t base_layer, uint32_t layer_count);
 
 enum isl_aux_state ATTRIBUTE_PURE
 anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
