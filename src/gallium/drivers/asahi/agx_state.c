@@ -491,7 +491,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
       } else {
          assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
-         cfg.stride = AGX_RT_STRIDE_TILED;
+         cfg.unk_tiled = true;
       }
    }
 
@@ -770,8 +770,8 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          if (tex->modifier == DRM_FORMAT_MOD_LINEAR) {
             cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
          } else {
-            cfg.stride = tex->mipmapped ? AGX_RT_STRIDE_TILED_MIPMAPPED :
-                         AGX_RT_STRIDE_TILED;
+            cfg.unk_tiled = true;
+            cfg.levels = tex->base.last_level + 1;
          }
       };
    }
@@ -1358,9 +1358,10 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.address = agx_map_texture_gpu(rsrc, level, layer);
 
-      cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
-         (ail_get_linear_stride_B(&rsrc->layout, level) - 16) :
-         AGX_RT_STRIDE_TILED;
+      if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
+         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
+      else
+         cfg.unk_tiled = true;
    }
 
    agx_pack(record, BIND_TEXTURE, cfg) {

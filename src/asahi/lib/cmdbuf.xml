@@ -189,11 +189,13 @@
     <field name="Buffer" size="36" start="64" type="address" modifier="shr(4)"/>
     <!-- N.b. sRGB is not specified here -->
     <field name="Level" size="4" start="100" type="uint"/>
-    <!-- Off by 4? -->
-    <field name="Stride" size="24" start="104" type="hex" prefix="AGX_RT_STRIDE">
-      <value name="Tiled" value="0x100000"/>
-      <value name="Tiled, mipmapped" value="0x100009"/>
-    </field>
+
+    <!-- If layout is not linear -->
+    <field name="Levels" size="6" start="104" type="uint" modifier="minus(1)"/>
+    <field name="Unk tiled" size="1" start="124" type="bool"/>
+
+    <!-- If layout is linear. Off by 4? -->
+    <field name="Stride" size="24" start="104" type="hex"/>
 
     <!-- If layout is compressed -->
     <field name="Acceleration buffer" size="64" start="128" type="address"/>
@@ -240,6 +242,7 @@
     <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>
     <!-- Note that 3D/arrays cannot be linear. -->
     <field name="Depth" size="14" start="110" type="uint" modifier="minus(1)" default="1"/>
+    <field name="Unk tiled" size="1" start="126" type="bool"/>
   </struct>
 
   <enum name="Wrap">
