@@ -64,6 +64,15 @@ protected:
    agx_index wx, wy, wz, hx;
 };
 
+TEST_F(Optimizer, FloatCopyprop)
+{
+   CASE(agx_fadd_to(b, wz, agx_abs(agx_fmov(b, wx)), wy),
+        agx_fadd_to(b, wz, agx_abs(wx), wy));
+
+   CASE(agx_fadd_to(b, wz, agx_neg(agx_fmov(b, wx)), wy),
+        agx_fadd_to(b, wz, agx_neg(wx), wy));
+}
+
 TEST_F(Optimizer, FusedFABSNEG)
 {
    CASE(agx_fadd_to(b, wz, agx_fmov(b, agx_abs(wx)), wy),
@@ -71,6 +80,21 @@ TEST_F(Optimizer, FusedFABSNEG)
 
    CASE(agx_fmul_to(b, wz, wx, agx_fmov(b, agx_neg(agx_abs(wx)))),
         agx_fmul_to(b, wz, wx, agx_neg(agx_abs(wx))));
+}
+
+TEST_F(Optimizer, FusedFabsAbsorb)
+{
+   CASE(agx_fadd_to(b, wz, agx_abs(agx_fmov(b, agx_abs(wx))), wy),
+        agx_fadd_to(b, wz, agx_abs(wx), wy));
+}
+
+TEST_F(Optimizer, FusedFnegCancel)
+{
+   CASE(agx_fmul_to(b, wz, wx, agx_neg(agx_fmov(b, agx_neg(wx)))),
+        agx_fmul_to(b, wz, wx, wx));
+
+   CASE(agx_fmul_to(b, wz, wx, agx_neg(agx_fmov(b, agx_neg(agx_abs(wx))))),
+        agx_fmul_to(b, wz, wx, agx_abs(wx)));
 }
 
 TEST_F(Optimizer, Copyprop)
