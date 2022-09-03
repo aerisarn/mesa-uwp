@@ -1319,25 +1319,6 @@ get_scratch_space(const struct anv_shader_bin *bin)
    return ffs(bin->prog_data->total_scratch / 2048);
 }
 
-static UNUSED uint32_t
-get_scratch_surf(struct anv_pipeline *pipeline,
-                 gl_shader_stage stage,
-                 const struct anv_shader_bin *bin)
-{
-   if (bin->prog_data->total_scratch == 0)
-      return 0;
-
-   struct anv_bo *bo =
-      anv_scratch_pool_alloc(pipeline->device,
-                             &pipeline->device->scratch_pool,
-                             stage, bin->prog_data->total_scratch);
-   anv_reloc_list_add_bo(pipeline->batch.relocs,
-                         pipeline->batch.alloc, bo);
-   return anv_scratch_pool_get_surf(pipeline->device,
-                                    &pipeline->device->scratch_pool,
-                                    bin->prog_data->total_scratch) >> 4;
-}
-
 static void
 emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 {
