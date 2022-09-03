@@ -109,15 +109,11 @@ agx_map_surface(struct pipe_surface *surf)
 
 static void
 asahi_pack_iogpu_attachment(void *out, struct agx_resource *rsrc,
-                            struct pipe_surface *surf,
                             unsigned total_size)
 {
-   /* We don't support layered rendering yet */
-   assert(surf->u.tex.first_layer == surf->u.tex.last_layer);
-
    agx_pack(out, IOGPU_ATTACHMENT, cfg) {
       cfg.type = asahi_classify_attachment(rsrc->layout.format);
-      cfg.address = agx_map_surface_resource(surf, rsrc);
+      cfg.address = rsrc->bo->ptr.gpu;
       cfg.size = rsrc->layout.size_B;
       cfg.percent = (100 * cfg.size) / total_size;
    }
@@ -133,7 +129,6 @@ asahi_pack_iogpu_attachments(void *out, struct pipe_framebuffer_state *framebuff
    for (unsigned i = 0; i < framebuffer->nr_cbufs; ++i) {
       asahi_pack_iogpu_attachment(attachments + (nr++),
                                   agx_resource(framebuffer->cbufs[i]->texture),
-                                  framebuffer->cbufs[i],
                                   total_attachment_size);
    }
 
@@ -141,13 +136,11 @@ asahi_pack_iogpu_attachments(void *out, struct pipe_framebuffer_state *framebuff
          struct agx_resource *rsrc = agx_resource(framebuffer->zsbuf->texture);
 
          asahi_pack_iogpu_attachment(attachments + (nr++),
-                                     rsrc, framebuffer->zsbuf,
-                                     total_attachment_size);
+                                     rsrc, total_attachment_size);
 
          if (rsrc->separate_stencil) {
             asahi_pack_iogpu_attachment(attachments + (nr++),
                                         rsrc->separate_stencil,
-                                        framebuffer->zsbuf,
                                         total_attachment_size);
          }
    }
