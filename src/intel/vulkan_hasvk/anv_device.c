@@ -211,7 +211,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_external_semaphore                = true,
       .KHR_external_semaphore_fd             = true,
       .KHR_format_feature_flags2             = true,
-      .KHR_fragment_shading_rate             = device->info.ver >= 11,
       .KHR_get_memory_requirements2          = true,
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
@@ -262,7 +261,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
       .EXT_color_write_enable                = true,
       .EXT_conditional_rendering             = device->info.verx10 >= 75,
-      .EXT_conservative_rasterization        = device->info.ver >= 9,
       .EXT_custom_border_color               = device->info.ver >= 8,
       .EXT_depth_clamp_zero_one              = true,
       .EXT_depth_clip_control                = true,
@@ -274,7 +272,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_extended_dynamic_state2           = true,
       .EXT_external_memory_dma_buf           = true,
       .EXT_external_memory_host              = true,
-      .EXT_fragment_shader_interlock         = device->info.ver >= 9,
       .EXT_global_priority                   = device->max_context_priority >=
                                                INTEL_CONTEXT_MEDIUM_PRIORITY,
       .EXT_global_priority_query             = device->max_context_priority >=
@@ -296,7 +293,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_physical_device_drm               = true,
       .EXT_pipeline_creation_cache_control   = true,
       .EXT_pipeline_creation_feedback        = true,
-      .EXT_post_depth_coverage               = device->info.ver >= 9,
       .EXT_primitives_generated_query        = true,
       .EXT_primitive_topology_list_restart   = true,
       .EXT_private_data                      = true,
@@ -304,13 +300,11 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_queue_family_foreign              = true,
       .EXT_robustness2                       = true,
       .EXT_sample_locations                  = true,
-      .EXT_sampler_filter_minmax             = device->info.ver >= 9,
       .EXT_scalar_block_layout               = true,
       .EXT_separate_stencil_usage            = true,
       .EXT_shader_atomic_float               = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_module_identifier          = true,
-      .EXT_shader_stencil_export             = device->info.ver >= 9,
       .EXT_shader_subgroup_ballot            = true,
       .EXT_shader_subgroup_vote              = true,
       .EXT_shader_viewport_index_layer       = true,
@@ -1128,7 +1122,7 @@ void anv_GetPhysicalDeviceFeatures(
                                                   pdevice->info.has_64bit_float,
       .shaderInt64                              = pdevice->info.ver >= 8,
       .shaderInt16                              = pdevice->info.ver >= 8,
-      .shaderResourceMinLod                     = pdevice->info.ver >= 9,
+      .shaderResourceMinLod                     = false,
       .variableMultisampleRate                  = true,
       .inheritedQueries                         = true,
    };
@@ -1206,7 +1200,7 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->descriptorBindingVariableDescriptorCount           = false;
    f->runtimeDescriptorArray                             = false;
 
-   f->samplerFilterMinmax                 = pdevice->info.ver >= 9;
+   f->samplerFilterMinmax                 = false;
    f->scalarBlockLayout                   = true;
    f->imagelessFramebuffer                = true;
    f->uniformBufferStandardLayout         = true;
@@ -1314,7 +1308,7 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *features =
             (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *)ext;
          features->image2DViewOf3D = true;
-         features->sampler2DViewOf3D = pdevice->info.ver >= 9;
+         features->sampler2DViewOf3D = false;
          break;
       }
 
@@ -1356,31 +1350,10 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
-         VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *features =
-            (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *)ext;
-         features->fragmentShaderSampleInterlock = pdevice->info.ver >= 9;
-         features->fragmentShaderPixelInterlock = pdevice->info.ver >= 9;
-         features->fragmentShaderShadingRateInterlock = false;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
          VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features =
             (VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *)ext;
          features->globalPriorityQuery = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
-         VkPhysicalDeviceFragmentShadingRateFeaturesKHR *features =
-            (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
-         features->attachmentFragmentShadingRate = false;
-         features->pipelineFragmentShadingRate = true;
-         features->primitiveFragmentShadingRate =
-            pdevice->info.has_coarse_pixel_primitive_and_cb;
-         features->attachmentFragmentShadingRate =
-            pdevice->info.has_coarse_pixel_primitive_and_cb;
          break;
       }
 
@@ -1405,7 +1378,7 @@ void anv_GetPhysicalDeviceFeatures2(
           * supported for wide lines prior to ICL.  See rasterization_mode for
           * details and how the HW states are programmed.
           */
-         features->rectangularLines = pdevice->info.ver >= 10;
+         features->rectangularLines = false;
          features->bresenhamLines = true;
          /* Support for Smooth lines with MSAA was removed on gfx11.  From the
           * BSpec section "Multisample ModesState" table for "AA Line Support
@@ -1965,8 +1938,8 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->independentResolveNone  = true;
    p->independentResolve      = true;
 
-   p->filterMinmaxSingleComponentFormats  = pdevice->info.ver >= 9;
-   p->filterMinmaxImageComponentMapping   = pdevice->info.ver >= 9;
+   p->filterMinmaxSingleComponentFormats  = false;
+   p->filterMinmaxImageComponentMapping   = false;
 
    p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
 
@@ -1999,9 +1972,9 @@ anv_get_physical_device_properties_1_3(struct anv_physical_device *pdevice,
    p->integerDotProduct8BitUnsignedAccelerated = false;
    p->integerDotProduct8BitSignedAccelerated = false;
    p->integerDotProduct8BitMixedSignednessAccelerated = false;
-   p->integerDotProduct4x8BitPackedUnsignedAccelerated = pdevice->info.ver >= 12;
-   p->integerDotProduct4x8BitPackedSignedAccelerated = pdevice->info.ver >= 12;
-   p->integerDotProduct4x8BitPackedMixedSignednessAccelerated = pdevice->info.ver >= 12;
+   p->integerDotProduct4x8BitPackedUnsignedAccelerated = false;
+   p->integerDotProduct4x8BitPackedSignedAccelerated = false;
+   p->integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
    p->integerDotProduct16BitUnsignedAccelerated = false;
    p->integerDotProduct16BitSignedAccelerated = false;
    p->integerDotProduct16BitMixedSignednessAccelerated = false;
@@ -2014,9 +1987,9 @@ anv_get_physical_device_properties_1_3(struct anv_physical_device *pdevice,
    p->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
-   p->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = pdevice->info.ver >= 12;
-   p->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = pdevice->info.ver >= 12;
-   p->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = pdevice->info.ver >= 12;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = false;
    p->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
@@ -2086,85 +2059,10 @@ void anv_GetPhysicalDeviceProperties2(
          continue;
 
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
-         /* TODO: Real limits */
-         VkPhysicalDeviceConservativeRasterizationPropertiesEXT *properties =
-            (VkPhysicalDeviceConservativeRasterizationPropertiesEXT *)ext;
-         /* There's nothing in the public docs about this value as far as I
-          * can tell.  However, this is the value the Windows driver reports
-          * and there's a comment on a rejected HW feature in the internal
-          * docs that says:
-          *
-          *    "This is similar to conservative rasterization, except the
-          *    primitive area is not extended by 1/512 and..."
-          *
-          * That's a bit of an obtuse reference but it's the best we've got
-          * for now.
-          */
-         properties->primitiveOverestimationSize = 1.0f / 512.0f;
-         properties->maxExtraPrimitiveOverestimationSize = 0.0f;
-         properties->extraPrimitiveOverestimationSizeGranularity = 0.0f;
-         properties->primitiveUnderestimation = false;
-         properties->conservativePointAndLineRasterization = false;
-         properties->degenerateTrianglesRasterized = true;
-         properties->degenerateLinesRasterized = false;
-         properties->fullyCoveredFragmentShaderInputVariable = false;
-         properties->conservativeRasterizationPostDepthCoverage = true;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
          properties->maxCustomBorderColorSamplers = MAX_CUSTOM_BORDER_COLORS;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
-         VkPhysicalDeviceFragmentShadingRatePropertiesKHR *props =
-            (VkPhysicalDeviceFragmentShadingRatePropertiesKHR *)ext;
-         props->primitiveFragmentShadingRateWithMultipleViewports =
-            pdevice->info.has_coarse_pixel_primitive_and_cb;
-         props->layeredShadingRateAttachments = pdevice->info.has_coarse_pixel_primitive_and_cb;
-         props->fragmentShadingRateNonTrivialCombinerOps =
-            pdevice->info.has_coarse_pixel_primitive_and_cb;
-         props->maxFragmentSize = (VkExtent2D) { 4, 4 };
-         props->maxFragmentSizeAspectRatio =
-            pdevice->info.has_coarse_pixel_primitive_and_cb ?
-            2 : 4;
-         props->maxFragmentShadingRateCoverageSamples = 4 * 4 *
-            (pdevice->info.has_coarse_pixel_primitive_and_cb ? 4 : 16);
-         props->maxFragmentShadingRateRasterizationSamples =
-            pdevice->info.has_coarse_pixel_primitive_and_cb ?
-            VK_SAMPLE_COUNT_4_BIT :  VK_SAMPLE_COUNT_16_BIT;
-         props->fragmentShadingRateWithShaderDepthStencilWrites = false;
-         props->fragmentShadingRateWithSampleMask = true;
-         props->fragmentShadingRateWithShaderSampleMask = false;
-         props->fragmentShadingRateWithConservativeRasterization = true;
-         props->fragmentShadingRateWithFragmentShaderInterlock = true;
-         props->fragmentShadingRateWithCustomSampleLocations = true;
-
-         /* Fix in DG2_G10_C0 and DG2_G11_B0. Consider any other Sku as having
-          * the fix.
-          */
-         props->fragmentShadingRateStrictMultiplyCombiner =
-            pdevice->info.platform == INTEL_PLATFORM_DG2_G10 ?
-            pdevice->info.revision >= 8 :
-            pdevice->info.platform == INTEL_PLATFORM_DG2_G11 ?
-            pdevice->info.revision >= 4 : true;
-
-         if (pdevice->info.has_coarse_pixel_primitive_and_cb) {
-            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 8, 8 };
-            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 8, 8 };
-            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 1;
-         } else {
-            /* Those must be 0 if attachmentFragmentShadingRate is not
-             * supported.
-             */
-            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
-            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
-            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
-         }
          break;
       }
 

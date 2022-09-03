@@ -576,9 +576,6 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
       if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
          flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
-      if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && devinfo->ver >= 9)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
-
       if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
          flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
 
@@ -611,9 +608,6 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
                 VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
 
       flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
-
-      if (devinfo->ver >= 9)
-         flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
 
       if (isl_format_supports_filtering(devinfo, plane_format.isl_format))
          flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
