@@ -116,10 +116,6 @@
  * issues: using intrinsics where available, falling back to library
  * implementations where not.
  */
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1
-#endif
-#include <windows.h>
 #include <intrin.h>
 #include <assert.h>
 
@@ -142,7 +138,7 @@
 #define p_atomic_inc_return(_v) (\
    sizeof *(_v) == sizeof(short)   ? _InterlockedIncrement16((short *)  (_v)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedIncrement  ((long *)   (_v)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedIncrement64 ((__int64 *)(_v)) : \
+   sizeof *(_v) == sizeof(__int64) ? _interlockedincrement64((__int64 *)(_v)) : \
                                      (assert(!"should not get here"), 0))
 
 #define p_atomic_dec(_v) \
@@ -151,41 +147,41 @@
 #define p_atomic_dec_return(_v) (\
    sizeof *(_v) == sizeof(short)   ? _InterlockedDecrement16((short *)  (_v)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedDecrement  ((long *)   (_v)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedDecrement64 ((__int64 *)(_v)) : \
+   sizeof *(_v) == sizeof(__int64) ? _interlockeddecrement64((__int64 *)(_v)) : \
                                      (assert(!"should not get here"), 0))
 
 #define p_atomic_add(_v, _i) \
    ((void) p_atomic_fetch_add((_v), (_i)))
 
 #define p_atomic_add_return(_v, _i) (\
-   sizeof *(_v) == sizeof(long)    ? InterlockedAdd  ((long *)   (_v), (_i)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedAdd64((__int64 *)(_v), (_i)) : \
+   sizeof *(_v) == sizeof(long)    ? _interlockedadd  ((long *)   (_v), (_i)) : \
+   sizeof *(_v) == sizeof(__int64) ? _interlockedadd64((__int64 *)(_v), (_i)) : \
                                      (assert(!"should not get here"), 0))
 
 #define p_atomic_fetch_add(_v, _i) (\
    sizeof *(_v) == sizeof(char)    ? _InterlockedExchangeAdd8 ((char *)   (_v), (_i)) : \
    sizeof *(_v) == sizeof(short)   ? _InterlockedExchangeAdd16((short *)  (_v), (_i)) : \
-   sizeof *(_v) == sizeof(long)    ? InterlockedExchangeAdd  ((long *)   (_v), (_i)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedExchangeAdd64((__int64 *)(_v), (_i)) : \
+   sizeof *(_v) == sizeof(long)    ? _InterlockedExchangeAdd  ((long *)   (_v), (_i)) : \
+   sizeof *(_v) == sizeof(__int64) ? _interlockedexchangeadd64((__int64 *)(_v), (_i)) : \
                                      (assert(!"should not get here"), 0))
 
 #define p_atomic_cmpxchg(_v, _old, _new) (\
    sizeof *(_v) == sizeof(char)    ? _InterlockedCompareExchange8 ((char *)   (_v), (char)   (_new), (char)   (_old)) : \
    sizeof *(_v) == sizeof(short)   ? _InterlockedCompareExchange16((short *)  (_v), (short)  (_new), (short)  (_old)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedCompareExchange  ((long *)   (_v), (long)   (_new), (long)   (_old)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedCompareExchange64 ((__int64 *)(_v), (__int64)(_new), (__int64)(_old)) : \
+   sizeof *(_v) == sizeof(__int64) ? _InterlockedCompareExchange64((__int64 *)(_v), (__int64)(_new), (__int64)(_old)) : \
                                      (assert(!"should not get here"), 0))
 
 #if defined(_WIN64)
-#define p_atomic_cmpxchg_ptr(_v, _old, _new) (void *)InterlockedCompareExchange64((__int64 *)(_v), (__int64)(_new), (__int64)(_old))
+#define p_atomic_cmpxchg_ptr(_v, _old, _new) (void *)_InterlockedCompareExchange64((__int64 *)(_v), (__int64)(_new), (__int64)(_old))
 #else
-#define p_atomic_cmpxchg_ptr(_v, _old, _new) (void *)InterlockedCompareExchange((long *)(_v), (long)(_new), (long)(_old))
+#define p_atomic_cmpxchg_ptr(_v, _old, _new) (void *)_InterlockedCompareExchange((long *)(_v), (long)(_new), (long)(_old))
 #endif
 
 #define PIPE_NATIVE_ATOMIC_XCHG
 #define p_atomic_xchg(_v, _new) (\
-   sizeof *(_v) == sizeof(long)    ? InterlockedExchange  ((long *)   (_v), (long)   (_new)) : \
-   sizeof *(_v) == sizeof(__int64) ? InterlockedExchange64((__int64 *)(_v), (__int64)(_new)) : \
+   sizeof *(_v) == sizeof(long)    ? _InterlockedExchange  ((long *)   (_v), (long)   (_new)) : \
+   sizeof *(_v) == sizeof(__int64) ? _interlockedexchange64((__int64 *)(_v), (__int64)(_new)) : \
                                      (assert(!"should not get here"), 0))
 
 #endif
