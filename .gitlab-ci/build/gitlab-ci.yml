@@ -405,7 +405,6 @@ debian-clang:
     CPP_ARGS: >
       -Wno-error=c99-designator
       -Wno-error=implicit-const-int-float-conversion
-      -Wno-error=missing-braces
       -Wno-error=overloaded-virtual
       -Wno-error=tautological-constant-out-of-range-compare
       -Wno-error=unused-const-variable
