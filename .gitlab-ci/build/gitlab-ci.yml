@@ -186,6 +186,7 @@ debian-build-testing:
   script:
     - .gitlab-ci/lava/lava-pytest.sh
     - .gitlab-ci/run-shellcheck.sh
+    - .gitlab-ci/run-yamllint.sh
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
 

@@ -51,6 +51,7 @@ apt-get install -y --no-remove \
       shellcheck \
       strace \
       time \
+      yamllint \
       zstd
 
 
