@@ -24,6 +24,23 @@
 #include <gtest/gtest.h>
 #include "layout.h"
 
+TEST(Cubemap, Nonmipmapped)
+{
+   struct ail_layout layout = {
+      .width_px = 512,
+      .height_px = 512,
+      .depth_px = 6,
+      .levels = 1,
+      .tiling = AIL_TILING_TWIDDLED,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+   };
+
+   ail_make_miptree(&layout);
+
+   EXPECT_EQ(layout.layer_stride_B, ALIGN_POT(512 * 512 * 4, 0x4000));
+   EXPECT_EQ(layout.size_B, ALIGN_POT(512 * 512 * 4 * 6, 0x4000));
+}
+
 TEST(Miptree, SmokeTestBuffer)
 {
    struct ail_layout layout = {

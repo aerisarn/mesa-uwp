@@ -101,7 +101,7 @@ ail_initialize_twiddled(struct ail_layout *layout)
    /* First allocate the large miptree. All tiles in the large miptree are of
     * size tilesize_el and have their dimensions given by stx/sty/sarea.
     */
-   for (unsigned l = 0; l < pot_level; ++l) {
+   for (unsigned l = 0; l < MIN2(pot_level, layout->levels); ++l) {
       unsigned tiles = (sarea_tiles >> (2 * l));
 
       bool pad_left = (stx_tiles & BITFIELD_MASK(l));
