@@ -234,7 +234,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_sampler_mirror_clamp_to_edge      = true,
       .KHR_sampler_ycbcr_conversion          = true,
       .KHR_separate_depth_stencil_layouts    = true,
-      .KHR_shader_atomic_int64               = device->info.ver >= 9,
       .KHR_shader_clock                      = true,
       .KHR_shader_draw_parameters            = true,
       .KHR_shader_float16_int8               = device->info.ver >= 8,
@@ -309,7 +308,6 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_scalar_block_layout               = true,
       .EXT_separate_stencil_usage            = true,
       .EXT_shader_atomic_float               = true,
-      .EXT_shader_atomic_float2              = device->info.ver >= 9,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_module_identifier          = true,
       .EXT_shader_stencil_export             = device->info.ver >= 9,
@@ -1181,7 +1179,7 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->storageBuffer8BitAccess             = pdevice->info.ver >= 8;
    f->uniformAndStorageBuffer8BitAccess   = pdevice->info.ver >= 8;
    f->storagePushConstant8                = pdevice->info.ver >= 8;
-   f->shaderBufferInt64Atomics            = pdevice->info.ver >= 9;
+   f->shaderBufferInt64Atomics            = false;
    f->shaderSharedInt64Atomics            = false;
    f->shaderFloat16                       = pdevice->info.ver >= 8;
    f->shaderInt8                          = pdevice->info.ver >= 8;
@@ -1487,24 +1485,6 @@ void anv_GetPhysicalDeviceFeatures2(
          features->shaderImageFloat32AtomicAdd =   false;
          features->sparseImageFloat32Atomics =     false;
          features->sparseImageFloat32AtomicAdd =   false;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
-         VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features = (void *)ext;
-         features->shaderBufferFloat16Atomics      = false;
-         features->shaderBufferFloat16AtomicAdd    = false;
-         features->shaderBufferFloat16AtomicMinMax = false;
-         features->shaderBufferFloat32AtomicMinMax = pdevice->info.ver >= 9;
-         features->shaderBufferFloat64AtomicMinMax =
-            pdevice->info.has_64bit_float && pdevice->info.has_lsc;
-         features->shaderSharedFloat16Atomics      = false;
-         features->shaderSharedFloat16AtomicAdd    = false;
-         features->shaderSharedFloat16AtomicMinMax = false;
-         features->shaderSharedFloat32AtomicMinMax = pdevice->info.ver >= 9;
-         features->shaderSharedFloat64AtomicMinMax = false;
-         features->shaderImageFloat32AtomicMinMax  = false;
-         features->sparseImageFloat32AtomicMinMax  = false;
          break;
       }
 

@@ -647,7 +647,7 @@ build_buffer_addr_for_deref(nir_builder *b, nir_deref_instr *deref,
 
 static bool
 try_lower_direct_buffer_intrinsic(nir_builder *b,
-                                  nir_intrinsic_instr *intrin, bool is_atomic,
+                                  nir_intrinsic_instr *intrin,
                                   struct apply_pipeline_layout_state *state)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
@@ -664,13 +664,6 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
    nir_address_format addr_format = descriptor_address_format(desc, state);
 
    if (nir_deref_mode_is(deref, nir_var_mem_ssbo)) {
-      /* 64-bit atomics only support A64 messages so we can't lower them to
-       * the index+offset model.
-       */
-      if (is_atomic && nir_dest_bit_size(intrin->dest) == 64 &&
-          !state->pdevice->info.has_lsc)
-         return false;
-
       /* Normal binding table-based messages can't handle non-uniform access
        * so we have to fall back to A64.
        */
@@ -753,8 +746,6 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
-      return try_lower_direct_buffer_intrinsic(b, intrin, false, state);
-
    case nir_intrinsic_deref_atomic_add:
    case nir_intrinsic_deref_atomic_imin:
    case nir_intrinsic_deref_atomic_umin:
@@ -769,7 +760,7 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
    case nir_intrinsic_deref_atomic_fmin:
    case nir_intrinsic_deref_atomic_fmax:
    case nir_intrinsic_deref_atomic_fcomp_swap:
-      return try_lower_direct_buffer_intrinsic(b, intrin, true, state);
+      return try_lower_direct_buffer_intrinsic(b, intrin, state);
 
    case nir_intrinsic_get_ssbo_size: {
       /* The get_ssbo_size intrinsic always just takes a
