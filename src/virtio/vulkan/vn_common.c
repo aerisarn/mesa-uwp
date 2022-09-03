@@ -22,21 +22,25 @@
 #define VN_RELAX_MIN_BASE_SLEEP_US (160)
 
 static const struct debug_control vn_debug_options[] = {
+   /* clang-format off */
    { "init", VN_DEBUG_INIT },
    { "result", VN_DEBUG_RESULT },
    { "vtest", VN_DEBUG_VTEST },
    { "wsi", VN_DEBUG_WSI },
    { "no_abort", VN_DEBUG_NO_ABORT },
    { NULL, 0 },
+   /* clang-format on */
 };
 
 static const struct debug_control vn_perf_options[] = {
+   /* clang-format off */
    { "no_async_set_alloc", VN_PERF_NO_ASYNC_SET_ALLOC },
    { "no_async_buffer_create", VN_PERF_NO_ASYNC_BUFFER_CREATE },
    { "no_async_queue_submit", VN_PERF_NO_ASYNC_QUEUE_SUBMIT },
    { "no_event_feedback", VN_PERF_NO_EVENT_FEEDBACK },
    { "no_fence_feedback", VN_PERF_NO_FENCE_FEEDBACK },
    { NULL, 0 },
+   /* clang-format on */
 };
 
 struct vn_env vn_env;

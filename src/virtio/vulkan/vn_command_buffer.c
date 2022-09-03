@@ -426,10 +426,8 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
 
    if (pass->present_release_count) {
       vn_cmd_transfer_present_src_images(
-         cmd, false,
-         images + pass->present_acquire_count,
-         pass->present_release_attachments,
-         pass->present_release_count);
+         cmd, false, images + pass->present_acquire_count,
+         pass->present_release_attachments, pass->present_release_count);
    }
 
    vk_free(&cmd->allocator, images);

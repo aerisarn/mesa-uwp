@@ -32,7 +32,10 @@
       (head).pNext = &(elem);                                                \
    } while (0)
 #define VN_ADD_EXT_TO_PNEXT(ext, elem, s_type, head)                         \
-   if (ext) VN_ADD_TO_PNEXT(elem, s_type, head)
+   do {                                                                      \
+      if (ext)                                                               \
+         VN_ADD_TO_PNEXT(elem, s_type, head);                                \
+   } while (0)
 
 static void
 vn_physical_device_init_features(struct vn_physical_device *physical_dev)
@@ -168,7 +171,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        CUSTOM_BORDER_COLOR_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_depth_clip_enable, feats->depth_clip_enable,
                        DEPTH_CLIP_ENABLE_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_image_view_min_lod, feats->image_view_min_lod,
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_image_view_min_lod,
+                       feats->image_view_min_lod,
                        IMAGE_VIEW_MIN_LOD_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_index_type_uint8, feats->index_type_uint8,
                        INDEX_TYPE_UINT8_FEATURES_EXT, features2);
@@ -177,7 +181,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        LINE_RASTERIZATION_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_primitive_topology_list_restart,
                        feats->primitive_topology_list_restart,
-                       PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, features2);
+                       PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT,
+                       features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_private_data, feats->private_data,
                        PRIVATE_DATA_FEATURES, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, feats->provoking_vertex,
@@ -1118,13 +1123,14 @@ vn_physical_device_get_passthrough_extensions(
        * VkPhysicalDevicePrivateDataFeaturesEXT, and (c) modify its bits in
        * VkPhysicalDeviceVulkan13Features.
        *
-       * For now, we implement the extension functions natively by using Mesa's
-       * commong implementation. We passthrough VkDevicePrivateDataCreateInfoEXT
-       * to the renderer, which is harmless. We passthrough the extension
-       * enablement and feature bits to the renderer because otherwise
-       * VkDevicePrivateDataCreateInfoEXT would cause invalid usage in the
-       * renderer. Therefore, even though we implement the extension natively,
-       * we expose the extension only if the renderer supports it too.
+       * For now, we implement the extension functions natively by using
+       * Mesa's commong implementation. We passthrough
+       * VkDevicePrivateDataCreateInfoEXT to the renderer, which is harmless.
+       * We passthrough the extension enablement and feature bits to the
+       * renderer because otherwise VkDevicePrivateDataCreateInfoEXT would
+       * cause invalid usage in the renderer. Therefore, even though we
+       * implement the extension natively, we expose the extension only if the
+       * renderer supports it too.
        */
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
@@ -1597,7 +1603,8 @@ vn_EnumeratePhysicalDevices(VkInstance _instance,
    if (result != VK_SUCCESS)
       return vn_error(instance, result);
 
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices, pPhysicalDeviceCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,
+                          pPhysicalDeviceCount);
    for (uint32_t i = 0; i < instance->physical_device.device_count; i++) {
       vk_outarray_append_typed(VkPhysicalDevice, &out, physical_dev) {
          *physical_dev = vn_physical_device_to_handle(
@@ -1645,7 +1652,8 @@ vn_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    if (pLayerName)
       return vn_error(physical_dev->instance, VK_ERROR_LAYER_NOT_PRESENT);
 
-   VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties, pPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties,
+                          pPropertyCount);
    for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       if (physical_dev->base.base.supported_extensions.extensions[i]) {
          vk_outarray_append_typed(VkExtensionProperties, &out, prop) {

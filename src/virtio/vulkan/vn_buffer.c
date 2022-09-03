@@ -15,8 +15,8 @@
 
 #include "vn_android.h"
 #include "vn_device.h"
-#include "vn_physical_device.h"
 #include "vn_device_memory.h"
+#include "vn_physical_device.h"
 
 /* buffer commands */
 
