@@ -282,10 +282,6 @@ blorp_exec_on_render(struct blorp_batch *batch,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
    assert(cmd_buffer->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT);
 
-   const unsigned scale = params->fast_clear_op ? UINT_MAX : 1;
-   genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, params->x1 - params->x0,
-                                      params->y1 - params->y0, scale);
-
 #if GFX_VER >= 11
    /* The PIPE_CONTROL command description says:
     *
@@ -300,10 +296,6 @@ blorp_exec_on_render(struct blorp_batch *batch,
                              ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
                              "before blorp BTI change");
 #endif
-
-   if (params->depth.enabled &&
-       !(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
-      genX(cmd_buffer_emit_gfx12_depth_wa)(cmd_buffer, &params->depth.surf);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
