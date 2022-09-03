@@ -385,7 +385,6 @@ anv_update_meminfo(struct anv_physical_device *device, int fd)
    device->sys.available = devinfo->mem.sram.mappable.free;
 }
 
-
 static VkResult
 anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 {
@@ -1757,9 +1756,7 @@ void anv_GetPhysicalDeviceProperties(
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,
       .deviceID = pdevice->info.pci_device_id,
-      .deviceType = pdevice->info.has_local_mem ?
-                    VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
-                    VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
+      .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = limits,
       .sparseProperties = {0}, /* Broadwell doesn't do sparse. */
    };
