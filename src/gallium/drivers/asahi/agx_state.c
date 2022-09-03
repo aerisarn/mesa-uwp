@@ -452,7 +452,6 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    util_format_compose_swizzles(desc->swizzle, view_swizzle, out_swizzle);
 
-   unsigned level = state->u.tex.first_level;
    assert(state->u.tex.first_layer == 0);
 
    /* Must tile array textures */
@@ -468,16 +467,17 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(out_swizzle[3]);
-      cfg.width = u_minify(texture->width0, level);
-      cfg.height = u_minify(texture->height0, level);
-      cfg.levels = state->u.tex.last_level - level + 1;
+      cfg.width = texture->width0;
+      cfg.height = texture->height0;
+      cfg.first_level = state->u.tex.first_level;
+      cfg.last_level = state->u.tex.last_level;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = agx_map_texture_gpu(rsrc, level, state->u.tex.first_layer);
+      cfg.address = agx_map_texture_gpu(rsrc, state->u.tex.first_layer);
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
       if (state->target == PIPE_TEXTURE_3D) {
-         cfg.depth = u_minify(texture->depth0, level);
+         cfg.depth = texture->depth0;
       } else {
          unsigned layers = state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
@@ -488,7 +488,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       }
 
       if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
-         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
+         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, 0) - 16;
       } else {
          assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
          cfg.unk_tiled = true;
@@ -762,7 +762,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.level = surf->u.tex.level;
-         cfg.buffer = agx_map_texture_gpu(tex, 0, layer);
+         cfg.buffer = agx_map_texture_gpu(tex, layer);
 
          if (tex->mipmapped)
             cfg.unk_55 = 0x8;
@@ -1334,32 +1334,30 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
 
    agx_pack(texture.cpu, TEXTURE, cfg) {
       struct agx_resource *rsrc = agx_resource(surf->texture);
-      unsigned level = surf->u.tex.level;
       unsigned layer = surf->u.tex.first_layer;
       const struct util_format_description *desc =
          util_format_description(surf->format);
 
-      /* To reduce shader variants, we always use a non-mipmapped 2D texture.
-       * For reloads of arrays, cube maps, etc -- we only logically reload a
-       * single 2D image. This does mean we need to be careful about
-       * width/height and address.
+      /* To reduce shader variants, we always use a 2D texture. For reloads of
+       * arrays and cube maps, we map a single layer as a 2D image.
        */
       cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-
       cfg.layout = agx_translate_layout(rsrc->modifier);
       cfg.format = agx_pixel_format[surf->format].hw;
       cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
       cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
-      cfg.width = u_minify(surf->width, level);
-      cfg.height = u_minify(surf->height, level);
-      cfg.levels = 1;
+      cfg.width = surf->width;
+      cfg.height = surf->height;
+      cfg.first_level = surf->u.tex.level;
+      cfg.last_level = surf->u.tex.level;
+      cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = agx_map_texture_gpu(rsrc, level, layer);
+      cfg.address = agx_map_texture_gpu(rsrc, layer);
 
       if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
-         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, level) - 16;
+         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, surf->u.tex.level) - 16;
       else
          cfg.unk_tiled = true;
    }

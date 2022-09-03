@@ -226,8 +226,8 @@
     <field name="Swizzle A" size="3" start="25" type="Channel" default="A"/>
     <field name="Width" size="14" start="28" type="uint" modifier="minus(1)"/>
     <field name="Height" size="14" start="42" type="uint" modifier="minus(1)"/>
-    <!-- Note multisampled textures can't be mipmapped -->
-    <field name="Levels" size="6" start="60" type="uint" modifier="minus(1)"/>
+    <field name="First level" size="4" start="56" type="uint"/>
+    <field name="Last level" size="4" start="60" type="uint"/>
     <field name="Samples" size="1" start="64" type="Sample Count"/>
     <field name="Address" size="36" start="66" type="hex" modifier="shr(4)"/>
     <!-- Unknown bit set by Metal when mipmapping. Might relate to a mechanism

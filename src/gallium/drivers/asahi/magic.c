@@ -98,7 +98,7 @@ asahi_classify_attachment(enum pipe_format format)
 static uint64_t
 agx_map_surface_resource(struct pipe_surface *surf, struct agx_resource *rsrc)
 {
-   return agx_map_texture_gpu(rsrc, surf->u.tex.level, surf->u.tex.first_layer);
+   return agx_map_texture_gpu(rsrc, surf->u.tex.first_layer);
 }
 
 static uint64_t
@@ -216,6 +216,13 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
          cfg.stencil_buffer = stencil_buffer;
          cfg.stencil_buffer_2 = stencil_buffer;
+
+         /* It's unclear how tile size is conveyed for depth/stencil targets,
+          * which interactions with mipmapping (for example of a 33x33
+          * depth/stencil attachment)
+          */
+         if (zsbuf->u.tex.level != 0)
+            unreachable("todo: mapping other levels");
 
          cfg.depth_buffer = depth_buffer;
          cfg.depth_buffer_if_clearing = depth_buffer;
