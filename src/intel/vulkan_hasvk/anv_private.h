@@ -2337,12 +2337,6 @@ struct anv_push_constants {
    /* Robust access pushed registers. */
    uint64_t push_reg_mask[MESA_SHADER_STAGES];
 
-   /** Ray query globals (RT_DISPATCH_GLOBALS) */
-   uint64_t ray_query_globals;
-
-   /* Base addresses for descriptor sets */
-   uint64_t desc_sets[MAX_SETS];
-
    struct {
       /** Base workgroup ID
        *

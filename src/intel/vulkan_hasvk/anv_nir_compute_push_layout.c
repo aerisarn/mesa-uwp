@@ -67,13 +67,6 @@ anv_nir_compute_push_layout(nir_shader *nir,
                break;
             }
 
-            case nir_intrinsic_load_desc_set_address_intel:
-               push_start = MIN2(push_start,
-                  offsetof(struct anv_push_constants, desc_sets));
-               push_end = MAX2(push_end, push_start +
-                  sizeof_field(struct anv_push_constants, desc_sets));
-               break;
-
             default:
                break;
             }
@@ -162,17 +155,6 @@ anv_nir_compute_push_layout(nir_shader *nir,
                   nir_intrinsic_set_base(intrin,
                                          nir_intrinsic_base(intrin) -
                                          base_offset);
-                  break;
-               }
-
-               case nir_intrinsic_load_desc_set_address_intel: {
-                  b->cursor = nir_before_instr(&intrin->instr);
-                  nir_ssa_def *pc_load = nir_load_uniform(b, 1, 64,
-                     nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint64_t)),
-                     .base = offsetof(struct anv_push_constants, desc_sets),
-                     .range = sizeof_field(struct anv_push_constants, desc_sets),
-                     .dest_type = nir_type_uint64);
-                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa, pc_load);
                   break;
                }
 
