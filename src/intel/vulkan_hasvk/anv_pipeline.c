@@ -552,8 +552,7 @@ static void
 anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                        void *mem_ctx,
                        struct anv_pipeline_stage *stage,
-                       struct anv_pipeline_layout *layout,
-                       bool use_primitive_replication)
+                       struct anv_pipeline_layout *layout)
 {
    const struct anv_physical_device *pdevice = pipeline->device->physical;
    const struct brw_compiler *compiler = pdevice->compiler;
@@ -575,8 +574,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    if (pipeline->type == ANV_PIPELINE_GRAPHICS) {
       struct anv_graphics_pipeline *gfx_pipeline =
          anv_pipeline_to_graphics(pipeline);
-      NIR_PASS(_, nir, anv_nir_lower_multiview, gfx_pipeline->view_mask,
-               use_primitive_replication);
+      NIR_PASS(_, nir, anv_nir_lower_multiview, gfx_pipeline->view_mask);
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
@@ -1354,24 +1352,6 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
       next_stage = &stages[s];
    }
 
-   bool use_primitive_replication = false;
-   if (pipeline->base.device->info->ver >= 12 &&
-       pipeline->view_mask != 0) {
-      /* For some pipelines HW Primitive Replication can be used instead of
-       * instancing to implement Multiview.  This depend on how viewIndex is
-       * used in all the active shaders, so this check can't be done per
-       * individual shaders.
-       */
-      nir_shader *shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
-      for (unsigned s = 0; s < ARRAY_SIZE(shaders); s++)
-         shaders[s] = stages[s].nir;
-
-      use_primitive_replication =
-         anv_check_for_primitive_replication(pipeline->base.device,
-                                             pipeline->active_stages,
-                                             shaders, pipeline->view_mask);
-   }
-
    struct anv_pipeline_stage *prev_stage = NULL;
    for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
       gl_shader_stage s = graphics_shader_order[i];
@@ -1382,8 +1362,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
 
       void *stage_ctx = ralloc_context(NULL);
 
-      anv_pipeline_lower_nir(&pipeline->base, stage_ctx, &stages[s], layout,
-                             use_primitive_replication);
+      anv_pipeline_lower_nir(&pipeline->base, stage_ctx, &stages[s], layout);
 
       if (prev_stage && compiler->nir_options[s]->unify_interfaces) {
          prev_stage->nir->info.outputs_written |= stages[s].nir->info.inputs_read &
@@ -1574,8 +1553,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          return vk_error(pipeline, VK_ERROR_UNKNOWN);
       }
 
-      anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout,
-                             false /* use_primitive_replication */);
+      anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
 
       unsigned local_size = stage.nir->info.workgroup_size[0] *
                             stage.nir->info.workgroup_size[1] *
@@ -1825,17 +1803,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pipeline->vb[b].instance_divisor = state->vi->bindings[b].divisor;
    }
 
-   /* Our implementation of VK_KHR_multiview uses instancing to draw the
-    * different views when primitive replication cannot be used. If the client
-    * asks for instancing, we need to multiply by the client's instance count
-    * at draw time and instance divisor in the vertex bindings by the number
-    * of views ensure that we repeat the client's per-instance data once for
-    * each view.
-    */
-   const bool uses_primitive_replication =
-      anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map.num_pos_slots > 1;
    pipeline->instance_multiplier = 1;
-   if (pipeline->view_mask && !uses_primitive_replication)
+   if (pipeline->view_mask)
       pipeline->instance_multiplier = util_bitcount(pipeline->view_mask);
 
    pipeline->negative_one_to_one =
