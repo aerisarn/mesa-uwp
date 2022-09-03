@@ -87,6 +87,7 @@ files_mesa_util = files(
   'u_process.h',
   'u_qsort.cpp',
   'u_qsort.h',
+  'rwlock.c',
   'rwlock.h',
   'sha1/sha1.c',
   'sha1/sha1.h',
