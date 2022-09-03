@@ -202,6 +202,8 @@
   </struct>
 
   <enum name="Texture dimension">
+    <value name="1D" value="0"/>
+    <value name="1D Array" value="1"/>
     <value name="2D" value="2"/>
     <value name="2D Array" value="3"/>
     <value name="2D Multisampled" value="4"/>
