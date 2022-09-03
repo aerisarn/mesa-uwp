@@ -30,8 +30,13 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#ifdef _WIN32
-#include <windows.h>
+#include <limits.h> /* PATH_MAX */
+
+#ifdef _MSC_VER
+#include <stdlib.h>
+#ifndef PATH_MAX
+#define PATH_MAX _MAX_PATH /* Equivalent to MAX_PATH from minwindef.h */
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -44,7 +49,7 @@ struct u_memstream
 #ifdef _WIN32
    char **bufp;
    size_t *sizep;
-   char temp[MAX_PATH];
+   char temp[PATH_MAX];
 #endif
 };
 
