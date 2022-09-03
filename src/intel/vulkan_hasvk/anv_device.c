@@ -3146,28 +3146,6 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_workaround_bo;
 
-   if (device->info->ver >= 12 &&
-       device->vk.enabled_extensions.KHR_fragment_shading_rate) {
-      uint32_t n_cps_states = 3 * 3; /* All combinaisons of X by Y CP sizes (1, 2, 4) */
-
-      if (device->info->has_coarse_pixel_primitive_and_cb)
-         n_cps_states *= 5 * 5; /* 5 combiners by 2 operators */
-
-      n_cps_states += 1; /* Disable CPS */
-
-       /* Each of the combinaison must be replicated on all viewports */
-      n_cps_states *= MAX_VIEWPORTS;
-
-      device->cps_states =
-         anv_state_pool_alloc(&device->dynamic_state_pool,
-                              n_cps_states * CPS_STATE_length(device->info) * 4,
-                              32);
-      if (device->cps_states.map == NULL)
-         goto fail_trivial_batch;
-
-      anv_genX(device->info, init_cps_device_state)(device);
-   }
-
    /* Allocate a null surface state at surface state offset 0.  This makes
     * NULL descriptor handling trivial because we can just memset structures
     * to zero and they have a valid descriptor.
@@ -3223,7 +3201,6 @@ VkResult anv_CreateDevice(
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
  fail_trivial_batch_bo_and_scratch_pool:
    anv_scratch_pool_finish(device, &device->scratch_pool);
- fail_trivial_batch:
    anv_device_release_bo(device, device->trivial_batch_bo);
  fail_workaround_bo:
    anv_device_release_bo(device, device->workaround_bo);
