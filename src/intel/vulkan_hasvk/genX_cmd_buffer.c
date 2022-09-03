@@ -31,7 +31,6 @@
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
 
-#include "common/intel_aux_map.h"
 #include "common/intel_l3_config.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
@@ -564,31 +563,6 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
 #define MI_PREDICATE_RESULT  0x2418
 
 static void
-set_image_compressed_bit(struct anv_cmd_buffer *cmd_buffer,
-                         const struct anv_image *image,
-                         VkImageAspectFlagBits aspect,
-                         uint32_t level,
-                         uint32_t base_layer, uint32_t layer_count,
-                         bool compressed)
-{
-   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
-
-   /* We only have compression tracking for CCS_E */
-   if (image->planes[plane].aux_usage != ISL_AUX_USAGE_CCS_E)
-      return;
-
-   for (uint32_t a = 0; a < layer_count; a++) {
-      uint32_t layer = base_layer + a;
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
-         sdi.Address = anv_image_get_compression_state_addr(cmd_buffer->device,
-                                                            image, aspect,
-                                                            level, layer);
-         sdi.ImmediateData = compressed ? UINT32_MAX : 0;
-      }
-   }
-}
-
-static void
 set_image_fast_clear_state(struct anv_cmd_buffer *cmd_buffer,
                            const struct anv_image *image,
                            VkImageAspectFlagBits aspect,
@@ -599,12 +573,6 @@ set_image_fast_clear_state(struct anv_cmd_buffer *cmd_buffer,
                                                        image, aspect);
       sdi.ImmediateData = fast_clear;
    }
-
-   /* Whenever we have fast-clear, we consider that slice to be compressed.
-    * This makes building predicates much easier.
-    */
-   if (fast_clear != ANV_FAST_CLEAR_NONE)
-      set_image_compressed_bit(cmd_buffer, image, aspect, 0, 0, 1, true);
 }
 
 /* This is only really practical on haswell and above because it requires
@@ -626,34 +594,8 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
                                                   image, aspect));
 
-   if (resolve_op == ISL_AUX_OP_FULL_RESOLVE) {
-      /* In this case, we're doing a full resolve which means we want the
-       * resolve to happen if any compression (including fast-clears) is
-       * present.
-       *
-       * In order to simplify the logic a bit, we make the assumption that,
-       * if the first slice has been fast-cleared, it is also marked as
-       * compressed.  See also set_image_fast_clear_state.
-       */
-      const struct mi_value compression_state =
-         mi_mem32(anv_image_get_compression_state_addr(cmd_buffer->device,
-                                                       image, aspect,
-                                                       level, array_layer));
-      mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), compression_state);
-      mi_store(&b, compression_state, mi_imm(0));
-
-      if (level == 0 && array_layer == 0) {
-         /* If the predicate is true, we want to write 0 to the fast clear type
-          * and, if it's false, leave it alone.  We can do this by writing
-          *
-          * clear_type = clear_type & ~predicate;
-          */
-         struct mi_value new_fast_clear_type =
-            mi_iand(&b, fast_clear_type,
-                        mi_inot(&b, mi_reg64(MI_PREDICATE_SRC0)));
-         mi_store(&b, fast_clear_type, new_fast_clear_type);
-      }
-   } else if (level == 0 && array_layer == 0) {
+   assert(resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE);
+   if (level == 0 && array_layer == 0) {
       /* In this case, we are doing a partial resolve to get rid of fast-clear
        * colors.  We don't care about the compression state but we do care
        * about how much fast clear is allowed by the final layout.
@@ -797,18 +739,6 @@ genX(cmd_buffer_mark_image_written)(struct anv_cmd_buffer *cmd_buffer,
 {
    /* The aspect must be exactly one of the image aspects. */
    assert(util_bitcount(aspect) == 1 && (aspect & image->vk.aspects));
-
-   /* The only compression types with more than just fast-clears are MCS,
-    * CCS_E, and HiZ.  With HiZ we just trust the layout and don't actually
-    * track the current fast-clear and compression state.  This leaves us
-    * with just MCS and CCS_E.
-    */
-   if (aux_usage != ISL_AUX_USAGE_CCS_E &&
-       aux_usage != ISL_AUX_USAGE_MCS)
-      return;
-
-   set_image_compressed_bit(cmd_buffer, image, aspect,
-                            level, base_layer, layer_count, true);
 }
 
 static void
@@ -1076,8 +1006,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-   assert(!(device->physical->has_implicit_ccs && devinfo->has_aux_map));
-
    if (must_init_fast_clear_state) {
       if (base_level == 0 && base_layer == 0)
          init_fast_clear_color(cmd_buffer, image, aspect);
@@ -1145,12 +1073,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                              ISL_SWIZZLE_IDENTITY,
                              aspect, level, base_layer, level_layer_count,
                              ISL_AUX_OP_AMBIGUATE, NULL, false);
-
-            if (image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
-               set_image_compressed_bit(cmd_buffer, image, aspect,
-                                        level, base_layer, level_layer_count,
-                                        false);
-            }
          }
       } else {
          if (image->vk.samples == 4 || image->vk.samples == 16) {
@@ -1219,10 +1141,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
     */
    if (final_fast_clear < initial_fast_clear)
       resolve_op = ISL_AUX_OP_PARTIAL_RESOLVE;
-
-   if (initial_aux_usage == ISL_AUX_USAGE_CCS_E &&
-       final_aux_usage != ISL_AUX_USAGE_CCS_E)
-      resolve_op = ISL_AUX_OP_FULL_RESOLVE;
 
    if (resolve_op == ISL_AUX_OP_NONE)
       return;
@@ -1411,16 +1329,6 @@ genX(BeginCommandBuffer)(
    anv_add_pending_pipe_bits(cmd_buffer,
                              ANV_PIPE_VF_CACHE_INVALIDATE_BIT,
                              "new cmd buffer");
-
-   /* Re-emit the aux table register in every command buffer.  This way we're
-    * ensured that we have the table even if this command buffer doesn't
-    * initialize any images.
-    */
-   if (cmd_buffer->device->info->has_aux_map) {
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
-                                "new cmd buffer with aux-tt");
-   }
 
    /* We send an "Indirect State Pointers Disable" packet at
     * EndCommandBuffer, so all push constant packets are ignored during a

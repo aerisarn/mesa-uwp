@@ -29,7 +29,6 @@
 
 #include "anv_private.h"
 
-#include "common/intel_aux_map.h"
 #include "util/anon_file.h"
 #include "util/futex.h"
 
@@ -1611,7 +1610,7 @@ static void
 anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
 {
    if (bo->offset != 0 && anv_bo_is_pinned(bo) && !bo->has_fixed_address)
-      anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
+      anv_vma_free(device, bo->offset, bo->size);
 
    if (bo->map && !bo->from_host_ptr)
       anv_device_unmap_bo(device, bo, bo->map, bo->size);
@@ -1631,21 +1630,11 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
 
    uint32_t align = 4096;
 
-   /* Gen12 CCS surface addresses need to be 64K aligned. */
-   if (device->info->ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
-      align = 64 * 1024;
-
-   /* For XeHP, lmem and smem cannot share a single PDE, which means they
-    * can't live in the same 2MiB aligned region.
-    */
-   if (device->info->verx10 >= 125)
-       align = 2 * 1024 * 1024;
-
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
       bo->offset = explicit_address;
    } else {
-      bo->offset = anv_vma_alloc(device, bo->size + bo->_ccs_size,
+      bo->offset = anv_vma_alloc(device, bo->size,
                                  align, alloc_flags, explicit_address);
       if (bo->offset == 0) {
          anv_bo_finish(device, bo);
@@ -1665,9 +1654,6 @@ anv_device_alloc_bo(struct anv_device *device,
                     uint64_t explicit_address,
                     struct anv_bo **bo_out)
 {
-   if (!device->physical->has_implicit_ccs)
-      assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS));
-
    const uint32_t bo_flags =
       anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
@@ -1675,18 +1661,7 @@ anv_device_alloc_bo(struct anv_device *device,
    /* The kernel is going to give us whole pages anyway */
    size = align_u64(size, 4096);
 
-   uint64_t ccs_size = 0;
-   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
-      /* Align the size up to the next multiple of 64K so we don't have any
-       * AUX-TT entries pointing from a 64K page to itself.
-       */
-      size = align_u64(size, 64 * 1024);
-
-      /* See anv_bo::_ccs_size */
-      ccs_size = align_u64(DIV_ROUND_UP(size, INTEL_AUX_MAP_GFX12_CCS_SCALE), 4096);
-   }
-
-   uint32_t gem_handle = anv_gem_create(device, size + ccs_size);
+   uint32_t gem_handle = anv_gem_create(device, size);
    if (gem_handle == 0)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
@@ -1696,12 +1671,10 @@ anv_device_alloc_bo(struct anv_device *device,
       .refcount = 1,
       .offset = -1,
       .size = size,
-      ._ccs_size = ccs_size,
       .flags = bo_flags,
       .is_external = (alloc_flags & ANV_BO_ALLOC_EXTERNAL),
       .has_client_visible_address =
          (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
-      .has_implicit_ccs = ccs_size > 0 || device->info->verx10 >= 125,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
@@ -1741,14 +1714,6 @@ anv_device_alloc_bo(struct anv_device *device,
          return result;
    } else {
       assert(!new_bo.has_client_visible_address);
-   }
-
-   if (new_bo._ccs_size > 0) {
-      assert(device->info->has_aux_map);
-      intel_aux_map_add_mapping(device->aux_map_ctx,
-                                intel_canonical_address(new_bo.offset),
-                                intel_canonical_address(new_bo.offset + new_bo.size),
-                                new_bo.size, 0 /* format_bits */);
    }
 
    assert(new_bo.gem_handle);
@@ -1807,9 +1772,6 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
                            ANV_BO_ALLOC_SNOOPED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
-
-   assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -1897,9 +1859,6 @@ anv_device_import_bo(struct anv_device *device,
    assert(!(alloc_flags & (ANV_BO_ALLOC_MAPPED |
                            ANV_BO_ALLOC_SNOOPED |
                            ANV_BO_ALLOC_FIXED_ADDRESS)));
-
-   assert(!(alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS) ||
-          (device->physical->has_implicit_ccs && device->info->has_aux_map));
 
    struct anv_bo_cache *cache = &device->bo_cache;
    const uint32_t bo_flags =
@@ -1994,7 +1953,6 @@ anv_device_import_bo(struct anv_device *device,
       };
 
       if (anv_bo_is_pinned(&new_bo)) {
-         assert(new_bo._ccs_size == 0);
          VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,
                                                      alloc_flags,
                                                      client_address);
@@ -2113,15 +2071,6 @@ anv_device_release_bo(struct anv_device *device,
       return;
    }
    assert(bo->refcount == 0);
-
-   if (bo->_ccs_size > 0) {
-      assert(device->physical->has_implicit_ccs);
-      assert(device->info->has_aux_map);
-      assert(bo->has_implicit_ccs);
-      intel_aux_map_unmap_range(device->aux_map_ctx,
-                                intel_canonical_address(bo->offset),
-                                bo->size);
-   }
 
    /* Memset the BO just in case.  The refcount being zero should be enough to
     * prevent someone from assuming the data is valid but it's safer to just

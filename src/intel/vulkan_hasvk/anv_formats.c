@@ -795,11 +795,6 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
          }
       }
 
-      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
-          !isl_format_supports_ccs_e(devinfo, plane_format.isl_format)) {
-         return 0;
-      }
-
       if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
          /* Rejection DISJOINT for consistency with the GL driver. In
           * eglCreateImage, we require that the dma_buf for the primary surface
@@ -1120,13 +1115,6 @@ anv_get_image_format_properties(
       maxArraySize = 1;
       maxMipLevels = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-
-      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
-          !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
-                                        info->tiling, image_usage,
-                                        format_list_info)) {
-         goto unsupported;
-      }
    }
 
    /* Our hardware doesn't support 1D compressed textures.

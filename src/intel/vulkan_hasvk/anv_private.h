@@ -100,7 +100,6 @@ struct anv_buffer_view;
 struct anv_image_view;
 struct anv_instance;
 
-struct intel_aux_map_context;
 struct intel_perf_config;
 struct intel_perf_counter_pass;
 struct intel_perf_query_result;
@@ -474,30 +473,6 @@ struct anv_bo {
     */
    void *map;
 
-   /** Size of the implicit CCS range at the end of the buffer
-    *
-    * On Gfx12, CCS data is always a direct 1/256 scale-down.  A single 64K
-    * page of main surface data maps to a 256B chunk of CCS data and that
-    * mapping is provided on TGL-LP by the AUX table which maps virtual memory
-    * addresses in the main surface to virtual memory addresses for CCS data.
-    *
-    * Because we can't change these maps around easily and because Vulkan
-    * allows two VkImages to be bound to overlapping memory regions (as long
-    * as the app is careful), it's not feasible to make this mapping part of
-    * the image.  (On Gfx11 and earlier, the mapping was provided via
-    * RENDER_SURFACE_STATE so each image had its own main -> CCS mapping.)
-    * Instead, we attach the CCS data directly to the buffer object and setup
-    * the AUX table mapping at BO creation time.
-    *
-    * This field is for internal tracking use by the BO allocator only and
-    * should not be touched by other parts of the code.  If something wants to
-    * know if a BO has implicit CCS data, it should instead look at the
-    * has_implicit_ccs boolean below.
-    *
-    * This data is not included in maps of this buffer.
-    */
-   uint32_t _ccs_size;
-
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
    uint32_t flags;
 
@@ -521,9 +496,6 @@ struct anv_bo {
 
    /** See also ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS */
    bool has_client_visible_address:1;
-
-   /** True if this BO has implicit CCS data attached to it */
-   bool has_implicit_ccs:1;
 };
 
 static inline struct anv_bo *
@@ -985,13 +957,6 @@ struct anv_physical_device {
      */
     bool                                        has_reg_timestamp;
 
-    /** True if this device has implicit AUX
-     *
-     * If true, CCS is handled as an implicit attachment to the BO rather than
-     * as an explicitly bound surface.
-     */
-    bool                                        has_implicit_ccs;
-
     bool                                        always_flush_cache;
 
     struct {
@@ -1180,8 +1145,6 @@ struct anv_device {
     int                                         perf_fd; /* -1 if no opened */
     uint64_t                                    perf_metric; /* 0 if unset */
 
-    struct intel_aux_map_context                *aux_map_ctx;
-
     const struct intel_l3_config                *l3_config;
 
     struct intel_debug_block_frame              *debug_frame_desc;
@@ -1289,9 +1252,6 @@ enum anv_bo_alloc_flags {
 
    /** Has an address which is visible to the client */
    ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
-
-   /** This buffer has implicit CCS data attached to it */
-   ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
 };
 
 VkResult anv_device_alloc_bo(struct anv_device *device,
@@ -2578,7 +2538,6 @@ struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
    uint32_t                                     current_pipeline;
    const struct intel_l3_config *               current_l3_config;
-   uint32_t                                     last_aux_map_state;
 
    struct anv_cmd_graphics_state                gfx;
    struct anv_cmd_compute_state                 compute;
@@ -3204,12 +3163,6 @@ anv_get_isl_format(const struct intel_device_info *devinfo, VkFormat vk_format,
    return anv_get_format_aspect(devinfo, vk_format, aspect, tiling).isl_format;
 }
 
-bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
-                                  VkImageCreateFlags create_flags,
-                                  VkFormat vk_format, VkImageTiling vk_tiling,
-                                  VkImageUsageFlags vk_usage,
-                                  const VkImageFormatListCreateInfo *fmt_list);
-
 extern VkFormat
 vk_format_from_android(unsigned android_format, unsigned android_usage);
 
@@ -3503,38 +3456,6 @@ anv_image_get_fast_clear_type_addr(const struct anv_device *device,
    return anv_address_add(addr, clear_color_state_size);
 }
 
-static inline struct anv_address
-anv_image_get_compression_state_addr(const struct anv_device *device,
-                                     const struct anv_image *image,
-                                     VkImageAspectFlagBits aspect,
-                                     uint32_t level, uint32_t array_layer)
-{
-   assert(level < anv_image_aux_levels(image, aspect));
-   assert(array_layer < anv_image_aux_layers(image, aspect, level));
-   UNUSED uint32_t plane = anv_image_aspect_to_plane(image, aspect);
-   assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
-
-   /* Relative to start of the plane's fast clear memory range */
-   uint32_t offset;
-
-   offset = 4; /* Go past the fast clear type */
-
-   if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
-      for (uint32_t l = 0; l < level; l++)
-         offset += anv_minify(image->vk.extent.depth, l) * 4;
-   } else {
-      offset += level * image->vk.array_layers * 4;
-   }
-
-   offset += array_layer * 4;
-
-   assert(offset < image->planes[plane].fast_clear_memory_range.size);
-
-   return anv_address_add(
-      anv_image_get_fast_clear_type_addr(device, image, aspect),
-      offset);
-}
-
 /* Returns true if a HiZ-enabled depth buffer can be sampled from. */
 static inline bool
 anv_can_sample_with_hiz(const struct intel_device_info * const devinfo,
@@ -3588,15 +3509,6 @@ anv_can_sample_mcs_with_clear(const struct intel_device_info * const devinfo,
    }
 
    return true;
-}
-
-static inline bool
-anv_image_plane_uses_aux_map(const struct anv_device *device,
-                             const struct anv_image *image,
-                             uint32_t plane)
-{
-   return device->info->has_aux_map &&
-      isl_aux_usage_has_ccs(image->planes[plane].aux_usage);
 }
 
 void

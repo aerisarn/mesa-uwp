@@ -54,7 +54,6 @@
 #include "vk_util.h"
 #include "vk_deferred_operation.h"
 #include "vk_drm_syncobj.h"
-#include "common/intel_aux_map.h"
 #include "common/intel_defines.h"
 #include "common/intel_uuid.h"
 #include "perf/intel_perf.h"
@@ -868,9 +867,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
     * we leave it disabled on gfx7.
     */
    device->has_bindless_samplers = device->info.ver >= 8;
-
-   device->has_implicit_ccs = device->info.has_aux_map ||
-                              device->info.verx10 >= 125;
 
    /* Check if we can read the GPU timestamp register from the CPU */
    uint64_t u64_ignore;
@@ -2735,47 +2731,6 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
    return (struct intel_batch_decode_bo) { };
 }
 
-struct intel_aux_map_buffer {
-   struct intel_buffer base;
-   struct anv_state state;
-};
-
-static struct intel_buffer *
-intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
-{
-   struct intel_aux_map_buffer *buf = malloc(sizeof(struct intel_aux_map_buffer));
-   if (!buf)
-      return NULL;
-
-   struct anv_device *device = (struct anv_device*)driver_ctx;
-   assert(device->physical->supports_48bit_addresses &&
-          device->physical->use_softpin);
-
-   struct anv_state_pool *pool = &device->dynamic_state_pool;
-   buf->state = anv_state_pool_alloc(pool, size, size);
-
-   buf->base.gpu = pool->block_pool.bo->offset + buf->state.offset;
-   buf->base.gpu_end = buf->base.gpu + buf->state.alloc_size;
-   buf->base.map = buf->state.map;
-   buf->base.driver_bo = &buf->state;
-   return &buf->base;
-}
-
-static void
-intel_aux_map_buffer_free(void *driver_ctx, struct intel_buffer *buffer)
-{
-   struct intel_aux_map_buffer *buf = (struct intel_aux_map_buffer*)buffer;
-   struct anv_device *device = (struct anv_device*)driver_ctx;
-   struct anv_state_pool *pool = &device->dynamic_state_pool;
-   anv_state_pool_free(pool, buf->state);
-   free(buf);
-}
-
-static struct intel_mapped_pinned_buffer_alloc aux_map_allocator = {
-   .alloc = intel_aux_map_buffer_alloc,
-   .free = intel_aux_map_buffer_free,
-};
-
 static VkResult anv_device_check_status(struct vk_device *vk_device);
 
 static VkResult
@@ -3114,20 +3069,13 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_surface_state_pool;
 
-   if (device->info->has_aux_map) {
-      device->aux_map_ctx = intel_aux_map_init(device, &aux_map_allocator,
-                                               &physical_device->info);
-      if (!device->aux_map_ctx)
-         goto fail_binding_table_pool;
-   }
-
    result = anv_device_alloc_bo(device, "workaround", 4096,
                                 ANV_BO_ALLOC_CAPTURE |
                                 ANV_BO_ALLOC_MAPPED,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
    if (result != VK_SUCCESS)
-      goto fail_surface_aux_map_pool;
+      goto fail_binding_table_pool;
 
    device->workaround_address = (struct anv_address) {
       .bo = device->workaround_bo,
@@ -3204,11 +3152,6 @@ VkResult anv_CreateDevice(
    anv_device_release_bo(device, device->trivial_batch_bo);
  fail_workaround_bo:
    anv_device_release_bo(device, device->workaround_bo);
- fail_surface_aux_map_pool:
-   if (device->info->has_aux_map) {
-      intel_aux_map_finish(device->aux_map_ctx);
-      device->aux_map_ctx = NULL;
-   }
  fail_binding_table_pool:
    if (!anv_use_relocations(physical_device))
       anv_state_pool_finish(&device->binding_table_pool);
@@ -3281,11 +3224,6 @@ void anv_DestroyDevice(
 
    anv_device_release_bo(device, device->workaround_bo);
    anv_device_release_bo(device, device->trivial_batch_bo);
-
-   if (device->info->has_aux_map) {
-      intel_aux_map_finish(device->aux_map_ctx);
-      device->aux_map_ctx = NULL;
-   }
 
    if (!anv_use_relocations(device->physical))
       anv_state_pool_finish(&device->binding_table_pool);
@@ -3531,10 +3469,6 @@ VkResult anv_AllocateMemory(
          break;
       }
    }
-
-   /* By default, we want all VkDeviceMemory objects to support CCS */
-   if (device->physical->has_implicit_ccs && device->info->has_aux_map)
-      alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
 
    if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
