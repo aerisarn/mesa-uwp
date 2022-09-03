@@ -239,7 +239,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.set_when_reloading_z_1 = clear_pipeline_textures;
 
       cfg.depth_clear_value = fui(clear_depth);
-      cfg.stencil_clear_value = clear_stencil;
+      cfg.stencil_clear_value = clear_stencil & 0xff;
 
       cfg.partial_reload_pipeline_bind = 0xffff8212;
       cfg.partial_reload_pipeline = pipeline_load;
