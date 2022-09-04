@@ -1269,8 +1269,6 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
          unreachable("Invalid provoking vertex mode");
       }
 
-      so.RenderStreamSelect = rs->rasterization_stream;
-
       so.Buffer0SurfacePitch = xfb_info->buffers[0].stride;
       so.Buffer1SurfacePitch = xfb_info->buffers[1].stride;
       so.Buffer2SurfacePitch = xfb_info->buffers[2].stride;

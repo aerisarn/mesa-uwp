@@ -3426,6 +3426,7 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
    struct GENX(3DSTATE_STREAMOUT) so = {
       GENX(3DSTATE_STREAMOUT_header),
       .RenderingDisable = dyn->rs.rasterizer_discard_enable,
+      .RenderStreamSelect = dyn->rs.rasterization_stream,
    };
    GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
    anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.streamout_state);
@@ -3625,7 +3626,8 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                        ANV_CMD_DIRTY_XFB_ENABLE)) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM))
       cmd_buffer_emit_streamout(cmd_buffer);
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
