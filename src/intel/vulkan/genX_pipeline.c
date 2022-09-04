@@ -889,7 +889,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
 
    struct GENX(BLEND_STATE) blend_state = {
       .AlphaToCoverageEnable = ms && ms->alpha_to_coverage_enable,
-      .AlphaToOneEnable = ms && ms->alpha_to_one_enable,
    };
 
    uint32_t surface_count = 0;

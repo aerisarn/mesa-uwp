@@ -520,7 +520,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE)) {
       const uint8_t color_writes = dyn->cb.color_write_enables;
       const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
       bool has_writeable_rt =
@@ -546,7 +547,12 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       uint32_t *dws = blend_dws;
       memset(blend_dws, 0, sizeof(blend_dws));
 
-      /* Skip this part */
+      struct GENX(BLEND_STATE) blend_state = {
+         .AlphaToOneEnable = dyn->ms.alpha_to_one_enable,
+      };
+      GENX(BLEND_STATE_pack)(NULL, dws, &blend_state);
+
+      /* Jump to blend entries. */
       dws += GENX(BLEND_STATE_length);
 
       for (uint32_t i = 0; i < MAX_RTS; i++) {
