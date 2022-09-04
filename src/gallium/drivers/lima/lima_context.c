@@ -139,7 +139,8 @@ lima_context_destroy(struct pipe_context *pctx)
    struct lima_context *ctx = lima_context(pctx);
    struct lima_screen *screen = lima_screen(pctx->screen);
 
-   lima_job_fini(ctx);
+   if (ctx->jobs)
+      lima_job_fini(ctx);
 
    for (int i = 0; i < lima_ctx_buff_num; i++)
       pipe_resource_reference(&ctx->buffer_state[i].res, NULL);
