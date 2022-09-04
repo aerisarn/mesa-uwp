@@ -253,7 +253,6 @@ agxdecode_map_read_write(void)
 #define agxdecode_msg(str) fprintf(agxdecode_dump_stream, "// %s", str)
 
 unsigned agxdecode_indent = 0;
-uint64_t pipeline_base = 0;
 
 static void
 agxdecode_dump_bo(struct agx_bo *bo, const char *name)
@@ -395,60 +394,70 @@ agxdecode_pipeline(const uint8_t *map, UNUSED bool verbose)
    }
 }
 
+#define PPP_PRINT(map, header_name, struct_name, human) \
+   if (hdr.header_name) { \
+      assert(((map + AGX_##struct_name##_LENGTH) <= (base + size)) && \
+             "buffer overrun in PPP update"); \
+      DUMP_CL(struct_name, map, human); \
+      map += AGX_##struct_name##_LENGTH; \
+   }
+
 static void
 agxdecode_record(uint64_t va, size_t size, bool verbose)
 {
-   uint8_t *map = agxdecode_fetch_gpu_mem(va, size);
-   uint32_t tag = 0;
-   memcpy(&tag, map, 4);
+   uint8_t *base = agxdecode_fetch_gpu_mem(va, size);
+   uint8_t *map = base;
 
-   if (tag == 0x00000C00) {
-      assert(size == AGX_VIEWPORT_LENGTH);
-      DUMP_CL(VIEWPORT, map, "Viewport");
-   } else if (tag == 0x100C0000) {
-      assert(size == AGX_INTERPOLATION_LENGTH);
-      DUMP_CL(INTERPOLATION, map, "Interpolation");
-   } else if (tag == 0x0C020000) {
-      assert(size == AGX_LINKAGE_LENGTH);
-      DUMP_CL(LINKAGE, map, "Linkage");
-   } else if (tag == 0x200004a) {
-      assert(size == AGX_UNKNOWN_4A_LENGTH);
-      DUMP_CL(UNKNOWN_4A, map, "Unknown 4a");
-   } else if (tag == 0x10000b5) {
-      assert(size == AGX_RASTERIZER_LENGTH);
-      DUMP_CL(RASTERIZER, map, "Rasterizer");
-   } else if (tag == 0x200000) {
-      assert(size == AGX_CULL_LENGTH);
-      DUMP_CL(CULL, map, "Cull");
-   } else if (tag == 0x000100) {
-      assert(size == AGX_SET_INDEX_LENGTH);
-      DUMP_CL(SET_INDEX, map, "Set index");
-   } else if (tag == 0x800000) {
-      assert(size == AGX_BIND_FRAGMENT_PIPELINE_LENGTH);
+   agx_unpack(agxdecode_dump_stream, map, PPP_HEADER, hdr);
+   map += AGX_PPP_HEADER_LENGTH;
 
-      agx_unpack(agxdecode_dump_stream, map, BIND_FRAGMENT_PIPELINE, cmd);
-      agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
+   PPP_PRINT(map, fragment_control, FRAGMENT_CONTROL, "Fragment control");
+   PPP_PRINT(map, fragment_control_2, FRAGMENT_CONTROL_2, "Fragment control 2");
+   PPP_PRINT(map, fragment_front_face, FRAGMENT_FACE, "Front face");
+   PPP_PRINT(map, fragment_front_face_2, FRAGMENT_FACE_2, "Front face 2");
+   PPP_PRINT(map, fragment_front_stencil, FRAGMENT_STENCIL, "Front stencil");
+   PPP_PRINT(map, fragment_back_face, FRAGMENT_FACE, "Back face");
+   PPP_PRINT(map, fragment_back_face_2, FRAGMENT_FACE_2, "Back face 2");
+   PPP_PRINT(map, fragment_back_stencil, FRAGMENT_STENCIL, "Back stencil");
+   PPP_PRINT(map, depth_bias_scissor, DEPTH_BIAS_SCISSOR, "Depth bias/scissor");
+   PPP_PRINT(map, region_clip, REGION_CLIP, "Region clip");
+   PPP_PRINT(map, viewport, VIEWPORT, "Viewport");
+   PPP_PRINT(map, w_clamp, W_CLAMP, "W clamp");
+   PPP_PRINT(map, output_select, OUTPUT_SELECT, "Output select");
+   PPP_PRINT(map, varying_word_0, VARYING_0, "Varying word 0");
+   PPP_PRINT(map, varying_word_1, VARYING_1, "Varying word 1");
+   PPP_PRINT(map, cull, CULL, "Cull");
+   PPP_PRINT(map, cull_2, CULL_2, "Cull 2");
 
-      if (cmd.cf_bindings) {
-         uint8_t *map = agxdecode_fetch_gpu_mem(cmd.cf_bindings, 128);
-         hexdump(agxdecode_dump_stream, map, 128, false);
+   if (hdr.fragment_shader) {
+      agx_unpack(agxdecode_dump_stream, map, FRAGMENT_SHADER, frag);
+      agxdecode_stateful(frag.pipeline, "Fragment pipeline", agxdecode_pipeline, verbose);
 
-         DUMP_CL(CF_BINDING_HEADER, map, "Coefficient binding header:");
-         map += AGX_CF_BINDING_HEADER_LENGTH;
+      if (frag.cf_bindings) {
+         uint8_t *cf = agxdecode_fetch_gpu_mem(frag.cf_bindings, 128);
+         hexdump(agxdecode_dump_stream, cf, 128, false);
 
-         for (unsigned i = 0; i < cmd.cf_binding_count; ++i) {
-            DUMP_CL(CF_BINDING, map, "Coefficient binding:");
-            map += AGX_CF_BINDING_LENGTH;
+         DUMP_CL(CF_BINDING_HEADER, cf, "Coefficient binding header:");
+         cf += AGX_CF_BINDING_HEADER_LENGTH;
+
+         for (unsigned i = 0; i < frag.cf_binding_count; ++i) {
+            DUMP_CL(CF_BINDING, cf, "Coefficient binding:");
+            cf += AGX_CF_BINDING_LENGTH;
          }
       }
 
-      DUMP_UNPACKED(BIND_FRAGMENT_PIPELINE, cmd, "Bind fragment pipeline\n");
-   } else if (size == 0) {
-      pipeline_base = va;
-   } else {
-      fprintf(agxdecode_dump_stream, "Record %" PRIx64 "\n", va);
-      hexdump(agxdecode_dump_stream, map, size, false);
+      DUMP_UNPACKED(FRAGMENT_SHADER, frag, "Fragment shader\n");
+      map += AGX_FRAGMENT_SHADER_LENGTH;
    }
+
+   PPP_PRINT(map, occlusion_query, FRAGMENT_OCCLUSION_QUERY, "Occlusion query");
+   PPP_PRINT(map, occlusion_query_2, FRAGMENT_OCCLUSION_QUERY_2, "Occlusion query 2");
+   PPP_PRINT(map, output_unknown, OUTPUT_UNKNOWN, "Output unknown");
+   PPP_PRINT(map, output_size, OUTPUT_SIZE, "Output size");
+   PPP_PRINT(map, varying_word_2, VARYING_2, "Varying word 2");
+
+   /* PPP print checks we don't read too much, now check we read enough */
+   assert(map == (base + size) && "invalid size of PPP update");
 }
 
 static unsigned

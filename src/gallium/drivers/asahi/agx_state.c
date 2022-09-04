@@ -43,6 +43,7 @@
 #include "agx_state.h"
 #include "asahi/lib/agx_pack.h"
 #include "asahi/lib/agx_formats.h"
+#include "asahi/lib/agx_ppp.h"
 
 static struct pipe_stream_output_target *
 agx_create_stream_output_target(struct pipe_context *pctx,
@@ -628,19 +629,14 @@ agx_set_viewport_states(struct pipe_context *pctx,
    ctx->viewport = *vp;
 }
 
-struct agx_viewport_scissor {
-   uint64_t viewport;
-   unsigned scissor;
-};
-
-static struct agx_viewport_scissor
+static void
 agx_upload_viewport_scissor(struct agx_pool *pool,
                             struct agx_batch *batch,
+                            uint8_t **out, 
                             const struct pipe_viewport_state *vp,
-                            const struct pipe_scissor_state *ss)
+                            const struct pipe_scissor_state *ss,
+                            unsigned zbias)
 {
-   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_VIEWPORT_LENGTH, 64);
-
    float trans_x = vp->translate[0], trans_y = vp->translate[1];
    float abs_scale_x = fabsf(vp->scale[0]), abs_scale_y = fabsf(vp->scale[1]);
 
@@ -665,21 +661,6 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
    float minz, maxz;
    util_viewport_zmin_zmax(vp, false, &minz, &maxz);
 
-   agx_pack(T.cpu, VIEWPORT, cfg) {
-      cfg.min_tile_x = minx / 32;
-      cfg.min_tile_y = miny / 32;
-      cfg.max_tile_x = DIV_ROUND_UP(maxx, 32);
-      cfg.max_tile_y = DIV_ROUND_UP(maxy, 32);
-      cfg.clip_tile = true;
-
-      cfg.translate_x = vp->translate[0];
-      cfg.translate_y = vp->translate[1];
-      cfg.translate_z = vp->translate[2];
-      cfg.scale_x = vp->scale[0];
-      cfg.scale_y = vp->scale[1];
-      cfg.scale_z = vp->scale[2];
-   }
-
    /* Allocate a new scissor descriptor */
    struct agx_scissor_packed *ptr = batch->scissor.bo->ptr.cpu;
    unsigned index = (batch->scissor.count++);
@@ -693,10 +674,36 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
       cfg.max_z = maxz;
    }
 
-   return (struct agx_viewport_scissor) {
-      .viewport = T.gpu,
-      .scissor = index
+   /* Upload state */
+   struct agx_ppp_update ppp = agx_new_ppp_update(pool, (struct AGX_PPP_HEADER) {
+      .depth_bias_scissor = true,
+      .region_clip = true,
+      .viewport = true,
+   });
+
+   agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
+      cfg.scissor = index;
+      cfg.depth_bias = zbias;
    };
+
+   agx_ppp_push(&ppp, REGION_CLIP, cfg) {
+      cfg.enable = true;
+      cfg.min_x = minx / 32;
+      cfg.min_y = miny / 32;
+      cfg.max_x = DIV_ROUND_UP(maxx, 32);
+      cfg.max_y = DIV_ROUND_UP(maxy, 32);
+   }
+
+   agx_ppp_push(&ppp, VIEWPORT, cfg) {
+      cfg.translate_x = vp->translate[0];
+      cfg.translate_y = vp->translate[1];
+      cfg.translate_z = vp->translate[2];
+      cfg.scale_x = vp->scale[0];
+      cfg.scale_y = vp->scale[1];
+      cfg.scale_z = vp->scale[2];
+   }
+
+   agx_ppp_fini(out, &ppp);
 }
 
 static uint16_t
@@ -1441,90 +1448,6 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
    return ptr.gpu;
 }
 
-static uint64_t
-demo_launch_fragment(struct agx_context *ctx, struct agx_pool *pool, uint32_t pipeline, uint32_t varyings, unsigned input_count)
-{
-   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_BIND_FRAGMENT_PIPELINE_LENGTH, 64);
-
-   unsigned tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
-   agx_pack(t.cpu, BIND_FRAGMENT_PIPELINE, cfg) {
-      cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
-      cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
-      cfg.more_than_4_textures = tex_count >= 4;
-      cfg.cf_binding_count = input_count;
-      cfg.pipeline = pipeline;
-      cfg.cf_bindings = varyings;
-   };
-
-   return t.gpu;
-}
-
-static uint64_t
-demo_interpolation(struct agx_varyings_vs *vs, struct agx_pool *pool)
-{
-   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_INTERPOLATION_LENGTH, 64);
-
-   agx_pack(t.cpu, INTERPOLATION, cfg) {
-      cfg.varying_count = agx_num_general_outputs(vs);
-   };
-
-   return t.gpu;
-}
-
-static uint64_t
-demo_linkage(struct agx_compiled_shader *vs, struct agx_compiled_shader *fs, struct agx_pool *pool)
-{
-   struct agx_ptr t = agx_pool_alloc_aligned(pool, AGX_LINKAGE_LENGTH, 64);
-
-   agx_pack(t.cpu, LINKAGE, cfg) {
-      cfg.varying_count = vs->info.varyings.vs.nr_index;
-      cfg.any_varyings = !!fs->info.varyings.fs.nr_bindings;
-      cfg.has_point_size = vs->info.writes_psiz;
-      cfg.has_frag_coord_z = fs->info.varyings.fs.reads_z;
-   };
-
-   return t.gpu;
-}
-
-static uint64_t
-demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
-{
-   struct agx_rasterizer *rast = ctx->rast;
-   struct agx_rasterizer_packed out;
-
-   agx_pack(&out, RASTERIZER, cfg) {
-      cfg.common.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
-      cfg.common.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
-
-      cfg.front.stencil_reference = ctx->stencil_ref.ref_value[0];
-      cfg.back.stencil_reference = cfg.common.two_sided_stencil ?
-         ctx->stencil_ref.ref_value[1] :
-         cfg.front.stencil_reference;
-
-      cfg.front.line_width = cfg.back.line_width = rast->line_width;
-      cfg.front.polygon_mode = cfg.back.polygon_mode = AGX_POLYGON_MODE_FILL;
-
-      cfg.common.unk_fill_lines = is_points; /* XXX: what is this? */
-
-      /* Always enable scissoring so we may scissor to the viewport (TODO:
-       * optimize this out if the viewport is the default and the app does not
-       * use the scissor test) */
-      cfg.common.scissor_enable = true;
-
-      cfg.common.depth_bias_enable = rast->base.offset_tri;
-   };
-
-   /* Words 2-3: front */
-   out.opaque[2] |= ctx->zs->depth.opaque[0];
-   out.opaque[3] |= ctx->zs->front_stencil.opaque[0];
-
-   /* Words 4-5: back */
-   out.opaque[4] |= ctx->zs->depth.opaque[0];
-   out.opaque[5] |= ctx->zs->back_stencil.opaque[0];
-
-   return agx_pool_upload_aligned(pool, &out, sizeof(out), 64);
-}
-
 static enum agx_object_type
 agx_point_object_type(struct agx_rasterizer *rast)
 {
@@ -1533,73 +1456,13 @@ agx_point_object_type(struct agx_rasterizer *rast)
           AGX_OBJECT_TYPE_POINT_SPRITE_UV10;
 }
 
-static uint64_t
-demo_unk11(struct agx_pool *pool, struct agx_rasterizer *rast,
-           bool prim_lines, bool prim_points, bool reads_tib,
-           bool sample_mask_from_shader, bool no_colour_output)
-{
-   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_UNKNOWN_4A_LENGTH, 64);
-
-   agx_pack(T.cpu, UNKNOWN_4A, cfg) {
-      cfg.no_colour_output = no_colour_output;
-      cfg.lines_or_points = (prim_lines || prim_points);
-      cfg.reads_tilebuffer = reads_tib;
-      cfg.sample_mask_from_shader = sample_mask_from_shader;
-
-      cfg.front.object_type = cfg.back.object_type =
-         prim_points ? agx_point_object_type(rast) :
-         prim_lines ? AGX_OBJECT_TYPE_LINE :
-         AGX_OBJECT_TYPE_TRIANGLE;
-   };
-
-   return T.gpu;
-}
-
-static uint64_t
-demo_unk12(struct agx_pool *pool)
-{
-   uint32_t unk[] = {
-      0x410000,
-      0x1e3ce508,
-      0xa0
-   };
-
-   return agx_pool_upload(pool, unk, sizeof(unk));
-}
-
-static uint64_t
-agx_set_index(struct agx_pool *pool, uint16_t scissor, uint16_t zbias)
-{
-   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_SET_INDEX_LENGTH, 64);
-
-   agx_pack(T.cpu, SET_INDEX, cfg) {
-      cfg.scissor = scissor;
-      cfg.depth_bias = zbias;
-   };
-
-   return T.gpu;
-}
-
-static void
-agx_push_record(uint8_t **out, unsigned size_words, uint64_t ptr)
-{
-   assert(ptr < (1ull << 40));
-   assert(size_words < (1ull << 24));
-
-   agx_pack(*out, RECORD, cfg) {
-      cfg.pointer_hi = (ptr >> 32);
-      cfg.pointer_lo = (uint32_t) ptr;
-      cfg.size_words = size_words;
-   };
-
-   *out += AGX_RECORD_LENGTH;
-}
-
 static uint8_t *
 agx_encode_state(struct agx_context *ctx, uint8_t *out,
                  uint32_t pipeline_vertex, uint32_t pipeline_fragment, uint32_t varyings,
                  bool is_lines, bool is_points)
 {
+   struct agx_rasterizer *rast = ctx->rast;
+
    unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
    agx_pack(out, BIND_VERTEX_PIPELINE, cfg) {
       cfg.pipeline = pipeline_vertex;
@@ -1614,17 +1477,10 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    out += AGX_BIND_VERTEX_PIPELINE_LENGTH;
 
    struct agx_pool *pool = &ctx->batch->pool;
+   struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
    bool reads_tib = ctx->fs->info.reads_tib;
    bool sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
    bool no_colour_output = ctx->fs->info.no_colour_output;
-
-   agx_push_record(&out, 5, demo_interpolation(&ctx->vs->info.varyings.vs, pool));
-   agx_push_record(&out, 5, demo_launch_fragment(ctx, pool, pipeline_fragment,
-            varyings, ctx->fs->info.varyings.fs.nr_bindings));
-   agx_push_record(&out, 4, demo_linkage(ctx->vs, ctx->fs, pool));
-   agx_push_record(&out, 7, demo_rasterizer(ctx, pool, is_points));
-   agx_push_record(&out, 5, demo_unk11(pool, ctx->rast, is_lines, is_points, reads_tib,
-            sample_mask_from_shader, no_colour_output));
 
    unsigned zbias = 0;
 
@@ -1634,16 +1490,117 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    }
 
    if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS)) {
-      struct agx_viewport_scissor vps = agx_upload_viewport_scissor(pool,
-            ctx->batch, &ctx->viewport,
-            ctx->rast->base.scissor ? &ctx->scissor : NULL);
-
-      agx_push_record(&out, 10, vps.viewport);
-      agx_push_record(&out, 2, agx_set_index(pool, vps.scissor, zbias));
+      agx_upload_viewport_scissor(pool, ctx->batch, &out, &ctx->viewport,
+            ctx->rast->base.scissor ? &ctx->scissor : NULL,
+            zbias);
    }
 
-   agx_push_record(&out, 3, demo_unk12(pool));
-   agx_push_record(&out, 2, agx_pool_upload(pool, ctx->rast->cull, sizeof(ctx->rast->cull)));
+   enum agx_object_type object_type =
+         is_points ? agx_point_object_type(rast) :
+         is_lines ? AGX_OBJECT_TYPE_LINE :
+         AGX_OBJECT_TYPE_TRIANGLE;
+
+   /* For now, we re-emit almost all state every draw.  TODO: perf */
+   struct agx_ppp_update ppp = agx_new_ppp_update(pool, (struct AGX_PPP_HEADER) {
+      .fragment_control = true,
+      .fragment_control_2 = true,
+      .fragment_front_face = true,
+      .fragment_front_face_2 = true,
+      .fragment_front_stencil = true,
+      .fragment_back_face = true,
+      .fragment_back_face_2 = true,
+      .fragment_back_stencil = true,
+      .w_clamp = true,
+      .output_select = true,
+      .varying_word_0 = true,
+      .varying_word_1 = true,
+      .cull = true,
+      .cull_2 = true,
+      .fragment_shader = true,
+      .occlusion_query = true,
+      .occlusion_query_2 = true,
+      .output_unknown = true,
+      .output_size = true,
+      .varying_word_2 = true,
+   });
+
+   agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
+      cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
+      cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
+      cfg.depth_bias_enable = rast->base.offset_tri;
+
+      cfg.unk_fill_lines = is_points; /* XXX: what is this? */
+
+      /* Always enable scissoring so we may scissor to the viewport (TODO:
+       * optimize this out if the viewport is the default and the app does not
+       * use the scissor test) */
+      cfg.scissor_enable = true;
+   };
+
+   agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
+      cfg.no_colour_output = no_colour_output;
+      cfg.lines_or_points = (is_lines || is_points);
+      cfg.reads_tilebuffer = reads_tib;
+      cfg.sample_mask_from_shader = sample_mask_from_shader;
+   };
+
+   struct agx_fragment_face_packed front_face, back_face;
+   agx_pack(&front_face, FRAGMENT_FACE, cfg) {
+      cfg.stencil_reference = ctx->stencil_ref.ref_value[0];
+      cfg.line_width = rast->line_width;
+      cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+   };
+   front_face.opaque[0] |= ctx->zs->depth.opaque[0];
+   agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
+
+   agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+   agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque, FRAGMENT_STENCIL);
+
+   agx_pack(&back_face, FRAGMENT_FACE, cfg) {
+      bool twosided = ctx->zs->base.stencil[1].enabled;
+      cfg.stencil_reference = ctx->stencil_ref.ref_value[twosided ? 1 : 0];
+
+      cfg.line_width = rast->line_width;
+      cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+   };
+   back_face.opaque[0] |= ctx->zs->depth.opaque[0];
+   agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
+
+   agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+   agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
+   agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
+
+   agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
+      cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
+      cfg.point_size = vs->info.writes_psiz;
+      cfg.frag_coord_z = fs->info.varyings.fs.reads_z;
+   }
+
+   agx_ppp_push(&ppp, VARYING_0, cfg) {
+      cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
+   }
+
+   agx_ppp_push(&ppp, VARYING_1, cfg);
+   agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
+   agx_ppp_push(&ppp, CULL_2, cfg);
+
+   unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+   agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
+      cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(frag_tex_count, 8);
+      cfg.groups_of_4_samplers = DIV_ROUND_UP(frag_tex_count, 4);
+      cfg.more_than_4_textures = frag_tex_count >= 4;
+      cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
+      cfg.pipeline = pipeline_fragment;
+      cfg.cf_bindings = varyings;
+   }
+
+   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
+   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+   agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) cfg.count = vs->info.varyings.vs.nr_index;
+   agx_ppp_push(&ppp, VARYING_2, cfg);
+
+   agx_ppp_fini(&out, &ppp);
 
    return out;
 }
