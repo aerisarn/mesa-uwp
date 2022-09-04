@@ -1055,10 +1055,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_create_renderpass2 = true,
       .KHR_depth_stencil_resolve = true,
       .KHR_draw_indirect_count = true,
-#ifndef ANDROID
-      /* xxx remove the #ifndef after venus has a driver id */
       .KHR_driver_properties = true,
-#endif
       .KHR_image_format_list = true,
       .KHR_imageless_framebuffer = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
