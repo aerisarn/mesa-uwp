@@ -684,23 +684,6 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    sf.VertexSubPixelPrecisionSelect = _8Bit;
    sf.AALineDistanceMode = true;
 
-   switch (rs->provoking_vertex) {
-   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-      sf.TriangleStripListProvokingVertexSelect = 0;
-      sf.LineStripListProvokingVertexSelect = 0;
-      sf.TriangleFanProvokingVertexSelect = 1;
-      break;
-
-   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-      sf.TriangleStripListProvokingVertexSelect = 2;
-      sf.LineStripListProvokingVertexSelect = 1;
-      sf.TriangleFanProvokingVertexSelect = 2;
-      break;
-
-   default:
-      unreachable("Invalid provoking vertex mode");
-   }
-
 #if GFX_VER >= 12
    sf.DerefBlockSize = urb_deref_block_size;
 #endif
@@ -1034,23 +1017,6 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.VertexSubPixelPrecisionSelect = _8Bit;
    clip.ClipMode = CLIPMODE_NORMAL;
 
-   switch (rs->provoking_vertex) {
-   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-      clip.TriangleStripListProvokingVertexSelect = 0;
-      clip.LineStripListProvokingVertexSelect = 0;
-      clip.TriangleFanProvokingVertexSelect = 1;
-      break;
-
-   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-      clip.TriangleStripListProvokingVertexSelect = 2;
-      clip.LineStripListProvokingVertexSelect = 1;
-      clip.TriangleFanProvokingVertexSelect = 2;
-      break;
-
-   default:
-      unreachable("Invalid provoking vertex mode");
-   }
-
    clip.MinimumPointWidth = 0.125;
    clip.MaximumPointWidth = 255.875;
 
@@ -1248,19 +1214,6 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
    if (xfb_info) {
       so.SOFunctionEnable = true;
       so.SOStatisticsEnable = true;
-
-      switch (rs->provoking_vertex) {
-      case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
-         so.ReorderMode = LEADING;
-         break;
-
-      case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
-         so.ReorderMode = TRAILING;
-         break;
-
-      default:
-         unreachable("Invalid provoking vertex mode");
-      }
 
       so.Buffer0SurfacePitch = xfb_info->buffers[0].stride;
       so.Buffer1SurfacePitch = xfb_info->buffers[1].stride;

@@ -3863,6 +3863,23 @@ anv_line_rasterization_mode(VkLineRasterizationModeEXT line_mode,
    return line_mode;
 }
 
+/* Fill provoking vertex mode to packet. */
+#define ANV_SETUP_PROVOKING_VERTEX(cmd, mode)         \
+   switch (dyn->rs.provoking_vertex) {                \
+   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:    \
+      cmd.TriangleStripListProvokingVertexSelect = 0; \
+      cmd.LineStripListProvokingVertexSelect = 0;     \
+      cmd.TriangleFanProvokingVertexSelect = 1;       \
+      break;                                          \
+   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:     \
+      cmd.TriangleStripListProvokingVertexSelect = 2; \
+      cmd.LineStripListProvokingVertexSelect = 1;     \
+      cmd.TriangleFanProvokingVertexSelect = 2;       \
+      break;                                          \
+   default:                                           \
+      unreachable("Invalid provoking vertex mode");   \
+   }                                                  \
+
 VkFormatFeatureFlags2
 anv_get_image_format_features2(const struct intel_device_info *devinfo,
                                VkFormat vk_format,

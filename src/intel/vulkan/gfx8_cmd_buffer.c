@@ -273,11 +273,15 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif /* GFX_VER >= 11 */
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_WIDTH)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_WIDTH) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
       uint32_t sf_dw[GENX(3DSTATE_SF_length)];
       struct GENX(3DSTATE_SF) sf = {
          GENX(3DSTATE_SF_header),
       };
+
+      ANV_SETUP_PROVOKING_VERTEX(sf, dyn->rs.provoking_vertex);
+
       sf.LineWidth = dyn->rs.line.width,
 
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);

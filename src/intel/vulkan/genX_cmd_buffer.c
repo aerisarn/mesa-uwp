@@ -3144,7 +3144,8 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT) &&
-       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE))
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE) &&
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX))
       return;
 
    /* Take dynamic primitive topology in to account with
@@ -3161,6 +3162,9 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
       .APIMode = dyn->vp.depth_clip_negative_one_to_one ? APIMODE_OGL : APIMODE_D3D,
       .ViewportXYClipTestEnable = xy_clip_test_enable,
    };
+
+   ANV_SETUP_PROVOKING_VERTEX(clip, dyn->rs.provoking_vertex);
+
    uint32_t dwords[GENX(3DSTATE_CLIP_length)];
 
    /* TODO(mesh): Multiview. */
@@ -3426,6 +3430,20 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
       .RenderingDisable = dyn->rs.rasterizer_discard_enable,
       .RenderStreamSelect = dyn->rs.rasterization_stream,
    };
+
+   switch (dyn->rs.provoking_vertex) {
+   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+      so.ReorderMode = LEADING;
+      break;
+
+   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+      so.ReorderMode = TRAILING;
+      break;
+
+   default:
+      unreachable("Invalid provoking vertex mode");
+   }
+
    GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
    anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.streamout_state);
 }
@@ -3625,7 +3643,8 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                        ANV_CMD_DIRTY_XFB_ENABLE)) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM))
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX))
       cmd_buffer_emit_streamout(cmd_buffer);
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
