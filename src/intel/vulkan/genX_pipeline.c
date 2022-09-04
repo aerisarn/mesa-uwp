@@ -923,8 +923,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          &cb->attachments[binding->index];
 
       struct GENX(BLEND_STATE_ENTRY) entry = {
-         .LogicOpEnable = cb->logic_op_enable,
-
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
           *   "Logical operations are controlled by the logicOpEnable and
@@ -939,8 +937,9 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
           *
           *   "Enabling LogicOp and Color Buffer Blending at the same time is
           *    UNDEFINED"
+          *
+          * Above is handled during emit since these states are dynamic.
           */
-         .ColorBufferBlendEnable = !cb->logic_op_enable && a->blend_enable,
          .ColorClampRange = COLORCLAMP_RTFORMAT,
          .PreBlendColorClampEnable = true,
          .PostBlendColorClampEnable = true,
@@ -1006,7 +1005,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       GENX(3DSTATE_PS_BLEND_header),
    };
    blend.AlphaToCoverageEnable         = blend_state.AlphaToCoverageEnable;
-   blend.ColorBufferBlendEnable        = bs0.ColorBufferBlendEnable;
    blend.SourceAlphaBlendFactor        = bs0.SourceAlphaBlendFactor;
    blend.DestinationAlphaBlendFactor   = bs0.DestinationAlphaBlendFactor;
    blend.SourceBlendFactor             = bs0.SourceBlendFactor;

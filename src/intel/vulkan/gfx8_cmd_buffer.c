@@ -519,7 +519,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE)) {
       const uint8_t color_writes = dyn->cb.color_write_enables;
       const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
       bool has_writeable_rt =
@@ -533,6 +534,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(3DSTATE_PS_BLEND) ps_blend = {
          GENX(3DSTATE_PS_BLEND_header),
          .HasWriteableRT = has_writeable_rt,
+         .ColorBufferBlendEnable =
+            !dyn->cb.logic_op_enable && dyn->cb.attachments[0].blend_enable,
       };
       GENX(3DSTATE_PS_BLEND_pack)(NULL, ps_blend_dwords, &ps_blend);
       anv_batch_emit_merge(&cmd_buffer->batch, ps_blend_dwords,
@@ -564,6 +567,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                  (pipeline->color_comp_writes[i] &
                                   VK_COLOR_COMPONENT_B_BIT) == 0,
             .LogicOpFunction   = genX(vk_to_intel_logic_op)[dyn->cb.logic_op],
+            .LogicOpEnable     = dyn->cb.logic_op_enable,
+            .ColorBufferBlendEnable =
+               !dyn->cb.logic_op_enable && dyn->cb.attachments[i].blend_enable,
          };
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
          dws += GENX(BLEND_STATE_ENTRY_length);
