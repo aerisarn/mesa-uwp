@@ -278,6 +278,7 @@ get_device_extensions(const struct anv_physical_device *device,
 #endif
       .EXT_extended_dynamic_state            = true,
       .EXT_extended_dynamic_state2           = true,
+      .EXT_extended_dynamic_state3           = true,
       .EXT_external_memory_dma_buf           = true,
       .EXT_external_memory_host              = true,
       .EXT_fragment_shader_interlock         = true,
@@ -1711,6 +1712,45 @@ void anv_GetPhysicalDeviceFeatures2(
          features->extendedDynamicState2 = true;
          features->extendedDynamicState2LogicOp = true;
          features->extendedDynamicState2PatchControlPoints = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)ext;
+         features->extendedDynamicState3PolygonMode = true;
+         features->extendedDynamicState3TessellationDomainOrigin = true;
+         features->extendedDynamicState3RasterizationStream = true;
+         features->extendedDynamicState3LineStippleEnable = true;
+         features->extendedDynamicState3LineRasterizationMode = true;
+         features->extendedDynamicState3LogicOpEnable = true;
+         features->extendedDynamicState3AlphaToOneEnable = true;
+         features->extendedDynamicState3DepthClipEnable = true;
+         features->extendedDynamicState3DepthClampEnable = true;
+         features->extendedDynamicState3DepthClipNegativeOneToOne = true;
+         features->extendedDynamicState3ProvokingVertexMode = true;
+         features->extendedDynamicState3ColorBlendEnable = true;
+         features->extendedDynamicState3ColorWriteMask = true;
+         features->extendedDynamicState3ColorBlendEquation = true;
+         features->extendedDynamicState3SampleMask = true;
+
+         features->extendedDynamicState3RasterizationSamples = false;
+         features->extendedDynamicState3AlphaToCoverageEnable = false;
+         features->extendedDynamicState3ConservativeRasterizationMode = false;
+         features->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
+         features->extendedDynamicState3SampleLocationsEnable = false;
+         features->extendedDynamicState3ViewportWScalingEnable = false;
+         features->extendedDynamicState3ViewportSwizzle = false;
+         features->extendedDynamicState3ShadingRateImageEnable = false;
+         features->extendedDynamicState3CoverageToColorEnable = false;
+         features->extendedDynamicState3CoverageToColorLocation = false;
+         features->extendedDynamicState3CoverageModulationMode = false;
+         features->extendedDynamicState3CoverageModulationTableEnable = false;
+         features->extendedDynamicState3CoverageModulationTable = false;
+         features->extendedDynamicState3CoverageReductionMode = false;
+         features->extendedDynamicState3RepresentativeFragmentTestEnable = false;
+         features->extendedDynamicState3ColorBlendAdvanced = false;
+
          break;
       }
 
