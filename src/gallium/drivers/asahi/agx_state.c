@@ -1537,8 +1537,10 @@ demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool
       cfg.reads_tilebuffer = reads_tib;
       cfg.sample_mask_from_shader = sample_mask_from_shader;
 
-      cfg.front.lines = cfg.back.lines = prim_lines;
-      cfg.front.points = cfg.back.points = prim_points;
+      cfg.front.object_type = cfg.back.object_type =
+         prim_points ? AGX_OBJECT_TYPE_POINT_SPRITE_UV01 :
+         prim_lines ? AGX_OBJECT_TYPE_LINE :
+         AGX_OBJECT_TYPE_TRIANGLE;
    };
 
    return T.gpu;

@@ -65,6 +65,13 @@
     <value name="Quad strip" value="15"/> <!-- guess, confirm with piglit later XXX -->
   </enum>
 
+  <enum name="Object Type">
+    <value name="Triangle" value="0"/>
+    <value name="Line" value="1"/>
+    <value name="Point sprite UV=10" value="2"/>
+    <value name="Point sprite UV=01" value="4"/>
+  </enum>
+
   <enum name="Layout">
     <value name="Linear" value="0"/>
     <!-- Default layout if no other layout is set -->
@@ -370,8 +377,7 @@
 
   <struct name="Unknown face" size="4">
     <field name="Unknown" size="8" start="0:20" type="hex" default="0x7e"/>
-    <field name="Lines" size="1" start="0:28" type="bool"/>
-    <field name="Points" size="1" start="0:30" type="bool"/>
+    <field name="Object type" size="4" start="0:28" type="Object Type"/>
   </struct>
 
   <struct name="Unknown 4a" size="20">
