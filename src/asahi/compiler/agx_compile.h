@@ -301,7 +301,6 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_insert_word = true,
    .lower_cs_local_index_to_id = true,
    .has_cs_global_id = true,
-   .lower_wpos_pntc = true,
    .vectorize_io = true,
    .use_interpolated_input_intrinsics = true,
    .lower_rotate = true,

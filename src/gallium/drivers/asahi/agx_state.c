@@ -1525,9 +1525,18 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
    return agx_pool_upload_aligned(pool, &out, sizeof(out), 64);
 }
 
+static enum agx_object_type
+agx_point_object_type(struct agx_rasterizer *rast)
+{
+   return (rast->base.sprite_coord_mode == PIPE_SPRITE_COORD_UPPER_LEFT) ?
+          AGX_OBJECT_TYPE_POINT_SPRITE_UV01 :
+          AGX_OBJECT_TYPE_POINT_SPRITE_UV10;
+}
+
 static uint64_t
-demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool
-      reads_tib, bool sample_mask_from_shader, bool no_colour_output)
+demo_unk11(struct agx_pool *pool, struct agx_rasterizer *rast,
+           bool prim_lines, bool prim_points, bool reads_tib,
+           bool sample_mask_from_shader, bool no_colour_output)
 {
    struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_UNKNOWN_4A_LENGTH, 64);
 
@@ -1538,7 +1547,7 @@ demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool
       cfg.sample_mask_from_shader = sample_mask_from_shader;
 
       cfg.front.object_type = cfg.back.object_type =
-         prim_points ? AGX_OBJECT_TYPE_POINT_SPRITE_UV01 :
+         prim_points ? agx_point_object_type(rast) :
          prim_lines ? AGX_OBJECT_TYPE_LINE :
          AGX_OBJECT_TYPE_TRIANGLE;
    };
@@ -1614,7 +1623,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
             varyings, ctx->fs->info.varyings.fs.nr_bindings));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, ctx->fs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool, is_points));
-   agx_push_record(&out, 5, demo_unk11(pool, is_lines, is_points, reads_tib,
+   agx_push_record(&out, 5, demo_unk11(pool, ctx->rast, is_lines, is_points, reads_tib,
             sample_mask_from_shader, no_colour_output));
 
    unsigned zbias = 0;
