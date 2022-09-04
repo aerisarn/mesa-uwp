@@ -492,7 +492,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       genX(emit_sample_pattern)(&cmd_buffer->batch, dyn->ms.sample_locations);
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE)) {
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
@@ -504,6 +505,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                       (pipeline->force_fragment_thread_dispatch ||
                                        anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
                                       ForceON : 0,
+         .LineStippleEnable = dyn->rs.line.stipple.enable,
       };
       GENX(3DSTATE_WM_pack)(NULL, wm_dwords, &wm);
 

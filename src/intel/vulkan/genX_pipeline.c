@@ -1650,8 +1650,6 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
 
       wm.BarycentricInterpolationMode =
          wm_prog_data->barycentric_interp_modes;
-
-      wm.LineStippleEnable = rs->line.stipple.enable;
    }
 
    GENX(3DSTATE_WM_pack)(NULL, pipeline->gfx8.wm, &wm);
