@@ -529,6 +529,7 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
  */
 VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
+                          VkPolygonMode polygon_mode,
                           VkPrimitiveTopology primitive_topology)
 {
    if (anv_pipeline_is_mesh(pipeline)) {
@@ -538,7 +539,7 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
       case SHADER_PRIM_LINES:
          return VK_POLYGON_MODE_LINE;
       case SHADER_PRIM_TRIANGLES:
-         return pipeline->polygon_mode;
+         return polygon_mode;
       default:
          unreachable("invalid primitive type for mesh");
       }
@@ -559,7 +560,7 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
       case _3DPRIM_QUADLIST:
       case _3DPRIM_QUADSTRIP:
       case _3DPRIM_POLYGON:
-         return pipeline->polygon_mode;
+         return polygon_mode;
       }
       unreachable("Unsupported GS output topology");
    } else if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
@@ -572,7 +573,7 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
 
       case BRW_TESS_OUTPUT_TOPOLOGY_TRI_CW:
       case BRW_TESS_OUTPUT_TOPOLOGY_TRI_CCW:
-         return pipeline->polygon_mode;
+         return polygon_mode;
       }
       unreachable("Unsupported TCS output topology");
    } else {
@@ -591,7 +592,7 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
       case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
       case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
       case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-         return pipeline->polygon_mode;
+         return polygon_mode;
 
       default:
          unreachable("Unsupported primitive topology");
@@ -736,8 +737,6 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.ForcedSampleCount = FSC_NUMRASTSAMPLES_0;
    raster.ForceMultisampling = false;
 
-   raster.FrontFaceFillMode = genX(vk_to_intel_fillmode)[rs->polygon_mode];
-   raster.BackFaceFillMode = genX(vk_to_intel_fillmode)[rs->polygon_mode];
    raster.ScissorRectangleEnable = true;
 
    raster.ViewportZFarClipTestEnable = pipeline->depth_clip_enable;

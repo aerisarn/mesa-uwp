@@ -3142,7 +3142,8 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 
    if (!(cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) &&
-       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT))
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT) &&
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE))
       return;
 
    /* Take dynamic primitive topology in to account with
@@ -3150,6 +3151,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
     */
    VkPolygonMode dynamic_raster_mode =
       genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
+                                dyn->rs.polygon_mode,
                                 dyn->ia.primitive_topology);
    bool xy_clip_test_enable = (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
 

@@ -239,7 +239,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_CULL_MODE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE)) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_RASTER::APIMode
        *    3DSTATE_RASTER::DXMultisampleRasterizationEnable
@@ -250,6 +251,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       VkPolygonMode dynamic_raster_mode =
          genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
+                                   dyn->rs.polygon_mode,
                                    dyn->ia.primitive_topology);
 
       genX(rasterization_mode)(dynamic_raster_mode,
@@ -273,6 +275,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetConstant          = dyn->rs.depth_bias.constant,
          .GlobalDepthOffsetScale             = dyn->rs.depth_bias.slope,
          .GlobalDepthOffsetClamp             = dyn->rs.depth_bias.clamp,
+         .FrontFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
+         .BackFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,

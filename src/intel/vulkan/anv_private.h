@@ -2952,7 +2952,6 @@ struct anv_graphics_pipeline {
     * rasterization_samples used only with gen < 8.
     */
    VkLineRasterizationModeEXT                   line_mode;
-   VkPolygonMode                                polygon_mode;
    uint32_t                                     patch_control_points;
    uint32_t                                     rasterization_samples;
 

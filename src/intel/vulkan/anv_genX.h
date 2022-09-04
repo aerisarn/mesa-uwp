@@ -52,6 +52,8 @@ extern const uint32_t genX(vk_to_intel_stencil_op)[];
 
 extern const uint32_t genX(vk_to_intel_logic_op)[];
 
+extern const uint32_t genX(vk_to_intel_fillmode)[];
+
 void genX(init_physical_device_state)(struct anv_physical_device *device);
 
 VkResult genX(init_device_state)(struct anv_device *device);
@@ -168,6 +170,7 @@ genX(rasterization_mode)(VkPolygonMode raster_mode,
 
 VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
+                          VkPolygonMode polygon_mode,
                           VkPrimitiveTopology primitive_topology);
 
 void

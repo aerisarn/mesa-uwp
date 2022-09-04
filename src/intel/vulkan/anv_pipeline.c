@@ -2300,10 +2300,9 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    pipeline->negative_one_to_one =
       state->vp != NULL && state->vp->depth_clip_negative_one_to_one;
 
-   /* Store line mode, polygon mode and rasterization samples, these are used
+   /* Store line mode and rasterization samples, these are used
     * for dynamic primitive topology.
     */
-   pipeline->polygon_mode = state->rs->polygon_mode;
    pipeline->rasterization_samples =
       state->ms != NULL ? state->ms->rasterization_samples : 1;
    pipeline->line_mode = state->rs->line.mode;
