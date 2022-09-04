@@ -2302,14 +2302,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    pipeline->patch_control_points =
       state->ts != NULL ? state->ts->patch_control_points : 0;
 
-   /* Store the color write masks, to be merged with color write enable if
-    * dynamic.
-    */
-   if (state->cb != NULL) {
-      for (unsigned i = 0; i < state->cb->attachment_count; i++)
-         pipeline->color_comp_writes[i] = state->cb->attachments[i].write_mask;
-   }
-
    return VK_SUCCESS;
 }
 

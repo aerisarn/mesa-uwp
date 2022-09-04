@@ -2954,8 +2954,6 @@ struct anv_graphics_pipeline {
    uint32_t                                     patch_control_points;
    uint32_t                                     rasterization_samples;
 
-   VkColorComponentFlags                        color_comp_writes[MAX_RTS];
-
    uint32_t                                     view_mask;
    uint32_t                                     instance_multiplier;
 
@@ -3072,7 +3070,7 @@ anv_cmd_buffer_all_color_write_masked(const struct anv_cmd_buffer *cmd_buffer)
 
    /* Or all write masks are empty */
    for (uint32_t i = 0; i < state->color_att_count; i++) {
-      if (state->pipeline->color_comp_writes[i] != 0)
+      if (dyn->cb.attachments[i].write_mask != 0)
          return false;
    }
 

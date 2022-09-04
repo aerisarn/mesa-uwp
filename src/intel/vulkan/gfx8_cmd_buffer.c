@@ -532,7 +532,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
       const uint8_t color_writes = dyn->cb.color_write_enables;
       const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
       bool has_writeable_rt =
@@ -572,16 +573,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                (color_writes & BITFIELD_BIT(i)) == 0;
          struct GENX(BLEND_STATE_ENTRY) entry = {
             .WriteDisableAlpha = write_disabled ||
-                                 (pipeline->color_comp_writes[i] &
+                                 (dyn->cb.attachments[i].write_mask &
                                   VK_COLOR_COMPONENT_A_BIT) == 0,
             .WriteDisableRed   = write_disabled ||
-                                 (pipeline->color_comp_writes[i] &
+                                 (dyn->cb.attachments[i].write_mask &
                                   VK_COLOR_COMPONENT_R_BIT) == 0,
             .WriteDisableGreen = write_disabled ||
-                                 (pipeline->color_comp_writes[i] &
+                                 (dyn->cb.attachments[i].write_mask &
                                   VK_COLOR_COMPONENT_G_BIT) == 0,
             .WriteDisableBlue  = write_disabled ||
-                                 (pipeline->color_comp_writes[i] &
+                                 (dyn->cb.attachments[i].write_mask &
                                   VK_COLOR_COMPONENT_B_BIT) == 0,
             .LogicOpFunction   = genX(vk_to_intel_logic_op)[dyn->cb.logic_op],
             .LogicOpEnable     = dyn->cb.logic_op_enable,
