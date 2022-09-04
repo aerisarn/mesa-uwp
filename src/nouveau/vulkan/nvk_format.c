@@ -305,7 +305,7 @@ static const struct nvk_va_format nvk_vf_formats[] = {
 const struct nvk_va_format *
 nvk_get_va_format(const struct nvk_physical_device *pdev, VkFormat format)
 {
-   if (format > ARRAY_SIZE(nvk_vf_formats))
+   if (format >= ARRAY_SIZE(nvk_vf_formats))
       return NULL;
 
    if (nvk_vf_formats[format].bit_widths == 0)
