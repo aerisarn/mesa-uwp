@@ -8,7 +8,7 @@ The Gallium llvmpipe driver is a software rasterizer that uses LLVM to
 do runtime code generation. Shaders, point/line/triangle rasterization
 and vertex processing are implemented with LLVM IR which is translated
 to x86, x86-64, or ppc64le machine code. Also, the driver is
-multithreaded to take advantage of multiple CPU cores (up to 8 at this
+multithreaded to take advantage of multiple CPU cores (up to 32 at this
 time). It's the fastest software rasterizer for Mesa.
 
 Requirements
