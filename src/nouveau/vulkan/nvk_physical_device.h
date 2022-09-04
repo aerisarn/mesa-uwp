@@ -15,10 +15,6 @@ struct nvk_physical_device {
    struct vk_physical_device vk;
    struct nvk_instance *instance;
    struct nouveau_ws_device *dev;
-
-   /* Link in nvk_instance::physical_devices */
-   struct list_head link;
-
    struct wsi_device wsi_device;
 
    // TODO: add mapable VRAM heap if possible
@@ -35,7 +31,11 @@ VK_DEFINE_HANDLE_CASTS(nvk_physical_device,
    VkPhysicalDevice,
    VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 
-void nvk_physical_device_destroy(struct nvk_physical_device *);
+VkResult nvk_create_drm_physical_device(struct vk_instance *vk_instance,
+                                        struct _drmDevice *device,
+                                        struct vk_physical_device **out);
+
+void nvk_physical_device_destroy(struct vk_physical_device *vk_device);
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
     defined(VK_USE_PLATFORM_XCB_KHR) || \

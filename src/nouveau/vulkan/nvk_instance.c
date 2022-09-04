@@ -70,8 +70,8 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return result;
    }
 
-   instance->physical_devices_enumerated = false;
-   list_inithead(&instance->physical_devices);
+   instance->vk.physical_devices.try_create_for_drm = nvk_create_drm_physical_device;
+   instance->vk.physical_devices.destroy = nvk_physical_device_destroy;
 
    *pInstance = nvk_instance_to_handle(instance);
    return VK_SUCCESS;
@@ -84,9 +84,6 @@ nvk_DestroyInstance(VkInstance _instance, const VkAllocationCallbacks *pAllocato
 
    if (!instance)
       return;
-
-   list_for_each_entry_safe(struct nvk_physical_device, pdevice, &instance->physical_devices, link)
-      nvk_physical_device_destroy(pdevice);
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);

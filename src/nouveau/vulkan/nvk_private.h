@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #include <xf86drm.h>
 
+#define NVIDIA_VENDOR_ID 0x10de
+
 #define NVK_MAX_SETS 8
 #define NVK_MAX_PUSH_SIZE 128
 #define NVK_MAX_DYNAMIC_BUFFERS 64
