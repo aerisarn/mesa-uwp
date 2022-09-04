@@ -182,33 +182,28 @@ static const enum agx_stencil_op agx_stencil_ops[PIPE_STENCIL_OP_INVERT + 1] = {
 };
 
 static void
-agx_pack_rasterizer_face(struct agx_rasterizer_face_packed *out,
-                         struct pipe_stencil_state st,
-                         enum agx_zs_func z_func,
-                         bool disable_z_write)
+agx_pack_stencil(struct agx_fragment_stencil_packed *out,
+                 struct pipe_stencil_state st)
 {
-   agx_pack(out, RASTERIZER_FACE, cfg) {
-      cfg.depth_function = z_func;
-      cfg.disable_depth_write = disable_z_write;
-
-      if (st.enabled) {
-         cfg.stencil_write_mask = st.writemask;
-         cfg.stencil_read_mask = st.valuemask;
+   if (st.enabled) {
+      agx_pack(out, FRAGMENT_STENCIL, cfg) {
+         cfg.compare = (enum agx_zs_func) st.func;
+         cfg.write_mask = st.writemask;
+         cfg.read_mask = st.valuemask;
 
          cfg.depth_pass   = agx_stencil_ops[st.zpass_op];
          cfg.depth_fail   = agx_stencil_ops[st.zfail_op];
          cfg.stencil_fail = agx_stencil_ops[st.fail_op];
-
-         cfg.stencil_compare = (enum agx_zs_func) st.func;
-      } else {
-         cfg.stencil_write_mask = 0xFF;
-         cfg.stencil_read_mask = 0xFF;
+      }
+   } else {
+      agx_pack(out, FRAGMENT_STENCIL, cfg) {
+         cfg.compare = AGX_ZS_FUNC_ALWAYS;
+         cfg.write_mask = 0xFF;
+         cfg.read_mask = 0xFF;
 
          cfg.depth_pass = AGX_STENCIL_OP_KEEP;
          cfg.depth_fail = AGX_STENCIL_OP_KEEP;
          cfg.stencil_fail = AGX_STENCIL_OP_KEEP;
-
-         cfg.stencil_compare = AGX_ZS_FUNC_ALWAYS;
       }
    }
 }
@@ -232,18 +227,20 @@ agx_create_zsa_state(struct pipe_context *ctx,
    STATIC_ASSERT((enum agx_zs_func) PIPE_FUNC_GEQUAL   == AGX_ZS_FUNC_GEQUAL);
    STATIC_ASSERT((enum agx_zs_func) PIPE_FUNC_ALWAYS   == AGX_ZS_FUNC_ALWAYS);
 
-   enum agx_zs_func z_func = state->depth_enabled ?
-                ((enum agx_zs_func) state->depth_func) : AGX_ZS_FUNC_ALWAYS;
+   agx_pack(&so->depth, FRAGMENT_FACE, cfg) {
+      cfg.depth_function = state->depth_enabled ?
+         ((enum agx_zs_func) state->depth_func) : AGX_ZS_FUNC_ALWAYS;
 
-   agx_pack_rasterizer_face(&so->front,
-         state->stencil[0], z_func, !state->depth_writemask);
+      cfg.disable_depth_write = !state->depth_writemask;
+   }
+
+   agx_pack_stencil(&so->front_stencil, state->stencil[0]);
 
    if (state->stencil[1].enabled) {
-      agx_pack_rasterizer_face(&so->back,
-            state->stencil[1], z_func, !state->depth_writemask);
+      agx_pack_stencil(&so->back_stencil, state->stencil[1]);
    } else {
       /* One sided stencil */
-      so->back = so->front;
+      so->back_stencil = so->front_stencil;
    }
 
    return so;
@@ -1496,34 +1493,34 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
    struct agx_rasterizer_packed out;
 
    agx_pack(&out, RASTERIZER, cfg) {
-      cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
-      cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
+      cfg.common.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
+      cfg.common.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
 
       cfg.front.stencil_reference = ctx->stencil_ref.ref_value[0];
-      cfg.back.stencil_reference = cfg.two_sided_stencil ?
+      cfg.back.stencil_reference = cfg.common.two_sided_stencil ?
          ctx->stencil_ref.ref_value[1] :
          cfg.front.stencil_reference;
 
       cfg.front.line_width = cfg.back.line_width = rast->line_width;
       cfg.front.polygon_mode = cfg.back.polygon_mode = AGX_POLYGON_MODE_FILL;
 
-      cfg.unk_fill_lines = is_points; /* XXX: what is this? */
+      cfg.common.unk_fill_lines = is_points; /* XXX: what is this? */
 
       /* Always enable scissoring so we may scissor to the viewport (TODO:
        * optimize this out if the viewport is the default and the app does not
        * use the scissor test) */
-      cfg.scissor_enable = true;
+      cfg.common.scissor_enable = true;
 
-      cfg.depth_bias_enable = rast->base.offset_tri;
+      cfg.common.depth_bias_enable = rast->base.offset_tri;
    };
 
    /* Words 2-3: front */
-   out.opaque[2] |= ctx->zs->front.opaque[0];
-   out.opaque[3] |= ctx->zs->front.opaque[1];
+   out.opaque[2] |= ctx->zs->depth.opaque[0];
+   out.opaque[3] |= ctx->zs->front_stencil.opaque[0];
 
    /* Words 4-5: back */
-   out.opaque[4] |= ctx->zs->back.opaque[0];
-   out.opaque[5] |= ctx->zs->back.opaque[1];
+   out.opaque[4] |= ctx->zs->depth.opaque[0];
+   out.opaque[5] |= ctx->zs->back_stencil.opaque[0];
 
    return agx_pool_upload_aligned(pool, &out, sizeof(out), 64);
 }

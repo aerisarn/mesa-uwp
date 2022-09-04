@@ -325,34 +325,47 @@
     <field name="Clamp" size="32" start="2:0" type="float"/>
   </struct>
 
-  <struct name="Rasterizer face" size="8">
-    <field name="Stencil reference" size="8" start="0:0" type="hex"/>
+  <struct name="Fragment face">
+    <field name="Stencil reference" size="8" start="0" type="hex"/>
     <!-- line width is 4:4 fixed point with off-by-one applied -->
-    <field name="Line width" size="8" start="0:8" type="hex"/>
-    <field name="Polygon mode" size="2" start="0:18" type="Polygon Mode"/>
-    <field name="Disable depth write" size="1" start="0:21" type="bool"/>
-    <field name="Unk - visibility test internal" size="2" start="0:22" type="hex"/>
-    <field name="Depth function" size="3" start="0:24" type="ZS Func"/>
-    <field name="Stencil write mask" size="8" start="1:0" type="hex"/>
-    <field name="Stencil read mask" size="8" start="1:8" type="hex"/>
-    <field name="Depth pass" size="3" start="1:16" type="Stencil Op"/>
-    <field name="Depth fail" size="3" start="1:19" type="Stencil Op"/>
-    <field name="Stencil fail" size="3" start="1:22" type="Stencil Op"/>
-    <field name="Stencil compare" size="3" start="1:25" type="ZS Func"/>
+    <field name="Line width" size="8" start="8" type="hex"/>
+    <field name="Polygon mode" size="2" start="18" type="Polygon Mode"/>
+    <field name="Disable depth write" size="1" start="21" type="bool"/>
+    <field name="Unk - visibility test internal" size="2" start="22" type="hex"/>
+    <field name="Depth function" size="3" start="24" type="ZS Func"/>
+  </struct>
+
+  <struct name="Fragment stencil" size="8">
+    <field name="Write mask" size="8" start="0" type="hex"/>
+    <field name="Read mask" size="8" start="8" type="hex"/>
+    <field name="Depth pass" size="3" start="16" type="Stencil Op"/>
+    <field name="Depth fail" size="3" start="19" type="Stencil Op"/>
+    <field name="Stencil fail" size="3" start="22" type="Stencil Op"/>
+    <field name="Compare" size="3" start="25" type="ZS Func"/>
+  </struct>
+
+  <struct name="Fragment control">
+    <field name="Unk 1" size="1" start="9" type="hex" default="0x1"/>
+    <field name="Visibility mode" size="2" start="14" type="Visibility Mode"/>
+    <field name="Scissor enable" size="1" start="16" type="bool"/>
+    <field name="Depth bias enable" size="1" start="17" type="bool"/>
+    <field name="Stencil test enable" size="1" start="18" type="bool"/>
+    <field name="Two-sided stencil" size="1" start="19" type="bool"/>
+    <field name="Unk fill lines" size="1" start="26" type="hex" default="0x0"/> <!-- set when drawing LINES -->
+  </struct>
+
+  <struct name="Fragment occlusion query">
+    <field name="Offset" size="18" start="14" type="uint"/>
   </struct>
 
   <struct name="Rasterizer" size="28">
     <field name="Tag" size="32" start="0:0" type="hex" default="0x10000b5"/>
-    <field name="Unk 1" size="1" start="1:9" type="hex" default="0x1"/>
-    <field name="Visibility mode" size="2" start="1:14" type="Visibility Mode"/>
-    <field name="Scissor enable" size="1" start="1:16" type="bool"/>
-    <field name="Depth bias enable" size="1" start="1:17" type="bool"/>
-    <field name="Stencil test enable" size="1" start="1:18" type="bool"/>
-    <field name="Two-sided stencil" size="1" start="1:19" type="bool"/>
-    <field name="Unk fill lines" size="1" start="1:26" type="hex" default="0x0"/> <!-- set when drawing LINES -->
-    <field name="Front" size="64" start="2:0" type="Rasterizer face"/>
-    <field name="Back" size="64" start="4:0" type="Rasterizer face"/>
-    <field name="Visibility buffer offset" size="18" start="6:14" type="uint"/>
+    <field name="Common" size="32" start="1:0" type="Fragment control"/>
+    <field name="Front" size="32" start="2:0" type="Fragment face"/>
+    <field name="Front stencil" size="32" start="3:0" type="Fragment stencil"/>
+    <field name="Back" size="32" start="4:0" type="Fragment face"/>
+    <field name="Back stencil" size="32" start="5:0" type="Fragment stencil"/>
+    <field name="Occlusion query" size="32" start="6:0" type="Fragment occlusion query"/>
   </struct>
 
   <struct name="Unknown face" size="4">

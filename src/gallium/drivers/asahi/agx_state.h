@@ -117,7 +117,8 @@ struct agx_batch {
 
 struct agx_zsa {
    struct pipe_depth_stencil_alpha_state base;
-   struct agx_rasterizer_face_packed front, back;
+   struct agx_fragment_face_packed depth;
+   struct agx_fragment_stencil_packed front_stencil, back_stencil;
 };
 
 struct agx_blend {
