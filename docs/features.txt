@@ -90,7 +90,7 @@ GL 3.2, GLSL 1.50 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (v3d, vc4, panfrost, lima, asahi)
   GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (v3d, vc4, panfrost, lima, asahi)
   GL_ARB_provoking_vertex (Provoking vertex)            DONE (v3d, vc4, panfrost, lima, asahi)
-  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (panfrost)
+  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (panfrost, asahi)
   GL_ARB_texture_multisample (Multisample textures)     DONE (freedreno/a5xx+, v3d, vc4, panfrost)
   GL_ARB_depth_clamp (Frag depth clamp)                 DONE (panfrost)
   GL_ARB_sync (Fence objects)                           DONE (v3d, vc4, panfrost, lima)

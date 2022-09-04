@@ -1270,6 +1270,8 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
    case PIPE_CAP_SAMPLE_SHADING:
+   case PIPE_CAP_SEAMLESS_CUBE_MAP:
+   case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
       return is_deqp;
 
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
@@ -1318,8 +1320,6 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TEXCOORD:
    case PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL:
    case PIPE_CAP_FS_POSITION_IS_SYSVAL:
-   case PIPE_CAP_SEAMLESS_CUBE_MAP:
-   case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
       return true;
    case PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT:
    case PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER:

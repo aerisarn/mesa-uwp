@@ -291,6 +291,7 @@
     <field name="Compare func" size="3" start="39" type="Compare func"/>
     <field name="Unk 3" size="1" start="42" type="hex" default="1"/>
     <field name="Border colour" size="2" start="55" type="Border colour"/>
+    <field name="Seamful cube maps" size="1" start="57" type="bool"/>
   </struct>
 
   <!--- Pointed to from the command buffer -->
