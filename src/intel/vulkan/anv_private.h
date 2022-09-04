@@ -2951,7 +2951,6 @@ struct anv_graphics_pipeline {
    /* These fields are required with dynamic primitive topology,
     * rasterization_samples used only with gen < 8.
     */
-   VkLineRasterizationModeEXT                   line_mode;
    uint32_t                                     patch_control_points;
    uint32_t                                     rasterization_samples;
 
@@ -3851,6 +3850,20 @@ anv_rasterization_aa_mode(VkPolygonMode raster_mode,
        line_mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT)
       return true;
    return false;
+}
+
+static inline VkLineRasterizationModeEXT
+anv_line_rasterization_mode(VkLineRasterizationModeEXT line_mode,
+                            unsigned rasterization_samples)
+{
+   if (line_mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT) {
+      if (rasterization_samples > 1) {
+         return VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+      } else {
+         return VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
+      }
+   }
+   return line_mode;
 }
 
 VkFormatFeatureFlags2

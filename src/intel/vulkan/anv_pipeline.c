@@ -2305,14 +2305,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
     */
    pipeline->rasterization_samples =
       state->ms != NULL ? state->ms->rasterization_samples : 1;
-   pipeline->line_mode = state->rs->line.mode;
-   if (pipeline->line_mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT) {
-      if (pipeline->rasterization_samples > 1) {
-         pipeline->line_mode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
-      } else {
-         pipeline->line_mode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
-      }
-   }
    pipeline->patch_control_points =
       state->ts != NULL ? state->ts->patch_control_points : 0;
 

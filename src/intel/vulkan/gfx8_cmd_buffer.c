@@ -290,7 +290,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_MODE)) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_RASTER::APIMode
        *    3DSTATE_RASTER::DXMultisampleRasterizationEnable
@@ -299,17 +300,21 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       uint32_t api_mode = 0;
       bool msaa_raster_enable = false;
 
+      VkLineRasterizationModeEXT line_mode =
+         anv_line_rasterization_mode(dyn->rs.line.mode,
+                                     pipeline->rasterization_samples);
+
       VkPolygonMode dynamic_raster_mode =
          genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
                                    dyn->rs.polygon_mode,
                                    dyn->ia.primitive_topology);
 
       genX(rasterization_mode)(dynamic_raster_mode,
-                               pipeline->line_mode, dyn->rs.line.width,
+                               line_mode, dyn->rs.line.width,
                                &api_mode, &msaa_raster_enable);
 
       bool aa_enable = anv_rasterization_aa_mode(dynamic_raster_mode,
-                                                 pipeline->line_mode);
+                                                 line_mode);
 
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {
