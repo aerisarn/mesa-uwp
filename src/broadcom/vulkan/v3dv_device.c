@@ -181,6 +181,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_provoking_vertex                 = true,
       .EXT_separate_stencil_usage           = true,
       .EXT_texel_buffer_alignment           = true,
+      .EXT_tooling_info                     = true,
       .EXT_vertex_attribute_divisor         = true,
 #ifdef ANDROID
       .ANDROID_native_buffer                = true,
