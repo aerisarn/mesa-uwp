@@ -138,6 +138,10 @@ bool TexInstr::do_ready() const
 void TexInstr::do_print(std::ostream& os) const
 {
 
+   for (auto& p : prepare_instr()) {
+      os << *p << "\n";
+   }
+
    os << "TEX " << opname(m_opcode) << " ";
    print_dest(os);
 
