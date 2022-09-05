@@ -461,7 +461,10 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
 
       *exec_val->definitions.rbegin() = Definition(exec, ctx.program->lane_mask);
 
-      /* TODO: change instruction from VOP3 to plain VOPC when possible. */
+      /* Change instruction from VOP3 to plain VOPC when possible. */
+      if (ctx.program->gfx_level >= GFX10 && !exec_val->usesModifiers() &&
+          (exec_val->operands.size() < 2 || exec_val->operands[1].isOfType(RegType::vgpr)))
+         exec_val->format = Format::VOPC;
    } else {
       /* Reassign the instruction to write exec directly. */
       exec_val->definitions[0] = Definition(exec, ctx.program->lane_mask);
