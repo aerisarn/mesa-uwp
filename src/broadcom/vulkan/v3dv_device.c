@@ -166,6 +166,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_vulkan_memory_model              = true,
       .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats                     = true,
+      .EXT_border_color_swizzle             = true,
       .EXT_color_write_enable               = true,
       .EXT_custom_border_color              = true,
       .EXT_inline_uniform_block             = true,
@@ -1294,6 +1295,14 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->workgroupMemoryExplicitLayoutScalarBlockLayout = false;
          features->workgroupMemoryExplicitLayout8BitAccess = true;
          features->workgroupMemoryExplicitLayout16BitAccess = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
+         VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *features =
+            (void *) ext;
+         features->borderColorSwizzle = true;
+         features->borderColorSwizzleFromImage = true;
          break;
       }
 
