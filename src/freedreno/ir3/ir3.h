@@ -483,6 +483,8 @@ struct ir3_instruction {
       IR3_BARRIER_PRIVATE_R = 1 << 9,
       IR3_BARRIER_PRIVATE_W = 1 << 10,
       IR3_BARRIER_CONST_W = 1 << 11,
+      IR3_BARRIER_ACTIVE_FIBERS_R = 1 << 12,
+      IR3_BARRIER_ACTIVE_FIBERS_W = 1 << 13,
    } barrier_class,
       barrier_conflict;
 
