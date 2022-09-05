@@ -76,6 +76,15 @@ public:
       num_tex_flag
    };
 
+   static constexpr Flags TexFlags[] = {
+      x_unnormalized,
+      y_unnormalized,
+      z_unnormalized,
+      w_unnormalized,
+      grad_fine,
+      num_tex_flag
+   };
+
    struct Inputs {
       Inputs(const nir_tex_instr& instr, ValueFactory &vf);
       const nir_variable *sampler_deref;
@@ -91,6 +100,8 @@ public:
       PVirtualValue ms_index;
       PVirtualValue sampler_offset;
       PVirtualValue texture_offset;
+      nir_src *backend1;
+      nir_src *backend2;
 
       RegisterVec4::Swizzle swizzle_from_ncomps(int comps) const;
 
@@ -158,17 +169,15 @@ private:
    static auto prepare_source(nir_tex_instr *tex, const Inputs& inputs, Shader &shader) -> RegisterVec4;
 
    static bool emit_buf_txf(nir_tex_instr *tex, Inputs& src, Shader& shader);
-   static bool emit_tex_txf(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_tex_ms_direct(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_tex_ms(nir_tex_instr *tex, Inputs& src, Shader& shader);
-   static bool emit_tex_tex(nir_tex_instr *tex, Inputs& src, Shader& shader);
-   static bool emit_tex_txl_txb(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_txs(nir_tex_instr *tex, Inputs& src,
                             RegisterVec4::Swizzle dest_swz, Shader& shader);
    static bool emit_tex_lod(nir_tex_instr* tex, Inputs& src, Shader& shader);
    static bool emit_tex_txd(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_tg4(nir_tex_instr* instr, Inputs& src , Shader& shader);
    static bool emit_tex_texture_samples(nir_tex_instr* instr, Inputs& src, Shader& shader);
+   static bool emit_lowered_tex(nir_tex_instr* instr, Inputs& src, Shader& shader);
 
    void set_coord_offsets(nir_src *offset);
    void set_rect_coordinate_flags(nir_tex_instr* instr);
@@ -187,6 +196,8 @@ private:
    static const std::map<Opcode, std::string> s_opcode_map;
    std::list<TexInstr *> m_prepare_instr;
 };
+
+bool r600_nir_lower_tex_to_backend(nir_shader *shader, amd_gfx_level chip_class);
 
 }
 

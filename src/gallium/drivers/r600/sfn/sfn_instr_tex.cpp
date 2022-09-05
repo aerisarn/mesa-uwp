@@ -27,7 +27,10 @@
 #include "sfn_instr_tex.h"
 #include "sfn_instr_alu.h"
 #include "sfn_instr_fetch.h"
+#include "sfn_nir.h"
 #include "sfn_debug.h"
+
+#include "nir_builder.h"
 
 namespace r600 {
 
@@ -322,6 +325,10 @@ bool TexInstr::from_nir(nir_tex_instr *tex, Shader& shader)
 {
    Inputs src(*tex, shader.value_factory());
 
+   if (nir_tex_instr_src_index(tex, nir_tex_src_backend1) != -1)
+      return emit_lowered_tex(tex, src, shader);
+
+
    if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       switch (tex->op) {
       case nir_texop_txs:
@@ -333,13 +340,6 @@ bool TexInstr::from_nir(nir_tex_instr *tex, Shader& shader)
       }
    } else {
       switch (tex->op) {
-      case nir_texop_tex:
-         return emit_tex_tex(tex, src, shader);
-      case nir_texop_txf:
-         return emit_tex_txf(tex, src, shader);
-      case nir_texop_txb:
-      case nir_texop_txl:
-         return emit_tex_txl_txb(tex, src, shader);
       case nir_texop_txs:
          return emit_tex_txs(tex, src, {0, 1, 2, 3}, shader);
       case nir_texop_lod:
@@ -381,11 +381,12 @@ get_sampler_id(int sampler_id, const nir_variable *deref)
    return result;
 }
 
-
-bool TexInstr::emit_tex_tex(nir_tex_instr *tex, Inputs& src, Shader& shader)
+bool TexInstr::emit_lowered_tex(nir_tex_instr* tex, Inputs& src, Shader& shader)
 {
-   auto& vf = shader.value_factory();
+   assert(src.backend1);
+   assert(src.backend2);
 
+   auto& vf = shader.value_factory();
    sfn_log << SfnLog::instr << "emit '"
                  << *reinterpret_cast<nir_instr*>(tex)
                  << "' (" << __func__ << ")\n";
@@ -393,96 +394,30 @@ bool TexInstr::emit_tex_tex(nir_tex_instr *tex, Inputs& src, Shader& shader)
    auto sampler = get_sampler_id(tex->sampler_index, src.sampler_deref);
    assert(!sampler.indirect);
 
-   auto src_coord = prepare_source(tex, src, shader);
    auto dst = vf.dest_vec4(tex->dest, pin_group);
 
-   auto irt = new TexInstr(src.opcode, dst, {0,1,2,3},  src_coord, sampler.id,
-                           sampler.id + R600_MAX_CONST_BUFFERS,
-                           src.sampler_offset);
-   if (tex->is_array)
-      irt->set_tex_flag(TexInstr::z_unnormalized);
+   auto params = nir_src_as_const_value(*src.backend2);
+   int32_t coord_mask = params[0].i32;
+   int32_t flags = params[1].i32;
 
-   irt->set_rect_coordinate_flags(tex);
-   irt->set_coord_offsets(src.offset);
+   RegisterVec4::Swizzle src_swizzle = {0};
+   for (int i = 0; i < 4; ++i)
+      src_swizzle[i] = (coord_mask & (1 << i)) ? i : 7;
 
-   shader.emit_instruction(irt);
-   return true;
-}
-
-bool TexInstr::emit_tex_txl_txb(nir_tex_instr *tex, Inputs& src, Shader& shader)
-{
-   auto& vf = shader.value_factory();
-
-   auto sampler = get_sampler_id(tex->sampler_index, src.sampler_deref);
-   assert(!sampler.indirect && "Indirect sampler selection not yet supported");
-
-   auto src_coord = prepare_source(tex, src, shader);
-
-   auto dst = vf.dest_vec4(tex->dest, pin_group);
+   auto src_coord = vf.src_vec4(*src.backend1, pin_group, src_swizzle);
 
    auto irt = new TexInstr(src.opcode, dst, {0,1,2,3},  src_coord, sampler.id,
                            sampler.id + R600_MAX_CONST_BUFFERS,
                            src.sampler_offset);
 
-   if (tex->is_array)
-      irt->set_tex_flag(TexInstr::z_unnormalized);
+   for (const auto f : TexFlags) {
+      if (flags & (1 << f))
+         irt->set_tex_flag(f);
+   }
 
-   irt->set_rect_coordinate_flags(tex);
    irt->set_coord_offsets(src.offset);
 
    shader.emit_instruction(irt);
-   return true;
-}
-
-
-bool TexInstr::emit_tex_txf(nir_tex_instr *tex, Inputs& src, Shader& shader)
-{
-   auto& vf = shader.value_factory();
-
-   int sampler = tex->sampler_index;
-
-   auto swizzle = src.swizzle_from_ncomps(tex->coord_components);
-   swizzle[3] = 3;
-
-   if (tex->is_array && tex->sampler_dim == GLSL_SAMPLER_DIM_1D) {
-      swizzle[2] = 1;
-      swizzle[1] = 7;
-   }
-
-   auto src_coord = vf.temp_vec4(pin_group, swizzle);
-
-   for (unsigned i = 0; i < tex->coord_components; i++) {
-      unsigned k = i;
-      if (tex->is_array && tex->sampler_dim == GLSL_SAMPLER_DIM_1D && i == 1)
-         k = 2;
-
-
-      if (src.offset) {
-         shader.emit_instruction(new AluInstr(op2_add_int, src_coord[k], src.coord[i],
-                                              vf.src(src.offset[i], i),
-                                              AluInstr::write));
-      } else {
-         shader.emit_instruction(new AluInstr(op1_mov, src_coord[k], src.coord[i],AluInstr::write));
-      }
-   }
-
-   shader.emit_instruction(new AluInstr(op1_mov, src_coord[3], src.lod, AluInstr::last_write));
-
-   auto dst = vf.dest_vec4(tex->dest, pin_group);
-
-   auto tex_ir = new TexInstr(src.opcode, dst, {0, 1, 2, 3}, src_coord,
-                              sampler,
-                              sampler + R600_MAX_CONST_BUFFERS,
-                              src.sampler_offset);
-
-   if (tex->is_array)
-      tex_ir->set_tex_flag(z_unnormalized);
-
-   tex_ir->set_rect_coordinate_flags(tex);
-   tex_ir->set_sampler_offset(src.sampler_offset);
-
-   shader.emit_instruction(tex_ir);
-
    return true;
 }
 
@@ -843,7 +778,7 @@ bool TexInstr::emit_tex_tg4(nir_tex_instr* tex, Inputs& src , Shader& shader)
    if (src.offset) {
       literal_offset =  nir_src_as_const_value(*src.offset) != 0;
       r600::sfn_log << SfnLog::tex << " really have offsets and they are " <<
-                       (literal_offset ? "literal" : "varying") <<
+                       (literal_offset ? "l" : "varying") <<
                        "\n";
 
       if (!literal_offset) {
@@ -956,6 +891,8 @@ TexInstr::Inputs::Inputs(const nir_tex_instr& instr, ValueFactory& vf):
    ms_index(nullptr),
    sampler_offset(nullptr),
    texture_offset(nullptr),
+   backend1(nullptr),
+   backend2(nullptr),
    opcode(ld)
 {
    //sfn_log << SfnLog::tex << "Get Inputs with " << instr.coord_components << " components\n";
@@ -1004,6 +941,12 @@ TexInstr::Inputs::Inputs(const nir_tex_instr& instr, ValueFactory& vf):
       case nir_tex_src_sampler_offset:
          sampler_offset = vf.src(instr.src[i], 0);
       break;
+      case nir_tex_src_backend1:
+         backend1 = &instr.src[i].src;
+         break;
+      case nir_tex_src_backend2:
+         backend2 = &instr.src[i].src;
+         break;
       case nir_tex_src_plane:
       case nir_tex_src_projector:
       case nir_tex_src_min_lod:
@@ -1109,5 +1052,218 @@ void TexInstr::set_rect_coordinate_flags(nir_tex_instr* instr)
    }
 }
 
+class LowerTexToBackend : public NirLowerInstruction {
+public:
+   LowerTexToBackend(amd_gfx_level chip_class);
+private:
+   bool filter(const nir_instr *instr) const override;
+	nir_ssa_def *lower(nir_instr *instr) override;
+
+   nir_ssa_def *lower_tex(nir_tex_instr *tex);
+   nir_ssa_def *lower_txf(nir_tex_instr *tex);
+
+   nir_ssa_def *prepare_coord(nir_tex_instr *tex,
+                              int &unnormalized_mask,
+                              int &used_coord_mask);
+   int get_src_coords(nir_tex_instr *tex, std::array<nir_ssa_def *, 4> &coord,
+                      bool round_array_index);
+   nir_ssa_def *prep_src(std::array<nir_ssa_def *, 4> &coord,
+                         int &used_coord_mask);
+   nir_ssa_def *finalize(nir_tex_instr *tex,
+                         nir_ssa_def *backend1, nir_ssa_def *backend2);
+
+   amd_gfx_level m_chip_class;
+};
+
+bool r600_nir_lower_tex_to_backend(nir_shader *shader, amd_gfx_level chip_class)
+{
+   return LowerTexToBackend(chip_class).run(shader);
+}
+
+LowerTexToBackend::LowerTexToBackend(amd_gfx_level chip_class):
+   m_chip_class(chip_class)
+{
+
+}
+
+bool LowerTexToBackend::filter(const nir_instr *instr) const
+{
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   auto tex = nir_instr_as_tex(instr);
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF)
+      return false;
+   switch (tex->op) {
+   case nir_texop_tex:
+   case nir_texop_txb:
+   case nir_texop_txl:
+   case nir_texop_txf:
+      break;
+   default:
+      return false;
+   }
+
+   return nir_tex_instr_src_index(tex, nir_tex_src_backend1) == -1;
+}
+
+nir_ssa_def *LowerTexToBackend::lower(nir_instr *instr)
+{
+   b->cursor = nir_before_instr(instr);
+
+   auto tex = nir_instr_as_tex(instr);
+   switch (tex->op) {
+   case nir_texop_tex:
+   case nir_texop_txb:
+   case nir_texop_txl:
+      return lower_tex(tex);
+   case nir_texop_txf:
+      return lower_txf(tex);
+
+   default:
+      return nullptr;
+   }
+}
+
+nir_ssa_def *LowerTexToBackend::lower_tex(nir_tex_instr *tex)
+{
+   int unnormalized_mask = 0;
+   int used_coord_mask = 0;
+
+   nir_ssa_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
+
+   nir_ssa_def *backend2 =
+         nir_imm_ivec4(b, used_coord_mask, unnormalized_mask, 0, 0);
+
+   return finalize(tex, backend1, backend2);
+}
+
+nir_ssa_def *LowerTexToBackend::lower_txf(nir_tex_instr *tex)
+{
+   std::array<nir_ssa_def *, 4> new_coord = {
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr
+   };
+
+   get_src_coords(tex, new_coord, false);
+
+   int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   new_coord[3] = tex->src[lod_idx].src.ssa;
+
+   int used_coord_mask = 0;
+   nir_ssa_def *backend1 = prep_src(new_coord, used_coord_mask);
+   nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask, 0, 0, 0);
+
+   return finalize(tex, backend1, backend2);
+}
+
+nir_ssa_def *LowerTexToBackend::finalize(nir_tex_instr *tex, nir_ssa_def *backend1,
+                                         nir_ssa_def *backend2)
+{
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(backend1));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(backend2));
+   nir_tex_instr_remove_src(tex, nir_tex_src_coord);
+
+   static const nir_tex_src_type cleanup[] = {
+      nir_tex_src_coord,
+      nir_tex_src_lod,
+      nir_tex_src_bias,
+      nir_tex_src_comparator
+   };
+
+   for (const auto type : cleanup) {
+      int pos = nir_tex_instr_src_index(tex, type);
+      if (pos >= 0)
+         nir_tex_instr_remove_src(tex, pos);
+   }
+   return NIR_LOWER_INSTR_PROGRESS;
+}
+
+nir_ssa_def *LowerTexToBackend::prep_src(std::array<nir_ssa_def *, 4> &coord,
+                                         int &used_coord_mask)
+{
+   for (int i = 0; i < 4; ++i) {
+      if (coord[i])
+         used_coord_mask |= 1 << i;
+      else
+         coord[i] = nir_ssa_undef(b, 1, 32);
+   }
+
+   return nir_vec(b, coord.data(), 4);
+}
+
+nir_ssa_def *LowerTexToBackend::prepare_coord(nir_tex_instr *tex,
+                                              int &unnormalized_mask,
+                                              int &used_coord_mask)
+{
+   std::array<nir_ssa_def *, 4> new_coord = {
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr
+   };
+
+   unnormalized_mask = get_src_coords(tex, new_coord, true);
+   used_coord_mask = 0;
+
+   int comp_idx = tex->is_shadow ?
+                       nir_tex_instr_src_index(tex, nir_tex_src_comparator):
+                       -1;
+
+   if (tex->op == nir_texop_txl || tex->op == nir_texop_txb) {
+      int idx = tex->op == nir_texop_txl ?
+                   nir_tex_instr_src_index(tex, nir_tex_src_lod) :
+                   nir_tex_instr_src_index(tex, nir_tex_src_bias);
+      assert(idx != -1);
+      new_coord[3] = tex->src[idx].src.ssa;
+
+      if (comp_idx >= 0)
+         new_coord[2] = tex->src[comp_idx].src.ssa;
+   } else if (comp_idx >= 0) {
+      new_coord[3] = tex->src[comp_idx].src.ssa;
+   }
+   return prep_src(new_coord, used_coord_mask);
+}
+
+int LowerTexToBackend::get_src_coords(nir_tex_instr *tex,
+                                      std::array<nir_ssa_def *, 4>& coord,
+                                      bool round_array_index)
+{
+   int unnormalized_mask = 0;
+   auto coord_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   assert(coord_idx != -1);
+   auto old_coord = tex->src[coord_idx];
+
+   coord = {
+      nir_channel(b, old_coord.src.ssa, 0),
+      nullptr,
+      nullptr,
+      nullptr
+   };
+
+   if (tex->coord_components > 1) {
+      if (tex->is_array && tex->sampler_dim == GLSL_SAMPLER_DIM_1D)
+         coord[2] = nir_channel(b, old_coord.src.ssa, 1);
+      else
+         coord[1] = nir_channel(b, old_coord.src.ssa, 1);
+   }
+
+   if (tex->coord_components > 2) {
+         coord[2] = nir_channel(b, old_coord.src.ssa, 2);
+   }
+   if (tex->is_array) {
+      unnormalized_mask |= 0x4;
+      if (round_array_index)
+         coord[2] = nir_fround_even(b, coord[2]);
+   }
+
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_RECT) {
+      unnormalized_mask |= 0x3;
+   }
+
+   return unnormalized_mask;
+}
 
 }

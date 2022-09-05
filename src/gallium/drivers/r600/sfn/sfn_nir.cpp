@@ -40,6 +40,7 @@
 #include "sfn_nir_lower_fs_out_to_vector.h"
 #include "sfn_nir_lower_alu.h"
 #include "sfn_nir_lower_tex.h"
+#include "sfn_instr_tex.h"
 #include "sfn_optimizer.h"
 #include "sfn_ra.h"
 #include "sfn_scheduler.h"
@@ -754,6 +755,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
    NIR_PASS_V(sh, nir_lower_phis_to_scalar, false);
    NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sh, r600::r600_nir_lower_tex_to_backend, rctx->b.gfx_level);
+
 
    NIR_PASS_V(sh, r600::r600_nir_split_64bit_io);
    NIR_PASS_V(sh, r600::r600_split_64bit_alu_and_phi);
