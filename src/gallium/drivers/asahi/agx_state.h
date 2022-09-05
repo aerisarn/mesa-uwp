@@ -104,6 +104,12 @@ struct agx_batch {
    double clear_depth;
    unsigned clear_stencil;
 
+   /* Whether we're drawing points, lines, or triangles */
+   enum pipe_prim_type reduced_prim;
+
+   /* Current varyings linkage structures */
+   uint32_t varyings;
+
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS) */
    BITSET_WORD bo_list[256];
@@ -142,6 +148,19 @@ enum agx_dirty {
    AGX_DIRTY_VERTEX   = BITFIELD_BIT(0),
    AGX_DIRTY_VIEWPORT = BITFIELD_BIT(1),
    AGX_DIRTY_SCISSOR_ZBIAS  = BITFIELD_BIT(2),
+   AGX_DIRTY_ZS        = BITFIELD_BIT(3),
+   AGX_DIRTY_STENCIL_REF = BITFIELD_BIT(4),
+   AGX_DIRTY_RS         = BITFIELD_BIT(5),
+   AGX_DIRTY_SPRITE_COORD_MODE = BITFIELD_BIT(6),
+   AGX_DIRTY_PRIM       = BITFIELD_BIT(7),
+
+   /* Vertex/fragment pipelines, including uniforms and textures */
+   AGX_DIRTY_VS         = BITFIELD_BIT(8),
+   AGX_DIRTY_FS         = BITFIELD_BIT(9),
+
+   /* Just the progs themselves */
+   AGX_DIRTY_VS_PROG    = BITFIELD_BIT(10),
+   AGX_DIRTY_FS_PROG    = BITFIELD_BIT(11),
 };
 
 struct agx_context {
@@ -182,6 +201,15 @@ static inline struct agx_context *
 agx_context(struct pipe_context *pctx)
 {
    return (struct agx_context *) pctx;
+}
+
+static inline void
+agx_dirty_all(struct agx_context *ctx)
+{
+   ctx->dirty = ~0;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->stage); ++i)
+      ctx->stage[i].dirty = ~0;
 }
 
 struct agx_rasterizer {

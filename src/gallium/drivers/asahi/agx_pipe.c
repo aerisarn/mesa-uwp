@@ -52,6 +52,9 @@ static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
    {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
    {"no16",      AGX_DBG_NO16,     "Disable 16-bit support"},
+#ifndef NDEBUG
+   {"dirty",     AGX_DBG_DIRTY,    "Disable dirty tracking"},
+#endif
    DEBUG_NAMED_VALUE_END
 };
 
@@ -571,8 +574,8 @@ agx_flush(struct pipe_context *pctx,
    ctx->batch->load = 0;
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
    ctx->batch->scissor.count = 0;
-   ctx->dirty = ~0;
 
+   agx_dirty_all(ctx);
    agx_batch_init_state(ctx->batch);
 }
 

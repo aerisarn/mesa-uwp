@@ -31,6 +31,7 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_transfer.h"
+#include "util/u_prim.h"
 #include "gallium/auxiliary/util/u_draw.h"
 #include "gallium/auxiliary/util/u_helpers.h"
 #include "gallium/auxiliary/util/u_viewport.h"
@@ -108,6 +109,8 @@ agx_set_blend_color(struct pipe_context *pctx,
 
    if (state)
       memcpy(&ctx->blend_color, state, sizeof(*state));
+
+   ctx->stage[PIPE_SHADER_FRAGMENT].dirty = ~0;
 }
 
 static void *
@@ -252,6 +255,7 @@ agx_bind_zsa_state(struct pipe_context *pctx, void *cso)
 {
    struct agx_context *ctx = agx_context(pctx);
    ctx->zs = cso;
+   ctx->dirty |= AGX_DIRTY_ZS;
 }
 
 static void *
@@ -284,17 +288,24 @@ agx_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    struct agx_context *ctx = agx_context(pctx);
    struct agx_rasterizer *so = cso;
 
+   bool base_cso_changed = (cso == NULL) || (ctx->rast == NULL);
+
    /* Check if scissor or depth bias state has changed, since scissor/depth bias
     * enable is part of the rasterizer state but everything else needed for
     * scissors and depth bias is part of the scissor/depth bias arrays */
-   bool scissor_zbias_changed = (cso == NULL) || (ctx->rast == NULL) ||
+   bool scissor_zbias_changed = base_cso_changed ||
       (ctx->rast->base.scissor != so->base.scissor) ||
       (ctx->rast->base.offset_tri != so->base.offset_tri);
 
    ctx->rast = so;
+   ctx->dirty |= AGX_DIRTY_RS;
 
    if (scissor_zbias_changed)
       ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
+
+   if (base_cso_changed || (ctx->rast->base.sprite_coord_mode !=
+                            so->base.sprite_coord_mode))
+      ctx->dirty |= AGX_DIRTY_SPRITE_COORD_MODE;
 }
 
 static enum agx_wrap
@@ -374,6 +385,7 @@ agx_bind_sampler_states(struct pipe_context *pctx,
    struct agx_context *ctx = agx_context(pctx);
 
    ctx->stage[shader].sampler_count = states ? count : 0;
+   ctx->stage[shader].dirty = ~0;
 
    memcpy(&ctx->stage[shader].samplers[start], states,
           sizeof(struct agx_sampler_state *) * count);
@@ -538,6 +550,7 @@ agx_set_sampler_views(struct pipe_context *pctx,
                                   &ctx->stage[shader].textures[i], NULL);
    }
    ctx->stage[shader].texture_count = new_nr;
+   ctx->stage[shader].dirty = ~0;
 }
 
 static void
@@ -612,6 +625,7 @@ agx_set_stencil_ref(struct pipe_context *pctx,
 {
    struct agx_context *ctx = agx_context(pctx);
    ctx->stencil_ref = state;
+   ctx->dirty |= AGX_DIRTY_STENCIL_REF;
 }
 
 static void
@@ -802,6 +816,8 @@ agx_set_constant_buffer(struct pipe_context *pctx,
       s->cb_mask |= mask;
    else
       s->cb_mask &= ~mask;
+
+   ctx->stage[shader].dirty = ~0;
 }
 
 static void
@@ -833,6 +849,7 @@ agx_set_vertex_buffers(struct pipe_context *pctx,
                                 start_slot, count, unbind_num_trailing_slots, take_ownership);
 
    ctx->dirty |= AGX_DIRTY_VERTEX;
+   ctx->stage[PIPE_SHADER_VERTEX].dirty = ~0;
 }
 
 static void *
@@ -1473,6 +1490,9 @@ agx_batch_init_state(struct agx_batch *batch)
 
    agx_ppp_fini(&out, &ppp);
    batch->encoder_current = out;
+
+   /* We need to emit prim state at the start. Max collides with all. */
+   batch->reduced_prim = PIPE_PRIM_MAX;
 }
 
 static enum agx_object_type
@@ -1485,30 +1505,29 @@ agx_point_object_type(struct agx_rasterizer *rast)
 
 static uint8_t *
 agx_encode_state(struct agx_context *ctx, uint8_t *out,
-                 uint32_t pipeline_vertex, uint32_t pipeline_fragment, uint32_t varyings,
                  bool is_lines, bool is_points)
 {
    struct agx_rasterizer *rast = ctx->rast;
 
-   unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
-   agx_pack(out, BIND_VERTEX_PIPELINE, cfg) {
-      cfg.pipeline = pipeline_vertex;
-      cfg.output_count_1 = ctx->vs->info.varyings.vs.nr_index;
-      cfg.output_count_2 = cfg.output_count_1;
+#define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
 
-      cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
-      cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
-      cfg.more_than_4_textures = tex_count >= 4;
+   if (IS_DIRTY(VS)) {
+      unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
+      agx_pack(out, BIND_VERTEX_PIPELINE, cfg) {
+         cfg.pipeline = agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX);
+         cfg.output_count_1 = ctx->vs->info.varyings.vs.nr_index;
+         cfg.output_count_2 = cfg.output_count_1;
+
+         cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
+         cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
+         cfg.more_than_4_textures = tex_count >= 4;
+      }
+
+      out += AGX_BIND_VERTEX_PIPELINE_LENGTH;
    }
-
-   out += AGX_BIND_VERTEX_PIPELINE_LENGTH;
 
    struct agx_pool *pool = &ctx->batch->pool;
    struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
-   bool reads_tib = ctx->fs->info.reads_tib;
-   bool sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
-   bool no_colour_output = ctx->fs->info.no_colour_output;
-
    unsigned zbias = 0;
 
    if (ctx->rast->base.offset_tri) {
@@ -1522,6 +1541,26 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
             zbias);
    }
 
+   bool varyings_dirty = false;
+
+   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
+      ctx->batch->varyings = agx_link_varyings_vs_fs(&ctx->batch->pipeline_pool,
+            &ctx->vs->info.varyings.vs,
+            &ctx->fs->info.varyings.fs,
+            ctx->rast->base.flatshade_first);
+
+      varyings_dirty = true;
+   }
+
+   bool object_type_dirty = IS_DIRTY(PRIM) ||
+                            (is_points && IS_DIRTY(SPRITE_COORD_MODE));
+
+   bool fragment_control_dirty = IS_DIRTY(ZS) || IS_DIRTY(RS) ||
+                                 IS_DIRTY(PRIM);
+
+   bool fragment_face_dirty = IS_DIRTY(ZS) || IS_DIRTY(STENCIL_REF) ||
+                              IS_DIRTY(RS);
+
    enum agx_object_type object_type =
          is_points ? agx_point_object_type(rast) :
          is_lines ? AGX_OBJECT_TYPE_LINE :
@@ -1529,91 +1568,121 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
    /* For now, we re-emit almost all state every draw.  TODO: perf */
    struct agx_ppp_update ppp = agx_new_ppp_update(pool, (struct AGX_PPP_HEADER) {
-      .fragment_control = true,
-      .fragment_control_2 = true,
-      .fragment_front_face = true,
-      .fragment_front_face_2 = true,
-      .fragment_front_stencil = true,
-      .fragment_back_face = true,
-      .fragment_back_face_2 = true,
-      .fragment_back_stencil = true,
-      .output_select = true,
-      .varying_word_0 = true,
-      .cull = true,
-      .fragment_shader = true,
-      .output_size = true,
+      .fragment_control = fragment_control_dirty,
+      .fragment_control_2 = IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG),
+      .fragment_front_face = fragment_face_dirty,
+      .fragment_front_face_2 = object_type_dirty,
+      .fragment_front_stencil = IS_DIRTY(ZS),
+      .fragment_back_face = fragment_face_dirty,
+      .fragment_back_face_2 = object_type_dirty,
+      .fragment_back_stencil = IS_DIRTY(ZS),
+      .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
+      .varying_word_0 = IS_DIRTY(VS_PROG),
+      .cull = IS_DIRTY(RS),
+      .fragment_shader = IS_DIRTY(FS) || varyings_dirty,
+      .output_size = IS_DIRTY(VS_PROG),
    });
 
-   agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
-      cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
-      cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
-      cfg.depth_bias_enable = rast->base.offset_tri;
+   if (fragment_control_dirty) {
+      agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
+         cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
+         cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
+         cfg.depth_bias_enable = rast->base.offset_tri;
 
-      cfg.unk_fill_lines = is_points; /* XXX: what is this? */
+         cfg.unk_fill_lines = is_points; /* XXX: what is this? */
 
-      /* Always enable scissoring so we may scissor to the viewport (TODO:
-       * optimize this out if the viewport is the default and the app does not
-       * use the scissor test) */
-      cfg.scissor_enable = true;
-   };
+         /* Always enable scissoring so we may scissor to the viewport (TODO:
+          * optimize this out if the viewport is the default and the app does
+          * not use the scissor test)
+          */
+         cfg.scissor_enable = true;
+      }
+   }
 
-   agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
-      cfg.no_colour_output = no_colour_output;
-      cfg.lines_or_points = (is_lines || is_points);
-      cfg.reads_tilebuffer = reads_tib;
-      cfg.sample_mask_from_shader = sample_mask_from_shader;
-   };
+   if (IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG)) {
+      agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
+         cfg.lines_or_points = (is_lines || is_points);
+         cfg.no_colour_output = ctx->fs->info.no_colour_output;
+         cfg.reads_tilebuffer = ctx->fs->info.reads_tib;
+         cfg.sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
+      }
+   }
 
    struct agx_fragment_face_packed front_face, back_face;
-   agx_pack(&front_face, FRAGMENT_FACE, cfg) {
-      cfg.stencil_reference = ctx->stencil_ref.ref_value[0];
-      cfg.line_width = rast->line_width;
-      cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
-   };
-   front_face.opaque[0] |= ctx->zs->depth.opaque[0];
-   agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
 
-   agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
-   agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque, FRAGMENT_STENCIL);
+   if (fragment_face_dirty) {
+      agx_pack(&front_face, FRAGMENT_FACE, cfg) {
+         cfg.stencil_reference = ctx->stencil_ref.ref_value[0];
+         cfg.line_width = rast->line_width;
+         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+      };
 
-   agx_pack(&back_face, FRAGMENT_FACE, cfg) {
-      bool twosided = ctx->zs->base.stencil[1].enabled;
-      cfg.stencil_reference = ctx->stencil_ref.ref_value[twosided ? 1 : 0];
+      agx_pack(&back_face, FRAGMENT_FACE, cfg) {
+         bool twosided = ctx->zs->base.stencil[1].enabled;
+         cfg.stencil_reference = ctx->stencil_ref.ref_value[twosided ? 1 : 0];
 
-      cfg.line_width = rast->line_width;
-      cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
-   };
-   back_face.opaque[0] |= ctx->zs->depth.opaque[0];
-   agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
+         cfg.line_width = rast->line_width;
+         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+      };
 
-   agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
-   agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
+      front_face.opaque[0] |= ctx->zs->depth.opaque[0];
+      back_face.opaque[0] |= ctx->zs->depth.opaque[0];
 
-   agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
-      cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
-      cfg.point_size = vs->info.writes_psiz;
-      cfg.frag_coord_z = fs->info.varyings.fs.reads_z;
+      agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
    }
 
-   agx_ppp_push(&ppp, VARYING_0, cfg) {
-      cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
+   if (object_type_dirty)
+      agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+
+   if (IS_DIRTY(ZS))
+      agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque, FRAGMENT_STENCIL);
+
+   if (fragment_face_dirty)
+      agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
+
+   if (object_type_dirty)
+      agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+
+   if (IS_DIRTY(ZS))
+      agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
+
+   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG)) {
+      agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
+         cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
+         cfg.point_size = vs->info.writes_psiz;
+         cfg.frag_coord_z = fs->info.varyings.fs.reads_z;
+      }
    }
 
-   agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
-
-   unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
-   agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
-      cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(frag_tex_count, 8);
-      cfg.groups_of_4_samplers = DIV_ROUND_UP(frag_tex_count, 4);
-      cfg.more_than_4_textures = frag_tex_count >= 4;
-      cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
-      cfg.pipeline = pipeline_fragment;
-      cfg.cf_bindings = varyings;
+   if (IS_DIRTY(VS_PROG)) {
+      agx_ppp_push(&ppp, VARYING_0, cfg) {
+         cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
+      }
    }
 
-   agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) cfg.count = vs->info.varyings.vs.nr_index;
+   if (IS_DIRTY(RS))
+      agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
+
+   if (IS_DIRTY(FS) || varyings_dirty) {
+      unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+      agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
+         cfg.pipeline = agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
+         cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(frag_tex_count, 8);
+         cfg.groups_of_4_samplers = DIV_ROUND_UP(frag_tex_count, 4);
+         cfg.more_than_4_textures = frag_tex_count >= 4;
+         cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
+         cfg.cf_bindings = ctx->batch->varyings;
+      }
+   }
+
+   if (IS_DIRTY(VS_PROG)) {
+      agx_ppp_push(&ppp, OUTPUT_SIZE, cfg)
+         cfg.count = vs->info.varyings.vs.nr_index;
+   }
 
    agx_ppp_fini(&out, &ppp);
+
+#undef IS_DIRTY
 
    return out;
 }
@@ -1684,35 +1753,43 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (agx_scissor_culls_everything(ctx))
 	   return;
 
+#ifndef NDEBUG
+   /* For debugging dirty tracking, mark all state as dirty every draw, forcing
+    * everything to be re-emitted fresh.
+    */
+   if (unlikely(agx_device(pctx->screen)->debug & AGX_DBG_DIRTY))
+      agx_dirty_all(ctx);
+#endif
+
+   /* Dirty track the reduced prim: lines vs points vs triangles */
+   enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
+   if (reduced_prim != batch->reduced_prim) ctx->dirty |= AGX_DIRTY_PRIM;
+   batch->reduced_prim = reduced_prim;
+
    /* TODO: masks */
    ctx->batch->draw |= ~0;
    ctx->batch->load |= ~0;
 
-   /* TODO: Dirty track */
-   agx_update_vs(ctx);
-   agx_update_fs(ctx);
+   /* TODO: These are expensive calls, consider finer dirty tracking */
+   if (agx_update_vs(ctx))
+      ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
+   else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)
+      ctx->dirty |= AGX_DIRTY_VS;
 
-   /* TODO: Cache or dirty track */
-   uint32_t varyings = agx_link_varyings_vs_fs(&ctx->batch->pipeline_pool,
-         &ctx->vs->info.varyings.vs,
-         &ctx->fs->info.varyings.fs,
-         ctx->rast->base.flatshade_first);
+   if (agx_update_fs(ctx))
+      ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
+   else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty)
+      ctx->dirty |= AGX_DIRTY_FS;
 
    agx_batch_add_bo(batch, ctx->vs->bo);
    agx_batch_add_bo(batch, ctx->fs->bo);
-
-   bool is_lines =
-      (info->mode == PIPE_PRIM_LINES) ||
-      (info->mode == PIPE_PRIM_LINE_STRIP) ||
-      (info->mode == PIPE_PRIM_LINE_LOOP);
 
    ptrdiff_t encoder_use = batch->encoder_current - (uint8_t *) batch->encoder->ptr.cpu;
    assert((encoder_use + 1024) < batch->encoder->size && "todo: how to expand encoder?");
 
    uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
-                                   agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX),
-                                   agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
-                                   varyings, is_lines, info->mode == PIPE_PRIM_POINTS);
+                                   reduced_prim == PIPE_PRIM_LINES,
+                                   reduced_prim == PIPE_PRIM_POINTS);
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    unsigned idx_size = info->index_size;
