@@ -56,6 +56,7 @@
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
 #include "vk_device.h"
+#include "vk_graphics_state.h"
 #include "vk_image.h"
 #include "vk_instance.h"
 #include "vk_log.h"
@@ -880,63 +881,6 @@ struct pvr_deferred_cs_command {
    };
 };
 
-#define PVR_DYNAMIC_STATE_BIT_VIEWPORT BITFIELD_BIT(0U)
-#define PVR_DYNAMIC_STATE_BIT_SCISSOR BITFIELD_BIT(1U)
-#define PVR_DYNAMIC_STATE_BIT_LINE_WIDTH BITFIELD_BIT(2U)
-#define PVR_DYNAMIC_STATE_BIT_DEPTH_BIAS BITFIELD_BIT(3U)
-#define PVR_DYNAMIC_STATE_BIT_STENCIL_COMPARE_MASK BITFIELD_BIT(4U)
-#define PVR_DYNAMIC_STATE_BIT_STENCIL_WRITE_MASK BITFIELD_BIT(5U)
-#define PVR_DYNAMIC_STATE_BIT_STENCIL_REFERENCE BITFIELD_BIT(6U)
-#define PVR_DYNAMIC_STATE_BIT_BLEND_CONSTANTS BITFIELD_BIT(7U)
-
-#define PVR_DYNAMIC_STATE_ALL_BITS \
-   ((PVR_DYNAMIC_STATE_BIT_BLEND_CONSTANTS << 1U) - 1U)
-
-struct pvr_dynamic_state {
-   /* Identifies which pipeline state is static or dynamic.
-    * To test for dynamic: & PVR_STATE_BITS_...
-    */
-   uint32_t mask;
-
-   struct {
-      /* TODO: fixme in the original code - figure out what. */
-      uint32_t count;
-      VkViewport viewports[PVR_MAX_VIEWPORTS];
-   } viewport;
-
-   struct {
-      /* TODO: fixme in the original code - figure out what. */
-      uint32_t count;
-      VkRect2D scissors[PVR_MAX_VIEWPORTS];
-   } scissor;
-
-   /* Saved information from pCreateInfo. */
-   float line_width;
-
-   /* Do not change this. This is the format used for the depth_bias_array
-    * elements uploaded to the device.
-    */
-   struct pvr_depth_bias_state {
-      /* Saved information from pCreateInfo. */
-      float constant_factor;
-      float slope_factor;
-      float clamp;
-   } depth_bias;
-   float blend_constants[4];
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } compare_mask;
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } write_mask;
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } reference;
-};
-
 struct pvr_cmd_buffer_draw_state {
    uint32_t base_instance;
    uint32_t base_vertex;
@@ -959,10 +903,6 @@ struct pvr_cmd_buffer_state {
    struct pvr_ppp_state ppp_state;
 
    struct PVRX(TA_STATE_HEADER) emit_header;
-
-   struct {
-      struct pvr_dynamic_state common;
-   } dynamic;
 
    struct pvr_vertex_binding vertex_bindings[PVR_MAX_VERTEX_INPUT_BINDINGS];
 
@@ -988,9 +928,6 @@ struct pvr_cmd_buffer_state {
    VkFormat depth_format;
 
    struct {
-      bool viewport : 1;
-      bool scissor : 1;
-
       bool compute_pipeline_binding : 1;
       bool compute_desc_dirty : 1;
 
@@ -1001,16 +938,6 @@ struct pvr_cmd_buffer_state {
       bool index_buffer_binding : 1;
       bool vertex_descriptors : 1;
       bool fragment_descriptors : 1;
-
-      bool line_width : 1;
-
-      bool depth_bias : 1;
-
-      bool blend_constants : 1;
-
-      bool compare_mask : 1;
-      bool write_mask : 1;
-      bool reference : 1;
 
       bool isp_userpass : 1;
 
@@ -1040,6 +967,26 @@ struct pvr_cmd_buffer_state {
    uint32_t pds_compute_descriptor_data_offset;
 };
 
+/* Do not change this. This is the format used for the depth_bias_array
+ * elements uploaded to the device.
+ */
+struct pvr_depth_bias_state {
+   /* Saved information from pCreateInfo. */
+   float constant_factor;
+   float slope_factor;
+   float clamp;
+};
+
+/* Do not change this. This is the format used for the scissor_array
+ * elements uploaded to the device.
+ */
+struct pvr_scissor_words {
+   /* Contains a packed IPF_SCISSOR_WORD_0. */
+   uint32_t w0;
+   /* Contains a packed IPF_SCISSOR_WORD_1. */
+   uint32_t w1;
+};
+
 struct pvr_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -1048,10 +995,12 @@ struct pvr_cmd_buffer {
    /* Buffer usage flags */
    VkCommandBufferUsageFlags usage_flags;
 
+   /* Array of struct pvr_depth_bias_state. */
    struct util_dynarray depth_bias_array;
 
+   /* Array of struct pvr_scissor_words. */
    struct util_dynarray scissor_array;
-   uint32_t scissor_words[2];
+   struct pvr_scissor_words scissor_words;
 
    struct pvr_cmd_buffer_state state;
 
@@ -1248,44 +1197,15 @@ struct pvr_compute_pipeline {
 struct pvr_graphics_pipeline {
    struct pvr_pipeline base;
 
-   VkSampleCountFlagBits rasterization_samples;
-   struct pvr_raster_state {
-      /* Derived and other state. */
-      /* Indicates whether primitives are discarded immediately before the
-       * rasterization stage.
-       */
-      bool discard_enable;
-      VkCullModeFlags cull_mode;
-      VkFrontFace front_face;
-      bool depth_bias_enable;
-      bool depth_clamp_enable;
-   } raster_state;
-   struct {
-      VkPrimitiveTopology topology;
-      bool primitive_restart;
-   } input_asm_state;
-   uint32_t sample_mask;
-
-   struct pvr_dynamic_state dynamic_state;
-
-   VkCompareOp depth_compare_op;
-   bool depth_write_disable;
-
-   struct {
-      VkCompareOp compare_op;
-      /* SOP1 */
-      VkStencilOp fail_op;
-      /* SOP2 */
-      VkStencilOp depth_fail_op;
-      /* SOP3 */
-      VkStencilOp pass_op;
-   } stencil_front, stencil_back;
+   struct vk_dynamic_graphics_state dynamic_state;
 
    /* Derived and other state */
    size_t stage_indices[MESA_SHADER_FRAGMENT + 1];
 
-   struct pvr_vertex_shader_state vertex_shader_state;
-   struct pvr_fragment_shader_state fragment_shader_state;
+   struct {
+      struct pvr_vertex_shader_state vertex;
+      struct pvr_fragment_shader_state fragment;
+   } shader_state;
 };
 
 struct pvr_query_pool {
