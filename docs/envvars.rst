@@ -1140,5 +1140,43 @@ r300 driver environment variables
    ``notcl``
       Disable hardware accelerated Transform/Clip/Lighting
 
+Asahi driver environment variables
+----------------------------------
+
+:envvar:`ASAHI_MESA_DEBUG`
+   a comma-separated list of named flags, which do various things:
+
+   ``trace``
+      Trace work submitted to the GPU to files, using the agxdecode
+      infrastructure. This produces a large volume of data, so should be used
+      with caution. The traces are written to ``agxdecode.dump``,
+      but this can be overridden using ``AGXDECODE_DUMP_FILE``.
+   ``no16``
+      Disable 16-bit floating point support. This may workaround application
+      bugs in certain OpenGL ES applications originally written for desktops. If
+      such applications are found in the wild, they should be fixed upstream (if
+      possible) or added in the Mesa-wide driconf (if closed source).
+   ``dirty``
+      In debug builds only: disable dirty tracking optimizations.
+
+:envvar:`AGX_MESA_DEBUG`
+   a comma-separated list of named flags, which do various things:
+
+   ``shaders``
+      Print shaders being compiled at various stages in the pipeline.
+   ``shaderdb``
+      Print statistics about compiled shaders.
+   ``verbose``
+      Disassemble in verbose mode, including additional information that may be
+      useful for debugging.
+   ``internal``
+      Include even internal shaders (as produced for clears, blits, and such)
+      when printing shaders. Without this flag, internal shaders are ignored by
+      the shaders and shaderdb flags.
+   ``novalidate``
+      In debug builds only: skip internal intermediate representation validation.
+   ``noopt``
+      Disable various backend optimizations.
+
 Other Gallium drivers have their own environment variables. These may
 change frequently so the source code should be consulted for details.
