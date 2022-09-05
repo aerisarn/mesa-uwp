@@ -571,8 +571,8 @@ create_image_view(struct v3dv_device *device,
    util_format_compose_swizzles(format_swizzle, image_view_swizzle,
                                 iview->swizzle);
 
-   iview->swap_rb = v3dv_format_swizzle_needs_rb_swap(iview->swizzle);
-   iview->channel_reverse = v3dv_format_swizzle_needs_reverse(iview->swizzle);
+   iview->swap_rb = v3dv_format_swizzle_needs_rb_swap(format_swizzle);
+   iview->channel_reverse = v3dv_format_swizzle_needs_reverse(format_swizzle);
 
    v3dv_X(device, pack_texture_shader_state)(device, iview);
 
