@@ -272,21 +272,27 @@ public:
            return m_values[i]->value();
 	}
 
-        PRegister operator [] (int i) {
-           return m_values[i]->value();
-        }
+   PRegister operator [] (int i) {
+      return m_values[i]->value();
+   }
 
-        void set_value(int i, PRegister reg) {
-           assert(reg->sel() == m_sel);
-           m_swz[i] = reg->chan();
-           m_values[i]->set_value(reg);
-        }
+   void set_value(int i, PRegister reg) {
+      if (reg->chan() < 4) {
+         for (int k = 0; k < 4; ++k) {
+            assert(i == k || m_values[k]->value()->chan() > 3 ||
+                   m_values[k]->value()->sel() == reg->sel());
+         }
+         m_sel = reg->sel();
+      }
+      m_swz[i] = reg->chan();
+      m_values[i]->set_value(reg);
+   }
 
-        bool ready(int block_id, int index) const;
+   bool ready(int block_id, int index) const;
 private:
-        int m_sel;
-        Swizzle m_swz;
-        std::array<R600_POINTER_TYPE(Element), 4> m_values;
+   int m_sel;
+   Swizzle m_swz;
+   std::array<R600_POINTER_TYPE(Element), 4> m_values;
 };
 
 bool operator == (const RegisterVec4& lhs, const RegisterVec4& rhs);

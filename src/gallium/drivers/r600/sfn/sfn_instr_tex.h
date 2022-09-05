@@ -154,6 +154,8 @@ public:
 
    auto prepare_instr() const { return m_prepare_instr;}
 
+   bool replace_source(PRegister old_src, PVirtualValue new_src) override;
+
 private:
 
    bool do_ready() const override;

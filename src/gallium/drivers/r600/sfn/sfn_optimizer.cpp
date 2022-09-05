@@ -522,7 +522,20 @@ void SimplifySourceVecVisitor::visit(TexInstr *instr)
 {
 
    if (instr->opcode() != TexInstr::get_resinfo) {
-      replace_src(instr, instr->src());
+      auto& src = instr->src();
+      replace_src(instr, src);
+      int nvals = 0;
+      for (int i = 0; i < 4; ++i)
+         if (src[i]->chan() < 4)
+            ++nvals;
+      if (nvals == 1) {
+         for (int i = 0; i < 4; ++i)
+            if (src[i]->chan() < 4)
+               src[i]->set_pin(pin_free);
+      }
+   }
+   for (auto& prep : instr->prepare_instr()) {
+      prep->accept(*this);
    }
 }
 

@@ -357,6 +357,28 @@ bool TexInstr::from_nir(nir_tex_instr *tex, Shader& shader)
    return true;
 }
 
+bool TexInstr::replace_source(PRegister old_src, PVirtualValue new_src)
+{
+   if (old_src->pin() != pin_free)
+      return false;
+
+   if (!new_src->as_register())
+      return false;
+
+   bool success = false;
+   for (int i = 0; i < 4; ++i) {
+      if (m_src[i]->equal_to(*old_src)) {
+         m_src.set_value(i, new_src->as_register());
+         success = true;
+      }
+   }
+   if (success) {
+      old_src->del_use(this);
+      new_src->as_register()->add_use(this);
+   }
+   return success;
+}
+
 struct SamplerId {
    int id;
    bool indirect;
