@@ -55,8 +55,12 @@ VM_SOCKET=crosvm-${THREAD}.sock
 # without cleaning itself up.
 if [ -e $VM_SOCKET ]; then
    crosvm stop $VM_SOCKET || rm -rf $VM_SOCKET
+   # Wait for Crosvm to have removed the socket
+   until [ ! -f $VM_SOCKET ]; do
+      sleep 1
+   done
    # Wait for socats from that invocation to drain
-   sleep 5
+   sleep 4
 fi
 
 set_vsock_context || { echo "Could not generate crosvm vsock CID" >&2; exit 1; }
