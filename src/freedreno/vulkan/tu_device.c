@@ -214,6 +214,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_pipeline_creation_cache_control = true,
       .EXT_vertex_input_dynamic_state = true,
       .EXT_attachment_feedback_loop_layout = true,
+      .EXT_rasterization_order_attachment_access = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif
@@ -813,9 +814,9 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->primitiveTopologyPatchListRestart = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_ARM: {
-         VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM *features =
-            (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_EXT: {
+         VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT *features =
+            (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT *)ext;
          features->rasterizationOrderColorAttachmentAccess = true;
          features->rasterizationOrderDepthAttachmentAccess = true;
          features->rasterizationOrderStencilAttachmentAccess = true;

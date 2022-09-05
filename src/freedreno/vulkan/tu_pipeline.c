@@ -3811,14 +3811,14 @@ tu_pipeline_builder_parse_rasterization_order(
    if (builder->use_color_attachments) {
       pipeline->raster_order_attachment_access =
          blend_info->flags &
-         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM;
+         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
    }
 
    if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
       pipeline->raster_order_attachment_access |=
          ds_info->flags &
-         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
-          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
+         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_EXT |
+          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_EXT);
    }
 
    if (unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER))
@@ -3832,7 +3832,7 @@ tu_pipeline_builder_parse_rasterization_order(
    uint32_t gmem_prim_mode = NO_FLUSH;
 
    if (pipeline->raster_order_attachment_access) {
-      /* VK_ARM_rasterization_order_attachment_access:
+      /* VK_EXT_rasterization_order_attachment_access:
        *
        * This extension allow access to framebuffer attachments when used as
        * both input and color attachments from one fragment to the next,
