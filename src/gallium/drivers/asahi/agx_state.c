@@ -1512,18 +1512,40 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 #define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
 
    if (IS_DIRTY(VS)) {
-      unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
-      agx_pack(out, BIND_VERTEX_PIPELINE, cfg) {
-         cfg.pipeline = agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX);
-         cfg.output_count_1 = ctx->vs->info.varyings.vs.nr_index;
-         cfg.output_count_2 = cfg.output_count_1;
+      agx_pack(out, VDM_STATE, cfg) {
+         cfg.vertex_shader_word_0_present = true;
+         cfg.vertex_shader_word_1_present = true;
+         cfg.vertex_outputs_present = true;
+         cfg.vertex_unknown_present = true;
+      }
+      out += AGX_VDM_STATE_LENGTH;
 
+      unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
+      agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
          cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
          cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
+      }
+      out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
+
+      agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
+         cfg.pipeline = agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX);
+      }
+      out += AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH;
+
+      agx_pack(out, VDM_STATE_VERTEX_OUTPUTS, cfg) {
+         cfg.output_count_1 = ctx->vs->info.varyings.vs.nr_index;
+         cfg.output_count_2 = cfg.output_count_1;
+      }
+      out += AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH;
+
+      agx_pack(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
          cfg.more_than_4_textures = tex_count >= 4;
       }
+      out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
-      out += AGX_BIND_VERTEX_PIPELINE_LENGTH;
+      /* Pad up to a multiple of 8 bytes */
+      memset(out, 0, 4);
+      out += 4;
    }
 
    struct agx_pool *pool = &ctx->batch->pool;
@@ -1793,39 +1815,63 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    unsigned idx_size = info->index_size;
+   uint64_t ib = idx_size ? agx_index_buffer_ptr(batch, draws, info) : 0;
 
    if (idx_size) {
-      uint64_t ib = agx_index_buffer_ptr(batch, draws, info);
-
       /* Index sizes are encoded logarithmically */
       STATIC_ASSERT(__builtin_ctz(1) == AGX_INDEX_SIZE_U8);
       STATIC_ASSERT(__builtin_ctz(2) == AGX_INDEX_SIZE_U16);
       STATIC_ASSERT(__builtin_ctz(4) == AGX_INDEX_SIZE_U32);
       assert((idx_size == 1) || (idx_size == 2) || (idx_size == 4));
 
-      agx_pack(out, INDEXED_DRAW, cfg) {
-         cfg.restart_index = info->restart_index;
-         cfg.primitive = prim;
+      agx_pack(out, VDM_STATE, cfg) cfg.restart_index_present = true;
+      out += AGX_VDM_STATE_LENGTH;
+
+      agx_pack(out, VDM_STATE_RESTART_INDEX, cfg) {
+         cfg.value = info->restart_index;
+      }
+      out += AGX_VDM_STATE_RESTART_INDEX_LENGTH;
+   }
+
+   agx_pack(out, INDEX_LIST, cfg) {
+      cfg.primitive = prim;
+      cfg.index_count_present = true;
+      cfg.instance_count_present = true;
+      cfg.start_present = true;
+
+      if (idx_size) {
          cfg.restart_enable = info->primitive_restart;
-         cfg.index_size = __builtin_ctz(idx_size);
-         cfg.index_buffer_lo = (ib & BITFIELD_MASK(32));
          cfg.index_buffer_hi = (ib >> 32);
-         cfg.index_buffer_size = ALIGN_POT(draws->count * idx_size, 4);
-         cfg.index_count = draws->count;
-         cfg.instance_count = info->instance_count;
-         cfg.base_vertex = draws->index_bias;
-      };
+         cfg.index_size = __builtin_ctz(idx_size);
+         cfg.index_buffer_present = true;
+         cfg.index_buffer_size_present = true;
+      }
+   }
+   out += AGX_INDEX_LIST_LENGTH;
 
-      out += AGX_INDEXED_DRAW_LENGTH;
-   } else {
-      agx_pack(out, DRAW, cfg) {
-         cfg.primitive = prim;
-         cfg.vertex_start = draws->start;
-         cfg.vertex_count = draws->count;
-         cfg.instance_count = info->instance_count;
-      };
+   if (idx_size) {
+      agx_pack(out, INDEX_LIST_BUFFER_LO, cfg) {
+         cfg.buffer_lo = ib & BITFIELD_MASK(32);
+      }
+      out += AGX_INDEX_LIST_BUFFER_LO_LENGTH;
+   }
 
-      out += AGX_DRAW_LENGTH;
+   agx_pack(out, INDEX_LIST_COUNT, cfg) cfg.count = draws->count;
+   out += AGX_INDEX_LIST_COUNT_LENGTH;
+
+   agx_pack(out, INDEX_LIST_INSTANCES, cfg) cfg.count = info->instance_count;
+   out += AGX_INDEX_LIST_INSTANCES_LENGTH;
+
+   agx_pack(out, INDEX_LIST_START, cfg) {
+      cfg.start = idx_size ? draws->index_bias : draws->start;
+   }
+   out += AGX_INDEX_LIST_START_LENGTH;
+
+   if (idx_size) {
+      agx_pack(out, INDEX_LIST_BUFFER_SIZE, cfg) {
+         cfg.size = ALIGN_POT(draws->count * idx_size, 4);
+      }
+      out += AGX_INDEX_LIST_BUFFER_SIZE_LENGTH;
    }
 
    batch->encoder_current = out;

@@ -554,45 +554,19 @@
     <field name="Unk 7" size="16" start="6:16" type="hex" default="0x0"/> <!-- garbage? -->
   </struct>
 
-  <!-- VDM commands start -->
+  <!-- VDM commands start. VDM commands are padded out to 8b alignment. -->
+  <enum name="VDM Block Type">
+    <value name="PPP State Update" value="0"/>
+    <value name="VDM State Update" value="2"/>
+    <value name="Index List" value="3"/>
+    <value name="Stream terminate" value="6"/>
+  </enum>
 
-  <!--- Command to bind a vertex pipeline, followed by subcommands. Counts are
-	specified in 32-bit word units. Intepretation per-shader stage. -->
-  <struct name="Bind vertex pipeline" size="24">
-    <field name="Tag" size="32" start="0:0" type="hex" default="0x4000002e"/>
-    <!-- 4 if more than 32 textures bound -->
-    <field name="Unk 1" size="4" start="1:0" type="hex" default="0x2"/>
-    <field name="Groups of 8 immediate textures" start="1:4" size="3" type="uint"/>
-    <field name="Groups of 4 samplers" start="1:9" size="3" type="uint"/>
-    <!-- When more than 48 textures bound, switches to 0x8, unk1 switches to
-    0x6, and some funny sort of bindless access(?) is used in the shader -->
-    <field name="Unk 2" size="4" start="1:12" type="hex" default="0x1"/>
-    <field name="Padding 1" size="8" start="1:24" type="hex" default="0x0"/>
-    <field name="Pipeline" size="32" start="2:0" type="address"/>
-    <field name="Output count 1" size="8" start="3:0" type="uint" default="0"/>
-    <field name="Output count 2" size="8" start="3:8" type="uint" default="0"/>
-    <field name="Padding 2" size="16" start="3:16" type="hex" default="0x0"/>
-    <field name="More than 4 textures" start="4:0" size="1" type="bool"/>
-    <field name="Unk 3" size="32" start="5:0" type="address"/> <!-- C020000 -->
-  </struct>
-
-  <!-- Subcommands are packed inside sized records -->
-  <struct name="Record" size="8">
-    <field name="Pointer (hi)" size="8" start="0:0" type="hex"/>
-    <field name="Size (words)" size="8" start="0:8" type="uint"/>
-    <field name="Tag" size="16" start="0:16" type="hex" default="0x0000"/>
-    <field name="Pointer (lo)" size="32" start="0:32" type="address"/>
-  </struct>
-
-  <!--- Command to issue a direct non-indexed draw -->
-  <struct name="Draw" size="16">
-    <field name="Unk" size="8" start="0:0" type="hex" default="0x0"/>
-    <field name="Primitive" size="8" start="0:8" type="Primitive"/>
-    <field name="Unk 2" size="8" start="0:16" type="hex" default="0xc0"/>
-    <field name="Command" size="8" start="0:24" type="hex" default="0x61"/>
-    <field name="Vertex count" size="32" start="1:0" type="uint"/>
-    <field name="Instance count" size="32" start="2:0" type="uint"/> <!-- must be nonzero -->
-    <field name="Vertex start" size="32" start="3:0" type="uint"/>
+  <struct name="PPP State" size="8">
+    <field name="Pointer (hi)" size="8" start="0" type="hex"/>
+    <field name="Size (words)" size="8" start="8" type="uint"/>
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="PPP State Update"/>
+    <field name="Pointer (lo)" size="32" start="32" type="address"/>
   </struct>
 
   <enum name="Index size">
@@ -601,21 +575,90 @@
     <value name="U32" value="2"/>
   </enum>
 
-  <struct name="Indexed draw" size="32">
-    <field name="Unk 1" size="8" start="0:0" type="hex" default="0x1"/>
-    <field name="Command" size="8" start="0:24" type="hex" default="0x40"/>
-    <field name="Restart index" size="32" start="1:0" type="hex"/>
-    <field name="Primitive" size="8" start="2:8" type="Primitive"/>
-    <field name="Restart enable" size="1" start="2:16" type="bool"/> <!-- Metal sets this bit for strips -->
-    <field name="Index size" size="3" start="2:17" type="Index size"/>
-    <field name="Unk 2c" size="4" start="2:20" type="hex" default="0xF"/>
-    <field name="Draw Command" size="8" start="2:24" type="hex" default="0x61"/>
-    <field name="Index buffer lo" size="32" start="3:0" type="hex"/>
-    <field name="Index buffer hi" size="8" start="2:0" type="hex"/>
-    <field name="Index count" size="32" start="4:0" type="uint"/>
-    <field name="Instance count" size="32" start="5:0" type="uint"/>
-    <field name="Base vertex" size="32" start="6:0" type="uint"/>
-    <field name="Index buffer size" size="32" start="7:0" type="uint" modifier="shr(2)"/>
+  <struct name="VDM State" size="4">
+    <field name="Restart index present" size="1" start="0" type="bool"/>
+    <field name="Vertex shader word 0 present" size="1" start="1" type="bool"/>
+    <field name="Vertex shader word 1 present" size="1" start="2" type="bool"/>
+    <field name="Vertex outputs present" size="1" start="3" type="bool"/>
+    <field name="Vertex unknown present" size="1" start="5" type="bool"/>
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="VDM State Update"/>
+  </struct>
+
+  <struct name="VDM State Restart Index" size="4">
+    <field name="Value" size="32" start="0" type="hex"/>
+  </struct>
+
+  <struct name="VDM State Vertex Shader Word 0" size="4">
+    <!-- 4 if more than 32 textures bound -->
+    <field name="Unk 1" size="4" start="0" type="hex" default="0x2"/>
+    <field name="Groups of 8 immediate textures" start="4" size="3" type="uint"/>
+    <field name="Groups of 4 samplers" start="9" size="3" type="uint"/>
+    <!-- When more than 48 textures bound, switches to 0x8, unk1 switches to
+    0x6, and some funny sort of bindless access(?) is used in the shader -->
+    <field name="Unk 2" size="4" start="12" type="hex" default="0x1"/>
+    <field name="Padding 1" size="8" start="24" type="hex" default="0x0"/>
+  </struct>
+
+  <struct name="VDM State Vertex Shader Word 1" size="4">
+    <field name="Pipeline" size="32" start="0" type="address"/>
+  </struct>
+
+  <struct name="VDM State Vertex Outputs" size="4">
+    <field name="Output count 1" size="8" start="0" type="uint" default="0"/>
+    <field name="Output count 2" size="8" start="8" type="uint" default="0"/>
+    <field name="Padding 2" size="16" start="16" type="hex" default="0x0"/>
+  </struct>
+
+  <struct name="VDM State Vertex Unknown" size="4">
+    <!-- XXX Probably not? -->
+    <field name="More than 4 textures" start="0" size="1" type="bool"/>
+  </struct>
+
+  <!--- Command to issue a direct non-indexed draw -->
+  <struct name="Index List" size="4">
+    <field name="Index buffer hi" size="8" start="0" type="hex"/>
+    <field name="Primitive" size="8" start="8" type="Primitive"/>
+    <!-- Metal sets this bit for strips, probably wrong though -->
+    <field name="Restart enable" size="1" start="16" type="bool"/> 
+    <field name="Index size" size="3" start="17" type="Index size"/>
+
+    <!-- XXX: Might be backwards, not sure how to check that -->
+    <field name="Index buffer present" size="1" start="20" type="bool"/>
+    <field name="Index buffer size present" size="1" start="21" type="bool"/>
+
+    <!-- XXX: Might be mixed up, not sure how to check that -->
+    <field name="Index count present" size="1" start="22" type="bool" default="true"/>
+    <field name="Instance count present" size="1" start="23" type="bool" default="true"/>
+    <field name="Start present" size="1" start="24" type="bool" default="true"/>
+
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Index List"/>
+  </struct>
+
+  <struct name="Index List: Buffer lo" size="4">
+    <!-- Index buffer lsb -->
+    <field name="Buffer lo" size="32" start="0" type="hex"/>
+  </struct>
+
+  <struct name="Index List: Count" size="4">
+    <!-- Vertex count for non-indexed, index count for index count -->
+    <field name="Count" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="Index List: Instances" size="4">
+    <field name="Count" size="32" start="0" type="uint"/> <!-- must be nonzero -->
+  </struct>
+
+  <struct name="Index List: Start" size="4">
+    <!-- Base vertex for indexed draws -->
+    <field name="Start" size="32" start="0" type="uint"/>
+  </struct>
+
+  <struct name="Index List: Buffer size" size="4">
+    <field name="Size" size="32" start="0" type="uint" modifier="shr(2)"/>
+  </struct>
+
+  <struct name="Stream Terminate" size="8">
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Stream Terminate"/>
   </struct>
 
   <!-- VDM commands end -->

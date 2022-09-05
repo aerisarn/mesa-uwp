@@ -129,13 +129,13 @@ agx_ppp_fini(uint8_t **out, struct agx_ppp_update *ppp)
    assert(ppp->gpu_base < (1ull << 40));
    assert(size_words < (1ull << 24));
 
-   agx_pack(*out, RECORD, cfg) {
+   agx_pack(*out, PPP_STATE, cfg) {
       cfg.pointer_hi = (ppp->gpu_base >> 32);
       cfg.pointer_lo = (uint32_t) ppp->gpu_base;
       cfg.size_words = size_words;
    };
 
-   *out += AGX_RECORD_LENGTH;
+   *out += AGX_PPP_STATE_LENGTH;
 }
 
 #endif

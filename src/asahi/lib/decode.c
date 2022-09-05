@@ -464,24 +464,19 @@ static unsigned
 agxdecode_cmd(const uint8_t *map, bool verbose)
 {
    if (map[0] == 0x02 && map[1] == 0x10 && map[2] == 0x00 && map[3] == 0x00) {
+      /* XXX: This is a CDM command not a VDM one */
       agx_unpack(agxdecode_dump_stream, map, LAUNCH, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
       DUMP_UNPACKED(LAUNCH, cmd, "Launch\n");
       return AGX_LAUNCH_LENGTH;
-   } else if (map[0] == 0x2E && map[1] == 0x00 && map[2] == 0x00 && map[3] == 0x40) {
-      agx_unpack(agxdecode_dump_stream, map, BIND_VERTEX_PIPELINE, cmd);
-      agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
-      DUMP_UNPACKED(BIND_VERTEX_PIPELINE, cmd, "Bind vertex pipeline\n");
-      return AGX_BIND_VERTEX_PIPELINE_LENGTH;
-   } else if (map[3] == 0x40) {
-      DUMP_CL(INDEXED_DRAW, map, "Indexed Draw");
-      return AGX_INDEXED_DRAW_LENGTH;
-   } else if (map[3] == 0x61) {
-      DUMP_CL(DRAW, map, "Draw");
-      return AGX_DRAW_LENGTH;
-   } else if (map[2] == 0x00 && map[3] == 0x00) {
-      /* No need to explicitly dump the record */
-      agx_unpack(agxdecode_dump_stream, map, RECORD, cmd);
+   }
+
+   /* Bits 29-31 contain the block type */
+   enum agx_vdm_block_type block_type = (map[3] >> 5);
+
+   switch (block_type) {
+   case AGX_VDM_BLOCK_TYPE_PPP_STATE_UPDATE: {
+      agx_unpack(agxdecode_dump_stream, map, PPP_STATE, cmd);
 
       uint64_t address = (((uint64_t) cmd.pointer_hi) << 32) | cmd.pointer_lo;
       struct agx_bo *mem = agxdecode_find_mapped_gpu_mem_containing(address);
@@ -489,15 +484,74 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
       if (mem)
          agxdecode_record(address, cmd.size_words * 4, verbose);
       else
-         DUMP_UNPACKED(RECORD, cmd, "Non-existant record (XXX)\n");
+         DUMP_UNPACKED(PPP_STATE, cmd, "Non-existant record (XXX)\n");
 
-      return AGX_RECORD_LENGTH;
-   } else if (map[1] == 0 && map[2] == 0 && map[3] == 0xC0 && map[4] == 0x00) {
-      ASSERTED unsigned zero[4] = { 0 };
-      assert(memcmp(map + 4, zero, sizeof(zero)) == 0);
+      return AGX_PPP_STATE_LENGTH;
+   }
+
+   case AGX_VDM_BLOCK_TYPE_VDM_STATE_UPDATE: {
+      size_t length = AGX_VDM_STATE_LENGTH;
+      agx_unpack(agxdecode_dump_stream, map, VDM_STATE, hdr);
+      map += AGX_VDM_STATE_LENGTH;
+
+#define VDM_PRINT(header_name, STRUCT_NAME, human) \
+      if (hdr.header_name##_present) { \
+         DUMP_CL(VDM_STATE_##STRUCT_NAME, map, human); \
+         map += AGX_VDM_STATE_##STRUCT_NAME##_LENGTH; \
+         length += AGX_VDM_STATE_##STRUCT_NAME##_LENGTH; \
+      }
+
+      VDM_PRINT(restart_index, RESTART_INDEX, "Restart index");
+      VDM_PRINT(vertex_shader_word_0, VERTEX_SHADER_WORD_0, "Vertex shader word 0");
+
+      if (hdr.vertex_shader_word_1_present) {
+         agx_unpack(agxdecode_dump_stream, map, VDM_STATE_VERTEX_SHADER_WORD_1,
+                    word_1);
+         fprintf(agxdecode_dump_stream, "Pipeline %X\n", (uint32_t) word_1.pipeline);
+         agxdecode_stateful(word_1.pipeline, "Pipeline", agxdecode_pipeline, verbose);
+      }
+
+      VDM_PRINT(vertex_shader_word_1, VERTEX_SHADER_WORD_1, "Vertex shader word 1");
+      VDM_PRINT(vertex_outputs, VERTEX_OUTPUTS, "Vertex outputs");
+      VDM_PRINT(vertex_unknown, VERTEX_UNKNOWN, "Vertex unknown");
+
+#undef VDM_PRINT
+      return ALIGN_POT(length, 8);
+   }
+
+   case AGX_VDM_BLOCK_TYPE_INDEX_LIST: {
+      size_t length = AGX_INDEX_LIST_LENGTH;
+      agx_unpack(agxdecode_dump_stream, map, INDEX_LIST, hdr);
+      DUMP_UNPACKED(INDEX_LIST, hdr, "Index List\n");
+      map += AGX_INDEX_LIST_LENGTH;
+
+#define IDX_PRINT(header_name, STRUCT_NAME, human) \
+      if (hdr.header_name##_present) { \
+         DUMP_CL(INDEX_LIST_##STRUCT_NAME, map, human); \
+         map += AGX_INDEX_LIST_##STRUCT_NAME##_LENGTH; \
+         length += AGX_INDEX_LIST_##STRUCT_NAME##_LENGTH; \
+      }
+
+      IDX_PRINT(index_buffer, BUFFER_LO, "Index buffer");
+      IDX_PRINT(index_buffer_size, BUFFER_SIZE, "Index buffer size");
+      IDX_PRINT(index_count, COUNT, "Index count");
+      IDX_PRINT(instance_count, INSTANCES, "Instance count");
+      IDX_PRINT(start, START, "Start");
+
+#undef IDX_PRINT
+      return ALIGN_POT(length, 8);
+   }
+
+   case AGX_VDM_BLOCK_TYPE_STREAM_TERMINATE: {
+      DUMP_CL(STREAM_TERMINATE, map, "Stream Terminate");
       return STATE_DONE;
-   } else {
-      return 0;
+   }
+
+   default:
+      fprintf(agxdecode_dump_stream, "Unknown VDM block type: %u\n",
+              block_type);
+      hexdump(agxdecode_dump_stream, map, 8, false);
+      return 8;
    }
 }
 
