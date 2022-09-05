@@ -1241,6 +1241,13 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
                .Stream3Decl = so_decl[3][i],
             });
       }
+
+#if GFX_VERx10 == 125
+      /* Wa_14015946265: Send PC with CS stall after SO_DECL. */
+      anv_batch_emit(&pipeline->base.batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+      }
+#endif
    }
 
    struct GENX(3DSTATE_STREAMOUT) so = {
