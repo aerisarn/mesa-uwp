@@ -509,9 +509,6 @@ spec@arb_shader_texture_image_samples@texturesamples@vs-sampler2dmsarray-2,Fail
 spec@arb_shader_texture_image_samples@texturesamples@vs-usampler2dms-2,Fail
 spec@arb_shader_texture_image_samples@texturesamples@vs-usampler2dmsarray-2,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
 spec@arb_tessellation_shader@execution@double-array-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@double-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@dvec2-vs-tcs-tes,Fail
@@ -523,20 +520,6 @@ spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 # since ntt copy-deref optimization, probably.
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 
-spec@arb_texture_buffer_object@formats (fs- arb),Crash
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE16I_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE16UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE32I_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE32UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE8I_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE8UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb),Crash
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE16I_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE16UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE32I_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE32UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8I_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8UI_EXT,Fail
 spec@arb_texture_compression@texwrap formats bordercolor,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled@GL_COMPRESSED_ALPHA- swizzled- border color only,Fail
@@ -608,8 +591,6 @@ spec@arb_texture_float@texwrap formats bordercolor@GL_RGBA32F- border color only
 spec@arb_texture_rectangle@copyteximage rect,Fail
 spec@arb_texture_rectangle@copyteximage rect samples=2,Fail
 spec@arb_texture_rectangle@copyteximage rect samples=4,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-07,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-08,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor@GL_RGBA8- border color only,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
@@ -719,10 +700,6 @@ spec@ext_packed_float@texwrap formats bordercolor-swizzled@GL_R11F_G11F_B10F- sw
 spec@ext_packed_float@texwrap formats bordercolor@GL_R11F_G11F_B10F- border color only,Fail
 spec@ext_texture_array@fbo-generatemipmap-array s3tc_dxt1,Fail
 spec@ext_texture_array@gen-mipmap,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-07,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-08,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-07,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-08,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RED_RGTC1- swizzled- border color only,Fail
@@ -828,10 +805,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
 
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-07,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-08,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-07,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-clamp-z,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 
