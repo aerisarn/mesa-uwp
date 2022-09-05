@@ -262,9 +262,10 @@ agxdecode_dump_bo(struct agx_bo *bo, const char *name)
 }
 
 /* Abstraction for command stream parsing */
-typedef unsigned (*decode_cmd)(const uint8_t *map, bool verbose);
+typedef unsigned (*decode_cmd)(const uint8_t *map, uint64_t *link, bool verbose);
 
 #define STATE_DONE (0xFFFFFFFFu)
+#define STATE_LINK (0xFFFFFFFEu)
 
 static void
 agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder, bool verbose)
@@ -276,13 +277,14 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder, bool verb
 
    uint8_t *map = agxdecode_fetch_gpu_mem(va, 64);
    uint8_t *end = (uint8_t *) alloc->ptr.cpu + alloc->size;
+   uint64_t link = 0;
 
    if (verbose)
       agxdecode_dump_bo(alloc, label);
    fflush(agxdecode_dump_stream);
 
    while (map < end) {
-      unsigned count = decoder(map, verbose);
+      unsigned count = decoder(map, &link, verbose);
 
       /* If we fail to decode, default to a hexdump (don't hang) */
       if (count == 0) {
@@ -293,14 +295,19 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder, bool verb
       map += count;
       fflush(agxdecode_dump_stream);
 
-      if (count == STATE_DONE)
+      if (count == STATE_DONE) {
          break;
+      } else if (count == STATE_LINK) {
+         alloc = agxdecode_find_mapped_gpu_mem_containing(link);
+         map = agxdecode_fetch_gpu_mem(link, 64);
+         end = (uint8_t *) alloc->ptr.cpu + alloc->size;
+      }
    }
 }
 
 unsigned COUNTER = 0;
 static unsigned
-agxdecode_pipeline(const uint8_t *map, UNUSED bool verbose)
+agxdecode_pipeline(const uint8_t *map, uint64_t *link, UNUSED bool verbose)
 {
    uint8_t zeroes[16] = { 0 };
 
@@ -461,7 +468,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
 }
 
 static unsigned
-agxdecode_cmd(const uint8_t *map, bool verbose)
+agxdecode_cmd(const uint8_t *map, uint64_t *link, bool verbose)
 {
    if (map[0] == 0x02 && map[1] == 0x10 && map[2] == 0x00 && map[3] == 0x00) {
       /* XXX: This is a CDM command not a VDM one */
@@ -540,6 +547,13 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
 
 #undef IDX_PRINT
       return ALIGN_POT(length, 8);
+   }
+
+   case AGX_VDM_BLOCK_TYPE_STREAM_LINK: {
+      agx_unpack(agxdecode_dump_stream, map, STREAM_LINK, hdr);
+      DUMP_UNPACKED(STREAM_LINK, hdr, "Stream Link\n");
+      *link = hdr.target_lo | (((uint64_t) hdr.target_hi) << 32);
+      return STATE_LINK;
    }
 
    case AGX_VDM_BLOCK_TYPE_STREAM_TERMINATE: {
