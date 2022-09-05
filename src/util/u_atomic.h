@@ -119,6 +119,16 @@
 #include <intrin.h>
 #include <assert.h>
 
+__forceinline char _interlockedadd8(char volatile * _Addend, char _Value)
+{
+   return _InterlockedExchangeAdd8(_Addend, _Value) + _Value;
+}
+
+__forceinline short _interlockedadd16(short volatile * _Addend, short _Value)
+{
+   return _InterlockedExchangeAdd16(_Addend, _Value) + _Value;
+}
+
 /* MSVC supports decltype keyword, but it's only supported on C++ and doesn't
  * quite work here; and if a C++-only solution is worthwhile, then it would be
  * better to use templates / function overloading, instead of decltype magic.
@@ -136,6 +146,7 @@
    ((void) p_atomic_inc_return(_v))
 
 #define p_atomic_inc_return(_v) (\
+   sizeof *(_v) == sizeof(char)    ? p_atomic_add_return((_v), 1) : \
    sizeof *(_v) == sizeof(short)   ? _InterlockedIncrement16((short *)  (_v)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedIncrement  ((long *)   (_v)) : \
    sizeof *(_v) == sizeof(__int64) ? _interlockedincrement64((__int64 *)(_v)) : \
@@ -145,6 +156,7 @@
    ((void) p_atomic_dec_return(_v))
 
 #define p_atomic_dec_return(_v) (\
+   sizeof *(_v) == sizeof(char)    ? p_atomic_add_return((_v), -1) : \
    sizeof *(_v) == sizeof(short)   ? _InterlockedDecrement16((short *)  (_v)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedDecrement  ((long *)   (_v)) : \
    sizeof *(_v) == sizeof(__int64) ? _interlockeddecrement64((__int64 *)(_v)) : \
@@ -154,6 +166,8 @@
    ((void) p_atomic_fetch_add((_v), (_i)))
 
 #define p_atomic_add_return(_v, _i) (\
+   sizeof *(_v) == sizeof(char)    ? _interlockedadd8 ((char *)   (_v), (_i)) : \
+   sizeof *(_v) == sizeof(short)   ? _interlockedadd16((short *)  (_v), (_i)) : \
    sizeof *(_v) == sizeof(long)    ? _interlockedadd  ((long *)   (_v), (_i)) : \
    sizeof *(_v) == sizeof(__int64) ? _interlockedadd64((__int64 *)(_v), (_i)) : \
                                      (assert(!"should not get here"), 0))
@@ -180,6 +194,8 @@
 
 #define PIPE_NATIVE_ATOMIC_XCHG
 #define p_atomic_xchg(_v, _new) (\
+   sizeof *(_v) == sizeof(char)    ? _InterlockedExchange8 ((char *)   (_v), (char)   (_new)) : \
+   sizeof *(_v) == sizeof(short)   ? _InterlockedExchange16((short *)  (_v), (short)  (_new)) : \
    sizeof *(_v) == sizeof(long)    ? _InterlockedExchange  ((long *)   (_v), (long)   (_new)) : \
    sizeof *(_v) == sizeof(__int64) ? _interlockedexchange64((__int64 *)(_v), (__int64)(_new)) : \
                                      (assert(!"should not get here"), 0))
@@ -272,6 +288,28 @@
 #endif
 
 #ifndef PIPE_NATIVE_ATOMIC_XCHG
+static inline uint8_t p_atomic_xchg_8(uint8_t *v, uint8_t i)
+{
+   uint8_t actual = p_atomic_read(v);
+   uint8_t expected;
+   do {
+      expected = actual;
+      actual = p_atomic_cmpxchg(v, expected, i);
+   } while (expected != actual);
+   return actual;
+}
+
+static inline uint16_t p_atomic_xchg_16(uint16_t *v, uint16_t i)
+{
+   uint16_t actual = p_atomic_read(v);
+   uint16_t expected;
+   do {
+      expected = actual;
+      actual = p_atomic_cmpxchg(v, expected, i);
+   } while (expected != actual);
+   return actual;
+}
+
 static inline uint32_t p_atomic_xchg_32(uint32_t *v, uint32_t i)
 {
    uint32_t actual = p_atomic_read(v);
@@ -295,6 +333,8 @@ static inline uint64_t p_atomic_xchg_64(uint64_t *v, uint64_t i)
 }
 
 #define p_atomic_xchg(v, i) (__typeof(*(v)))( \
+   sizeof(*(v)) == sizeof(uint8_t)  ? p_atomic_xchg_8 ((uint8_t  *)(v), (uint8_t )(i)) : \
+   sizeof(*(v)) == sizeof(uint16_t) ? p_atomic_xchg_16((uint16_t *)(v), (uint16_t)(i)) : \
    sizeof(*(v)) == sizeof(uint32_t) ? p_atomic_xchg_32((uint32_t *)(v), (uint32_t)(i)) : \
    sizeof(*(v)) == sizeof(uint64_t) ? p_atomic_xchg_64((uint64_t *)(v), (uint64_t)(i)) : \
                                       (assert(!"should not get here"), 0))
