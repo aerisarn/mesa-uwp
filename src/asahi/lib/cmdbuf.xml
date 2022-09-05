@@ -554,6 +554,8 @@
     <field name="Unk 7" size="16" start="6:16" type="hex" default="0x0"/> <!-- garbage? -->
   </struct>
 
+  <!-- VDM commands start -->
+
   <!--- Command to bind a vertex pipeline, followed by subcommands. Counts are
 	specified in 32-bit word units. Intepretation per-shader stage. -->
   <struct name="Bind vertex pipeline" size="24">
@@ -616,6 +618,10 @@
     <field name="Index buffer size" size="32" start="7:0" type="uint" modifier="shr(2)"/>
   </struct>
 
+  <!-- VDM commands end -->
+
+  <!-- CDM commands start -->
+
   <!--- Command to launch a direct compute kernel -->
   <struct name="Launch" size="36">
     <field name="Command" size="32" start="0:0" type="hex" default="0x1002"/>
@@ -628,6 +634,8 @@
     <field name="Local size Z" size="32" start="7:0" type="uint"/>
     <field name="Unk" size="32" start="8:0" type="hex" default="0x60000160"/>
   </struct>
+
+  <!-- CDM commands end -->
 
   <!--- The rest of this file is likely software defined by macOS kernel -->
   <enum name="IOGPU Attachment Type">
