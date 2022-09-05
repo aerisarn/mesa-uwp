@@ -3559,7 +3559,7 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
    front_a |= common_a;
 
    pvr_csb_pack (&back_a, TA_STATE_ISPA, ispa) {
-      ispa.sref = (!disable_stencil_test) * dynamic_state->compare_mask.back;
+      ispa.sref = (!disable_stencil_test) * dynamic_state->reference.back;
    }
    back_a |= common_a;
 
