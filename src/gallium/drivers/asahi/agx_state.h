@@ -111,8 +111,12 @@ struct agx_batch {
    uint32_t varyings;
 
    /* Resource list requirements, represented as a bit set indexed by BO
-    * handles (GEM handles on Linux, or IOGPU's equivalent on macOS) */
-   BITSET_WORD bo_list[256];
+    * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)
+    */
+   struct {
+      BITSET_WORD *set;
+      unsigned word_count;
+   } bo_list;
 
    struct agx_pool pool, pipeline_pool;
    struct agx_bo *encoder;
@@ -343,14 +347,34 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
 /* Add a BO to a batch. This needs to be amortized O(1) since it's called in
  * hot paths. To achieve this we model BO lists by bit sets */
 
+static unsigned
+agx_batch_bo_list_bits(struct agx_batch *batch)
+{
+   return batch->bo_list.word_count * sizeof(BITSET_WORD) * 8;
+}
+
 static inline void
 agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 {
-   if (unlikely(bo->handle > (sizeof(batch->bo_list) * 8)))
-      unreachable("todo: growable");
+   /* Double the size of the BO list if we run out, this is amortized O(1) */
+   if (unlikely(bo->handle > agx_batch_bo_list_bits(batch))) {
+      batch->bo_list.set = rerzalloc(batch, batch->bo_list.set, BITSET_WORD,
+                                     batch->bo_list.word_count,
+                                     batch->bo_list.word_count * 2);
+      batch->bo_list.word_count *= 2;
+   }
 
-   BITSET_SET(batch->bo_list, bo->handle);
+   BITSET_SET(batch->bo_list.set, bo->handle);
 }
+
+static unsigned
+agx_batch_num_bo(struct agx_batch *batch)
+{
+   return __bitset_count(batch->bo_list.set, batch->bo_list.word_count);
+}
+
+#define AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) \
+   BITSET_FOREACH_SET(handle, (batch)->bo_list.set, agx_batch_bo_list_bits(batch))
 
 /* Blit shaders */
 void

@@ -510,14 +510,14 @@ agx_flush(struct pipe_context *pctx,
    }
 
    unsigned handle_count =
-      BITSET_COUNT(batch->bo_list) +
+      agx_batch_num_bo(batch) +
       agx_pool_num_bos(&batch->pool) +
       agx_pool_num_bos(&batch->pipeline_pool);
 
    uint32_t *handles = calloc(sizeof(uint32_t), handle_count);
    unsigned handle = 0, handle_i = 0;
 
-   BITSET_FOREACH_SET(handle, batch->bo_list, sizeof(batch->bo_list) * 8) {
+   AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
       handles[handle_i++] = handle;
    }
 
@@ -564,7 +564,7 @@ agx_flush(struct pipe_context *pctx,
       agxdecode_next_frame();
    }
 
-   memset(batch->bo_list, 0, sizeof(batch->bo_list));
+   memset(batch->bo_list.set, 0, batch->bo_list.word_count * sizeof(BITSET_WORD));
    agx_pool_cleanup(&ctx->batch->pool);
    agx_pool_cleanup(&ctx->batch->pipeline_pool);
    agx_pool_init(&ctx->batch->pool, dev, AGX_MEMORY_TYPE_FRAMEBUFFER, true);
@@ -592,7 +592,7 @@ agx_destroy_context(struct pipe_context *pctx)
 
    util_unreference_framebuffer_state(&ctx->framebuffer);
 
-   FREE(ctx);
+   ralloc_free(ctx);
 }
 
 static void
@@ -605,7 +605,7 @@ static struct pipe_context *
 agx_create_context(struct pipe_screen *screen,
                    void *priv, unsigned flags)
 {
-   struct agx_context *ctx = CALLOC_STRUCT(agx_context);
+   struct agx_context *ctx = rzalloc(NULL, struct agx_context);
    struct pipe_context *pctx = &ctx->base;
 
    if (!ctx)
@@ -614,7 +614,9 @@ agx_create_context(struct pipe_screen *screen,
    pctx->screen = screen;
    pctx->priv = priv;
 
-   ctx->batch = CALLOC_STRUCT(agx_batch);
+   ctx->batch = rzalloc(ctx, struct agx_batch);
+   ctx->batch->bo_list.set = rzalloc_array(ctx->batch, BITSET_WORD, 128);
+   ctx->batch->bo_list.word_count = 128;
    agx_pool_init(&ctx->batch->pool,
                  agx_device(screen), AGX_MEMORY_TYPE_FRAMEBUFFER, true);
    agx_pool_init(&ctx->batch->pipeline_pool,
