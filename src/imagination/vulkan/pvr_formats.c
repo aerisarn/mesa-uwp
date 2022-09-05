@@ -245,6 +245,42 @@ uint32_t pvr_get_pbe_accum_format(VkFormat vk_format)
    return PVR_PBE_ACCUM_FORMAT_INVALID;
 }
 
+uint32_t pvr_get_pbe_accum_format_size_in_bytes(VkFormat vk_format)
+{
+   enum pvr_pbe_accum_format pbe_accum_format;
+   uint32_t nr_components;
+
+   pbe_accum_format = pvr_get_pbe_accum_format(vk_format);
+   nr_components = vk_format_get_nr_components(vk_format);
+
+   switch (pbe_accum_format) {
+   case PVR_PBE_ACCUM_FORMAT_U8:
+   case PVR_PBE_ACCUM_FORMAT_S8:
+   case PVR_PBE_ACCUM_FORMAT_UINT8:
+   case PVR_PBE_ACCUM_FORMAT_SINT8:
+      return nr_components * 1;
+
+   case PVR_PBE_ACCUM_FORMAT_U16:
+   case PVR_PBE_ACCUM_FORMAT_S16:
+   case PVR_PBE_ACCUM_FORMAT_F16:
+   case PVR_PBE_ACCUM_FORMAT_UINT16:
+   case PVR_PBE_ACCUM_FORMAT_SINT16:
+      return nr_components * 2;
+
+   case PVR_PBE_ACCUM_FORMAT_F32:
+   case PVR_PBE_ACCUM_FORMAT_UINT32:
+   case PVR_PBE_ACCUM_FORMAT_SINT32:
+   case PVR_PBE_ACCUM_FORMAT_UINT32_MEDP:
+   case PVR_PBE_ACCUM_FORMAT_SINT32_MEDP:
+   case PVR_PBE_ACCUM_FORMAT_U1010102:
+   case PVR_PBE_ACCUM_FORMAT_U24:
+      return nr_components * 4;
+
+   default:
+      unreachable("Unknown pbe accum format. Implementation error");
+   }
+}
+
 static VkFormatFeatureFlags
 pvr_get_image_format_features(const struct pvr_format *pvr_format,
                               VkImageTiling vk_tiling)

@@ -53,6 +53,7 @@ const uint8_t *pvr_get_format_swizzle(VkFormat vk_format);
 uint32_t pvr_get_tex_format(VkFormat vk_format);
 uint32_t pvr_get_pbe_packmode(VkFormat vk_format);
 uint32_t pvr_get_pbe_accum_format(VkFormat vk_format);
+uint32_t pvr_get_pbe_accum_format_size_in_bytes(VkFormat vk_format);
 bool pvr_format_is_pbe_downscalable(VkFormat vk_format);
 
 #endif /* PVR_FORMATS_H */
