@@ -66,6 +66,26 @@ traces:
     zink-a630:
       checksum: 947da2890506f363d3aef0d1a981eec6
 
+  godot/godot-tps-gles3-high.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
+    freedreno-a630:
+      checksum: 50d4bd01756ffe70aee5f8401f7a6ce4
+    zink-a630:
+      checksum: 59e37d2dca80caedd9494114d64c676c
+
+  godot/godot-thrive.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
+    freedreno-a630:
+      checksum: 491a16f1f9bf8bc467fadbc8439c1a2a
+    zink-a630:
+      checksum: 491a16f1f9bf8bc467fadbc8439c1a2a
+
   supertuxkart/supertuxkart-mansion-egl-gles-v2.trace:
     freedreno-a306:
       checksum: 1ae49af7017ae2a08fbb1caf377ada91
@@ -129,12 +149,46 @@ traces:
     zink-a630:
       checksum: d25edb433abfcde517b626b3071906ff
 
+  minetest/minetest-high-v2.trace:
+    freedreno-a306:
+      label: [crash]
+    freedreno-a530:
+      checksum: 48d4d4776885fd120429cd36a35ddaf2
+    freedreno-a630:
+      checksum: 2aebe86d6c0488b953bfaacd8000c01a
+    zink-a630:
+      checksum: c167b29121b4bbba7675070b2ab1f51a
+
+  minetest/minetest-v2.trace:
+    freedreno-a306:
+      checksum: 37081a69137df415cfda13dac62966c4
+    freedreno-a530:
+      checksum: 824672b1eef72c0223ac754dfc46e2d5
+    freedreno-a630:
+      checksum: 5c0c5da476775dfac94b79e7edb556ce
+    zink-a630:
+      checksum: e9c21d9a253cbae19f09ddfa01d9622a
+
+  filament/filament-default.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
+    freedreno-a630:
+      label: [skip, flakes]
+      checksum: c45e17d98a5d598bef50494f1150f5b9
+      text: helmet texture sometimes missing
+    zink-a630:
+      checksum: 59e18960d8b73a93401b793b28e99f42
+
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false-v2.trace:
     freedreno-a306:
       checksum: 67f73c60b3ff286b7a4a10f4c14eec8b
     freedreno-a530:
       checksum: eaee77d5109260a2c91f38e7428a9cb6
     freedreno-a630:
+      checksum: e79224d7afc13318a3511b3dbdca57c1
+    zink-a630:
       checksum: e79224d7afc13318a3511b3dbdca57c1
 
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=true-v2.trace:
@@ -144,6 +198,8 @@ traces:
       checksum: 52b81ddea38b362105b64847d64b80c9
     freedreno-a630:
       checksum: df325d374967a1508675f17d38a16a2c
+    zink-a630:
+      checksum: df325d374967a1508675f17d38a16a2c
 
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=subdata:interleave=false-v2.trace:
     freedreno-a306:
@@ -151,6 +207,8 @@ traces:
     freedreno-a530:
       checksum: 9209aa63fcc0c3608bbb0299437fd54c
     freedreno-a630:
+      checksum: dc0c1f9c167427ee453019f24dddaac4
+    zink-a630:
       checksum: dc0c1f9c167427ee453019f24dddaac4
 
   glmark2/bump:bump-render=height-v2.trace:
@@ -160,6 +218,8 @@ traces:
       checksum: 88c1dd62b6b42b18ba35f79657ef46c8
     freedreno-a630:
       checksum: ddc2fab265aac11a971afcae8655835c
+    zink-a630:
+      checksum: ea8b8f0da4e4b91d40952ab11e6f55b4
 
   glmark2/bump:bump-render=high-poly-v2.trace:
     freedreno-a306:
@@ -168,6 +228,8 @@ traces:
       checksum: 5d3a8c494789e48fecd99cdf55e1506f
     freedreno-a630:
       checksum: 5d3a8c494789e48fecd99cdf55e1506f
+    zink-a630:
+      checksum: 5041dd39e55ba0e842a451f3141d6133
 
   glmark2/bump:bump-render=normals-v2.trace:
     freedreno-a306:
@@ -176,6 +238,8 @@ traces:
       checksum: 9298dc5a65182a7c3441882d46fee6f9
     freedreno-a630:
       checksum: edef28326ed7a4121791d84862fa8b08
+    zink-a630:
+      checksum: 99ca60c4ad4cff9ead3d955d03fef16b
 
   glmark2/conditionals:vertex-steps=0:fragment-steps=0-v2.trace:
     freedreno-a306:
@@ -184,6 +248,8 @@ traces:
       checksum: 610a670dbcdfee95fd0b660e4a681440
     freedreno-a630:
       checksum: 610a670dbcdfee95fd0b660e4a681440
+    zink-a630:
+      checksum: 1da3aa2a9229eb5768a8930e4b56e5e7
 
   glmark2/conditionals:vertex-steps=0:fragment-steps=5-v2.trace:
     freedreno-a306:
@@ -192,6 +258,8 @@ traces:
       checksum: f0660e7bc8d0834d488a365cee68b649
     freedreno-a630:
       checksum: f0660e7bc8d0834d488a365cee68b649
+    zink-a630:
+      checksum: c66689391f1e3cb885ef5d119a2023a4
 
   glmark2/conditionals:vertex-steps=5:fragment-steps=0-v2.trace:
     freedreno-a306:
@@ -200,6 +268,8 @@ traces:
       checksum: 809b7b66f30f134490012817a30774c3
     freedreno-a630:
       checksum: 809b7b66f30f134490012817a30774c3
+    zink-a630:
+      checksum: 5287967eedbe8ac51f4c21dfdacd7657
 
   glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true-v2.trace:
     freedreno-a306:
@@ -207,6 +277,8 @@ traces:
     freedreno-a530:
       checksum: 70e18ba06d56fea277cd3fb000729879
     freedreno-a630:
+      checksum: 92944a4996ea019f51cfcdeaf4fc6926
+    zink-a630:
       checksum: 92944a4996ea019f51cfcdeaf4fc6926
 
   glmark2/desktop:windows=4:effect=shadow-v2.trace:
@@ -216,6 +288,8 @@ traces:
       checksum: 0bc91339efce710fa2661927a2c1c6d4
     freedreno-a630:
       checksum: 6940cc16e4e7ffa3b46e594a2d70bf83
+    zink-a630:
+      checksum: 6940cc16e4e7ffa3b46e594a2d70bf83
 
   glmark2/effect2d:kernel=0,1,0;1,-4,1;0,1,0;-v2.trace:
     freedreno-a306:
@@ -223,6 +297,8 @@ traces:
     freedreno-a530:
       checksum: 7712c8143a244c56922124f4ac207722
     freedreno-a630:
+      checksum: 8a3b04aff4848fd36de9d956f24fac2f
+    zink-a630:
       checksum: 8a3b04aff4848fd36de9d956f24fac2f
 
   glmark2/effect2d:kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;-v2.trace:
@@ -232,6 +308,8 @@ traces:
       checksum: 50f1841f2bb96905c9fcd1815c4a95c0
     freedreno-a630:
       checksum: 05e7d72609840c897f734dca03748ead
+    zink-a630:
+      checksum: 05e7d72609840c897f734dca03748ead
 
   glmark2/function:fragment-steps=5:fragment-complexity=low-v2.trace:
     freedreno-a306:
@@ -240,6 +318,8 @@ traces:
       checksum: 460793bd7feae473250aa8924166ee74
     freedreno-a630:
       checksum: 460793bd7feae473250aa8924166ee74
+    zink-a630:
+      checksum: 829909ef2c71021d3c93a7f4807481d2
 
   glmark2/function:fragment-steps=5:fragment-complexity=medium-v2.trace:
     freedreno-a306:
@@ -248,6 +328,8 @@ traces:
       checksum: d3ae445b44bf4a5d3c2eda9ddce83210
     freedreno-a630:
       checksum: d3ae445b44bf4a5d3c2eda9ddce83210
+    zink-a630:
+      checksum: 24f20739637e47edf5d95b5ab4c62d23
 
   glmark2/build:use-vbo=false-v2.trace:
     freedreno-a306:
@@ -255,6 +337,8 @@ traces:
     freedreno-a530:
       checksum: 2bb3a186838a5a7138b80af34e5fea52
     freedreno-a630:
+      checksum: eaff1a204f1319c039b3b5cb161294e4
+    zink-a630:
       checksum: eaff1a204f1319c039b3b5cb161294e4
 
   glmark2/build:use-vbo=true-v2.trace:
@@ -264,6 +348,8 @@ traces:
       checksum: b05e0e05543e2b1b587233ef201c9ae9
     freedreno-a630:
       checksum: f31b28d3b83ee3873683ebafaa857a8a
+    zink-a630:
+      checksum: f5421b11c334937fb7b5aa91d3717586
 
   glmark2/ideas:speed=10000-v2.trace:
     freedreno-a306:
@@ -271,6 +357,8 @@ traces:
     freedreno-a530:
       checksum: a68a23264fb802d59c92b3a58753e6a4
     freedreno-a630:
+      checksum: 2570e22fbb4ad1a68b45e4caf682d77d
+    zink-a630:
       checksum: 2570e22fbb4ad1a68b45e4caf682d77d
 
   glmark2/jellyfish-v2.trace:
@@ -280,6 +368,8 @@ traces:
       checksum: 2cccf4a61c7023ecce668ef9158fdb46
     freedreno-a630:
       checksum: 2d5dbe1aee68f1966a26f70511ca793c
+    zink-a630:
+      checksum: 2d5dbe1aee68f1966a26f70511ca793c
 
   glmark2/loop:vertex-steps=5:fragment-steps=5:fragment-loop=false-v2.trace:
     freedreno-a306:
@@ -288,6 +378,8 @@ traces:
       checksum: d3e21cc50cf71daa0a9a3410737509c8
     freedreno-a630:
       checksum: d3e21cc50cf71daa0a9a3410737509c8
+    zink-a630:
+      checksum: db3d1582823b9ed57dc9fbf35cc2758a
 
   glmark2/loop:vertex-steps=5:fragment-steps=5:fragment-uniform=false-v2.trace:
     freedreno-a306:
@@ -296,6 +388,8 @@ traces:
       checksum: ebf6251eed60084b36ff3d99c6ce89cc
     freedreno-a630:
       checksum: ebf6251eed60084b36ff3d99c6ce89cc
+    zink-a630:
+      checksum: 7c39563c4289242a6a01a37fe35802a3
 
   glmark2/loop:vertex-steps=5:fragment-steps=5:fragment-uniform=true-v2.trace:
     freedreno-a306:
@@ -304,6 +398,8 @@ traces:
       checksum: b6d31e839c64b8f5c69b9174521df5b6
     freedreno-a630:
       checksum: b6d31e839c64b8f5c69b9174521df5b6
+    zink-a630:
+      checksum: c769d1ae406c8f6e190b2a7b68ac5966
 
   glmark2/pulsar:quads=5:texture=false:light=false-v2.trace:
     freedreno-a306:
@@ -312,12 +408,20 @@ traces:
       checksum: 7dbd6748a00800904b18fe566a32d0af
     freedreno-a630:
       checksum: 749531db9fdfe92b74432fdac2e8b037
+    zink-a630:
+      checksum: 749531db9fdfe92b74432fdac2e8b037
 
   glmark2/refract-v2.trace:
+    freedreno-a306:
+      label: [skip, flakes]
+      checksum: 0c57ccc3989b75a940b28ea1cc09cb0d
+      text: https://gitlab.freedesktop.org/mesa/mesa/-/issues/7294
     freedreno-a530:
       checksum: bc19f0f58935fdb348f401396e6845e1
     freedreno-a630:
       checksum: f546f840e916ab0f11f8df0e4eee584d
+    zink-a630:
+      checksum: 32b4a26b7ab319bdb652032b05d9050e
 
   glmark2/shading:shading=blinn-phong-inf-v2.trace:
     freedreno-a306:
@@ -326,6 +430,8 @@ traces:
       checksum: 77018ae203d254fdb563de95f41cfb92
     freedreno-a630:
       checksum: 77018ae203d254fdb563de95f41cfb92
+    zink-a630:
+      checksum: c44b015f6faa85b7d38f53904e2c1b30
 
   glmark2/shading:shading=cel-v2.trace:
     freedreno-a306:
@@ -333,6 +439,8 @@ traces:
     freedreno-a530:
       checksum: 723b7e42171a4e450eb1e72e861f0fdf
     freedreno-a630:
+      checksum: 723b7e42171a4e450eb1e72e861f0fdf
+    zink-a630:
       checksum: 723b7e42171a4e450eb1e72e861f0fdf
 
   glmark2/shading:shading=gouraud-v2.trace:
@@ -342,6 +450,8 @@ traces:
       checksum: f3042c3069e5bcb61af26b111de50f66
     freedreno-a630:
       checksum: 30e8c8b9ac5044a214d7e52797802719
+    zink-a630:
+      checksum: dcc51b8e94844421131ecc76eaa8f2c6
 
   glmark2/shading:shading=phong-v2.trace:
     freedreno-a306:
@@ -349,6 +459,8 @@ traces:
     freedreno-a530:
       checksum: 1fddb03346295d4a33e43f8762fc16b4
     freedreno-a630:
+      checksum: 1fddb03346295d4a33e43f8762fc16b4
+    zink-a630:
       checksum: 1fddb03346295d4a33e43f8762fc16b4
 
   glmark2/shadow-v2.trace:
@@ -358,6 +470,8 @@ traces:
       checksum: 841719375bac8c4ef19603a6324759df
     freedreno-a630:
       checksum: 77af823d8465d9a59e1e05bcfccfddb1
+    zink-a630:
+      checksum: 45b92f77970fa2c3b8f22fbcb41b4820
 
   glmark2/texture:texture-filter=linear-v2.trace:
     freedreno-a306:
@@ -366,11 +480,17 @@ traces:
       checksum: 2f9304ddf783e43a28d8d8436e578bb9
     freedreno-a630:
       checksum: b340dcd56221af71a8e23ba42deb0360
+    zink-a630:
+      checksum: b340dcd56221af71a8e23ba42deb0360
 
   glmark2/texture:texture-filter=mipmap-v2.trace:
+    freedreno-a306:
+      checksum: ba7779fdaad9a4a086f5b2c46ff69149
     freedreno-a530:
       checksum: 9a51ef8594c48ea1c76127aad56daa1c
     freedreno-a630:
+      checksum: 836509331883c04ef3e63d0e68ce9ad0
+    zink-a630:
       checksum: 836509331883c04ef3e63d0e68ce9ad0
 
   glmark2/texture:texture-filter=nearest-v2.trace:
@@ -380,6 +500,18 @@ traces:
       checksum: 509cfb6ad7b973aaf1ea42ac9328d65f
     freedreno-a630:
       checksum: c3ce3ab02fb7416bc57772e729f77f07
+    zink-a630:
+      checksum: c3ce3ab02fb7416bc57772e729f77f07
+
+  glmark2/buffer:update-fraction=0-v2.trace:
+    freedreno-a306:
+      checksum: 67f73c60b3ff286b7a4a10f4c14eec8b
+    freedreno-a530:
+      checksum: eaee77d5109260a2c91f38e7428a9cb6
+    freedreno-a630:
+      checksum: e79224d7afc13318a3511b3dbdca57c1
+    zink-a630:
+      checksum: e79224d7afc13318a3511b3dbdca57c1
 
   glxgears/glxgears-2-v2.trace:
     freedreno-a306:
@@ -391,6 +523,8 @@ traces:
       label: [broken]
       text: bad shading on the inner ring of red
     freedreno-a630:
+      checksum: 3ff0833c1456ad05fa9dab751decd838
+    zink-a630:
       checksum: 3ff0833c1456ad05fa9dab751decd838
 
   gputest/furmark-v2.trace:
@@ -417,6 +551,10 @@ traces:
       checksum: e58167bd8eeb8952facbc00ff0449135
 
   gputest/pixmark-julia-fp32-v2.trace:
+    freedreno-a306:
+      checksum: ee803b33c871fbaf1b74aca98b83da5b
+    freedreno-a530:
+      checksum: a1cb377d17340a7b03147a8661665345
     freedreno-a630:
       checksum: f83f7ad4b147607e2a7de65a48f8ed4d
     zink-a630:
@@ -432,13 +570,25 @@ traces:
       checksum: f83f7ad4b147607e2a7de65a48f8ed4d
       label: [crash]
       text: 'intermittent msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A630: hangcheck detected gpu lockup rb 0!'
+    zink-a630:
+      label: [skip, flakes]
+      checksum: 2a99e051c8a0126f2283e6b9bbb2fb40
+      text: 'Unsupported SPIR-V capability: SpvCapabilityInt64 (11)'
 
   gputest/pixmark-piano-v2.trace:
+    freedreno-a306:
+      label: [skip]
+      text: missing 3/4 of rendered image
+      checksum: e7f01e62180b60aef8c67fc4977c90d1
+    freedreno-a530:
+      checksum: 70c57b3aea1f18baacb234ecc35bf425
     freedreno-a630:
       label: [skip]
       text: |-
         One of the material textures appears brighter on freedreno than
         i965 in a way that is probably wrong.
+    zink-a630:
+      checksum: 474fe595707f0e4f3e3474a5a6300ca9
 
   gputest/pixmark-volplosion-v2.trace:
     freedreno-a306:
@@ -529,12 +679,21 @@ traces:
       checksum: d570eaea17c3f9bf1ad24c4af3836524
 
   humus/Portals-v2.trace:
+    freedreno-a306:
+      label: [crash]
+      text: |-
+        ../src/freedreno/drm/freedreno_ringbuffer.h:288:
+          OUT_RELOC: Assertion `offset < fd_bo_size(bo)' failed.
+    freedreno-a530:
+      checksum: c5c7ade65a476d8e46eab878134d8a76
     freedreno-a630:
       label: [skip, broken, flakes]
       text: |-
         Started producing flaky results near that old gap in the upper right once
         the parallel trace runner landed.
         Bad rendering -- some sort of gap in the upper right of the image.
+    zink-a630:
+      checksum: d3751c0d756fb331275c74297d69f96c
 
   humus/RaytracedShadows-v2.trace:
     freedreno-a306:
@@ -557,10 +716,16 @@ traces:
       checksum: e5d2b54f49ba1c24279d5ff84e0f002b
 
   itoral-gl-terrain-demo/demo-v2.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       checksum: 9571117bf4eab6fe29b12f6c3d42d865
       label: [skip, flakes]
       text: unstable results
+    zink-a630:
+      checksum: ef3c16d0f962ccfd55ad27899c4d602b
 
   paraview/pv-manyspheres-v2.trace:
     freedreno-a306:
@@ -601,6 +766,17 @@ traces:
       checksum: 0e32ca8fc815a7250f38a07faeafb21b
     zink-a630:
       checksum: 0e32ca8fc815a7250f38a07faeafb21b
+
+  pathfinder/canvas_text-v2.trace:
+    freedreno-a306:
+      text: more suitable is canvas_text_v2-v2
+      label: [skip]
+    freedreno-a530:
+      label: [skip]
+    freedreno-a630:
+      label: [skip]
+    zink-a630:
+      label: [skip]
 
   pathfinder/canvas_text_v2-v2.trace:
     freedreno-a306:
@@ -652,6 +828,10 @@ traces:
     freedreno-a630:
       label: [crash, no-perf]
       text: 'msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A630: hangcheck detected gpu lockup rb 0!'
+    zink-a630:
+      label: [crash, no-perf]
+      text: 'blender: ../src/gallium/drivers/zink/zink_context.c:3512: zink_wait_on_batch: Assertion batch_id failed.'
+
   blender/blender-demo-ellie_pose.trace:
     freedreno-a306:
       label: [unsupported]
@@ -659,6 +839,9 @@ traces:
       label: [unsupported]
       text: needs GL 4.5
     freedreno-a630:
+      label: [skip, flakes]
+      text: Inconsistent rendering, but looks good.
+    zink-a630:
       label: [skip, flakes]
       text: Inconsistent rendering, but looks good.
 
@@ -708,6 +891,10 @@ traces:
       checksum: 8d450896439fe8b1b333e3ff61179f1b
 
   pioneer/pioneer.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [crash]
       text: |-
@@ -718,6 +905,10 @@ traces:
       label: [crash]
 
   thedarkmod/thedarkmod.trace:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [skip, broken, slow]
       text: |-
@@ -727,18 +918,54 @@ traces:
     zink-a630:
       label: [skip]
 
+  jvgs/jvgs-d27fb67-v2.trace:
+    freedreno-a306:
+      checksum: d44fdd0c4f5afe5ce7697b7c67dff6a0
+    freedreno-a530:
+      checksum: 8fade25941ec15172f0d2ee50ff9c5c5
+    freedreno-a630:
+      checksum: da3cf87ea3f62d67771a63f24a7eccff
+    zink-a630:
+      checksum: 502c7cb7bcb47e9ccc9ce18897ac7ae5
+
+
   supertuxkart/supertuxkart-antediluvian-abyss.rdc:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [crash]
+    zink-a630:
+      label: [fail]
+      text: OpenGL ES 3.x replay context - required for replay
 
   supertuxkart/supertuxkart-menu.rdc:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [crash]
+    zink-a630:
+      label: [fail]
 
   supertuxkart/supertuxkart-ravenbridge-mansion.rdc:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [crash]
+    zink-a630:
+      label: [fail]
 
   godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc:
+    freedreno-a306:
+      label: [unsupported]
+    freedreno-a530:
+      label: [unsupported]
     freedreno-a630:
       label: [crash]
+    zink-a630:
+      label: [unsupported]
