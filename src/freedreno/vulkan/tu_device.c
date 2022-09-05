@@ -218,6 +218,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_vertex_input_dynamic_state = true,
       .EXT_attachment_feedback_loop_layout = true,
       .EXT_rasterization_order_attachment_access = true,
+      .EXT_multi_draw = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif
@@ -896,6 +897,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->globalPriorityQuery = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
+         VkPhysicalDeviceMultiDrawFeaturesEXT *features =
+            (VkPhysicalDeviceMultiDrawFeaturesEXT *)ext;
+         features->multiDraw = true;
+         break;
+      }
 
       default:
          break;
@@ -1353,6 +1360,12 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(props->shaderModuleIdentifierAlgorithmUUID,
                 vk_shaderModuleIdentifierAlgorithmUUID,
                 sizeof(props->shaderModuleIdentifierAlgorithmUUID));
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+         VkPhysicalDeviceMultiDrawPropertiesEXT *properties =
+            (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
+         properties->maxMultiDrawCount = 2048;
          break;
       }
       default:
