@@ -1448,6 +1448,33 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
    return ptr.gpu;
 }
 
+void
+agx_batch_init_state(struct agx_batch *batch)
+{
+   /* Emit state on the batch that we don't change and so don't dirty track */
+   uint8_t *out = batch->encoder_current;
+   struct agx_ppp_update ppp = agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER) {
+      .w_clamp = true,
+      .varying_word_1 = true,
+      .cull_2 = true,
+      .occlusion_query = true,
+      .occlusion_query_2 = true,
+      .output_unknown = true,
+      .varying_word_2 = true,
+   });
+
+   agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
+   agx_ppp_push(&ppp, VARYING_1, cfg);
+   agx_ppp_push(&ppp, CULL_2, cfg);
+   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
+   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+   agx_ppp_push(&ppp, VARYING_2, cfg);
+
+   agx_ppp_fini(&out, &ppp);
+   batch->encoder_current = out;
+}
+
 static enum agx_object_type
 agx_point_object_type(struct agx_rasterizer *rast)
 {
@@ -1510,18 +1537,11 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       .fragment_back_face = true,
       .fragment_back_face_2 = true,
       .fragment_back_stencil = true,
-      .w_clamp = true,
       .output_select = true,
       .varying_word_0 = true,
-      .varying_word_1 = true,
       .cull = true,
-      .cull_2 = true,
       .fragment_shader = true,
-      .occlusion_query = true,
-      .occlusion_query_2 = true,
-      .output_unknown = true,
       .output_size = true,
-      .varying_word_2 = true,
    });
 
    agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
@@ -1568,7 +1588,6 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
    agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
    agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
-   agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
 
    agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
       cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
@@ -1580,9 +1599,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
    }
 
-   agx_ppp_push(&ppp, VARYING_1, cfg);
    agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
-   agx_ppp_push(&ppp, CULL_2, cfg);
 
    unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
    agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
@@ -1594,11 +1611,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       cfg.cf_bindings = varyings;
    }
 
-   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
-   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
-   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
    agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) cfg.count = vs->info.varyings.vs.nr_index;
-   agx_ppp_push(&ppp, VARYING_2, cfg);
 
    agx_ppp_fini(&out, &ppp);
 

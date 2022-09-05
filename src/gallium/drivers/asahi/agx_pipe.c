@@ -572,6 +572,8 @@ agx_flush(struct pipe_context *pctx,
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
    ctx->batch->scissor.count = 0;
    ctx->dirty = ~0;
+
+   agx_batch_init_state(ctx->batch);
 }
 
 static void

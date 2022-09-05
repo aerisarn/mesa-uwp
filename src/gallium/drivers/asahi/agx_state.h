@@ -342,4 +342,7 @@ agx_flush_all(struct agx_context *ctx, const char *reason)
    ctx->base.flush(&ctx->base, NULL, 0);
 }
 
+void
+agx_batch_init_state(struct agx_batch *batch);
+
 #endif
