@@ -174,7 +174,6 @@ private:
    static bool emit_tex_txs(nir_tex_instr *tex, Inputs& src,
                             RegisterVec4::Swizzle dest_swz, Shader& shader);
    static bool emit_tex_lod(nir_tex_instr* tex, Inputs& src, Shader& shader);
-   static bool emit_tex_txd(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_tg4(nir_tex_instr* instr, Inputs& src , Shader& shader);
    static bool emit_tex_texture_samples(nir_tex_instr* instr, Inputs& src, Shader& shader);
    static bool emit_lowered_tex(nir_tex_instr* instr, Inputs& src, Shader& shader);
