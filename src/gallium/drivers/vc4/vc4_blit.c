@@ -69,7 +69,9 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
         if (info->dst.box.x != info->src.box.x ||
             info->dst.box.y != info->src.box.y ||
             info->dst.box.width != info->src.box.width ||
-            info->dst.box.height != info->src.box.height) {
+            info->dst.box.height != info->src.box.height ||
+            info->dst.box.depth != info->src.box.depth ||
+            info->dst.box.depth != 1) {
                 return false;
         }
 
