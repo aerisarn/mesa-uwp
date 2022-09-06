@@ -48,6 +48,7 @@
 #include <GL/internal/dri_interface.h>
 #include "loader.h"
 #include "util/os_file.h"
+#include "util/os_misc.h"
 
 #ifdef HAVE_LIBDRM
 #include <xf86drm.h>
@@ -561,9 +562,9 @@ loader_get_driver_for_fd(int fd)
     * and may be useful for some touch testing of i915 on an i965 host.
     */
    if (geteuid() == getuid()) {
-      driver = getenv("MESA_LOADER_DRIVER_OVERRIDE");
-      if (driver)
-         return strdup(driver);
+      const char *override = os_get_option("MESA_LOADER_DRIVER_OVERRIDE");
+      if (override)
+         return strdup(override);
    }
 
 #if defined(HAVE_LIBDRM) && defined(USE_DRICONF)
