@@ -121,6 +121,7 @@ struct agx_batch {
    struct agx_pool pool, pipeline_pool;
    struct agx_bo *encoder;
    uint8_t *encoder_current;
+   uint8_t *encoder_end;
 
    struct agx_array scissor, depth_bias;
 };

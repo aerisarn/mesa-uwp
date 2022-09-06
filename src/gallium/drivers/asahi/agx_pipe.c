@@ -573,6 +573,7 @@ agx_flush(struct pipe_context *pctx,
    ctx->batch->draw = 0;
    ctx->batch->load = 0;
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
+   ctx->batch->encoder_end = ctx->batch->encoder_current + ctx->batch->encoder->size;
    ctx->batch->scissor.count = 0;
 
    agx_dirty_all(ctx);
@@ -623,6 +624,7 @@ agx_create_context(struct pipe_screen *screen,
                  agx_device(screen), AGX_MEMORY_TYPE_SHADER, true);
    ctx->batch->encoder = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
    ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
+   ctx->batch->encoder_end = ctx->batch->encoder_current + ctx->batch->encoder->size;
    ctx->batch->scissor.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
    ctx->batch->depth_bias.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
 

@@ -1503,11 +1503,14 @@ agx_point_object_type(struct agx_rasterizer *rast)
           AGX_OBJECT_TYPE_POINT_SPRITE_UV10;
 }
 
+#define MAX_PPP_UPDATES 2
+
 static uint8_t *
 agx_encode_state(struct agx_context *ctx, uint8_t *out,
                  bool is_lines, bool is_points)
 {
    struct agx_rasterizer *rast = ctx->rast;
+   unsigned ppp_updates = 0;
 
 #define IS_DIRTY(ST) !!(ctx->dirty & AGX_DIRTY_##ST)
 
@@ -1572,6 +1575,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
             ctx->rast->base.flatshade_first);
 
       varyings_dirty = true;
+      ppp_updates++;
    }
 
    bool object_type_dirty = IS_DIRTY(PRIM) ||
@@ -1703,9 +1707,11 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    }
 
    agx_ppp_fini(&out, &ppp);
+   ppp_updates++;
 
 #undef IS_DIRTY
 
+   assert(ppp_updates <= MAX_PPP_UPDATES);
    return out;
 }
 
@@ -1752,6 +1758,30 @@ agx_scissor_culls_everything(struct agx_context *ctx)
 
         return ctx->rast->base.scissor &&
 		((ss.minx == ss.maxx) || (ss.miny == ss.maxy));
+}
+
+static void
+agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
+{
+   /* If there is room in the command buffer, we're done */
+   if (likely((batch->encoder_end - batch->encoder_current) >= space))
+      return;
+
+   /* Otherwise, we need to allocate a new command buffer. We use memory owned
+    * by the batch to simplify lifetime management for the BO. 
+    */
+   size_t size = 65536;
+   struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, size, 256);
+
+   /* Jump from the old command buffer to the new command buffer */
+   agx_pack(batch->encoder_current, STREAM_LINK, cfg) {
+      cfg.target_lo = T.gpu & BITFIELD_MASK(32);
+      cfg.target_hi = T.gpu >> 32;
+   }
+
+   /* Swap out the command buffer */
+   batch->encoder_current = T.cpu;
+   batch->encoder_end = batch->encoder_current + size;
 }
 
 static void
@@ -1806,8 +1836,25 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    agx_batch_add_bo(batch, ctx->vs->bo);
    agx_batch_add_bo(batch, ctx->fs->bo);
 
-   ptrdiff_t encoder_use = batch->encoder_current - (uint8_t *) batch->encoder->ptr.cpu;
-   assert((encoder_use + 1024) < batch->encoder->size && "todo: how to expand encoder?");
+   /* When we approach the end of a command buffer, cycle it out for a new one.
+    * We only need to do this once per draw as long as we conservatively
+    * estimate the maximum bytes of VDM commands that this draw will emit.
+    */
+   agx_ensure_cmdbuf_has_space(batch,
+                               (AGX_VDM_STATE_LENGTH * 2) +
+                               (AGX_PPP_STATE_LENGTH * MAX_PPP_UPDATES) +
+                               AGX_VDM_STATE_RESTART_INDEX_LENGTH +
+                               AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH +
+                               AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH +
+                               AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH +
+                               AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH +
+                               4 /* padding */ +
+                               AGX_INDEX_LIST_LENGTH +
+                               AGX_INDEX_LIST_BUFFER_LO_LENGTH +
+                               AGX_INDEX_LIST_COUNT_LENGTH +
+                               AGX_INDEX_LIST_INSTANCES_LENGTH +
+                               AGX_INDEX_LIST_START_LENGTH +
+                               AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
 
    uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
                                    reduced_prim == PIPE_PRIM_LINES,
@@ -1875,6 +1922,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    batch->encoder_current = out;
+   assert(batch->encoder_current <= batch->encoder_end &&
+          "Failed to reserve sufficient space in encoder");
    ctx->dirty = 0;
 }
 
