@@ -56,6 +56,8 @@
 #include <unistd.h>
 #if DETECT_OS_APPLE
 #define VK_LIBNAME "libvulkan.1.dylib"
+#elif DETECT_OS_ANDROID
+#define VK_LIBNAME "libvulkan.so"
 #else
 #define VK_LIBNAME "libvulkan.so.1"
 #endif
