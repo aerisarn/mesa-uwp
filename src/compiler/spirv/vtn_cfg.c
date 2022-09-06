@@ -304,6 +304,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTerminateInvocation:
    case SpvOpIgnoreIntersectionKHR:
    case SpvOpTerminateRayKHR:
+   case SpvOpEmitMeshTasksEXT:
    case SpvOpReturn:
    case SpvOpReturnValue:
    case SpvOpUnreachable:
@@ -750,6 +751,10 @@ vtn_process_block(struct vtn_builder *b,
       block->branch_type = vtn_branch_type_terminate_ray;
       return NULL;
 
+   case SpvOpEmitMeshTasksEXT:
+      block->branch_type = vtn_branch_type_emit_mesh_tasks;
+      return NULL;
+
    case SpvOpBranchConditional: {
       struct vtn_value *cond_val = vtn_untyped_value(b, block->branch[1]);
       vtn_fail_if(!cond_val->type ||
@@ -1015,6 +1020,37 @@ vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
       nir_terminate_ray(&b->nb);
       nir_jump(&b->nb, nir_jump_halt);
       break;
+   case vtn_branch_type_emit_mesh_tasks: {
+      assert(block);
+      assert(block->branch);
+
+      const uint32_t *w = block->branch;
+      vtn_assert((w[0] & SpvOpCodeMask) == SpvOpEmitMeshTasksEXT);
+
+      /* Launches mesh shader workgroups from the task shader.
+       * Arguments are: vec(x, y, z), payload pointer
+       */
+      nir_ssa_def *dimensions =
+         nir_vec3(&b->nb, vtn_get_nir_ssa(b, w[1]),
+                          vtn_get_nir_ssa(b, w[2]),
+                          vtn_get_nir_ssa(b, w[3]));
+
+      /* The payload variable is optional.
+       * We don't have a NULL deref in NIR, so just emit the explicit
+       * intrinsic when there is no payload.
+       */
+      const unsigned count = w[0] >> SpvWordCountShift;
+      if (count == 4)
+         nir_launch_mesh_workgroups(&b->nb, dimensions);
+      else if (count == 5)
+         nir_launch_mesh_workgroups_with_payload_deref(&b->nb, dimensions,
+                                                       vtn_get_nir_ssa(b, w[4]));
+      else
+         vtn_fail("Invalid EmitMeshTasksEXT.");
+
+      nir_jump(&b->nb, nir_jump_halt);
+      break;
+   }
    default:
       vtn_fail("Invalid branch type");
    }

@@ -142,6 +142,7 @@ enum vtn_branch_type {
    vtn_branch_type_terminate_invocation,
    vtn_branch_type_ignore_intersection,
    vtn_branch_type_terminate_ray,
+   vtn_branch_type_emit_mesh_tasks,
    vtn_branch_type_return,
 };
 
