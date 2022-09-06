@@ -146,9 +146,9 @@ typedef pthread_once_t  once_flag;
 /*-------------------- enumeration constants --------------------*/
 enum
 {
-   mtx_plain = 0,
-   mtx_recursive = 1,
-   mtx_timed = 2,
+   mtx_plain = 0x1,
+   mtx_recursive = 0x2,
+   mtx_timed = 0x4,
 };
 
 enum
