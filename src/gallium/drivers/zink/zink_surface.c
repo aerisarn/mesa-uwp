@@ -263,6 +263,9 @@ zink_create_surface(struct pipe_context *pctx,
       /* mutable not set by default */
       zink_resource_object_init_mutable(zink_context(pctx), res);
 
+   if (!zink_get_format(zink_screen(pctx->screen), templ->format))
+      return NULL;
+
    VkImageViewCreateInfo ivci = create_ivci(zink_screen(pctx->screen), res, templ,
                                             pres->target == PIPE_TEXTURE_3D ? target_2d[is_array] : pres->target);
 
