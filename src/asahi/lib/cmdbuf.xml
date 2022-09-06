@@ -756,17 +756,17 @@
     <field name="Depth format 16 unorm" start="20:26" size="1" type="bool"/>
     <field name="Depth width" start="26:0" size="15" type="uint" default="1" modifier="minus(1)"/>
     <field name="Depth height" start="26:15" size="15" type="uint" default="1" modifier="minus(1)"/>
-    <field name="Depth buffer (if clearing)" start="28:0" size="64" type="address"/>
-    <field name="Depth acceleration buffer (if clearing)" start="34:0" size="64" type="address"/>
+    <field name="Depth buffer (if clearing)" start="28:7" size="33" type="address" modifier="shr(7)"/>
+    <field name="Depth acceleration buffer (if clearing)" start="34:7" size="33" type="address" modifier="shr(7)"/>
     <!-- bytes unknown type 888F50 -->
-    <field name="Depth buffer" start="38:0" size="64" type="address"/>
+    <field name="Depth buffer" start="38:7" size="33" type="address" modifier="shr(7)"/>
     <!-- 16384 bytes, initialized with 0x7F bytes -->
-    <field name="Depth acceleration buffer" start="44:0" size="64" type="address"/>
-    <field name="Stencil buffer" start="48:0" size="64" type="address"/>
+    <field name="Depth acceleration buffer" start="44:7" size="33" type="address" modifier="shr(7)"/>
+    <field name="Stencil buffer" start="48:7" size="33" type="address" modifier="shr(7)"/>
     <!--- 16384 bytes, initialized with 0x1F bytes -->
-    <field name="Stencil acceleration buffer" start="54:0" size="64" type="address"/>
-    <field name="Stencil buffer 2" start="58:0" size="64" type="address"/>
-    <field name="Stencil acceleration buffer 2" start="64:0" size="64" type="address"/>
+    <field name="Stencil acceleration buffer" start="54:7" size="33" type="address" modifier="shr(7)"/>
+    <field name="Stencil buffer 2" start="58:7" size="33" type="address" modifier="shr(7)"/>
+    <field name="Stencil acceleration buffer 2" start="64:7" size="33" type="address" modifier="shr(7)"/>
   </struct>
 
   <struct name="IOGPU Aux Framebuffer" size="256">
