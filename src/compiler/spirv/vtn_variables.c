@@ -2440,7 +2440,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_pointer);
 
       struct vtn_type *ptr_type = rzalloc(b, struct vtn_type);
-      ptr_type = rzalloc(b, struct vtn_type);
       ptr_type->base_type = vtn_base_type_pointer;
       ptr_type->deref = sampler_type;
       ptr_type->storage_class = SpvStorageClassUniform;
