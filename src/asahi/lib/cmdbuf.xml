@@ -736,6 +736,27 @@
     <field name="Percent" start="5:16" size="16" type="uint"/>
   </struct>
 
+  <enum name="ZLS Format">
+    <value name="32F" value="0"/>
+    <value name="16" value="2"/>
+  </enum>
+
+  <struct name="ZLS Control" size="8">
+    <field name="Unknown 0" start="0" size="1" type="bool"/>
+    <field name="Unknown 1" start="1" size="1" type="bool"/>
+    <field name="Unknown 2" start="2" size="1" type="bool"/>
+    <field name="Unknown 3" start="3" size="1" type="bool"/>
+    <field name="Unknown 4" start="4" size="1" type="bool"/>
+    <field name="Unknown 5" start="5" size="1" type="bool"/>
+    <field name="Unknown 6" start="6" size="1" type="bool"/>
+    <field name="Unknown 7" start="7" size="1" type="bool"/>
+    <field name="S Load Enable" start="14" size="1" type="bool"/>
+    <field name="Z Load Enable" start="15" size="1" type="bool"/>
+    <field name="S Store Enable" start="18" size="1" type="bool"/>
+    <field name="Z Store Enable" start="19" size="1" type="bool"/>
+    <field name="Z Format" start="25" size="2" type="ZLS Format"/>
+  </struct>
+
   <struct name="IOGPU Internal Pipelines" size="272">
     <field name="Clear pipeline bind" start="2:0" size="32" type="hex"/>
     <field name="Clear pipeline unk" start="4:0" size="4" default="4" type="hex"/>
@@ -745,15 +766,7 @@
     <field name="Store pipeline" start="12:4" size="28" type="address" modifier="shr(4)"/>
     <field name="Scissor array" start="14:0" size="64" type="address"/>
     <field name="Depth bias array" start="16:0" size="64" type="address"/>
-    <!-- 0xc0154 with depth clear and z32f and s8
-         0x40154 with z32f and s8
-         0x44 with z32f
-         0x4000044 with z16?
-    -->
-    <field name="Depth flags" start="20:0" size="32" type="hex"/>
-    <field name="Depth compression" start="20:6" size="1" type="bool"/>
-    <field name="Depth reload" start="20:15" size="1" type="bool"/>
-    <field name="Depth format 16 unorm" start="20:26" size="1" type="bool"/>
+    <field name="ZLS control" start="20:0" size="32" type="ZLS Control"/>
     <field name="Depth width" start="26:0" size="15" type="uint" default="1" modifier="minus(1)"/>
     <field name="Depth height" start="26:15" size="15" type="uint" default="1" modifier="minus(1)"/>
     <field name="Depth buffer (if clearing)" start="28:7" size="33" type="address" modifier="shr(7)"/>

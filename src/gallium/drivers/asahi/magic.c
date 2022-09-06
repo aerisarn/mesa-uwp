@@ -207,21 +207,20 @@ demo_cmdbuf(uint64_t *buf, size_t size,
          if (util_format_has_depth(desc)) {
             depth_buffer = agx_map_surface(zsbuf);
 
-            cfg.depth_reload = !should_clear_depth;
-            cfg.depth_flags |= 0x80000;
-            if (!should_clear_depth) cfg.depth_flags |= 0x8000;
+            cfg.zls_control.z_store_enable = true;
+            cfg.zls_control.z_load_enable = !should_clear_depth;
          } else {
             stencil_buffer = agx_map_surface(zsbuf);
-            cfg.depth_flags |= 0x40000;
-            if (!should_clear_stencil) cfg.depth_flags |= 0x4000;
+            cfg.zls_control.s_store_enable = true;
+            cfg.zls_control.s_load_enable = !should_clear_stencil;
          }
 
          if (agx_resource(zsbuf->texture)->separate_stencil) {
             stencil_buffer = agx_map_surface_resource(zsbuf,
                   agx_resource(zsbuf->texture)->separate_stencil);
 
-            cfg.depth_flags |= 0x40000;
-            if (!should_clear_stencil) cfg.depth_flags |= 0x4000;
+            cfg.zls_control.s_store_enable = true;
+            cfg.zls_control.s_load_enable = !should_clear_stencil;
          }
 
          cfg.depth_buffer_if_clearing = depth_buffer;
