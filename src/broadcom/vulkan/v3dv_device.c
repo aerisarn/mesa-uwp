@@ -2697,8 +2697,8 @@ v3dv_BindImageMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-static void
-buffer_init(struct v3dv_device *device,
+void
+v3dv_buffer_init(struct v3dv_device *device,
             const VkBufferCreateInfo *pCreateInfo,
             struct v3dv_buffer *buffer)
 {
@@ -2751,12 +2751,12 @@ v3dv_GetDeviceBufferMemoryRequirementsKHR(
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
    struct v3dv_buffer buffer = { 0 };
-   buffer_init(device, pInfo->pCreateInfo, &buffer);
+   v3dv_buffer_init(device, pInfo->pCreateInfo, &buffer);
    get_buffer_memory_requirements(&buffer, pMemoryRequirements);
 }
 
-static void
-bind_buffer_memory(const VkBindBufferMemoryInfo *info)
+void
+v3dv_buffer_bind_memory(const VkBindBufferMemoryInfo *info)
 {
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, info->buffer);
    V3DV_FROM_HANDLE(v3dv_device_memory, mem, info->memory);
@@ -2781,7 +2781,7 @@ v3dv_BindBufferMemory2(VkDevice device,
                        const VkBindBufferMemoryInfo *pBindInfos)
 {
    for (uint32_t i = 0; i < bindInfoCount; i++)
-      bind_buffer_memory(&pBindInfos[i]);
+      v3dv_buffer_bind_memory(&pBindInfos[i]);
 
    return VK_SUCCESS;
 }
@@ -2806,7 +2806,7 @@ v3dv_CreateBuffer(VkDevice  _device,
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   buffer_init(device, pCreateInfo, buffer);
+   v3dv_buffer_init(device, pCreateInfo, buffer);
 
    /* Limit allocations to 32-bit */
    const VkDeviceSize aligned_size = align64(buffer->size, buffer->alignment);

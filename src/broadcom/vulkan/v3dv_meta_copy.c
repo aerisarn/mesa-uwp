@@ -41,6 +41,19 @@ meta_blit_key_compare(const void *key1, const void *key2)
 }
 
 static bool
+texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
+                         VkImageAspectFlags aspect,
+                         struct v3dv_image *image,
+                         VkFormat dst_format,
+                         VkFormat src_format,
+                         struct v3dv_buffer *buffer,
+                         uint32_t buffer_bpp,
+                         VkColorComponentFlags cmask,
+                         VkComponentMapping *cswizzle,
+                         uint32_t region_count,
+                         const VkBufferImageCopy2 *regions);
+
+static bool
 create_blit_pipeline_layout(struct v3dv_device *device,
                             VkDescriptorSetLayout *descriptor_set_layout,
                             VkPipelineLayout *pipeline_layout)
@@ -1027,6 +1040,10 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *src,
                 const VkImageCopy2 *region)
 {
+   if (src->vk.tiling == VK_IMAGE_TILING_LINEAR &&
+       src->vk.image_type != VK_IMAGE_TYPE_1D)
+      return false;
+
    const uint32_t src_block_w = vk_format_get_blockwidth(src->vk.format);
    const uint32_t src_block_h = vk_format_get_blockheight(src->vk.format);
    const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk.format);
@@ -1163,6 +1180,104 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    return handled;
 }
 
+static bool
+copy_image_linear_texel_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_image *dst,
+                               struct v3dv_image *src,
+                               const VkImageCopy2 *region)
+{
+   if (src->vk.tiling != VK_IMAGE_TILING_LINEAR)
+      return false;
+
+   /* Implementations are allowed to restrict linear images like this */
+   assert(region->srcOffset.z == 0);
+   assert(region->dstOffset.z == 0);
+   assert(region->srcSubresource.mipLevel == 0);
+   assert(region->srcSubresource.baseArrayLayer == 0);
+   assert(region->srcSubresource.layerCount == 1);
+   assert(region->dstSubresource.mipLevel == 0);
+   assert(region->dstSubresource.baseArrayLayer == 0);
+   assert(region->dstSubresource.layerCount == 1);
+
+   const uint32_t bpp = src->cpp;
+   assert(src->cpp == dst->cpp);
+
+   VkFormat format;
+   switch (bpp) {
+   case 16:
+      format = VK_FORMAT_R32G32B32A32_UINT;
+      break;
+   case 8:
+      format = VK_FORMAT_R16G16B16A16_UINT;
+      break;
+   case 4:
+      format = VK_FORMAT_R8G8B8A8_UINT;
+      break;
+   case 2:
+      format = VK_FORMAT_R16_UINT;
+      break;
+   case 1:
+      format = VK_FORMAT_R8_UINT;
+      break;
+   default:
+      unreachable("unsupported bit-size");
+      return false;
+   }
+
+   VkComponentMapping ident_swizzle = {
+      .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+      .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+   };
+
+   const uint32_t buf_stride = src->slices[0].stride;
+   const VkDeviceSize buf_offset =
+      v3dv_layer_offset(src, 0, 0) +
+      region->srcOffset.y * buf_stride + region->srcOffset.x * bpp;
+
+   struct v3dv_buffer src_buffer;
+   vk_object_base_init(&cmd_buffer->device->vk, &src_buffer.base,
+                       VK_OBJECT_TYPE_BUFFER);
+
+   const struct VkBufferCreateInfo buf_create_info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = src->size,
+      .usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   };
+   v3dv_buffer_init(cmd_buffer->device, &buf_create_info, &src_buffer);
+
+   const VkBindBufferMemoryInfo buf_bind_info = {
+      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+      .buffer = v3dv_buffer_to_handle(&src_buffer),
+      .memory = v3dv_device_memory_to_handle(src->mem),
+      .memoryOffset = src->mem_offset,
+   };
+   v3dv_buffer_bind_memory(&buf_bind_info);
+
+   const VkBufferImageCopy2 copy_region = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+      .pNext = NULL,
+      .bufferOffset = buf_offset,
+      .bufferRowLength = buf_stride / bpp,
+      .bufferImageHeight = src->vk.extent.height,
+      .imageSubresource = region->dstSubresource,
+      .imageOffset = region->dstOffset,
+      .imageExtent = region->extent,
+   };
+
+   return texel_buffer_shader_copy(cmd_buffer,
+                                   VK_IMAGE_ASPECT_COLOR_BIT,
+                                   dst,
+                                   format,
+                                   format,
+                                   &src_buffer,
+                                   src->cpp,
+                                   0 /* color mask: full */, &ident_swizzle,
+                                   1, &copy_region);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
                       const VkCopyImageInfo2 *info)
@@ -1182,6 +1297,8 @@ v3dv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
       if (copy_image_tlb(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
       if (copy_image_blit(cmd_buffer, dst, src, &info->pRegions[i]))
+         continue;
+      if (copy_image_linear_texel_buffer(cmd_buffer, dst, src, &info->pRegions[i]))
          continue;
       unreachable("Image copy not supported");
    }

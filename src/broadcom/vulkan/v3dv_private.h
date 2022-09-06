@@ -733,6 +733,14 @@ struct v3dv_buffer {
    VkDeviceSize mem_offset;
 };
 
+void
+v3dv_buffer_init(struct v3dv_device *device,
+                 const VkBufferCreateInfo *pCreateInfo,
+                 struct v3dv_buffer *buffer);
+
+void
+v3dv_buffer_bind_memory(const VkBindBufferMemoryInfo *info);
+
 struct v3dv_buffer_view {
    struct vk_object_base base;
 
