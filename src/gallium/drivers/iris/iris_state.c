@@ -4741,7 +4741,9 @@ iris_store_cs_state(const struct intel_device_info *devinfo,
       assert(cs_prog_data->push.cross_thread.regs == 0);
 #endif
       desc.BarrierEnable = cs_prog_data->uses_barrier;
-      desc.BindingTableEntryCount = MIN2(shader->bt.size_bytes / 4, 31);
+      /* Typically set to 0 to avoid prefetching on every thread dispatch. */
+      desc.BindingTableEntryCount = devinfo->verx10 == 125 ?
+         0 : MIN2(shader->bt.size_bytes / 4, 31);
       desc.SamplerCount = encode_sampler_count(shader);
 #if GFX_VER >= 12
       /* TODO: Check if we are missing workarounds and enable mid-thread
@@ -7212,7 +7214,9 @@ iris_upload_compute_walker(struct iris_context *ice,
          .SamplerStatePointer = shs->sampler_table.offset,
          .SamplerCount = encode_sampler_count(shader),
          .BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE],
-         .BindingTableEntryCount = MIN2(shader->bt.size_bytes / 4, 31),
+         /* Typically set to 0 to avoid prefetching on every thread dispatch. */
+         .BindingTableEntryCount = devinfo->verx10 == 125 ?
+            0 : MIN2(shader->bt.size_bytes / 4, 31),
       };
 
       assert(brw_cs_push_const_total_size(cs_prog_data, dispatch.threads) == 0);
