@@ -708,9 +708,12 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
          vals[i] = build_gather(bld_base, reg_bld, reg_bld->elem_type, reg_storage, indirect_offset, NULL, NULL);
       }
    } else {
+      LLVMTypeRef array_type = LLVMArrayType(reg_bld->vec_type, nc);
       for (unsigned i = 0; i < nc; i++) {
-         LLVMValueRef this_storage = nc == 1 ? reg_storage : lp_build_array_get_ptr(gallivm, reg_storage,
-                                                                                    lp_build_const_int32(gallivm, i));
+         LLVMValueRef index = lp_build_const_int32(gallivm, i);
+         LLVMValueRef this_storage =
+               nc == 1 ? reg_storage
+                       : lp_build_array_get_ptr2(gallivm, array_type, reg_storage, index);
          vals[i] = LLVMBuildLoad2(builder, reg_bld->vec_type, this_storage, "");
       }
    }
@@ -748,9 +751,12 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
       return;
    }
 
+   LLVMTypeRef array_type = LLVMArrayType(reg_bld->vec_type, nc);
    for (unsigned i = 0; i < nc; i++) {
-      LLVMValueRef this_storage = nc == 1 ? reg_storage : lp_build_array_get_ptr(gallivm, reg_storage,
-                                                         lp_build_const_int32(gallivm, i));
+      LLVMValueRef index = lp_build_const_int32(gallivm, i);
+      LLVMValueRef this_storage =
+            nc == 1 ? reg_storage
+                    : lp_build_array_get_ptr2(gallivm, array_type, reg_storage, index);
       dst[i] = LLVMBuildBitCast(builder, dst[i], reg_bld->vec_type, "");
       lp_exec_mask_store(&bld->exec_mask, reg_bld, dst[i], this_storage);
    }
