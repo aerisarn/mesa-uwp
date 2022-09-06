@@ -37,6 +37,10 @@ void vlVaHandlePictureParameterBufferHEVC(vlVaDriver *drv, vlVaContext *context,
    context->desc.h265.pps->sps->chroma_format_idc = hevc->pic_fields.bits.chroma_format_idc;
    context->desc.h265.pps->sps->separate_colour_plane_flag =
       hevc->pic_fields.bits.separate_colour_plane_flag;
+   context->desc.h265.pps->sps->no_pic_reordering_flag =
+      hevc->pic_fields.bits.NoPicReorderingFlag;
+   context->desc.h265.pps->sps->no_bi_pred_flag =
+      hevc->pic_fields.bits.NoBiPredFlag;
    context->desc.h265.pps->sps->pic_width_in_luma_samples = hevc->pic_width_in_luma_samples;
    context->desc.h265.pps->sps->pic_height_in_luma_samples = hevc->pic_height_in_luma_samples;
    context->desc.h265.pps->sps->bit_depth_luma_minus8 = hevc->bit_depth_luma_minus8;
@@ -143,6 +147,7 @@ void vlVaHandlePictureParameterBufferHEVC(vlVaDriver *drv, vlVaContext *context,
 
    context->desc.h265.IDRPicFlag = hevc->slice_parsing_fields.bits.IdrPicFlag;
    context->desc.h265.RAPPicFlag = hevc->slice_parsing_fields.bits.RapPicFlag;
+   context->desc.h265.IntraPicFlag = hevc->slice_parsing_fields.bits.IntraPicFlag;
 
    context->desc.h265.CurrPicOrderCntVal = hevc->CurrPic.pic_order_cnt;
 

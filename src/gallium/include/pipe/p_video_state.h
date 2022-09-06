@@ -600,6 +600,8 @@ struct pipe_h265_sps
    uint8_t num_long_term_ref_pics_sps;
    uint8_t sps_temporal_mvp_enabled_flag;
    uint8_t strong_intra_smoothing_enabled_flag;
+   uint8_t no_pic_reordering_flag;
+   uint8_t no_bi_pred_flag;
 };
 
 struct pipe_h265_pps
@@ -652,6 +654,16 @@ struct pipe_h265_picture_desc
 
    uint8_t IDRPicFlag;
    uint8_t RAPPicFlag;
+   /*
+      When the current picture is an IRAP picture, IntraPicFlag shall be equal to 1.
+      When the current picture is not an IRAP picture, the host software decoder is
+      not required to determine whether all slices of the current picture are I slices
+      – i.e. it may simply set IntraPicFlag to 0 in this case....
+
+      Some frontends have IntraPicFlag defined (ie. VAPictureParameterBufferHEVC)
+      and some others like VDPAU/OMX can derive it from RAPPicFlag
+   */
+   uint8_t IntraPicFlag;
    uint8_t CurrRpsIdx;
    uint32_t NumPocTotalCurr;
    uint32_t NumDeltaPocsOfRefRpsIdx;
