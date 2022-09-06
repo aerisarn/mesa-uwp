@@ -1213,6 +1213,3 @@ spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt5_ext,Fail
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_s3tc_dxt1_ext,Fail
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_rgba_s3tc_dxt3_ext,Fail
-
-# see https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/18427
-spec@ext_texture_compression_s3tc@getteximage-targets cube s3tc,Fail
