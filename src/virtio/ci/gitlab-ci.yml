@@ -12,6 +12,7 @@ venus-lavapipe:
   extends:
     - .deqp-test-vk
     - .venus-lavapipe-test
+    - .test-manual-mr  # flakes too often
   variables:
     DEQP_FRACTION: 15
     DEQP_SUITE: venus
