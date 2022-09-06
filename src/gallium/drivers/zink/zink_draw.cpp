@@ -319,9 +319,13 @@ static bool
 update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum pipe_prim_type mode)
 {
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
-   zink_gfx_program_update(ctx);
+   const struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (screen->optimal_keys)
+      zink_gfx_program_update_optimal(ctx);
+   else
+      zink_gfx_program_update(ctx);
    VkPipeline pipeline;
-   if (zink_screen(ctx->base.screen)->info.have_EXT_graphics_pipeline_library)
+   if (screen->info.have_EXT_graphics_pipeline_library)
       pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, true>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
    else
       pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, false>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);

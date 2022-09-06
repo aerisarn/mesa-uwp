@@ -548,15 +548,12 @@ update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
 void
 zink_gfx_program_update(struct zink_context *ctx)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->last_vertex_stage_dirty) {
       gl_shader_stage pstage = ctx->last_vertex_stage->nir->info.stage;
       ctx->dirty_gfx_stages |= BITFIELD_BIT(pstage);
-      if (!screen->optimal_keys) {
-         memcpy(&ctx->gfx_pipeline_state.shader_keys.key[pstage].key.vs_base,
-                &ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base,
-                sizeof(struct zink_vs_key_base));
-      }
+      memcpy(&ctx->gfx_pipeline_state.shader_keys.key[pstage].key.vs_base,
+             &ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base,
+             sizeof(struct zink_vs_key_base));
       ctx->last_vertex_stage_dirty = false;
    }
    if (ctx->gfx_dirty) {
@@ -568,37 +565,18 @@ zink_gfx_program_update(struct zink_context *ctx)
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
       if (entry) {
          prog = (struct zink_gfx_program*)entry->data;
-         if (screen->optimal_keys) {
-            ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
-            if (ctx->gfx_pipeline_state.optimal_key != prog->last_variant_hash) {
-               const union zink_shader_key_optimal *optimal_key = (union zink_shader_key_optimal*)&prog->last_variant_hash;
-               uint8_t dirty = ctx->dirty_gfx_stages & prog->stages_present;
-               if (ctx->gfx_pipeline_state.shader_keys_optimal.key.vs_bits != optimal_key->vs_bits)
-                  ctx->dirty_gfx_stages |= BITFIELD_BIT(ctx->last_vertex_stage->nir->info.stage);
-               if (ctx->gfx_pipeline_state.shader_keys_optimal.key.fs_bits != optimal_key->fs_bits)
-                  ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_FRAGMENT);
-               if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated &&
-                   ctx->gfx_pipeline_state.shader_keys_optimal.key.tcs_bits != optimal_key->tcs_bits)
-                  ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
-               update_gfx_shader_modules_optimal(ctx, screen, prog, dirty, &ctx->gfx_pipeline_state);
-            }
-         } else {
-            for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
-               if (prog->stages_present & ~ctx->dirty_gfx_stages & BITFIELD_BIT(i))
-                  ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
-            }
-            /* ensure variants are always updated if keys have changed since last use */
-            ctx->dirty_gfx_stages |= prog->stages_present;
-            update_gfx_program(ctx, prog);
+         for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+            if (prog->stages_present & ~ctx->dirty_gfx_stages & BITFIELD_BIT(i))
+               ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
          }
+         /* ensure variants are always updated if keys have changed since last use */
+         ctx->dirty_gfx_stages |= prog->stages_present;
+         update_gfx_program(ctx, prog);
       } else {
          ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
-         if (screen->optimal_keys)
-            generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
-         else
-            generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
+         generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
       }
       simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
       if (prog && prog != ctx->curr_program)
@@ -611,18 +589,80 @@ zink_gfx_program_update(struct zink_context *ctx)
    } else if (ctx->dirty_gfx_stages) {
       /* remove old hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
-      if (screen->optimal_keys) {
-         if (ctx->gfx_pipeline_state.optimal_key != ctx->curr_program->last_variant_hash)
-            update_gfx_shader_modules_optimal(ctx, screen, ctx->curr_program,
-                                              ctx->dirty_gfx_stages & ctx->curr_program->stages_present,
-                                              &ctx->gfx_pipeline_state);
-      } else {
-         update_gfx_program(ctx, ctx->curr_program);
-      }
+      update_gfx_program(ctx, ctx->curr_program);
       /* apply new hash */
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    }
    ctx->dirty_gfx_stages = 0;
+}
+
+ALWAYS_INLINE static void
+update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_program *prog, gl_shader_stage pstage)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_shader_module *zm = get_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
+   if (!zm)
+      zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
+   prog->modules[pstage] = zm->shader;
+}
+
+static void
+update_gfx_program_optimal(struct zink_context *ctx, struct zink_gfx_program *prog)
+{
+   const union zink_shader_key_optimal *optimal_key = (union zink_shader_key_optimal*)&prog->last_variant_hash;
+   if (ctx->gfx_pipeline_state.shader_keys_optimal.key.vs_bits != optimal_key->vs_bits) {
+      update_gfx_shader_module_optimal(ctx, prog, ctx->last_vertex_stage->nir->info.stage);
+      ctx->gfx_pipeline_state.modules_changed = true;
+   }
+   if (ctx->gfx_pipeline_state.shader_keys_optimal.key.fs_bits != optimal_key->fs_bits) {
+      update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_FRAGMENT);
+      ctx->gfx_pipeline_state.modules_changed = true;
+   }
+   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated &&
+       ctx->gfx_pipeline_state.shader_keys_optimal.key.tcs_bits != optimal_key->tcs_bits) {
+      update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_TESS_CTRL);
+      ctx->gfx_pipeline_state.modules_changed = true;
+   }
+   prog->last_variant_hash = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+}
+
+void
+zink_gfx_program_update_optimal(struct zink_context *ctx)
+{
+   if (ctx->gfx_dirty) {
+      struct zink_gfx_program *prog = NULL;
+      struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(ctx->shader_stages)];
+      const uint32_t hash = ctx->gfx_hash;
+      simple_mtx_lock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
+      struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
+
+      if (ctx->curr_program)
+         ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
+      if (entry) {
+         prog = (struct zink_gfx_program*)entry->data;
+         ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
+         update_gfx_program_optimal(ctx, prog);
+      } else {
+         ctx->dirty_gfx_stages |= ctx->shader_stages;
+         prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
+         _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
+         generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
+      }
+      simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
+      if (prog && prog != ctx->curr_program)
+         zink_batch_reference_program(&ctx->batch, &prog->base);
+      ctx->curr_program = prog;
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
+   } else if (ctx->dirty_gfx_stages) {
+      /* remove old hash */
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
+      update_gfx_program_optimal(ctx, ctx->curr_program);
+      /* apply new hash */
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
+   }
+   ctx->dirty_gfx_stages = 0;
+   ctx->gfx_dirty = false;
+   ctx->last_vertex_stage_dirty = false;
 }
 
 static void

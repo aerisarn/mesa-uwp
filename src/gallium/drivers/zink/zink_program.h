@@ -120,7 +120,8 @@ zink_program_descriptor_is_buffer(struct zink_context *ctx, gl_shader_stage stag
 
 void
 zink_gfx_program_update(struct zink_context *ctx);
-
+void
+zink_gfx_program_update_optimal(struct zink_context *ctx);
 
 uint32_t hash_gfx_output(const void *key);
 uint32_t hash_gfx_input(const void *key);
