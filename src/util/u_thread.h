@@ -49,7 +49,7 @@
 
 #if DETECT_OS_LINUX && !defined(ANDROID)
 #include <sched.h>
-#elif defined(_WIN32) && !defined(__CYGWIN__) && _WIN32_WINNT >= 0x0600
+#elif defined(_WIN32) && !defined(__CYGWIN__)
 #include <windows.h>
 #endif
 
@@ -93,7 +93,7 @@ util_get_current_cpu(void)
 #if DETECT_OS_LINUX && !defined(ANDROID)
    return sched_getcpu();
 
-#elif defined(_WIN32) && !defined(__CYGWIN__) && _WIN32_WINNT >= 0x0600
+#elif defined(_WIN32) && !defined(__CYGWIN__)
    return GetCurrentProcessorNumber();
 
 #else
