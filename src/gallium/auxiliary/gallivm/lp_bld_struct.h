@@ -95,6 +95,18 @@ lp_build_struct_get2(struct gallivm_state *gallivm,
                     unsigned member,
                     const char *name);
 
+LLVMValueRef
+lp_build_array_get_ptr2(struct gallivm_state *gallivm,
+                        LLVMTypeRef array_type,
+                        LLVMValueRef ptr,
+                        LLVMValueRef index);
+
+LLVMValueRef
+lp_build_array_get2(struct gallivm_state *gallivm,
+                    LLVMTypeRef array_type,
+                    LLVMValueRef ptr,
+                    LLVMValueRef index);
+
 /**
  * Get value pointer to an array element.
  */
