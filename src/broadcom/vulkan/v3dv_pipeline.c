@@ -2928,6 +2928,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    V3DV_FROM_HANDLE(v3dv_pipeline_layout, layout, pCreateInfo->layout);
    pipeline->layout = layout;
+   v3dv_pipeline_layout_ref(pipeline->layout);
 
    V3DV_FROM_HANDLE(v3dv_render_pass, render_pass, pCreateInfo->renderPass);
    assert(pCreateInfo->subpass < render_pass->subpass_count);
@@ -3025,8 +3026,6 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    /* This must be done after the pipeline has been compiled */
    pipeline_set_ez_state(pipeline, ds_info);
-
-   v3dv_pipeline_layout_ref(pipeline->layout);
 
    return result;
 }
@@ -3267,12 +3266,11 @@ compute_pipeline_init(struct v3dv_pipeline *pipeline,
 
    pipeline->device = device;
    pipeline->layout = layout;
+   v3dv_pipeline_layout_ref(pipeline->layout);
 
    VkResult result = pipeline_compile_compute(pipeline, cache, info, alloc);
    if (result != VK_SUCCESS)
       return result;
-
-   v3dv_pipeline_layout_ref(pipeline->layout);
 
    return result;
 }
