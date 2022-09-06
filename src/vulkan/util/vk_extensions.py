@@ -155,6 +155,8 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_get_display_properties2": 28,
     # on android10-tests-release
     "VK_KHR_surface_protected_capabilities": 29,
+    # on android13-tests-release
+    "VK_KHR_portability_enumeration": 33,
 
     # checkDeviceExtensions on oreo-cts-release
     "VK_KHR_swapchain": 26,
@@ -229,6 +231,15 @@ ALLOWED_ANDROID_VERSION = {
     "VK_KHR_workgroup_memory_explicit_layout": 31,
     "VK_KHR_synchronization2": 31,
     "VK_KHR_shader_integer_dot_product": 31,
+    # on android13-tests-release
+    "VK_KHR_dynamic_rendering": 33,
+    "VK_KHR_format_feature_flags2": 33,
+    "VK_KHR_global_priority": 33,
+    "VK_KHR_maintenance4": 33,
+    "VK_KHR_portability_subset": 33,
+    "VK_KHR_present_id": 33,
+    "VK_KHR_present_wait": 33,
+    "VK_KHR_shader_subgroup_uniform_control_flow": 33,
 
     # testNoUnknownExtensions on oreo-cts-release
     "VK_GOOGLE_display_timing": 26,
@@ -237,6 +248,8 @@ ALLOWED_ANDROID_VERSION = {
     # on android11-tests-release
     "VK_GOOGLE_decorate_string": 30,
     "VK_GOOGLE_hlsl_functionality1": 30,
+    # on android13-tests-release
+    "VK_GOOGLE_surfaceless_query": 33,
 
     # this HAL extension is always allowed and will be filtered out by the
     # loader
