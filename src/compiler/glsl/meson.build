@@ -135,7 +135,6 @@ files_libglsl = files(
   'ir_reader.h',
   'ir_rvalue_visitor.cpp',
   'ir_rvalue_visitor.h',
-  'ir_set_program_inouts.cpp',
   'ir_uniform.h',
   'ir_validate.cpp',
   'ir_variable_refcount.cpp',
