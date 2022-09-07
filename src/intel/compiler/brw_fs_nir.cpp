@@ -2542,13 +2542,12 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
           * by 32 (shifting by 5), and add the two together.  This is
           * the final indirect byte offset.
           */
-         fs_reg sequence = bld.vgrf(BRW_REGISTER_TYPE_UW, 1);
+         fs_reg sequence =
+            nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
          fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
          fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
-         /* sequence = <7, 6, 5, 4, 3, 2, 1, 0> */
-         bld.MOV(sequence, fs_reg(brw_imm_v(0x76543210)));
          /* channel_offsets = 4 * sequence = <28, 24, 20, 16, 12, 8, 4, 0> */
          bld.SHL(channel_offsets, sequence, brw_imm_ud(2u));
          /* Convert vertex_index to bytes (multiply by 32) */
@@ -2780,13 +2779,11 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
     * the final indirect byte offset.
     */
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-   fs_reg sequence = bld.vgrf(BRW_REGISTER_TYPE_UW, 1);
+   fs_reg sequence = nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION];
    fs_reg channel_offsets = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
-   /* sequence = <7, 6, 5, 4, 3, 2, 1, 0> */
-   bld.MOV(sequence, fs_reg(brw_imm_v(0x76543210)));
    /* channel_offsets = 4 * sequence = <28, 24, 20, 16, 12, 8, 4, 0> */
    bld.SHL(channel_offsets, sequence, brw_imm_ud(2u));
    /* Convert vertex_index to bytes (multiply by 32) */
