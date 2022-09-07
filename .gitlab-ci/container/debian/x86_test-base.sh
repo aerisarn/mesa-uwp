@@ -54,6 +54,9 @@ add-apt-repository "deb https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-1
 apt-get update
 apt-get dist-upgrade -y
 
+apt-get install -y \
+      sysvinit-core
+
 apt-get install -y --no-remove \
       git \
       git-lfs \
@@ -83,7 +86,6 @@ apt-get install -y --no-remove \
       python3-six \
       python3-yaml \
       socat \
-      sysvinit-core \
       vulkan-tools \
       waffle-utils \
       wget \
