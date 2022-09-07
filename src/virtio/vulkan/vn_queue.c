@@ -57,6 +57,9 @@ struct vn_queue_submission {
    };
    VkFence fence;
 
+   bool synchronous;
+   bool has_feedback_fence;
+   const struct vn_device_memory *wsi_mem;
    uint32_t wait_semaphore_count;
    uint32_t wait_external_count;
 
@@ -130,8 +133,36 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
 }
 
 static VkResult
-vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
+vn_queue_submission_prepare(struct vn_queue_submission *submit)
 {
+   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
+   const bool has_external_fence = fence && fence->is_external;
+
+   submit->has_feedback_fence = fence && fence->feedback.slot;
+   assert(!has_external_fence || !submit->has_feedback_fence);
+
+   submit->wsi_mem = NULL;
+   if (submit->batch_count == 1) {
+      const struct wsi_memory_signal_submit_info *info = vk_find_struct_const(
+         submit->submit_batches[0].pNext, WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
+      if (info) {
+         submit->wsi_mem = vn_device_memory_from_handle(info->memory);
+         assert(!submit->wsi_mem->base_memory && submit->wsi_mem->base_bo);
+      }
+   }
+
+   /* To ensure external components waiting on the correct fence payload,
+    * below sync primitives must be installed after the submission:
+    * - explicit fencing: sync file export
+    * - implicit fencing: dma-fence attached to the wsi bo
+    *
+    * Under globalFencing, we enforce above via a synchronous submission if
+    * any of the below applies:
+    * - struct wsi_memory_signal_submit_info
+    * - fence is an external fence
+    */
+   submit->synchronous = has_external_fence || submit->wsi_mem;
+
    submit->wait_semaphore_count = 0;
    submit->wait_external_count = 0;
 
@@ -316,7 +347,7 @@ vn_queue_submission_prepare_submit(struct vn_queue_submission *submit,
    submit->submit_batches = submit_batches;
    submit->fence = fence;
 
-   VkResult result = vn_queue_submission_count_semaphores(submit);
+   VkResult result = vn_queue_submission_prepare(submit);
    if (result != VK_SUCCESS)
       return result;
 
@@ -345,7 +376,7 @@ vn_queue_submission_prepare_bind_sparse(
    submit->bind_sparse_batches = bind_sparse_batches;
    submit->fence = fence;
 
-   VkResult result = vn_queue_submission_count_semaphores(submit);
+   VkResult result = vn_queue_submission_prepare(submit);
    if (result != VK_SUCCESS)
       return result;
 
@@ -360,14 +391,20 @@ vn_queue_submission_prepare_bind_sparse(
    return VK_SUCCESS;
 }
 
-static inline uint32_t
-vn_queue_family_array_index(struct vn_queue *queue)
+static const VkCommandBuffer
+vn_get_fence_feedback_cmd(struct vn_queue_submission *submit)
 {
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
+
+   assert(submit->has_feedback_fence);
+
    for (uint32_t i = 0; i < queue->device->queue_family_count; i++) {
       if (queue->device->queue_families[i] == queue->family)
-         return i;
+         return fence->feedback.commands[i];
    }
-   unreachable("invalid queue");
+
+   unreachable("invalid vn_queue_submission");
 }
 
 static VkResult
@@ -382,7 +419,7 @@ vn_queue_submit(struct vn_instance *instance,
    if (!batch_count && fence_handle == VK_NULL_HANDLE)
       return VK_SUCCESS;
 
-   if (sync_submit) {
+   if (sync_submit || VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       return vn_call_vkQueueSubmit(instance, queue_handle, batch_count,
                                    batches, fence_handle);
    }
@@ -393,51 +430,28 @@ vn_queue_submit(struct vn_instance *instance,
 }
 
 VkResult
-vn_QueueSubmit(VkQueue _queue,
+vn_QueueSubmit(VkQueue queue,
                uint32_t submitCount,
                const VkSubmitInfo *pSubmits,
-               VkFence _fence)
+               VkFence fence)
 {
    VN_TRACE_FUNC();
-   struct vn_queue *queue = vn_queue_from_handle(_queue);
-   struct vn_device *dev = queue->device;
-   struct vn_fence *fence = vn_fence_from_handle(_fence);
-   const bool external_fence = fence && fence->is_external;
-   const bool feedback_fence = fence && fence->feedback.slot;
+   struct vn_device *dev = vn_queue_from_handle(queue)->device;
    struct vn_queue_submission submit;
-   const struct vn_device_memory *wsi_mem = NULL;
-   bool sync_submit;
-   VkResult result;
 
-   result = vn_queue_submission_prepare_submit(&submit, _queue, submitCount,
-                                               pSubmits, _fence);
+   VkResult result = vn_queue_submission_prepare_submit(
+      &submit, queue, submitCount, pSubmits, fence);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   if (submit.batch_count == 1) {
-      const struct wsi_memory_signal_submit_info *info = vk_find_struct_const(
-         submit.submit_batches[0].pNext, WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
-      if (info) {
-         wsi_mem = vn_device_memory_from_handle(info->memory);
-         assert(!wsi_mem->base_memory && wsi_mem->base_bo);
-      }
-   }
-
-   /* force synchronous submission if any of the below applies:
-    * - struct wsi_memory_signal_submit_info
-    * - fence is an external fence
-    * - NO_ASYNC_QUEUE_SUBMIT perf option enabled
-    */
-   sync_submit = wsi_mem || external_fence || VN_PERF(NO_ASYNC_QUEUE_SUBMIT);
 
    /* if the original submission involves a feedback fence:
     * - defer the feedback fence to another submit to avoid deep copy
     * - defer the potential sync_submit to the feedback fence submission
     */
-   result = vn_queue_submit(dev->instance, submit.queue, submit.batch_count,
-                            submit.submit_batches,
-                            feedback_fence ? VK_NULL_HANDLE : submit.fence,
-                            !feedback_fence && sync_submit);
+   result = vn_queue_submit(
+      dev->instance, submit.queue, submit.batch_count, submit.submit_batches,
+      submit.has_feedback_fence ? VK_NULL_HANDLE : submit.fence,
+      !submit.has_feedback_fence && submit.synchronous);
    if (result != VK_SUCCESS) {
       vn_queue_submission_cleanup(&submit);
       return vn_error(dev->instance, result);
@@ -449,30 +463,26 @@ vn_QueueSubmit(VkQueue _queue,
     * vn_queue_submission bits must be fixed for VkTimelineSemaphoreSubmitInfo
     * before adding timeline semaphore feedback.
     */
-   if (feedback_fence) {
-      const uint32_t feedback_cmd_index = vn_queue_family_array_index(queue);
+   if (submit.has_feedback_fence) {
+      const VkCommandBuffer cmd_handle = vn_get_fence_feedback_cmd(&submit);
       const VkSubmitInfo info = {
          .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-         .pNext = NULL,
-         .waitSemaphoreCount = 0,
-         .pWaitSemaphores = NULL,
-         .pWaitDstStageMask = NULL,
          .commandBufferCount = 1,
-         .pCommandBuffers = &fence->feedback.commands[feedback_cmd_index],
+         .pCommandBuffers = &cmd_handle,
       };
       result = vn_queue_submit(dev->instance, submit.queue, 1, &info,
-                               submit.fence, sync_submit);
+                               submit.fence, submit.synchronous);
       if (result != VK_SUCCESS) {
          vn_queue_submission_cleanup(&submit);
          return vn_error(dev->instance, result);
       }
    }
 
-   if (wsi_mem) {
+   if (submit.wsi_mem) {
       /* XXX this is always false and kills the performance */
       if (dev->instance->renderer->info.has_implicit_fencing) {
          vn_renderer_submit(dev->renderer, &(const struct vn_renderer_submit){
-                                              .bos = &wsi_mem->base_bo,
+                                              .bos = &submit.wsi_mem->base_bo,
                                               .bo_count = 1,
                                            });
       } else {
