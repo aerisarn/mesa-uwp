@@ -349,7 +349,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
    nir_push_if(&b, nir_ieq_imm(&b, sequence_count, UINT32_MAX));
    {
       nir_ssa_def *count_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_COUNT);
-      nir_ssa_def *cnt = nir_load_ssbo(&b, 1, 32, count_buf, nir_imm_int(&b, 0), .align_mul = 4);
+      nir_ssa_def *cnt = nir_load_ssbo(&b, 1, 32, count_buf, nir_imm_int(&b, 0));
       nir_store_var(&b, count_var, cnt, 0x1);
    }
    nir_pop_if(&b, NULL);
@@ -397,7 +397,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
             nir_ssa_def *param_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_PARAMS);
             nir_store_var(&b, vbo_data,
-                          nir_load_ssbo(&b, 4, 32, param_buf, vbo_offset, .align_mul = 4), 0xf);
+                          nir_load_ssbo(&b, 4, 32, param_buf, vbo_offset), 0xf);
 
             nir_ssa_def *vbo_override =
                nir_ine_imm(&b,
@@ -410,11 +410,11 @@ build_dgc_prepare_shader(struct radv_device *dev)
                   nir_iadd(&b, nir_imul_imm(&b, vbo_cnt, 16),
                            nir_imul_imm(&b, nir_load_var(&b, vbo_idx), 8));
                nir_ssa_def *vbo_over_data =
-                  nir_load_ssbo(&b, 2, 32, param_buf, vbo_offset_offset, .align_mul = 4);
+                  nir_load_ssbo(&b, 2, 32, param_buf, vbo_offset_offset);
                nir_ssa_def *stream_offset = nir_iadd(
                   &b, stream_base, nir_iand_imm(&b, nir_channel(&b, vbo_over_data, 0), 0x7FFF));
                nir_ssa_def *stream_data =
-                  nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset, .align_mul = 4);
+                  nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
 
                nir_ssa_def *va = nir_pack_64_2x32(&b, nir_channels(&b, stream_data, 0x3));
                nir_ssa_def *size = nir_channel(&b, stream_data, 2);
@@ -580,8 +580,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
             {
                nir_ssa_def *stream_offset = nir_load_ssbo(
                   &b, 1, 32, param_buf,
-                  nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)), .align_mul = 4);
-               nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset), .align_mul = 4);
+                  nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)));
+               nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset));
                nir_store_var(&b, data, new_data, 0x1);
             }
             nir_push_else(&b, NULL);
@@ -589,8 +589,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
                nir_store_var(
                   &b, data,
                   nir_load_ssbo(&b, 1, 32, param_buf,
-                                nir_iadd(&b, param_const_offset, nir_ishl_imm(&b, cur_idx, 2)),
-                                .align_mul = 4),
+                                nir_iadd(&b, param_const_offset, nir_ishl_imm(&b, cur_idx, 2))),
                   0x1);
             }
             nir_pop_if(&b, NULL);
@@ -618,7 +617,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
             }
             nir_pop_if(&b, NULL);
 
-            nir_ssa_def *reg_info = nir_load_ssbo(&b, 3, 32, param_buf, nir_iadd(&b, param_offset, nir_imul_imm(&b, cur_shader_idx, 12)), .align_mul = 4);
+            nir_ssa_def *reg_info = nir_load_ssbo(&b, 3, 32, param_buf, nir_iadd(&b, param_offset, nir_imul_imm(&b, cur_shader_idx, 12)));
             nir_ssa_def *upload_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 0, 16);
             nir_ssa_def *inline_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 16, 16);
             nir_ssa_def *inline_mask = nir_pack_64_2x32(&b, nir_channels(&b, reg_info, 0x6));
@@ -676,9 +675,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
                   {
                      nir_ssa_def *stream_offset = nir_load_ssbo(
                         &b, 1, 32, param_buf,
-                        nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)),
-                        .align_mul = 4);
-                     nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset), .align_mul = 4);
+                        nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)));
+                     nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset));
                      nir_store_var(&b, data, new_data, 0x1);
                   }
                   nir_push_else(&b, NULL);
@@ -686,8 +684,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
                      nir_store_var(&b, data,
                                    nir_load_ssbo(&b, 1, 32, param_buf,
                                                  nir_iadd(&b, param_const_offset,
-                                                          nir_ishl_imm(&b, cur_idx, 2)),
-                                                 .align_mul = 4),
+                                                          nir_ishl_imm(&b, cur_idx, 2))),
                                    0x1);
                   }
                   nir_pop_if(&b, NULL);
@@ -708,7 +705,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
       nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, emit_state), 1));
       {
          nir_ssa_def *stream_offset = nir_iadd(&b, load_param16(&b, state_offset), stream_base);
-         nir_ssa_def *state = nir_load_ssbo(&b, 1, 32, stream_buf, stream_offset, .align_mul = 4);
+         nir_ssa_def *state = nir_load_ssbo(&b, 1, 32, stream_buf, stream_offset);
          state = nir_iand_imm(&b, state, 1);
 
          nir_ssa_def *reg =
@@ -741,7 +738,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
             nir_ssa_def *param_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_PARAMS);
             nir_ssa_def *param_offset = nir_iadd(&b, scissor_offset, nir_imul_imm(&b, cur_idx, 4));
-            nir_ssa_def *value = nir_load_ssbo(&b, 1, 32, param_buf, param_offset, .align_mul = 4);
+            nir_ssa_def *value = nir_load_ssbo(&b, 1, 32, param_buf, param_offset);
 
             dgc_emit(&b, &cmd_buf, value);
 
@@ -758,7 +755,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
             nir_iadd(&b, load_param16(&b, draw_params_offset), stream_base);
 
          nir_ssa_def *draw_data0 =
-            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset, .align_mul = 4);
+            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
          nir_ssa_def *vertex_count = nir_channel(&b, draw_data0, 0);
          nir_ssa_def *instance_count = nir_channel(&b, draw_data0, 1);
          nir_ssa_def *vertex_offset = nir_channel(&b, draw_data0, 2);
@@ -787,7 +784,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
             nir_ssa_def *index_stream_offset =
                nir_iadd(&b, load_param16(&b, index_buffer_offset), stream_base);
             nir_ssa_def *data =
-               nir_load_ssbo(&b, 4, 32, stream_buf, index_stream_offset, .align_mul = 4);
+               nir_load_ssbo(&b, 4, 32, stream_buf, index_stream_offset);
 
             nir_ssa_def *vk_index_type = nir_channel(&b, data, 3);
             nir_ssa_def *index_type = nir_bcsel(
@@ -845,9 +842,9 @@ build_dgc_prepare_shader(struct radv_device *dev)
          max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var),
                                      max_index_count);
          nir_ssa_def *draw_data0 =
-            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset, .align_mul = 4);
+            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
          nir_ssa_def *draw_data1 = nir_load_ssbo(
-            &b, 1, 32, stream_buf, nir_iadd_imm(&b, stream_offset, 16), .align_mul = 4);
+            &b, 1, 32, stream_buf, nir_iadd_imm(&b, stream_offset, 16));
          nir_ssa_def *index_count = nir_channel(&b, draw_data0, 0);
          nir_ssa_def *instance_count = nir_channel(&b, draw_data0, 1);
          nir_ssa_def *first_index = nir_channel(&b, draw_data0, 2);
