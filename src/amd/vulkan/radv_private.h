@@ -2024,6 +2024,7 @@ struct radv_graphics_pipeline {
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;
+   struct radv_userdata_info *last_vgt_api_stage_locs;
 
    /* Used for rbplus */
    uint32_t col_format;
