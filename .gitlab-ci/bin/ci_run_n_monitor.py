@@ -12,7 +12,6 @@ and show the job(s) logs.
 """
 
 import argparse
-import os
 import re
 import sys
 import time
@@ -23,6 +22,7 @@ from typing import Optional
 
 import gitlab
 from colorama import Fore, Style
+from gitlab_common import get_gitlab_project, read_token, wait_for_pipeline
 from gitlab_gql import GitlabGQL, create_job_needs_dag, filter_dag, print_dag
 
 REFRESH_WAIT_LOG = 10
@@ -43,25 +43,6 @@ STATUS_COLORS = {
 }
 
 COMPLETED_STATUSES = ["success", "failed"]
-
-
-def get_gitlab_project(glab, name: str):
-    """Finds a specified gitlab project for given user"""
-    glab.auth()
-    username = glab.user.username
-    return glab.projects.get(f"{username}/mesa")
-
-
-def wait_for_pipeline(project, sha: str):
-    """await until pipeline appears in Gitlab"""
-    print("⏲ for the pipeline to appear..", end="")
-    while True:
-        pipelines = project.pipelines.list(sha=sha)
-        if pipelines:
-            print("", flush=True)
-            return pipelines[0]
-        print("", end=".", flush=True)
-        time.sleep(1)
 
 
 def print_job_status(job) -> None:
@@ -266,17 +247,6 @@ def parse_args() -> None:
     )
     parser.add_argument("--stress", action="store_true", help="Stresstest job(s)")
     return parser.parse_args()
-
-
-def read_token(token_arg: Optional[str]) -> str:
-    """pick token from args or file"""
-    if token_arg:
-        return token_arg
-    return (
-        open(os.path.expanduser("~/.config/gitlab-token"), encoding="utf-8")
-        .readline()
-        .rstrip()
-    )
 
 
 def find_dependencies(target_job: str, project_path: str, sha: str) -> set[str]:
