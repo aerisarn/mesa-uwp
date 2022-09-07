@@ -172,7 +172,6 @@ files_libglsl = files(
   'lower_vector_derefs.cpp',
   'lower_vector_insert.cpp',
   'opt_algebraic.cpp',
-  'opt_array_splitting.cpp',
   'opt_constant_folding.cpp',
   'opt_constant_propagation.cpp',
   'opt_constant_variable.cpp',
