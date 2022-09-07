@@ -57,16 +57,21 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
       assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
       assert(tcs_key->input_vertices <= BRW_MAX_TCS_INPUT_VERTICES);
 
-      patch_urb_output = brw_ud8_grf(1, 0);
+      unsigned r = 0;
 
-      unsigned r = 2;
+      r += reg_unit(v.devinfo);
 
-      if (tcs_prog_data->include_primitive_id)
-         primitive_id = brw_vec8_grf(r++, 0);
+      patch_urb_output = brw_ud8_grf(r, 0);
+      r += reg_unit(v.devinfo);
+
+      if (tcs_prog_data->include_primitive_id) {
+         primitive_id = brw_vec8_grf(r, 0);
+         r += reg_unit(v.devinfo);
+      }
 
       /* ICP handles occupy the next 1-32 registers. */
       icp_handle_start = brw_ud8_grf(r, 0);
-      r += brw_tcs_prog_key_input_vertices(tcs_key);
+      r += brw_tcs_prog_key_input_vertices(tcs_key) * reg_unit(v.devinfo);
 
       num_regs = r;
    }
