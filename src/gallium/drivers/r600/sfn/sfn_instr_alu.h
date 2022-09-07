@@ -158,6 +158,8 @@ public:
 
    void set_parent_group(AluGroup *group) { m_parent_group = group;}
 
+   AluInstr *as_alu() override { return this;}
+
 private:
    friend class AluGroup;
 
