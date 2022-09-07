@@ -414,15 +414,19 @@ sqtt_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
    return VK_SUCCESS;
 }
 
-#define EVENT_MARKER_ALIAS(cmd_name, api_name, ...)                                                \
+#define EVENT_MARKER_BASE(cmd_name, api_name, event_name, ...)                                     \
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);                                   \
    radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##api_name);                              \
-   cmd_buffer->state.current_event_type = EventCmd##api_name;                                      \
+   cmd_buffer->state.current_event_type = EventCmd##event_name;                                    \
    radv_Cmd##cmd_name(__VA_ARGS__);                                                                \
    cmd_buffer->state.current_event_type = EventInternalUnknown;                                    \
    radv_write_end_general_api_marker(cmd_buffer, ApiCmd##api_name);
 
-#define EVENT_MARKER(cmd_name, ...) EVENT_MARKER_ALIAS(cmd_name, cmd_name, __VA_ARGS__);
+#define EVENT_MARKER_ALIAS(cmd_name, api_name, ...)                                                \
+   EVENT_MARKER_BASE(cmd_name, api_name, api_name, __VA_ARGS__);
+
+#define EVENT_MARKER(cmd_name, ...)                                                                \
+   EVENT_MARKER_ALIAS(cmd_name, cmd_name, __VA_ARGS__);
 
 VKAPI_ATTR void VKAPI_CALL
 sqtt_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t instanceCount,
@@ -596,7 +600,81 @@ sqtt_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
                 dstOffset, stride, flags);
 }
 
+#define EVENT_RT_MARKER(cmd_name, ...) \
+   EVENT_MARKER_BASE(cmd_name, Dispatch, cmd_name, __VA_ARGS__);
+
+#define EVENT_RT_MARKER_ALIAS(cmd_name, event_name, ...) \
+   EVENT_MARKER_BASE(cmd_name, Dispatch, event_name, __VA_ARGS__);
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
+                     const VkStridedDeviceAddressRegionKHR *pRaygenShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pMissShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
+                     const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
+                     uint32_t width, uint32_t height, uint32_t depth)
+{
+   EVENT_RT_MARKER(TraceRaysKHR, commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable,
+                   pHitShaderBindingTable, pCallableShaderBindingTable, width, height, depth);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdTraceRaysIndirectKHR(VkCommandBuffer commandBuffer,
+                             const VkStridedDeviceAddressRegionKHR *pRaygenShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pMissShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
+                             VkDeviceAddress indirectDeviceAddress)
+{
+   EVENT_RT_MARKER(TraceRaysIndirectKHR, commandBuffer, pRaygenShaderBindingTable,
+                   pMissShaderBindingTable, pHitShaderBindingTable, pCallableShaderBindingTable,
+                   indirectDeviceAddress);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdTraceRaysIndirect2KHR(VkCommandBuffer commandBuffer, VkDeviceAddress indirectDeviceAddress)
+{
+   EVENT_RT_MARKER_ALIAS(TraceRaysIndirect2KHR, TraceRaysIndirectKHR, commandBuffer,
+                         indirectDeviceAddress);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdBuildAccelerationStructuresKHR(VkCommandBuffer commandBuffer, uint32_t infoCount,
+                                       const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+                                       const VkAccelerationStructureBuildRangeInfoKHR *const *ppBuildRangeInfos)
+{
+   EVENT_RT_MARKER(BuildAccelerationStructuresKHR, commandBuffer, infoCount, pInfos,
+                   ppBuildRangeInfos);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
+                                     const VkCopyAccelerationStructureInfoKHR *pInfo)
+{
+   EVENT_RT_MARKER(CopyAccelerationStructureKHR, commandBuffer, pInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdCopyAccelerationStructureToMemoryKHR(VkCommandBuffer commandBuffer,
+                                             const VkCopyAccelerationStructureToMemoryInfoKHR *pInfo)
+{
+   EVENT_RT_MARKER(CopyAccelerationStructureToMemoryKHR, commandBuffer, pInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdCopyMemoryToAccelerationStructureKHR(VkCommandBuffer commandBuffer,
+                                             const VkCopyMemoryToAccelerationStructureInfoKHR *pInfo)
+{
+   EVENT_RT_MARKER(CopyMemoryToAccelerationStructureKHR, commandBuffer, pInfo);
+}
+
+#undef EVENT_RT_MARKER_ALIAS
+#undef EVENT_RT_MARKER
+
 #undef EVENT_MARKER
+#undef EVENT_MARKER_ALIAS
+#undef EVENT_MARKER_BASE
+
 #define API_MARKER_ALIAS(cmd_name, api_name, ...)                                                  \
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);                                   \
    radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##api_name);                              \
