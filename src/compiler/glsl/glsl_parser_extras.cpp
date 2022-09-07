@@ -2412,7 +2412,6 @@ do_common_optimization(exec_list *ir, bool linked,
    OPT(do_algebraic, ir, native_integers, options);
    OPT(do_lower_jumps, ir, true, true, options->EmitNoMainReturn,
        options->EmitNoCont);
-   OPT(do_vec_index_to_swizzle, ir);
    OPT(lower_vector_insert, ir, false);
 
    /* If an optimization pass fails to preserve the invariant flag, calling

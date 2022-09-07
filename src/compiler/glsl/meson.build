@@ -168,7 +168,6 @@ files_libglsl = files(
   'lower_subroutine.cpp',
   'lower_tess_level.cpp',
   'lower_vec_index_to_cond_assign.cpp',
-  'lower_vec_index_to_swizzle.cpp',
   'lower_vector_derefs.cpp',
   'lower_vector_insert.cpp',
   'opt_algebraic.cpp',

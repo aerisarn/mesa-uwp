@@ -3546,7 +3546,6 @@ link_varyings(const struct gl_constants *consts, struct gl_shader_program *prog,
          continue;
 
       lower_vector_derefs(prog->_LinkedShaders[i]);
-      do_vec_index_to_swizzle(prog->_LinkedShaders[i]->ir);
    }
 
    return true;
