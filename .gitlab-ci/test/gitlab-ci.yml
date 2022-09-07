@@ -81,6 +81,8 @@
   variables:
     PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_host=minio-packet.freedesktop.org --minio_bucket=mesa-tracie-public --role-session-name=${CI_PROJECT_PATH}:${CI_JOB_ID} --jwt-file=${CI_JOB_JWT_FILE}
   script:
+    - echo "Variables passed through:"
+    - install/common/generate-env.sh
     - install/piglit/piglit-traces.sh
 
 .deqp-test:
