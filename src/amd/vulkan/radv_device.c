@@ -1278,7 +1278,7 @@ radv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice, VkPhysicalDevice
       .sparseBinding = true,
       .sparseResidencyBuffer = pdevice->rad_info.family >= CHIP_POLARIS10,
       .sparseResidencyImage2D = pdevice->rad_info.family >= CHIP_POLARIS10,
-      .sparseResidencyImage3D = pdevice->rad_info.family >= CHIP_POLARIS10,
+      .sparseResidencyImage3D = pdevice->rad_info.gfx_level >= GFX9,
       .sparseResidencyAliased = pdevice->rad_info.family >= CHIP_POLARIS10,
       .variableMultisampleRate = true,
       .shaderResourceMinLod = true,
