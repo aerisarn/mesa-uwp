@@ -34,6 +34,7 @@
 #include "p_defines.h"
 #include "util/u_debug.h"
 #include <stdio.h>
+#include "frontend/winsys_handle.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1192,6 +1193,15 @@ struct pipe_context {
                                                                    const struct pipe_video_buffer *templat,
                                                                    const uint64_t *modifiers,
                                                                    unsigned int modifiers_count);
+
+   /**
+    * Creates a video buffer as decoding target, from external memory
+    */
+   struct pipe_video_buffer *(*video_buffer_from_handle)( struct pipe_context *context,
+                                                     const struct pipe_video_buffer *templat,
+                                                     struct winsys_handle *handle,
+                                                     unsigned usage );
+
 };
 
 

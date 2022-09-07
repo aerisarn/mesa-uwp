@@ -32,12 +32,13 @@
 #include "util/u_video.h"
 #include "vl/vl_video_buffer.h"
 #include "util/u_sampler.h"
+#include "frontend/winsys_handle.h"
 
-/**
- * creates a video buffer
- */
-struct pipe_video_buffer *
-d3d12_video_buffer_create(struct pipe_context *pipe, const struct pipe_video_buffer *tmpl)
+static struct pipe_video_buffer *
+d3d12_video_buffer_create_impl(struct pipe_context *pipe,
+                              const struct pipe_video_buffer *tmpl,
+                              struct winsys_handle *handle,
+                              unsigned usage)
 {
    assert(pipe);
    assert(tmpl);
@@ -45,7 +46,6 @@ d3d12_video_buffer_create(struct pipe_context *pipe, const struct pipe_video_buf
    ///
    /// Initialize d3d12_video_buffer
    ///
-
 
    if (!(tmpl->buffer_format == PIPE_FORMAT_NV12)) {
       debug_printf("[d3d12_video_buffer] buffer_format is only supported as PIPE_FORMAT_NV12.\n");
@@ -91,7 +91,16 @@ d3d12_video_buffer_create(struct pipe_context *pipe, const struct pipe_video_buf
    templ.flags      = 0;
 
    // This calls d3d12_create_resource as the function ptr is set in d3d12_screen.resource_create
-   pD3D12VideoBuffer->texture = (struct d3d12_resource *) pipe->screen->resource_create(pipe->screen, &templ);
+   if(handle)
+   {
+      // WINSYS_HANDLE_TYPE_D3D12_RES implies taking ownership of the reference
+      if(handle->type == WINSYS_HANDLE_TYPE_D3D12_RES)
+         ((IUnknown *)handle->com_obj)->AddRef();
+      pD3D12VideoBuffer->texture = (struct d3d12_resource *) pipe->screen->resource_from_handle(pipe->screen, &templ, handle, usage);
+   }
+   else
+      pD3D12VideoBuffer->texture = (struct d3d12_resource *) pipe->screen->resource_create(pipe->screen, &templ);
+
    d3d12_promote_to_permanent_residency((struct d3d12_screen*) pipe->screen, pD3D12VideoBuffer->texture);
 
    if (pD3D12VideoBuffer->texture == nullptr) {
@@ -108,6 +117,28 @@ failed:
    d3d12_video_buffer_destroy((struct pipe_video_buffer *) pD3D12VideoBuffer);
 
    return nullptr;
+}
+
+
+/**
+ * creates a video buffer from a handle
+ */
+struct pipe_video_buffer *
+d3d12_video_buffer_from_handle( struct pipe_context *pipe,
+                              const struct pipe_video_buffer *tmpl,
+                              struct winsys_handle *handle,
+                              unsigned usage)
+{
+   return d3d12_video_buffer_create_impl(pipe, tmpl, handle, usage);
+}
+
+/**
+ * creates a video buffer
+ */
+struct pipe_video_buffer *
+d3d12_video_buffer_create(struct pipe_context *pipe, const struct pipe_video_buffer *tmpl)
+{
+   return d3d12_video_buffer_create_impl(pipe, tmpl, NULL, 0);
 }
 
 /**

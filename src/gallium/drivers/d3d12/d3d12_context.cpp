@@ -2509,6 +2509,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    // Add d3d12 video functions entrypoints
    ctx->base.create_video_codec = d3d12_video_create_codec;
    ctx->base.create_video_buffer = d3d12_video_buffer_create;
+   ctx->base.video_buffer_from_handle = d3d12_video_buffer_from_handle;
 #endif
    slab_create_child(&ctx->transfer_pool, &d3d12_screen(pscreen)->transfer_pool);
    slab_create_child(&ctx->transfer_pool_unsync, &d3d12_screen(pscreen)->transfer_pool);
