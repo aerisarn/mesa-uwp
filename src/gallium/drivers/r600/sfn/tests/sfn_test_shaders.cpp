@@ -504,13 +504,13 @@ ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
 ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-ALU FLT_TO_INT S1028.x@group : S1025.x@chan {W}
-ALU FLT_TO_INT S1028.y@group : S1025.y@chan {W}
-ALU FLT_TO_INT S1028.w@group : S1025.w@chan {WL}
+ALU FLT_TO_INT S1026.x@group : S1025.x@chan {W}
+ALU FLT_TO_INT S1026.y@group : S1025.y@chan {W}
+ALU FLT_TO_INT S1026.z@group : S1025.w@chan {WL}
 ALU_GROUP_END
 BLOCK_END
 BLOCK_START
-TEX LD S1029.xyzw : S1028.xy_w RID:0 SID:18 NNNN
+TEX LD S1029.xyzw : S1026.xy_z RID:0 SID:18 NNNN
 BLOCK_END
 BLOCK_START
 EXPORT_DONE PIXEL 0 S1029.xyzw
@@ -540,10 +540,10 @@ ALU INTERP_XY  S1025.y@chan : R0.x@fully Param0.y VEC_210 {W}
 ALU INTERP_XY  __.z@chan : R0.y@fully Param0.z VEC_210 {}
 ALU INTERP_XY  __.w@chan : R0.x@fully Param0.w VEC_210 {L}
 ALU_GROUP_END
-ALU FLT_TO_INT S1028.x@group : S1025.x@chan {W}
-ALU FLT_TO_INT S1028.y@group : S1025.y@chan {W}
-ALU FLT_TO_INT S1028.w@group : S1025.w@chan {WL}
-TEX LD S1029.xyzw : S1028.xy_w RID:0 SID:18 NNNN
+ALU FLT_TO_INT S1026.x@group : S1025.x@chan {W}
+ALU FLT_TO_INT S1026.y@group : S1025.y@chan {W}
+ALU FLT_TO_INT S1026.z@group : S1025.w@chan {WL}
+TEX LD S1029.xyzw : S1026.xy_z RID:0 SID:18 NNNN
 EXPORT_DONE PIXEL 0 S1029.xyzw
 )";
 
@@ -585,12 +585,8 @@ ALU MOV S2.x : KC0[1].x  {W}
 ALU MOV S2.y : KC0[1].y  {W}
 ALU MOV S2.z : KC0[1].z  {W}
 ALU MOV S2.w : KC0[1].w  {WL}
-ALU DOT4_IEEE S3.x@free : KC0[0].x S2.x + KC0[0].y S2.y + KC0[0].z S2.z + KC0[0].w S2.w  {WL}
-ALU MOV S4.x : S3.x@free {W}
-ALU MOV S4.y : S3.x@free {W}
-ALU MOV S4.z : S3.x@free {W}
-ALU MOV S4.w : S3.x@free {W}
-EXPORT_DONE PIXEL 0 S4.xyzw
+ALU DOT4_IEEE S3.x@group : KC0[0].x S2.x + KC0[0].y S2.y + KC0[0].z S2.z + KC0[0].w S2.w  {WL}
+EXPORT_DONE PIXEL 0 S3.xxxx
 )";
 
 const char *glxgears_vs2_nir =
@@ -2188,16 +2184,16 @@ SHADER
 ALU_GROUP_BEGIN
 ALU INTERP_ZW __.x@chan : R0.y@fully Param0.x {} VEC_210
 ALU INTERP_ZW __.y@chan : R0.x@fully Param0.y {} VEC_210
-ALU INTERP_ZW S2.z@chgr : R0.y@fully Param0.z {W} VEC_210
-ALU INTERP_ZW S2.w@chgr : R0.x@fully Param0.w {WL} VEC_210
+ALU INTERP_ZW S1.z@chgr : R0.y@fully Param0.z {W} VEC_210
+ALU INTERP_ZW S1.w@chgr : R0.x@fully Param0.w {WL} VEC_210
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-ALU INTERP_XY S2.x@chgr : R0.y@fully Param0.x {W} VEC_210
-ALU INTERP_XY S2.y@chgr : R0.x@fully Param0.y {W} VEC_210
+ALU INTERP_XY S1.x@chgr : R0.y@fully Param0.x {W} VEC_210
+ALU INTERP_XY S1.y@chgr : R0.x@fully Param0.y {W} VEC_210
 ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
 ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
 ALU_GROUP_END
-EXPORT_DONE PIXEL 0 S2.xyzw
+EXPORT_DONE PIXEL 0 S1.xyzw
 )";
 
 const char *shader_group_chan_pin_combined_sheduled =

@@ -376,6 +376,7 @@ bool TexInstr::replace_source(PRegister old_src, PVirtualValue new_src)
          success = true;
       }
    }
+   m_src.validate();
    if (success) {
       old_src->del_use(this);
       new_src->as_register()->add_use(this);
