@@ -2386,7 +2386,6 @@ do_common_optimization(exec_list *ir, bool linked,
    if (linked) {
       OPT(do_function_inlining, ir);
       OPT(do_dead_functions, ir);
-      OPT(do_structure_splitting, ir);
    }
    OPT(propagate_invariance, ir);
    OPT(do_if_simplification, ir);
