@@ -50,7 +50,7 @@ STABLE_EPHEMERAL=" \
       xz-utils \
       "
 
-apt-get install -y --no-remove \
+apt-get install -y --no-remove --no-install-recommends \
       $STABLE_EPHEMERAL \
       libepoxy0 \
       libxcb-shm0 \

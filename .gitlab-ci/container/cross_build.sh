@@ -48,7 +48,7 @@ if [[ $arch != "armhf" ]]; then
     # llvm-*-tools:$arch conflicts with python3:amd64. Install dependencies only
     # with apt-get, then force-install llvm-*-{dev,tools}:$arch with dpkg to get
     # around this.
-    apt-get install -y --no-remove \
+    apt-get install -y --no-remove --no-install-recommends \
             libclang-cpp${LLVM}:$arch \
             libffi-dev:$arch \
             libgcc-s1:$arch \
