@@ -2486,12 +2486,15 @@ static bool emit_tex_fdd(const nir_alu_instr& alu, TexInstr::Opcode opcode, bool
 
    int ncomp = nir_dest_num_components(alu.dest.dest);
    RegisterVec4::Swizzle src_swz = {7,7,7,7};
-   for (auto i = 0; i < ncomp; ++i)
+   RegisterVec4::Swizzle tmp_swz = {7,7,7,7};
+   for (auto i = 0; i < ncomp; ++i) {
       src_swz[i] = alu.src[0].swizzle[i];
+      tmp_swz[i] = i;
+   }
 
-   auto src = value_factory.src_vec4(alu.src[0].src, pin_group, src_swz);
+   auto src = value_factory.src_vec4(alu.src[0].src, pin_none, src_swz);
 
-   auto tmp = value_factory.temp_vec4(pin_group);
+   auto tmp = value_factory.temp_vec4(pin_group, tmp_swz);
    AluInstr *mv = nullptr;
    for (int i = 0; i < ncomp; ++i) {
       mv = new AluInstr(op1_mov, tmp[i], src[i], AluInstr::write);
