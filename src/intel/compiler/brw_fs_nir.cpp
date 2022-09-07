@@ -2928,12 +2928,12 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          break;
 
       unsigned num_components = util_last_bit(mask);
-
-      /* We can only pack two 64-bit components in a single message, so send
-       * 2 messages if we have more components
-       */
       unsigned first_component = nir_intrinsic_component(instr);
+      assert((first_component + num_components) <= 4);
+
       mask = mask << first_component;
+
+      const bool has_urb_lsc = devinfo->ver >= 20;
 
       fs_reg mask_reg;
       if (mask != WRITEMASK_XYZW)
@@ -2941,16 +2941,21 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
 
       fs_reg sources[4];
 
+      unsigned m = has_urb_lsc ? 0 : first_component;
       for (unsigned i = 0; i < num_components; i++) {
-         if (!(mask & (1 << (i + first_component))))
-            continue;
-
-         sources[i + first_component] = offset(value, bld, i);
+         int c = i + first_component;
+         if (mask & (1 << c)) {
+            sources[m++] = offset(value, bld, i);
+         } else if (devinfo->ver < 20) {
+            m++;
+         }
       }
+
+      assert(has_urb_lsc || m == (first_component + num_components));
 
       unsigned header_size = 1 + unsigned(indirect_offset.file != BAD_FILE) +
          unsigned(mask != WRITEMASK_XYZW);
-      const unsigned length = num_components + first_component;
+      const unsigned length = m;
 
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = tcs_payload().patch_urb_output;
