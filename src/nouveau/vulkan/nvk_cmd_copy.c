@@ -372,6 +372,7 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_X;
          }
+         break;
       default:
          break;
       }
@@ -440,6 +441,7 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
          }
+         break;
       default:
          break;
       }
@@ -516,6 +518,7 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
             assert(aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
                                VK_IMAGE_ASPECT_STENCIL_BIT));
          }
+         break;
       default:
          break;
       }
