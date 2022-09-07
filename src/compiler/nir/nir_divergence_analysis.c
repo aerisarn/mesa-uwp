@@ -356,6 +356,9 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_samples_identical:
    case nir_intrinsic_image_deref_samples_identical:
    case nir_intrinsic_bindless_image_samples_identical:
+   case nir_intrinsic_image_fragment_mask_load_amd:
+   case nir_intrinsic_image_deref_fragment_mask_load_amd:
+   case nir_intrinsic_bindless_image_fragment_mask_load_amd:
       is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
                      instr->src[1].ssa->divergent;
       break;

@@ -2725,6 +2725,7 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
    CASE(samples)
    CASE(load_raw_intel)
    CASE(store_raw_intel)
+   CASE(fragment_mask_load_amd)
 #undef CASE
    default:
       unreachable("Unhanded image intrinsic");
