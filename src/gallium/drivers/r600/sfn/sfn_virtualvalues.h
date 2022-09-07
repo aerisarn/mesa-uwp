@@ -278,14 +278,23 @@ public:
 
    void set_value(int i, PRegister reg) {
       if (reg->chan() < 4) {
-         for (int k = 0; k < 4; ++k) {
-            assert(i == k || m_values[k]->value()->chan() > 3 ||
-                   m_values[k]->value()->sel() == reg->sel());
-         }
          m_sel = reg->sel();
       }
       m_swz[i] = reg->chan();
       m_values[i]->set_value(reg);
+   }
+
+   void validate() {
+      int sel = -1;
+      for (int k = 0; k < 4; ++k) {
+         if (sel < 0) {
+            if (m_values[k]->value()->chan() < 4)
+               sel = m_values[k]->value()->sel();
+         } else {
+            assert(m_values[k]->value()->chan() > 3 ||
+                   m_values[k]->value()->sel() == sel);
+         }
+      }
    }
 
    bool ready(int block_id, int index) const;
