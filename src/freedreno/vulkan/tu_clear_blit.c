@@ -2719,6 +2719,9 @@ tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
 
    trace_start_gmem_clear(&cmd->trace, cs);
 
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_BLIT_GMEM_MSAA_CNTL(tu_msaa_samples(att->samples)));
+
    enum pipe_format format = tu_vk_format_to_pipe_format(att->format);
    if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (mask & VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -2943,8 +2946,6 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
 
    if (!attachment->clear_mask)
       return;
-
-   tu_cs_emit_regs(cs, A6XX_RB_BLIT_GMEM_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
    tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask, value);
 }
