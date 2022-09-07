@@ -448,7 +448,7 @@ centroid	KEYWORD_WITH_ALT(120, 300, 120, 300, yyextra->EXT_gpu_shader4_enable, C
 invariant	KEYWORD(120, 100, 120, 100, INVARIANT);
 flat		KEYWORD_WITH_ALT(130, 100, 130, 300, yyextra->EXT_gpu_shader4_enable, FLAT);
 smooth		KEYWORD(130, 300, 130, 300, SMOOTH);
-noperspective	KEYWORD_WITH_ALT(130, 300, 130, 0, yyextra->EXT_gpu_shader4_enable, NOPERSPECTIVE);
+noperspective	KEYWORD_WITH_ALT(130, 300, 130, 0, yyextra->EXT_gpu_shader4_enable || yyextra->NV_shader_noperspective_interpolation_enable, NOPERSPECTIVE);
 patch		KEYWORD_WITH_ALT(0, 300, 400, 320, yyextra->has_tessellation_shader(), PATCH);
 
 sampler1D	DEPRECATED_ES_TYPE(glsl_type::sampler1D_type);
