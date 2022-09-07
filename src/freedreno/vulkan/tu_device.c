@@ -134,6 +134,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_external_semaphore_fd = true,
       .KHR_format_feature_flags2 = true,
       .KHR_get_memory_requirements2 = true,
+      .KHR_global_priority = true,
       .KHR_imageless_framebuffer = true,
       .KHR_incremental_present = TU_HAS_SURFACE,
       .KHR_image_format_list = true,
@@ -189,6 +190,8 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
       .EXT_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
+      .EXT_global_priority = true,
+      .EXT_global_priority_query = true,
       .EXT_host_query_reset = true,
       .EXT_index_type_uint8 = true,
       .EXT_memory_budget = true,
@@ -886,6 +889,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->attachmentFeedbackLoopLayout = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR*)ext;
+         features->globalPriorityQuery = true;
+         break;
+      }
 
       default:
          break;
@@ -1359,18 +1368,91 @@ static const VkQueueFamilyProperties tu_queue_family_properties = {
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 
+static void
+tu_physical_device_get_global_priority_properties(const struct tu_physical_device *pdevice,
+                                                  VkQueueFamilyGlobalPriorityPropertiesKHR *props)
+{
+   props->priorityCount = MIN2(pdevice->submitqueue_priority_count, 3);
+   switch (props->priorityCount) {
+   case 1:
+      props->priorities[0] = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
+      break;
+   case 2:
+      props->priorities[0] = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
+      props->priorities[1] = VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR;
+      break;
+   case 3:
+      props->priorities[0] = VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR;
+      props->priorities[1] = VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
+      props->priorities[2] = VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR;
+      break;
+   default:
+      unreachable("unexpected priority count");
+      break;
+   }
+}
+
+static int
+tu_physical_device_get_submitqueue_priority(const struct tu_physical_device *pdevice,
+                                            VkQueueGlobalPriorityKHR global_priority,
+                                            bool global_priority_query)
+{
+   if (global_priority_query) {
+      VkQueueFamilyGlobalPriorityPropertiesKHR props;
+      tu_physical_device_get_global_priority_properties(pdevice, &props);
+
+      bool valid = false;
+      for (uint32_t i = 0; i < props.priorityCount; i++) {
+         if (props.priorities[i] == global_priority) {
+            valid = true;
+            break;
+         }
+      }
+
+      if (!valid)
+         return -1;
+   }
+
+   /* Valid values are from 0 to (pdevice->submitqueue_priority_count - 1),
+    * with 0 being the highest priority.  This matches what freedreno does.
+    */
+   int priority;
+   if (global_priority == VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR)
+      priority = pdevice->submitqueue_priority_count / 2;
+   else if (global_priority < VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR)
+      priority = pdevice->submitqueue_priority_count - 1;
+   else
+      priority = 0;
+
+   return priority;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice physicalDevice,
    uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
+   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
+
    VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties2, out,
                           pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
    vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p)
    {
       p->queueFamilyProperties = tu_queue_family_properties;
+
+      vk_foreach_struct(ext, p->pNext) {
+         switch (ext->sType) {
+         case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR: {
+            VkQueueFamilyGlobalPriorityPropertiesKHR *props = (void *)ext;
+            tu_physical_device_get_global_priority_properties(pdevice, props);
+            break;
+         }
+         default:
+            break;
+         }
+      }
    }
 }
 
@@ -1458,21 +1540,21 @@ static VkResult
 tu_queue_init(struct tu_device *device,
               struct tu_queue *queue,
               int idx,
-              const VkDeviceQueueCreateInfo *create_info)
+              const VkDeviceQueueCreateInfo *create_info,
+              bool global_priority_query)
 {
+   const VkDeviceQueueGlobalPriorityCreateInfoKHR *priority_info =
+      vk_find_struct_const(create_info->pNext,
+            DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
+   const enum VkQueueGlobalPriorityKHR global_priority = priority_info ?
+      priority_info->globalPriority : VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
 
-   /* Match the default priority of fd_context_init.  We ignore
-    * pQueuePriorities because the spec says
-    *
-    *   An implementation may allow a higher-priority queue to starve a
-    *   lower-priority queue on the same VkDevice until the higher-priority
-    *   queue has no further commands to execute. The relationship of queue
-    *   priorities must not cause queues on one VkDevice to starve queues on
-    *   another VkDevice.
-    *
-    * We cannot let one VkDevice starve another.
-    */
-   const int priority = 1;
+   const int priority = tu_physical_device_get_submitqueue_priority(
+         device->physical_device, global_priority, global_priority_query);
+   if (priority < 0) {
+      return vk_startup_errorf(device->instance, VK_ERROR_INITIALIZATION_FAILED,
+                               "invalid global priority");
+   }
 
    VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
@@ -1773,6 +1855,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    bool perf_query_pools = false;
    bool robust_buffer_access2 = false;
    bool border_color_without_format = false;
+   bool global_priority_query = false;
 
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
@@ -1792,6 +1875,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
          VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
          robust_buffer_access2 = features->robustBufferAccess2;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features = (void *)ext;
+         global_priority_query = features->globalPriorityQuery;
          break;
       }
       default:
@@ -1855,7 +1943,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
       for (unsigned q = 0; q < queue_create->queueCount; q++) {
          result = tu_queue_init(device, &device->queues[qfi][q], q,
-                                queue_create);
+                                queue_create, global_priority_query);
          if (result != VK_SUCCESS) {
             device->queue_count[qfi] = q;
             goto fail_queues;

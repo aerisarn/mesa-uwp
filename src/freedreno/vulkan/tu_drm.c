@@ -174,9 +174,11 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
                        int priority,
                        uint32_t *queue_id)
 {
+   assert(priority >= 0 &&
+          priority < dev->physical_device->submitqueue_priority_count);
    struct drm_msm_submitqueue req = {
       .flags = 0,
-      .prio = MIN2(priority, dev->physical_device->submitqueue_priority_count - 1),
+      .prio = priority,
    };
 
    int ret = drmCommandWriteRead(dev->fd,
