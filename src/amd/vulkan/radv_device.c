@@ -386,6 +386,14 @@ radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
           pdevice->rad_info.has_scheduled_fence_dependency;
 }
 
+static bool
+radv_NV_device_generated_commands_enabled(const struct radv_physical_device *device)
+{
+   return device->rad_info.gfx_level >= GFX7 &&
+          !(device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
+          driQueryOptionb(&device->instance->dri_options, "radv_dgc");
+}
+
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || defined(VK_USE_PLATFORM_XCB_KHR) ||                    \
    defined(VK_USE_PLATFORM_XLIB_KHR) || defined(VK_USE_PLATFORM_DISPLAY_KHR)
 #define RADV_USE_WSI_PLATFORM
@@ -589,7 +597,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_texel_buffer_alignment = true,
       .EXT_transform_feedback = device->rad_info.gfx_level < GFX11,
       .EXT_vertex_attribute_divisor = true,
-      .EXT_vertex_input_dynamic_state = !device->use_llvm,
+      .EXT_vertex_input_dynamic_state = !device->use_llvm &&
+                                        !radv_NV_device_generated_commands_enabled(device),
       .EXT_ycbcr_image_arrays = true,
       .AMD_buffer_marker = true,
       .AMD_device_coherent_memory = true,
@@ -617,9 +626,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .GOOGLE_user_type = true,
       .INTEL_shader_integer_functions2 = true,
       .NV_compute_shader_derivatives = true,
-      .NV_device_generated_commands = device->rad_info.gfx_level >= GFX7 &&
-                                      !(device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
-                                      driQueryOptionb(&device->instance->dri_options, "radv_dgc"),
+      .NV_device_generated_commands = radv_NV_device_generated_commands_enabled(device),
       .NV_mesh_shader =
          radv_taskmesh_enabled(device) && device->instance->perftest_flags & RADV_PERFTEST_NV_MS,
       /* Undocumented extension purely for vkd3d-proton. This check is to prevent anyone else from

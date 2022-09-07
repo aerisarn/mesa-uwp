@@ -147,7 +147,6 @@ struct radv_dgc_params {
    /* bind index buffer info. Valid if base_index_size == 0 && draw_indexed */
    uint16_t index_buffer_offset;
 
-   /* Top bit is DGC_DYNAMIC_VERTEX_INPUT */
    uint8_t vbo_cnt;
 
    uint8_t const_copy;
@@ -179,10 +178,6 @@ enum {
 
 enum {
    DGC_DYNAMIC_STRIDE = 1u << 15,
-};
-
-enum {
-   DGC_DYNAMIC_VERTEX_INPUT = 1u << 7,
 };
 
 enum {
@@ -381,7 +376,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
                     0x1);
 
       nir_ssa_def *vbo_bind_mask = load_param32(&b, vbo_bind_mask);
-      nir_ssa_def *vbo_cnt = nir_iand_imm(&b, load_param8(&b, vbo_cnt), 0x7F);
+      nir_ssa_def *vbo_cnt = load_param8(&b, vbo_cnt);
       nir_push_if(&b, nir_ine_imm(&b, vbo_bind_mask, 0));
       {
          nir_variable *vbo_idx =
@@ -424,9 +419,6 @@ build_dgc_prepare_shader(struct radv_device *dev)
                nir_ssa_def *va = nir_pack_64_2x32(&b, nir_channels(&b, stream_data, 0x3));
                nir_ssa_def *size = nir_channel(&b, stream_data, 2);
                nir_ssa_def *stride = nir_channel(&b, stream_data, 3);
-
-               nir_ssa_def *vs_state_offset = nir_ubfe(&b, nir_channel(&b, vbo_over_data, 0), nir_imm_int(&b, 16), nir_imm_int(&b, 15));
-               va = nir_iadd(&b, va, nir_u2u64(&b, vs_state_offset));
 
                nir_ssa_def *dyn_stride = nir_test_mask(&b, nir_channel(&b, vbo_over_data, 0), DGC_DYNAMIC_STRIDE);
                nir_ssa_def *old_stride =
@@ -530,23 +522,9 @@ build_dgc_prepare_shader(struct radv_device *dev)
             nir_push_if(&b,
                         nir_ior(&b, nir_ieq_imm(&b, num_records, 0), nir_ieq_imm(&b, buf_va, 0)));
             {
-               nir_ssa_def *use_dynamic_vertex_input =
-                  nir_test_mask(&b, load_param8(&b, vbo_cnt), DGC_DYNAMIC_VERTEX_INPUT);
-
-               nir_push_if(&b, use_dynamic_vertex_input);
-               {
-                  nir_ssa_def *new_vbo_data[4] = {
-                     nir_imm_int(&b, 0), nir_imm_int(&b, S_008F04_STRIDE(16)), nir_imm_int(&b, 0),
-                     nir_channel(&b, nir_load_var(&b, vbo_data), 3)};
-                  nir_store_var(&b, vbo_data, nir_vec(&b, new_vbo_data, 4), 0xf);
-               }
-               nir_push_else(&b, NULL);
-               {
-                  nir_ssa_def *new_vbo_data[4] = {nir_imm_int(&b, 0), nir_imm_int(&b, 0),
-                                                  nir_imm_int(&b, 0), nir_imm_int(&b, 0)};
-                  nir_store_var(&b, vbo_data, nir_vec(&b, new_vbo_data, 4), 0xf);
-               }
-               nir_pop_if(&b, NULL);
+               nir_ssa_def *new_vbo_data[4] = {nir_imm_int(&b, 0), nir_imm_int(&b, 0),
+                                               nir_imm_int(&b, 0), nir_imm_int(&b, 0)};
+               nir_store_var(&b, vbo_data, nir_vec(&b, new_vbo_data, 4), 0xf);
             }
             nir_pop_if(&b, NULL);
 
@@ -1208,27 +1186,21 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
 
       uint32_t *vbo_info = (uint32_t *)((char *)upload_data + graphics_pipeline->vb_desc_alloc_size);
 
-      struct radv_shader *vs_shader = radv_get_shader(&graphics_pipeline->base, MESA_SHADER_VERTEX);
-      const struct radv_vs_input_state *vs_state =
-         vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
       uint32_t mask = graphics_pipeline->vb_desc_usage_mask;
       unsigned idx = 0;
       while (mask) {
          unsigned i = u_bit_scan(&mask);
          unsigned binding =
-            vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
-                     : (graphics_pipeline->use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i);
-         uint32_t attrib_end =
-            vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i] : graphics_pipeline->attrib_ends[i];
+            graphics_pipeline->use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
+         uint32_t attrib_end = graphics_pipeline->attrib_ends[i];
 
          params.vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
          vbo_info[2 * idx] = ((graphics_pipeline->use_per_attribute_vb_descs ? 1u : 0u) << 31) |
-                             (vs_state ? vs_state->offsets[i] << 16 : 0) |
                              layout->vbo_offsets[binding];
          vbo_info[2 * idx + 1] = graphics_pipeline->attrib_index_offset[i] | (attrib_end << 16);
          ++idx;
       }
-      params.vbo_cnt = idx | (vs_state ? DGC_DYNAMIC_VERTEX_INPUT : 0);
+      params.vbo_cnt = idx;
       upload_data = (char *)upload_data + vb_size;
    }
 
