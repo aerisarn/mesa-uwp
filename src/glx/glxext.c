@@ -296,11 +296,7 @@ glx_display_free(struct glx_display *priv)
 
    FreeScreenConfigs(priv);
 
-   __glxHashDestroy(priv->glXDrawHash);
-
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-   __glxHashDestroy(priv->drawHash);
-
    /* Free the direct rendering per display data */
    if (priv->driswDisplay)
       (*priv->driswDisplay->destroyDisplay) (priv->driswDisplay);
@@ -921,7 +917,7 @@ __glXInitialize(Display * dpy)
    XESetCloseDisplay(dpy, dpyPriv->codes.extension, __glXCloseDisplay);
    XESetErrorString (dpy, dpyPriv->codes.extension, __glXErrorString);
 
-   dpyPriv->glXDrawHash = __glxHashCreate();
+   dpyPriv->glXDrawHash = XUniqueContext();
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
    glx_direct = !env_var_as_boolean("LIBGL_ALWAYS_INDIRECT", false);
@@ -930,7 +926,7 @@ __glXInitialize(Display * dpy)
    const char *env = getenv("MESA_LOADER_DRIVER_OVERRIDE");
    zink = env && !strcmp(env, "zink");
 
-   dpyPriv->drawHash = __glxHashCreate();
+   dpyPriv->drawHash = XUniqueContext();
 
    dpyPriv->zombieGLXDrawable = _mesa_pointer_set_create(NULL);
 

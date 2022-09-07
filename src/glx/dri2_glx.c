@@ -57,8 +57,7 @@
 struct dri2_display
 {
    __GLXDRIdisplay base;
-
-   __glxHashTable *dri2Hash;
+   XContext dri2Hash;
 
    const __DRIextension *loader_extensions[5];
 };
@@ -271,7 +270,7 @@ dri2DestroyDrawable(__GLXDRIdrawable *base)
    struct glx_display *dpyPriv = psc->base.display;
    struct dri2_display *pdp = (struct dri2_display *)dpyPriv->dri2Display;
 
-   __glxHashDelete(pdp->dri2Hash, pdraw->base.xDrawable);
+   XDeleteContext(dpyPriv->dpy, pdraw->base.xDrawable, pdp->dri2Hash);
    (*psc->core->destroyDrawable) (pdraw->driDrawable);
 
    /* If it's a GLX 1.3 drawables, we can destroy the DRI2 drawable
@@ -327,7 +326,7 @@ dri2CreateDrawable(struct glx_screen *base, XID xDrawable,
       return NULL;
    }
 
-   if (__glxHashInsert(pdp->dri2Hash, xDrawable, pdraw)) {
+   if (XSaveContext(psc->base.dpy, xDrawable, pdp->dri2Hash, (void *)pdraw)) {
       (*psc->core->destroyDrawable) (pdraw->driDrawable);
       DRI2DestroyDrawable(psc->base.dpy, xDrawable);
       free(pdraw);
@@ -1248,9 +1247,6 @@ handle_error:
 static void
 dri2DestroyDisplay(__GLXDRIdisplay * dpy)
 {
-   struct dri2_display *pdp = (struct dri2_display *) dpy;
-
-   __glxHashDestroy(pdp->dri2Hash);
    free(dpy);
 }
 
@@ -1261,7 +1257,7 @@ dri2GetGlxDrawableFromXDrawableId(Display *dpy, XID id)
    struct dri2_display *pdp = (struct dri2_display *) d->dri2Display;
    __GLXDRIdrawable *pdraw;
 
-   if (__glxHashLookup(pdp->dri2Hash, id, (void *) &pdraw) == 0)
+   if (XFindContext(dpy, id, pdp->dri2Hash, (void *) &pdraw) == 0)
       return pdraw;
 
    return NULL;
@@ -1301,11 +1297,7 @@ dri2CreateDisplay(Display * dpy)
    pdp->loader_extensions[i++] = &driBackgroundCallable.base;
    pdp->loader_extensions[i++] = NULL;
 
-   pdp->dri2Hash = __glxHashCreate();
-   if (pdp->dri2Hash == NULL) {
-      free(pdp);
-      return NULL;
-   }
+   pdp->dri2Hash = XUniqueContext();
 
    return &pdp->base;
 }

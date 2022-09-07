@@ -79,7 +79,7 @@ GetGLXDRIDrawable(Display * dpy, GLXDrawable drawable)
    if (priv == NULL)
       return NULL;
 
-   if (__glxHashLookup(priv->drawHash, drawable, (void *) &pdraw) == 0)
+   if (XFindContext(dpy, drawable, priv->drawHash, (void *) &pdraw) == 0)
       return pdraw;
 
    return NULL;
@@ -96,7 +96,7 @@ GetGLXDrawable(Display *dpy, GLXDrawable drawable)
    if (priv == NULL)
       return NULL;
 
-   if (__glxHashLookup(priv->glXDrawHash, drawable, (void *) &glxDraw) == 0)
+   if (XFindContext(dpy, drawable, priv->glXDrawHash, (void *) &glxDraw) == 0)
       return glxDraw;
 
    return NULL;
@@ -116,7 +116,7 @@ InitGLXDrawable(Display *dpy, struct glx_drawable *glxDraw, XID xDrawable,
    glxDraw->lastEventSbc = 0;
    glxDraw->eventSbcWrap = 0;
 
-   return __glxHashInsert(priv->glXDrawHash, drawable, glxDraw);
+   return XSaveContext(dpy, drawable, priv->glXDrawHash, (void *)glxDraw);
 }
 
 _X_HIDDEN void
@@ -129,7 +129,7 @@ DestroyGLXDrawable(Display *dpy, GLXDrawable drawable)
       return;
 
    glxDraw = GetGLXDrawable(dpy, drawable);
-   __glxHashDelete(priv->glXDrawHash, drawable);
+   XDeleteContext(dpy, drawable, priv->glXDrawHash);
    free(glxDraw);
 }
 
@@ -763,7 +763,7 @@ glXCreateGLXPixmap(Display * dpy, XVisualInfo * vis, Pixmap pixmap)
          break;
       }
 
-      if (__glxHashInsert(priv->drawHash, xid, pdraw)) {
+      if (XSaveContext(dpy, xid, priv->drawHash, (void *)pdraw)) {
          (*pdraw->destroyDrawable) (pdraw);
          xid = None;
          break;
@@ -822,7 +822,7 @@ glXDestroyGLXPixmap(Display * dpy, GLXPixmap glxpixmap)
 
       if (priv != NULL && pdraw != NULL) {
          (*pdraw->destroyDrawable) (pdraw);
-         __glxHashDelete(priv->drawHash, glxpixmap);
+         XDeleteContext(dpy, glxpixmap, priv->drawHash);
       }
    }
 #endif
