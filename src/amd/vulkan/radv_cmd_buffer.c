@@ -3906,11 +3906,10 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const unsigned stage = pipeline->last_vgt_api_stage;
-   struct radv_userdata_info *loc;
+   const struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_NGG_QUERY_STATE];
    uint32_t ngg_query_state = 0;
    uint32_t base_reg;
 
-   loc = radv_lookup_user_sgpr(&pipeline->base, stage, AC_UD_NGG_QUERY_STATE);
    if (loc->sgpr_idx == -1)
       return;
 
@@ -3937,7 +3936,7 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    enum amd_gfx_level gfx_level = pipeline->base.device->physical_device->rad_info.gfx_level;
    const unsigned stage = pipeline->last_vgt_api_stage;
-   struct radv_userdata_info *loc;
+   struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_FORCE_VRS_RATES];
    uint32_t vrs_rates = 0;
    uint32_t base_reg;
 
@@ -3947,7 +3946,6 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
       return;
    }
 
-   loc = radv_lookup_user_sgpr(&pipeline->base, stage, AC_UD_FORCE_VRS_RATES);
    assert(loc->sgpr_idx != -1);
 
    base_reg = pipeline->base.user_data_0[stage];
@@ -6440,14 +6438,13 @@ radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(struct radv_cmd_buffer 
 ALWAYS_INLINE static void
 radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_pipeline *pipeline = &cmd_buffer->state.graphics_pipeline->base;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    bool predicating = cmd_buffer->state.predicating;
 
-   struct radv_userdata_info *ring_entry_loc =
-      radv_lookup_user_sgpr(pipeline, MESA_SHADER_MESH, AC_UD_TASK_RING_ENTRY);
+   struct radv_userdata_info *ring_entry_loc = &pipeline->last_vgt_api_stage_locs[AC_UD_TASK_RING_ENTRY];
 
-   assert(ring_entry_loc && ring_entry_loc->sgpr_idx != -1);
+   assert(ring_entry_loc->sgpr_idx != -1);
 
    uint32_t base_reg = cmd_buffer->state.graphics_pipeline->vtx_base_sgpr;
    uint32_t xyz_dim_reg = ((base_reg + 4) - SI_SH_REG_OFFSET) >> 2;
@@ -7178,7 +7175,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 
    /* Find the user SGPR. */
    const uint32_t base_reg = pipeline->base.user_data_0[stage];
-   const int8_t nggc_sgpr_idx = v->info.user_sgprs_locs.shader_data[AC_UD_NGG_CULLING_SETTINGS].sgpr_idx;
+   const int8_t nggc_sgpr_idx = pipeline->last_vgt_api_stage_locs[AC_UD_NGG_CULLING_SETTINGS].sgpr_idx;
    assert(!nggc_supported || nggc_sgpr_idx != -1);
 
    /* Get viewport transform. */
@@ -7211,7 +7208,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
       }
 
       uint32_t vp_reg_values[4] = {fui(vp_scale[0]), fui(vp_scale[1]), fui(vp_translate[0]), fui(vp_translate[1])};
-      const int8_t vp_sgpr_idx = v->info.user_sgprs_locs.shader_data[AC_UD_NGG_VIEWPORT].sgpr_idx;
+      const int8_t vp_sgpr_idx = pipeline->last_vgt_api_stage_locs[AC_UD_NGG_VIEWPORT].sgpr_idx;
       assert(vp_sgpr_idx != -1);
       radeon_set_sh_reg_seq(cmd_buffer->cs, base_reg + vp_sgpr_idx * 4, 4);
       radeon_emit_array(cmd_buffer->cs, vp_reg_values, 4);
