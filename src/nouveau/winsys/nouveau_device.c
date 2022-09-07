@@ -188,7 +188,7 @@ nouveau_ws_device_new(int fd)
 
    ver = drmGetVersion(dup_fd);
    if (!ver)
-      return NULL;
+      goto out_err;
 
    uint32_t version =
       ver->version_major << 24 |
@@ -197,20 +197,20 @@ nouveau_ws_device_new(int fd)
    drmFreeVersion(ver);
 
    if (version < 0x01000301)
-      goto out_drm;
+      goto out_err;
 
    if (nouveau_ws_device_alloc(dup_fd, device))
-      goto out_drm;
+      goto out_err;
 
    if (nouveau_ws_device_info(dup_fd, device))
-      goto out_drm;
+      goto out_err;
 
    if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
-      goto out_dev;
+      goto out_err;
    device->device_id = value;
 
    if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
-      goto out_dev;
+      goto out_err;
    os_get_available_system_memory(&device->gart_size);
    device->gart_size = MIN2(device->gart_size, value);
 
@@ -225,7 +225,7 @@ nouveau_ws_device_new(int fd)
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_VRAM;
 
    if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
-      goto out_dev;
+      goto out_err;
    device->gpc_count = value & 0x000000ff;
    device->mp_count = value >> 8;
 
@@ -233,7 +233,7 @@ nouveau_ws_device_new(int fd)
 
    struct nouveau_ws_context *tmp_ctx;
    if (nouveau_ws_context_create(device, &tmp_ctx))
-      goto out_dev;
+      goto out_err;
 
    device->cls_copy     = tmp_ctx->copy.cls;
    device->cls_eng2d    = tmp_ctx->eng2d.cls;
@@ -245,9 +245,8 @@ nouveau_ws_device_new(int fd)
 
    return device;
 
-out_dev:
+out_err:
    FREE(device);
-out_drm:
    close(dup_fd);
    return NULL;
 }
