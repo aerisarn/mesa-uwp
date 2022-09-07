@@ -2735,7 +2735,8 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
     */
    bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
             icp_offset_bytes,
-            brw_imm_ud(brw_tcs_prog_key_input_vertices(tcs_key) * REG_SIZE));
+            brw_imm_ud(brw_tcs_prog_key_input_vertices(tcs_key) * REG_SIZE *
+                       reg_unit(devinfo)));
 
    return icp_handle;
 }
@@ -2843,7 +2844,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       if (inst->offset == 0 && indirect_offset.file == BAD_FILE) {
          assert(type_sz(dst.type) == 4);
          inst->dst = bld.vgrf(dst.type, 4);
-         inst->size_written = 4 * REG_SIZE;
+         inst->size_written = 4 * REG_SIZE * reg_unit(devinfo);
          bld.MOV(dst, offset(inst->dst, bld, 3));
       }
       break;
@@ -2874,7 +2875,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                fs_reg tmp = bld.vgrf(dst.type, read_components);
                inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                                srcs, ARRAY_SIZE(srcs));
-               inst->size_written = read_components * REG_SIZE;
+               inst->size_written = read_components * REG_SIZE * reg_unit(devinfo);
                for (unsigned i = 0; i < instr->num_components; i++) {
                   bld.MOV(offset(dst, bld, i),
                           offset(tmp, bld, i + first_component));
@@ -2882,7 +2883,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             } else {
                inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                                srcs, ARRAY_SIZE(srcs));
-               inst->size_written = instr->num_components * REG_SIZE;
+               inst->size_written = instr->num_components * REG_SIZE * reg_unit(devinfo);
             }
             inst->offset = imm_offset;
             inst->mlen = 1;
@@ -2899,7 +2900,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             fs_reg tmp = bld.vgrf(dst.type, read_components);
             inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, tmp,
                             srcs, ARRAY_SIZE(srcs));
-            inst->size_written = read_components * REG_SIZE;
+            inst->size_written = read_components * REG_SIZE * reg_unit(devinfo);
             for (unsigned i = 0; i < instr->num_components; i++) {
                bld.MOV(offset(dst, bld, i),
                        offset(tmp, bld, i + first_component));
@@ -2907,7 +2908,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          } else {
             inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dst,
                             srcs, ARRAY_SIZE(srcs));
-            inst->size_written = instr->num_components * REG_SIZE;
+            inst->size_written = instr->num_components * REG_SIZE * reg_unit(devinfo);
          }
          inst->offset = imm_offset;
          inst->mlen = 2;
