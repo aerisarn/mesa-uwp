@@ -70,9 +70,11 @@ do {                                       \
    _dst += _src_size;                      \
 } while (0);
 
-struct disk_cache *
-disk_cache_create(const char *gpu_name, const char *driver_id,
-                  uint64_t driver_flags)
+static struct disk_cache *
+disk_cache_type_create(const char *gpu_name,
+                       const char *driver_id,
+                       uint64_t driver_flags,
+                       enum disk_cache_type cache_type)
 {
    void *local;
    struct disk_cache *cache = NULL;
@@ -105,7 +107,8 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    goto path_fail;
 #endif
 
-   char *path = disk_cache_generate_cache_dir(local, gpu_name, driver_id);
+   char *path = disk_cache_generate_cache_dir(local, gpu_name, driver_id,
+                                              cache_type);
    if (!path)
       goto path_fail;
 
@@ -120,15 +123,15 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (strcmp(driver_id, "make_check_uncompressed") == 0)
       cache->compression_disabled = true;
 
-   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+   if (cache_type == DISK_CACHE_SINGLE_FILE) {
       if (!disk_cache_load_cache_index_foz(local, cache))
          goto path_fail;
-   } else if (debug_get_bool_option("MESA_DISK_CACHE_DATABASE", false)) {
+   } else if (cache_type == DISK_CACHE_DATABASE) {
       if (!disk_cache_db_load_cache_index(local, cache))
          goto path_fail;
-
-      cache->use_cache_db = true;
    }
+
+   cache->type = cache_type;
 
    cache->stats.enabled = debug_get_bool_option("MESA_SHADER_CACHE_SHOW_STATS",
                                                 false);
@@ -186,7 +189,7 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
 
    cache->max_size = max_size;
 
-   if (cache->use_cache_db)
+   if (cache->type == DISK_CACHE_DATABASE)
       mesa_cache_db_set_size_limit(&cache->cache_db, cache->max_size);
 
    /* 4 threads were chosen below because just about all modern CPUs currently
@@ -255,6 +258,29 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    return NULL;
 }
 
+struct disk_cache *
+disk_cache_create(const char *gpu_name, const char *driver_id,
+                  uint64_t driver_flags)
+{
+   enum disk_cache_type cache_type;
+   struct disk_cache *cache;
+
+   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false))
+      cache_type = DISK_CACHE_SINGLE_FILE;
+   else if (debug_get_bool_option("MESA_DISK_CACHE_DATABASE", false))
+      cache_type = DISK_CACHE_DATABASE;
+   else
+      cache_type = DISK_CACHE_MULTI_FILE;
+
+   /* Create main writable cache. */
+   cache = disk_cache_type_create(gpu_name, driver_id, driver_flags,
+                                  cache_type);
+   if (!cache)
+      return NULL;
+
+   return cache;
+}
+
 void
 disk_cache_destroy(struct disk_cache *cache)
 {
@@ -268,10 +294,10 @@ disk_cache_destroy(struct disk_cache *cache)
       util_queue_finish(&cache->cache_queue);
       util_queue_destroy(&cache->cache_queue);
 
-      if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false))
+      if (cache->type == DISK_CACHE_SINGLE_FILE)
          foz_destroy(&cache->foz_db);
 
-      if (cache->use_cache_db)
+      if (cache->type == DISK_CACHE_DATABASE)
          mesa_cache_db_close(&cache->cache_db);
 
       disk_cache_destroy_mmap(cache);
@@ -374,9 +400,9 @@ cache_put(void *job, void *gdata, int thread_index)
    char *filename = NULL;
    struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
 
-   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+   if (dc_job->cache->type == DISK_CACHE_SINGLE_FILE) {
       disk_cache_write_item_to_disk_foz(dc_job);
-   } else if (dc_job->cache->use_cache_db) {
+   } else if (dc_job->cache->type == DISK_CACHE_DATABASE) {
       disk_cache_db_write_item_to_disk(dc_job);
    } else {
       filename = disk_cache_get_cache_filename(dc_job->cache, dc_job->key);
@@ -539,9 +565,9 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
 
    if (cache->blob_get_cb) {
       buf = blob_get_compressed(cache, key, size);
-   } else if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+   } else if (cache->type == DISK_CACHE_SINGLE_FILE) {
       buf = disk_cache_load_item_foz(cache, key, size);
-   } else if (cache->use_cache_db) {
+   } else if (cache->type == DISK_CACHE_DATABASE) {
       buf = disk_cache_db_load_item(cache, key, size);
    } else {
       char *filename = disk_cache_get_cache_filename(cache, key);
