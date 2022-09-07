@@ -387,9 +387,12 @@ is_mediump_or_lowp(unsigned precision)
 }
 
 static bool
-try_lower_mediump_var(nir_variable *var, nir_variable_mode modes)
+try_lower_mediump_var(nir_variable *var, nir_variable_mode modes, struct set *set)
 {
    if (!(var->data.mode & modes) || !is_mediump_or_lowp(var->data.precision))
+      return false;
+
+   if (set && _mesa_set_search(set, var))
       return false;
 
    const struct glsl_type *new_type = glsl_type_to_16bit(var->type);
@@ -408,7 +411,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
 
    if (modes & nir_var_function_temp) {
       nir_foreach_function_temp_variable(var, impl) {
-         any_lowered = try_lower_mediump_var(var, modes) || any_lowered;
+         any_lowered = try_lower_mediump_var(var, modes, NULL) || any_lowered;
       }
    }
    if (!any_lowered)
@@ -550,9 +553,50 @@ nir_lower_mediump_vars(nir_shader *shader, nir_variable_mode modes)
    bool progress = false;
 
    if (modes & ~nir_var_function_temp) {
-      nir_foreach_variable_in_shader(var, shader) {
-         progress = try_lower_mediump_var(var, modes) || progress;
+      /* Don't lower GLES mediump atomic ops to 16-bit -- no hardware is expecting that. */
+      struct set *no_lower_set = _mesa_pointer_set_create(NULL);
+      nir_foreach_block(block, nir_shader_get_entrypoint(shader)) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            switch (intr->intrinsic) {
+            case nir_intrinsic_deref_atomic_add:
+            case nir_intrinsic_deref_atomic_imin:
+            case nir_intrinsic_deref_atomic_umin:
+            case nir_intrinsic_deref_atomic_imax:
+            case nir_intrinsic_deref_atomic_umax:
+            case nir_intrinsic_deref_atomic_and:
+            case nir_intrinsic_deref_atomic_or:
+            case nir_intrinsic_deref_atomic_xor:
+            case nir_intrinsic_deref_atomic_exchange:
+            case nir_intrinsic_deref_atomic_fadd:
+            case nir_intrinsic_deref_atomic_fmin:
+            case nir_intrinsic_deref_atomic_fmax:
+            case nir_intrinsic_deref_atomic_comp_swap:
+            case nir_intrinsic_deref_atomic_fcomp_swap: {
+               nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+               nir_variable *var = nir_deref_instr_get_variable(deref);
+
+               /* If we have atomic derefs that we can't track, then don't lower any mediump.  */
+               if (!var)
+                  return false;
+
+               _mesa_set_add(no_lower_set, var);
+               break;
+            }
+
+            default:
+               break;
+            }
+         }
       }
+
+      nir_foreach_variable_in_shader(var, shader) {
+         progress = try_lower_mediump_var(var, modes, no_lower_set) || progress;
+      }
+
+      ralloc_free(no_lower_set);
    }
 
    nir_foreach_function(function, shader) {
