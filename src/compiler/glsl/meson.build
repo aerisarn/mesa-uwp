@@ -172,7 +172,6 @@ files_libglsl = files(
   'lower_vec_index_to_swizzle.cpp',
   'lower_vector_derefs.cpp',
   'lower_vector_insert.cpp',
-  'lower_output_reads.cpp',
   'opt_algebraic.cpp',
   'opt_array_splitting.cpp',
   'opt_constant_folding.cpp',
