@@ -83,18 +83,25 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
       const VkSubmitInfo *submit_batch;
       const VkBindSparseInfo *bind_sparse_batch;
    } u;
-   const VkSemaphore *wait_sems;
    uint32_t wait_count;
+   uint32_t signal_count;
+   const VkSemaphore *wait_sems;
+   const VkSemaphore *signal_sems;
+
    switch (submit->batch_type) {
    case VK_STRUCTURE_TYPE_SUBMIT_INFO:
       u.submit_batch = &submit->submit_batches[batch_index];
-      wait_sems = u.submit_batch->pWaitSemaphores;
       wait_count = u.submit_batch->waitSemaphoreCount;
+      wait_sems = u.submit_batch->pWaitSemaphores;
+      signal_count = u.submit_batch->signalSemaphoreCount;
+      signal_sems = u.submit_batch->pSignalSemaphores;
       break;
    case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
       u.bind_sparse_batch = &submit->bind_sparse_batches[batch_index];
-      wait_sems = u.bind_sparse_batch->pWaitSemaphores;
       wait_count = u.bind_sparse_batch->waitSemaphoreCount;
+      wait_sems = u.bind_sparse_batch->pWaitSemaphores;
+      signal_count = u.bind_sparse_batch->signalSemaphoreCount;
+      signal_sems = u.bind_sparse_batch->pSignalSemaphores;
       break;
    default:
       unreachable("unexpected batch type");
@@ -129,6 +136,13 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
       }
    }
 
+   for (uint32_t i = 0; i < signal_count; i++) {
+      struct vn_semaphore *sem = vn_semaphore_from_handle(signal_sems[i]);
+
+      /* see vn_queue_submission_prepare */
+      submit->synchronous |= sem->is_external;
+   }
+
    return VK_SUCCESS;
 }
 
@@ -160,6 +174,7 @@ vn_queue_submission_prepare(struct vn_queue_submission *submit)
     * any of the below applies:
     * - struct wsi_memory_signal_submit_info
     * - fence is an external fence
+    * - has an external signal semaphore
     */
    submit->synchronous = has_external_fence || submit->wsi_mem;
 
@@ -1104,6 +1119,10 @@ vn_CreateSemaphore(VkDevice device,
    } else {
       sem->type = VK_SEMAPHORE_TYPE_BINARY;
    }
+
+   const struct VkExportSemaphoreCreateInfo *export_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO);
+   sem->is_external = export_info && export_info->handleTypes;
 
    VkResult result = vn_semaphore_init_payloads(dev, sem, initial_val, alloc);
    if (result != VK_SUCCESS) {
