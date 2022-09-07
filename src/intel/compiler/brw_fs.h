@@ -112,7 +112,7 @@ struct tcs_thread_payload : public thread_payload {
 };
 
 struct tes_thread_payload : public thread_payload {
-   tes_thread_payload();
+   tes_thread_payload(const fs_visitor &v);
 
    fs_reg patch_urb_input;
    fs_reg primitive_id;

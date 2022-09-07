@@ -77,20 +77,26 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
    }
 }
 
-tes_thread_payload::tes_thread_payload()
+tes_thread_payload::tes_thread_payload(const fs_visitor &v)
 {
+   unsigned r = 0;
+
    /* R0: Thread Header. */
    patch_urb_input = retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
    primitive_id = brw_vec1_grf(0, 1);
+   r += reg_unit(v.devinfo);
 
    /* R1-3: gl_TessCoord.xyz. */
-   for (unsigned i = 0; i < 3; i++)
-      coords[i] = brw_vec8_grf(1 + i, 0);
+   for (unsigned i = 0; i < 3; i++) {
+      coords[i] = brw_vec8_grf(r, 0);
+      r += reg_unit(v.devinfo);
+   }
 
    /* R4: URB output handles. */
-   urb_output = brw_ud8_grf(4, 0);
+   urb_output = brw_ud8_grf(r, 0);
+   r += reg_unit(v.devinfo);
 
-   num_regs = 5;
+   num_regs = r;
 }
 
 gs_thread_payload::gs_thread_payload(const fs_visitor &v)

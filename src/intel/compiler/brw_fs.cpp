@@ -7145,7 +7145,7 @@ fs_visitor::run_tes()
 {
    assert(stage == MESA_SHADER_TESS_EVAL);
 
-   payload_ = new tes_thread_payload();
+   payload_ = new tes_thread_payload(*this);
 
    emit_nir_code();
 
