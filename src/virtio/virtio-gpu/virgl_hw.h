@@ -343,8 +343,13 @@ enum virgl_formats {
    VIRGL_FORMAT_A8L8_SNORM              = 260,
    VIRGL_FORMAT_A8L8_SRGB               = 261,
 
-   VIRGL_FORMAT_X8B8G8R8_SNORM          = 268,
+   VIRGL_FORMAT_A1B5G5R5_UNORM          = 262,
+   VIRGL_FORMAT_A1R5G5B5_UNORM          = 263,
+   VIRGL_FORMAT_A2B10G10R10_UNORM       = 264,
+   VIRGL_FORMAT_A2R10G10B10_UNORM       = 265,
+   VIRGL_FORMAT_A4R4G4B4_UNORM          = 266,
 
+   VIRGL_FORMAT_X8B8G8R8_SNORM          = 268,
 
    /* etc2 compressed */
    VIRGL_FORMAT_ETC2_RGB8               = 269,
@@ -393,6 +398,17 @@ enum virgl_formats {
 
    VIRGL_FORMAT_R8_SRGB                 = 312,
    VIRGL_FORMAT_R8G8_SRGB               = 313,
+
+   VIRGL_FORMAT_P010                    = 314,
+   VIRGL_FORMAT_P012                    = 315,
+   VIRGL_FORMAT_P016                    = 316,
+
+   VIRGL_FORMAT_B8G8R8_UNORM            = 317,
+   VIRGL_FORMAT_R3G3B2_UNORM            = 318,
+   VIRGL_FORMAT_R4G4B4A4_UNORM          = 319,
+   VIRGL_FORMAT_R5G5B5A1_UNORM          = 320,
+   VIRGL_FORMAT_R5G6B5_UNORM            = 321,
+
    VIRGL_FORMAT_MAX /* = PIPE_FORMAT_COUNT */,
 
    /* Below formats must not be used in the guest. */
