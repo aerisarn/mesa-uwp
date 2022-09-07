@@ -346,7 +346,7 @@ tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples,
                                           .msaa_disable = msaa_disable));
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_MSAA_CNTL(samples));
+                   A6XX_RB_BLIT_GMEM_MSAA_CNTL(samples));
 }
 
 static void

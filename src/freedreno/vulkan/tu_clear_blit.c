@@ -2944,7 +2944,7 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (!attachment->clear_mask)
       return;
 
-   tu_cs_emit_regs(cs, A6XX_RB_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
+   tu_cs_emit_regs(cs, A6XX_RB_BLIT_GMEM_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
    tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask, value);
 }
@@ -2958,7 +2958,7 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
              bool separate_stencil)
 {
    tu_cs_emit_regs(cs,
-                   A6XX_RB_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
+                   A6XX_RB_BLIT_GMEM_MSAA_CNTL(tu_msaa_samples(attachment->samples)));
 
    tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(
       .unk0 = !resolve,
