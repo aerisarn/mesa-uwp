@@ -208,18 +208,18 @@ dgc_emit(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *value)
                           .base = offsetof(struct radv_dgc_params, field), .range = 4)
 
 #define load_param16(b, field)                                                                     \
-   nir_ubfe(                                                                                       \
+   nir_ubfe_imm(                                                                                   \
       (b),                                                                                         \
       nir_load_push_constant((b), 1, 32, nir_imm_int((b), 0),                                      \
                              .base = (offsetof(struct radv_dgc_params, field) & ~3), .range = 4),  \
-      nir_imm_int((b), (offsetof(struct radv_dgc_params, field) & 2) * 8), nir_imm_int((b), 16))
+      (offsetof(struct radv_dgc_params, field) & 2) * 8, 16)
 
 #define load_param8(b, field)                                                                      \
-   nir_ubfe(                                                                                       \
+   nir_ubfe_imm(                                                                                   \
       (b),                                                                                         \
       nir_load_push_constant((b), 1, 32, nir_imm_int((b), 0),                                      \
                              .base = (offsetof(struct radv_dgc_params, field) & ~3), .range = 4),  \
-      nir_imm_int((b), (offsetof(struct radv_dgc_params, field) & 3) * 8), nir_imm_int((b), 8))
+      (offsetof(struct radv_dgc_params, field) & 3) * 8, 8)
 
 #define load_param64(b, field)                                                                     \
    nir_pack_64_2x32((b), nir_load_push_constant((b), 2, 32, nir_imm_int((b), 0),                   \
@@ -422,8 +422,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
                nir_ssa_def *dyn_stride = nir_test_mask(&b, nir_channel(&b, vbo_over_data, 0), DGC_DYNAMIC_STRIDE);
                nir_ssa_def *old_stride =
-                  nir_ubfe(&b, nir_channel(&b, nir_load_var(&b, vbo_data), 1), nir_imm_int(&b, 16),
-                           nir_imm_int(&b, 14));
+                  nir_ubfe_imm(&b, nir_channel(&b, nir_load_var(&b, vbo_data), 1), 16, 14);
                stride = nir_bcsel(&b, dyn_stride, stride, old_stride);
 
                nir_ssa_def *use_per_attribute_vb_descs =
@@ -434,11 +433,10 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
                nir_push_if(&b, use_per_attribute_vb_descs);
                {
-                  nir_ssa_def *attrib_end = nir_ubfe(&b, nir_channel(&b, vbo_over_data, 1),
-                                                     nir_imm_int(&b, 16), nir_imm_int(&b, 16));
+                  nir_ssa_def *attrib_end = nir_ubfe_imm(&b, nir_channel(&b, vbo_over_data, 1), 16,
+                                                         16);
                   nir_ssa_def *attrib_index_offset =
-                     nir_ubfe(&b, nir_channel(&b, vbo_over_data, 1), nir_imm_int(&b, 0),
-                              nir_imm_int(&b, 16));
+                     nir_ubfe_imm(&b, nir_channel(&b, vbo_over_data, 1), 0, 16);
 
                   nir_push_if(&b, nir_ult(&b, nir_load_var(&b, num_records), attrib_end));
                   {
@@ -621,8 +619,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
             nir_pop_if(&b, NULL);
 
             nir_ssa_def *reg_info = nir_load_ssbo(&b, 3, 32, param_buf, nir_iadd(&b, param_offset, nir_imul_imm(&b, cur_shader_idx, 12)), .align_mul = 4);
-            nir_ssa_def *upload_sgpr = nir_ubfe(&b, nir_channel(&b, reg_info, 0), nir_imm_int(&b, 0), nir_imm_int(&b, 16));
-            nir_ssa_def *inline_sgpr = nir_ubfe(&b, nir_channel(&b, reg_info, 0), nir_imm_int(&b, 16), nir_imm_int(&b, 16));
+            nir_ssa_def *upload_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 0, 16);
+            nir_ssa_def *inline_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 16, 16);
             nir_ssa_def *inline_mask = nir_pack_64_2x32(&b, nir_channels(&b, reg_info, 0x6));
 
             nir_push_if(&b, nir_ine_imm(&b, upload_sgpr, 0));
