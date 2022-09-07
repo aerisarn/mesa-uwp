@@ -100,8 +100,14 @@ static struct tu_submission_data *
 create_submission_data(struct tu_device *dev, struct tu_autotune *at,
                        uint32_t fence)
 {
-   struct tu_submission_data *submission_data =
-      calloc(1, sizeof(struct tu_submission_data));
+   struct tu_submission_data *submission_data = NULL;
+   if (!list_is_empty(&at->submission_data_pool)) {
+      submission_data = list_first_entry(&at->submission_data_pool,
+                                         struct tu_submission_data, node);
+      list_del(&submission_data->node);
+   } else {
+      submission_data = calloc(1, sizeof(struct tu_submission_data));
+   }
    submission_data->fence = fence;
 
    struct tu_cs* fence_cs = &submission_data->fence_cs;
@@ -118,6 +124,15 @@ create_submission_data(struct tu_device *dev, struct tu_autotune *at,
    list_addtail(&submission_data->node, &at->pending_submission_data);
 
    return submission_data;
+}
+
+static void
+finish_submission_data(struct tu_autotune *at,
+                       struct tu_submission_data *data)
+{
+   list_del(&data->node);
+   list_addtail(&data->node, &at->submission_data_pool);
+   tu_cs_reset(&data->fence_cs);
 }
 
 static void
@@ -265,7 +280,7 @@ process_results(struct tu_autotune *at, uint32_t current_fence)
       if (fence_before(current_fence, submission_data->fence))
          break;
 
-      free_submission_data(submission_data);
+      finish_submission_data(at, submission_data);
    }
 }
 
@@ -396,6 +411,7 @@ tu_autotune_init(struct tu_autotune *at, struct tu_device *dev)
 
    list_inithead(&at->pending_results);
    list_inithead(&at->pending_submission_data);
+   list_inithead(&at->submission_data_pool);
 
    /* start from 1 because tu6_global::autotune_fence is initialized to 0 */
    at->fence_counter = 1;
@@ -431,6 +447,11 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
 
    list_for_each_entry_safe(struct tu_submission_data, submission_data,
                             &at->pending_submission_data, node) {
+      free_submission_data(submission_data);
+   }
+
+   list_for_each_entry_safe(struct tu_submission_data, submission_data,
+                            &at->submission_data_pool, node) {
       free_submission_data(submission_data);
    }
 
