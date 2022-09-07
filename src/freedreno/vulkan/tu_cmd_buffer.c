@@ -282,11 +282,16 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
           *
           * This means that with dynamic rendering, pipelines may write to
           * some attachments that are UNUSED here. Setting the format to 0
-          * here should prevent them from writing to anything.
+          * here should prevent them from writing to anything. This also seems
+          * to also be required for alpha-to-coverage which can use the alpha
+          * value for an otherwise-unused attachment.
           */
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
          for (unsigned i = 0; i < 6; i++)
             tu_cs_emit(cs, 0);
+
+         tu_cs_emit_regs(cs,
+                         A6XX_SP_FS_MRT_REG(i, .dword = 0));
          continue;
       }
 
