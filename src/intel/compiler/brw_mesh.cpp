@@ -246,6 +246,7 @@ brw_compile_task(const struct brw_compiler *compiler,
 
    nir_lower_task_shader_options lower_ts_opt = {
       .payload_to_shared_for_atomics = true,
+      .payload_to_shared_for_small_types = true,
    };
    NIR_PASS(_, nir, nir_lower_task_shader, lower_ts_opt);
 
