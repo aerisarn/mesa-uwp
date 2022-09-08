@@ -1919,6 +1919,10 @@ enum PACKED xe2_lsc_cache_store {
 
 };
 
+#define LSC_CACHE(devinfo, l_or_s, cc)                                  \
+   ((devinfo)->ver < 20 ? (unsigned)LSC_CACHE_ ## l_or_s ## _ ## cc :   \
+                          (unsigned)XE2_LSC_CACHE_ ## l_or_s ## _ ## cc)
+
 /*
  * Specifies which components of the data payload 4-element vector (X,Y,Z,W) is
  * packed into the register payload.

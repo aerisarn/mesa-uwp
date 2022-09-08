@@ -2091,7 +2091,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 1 /* num_coordinates */,
                                 LSC_DATA_SIZE_D32, arg.ud /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                LSC_CACHE(devinfo, STORE, L1STATE_L3MOCS),
                                 false /* has_dest */);
       break;
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL: {
@@ -2108,7 +2108,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 lsc_bits_to_data_size(dst_sz * 8),
                                 1 /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3WB,
+                                LSC_CACHE(devinfo, STORE, L1UC_L3WB),
                                 !inst->dst.is_null());
       break;
    }
@@ -2129,7 +2129,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 lsc_bits_to_data_size(arg.ud),
                                 1 /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                LSC_CACHE(devinfo, STORE, L1STATE_L3MOCS),
                                 false /* has_dest */);
       break;
    default:
@@ -2401,7 +2401,7 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                 1 /* num_coordinates */,
                                 LSC_DATA_SIZE_D32, arg /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                LSC_CACHE(devinfo, STORE, L1STATE_L3MOCS),
                                 false /* has_dest */);
       break;
    case SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL:
@@ -2421,7 +2421,7 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                 lsc_bits_to_data_size(arg),
                                 1 /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1STATE_L3MOCS,
+                                LSC_CACHE(devinfo, STORE, L1STATE_L3MOCS),
                                 false /* has_dest */);
       break;
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL: {
@@ -2437,7 +2437,7 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
                                 lsc_bits_to_data_size(dst_sz * 8),
                                 1 /* num_channels */,
                                 false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3WB,
+                                LSC_CACHE(devinfo, STORE, L1UC_L3WB),
                                 !inst->dst.is_null());
       break;
    }
