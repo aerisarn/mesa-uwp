@@ -4815,22 +4815,50 @@ static VkResult
 radv_sparse_buffer_bind_memory(struct radv_device *device, const VkSparseBufferMemoryBindInfo *bind)
 {
    RADV_FROM_HANDLE(radv_buffer, buffer, bind->buffer);
-   VkResult result;
+   VkResult result = VK_SUCCESS;
 
+   struct radv_device_memory *mem = NULL;
+   VkDeviceSize resourceOffset = 0;
+   VkDeviceSize size = 0;
+   VkDeviceSize memoryOffset = 0;
    for (uint32_t i = 0; i < bind->bindCount; ++i) {
-      struct radv_device_memory *mem = NULL;
+      struct radv_device_memory *cur_mem = NULL;
 
       if (bind->pBinds[i].memory != VK_NULL_HANDLE)
-         mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
-
+         cur_mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
+      if (i && mem == cur_mem) {
+         if (mem) {
+            if (bind->pBinds[i].resourceOffset == resourceOffset + size &&
+                bind->pBinds[i].memoryOffset == memoryOffset + size) {
+               size += bind->pBinds[i].size;
+               continue;
+            }
+         } else {
+            if (bind->pBinds[i].resourceOffset == resourceOffset + size) {
+               size += bind->pBinds[i].size;
+               continue;
+            }
+         }
+      }
+      if (size) {
+         result = device->ws->buffer_virtual_bind(device->ws, buffer->bo,
+                                                  resourceOffset, size,
+                                                  mem ? mem->bo : NULL, memoryOffset);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+      mem = cur_mem;
+      resourceOffset = bind->pBinds[i].resourceOffset;
+      size = bind->pBinds[i].size;
+      memoryOffset = bind->pBinds[i].memoryOffset;
+   }
+   if (size) {
       result = device->ws->buffer_virtual_bind(device->ws, buffer->bo,
-                                               bind->pBinds[i].resourceOffset, bind->pBinds[i].size,
-                                               mem ? mem->bo : NULL, bind->pBinds[i].memoryOffset);
-      if (result != VK_SUCCESS)
-         return result;
+                                               resourceOffset, size,
+                                               mem ? mem->bo : NULL, memoryOffset);
    }
 
-   return VK_SUCCESS;
+   return result;
 }
 
 static VkResult
