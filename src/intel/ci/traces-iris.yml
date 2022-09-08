@@ -946,17 +946,17 @@ traces:
       checksum: 884096b6dd40e2f500d0837501287fac
   unvanquished/unvanquished-ultra.trace:
     gl-intel-apl:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
     gl-intel-glx:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
     gl-intel-amly:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
     gl-intel-kbl:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
     gl-intel-whl:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
     gl-intel-cml:
-      checksum: 1d26347f1fa65efc0159aaede416b6db
+      checksum: c4ff3894eaf7fb4b3632fd46e50b0128
   warzone2100/warzone2100-default.trace:
     gl-intel-apl:
       checksum: ceeba6125a74145fc7ab38157239f6f5
