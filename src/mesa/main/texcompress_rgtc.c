@@ -60,15 +60,15 @@ static void extractsrc_u( GLubyte srcpixels[4][4], const GLubyte *srcaddr,
    }
 }
 
-static void extractsrc_s( GLbyte srcpixels[4][4], const GLfloat *srcaddr,
+static void extractsrc_s( GLbyte srcpixels[4][4], const GLbyte *srcaddr,
 			  GLint srcRowStride, GLint numxpixels, GLint numypixels, GLint comps)
 {
    GLubyte i, j;
-   const GLfloat *curaddr;
+   const GLbyte *curaddr;
    for (j = 0; j < numypixels; j++) {
       curaddr = srcaddr + j * srcRowStride * comps;
       for (i = 0; i < numxpixels; i++) {
-         srcpixels[j][i] = FLOAT_TO_BYTE_TEX(*curaddr);
+         srcpixels[j][i] = *curaddr;
          curaddr += comps;
       }
    }
@@ -132,26 +132,26 @@ GLboolean
 _mesa_texstore_signed_red_rgtc1(TEXSTORE_PARAMS)
 {
    GLbyte *dst;
-   const GLfloat *tempImage = NULL;
+   const GLbyte *tempImage = NULL;
    int i, j;
    int numxpixels, numypixels;
-   const GLfloat *srcaddr;
+   const GLbyte *srcaddr;
    GLbyte srcpixels[4][4];
    GLbyte *blkaddr;
    GLint dstRowDiff, redRowStride;
-   GLfloat *tempImageSlices[1];
+   GLbyte *tempImageSlices[1];
 
    assert(dstFormat == MESA_FORMAT_R_RGTC1_SNORM ||
           dstFormat == MESA_FORMAT_L_LATC1_SNORM);
 
-   redRowStride = 1 * srcWidth * sizeof(GLfloat);
-   tempImage = malloc(srcWidth * srcHeight * 1 * sizeof(GLfloat));
+   redRowStride = 1 * srcWidth * sizeof(GLbyte);
+   tempImage = malloc(srcWidth * srcHeight * 1 * sizeof(GLbyte));
    if (!tempImage)
       return GL_FALSE; /* out of memory */
-   tempImageSlices[0] = (GLfloat *) tempImage;
+   tempImageSlices[0] = (GLbyte *) tempImage;
    _mesa_texstore(ctx, dims,
                   baseInternalFormat,
-                  MESA_FORMAT_R_FLOAT32,
+                  MESA_FORMAT_R_SNORM8,
                   redRowStride, (GLubyte **)tempImageSlices,
                   srcWidth, srcHeight, srcDepth,
                   srcFormat, srcType, srcAddr,
@@ -250,29 +250,29 @@ GLboolean
 _mesa_texstore_signed_rg_rgtc2(TEXSTORE_PARAMS)
 {
    GLbyte *dst;
-   const GLfloat *tempImage = NULL;
+   const GLbyte *tempImage = NULL;
    int i, j;
    int numxpixels, numypixels;
-   const GLfloat *srcaddr;
+   const GLbyte *srcaddr;
    GLbyte srcpixels[4][4];
    GLbyte *blkaddr;
    GLint dstRowDiff, rgRowStride;
    mesa_format tempFormat;
-   GLfloat *tempImageSlices[1];
+   GLbyte *tempImageSlices[1];
 
    assert(dstFormat == MESA_FORMAT_RG_RGTC2_SNORM ||
           dstFormat == MESA_FORMAT_LA_LATC2_SNORM);
 
    if (baseInternalFormat == GL_RG)
-      tempFormat = MESA_FORMAT_RG_FLOAT32;
+      tempFormat = MESA_FORMAT_RG_SNORM8;
    else
-      tempFormat = MESA_FORMAT_LA_FLOAT32;
+      tempFormat = MESA_FORMAT_LA_SNORM8;
 
-   rgRowStride = 2 * srcWidth * sizeof(GLfloat);
-   tempImage = malloc(srcWidth * srcHeight * 2 * sizeof(GLfloat));
+   rgRowStride = 2 * srcWidth * sizeof(GLbyte);
+   tempImage = malloc(srcWidth * srcHeight * 2 * sizeof(GLbyte));
    if (!tempImage)
       return GL_FALSE; /* out of memory */
-   tempImageSlices[0] = (GLfloat *) tempImage;
+   tempImageSlices[0] = (GLbyte *) tempImage;
    _mesa_texstore(ctx, dims,
                   baseInternalFormat,
                   tempFormat,
