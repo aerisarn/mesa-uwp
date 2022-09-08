@@ -264,16 +264,18 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
     *   and copy-propagated
     */
 
-   static const struct nir_lower_tex_options lower_tex_options = {
+   const struct nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0u,
       .lower_txs_cube_array = true,
       .lower_invalid_implicit_lod = true,
       .lower_tg4_offsets = true,
+      .lower_to_fragment_fetch_amd = sscreen->info.gfx_level < GFX11,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
-   static const struct nir_lower_image_options lower_image_options = {
+   const struct nir_lower_image_options lower_image_options = {
       .lower_cube_size = true,
+      .lower_to_fragment_mask_load_amd = sscreen->info.gfx_level < GFX11,
    };
    NIR_PASS_V(nir, nir_lower_image, &lower_image_options);
 
