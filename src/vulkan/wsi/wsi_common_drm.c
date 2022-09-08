@@ -392,6 +392,12 @@ wsi_configure_native_image(const struct wsi_swapchain *chain,
             __vk_append_struct(&format_info, &format_list);
          }
 
+         struct wsi_image_create_info wsi_info = (struct wsi_image_create_info) {
+            .sType = VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
+            .pNext = NULL,
+         };
+         __vk_append_struct(&format_info, &wsi_info);
+
          VkImageFormatProperties2 format_props = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
             .pNext = NULL,
