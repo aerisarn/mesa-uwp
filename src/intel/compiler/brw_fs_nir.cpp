@@ -2698,21 +2698,22 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
 {
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
    const nir_src &vertex_src = instr->src[0];
+   const unsigned grf_size_bytes = REG_SIZE * reg_unit(devinfo);
 
    const fs_reg start = tcs_payload().icp_handle_start;
 
    if (nir_src_is_const(vertex_src))
-      return byte_offset(start, nir_src_as_uint(vertex_src) * REG_SIZE);
+      return byte_offset(start, nir_src_as_uint(vertex_src) * grf_size_bytes);
 
    /* The vertex index is non-constant.  We need to use indirect
     * addressing to fetch the proper URB handle.
     *
-    * First, we start with the sequence <7, 6, 5, 4, 3, 2, 1, 0>
-    * indicating that channel <n> should read the handle from
-    * DWord <n>.  We convert that to bytes by multiplying by 4.
+    * First, we start with the sequence indicating that channel <n>
+    * should read the handle from DWord <n>.  We convert that to bytes
+    * by multiplying by 4.
     *
     * Next, we convert the vertex index to bytes by multiplying
-    * by 32 (shifting by 5), and add the two together.  This is
+    * by the GRF size (by shifting), and add the two together.  This is
     * the final indirect byte offset.
     */
    fs_reg icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
@@ -2721,12 +2722,13 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
    fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
    fs_reg icp_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
 
-   /* channel_offsets = 4 * sequence = <28, 24, 20, 16, 12, 8, 4, 0> */
+   /* Offsets will be 0, 4, 8, ... */
    bld.SHL(channel_offsets, sequence, brw_imm_ud(2u));
    /* Convert vertex_index to bytes (multiply by 32) */
+   assert(util_is_power_of_two_nonzero(grf_size_bytes)); /* for ffs() */
    bld.SHL(vertex_offset_bytes,
            retype(get_nir_src(vertex_src), BRW_REGISTER_TYPE_UD),
-           brw_imm_ud(5u));
+           brw_imm_ud(ffs(grf_size_bytes) - 1));
    bld.ADD(icp_offset_bytes, vertex_offset_bytes, channel_offsets);
 
    /* Use start of ICP handles as the base offset.  There is one register
@@ -2735,8 +2737,8 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
     */
    bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
             icp_offset_bytes,
-            brw_imm_ud(brw_tcs_prog_key_input_vertices(tcs_key) * REG_SIZE *
-                       reg_unit(devinfo)));
+            brw_imm_ud(brw_tcs_prog_key_input_vertices(tcs_key) *
+                       grf_size_bytes));
 
    return icp_handle;
 }
