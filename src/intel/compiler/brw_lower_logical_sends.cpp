@@ -86,7 +86,6 @@ lower_urb_read_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
 
    /* Get the logical send arguments. */
    const fs_reg handle = inst->src[URB_LOGICAL_SRC_HANDLE];
-   const fs_reg dst = inst->dst;
 
    /* Calculate the total number of components of the payload. */
    const unsigned dst_comps = inst->size_written / (REG_SIZE * reg_unit(devinfo));
@@ -96,121 +95,48 @@ lower_urb_read_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
    bld.MOV(payload, handle);
 
    /* The low 24-bits of the URB handle is a byte offset into the URB area.
-    * Add the offset of the write to this value.
-    *
-    * FINISHME: What units is inst->offset? vec4, right?
+    * Add the (OWord) offset of the write to this value.
     */
    if (inst->offset) {
       bld.ADD(payload, payload, brw_imm_ud(inst->offset * 16));
       inst->offset = 0;
    }
 
-   if (inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) {
-      fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
-      fs_reg payload1 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      fs_reg tmp_dst = bld.vgrf(BRW_REGISTER_TYPE_UD);
-
-      for (unsigned i = 1; i < dst_comps; i++) {
-         bld.ADD(payload1, payload, offset(offsets, bld, i - 1));
-
-         fs_inst *send = bld.emit(SHADER_OPCODE_SEND,
-                                  bld.null_reg_ud(),
-                                  brw_imm_ud(0) /* desc */,
-                                  brw_imm_ud(0) /* ex_desc */,
-                                  brw_vec8_grf(0, 0) /* payload */);
-
-         bld.MOV(offset(dst, bld, i - 1), tmp_dst);
-
-         send->sfid = BRW_SFID_URB;
-
-         send->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, send->exec_size,
-                                   LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                   1 /* num_coordinates */,
-                                   LSC_DATA_SIZE_D32, 1 /* num_channels */,
-                                   false /* transpose */,
-                                   LSC_CACHE_STORE_L1UC_L3UC,
-                                   false /* has_dest */);
-
-         send->mlen = lsc_msg_desc_src0_len(devinfo, send->desc);
-         send->ex_mlen = 0;
-         send->header_size = 0;
-         send->send_has_side_effects = false;
-         send->send_is_volatile = true;
-
-         send->resize_sources(4);
-
-         send->dst = tmp_dst;
-         send->src[0] = brw_imm_ud(0);
-         send->src[1] = brw_imm_ud(0);
-
-         send->src[2] = payload1;
-         send->src[3] = brw_null_reg();
-      }
-
-      bld.ADD(payload1, payload, offset(offsets, bld, dst_comps - 1));
-
-      /* Insert the MOV after the send because it reads the register written
-       * by the send.
-       */
-      bld.at(NULL, inst->next).MOV(offset(dst, bld, dst_comps - 1), tmp_dst);
-
-      inst->sfid = BRW_SFID_URB;
-
-      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
-                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                1 /* num_coordinates */,
-                                LSC_DATA_SIZE_D32, 1 /* num_channels */,
-                                false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3UC,
-                                false /* has_dest */);
-
-
-      /* Update the original instruction. */
-      inst->opcode = SHADER_OPCODE_SEND;
-      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
-      inst->ex_mlen = 0;
-      inst->header_size = 0;
-      inst->send_has_side_effects = false;
-      inst->send_is_volatile = true;
-
-      inst->resize_sources(4);
-
-      inst->dst = tmp_dst;
-      inst->src[0] = brw_imm_ud(0);
-      inst->src[1] = brw_imm_ud(0);
-
-      inst->src[2] = payload1;
-      inst->src[3] = brw_null_reg();
-   } else {
-      inst->sfid = BRW_SFID_URB;
-
-      assert((dst_comps >= 1 && dst_comps <= 4) || dst_comps == 8);
-
-      inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
-                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                1 /* num_coordinates */,
-                                LSC_DATA_SIZE_D32, dst_comps /* num_channels */,
-                                false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3UC,
-                                false /* has_dest */);
-
-
-      /* Update the original instruction. */
-      inst->opcode = SHADER_OPCODE_SEND;
-      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
-      inst->ex_mlen = 0;
-      inst->header_size = 0;
-      inst->send_has_side_effects = true;
-      inst->send_is_volatile = false;
-
-      inst->resize_sources(4);
-
-      inst->src[0] = brw_imm_ud(0);
-      inst->src[1] = brw_imm_ud(0);
-
-      inst->src[2] = payload;
-      inst->src[3] = brw_null_reg();
+   fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
+   if (offsets.file != BAD_FILE) {
+      fs_reg offsets_B = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.SHL(offsets_B, offsets, brw_imm_ud(4)); /* OWords -> Bytes */
+      bld.ADD(payload, payload, offsets_B);
    }
+
+   inst->sfid = BRW_SFID_URB;
+
+   assert((dst_comps >= 1 && dst_comps <= 4) || dst_comps == 8);
+
+   inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
+                             LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
+                             1 /* num_coordinates */,
+                             LSC_DATA_SIZE_D32, dst_comps /* num_channels */,
+                             false /* transpose */,
+                             LSC_CACHE(devinfo, STORE, L1UC_L3UC),
+                             false /* has_dest */);
+
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+   inst->ex_mlen = 0;
+   inst->header_size = 0;
+   inst->send_has_side_effects = true;
+   inst->send_is_volatile = false;
+
+   inst->resize_sources(4);
+
+   inst->src[0] = brw_imm_ud(0);
+   inst->src[1] = brw_imm_ud(0);
+
+   inst->src[2] = payload;
+   inst->src[3] = brw_null_reg();
 }
 
 static void
@@ -285,130 +211,59 @@ lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
    bld.MOV(payload, handle);
 
    /* The low 24-bits of the URB handle is a byte offset into the URB area.
-    * Add the offset of the write to this value.
-    *
-    * FINISHME: What units is inst->offset? vec4, right?
+    * Add the (OWord) offset of the write to this value.
     */
    if (inst->offset) {
       bld.ADD(payload, payload, brw_imm_ud(inst->offset * 16));
       inst->offset = 0;
    }
 
-   if (inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS].file != BAD_FILE) {
-      /* FINISHME: This is not yet implemented. */
-      assert(inst->src[URB_LOGICAL_SRC_CHANNEL_MASK].file == BAD_FILE);
-
-      fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
-      fs_reg payload1 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      fs_reg payload2 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-
-      for (unsigned i = 1; i < src_comps; i++) {
-         bld.MOV(payload2, offset(src, bld, i - 1));
-         bld.ADD(payload1, payload, offset(offsets, bld, i - 1));
-
-         fs_inst *send = bld.emit(SHADER_OPCODE_SEND,
-                                  bld.null_reg_ud(),
-                                  brw_imm_ud(0) /* desc */,
-                                  brw_imm_ud(0) /* ex_desc */,
-                                  brw_vec8_grf(0, 0) /* payload */);
-
-         const unsigned ex_mlen = (src_sz * inst->exec_size) / REG_SIZE;
-
-         send->sfid = BRW_SFID_URB;
-
-         send->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, send->exec_size,
-                                   LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                   1 /* num_coordinates */,
-                                   LSC_DATA_SIZE_D32, 1 /* num_channels */,
-                                   false /* transpose */,
-                                   LSC_CACHE_STORE_L1UC_L3UC,
-                                   false /* has_dest */);
-
-         send->mlen = lsc_msg_desc_src0_len(devinfo, send->desc);
-         send->ex_mlen = ex_mlen;
-         send->header_size = 0;
-         send->send_has_side_effects = true;
-         send->send_is_volatile = false;
-
-         send->resize_sources(4);
-
-         send->src[0] = brw_imm_ud(0);
-         send->src[1] = brw_imm_ud(0);
-
-         send->src[2] = payload1;
-         send->src[3] = payload2;
-      }
-
-      bld.MOV(payload2, offset(src, bld, src_comps - 1));
-      bld.ADD(payload1, payload, offset(offsets, bld, src_comps - 1));
-      const unsigned ex_mlen = (src_sz * inst->exec_size) / REG_SIZE;
-
-      inst->sfid = BRW_SFID_URB;
-
-      inst->desc = lsc_msg_desc(devinfo, LSC_OP_STORE, inst->exec_size,
-                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                1 /* num_coordinates */,
-                                LSC_DATA_SIZE_D32, 1 /* num_channels */,
-                                false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3UC,
-                                false /* has_dest */);
-
-
-      /* Update the original instruction. */
-      inst->opcode = SHADER_OPCODE_SEND;
-      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
-      inst->ex_mlen = ex_mlen;
-      inst->header_size = 0;
-      inst->send_has_side_effects = true;
-      inst->send_is_volatile = false;
-
-      inst->resize_sources(4);
-
-      inst->src[0] = brw_imm_ud(0);
-      inst->src[1] = brw_imm_ud(0);
-
-      inst->src[2] = payload1;
-      inst->src[3] = payload2;
-   } else {
-      const fs_reg cmask = inst->src[URB_LOGICAL_SRC_CHANNEL_MASK];
-      unsigned mask = 0;
-
-      if (cmask.file != BAD_FILE) {
-         assert(cmask.file == IMM);
-         assert(cmask.type == BRW_REGISTER_TYPE_UD);
-         mask = cmask.ud >> 16;
-      }
-
-      fs_reg payload2 = bld.move_to_vgrf(src, src_comps);
-      const unsigned ex_mlen = (src_comps * src_sz * inst->exec_size) / REG_SIZE;
-
-      inst->sfid = BRW_SFID_URB;
-
-      enum lsc_opcode op = mask ? LSC_OP_STORE_CMASK : LSC_OP_STORE;
-      inst->desc = lsc_msg_desc_wcmask(devinfo, op, inst->exec_size,
-                                LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
-                                1 /* num_coordinates */,
-                                LSC_DATA_SIZE_D32, src_comps /* num_channels */,
-                                false /* transpose */,
-                                LSC_CACHE_STORE_L1UC_L3UC,
-                                false /* has_dest */, mask);
-
-      /* Update the original instruction. */
-      inst->opcode = SHADER_OPCODE_SEND;
-      inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
-      inst->ex_mlen = ex_mlen;
-      inst->header_size = 0;
-      inst->send_has_side_effects = true;
-      inst->send_is_volatile = false;
-
-      inst->resize_sources(4);
-
-      inst->src[0] = brw_imm_ud(0);
-      inst->src[1] = brw_imm_ud(0);
-
-      inst->src[2] = payload;
-      inst->src[3] = payload2;
+   fs_reg offsets = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
+   if (offsets.file != BAD_FILE) {
+      fs_reg offsets_B = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.SHL(offsets_B, offsets, brw_imm_ud(4)); /* OWords -> Bytes */
+      bld.ADD(payload, payload, offsets_B);
    }
+
+   const fs_reg cmask = inst->src[URB_LOGICAL_SRC_CHANNEL_MASK];
+   unsigned mask = 0;
+
+   if (cmask.file != BAD_FILE) {
+      assert(cmask.file == IMM);
+      assert(cmask.type == BRW_REGISTER_TYPE_UD);
+      mask = cmask.ud >> 16;
+   }
+
+   fs_reg payload2 = bld.move_to_vgrf(src, src_comps);
+   const unsigned ex_mlen = (src_comps * src_sz * inst->exec_size) / REG_SIZE;
+
+   inst->sfid = BRW_SFID_URB;
+
+   enum lsc_opcode op = mask ? LSC_OP_STORE_CMASK : LSC_OP_STORE;
+   inst->desc = lsc_msg_desc_wcmask(devinfo, op, inst->exec_size,
+                             LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A32,
+                             1 /* num_coordinates */,
+                             LSC_DATA_SIZE_D32, src_comps /* num_channels */,
+                             false /* transpose */,
+                             LSC_CACHE(devinfo, STORE, L1UC_L3UC),
+                             false /* has_dest */, mask);
+
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 0;
+   inst->send_has_side_effects = true;
+   inst->send_is_volatile = false;
+
+   inst->resize_sources(4);
+
+   inst->src[0] = brw_imm_ud(0);
+   inst->src[1] = brw_imm_ud(0);
+
+   inst->src[2] = payload;
+   inst->src[3] = payload2;
 }
 
 static void
