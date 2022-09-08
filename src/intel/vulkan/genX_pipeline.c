@@ -1874,6 +1874,11 @@ static void
 emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
                                    const struct vk_render_pass_state *rp)
 {
+   if (anv_pipeline_is_mesh(pipeline)) {
+      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
+      return;
+   }
+
    const int replication_count =
       anv_pipeline_get_last_vue_prog_data(pipeline)->vue_map.num_pos_slots;
 
