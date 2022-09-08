@@ -691,7 +691,14 @@ sqtt_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
    API_MARKER(BindPipeline, commandBuffer, pipelineBindPoint, _pipeline);
 
-   radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR) {
+      /* RGP seems to expect a compute bind point to detect and report RT pipelines, which makes
+       * sense somehow given that RT shaders are compiled to an unified compute shader.
+       */
+      radv_describe_pipeline_bind(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+   } else {
+      radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
