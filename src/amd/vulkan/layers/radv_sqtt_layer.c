@@ -1160,6 +1160,41 @@ fail:
    return result;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL
+sqtt_CreateRayTracingPipelinesKHR(VkDevice _device, VkDeferredOperationKHR deferredOperation,
+                                  VkPipelineCache pipelineCache, uint32_t count,
+                                  const VkRayTracingPipelineCreateInfoKHR *pCreateInfos,
+                                  const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   VkResult result;
+
+   result = radv_CreateRayTracingPipelinesKHR(_device, deferredOperation, pipelineCache, count,
+                                              pCreateInfos, pAllocator, pPipelines);
+   if (result != VK_SUCCESS)
+      return result;
+
+   for (unsigned i = 0; i < count; i++) {
+      RADV_FROM_HANDLE(radv_pipeline, pipeline, pPipelines[i]);
+
+      if (!pipeline)
+         continue;
+
+      result = radv_register_pipeline(device, pipeline);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+   return VK_SUCCESS;
+
+fail:
+   for (unsigned i = 0; i < count; i++) {
+      sqtt_DestroyPipeline(_device, pPipelines[i], pAllocator);
+      pPipelines[i] = VK_NULL_HANDLE;
+   }
+   return result;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 sqtt_DestroyPipeline(VkDevice _device, VkPipeline _pipeline,
                      const VkAllocationCallbacks *pAllocator)
