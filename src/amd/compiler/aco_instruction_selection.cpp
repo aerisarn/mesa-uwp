@@ -8712,7 +8712,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
        * Otherwise, these two behave the same. */
       Temp dst = get_ssa_temp(ctx, &instr->def);
       bld.pseudo(aco_opcode::p_is_helper, Definition(dst), Operand(exec, bld.lm));
-      ctx->block->kind |= block_kind_needs_lowering;
       ctx->program->needs_exact = true;
       break;
    }
@@ -8778,7 +8777,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
        */
       Temp elected = bld.pseudo(aco_opcode::p_elect, bld.def(bld.lm), Operand(exec, bld.lm));
       emit_wqm(bld, elected, get_ssa_temp(ctx, &instr->def));
-      ctx->block->kind |= block_kind_needs_lowering;
       break;
    }
    case nir_intrinsic_shader_clock: {

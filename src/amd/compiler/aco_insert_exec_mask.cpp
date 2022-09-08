@@ -537,19 +537,6 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
       state = Exact;
    }
 
-   /* if the block doesn't need both, WQM and Exact, we can skip processing the instructions */
-   bool process = (ctx.handle_wqm && (ctx.info[block->index].block_needs & state) !=
-                                        (ctx.info[block->index].block_needs & (WQM | Exact))) ||
-                  block->kind & block_kind_uses_discard || block->kind & block_kind_needs_lowering;
-   if (!process) {
-      std::vector<aco_ptr<Instruction>>::iterator it = std::next(block->instructions.begin(), idx);
-      instructions.insert(instructions.end(),
-                          std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(it),
-                          std::move_iterator<std::vector<aco_ptr<Instruction>>::iterator>(
-                             block->instructions.end()));
-      return;
-   }
-
    Builder bld(ctx.program, &instructions);
 
    for (; idx < block->instructions.size(); idx++) {
