@@ -355,16 +355,18 @@ compute_heap_size()
    uint64_t total_ram = (uint64_t) v3d_simulator_get_mem_size();
 #endif
 
-   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
-    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
+   /* We don't want to burn too much ram with the GPU.  If the user has 4GB
+    * or less, we use at most half.  If they have more than 4GB we limit it
+    * to 3/4 with a max. of 4GB since the GPU cannot address more than that.
     */
-   uint64_t available_ram;
-   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
-      available_ram = total_ram / 2;
+   const uint64_t MAX_HEAP_SIZE = 4ull * 1024ull * 1024ull * 1024ull;
+   uint64_t available;
+   if (total_ram <= MAX_HEAP_SIZE)
+      available = total_ram / 2;
    else
-      available_ram = total_ram * 3 / 4;
+      available = MIN2(MAX_HEAP_SIZE, total_ram * 3 / 4);
 
-   return available_ram;
+   return available;
 }
 
 #if !using_v3d_simulator
