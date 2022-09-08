@@ -209,19 +209,21 @@ svga_buffer_create_host_surface(struct svga_screen *ss,
           */
          sbuf->key.coherent = ss->sws->have_coherent;
 
-         /* Set the persistent bit so if the buffer is to be bound
-          * as constant buffer, we'll access it as raw buffer
-          * instead of copying the content back and forth between the
-          * mapped buffer surface and the constant buffer surface.
-          */
-         sbuf->key.persistent = 1;
+         if (ss->sws->have_gl43) {
+            /* Set the persistent bit so if the buffer is to be bound
+             * as constant buffer, we'll access it as raw buffer
+             * instead of copying the content back and forth between the
+             * mapped buffer surface and the constant buffer surface.
+             */
+            sbuf->key.persistent = 1;
 
-         /* Set the raw views bind flag only if the mapped buffer surface
-          * is not already bound as constant buffer since constant buffer
-          * surface cannot have other bind flags.
-          */
-         if ((bind_flags & PIPE_BIND_CONSTANT_BUFFER) == 0) {
-            sbuf->key.flags |= SVGA3D_SURFACE_BIND_RAW_VIEWS;
+            /* Set the raw views bind flag only if the mapped buffer surface
+             * is not already bound as constant buffer since constant buffer
+             * surface cannot have other bind flags.
+             */
+            if ((bind_flags & PIPE_BIND_CONSTANT_BUFFER) == 0) {
+               sbuf->key.flags |= SVGA3D_SURFACE_BIND_RAW_VIEWS;
+            }
          }
       }
 
