@@ -1030,6 +1030,12 @@ enum gl_access_qualifier
     * buffers and sampler buffers).
     */
    ACCESS_USES_FORMAT_AMD = (1 << 10),
+
+   /**
+    * Whether a multi sample image load intrinsic uses sample index extracted
+    * from fragment mask buffer.
+    */
+   ACCESS_FMASK_LOWERED_AMD = (1 << 11),
 };
 
 /**

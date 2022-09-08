@@ -5306,6 +5306,11 @@ typedef struct nir_lower_image_options {
     * If true, lower cube size operations.
     */
    bool lower_cube_size;
+
+   /**
+    * Lower multi sample image load and samples_identical to use fragment_mask_load.
+    */
+   bool lower_to_fragment_mask_load_amd;
 } nir_lower_image_options;
 
 bool nir_lower_image(nir_shader *nir,
