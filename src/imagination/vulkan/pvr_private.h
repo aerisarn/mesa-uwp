@@ -741,6 +741,12 @@ struct pvr_sub_cmd_event {
          /* Stages to wait for until the event is set. */
          uint32_t wait_for_stage_mask;
       } set;
+
+      struct {
+         struct pvr_event *event;
+         /* Stages to wait for until the event is reset. */
+         uint32_t wait_for_stage_mask;
+      } reset;
    };
 };
 
