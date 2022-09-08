@@ -3291,6 +3291,15 @@ Converter::lowerBitSizeCB(const nir_instr *instr, void *data)
 
       return 0;
    }
+   case nir_op_i2f64:
+   case nir_op_u2f64: {
+      DataType stype = instance->getSTypes(alu)[0];
+
+      if (isIntType(stype) && (typeSizeof(stype) <= 2))
+         return 32;
+
+      return 0;
+   }
    default:
       return 0;
    }
