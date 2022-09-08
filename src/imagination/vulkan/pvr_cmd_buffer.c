@@ -5710,11 +5710,38 @@ void pvr_CmdResetEvent2KHR(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-void pvr_CmdSetEvent2KHR(VkCommandBuffer commandBuffer,
-                         VkEvent _event,
-                         const VkDependencyInfo *pDependencyInfo)
+void pvr_CmdSetEvent2(VkCommandBuffer commandBuffer,
+                      VkEvent _event,
+                      const VkDependencyInfo *pDependencyInfo)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   PVR_FROM_HANDLE(pvr_event, event, _event);
+   VkPipelineStageFlags2 stage_mask = 0;
+   struct pvr_sub_cmd_event *sub_cmd;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
+   if (result != VK_SUCCESS)
+      return;
+
+   for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
+      stage_mask |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
+
+   for (uint32_t i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++)
+      stage_mask |= pDependencyInfo->pBufferMemoryBarriers[i].srcStageMask;
+
+   for (uint32_t i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
+      stage_mask |= pDependencyInfo->pImageMemoryBarriers[i].srcStageMask;
+
+   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
+
+   sub_cmd->type = PVR_EVENT_TYPE_SET;
+   sub_cmd->set.event = event;
+   sub_cmd->set.wait_for_stage_mask = pvr_stage_mask_dst(stage_mask);
+
+   pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
 
 void pvr_CmdWaitEvents2KHR(VkCommandBuffer commandBuffer,

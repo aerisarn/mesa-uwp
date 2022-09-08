@@ -734,6 +734,14 @@ struct pvr_sub_cmd_transfer {
 
 struct pvr_sub_cmd_event {
    enum pvr_event_type type;
+
+   union {
+      struct {
+         struct pvr_event *event;
+         /* Stages to wait for until the event is set. */
+         uint32_t wait_for_stage_mask;
+      } set;
+   };
 };
 
 struct pvr_sub_cmd {
