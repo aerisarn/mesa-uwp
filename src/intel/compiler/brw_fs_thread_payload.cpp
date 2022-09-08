@@ -94,15 +94,15 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
    struct brw_gs_prog_data *gs_prog_data = brw_gs_prog_data(v.prog_data);
 
    /* R0: thread header. */
-   unsigned r = 1;
+   unsigned r = reg_unit(v.devinfo);
 
    /* R1: output URB handles. */
    urb_handles = brw_ud8_grf(r, 0);
-   r++;
+   r += reg_unit(v.devinfo);
 
    if (gs_prog_data->include_primitive_id) {
       primitive_id = brw_ud8_grf(r, 0);
-      r++;
+      r += reg_unit(v.devinfo);
    }
 
    /* Always enable VUE handles so we can safely use pull model if needed.
@@ -115,7 +115,7 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
 
    /* R3..RN: ICP Handles for each incoming vertex (when using pull model) */
    icp_handle_start = brw_ud8_grf(r, 0);
-   r += v.nir->info.gs.vertices_in;
+   r += v.nir->info.gs.vertices_in * reg_unit(v.devinfo);
 
    num_regs = r;
 
