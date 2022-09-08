@@ -197,9 +197,19 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->pdev = physical_device;
 
+   device->zero_page = nouveau_ws_bo_new(device->pdev->dev, 0x1000, 0, NOUVEAU_WS_BO_LOCAL);
+   if (device->zero_page == NULL)
+      goto fail_mutex;
+
+   void *map = nouveau_ws_bo_map(device->zero_page, NOUVEAU_WS_BO_WR);
+   if (map == NULL)
+      goto fail_zero_page;
+   memset(map, 0, 0x1000);
+   nouveau_ws_bo_unmap(device->zero_page, map);
+
    result = nvk_device_init_context_draw_state(device);
    if (result != VK_SUCCESS)
-      goto fail_queue_submit;
+      goto fail_zero_page;
 
    result = nvk_device_init_meta(device);
    if (result != VK_SUCCESS)
@@ -211,6 +221,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
 fail_queue_submit:
    pthread_cond_destroy(&device->queue_submit);
+fail_zero_page:
+   nouveau_ws_bo_destroy(device->zero_page);
 fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_queue:
@@ -243,6 +255,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
    nvk_queue_finish(device, &device->queue);
+   nouveau_ws_bo_destroy(device->zero_page);
    vk_device_finish(&device->vk);
    nvk_slm_area_finish(&device->slm);
    nvk_descriptor_table_finish(device, &device->samplers);

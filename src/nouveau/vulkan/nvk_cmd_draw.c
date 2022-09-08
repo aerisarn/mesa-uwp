@@ -281,6 +281,11 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
    P_IMMD(p, NV9097, SET_EDGE_FLAG, V_TRUE);
    P_IMMD(p, NV9097, SET_SAMPLER_BINDING, V_INDEPENDENTLY);
 
+   uint64_t zero_addr = dev->zero_page->offset;
+   P_MTHD(p, NV9097, SET_VERTEX_STREAM_SUBSTITUTE_A);
+   P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
+   P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
+
    int ret = nouveau_ws_push_submit(pb, dev->pdev->dev, dev->ctx);
    nouveau_ws_push_destroy(pb);
    if (ret)

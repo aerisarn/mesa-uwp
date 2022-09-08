@@ -276,6 +276,7 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
       }
 
       nvk_queue_state_ref(cmd->push, &queue->state);
+      nouveau_ws_push_ref(queue->empty_push, device->zero_page, NOUVEAU_WS_BO_RD);
 
       simple_mtx_lock(&device->memory_objects_lock);
       list_for_each_entry(struct nvk_device_memory, mem,
