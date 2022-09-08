@@ -54,8 +54,8 @@ static void extractsrc_u( GLubyte srcpixels[4][4], const GLubyte *srcaddr,
    for (j = 0; j < numypixels; j++) {
       curaddr = srcaddr + j * srcRowStride * comps;
       for (i = 0; i < numxpixels; i++) {
-	 srcpixels[j][i] = *curaddr;
-	 curaddr += comps;
+         srcpixels[j][i] = *curaddr;
+         curaddr += comps;
       }
    }
 }
@@ -68,8 +68,8 @@ static void extractsrc_s( GLbyte srcpixels[4][4], const GLfloat *srcaddr,
    for (j = 0; j < numypixels; j++) {
       curaddr = srcaddr + j * srcRowStride * comps;
       for (i = 0; i < numxpixels; i++) {
-	 srcpixels[j][i] = FLOAT_TO_BYTE_TEX(*curaddr);
-	 curaddr += comps;
+         srcpixels[j][i] = FLOAT_TO_BYTE_TEX(*curaddr);
+         curaddr += comps;
       }
    }
 }
@@ -113,12 +113,12 @@ _mesa_texstore_red_rgtc1(TEXSTORE_PARAMS)
       else numypixels = srcHeight - j;
       srcaddr = tempImage + j * srcWidth;
       for (i = 0; i < srcWidth; i += 4) {
-	 if (srcWidth > i + 3) numxpixels = 4;
-	 else numxpixels = srcWidth - i;
-	 extractsrc_u(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 1);
-	 util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
-	 srcaddr += numxpixels;
-	 blkaddr += 8;
+         if (srcWidth > i + 3) numxpixels = 4;
+         else numxpixels = srcWidth - i;
+         extractsrc_u(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 1);
+         util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         srcaddr += numxpixels;
+         blkaddr += 8;
       }
       blkaddr += dstRowDiff;
    }
@@ -166,12 +166,12 @@ _mesa_texstore_signed_red_rgtc1(TEXSTORE_PARAMS)
       else numypixels = srcHeight - j;
       srcaddr = tempImage + j * srcWidth;
       for (i = 0; i < srcWidth; i += 4) {
-	 if (srcWidth > i + 3) numxpixels = 4;
-	 else numxpixels = srcWidth - i;
-	 extractsrc_s(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 1);
-	 util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
-	 srcaddr += numxpixels;
-	 blkaddr += 8;
+         if (srcWidth > i + 3) numxpixels = 4;
+         else numxpixels = srcWidth - i;
+         extractsrc_s(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 1);
+         util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         srcaddr += numxpixels;
+         blkaddr += 8;
       }
       blkaddr += dstRowDiff;
    }
@@ -225,18 +225,18 @@ _mesa_texstore_rg_rgtc2(TEXSTORE_PARAMS)
       else numypixels = srcHeight - j;
       srcaddr = tempImage + j * srcWidth * 2;
       for (i = 0; i < srcWidth; i += 4) {
-	 if (srcWidth > i + 3) numxpixels = 4;
-	 else numxpixels = srcWidth - i;
-	 extractsrc_u(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 2);
-	 util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         if (srcWidth > i + 3) numxpixels = 4;
+         else numxpixels = srcWidth - i;
+         extractsrc_u(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 2);
+         util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
 
-	 blkaddr += 8;
-	 extractsrc_u(srcpixels, (GLubyte *)srcaddr + 1, srcWidth, numxpixels, numypixels, 2);
-	 util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         blkaddr += 8;
+         extractsrc_u(srcpixels, (GLubyte *)srcaddr + 1, srcWidth, numxpixels, numypixels, 2);
+         util_format_unsigned_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
 
-	 blkaddr += 8;
+         blkaddr += 8;
 
-	 srcaddr += numxpixels * 2;
+         srcaddr += numxpixels * 2;
       }
       blkaddr += dstRowDiff;
    }
@@ -290,19 +290,18 @@ _mesa_texstore_signed_rg_rgtc2(TEXSTORE_PARAMS)
       else numypixels = srcHeight - j;
       srcaddr = tempImage + j * srcWidth * 2;
       for (i = 0; i < srcWidth; i += 4) {
-	 if (srcWidth > i + 3) numxpixels = 4;
-	 else numxpixels = srcWidth - i;
+         if (srcWidth > i + 3) numxpixels = 4;
+         else numxpixels = srcWidth - i;
 
-	 extractsrc_s(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 2);
-	 util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
-	 blkaddr += 8;
+         extractsrc_s(srcpixels, srcaddr, srcWidth, numxpixels, numypixels, 2);
+         util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         blkaddr += 8;
 
-	 extractsrc_s(srcpixels, srcaddr + 1, srcWidth, numxpixels, numypixels, 2);
-	 util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
-	 blkaddr += 8;
+         extractsrc_s(srcpixels, srcaddr + 1, srcWidth, numxpixels, numypixels, 2);
+         util_format_signed_encode_rgtc_ubyte(blkaddr, srcpixels, numxpixels, numypixels);
+         blkaddr += 8;
 
-	 srcaddr += numxpixels * 2;
-
+         srcaddr += numxpixels * 2;
       }
       blkaddr += dstRowDiff;
    }
