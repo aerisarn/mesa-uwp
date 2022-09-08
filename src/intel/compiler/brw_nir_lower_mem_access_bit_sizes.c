@@ -114,6 +114,32 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_ssa_def *load = &load_instr->dest.ssa;
       result = nir_extract_bits(b, &load, 1, load_offset * 8,
                                 num_components, bit_size);
+   } else if (bit_size < 32 && intrin->intrinsic == nir_intrinsic_load_task_payload) {
+      /* In task shaders we lower task payload stores & loads to shared memory,
+       * so this code should be used only for mesh shaders.
+       */
+      assert(b->shader->info.stage == MESA_SHADER_MESH);
+      nir_ssa_def *unaligned_offset = nir_ssa_for_src(b, intrin->src[0], 1);
+
+      /* offset aligned to dword */
+      nir_ssa_def *aligned_offset = nir_iand_imm(b, unaligned_offset, ~0x3u);
+
+      /* offset from last dword */
+      nir_ssa_def *dword_offset = nir_iand_imm(b, unaligned_offset, 0x3u);
+
+      nir_intrinsic_instr *new_load_instr =
+            dup_mem_intrinsic(b, intrin, NULL, 0, 1, 32, align);
+
+      nir_ssa_def *new_load = &new_load_instr->dest.ssa;
+
+      nir_instr_rewrite_src_ssa(&new_load_instr->instr,
+                                &new_load_instr->src[0],
+                                aligned_offset);
+
+      /* extract bit_size bits starting from dword_offset * 8 */
+      result = nir_iand_imm(b, nir_ishr(b, new_load,
+                                           nir_imul_imm(b, dword_offset, 8)),
+                               (1u << bit_size) - 1);
    } else {
       /* Otherwise, we have to break it into smaller loads.  We could end up
        * with as many as 32 loads if we're loading a u64vec16 from scratch.
