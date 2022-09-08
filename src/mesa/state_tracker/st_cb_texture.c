@@ -1987,12 +1987,6 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
       goto fallback;
    }
 
-   /* XXX Fallback for depth-stencil formats due to an incomplete stencil
-    * blit implementation in some drivers. */
-   if (format == GL_DEPTH_STENCIL) {
-      goto fallback;
-   }
-
    /* If the base internal format and the texture format don't match,
     * we can't use blit-based TexSubImage. */
    if (texImage->_BaseFormat !=
