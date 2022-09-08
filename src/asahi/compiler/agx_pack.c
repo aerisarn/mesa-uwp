@@ -77,12 +77,15 @@ agx_pack_sampler(agx_index index, bool *flag)
 }
 
 static unsigned
-agx_pack_sample_offset(agx_index index, bool *flag)
+agx_pack_sample_compare_offset(agx_index index)
 {
-   /* TODO: offsets */
-   assert(index.type == AGX_INDEX_NULL);
-   *flag = 0;
-   return 0;
+   if (index.type == AGX_INDEX_NULL)
+      return 0;
+
+   assert(index.size == AGX_SIZE_32);
+   assert(index.value < 0x100);
+   assert_register_is_aligned(index);
+   return index.value;
 }
 
 static unsigned
@@ -576,18 +579,18 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       assert(I->mask != 0);
       assert(I->format <= 0x10);
 
-      bool Rt, Ot, Ct, St;
+      bool Rt, Ct, St;
       unsigned Tt;
 
       unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
       unsigned C = agx_pack_sample_coords(I->src[0], &Ct);
       unsigned T = agx_pack_texture(I->src[2], &Tt);
       unsigned S = agx_pack_sampler(I->src[3], &St);
-      unsigned O = agx_pack_sample_offset(I->src[4], &Ot);
+      unsigned O = agx_pack_sample_compare_offset(I->src[4]);
       unsigned D = agx_pack_lod(I->src[1]);
 
       unsigned U = 0; // TODO: what is sampler ureg?
-      unsigned q1 = 0; // XXX
+      unsigned q1 = I->shadow;
       unsigned q2 = 0; // XXX
       unsigned q3 = 12; // XXX
       unsigned kill = 0; // helper invocation kill bit
@@ -603,7 +606,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
             ((T >> 6) << 14) |
             ((O & BITFIELD_MASK(6)) << 16) |
             (q6 << 22) |
-            (Ot << 27) |
+            (I->offset << 27) |
             ((S >> 6) << 28) |
             ((O >> 6) << 30);
 

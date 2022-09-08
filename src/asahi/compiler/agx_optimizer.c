@@ -198,7 +198,9 @@ agx_optimizer_forward(agx_context *ctx)
          agx_optimizer_fmov(defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
-      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_ST_TILE && I->op != AGX_OPCODE_P_COMBINE)
+      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_ST_TILE &&
+          I->op != AGX_OPCODE_P_COMBINE && I->op != AGX_OPCODE_TEXTURE_SAMPLE &&
+          I->op != AGX_OPCODE_TEXTURE_LOAD)
          agx_optimizer_inline_imm(defs, I, info.nr_srcs, info.is_float);
    }
 

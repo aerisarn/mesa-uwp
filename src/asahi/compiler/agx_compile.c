@@ -1020,7 +1020,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
              texture = agx_immediate(instr->texture_index),
              sampler = agx_immediate(instr->sampler_index),
              lod = agx_immediate(0),
-             offset = agx_null();
+             compare = agx_null(),
+             packed_offset = agx_null();
 
    bool txf = instr->op == nir_texop_txf;
 
@@ -1085,9 +1086,32 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          lod = index;
          break;
 
-      case nir_tex_src_ms_index:
-      case nir_tex_src_offset:
       case nir_tex_src_comparator:
+         assert(index.size == AGX_SIZE_32);
+         compare = index;
+         break;
+
+      case nir_tex_src_offset:
+      {
+         assert(instr->src[i].src.is_ssa);
+         nir_ssa_def *def = instr->src[i].src.ssa;
+         uint32_t packed = 0;
+
+         for (unsigned c = 0; c < def->num_components; ++c) {
+            nir_ssa_scalar s = nir_ssa_scalar_resolved(def, c);
+            assert(nir_ssa_scalar_is_const(s) && "no nonconstant offsets");
+
+            int32_t val = nir_ssa_scalar_as_uint(s);
+            assert((val >= -8 && val <= 7) && "out of bounds offset");
+
+            packed |= (val & 0xF) << (4 * c);
+         }
+
+         packed_offset = agx_mov_imm(b, 32, packed);
+         break;
+      }
+
+      case nir_tex_src_ms_index:
       case nir_tex_src_texture_offset:
       case nir_tex_src_sampler_offset:
       default:
@@ -1097,11 +1121,22 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    agx_index dst = agx_dest_index(&instr->dest);
 
-   agx_instr *I = agx_texture_sample_to(b, dst, coords, lod, texture, sampler, offset,
+   /* Pack shadow reference value (compare) and packed offset together */
+   agx_index compare_offset = agx_null();
+
+   if (!agx_is_null(compare) && !agx_is_null(packed_offset))
+      compare_offset = agx_vec2(b, compare, packed_offset);
+   else if (!agx_is_null(packed_offset))
+      compare_offset = packed_offset;
+   else if (!agx_is_null(compare))
+      compare_offset = compare;
+
+   agx_instr *I = agx_texture_sample_to(b, dst, coords, lod, texture, sampler,
+         compare_offset,
          agx_tex_dim(instr->sampler_dim, instr->is_array),
          agx_lod_mode_for_nir(instr->op),
          0xF, /* TODO: wrmask */
-         0);
+         0, !agx_is_null(packed_offset), !agx_is_null(compare));
 
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;

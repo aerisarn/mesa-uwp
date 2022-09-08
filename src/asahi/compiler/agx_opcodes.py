@@ -94,6 +94,8 @@ MASK = immediate("mask")
 BFI_MASK = immediate("bfi_mask")
 LOD_MODE = immediate("lod_mode", "enum agx_lod_mode")
 DIM = immediate("dim", "enum agx_dim")
+OFFSET = immediate("offset", "bool")
+SHADOW = immediate("shadow", "bool")
 SCOREBOARD = immediate("scoreboard")
 ICOND = immediate("icond", "enum agx_icond")
 FCOND = immediate("fcond", "enum agx_fcond")
@@ -197,14 +199,14 @@ op("fcmpsel",
       encoding_32 = (0x02, 0x7F, 8, 10),
       srcs = 4, imms = [FCOND])
 
-# sources are coordinates, LOD, texture, sampler, offset
+# sources are coordinates, LOD, texture, sampler, shadow/offset
 # TODO: anything else?
 op("texture_sample",
       encoding_32 = (0x31, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD])
+      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW])
 op("texture_load",
       encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD])
+      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET])
 
 # sources are base, index
 op("device_load",

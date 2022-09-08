@@ -319,6 +319,8 @@ typedef struct {
 
    /* TODO: Handle tex ops more efficient */
    enum agx_dim dim : 3;
+   bool offset : 1;
+   bool shadow : 1;
 
    /* Final st_vary op */
    bool last : 1;
