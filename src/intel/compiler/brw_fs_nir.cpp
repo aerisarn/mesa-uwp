@@ -2340,8 +2340,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
    srcs[URB_LOGICAL_SRC_HANDLE] = fs_reg(retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD));
    srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = per_slot_offset;
    srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = channel_mask;
-   srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, alloc.allocate(length),
-                                       BRW_REGISTER_TYPE_F);
+   srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, length);
    abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
    fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
