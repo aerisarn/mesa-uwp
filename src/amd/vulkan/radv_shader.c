@@ -41,7 +41,9 @@
 #include "util/debug.h"
 #include "ac_binary.h"
 #include "ac_nir.h"
+#ifndef _WIN32
 #include "ac_rtld.h"
+#endif
 #include "aco_interface.h"
 #include "sid.h"
 #include "vk_format.h"
@@ -1903,6 +1905,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
    }
 }
 
+#ifndef _WIN32
 static bool
 radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shader,
                       const struct radv_shader_binary *binary, struct ac_rtld_binary *rtld_binary)
@@ -1946,12 +1949,16 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shad
 
    return ac_rtld_open(rtld_binary, open_info);
 }
+#endif
 
 bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                           struct radv_shader *shader, void *dest_ptr)
 {
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#ifdef _WIN32
+      return false;
+#else
       struct ac_rtld_binary rtld_binary = {0};
 
       if (!radv_open_rtld_binary(device, shader, binary, &rtld_binary)) {
@@ -1973,6 +1980,7 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
 
       shader->code_ptr = dest_ptr;
       ac_rtld_close(&rtld_binary);
+#endif
    } else {
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
       memcpy(dest_ptr, bin->data + bin->stats_size, bin->code_size);
@@ -2001,6 +2009,10 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
    shader->binary = binary;
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#ifdef _WIN32
+      free(shader);
+      return NULL;
+#else
       struct ac_rtld_binary rtld_binary = {0};
 
       if (!radv_open_rtld_binary(device, shader, binary, &rtld_binary)) {
@@ -2028,6 +2040,7 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
       shader->code_size = rtld_binary.rx_size;
       shader->exec_size = rtld_binary.exec_size;
       ac_rtld_close(&rtld_binary);
+#endif
    } else {
       assert(binary->type == RADV_BINARY_TYPE_LEGACY);
       config = ((struct radv_shader_binary_legacy *)binary)->base.config;
@@ -2047,6 +2060,10 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
    }
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#ifdef _WIN32
+      free(shader);
+      return NULL;
+#else
       struct radv_shader_binary_rtld *bin = (struct radv_shader_binary_rtld *)binary;
       struct ac_rtld_binary rtld_binary = {0};
 
@@ -2072,6 +2089,7 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
          shader->disasm_string[disasm_size] = 0;
       }
       ac_rtld_close(&rtld_binary);
+#endif
    } else {
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
 

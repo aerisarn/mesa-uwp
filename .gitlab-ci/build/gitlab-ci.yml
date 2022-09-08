@@ -613,6 +613,7 @@ debian-mingw32-x86_64:
     GALLIUM_ST: >
       -D gallium-opencl=icd
       -D gallium-rusticl=false
+      -D opencl-native=false
       -D opencl-spirv=true
       -D microsoft-clc=enabled
       -D static-libclc=all
