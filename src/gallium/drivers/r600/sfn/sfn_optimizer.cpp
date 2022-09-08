@@ -520,6 +520,7 @@ bool simplify_source_vectors(Shader& sh)
 
 void SimplifySourceVecVisitor::visit(TexInstr *instr)
 {
+
    if (instr->opcode() != TexInstr::get_resinfo) {
       replace_src(instr, instr->src());
    }

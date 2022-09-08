@@ -169,8 +169,6 @@ private:
    static auto prepare_source(nir_tex_instr *tex, const Inputs& inputs, Shader &shader) -> RegisterVec4;
 
    static bool emit_buf_txf(nir_tex_instr *tex, Inputs& src, Shader& shader);
-   static bool emit_tex_tex_ms_direct(nir_tex_instr *tex, Inputs& src, Shader& shader);
-   static bool emit_tex_tex_ms(nir_tex_instr *tex, Inputs& src, Shader& shader);
    static bool emit_tex_txs(nir_tex_instr *tex, Inputs& src,
                             RegisterVec4::Swizzle dest_swz, Shader& shader);
    static bool emit_tex_lod(nir_tex_instr* tex, Inputs& src, Shader& shader);
