@@ -3425,6 +3425,7 @@ zink_flush(struct pipe_context *pctx,
    struct zink_fence *fence = NULL;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned submit_count = 0;
+   VkSemaphore export_sem = VK_NULL_HANDLE;
 
    /* triggering clears will force has_work */
    if (!deferred && ctx->clears_enabled)
@@ -3435,6 +3436,29 @@ zink_flush(struct pipe_context *pctx,
       if (ctx->needs_present->obj->image)
          zink_resource_image_barrier(ctx, ctx->needs_present, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
       ctx->needs_present = NULL;
+   }
+
+   if (flags & PIPE_FLUSH_FENCE_FD) {
+      assert(!deferred && pfence);
+      const VkExportSemaphoreCreateInfo esci = {
+         .sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
+         .handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+      };
+      const VkSemaphoreCreateInfo sci = {
+         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+         .pNext = &esci,
+      };
+      VkResult result = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &export_sem);
+      if (zink_screen_handle_vkresult(screen, result)) {
+         assert(!batch->state->signal_semaphore);
+         batch->state->signal_semaphore = export_sem;
+         batch->has_work = true;
+      } else {
+         mesa_loge("ZINK: vkCreateSemaphore failed (%s)", vk_Result_to_str(result));
+
+         /* let flush proceed and ensure a null sem for fence_get_fd to return -1 */
+         export_sem = VK_NULL_HANDLE;
+      }
    }
 
    if (!batch->has_work) {
@@ -3474,6 +3498,7 @@ zink_flush(struct pipe_context *pctx,
       }
 
       mfence->fence = fence;
+      mfence->sem = export_sem;
       if (fence)
          mfence->submit_count = submit_count;
 
