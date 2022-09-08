@@ -222,6 +222,13 @@ enum pvr_static_clear_variant_bits {
 
 #define PVR_STATIC_CLEAR_VARIANT_COUNT (PVR_STATIC_CLEAR_COLOR_BIT << 1U)
 
+enum pvr_event_state {
+   PVR_EVENT_STATE_SET_BY_HOST,
+   PVR_EVENT_STATE_RESET_BY_HOST,
+   PVR_EVENT_STATE_SET_BY_DEVICE,
+   PVR_EVENT_STATE_RESET_BY_DEVICE
+};
+
 struct pvr_bo;
 struct pvr_compute_ctx;
 struct pvr_compute_pipeline;
@@ -628,6 +635,13 @@ struct pvr_descriptor_set {
 
    /* Array of size layout::descriptor_count. */
    struct pvr_descriptor descriptors[0];
+};
+
+struct pvr_event {
+   struct vk_object_base base;
+
+   enum pvr_event_state state;
+   struct vk_sync *sync;
 };
 
 struct pvr_descriptor_state {
@@ -1601,6 +1615,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_descriptor_set,
                                base,
                                VkDescriptorSet,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET)
+VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_descriptor_pool,
                                base,
                                VkDescriptorPool,

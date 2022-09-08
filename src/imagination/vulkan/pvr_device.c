@@ -2541,7 +2541,20 @@ VkResult pvr_CreateEvent(VkDevice _device,
                          const VkAllocationCallbacks *pAllocator,
                          VkEvent *pEvent)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_device, device, _device);
+
+   struct pvr_event *event = vk_object_alloc(&device->vk,
+                                             pAllocator,
+                                             sizeof(*event),
+                                             VK_OBJECT_TYPE_EVENT);
+   if (!event)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   event->sync = NULL;
+   event->state = PVR_EVENT_STATE_RESET_BY_HOST;
+
+   *pEvent = pvr_event_to_handle(event);
+
    return VK_SUCCESS;
 }
 
@@ -2549,7 +2562,16 @@ void pvr_DestroyEvent(VkDevice _device,
                       VkEvent _event,
                       const VkAllocationCallbacks *pAllocator)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_device, device, _device);
+   PVR_FROM_HANDLE(pvr_event, event, _event);
+
+   if (!event)
+      return;
+
+   if (event->sync)
+      vk_sync_destroy(&device->vk, event->sync);
+
+   vk_object_free(&device->vk, pAllocator, event);
 }
 
 VkResult pvr_GetEventStatus(VkDevice _device, VkEvent _event)
