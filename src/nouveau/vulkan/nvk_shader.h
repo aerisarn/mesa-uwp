@@ -29,6 +29,7 @@ struct nvk_shader {
 
    uint32_t upload_size;
    uint64_t upload_addr;
+   uint32_t upload_padding;
 
    uint8_t num_gprs;
    uint8_t num_barriers;
@@ -70,7 +71,7 @@ struct nvk_shader {
 static inline uint64_t
 nvk_shader_address(const struct nvk_shader *shader)
 {
-   return shader->upload_addr;
+   return shader->upload_addr + shader->upload_padding;
 }
 
 const nir_shader_compiler_options *

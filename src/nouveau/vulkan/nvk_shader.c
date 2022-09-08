@@ -14,6 +14,10 @@
 
 #include "nv50_ir_driver.h"
 
+#include "cla097.h"
+#include "clc397.h"
+#include "clc597.h"
+
 static void
 shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 {
@@ -736,19 +740,30 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 {
    uint32_t hdr_size = 0;
    if (shader->stage != MESA_SHADER_COMPUTE) {
-      if (dev->ctx->eng3d.cls >= 0xc597)
+      if (dev->ctx->eng3d.cls >= TURING_A)
          hdr_size = TU102_SHADER_HEADER_SIZE;
       else
          hdr_size = GF100_SHADER_HEADER_SIZE;
    }
 
-   uint32_t total_size = shader->code_size + hdr_size;
+   /* Fermi   needs 0x40 alignment
+    * Kepler+ needs the first instruction to be 0x80 aligned, so we waste 0x30 bytes
+    */
+   int alignment = dev->ctx->eng3d.cls >= KEPLER_A ? 0x80 : 0x40;
+   int offset = 0;
+
+   if (dev->ctx->eng3d.cls >= KEPLER_A && dev->ctx->eng3d.cls < TURING_A && hdr_size) {
+      /* offset will be 0x30 */
+      offset = alignment - hdr_size;
+   }
+
+   uint32_t total_size = shader->code_size + hdr_size + offset;
    char *data = malloc(total_size);
    if (data == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   memcpy(data, shader->hdr, hdr_size);
-   memcpy(data + hdr_size, shader->code_ptr, shader->code_size);
+   memcpy(data + offset, shader->hdr, hdr_size);
+   memcpy(data + offset + hdr_size, shader->code_ptr, shader->code_size);
 
 #ifndef NDEBUG
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))
@@ -756,9 +771,11 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 #endif
 
    VkResult result = nvk_heap_upload(dev, &dev->shader_heap, data,
-                                     total_size, 256, &shader->upload_addr);
-   if (result == VK_SUCCESS)
+                                     total_size, alignment, &shader->upload_addr);
+   if (result == VK_SUCCESS) {
       shader->upload_size = total_size;
+      shader->upload_padding = offset;
+   }
    free(data);
 
    return result;
