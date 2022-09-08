@@ -266,6 +266,8 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
    device->gmem_size = env_var_as_unsigned("TU_GMEM", info.gmem_sizebytes);
    device->gmem_base = gmem_iova;
 
+   device->submitqueue_priority_count = 1;
+
    device->heap.size = tu_get_system_heap_size();
    device->heap.used = 0u;
    device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;

@@ -129,6 +129,16 @@ tu_drm_get_va_prop(const struct tu_physical_device *dev,
    return 0;
 }
 
+static uint32_t
+tu_drm_get_priorities(const struct tu_physical_device *dev)
+{
+   uint64_t val = 1;
+   tu_drm_get_param(dev, MSM_PARAM_PRIORITIES, &val);
+   assert(val >= 1);
+
+   return val;
+}
+
 int
 tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
@@ -164,12 +174,9 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
                        int priority,
                        uint32_t *queue_id)
 {
-   uint64_t nr_rings = 1;
-   tu_drm_get_param(dev->physical_device, MSM_PARAM_NR_RINGS, &nr_rings);
-
    struct drm_msm_submitqueue req = {
       .flags = 0,
-      .prio = MIN2(priority, MAX2(nr_rings, 1) - 1),
+      .prio = MIN2(priority, dev->physical_device->submitqueue_priority_count - 1),
    };
 
    int ret = drmCommandWriteRead(dev->fd,
@@ -877,6 +884,8 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
                                  "Failed to get initial fault count: %d", ret);
       goto fail;
    }
+
+   device->submitqueue_priority_count = tu_drm_get_priorities(device);
 
    device->syncobj_type = vk_drm_syncobj_get_type(fd);
    /* we don't support DRM_CAP_SYNCOBJ_TIMELINE, but drm-shim does */

@@ -122,6 +122,9 @@ struct tu_physical_device
    /* Address space and global fault count for this local_fd with DRM backend */
    uint64_t fault_count;
 
+   /* with 0 being the highest priority */
+   uint32_t submitqueue_priority_count;
+
    struct tu_memory_heap heap;
    mtx_t                 vma_mutex;
    struct util_vma_heap  vma;
