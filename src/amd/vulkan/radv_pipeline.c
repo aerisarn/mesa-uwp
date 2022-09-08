@@ -6096,6 +6096,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
          blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
    }
 
+   /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap them,
+    * so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to match what
+    * the FS actually exports. Though, to make sure the hw remapping works as expected, we should
+    * also clear color attachments without exports in CB_SHADER_MASK.
+    */
+   blend.cb_shader_mask &= ps->info.ps.colors_written;
+
    pipeline->col_format = blend.spi_shader_col_format;
    pipeline->cb_target_mask = blend.cb_target_mask;
 
