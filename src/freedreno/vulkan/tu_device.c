@@ -1856,8 +1856,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       for (unsigned q = 0; q < queue_create->queueCount; q++) {
          result = tu_queue_init(device, &device->queues[qfi][q], q,
                                 queue_create);
-         if (result != VK_SUCCESS)
+         if (result != VK_SUCCESS) {
+            device->queue_count[qfi] = q;
             goto fail_queues;
+         }
       }
    }
 
@@ -2056,7 +2058,7 @@ fail_queues:
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
-      if (device->queue_count[i])
+      if (device->queues[i])
          vk_free(&device->vk.alloc, device->queues[i]);
    }
 
