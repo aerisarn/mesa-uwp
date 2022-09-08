@@ -26,7 +26,7 @@
 #include "util/u_math.h"
 #include "util/bitscan.h"
 
-static nir_ssa_def *
+static nir_intrinsic_instr *
 dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                   nir_ssa_def *store_src, int offset,
                   unsigned num_components, unsigned bit_size,
@@ -75,7 +75,7 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_builder_instr_insert(b, &dup->instr);
 
-   return info->has_dest ? &dup->dest.ssa : NULL;
+   return dup;
 }
 
 static bool
@@ -109,8 +109,9 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
        */
       assert(load_comps32 <= 3);
 
-      nir_ssa_def *load = dup_mem_intrinsic(b, intrin, NULL, -load_offset,
-                                            load_comps32, 32, 4);
+      nir_intrinsic_instr *load_instr =
+            dup_mem_intrinsic(b, intrin, NULL, -load_offset, load_comps32, 32, 4);
+      nir_ssa_def *load = &load_instr->dest.ssa;
       result = nir_extract_bits(b, &load, 1, load_offset * 8,
                                 num_components, bit_size);
    } else {
@@ -134,9 +135,10 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
                          DIV_ROUND_UP(MIN2(bytes_left, 16), 4);
          }
 
-         loads[num_loads++] = dup_mem_intrinsic(b, intrin, NULL, load_offset,
-                                                load_comps, load_bit_size,
-                                                align);
+         nir_intrinsic_instr *load_instr =
+               dup_mem_intrinsic(b, intrin, NULL, load_offset, load_comps,
+                                 load_bit_size, align);
+         loads[num_loads++] = &load_instr->dest.ssa;
 
          load_offset += load_comps * (load_bit_size / 8);
       }
