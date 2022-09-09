@@ -1997,6 +1997,8 @@ struct radv_graphics_pipeline {
 
    struct radv_dynamic_state dynamic_state;
 
+   struct radv_vs_input_state vs_input_state;
+
    uint64_t dynamic_states;
    struct radv_multisample_state ms;
    struct radv_binning_state binning;

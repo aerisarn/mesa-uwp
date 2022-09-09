@@ -5796,6 +5796,53 @@ radv_pipeline_init_vertex_input_state(struct radv_graphics_pipeline *pipeline,
    else
       pipeline->vb_desc_usage_mask = vs_info->vs.vb_desc_usage_mask;
    pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;
+
+   /* Prepare the VS input state for prologs created inside a library. */
+   if (vs_info->vs.has_prolog && !(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT)) {
+      const enum amd_gfx_level gfx_level = pdevice->rad_info.gfx_level;
+      const enum radeon_family family = pdevice->rad_info.family;
+      const struct ac_vtx_format_info *vtx_info_table = ac_get_vtx_format_info_table(gfx_level, family);
+
+      pipeline->vs_input_state.bindings_match_attrib = true;
+
+      u_foreach_bit(i, state->vi->attributes_valid) {
+         uint32_t binding = state->vi->attributes[i].binding;
+         uint32_t offset = state->vi->attributes[i].offset;
+
+         pipeline->vs_input_state.bindings[i] = binding;
+         pipeline->vs_input_state.bindings_match_attrib &= binding == i;
+
+         if (state->vi->bindings[binding].input_rate) {
+            pipeline->vs_input_state.instance_rate_inputs |= BITFIELD_BIT(i);
+            pipeline->vs_input_state.divisors[i] = state->vi->bindings[binding].divisor;
+
+            if (state->vi->bindings[binding].divisor == 0) {
+               pipeline->vs_input_state.zero_divisors |= BITFIELD_BIT(i);
+            } else if (state->vi->bindings[binding].divisor > 1) {
+               pipeline->vs_input_state.nontrivial_divisors |= BITFIELD_BIT(i);
+            }
+         }
+
+         pipeline->vs_input_state.offsets[i] = offset;
+
+         enum pipe_format format = vk_format_to_pipe_format(state->vi->attributes[i].format);
+         const struct ac_vtx_format_info *vtx_info = &vtx_info_table[format];
+
+         pipeline->vs_input_state.formats[i] = format;
+         uint8_t align_req_minus_1 = vtx_info->chan_byte_size >= 4 ? 3 : (vtx_info->element_size - 1);
+         pipeline->vs_input_state.format_align_req_minus_1[i] = align_req_minus_1;
+         pipeline->vs_input_state.format_sizes[i] = vtx_info->element_size;
+         pipeline->vs_input_state.alpha_adjust_lo |= (vtx_info->alpha_adjust & 0x1) << i;
+         pipeline->vs_input_state.alpha_adjust_hi |= (vtx_info->alpha_adjust >> 1) << i;
+         if (G_008F0C_DST_SEL_X(vtx_info->dst_sel) == V_008F0C_SQ_SEL_Z) {
+            pipeline->vs_input_state.post_shuffle |= BITFIELD_BIT(i);
+         }
+
+         if (!(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1))) {
+            pipeline->vs_input_state.nontrivial_formats |= BITFIELD_BIT(i);
+         }
+      }
+   }
 }
 
 static struct radv_shader *
