@@ -5082,6 +5082,27 @@ radv_mark_descriptor_sets_dirty(struct radv_cmd_buffer *cmd_buffer, VkPipelineBi
    descriptors_state->dirty |= descriptors_state->valid;
 }
 
+static void
+radv_bind_vs_input_state(struct radv_cmd_buffer *cmd_buffer,
+                         const struct radv_graphics_pipeline *pipeline)
+{
+   const struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   const struct radv_vs_input_state *src = &pipeline->vs_input_state;
+
+   /* Bind the vertex input state from the pipeline when the VS has a prolog and the state isn't
+    * dynamic. This can happen when the pre-rasterization stages and the vertex input state are from
+    * two different libraries. Otherwise, if the VS has a prolog, the state is dynamic and there is
+    * nothing to bind.
+    */
+   if (!vs_shader || !vs_shader->info.vs.has_prolog ||
+       (pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT))
+      return;
+
+   cmd_buffer->state.dynamic_vs_input = *src;
+
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
                      VkPipeline _pipeline)
@@ -5177,6 +5198,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
+
+      radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
 
       if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
          cmd_buffer->esgs_ring_size_needed = graphics_pipeline->esgs_ring_size;
