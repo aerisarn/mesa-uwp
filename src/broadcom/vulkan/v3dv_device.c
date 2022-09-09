@@ -1384,7 +1384,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    STATIC_ASSERT(MAX_STORAGE_BUFFERS >= MAX_DYNAMIC_STORAGE_BUFFERS);
 
    const uint32_t page_size = 4096;
-   const uint32_t mem_size = compute_heap_size();
+   const uint64_t mem_size = compute_heap_size();
 
    const uint32_t max_varying_components = 16 * 4;
 
