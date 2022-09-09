@@ -2036,6 +2036,9 @@ radv_get_physical_device_properties_1_1(struct radv_physical_device *pdevice,
 
    p->subgroupSize = RADV_SUBGROUP_SIZE;
    p->subgroupSupportedStages = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
+   if (radv_taskmesh_enabled(pdevice))
+      p->subgroupSupportedStages |= VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT;
+
    if (radv_enable_rt(pdevice, true))
       p->subgroupSupportedStages |= RADV_RT_STAGE_BITS;
    p->subgroupSupportedOperations =
