@@ -31,7 +31,7 @@ struct nouveau_copy_buffer {
 struct nouveau_copy {
    struct nouveau_copy_buffer src;
    struct nouveau_copy_buffer dst;
-   struct {
+   struct nouveau_copy_remap {
       uint8_t comp_size;
       uint8_t dst[4];
    } remap;
@@ -95,6 +95,28 @@ nouveau_copy_rect_image(
    };
 
    return buf;
+}
+
+static struct nouveau_copy_remap
+nouveau_copy_remap_format(VkFormat format)
+{
+   /* Pick an arbitrary component size.  It doesn't matter what size we
+    * pick since we're just doing a copy, as long as it's no more than 4B
+    * and divides the format size.
+    */
+   unsigned comp_size = vk_format_get_blocksize(format);
+   if (comp_size % 3 == 0) {
+      comp_size /= 3;
+      assert(util_is_power_of_two_nonzero(comp_size) && comp_size <= 4);
+   } else {
+      assert(util_is_power_of_two_nonzero(comp_size) && comp_size <= 16);
+      comp_size = MIN2(comp_size, 4);
+   }
+
+   return (struct nouveau_copy_remap) {
+      .comp_size = comp_size,
+      .dst = { 0, 1, 2, 3 },
+   };
 }
 
 static uint32_t
@@ -372,6 +394,7 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
          }
          break;
       default:
+         copy.remap = nouveau_copy_remap_format(dst->vk.format);
          break;
       }
 
@@ -441,6 +464,7 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
          }
          break;
       default:
+         copy.remap = nouveau_copy_remap_format(src->vk.format);
          break;
       }
 
@@ -518,6 +542,7 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
          }
          break;
       default:
+         copy.remap = nouveau_copy_remap_format(src->vk.format);
          break;
       }
 
