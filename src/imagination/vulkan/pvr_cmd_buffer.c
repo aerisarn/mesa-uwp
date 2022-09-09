@@ -105,6 +105,9 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       break;
 
    case PVR_SUB_CMD_TYPE_EVENT:
+      if (sub_cmd->event.type == PVR_EVENT_TYPE_WAIT)
+         vk_free(&cmd_buffer->vk.pool->alloc, sub_cmd->event.wait.events);
+
       break;
 
    default:
@@ -5761,12 +5764,63 @@ void pvr_CmdSetEvent2(VkCommandBuffer commandBuffer,
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
 
-void pvr_CmdWaitEvents2KHR(VkCommandBuffer commandBuffer,
-                           uint32_t eventCount,
-                           const VkEvent *pEvents,
-                           const VkDependencyInfo *pDependencyInfos)
+void pvr_CmdWaitEvents2(VkCommandBuffer commandBuffer,
+                        uint32_t eventCount,
+                        const VkEvent *pEvents,
+                        const VkDependencyInfo *pDependencyInfos)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_sub_cmd_event *sub_cmd;
+   struct pvr_event **events_array;
+   uint32_t *stage_masks;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &events_array, __typeof__(*events_array), eventCount);
+   vk_multialloc_add(&ma, &stage_masks, __typeof__(*stage_masks), eventCount);
+
+   if (!vk_multialloc_alloc(&ma,
+                            &cmd_buffer->vk.pool->alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
+      cmd_buffer->state.status =
+         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return;
+   }
+
+   result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
+   if (result != VK_SUCCESS) {
+      vk_free(&cmd_buffer->vk.pool->alloc, events_array);
+      return;
+   }
+
+   memcpy(events_array, pEvents, sizeof(*events_array) * eventCount);
+
+   for (uint32_t i = 0; i < eventCount; i++) {
+      const VkDependencyInfo *info = &pDependencyInfos[i];
+      VkPipelineStageFlags2 mask = 0;
+
+      for (uint32_t j = 0; j < info->memoryBarrierCount; j++)
+         mask |= info->pMemoryBarriers[j].dstStageMask;
+
+      for (uint32_t j = 0; j < info->bufferMemoryBarrierCount; j++)
+         mask |= info->pBufferMemoryBarriers[j].dstStageMask;
+
+      for (uint32_t j = 0; j < info->imageMemoryBarrierCount; j++)
+         mask |= info->pImageMemoryBarriers[j].dstStageMask;
+
+      stage_masks[i] = pvr_stage_mask_dst(mask);
+   }
+
+   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
+
+   sub_cmd->type = PVR_EVENT_TYPE_WAIT;
+   sub_cmd->wait.count = eventCount;
+   sub_cmd->wait.events = events_array;
+   sub_cmd->wait.wait_at_stage_masks = stage_masks;
+
+   pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
 
 void pvr_CmdWriteTimestamp2KHR(VkCommandBuffer commandBuffer,

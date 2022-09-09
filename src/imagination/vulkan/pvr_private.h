@@ -747,6 +747,14 @@ struct pvr_sub_cmd_event {
          /* Stages to wait for until the event is reset. */
          uint32_t wait_for_stage_mask;
       } reset;
+
+      struct {
+         uint32_t count;
+         /* Events to wait for before resuming. */
+         struct pvr_event **events;
+         /* Stages to wait at. */
+         uint32_t *wait_at_stage_masks;
+      } wait;
    };
 };
 
