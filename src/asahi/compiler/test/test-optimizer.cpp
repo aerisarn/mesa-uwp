@@ -105,7 +105,13 @@ TEST_F(Optimizer, Copyprop)
 
 TEST_F(Optimizer, InlineHazards)
 {
-   NEGCASE(agx_p_combine_to(b, wx, agx_mov_imm(b, AGX_SIZE_32, 0), wy, wz, wz));
+   NEGCASE({
+         agx_instr *I = agx_p_combine_to(b, wx, 4);
+         I->src[0] = agx_mov_imm(b, AGX_SIZE_32, 0);
+         I->src[1] = wy;
+         I->src[2] = wz;
+         I->src[3] = wz;
+   });
 }
 
 TEST_F(Optimizer, CopypropRespectsAbsNeg)

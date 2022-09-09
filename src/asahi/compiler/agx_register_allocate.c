@@ -47,16 +47,7 @@ agx_write_registers(agx_instr *I, unsigned d)
    case AGX_OPCODE_LDCF:
       return 6;
    case AGX_OPCODE_P_COMBINE:
-   {
-      unsigned components = 0;
-
-      for (unsigned i = 0; i < 4; ++i) {
-         if (!agx_is_null(I->src[i]))
-            components = i + 1;
-      }
-
-      return components * size;
-   }
+      return I->nr_srcs * size;
    default:
       return size;
    }
@@ -325,11 +316,11 @@ agx_ra(agx_context *ctx)
          unsigned base = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
          unsigned width = agx_size_align_16(ins->dest[0].size);
 
-         struct agx_copy copies[4];
+         struct agx_copy *copies = alloca(sizeof(copies[0]) * ins->nr_srcs);
          unsigned n = 0;
 
          /* Move the sources */
-         for (unsigned i = 0; i < 4; ++i) {
+         agx_foreach_src(ins, i) {
             if (agx_is_null(ins->src[i])) continue;
             assert(ins->src[i].size == ins->dest[0].size);
 

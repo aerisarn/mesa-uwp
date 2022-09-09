@@ -25,11 +25,16 @@ opcodes = {}
 immediates = {}
 enums = {}
 
+VARIABLE = ~0
+
 class Opcode(object):
-   def __init__(self, name, dests, srcs, imms, is_float, can_eliminate, encoding_16, encoding_32):
+   def __init__(self, name, dests, srcs, imms, is_float, can_eliminate,
+           encoding_16, encoding_32):
       self.name = name
-      self.dests = dests
-      self.srcs = srcs
+      self.dests = dests if dests != VARIABLE else 0
+      self.srcs = srcs if srcs != VARIABLE else 0
+      self.variable_srcs = (srcs == VARIABLE)
+      self.variable_dests = (dests == VARIABLE)
       self.imms = imms
       self.is_float = is_float
       self.can_eliminate = can_eliminate
@@ -57,7 +62,8 @@ class Encoding(object):
       if self.extensible:
          assert(length_long == length_short + (4 if length_short > 8 else 2))
 
-def op(name, encoding_32, dests = 1, srcs = 0, imms = [], is_float = False, can_eliminate = True, encoding_16 = None):
+def op(name, encoding_32, dests = 1, srcs = 0, imms = [], is_float = False,
+        can_eliminate = True, encoding_16 = None):
    encoding_16 = Encoding(encoding_16) if encoding_16 is not None else None
    encoding_32 = Encoding(encoding_32) if encoding_32 is not None else None
 
@@ -258,7 +264,7 @@ op("or", _, srcs = 2)
 # Indicates the logical end of the block, before final branches/control flow
 op("p_logical_end", _, dests = 0, srcs = 0, can_eliminate = False)
 
-op("p_combine", _, srcs = 4)
+op("p_combine", _, srcs = VARIABLE)
 op("p_split", _, srcs = 1, dests = 4)
 
 # Phis are special-cased in the IR as they (uniquely) can take an unbounded

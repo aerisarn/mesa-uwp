@@ -50,6 +50,10 @@ agx_${opcode}${suffix}(agx_builder *b
    , agx_index dst${dest}
 % endfor
 
+% if op.variable_srcs:
+   , unsigned nr_srcs
+% endif
+
 % for src in range(srcs):
    , agx_index src${src}
 % endfor
@@ -65,7 +69,10 @@ agx_${opcode}${suffix}(agx_builder *b
    I->dest[${dest}] = dst${dest};
 % endfor
 
-% if srcs > 0:
+% if op.variable_srcs:
+   I->src = ralloc_array(I, agx_index, nr_srcs);
+   I->nr_srcs = nr_srcs;
+% elif srcs > 0:
    I->src = ralloc_array(I, agx_index, ${srcs});
    I->nr_srcs = ${srcs};
 
@@ -82,7 +89,7 @@ agx_${opcode}${suffix}(agx_builder *b
    return I;
 }
 
-% if dests == 1:
+% if dests == 1 and not op.variable_srcs:
 static inline agx_index
 agx_${opcode}(agx_builder *b
 

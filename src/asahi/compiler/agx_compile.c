@@ -120,16 +120,14 @@ agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
 }
 
 static void
-agx_cache_combine(agx_builder *b, agx_index dst,
-                  agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+agx_cache_combine(agx_builder *b, agx_index dst, unsigned nr_srcs,
+                  agx_index *srcs)
 {
    /* Lifetime of a hash table entry has to be at least as long as the table */
-   agx_index *channels = ralloc_array(b->shader, agx_index, 4);
+   agx_index *channels = ralloc_array(b->shader, agx_index, nr_srcs);
 
-   channels[0] = s0;
-   channels[1] = s1;
-   channels[2] = s2;
-   channels[3] = s3;
+   for (unsigned i = 0; i < nr_srcs; ++i)
+      channels[i] = srcs[i];
 
    _mesa_hash_table_u64_insert(b->shader->allocated_vec, agx_index_to_key(dst),
                                channels);
@@ -142,11 +140,34 @@ agx_cache_combine(agx_builder *b, agx_index dst,
  * To optimize vector extractions, we record the individual channels
  */
 static agx_instr *
-agx_emit_combine_to(agx_builder *b, agx_index dst,
-                    agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+agx_emit_combine_to(agx_builder *b, agx_index dst, unsigned nr_srcs,
+                    agx_index *srcs)
 {
-   agx_cache_combine(b, dst, s0, s1, s2, s3);
-   return agx_p_combine_to(b, dst, s0, s1, s2, s3);
+   agx_cache_combine(b, dst, 4, srcs);
+   agx_instr *I = agx_p_combine_to(b, dst, nr_srcs);
+
+   agx_foreach_src(I, s)
+      I->src[s] = srcs[s];
+
+   return I;
+}
+
+static agx_index
+agx_vec4(agx_builder *b, agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+{
+      agx_index dst = agx_temp(b->shader, s0.size);
+      agx_index idx[4] = { s0, s1, s2, s3 };
+      agx_emit_combine_to(b, dst, 4, idx);
+      return dst;
+}
+
+static agx_index
+agx_vec2(agx_builder *b, agx_index s0, agx_index s1)
+{
+   agx_index dst = agx_temp(b->shader, s0.size);
+   agx_index idx[2] = { s0, s1 };
+   agx_emit_combine_to(b, dst, 2, idx);
+   return dst;
 }
 
 static void
@@ -197,7 +218,7 @@ agx_emit_cached_split(agx_builder *b, agx_index vec, unsigned n)
 {
    agx_index dests[4] = { agx_null(), agx_null(), agx_null(), agx_null() };
    agx_emit_split(b, dests, vec, n);
-   agx_cache_combine(b, vec, dests[0], dests[1], dests[2], dests[3]);
+   agx_cache_combine(b, vec, n, dests);
 }
 
 static void
@@ -654,7 +675,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    * If only individual components are accessed, this combine will be dead code
    * eliminated.
    */
-  return agx_emit_combine_to(b, dst, dests[0], dests[1], dests[2], dests[3]);
+  return agx_emit_combine_to(b, dst, 4, dests);
 }
 
 static agx_index
@@ -926,7 +947,10 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
-      return agx_emit_combine_to(b, dst, s0, s1, s2, s3);
+   {
+      agx_index idx[] = { s0, s1, s2, s3 };
+      return agx_emit_combine_to(b, dst, 4, idx);
+   }
 
    case nir_op_vec8:
    case nir_op_vec16:
@@ -1049,7 +1073,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
             agx_mov_to(b, layer32, layer);
 
             channels[nr - 1] = layer32;
-            coords = agx_p_combine(b, channels[0], channels[1], channels[2], channels[3]);
+            coords = agx_vec4(b, channels[0], channels[1], channels[2], channels[3]);
          } else {
             coords = index;
          }
