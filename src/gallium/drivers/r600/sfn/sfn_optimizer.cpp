@@ -227,16 +227,6 @@ void DCEVisitor::visit(Block *block)
    }
 }
 
-void visit(ControlFlowInstr *instr)
-{
-   (void)instr;
-}
-
-void visit(IfInstr *instr)
-{
-   (void)instr;
-}
-
 class CopyPropFwdVisitor : public InstrVisitor {
 public:
    CopyPropFwdVisitor();
