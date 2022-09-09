@@ -54,6 +54,8 @@ enum agx_push_type {
     */
    AGX_PUSH_ARRAY_SIZE_MINUS_1,
 
+   AGX_PUSH_TEXTURE_BASE,
+
    /* Keep last */
    AGX_PUSH_NUM_TYPES
 };

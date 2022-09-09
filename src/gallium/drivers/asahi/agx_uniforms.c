@@ -106,6 +106,13 @@ agx_push_location_direct(struct agx_context *ctx, struct agx_push push,
       return ptr.gpu;
    }
 
+   case AGX_PUSH_TEXTURE_BASE: {
+      struct agx_ptr ptr = agx_pool_alloc_aligned(&batch->pool, sizeof(uint64_t), 8);
+      uint64_t *address = ptr.cpu;
+      *address = batch->textures;
+      return ptr.gpu;
+   }
+
    default:
       unreachable("todo: push more");
    }

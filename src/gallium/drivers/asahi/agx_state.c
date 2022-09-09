@@ -1193,18 +1193,6 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
 
    uint8_t *record = ptr.cpu;
 
-   for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
-      struct agx_push push = cs->info.push[i];
-
-      agx_pack(record, BIND_UNIFORM, cfg) {
-         cfg.start_halfs = push.base;
-         cfg.size_halfs = push.length;
-         cfg.buffer = agx_push_location(ctx, push, stage);
-      }
-
-      record += AGX_BIND_UNIFORM_LENGTH;
-   }
-
    unsigned nr_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = ctx->stage[stage].sampler_count;
 
@@ -1240,6 +1228,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
          cfg.buffer = T_tex.gpu;
       }
 
+      ctx->batch->textures = T_tex.gpu;
       record += AGX_BIND_TEXTURE_LENGTH;
    }
 
@@ -1251,6 +1240,21 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
       }
 
       record += AGX_BIND_SAMPLER_LENGTH;
+   }
+
+   /* Must only upload uniforms after uploading textures so we can implement the
+    * AGX_PUSH_TEXTURE_BASE sysval correctly.
+    */
+   for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
+      struct agx_push push = cs->info.push[i];
+
+      agx_pack(record, BIND_UNIFORM, cfg) {
+         cfg.start_halfs = push.base;
+         cfg.size_halfs = push.length;
+         cfg.buffer = agx_push_location(ctx, push, stage);
+      }
+
+      record += AGX_BIND_UNIFORM_LENGTH;
    }
 
    /* TODO: Can we prepack this? */

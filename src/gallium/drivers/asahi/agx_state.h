@@ -100,6 +100,9 @@ struct agx_batch {
    /* PIPE_CLEAR_* bitmask */
    uint32_t clear, draw, load;
 
+   /* Base of uploaded texture descriptors */
+   uint64_t textures;
+
    float clear_color[4];
    double clear_depth;
    unsigned clear_stencil;

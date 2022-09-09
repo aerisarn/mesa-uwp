@@ -628,6 +628,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_load_back_face_agx:
      return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
+  case nir_intrinsic_load_texture_base_agx:
+     return agx_mov_to(b, dst, agx_indexed_sysval(b->shader,
+              AGX_PUSH_TEXTURE_BASE, AGX_SIZE_64, 0, 4));
+
   case nir_intrinsic_load_vertex_id:
      return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32)));
 
