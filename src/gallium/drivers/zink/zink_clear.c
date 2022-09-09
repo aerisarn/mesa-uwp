@@ -500,13 +500,11 @@ zink_clear_buffer(struct pipe_context *pctx,
          - size is the number of bytes to fill, and must be either a multiple of 4,
            or VK_WHOLE_SIZE to fill the range from offset to the end of the buffer
        */
-      struct zink_batch *batch = &ctx->batch;
-      zink_batch_no_rp(ctx);
-      zink_batch_reference_resource_rw(batch, res, true);
       util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + size);
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-      res->obj->unordered_read = res->obj->unordered_write = false;
-      VKCTX(CmdFillBuffer)(batch->state->cmdbuf, res->obj->buffer, offset, size, *(uint32_t*)clear_value);
+      VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, NULL, res);
+      zink_batch_reference_resource_rw(&ctx->batch, res, true);
+      VKCTX(CmdFillBuffer)(cmdbuf, res->obj->buffer, offset, size, *(uint32_t*)clear_value);
       return;
    }
    struct pipe_transfer *xfer;
