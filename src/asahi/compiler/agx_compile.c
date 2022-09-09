@@ -1827,7 +1827,6 @@ agx_compile_shader_nir(nir_shader *nir,
    }
 
    nir_lower_tex_options lower_tex_options = {
-      .lower_txs_lod = true,
       .lower_txp = ~0,
       .lower_invalid_implicit_lod = true,
 
@@ -1843,6 +1842,7 @@ agx_compile_shader_nir(nir_shader *nir,
    };
 
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, agx_lower_resinfo);
    NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    agx_optimize_nir(nir);

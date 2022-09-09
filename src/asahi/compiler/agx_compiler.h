@@ -740,6 +740,8 @@ agx_emit_parallel_copies(agx_builder *b, struct agx_copy *copies, unsigned n);
 void agx_compute_liveness(agx_context *ctx);
 void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
 
+bool agx_lower_resinfo(nir_shader *s);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
