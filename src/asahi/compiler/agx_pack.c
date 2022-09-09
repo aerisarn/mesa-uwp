@@ -95,9 +95,8 @@ agx_pack_lod(agx_index index)
    if (index.type == AGX_INDEX_IMMEDIATE && index.value == 0)
       return 0;
 
-   /* Otherwise must be a 16-bit float immediate */
+   /* Otherwise must be registers. Type implicitly specified by LOD mode. */
    assert(index.type == AGX_INDEX_REGISTER);
-   assert(index.size == AGX_SIZE_16);
    assert(index.value < 0x100);
 
    return index.value;

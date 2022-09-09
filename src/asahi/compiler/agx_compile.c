@@ -997,6 +997,7 @@ agx_lod_mode_for_nir(nir_texop op)
    switch (op) {
    case nir_texop_tex: return AGX_LOD_MODE_AUTO_LOD;
    case nir_texop_txb: return AGX_LOD_MODE_AUTO_LOD_BIAS;
+   case nir_texop_txd: return AGX_LOD_MODE_LOD_GRAD;
    case nir_texop_txl: return AGX_LOD_MODE_LOD_MIN;
    case nir_texop_txf: return AGX_LOD_MODE_LOD_MIN;
    default: unreachable("Unhandled texture op");
@@ -1011,6 +1012,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    case nir_texop_txf:
    case nir_texop_txl:
    case nir_texop_txb:
+   case nir_texop_txd:
       break;
    default:
       unreachable("Unhandled texture op");
@@ -1110,6 +1112,32 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          packed_offset = agx_mov_imm(b, 32, packed);
          break;
       }
+
+      case nir_tex_src_ddx:
+      {
+         int y_idx = nir_tex_instr_src_index(instr, nir_tex_src_ddy);
+         assert(y_idx >= 0 && "we only handle gradients");
+
+         unsigned n = nir_tex_instr_src_size(instr, y_idx);
+         assert((n == 2 || n == 3) && "other sizes not supported");
+
+         agx_index index2 = agx_src_index(&instr->src[y_idx].src);
+
+         /* We explicitly don't cache about the split cache for this */
+         lod = agx_temp(b->shader, AGX_SIZE_32);
+         agx_instr *I = agx_p_combine_to(b, lod, 2 * n);
+
+         for (unsigned i = 0; i < n; ++i) {
+            I->src[(2 * i) + 0] = agx_emit_extract(b, index, i);
+            I->src[(2 * i) + 1] = agx_emit_extract(b, index2, i);
+         }
+
+         break;
+      }
+
+      case nir_tex_src_ddy:
+         /* handled above */
+         break;
 
       case nir_tex_src_ms_index:
       case nir_tex_src_texture_offset:
@@ -1782,6 +1810,11 @@ agx_compile_shader_nir(nir_shader *nir,
       .lower_txs_lod = true,
       .lower_txp = ~0,
       .lower_invalid_implicit_lod = true,
+
+      /* XXX: Metal seems to handle just like 3D txd, so why doesn't it work?
+       * TODO: Stop using this lowering
+       */
+      .lower_txd_cube_map = true,
    };
 
    nir_tex_src_type_constraints tex_constraints = {

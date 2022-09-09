@@ -256,8 +256,8 @@ enum agx_lod_mode {
    AGX_LOD_MODE_AUTO_LOD = 0,
    AGX_LOD_MODE_AUTO_LOD_BIAS = 5,
    AGX_LOD_MODE_LOD_MIN = 6,
-   AGX_LOD_GRAD = 8,
-   AGX_LOD_GRAD_MIN = 12
+   AGX_LOD_MODE_LOD_GRAD = 4,
+   AGX_LOD_MODE_LOD_GRAD_MIN = 12
 };
 
 enum agx_dim {
