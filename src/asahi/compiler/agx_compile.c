@@ -507,6 +507,21 @@ agx_format_for_bits(unsigned bits)
    }
 }
 
+static void
+agx_emit_load_global(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
+{
+   agx_index addr = agx_src_index(&instr->src[0]);
+   agx_index offset = agx_immediate(0);
+   enum agx_format fmt = agx_format_for_bits(nir_dest_bit_size(instr->dest));
+
+   agx_index vec = agx_vec_for_intr(b->shader, instr);
+   agx_device_load_to(b, vec, addr, offset, fmt,
+                      BITFIELD_MASK(nir_dest_num_components(instr->dest)), 0);
+   agx_wait(b, 0);
+
+   agx_emit_split(b, dests, vec, 4);
+}
+
 static agx_instr *
 agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
 {
@@ -621,6 +636,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
         unreachable("Unsupported shader stage");
 
      break;
+
+  case nir_intrinsic_load_global:
+  case nir_intrinsic_load_global_constant:
+        agx_emit_load_global(b, dests, instr);
+        break;
 
   case nir_intrinsic_store_output:
      if (stage == MESA_SHADER_FRAGMENT)
