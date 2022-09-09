@@ -162,8 +162,8 @@ void PeepholeVisitor::visit(IfInstr *instr)
    if (src1.as_inline_const() &&
        src1.as_inline_const()->sel() == ALU_SRC_0) {
       auto src0 = pred->src(0).as_register();
-      if (src0 && src0->is_ssa()) {
-         assert(!src0->parents().empty());
+      if (src0 && src0->is_ssa() && !src0->parents().empty()) {
+         assert(src0->parents().size() == 1);
          auto parent = *src0->parents().begin();
 
          ReplaceIfPredicate visitor(pred);

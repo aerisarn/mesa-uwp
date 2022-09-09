@@ -485,6 +485,7 @@ bool VertexShader::load_input(nir_intrinsic_instr *intr)
       for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
          auto src = vf.allocate_pinned_register(driver_location + 1, i);
          src->pin_live_range(true);
+         src->set_is_ssa(true);
          if (intr->dest.is_ssa)
             vf.inject_value(intr->dest, i, src);
          else {
