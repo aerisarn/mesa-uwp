@@ -608,7 +608,7 @@ radv_ace_internal_barrier(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFla
 
    /* Add stage flush only when necessary. */
    if (src_stage_mask &
-       (VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV | VK_PIPELINE_STAGE_2_TRANSFER_BIT |
+       (VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_2_TRANSFER_BIT |
         VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
       cmd_buffer->ace_internal.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
 
@@ -617,12 +617,12 @@ radv_ace_internal_barrier(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFla
        (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT |
         VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
         VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
-      dst_stage_mask |= cmd_buffer->state.dma_is_busy ? VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV : 0;
+      dst_stage_mask |= cmd_buffer->state.dma_is_busy ? VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT : 0;
 
    /* Increment the GFX/ACE semaphore when task shaders are blocked. */
    if (dst_stage_mask &
        (VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
-        VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV))
+        VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT))
       cmd_buffer->ace_internal.sem.gfx2ace_value++;
 }
 
@@ -2756,7 +2756,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
        (pipeline->active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
                                    VK_SHADER_STAGE_GEOMETRY_BIT |
-                                   VK_SHADER_STAGE_MESH_BIT_NV))) {
+                                   VK_SHADER_STAGE_MESH_BIT_EXT))) {
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
@@ -3388,7 +3388,7 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
       radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
    } else {
-      radv_foreach_stage(stage, stages & ~VK_SHADER_STAGE_TASK_BIT_NV)
+      radv_foreach_stage(stage, stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
       {
          if (!cmd_buffer->state.graphics_pipeline->base.shaders[stage])
             continue;
@@ -3396,7 +3396,7 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
          radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, stage);
       }
 
-      if (stages & VK_SHADER_STAGE_TASK_BIT_NV) {
+      if (stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
          radv_emit_descriptor_pointers(device, cmd_buffer->ace_internal.cs, pipeline,
                                        descriptors_state, MESA_SHADER_TASK);
       }
@@ -3485,13 +3485,13 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       unreachable("Unhandled bind point");
    }
 
-   radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_NV)
+   radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
    {
       radv_emit_all_inline_push_consts(
          device, cs, pipeline, stage, (uint32_t *)cmd_buffer->push_constants, &need_push_constants);
    }
 
-   if (internal_stages & VK_SHADER_STAGE_TASK_BIT_NV) {
+   if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
       radv_emit_all_inline_push_consts(device, cmd_buffer->ace_internal.cs, pipeline,
                                        MESA_SHADER_TASK, (uint32_t *)cmd_buffer->push_constants,
                                        &need_push_constants);
@@ -3514,7 +3514,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
          radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_VULKAN_SHADER_STAGES * 4);
 
       prev_shader = NULL;
-      radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_NV)
+      radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
       {
          shader = radv_get_shader(pipeline, stage);
 
@@ -3526,7 +3526,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
          }
       }
 
-      if (internal_stages & VK_SHADER_STAGE_TASK_BIT_NV) {
+      if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
          radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
                                     AC_UD_PUSH_CONSTANTS, va);
       }
@@ -3915,7 +3915,7 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool
    radv_flush_vertex_descriptors(cmd_buffer, pipeline_is_dirty);
    radv_flush_streamout_descriptors(cmd_buffer);
 
-   VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_NV;
+   VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT;
    radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_flush_constants(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_flush_ngg_query_state(cmd_buffer);
@@ -4100,8 +4100,8 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 src_s
    /* For simplicity, if the barrier wants to wait for the task shader,
     * just make it wait for the mesh shader too.
     */
-   if (src_stage_mask & VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV)
-      src_stage_mask |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_NV;
+   if (src_stage_mask & VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT)
+      src_stage_mask |= VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
 
    if (src_stage_mask & (VK_PIPELINE_STAGE_2_COPY_BIT |
                          VK_PIPELINE_STAGE_2_RESOLVE_BIT |
@@ -4132,7 +4132,7 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 src_s
                VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
                VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
                VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-               VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_NV |
+               VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
                VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
                VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)) {
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VS_PARTIAL_FLUSH;
@@ -6004,7 +6004,7 @@ radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
 
-   radv_foreach_stage(stage, pipeline->active_stages & ~VK_SHADER_STAGE_TASK_BIT_NV) {
+   radv_foreach_stage(stage, pipeline->active_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
       radv_emit_view_index_per_stage(cmd_buffer->cs, pipeline, stage, index);
    }
    if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
@@ -6015,7 +6015,7 @@ radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
          radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, index);
       }
    }
-   if (pipeline->active_stages & VK_SHADER_STAGE_TASK_BIT_NV) {
+   if (pipeline->active_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
       radv_emit_view_index_per_stage(cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
                                      index);
    }
@@ -7290,9 +7290,9 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    descriptors_state->dirty = desc_dirty;
 
    /* Flush descriptors and push constants for task shaders. */
-   radv_flush_descriptors(cmd_buffer, VK_SHADER_STAGE_TASK_BIT_NV, &pipeline->base,
+   radv_flush_descriptors(cmd_buffer, VK_SHADER_STAGE_TASK_BIT_EXT, &pipeline->base,
                           VK_PIPELINE_BIND_POINT_GRAPHICS);
-   radv_flush_constants(cmd_buffer, VK_SHADER_STAGE_TASK_BIT_NV, &pipeline->base,
+   radv_flush_constants(cmd_buffer, VK_SHADER_STAGE_TASK_BIT_EXT, &pipeline->base,
                         VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    assert(ace_cs->cdw <= ace_cdw_max);
@@ -8972,7 +8972,7 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event,
       post_index_fetch_flags | VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
       VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
       VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT | VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-      VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_NV |
+      VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
       VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
       VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT |
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
