@@ -148,8 +148,12 @@ static void pvr_cmd_buffer_free_resources(struct pvr_cmd_buffer *cmd_buffer)
    util_dynarray_fini(&cmd_buffer->depth_bias_array);
 }
 
-static void pvr_cmd_buffer_reset(struct pvr_cmd_buffer *cmd_buffer)
+static void pvr_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
+                                 VkCommandBufferResetFlags flags)
 {
+   struct pvr_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct pvr_cmd_buffer, vk);
+
    /* FIXME: For now we always free all resources as if
     * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
     */
@@ -176,6 +180,7 @@ static void pvr_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 }
 
 static const struct vk_command_buffer_ops cmd_buffer_ops = {
+   .reset = pvr_cmd_buffer_reset,
    .destroy = pvr_cmd_buffer_destroy,
 };
 
@@ -2656,7 +2661,7 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    VkResult result;
 
    if (cmd_buffer->status != PVR_CMD_BUFFER_STATUS_INITIAL)
-      pvr_cmd_buffer_reset(cmd_buffer);
+      pvr_cmd_buffer_reset(&cmd_buffer->vk, 0);
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
    state = &cmd_buffer->state;
@@ -2700,16 +2705,6 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
           sizeof(*state->barriers_needed) * ARRAY_SIZE(state->barriers_needed));
 
    cmd_buffer->status = PVR_CMD_BUFFER_STATUS_RECORDING;
-
-   return VK_SUCCESS;
-}
-
-VkResult pvr_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                                VkCommandBufferResetFlags flags)
-{
-   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
-
-   pvr_cmd_buffer_reset(cmd_buffer);
 
    return VK_SUCCESS;
 }
