@@ -1365,7 +1365,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
 		.linker_ignore_precision = true,
 		.lower_fpow = true,
-		.lower_int64_options = ~0
+		.lower_int64_options = ~0,
+		.lower_cs_local_index_to_id = true
 	};
 
 	rscreen->nir_options = nir_options;
