@@ -2035,8 +2035,7 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
 
    case 64:
       assert(devinfo->ver >= 7);
-      if (devinfo->ver == 7) {
-         /* We don't get 64-bit integer types until gfx8 */
+      if (!devinfo->has_64bit_int) {
          for (unsigned i = 0; i < instr->def.num_components; i++) {
             bld.MOV(retype(offset(reg, bld, i), BRW_REGISTER_TYPE_DF),
                     setup_imm_df(bld, instr->value[i].f64));
