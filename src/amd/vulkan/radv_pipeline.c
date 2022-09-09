@@ -2664,7 +2664,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.has_multiview_view_index = !!state->rp->view_mask;
 
    if (pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT) {
-      key.vs.dynamic_input_state = true;
+      key.vs.has_prolog = true;
    }
 
    /* Vertex input state */
@@ -3242,7 +3242,7 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_physical_device *pdevice,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
-   if (pipeline_key->vs.dynamic_input_state)
+   if (pipeline_key->vs.has_prolog)
       return false;
 
    nir_builder b;

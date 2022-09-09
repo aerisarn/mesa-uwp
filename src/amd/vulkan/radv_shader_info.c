@@ -382,7 +382,7 @@ static void
 gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
                       const struct radv_pipeline_key *pipeline_key, struct radv_shader_info *info)
 {
-   if (pipeline_key->vs.dynamic_input_state && nir->info.inputs_read) {
+   if (pipeline_key->vs.has_prolog && nir->info.inputs_read) {
       info->vs.has_prolog = true;
       info->vs.dynamic_inputs = true;
    }
