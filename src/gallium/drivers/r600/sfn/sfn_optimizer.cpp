@@ -350,13 +350,38 @@ void CopyPropFwdVisitor::visit(AluInstr *instr)
    auto src = instr->psrc(0);
    auto dest = instr->dest();
 
-   for (auto& i : instr->dest()->uses()) {
+   for (auto& i : dest->uses()) {
       /* SSA can always be propagated, registers only in the same block
-       * and only if they are not assigned to more than once */
-      if (dest->is_ssa() ||
-          (instr->block_id() == i->block_id() &&
-           instr->index() < i->index() &&
-           dest->uses().size() == 1)) {
+       * and only if they are assigned in the same block */
+      bool can_propagate = dest->is_ssa();
+
+      if (!can_propagate) {
+
+         /* Register can propagate if the assigment was in the same
+          * block, and we don't have a second assignment coming later
+          * (e.g. helper invocation evaluation does
+          *
+          * 1: MOV R0.x, -1
+          * 2: FETCH R0.0 VPM
+          * 3: MOV SN.x, R0.x
+          *
+          * Here we can't prpagate the move in 1 to SN.x in 3 */
+         if ((instr->block_id() == i->block_id() &&
+              instr->index() < i->index())) {
+            can_propagate = true;
+            if (dest->parents().size() > 1) {
+               for (auto p : dest->parents()) {
+                  if (p->block_id() == i->block_id() &&
+                      p->index() > instr->index()) {
+                      can_propagate = false;
+                      break;
+                  }
+               }
+            }
+         }
+      }
+
+      if (can_propagate) {
          sfn_log << SfnLog::opt << "   Try replace in "
                  << i->block_id() << ":" << i->index()
                  << *i<< "\n";
@@ -584,8 +609,12 @@ void SimplifySourceVecVisitor::visit(TexInstr *instr)
             ++nvals;
       if (nvals == 1) {
          for (int i = 0; i < 4; ++i)
-            if (src[i]->chan() < 4)
-               src[i]->set_pin(pin_free);
+            if (src[i]->chan() < 4) {
+               if (src[i]->pin() == pin_group)
+                  src[i]->set_pin(pin_free);
+               else if (src[i]->pin() == pin_chgr)
+                  src[i]->set_pin(pin_chan);
+            }
       }
    }
    for (auto& prep : instr->prepare_instr()) {

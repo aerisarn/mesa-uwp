@@ -1121,18 +1121,18 @@ IF (( ALU PREDE_INT __.x@free : KC0[0].x I[1] {LEP} PUSH_BEFORE ))
       ALU MOV R3.x : R5.x {WL}
     LOOP_END
     ALU MOV R8.x : I[1.0] {WL}
-    ALU MOV R7.x : R8.x {WL}
+    ALU MOV R7.x : I[1.0] {WL}
     ALU MOV R6.x : I[-1] {WL}
   ELSE
     ALU MOV R8.x : I[1.0] {WL}
     ALU MOV R7.x : I[0] {WL}
-    ALU MOV R4.x : R8.x {WL}
+    ALU MOV R4.x : I[1.0] {WL}
     ALU MOV R6.x : I[0] {WL}
   ENDIF
 ELSE
   ALU MOV R8.x : I[1.0] {WL}
   ALU MOV R7.x : I[0] {WL}
-  ALU MOV R4.x : R8.x {WL}
+  ALU MOV R4.x : I[1.0] {WL}
   ALU MOV R6.x : I[-1] {WL}
 ENDIF
 ALU CNDE_INT S27.x@free : R6.x I[1.0] R4.x {WL}
