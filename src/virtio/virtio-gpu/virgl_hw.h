@@ -641,6 +641,7 @@ struct virgl_caps_v2 {
         uint32_t max_const_buffer_size[6]; // PIPE_SHADER_TYPES
         uint32_t num_video_caps;
         struct virgl_video_caps video_caps[32];
+        uint32_t max_uniform_block_size;
 };
 
 union virgl_caps {
