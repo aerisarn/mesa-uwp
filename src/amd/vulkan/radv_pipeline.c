@@ -227,6 +227,11 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       radv_pipeline_layout_finish(device, &gfx_pipeline_lib->layout);
 
       for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+         if (pipeline->shaders[i]) {
+            free(pipeline->shaders[i]->binary);
+            pipeline->shaders[i]->binary = NULL;
+         }
+
          ralloc_free(pipeline->retained_shaders[i].nir);
       }
 
@@ -1600,6 +1605,14 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
          continue;
 
       pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
+   }
+
+   /* Import the compiled shaders. */
+   for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
+      if (!lib->base.base.shaders[s])
+         continue;
+
+      pipeline->base.shaders[s] = radv_shader_ref(lib->base.base.shaders[s]);
    }
 
    /* Import the PS epilog if present. */
@@ -3643,6 +3656,10 @@ radv_pipeline_get_nir(struct radv_pipeline *pipeline, struct radv_pipeline_stage
       if (!stages[s].entrypoint)
          continue;
 
+      /* Do not try to get the NIR when we already have the assembly. */
+      if (pipeline->shaders[s])
+         continue;
+
       int64_t stage_start = os_time_get_nano();
 
       assert(retain_shaders || pipeline->shaders[s] == NULL);
@@ -3850,6 +3867,29 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    NIR_PASS(_, stage->nir, nir_opt_move, move_opts);
 }
 
+static bool
+radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
+                               const struct radv_pipeline_key *pipeline_key)
+{
+   struct radv_device *device = pipeline->base.device;
+
+   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
+       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog) {
+      struct radv_ps_epilog_key epilog_key = {
+         .spi_shader_col_format = pipeline_key->ps.col_format,
+         .color_is_int8 = pipeline_key->ps.is_int8,
+         .color_is_int10 = pipeline_key->ps.is_int10,
+         .enable_mrt_output_nan_fixup = pipeline_key->ps.enable_mrt_output_nan_fixup,
+      };
+
+      pipeline->ps_epilog = radv_create_ps_epilog(device, &epilog_key);
+      if (!pipeline->ps_epilog)
+         return false;
+   }
+
+   return true;
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4054,6 +4094,14 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
+   /* When the main FS is compiled inside a library, we need to compile a PS epilog if it hasn't
+    * been already imported.
+    */
+   if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+      if (!radv_pipeline_create_ps_epilog(radv_pipeline_to_graphics(pipeline), pipeline_key))
+         return result;
+   }
+
    /* Upload shader binaries. */
    radv_upload_shaders(device, pipeline);
 
@@ -4079,7 +4127,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (pipeline->shaders[i]) {
+      if (pipeline->shaders[i] && !(flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
          free(pipeline->shaders[i]->binary);
          pipeline->shaders[i]->binary = NULL;
       }
@@ -6254,12 +6302,24 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
       struct radv_pipeline_key key =
          radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
 
-      /* FIXME: Force the driver to always retain the NIR shaders (after SPIRV->NIR) because it
-       * doesn't yet support VS prologs and PS epilogs. This is very suboptimal, slow but for good
-       * enough for a start.
+      /* Compile the main FS only when the fragment shader output interface is missing. */
+      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+          !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+         key.ps.has_epilog = true;
+      }
+
+      /* FIXME: Force the driver to retain the NIR shaders (after SPIRV->NIR) because it doesn't yet
+       * support pre-rasterization stages. This is very suboptimal, slow but good enough for a
+       * start.
        */
-      VkPipelineCreateFlags flags =
-         pCreateInfo->flags | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+      VkPipelineCreateFlags flags = pCreateInfo->flags;
+      if (pipeline->base.active_stages & (VK_SHADER_STAGE_VERTEX_BIT |
+                                          VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                          VK_SHADER_STAGE_GEOMETRY_BIT |
+                                          VK_SHADER_STAGE_MESH_BIT_NV)) {
+         flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+      }
 
       result = radv_create_shaders(&pipeline->base.base, pipeline_layout, device, cache, &key,
                                    pCreateInfo->pStages, pCreateInfo->stageCount, flags, NULL,
