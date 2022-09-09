@@ -81,6 +81,11 @@ nvk_slm_area_ensure(struct nvk_device *dev,
 
    uint64_t size = bytes_per_mp * dev->pdev->dev->mp_count;
 
+   /* The hardware seems to require this alignment for
+    * NV9097_SET_SHADER_LOCAL_MEMORY_D_SIZE_LOWER.
+    */
+   size = ALIGN(size, 0x20000);
+
    struct nouveau_ws_bo *bo =
       nouveau_ws_bo_new(dev->pdev->dev, size, 0, NOUVEAU_WS_BO_LOCAL);
    if (bo == NULL)
