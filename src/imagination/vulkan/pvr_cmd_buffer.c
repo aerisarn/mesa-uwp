@@ -150,21 +150,19 @@ static void pvr_cmd_buffer_free_resources(struct pvr_cmd_buffer *cmd_buffer)
 
 static void pvr_cmd_buffer_reset(struct pvr_cmd_buffer *cmd_buffer)
 {
-   if (cmd_buffer->status != PVR_CMD_BUFFER_STATUS_INITIAL) {
-      /* FIXME: For now we always free all resources as if
-       * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
-       */
-      pvr_cmd_buffer_free_resources(cmd_buffer);
+   /* FIXME: For now we always free all resources as if
+    * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
+    */
+   pvr_cmd_buffer_free_resources(cmd_buffer);
 
-      vk_command_buffer_reset(&cmd_buffer->vk);
+   vk_command_buffer_reset(&cmd_buffer->vk);
 
-      memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
-      memset(cmd_buffer->scissor_words, 0, sizeof(cmd_buffer->scissor_words));
+   memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
+   memset(cmd_buffer->scissor_words, 0, sizeof(cmd_buffer->scissor_words));
 
-      cmd_buffer->usage_flags = 0;
-      cmd_buffer->state.status = VK_SUCCESS;
-      cmd_buffer->status = PVR_CMD_BUFFER_STATUS_INITIAL;
-   }
+   cmd_buffer->usage_flags = 0;
+   cmd_buffer->state.status = VK_SUCCESS;
+   cmd_buffer->status = PVR_CMD_BUFFER_STATUS_INITIAL;
 }
 
 static void pvr_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
@@ -2657,7 +2655,8 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    struct pvr_cmd_buffer_state *state;
    VkResult result;
 
-   pvr_cmd_buffer_reset(cmd_buffer);
+   if (cmd_buffer->status != PVR_CMD_BUFFER_STATUS_INITIAL)
+      pvr_cmd_buffer_reset(cmd_buffer);
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
    state = &cmd_buffer->state;
