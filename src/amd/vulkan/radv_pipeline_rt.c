@@ -1052,6 +1052,7 @@ struct rt_traversal_vars {
    nir_variable *bvh_base;
    nir_variable *stack;
    nir_variable *top_stack;
+   nir_variable *current_node;
 };
 
 static struct rt_traversal_vars
@@ -1079,6 +1080,8 @@ init_traversal_vars(nir_builder *b)
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "traversal_stack_ptr");
    ret.top_stack = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(),
                                        "traversal_top_stack_ptr");
+   ret.current_node =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "current_node;");
    return ret;
 }
 
@@ -1426,39 +1429,46 @@ build_traversal_shader(struct radv_device *device,
       nir_store_var(&b, trav_vars.sbt_offset_and_flags, nir_imm_int(&b, 0), 1);
       nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
 
-      nir_store_var(&b, trav_vars.stack, nir_iadd(&b, stack_idx_base, stack_idx_stride), 1);
-      stack = nir_build_deref_array(&b, stack_deref, stack_idx_base);
-      nir_store_deref(&b, stack, bvh_root, 0x1);
+      nir_store_var(&b, trav_vars.stack, stack_idx_base, 1);
 
       nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, trav_vars.current_node, bvh_root, 0x1);
 
       nir_push_loop(&b);
 
-      nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, trav_vars.stack), stack_idx_base));
-      nir_jump(&b, nir_jump_break);
-      nir_pop_if(&b, NULL);
-
-      nir_if *bottom_exit = nir_push_if(
-         &b, nir_uge(&b, nir_load_var(&b, trav_vars.top_stack), nir_load_var(&b, trav_vars.stack)));
-      bottom_exit->control = nir_selection_control_dont_flatten;
+      nir_push_if(&b, nir_ieq_imm(&b, nir_load_var(&b, trav_vars.current_node), -1));
       {
-         nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
-         nir_store_var(&b, trav_vars.bvh_base,
-                       build_addr_to_node(&b, nir_load_var(&b, vars.accel_struct)), 1);
-         nir_store_var(&b, trav_vars.origin, nir_load_var(&b, vars.origin), 7);
-         nir_store_var(&b, trav_vars.dir, nir_load_var(&b, vars.direction), 7);
-         nir_store_var(&b, trav_vars.inv_dir,
-                       nir_fdiv(&b, vec3ones, nir_load_var(&b, trav_vars.dir)), 7);
-         nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
+         nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, trav_vars.stack), stack_idx_base));
+         nir_jump(&b, nir_jump_break);
+         nir_pop_if(&b, NULL);
+
+         nir_if *bottom_exit = nir_push_if(&b, nir_uge(&b, nir_load_var(&b, trav_vars.top_stack),
+                                                       nir_load_var(&b, trav_vars.stack)));
+         bottom_exit->control = nir_selection_control_dont_flatten;
+         {
+            nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
+            nir_store_var(&b, trav_vars.bvh_base,
+                          build_addr_to_node(&b, nir_load_var(&b, vars.accel_struct)), 1);
+            nir_store_var(&b, trav_vars.origin, nir_load_var(&b, vars.origin), 7);
+            nir_store_var(&b, trav_vars.dir, nir_load_var(&b, vars.direction), 7);
+            nir_store_var(&b, trav_vars.inv_dir,
+                          nir_fdiv(&b, vec3ones, nir_load_var(&b, trav_vars.dir)), 7);
+            nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
+         }
+         nir_pop_if(&b, NULL);
+
+         nir_store_var(&b, trav_vars.stack,
+                       nir_isub(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride), 1);
+
+         stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
+         nir_store_var(&b, trav_vars.current_node, nir_load_deref(&b, stack), 0x1);
       }
       nir_pop_if(&b, NULL);
 
-      nir_store_var(&b, trav_vars.stack,
-                    nir_isub(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride), 1);
-
-      stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
-      nir_ssa_def *bvh_node = nir_load_deref(&b, stack);
+      nir_ssa_def *bvh_node = nir_load_var(&b, trav_vars.current_node);
       nir_ssa_def *bvh_node_type = nir_iand_imm(&b, bvh_node, 7);
+
+      nir_store_var(&b, trav_vars.current_node, nir_imm_int(&b, -1), 0x1);
 
       bvh_node = nir_iadd(&b, nir_load_var(&b, trav_vars.bvh_base), nir_u2u(&b, bvh_node, 64));
       nir_ssa_def *intrinsic_result = NULL;
@@ -1507,11 +1517,8 @@ build_traversal_shader(struct radv_device *device,
                              build_addr_to_node(
                                 &b, nir_pack_64_2x32(&b, nir_channels(&b, instance_data, 0x3))),
                              1);
-               stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
-               nir_store_deref(&b, stack, nir_iand_imm(&b, nir_channel(&b, instance_data, 0), 63), 0x1);
-
-               nir_store_var(&b, trav_vars.stack,
-                             nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride), 1);
+               nir_store_var(&b, trav_vars.current_node,
+                             nir_iand_imm(&b, nir_channel(&b, instance_data, 0), 63), 1);
 
                nir_store_var(
                   &b, trav_vars.origin,
@@ -1542,18 +1549,19 @@ build_traversal_shader(struct radv_device *device,
                   nir_load_var(&b, trav_vars.dir), nir_load_var(&b, trav_vars.inv_dir));
             }
 
-            for (unsigned i = 4; i-- > 0; ) {
+            for (unsigned i = 4; i-- > 1;) {
                nir_ssa_def *new_node = nir_channel(&b, result, i);
                nir_push_if(&b, nir_ine_imm(&b, new_node, 0xffffffff));
                {
                   stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
                   nir_store_deref(&b, stack, new_node, 0x1);
-                  nir_store_var(
-                     &b, trav_vars.stack,
-                     nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride), 1);
+                  nir_store_var(&b, trav_vars.stack,
+                                nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride),
+                                1);
                }
                nir_pop_if(&b, NULL);
             }
+            nir_store_var(&b, trav_vars.current_node, nir_channel(&b, result, 0), 0x1);
          }
          nir_pop_if(&b, NULL);
       }
