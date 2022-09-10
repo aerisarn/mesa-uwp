@@ -308,6 +308,16 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
 
+   if (dev->ctx->eng3d.cls >= FERMI_A &&
+       dev->ctx->eng3d.cls < MAXWELL_A) {
+      assert(dev->vab_memory);
+      uint64_t vab_addr = dev->vab_memory->offset;
+      P_MTHD(p, NV9097, SET_VAB_MEMORY_AREA_A);
+      P_NV9097_SET_VAB_MEMORY_AREA_A(p, vab_addr >> 32);
+      P_NV9097_SET_VAB_MEMORY_AREA_B(p, vab_addr);
+      P_NV9097_SET_VAB_MEMORY_AREA_C(p, SIZE_BYTES_256K);
+   }
+
    if (dev->ctx->eng3d.cls == MAXWELL_A)
       P_IMMD(p, NVB097, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
 

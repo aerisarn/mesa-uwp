@@ -8,6 +8,8 @@
 
 #include "vulkan/wsi/wsi_common.h"
 
+#include "cl9097.h"
+#include "clb097.h"
 #include "clc397.h"
 
 static void
@@ -224,10 +226,19 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    memset(zero_map, 0, 0x1000);
    nouveau_ws_bo_unmap(device->zero_page, zero_map);
 
+   if (device->ctx->eng3d.cls >= FERMI_A &&
+       device->ctx->eng3d.cls < MAXWELL_A) {
+      /* max size is 256k */
+      device->vab_memory =
+         nouveau_ws_bo_new(device->pdev->dev, 1 << 17, 1 << 20, NOUVEAU_WS_BO_LOCAL);
+      if (device->vab_memory == NULL)
+         goto fail_zero_page;
+   }
+
    result = nvk_queue_init(device, &device->queue,
                            &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
-      goto fail_zero_page;
+      goto fail_vab_memory;
 
    result = nvk_device_init_meta(device);
    if (result != VK_SUCCESS)
@@ -239,6 +250,9 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
 fail_queue:
    nvk_queue_finish(device, &device->queue);
+fail_vab_memory:
+   if (device->vab_memory)
+      nouveau_ws_bo_destroy(device->vab_memory);
 fail_zero_page:
    nouveau_ws_bo_destroy(device->zero_page);
 fail_queue_submit:
@@ -277,6 +291,8 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
    nvk_queue_finish(device, &device->queue);
+   if (device->vab_memory)
+      nouveau_ws_bo_destroy(device->vab_memory);
    nouveau_ws_bo_destroy(device->zero_page);
    vk_device_finish(&device->vk);
    nvk_slm_area_finish(&device->slm);
