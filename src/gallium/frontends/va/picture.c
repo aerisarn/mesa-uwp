@@ -859,12 +859,21 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    }
 
    if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
+      struct pipe_screen *screen = context->decoder->context->screen;
       coded_buf = context->coded_buf;
-      if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
-         getEncParamPresetH264(context);
+      if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
          context->desc.h264enc.frame_num_cnt++;
-      } else if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_HEVC)
-         getEncParamPresetH265(context);
+
+      /* keep other path the same way */
+      if (!screen->get_video_param(screen, PIPE_VIDEO_PROFILE_UNKNOWN,
+                                  context->decoder->entrypoint,
+                                  PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL)) {
+
+         if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
+            getEncParamPresetH264(context);
+         else if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_HEVC)
+            getEncParamPresetH265(context);
+      }
 
       context->desc.base.input_format = surf->buffer->buffer_format;
       context->desc.base.output_format = surf->encoder_format;

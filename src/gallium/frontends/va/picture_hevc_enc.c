@@ -134,6 +134,8 @@ vlVaHandleVAEncSequenceParameterBufferTypeHEVC(vlVaDriver *drv, vlVaContext *con
 
       if (!context->decoder)
          return VA_STATUS_ERROR_ALLOCATION_FAILED;
+
+      getEncParamPresetH265(context);
    }
 
    context->desc.h265enc.seq.general_profile_idc = h265->general_profile_idc;
