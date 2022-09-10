@@ -272,3 +272,5 @@ op("p_split", _, srcs = 1, dests = 4)
 # Phis are special-cased in the IR as they (uniquely) can take an unbounded
 # number of source.
 op("phi", _, srcs = 0)
+
+op("unit_test", _, dests = 0, srcs = 1, can_eliminate = False)
