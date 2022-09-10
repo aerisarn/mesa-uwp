@@ -1438,16 +1438,19 @@ build_traversal_shader(struct radv_device *device,
       nir_jump(&b, nir_jump_break);
       nir_pop_if(&b, NULL);
 
-      nir_push_if(
+      nir_if *bottom_exit = nir_push_if(
          &b, nir_uge(&b, nir_load_var(&b, trav_vars.top_stack), nir_load_var(&b, trav_vars.stack)));
-      nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
-      nir_store_var(&b, trav_vars.bvh_base,
-                    build_addr_to_node(&b, nir_load_var(&b, vars.accel_struct)), 1);
-      nir_store_var(&b, trav_vars.origin, nir_load_var(&b, vars.origin), 7);
-      nir_store_var(&b, trav_vars.dir, nir_load_var(&b, vars.direction), 7);
-      nir_store_var(&b, trav_vars.inv_dir, nir_fdiv(&b, vec3ones, nir_load_var(&b, trav_vars.dir)), 7);
-      nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
-
+      bottom_exit->control = nir_selection_control_dont_flatten;
+      {
+         nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
+         nir_store_var(&b, trav_vars.bvh_base,
+                       build_addr_to_node(&b, nir_load_var(&b, vars.accel_struct)), 1);
+         nir_store_var(&b, trav_vars.origin, nir_load_var(&b, vars.origin), 7);
+         nir_store_var(&b, trav_vars.dir, nir_load_var(&b, vars.direction), 7);
+         nir_store_var(&b, trav_vars.inv_dir,
+                       nir_fdiv(&b, vec3ones, nir_load_var(&b, trav_vars.dir)), 7);
+         nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
+      }
       nir_pop_if(&b, NULL);
 
       nir_store_var(&b, trav_vars.stack,
