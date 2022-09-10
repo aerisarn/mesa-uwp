@@ -382,7 +382,9 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index dest, nir_intrinsic_instr *ins
    for (unsigned i = 0; i < components; ++i) {
       /* vec3 for each vertex, unknown what first 2 channels are for */
       agx_index d[3] = { agx_null() };
-      agx_emit_split(b, d, agx_ldcf(b, cf, 1), 3);
+      agx_index tmp = agx_temp(b->shader, AGX_SIZE_32);
+      agx_ldcf_to(b, tmp, cf, 1);
+      agx_emit_split(b, d, tmp, 3);
       dests[i] = d[2];
 
       /* Each component accesses a sequential coefficient register */
@@ -567,9 +569,12 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst, nir_intrinsic_instr *ins
 
    u_foreach_bit(i, nir_ssa_def_components_read(&instr->dest.ssa)) {
       if (i < 2) {
-         dests[i] = agx_fadd(b, agx_convert(b, agx_immediate(AGX_CONVERT_U32_TO_F),
+         agx_index fp32 = agx_temp(b->shader, AGX_SIZE_32);
+         agx_convert_to(b, fp32, agx_immediate(AGX_CONVERT_U32_TO_F),
                   agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
-                  AGX_ROUND_RTE), agx_immediate_f(0.5f));
+                  AGX_ROUND_RTE);
+
+         dests[i] = agx_fadd(b, fp32, agx_immediate_f(0.5f));
       } else {
          agx_index cf = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
          dests[i] = agx_iter(b, cf, agx_null(), 1, false);

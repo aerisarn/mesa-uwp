@@ -115,7 +115,7 @@ agx_immediate(uint16_t imm)
 {
    return (agx_index) {
       .value = imm,
-      .size = AGX_SIZE_32,
+      .size = AGX_SIZE_16,
       .type = AGX_INDEX_IMMEDIATE,
    };
 }
