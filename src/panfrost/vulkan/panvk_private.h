@@ -727,8 +727,6 @@ struct panvk_cmd_state {
 
 struct panvk_cmd_pool {
    struct vk_command_pool vk;
-   struct list_head active_cmd_buffers;
-   struct list_head free_cmd_buffers;
    struct panvk_bo_pool desc_bo_pool;
    struct panvk_bo_pool varying_bo_pool;
    struct panvk_bo_pool tls_bo_pool;
@@ -752,8 +750,6 @@ struct panvk_cmd_buffer {
 
    struct panvk_device *device;
 
-   struct panvk_cmd_pool *pool;
-   struct list_head pool_link;
    struct panvk_pool desc_pool;
    struct panvk_pool varying_pool;
    struct panvk_pool tls_pool;
