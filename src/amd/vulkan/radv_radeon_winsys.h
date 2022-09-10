@@ -323,7 +323,7 @@ radeon_emit_array(struct radeon_cmdbuf *cs, const uint32_t *values, unsigned cou
 }
 
 static inline uint64_t
-radv_buffer_get_va(struct radeon_winsys_bo *bo)
+radv_buffer_get_va(const struct radeon_winsys_bo *bo)
 {
    return bo->va;
 }
