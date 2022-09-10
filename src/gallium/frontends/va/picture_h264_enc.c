@@ -259,18 +259,6 @@ vlVaHandleVAEncMiscParameterTypeQualityLevelH264(vlVaContext *context, VAEncMisc
 
 void getEncParamPresetH264(vlVaContext *context)
 {
-   //motion estimation preset
-   context->desc.h264enc.motion_est.motion_est_quarter_pixel = 0;
-   context->desc.h264enc.motion_est.lsmvert = 0;
-   context->desc.h264enc.motion_est.enc_disable_sub_mode = 254;
-   context->desc.h264enc.motion_est.enc_en_ime_overw_dis_subm = 0;
-   context->desc.h264enc.motion_est.enc_ime_overw_dis_subm_no = 0;
-   context->desc.h264enc.motion_est.enc_ime2_search_range_x = 1;
-   context->desc.h264enc.motion_est.enc_ime2_search_range_y = 1;
-
-   //pic control preset
-   context->desc.h264enc.pic_ctrl.enc_constraint_set_flags = 0x00000040;
-
    //rate control
    context->desc.h264enc.rate_ctrl[0].vbv_buffer_size = 20000000;
    context->desc.h264enc.rate_ctrl[0].vbv_buf_lv = 48;
@@ -292,5 +280,4 @@ void getEncParamPresetH264(vlVaContext *context)
       context->desc.h264enc.rate_ctrl[0].frame_rate_num);
 
    context->desc.h264enc.rate_ctrl[0].peak_bits_picture_fraction = 0;
-   context->desc.h264enc.ref_pic_mode = 0x00000201;
 }
