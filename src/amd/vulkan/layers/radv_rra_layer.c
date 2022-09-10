@@ -130,7 +130,7 @@ rra_CreateAccelerationStructureKHR(VkDevice _device,
 
    _mesa_hash_table_insert(device->rra_trace.accel_structs, structure, build_submit_event);
    _mesa_hash_table_u64_insert(device->rra_trace.accel_struct_vas,
-                               radv_accel_struct_get_va(structure), NULL);
+                               radv_accel_struct_get_va(structure), structure);
 
    simple_mtx_unlock(&device->rra_trace.data_mtx);
    return VK_SUCCESS;
