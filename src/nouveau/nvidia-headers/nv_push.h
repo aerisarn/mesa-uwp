@@ -54,6 +54,7 @@ void vk_push_print(FILE *fp, const struct nv_push *push,
 
 #define SUBC_NV90C0 1
 #define SUBC_NVA0C0 1
+#define SUBC_NVB0C0 1
 #define SUBC_NVC0C0 1
 #define SUBC_NVC3C0 1
 

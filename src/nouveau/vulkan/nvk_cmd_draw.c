@@ -17,6 +17,7 @@
 
 #include "nvk_cl902d.h"
 #include "nvk_cl90c0.h"
+#include "nvk_clb0c0.h"
 
 #include "nvk_cl9097.h"
 #include "nvk_cla097.h"
@@ -307,12 +308,18 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
 
+   if (dev->ctx->eng3d.cls == MAXWELL_A)
+      P_IMMD(p, NVB097, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
+
    /* Compute state */
    P_MTHD(p, NV90C0, SET_OBJECT);
    P_NV90C0_SET_OBJECT(p, {
       .class_id = dev->ctx->compute.cls,
       .engine_id = 0,
    });
+
+   if (dev->ctx->compute.cls == MAXWELL_COMPUTE_A)
+      P_IMMD(p, NVB0C0, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
 
    return nvk_queue_submit_simple(queue, nv_push_dw_count(&push), push_data,
                                   0, NULL, false /* sync */);
