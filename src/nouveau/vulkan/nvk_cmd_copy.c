@@ -566,8 +566,8 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    VkDeviceSize start = dstOffset / 4;
    VkDeviceSize end = start + fillSize / 4;
 
-   /* can't go higher for whatever reason */
-   uint32_t pitch = 1 << 19;
+   /* Pascal could do 1 << 19, but previous gens need lower pitches */
+   uint32_t pitch = 1 << 18;
    uint32_t line = pitch / 4;
 
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 33);
