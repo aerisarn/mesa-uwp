@@ -773,10 +773,19 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          cfg.layout = agx_translate_layout(tex->modifier);
          cfg.format = agx_pixel_format[surf->format].hw;
+
+         assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
          cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
-         cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
-         cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
-         cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
+
+         if (desc->nr_channels >= 2)
+            cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
+
+         if (desc->nr_channels >= 3)
+            cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
+
+         if (desc->nr_channels >= 4)
+            cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
+
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.level = surf->u.tex.level;
