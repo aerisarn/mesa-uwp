@@ -623,6 +623,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return 32;
          else
             return 0;
+      case PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE:
+         return (sscreen->info.family >= CHIP_RAVEN) ? 1 : 0;
       default:
          return 0;
       }

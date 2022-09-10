@@ -219,6 +219,16 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                                  PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL);
             value = quality_range ? quality_range : VA_ATTRIB_NOT_SUPPORTED;
          } break;
+         case VAConfigAttribMaxFrameSize:
+         {
+            /* Max Frame Size can be used to control picture level frame size.
+             * This frame size is in bits.
+             */
+            value = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE);
+            value = value ? value : VA_ATTRIB_NOT_SUPPORTED;
+         } break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;

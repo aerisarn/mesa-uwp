@@ -259,6 +259,14 @@ vlVaHandleVAEncMiscParameterTypeQualityLevelH264(vlVaContext *context, VAEncMisc
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeMaxFrameSizeH264(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterBufferMaxFrameSize *ms = (VAEncMiscParameterBufferMaxFrameSize *)misc->data;
+   context->desc.h264enc.rate_ctrl[0].max_au_size = ms->max_frame_size;
+   return VA_STATUS_SUCCESS;
+}
+
 void getEncParamPresetH264(vlVaContext *context)
 {
    //rate control

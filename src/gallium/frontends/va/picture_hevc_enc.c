@@ -331,6 +331,14 @@ vlVaHandleVAEncPackedHeaderDataBufferTypeHEVC(vlVaContext *context, vlVaBuffer *
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeMaxFrameSizeHEVC(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterBufferMaxFrameSize *ms = (VAEncMiscParameterBufferMaxFrameSize *)misc->data;
+   context->desc.h265enc.rc.max_au_size = ms->max_frame_size;
+   return VA_STATUS_SUCCESS;
+}
+
 void getEncParamPresetH265(vlVaContext *context)
 {
    //rate control
