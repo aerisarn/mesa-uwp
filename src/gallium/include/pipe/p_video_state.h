@@ -383,8 +383,11 @@ struct pipe_h264_enc_rate_control
    unsigned peak_bits_picture_integer;
    unsigned peak_bits_picture_fraction;
    unsigned fill_data_enable;
+   unsigned skip_frame_enable;
    unsigned enforce_hrd;
    unsigned max_au_size;
+   unsigned max_qp;
+   unsigned min_qp;
 };
 
 struct pipe_h264_enc_motion_estimation
@@ -520,8 +523,11 @@ struct pipe_h265_enc_rate_control
    unsigned peak_bits_picture_integer;
    unsigned peak_bits_picture_fraction;
    unsigned fill_data_enable;
+   unsigned skip_frame_enable;
    unsigned enforce_hrd;
    unsigned max_au_size;
+   unsigned max_qp;
+   unsigned min_qp;
 };
 
 struct pipe_h265_enc_picture_desc

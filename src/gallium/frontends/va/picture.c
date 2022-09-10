@@ -544,6 +544,27 @@ handleVAEncMiscParameterTypeMaxFrameSize(vlVaContext *context, VAEncMiscParamete
    return status;
 }
 static VAStatus
+handleVAEncMiscParameterTypeHRD(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAStatus status = VA_STATUS_SUCCESS;
+
+   switch (u_reduce_video_profile(context->templat.profile)) {
+   case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      status = vlVaHandleVAEncMiscParameterTypeHRDH264(context, misc);
+      break;
+
+   case PIPE_VIDEO_FORMAT_HEVC:
+      status = vlVaHandleVAEncMiscParameterTypeHRDHEVC(context, misc);
+      break;
+
+   default:
+      break;
+   }
+
+   return status;
+}
+
+static VAStatus
 handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 {
    VAStatus vaStatus = VA_STATUS_SUCCESS;
@@ -569,6 +590,10 @@ handleVAEncMiscParameterBufferType(vlVaContext *context, vlVaBuffer *buf)
 
    case VAEncMiscParameterTypeMaxFrameSize:
       vaStatus = handleVAEncMiscParameterTypeMaxFrameSize(context, misc);
+      break;
+
+   case VAEncMiscParameterTypeHRD:
+      vaStatus = handleVAEncMiscParameterTypeHRD(context, misc);
       break;
 
    default:

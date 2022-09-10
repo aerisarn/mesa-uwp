@@ -115,11 +115,11 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       }
       enc->enc_pic.rc_session_init.vbv_buffer_level = pic->rate_ctrl[0].vbv_buf_lv;
       enc->enc_pic.rc_per_pic.qp = pic->quant_i_frames;
-      enc->enc_pic.rc_per_pic.min_qp_app = 0;
-      enc->enc_pic.rc_per_pic.max_qp_app = 51;
-      enc->enc_pic.rc_per_pic.max_au_size = 0;
+      enc->enc_pic.rc_per_pic.min_qp_app = pic->rate_ctrl[0].min_qp;
+      enc->enc_pic.rc_per_pic.max_qp_app = pic->rate_ctrl[0].max_qp ?
+                                           pic->rate_ctrl[0].max_qp : 51;
       enc->enc_pic.rc_per_pic.enabled_filler_data = pic->rate_ctrl[0].fill_data_enable;
-      enc->enc_pic.rc_per_pic.skip_frame_enable = false;
+      enc->enc_pic.rc_per_pic.skip_frame_enable = pic->rate_ctrl[0].skip_frame_enable;
       enc->enc_pic.rc_per_pic.enforce_hrd = pic->rate_ctrl[0].enforce_hrd;
 
       switch (pic->rate_ctrl[0].rate_ctrl_method) {
@@ -247,11 +247,10 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
                                          pic->rc.frame_rate_num);
       enc->enc_pic.rc_session_init.vbv_buffer_level = pic->rc.vbv_buf_lv;
       enc->enc_pic.rc_per_pic.qp = pic->rc.quant_i_frames;
-      enc->enc_pic.rc_per_pic.min_qp_app = 0;
-      enc->enc_pic.rc_per_pic.max_qp_app = 51;
-      enc->enc_pic.rc_per_pic.max_au_size = 0;
+      enc->enc_pic.rc_per_pic.min_qp_app = pic->rc.min_qp;
+      enc->enc_pic.rc_per_pic.max_qp_app = pic->rc.max_qp ? pic->rc.max_qp : 51;
       enc->enc_pic.rc_per_pic.enabled_filler_data = pic->rc.fill_data_enable;
-      enc->enc_pic.rc_per_pic.skip_frame_enable = false;
+      enc->enc_pic.rc_per_pic.skip_frame_enable = pic->rc.skip_frame_enable;
       enc->enc_pic.rc_per_pic.enforce_hrd = pic->rc.enforce_hrd;
       switch (pic->rc.rate_ctrl_method) {
       case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:

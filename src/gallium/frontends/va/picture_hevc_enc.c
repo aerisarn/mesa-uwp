@@ -180,6 +180,11 @@ vlVaHandleVAEncMiscParameterTypeRateControlHEVC(vlVaContext *context, VAEncMiscP
    else
       context->desc.h265enc.rc.vbv_buffer_size = context->desc.h265enc.rc.target_bitrate;
 
+   context->desc.h265enc.rc.fill_data_enable = !(rc->rc_flags.bits.disable_bit_stuffing);
+   context->desc.h265enc.rc.skip_frame_enable = !(rc->rc_flags.bits.disable_frame_skip);
+   context->desc.h265enc.rc.max_qp = rc->max_qp;
+   context->desc.h265enc.rc.min_qp = rc->min_qp;
+
    return VA_STATUS_SUCCESS;
 }
 
@@ -339,6 +344,19 @@ vlVaHandleVAEncMiscParameterTypeMaxFrameSizeHEVC(vlVaContext *context, VAEncMisc
    return VA_STATUS_SUCCESS;
 }
 
+VAStatus
+vlVaHandleVAEncMiscParameterTypeHRDHEVC(vlVaContext *context, VAEncMiscParameterBuffer *misc)
+{
+   VAEncMiscParameterHRD *ms = (VAEncMiscParameterHRD *)misc->data;
+
+   if (ms->buffer_size) {
+      context->desc.h265enc.rc.vbv_buffer_size = ms->buffer_size;
+      context->desc.h265enc.rc.vbv_buf_lv = (ms->initial_buffer_fullness << 6 ) / ms->buffer_size;
+   }
+
+   return VA_STATUS_SUCCESS;
+}
+
 void getEncParamPresetH265(vlVaContext *context)
 {
    //rate control
@@ -346,6 +364,9 @@ void getEncParamPresetH265(vlVaContext *context)
    context->desc.h265enc.rc.vbv_buf_lv = 48;
    context->desc.h265enc.rc.fill_data_enable = 1;
    context->desc.h265enc.rc.enforce_hrd = 1;
+   context->desc.h265enc.rc.max_qp = 51;
+   context->desc.h265enc.rc.min_qp = 0;
+
    if (context->desc.h265enc.rc.frame_rate_num == 0 ||
        context->desc.h265enc.rc.frame_rate_den == 0) {
       context->desc.h265enc.rc.frame_rate_num = 30;
