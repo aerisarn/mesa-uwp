@@ -15,6 +15,9 @@
 
 #include "nouveau_context.h"
 
+#include "nvk_cl902d.h"
+#include "nvk_cl90c0.h"
+
 #include "nvk_cl9097.h"
 #include "nvk_cla097.h"
 #include "nvk_clb097.h"
@@ -39,6 +42,14 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
    struct nv_push *p = &push;
 
+   /* 2D state */
+   P_MTHD(p, NV902D, SET_OBJECT);
+   P_NV902D_SET_OBJECT(p, {
+      .class_id = dev->ctx->eng2d.cls,
+      .engine_id = 0,
+   });
+
+   /* 3D state */
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
       .class_id = dev->ctx->eng3d.cls,
@@ -295,6 +306,13 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_MTHD(p, NV9097, SET_VERTEX_STREAM_SUBSTITUTE_A);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
+
+   /* Compute state */
+   P_MTHD(p, NV90C0, SET_OBJECT);
+   P_NV90C0_SET_OBJECT(p, {
+      .class_id = dev->ctx->compute.cls,
+      .engine_id = 0,
+   });
 
    return nvk_queue_submit_simple(queue, nv_push_dw_count(&push), push_data,
                                   0, NULL, false /* sync */);

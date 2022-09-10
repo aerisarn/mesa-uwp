@@ -3,6 +3,7 @@ nvk_classes = [
   'cl906f',
   'cl9097',
   'cl90b5',
+  'cl90c0',
   'cla0b5',
   'cla097',
   'clb097',
