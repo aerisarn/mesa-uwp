@@ -97,6 +97,17 @@ TEST_F(Optimizer, FusedFnegCancel)
         agx_fmul_to(b, wz, wx, agx_abs(wx)));
 }
 
+TEST_F(Optimizer, FmulFsatF2F16)
+{
+   CASE({
+         agx_index tmp = agx_temp(b->shader, AGX_SIZE_32);
+         agx_fmov_to(b, tmp, agx_fmul(b, wx, wy))->saturate = true;
+         agx_fmov_to(b, hx, tmp);
+   }, {
+         agx_fmul_to(b, hx, wx, wy)->saturate = true;
+   });
+}
+
 TEST_F(Optimizer, Copyprop)
 {
    CASE(agx_fmul_to(b, wz, wx, agx_mov(b, wy)), agx_fmul_to(b, wz, wx, wy));
