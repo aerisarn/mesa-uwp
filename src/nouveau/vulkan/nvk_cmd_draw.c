@@ -16,6 +16,7 @@
 #include "nouveau_context.h"
 
 #include "nvk_cl902d.h"
+#include "nvk_cl9039.h"
 #include "nvk_cl90c0.h"
 #include "nvk_clb0c0.h"
 
@@ -42,6 +43,17 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    struct nv_push push;
    nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
    struct nv_push *p = &push;
+
+   /* M2MF state */
+   if (dev->ctx->m2mf.cls <= FERMI_MEMORY_TO_MEMORY_FORMAT_A) {
+      /* we absolutely do not support Fermi, but if somebody wants to toy
+      /* around with it, this is a must */
+      P_MTHD(p, NV9039, SET_OBJECT);
+      P_NV9039_SET_OBJECT(p, {
+         .class_id = dev->ctx->m2mf.cls,
+         .engine_id = 0,
+      });
+   }
 
    /* 2D state */
    P_MTHD(p, NV902D, SET_OBJECT);
