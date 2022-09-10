@@ -472,13 +472,6 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
             result = false;
          }
       }
-
-      uint32_t parent_id_index =
-         rra_parent_table_index_from_offset(offset, parent_table_size);
-      if (parent_id_index * 4 > parent_table_size) {
-         rra_accel_struct_validation_fail(offset, "Invalid parent id index %u", parent_id_index);
-         result = false;
-      }
    }
    return result;
 }
