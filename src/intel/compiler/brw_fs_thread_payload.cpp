@@ -27,7 +27,7 @@ using namespace brw;
 
 vs_thread_payload::vs_thread_payload()
 {
-   urb_handles = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+   urb_handles = brw_ud8_grf(1, 0);
 
    num_regs = 2;
 }
@@ -39,18 +39,18 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
    struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) v.key;
 
    if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
-      patch_urb_output = retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD);
+      patch_urb_output = brw_ud1_grf(0, 0);
       primitive_id = brw_vec1_grf(0, 1);
 
       /* r1-r4 contain the ICP handles. */
-      icp_handle_start = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+      icp_handle_start = brw_ud8_grf(1, 0);
 
       num_regs = 5;
    } else {
       assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_MULTI_PATCH);
       assert(tcs_key->input_vertices > 0);
 
-      patch_urb_output = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+      patch_urb_output = brw_ud8_grf(1, 0);
 
       unsigned r = 2;
 
@@ -58,7 +58,7 @@ tcs_thread_payload::tcs_thread_payload(const fs_visitor &v)
          primitive_id = brw_vec8_grf(r++, 0);
 
       /* ICP handles occupy the next 1-32 registers. */
-      icp_handle_start = retype(brw_vec8_grf(r, 0), BRW_REGISTER_TYPE_UD);
+      icp_handle_start = brw_ud8_grf(r, 0);
       r += tcs_key->input_vertices;
 
       num_regs = r;
@@ -76,7 +76,7 @@ tes_thread_payload::tes_thread_payload()
       coords[i] = brw_vec8_grf(1 + i, 0);
 
    /* R4: URB output handles. */
-   urb_output = retype(brw_vec8_grf(4, 0), BRW_REGISTER_TYPE_UD);
+   urb_output = brw_ud8_grf(4, 0);
 
    num_regs = 5;
 }
@@ -90,11 +90,11 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
    unsigned r = 1;
 
    /* R1: output URB handles. */
-   urb_handles = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+   urb_handles = brw_ud8_grf(r, 0);
    r++;
 
    if (gs_prog_data->include_primitive_id) {
-      primitive_id = retype(brw_vec8_grf(2, 0), BRW_REGISTER_TYPE_UD);
+      primitive_id = brw_ud8_grf(r, 0);
       r++;
    }
 
@@ -107,7 +107,7 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
    gs_prog_data->base.include_vue_handles = true;
 
    /* R3..RN: ICP Handles for each incoming vertex (when using pull model) */
-   icp_handle_start = retype(brw_vec8_grf(r, 0), BRW_REGISTER_TYPE_UD);
+   icp_handle_start = brw_ud8_grf(r, 0);
    r += v.nir->info.gs.vertices_in;
 
    num_regs = r;
@@ -370,7 +370,7 @@ cs_thread_payload::cs_thread_payload(const fs_visitor &v)
 {
    /* See nir_setup_uniforms for subgroup_id in earlier versions. */
    if (v.devinfo->verx10 >= 125)
-      subgroup_id_ = retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD);
+      subgroup_id_ = brw_ud1_grf(0, 2);
 
    /* TODO: Fill out uses_btd_stack_ids automatically */
    num_regs = 1 + brw_cs_prog_data(v.prog_data)->uses_btd_stack_ids;
@@ -420,18 +420,18 @@ task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
    unsigned r = 0;
    assert(subgroup_id_.file != BAD_FILE);
    extended_parameter_0 = retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD);
-   urb_output = retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD);
+   urb_output = brw_ud1_grf(0, 6);
 
    if (v.stage == MESA_SHADER_MESH)
-      task_urb_input = retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD);
+      task_urb_input = brw_ud1_grf(0, 7);
    r++;
 
-   local_index = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW);
+   local_index = brw_uw8_grf(1, 0);
    r++;
    if (v.dispatch_width == 32)
       r++;
 
-   inline_parameter = retype(brw_vec1_grf(r, 0), BRW_REGISTER_TYPE_UD);
+   inline_parameter = brw_ud1_grf(r, 0);
    r++;
 
    num_regs = r;
@@ -444,8 +444,8 @@ bs_thread_payload::bs_thread_payload()
    /* R1: Stack IDs. */
 
    /* R2: Argument addresses. */
-   global_arg_ptr = retype(brw_vec1_grf(2, 0), BRW_REGISTER_TYPE_UD);
-   local_arg_ptr = retype(brw_vec1_grf(2, 2), BRW_REGISTER_TYPE_UD);
+   global_arg_ptr = brw_ud1_grf(2, 0);
+   local_arg_ptr = brw_ud1_grf(2, 2);
 
    num_regs = 3;
 }
