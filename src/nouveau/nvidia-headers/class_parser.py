@@ -47,6 +47,7 @@ TEMPLATE_H = Template("""\
 #include "${clheader}"
 
 #include <assert.h>
+#include "util/u_math.h"
 
 %for mthd in mthddict:
 struct nv_${nvcl.lower()}_${mthd} {
@@ -190,7 +191,7 @@ P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix)
         }
     %else:
       %if mthddict[mthd].is_float:
-        printf("%ff (0x%x)${bs}n", *(float *)&parsed, parsed);
+        printf("%ff (0x%x)${bs}n", uif(parsed), parsed);
       %else:
         printf("(0x%x)${bs}n", parsed);
       %endif
