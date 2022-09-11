@@ -186,7 +186,13 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    uint64_t depth_buffer = 0;
    uint64_t stencil_buffer = 0;
 
-   agx_pack(map + 160, IOGPU_INTERNAL_PIPELINES, cfg) {
+   agx_pack(map + 16, IOGPU_GRAPHICS, cfg) {
+      cfg.opengl_depth_clipping = true;
+
+      cfg.deflake_1 = deflake_1;
+      cfg.deflake_2 = deflake_2;
+      cfg.deflake_3 = deflake_buffer;
+
       cfg.clear_pipeline_bind = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
       cfg.clear_pipeline = pipeline_clear;
 
@@ -223,9 +229,6 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             cfg.zls_control.s_load_enable = !should_clear_stencil;
          }
 
-         cfg.depth_buffer_if_clearing = depth_buffer;
-         cfg.stencil_buffer = stencil_buffer;
-
          /* It's unclear how tile size is conveyed for depth/stencil targets,
           * which interactions with mipmapping (for example of a 33x33
           * depth/stencil attachment)
@@ -233,18 +236,17 @@ demo_cmdbuf(uint64_t *buf, size_t size,
          if (zsbuf->u.tex.level != 0)
             unreachable("todo: mapping other levels");
 
-         cfg.depth_buffer = depth_buffer;
+         cfg.depth_buffer_1 = depth_buffer;
+         cfg.depth_buffer_2 = depth_buffer;
+
+         cfg.stencil_buffer_1 = stencil_buffer;
          cfg.stencil_buffer_2 = stencil_buffer;
       }
-   }
 
-   agx_pack(map + 228, IOGPU_AUX_FRAMEBUFFER, cfg) {
-      cfg.width = framebuffer->width;
-      cfg.height = framebuffer->height;
+      cfg.width_1 = framebuffer->width;
+      cfg.height_1 = framebuffer->height;
       cfg.pointer = unk_buffer_2;
-   }
 
-   agx_pack(map + 292, IOGPU_CLEAR_Z_S, cfg) {
       cfg.set_when_reloading_z_or_s_1 = clear_pipeline_textures;
 
       if (depth_buffer && !should_clear_depth) {
@@ -265,16 +267,14 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
       cfg.partial_store_pipeline_bind = 0x12;
       cfg.partial_store_pipeline = pipeline_store;
-   }
 
-   agx_pack(map + 356, IOGPU_MISC, cfg) {
-      cfg.depth_buffer = depth_buffer;
-      cfg.stencil_buffer = stencil_buffer;
+      cfg.depth_buffer_3 = depth_buffer;
+      cfg.stencil_buffer_3 = stencil_buffer;
       cfg.encoder_id = encoder_id;
       cfg.unknown_buffer = demo_unk6(pool);
-      cfg.width = framebuffer->width;
-      cfg.height = framebuffer->height;
-      cfg.unk_80 = clear_pipeline_textures ? 0x0 : 0x1;
+      cfg.width_2 = framebuffer->width;
+      cfg.height_2 = framebuffer->height;
+      cfg.unk_352 = clear_pipeline_textures ? 0x0 : 0x1;
    }
 
    unsigned offset_unk = (484 * 4);
@@ -294,11 +294,6 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.attachment_length = nr_attachments * AGX_IOGPU_ATTACHMENT_LENGTH;
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;
-      cfg.opengl_depth_clipping = true;
-
-      cfg.deflake_1 = deflake_1;
-      cfg.deflake_2 = deflake_2;
-      cfg.deflake_3 = deflake_buffer;
    }
 
    return total_size;

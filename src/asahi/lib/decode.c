@@ -611,26 +611,10 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    /* Print the IOGPU stuff */
    agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
    DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
-   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 160,
-              IOGPU_INTERNAL_PIPELINES, pip);
 
-   DUMP_CL(IOGPU_INTERNAL_PIPELINES, ((uint32_t *) cmdbuf->ptr.cpu) + 160, "Internal pipelines");
-   DUMP_CL(IOGPU_AUX_FRAMEBUFFER, ((uint32_t *) cmdbuf->ptr.cpu) + 228, "Aux Framebuffer");
-
-   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 292,
-         IOGPU_CLEAR_Z_S, clearzs);
-   DUMP_UNPACKED(IOGPU_CLEAR_Z_S, clearzs, "Clear Z/S");
-
-   /* Guard against changes */
-   uint32_t zeroes[356 - 344] = { 0 };
-   assert(memcmp(((uint32_t *) cmdbuf->ptr.cpu) + 344, zeroes, 4 * (356 - 344)) == 0);
-
-   DUMP_CL(IOGPU_MISC, ((uint32_t *) cmdbuf->ptr.cpu) + 356, "Misc");
-
-   /* Should be unused, we think */
-   for (unsigned i = (0x6B0 / 4); i < (cmd.attachment_offset / 4); ++i) {
-      assert(((uint32_t *) cmdbuf->ptr.cpu)[i] == 0);
-   }
+   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 16,
+              IOGPU_GRAPHICS, gfx);
+   DUMP_UNPACKED(IOGPU_GRAPHICS, gfx, "Graphics\n");
 
    DUMP_CL(IOGPU_ATTACHMENT_COUNT, ((uint8_t *) cmdbuf->ptr.cpu +
             cmd.attachment_offset), "Attachment count");
@@ -642,33 +626,31 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
    }
 
-   uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
-
    if (cmd.unk_5 == 3)
-      agxdecode_stateful(*encoder, "Encoder", agxdecode_cdm, verbose);
+      agxdecode_stateful(cmd.encoder, "Encoder", agxdecode_cdm, verbose);
    else
-      agxdecode_stateful(*encoder, "Encoder", agxdecode_vdm, verbose);
+      agxdecode_stateful(cmd.encoder, "Encoder", agxdecode_vdm, verbose);
 
-   if (pip.clear_pipeline_unk) {
-      fprintf(agxdecode_dump_stream, "Unk: %X\n", pip.clear_pipeline_unk);
-      agxdecode_stateful(pip.clear_pipeline, "Clear pipeline",
+   if (gfx.clear_pipeline_unk) {
+      fprintf(agxdecode_dump_stream, "Unk: %X\n", gfx.clear_pipeline_unk);
+      agxdecode_stateful(gfx.clear_pipeline, "Clear pipeline",
             agxdecode_pipeline, verbose);
    }
 
-   if (pip.store_pipeline_unk) {
-      assert(pip.store_pipeline_unk == 0x4);
-      agxdecode_stateful(pip.store_pipeline, "Store pipeline",
+   if (gfx.store_pipeline_unk) {
+      assert(gfx.store_pipeline_unk == 0x4);
+      agxdecode_stateful(gfx.store_pipeline, "Store pipeline",
             agxdecode_pipeline, verbose);
    }
 
-   assert((clearzs.partial_reload_pipeline_unk & 0xF) == 0x4);
-   if (clearzs.partial_reload_pipeline) {
-      agxdecode_stateful(clearzs.partial_reload_pipeline,
+   assert((gfx.partial_reload_pipeline_unk & 0xF) == 0x4);
+   if (gfx.partial_reload_pipeline) {
+      agxdecode_stateful(gfx.partial_reload_pipeline,
             "Partial reload pipeline", agxdecode_pipeline, verbose);
    }
 
-   if (clearzs.partial_store_pipeline) {
-      agxdecode_stateful(clearzs.partial_store_pipeline,
+   if (gfx.partial_store_pipeline) {
+      agxdecode_stateful(gfx.partial_store_pipeline,
             "Partial store pipeline", agxdecode_pipeline, verbose);
    }
 
