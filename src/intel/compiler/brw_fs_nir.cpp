@@ -3036,8 +3036,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       srcs[URB_LOGICAL_SRC_HANDLE] = get_tcs_output_urb_handle();
       srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
       srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = mask_reg;
-      srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, alloc.allocate(length),
-                                          BRW_REGISTER_TYPE_F);
+      srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, length);
       bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
       fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
