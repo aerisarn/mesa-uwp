@@ -1144,17 +1144,16 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
         mali_ptr next_job = 0;
 
         do {
-                struct pandecode_mapped_memory *mem =
-                        pandecode_find_mapped_gpu_mem_containing(jc_gpu_va);
+                struct mali_job_header_packed *hdr =
+                        PANDECODE_PTR(jc_gpu_va, struct mali_job_header_packed);
 
-                entry = _mesa_set_search(va_set, mem->addr);
+                entry = _mesa_set_search(va_set, hdr);
                 if (entry !=  NULL) {
                         fprintf(stdout, "Job list has a cycle\n");
                         break;
                 }
 
-                pan_unpack(PANDECODE_PTR(jc_gpu_va, struct mali_job_header_packed),
-                           JOB_HEADER, h);
+                pan_unpack(hdr, JOB_HEADER, h);
                 next_job = h.next;
 
                 DUMP_UNPACKED(JOB_HEADER, h, "Job Header (%" PRIx64 "):\n", jc_gpu_va);
@@ -1202,8 +1201,8 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
                         break;
                 }
 
-                /* Add the latest visited job GPU VA to avoid cycles */
-                _mesa_set_add(va_set, mem->addr);
+                /* Track the latest visited job CPU VA to detect cycles */
+                _mesa_set_add(va_set, hdr);
 
         } while ((jc_gpu_va = next_job));
 
