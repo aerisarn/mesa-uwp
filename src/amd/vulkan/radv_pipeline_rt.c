@@ -1552,19 +1552,23 @@ build_traversal_shader(struct radv_device *device,
                   nir_load_var(&b, trav_vars.dir), nir_load_var(&b, trav_vars.inv_dir));
             }
 
+            nir_ssa_def *new_nodes[4];
+            for (unsigned i = 0; i < 4; ++i)
+               new_nodes[i] = nir_channel(&b, result, i);
+
+            for (unsigned i = 1; i < 4; ++i)
+               nir_push_if(&b, nir_ine_imm(&b, new_nodes[i], 0xffffffff));
+
             for (unsigned i = 4; i-- > 1;) {
-               nir_ssa_def *new_node = nir_channel(&b, result, i);
-               nir_push_if(&b, nir_ine_imm(&b, new_node, 0xffffffff));
-               {
-                  nir_store_shared(&b, new_node, nir_load_var(&b, trav_vars.stack), .base = 0,
-                                   .align_mul = stack_entry_size);
-                  nir_store_var(
-                     &b, trav_vars.stack,
-                     nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_entry_stride_def), 1);
-               }
+               nir_store_shared(&b, new_nodes[i], nir_load_var(&b, trav_vars.stack), .base = 0,
+                                .align_mul = stack_entry_size);
+               nir_store_var(
+                  &b, trav_vars.stack,
+                  nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_entry_stride_def), 1);
+
                nir_pop_if(&b, NULL);
             }
-            nir_store_var(&b, trav_vars.current_node, nir_channel(&b, result, 0), 0x1);
+            nir_store_var(&b, trav_vars.current_node, new_nodes[0], 0x1);
          }
          nir_pop_if(&b, NULL);
       }
