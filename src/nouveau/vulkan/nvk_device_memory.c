@@ -121,8 +121,9 @@ nvk_allocate_memory(struct nvk_device *device,
          }
          memset(map, 0, mem->bo->size);
          nouveau_ws_bo_unmap(mem->bo, map);
+         result = VK_SUCCESS;
       } else {
-         VkResult result = zero_vram(device, mem->bo);
+         result = zero_vram(device, mem->bo);
          if (result != VK_SUCCESS)
             goto fail_bo;
       }
