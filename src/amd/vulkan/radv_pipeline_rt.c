@@ -1404,6 +1404,7 @@ build_traversal_shader(struct radv_device *device,
    nir_ssa_def *stack_base =
       nir_iadd_imm(&b, nir_imul_imm(&b, nir_load_local_invocation_index(&b), stack_entry_size),
                    b.shader->info.shared_size);
+   nir_ssa_def *stack_exit_bound = nir_imm_int(&b, stack_entry_stride + b.shader->info.shared_size);
 
    b.shader->info.shared_size += stack_entry_stride * MAX_STACK_ENTRY_COUNT;
 
@@ -1438,7 +1439,7 @@ build_traversal_shader(struct radv_device *device,
 
       nir_push_if(&b, nir_ieq_imm(&b, nir_load_var(&b, trav_vars.current_node), -1));
       {
-         nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, trav_vars.stack), stack_base));
+         nir_push_if(&b, nir_ilt(&b, nir_load_var(&b, trav_vars.stack), stack_exit_bound));
          nir_jump(&b, nir_jump_break);
          nir_pop_if(&b, NULL);
 
