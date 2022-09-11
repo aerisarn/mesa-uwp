@@ -7368,7 +7368,7 @@ fs_visitor::run_bs(bool allow_spilling)
 {
    assert(stage >= MESA_SHADER_RAYGEN && stage <= MESA_SHADER_CALLABLE);
 
-   payload_ = new bs_thread_payload();
+   payload_ = new bs_thread_payload(*this);
 
    emit_nir_code();
 

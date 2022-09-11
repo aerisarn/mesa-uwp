@@ -468,17 +468,22 @@ task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
    num_regs = r;
 }
 
-bs_thread_payload::bs_thread_payload()
+bs_thread_payload::bs_thread_payload(const fs_visitor &v)
 {
+   unsigned r = 0;
+
    /* R0: Thread header. */
+   r += reg_unit(v.devinfo);
 
    /* R1: Stack IDs. */
+   r += reg_unit(v.devinfo);
 
-   /* R2: Argument addresses. */
-   global_arg_ptr = brw_ud1_grf(2, 0);
-   local_arg_ptr = brw_ud1_grf(2, 2);
+   /* R2: Inline Parameter.  Used for argument addresses. */
+   global_arg_ptr = brw_ud1_grf(r, 0);
+   local_arg_ptr = brw_ud1_grf(r, 2);
+   r += reg_unit(v.devinfo);
 
-   num_regs = 3;
+   num_regs = r;
 }
 
 void

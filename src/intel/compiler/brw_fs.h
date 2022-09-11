@@ -167,7 +167,7 @@ struct task_mesh_thread_payload : public cs_thread_payload {
 };
 
 struct bs_thread_payload : public thread_payload {
-   bs_thread_payload();
+   bs_thread_payload(const fs_visitor &v);
 
    fs_reg global_arg_ptr;
    fs_reg local_arg_ptr;
