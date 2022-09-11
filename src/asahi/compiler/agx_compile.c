@@ -437,13 +437,9 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 static agx_instr *
 agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   const nir_variable *var =
-      nir_find_variable_with_driver_location(b->shader->nir,
-            nir_var_shader_out, nir_intrinsic_base(instr));
-   assert(var);
-
-   unsigned loc = var->data.location;
-   assert(var->data.index == 0 && "todo: dual-source blending");
+   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+   unsigned loc = sem.location;
+   assert(sem.dual_source_blend_index == 0 && "todo: dual-source blending");
    assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
@@ -474,13 +470,9 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 static void
 agx_emit_load_tile(agx_builder *b, agx_index *dests, nir_intrinsic_instr *instr)
 {
-   const nir_variable *var =
-      nir_find_variable_with_driver_location(b->shader->nir,
-            nir_var_shader_out, nir_intrinsic_base(instr));
-   assert(var);
-
-   unsigned loc = var->data.location;
-   assert(var->data.index == 0 && "todo: dual-source blending");
+   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+   unsigned loc = sem.location;
+   assert(sem.dual_source_blend_index == 0 && "dual src ld_tile is nonsense");
    assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
