@@ -455,7 +455,9 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *push)
    }
 
    util_dynarray_clear(&push->bos);
-   util_dynarray_resize(&push->pushs, struct nouveau_ws_push_buffer, 1);
+   ASSERTED void *result = util_dynarray_resize(&push->pushs, struct nouveau_ws_push_buffer, 1);
+   /* A push always has at least 1 BO, so this couldn't have tried to resize and failed. */
+   assert(result != NULL);
 }
 
 unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push)
@@ -467,5 +469,6 @@ void nouveau_ws_push_reset_refs(struct nouveau_ws_push *push,
                                 unsigned num_refs)
 {
    assert(num_refs <= nouveau_ws_push_num_refs(push));
-   util_dynarray_resize(&push->bos, struct nouveau_ws_push_bo, num_refs);
+   ASSERTED void *result = util_dynarray_resize(&push->bos, struct nouveau_ws_push_bo, num_refs);
+   assert(result != NULL); /* We checked above that we wouldn't hit the resize path */
 }
