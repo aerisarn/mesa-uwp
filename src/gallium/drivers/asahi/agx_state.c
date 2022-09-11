@@ -1075,11 +1075,16 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 
    if (stage == PIPE_SHADER_FRAGMENT) {
       nir_lower_blend_options opts = {
-         .format = { key->rt_formats[0] },
          .scalar_blend_const = true,
          .logicop_enable = key->blend.logicop_enable,
          .logicop_func = key->blend.logicop_func,
       };
+
+      static_assert(ARRAY_SIZE(opts.format) == PIPE_MAX_COLOR_BUFS,
+                    "max RTs out of sync");
+
+      for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i)
+         opts.format[i] = key->rt_formats[i];
 
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
       NIR_PASS_V(nir, nir_lower_blend, &opts);
