@@ -68,6 +68,8 @@ nir_ssa_def *create_bvh_descriptor(nir_builder *b);
  * + 1 instance node. Furthermore, when processing a box node, worst case we actually
  * push all 4 children and remove one, so the DFS stack depth is box nodes * 3 + 2.
  */
-#define MAX_STACK_ENTRY_COUNT 76
+#define MAX_STACK_ENTRY_COUNT         76
+#define MAX_STACK_LDS_ENTRY_COUNT     16
+#define MAX_STACK_SCRATCH_ENTRY_COUNT (MAX_STACK_ENTRY_COUNT - MAX_STACK_LDS_ENTRY_COUNT)
 
 #endif
