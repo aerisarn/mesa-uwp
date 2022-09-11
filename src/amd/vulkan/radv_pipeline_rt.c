@@ -1397,15 +1397,15 @@ build_traversal_shader(struct radv_device *device,
    struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, dst_vars->stack_sizes);
    map_rt_variables(var_remap, &vars, dst_vars);
 
+   unsigned stack_entry_size = 4;
    unsigned lanes = device->physical_device->rt_wave_size;
-   unsigned elements = lanes * MAX_STACK_ENTRY_COUNT;
-   nir_variable *stack_var = nir_variable_create(b.shader, nir_var_mem_shared,
-                                                 glsl_array_type(glsl_uint_type(), elements, 0),
-                                                 "trav_stack");
-   nir_deref_instr *stack_deref = nir_build_deref_var(&b, stack_var);
-   nir_deref_instr *stack;
-   nir_ssa_def *stack_idx_stride = nir_imm_int(&b, lanes);
-   nir_ssa_def *stack_idx_base = nir_load_local_invocation_index(&b);
+   unsigned stack_entry_stride = stack_entry_size * lanes;
+   nir_ssa_def *stack_entry_stride_def = nir_imm_int(&b, stack_entry_stride);
+   nir_ssa_def *stack_base =
+      nir_iadd_imm(&b, nir_imul_imm(&b, nir_load_local_invocation_index(&b), stack_entry_size),
+                   b.shader->info.shared_size);
+
+   b.shader->info.shared_size += stack_entry_stride * MAX_STACK_ENTRY_COUNT;
 
    nir_ssa_def *accel_struct = nir_load_var(&b, vars.accel_struct);
 
@@ -1429,7 +1429,7 @@ build_traversal_shader(struct radv_device *device,
       nir_store_var(&b, trav_vars.sbt_offset_and_flags, nir_imm_int(&b, 0), 1);
       nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
 
-      nir_store_var(&b, trav_vars.stack, stack_idx_base, 1);
+      nir_store_var(&b, trav_vars.stack, stack_base, 1);
 
       nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
       nir_store_var(&b, trav_vars.current_node, bvh_root, 0x1);
@@ -1438,7 +1438,7 @@ build_traversal_shader(struct radv_device *device,
 
       nir_push_if(&b, nir_ieq_imm(&b, nir_load_var(&b, trav_vars.current_node), -1));
       {
-         nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, trav_vars.stack), stack_idx_base));
+         nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, trav_vars.stack), stack_base));
          nir_jump(&b, nir_jump_break);
          nir_pop_if(&b, NULL);
 
@@ -1458,10 +1458,12 @@ build_traversal_shader(struct radv_device *device,
          nir_pop_if(&b, NULL);
 
          nir_store_var(&b, trav_vars.stack,
-                       nir_isub(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride), 1);
+                       nir_isub(&b, nir_load_var(&b, trav_vars.stack), stack_entry_stride_def), 1);
 
-         stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
-         nir_store_var(&b, trav_vars.current_node, nir_load_deref(&b, stack), 0x1);
+         nir_store_var(&b, trav_vars.current_node,
+                       nir_load_shared(&b, 1, 32, nir_load_var(&b, trav_vars.stack), .base = 0,
+                                       .align_mul = stack_entry_size),
+                       0x1);
       }
       nir_pop_if(&b, NULL);
 
@@ -1553,11 +1555,11 @@ build_traversal_shader(struct radv_device *device,
                nir_ssa_def *new_node = nir_channel(&b, result, i);
                nir_push_if(&b, nir_ine_imm(&b, new_node, 0xffffffff));
                {
-                  stack = nir_build_deref_array(&b, stack_deref, nir_load_var(&b, trav_vars.stack));
-                  nir_store_deref(&b, stack, new_node, 0x1);
-                  nir_store_var(&b, trav_vars.stack,
-                                nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_idx_stride),
-                                1);
+                  nir_store_shared(&b, new_node, nir_load_var(&b, trav_vars.stack), .base = 0,
+                                   .align_mul = stack_entry_size);
+                  nir_store_var(
+                     &b, trav_vars.stack,
+                     nir_iadd(&b, nir_load_var(&b, trav_vars.stack), stack_entry_stride_def), 1);
                }
                nir_pop_if(&b, NULL);
             }
@@ -1620,6 +1622,8 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 {
    struct hash_table *var_remap = _mesa_pointer_hash_table_create(NULL);
    nir_shader *shader = build_traversal_shader(device, pCreateInfo, vars, var_remap);
+   b->shader->info.shared_size += shader->info.shared_size;
+   assert(b->shader->info.shared_size <= 32768);
 
    /* For now, just inline the traversal shader */
    nir_push_if(b, nir_ieq_imm(b, nir_load_var(b, vars->idx), 1));
