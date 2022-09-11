@@ -475,7 +475,8 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 
    b->shader->did_writeout = true;
    return agx_st_tile(b, agx_src_index(&instr->src[0]),
-             b->shader->key->fs.tib_formats[rt]);
+             b->shader->key->fs.tib_formats[rt],
+             nir_intrinsic_write_mask(instr));
 }
 
 static void
@@ -494,8 +495,10 @@ agx_emit_load_tile(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    b->shader->did_writeout = true;
    b->shader->out->reads_tib = true;
 
-   agx_ld_tile_to(b, dest, b->shader->key->fs.tib_formats[rt]);
-   agx_emit_cached_split(b, dest, 4);
+   unsigned nr_comps = nir_dest_num_components(instr->dest);
+   agx_ld_tile_to(b, dest, b->shader->key->fs.tib_formats[rt],
+                  BITFIELD_MASK(nr_comps));
+   agx_emit_cached_split(b, dest, nr_comps);
 }
 
 static enum agx_format
