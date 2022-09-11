@@ -278,6 +278,23 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (!cache)
       return NULL;
 
+   /* If MESA_DISK_CACHE_SINGLE_FILE is unset and MESA_DISK_CACHE_COMBINE_RW_WITH_RO_FOZ
+    * is set, then enable additional Fossilize RO caches together with the RW
+    * cache.  At first we will check cache entry presence in the RO caches and
+    * if entry isn't found there, then we'll fall back to the RW cache.
+    */
+   if (cache_type != DISK_CACHE_SINGLE_FILE && !cache->path_init_failed &&
+       debug_get_bool_option("MESA_DISK_CACHE_COMBINE_RW_WITH_RO_FOZ", false)) {
+
+      /* Create read-only cache used for sharing prebuilt shaders.
+       * If cache entry will be found in this cache, then the main cache
+       * will be bypassed.
+       */
+      cache->foz_ro_cache = disk_cache_type_create(gpu_name, driver_id,
+                                                   driver_flags,
+                                                   DISK_CACHE_SINGLE_FILE);
+   }
+
    return cache;
 }
 
@@ -293,6 +310,9 @@ disk_cache_destroy(struct disk_cache *cache)
    if (cache && !cache->path_init_failed) {
       util_queue_finish(&cache->cache_queue);
       util_queue_destroy(&cache->cache_queue);
+
+      if (cache->foz_ro_cache)
+         disk_cache_destroy(cache->foz_ro_cache);
 
       if (cache->type == DISK_CACHE_SINGLE_FILE)
          foz_destroy(&cache->foz_db);
@@ -565,6 +585,8 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
 
    if (cache->blob_get_cb) {
       buf = blob_get_compressed(cache, key, size);
+   } else if (cache->foz_ro_cache) {
+      buf = disk_cache_load_item_foz(cache->foz_ro_cache, key, size);
    } else if (cache->type == DISK_CACHE_SINGLE_FILE) {
       buf = disk_cache_load_item_foz(cache, key, size);
    } else if (cache->type == DISK_CACHE_DATABASE) {

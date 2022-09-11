@@ -99,6 +99,9 @@ struct disk_cache {
       unsigned hits;
       unsigned misses;
    } stats;
+
+   /* Internal RO FOZ cache for combined use of RO and RW caches. */
+   struct disk_cache *foz_ro_cache;
 };
 
 struct cache_entry_file_data {
