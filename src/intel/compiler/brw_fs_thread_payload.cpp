@@ -455,15 +455,15 @@ task_mesh_thread_payload::task_mesh_thread_payload(const fs_visitor &v)
        */
       task_urb_input = brw_ud1_grf(0, 7);
    }
-   r++;
+   r += reg_unit(v.devinfo);
 
-   local_index = brw_uw8_grf(1, 0);
-   r++;
-   if (v.dispatch_width == 32)
-      r++;
+   local_index = brw_uw8_grf(r, 0);
+   r += reg_unit(v.devinfo);
+   if (v.devinfo->ver < 20 && v.dispatch_width == 32)
+      r += reg_unit(v.devinfo);
 
    inline_parameter = brw_ud1_grf(r, 0);
-   r++;
+   r += reg_unit(v.devinfo);
 
    num_regs = r;
 }
