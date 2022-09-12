@@ -3419,7 +3419,6 @@ emit_ms_prelude(nir_builder *b, lower_ngg_ms_state *s)
       for (unsigned comp = 0; comp < 4; ++comp) {
          unsigned idx = slot * 4 + comp;
          s->out_variables[idx] = nir_local_variable_create(b->impl, glsl_uint_type(), "ms_var_output");
-         nir_store_var(b, s->out_variables[idx], nir_imm_int(b, 0), 0x1);
       }
    }
 
