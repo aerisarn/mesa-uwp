@@ -690,6 +690,8 @@ vn_CreateGraphicsPipelines(VkDevice device,
    bool want_sync = false;
    VkResult result;
 
+   memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
+
    pCreateInfos = vn_fix_graphics_pipeline_create_info(
       dev, createInfoCount, pCreateInfos, alloc, &fixes);
    if (!pCreateInfos)
@@ -740,6 +742,8 @@ vn_CreateComputePipelines(VkDevice device,
       pAllocator ? pAllocator : &dev->base.base.alloc;
    bool want_sync = false;
    VkResult result;
+
+   memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
 
    if (!vn_create_pipeline_handles(dev, createInfoCount, pPipelines, alloc))
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
