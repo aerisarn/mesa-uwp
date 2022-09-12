@@ -181,6 +181,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_physical_device_drm              = true,
       .EXT_pipeline_creation_cache_control  = true,
       .EXT_pipeline_creation_feedback       = true,
+      .EXT_primitive_topology_list_restart  = true,
       .EXT_private_data                     = true,
       .EXT_provoking_vertex                 = true,
       .EXT_separate_stencil_usage           = true,
@@ -1351,6 +1352,15 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT *features =
             (void *) ext;
          features->attachmentFeedbackLoopLayout = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
+         VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *features =
+            (void *) ext;
+         features->primitiveTopologyListRestart = true;
+         /* FIXME: we don't support tessellation shaders yet */
+         features->primitiveTopologyPatchListRestart = false;
          break;
       }
 
