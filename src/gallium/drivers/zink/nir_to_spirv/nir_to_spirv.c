@@ -1048,7 +1048,7 @@ get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var)
 }
 
 static void
-emit_bo(struct ntv_context *ctx, struct nir_variable *var)
+emit_bo(struct ntv_context *ctx, struct nir_variable *var, bool aliased)
 {
    unsigned bitsize = glsl_get_bit_size(glsl_get_array_element(glsl_get_struct_field(glsl_without_array(var->type), 0)));
    bool ssbo = var->data.mode == nir_var_mem_ssbo;
@@ -1063,6 +1063,9 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
                                          ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform);
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+
+   if (aliased)
+      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationAliased);
 
    unsigned idx = bitsize >> 4;
    assert(idx < ARRAY_SIZE(ctx->ssbos));
@@ -4320,8 +4323,18 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
       emit_so_info(&ctx, sinfo, max_output);
    uint32_t tcs_vertices_out_word = 0;
 
-   nir_foreach_variable_with_modes(var, s, nir_var_mem_ubo | nir_var_mem_ssbo)
-      emit_bo(&ctx, var);
+   unsigned ubo_counter[2] = {0};
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_ubo)
+      ubo_counter[var->data.driver_location != 0]++;
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_ubo)
+      emit_bo(&ctx, var, ubo_counter[var->data.driver_location != 0] > 1);
+
+   unsigned ssbo_counter = 0;
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo)
+      ssbo_counter++;
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo)
+      emit_bo(&ctx, var, ssbo_counter > 1);
+
    nir_foreach_variable_with_modes(var, s, nir_var_uniform | nir_var_image) {
       const struct glsl_type *type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type) || glsl_type_is_image(type))
