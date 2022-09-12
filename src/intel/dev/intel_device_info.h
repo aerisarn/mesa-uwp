@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "drm-uapi/i915_drm.h"
+
 #include "util/macros.h"
 #include "compiler/shader_enums.h"
 
@@ -349,7 +351,7 @@ struct intel_device_info
     * Size of the command streamer prefetch. This is important to know for
     * self modifying batches.
     */
-   unsigned cs_prefetch_size;
+   unsigned engine_class_prefetch[I915_ENGINE_CLASS_COMPUTE + 1];
 
    /**
     * For the longest time the timestamp frequency for Gen's timestamp counter

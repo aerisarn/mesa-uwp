@@ -1164,7 +1164,7 @@ mi_store_address(struct mi_builder *b, struct mi_value addr_reg)
 }
 
 static inline void
-mi_self_mod_barrier(struct mi_builder *b)
+mi_self_mod_barrier(struct mi_builder *b, unsigned cs_prefetch_size)
 {
    /* First make sure all the memory writes from previous modifying commands
     * have landed. We want to do this before going through the CS cache,
@@ -1177,7 +1177,7 @@ mi_self_mod_barrier(struct mi_builder *b)
     * but experiment show it doesn't work properly, so for now just get over
     * the CS prefetch.
     */
-   for (uint32_t i = 0; i < (b->devinfo->cs_prefetch_size / 4); i++)
+   for (uint32_t i = 0; i < (cs_prefetch_size / 4); i++)
       mi_builder_emit(b, GENX(MI_NOOP), noop);
 }
 

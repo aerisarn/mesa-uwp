@@ -1019,10 +1019,10 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           */
          if (cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) {
             const struct intel_device_info *devinfo = cmd_buffer->device->info;
+            const enum drm_i915_gem_engine_class engine_class = cmd_buffer->queue_family->engine_class;
             /* Careful to have everything in signed integer. */
-            int32_t prefetch_len = devinfo->cs_prefetch_size;
-            int32_t batch_len =
-               cmd_buffer->batch.next - cmd_buffer->batch.start;
+            int32_t prefetch_len = devinfo->engine_class_prefetch[engine_class];
+            int batch_len = cmd_buffer->batch.next - cmd_buffer->batch.start;
 
             for (int32_t i = 0; i < (prefetch_len - batch_len); i += 4)
                anv_batch_emit(&cmd_buffer->batch, GFX8_MI_NOOP, noop);

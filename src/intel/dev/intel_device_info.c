@@ -100,7 +100,6 @@ static const struct intel_device_info intel_device_info_gfx3 = {
    .max_eus_per_subslice = 8,
    .num_thread_per_eu = 4,
    .timestamp_frequency = 12500000,
-   .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_i965 = {
@@ -119,7 +118,6 @@ static const struct intel_device_info intel_device_info_i965 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
-   .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_g4x = {
@@ -141,7 +139,6 @@ static const struct intel_device_info intel_device_info_g4x = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
-   .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_ilk = {
@@ -162,7 +159,6 @@ static const struct intel_device_info intel_device_info_ilk = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
-   .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_snb_gt1 = {
@@ -193,7 +189,6 @@ static const struct intel_device_info intel_device_info_snb_gt1 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
-   .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_snb_gt2 = {
@@ -224,7 +219,6 @@ static const struct intel_device_info intel_device_info_snb_gt2 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
-   .cs_prefetch_size = 512,
 };
 
 #define GFX7_FEATURES                               \
@@ -236,8 +230,7 @@ static const struct intel_device_info intel_device_info_snb_gt2 = {
    .has_64bit_float = true,                         \
    .has_surface_tile_offset = true,                 \
    .timestamp_frequency = 12500000,                 \
-   .max_constant_urb_size_kb = 16,                  \
-   .cs_prefetch_size = 512
+   .max_constant_urb_size_kb = 16
 
 static const struct intel_device_info intel_device_info_ivb_gt1 = {
    GFX7_FEATURES, .platform = INTEL_PLATFORM_IVB, .gt = 1,
@@ -439,8 +432,7 @@ static const struct intel_device_info intel_device_info_hsw_gt3 = {
    .max_wm_threads = 384,                           \
    .max_threads_per_psd = 64,                       \
    .timestamp_frequency = 12500000,                 \
-   .max_constant_urb_size_kb = 32,                  \
-   .cs_prefetch_size = 512
+   .max_constant_urb_size_kb = 32
 
 static const struct intel_device_info intel_device_info_bdw_gt1 = {
    GFX8_FEATURES, .gt = 1,
@@ -550,7 +542,6 @@ static const struct intel_device_info intel_device_info_chv = {
    .max_threads_per_psd = 64,                       \
    .max_cs_threads = 56,                            \
    .timestamp_frequency = 12000000,                 \
-   .cs_prefetch_size = 512,                         \
    .urb = {                                         \
       .min_entries = {                              \
          [MESA_SHADER_VERTEX]    = 64,              \
@@ -835,8 +826,7 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
    .max_tcs_threads = 224,                          \
    .max_tes_threads = 364,                          \
    .max_threads_per_psd = 64,                       \
-   .max_cs_threads = 56,                            \
-   .cs_prefetch_size = 512
+   .max_cs_threads = 56
 
 #define GFX11_FEATURES(_gt, _slices, _subslices, _l3, _platform)  \
    GFX8_FEATURES,                                     \
@@ -971,8 +961,7 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
-   .max_eus_per_subslice = 16,                                   \
-   .cs_prefetch_size = 512
+   .max_eus_per_subslice = 16
 
 #define dual_subslices(args...) { args, }
 
@@ -1061,8 +1050,7 @@ static const struct intel_device_info intel_device_info_sg1 = {
    .has_llc = false,                                            \
    .has_local_mem = true,                                       \
    .has_aux_map = false,                                        \
-   .simulator_id = 29,                                          \
-   .cs_prefetch_size = 1024
+   .simulator_id = 29
 
 #define DG2_FEATURES                                            \
    /* (Sub)slice info comes from the kernel topology info */    \
@@ -1930,6 +1918,27 @@ init_max_scratch_ids(struct intel_device_info *devinfo)
    }
 }
 
+static unsigned
+intel_device_info_calc_engine_prefetch(const struct intel_device_info *devinfo,
+                                       enum drm_i915_gem_engine_class engine_class)
+{
+   if (devinfo->verx10 < 125)
+      return 512;
+
+   if (intel_device_info_is_mtl(devinfo)) {
+      switch (engine_class) {
+      case I915_ENGINE_CLASS_RENDER:
+         return 2048;
+      case I915_ENGINE_CLASS_COMPUTE:
+         return 1024;
+      default:
+         return 512;
+      }
+   }
+
+   return 1024;
+}
+
 bool
 intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
@@ -2044,6 +2053,11 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    devinfo->subslice_total = MAX2(devinfo->subslice_total, 1);
 
    init_max_scratch_ids(devinfo);
+
+   for (enum drm_i915_gem_engine_class engine = I915_ENGINE_CLASS_RENDER;
+        engine < ARRAY_SIZE(devinfo->engine_class_prefetch); engine++)
+      devinfo->engine_class_prefetch[engine] =
+            intel_device_info_calc_engine_prefetch(devinfo, engine);
 
    return true;
 }
