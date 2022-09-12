@@ -177,13 +177,13 @@ component(fs_reg reg, unsigned idx)
  * contained in.  A register is by definition fully contained in the single
  * reg_space it belongs to, so two registers with different reg_space ids are
  * guaranteed not to overlap.  Most register files are a single reg_space of
- * its own, only the VGRF file is composed of multiple discrete address
- * spaces, one for each VGRF allocation.
+ * its own, only the VGRF and ATTR files are composed of multiple discrete
+ * address spaces, one for each allocation and input attribute respectively.
  */
 static inline uint32_t
 reg_space(const fs_reg &r)
 {
-   return r.file << 16 | (r.file == VGRF ? r.nr : 0);
+   return r.file << 16 | (r.file == VGRF || r.file == ATTR ? r.nr : 0);
 }
 
 /**
@@ -193,7 +193,7 @@ reg_space(const fs_reg &r)
 static inline unsigned
 reg_offset(const fs_reg &r)
 {
-   return (r.file == VGRF || r.file == IMM ? 0 : r.nr) *
+   return (r.file == VGRF || r.file == IMM || r.file == ATTR ? 0 : r.nr) *
           (r.file == UNIFORM ? 4 : REG_SIZE) + r.offset +
           (r.file == ARF || r.file == FIXED_GRF ? r.subnr : 0);
 }
