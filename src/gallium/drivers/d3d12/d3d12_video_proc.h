@@ -114,6 +114,8 @@ struct d3d12_video_processor
 
    // Indicates if GPU commands have not been flushed and are pending.
    bool m_needsGPUFlush = false;
+
+   D3D12_FEATURE_DATA_VIDEO_PROCESS_MAX_INPUT_STREAMS m_vpMaxInputStreams = { };
 };
 
 struct pipe_video_codec *

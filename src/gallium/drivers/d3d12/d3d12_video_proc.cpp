@@ -75,6 +75,11 @@ d3d12_video_processor_end_frame(struct pipe_video_codec * codec,
                 "fenceValue: %d\n",
                 pD3D12Proc->m_fenceValue);
 
+    if(pD3D12Proc->m_ProcessInputs.size() > pD3D12Proc->m_vpMaxInputStreams.MaxInputStreams) {
+      debug_printf("[d3d12_video_processor] ERROR: Requested number of input surfaces (%" PRIu64 ") exceeds underlying D3D12 driver capabilities (%d)\n", (uint64_t) pD3D12Proc->m_ProcessInputs.size(), pD3D12Proc->m_vpMaxInputStreams.MaxInputStreams);
+      assert(false);
+    }
+
     auto curOutputDesc = GetOutputStreamDesc(pD3D12Proc->m_spVideoProcessor.Get());
     auto curOutputTexFmt = GetDesc(pD3D12Proc->m_OutputArguments.OutputStream[0].pTexture2D).Format;
     
@@ -413,7 +418,12 @@ d3d12_video_processor_create(struct pipe_context *context, const struct pipe_vid
           IID_PPV_ARGS(pD3D12Proc->m_spD3D12VideoDevice.GetAddressOf())))) {
       debug_printf("[d3d12_video_processor] d3d12_video_create_processor - D3D12 Device has no Video support\n");
       goto failed;
-   }    
+   }
+
+   if (FAILED(pD3D12Proc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_PROCESS_MAX_INPUT_STREAMS, &pD3D12Proc->m_vpMaxInputStreams, sizeof(pD3D12Proc->m_vpMaxInputStreams)))) {
+      debug_printf("[d3d12_video_processor] d3d12_video_create_processor - Failed to query D3D12_FEATURE_VIDEO_PROCESS_MAX_INPUT_STREAMS\n");
+      goto failed;
+   }
 
    if (!d3d12_video_processor_check_caps_and_create_processor(pD3D12Proc, InputFormats, InputColorSpace, OutputFormat, OutputColorSpace)) {
       debug_printf("[d3d12_video_processor] d3d12_video_create_processor - Failure on "
