@@ -2617,7 +2617,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->meshOutputPerVertexGranularity = 1;
          properties->meshOutputPerPrimitiveGranularity = 1;
 
-         properties->maxPreferredTaskWorkGroupInvocations = 1024;
+         properties->maxPreferredTaskWorkGroupInvocations = 64;
          properties->maxPreferredMeshWorkGroupInvocations = 128;
          properties->prefersLocalInvocationVertexOutput = true;
          properties->prefersLocalInvocationPrimitiveOutput = true;
