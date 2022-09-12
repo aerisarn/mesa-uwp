@@ -28,6 +28,7 @@
 #include "d3d12_util.h"
 #include "d3d12_resource.h"
 #include "d3d12_video_buffer.h"
+#include "d3d12_format.h"
 
 void
 d3d12_video_processor_begin_frame(struct pipe_video_codec * codec,
@@ -97,19 +98,28 @@ d3d12_video_processor_end_frame(struct pipe_video_codec * codec,
         debug_printf("[d3d12_video_processor] d3d12_video_processor_end_frame - Attempting to re-create ID3D12VideoProcessor "
                       "input count matches %d inputFmtsMatch: %d outputFmtsMatch %d \n", inputCountMatches, inputFmtsMatch, outputFmtMatches);
         
-        DXGI_COLOR_SPACE_TYPE InputColorSpace = DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
-        DXGI_FORMAT OutputFormat = curOutputTexFmt;
-        DXGI_COLOR_SPACE_TYPE OutputColorSpace = DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709;
+        DXGI_COLOR_SPACE_TYPE OutputColorSpace = d3d12_convert_from_legacy_color_space(
+          !util_format_is_yuv(d3d12_get_pipe_format(curOutputTexFmt)),
+          util_format_get_blocksize(d3d12_get_pipe_format(curOutputTexFmt)) * 8 /*bytes to bits conversion*/,
+          /* StudioRGB= */ false,
+          /* P709= */ true,
+          /* StudioYUV= */ true);
         
         std::vector<DXGI_FORMAT> InputFormats;
         for(D3D12_VIDEO_PROCESS_INPUT_STREAM_ARGUMENTS1 curInput : pD3D12Proc->m_ProcessInputs)
         {
             InputFormats.push_back(GetDesc(curInput.InputStream[0].pTexture2D).Format);
         }
+        DXGI_COLOR_SPACE_TYPE InputColorSpace = d3d12_convert_from_legacy_color_space(
+          !util_format_is_yuv(d3d12_get_pipe_format(InputFormats[0])),
+          util_format_get_blocksize(d3d12_get_pipe_format(InputFormats[0])) * 8 /*bytes to bits conversion*/,
+          /* StudioRGB= */ false,
+          /* P709= */ true,
+          /* StudioYUV= */ true);
 
         // Release previous allocation
         pD3D12Proc->m_spVideoProcessor.Reset();
-        if(!d3d12_video_processor_check_caps_and_create_processor(pD3D12Proc, InputFormats, InputColorSpace, OutputFormat, OutputColorSpace))
+        if(!d3d12_video_processor_check_caps_and_create_processor(pD3D12Proc, InputFormats, InputColorSpace, curOutputTexFmt, OutputColorSpace))
         {
             debug_printf("[d3d12_video_processor] d3d12_video_processor_end_frame - Failure when "
                       " trying to re-create the ID3D12VideoProcessor for current batch streams configuration\n");
