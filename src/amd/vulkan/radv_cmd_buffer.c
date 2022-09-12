@@ -5272,7 +5272,8 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
       disable_instance_packing = true;
    }
 
-   if ((draw_info->indexed && state->index_type != state->last_index_type) ||
+   if ((draw_info->indexed &&
+        (state->index_type != state->last_index_type || cmd_buffer->device->uses_shadow_regs)) ||
        (info->gfx_level == GFX10_3 &&
         (state->last_index_type == -1 ||
          disable_instance_packing != G_028A7C_DISABLE_INSTANCE_PACKING(state->last_index_type)))) {
@@ -8857,7 +8858,8 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
       struct radv_cmd_state *state = &cmd_buffer->state;
       struct radeon_cmdbuf *cs = cmd_buffer->cs;
       assert(state->graphics_pipeline->vtx_base_sgpr);
-      if (state->last_num_instances != info->instance_count) {
+      if (state->last_num_instances != info->instance_count ||
+          cmd_buffer->device->uses_shadow_regs) {
          radeon_emit(cs, PKT3(PKT3_NUM_INSTANCES, 0, false));
          radeon_emit(cs, info->instance_count);
          state->last_num_instances = info->instance_count;
