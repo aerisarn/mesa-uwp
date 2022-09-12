@@ -549,8 +549,10 @@ vn_descriptor_pool_alloc_descriptors(
 fail:
    /* restore pool state before this allocation */
    pool->used = recovery;
-   vn_pool_restore_mutable_states(pool, layout, binding_index - 1,
-                                  last_binding_descriptor_count);
+   if (binding_index > 0) {
+      vn_pool_restore_mutable_states(pool, layout, binding_index - 1,
+                                     last_binding_descriptor_count);
+   }
    return false;
 }
 
