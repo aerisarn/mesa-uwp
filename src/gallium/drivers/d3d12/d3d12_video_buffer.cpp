@@ -47,17 +47,6 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
    /// Initialize d3d12_video_buffer
    ///
 
-   if (!(tmpl->buffer_format == PIPE_FORMAT_NV12)) {
-      debug_printf("[d3d12_video_buffer] buffer_format is only supported as PIPE_FORMAT_NV12.\n");
-      return nullptr;
-   }
-
-   if (!(pipe_format_to_chroma_format(tmpl->buffer_format) == PIPE_VIDEO_CHROMA_FORMAT_420)) {
-      debug_printf(
-         "[d3d12_video_buffer] tmpl->buffer_format only supported as a PIPE_VIDEO_CHROMA_FORMAT_420 format.\n");
-      return nullptr;
-   }
-
    // Not using new doesn't call ctor and the initializations in the class declaration are lost
    struct d3d12_video_buffer *pD3D12VideoBuffer = new d3d12_video_buffer;
 
@@ -110,7 +99,6 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
    }
 
    pD3D12VideoBuffer->num_planes = util_format_get_num_planes(pD3D12VideoBuffer->texture->overall_format);
-   assert(pD3D12VideoBuffer->num_planes == 2);
    return &pD3D12VideoBuffer->base;
 
 failed:
@@ -313,10 +301,11 @@ d3d12_video_buffer_get_sampler_view_components(struct pipe_video_buffer *buffer)
    // starting with the plane 0 being the overall resource
    struct pipe_resource *pCurPlaneResource = &pD3D12VideoBuffer->texture->base.b;
 
+   const uint32_t MAX_NUM_COMPONENTS = 4; // ie. RGBA formats
    // At the end of the loop, "component" will have the total number of items valid in sampler_view_components
-   // since component can end up being <= VL_NUM_COMPONENTS, we assume VL_NUM_COMPONENTS first and then resize/adjust to
+   // since component can end up being <= MAX_NUM_COMPONENTS, we assume MAX_NUM_COMPONENTS first and then resize/adjust to
    // fit the container size pD3D12VideoBuffer->sampler_view_components to the actual components number
-   pD3D12VideoBuffer->sampler_view_components.resize(VL_NUM_COMPONENTS, nullptr);
+   pD3D12VideoBuffer->sampler_view_components.resize(MAX_NUM_COMPONENTS, nullptr);
    uint component = 0;
 
    for (uint i = 0; i < pD3D12VideoBuffer->num_planes; ++i) {
@@ -324,7 +313,6 @@ d3d12_video_buffer_get_sampler_view_components(struct pipe_video_buffer *buffer)
       unsigned num_components = util_format_get_nr_components(pCurPlaneResource->format);
 
       for (uint j = 0; j < num_components; ++j, ++component) {
-         assert(component < VL_NUM_COMPONENTS);
 
          if (!pD3D12VideoBuffer->sampler_view_components[component]) {
             memset(&samplerViewTemplate, 0, sizeof(samplerViewTemplate));
