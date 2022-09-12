@@ -204,6 +204,20 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
    struct radv_device *device = cmd_buffer->device;
 
    for (unsigned r = 0; r < num_rects; ++r) {
+      radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                          &(VkViewport){.x = rects[r].dst_x,
+                                        .y = rects[r].dst_y,
+                                        .width = rects[r].width,
+                                        .height = rects[r].height,
+                                        .minDepth = 0.0f,
+                                        .maxDepth = 1.0f});
+
+      radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                         &(VkRect2D){
+                            .offset = (VkOffset2D){rects[r].dst_x, rects[r].dst_y},
+                            .extent = (VkExtent2D){rects[r].width, rects[r].height},
+                         });
+
       u_foreach_bit(i, dst->aspect_mask)
       {
          unsigned aspect_mask = 1u << i;
@@ -341,20 +355,6 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
             bind_stencil_pipeline(cmd_buffer, src_type, log2_samples);
          } else
             unreachable("Processing blit2d with multiple aspects.");
-
-         radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                             &(VkViewport){.x = rects[r].dst_x,
-                                           .y = rects[r].dst_y,
-                                           .width = rects[r].width,
-                                           .height = rects[r].height,
-                                           .minDepth = 0.0f,
-                                           .maxDepth = 1.0f});
-
-         radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                            &(VkRect2D){
-                               .offset = (VkOffset2D){rects[r].dst_x, rects[r].dst_y},
-                               .extent = (VkExtent2D){rects[r].width, rects[r].height},
-                            });
 
          radv_CmdDraw(radv_cmd_buffer_to_handle(cmd_buffer), 3, 1, 0, 0);
 

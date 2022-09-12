@@ -241,8 +241,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                struct radv_image_view *src_iview, VkImageLayout src_image_layout,
                float src_offset_0[3], float src_offset_1[3], struct radv_image *dest_image,
                struct radv_image_view *dest_iview, VkImageLayout dest_image_layout,
-               VkOffset2D dest_offset_0, VkOffset2D dest_offset_1, VkRect2D dest_box,
-               VkSampler sampler)
+               VkRect2D dest_box, VkSampler sampler)
 {
    struct radv_device *device = cmd_buffer->device;
    uint32_t src_width = radv_minify(src_iview->image->info.width, src_iview->vk.base_mip_level);
@@ -356,22 +355,6 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
                                    },
                                 }}});
-
-   radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                       &(VkViewport){.x = dest_offset_0.x,
-                                     .y = dest_offset_0.y,
-                                     .width = dest_offset_1.x - dest_offset_0.x,
-                                     .height = dest_offset_1.y - dest_offset_0.y,
-                                     .minDepth = 0.0f,
-                                     .maxDepth = 1.0f});
-
-   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                      &(VkRect2D){
-                         .offset = (VkOffset2D){MIN2(dest_offset_0.x, dest_offset_1.x),
-                                                MIN2(dest_offset_0.y, dest_offset_1.y)},
-                         .extent = (VkExtent2D){abs(dest_offset_1.x - dest_offset_0.x),
-                                                abs(dest_offset_1.y - dest_offset_0.y)},
-                      });
 
    VkRenderingInfo rendering_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
@@ -543,18 +526,34 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    dst_box.extent.width = dst_x1 - dst_x0;
    dst_box.extent.height = dst_y1 - dst_y0;
 
+   const VkOffset2D dst_offset_0 = {
+      .x = dst_x0,
+      .y = dst_y0,
+   };
+   const VkOffset2D dst_offset_1 = {
+      .x = dst_x1,
+      .y = dst_y1,
+   };
+
+   radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                       &(VkViewport){.x = dst_offset_0.x,
+                                     .y = dst_offset_0.y,
+                                     .width = dst_offset_1.x - dst_offset_0.x,
+                                     .height = dst_offset_1.y - dst_offset_0.y,
+                                     .minDepth = 0.0f,
+                                     .maxDepth = 1.0f});
+
+   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                      &(VkRect2D){
+                         .offset = (VkOffset2D){MIN2(dst_offset_0.x, dst_offset_1.x),
+                                                MIN2(dst_offset_0.y, dst_offset_1.y)},
+                         .extent = (VkExtent2D){abs(dst_offset_1.x - dst_offset_0.x),
+                                                abs(dst_offset_1.y - dst_offset_0.y)},
+                      });
+
    const unsigned num_layers = dst_end - dst_start;
    for (unsigned i = 0; i < num_layers; i++) {
       struct radv_image_view dst_iview, src_iview;
-
-      const VkOffset2D dst_offset_0 = {
-         .x = dst_x0,
-         .y = dst_y0,
-      };
-      const VkOffset2D dst_offset_1 = {
-         .x = dst_x1,
-         .y = dst_y1,
-      };
 
       float src_offset_0[3] = {
          src_x0,
@@ -598,8 +597,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                            },
                            0, NULL);
       meta_emit_blit(cmd_buffer, src_image, &src_iview, src_image_layout, src_offset_0,
-                     src_offset_1, dst_image, &dst_iview, dst_image_layout, dst_offset_0,
-                     dst_offset_1, dst_box, sampler);
+                     src_offset_1, dst_image, &dst_iview, dst_image_layout, dst_box, sampler);
 
       radv_image_view_finish(&dst_iview);
       radv_image_view_finish(&src_iview);

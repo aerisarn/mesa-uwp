@@ -636,7 +636,7 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
 static void
 emit_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_iview,
              struct radv_image_view *dest_iview, const VkOffset2D *src_offset,
-             const VkOffset2D *dest_offset, const VkExtent2D *resolve_extent)
+             const VkOffset2D *dest_offset)
 {
    struct radv_device *device = cmd_buffer->device;
    VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
@@ -677,20 +677,6 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_ivi
    pipeline = radv_get_resolve_pipeline(cmd_buffer, src_iview, dest_iview);
 
    radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
-
-   radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                       &(VkViewport){.x = dest_offset->x,
-                                     .y = dest_offset->y,
-                                     .width = resolve_extent->width,
-                                     .height = resolve_extent->height,
-                                     .minDepth = 0.0f,
-                                     .maxDepth = 1.0f});
-
-   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
-                      &(VkRect2D){
-                         .offset = *dest_offset,
-                         .extent = *resolve_extent,
-                      });
 
    radv_CmdDraw(cmd_buffer_h, 3, 1, 0, 0);
    cmd_buffer->state.flush_bits |=
@@ -815,6 +801,21 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    const struct VkOffset3D srcOffset = vk_image_sanitize_offset(&src_image->vk, region->srcOffset);
    const struct VkOffset3D dstOffset = vk_image_sanitize_offset(&dest_image->vk, region->dstOffset);
 
+   VkRect2D resolve_area = {
+      .offset = { dstOffset.x, dstOffset.y },
+      .extent = { extent.width, extent.height },
+   };
+
+   radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                       &(VkViewport){.x = resolve_area.offset.x,
+                                     .y = resolve_area.offset.y,
+                                     .width = resolve_area.extent.width,
+                                     .height = resolve_area.extent.height,
+                                     .minDepth = 0.0f,
+                                     .maxDepth = 1.0f});
+
+   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &resolve_area);
+
    for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
 
       struct radv_image_view src_iview;
@@ -863,10 +864,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
       const VkRenderingInfo rendering_info = {
          .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-         .renderArea = {
-            .offset = { dstOffset.x, dstOffset.y },
-            .extent = { extent.width, extent.height }
-         },
+         .renderArea = resolve_area,
          .layerCount = 1,
          .colorAttachmentCount = 1,
          .pColorAttachments = &color_att,
@@ -875,8 +873,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
       radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
 
       emit_resolve(cmd_buffer, &src_iview, &dest_iview, &(VkOffset2D){srcOffset.x, srcOffset.y},
-                   &(VkOffset2D){dstOffset.x, dstOffset.y},
-                   &(VkExtent2D){extent.width, extent.height});
+                   &(VkOffset2D){dstOffset.x, dstOffset.y});
 
       radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
 
@@ -909,6 +906,18 @@ radv_cmd_buffer_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer)
       RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS |
       RADV_META_SAVE_RENDER);
 
+   VkRect2D *resolve_area = &saved_state.render.area;
+
+   radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
+                       &(VkViewport){.x = resolve_area->offset.x,
+                                     .y = resolve_area->offset.y,
+                                     .width = resolve_area->extent.width,
+                                     .height = resolve_area->extent.height,
+                                     .minDepth = 0.0f,
+                                     .maxDepth = 1.0f});
+
+   radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, resolve_area);
+
    for (uint32_t i = 0; i < saved_state.render.color_att_count; ++i) {
       if (saved_state.render.color_att[i].resolve_iview == NULL)
          continue;
@@ -936,7 +945,7 @@ radv_cmd_buffer_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer)
       radv_CmdBeginRendering(radv_cmd_buffer_to_handle(cmd_buffer), &rendering_info);
 
       emit_resolve(cmd_buffer, src_iview, dst_iview, &saved_state.render.area.offset,
-                   &saved_state.render.area.offset, &saved_state.render.area.extent);
+                   &saved_state.render.area.offset);
 
       radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
    }
