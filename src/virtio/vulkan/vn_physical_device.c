@@ -49,7 +49,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    };
    struct {
       /* Vulkan 1.1 */
-      VkPhysicalDevice16BitStorageFeatures sixteen_bit_storage;
+      VkPhysicalDevice16BitStorageFeatures _16bit_storage;
       VkPhysicalDeviceMultiviewFeatures multiview;
       VkPhysicalDeviceVariablePointersFeatures variable_pointers;
       VkPhysicalDeviceProtectedMemoryFeatures protected_memory;
@@ -57,7 +57,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters;
 
       /* Vulkan 1.2 */
-      VkPhysicalDevice8BitStorageFeatures eight_bit_storage;
+      VkPhysicalDevice8BitStorageFeatures _8bit_storage;
       VkPhysicalDeviceShaderAtomicInt64Features shader_atomic_int64;
       VkPhysicalDeviceShaderFloat16Int8Features shader_float16_int8;
       VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing;
@@ -80,7 +80,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT(feats->vulkan_1_2, VULKAN_1_2_FEATURES, features2);
    } else {
       /* Vulkan 1.1 */
-      VN_ADD_TO_PNEXT(local_feats.sixteen_bit_storage, 16BIT_STORAGE_FEATURES,
+      VN_ADD_TO_PNEXT(local_feats._16bit_storage, 16BIT_STORAGE_FEATURES,
                       features2);
       VN_ADD_TO_PNEXT(local_feats.multiview, MULTIVIEW_FEATURES, features2);
       VN_ADD_TO_PNEXT(local_feats.variable_pointers,
@@ -93,7 +93,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                       SHADER_DRAW_PARAMETERS_FEATURES, features2);
 
       /* Vulkan 1.2 */
-      VN_ADD_TO_PNEXT(local_feats.eight_bit_storage, 8BIT_STORAGE_FEATURES,
+      VN_ADD_TO_PNEXT(local_feats._8bit_storage, 8BIT_STORAGE_FEATURES,
                       features2);
       VN_ADD_TO_PNEXT(local_feats.shader_atomic_int64,
                       SHADER_ATOMIC_INT64_FEATURES, features2);
@@ -128,7 +128,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->KHR_shader_terminate_invocation,
                        feats->shader_terminate_invocation,
                        SHADER_TERMINATE_INVOCATION_FEATURES, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->argb_4444_formats,
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->_4444_formats,
                        4444_FORMATS_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
                        feats->extended_dynamic_state,
@@ -243,13 +243,13 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 
    if (physical_dev->renderer_version < VK_API_VERSION_1_2) {
       vk11_feats->storageBuffer16BitAccess =
-         local_feats.sixteen_bit_storage.storageBuffer16BitAccess;
+         local_feats._16bit_storage.storageBuffer16BitAccess;
       vk11_feats->uniformAndStorageBuffer16BitAccess =
-         local_feats.sixteen_bit_storage.uniformAndStorageBuffer16BitAccess;
+         local_feats._16bit_storage.uniformAndStorageBuffer16BitAccess;
       vk11_feats->storagePushConstant16 =
-         local_feats.sixteen_bit_storage.storagePushConstant16;
+         local_feats._16bit_storage.storagePushConstant16;
       vk11_feats->storageInputOutput16 =
-         local_feats.sixteen_bit_storage.storageInputOutput16;
+         local_feats._16bit_storage.storageInputOutput16;
 
       vk11_feats->multiview = local_feats.multiview.multiview;
       vk11_feats->multiviewGeometryShader =
@@ -277,11 +277,11 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 
       if (exts->KHR_8bit_storage) {
          vk12_feats->storageBuffer8BitAccess =
-            local_feats.eight_bit_storage.storageBuffer8BitAccess;
+            local_feats._8bit_storage.storageBuffer8BitAccess;
          vk12_feats->uniformAndStorageBuffer8BitAccess =
-            local_feats.eight_bit_storage.uniformAndStorageBuffer8BitAccess;
+            local_feats._8bit_storage.uniformAndStorageBuffer8BitAccess;
          vk12_feats->storagePushConstant8 =
-            local_feats.eight_bit_storage.storagePushConstant8;
+            local_feats._8bit_storage.storagePushConstant8;
       }
       if (exts->KHR_shader_atomic_int64) {
          vk12_feats->shaderBufferInt64Atomics =
@@ -1101,10 +1101,10 @@ vn_physical_device_get_passthrough_extensions(
        * Even though we implement this natively, we still require host driver
        * support to avoid invalid usage in the renderer, because we (the guest
        * driver) do not scrub the extension bits from the
-       * VkGraphicsPipelineCreateInfo pNext chain.  The host driver still writes
-       * feedback into VkPipelineCreationFeedback, which is harmless, but the
-       * renderer does not send the returned feedback to us due to protocol
-       * deficiencies.
+       * VkGraphicsPipelineCreateInfo pNext chain.  The host driver still
+       * writes feedback into VkPipelineCreationFeedback, which is harmless,
+       * but the renderer does not send the returned feedback to us due to
+       * protocol deficiencies.
        */
       .EXT_pipeline_creation_feedback = true,
       .EXT_shader_demote_to_helper_invocation = true,
@@ -1737,9 +1737,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                           sizeof(in_feats->member));                         \
       break
 
-      /* clang-format off */
+         /* clang-format off */
+
       /* Vulkan 1.3 */
-      CASE(4444_FORMATS_FEATURES_EXT, argb_4444_formats);
+      CASE(4444_FORMATS_FEATURES_EXT, _4444_formats);
       CASE(DYNAMIC_RENDERING_FEATURES, dynamic_rendering);
       CASE(EXTENDED_DYNAMIC_STATE_FEATURES_EXT, extended_dynamic_state);
       CASE(EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, extended_dynamic_state_2);
@@ -1772,7 +1773,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       /* vendor */
       CASE(MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, mutable_descriptor_type);
-      /* clang-format on */
+
+         /* clang-format on */
 
       default:
          break;
@@ -1810,7 +1812,8 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                           sizeof(in_props->member));                         \
       break
 
-      /* clang-format off */
+         /* clang-format off */
+
       /* Vulkan 1.3 */
       CASE(INLINE_UNIFORM_BLOCK_PROPERTIES, inline_uniform_block);
       CASE(SHADER_INTEGER_DOT_PRODUCT_PROPERTIES, shader_integer_dot_product);
@@ -1827,7 +1830,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       CASE(ROBUSTNESS_2_PROPERTIES_EXT, robustness_2);
       CASE(TRANSFORM_FEEDBACK_PROPERTIES_EXT, transform_feedback);
       CASE(VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, vertex_attribute_divisor);
-      /* clang-format on */
+
+         /* clang-format on */
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
          VkPhysicalDeviceDrmPropertiesEXT *out_props = (void *)out;
          const struct vn_renderer_info *info =
