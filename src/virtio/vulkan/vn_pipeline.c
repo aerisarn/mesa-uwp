@@ -586,9 +586,11 @@ vn_fix_graphics_pipeline_create_info(
 
       /* Ignore basePipelineHandle?
        *    VUID-VkGraphicsPipelineCreateInfo-flags-00722
+       *    VUID-VkGraphicsPipelineCreateInfo-flags-00724
+       *    VUID-VkGraphicsPipelineCreateInfo-flags-00725
        */
-      if (!(info->flags & VK_PIPELINE_CREATE_DERIVATIVE_BIT) ||
-          info->basePipelineIndex != -1) {
+      if (info->basePipelineHandle != VK_NULL_HANDLE &&
+          !(info->flags & VK_PIPELINE_CREATE_DERIVATIVE_BIT)) {
          fix.ignore_base_pipeline_handle = true;
          any_fix = true;
       }
