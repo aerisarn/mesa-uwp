@@ -2480,9 +2480,10 @@ emit_gs_input_load(nir_to_brw_state &ntb, const fs_reg &dst,
        4 * (base_offset + nir_src_as_uint(offset_src)) < push_reg_count) {
       int imm_offset = (base_offset + nir_src_as_uint(offset_src)) * 4 +
                        nir_src_as_uint(vertex_src) * push_reg_count;
+      const fs_reg attr = fs_reg(ATTR, 0, dst.type);
       for (unsigned i = 0; i < num_components; i++) {
-         ntb.bld.MOV(offset(dst, ntb.bld, i),
-                      fs_reg(ATTR, imm_offset + i + first_component, dst.type));
+         ntb.bld.MOV(offset(dst, bld, i),
+                     offset(attr, bld, imm_offset + i + first_component));
       }
       return;
    }
