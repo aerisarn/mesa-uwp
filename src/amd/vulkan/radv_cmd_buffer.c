@@ -4335,8 +4335,11 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
-   uint64_t states =
+   const uint64_t states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
+
+   if (!states)
+      return;
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
