@@ -7506,7 +7506,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    return true;
 }
 
-static void
+ALWAYS_INLINE static void
 radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radeon_info *rad_info = &cmd_buffer->device->physical_device->rad_info;
