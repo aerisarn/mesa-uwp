@@ -546,6 +546,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_index_type_uint8 = device->rad_info.gfx_level >= GFX8,
       .EXT_inline_uniform_block = true,
       .EXT_line_rasterization = true,
+      .EXT_load_store_op_none = true,
       .EXT_memory_budget = true,
       .EXT_memory_priority = true,
       .EXT_mesh_shader =
