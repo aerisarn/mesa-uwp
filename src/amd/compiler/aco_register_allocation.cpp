@@ -83,7 +83,6 @@ struct ra_ctx {
    uint16_t sgpr_limit;
    uint16_t vgpr_limit;
    std::bitset<512> war_hint;
-   std::bitset<64> defs_done; /* see MAX_ARGS in aco_instruction_selection_setup.cpp */
 
    ra_test_policy policy;
 
@@ -2870,8 +2869,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             instr->definitions[0].setFixed(instr->operands[2].physReg());
          }
 
-         ctx.defs_done.reset();
-
          /* handle fixed definitions first */
          for (unsigned i = 0; i < instr->definitions.size(); ++i) {
             auto& definition = instr->definitions[i];
@@ -2899,7 +2896,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
 
                update_renames(ctx, register_file, parallelcopy, instr, (UpdateRenames)0);
             }
-            ctx.defs_done.set(i);
 
             if (!definition.isTemp())
                continue;
@@ -2977,7 +2973,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                definition->isFixed() &&
                ((definition->getTemp().type() == RegType::vgpr && definition->physReg() >= 256) ||
                 (definition->getTemp().type() != RegType::vgpr && definition->physReg() < 256)));
-            ctx.defs_done.set(i);
             ctx.assignments[definition->tempId()].set(*definition);
             register_file.fill(*definition);
          }
