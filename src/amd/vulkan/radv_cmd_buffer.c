@@ -3419,7 +3419,7 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
    }
 }
 
-static void
+ALWAYS_INLINE static void
 radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
                        struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
 {
