@@ -593,6 +593,9 @@ vn_descriptor_pool_reset_descriptors(struct vn_descriptor_pool *pool)
       return;
 
    memset(&pool->used, 0, sizeof(pool->used));
+
+   for (uint32_t i = 0; i < pool->mutable_states_count; i++)
+      pool->mutable_states[i].used = 0;
 }
 
 VkResult
