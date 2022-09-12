@@ -2280,8 +2280,16 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       const struct glsl_type *interface_type = var->interface_type ? glsl_without_array(var->interface_type) : NULL;
       if (interface_type) {
          unsigned block_size = glsl_get_explicit_size(interface_type, true);
-         block_size = DIV_ROUND_UP(block_size, sizeof(float) * 4);
-         size = MAX2(size, block_size);
+         if (glsl_get_length(interface_type) == 1) {
+            /* handle bare unsized ssbo arrays: glsl_get_explicit_size always returns type-aligned sizes */
+            const struct glsl_type *f = glsl_get_struct_field(interface_type, 0);
+            if (glsl_type_is_array(f) && !glsl_array_size(f))
+               block_size = 0;
+         }
+         if (block_size) {
+            block_size = DIV_ROUND_UP(block_size, sizeof(float) * 4);
+            size = MAX2(size, block_size);
+         }
       }
       if (var->data.mode == nir_var_mem_ubo) {
          if (var->data.driver_location)
