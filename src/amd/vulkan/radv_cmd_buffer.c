@@ -4623,6 +4623,16 @@ radv_emit_all_inline_push_consts(struct radv_device *device, struct radeon_cmdbu
    }
 }
 
+ALWAYS_INLINE static VkShaderStageFlags
+radv_must_flush_constants(const struct radv_cmd_buffer *cmd_buffer,
+                          const struct radv_pipeline *pipeline, VkShaderStageFlags stages)
+{
+   if (pipeline->push_constant_size || pipeline->dynamic_offset_count)
+      return stages & cmd_buffer->push_constant_stages;
+
+   return 0;
+}
+
 static void
 radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
                      struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
@@ -4636,14 +4646,9 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
    unsigned offset;
    void *ptr;
    uint64_t va;
-   uint32_t internal_stages;
+   uint32_t internal_stages = stages;
    uint32_t dirty_stages = 0;
 
-   stages &= cmd_buffer->push_constant_stages;
-   if (!stages || (!pipeline->push_constant_size && !pipeline->dynamic_offset_count))
-      return;
-
-   internal_stages = stages;
    switch (bind_point) {
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
       break;
@@ -5104,7 +5109,12 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer)
 
    VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS;
    radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
-   radv_flush_constants(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+   const VkShaderStageFlags pc_stages =
+      radv_must_flush_constants(cmd_buffer, &pipeline->base, stages);
+   if (pc_stages)
+      radv_flush_constants(cmd_buffer, pc_stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
    radv_flush_force_vrs_state(cmd_buffer);
 }
 
@@ -8918,7 +8928,11 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    }
 
    radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
-   radv_flush_constants(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+   const VkShaderStageFlags pc_stages =
+      radv_must_flush_constants(cmd_buffer, &pipeline->base, stages);
+   if (pc_stages)
+      radv_flush_constants(cmd_buffer, pc_stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    radv_describe_draw(cmd_buffer);
    if (likely(!info->indirect)) {
@@ -9800,11 +9814,13 @@ radv_upload_compute_shader_descriptors(struct radv_cmd_buffer *cmd_buffer,
                                        VkPipelineBindPoint bind_point)
 {
    radv_flush_descriptors(cmd_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &pipeline->base, bind_point);
-   radv_flush_constants(cmd_buffer,
-                        bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
-                           ? RADV_RT_STAGE_BITS
-                           : VK_SHADER_STAGE_COMPUTE_BIT,
-                        &pipeline->base, bind_point);
+   const VkShaderStageFlags stages = bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
+                                        ? RADV_RT_STAGE_BITS
+                                        : VK_SHADER_STAGE_COMPUTE_BIT;
+   const VkShaderStageFlags pc_stages =
+      radv_must_flush_constants(cmd_buffer, &pipeline->base, stages);
+   if (pc_stages)
+      radv_flush_constants(cmd_buffer, pc_stages, &pipeline->base, bind_point);
 }
 
 static void
