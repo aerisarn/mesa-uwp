@@ -1664,7 +1664,6 @@ struct radv_image_view;
 
 bool radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer);
 
-bool radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer);
 void radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer);
 
 void si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs);
@@ -3038,6 +3037,16 @@ si_translate_blend_logic_op(VkLogicOp op)
    default:
       unreachable("Unhandled logic op");
    }
+}
+
+ALWAYS_INLINE static bool
+radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+
+   /* Streamout must be enabled for the PRIMITIVES_GENERATED query to work. */
+   return (so->streamout_enabled || cmd_buffer->state.prims_gen_query_enabled) &&
+          !cmd_buffer->state.suspend_streamout;
 }
 
 /*

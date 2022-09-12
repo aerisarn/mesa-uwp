@@ -9431,16 +9431,6 @@ radv_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer, uint32_t 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 }
 
-bool
-radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-
-   /* Streamout must be enabled for the PRIMITIVES_GENERATED query to work. */
-   return (so->streamout_enabled || cmd_buffer->state.prims_gen_query_enabled) &&
-          !cmd_buffer->state.suspend_streamout;
-}
-
 void
 radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
 {
