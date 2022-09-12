@@ -3151,11 +3151,10 @@ fs_nir_emit_tes_intrinsic(nir_to_brw_state &ntb,
           */
          const unsigned max_push_slots = 32;
          if (imm_offset < max_push_slots) {
-            fs_reg src = fs_reg(ATTR, imm_offset / 2, dest.type);
-            for (int i = 0; i < instr->num_components; i++) {
-               unsigned comp = 4 * (imm_offset % 2) + i + first_component;
-               bld.MOV(offset(dest, bld, i), component(src, comp));
-            }
+            const fs_reg src = horiz_offset(fs_reg(ATTR, 0, dest.type),
+                                            4 * imm_offset + first_component);
+            for (int i = 0; i < instr->num_components; i++)
+               bld.MOV(offset(dest, bld, i), component(src, i));
 
             tes_prog_data->base.urb_read_length =
                MAX2(tes_prog_data->base.urb_read_length,
