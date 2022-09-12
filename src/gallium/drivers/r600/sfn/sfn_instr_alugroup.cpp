@@ -137,10 +137,17 @@ public:
    using AluInstrVisitor::visit;
 
    void visit(AluInstr *alu) {
-      yes = (alu->alu_slots() == 1 || alu->has_alu_flag(alu_is_cayman_trans));
+      if (alu->alu_slots() != 1) {
+         if (alu->has_alu_flag(alu_is_cayman_trans)) {
+            free_mask &= (1 << alu->alu_slots()) - 1;
+         } else {
+            yes = false;
+         }
+      }
    }
 
-   bool yes{false};
+   bool yes{true};
+   uint8_t free_mask{0xf};
 
 };
 
@@ -182,18 +189,19 @@ bool AluGroup::add_vec_instructions(AluInstr *instr)
       auto dest = instr->dest();
       if (dest && dest->pin() == pin_free) {
 
+         AluAllowSlotSwitch swich_allowed;
          for (auto u : dest->uses()) {
-            AluAllowSlotSwitch swich_allowed;
             u->accept(swich_allowed);
             if (!swich_allowed.yes)
                return false;
          }
 
          int free_chan = 0;
-         while (m_slots[free_chan] && free_chan < 4)
+         while (free_chan < 4 && (m_slots[free_chan] ||
+                !(swich_allowed.free_mask & (1 << free_chan))))
             free_chan++;
 
-         if (!m_slots[free_chan] && free_chan < 4) {
+         if (free_chan < 4) {
             sfn_log << SfnLog::schedule << "V: Try force channel " << free_chan << "\n";
             dest->set_chan(free_chan);
             if (instr->bank_swizzle() != alu_vec_unknown) {
