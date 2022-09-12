@@ -2652,9 +2652,10 @@ fs_nir_emit_vs_intrinsic(nir_to_brw_state &ntb,
 
    case nir_intrinsic_load_input: {
       assert(instr->def.bit_size == 32);
-      fs_reg src = fs_reg(ATTR, nir_intrinsic_base(instr) * 4, dest.type);
-      src = offset(src, bld, nir_intrinsic_component(instr));
-      src = offset(src, bld, nir_src_as_uint(instr->src[0]));
+      const fs_reg src = offset(fs_reg(ATTR, 0, dest.type), bld,
+                                nir_intrinsic_base(instr) * 4 +
+                                nir_intrinsic_component(instr) +
+                                nir_src_as_uint(instr->src[0]));
 
       for (unsigned i = 0; i < instr->num_components; i++)
          bld.MOV(offset(dest, bld, i), offset(src, bld, i));
