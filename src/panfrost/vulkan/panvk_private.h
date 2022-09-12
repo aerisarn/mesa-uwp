@@ -233,9 +233,6 @@ struct panvk_pipeline_cache {
    VkAllocationCallbacks alloc;
 };
 
-/* queue types */
-#define PANVK_QUEUE_GENERAL 0
-
 #define PANVK_MAX_QUEUE_FAMILIES 1
 
 struct panvk_queue {
@@ -766,7 +763,6 @@ struct panvk_cmd_buffer {
    enum panvk_cmd_buffer_status status;
 
    struct panvk_cmd_state state;
-   uint32_t queue_family_index;
 
    uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
    VkShaderStageFlags push_constant_stages;

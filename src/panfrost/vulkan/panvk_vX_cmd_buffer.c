@@ -1137,13 +1137,11 @@ panvk_create_cmdbuf(struct panvk_device *device,
 
    if (pool) {
       list_addtail(&cmdbuf->pool_link, &pool->active_cmd_buffers);
-      cmdbuf->queue_family_index = pool->vk.queue_family_index;
    } else {
       /* Init the pool_link so we can safely call list_del when we destroy
        * the command buffer
        */
       list_inithead(&cmdbuf->pool_link);
-      cmdbuf->queue_family_index = PANVK_QUEUE_GENERAL;
    }
 
    panvk_pool_init(&cmdbuf->desc_pool, &device->physical_device->pdev,
