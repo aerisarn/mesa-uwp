@@ -353,10 +353,10 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
       return NULL;
 
    psc = priv->screens[gc->screen];
-   if (priv->drawHash == 0)
+   if (priv->drawHash == NULL)
       return NULL;
 
-   if (XFindContext(dpy, glxDrawable, priv->drawHash, (void *) &pdraw) == 0) {
+   if (__glxHashLookup(priv->drawHash, glxDrawable, (void *) &pdraw) == 0) {
       /* Resurrected, so remove from the alive-query-set if exist. */
       _mesa_set_remove_key(priv->zombieGLXDrawable, pdraw);
 
@@ -413,7 +413,7 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
       return NULL;
    }
 
-   if (XSaveContext(dpy, glxDrawable, priv->drawHash, (void *)pdraw)) {
+   if (__glxHashInsert(priv->drawHash, glxDrawable, pdraw)) {
       (*pdraw->destroyDrawable) (pdraw);
       return NULL;
    }
@@ -461,7 +461,7 @@ checkServerGLXDrawableAlive(const struct glx_display *priv)
       /* Fail to query, so the window has been closed. Release the GLXDrawable. */
       if (!__glXGetDrawableAttribute(priv->dpy, drawable, GLX_WIDTH, &dummy)) {
          pdraw->destroyDrawable(pdraw);
-         XDeleteContext(priv->dpy, drawable, priv->drawHash);
+         __glxHashDelete(priv->drawHash, drawable);
          _mesa_set_remove(priv->zombieGLXDrawable, entry);
       }
    }
@@ -474,7 +474,7 @@ releaseDrawable(const struct glx_display *priv, GLXDrawable drawable)
 {
    __GLXDRIdrawable *pdraw;
 
-   if (XFindContext(priv->dpy, drawable, priv->drawHash, (void *) &pdraw) == 0) {
+   if (__glxHashLookup(priv->drawHash, drawable, (void *) &pdraw) == 0) {
       /* Only native window and pbuffer have same GLX and X11 drawable ID. */
       if (pdraw->drawable == pdraw->xDrawable) {
          pdraw->refcount --;
@@ -488,7 +488,7 @@ releaseDrawable(const struct glx_display *priv, GLXDrawable drawable)
                _mesa_set_add(priv->zombieGLXDrawable, pdraw);
             } else {
                pdraw->destroyDrawable(pdraw);
-               XDeleteContext(priv->dpy, drawable, priv->drawHash);
+               __glxHashDelete(priv->drawHash, drawable);
             }
          }
       }

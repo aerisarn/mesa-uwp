@@ -47,6 +47,8 @@ files_libglx = files(
   'glxext.c',
   'glxextensions.c',
   'glxextensions.h',
+  'glxhash.c',
+  'glxhash.h',
   'glx_pbuffer.c',
   'glx_query.c',
   'indirect_glx.c',

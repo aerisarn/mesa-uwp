@@ -41,7 +41,6 @@
 #include <X11/Xlibint.h>
 #include <X11/Xfuncproto.h>
 #include <X11/extensions/extutil.h>
-#include <X11/Xresource.h>
 #define GLX_GLXEXT_PROTOTYPES
 #include <GL/glx.h>
 #include <GL/glxext.h>
@@ -52,6 +51,7 @@
 #include <pthread.h>
 #include "GL/glxproto.h"
 #include "glxconfig.h"
+#include "glxhash.h"
 #include "util/macros.h"
 #include "util/u_thread.h"
 #include "util/set.h"
@@ -589,10 +589,10 @@ struct glx_display
      */
    struct glx_screen **screens;
 
-   XContext glXDrawHash;
+   __glxHashTable *glXDrawHash;
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-   XContext drawHash;
+   __glxHashTable *drawHash;
 
    /**
     * GLXDrawable created from native window and about to be released.
