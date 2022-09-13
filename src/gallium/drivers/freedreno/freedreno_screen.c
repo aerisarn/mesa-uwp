@@ -77,7 +77,7 @@ static const struct debug_named_value fd_debug_options[] = {
    {"perf",      FD_DBG_PERF,     "Enable performance warnings"},
    {"nobin",     FD_DBG_NOBIN,    "Disable hw binning"},
    {"sysmem",    FD_DBG_SYSMEM,   "Use sysmem only rendering (no tiling)"},
-   {"serialc",   FD_DBG_SERIALC,"Disable asynchronous shader compile"},
+   {"serialc",   FD_DBG_SERIALC,  "Disable asynchronous shader compile"},
    {"shaderdb",  FD_DBG_SHADERDB, "Enable shaderdb output"},
    {"flush",     FD_DBG_FLUSH,    "Force flush after every draw"},
    {"deqp",      FD_DBG_DEQP,     "Enable dEQP hacks"},
