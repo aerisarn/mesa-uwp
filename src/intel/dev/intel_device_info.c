@@ -34,7 +34,7 @@
 #include "intel_hwconfig.h"
 #include "intel/common/intel_gem.h"
 #include "util/bitscan.h"
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/os_misc.h"
@@ -2037,7 +2037,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    devinfo->pci_device_id = drmdev->deviceinfo.pci->device_id;
    devinfo->pci_revision_id = drmdev->deviceinfo.pci->revision_id;
    drmFreeDevice(&drmdev);
-   devinfo->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
+   devinfo->no_hw = debug_get_bool_option("INTEL_NO_HW", false);
 
    if (devinfo->ver == 10) {
       mesa_loge("Gfx10 support is redacted.");

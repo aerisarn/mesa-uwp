@@ -24,7 +24,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/u_math.h"
 
 #include "ir3_compiler.h"
@@ -102,7 +102,7 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
 
       static int gcm = -1;
       if (gcm == -1)
-         gcm = env_var_as_unsigned("GCM", 0);
+         gcm = debug_get_num_option("GCM", 0);
       if (gcm == 1)
          progress |= OPT(s, nir_opt_gcm, true);
       else if (gcm == 2)

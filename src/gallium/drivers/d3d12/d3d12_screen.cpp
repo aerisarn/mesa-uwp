@@ -37,7 +37,7 @@
 #include "d3d12_nir_passes.h"
 
 #include "pipebuffer/pb_bufmgr.h"
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"

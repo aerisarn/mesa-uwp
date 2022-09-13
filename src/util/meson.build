@@ -40,8 +40,6 @@ files_mesa_util = files(
   'crc32.c',
   'crc32.h',
   'dag.c',
-  'debug.c',
-  'debug.h',
   'disk_cache.c',
   'disk_cache.h',
   'disk_cache_os.c',

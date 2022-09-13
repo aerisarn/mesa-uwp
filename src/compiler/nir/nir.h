@@ -49,7 +49,7 @@
 #include <stdio.h>
 
 #ifndef NDEBUG
-#include "util/debug.h"
+#include "util/u_debug.h"
 #endif /* NDEBUG */
 
 #include "nir_opcodes.h"

@@ -94,7 +94,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "c11/threads.h"
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/macros.h"
 #include "util/perf/cpu_trace.h"
 
@@ -688,7 +688,7 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
    if (!disp->Initialized) {
       /* set options */
       disp->Options.ForceSoftware =
-         env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
+         debug_get_bool_option("LIBGL_ALWAYS_SOFTWARE", false);
       if (disp->Options.ForceSoftware)
          _eglLog(_EGL_DEBUG, "Found 'LIBGL_ALWAYS_SOFTWARE' set, will use a CPU renderer");
 
@@ -703,7 +703,7 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
       if (!_eglDriver.Initialize(disp)) {
          bool fail = true;
          if (!disp->Options.ForceSoftware && !disp->Options.Zink &&
-             !env_var_as_boolean("LIBGL_KOPPER_DISABLE", false) && !getenv("GALLIUM_DRIVER")) {
+             !debug_get_bool_option("LIBGL_KOPPER_DISABLE", false) && !getenv("GALLIUM_DRIVER")) {
             /* zink fallback */
             disp->Options.Zink = EGL_TRUE;
             disp->Options.ForceSoftware = EGL_TRUE;

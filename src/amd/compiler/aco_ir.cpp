@@ -26,7 +26,7 @@
 
 #include "aco_builder.h"
 
-#include "util/debug.h"
+#include "util/u_debug.h"
 
 #include "c11/threads.h"
 

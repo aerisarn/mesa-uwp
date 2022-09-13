@@ -41,7 +41,7 @@
 #include "vk_pipeline.h"
 #include "vk_util.h"
 
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "ac_binary.h"
 #include "ac_nir.h"
 #include "ac_shader_util.h"

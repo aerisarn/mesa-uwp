@@ -24,7 +24,7 @@
 #include <time.h>
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/ralloc.h"
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"

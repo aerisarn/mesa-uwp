@@ -43,7 +43,7 @@
 #include <sys/inotify.h>
 #endif
 
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "util/disk_cache.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
@@ -60,7 +60,6 @@ typedef void *drmDevicePtr;
 #include "winsys/amdgpu/radv_amdgpu_winsys_public.h"
 #endif
 #include "util/build_id.h"
-#include "util/debug.h"
 #include "util/driconf.h"
 #include "util/mesa-sha1.h"
 #include "util/os_time.h"

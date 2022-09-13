@@ -38,7 +38,7 @@
 #include "radv_private.h"
 #include "radv_shader_args.h"
 
-#include "util/debug.h"
+#include "util/u_debug.h"
 #include "ac_binary.h"
 #include "ac_nir.h"
 #if defined(USE_LIBELF)
