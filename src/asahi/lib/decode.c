@@ -468,16 +468,42 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
 }
 
 static unsigned
-agxdecode_cmd(const uint8_t *map, uint64_t *link, bool verbose)
+agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose)
 {
-   if (map[0] == 0x02 && map[1] == 0x10 && map[2] == 0x00 && map[3] == 0x00) {
-      /* XXX: This is a CDM command not a VDM one */
+   /* Bits 29-31 contain the block type */
+   enum agx_cdm_block_type block_type = (map[3] >> 5);
+
+   switch (block_type) {
+   case AGX_CDM_BLOCK_TYPE_COMPUTE_KERNEL: {
       agx_unpack(agxdecode_dump_stream, map, LAUNCH, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
       DUMP_UNPACKED(LAUNCH, cmd, "Launch\n");
       return AGX_LAUNCH_LENGTH;
    }
 
+   case AGX_CDM_BLOCK_TYPE_STREAM_LINK: {
+      agx_unpack(agxdecode_dump_stream, map, CDM_STREAM_LINK, hdr);
+      DUMP_UNPACKED(CDM_STREAM_LINK, hdr, "Stream Link\n");
+      *link = hdr.target_lo | (((uint64_t) hdr.target_hi) << 32);
+      return STATE_LINK;
+   }
+
+   case AGX_CDM_BLOCK_TYPE_STREAM_TERMINATE: {
+      DUMP_CL(CDM_STREAM_TERMINATE, map, "Stream Terminate");
+      return STATE_DONE;
+   }
+
+   default:
+      fprintf(agxdecode_dump_stream, "Unknown CDM block type: %u\n",
+              block_type);
+      hexdump(agxdecode_dump_stream, map, 8, false);
+      return 8;
+   }
+}
+
+static unsigned
+agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose)
+{
    /* Bits 29-31 contain the block type */
    enum agx_vdm_block_type block_type = (map[3] >> 5);
 
@@ -617,7 +643,11 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    }
 
    uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
-   agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
+
+   if (cmd.unk_5 == 3)
+      agxdecode_stateful(*encoder, "Encoder", agxdecode_cdm, verbose);
+   else
+      agxdecode_stateful(*encoder, "Encoder", agxdecode_vdm, verbose);
 
    if (pip.clear_pipeline_unk) {
       fprintf(agxdecode_dump_stream, "Unk: %X\n", pip.clear_pipeline_unk);
