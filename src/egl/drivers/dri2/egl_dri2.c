@@ -3648,9 +3648,7 @@ dri2_set_blob_cache_funcs(_EGLDisplay *disp,
                           EGLGetBlobFuncANDROID get)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display_lock(disp);
-   dri2_dpy->blob->set_cache_funcs(dri2_dpy->dri_screen,
-                                   disp->BlobCacheSet,
-                                   disp->BlobCacheGet);
+   dri2_dpy->blob->set_cache_funcs(dri2_dpy->dri_screen, set, get);
    mtx_unlock(&dri2_dpy->lock);
 }
 
