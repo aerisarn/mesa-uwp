@@ -17,8 +17,16 @@ if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
 fi
 
 # WINE
+case "$PIGLIT_REPLAY_DEVICE_NAME" in
+  vk-*)
+    export WINEPREFIX="/dxvk-wine64"
+    ;;
+  *)
+    export WINEPREFIX="/generic-wine64"
+    ;;
+esac
+
 PATH="/opt/wine-stable/bin/:$PATH" # WineHQ path
-export WINEPREFIX="/dxvk-wine64" # hardcode DXVK for now
 
 # Set environment for DXVK.
 export DXVK_LOG_LEVEL="info"
