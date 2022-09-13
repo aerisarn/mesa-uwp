@@ -139,6 +139,7 @@ radv_CreateAccelerationStructureKHR(VkDevice _device,
    accel->mem_offset = buffer->offset + pCreateInfo->offset;
    accel->size = pCreateInfo->size;
    accel->bo = buffer->bo;
+   accel->va = radv_buffer_get_va(accel->bo) + accel->mem_offset;
 
    *pAccelerationStructure = radv_acceleration_structure_to_handle(accel);
    return VK_SUCCESS;
@@ -164,7 +165,7 @@ radv_GetAccelerationStructureDeviceAddressKHR(
    VkDevice _device, const VkAccelerationStructureDeviceAddressInfoKHR *pInfo)
 {
    RADV_FROM_HANDLE(radv_acceleration_structure, accel, pInfo->accelerationStructure);
-   return radv_accel_struct_get_va(accel);
+   return accel->va;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -669,7 +670,7 @@ radv_CmdBuildAccelerationStructuresKHR(
                        pInfos[i].dstAccelerationStructure);
 
       struct leaf_args leaf_consts = {
-         .bvh = radv_accel_struct_get_va(accel_struct),
+         .bvh = accel_struct->va,
          .bounds = pInfos[i].scratchData.deviceAddress,
          .ids = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
          .dst_offset =
@@ -761,7 +762,7 @@ radv_CmdBuildAccelerationStructuresKHR(
                        pInfos[i].dstAccelerationStructure);
 
       const struct morton_args consts = {
-         .bvh = radv_accel_struct_get_va(accel_struct),
+         .bvh = accel_struct->va,
          .bounds = pInfos[i].scratchData.deviceAddress,
          .ids = pInfos[i].scratchData.deviceAddress + SCRATCH_TOTAL_BOUNDS_SIZE,
       };
@@ -846,7 +847,7 @@ radv_CmdBuildAccelerationStructuresKHR(
             dst_node_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64);
 
          const struct internal_args consts = {
-            .bvh = radv_accel_struct_get_va(accel_struct),
+            .bvh = accel_struct->va,
             .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
             .dst_ids = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
             .dst_offset = dst_node_offset,
@@ -940,15 +941,12 @@ radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
       &saved_state, cmd_buffer,
       RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
 
-   uint64_t src_addr = radv_accel_struct_get_va(src);
-   uint64_t dst_addr = radv_accel_struct_get_va(dst);
-
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
 
    const struct copy_constants consts = {
-      .src_addr = src_addr,
-      .dst_addr = dst_addr,
+      .src_addr = src->va,
+      .dst_addr = dst->va,
       .mode = COPY_MODE_COPY,
    };
 
@@ -960,7 +958,7 @@ radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
       radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, NULL);
 
    radv_indirect_dispatch(cmd_buffer, src->bo,
-                          src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
+                          src->va + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
@@ -1010,14 +1008,12 @@ radv_CmdCopyMemoryToAccelerationStructureKHR(
       &saved_state, cmd_buffer,
       RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
 
-   uint64_t dst_addr = radv_accel_struct_get_va(dst);
-
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
 
    const struct copy_constants consts = {
       .src_addr = pInfo->src.deviceAddress,
-      .dst_addr = dst_addr,
+      .dst_addr = dst->va,
       .mode = COPY_MODE_DESERIALIZE,
    };
 
@@ -1041,13 +1037,11 @@ radv_CmdCopyAccelerationStructureToMemoryKHR(
       &saved_state, cmd_buffer,
       RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
 
-   uint64_t src_addr = radv_accel_struct_get_va(src);
-
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
 
    const struct copy_constants consts = {
-      .src_addr = src_addr,
+      .src_addr = src->va,
       .dst_addr = pInfo->dst.deviceAddress,
       .mode = COPY_MODE_SERIALIZE,
    };
@@ -1060,7 +1054,7 @@ radv_CmdCopyAccelerationStructureToMemoryKHR(
       radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, NULL);
 
    radv_indirect_dispatch(cmd_buffer, src->bo,
-                          src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
+                          src->va + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
    radv_meta_restore(&saved_state, cmd_buffer);
 
    /* Set the header of the serialized data. */

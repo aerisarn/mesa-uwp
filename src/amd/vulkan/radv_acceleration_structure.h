@@ -34,15 +34,10 @@ struct radv_acceleration_structure {
    struct radeon_winsys_bo *bo;
    uint64_t mem_offset;
    uint64_t size;
+   uint64_t va;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_acceleration_structure, base, VkAccelerationStructureKHR,
                                VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
-
-static inline uint64_t
-radv_accel_struct_get_va(const struct radv_acceleration_structure *accel)
-{
-   return radv_buffer_get_va(accel->bo) + accel->mem_offset;
-}
 
 #endif

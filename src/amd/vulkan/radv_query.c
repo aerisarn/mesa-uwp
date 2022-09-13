@@ -2088,7 +2088,7 @@ radv_CmdWriteAccelerationStructuresPropertiesKHR(
 
    for (uint32_t i = 0; i < accelerationStructureCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, pAccelerationStructures[i]);
-      uint64_t va = radv_accel_struct_get_va(accel_struct);
+      uint64_t va = accel_struct->va;
 
       switch (queryType) {
       case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:

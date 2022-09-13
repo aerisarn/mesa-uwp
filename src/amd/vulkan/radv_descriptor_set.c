@@ -1203,7 +1203,7 @@ static ALWAYS_INLINE void
 write_accel_struct(void *ptr, VkAccelerationStructureKHR _accel_struct)
 {
    RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, _accel_struct);
-   uint64_t va = accel_struct ? radv_accel_struct_get_va(accel_struct) : 0;
+   uint64_t va = accel_struct ? accel_struct->va : 0;
    memcpy(ptr, &va, sizeof(va));
 }
 
