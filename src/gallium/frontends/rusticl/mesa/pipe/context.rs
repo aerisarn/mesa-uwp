@@ -276,7 +276,6 @@ impl PipeContext {
             prog: nir.dup_for_driver().cast(),
             req_input_mem: input_mem,
             req_local_mem: local_mem,
-            req_private_mem: 0,
         };
         unsafe { self.pipe.as_ref().create_compute_state.unwrap()(self.pipe.as_ptr(), &state) }
     }

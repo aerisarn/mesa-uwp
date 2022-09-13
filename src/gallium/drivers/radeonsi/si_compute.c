@@ -49,7 +49,6 @@ struct dispatch_packet {
    uint32_t grid_size_x;
    uint32_t grid_size_y;
    uint32_t grid_size_z;
-   uint32_t private_segment_size;
    uint32_t group_segment_size;
    uint64_t kernel_object;
    uint64_t kernarg_address;
@@ -245,7 +244,6 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    program->shader.selector = &program->sel;
    program->shader.wave_size = si_determine_wave_size(sscreen, &program->shader);
    program->ir_type = cso->ir_type;
-   program->private_size = cso->req_private_mem;
    program->input_size = cso->req_input_mem;
 
    if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
@@ -684,7 +682,6 @@ static void si_setup_user_sgprs_co_v2(struct si_context *sctx, const amd_kernel_
       dispatch.grid_size_y = util_cpu_to_le32(info->grid[1] * info->block[1]);
       dispatch.grid_size_z = util_cpu_to_le32(info->grid[2] * info->block[2]);
 
-      dispatch.private_segment_size = util_cpu_to_le32(program->private_size);
       dispatch.group_segment_size = util_cpu_to_le32(program->sel.info.base.shared_size);
 
       dispatch.kernarg_address = util_cpu_to_le64(kernel_args_va);

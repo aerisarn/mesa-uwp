@@ -350,7 +350,6 @@ void trace_dump_compute_state(const struct pipe_compute_state *state)
    trace_dump_member_end();
 
    trace_dump_member(uint, state, req_local_mem);
-   trace_dump_member(uint, state, req_private_mem);
    trace_dump_member(uint, state, req_input_mem);
 
    trace_dump_struct_end();

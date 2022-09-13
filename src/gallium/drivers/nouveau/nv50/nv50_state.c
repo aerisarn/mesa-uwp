@@ -862,7 +862,6 @@ nv50_cp_state_create(struct pipe_context *pipe,
    }
 
    prog->cp.smem_size = cso->req_local_mem;
-   prog->cp.lmem_size = cso->req_private_mem;
    prog->parm_size = cso->req_input_mem;
 
    return (void *)prog;

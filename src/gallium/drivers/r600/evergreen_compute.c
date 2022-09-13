@@ -436,7 +436,6 @@ static void *evergreen_create_compute_state(struct pipe_context *ctx,
 
 	shader->ctx = rctx;
 	shader->local_size = cso->req_local_mem;
-	shader->private_size = cso->req_private_mem;
 	shader->input_size = cso->req_input_mem;
 
 	shader->ir_type = cso->ir_type;

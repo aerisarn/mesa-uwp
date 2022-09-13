@@ -649,9 +649,7 @@ nve4_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
 
    NVA0C0_QMDV00_06_VAL_SET(qmd, SHARED_MEMORY_SIZE,
                                  align(cp->cp.smem_size, 0x100));
-   NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
-                                 (cp->hdr[1] & 0xfffff0) +
-                                 align(cp->cp.lmem_size, 0x10));
+   NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE, cp->hdr[1] & 0xfffff0);
    NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
    NVA0C0_QMDV00_06_VAL_SET(qmd, SHADER_LOCAL_MEMORY_CRS_SIZE, 0x800);
 
@@ -709,9 +707,7 @@ gp100_compute_setup_launch_desc(struct nvc0_context *nvc0, uint32_t *qmd,
 
    NVC0C0_QMDV02_01_VAL_SET(qmd, SHARED_MEMORY_SIZE,
                                  align(cp->cp.smem_size, 0x100));
-   NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
-                                 (cp->hdr[1] & 0xfffff0) +
-                                 align(cp->cp.lmem_size, 0x10));
+   NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE, cp->hdr[1] & 0xfffff0);
    NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
    NVC0C0_QMDV02_01_VAL_SET(qmd, SHADER_LOCAL_MEMORY_CRS_SIZE, 0x800);
 
@@ -759,9 +755,7 @@ gv100_compute_setup_launch_desc(struct nvc0_context *nvc0, u32 *qmd,
    NVC3C0_QMDV02_02_DEF_SET(qmd, SAMPLER_INDEX, INDEPENDENTLY);
    NVC3C0_QMDV02_02_VAL_SET(qmd, SHARED_MEMORY_SIZE,
                                   align(cp->cp.smem_size, 0x100));
-   NVC3C0_QMDV02_02_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
-                                 (cp->hdr[1] & 0xfffff0) +
-                                 align(cp->cp.lmem_size, 0x10));
+   NVC3C0_QMDV02_02_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE, cp->hdr[1] & 0xfffff0);
    NVC3C0_QMDV02_02_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
    NVC3C0_QMDV02_02_VAL_SET(qmd, MIN_SM_CONFIG_SHARED_MEM_SIZE,
                                   gv100_sm_config_smem_size(8 * 1024));
