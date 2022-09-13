@@ -3666,7 +3666,9 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         /* 32-bit indices to be allocated as consecutive staging registers */
         bi_index sregs[VALHALL_TEX_SREG_COUNT] = { };
 
-        bi_index sampler = bi_imm_u32(instr->sampler_index);
+
+        bool has_sampler = nir_tex_instr_need_sampler(instr);
+        bi_index sampler = bi_imm_u32(has_sampler ? instr->sampler_index : 0);
         bi_index texture = bi_imm_u32(instr->texture_index);
         uint32_t tables = (PAN_TABLE_SAMPLER << 11) | (PAN_TABLE_TEXTURE << 27);
 
