@@ -2170,6 +2170,11 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
    if (producer->xfb_info)
       return;
 
+   /* Do not remove PSIZ for vertex shaders when the topology is unknown. */
+   if (producer->info.stage == MESA_SHADER_VERTEX &&
+       pipeline_key->vs.topology == V_008958_DI_PT_NONE)
+      return;
+
    /* Do not remove PSIZ if the rasterization primitive uses points. */
    if (consumer->info.stage == MESA_SHADER_FRAGMENT &&
        ((producer->info.stage == MESA_SHADER_VERTEX &&
