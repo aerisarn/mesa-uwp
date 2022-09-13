@@ -702,12 +702,18 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    bool disable_lrz = false;
    bool temporary_disable_lrz = false;
 
-   /* What happens in FS could affect LRZ, e.g.: writes to gl_FragDepth
-    * or early fragment tests.
+   /* What happens in FS could affect LRZ, e.g.: writes to gl_FragDepth or early
+    * fragment tests.  We have to skip LRZ testing and updating, but as long as
+    * the depth direction stayed the same we can continue with LRZ testing later.
     */
    if (pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ) {
-      perf_debug(cmd->device, "Invalidating LRZ due to FS");
-      disable_lrz = true;
+      if (cmd->state.lrz.prev_direction != TU_LRZ_UNKNOWN || !cmd->state.lrz.gpu_dir_tracking) {
+         perf_debug(cmd->device, "Skipping LRZ due to FS");
+         temporary_disable_lrz = true;
+      } else {
+         perf_debug(cmd->device, "Disabling LRZ due to FS (TODO: fix for gpu-direction-tracking case");
+         disable_lrz = true;
+      }
    }
 
    /* If Z is not written - it doesn't affect LRZ buffer state.
