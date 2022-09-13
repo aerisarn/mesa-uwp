@@ -112,6 +112,10 @@ impl Device {
         }
 
         let lib_clc = spirv::SPIRVBin::get_lib_clc(&screen);
+        if lib_clc.is_none() {
+            eprintln!("Libclc failed to load. Please make sure it is installed and provides spirv-mesa3d-.spv and/or spirv64-mesa3d-.spv");
+        }
+
         let mut d = Self {
             base: CLObjectBase::new(),
             helper_ctx: Mutex::new(screen.create_context().unwrap()),
