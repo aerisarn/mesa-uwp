@@ -182,6 +182,7 @@ struct iris_screen {
       bool always_flush_cache;
       bool sync_compile;
       bool limit_trig_input_range;
+      float lower_depth_range_rate;
    } driconf;
 
    /** Does the kernel support various features (KERNEL_HAS_* bitfield)? */

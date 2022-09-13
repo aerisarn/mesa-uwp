@@ -3150,6 +3150,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
+   struct anv_instance *instance = cmd_buffer->device->physical->instance;
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
@@ -3185,6 +3186,10 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
          .YMinViewPort = MIN2(vp->y, vp->y + vp->height),
          .YMaxViewPort = MAX2(vp->y, vp->y + vp->height) - 1,
       };
+
+      /* Fix depth test misrenderings by lowering translated depth range */
+      if (instance->lower_depth_range_rate != 1.0f)
+         sfv.ViewportMatrixElementm32 *= instance->lower_depth_range_rate;
 
       const uint32_t fb_size_max = 1 << 14;
       uint32_t x_min = 0, x_max = fb_size_max;
