@@ -222,7 +222,10 @@ svga_buffer_create_host_surface(struct svga_screen *ss,
              * surface cannot have other bind flags.
              */
             if ((bind_flags & PIPE_BIND_CONSTANT_BUFFER) == 0) {
-               sbuf->key.flags |= SVGA3D_SURFACE_BIND_RAW_VIEWS;
+	       sbuf->key.flags |= SVGA3D_SURFACE_BIND_UAVIEW |
+                                  SVGA3D_SURFACE_BIND_RAW_VIEWS;
+               bind_flags = bind_flags | PIPE_BIND_SHADER_BUFFER;
+               //sbuf->key.flags |= SVGA3D_SURFACE_BIND_RAW_VIEWS;
             }
          }
       }

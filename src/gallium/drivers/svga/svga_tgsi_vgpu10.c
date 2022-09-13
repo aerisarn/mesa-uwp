@@ -272,6 +272,8 @@ struct svga_shader_emitter_v10
 
    /* Shader buffers */
    unsigned num_shader_bufs;
+   unsigned raw_shaderbuf_srv_start_index;  /* starting srv index for raw shaderbuf */
+   uint64_t raw_shaderbufs;                 /* raw shader buffers bitmask */
 
    /* HW atomic buffers */
    unsigned num_atomic_bufs;
@@ -2924,7 +2926,7 @@ emit_vgpu10_immediates_block(struct svga_shader_emitter_v10 *emit)
  * immediates that are allocated after the block is declared. Those
  * immediates are used as constant indices to constant buffers.
  */
-static boolean
+static bool
 reemit_immediates_block(struct svga_shader_emitter_v10 *emit)
 {
    unsigned num_tokens = emit_get_num_tokens(emit);
@@ -2932,7 +2934,7 @@ reemit_immediates_block(struct svga_shader_emitter_v10 *emit)
 
    /* Reserve room for the new immediates */
    if (!reserve(emit, 4 * num_new_immediates))
-      return FALSE;
+      return false;
 
    /* Move the tokens after the immediates block to make room for the
     * new immediates.
@@ -2956,7 +2958,7 @@ reemit_immediates_block(struct svga_shader_emitter_v10 *emit)
 
    emit->ptr = (char *) (tokens + num_tokens + 4 * num_new_immediates);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -5270,7 +5272,6 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
 {
    unsigned i;
    unsigned size = emit->key.tcs.vertices_per_patch;
-   UNUSED unsigned indicesMask = 0;
    bool addSignature = true;
 
    if (!emit->tcs.control_point_phase)
@@ -5284,9 +5285,6 @@ emit_tcs_input_declarations(struct svga_shader_emitter_v10 *emit)
       VGPU10_OPERAND_TYPE operandType = VGPU10_OPERAND_TYPE_INPUT;
       SVGA3dDXSignatureSemanticName sgn_name =
          map_tgsi_semantic_to_sgn_name(semantic_name);
-
-      /* indices that are declared */
-      indicesMask |= 1 << index;
 
       if (semantic_name == TGSI_SEMANTIC_POSITION ||
           index == emit->linkage.position_index) {
@@ -5932,6 +5930,33 @@ emit_temporaries_declaration(struct svga_shader_emitter_v10 *emit)
 
 
 static bool
+emit_rawbuf_declaration(struct svga_shader_emitter_v10 *emit,
+                        unsigned index)
+{
+   VGPU10OpcodeToken0 opcode1;
+   VGPU10OperandToken0 operand1;
+
+   opcode1.value = 0;
+   opcode1.opcodeType = VGPU10_OPCODE_DCL_RESOURCE_RAW;
+   opcode1.resourceDimension = VGPU10_RESOURCE_DIMENSION_UNKNOWN;
+
+   operand1.value = 0;
+   operand1.numComponents = VGPU10_OPERAND_0_COMPONENT;
+   operand1.operandType = VGPU10_OPERAND_TYPE_RESOURCE;
+   operand1.indexDimension = VGPU10_OPERAND_INDEX_1D;
+   operand1.index0Representation = VGPU10_OPERAND_INDEX_IMMEDIATE32;
+
+   begin_emit_instruction(emit);
+   emit_dword(emit, opcode1.value);
+   emit_dword(emit, operand1.value);
+   emit_dword(emit, index);
+   end_emit_instruction(emit);
+
+   return true;
+}
+
+
+static bool
 emit_constant_declaration(struct svga_shader_emitter_v10 *emit)
 {
    VGPU10OpcodeToken0 opcode0;
@@ -6034,25 +6059,7 @@ emit_constant_declaration(struct svga_shader_emitter_v10 *emit)
       if (emit->num_shader_consts[i] > 0) {
          if (emit->raw_bufs & (1 << i)) {
             /* UBO declared as srv raw buffer */
-
-            VGPU10OpcodeToken0 opcode1;
-            VGPU10OperandToken0 operand1;
-
-            opcode1.value = 0;
-            opcode1.opcodeType = VGPU10_OPCODE_DCL_RESOURCE_RAW;
-            opcode1.resourceDimension = VGPU10_RESOURCE_DIMENSION_UNKNOWN;
-
-            operand1.value = 0;
-            operand1.numComponents = VGPU10_OPERAND_0_COMPONENT;
-            operand1.operandType = VGPU10_OPERAND_TYPE_RESOURCE;
-            operand1.indexDimension = VGPU10_OPERAND_INDEX_1D;
-            operand1.index0Representation = VGPU10_OPERAND_INDEX_IMMEDIATE32;
-
-            begin_emit_instruction(emit);
-            emit_dword(emit, opcode1.value);
-            emit_dword(emit, operand1.value);
-            emit_dword(emit, i + emit->raw_buf_srv_start_index);
-            end_emit_instruction(emit);
+            emit_rawbuf_declaration(emit, i + emit->raw_buf_srv_start_index);
          }
          else {
 
@@ -6411,6 +6418,11 @@ emit_shader_buf_declarations(struct svga_shader_emitter_v10 *emit)
    for (i = 0; i < emit->num_shader_bufs; i++) {
       VGPU10OpcodeToken0 opcode0;
       VGPU10OperandToken0 operand0;
+
+      if (emit->raw_shaderbufs & (1 << i)) {
+         emit_rawbuf_declaration(emit, i + emit->raw_shaderbuf_srv_start_index);
+         continue;
+      }
 
       /* If the corresponding uav for the shader buf is already declared,
        * skip this shader buffer declaration.
@@ -10416,6 +10428,13 @@ emit_load_instruction(struct svga_shader_emitter_v10 *emit,
    } else if (resourceType == TGSI_FILE_HW_ATOMIC) {
       emit_uav_register(emit, inst->Src[0].Dimension.Index,
                         UAV_LOAD, inst->Src[0].Register.File, 0);
+   } else if (resourceType == TGSI_FILE_BUFFER) {
+      if (emit->raw_shaderbufs & (1 << resourceIndex))
+         emit_resource_register(emit, resourceIndex +
+                                      emit->raw_shaderbuf_srv_start_index);
+      else
+         emit_uav_register(emit, resourceIndex,
+                           UAV_LOAD, inst->Src[0].Register.File, 0);
    } else {
       emit_uav_register(emit, resourceIndex,
                         UAV_LOAD, inst->Src[0].Register.File, 0);
@@ -12495,7 +12514,8 @@ emit_rawbuf_instruction(struct svga_shader_emitter_v10 *emit,
          imm.Int = element_index;
          int immpos = find_immediate(emit, imm, 0);
          if (immpos < 0) {
-            unsigned element_index_imm = add_immediate_int(emit, element_index);
+            UNUSED unsigned element_index_imm =
+		                add_immediate_int(emit, element_index);
          }
          element_src = make_immediate_reg_int(emit, element_index);
       }
@@ -13112,10 +13132,13 @@ svga_tgsi_vgpu10_translate(struct svga_context *svga,
    }
 
    /* Determine if constbuf to rawbuf translation is needed */
-   if (emit->info.const_buffers_declared) {
-      emit->raw_bufs = emit->key.raw_buffers;
-      emit->raw_buf_srv_start_index = emit->key.srv_raw_buf_index;
-   }
+   emit->raw_buf_srv_start_index = emit->key.srv_raw_constbuf_index;
+   if (emit->info.const_buffers_declared)
+      emit->raw_bufs = emit->key.raw_constbufs;
+
+   emit->raw_shaderbuf_srv_start_index = emit->key.srv_raw_shaderbuf_index;
+   if (emit->info.shader_buffers_declared)
+      emit->raw_shaderbufs = emit->key.raw_shaderbufs;
 
    /*
     * Do actual shader translation.
