@@ -744,6 +744,12 @@ invalidate_resource(struct fd_resource *rsc, unsigned usage) assert_dt
    }
 }
 
+static bool
+valid_range(struct fd_resource *rsc, const struct pipe_box *box)
+{
+   return util_ranges_intersect(&rsc->valid_buffer_range, box->x, box->x + box->width);
+}
+
 static void *
 resource_transfer_map_staging(struct pipe_context *pctx,
                               struct pipe_resource *prsc,
@@ -794,6 +800,7 @@ resource_transfer_map_unsync(struct pipe_context *pctx,
 
    if ((prsc->target == PIPE_BUFFER) &&
        !(usage & (PIPE_MAP_READ | PIPE_MAP_DIRECTLY | PIPE_MAP_PERSISTENT)) &&
+       ((usage & PIPE_MAP_DISCARD_RANGE) || !valid_range(rsc, box)) &&
        fd_bo_prefer_upload(rsc->bo, box->width)) {
       trans->upload_ptr = malloc(box->width);
       return trans->upload_ptr;
@@ -958,8 +965,7 @@ improve_transfer_map_usage(struct fd_context *ctx, struct fd_resource *rsc,
       if (ctx->in_shadow && !(usage & PIPE_MAP_READ)) {
          usage |= PIPE_MAP_UNSYNCHRONIZED;
       } else if ((usage & PIPE_MAP_WRITE) && (rsc->b.b.target == PIPE_BUFFER) &&
-                 !util_ranges_intersect(&rsc->valid_buffer_range, box->x,
-                                        box->x + box->width)) {
+                 !valid_range(rsc, box)) {
          /* We are trying to write to a previously uninitialized range. No need
           * to synchronize.
           */
