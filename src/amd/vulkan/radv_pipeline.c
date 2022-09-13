@@ -1630,6 +1630,12 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
       pipeline->base.shaders[s] = radv_shader_ref(lib->base.base.shaders[s]);
    }
 
+   /* Import the GS copy shader if present. */
+   if (lib->base.base.gs_copy_shader) {
+      assert(!pipeline->base.gs_copy_shader);
+      pipeline->base.gs_copy_shader = radv_shader_ref(lib->base.base.gs_copy_shader);
+   }
+
    /* Import the PS epilog if present. */
    if (lib->base.ps_epilog) {
       assert(!pipeline->ps_epilog);
