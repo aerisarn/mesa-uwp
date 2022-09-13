@@ -676,12 +676,23 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
 
    /* See comment in tu_pipeline about disabling LRZ write for blending. */
    if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP)) &&
-       cmd->state.logic_op_enabled && cmd->state.rop_reads_dst)
+       cmd->state.logic_op_enabled && cmd->state.rop_reads_dst) {
+      if (gras_lrz_cntl.lrz_write)
+         perf_debug(cmd->device, "disabling lrz write due to dynamic logic op");
       gras_lrz_cntl.lrz_write = false;
+   }
 
    if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
-        cmd->state.color_write_enable != MASK(cmd->state.pipeline->num_rts))
+        cmd->state.color_write_enable != MASK(cmd->state.pipeline->num_rts)) {
+      if (gras_lrz_cntl.lrz_write) {
+         perf_debug(
+            cmd->device,
+            "disabling lrz write due to dynamic color write enables (%x/%x)",
+            cmd->state.color_write_enable,
+            MASK(cmd->state.pipeline->num_rts));
+      }
       gras_lrz_cntl.lrz_write = false;
+   }
 
    /* LRZ is disabled until it is cleared, which means that one "wrong"
     * depth test or shader could disable LRZ until depth buffer is cleared.
