@@ -5127,8 +5127,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.graphics_pipeline->vtx_emit_num != graphics_pipeline->vtx_emit_num ||
          cmd_buffer->state.graphics_pipeline->vtx_base_sgpr != graphics_pipeline->vtx_base_sgpr;
       cmd_buffer->state.graphics_pipeline = graphics_pipeline;
-      if (!pipeline)
-         break;
 
       bool mesh_shading = radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH);
       if (mesh_shading != cmd_buffer->state.mesh_shading) {
