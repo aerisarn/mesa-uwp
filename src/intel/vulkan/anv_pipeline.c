@@ -2773,6 +2773,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
    }
 
+ done:
    for (uint32_t i = 0; i < info->groupCount; i++) {
       const VkRayTracingShaderGroupCreateInfoKHR *ginfo = &info->pGroups[i];
       struct anv_rt_shader_group *group = &pipeline->groups[i];
@@ -2838,7 +2839,6 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
       }
    }
 
- done:
    ralloc_free(pipeline_ctx);
 
    anv_pipeline_compute_ray_tracing_stacks(pipeline, info, stack_max);
