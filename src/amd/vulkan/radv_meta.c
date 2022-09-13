@@ -145,8 +145,12 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
                                        : VK_PIPELINE_BIND_POINT_COMPUTE;
 
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
-      radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           radv_pipeline_to_handle(&state->old_graphics_pipeline->base));
+      if (state->old_graphics_pipeline) {
+         radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              radv_pipeline_to_handle(&state->old_graphics_pipeline->base));
+      } else {
+         cmd_buffer->state.graphics_pipeline = NULL;
+      }
 
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE;
 
