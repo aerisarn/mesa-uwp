@@ -152,8 +152,6 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          cmd_buffer->state.graphics_pipeline = NULL;
       }
 
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE;
-
       /* Restore all dynamic states. */
       cmd_buffer->state.dynamic = state->dynamic;
       cmd_buffer->state.dirty |= RADV_DYNAMIC_ALL;
