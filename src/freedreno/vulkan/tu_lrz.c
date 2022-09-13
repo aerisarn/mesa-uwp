@@ -640,7 +640,6 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    struct tu_pipeline *pipeline = cmd->state.pipeline;
    bool z_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
    bool z_write_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-   bool z_read_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
    bool z_bounds_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
    VkCompareOp depth_compare_op = (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
 
@@ -668,7 +667,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    gras_lrz_cntl.lrz_write =
       z_write_enable &&
       !(pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE);
-   gras_lrz_cntl.z_test_enable = z_read_enable && z_write_enable;
+   gras_lrz_cntl.z_test_enable = z_write_enable;
    gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
    gras_lrz_cntl.fc_enable = cmd->state.lrz.fast_clear;
    gras_lrz_cntl.dir_write = cmd->state.lrz.gpu_dir_tracking;
