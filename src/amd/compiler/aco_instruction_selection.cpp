@@ -12354,7 +12354,6 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
    Builder bld(ctx.program, ctx.block);
 
    /* Export all color render targets */
-   unsigned compacted_mrt_index = 0;
    bool exported = false;
 
    for (unsigned i = 0; i < 8; i++) {
@@ -12365,7 +12364,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
 
       struct mrt_color_export out;
 
-      out.slot = compacted_mrt_index;
+      out.slot = i;
       out.write_mask = 0xf;
       out.col_format = col_format;
       out.is_int8 = (key->color_is_int8 >> i) & 1;
@@ -12377,10 +12376,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
          out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
       }
 
-      if (export_fs_mrt_color(&ctx, &out, true)) {
-         compacted_mrt_index++;
-         exported = true;
-      }
+      exported |= export_fs_mrt_color(&ctx, &out, true);
    }
 
    if (!exported)

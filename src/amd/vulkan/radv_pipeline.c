@@ -576,7 +576,8 @@ radv_compact_spi_shader_col_format(const struct radv_shader *ps,
 static void
 radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pipeline,
                                         struct radv_blend_state *blend,
-                                        const struct vk_graphics_pipeline_state *state)
+                                        const struct vk_graphics_pipeline_state *state,
+                                        bool has_ps_epilog)
 {
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
 
@@ -609,6 +610,19 @@ radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pip
        * the depth attachment needs it.
        */
       col_format |= V_028714_SPI_SHADER_32_AR;
+   }
+
+   if (has_ps_epilog) {
+      /* Do not compact MRTs when the pipeline uses a PS epilog because we can't detect color
+       * attachments without exports. Without compaction and if the i-th target format is set, all
+       * previous target formats must be non-zero to avoid hangs.
+       */
+      unsigned num_targets = (util_last_bit(col_format) + 3) / 4;
+      for (unsigned i = 0; i < num_targets; i++) {
+         if (!(col_format & (0xfu << (i * 4)))) {
+            col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
+         }
+      }
    }
 
    /* The output for dual source blending should have the same format as
@@ -699,7 +713,8 @@ radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkB
 
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
-                               const struct vk_graphics_pipeline_state *state)
+                               const struct vk_graphics_pipeline_state *state,
+                               bool has_ps_epilog)
 {
    const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
@@ -861,7 +876,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    else
       cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 
-   radv_pipeline_compute_spi_color_formats(pipeline, &blend, state);
+   radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
 
    pipeline->cb_color_control = cb_color_control;
 
@@ -6083,7 +6098,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    radv_pipeline_layout_hash(&pipeline_layout);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state,
+                                                                  pipeline->ps_epilog);
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
@@ -6121,7 +6137,9 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       gfx103_pipeline_init_vrs_state(pipeline, &state);
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
+   if (!ps->info.ps.has_epilog) {
+      blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
+   }
 
    /* Ensure that some export memory is always allocated, for two reasons:
     *
@@ -6144,12 +6162,14 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
          blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
    }
 
-   /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap them,
-    * so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to match what
-    * the FS actually exports. Though, to make sure the hw remapping works as expected, we should
-    * also clear color attachments without exports in CB_SHADER_MASK.
-    */
-   blend.cb_shader_mask &= ps->info.ps.colors_written;
+   if (!ps->info.ps.has_epilog) {
+      /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
+       * them, so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to
+       * match what the FS actually exports. Though, to make sure the hw remapping works as
+       * expected, we should also clear color attachments without exports in CB_SHADER_MASK.
+       */
+      blend.cb_shader_mask &= ps->info.ps.colors_written;
+   }
 
    pipeline->col_format = blend.spi_shader_col_format;
    pipeline->cb_target_mask = blend.cb_target_mask;
@@ -6275,7 +6295,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
        !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
       struct radv_blend_state blend =
-         radv_pipeline_init_blend_state(&pipeline->base, state);
+         radv_pipeline_init_blend_state(&pipeline->base, state, true);
 
       struct radv_pipeline_key key =
          radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
@@ -6297,7 +6317,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
       struct radv_blend_state blend =
-         radv_pipeline_init_blend_state(&pipeline->base, state);
+         radv_pipeline_init_blend_state(&pipeline->base, state, pipeline->base.ps_epilog);
 
       struct radv_pipeline_key key =
          radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
