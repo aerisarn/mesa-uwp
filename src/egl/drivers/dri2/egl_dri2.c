@@ -1822,10 +1822,10 @@ dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
          old_dri2_dpy->vtbl->set_shared_buffer_mode(old_disp, old_dsurf, false);
       }
 
-      dri2_dpy->core->unbindContext(old_cctx);
+      old_dri2_dpy->core->unbindContext(old_cctx);
 
       if (old_dsurf)
-         dri2_surf_update_fence_fd(old_ctx, disp, old_dsurf);
+         dri2_surf_update_fence_fd(old_ctx, old_disp, old_dsurf);
    }
 
    ddraw = (dsurf) ? dri2_dpy->vtbl->get_dri_drawable(dsurf) : NULL;
