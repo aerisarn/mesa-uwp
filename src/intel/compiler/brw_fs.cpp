@@ -2549,6 +2549,9 @@ fs_visitor::opt_algebraic()
             assert(!inst->src[0].negate);
             const brw::fs_builder ibld(this, block, inst);
 
+            if (!inst->is_partial_write())
+               ibld.emit_undef_for_dst(inst);
+
             ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_F, 1),
                      subscript(inst->src[0], BRW_REGISTER_TYPE_F, 1));
             ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_F, 0),
@@ -2566,6 +2569,9 @@ fs_visitor::opt_algebraic()
             assert(!inst->src[0].abs);
             assert(!inst->src[0].negate);
             const brw::fs_builder ibld(this, block, inst);
+
+            if (!inst->is_partial_write())
+               ibld.emit_undef_for_dst(inst);
 
             ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
                      subscript(inst->src[0], BRW_REGISTER_TYPE_UD, 1));
@@ -2696,6 +2702,9 @@ fs_visitor::opt_algebraic()
             assert(!inst->src[0].abs && !inst->src[0].negate);
             assert(!inst->src[1].abs && !inst->src[1].negate);
             const brw::fs_builder ibld(this, block, inst);
+
+            if (!inst->is_partial_write())
+               ibld.emit_undef_for_dst(inst);
 
             set_predicate(inst->predicate,
                           ibld.SEL(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
@@ -4107,6 +4116,7 @@ fs_visitor::lower_mul_qword_inst(fs_inst *inst, bblock_t *block)
                 subscript(inst->src[1], BRW_REGISTER_TYPE_UD, 0));
       ibld.MOV(bd_low, acc);
 
+      ibld.UNDEF(bd);
       ibld.MOV(subscript(bd, BRW_REGISTER_TYPE_UD, 0), bd_low);
       ibld.MOV(subscript(bd, BRW_REGISTER_TYPE_UD, 1), bd_high);
    }
@@ -4123,6 +4133,8 @@ fs_visitor::lower_mul_qword_inst(fs_inst *inst, bblock_t *block)
    if (devinfo->has_64bit_int) {
       ibld.MOV(inst->dst, bd);
    } else {
+      if (!inst->is_partial_write())
+         ibld.emit_undef_for_dst(inst);
       ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 0),
                subscript(bd, BRW_REGISTER_TYPE_UD, 0));
       ibld.MOV(subscript(inst->dst, BRW_REGISTER_TYPE_UD, 1),
@@ -5563,6 +5575,10 @@ fs_visitor::lower_find_live_channel()
        * useless there.
        */
       fs_reg exec_mask(retype(brw_mask_reg(0), BRW_REGISTER_TYPE_UD));
+
+      const fs_builder ibld(this, block, inst);
+      if (!inst->is_partial_write())
+         ibld.emit_undef_for_dst(inst);
 
       const fs_builder ubld = bld.at(block, inst).exec_all().group(1, 0);
 

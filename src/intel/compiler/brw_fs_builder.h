@@ -565,6 +565,17 @@ namespace brw {
          }
       }
 
+      instruction *
+      emit_undef_for_dst(const instruction *old_inst) const
+      {
+         assert(old_inst->dst.file == VGRF);
+         instruction *inst = emit(SHADER_OPCODE_UNDEF,
+                                  retype(old_inst->dst, BRW_REGISTER_TYPE_UD));
+         inst->size_written = old_inst->size_written;
+
+         return inst;
+      }
+
       /**
        * Assorted arithmetic ops.
        * @{
@@ -785,7 +796,7 @@ namespace brw {
          assert(dst.offset % REG_SIZE == 0);
          instruction *inst = emit(SHADER_OPCODE_UNDEF,
                                   retype(dst, BRW_REGISTER_TYPE_UD));
-         inst->size_written = shader->alloc.sizes[dst.nr] * REG_SIZE;
+         inst->size_written = shader->alloc.sizes[dst.nr] * REG_SIZE - dst.offset;
 
          return inst;
       }
