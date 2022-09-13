@@ -163,6 +163,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
       if (state->old_compute_pipeline) {
          radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                               radv_pipeline_to_handle(&state->old_compute_pipeline->base));
+      } else {
+         cmd_buffer->state.compute_pipeline = NULL;
       }
    }
 
