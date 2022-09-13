@@ -4147,7 +4147,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
-   if (pipeline->gs_copy_shader) {
+   if (pipeline->gs_copy_shader && !(flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
       free(pipeline->gs_copy_shader->binary);
       pipeline->gs_copy_shader->binary = NULL;
    }
