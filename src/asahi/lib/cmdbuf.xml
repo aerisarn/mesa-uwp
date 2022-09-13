@@ -661,23 +661,29 @@
   <!-- Conditional branching and function calls may be supported, see the
        STREAM_LINK0 struct in mesa/src/imagination/csbgen/rogue_vdm.xml for a
        probable dfinition -->
-  <struct name="Stream Link" size="8">
+  <struct name="VDM Stream Link" size="8">
     <field name="Target hi" size="8" start="0" type="hex"/>
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Stream Link"/>
     <field name="Target lo" size="32" start="32" type="hex"/>
   </struct>
 
-  <struct name="Stream Terminate" size="8">
+  <struct name="VDM Stream Terminate" size="8">
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Stream Terminate"/>
   </struct>
 
   <!-- VDM commands end -->
 
   <!-- CDM commands start -->
+  <enum name="CDM Block Type">
+    <value name="Compute Kernel" value="0"/>
+    <value name="Stream Link" value="1"/>
+    <value name="Stream Terminate" value="2"/>
+  </enum>
 
   <!--- Command to launch a direct compute kernel -->
   <struct name="Launch" size="36">
-    <field name="Command" size="32" start="0:0" type="hex" default="0x1002"/>
+    <field name="Unk 1" size="29" start="0:0" type="hex" default="0x1002"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Compute Kernel"/>
     <field name="Pipeline" size="32" start="1:0" type="address"/>
     <field name="Group count X" size="32" start="2:0" type="uint"/>
     <field name="Group count Y" size="32" start="3:0" type="uint"/>
@@ -685,7 +691,17 @@
     <field name="Local size X" size="32" start="5:0" type="uint"/>
     <field name="Local size Y" size="32" start="6:0" type="uint"/>
     <field name="Local size Z" size="32" start="7:0" type="uint"/>
-    <field name="Unk" size="32" start="8:0" type="hex" default="0x60000160"/>
+    <field name="Unk 2" size="32" start="8:0" type="hex" default="0x60000160"/>
+  </struct>
+
+  <struct name="CDM Stream Link" size="8">
+    <field name="Target hi" size="8" start="0" type="hex"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Stream Link"/>
+    <field name="Target lo" size="32" start="32" type="hex"/>
+  </struct>
+
+  <struct name="CDM Stream Terminate" size="8">
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Stream Terminate"/>
   </struct>
 
   <!-- CDM commands end -->

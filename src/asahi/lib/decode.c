@@ -550,14 +550,14 @@ agxdecode_cmd(const uint8_t *map, uint64_t *link, bool verbose)
    }
 
    case AGX_VDM_BLOCK_TYPE_STREAM_LINK: {
-      agx_unpack(agxdecode_dump_stream, map, STREAM_LINK, hdr);
-      DUMP_UNPACKED(STREAM_LINK, hdr, "Stream Link\n");
+      agx_unpack(agxdecode_dump_stream, map, VDM_STREAM_LINK, hdr);
+      DUMP_UNPACKED(VDM_STREAM_LINK, hdr, "Stream Link\n");
       *link = hdr.target_lo | (((uint64_t) hdr.target_hi) << 32);
       return STATE_LINK;
    }
 
    case AGX_VDM_BLOCK_TYPE_STREAM_TERMINATE: {
-      DUMP_CL(STREAM_TERMINATE, map, "Stream Terminate");
+      DUMP_CL(VDM_STREAM_TERMINATE, map, "Stream Terminate");
       return STATE_DONE;
    }
 

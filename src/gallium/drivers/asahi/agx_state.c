@@ -1792,7 +1792,7 @@ agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
    struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, size, 256);
 
    /* Jump from the old command buffer to the new command buffer */
-   agx_pack(batch->encoder_current, STREAM_LINK, cfg) {
+   agx_pack(batch->encoder_current, VDM_STREAM_LINK, cfg) {
       cfg.target_lo = T.gpu & BITFIELD_MASK(32);
       cfg.target_hi = T.gpu >> 32;
    }
