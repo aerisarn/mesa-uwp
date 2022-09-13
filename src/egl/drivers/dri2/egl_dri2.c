@@ -1887,7 +1887,7 @@ dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
          /* dri2_dpy->core->bindContext succeeded, so take a reference on the
           * dri2_dpy. This prevents dri2_dpy from being reinitialized when a
           * EGLDisplay is terminated and then initialized again while a
-          * context is still bound. See dri2_intitialize() for a more in depth
+          * context is still bound. See dri2_initialize() for a more in depth
           * explanation. */
          p_atomic_inc(&dri2_dpy->ref_count);
       }
