@@ -682,8 +682,11 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
       gras_lrz_cntl.lrz_write = false;
    }
 
-   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
-        cmd->state.color_write_enable != MASK(cmd->state.pipeline->num_rts)) {
+   if ((cmd->state.pipeline->dynamic_state_mask &
+        BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
+       (cmd->state.color_write_enable &
+        MASK(cmd->state.subpass->color_count)) !=
+          MASK(cmd->state.pipeline->num_rts)) {
       if (gras_lrz_cntl.lrz_write) {
          perf_debug(
             cmd->device,
