@@ -229,11 +229,17 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
          attachment->first_subpass :
          attachment->views[layer].first_subpass;
 
+      uint32_t last_subpass = !pass->multiview_enabled ?
+         attachment->last_subpass :
+         attachment->views[layer].last_subpass;
+
       bool needs_load =
          v3dv_cmd_buffer_check_needs_load(state,
                                           VK_IMAGE_ASPECT_COLOR_BIT,
                                           first_subpass,
-                                          attachment->desc.loadOp);
+                                          attachment->desc.loadOp,
+                                          last_subpass,
+                                          attachment->desc.storeOp);
       if (needs_load) {
          struct v3dv_image_view *iview =
             state->attachments[attachment_idx].image_view;
@@ -254,17 +260,25 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
          ds_attachment->first_subpass :
          ds_attachment->views[layer].first_subpass;
 
+      uint32_t ds_last_subpass = !pass->multiview_enabled ?
+         ds_attachment->last_subpass :
+         ds_attachment->views[layer].last_subpass;
+
       const bool needs_depth_load =
          v3dv_cmd_buffer_check_needs_load(state,
                                           ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
                                           ds_first_subpass,
-                                          ds_attachment->desc.loadOp);
+                                          ds_attachment->desc.loadOp,
+                                          ds_last_subpass,
+                                          ds_attachment->desc.storeOp);
 
       const bool needs_stencil_load =
          v3dv_cmd_buffer_check_needs_load(state,
                                           ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
                                           ds_first_subpass,
-                                          ds_attachment->desc.stencilLoadOp);
+                                          ds_attachment->desc.stencilLoadOp,
+                                          ds_last_subpass,
+                                          ds_attachment->desc.stencilStoreOp);
 
       if (needs_depth_load || needs_stencil_load) {
          struct v3dv_image_view *iview =
@@ -834,7 +848,9 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
                v3dv_cmd_buffer_check_needs_load(state,
                                                 ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
                                                 ds_attachment->first_subpass,
-                                                ds_attachment->desc.stencilLoadOp);
+                                                ds_attachment->desc.stencilLoadOp,
+                                                ds_attachment->last_subpass,
+                                                ds_attachment->desc.stencilStoreOp);
 
             bool needs_stencil_store =
                v3dv_cmd_buffer_check_needs_store(state,
@@ -1434,7 +1450,9 @@ job_update_ez_state(struct v3dv_job *job,
          v3dv_cmd_buffer_check_needs_load(state,
                                           ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
                                           ds_attachment->first_subpass,
-                                          ds_attachment->desc.loadOp);
+                                          ds_attachment->desc.loadOp,
+                                          ds_attachment->last_subpass,
+                                          ds_attachment->desc.storeOp);
 
       if (needs_depth_load) {
          struct v3dv_framebuffer *fb = state->framebuffer;

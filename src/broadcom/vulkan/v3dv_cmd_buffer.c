@@ -1423,7 +1423,9 @@ bool
 v3dv_cmd_buffer_check_needs_load(const struct v3dv_cmd_buffer_state *state,
                                  VkImageAspectFlags aspect,
                                  uint32_t first_subpass_idx,
-                                 VkAttachmentLoadOp load_op)
+                                 VkAttachmentLoadOp load_op,
+                                 uint32_t last_subpass_idx,
+                                 VkAttachmentStoreOp store_op)
 {
    /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
     * testing does not exist in the image.
@@ -1443,9 +1445,14 @@ v3dv_cmd_buffer_check_needs_load(const struct v3dv_cmd_buffer_state *state,
    if (state->job->is_subpass_continue)
       return true;
 
-   /* If the area is not aligned to tile boundaries, we always need to load */
-   if (!state->tile_aligned_render_area)
+   /* If the area is not aligned to tile boundaries and we are going to store,
+    * then we need to load to preserve contents outside the render area.
+    */
+   if (!state->tile_aligned_render_area &&
+       v3dv_cmd_buffer_check_needs_store(state, aspect, last_subpass_idx,
+                                         store_op)) {
       return true;
+   }
 
    /* The attachment load operations must be LOAD */
    return load_op == VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -1539,7 +1546,9 @@ cmd_buffer_subpass_check_double_buffer_mode(struct v3dv_cmd_buffer *cmd_buffer,
       if (v3dv_cmd_buffer_check_needs_load(state,
                                            VK_IMAGE_ASPECT_COLOR_BIT,
                                            attachment->first_subpass,
-                                           attachment->desc.loadOp)) {
+                                           attachment->desc.loadOp,
+                                           attachment->last_subpass,
+                                           attachment->desc.storeOp)) {
          return;
       }
 
@@ -1562,14 +1571,18 @@ cmd_buffer_subpass_check_double_buffer_mode(struct v3dv_cmd_buffer *cmd_buffer,
       if (v3dv_cmd_buffer_check_needs_load(state,
                                            ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
                                            ds_attachment->first_subpass,
-                                           ds_attachment->desc.loadOp)) {
+                                           ds_attachment->desc.loadOp,
+                                           ds_attachment->last_subpass,
+                                           ds_attachment->desc.storeOp)) {
          return;
       }
 
       if (v3dv_cmd_buffer_check_needs_load(state,
                                            ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
                                            ds_attachment->first_subpass,
-                                           ds_attachment->desc.stencilLoadOp)) {
+                                           ds_attachment->desc.stencilLoadOp,
+                                           ds_attachment->last_subpass,
+                                           ds_attachment->desc.stencilStoreOp)) {
          return;
       }
 
