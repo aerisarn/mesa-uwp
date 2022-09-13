@@ -57,7 +57,7 @@ enum fd_param_id {
    FD_CHIP_ID,       /* 64b */
    FD_MAX_FREQ,
    FD_TIMESTAMP,
-   FD_NR_RINGS,      /* # of rings == # of distinct priority levels */
+   FD_NR_PRIORITIES,      /* # of rings == # of distinct priority levels */
    FD_CTX_FAULTS,    /* # of per context faults */
    FD_GLOBAL_FAULTS, /* # of global (all context) faults */
    FD_SUSPEND_COUNT, /* # of times the GPU has suspended, and potentially lost state */

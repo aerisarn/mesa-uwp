@@ -1031,7 +1031,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
    screen->chip_id = val;
    screen->gen = fd_dev_gen(screen->dev_id);
 
-   if (fd_pipe_get_param(screen->pipe, FD_NR_RINGS, &val)) {
+   if (fd_pipe_get_param(screen->pipe, FD_NR_PRIORITIES, &val)) {
       DBG("could not get # of rings");
       screen->priority_mask = 0;
    } else {
