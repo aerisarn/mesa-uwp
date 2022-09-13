@@ -591,15 +591,15 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 {
    struct fd_screen *screen = fd_screen(pscreen);
    struct pipe_context *pctx;
-   unsigned prio = 1;
+   unsigned prio = screen->prio_norm;
 
    /* lower numerical value == higher priority: */
    if (FD_DBG(HIPRIO))
-      prio = 0;
+      prio = screen->prio_high;
    else if (flags & PIPE_CONTEXT_HIGH_PRIORITY)
-      prio = 0;
+      prio = screen->prio_high;
    else if (flags & PIPE_CONTEXT_LOW_PRIORITY)
-      prio = 2;
+      prio = screen->prio_low;
 
    /* Some of the stats will get printed out at context destroy, so
     * make sure they are collected:

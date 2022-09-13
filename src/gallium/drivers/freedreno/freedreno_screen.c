@@ -1037,6 +1037,21 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
    } else {
       /* # of rings equates to number of unique priority values: */
       screen->priority_mask = (1 << val) - 1;
+
+      /* Lowest numerical value (ie. zero) is highest priority: */
+      screen->prio_high = 0;
+
+      /* Highest numerical value is lowest priority: */
+      screen->prio_low = val - 1;
+
+      /* Pick midpoint for normal priority.. note that whatever the
+       * range of possible priorities, since we divide by 2 the
+       * result will either be an integer or an integer plus 0.5,
+       * in which case it will round down to an integer, so int
+       * division will give us an appropriate result in either
+       * case:
+       */
+      screen->prio_norm = val / 2;
    }
 
    if (fd_device_version(dev) >= FD_VERSION_ROBUSTNESS)
