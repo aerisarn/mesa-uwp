@@ -2169,6 +2169,10 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_bo_free(device, device->nop_program.usc);
    pvr_free_list_destroy(device->global_free_list);
    pvr_winsys_destroy(device->ws);
+
+   if (device->master_fd >= 0)
+      close(device->master_fd);
+
    close(device->render_fd);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
