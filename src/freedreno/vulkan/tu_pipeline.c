@@ -53,7 +53,7 @@ emit_load_state(struct tu_cs *cs, unsigned opcode, enum a6xx_state_type st,
 
 static unsigned
 tu6_load_state_size(struct tu_pipeline *pipeline,
-                    struct tu_pipeline_layout *layout, bool compute)
+                    struct tu_pipeline_layout *layout)
 {
    const unsigned load_state_size = 4;
    unsigned size = 0;
@@ -65,13 +65,8 @@ tu6_load_state_size(struct tu_pipeline *pipeline,
       for (unsigned j = 0; j < set_layout->binding_count; j++) {
          struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
          unsigned count = 0;
-         /* Note: some users, like amber for example, pass in
-          * VK_SHADER_STAGE_ALL which includes a bunch of extra bits, so
-          * filter these out by using VK_SHADER_STAGE_ALL_GRAPHICS explicitly.
-          */
-         VkShaderStageFlags stages = compute ?
-            binding->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT :
-            binding->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
+         /* See comment in tu6_emit_load_state(). */
+         VkShaderStageFlags stages = pipeline->active_stages & binding->shader_stages;
          unsigned stage_count = util_bitcount(stages);
 
          if (!binding->array_size)
@@ -83,9 +78,7 @@ tu6_load_state_size(struct tu_pipeline *pipeline,
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             /* IBO-backed resources only need one packet for all graphics stages */
-            if (stages & ~VK_SHADER_STAGE_COMPUTE_BIT)
-               count += 1;
-            if (stages & VK_SHADER_STAGE_COMPUTE_BIT)
+            if (stage_count)
                count += 1;
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -116,9 +109,9 @@ tu6_load_state_size(struct tu_pipeline *pipeline,
 
 static void
 tu6_emit_load_state(struct tu_pipeline *pipeline,
-                    struct tu_pipeline_layout *layout, bool compute)
+                    struct tu_pipeline_layout *layout)
 {
-   unsigned size = tu6_load_state_size(pipeline, layout, compute);
+   unsigned size = tu6_load_state_size(pipeline, layout);
    if (size == 0)
       return;
 
@@ -150,13 +143,12 @@ tu6_emit_load_state(struct tu_pipeline *pipeline,
          struct tu_descriptor_set_binding_layout *binding = &set_layout->binding[j];
          unsigned base = i;
          unsigned offset = binding->offset / 4;
-         /* Note: some users, like amber for example, pass in
-          * VK_SHADER_STAGE_ALL which includes a bunch of extra bits, so
-          * filter these out by using VK_SHADER_STAGE_ALL_GRAPHICS explicitly.
+         /* Note: amber sets VK_SHADER_STAGE_ALL for its descriptor layout, and
+          * zink has descriptors for each stage in the push layout even if some
+          * stages aren't present in a used pipeline.  We don't want to emit
+          * loads for unused descriptors.
           */
-         VkShaderStageFlags stages = compute ?
-            binding->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT :
-            binding->shader_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
+         VkShaderStageFlags stages = pipeline->active_stages & binding->shader_stages;
          unsigned count = binding->array_size;
          if (count == 0 || stages == 0)
             continue;
@@ -2395,7 +2387,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
                         struct tu_pipeline_builder *builder,
                         struct ir3_shader_variant *compute)
 {
-   uint32_t size = 1024 + tu6_load_state_size(pipeline, layout, compute);
+   uint32_t size = 1024 + tu6_load_state_size(pipeline, layout);
 
    /* graphics case: */
    if (builder) {
@@ -2861,6 +2853,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       gl_shader_stage stage =
          vk_to_mesa_shader_stage(builder->create_info->pStages[i].stage);
       stage_infos[stage] = &builder->create_info->pStages[i];
+
+      pipeline->active_stages |= builder->create_info->pStages[i].stage;
    }
 
    if (tu6_shared_constants_enable(builder->layout, builder->device->compiler)) {
@@ -3302,12 +3296,6 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
    tu_cs_begin_sub_stream(&pipeline->cs, 512 + builder->additional_cs_reserve_size, &prog_cs);
    tu6_emit_program(&prog_cs, builder, true, pipeline);
    pipeline->program.binning_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
-
-   VkShaderStageFlags stages = 0;
-   for (unsigned i = 0; i < builder->create_info->stageCount; i++) {
-      stages |= builder->create_info->pStages[i].stage;
-   }
-   pipeline->active_stages = stages;
 
    for (unsigned i = 0; i < ARRAY_SIZE(builder->shaders->variants); i++) {
       if (!builder->shaders->variants[i])
@@ -3960,7 +3948,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);
    tu_pipeline_builder_parse_multisample_and_color_blend(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization_order(builder, *pipeline);
-   tu6_emit_load_state(*pipeline, builder->layout, false);
+   tu6_emit_load_state(*pipeline, builder->layout);
 
    return VK_SUCCESS;
 }
@@ -4218,6 +4206,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    pipeline->executables_mem_ctx = ralloc_context(NULL);
    util_dynarray_init(&pipeline->executables, pipeline->executables_mem_ctx);
+   pipeline->active_stages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 
    struct tu_shader_key key = { };
    tu_shader_key_init(&key, stage_info, dev);
@@ -4336,7 +4325,7 @@ tu_compute_pipeline_create(VkDevice device,
    tu6_emit_cs_config(&prog_cs, v, &pvtmem, shader_iova);
    pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
-   tu6_emit_load_state(pipeline, layout, true);
+   tu6_emit_load_state(pipeline, layout);
 
    tu_append_executable(pipeline, v, nir_initial_disasm);
 
