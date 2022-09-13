@@ -257,7 +257,6 @@ pvr_process_graphics_cmd(struct pvr_device *device,
       bo_count++;
    }
 
-   /* This passes ownership of the wait fences to pvr_render_job_submit(). */
    result = pvr_render_job_submit(queue->gfx_ctx,
                                   &sub_cmd->job,
                                   bos,
@@ -313,7 +312,6 @@ pvr_process_compute_cmd(struct pvr_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   /* This passes ownership of the wait fences to pvr_compute_job_submit(). */
    result = pvr_compute_job_submit(queue->compute_ctx,
                                    sub_cmd,
                                    barrier,
@@ -356,7 +354,6 @@ pvr_process_transfer_cmds(struct pvr_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   /* This passes ownership of the wait fences to pvr_transfer_job_submit(). */
    result = pvr_transfer_job_submit(device,
                                     queue->transfer_ctx,
                                     sub_cmd,
