@@ -1163,7 +1163,6 @@ struct zink_screen {
 
    struct {
       bool broken_l4a4;
-      bool color_write_missing;
       bool depth_clip_control_missing;
       bool implicit_sync;
       bool force_pipeline_library;

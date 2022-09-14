@@ -2706,7 +2706,7 @@ static void
 reapply_color_write(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (!screen->driver_workarounds.color_write_missing) {
+   if (screen->info.have_EXT_color_write_enable) {
       const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
       const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
       const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, screen->info.props.limits.maxColorAttachments);
@@ -2824,7 +2824,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
    if (disable_color_writes && ctx->clears_enabled)
       zink_batch_rp(ctx);
    ctx->disable_color_writes = disable_color_writes;
-   if (zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing) {
+   if (zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
       /* use dummy color buffers instead of the more sane option */
       zink_batch_no_rp(ctx);
       ctx->rp_changed = true;

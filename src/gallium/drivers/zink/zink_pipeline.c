@@ -248,7 +248,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT;
    }
-   if (!screen->driver_workarounds.color_write_missing)
+   if (screen->info.have_EXT_color_write_enable)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT;
 
    VkPipelineRasterizationLineStateCreateInfoEXT rast_line_state;
@@ -473,7 +473,7 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
       if (state->sample_locations_enabled)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT;
    }
-   if (!screen->driver_workarounds.color_write_missing)
+   if (screen->info.have_EXT_color_write_enable)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT;
    assert(state_count < ARRAY_SIZE(dynamicStateEnables));
 
