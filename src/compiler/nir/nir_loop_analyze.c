@@ -208,15 +208,13 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
 
 static bool
 init_loop_block(nir_block *block, loop_info_state *state,
-                bool in_if_branch, bool in_nested_loop,
-                const nir_shader_compiler_options *options)
+                bool in_if_branch, bool in_nested_loop)
 {
    init_loop_state init_state = {.in_if_branch = in_if_branch,
                                  .in_nested_loop = in_nested_loop,
                                  .state = state };
 
    nir_foreach_instr(instr, block) {
-      state->loop->info->instr_cost += instr_cost(instr, options);
       nir_foreach_ssa_def(instr, init_loop_def, &init_state);
    }
 
@@ -1299,18 +1297,17 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
       switch (node->type) {
 
       case nir_cf_node_block:
-         init_loop_block(nir_cf_node_as_block(node), state,
-                         false, false, options);
+         init_loop_block(nir_cf_node_as_block(node), state, false, false);
          break;
 
       case nir_cf_node_if:
          nir_foreach_block_in_cf_node(block, node)
-            init_loop_block(block, state, true, false, options);
+            init_loop_block(block, state, true, false);
          break;
 
       case nir_cf_node_loop:
          nir_foreach_block_in_cf_node(block, node) {
-            init_loop_block(block, state, false, true, options);
+            init_loop_block(block, state, false, true);
          }
          break;
 
@@ -1343,9 +1340,15 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
    find_trip_count(state, impl->function->shader->info.float_controls_execution_mode);
 
    nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
+      nir_foreach_instr(instr, block) {
+         state->loop->info->instr_cost += instr_cost(instr, options);
+      }
+
+      if (state->loop->info->force_unroll)
+         continue;
+
       if (force_unroll_heuristics(state, block)) {
          state->loop->info->force_unroll = true;
-         break;
       }
    }
 }
