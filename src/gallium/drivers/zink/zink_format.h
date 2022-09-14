@@ -48,4 +48,6 @@ enum pipe_format
 zink_format_get_emulated_alpha(enum pipe_format format);
 void
 zink_format_clamp_channel_color(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i);
+void
+zink_format_clamp_channel_srgb(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i);
 #endif

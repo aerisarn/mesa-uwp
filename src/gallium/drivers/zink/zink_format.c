@@ -370,3 +370,18 @@ zink_format_clamp_channel_color(const struct util_format_description *desc, unio
       break;
    }
 }
+
+void
+zink_format_clamp_channel_srgb(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i)
+{
+   if (desc->colorspace != UTIL_FORMAT_COLORSPACE_SRGB)
+      return;
+   switch (desc->channel[i].type) {
+   case UTIL_FORMAT_TYPE_SIGNED:
+   case UTIL_FORMAT_TYPE_UNSIGNED:
+      dst->f[i] = CLAMP(src->f[i], 0.0, 1.0);
+      break;
+   default:
+      break;
+   }
+}

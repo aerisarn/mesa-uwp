@@ -431,8 +431,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
                memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
             } else {
                cbci.format = zink_get_format(screen, state->border_color_format);
-               for (unsigned i = 0; i < 4; i++)
+               for (unsigned i = 0; i < 4; i++) {
                   zink_format_clamp_channel_color(util_format_description(state->border_color_format), (void*)&cbci.customBorderColor, &state->border_color, i);
+                  zink_format_clamp_channel_srgb(util_format_description(state->border_color_format), (void*)&cbci.customBorderColor, (void*)&cbci.customBorderColor, i);
+               }
             }
          }
          cbci.pNext = sci.pNext;
