@@ -256,13 +256,13 @@ zink_clear(struct pipe_context *pctx,
                   tmp.ui[2] = 0;
                   tmp.ui[3] = 0;
                } else if (util_format_is_luminance(psurf->format)) {
-                  tmp.ui[1] = tmp.ui[0];
-                  tmp.ui[2] = tmp.ui[0];
+                  tmp.ui[1] = 0;
+                  tmp.ui[2] = 0;
                   tmp.f[3] = 1.0;
                } else if (util_format_is_luminance_alpha(psurf->format)) {
-                  tmp.f[3] = tmp.ui[1];
-                  tmp.ui[1] = tmp.ui[0];
-                  tmp.ui[2] = tmp.ui[0];
+                  tmp.ui[1] = tmp.ui[3];
+                  tmp.ui[2] = 0;
+                  tmp.f[3] = 1.0;
                } else /* zink_format_is_red_alpha */ {
                   tmp.ui[1] = tmp.ui[3];
                   tmp.ui[2] = 0;
