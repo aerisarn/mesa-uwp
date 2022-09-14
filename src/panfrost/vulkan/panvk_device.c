@@ -156,6 +156,7 @@ panvk_get_device_extensions(const struct panvk_physical_device *device,
    *ext = (struct vk_device_extension_table) {
       .KHR_copy_commands2 = true,
       .KHR_storage_buffer_storage_class = true,
+      .KHR_descriptor_update_template = true,
 #ifdef PANVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
 #endif
