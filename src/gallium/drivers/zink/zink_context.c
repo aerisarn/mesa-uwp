@@ -423,12 +423,15 @@ zink_create_sampler_state(struct pipe_context *pctx,
             memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
          } else {
             if (util_format_is_depth_or_stencil(state->border_color_format)) {
-               if (is_integer)
+               if (is_integer) {
                   cbci.format = VK_FORMAT_S8_UINT;
-               else
+                  for (unsigned i = 0; i < 4; i++)
+                     cbci.customBorderColor.uint32[i] = CLAMP(state->border_color.ui[i], 0, 255);
+               } else {
                   cbci.format = zink_get_format(screen, util_format_get_depth_only(state->border_color_format));
-               /* these are identical unions */
-               memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+                  /* these are identical unions */
+                  memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+               }
             } else {
                cbci.format = zink_get_format(screen, state->border_color_format);
                for (unsigned i = 0; i < 4; i++) {
