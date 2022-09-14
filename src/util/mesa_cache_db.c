@@ -11,6 +11,7 @@
 
 #if DETECT_OS_WINDOWS == 0
 
+#include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
