@@ -12,6 +12,7 @@ use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
 use mesa_rust::pipe::context::RWFlags;
 use mesa_rust::pipe::context::ResourceMapType;
+use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::ResourceType;
 use mesa_rust_gen::*;
 use mesa_rust_util::math::*;
@@ -247,6 +248,7 @@ impl InternalKernelArg {
 
 struct KernelDevStateInner {
     nir: NirShader,
+    constant_buffer: Option<Arc<PipeResource>>,
     cso: *mut c_void,
 }
 
@@ -275,11 +277,41 @@ impl KernelDevState {
                 } else {
                     ptr::null_mut()
                 };
-                (dev, KernelDevStateInner { nir: nir, cso: cso })
+
+                let cb = Self::create_nir_constant_buffer(&dev, &nir);
+
+                (
+                    dev,
+                    KernelDevStateInner {
+                        nir: nir,
+                        constant_buffer: cb,
+                        cso: cso,
+                    },
+                )
             })
             .collect();
 
         Arc::new(Self { states: states })
+    }
+
+    fn create_nir_constant_buffer(dev: &Device, nir: &NirShader) -> Option<Arc<PipeResource>> {
+        let buf = nir.get_constant_buffer();
+        let len = buf.len() as u32;
+
+        if len > 0 {
+            let res = dev
+                .screen()
+                .resource_create_buffer(len, ResourceType::Normal)
+                .unwrap();
+
+            dev.helper_ctx()
+                .exec(|ctx| ctx.buffer_subdata(&res, 0, buf.as_ptr().cast(), len))
+                .wait();
+
+            Some(Arc::new(res))
+        } else {
+            None
+        }
     }
 
     fn get(&self, dev: &Device) -> &KernelDevStateInner {
@@ -846,14 +878,14 @@ impl Kernel {
         grid: &[usize],
         offsets: &[usize],
     ) -> CLResult<EventSig> {
-        let nir = &self.dev_state.get(&q.device).nir;
+        let dev_state = self.dev_state.get(&q.device);
         let mut block = create_kernel_arr::<u32>(block, 1);
         let mut grid = create_kernel_arr::<u32>(grid, 1);
         let offsets = create_kernel_arr::<u64>(offsets, 0);
         let mut input: Vec<u8> = Vec::new();
         let mut resource_info = Vec::new();
         // Set it once so we get the alignment padding right
-        let static_local_size: u64 = nir.shared_size() as u64;
+        let static_local_size: u64 = dev_state.nir.shared_size() as u64;
         let mut variable_local_size: u64 = static_local_size;
         let printf_size = q.device.printf_buffer_size() as u32;
         let mut samplers = Vec::new();
@@ -942,7 +974,7 @@ impl Kernel {
         }
 
         // subtract the shader local_size as we only request something on top of that.
-        variable_local_size -= nir.shared_size() as u64;
+        variable_local_size -= dev_state.nir.shared_size() as u64;
 
         let mut printf_buf = None;
         for arg in &self.internal_args {
@@ -951,21 +983,9 @@ impl Kernel {
             }
             match arg.kind {
                 InternalKernelArgType::ConstantBuffer => {
+                    assert!(dev_state.constant_buffer.is_some());
                     input.extend_from_slice(null_ptr);
-                    let buf = nir.get_constant_buffer();
-                    let res = Arc::new(
-                        q.device
-                            .screen()
-                            .resource_create_buffer(buf.len() as u32, ResourceType::Normal)
-                            .unwrap(),
-                    );
-                    q.device
-                        .helper_ctx()
-                        .exec(|ctx| {
-                            ctx.buffer_subdata(&res, 0, buf.as_ptr().cast(), buf.len() as u32)
-                        })
-                        .wait();
-                    resource_info.push((Some(res), arg.offset));
+                    resource_info.push((dev_state.constant_buffer.clone(), arg.offset));
                 }
                 InternalKernelArgType::GlobalWorkOffsets => {
                     if q.device.address_bits() == 64 {
