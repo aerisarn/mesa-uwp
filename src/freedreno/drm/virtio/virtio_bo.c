@@ -224,6 +224,12 @@ virtio_bo_prefer_upload(struct fd_bo *bo, unsigned len)
 {
    struct virtio_bo *virtio_bo = to_virtio_bo(bo);
 
+   /* If we've already taken the hit of mmap'ing the buffer, then no reason
+    * to take the upload path:
+    */
+   if (bo->map)
+      return false;
+
    if (len > 0x4000)
       return false;
 
