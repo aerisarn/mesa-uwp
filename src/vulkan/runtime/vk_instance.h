@@ -117,25 +117,32 @@ struct vk_instance {
       /** Enumerate physical devices for this instance
        *
        * The driver can implement this callback for custom physical device
-       * enumeration. The callback should always return VK_SUCCESS unless
-       * an allocation failed.
-       * 
+       * enumeration. The returned value must be a valid return code of
+       * vkEnumeratePhysicalDevices.
+       *
+       * Note that the loader calls vkEnumeratePhysicalDevices of all
+       * installed ICDs and fails device enumeration when any of the calls
+       * fails. The driver should return VK_SUCCESS when it does not find any
+       * compatible device.
+       *
        * If this callback is not set, try_create_for_drm will be used for
        * enumeration.
        */
       VkResult (*enumerate)(struct vk_instance *instance);
 
       /** Try to create a physical device for a drm device
-       * 
-       * For incompatible devices this callback should return
-       * VK_ERROR_INCOMPATIBLE_DRIVER.
+       *
+       * The returned value must be a valid return code of
+       * vkEnumeratePhysicalDevices, or VK_ERROR_INCOMPATIBLE_DRIVER. When
+       * VK_ERROR_INCOMPATIBLE_DRIVER is returned, the error and the drm
+       * device are silently ignored.
        */
       VkResult (*try_create_for_drm)(struct vk_instance *instance,
                                      struct _drmDevice *device,
                                      struct vk_physical_device **out);
 
       /** Handle the destruction of a physical device
-       * 
+       *
        * This callback has to be implemented when using common physical device
        * management. The device pointer and any resource allocated for the
        * device should be freed here.
