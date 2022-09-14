@@ -100,7 +100,7 @@ struct radv_bvh_instance_node {
     * post-translation of the object->world matrix so this way we can share data between both
     * matrices. */
    float wto_matrix[12];
-   float aabb[2][3];
+   uint32_t reserved[6];
    uint32_t instance_id;
 
    /* Object to world matrix transposed from the initial transform. Translate part is store in the

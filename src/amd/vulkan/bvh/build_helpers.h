@@ -258,6 +258,25 @@ pack_node_id(uint32_t offset, uint32_t type)
 #define NULL_NODE_ID 0xFFFFFFFF
 
 AABB
+calculate_instance_node_bounds(radv_bvh_instance_node instance)
+{
+   AABB aabb;
+   radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(instance.base_ptr));
+
+   for (uint32_t comp = 0; comp < 3; ++comp) {
+      aabb.min[comp] = instance.wto_matrix[3 + 4 * comp];
+      aabb.max[comp] = instance.wto_matrix[3 + 4 * comp];
+      for (uint32_t col = 0; col < 3; ++col) {
+         aabb.min[comp] += min(instance.otw_matrix[col + comp * 3] * header.aabb[0][col],
+                               instance.otw_matrix[col + comp * 3] * header.aabb[1][col]);
+         aabb.max[comp] += max(instance.otw_matrix[col + comp * 3] * header.aabb[0][col],
+                               instance.otw_matrix[col + comp * 3] * header.aabb[1][col]);
+      }
+   }
+   return aabb;
+}
+
+AABB
 calculate_node_bounds(VOID_REF bvh, uint32_t id)
 {
    AABB aabb;
@@ -292,14 +311,7 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
    }
    case radv_bvh_node_instance: {
       radv_bvh_instance_node instance = DEREF(REF(radv_bvh_instance_node)(node));
-
-      aabb.min.x = instance.aabb[0][0];
-      aabb.min.y = instance.aabb[0][1];
-      aabb.min.z = instance.aabb[0][2];
-
-      aabb.max.x = instance.aabb[1][0];
-      aabb.max.y = instance.aabb[1][1];
-      aabb.max.z = instance.aabb[1][2];
+      aabb = calculate_instance_node_bounds(instance);
       break;
    }
    case radv_bvh_node_aabb: {

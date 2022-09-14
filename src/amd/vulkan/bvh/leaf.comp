@@ -213,27 +213,11 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
       DEREF(REF(radv_accel_struct_header)(instance.accelerationStructureReference));
    DEREF(node).base_ptr = instance.accelerationStructureReference;
 
-   for (uint32_t comp = 0; comp < 3; ++comp) {
-      bounds.min[comp] = transform[3][comp];
-      bounds.max[comp] = transform[3][comp];
-      for (uint32_t col = 0; col < 3; ++col) {
-         bounds.min[comp] += min(transform[col][comp] * instance_header.aabb[0][col],
-                                 transform[col][comp] * instance_header.aabb[1][col]);
-         bounds.max[comp] += max(transform[col][comp] * instance_header.aabb[0][col],
-                                 transform[col][comp] * instance_header.aabb[1][col]);
-      }
-   }
+   bounds = calculate_instance_node_bounds(DEREF(node));
 
    DEREF(node).custom_instance_and_mask = instance.custom_instance_and_mask;
    DEREF(node).sbt_offset_and_flags = instance.sbt_offset_and_flags;
    DEREF(node).instance_id = global_id;
-
-   DEREF(node).aabb[0][0] = bounds.min.x;
-   DEREF(node).aabb[0][1] = bounds.min.y;
-   DEREF(node).aabb[0][2] = bounds.min.z;
-   DEREF(node).aabb[1][0] = bounds.max.x;
-   DEREF(node).aabb[1][1] = bounds.max.y;
-   DEREF(node).aabb[1][2] = bounds.max.z;
 
    return true;
 }
