@@ -5,6 +5,8 @@ dxvk_install_release() {
 
     wget "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
     tar xzpf dxvk-"${DXVK_VERSION}".tar.gz
+    # https://github.com/doitsujin/dxvk/issues/2921
+    sed -i 's/wine="wine"/wine="wine32"/' "dxvk-${DXVK_VERSION}"/setup_dxvk.sh
     "dxvk-${DXVK_VERSION}"/setup_dxvk.sh install
     rm -rf "dxvk-${DXVK_VERSION}"
     rm dxvk-"${DXVK_VERSION}".tar.gz
