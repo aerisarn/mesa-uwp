@@ -613,7 +613,7 @@ bool VertexExportForGS::do_store_output(const store_loc &store_info, nir_intrins
    for (int i = 0; i < 4; ++i)
       src_swz[i] = i < instr.num_components ? i : 7;
 
-   auto value = m_parent->value_factory().temp_vec4(pin_group, src_swz);
+   auto value = m_parent->value_factory().temp_vec4(pin_chgr, src_swz);
 
    AluInstr *ir = nullptr;
    for (unsigned int i = 0; i < instr.num_components ; ++i) {

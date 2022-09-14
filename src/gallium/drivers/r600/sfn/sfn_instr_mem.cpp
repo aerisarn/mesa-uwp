@@ -603,7 +603,7 @@ bool RatInstr::emit_ssbo_atomic_op(nir_intrinsic_instr *intr, Shader& shader)
    auto coord_orig =  vf.src(intr->src[1], 0);
    auto coord = vf.temp_register(0);
 
-   auto data_vec4 = vf.temp_vec4(pin_group, {0,1,2,3});
+   auto data_vec4 = vf.temp_vec4(pin_chgr, {0,1,2,3});
 
    shader.emit_instruction(new AluInstr(op2_lshr_int, coord, coord_orig, vf.literal(2), AluInstr::last_write));
 
@@ -619,7 +619,7 @@ bool RatInstr::emit_ssbo_atomic_op(nir_intrinsic_instr *intr, Shader& shader)
    }
 
 
-   RegisterVec4 out_vec(coord, coord, coord, coord, pin_group);
+   RegisterVec4 out_vec(coord, coord, coord, coord, pin_chgr);
 
    auto atomic = new RatInstr(cf_mem_rat, opcode, data_vec4, out_vec, imageid + shader.ssbo_image_offset(),
                               image_offset, 1, 0xf, 0);
@@ -677,10 +677,10 @@ bool RatInstr::emit_image_store(nir_intrinsic_instr *intrin, Shader& shader)
 
 
    auto coord_load = vf.src_vec4(intrin->src[1], pin_chan);
-   auto coord =  vf.temp_vec4(pin_group);
+   auto coord =  vf.temp_vec4(pin_chgr);
 
    auto value_load = vf.src_vec4(intrin->src[3], pin_chan);
-   auto value =  vf.temp_vec4(pin_group);
+   auto value =  vf.temp_vec4(pin_chgr);
 
    RegisterVec4::Swizzle swizzle = {0,1,2,3};
    if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_1D &&
@@ -718,9 +718,9 @@ bool RatInstr::emit_image_load_or_atomic(nir_intrinsic_instr *intrin, Shader& sh
                                get_rat_opcode_wo(intrin->intrinsic, PIPE_FORMAT_R32_UINT);
 
    auto coord_orig =  vf.src_vec4(intrin->src[1], pin_chan);
-   auto coord = vf.temp_vec4(pin_group);
+   auto coord = vf.temp_vec4(pin_chgr);
 
-   auto data_vec4 = vf.temp_vec4(pin_group, {0,1,2,3});
+   auto data_vec4 = vf.temp_vec4(pin_chgr, {0,1,2,3});
 
    RegisterVec4::Swizzle swizzle = {0,1,2,3};
    if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_1D &&

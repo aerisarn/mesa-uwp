@@ -261,12 +261,12 @@ bool GeometryShader::store_output(nir_intrinsic_instr* instr)
       src_swz[i] = (1 << i) & (write_mask << shift) ? i  - shift: 7;
    }
 
-   auto out_value = value_factory().src_vec4(instr->src[0], pin_group, src_swz);
+   auto out_value = value_factory().src_vec4(instr->src[0], pin_free, src_swz);
 
    AluInstr *ir = nullptr;
    if (m_streamout_data[location]) {
       const auto& value = m_streamout_data[location]->value();
-      auto tmp = value_factory().temp_vec4(pin_group);
+      auto tmp = value_factory().temp_vec4(pin_chgr);
       for (unsigned i = 0; i < 4 - shift; ++i) {
          if (!(write_mask & (1 << i)))
             continue;
@@ -296,7 +296,7 @@ bool GeometryShader::store_output(nir_intrinsic_instr* instr)
       }
 
       if (need_copy) {
-         auto tmp = value_factory().temp_vec4(pin_group);
+         auto tmp = value_factory().temp_vec4(pin_chgr);
          for (unsigned i = 0; i < 4 - shift; ++i) {
             if (out_value[i]->chan() < 4) {
                ir = new AluInstr(op1_mov, tmp[i], out_value[i], AluInstr::write);
@@ -308,6 +308,8 @@ bool GeometryShader::store_output(nir_intrinsic_instr* instr)
                                                           4 * driver_location,
                                                           instr->num_components, m_export_base[0]);
       } else {
+         for (auto i = 0; i < 4; ++i)
+            out_value[i]->set_pin(pin_chgr);
          m_streamout_data[location] = new MemRingOutInstr(cf_mem_ring, MemRingOutInstr::mem_write_ind, out_value,
                                                           4 * driver_location,
                                                           instr->num_components, m_export_base[0]);
