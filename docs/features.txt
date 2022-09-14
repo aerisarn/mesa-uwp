@@ -535,7 +535,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_win32_surface                                  DONE (dzn, lvp)
   VK_KHR_xcb_surface                                    DONE (anv, dzn, lvp, radv, tu, v3dv, vn)
   VK_KHR_xlib_surface                                   DONE (anv, dzn, lvp, radv, tu, v3dv, vn)
-  VK_EXT_attachment_feedback_loop_layout                DONE (radv, tu, v3dv)
+  VK_EXT_attachment_feedback_loop_layout                DONE (lvp, radv, tu, v3dv)
   VK_EXT_border_color_swizzle                           DONE (anv, lvp, tu, radv/gfx10+, v3dv)
   VK_EXT_buffer_device_address                          DONE (anv/gen8+, radv)
   VK_EXT_calibrated_timestamps                          DONE (anv, lvp, radv, vn)
@@ -574,7 +574,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_primitives_generated_query                     DONE (anv, lvp, radv, tu)
   VK_EXT_provoking_vertex                               DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_EXT_queue_family_foreign                           DONE (anv, radv, tu, vn)
-  VK_EXT_rasterization_order_attachment_access          DONE (tu)
+  VK_EXT_rasterization_order_attachment_access          DONE (lvp, tu)
   VK_EXT_robustness2                                    DONE (anv, lvp, radv, tu, vn)
   VK_EXT_sample_locations                               DONE (anv, radv/gfx9-, tu/a650)
   VK_EXT_shader_atomic_float                            DONE (anv, radv)
@@ -614,7 +614,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_AMD_shader_image_load_store_lod                    DONE (radv)
   VK_AMD_shader_trinary_minmax                          DONE (radv)
   VK_AMD_texture_gather_bias_lod                        DONE (radv)
-  VK_ARM_rasterization_order_attachment_access          DONE (tu)
+  VK_ARM_rasterization_order_attachment_access          DONE (lvp, tu)
 
 
 OpenCL 1.0 -- all DONE:
