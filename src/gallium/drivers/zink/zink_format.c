@@ -1,5 +1,6 @@
 #include "util/format/u_format.h"
 #include "zink_format.h"
+#include "util/u_math.h"
 
 static const VkFormat formats[PIPE_FORMAT_COUNT] = {
 #define MAP_FORMAT_NORM(FMT) \
@@ -329,4 +330,43 @@ zink_format_is_voidable_rgba_variant(enum pipe_format format)
    }
 
    return true;
+}
+
+
+void
+zink_format_clamp_channel_color(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i)
+{
+   int non_void = util_format_get_first_non_void_channel(desc->format);
+   switch (desc->channel[i].type) {
+   case UTIL_FORMAT_TYPE_VOID:
+      if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_FLOAT) {
+         dst->f[i] = uif(UINT32_MAX);
+      } else {
+         if (desc->channel[non_void].normalized)
+            dst->f[i] = 1.0;
+         else if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_SIGNED)
+            dst->i[i] = INT32_MAX;
+         else
+            dst->ui[i] = UINT32_MAX;
+      }
+      break;
+   case UTIL_FORMAT_TYPE_SIGNED:
+      if (desc->channel[i].normalized)
+         dst->i[i] = src->i[i];
+      else {
+         dst->i[i] = MAX2(src->i[i], -(1<<(desc->channel[i].size - 1)));
+         dst->i[i] = MIN2(dst->i[i], (1 << (desc->channel[i].size - 1)) - 1);
+      }
+      break;
+   case UTIL_FORMAT_TYPE_UNSIGNED:
+      if (desc->channel[i].normalized)
+         dst->ui[i] = src->ui[i];
+      else
+         dst->ui[i] = MIN2(src->ui[i], BITFIELD_MASK(desc->channel[i].size));
+      break;
+   case UTIL_FORMAT_TYPE_FIXED:
+   case UTIL_FORMAT_TYPE_FLOAT:
+      dst->ui[i] = src->ui[i];
+      break;
+   }
 }
