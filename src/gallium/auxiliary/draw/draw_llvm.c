@@ -1365,10 +1365,11 @@ store_clip(struct gallivm_state *gallivm,
       io_ptrs[i] = LLVMBuildGEP2(builder, io_type, io_ptr, &inds[i], 1, "");
    }
 
-   soa[0] = LLVMBuildLoad(builder, outputs[idx][0], ""); /*x0 x1 .. xn*/
-   soa[1] = LLVMBuildLoad(builder, outputs[idx][1], ""); /*y0 y1 .. yn*/
-   soa[2] = LLVMBuildLoad(builder, outputs[idx][2], ""); /*z0 z1 .. zn*/
-   soa[3] = LLVMBuildLoad(builder, outputs[idx][3], ""); /*w0 w1 .. wn*/
+   LLVMTypeRef single_type = lp_build_vec_type(gallivm, vs_type);
+   soa[0] = LLVMBuildLoad2(builder, single_type, outputs[idx][0], ""); /*x0 x1 .. xn*/
+   soa[1] = LLVMBuildLoad2(builder, single_type, outputs[idx][1], ""); /*y0 y1 .. yn*/
+   soa[2] = LLVMBuildLoad2(builder, single_type, outputs[idx][2], ""); /*z0 z1 .. zn*/
+   soa[3] = LLVMBuildLoad2(builder, single_type, outputs[idx][3], ""); /*w0 w1 .. wn*/
 
    for (i = 0; i < vs_type.length; i++) {
       clip_ptrs[i] = draw_jit_header_clip_pos(gallivm, io_type, io_ptrs[i]);
