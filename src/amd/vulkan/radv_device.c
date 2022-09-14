@@ -5364,35 +5364,8 @@ radv_EnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pPro
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 radv_GetInstanceProcAddr(VkInstance _instance, const char *pName)
 {
-   RADV_FROM_HANDLE(radv_instance, instance, _instance);
-
-   /* The Vulkan 1.0 spec for vkGetInstanceProcAddr has a table of exactly
-    * when we have to return valid function pointers, NULL, or it's left
-    * undefined.  See the table for exact details.
-    */
-   if (pName == NULL)
-      return NULL;
-
-#define LOOKUP_RADV_ENTRYPOINT(entrypoint)                                                         \
-   if (strcmp(pName, "vk" #entrypoint) == 0)                                                       \
-   return (PFN_vkVoidFunction)radv_##entrypoint
-
-   LOOKUP_RADV_ENTRYPOINT(EnumerateInstanceExtensionProperties);
-   LOOKUP_RADV_ENTRYPOINT(EnumerateInstanceLayerProperties);
-   LOOKUP_RADV_ENTRYPOINT(EnumerateInstanceVersion);
-   LOOKUP_RADV_ENTRYPOINT(CreateInstance);
-
-   /* GetInstanceProcAddr() can also be called with a NULL instance.
-    * See https://gitlab.khronos.org/vulkan/vulkan/issues/2057
-    */
-   LOOKUP_RADV_ENTRYPOINT(GetInstanceProcAddr);
-
-#undef LOOKUP_RADV_ENTRYPOINT
-
-   if (instance == NULL)
-      return NULL;
-
-   return vk_instance_get_proc_addr(&instance->vk, &radv_instance_entrypoints, pName);
+   RADV_FROM_HANDLE(vk_instance, instance, _instance);
+   return vk_instance_get_proc_addr(instance, &radv_instance_entrypoints, pName);
 }
 
 /* Windows will use a dll definition file to avoid build errors. */
