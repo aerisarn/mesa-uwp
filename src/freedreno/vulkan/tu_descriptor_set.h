@@ -114,7 +114,13 @@ struct tu_descriptor_set
    uint32_t size;
 
    uint64_t va;
+   /* Pointer to the GPU memory for the set for non-push descriptors, or pointer
+    * to a host memory copy for push descriptors.
+    */
    uint32_t *mapped_ptr;
+
+   /* Size of the host memory allocation for push descriptors */
+   uint32_t host_size;
 
    uint32_t *dynamic_descriptors;
 };

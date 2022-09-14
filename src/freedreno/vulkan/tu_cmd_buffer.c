@@ -1645,6 +1645,8 @@ tu_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
       if (cmd_buffer->descriptors[i].push_set.layout)
          vk_descriptor_set_layout_unref(&cmd_buffer->device->vk,
                                         &cmd_buffer->descriptors[i].push_set.layout->vk);
+      vk_free(&cmd_buffer->device->vk.alloc,
+              cmd_buffer->descriptors[i].push_set.mapped_ptr);
    }
 
    vk_command_buffer_finish(&cmd_buffer->vk);
@@ -2156,6 +2158,31 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
 }
 
+static enum VkResult
+tu_push_descriptor_set_update_layout(struct tu_device *device,
+                                     struct tu_descriptor_set *set,
+                                     struct tu_descriptor_set_layout *layout)
+{
+   if (set->layout == layout)
+      return VK_SUCCESS;
+
+   if (set->layout)
+      vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
+   vk_descriptor_set_layout_ref(&layout->vk);
+   set->layout = layout;
+
+   if (set->host_size < layout->size) {
+      void *new_buf =
+         vk_realloc(&device->vk.alloc, set->mapped_ptr, layout->size, 8,
+                    VK_QUERY_SCOPE_COMMAND_BUFFER_KHR);
+      if (!new_buf)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      set->mapped_ptr = new_buf;
+      set->host_size = layout->size;
+   }
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
                            VkPipelineBindPoint pipelineBindPoint,
@@ -2179,22 +2206,17 @@ tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
       return;
    }
 
-   /* preserve previous content if the layout is the same: */
-   if (set->layout == layout)
-      memcpy(set_mem.map, set->mapped_ptr, layout->size);
-
-   if (set->layout != layout) {
-      if (set->layout)
-         vk_descriptor_set_layout_unref(&cmd->device->vk, &set->layout->vk);
-      vk_descriptor_set_layout_ref(&layout->vk);
-      set->layout = layout;
+   result = tu_push_descriptor_set_update_layout(cmd->device, set, layout);
+   if (result != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
    }
-
-   set->mapped_ptr = set_mem.map;
-   set->va = set_mem.iova;
 
    tu_update_descriptor_sets(cmd->device, tu_descriptor_set_to_handle(set),
                              descriptorWriteCount, pDescriptorWrites, 0, NULL);
+
+   memcpy(set_mem.map, set->mapped_ptr, layout->size);
+   set->va = set_mem.iova;
 
    tu_CmdBindDescriptorSets(commandBuffer, pipelineBindPoint, _layout, _set,
                             1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
@@ -2224,21 +2246,16 @@ tu_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
       return;
    }
 
-   /* preserve previous content if the layout is the same: */
-   if (set->layout == layout)
-      memcpy(set_mem.map, set->mapped_ptr, layout->size);
-
-   if (set->layout != layout) {
-      if (set->layout)
-         vk_descriptor_set_layout_unref(&cmd->device->vk, &set->layout->vk);
-      vk_descriptor_set_layout_ref(&layout->vk);
-      set->layout = layout;
+   result = tu_push_descriptor_set_update_layout(cmd->device, set, layout);
+   if (result != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
    }
 
-   set->mapped_ptr = set_mem.map;
-   set->va = set_mem.iova;
-
    tu_update_descriptor_set_with_template(cmd->device, set, descriptorUpdateTemplate, pData);
+
+   memcpy(set_mem.map, set->mapped_ptr, layout->size);
+   set->va = set_mem.iova;
 
    tu_CmdBindDescriptorSets(commandBuffer, templ->bind_point, _layout, _set,
                             1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
