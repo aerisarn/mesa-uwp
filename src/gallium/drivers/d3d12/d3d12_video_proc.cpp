@@ -107,6 +107,8 @@ d3d12_video_processor_end_frame(struct pipe_video_codec * codec,
             InputFormats.push_back(GetDesc(curInput.InputStream[0].pTexture2D).Format);
         }
 
+        // Release previous allocation
+        pD3D12Proc->m_spVideoProcessor.Reset();
         if(!d3d12_video_processor_check_caps_and_create_processor(pD3D12Proc, InputFormats, InputColorSpace, OutputFormat, OutputColorSpace))
         {
             debug_printf("[d3d12_video_processor] d3d12_video_processor_end_frame - Failure when "
