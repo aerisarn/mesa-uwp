@@ -1133,13 +1133,14 @@ store_aos(struct gallivm_state *gallivm,
    LLVMTypeRef data_ptr_type = LLVMPointerType(lp_build_vec_type(gallivm, lp_float32_vec4_type()), 0);
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef data_ptr = draw_jit_header_data(gallivm, io_type, io_ptr);
+   LLVMTypeRef data_type = LLVMStructGetTypeAtIndex(io_type, DRAW_JIT_VERTEX_DATA);
    LLVMValueRef indices[3];
 
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = index;
    indices[2] = lp_build_const_int32(gallivm, 0);
 
-   data_ptr = LLVMBuildGEP(builder, data_ptr, indices, 3, "");
+   data_ptr = LLVMBuildGEP2(builder, data_type, data_ptr, indices, 3, "");
    data_ptr = LLVMBuildPointerCast(builder, data_ptr, data_ptr_type, "");
 
 #if DEBUG_STORE
@@ -1295,7 +1296,8 @@ convert_to_aos(struct gallivm_state *gallivm,
       LLVMValueRef aos[LP_MAX_VECTOR_WIDTH / 32];
       for (chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
          if (outputs[attrib][chan]) {
-            LLVMValueRef out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
+            LLVMTypeRef single_type = lp_build_vec_type(gallivm, soa_type);
+            LLVMValueRef out = LLVMBuildLoad2(builder, single_type, outputs[attrib][chan], "");
             lp_build_name(out, "output%u.%c", attrib, "xyzw"[chan]);
 #if DEBUG_STORE
             lp_build_printf(gallivm, "output %d : %d ",
