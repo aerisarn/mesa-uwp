@@ -21,14 +21,14 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef D3D12_VIDEO_ENCODE_FIFO_REFERENCES_MANAGER_H264_H
-#define D3D12_VIDEO_ENCODE_FIFO_REFERENCES_MANAGER_H264_H
+#ifndef D3D12_VIDEO_ENCODE_FIFO_REFERENCES_MANAGER_HEVC_H
+#define D3D12_VIDEO_ENCODE_FIFO_REFERENCES_MANAGER_HEVC_H
 
 #include "d3d12_video_types.h"
 #include "d3d12_video_encoder_references_manager.h"
 #include "d3d12_video_dpb_storage_manager.h"
 
-class d3d12_video_encoder_references_manager_h264 : public d3d12_video_encoder_references_manager_interface
+class d3d12_video_encoder_references_manager_hevc : public d3d12_video_encoder_references_manager_interface
 {
  public:
    void                                      end_frame();
@@ -38,11 +38,11 @@ class d3d12_video_encoder_references_manager_h264 : public d3d12_video_encoder_r
    bool is_current_frame_used_as_reference();
    D3D12_VIDEO_ENCODE_REFERENCE_FRAMES get_current_reference_frames();
 
-   d3d12_video_encoder_references_manager_h264(bool                                       gopHasInterCodedFrames,
+   d3d12_video_encoder_references_manager_hevc(bool                                       gopHasInterCodedFrames,
                                                d3d12_video_dpb_storage_manager_interface &rDpbStorageManager,
                                                uint32_t                                   MaxDPBCapacity);
 
-   ~d3d12_video_encoder_references_manager_h264()
+   ~d3d12_video_encoder_references_manager_hevc()
    { }
 
  private:
@@ -57,9 +57,18 @@ class d3d12_video_encoder_references_manager_h264 : public d3d12_video_encoder_r
 
    uint32_t m_MaxDPBCapacity      = 0;
 
+  struct D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX {
+    D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC base;
+    /* the upper layer uses pipe_h265_enc_picture_desc.frame_num to identify frames
+    in the L0 and L1 reference lists. This frame_num is different than POC
+    so let's save it in this variable to be able to reverse-map the L0/L1 lists from
+    these indices into POCs */
+    unsigned int reference_lists_frame_idx;
+  };
+
    struct current_frame_references_data
    {
-      std::vector<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264> pReferenceFramesReconPictureDescriptors;
+      std::vector<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX> pReferenceFramesReconPictureDescriptors;
       D3D12_VIDEO_ENCODER_RECONSTRUCTED_PICTURE                          ReconstructedPicTexture;
    };
 
@@ -70,7 +79,9 @@ class d3d12_video_encoder_references_manager_h264 : public d3d12_video_encoder_r
    bool m_gopHasInterFrames = false;
 
    bool m_isCurrentFrameUsedAsReference = false;
-   D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264 m_curFrameState = {};
+   D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC m_curFrameState = {};
+   std::vector<D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC> m_curFrameStateDescriptorStorage;
+   unsigned int m_current_frame_idx;
 };
 
 #endif

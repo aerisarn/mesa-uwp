@@ -21,14 +21,14 @@
  * IN THE SOFTWARE.
  */
 
-#include "d3d12_video_encoder_references_manager_h264.h"
+#include "d3d12_video_encoder_references_manager_hevc.h"
 #include <algorithm>
 #include <string>
 #include "d3d12_screen.h"
 
 using namespace std;
 
-d3d12_video_encoder_references_manager_h264::d3d12_video_encoder_references_manager_h264(
+d3d12_video_encoder_references_manager_hevc::d3d12_video_encoder_references_manager_hevc(
    bool gopHasIorPFrames, d3d12_video_dpb_storage_manager_interface &rDpbStorageManager, uint32_t MaxDPBCapacity)
    : m_MaxDPBCapacity(MaxDPBCapacity),
      m_rDPBStorageManager(rDpbStorageManager),
@@ -38,17 +38,18 @@ d3d12_video_encoder_references_manager_h264::d3d12_video_encoder_references_mana
    assert((m_MaxDPBCapacity + 1 /*extra for cur frame output recon pic*/) ==
           m_rDPBStorageManager.get_number_of_tracked_allocations());
 
-   debug_printf("[D3D12 Video Encoder Picture Manager H264] Completed construction of "
-                 "d3d12_video_encoder_references_manager_h264 instance, settings are\n");
-   debug_printf("[D3D12 Video Encoder Picture Manager H264] m_MaxDPBCapacity: %d\n", m_MaxDPBCapacity);
+   debug_printf("[D3D12 Video Encoder Picture Manager HEVC] Completed construction of "
+                 "d3d12_video_encoder_references_manager_hevc instance, settings are\n");
+   debug_printf("[D3D12 Video Encoder Picture Manager HEVC] m_MaxDPBCapacity: %d\n", m_MaxDPBCapacity);
 }
 
 void
-d3d12_video_encoder_references_manager_h264::reset_gop_tracking_and_dpb()
+d3d12_video_encoder_references_manager_hevc::reset_gop_tracking_and_dpb()
 {
    // Reset m_CurrentFrameReferencesData tracking
    m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.clear();
    m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.reserve(m_MaxDPBCapacity);
+   m_curFrameStateDescriptorStorage.reserve(m_MaxDPBCapacity);
    m_CurrentFrameReferencesData.ReconstructedPicTexture = { nullptr, 0 };
 
    // Reset DPB storage
@@ -70,13 +71,13 @@ d3d12_video_encoder_references_manager_h264::reset_gop_tracking_and_dpb()
 
 // Calculates the picture control structure for the current frame
 void
-d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_data(
+d3d12_video_encoder_references_manager_hevc::get_current_frame_picture_control_data(
    D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA &codecAllocation)
 {
    // Update reference picture control structures (L0/L1 and DPB descriptors lists based on current frame and next frame
    // in GOP) for next frame
 
-   debug_printf("[D3D12 Video Encoder Picture Manager H264] %d resources IN USE out of a total of %d ALLOCATED "
+   debug_printf("[D3D12 Video Encoder Picture Manager HEVC] %d resources IN USE out of a total of %d ALLOCATED "
                  "resources at frame with POC: %d\n",
                  m_rDPBStorageManager.get_number_of_in_use_allocations(),
                  m_rDPBStorageManager.get_number_of_tracked_allocations(),
@@ -85,11 +86,14 @@ d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_d
    // See casts below
    assert(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size() < UINT32_MAX);
 
-   bool needsL0List = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_P_FRAME) ||
-                      (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME);
-   bool needsL1List = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME);
-
-   assert(codecAllocation.DataSize == sizeof(D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_H264));
+   bool needsL0List = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_P_FRAME) ||
+                      (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME);
+   bool needsL1List = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME);
+   
+   // (in HEVC I pics might contain following pics, ref not used in curr)    
+   bool needsRefPicDescriptors = (m_curFrameState.FrameType != D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME);
+   
+   assert(codecAllocation.DataSize == sizeof(D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA_HEVC));
 
    // See D3D12 Encode spec below
    // pList0ReferenceFrames
@@ -100,7 +104,15 @@ d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_d
    //    pReferenceFramesReconPictureDescriptors to reference pictures kept in the DPB.
 
    // Need to map from frame_num in the receiving ref_idx_l0_list/ref_idx_l1_list to the position with that
-   // FrameDecodingOrderNumber in the DPB descriptor
+   // reference_lists_frame_idx in the DPB descriptor
+
+   // L0 and L1 need to be ordered by POC (ie. different RefPicSets). The upper layers building the lists should but might not be following this
+
+   // Set all in the DPB as unused for the current frame, then below just mark as used the ones references by L0 and L1
+   for(UINT idx = 0 ; idx < m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size() ; idx++)
+   {
+      m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[idx].base.IsRefUsedByCurrentPic = false;
+   }
 
    if (needsL0List && (m_curFrameState.List0ReferenceFramesCount > 0)) {
       std::vector<uint32_t> tmpL0(m_curFrameState.List0ReferenceFramesCount, 0);
@@ -109,21 +121,22 @@ d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_d
              m_curFrameState.List0ReferenceFramesCount * sizeof(m_curFrameState.pList0ReferenceFrames[0]));
 
       for (size_t l0Idx = 0; l0Idx < m_curFrameState.List0ReferenceFramesCount; l0Idx++) {
-         // tmpL0[l0Idx] has frame_num's (FrameDecodingOrderNumber)
+         // tmpL0[l0Idx] has frame_num's (reference_lists_frame_idx)
          // m_curFrameState.pList0ReferenceFrames[l0Idx] needs to have the index j of
          // pReferenceFramesReconPictureDescriptors where
-         // pReferenceFramesReconPictureDescriptors[j].FrameDecodingOrderNumber == tmpL0[l0Idx]
+         // pReferenceFramesReconPictureDescriptors[j].reference_lists_frame_idx == tmpL0[l0Idx]
 
          auto value = tmpL0[l0Idx];
          auto foundItemIt = std::find_if(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.begin(),
                                          m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.end(),
-                                         [&value](const D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264 &p) {
-                                            return p.FrameDecodingOrderNumber == value;
+                                         [&value](const D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX &p) {
+                                            return p.reference_lists_frame_idx == value;
                                          });
 
          assert(foundItemIt != m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.end());
          m_curFrameState.pList0ReferenceFrames[l0Idx] =
             std::distance(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.begin(), foundItemIt);
+         m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[m_curFrameState.pList0ReferenceFrames[l0Idx]].base.IsRefUsedByCurrentPic = true;
       }
    }
 
@@ -134,35 +147,43 @@ d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_d
              m_curFrameState.List1ReferenceFramesCount * sizeof(m_curFrameState.pList1ReferenceFrames[0]));
 
       for (size_t l1Idx = 0; l1Idx < m_curFrameState.List1ReferenceFramesCount; l1Idx++) {
-         // tmpL1[l1Idx] has frame_num's (FrameDecodingOrderNumber)
+         // tmpL1[l1Idx] has frame_num's (reference_lists_frame_idx)
          // m_curFrameState.pList1ReferenceFrames[l1Idx] needs to have the index j of
          // pReferenceFramesReconPictureDescriptors where
-         // pReferenceFramesReconPictureDescriptors[j].FrameDecodingOrderNumber == tmpL1[l1Idx]
+         // pReferenceFramesReconPictureDescriptors[j].reference_lists_frame_idx == tmpL1[l1Idx]
 
          auto value = tmpL1[l1Idx];
          auto foundItemIt = std::find_if(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.begin(),
                                          m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.end(),
-                                         [&value](const D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264 &p) {
-                                            return p.FrameDecodingOrderNumber == value;
+                                         [&value](const D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX &p) {
+                                            return p.reference_lists_frame_idx == value;
                                          });
 
          assert(foundItemIt != m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.end());
          m_curFrameState.pList1ReferenceFrames[l1Idx] =
             std::distance(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.begin(), foundItemIt);
+         m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[m_curFrameState.pList1ReferenceFrames[l1Idx]].base.IsRefUsedByCurrentPic = true;
       }
    }
 
    m_curFrameState.List0ReferenceFramesCount = needsL0List ? m_curFrameState.List0ReferenceFramesCount : 0;
    m_curFrameState.pList0ReferenceFrames = needsL0List ? m_curFrameState.pList0ReferenceFrames : nullptr,
    m_curFrameState.List1ReferenceFramesCount = needsL1List ? m_curFrameState.List1ReferenceFramesCount : 0,
-   m_curFrameState.pList1ReferenceFrames = needsL1List ? m_curFrameState.pList1ReferenceFrames : nullptr,
-   m_curFrameState.ReferenceFramesReconPictureDescriptorsCount =
-      needsL0List ? static_cast<uint32_t>(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size()) :
-                    0,
-   m_curFrameState.pReferenceFramesReconPictureDescriptors =
-      needsL0List ? m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.data() : nullptr,
+   m_curFrameState.pList1ReferenceFrames = needsL1List ? m_curFrameState.pList1ReferenceFrames : nullptr;
+   
+   if (!needsRefPicDescriptors) {
+      m_curFrameState.ReferenceFramesReconPictureDescriptorsCount = 0;
+      m_curFrameState.pReferenceFramesReconPictureDescriptors = nullptr;
+   } else {
+      m_curFrameState.ReferenceFramesReconPictureDescriptorsCount = static_cast<uint32_t>(m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size());
+      m_curFrameStateDescriptorStorage.resize(m_curFrameState.ReferenceFramesReconPictureDescriptorsCount);
+      for(uint32_t idx = 0; idx < m_curFrameState.ReferenceFramesReconPictureDescriptorsCount ; idx++) {
+         m_curFrameStateDescriptorStorage[idx] = m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[idx].base;
+      }
+      m_curFrameState.pReferenceFramesReconPictureDescriptors = m_curFrameStateDescriptorStorage.data();
+   }
 
-   *codecAllocation.pH264PicData = m_curFrameState;
+   *codecAllocation.pHEVCPicData = m_curFrameState;
 
    print_l0_l1_lists();
    print_dpb();
@@ -170,13 +191,13 @@ d3d12_video_encoder_references_manager_h264::get_current_frame_picture_control_d
 
 // Returns the resource allocation for a reconstructed picture output for the current frame
 D3D12_VIDEO_ENCODER_RECONSTRUCTED_PICTURE
-d3d12_video_encoder_references_manager_h264::get_current_frame_recon_pic_output_allocation()
+d3d12_video_encoder_references_manager_hevc::get_current_frame_recon_pic_output_allocation()
 {
    return m_CurrentFrameReferencesData.ReconstructedPicTexture;
 }
 
 D3D12_VIDEO_ENCODE_REFERENCE_FRAMES
-d3d12_video_encoder_references_manager_h264::get_current_reference_frames()
+d3d12_video_encoder_references_manager_hevc::get_current_reference_frames()
 {
    D3D12_VIDEO_ENCODE_REFERENCE_FRAMES retVal = { 0,
                                                   // ppTexture2Ds
@@ -187,8 +208,7 @@ d3d12_video_encoder_references_manager_h264::get_current_reference_frames()
    // Return nullptr for fully intra frames (eg IDR)
    // and return references information for inter frames (eg.P/B) and I frame that doesn't flush DPB
 
-   if ((m_curFrameState.FrameType != D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME) &&
-       (m_curFrameState.FrameType != D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_I_FRAME) && m_gopHasInterFrames) {
+   if ((m_curFrameState.FrameType != D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME) && m_gopHasInterFrames) {
       auto curRef = m_rDPBStorageManager.get_current_reference_frames();
       retVal.NumTexture2Ds = curRef.NumTexture2Ds;
       retVal.ppTexture2Ds = curRef.ppTexture2Ds;
@@ -199,7 +219,7 @@ d3d12_video_encoder_references_manager_h264::get_current_reference_frames()
 }
 
 void
-d3d12_video_encoder_references_manager_h264::prepare_current_frame_recon_pic_allocation()
+d3d12_video_encoder_references_manager_hevc::prepare_current_frame_recon_pic_allocation()
 {
    m_CurrentFrameReferencesData.ReconstructedPicTexture = { nullptr, 0 };
 
@@ -213,7 +233,7 @@ d3d12_video_encoder_references_manager_h264::prepare_current_frame_recon_pic_all
 }
 
 void
-d3d12_video_encoder_references_manager_h264::update_fifo_dpb_push_front_cur_recon_pic()
+d3d12_video_encoder_references_manager_hevc::update_fifo_dpb_push_front_cur_recon_pic()
 {
    // Keep the order of the dpb storage and dpb descriptors in a circular buffer
    // order such that the DPB array consists of a sequence of frames in DECREASING encoding order
@@ -226,11 +246,12 @@ d3d12_video_encoder_references_manager_h264::update_fifo_dpb_push_front_cur_reco
 
    // If GOP are all intra frames, do nothing also.
    if (is_current_frame_used_as_reference() && m_gopHasInterFrames) {
-      debug_printf("[D3D12 Video Encoder Picture Manager H264] MaxDPBCapacity is %d - Number of pics in DPB is %d "
-                    "when trying to put frame with POC %d at front of the DPB\n",
+      debug_printf("[D3D12 Video Encoder Picture Manager HEVC] MaxDPBCapacity is %d - Number of pics in DPB is %d "
+                    "when trying to put frame with POC %d (frame_num %d) at front of the DPB\n",
                     m_MaxDPBCapacity,
                     m_rDPBStorageManager.get_number_of_pics_in_dpb(),
-                    m_curFrameState.PictureOrderCountNumber);
+                    m_curFrameState.PictureOrderCountNumber,
+                    m_current_frame_idx);
 
       // Release least recently used in DPB if we filled the m_MaxDPBCapacity allowed
       if (m_rDPBStorageManager.get_number_of_pics_in_dpb() == m_MaxDPBCapacity) {
@@ -247,24 +268,28 @@ d3d12_video_encoder_references_manager_h264::update_fifo_dpb_push_front_cur_reco
       d3d12_video_reconstructed_picture refFrameDesc = {};
       refFrameDesc.pReconstructedPicture = recAlloc.pReconstructedPicture;
       refFrameDesc.ReconstructedPictureSubresource = recAlloc.ReconstructedPictureSubresource;
-      refFrameDesc.pVideoHeap = nullptr;   // D3D12 Video Encode does not need the D3D12VideoEncoderHeap struct for H264
+      refFrameDesc.pVideoHeap = nullptr;   // D3D12 Video Encode does not need the D3D12VideoEncoderHeap struct for HEVC
                                            // (used for no-key-frame resolution change in VC1, AV1, etc)
       m_rDPBStorageManager.insert_reference_frame(refFrameDesc, 0);
 
-      // Prepare D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264 for added DPB member
-      D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_H264 newDPBDescriptor = {
-         // uint32_t ReconstructedPictureResourceIndex;
-         0,   // the associated reconstructed picture is also being pushed_front in m_rDPBStorageManager
-              // BOOL IsLongTermReference;
-         false,
-         // uint32_t LongTermPictureIdx;
-         0,
-         // uint32_t PictureOrderCountNumber;
-         m_curFrameState.PictureOrderCountNumber,
-         // uint32_t FrameDecodingOrderNumber;
-         m_curFrameState.FrameDecodingOrderNumber,
-         // uint32_t TemporalLayerIndex;
-         0   // NO B-hierarchy in this impl of the picture manager
+      // Prepare D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX for added DPB member
+      D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC_EX newDPBDescriptor = 
+      {
+         // D3D12_VIDEO_ENCODER_REFERENCE_PICTURE_DESCRIPTOR_HEVC
+         {
+            // UINT ReconstructedPictureResourceIndex;
+            0, // the associated reconstructed picture is also being pushed_front in m_rDPBStorageManager
+            // BOOL IsRefUsedByCurrentPic; 
+            false, // usage is determined in method AdvanceFrame according to picture type to be encoded
+            // BOOL IsLongTermReference
+            false, // not implemented - neither FFMPEG or GSTREAMER use LTR for HEVC VAAPI
+            // UINT PictureOrderCountNumber;
+            m_curFrameState.PictureOrderCountNumber,
+            // UINT TemporalLayerIndex;
+            0
+         },
+         // reference_lists_frame_idx
+         m_current_frame_idx,
       };
 
       // Add DPB entry
@@ -279,7 +304,7 @@ d3d12_video_encoder_references_manager_h264::update_fifo_dpb_push_front_cur_reco
            dpbResIdx < m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size();
            dpbResIdx++) {
          auto &dpbDesc = m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[dpbResIdx];
-         dpbDesc.ReconstructedPictureResourceIndex = dpbResIdx;
+         dpbDesc.base.ReconstructedPictureResourceIndex = dpbResIdx;
       }
    }
 
@@ -289,11 +314,11 @@ d3d12_video_encoder_references_manager_h264::update_fifo_dpb_push_front_cur_reco
 }
 
 void
-d3d12_video_encoder_references_manager_h264::print_l0_l1_lists()
+d3d12_video_encoder_references_manager_hevc::print_l0_l1_lists()
 {
    if ((D3D12_DEBUG_VERBOSE & d3d12_debug) &&
-       ((m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_P_FRAME) ||
-        (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_B_FRAME))) {
+       ((m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_P_FRAME) ||
+        (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_B_FRAME))) {
       std::string list0ContentsString;
       for (uint32_t idx = 0; idx < m_curFrameState.List0ReferenceFramesCount; idx++) {
          uint32_t value = m_curFrameState.pList0ReferenceFrames[idx];
@@ -301,17 +326,23 @@ d3d12_video_encoder_references_manager_h264::print_l0_l1_lists()
          list0ContentsString += std::to_string(value);
          list0ContentsString += " - POC: ";
          list0ContentsString += std::to_string(
-            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].PictureOrderCountNumber);
-         list0ContentsString += " - FrameDecodingOrderNumber: ";
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.PictureOrderCountNumber);
+         list0ContentsString += " - IsRefUsedByCurrentPic: ";
          list0ContentsString += std::to_string(
-            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].FrameDecodingOrderNumber);
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.IsRefUsedByCurrentPic);
+         list0ContentsString += " - IsLongTermReference: ";
+         list0ContentsString += std::to_string(
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.IsLongTermReference);
+         list0ContentsString += " - reference_lists_frame_idx: ";
+         list0ContentsString += std::to_string(
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].reference_lists_frame_idx);
          list0ContentsString += "}\n";
       }
 
       debug_printf(
-         "[D3D12 Video Encoder Picture Manager H264] L0 list for frame with POC %d - frame_num (%d) is: \n %s \n",
+         "[D3D12 Video Encoder Picture Manager HEVC] L0 list for frame with POC %d (frame_num %d) is: \n %s \n",
          m_curFrameState.PictureOrderCountNumber,
-         m_curFrameState.FrameDecodingOrderNumber,
+         m_current_frame_idx,
          list0ContentsString.c_str());
 
       std::string list1ContentsString;
@@ -321,23 +352,29 @@ d3d12_video_encoder_references_manager_h264::print_l0_l1_lists()
          list1ContentsString += std::to_string(value);
          list1ContentsString += " - POC: ";
          list1ContentsString += std::to_string(
-            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].PictureOrderCountNumber);
-         list1ContentsString += " - FrameDecodingOrderNumber: ";
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.PictureOrderCountNumber);
+         list1ContentsString += " - IsRefUsedByCurrentPic: ";
          list1ContentsString += std::to_string(
-            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].FrameDecodingOrderNumber);
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.IsRefUsedByCurrentPic);
+         list1ContentsString += " - IsLongTermReference: ";
+         list1ContentsString += std::to_string(
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].base.IsLongTermReference);
+         list1ContentsString += " - reference_lists_frame_idx: ";
+         list1ContentsString += std::to_string(
+            m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[value].reference_lists_frame_idx);
          list1ContentsString += "}\n";
       }
 
       debug_printf(
-         "[D3D12 Video Encoder Picture Manager H264] L1 list for frame with POC %d - frame_num (%d) is: \n %s \n",
+         "[D3D12 Video Encoder Picture Manager HEVC] L1 list for frame with POC %d (frame_num %d) is: \n %s \n",
          m_curFrameState.PictureOrderCountNumber,
-         m_curFrameState.FrameDecodingOrderNumber,
+         m_current_frame_idx,
          list1ContentsString.c_str());
    }
 }
 
 void
-d3d12_video_encoder_references_manager_h264::print_dpb()
+d3d12_video_encoder_references_manager_hevc::print_dpb()
 {
    if (D3D12_DEBUG_VERBOSE & d3d12_debug) {
       std::string dpbContents;
@@ -345,16 +382,18 @@ d3d12_video_encoder_references_manager_h264::print_dpb()
            dpbResIdx < m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors.size();
            dpbResIdx++) {
          auto &dpbDesc = m_CurrentFrameReferencesData.pReferenceFramesReconPictureDescriptors[dpbResIdx];
-         auto dpbEntry = m_rDPBStorageManager.get_reference_frame(dpbDesc.ReconstructedPictureResourceIndex);
+         auto dpbEntry = m_rDPBStorageManager.get_reference_frame(dpbDesc.base.ReconstructedPictureResourceIndex);
 
          dpbContents += "{ DPBidx: ";
          dpbContents += std::to_string(dpbResIdx);
          dpbContents += " - POC: ";
-         dpbContents += std::to_string(dpbDesc.PictureOrderCountNumber);
-         dpbContents += " - FrameDecodingOrderNumber: ";
-         dpbContents += std::to_string(dpbDesc.FrameDecodingOrderNumber);
+         dpbContents += std::to_string(dpbDesc.base.PictureOrderCountNumber);
+         dpbContents += " - IsRefUsedByCurrentPic: ";
+         dpbContents += std::to_string(dpbDesc.base.IsRefUsedByCurrentPic);
          dpbContents += " - DPBStorageIdx: ";
-         dpbContents += std::to_string(dpbDesc.ReconstructedPictureResourceIndex);
+         dpbContents += std::to_string(dpbDesc.base.ReconstructedPictureResourceIndex);
+         dpbContents += " - reference_lists_frame_idx: ";
+         dpbContents += std::to_string(dpbDesc.reference_lists_frame_idx);
          dpbContents += " - DPBStorageResourcePtr: ";
          char strBuf[256];
          memset(&strBuf, '\0', 256);
@@ -365,20 +404,19 @@ d3d12_video_encoder_references_manager_h264::print_dpb()
          dpbContents += "}\n";
       }
 
-      debug_printf("[D3D12 Video Encoder Picture Manager H264] DPB has %d frames - DPB references for frame with POC "
-                    "%d (frame_num: %d) are: \n %s \n",
+      debug_printf("[D3D12 Video Encoder Picture Manager HEVC] DPB has %d frames - DPB references for frame with POC "
+                    "%d are: \n %s \n",
                     m_rDPBStorageManager.get_number_of_pics_in_dpb(),
                     m_curFrameState.PictureOrderCountNumber,
-                    m_curFrameState.FrameDecodingOrderNumber,
                     dpbContents.c_str());
    }
 }
 
 // Advances state to next frame in GOP; subsequent calls to GetCurrentFrame* point to the advanced frame status
 void
-d3d12_video_encoder_references_manager_h264::end_frame()
+d3d12_video_encoder_references_manager_hevc::end_frame()
 {
-   debug_printf("[D3D12 Video Encoder Picture Manager H264] %d resources IN USE out of a total of %d ALLOCATED "
+   debug_printf("[D3D12 Video Encoder Picture Manager HEVC] %d resources IN USE out of a total of %d ALLOCATED "
                  "resources at end_frame for frame with POC: %d\n",
                  m_rDPBStorageManager.get_number_of_in_use_allocations(),
                  m_rDPBStorageManager.get_number_of_tracked_allocations(),
@@ -391,25 +429,27 @@ d3d12_video_encoder_references_manager_h264::end_frame()
 }
 
 bool
-d3d12_video_encoder_references_manager_h264::is_current_frame_used_as_reference()
+d3d12_video_encoder_references_manager_hevc::is_current_frame_used_as_reference()
 {
    return m_isCurrentFrameUsedAsReference;
 }
 
 void
-d3d12_video_encoder_references_manager_h264::begin_frame(D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curFrameData,
+d3d12_video_encoder_references_manager_hevc::begin_frame(D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curFrameData,
                                                          bool bUsedAsReference, struct pipe_picture_desc* picture)
 {
-   m_curFrameState = *curFrameData.pH264PicData;
+   pipe_h265_enc_picture_desc * pPipeDesc = (pipe_h265_enc_picture_desc*) picture;
+
+   m_curFrameState = *curFrameData.pHEVCPicData;
    m_isCurrentFrameUsedAsReference = bUsedAsReference;
-   debug_printf("[Entrypoint: %d] - Marking frame_num %d (POC %d) as reference ? %d\n",
-                 picture->entry_point,
-                 curFrameData.pH264PicData->FrameDecodingOrderNumber,
-                 curFrameData.pH264PicData->PictureOrderCountNumber,
+   m_current_frame_idx = pPipeDesc->frame_num;
+   debug_printf("Marking POC %d (frame_num %d) as reference ? %d\n",
+                 curFrameData.pHEVCPicData->PictureOrderCountNumber,
+                 m_current_frame_idx,
                  bUsedAsReference);
 
    // Advance the GOP tracking state
-   bool isDPBFlushNeeded = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_H264_IDR_FRAME);
+   bool isDPBFlushNeeded = (m_curFrameState.FrameType == D3D12_VIDEO_ENCODER_FRAME_TYPE_HEVC_IDR_FRAME);
    if (isDPBFlushNeeded) {
       reset_gop_tracking_and_dpb();
    } else {

@@ -23,6 +23,7 @@
 
 #include "d3d12_video_dec.h"
 #include "d3d12_video_dec_h264.h"
+#include "vl/vl_zscan.h"
 
 #include <cmath>
 
@@ -594,11 +595,11 @@ d3d12_video_decoder_dxva_qmatrix_from_pipe_picparams_h264(pipe_h264_picture_desc
    unsigned i, j;
    for (i = 0; i < 6; i++) {
       for (j = 0; j < 16; j++) {
-         outMatrixBuffer.bScalingLists4x4[i][j] = pPipeDesc->pps->ScalingList4x4[i][d3d12_video_zigzag_scan[j]];
+         outMatrixBuffer.bScalingLists4x4[i][j] = pPipeDesc->pps->ScalingList4x4[i][vl_zscan_normal_16[j]];
       }
    }
    for (i = 0; i < 64; i++) {
-      outMatrixBuffer.bScalingLists8x8[0][i] = pPipeDesc->pps->ScalingList8x8[0][d3d12_video_zigzag_direct[i]];
-      outMatrixBuffer.bScalingLists8x8[1][i] = pPipeDesc->pps->ScalingList8x8[1][d3d12_video_zigzag_direct[i]];
+      outMatrixBuffer.bScalingLists8x8[0][i] = pPipeDesc->pps->ScalingList8x8[0][vl_zscan_normal[i]];
+      outMatrixBuffer.bScalingLists8x8[1][i] = pPipeDesc->pps->ScalingList8x8[1][vl_zscan_normal[i]];
    }
 }

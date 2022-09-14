@@ -147,6 +147,9 @@ struct d3d12_video_decoder
    std::vector<uint8_t> m_picParamsBuffer;   // size() has the byte size of the currently held picparams ; capacity()
                                              // has the underlying container allocation size
 
+   // Set for each frame indicating whether to send VIDEO_DECODE_BUFFER_TYPE_INVERSE_QUANTIZATION_MATRIX
+   bool qp_matrix_frame_argument_enabled = false;
+
    // Holds a buffer for the DXVA struct layout of the VIDEO_DECODE_BUFFER_TYPE_INVERSE_QUANTIZATION_MATRIX of the
    // current frame m_InverseQuantMatrixBuffer.size() == 0 means no quantization matrix buffer is set for current frame
    std::vector<uint8_t> m_InverseQuantMatrixBuffer;   // size() has the byte size of the currently held
@@ -214,7 +217,7 @@ d3d12_video_decoder_supports_aot_dpb(D3D12_FEATURE_DATA_VIDEO_DECODE_SUPPORT dec
 d3d12_video_decode_profile_type
 d3d12_video_decoder_convert_pipe_video_profile_to_profile_type(enum pipe_video_profile profile);
 GUID
-d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType);
+d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType, DXGI_FORMAT decode_format);
 void
 d3d12_video_decoder_store_dxva_picparams_in_picparams_buffer(struct d3d12_video_decoder *codec,
                                                              void *                      pDXVABuffer,

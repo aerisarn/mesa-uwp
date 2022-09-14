@@ -23,6 +23,7 @@
 
 #include "d3d12_video_dec_references_mgr.h"
 #include "d3d12_video_dec_h264.h"
+#include "d3d12_video_dec_hevc.h"
 #include "d3d12_video_texture_array_dpb_manager.h"
 #include "d3d12_video_array_of_textures_dpb_manager.h"
 #include "d3d12_screen.h"
@@ -40,6 +41,8 @@ GetInvalidReferenceIndex(d3d12_video_decode_profile_type DecodeProfileType)
    switch (DecodeProfileType) {
       case d3d12_video_decode_profile_type_h264:
          return DXVA_H264_INVALID_PICTURE_INDEX;
+      case d3d12_video_decode_profile_type_hevc:
+         return DXVA_HEVC_INVALID_PICTURE_INDEX;
       default:
          return 0;
    };

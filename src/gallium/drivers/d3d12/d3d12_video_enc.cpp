@@ -31,10 +31,12 @@
 #include "d3d12_surface.h"
 #include "d3d12_video_enc.h"
 #include "d3d12_video_enc_h264.h"
+#include "d3d12_video_enc_hevc.h"
 #include "d3d12_video_buffer.h"
 #include "d3d12_video_texture_array_dpb_manager.h"
 #include "d3d12_video_array_of_textures_dpb_manager.h"
 #include "d3d12_video_encoder_references_manager_h264.h"
+#include "d3d12_video_encoder_references_manager_hevc.h"
 #include "d3d12_residency.h"
 
 #include "vl/vl_video_buffer.h"
@@ -183,13 +185,18 @@ d3d12_video_encoder_update_picparams_tracking(struct d3d12_video_encoder *pD3D12
          d3d12_video_encoder_update_current_frame_pic_params_info_h264(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         d3d12_video_encoder_update_current_frame_pic_params_info_hevc(pD3D12Enc, srcTexture, picture, currentPicParams, bUsedAsReference);
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
       } break;
    }
 
-   pD3D12Enc->m_upDPBManager->begin_frame(currentPicParams, bUsedAsReference);
+   pD3D12Enc->m_upDPBManager->begin_frame(currentPicParams, bUsedAsReference, picture);
 }
 
 bool
@@ -415,6 +422,24 @@ d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder 
          pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_h264>();
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         bool gopHasPFrames =
+            (pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures.PPicturePeriod > 0) &&
+            ((pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures.GOPLength == 0) ||
+             (pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures.PPicturePeriod <
+              pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures.GOPLength));
+
+         pD3D12Enc->m_upDPBManager = std::make_unique<d3d12_video_encoder_references_manager_hevc>(
+            gopHasPFrames,
+            *pD3D12Enc->m_upDPBStorageManager,
+            // Max number of frames to be used as a reference, without counting the current recon picture
+            d3d12_video_encoder_get_current_max_dpb_capacity(pD3D12Enc)
+         );
+
+         pD3D12Enc->m_upBitstreamBuilder = std::make_unique<d3d12_video_bitstream_builder_hevc>();
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -439,6 +464,18 @@ d3d12_video_encoder_get_current_slice_param_settings(struct d3d12_video_encoder 
          return subregionData;
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA subregionData = {};
+         if (pD3D12Enc->m_currentEncodeConfig.m_encoderSliceConfigMode !=
+             D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_FULL_FRAME) {
+            subregionData.pSlicesPartition_HEVC =
+               &pD3D12Enc->m_currentEncodeConfig.m_encoderSliceConfigDesc.m_SlicesPartition_HEVC;
+            subregionData.DataSize = sizeof(D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES);
+         }
+         return subregionData;
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -456,6 +493,14 @@ d3d12_video_encoder_get_current_picture_param_settings(struct d3d12_video_encode
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curPicParamsData = {};
          curPicParamsData.pH264PicData = &pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_H264PicData;
          curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_H264PicData);
+         return curPicParamsData;
+      } break;
+
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_PICTURE_CONTROL_CODEC_DATA curPicParamsData = {};
+         curPicParamsData.pHEVCPicData = &pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_HEVCPicData;
+         curPicParamsData.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderPicParamsDesc.m_HEVCPicData);
          return curPicParamsData;
       } break;
 
@@ -530,6 +575,14 @@ d3d12_video_encoder_get_current_level_desc(struct d3d12_video_encoder *pD3D12Enc
          return curLevelDesc;
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_LEVEL_SETTING curLevelDesc = {};
+         curLevelDesc.pHEVCLevelSetting = &pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_HEVCLevelSetting;
+         curLevelDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderLevelDesc.m_HEVCLevelSetting);
+         return curLevelDesc;
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -545,6 +598,12 @@ d3d12_video_encoder_build_codec_headers(struct d3d12_video_encoder *pD3D12Enc)
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          return d3d12_video_encoder_build_codec_headers_h264(pD3D12Enc);
+
+      } break;
+
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         return d3d12_video_encoder_build_codec_headers_hevc(pD3D12Enc);
 
       } break;
 
@@ -570,6 +629,15 @@ d3d12_video_encoder_get_current_gop_desc(struct d3d12_video_encoder *pD3D12Enc)
          return curGOPDesc;
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE curGOPDesc = {};
+         curGOPDesc.pHEVCGroupOfPictures =
+            &pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures;
+         curGOPDesc.DataSize = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_HEVCGroupOfPictures);
+         return curGOPDesc;
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -591,6 +659,15 @@ d3d12_video_encoder_get_current_codec_config_desc(struct d3d12_video_encoder *pD
          return codecConfigDesc;
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION codecConfigDesc = {};
+         codecConfigDesc.pHEVCConfig = &pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_HEVCConfig;
+         codecConfigDesc.DataSize =
+            sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderCodecSpecificConfigDesc.m_HEVCConfig);
+         return codecConfigDesc;
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -606,6 +683,10 @@ d3d12_video_encoder_get_current_codec(struct d3d12_video_encoder *pD3D12Enc)
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          return D3D12_VIDEO_ENCODER_CODEC_H264;
+      } break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         return D3D12_VIDEO_ENCODER_CODEC_HEVC;
       } break;
       default:
       {
@@ -750,6 +831,18 @@ bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3
             sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_H264LevelSetting);
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         capEncoderSupportData.SuggestedProfile.pHEVCProfile =
+            &pD3D12Enc->m_currentEncodeCapabilities.m_encoderSuggestedProfileDesc.m_HEVCProfile;
+         capEncoderSupportData.SuggestedProfile.DataSize =
+            sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderSuggestedProfileDesc.m_HEVCProfile);
+         capEncoderSupportData.SuggestedLevel.pHEVCLevelSetting =
+            &pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_HEVCLevelSetting;
+         capEncoderSupportData.SuggestedLevel.DataSize =
+            sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderLevelSuggestedDesc.m_HEVCLevelSetting);
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -803,6 +896,14 @@ d3d12_video_encoder_get_current_profile_desc(struct d3d12_video_encoder *pD3D12E
          return curProfDesc;
       } break;
 
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         D3D12_VIDEO_ENCODER_PROFILE_DESC curProfDesc = {};
+         curProfDesc.pHEVCProfile = &pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_HEVCProfile;
+         curProfDesc.DataSize     = sizeof(pD3D12Enc->m_currentEncodeConfig.m_encoderProfileDesc.m_HEVCProfile);
+         return curProfDesc;
+      } break;
+
       default:
       {
          unreachable("Unsupported pipe_video_format");
@@ -826,6 +927,11 @@ d3d12_video_encoder_update_current_encoder_config_state(struct d3d12_video_encod
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
       {
          return d3d12_video_encoder_update_current_encoder_config_state_h264(pD3D12Enc, srcTexture, picture);
+      } break;
+
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         return d3d12_video_encoder_update_current_encoder_config_state_hevc(pD3D12Enc, srcTexture, picture);
       } break;
 
       default:

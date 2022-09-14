@@ -28,6 +28,7 @@
 #include "d3d12_video_encoder_references_manager.h"
 #include "d3d12_video_dpb_storage_manager.h"
 #include "d3d12_video_encoder_bitstream_builder_h264.h"
+#include "d3d12_video_encoder_bitstream_builder_hevc.h"
 
 ///
 /// Pipe video interface starts
@@ -160,6 +161,12 @@ struct d3d12_video_encoder
          D3D12_VIDEO_ENCODER_LEVELS_H264                 m_H264LevelSetting;
          D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC m_HEVCLevelSetting;
       } m_encoderLevelSuggestedDesc = {};
+
+      union
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 m_H264CodecCaps;
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC m_HEVCCodecCaps;
+      } m_encoderCodecSpecificConfigCaps = {};
 
       // Required size for the layout-resolved metadata buffer of current frame to be encoded
       size_t m_resolvedLayoutMetadataBufferRequiredSize;

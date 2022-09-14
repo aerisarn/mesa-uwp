@@ -26,11 +26,28 @@
 #include "d3d12_format.h"
 #include "util/u_video.h"
 #include <directx/d3d12video.h>
+#include <cmath>
 
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
 #include "d3d12_video_types.h"
+
+struct d3d12_encode_codec_support {
+   enum pipe_video_profile profile;
+   union {
+      struct {
+         enum pipe_h265_enc_pred_direction prediction_direction;
+         union pipe_h265_enc_cap_features hevc_features;
+         union pipe_h265_enc_cap_block_sizes hevc_block_sizes;
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC d3d12_caps;
+      } hevc_support;
+      // Can add more codecs for each codec specific caps here, for example:
+      // struct {
+         // D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264;
+      // } h264_support;
+   };
+};
 
 static bool
 d3d12_video_buffer_is_format_supported(struct pipe_screen *screen,
@@ -134,6 +151,8 @@ d3d12_has_video_decode_support(struct pipe_screen *pscreen, enum pipe_video_prof
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH10:
+      case PIPE_VIDEO_PROFILE_HEVC_MAIN:
+      case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
       {
          supportsProfile = true;
       } break;
@@ -207,39 +226,65 @@ d3d12_video_encode_max_supported_resolution(const D3D12_VIDEO_ENCODER_CODEC &arg
 
 static uint32_t
 d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_ENCODER_CODEC &codec,
-                                                             D3D12_VIDEO_ENCODER_PROFILE_H264 profile,
-                                                             D3D12_VIDEO_ENCODER_LEVELS_H264 level,
+                                                             D3D12_VIDEO_ENCODER_PROFILE_DESC profile,
                                                              ID3D12VideoDevice3 *pD3D12VideoDevice)
 {
    uint32_t supportedMaxRefFrames = 0u;
 
-   D3D12_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT_H264 h264PictureControl = {};
    D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT capPictureControlData = {};
    capPictureControlData.NodeIndex = 0;
    capPictureControlData.Codec = codec;
-   capPictureControlData.Profile.pH264Profile = &profile;
-   capPictureControlData.Profile.DataSize = sizeof(profile);
-   capPictureControlData.PictureSupport.pH264Support = &h264PictureControl;
-   capPictureControlData.PictureSupport.DataSize = sizeof(h264PictureControl);
-   HRESULT hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT,
-                                                           &capPictureControlData,
-                                                           sizeof(capPictureControlData));
-   if (FAILED(hr)) {
-      debug_printf("CheckFeatureSupport failed with HR %x\n", hr);
-   }
 
-   if (capPictureControlData.IsSupported) {
-      /* This attribute determines the maximum number of reference
-       * frames supported for encoding.
-       *
-       * Note: for H.264 encoding, the value represents the maximum number
-       * of reference frames for both the reference picture list 0 (bottom
-       * 16 bits) and the reference picture list 1 (top 16 bits).
-       */
-      uint32_t maxRefForL0 = std::min(capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForP,
-                                      capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForB);
-      uint32_t maxRefForL1 = capPictureControlData.PictureSupport.pH264Support->MaxL1ReferencesForB;
-      supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
+   if(codec == D3D12_VIDEO_ENCODER_CODEC_H264) {
+      D3D12_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT_H264 h264PictureControl = {};
+      capPictureControlData.Profile = profile;
+      capPictureControlData.PictureSupport.pH264Support = &h264PictureControl;
+      capPictureControlData.PictureSupport.DataSize = sizeof(h264PictureControl);
+      HRESULT hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT,
+                                                            &capPictureControlData,
+                                                            sizeof(capPictureControlData));
+      if (FAILED(hr)) {
+         debug_printf("CheckFeatureSupport failed with HR %x\n", hr);
+      }
+
+      if (capPictureControlData.IsSupported) {
+         /* This attribute determines the maximum number of reference
+         * frames supported for encoding.
+         *
+         * Note: for H.264 encoding, the value represents the maximum number
+         * of reference frames for both the reference picture list 0 (bottom
+         * 16 bits) and the reference picture list 1 (top 16 bits).
+         */
+         uint32_t maxRefForL0 = std::min(capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForP,
+                                       capPictureControlData.PictureSupport.pH264Support->MaxL0ReferencesForB);
+         uint32_t maxRefForL1 = capPictureControlData.PictureSupport.pH264Support->MaxL1ReferencesForB;
+         supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
+      }
+   } else if(codec == D3D12_VIDEO_ENCODER_CODEC_HEVC) {
+      D3D12_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT_HEVC hevcPictureControl = {};
+      capPictureControlData.Profile = profile;
+      capPictureControlData.PictureSupport.pHEVCSupport = &hevcPictureControl;
+      capPictureControlData.PictureSupport.DataSize = sizeof(hevcPictureControl);
+      HRESULT hr = pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_PICTURE_CONTROL_SUPPORT,
+                                                            &capPictureControlData,
+                                                            sizeof(capPictureControlData));
+      if (FAILED(hr)) {
+         debug_printf("CheckFeatureSupport failed with HR %x\n", hr);
+      }
+
+      if (capPictureControlData.IsSupported) {
+         /* This attribute determines the maximum number of reference
+         * frames supported for encoding.
+         *
+         * Note: for H.265 encoding, the value represents the maximum number
+         * of reference frames for both the reference picture list 0 (bottom
+         * 16 bits) and the reference picture list 1 (top 16 bits).
+         */
+         uint32_t maxRefForL0 = std::min(capPictureControlData.PictureSupport.pHEVCSupport->MaxL0ReferencesForP,
+                                       capPictureControlData.PictureSupport.pHEVCSupport->MaxL0ReferencesForB);
+         uint32_t maxRefForL1 = capPictureControlData.PictureSupport.pHEVCSupport->MaxL1ReferencesForB;
+         supportedMaxRefFrames = (maxRefForL0 & 0xffff) | ((maxRefForL1 & 0xffff) << 16);
+      }
    }
 
    return supportedMaxRefFrames;
@@ -247,8 +292,8 @@ d3d12_video_encode_supported_references_per_frame_structures(const D3D12_VIDEO_E
 
 static uint32_t
 d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &codec,
-                                              D3D12_VIDEO_ENCODER_PROFILE_H264 profile,
-                                              D3D12_VIDEO_ENCODER_LEVELS_H264 level,
+                                              D3D12_VIDEO_ENCODER_PROFILE_DESC profile,
+                                              D3D12_VIDEO_ENCODER_LEVEL_SETTING level,
                                               ID3D12VideoDevice3 *pD3D12VideoDevice)
 {
    uint32_t supportedSliceStructuresBitMask = PIPE_VIDEO_CAP_SLICE_STRUCTURE_NONE;
@@ -256,10 +301,8 @@ d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &c
    D3D12_FEATURE_DATA_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE capDataSubregionLayout = {};
    capDataSubregionLayout.NodeIndex = 0;
    capDataSubregionLayout.Codec = codec;
-   capDataSubregionLayout.Profile.pH264Profile = &profile;
-   capDataSubregionLayout.Profile.DataSize = sizeof(profile);
-   capDataSubregionLayout.Level.pH264LevelSetting = &level;
-   capDataSubregionLayout.Level.DataSize = sizeof(level);
+   capDataSubregionLayout.Profile = profile;
+   capDataSubregionLayout.Level = level;
 
    /**
     * pipe_video_cap_slice_structure
@@ -273,6 +316,10 @@ d3d12_video_encode_supported_slice_structures(const D3D12_VIDEO_ENCODER_CODEC &c
     * determines the range of accepted values to
     * h264_slice_descriptor::macroblock_address and
     * h264_slice_descriptor::num_macroblocks.
+    *
+    * For HEVC, similarly determines the ranges for
+    * slice_segment_address
+    * num_ctu_in_slice
     */
    capDataSubregionLayout.SubregionMode =
       D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME;
@@ -331,7 +378,8 @@ d3d12_video_encode_max_supported_slices(const D3D12_VIDEO_ENCODER_CODEC &argTarg
                                         D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC maxResolution,
                                         DXGI_FORMAT encodeFormat,
                                         uint32_t &outMaxSlices,
-                                        ID3D12VideoDevice3 *pD3D12VideoDevice)
+                                        ID3D12VideoDevice3 *pD3D12VideoDevice,
+                                        D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT codecSupport)
 {
    D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT capEncoderSupportData = {};
    capEncoderSupportData.NodeIndex = 0;
@@ -351,13 +399,22 @@ d3d12_video_encode_max_supported_slices(const D3D12_VIDEO_ENCODER_CODEC &argTarg
    capEncoderSupportData.SubregionFrameEncoding =
       D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE_UNIFORM_PARTITIONING_SUBREGIONS_PER_FRAME;
 
+   /*
+      All codec structures must be declared outside the switch statement to be
+      present in memory (stack scope) when calling CheckFeatureSupport below
+   */
    D3D12_VIDEO_ENCODER_PROFILE_H264 h264prof = {};
    D3D12_VIDEO_ENCODER_LEVELS_H264 h264lvl = {};
    D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_H264 h264Gop = { 1, 0, 0, 0, 0 };
    D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264 h264Config = {};
+   D3D12_VIDEO_ENCODER_PROFILE_HEVC hevcprof = D3D12_VIDEO_ENCODER_PROFILE_HEVC_MAIN;
+   D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC hevcLvl = { D3D12_VIDEO_ENCODER_LEVELS_HEVC_62, D3D12_VIDEO_ENCODER_TIER_HEVC_HIGH };
+   D3D12_VIDEO_ENCODER_SEQUENCE_GOP_STRUCTURE_HEVC hevcGop = { 1, 0, 0 };
+   D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC hevcConfig = {};
    switch (argTargetCodec) {
       case D3D12_VIDEO_ENCODER_CODEC_H264:
       {
+         // assert(codecSupport.pH264Support); // Fill this in caller if ever used
          capEncoderSupportData.SuggestedProfile.pH264Profile = &h264prof;
          capEncoderSupportData.SuggestedProfile.DataSize = sizeof(h264prof);
          capEncoderSupportData.SuggestedLevel.pH264LevelSetting = &h264lvl;
@@ -366,6 +423,29 @@ d3d12_video_encode_max_supported_slices(const D3D12_VIDEO_ENCODER_CODEC &argTarg
          capEncoderSupportData.CodecGopSequence.DataSize = sizeof(h264Gop);
          capEncoderSupportData.CodecConfiguration.DataSize = sizeof(h264Config);
          capEncoderSupportData.CodecConfiguration.pH264Config = &h264Config;
+      } break;
+
+      case D3D12_VIDEO_ENCODER_CODEC_HEVC:
+      {
+         /* Only read from codecSupport.pHEVCSupport in this case (union of pointers definition) */
+         assert(codecSupport.pHEVCSupport);
+         hevcConfig = {
+            D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_FLAG_NONE,
+            codecSupport.pHEVCSupport->MinLumaCodingUnitSize,
+            codecSupport.pHEVCSupport->MaxLumaCodingUnitSize,
+            codecSupport.pHEVCSupport->MinLumaTransformUnitSize,
+            codecSupport.pHEVCSupport->MaxLumaTransformUnitSize,
+            codecSupport.pHEVCSupport->max_transform_hierarchy_depth_inter,
+            codecSupport.pHEVCSupport->max_transform_hierarchy_depth_intra,
+         };
+         capEncoderSupportData.SuggestedProfile.pHEVCProfile = &hevcprof;
+         capEncoderSupportData.SuggestedProfile.DataSize = sizeof(hevcprof);
+         capEncoderSupportData.SuggestedLevel.pHEVCLevelSetting = &hevcLvl;
+         capEncoderSupportData.SuggestedLevel.DataSize = sizeof(hevcLvl);
+         capEncoderSupportData.CodecGopSequence.pHEVCGroupOfPictures = &hevcGop;
+         capEncoderSupportData.CodecGopSequence.DataSize = sizeof(hevcGop);
+         capEncoderSupportData.CodecConfiguration.DataSize = sizeof(hevcConfig);
+         capEncoderSupportData.CodecConfiguration.pHEVCConfig = &hevcConfig;
       } break;
 
       default:
@@ -394,6 +474,86 @@ d3d12_video_encode_max_supported_slices(const D3D12_VIDEO_ENCODER_CODEC &argTarg
    }
 }
 
+
+D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC 
+static d3d12_video_encode_get_hevc_codec_support ( const D3D12_VIDEO_ENCODER_CODEC &argCodec,
+                                                   const D3D12_VIDEO_ENCODER_PROFILE_DESC &argTargetProfile,
+                                                   ID3D12VideoDevice3 *pD3D12VideoDevice)
+{
+
+   constexpr unsigned c_hevcConfigurationSets = 5u;
+   const D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC hevcConfigurationSets[c_hevcConfigurationSets] = 
+   {
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NONE,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_32x32,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32,
+         3u,
+         3u,
+      },
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NONE,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_32x32,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32,            
+         0u,            
+         0u,
+      },
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NONE,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_32x32,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32,            
+         2u,            
+         2u,
+      },
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NONE,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_64x64,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32,            
+         2u,            
+         2u,
+      },
+      {
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_NONE,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_8x8,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_CUSIZE_64x64,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_4x4,
+         D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_HEVC_TUSIZE_32x32,
+         4u,
+         4u,
+      },
+   };
+
+   D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC hevcCodecCaps = { };
+   D3D12_FEATURE_DATA_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT capCodecConfigData = { };
+   capCodecConfigData.NodeIndex = 0;
+   capCodecConfigData.Codec = D3D12_VIDEO_ENCODER_CODEC_HEVC;
+   capCodecConfigData.Profile = argTargetProfile;
+   capCodecConfigData.CodecSupportLimits.pHEVCSupport = &hevcCodecCaps;
+   capCodecConfigData.CodecSupportLimits.DataSize = sizeof(hevcCodecCaps);
+
+   for (auto hevc_config : hevcConfigurationSets) {
+      hevcCodecCaps = hevc_config;
+      if(SUCCEEDED(pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
+         && capCodecConfigData.IsSupported)) {
+            hevc_config.SupportFlags = hevcCodecCaps.SupportFlags;
+            return hevc_config;
+      }
+   }
+
+   /* If we reach this point, the underlying HW/Driver might need a new configuration
+      added to the table and be iterated above */
+   unreachable("D3D12: Couldn't find HEVC supported configuration arguments.");   
+   return hevcCodecCaps;
+}
+
 static bool
 d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                enum pipe_video_profile profile,
@@ -401,7 +561,8 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC &maxRes,
                                uint32_t &maxSlices,
                                uint32_t &supportedSliceStructures,
-                               uint32_t &maxReferencesPerFrame)
+                               uint32_t &maxReferencesPerFrame,
+                               struct d3d12_encode_codec_support& codecSupport)
 {
    ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
    struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
@@ -416,7 +577,7 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                       sizeof(VideoFeatureAreaSupport)))) {
       return false;
    }
-
+   D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT d3d12_codec_support = { };
    bool supportsProfile = false;
    switch (profile) {
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_CONSTRAINED_BASELINE:
@@ -458,16 +619,172 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                                                                                          maxRes,
                                                                                          encodeFormat,
                                                                                          maxSlices,
-                                                                                         spD3D12VideoDevice.Get());
+                                                                                         spD3D12VideoDevice.Get(),
+                                                                                         d3d12_codec_support);
+
+            D3D12_VIDEO_ENCODER_PROFILE_DESC profile;
+            profile.pH264Profile = &profH264;
+            profile.DataSize = sizeof(profH264);
+            D3D12_VIDEO_ENCODER_LEVEL_SETTING level;
+            level.pH264LevelSetting = &maxLvlSettingH264;
+            level.DataSize = sizeof(maxLvlSettingH264);
             supportedSliceStructures = d3d12_video_encode_supported_slice_structures(codecDesc,
-                                                                                     profH264,
-                                                                                     maxLvlSettingH264,
+                                                                                     profile,
+                                                                                     level,
                                                                                      spD3D12VideoDevice.Get());
             maxReferencesPerFrame =
                d3d12_video_encode_supported_references_per_frame_structures(codecDesc,
-                                                                            profH264,
-                                                                            maxLvlSettingH264,
+                                                                            profile,
                                                                             spD3D12VideoDevice.Get());
+         }
+      } break;
+      case PIPE_VIDEO_PROFILE_HEVC_MAIN:
+      case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
+      {
+         supportsProfile = true;
+         D3D12_VIDEO_ENCODER_PROFILE_DESC profDesc = {};
+         D3D12_VIDEO_ENCODER_PROFILE_HEVC profHEVC =
+            d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_hevc(profile);
+         profDesc.DataSize = sizeof(profHEVC);
+         profDesc.pHEVCProfile = &profHEVC;
+         D3D12_VIDEO_ENCODER_CODEC codecDesc = d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(profile);
+         D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC minLvlSettingHEVC = { };
+         D3D12_VIDEO_ENCODER_LEVEL_TIER_CONSTRAINTS_HEVC maxLvlSettingHEVC = { };
+         D3D12_VIDEO_ENCODER_LEVEL_SETTING minLvl = {};
+         D3D12_VIDEO_ENCODER_LEVEL_SETTING maxLvl = {};
+         minLvl.pHEVCLevelSetting = &minLvlSettingHEVC;
+         minLvl.DataSize = sizeof(minLvlSettingHEVC);
+         maxLvl.pHEVCLevelSetting = &maxLvlSettingHEVC;
+         maxLvl.DataSize = sizeof(maxLvlSettingHEVC);
+         if (d3d12_video_encode_max_supported_level_for_profile(codecDesc,
+                                                                profDesc,
+                                                                minLvl,
+                                                                maxLvl,
+                                                                spD3D12VideoDevice.Get())) {
+            d3d12_video_encoder_convert_from_d3d12_level_hevc(maxLvlSettingHEVC.Level, maxLvlSpec);
+            supportsProfile = true;
+         }
+
+         if (supportsProfile) {
+
+            D3D12_VIDEO_ENCODER_PROFILE_DESC d3d12_profile;
+            d3d12_profile.pHEVCProfile = &profHEVC;
+            d3d12_profile.DataSize = sizeof(profHEVC);
+            D3D12_VIDEO_ENCODER_LEVEL_SETTING level;
+            level.pHEVCLevelSetting = &maxLvlSettingHEVC;
+            level.DataSize = sizeof(maxLvlSettingHEVC);
+            supportedSliceStructures = d3d12_video_encode_supported_slice_structures(codecDesc,
+                                                                                     d3d12_profile,
+                                                                                     level,
+                                                                                     spD3D12VideoDevice.Get());
+
+            maxReferencesPerFrame =
+               d3d12_video_encode_supported_references_per_frame_structures(codecDesc,
+                                                                            d3d12_profile,
+                                                                            spD3D12VideoDevice.Get());
+
+            codecSupport.hevc_support.d3d12_caps = d3d12_video_encode_get_hevc_codec_support(codecDesc,
+                                                                                             profDesc,
+                                                                                             spD3D12VideoDevice.Get());
+            d3d12_codec_support.DataSize = sizeof(codecSupport.hevc_support.d3d12_caps);
+            d3d12_codec_support.pHEVCSupport = &codecSupport.hevc_support.d3d12_caps;
+
+            /* get_video_param sets pipe_features.bits.config_supported = 1
+               to distinguish between supported cap with all bits off and unsupported by driver
+               with value = 0
+            */
+            codecSupport.hevc_support.hevc_block_sizes.bits.config_supported = 1;
+            codecSupport.hevc_support.hevc_features.bits.config_supported = 1;
+
+            // Fill codecSupport.hevc_support
+
+            uint8_t minCuSize = d3d12_video_encoder_convert_12cusize_to_pixel_size_hevc(codecSupport.hevc_support.d3d12_caps.MinLumaCodingUnitSize);
+            uint8_t maxCuSize = d3d12_video_encoder_convert_12cusize_to_pixel_size_hevc(codecSupport.hevc_support.d3d12_caps.MaxLumaCodingUnitSize);
+            uint8_t MinCbLog2SizeY = std::log2(minCuSize);
+            uint8_t CtbLog2SizeY = std::log2(maxCuSize);
+            uint8_t minTuSize = d3d12_video_encoder_convert_12tusize_to_pixel_size_hevc(codecSupport.hevc_support.d3d12_caps.MinLumaTransformUnitSize);
+            uint8_t maxTuSize = d3d12_video_encoder_convert_12tusize_to_pixel_size_hevc(codecSupport.hevc_support.d3d12_caps.MaxLumaTransformUnitSize);
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_max_coding_tree_block_size_minus3
+                           = static_cast<uint8_t>(CtbLog2SizeY - 3);
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_min_coding_tree_block_size_minus3
+                           = static_cast<uint8_t>(CtbLog2SizeY - 3);
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_min_luma_coding_block_size_minus3
+                           = static_cast<uint8_t>(MinCbLog2SizeY - 3);
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_max_luma_transform_block_size_minus2
+                           = static_cast<uint8_t>(std::log2(maxTuSize) - 2);
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_min_luma_transform_block_size_minus2
+                           = static_cast<uint8_t>(std::log2(minTuSize) - 2);
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.max_max_transform_hierarchy_depth_inter
+                           = codecSupport.hevc_support.d3d12_caps.max_transform_hierarchy_depth_inter;
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.min_max_transform_hierarchy_depth_inter
+                           = codecSupport.hevc_support.d3d12_caps.max_transform_hierarchy_depth_inter;
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.max_max_transform_hierarchy_depth_intra
+                           = codecSupport.hevc_support.d3d12_caps.max_transform_hierarchy_depth_intra;
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.min_max_transform_hierarchy_depth_intra
+                           = codecSupport.hevc_support.d3d12_caps.max_transform_hierarchy_depth_intra;
+
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_max_pcm_coding_block_size_minus3 = 0; // No PCM Supported
+            codecSupport.hevc_support.hevc_block_sizes.bits.log2_min_pcm_coding_block_size_minus3 = 0; // No PCM Supported
+
+            // Feature flags
+
+            uint32_t ref_l0 = maxReferencesPerFrame       & 0xffff;
+            uint32_t ref_l1 = maxReferencesPerFrame >> 16 & 0xffff;
+
+            codecSupport.hevc_support.prediction_direction = PIPE_H265_PRED_DIRECTION_ALL;
+            if(ref_l0)
+               codecSupport.hevc_support.prediction_direction |= PIPE_H265_PRED_DIRECTION_PREVIOUS;
+            if(ref_l1)
+               codecSupport.hevc_support.prediction_direction |= PIPE_H265_PRED_DIRECTION_FUTURE;
+
+            codecSupport.hevc_support.hevc_features.bits.separate_colour_planes = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.scaling_lists = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.pcm = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.temporal_mvp = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.strong_intra_smoothing = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.dependent_slices = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.sign_data_hiding = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.weighted_prediction = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.transquant_bypass = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+            codecSupport.hevc_support.hevc_features.bits.deblocking_filter_disable = PIPE_H265_ENC_FEATURE_NOT_SUPPORTED;
+
+            /* cu_qp_delta always required to be 1 in https://github.com/microsoft/DirectX-Specs/blob/master/d3d/D3D12VideoEncoding.md */
+            codecSupport.hevc_support.hevc_features.bits.cu_qp_delta = (PIPE_H265_ENC_FEATURE_SUPPORTED | PIPE_H265_ENC_FEATURE_REQUIRED);
+
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_P_FRAMES_IMPLEMENTED_AS_LOW_DELAY_B_FRAMES) != 0)
+               codecSupport.hevc_support.prediction_direction |= PIPE_H265_PRED_DIRECTION_BI_NOT_EMPTY;
+
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_SUPPORT) != 0)
+               codecSupport.hevc_support.hevc_features.bits.amp = PIPE_H265_ENC_FEATURE_SUPPORTED;
+
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_ASYMETRIC_MOTION_PARTITION_REQUIRED) != 0)
+               codecSupport.hevc_support.hevc_features.bits.amp = (PIPE_H265_ENC_FEATURE_SUPPORTED | PIPE_H265_ENC_FEATURE_REQUIRED);
+
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_SAO_FILTER_SUPPORT) != 0)
+               codecSupport.hevc_support.hevc_features.bits.sao = PIPE_H265_ENC_FEATURE_SUPPORTED;
+
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_CONSTRAINED_INTRAPREDICTION_SUPPORT) != 0)
+               codecSupport.hevc_support.hevc_features.bits.constrained_intra_pred = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            if ((codecSupport.hevc_support.d3d12_caps.SupportFlags & D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC_FLAG_TRANSFORM_SKIP_SUPPORT) != 0)
+               codecSupport.hevc_support.hevc_features.bits.transform_skip = PIPE_H265_ENC_FEATURE_SUPPORTED;
+
+            DXGI_FORMAT encodeFormat = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);
+            supportsProfile = supportsProfile &&
+                              d3d12_video_encode_max_supported_resolution(codecDesc, maxRes, spD3D12VideoDevice.Get());
+            supportsProfile = supportsProfile && d3d12_video_encode_max_supported_slices(codecDesc,
+                                                                                         maxRes,
+                                                                                         encodeFormat,
+                                                                                         maxSlices,
+                                                                                         spD3D12VideoDevice.Get(),
+                                                                                         d3d12_codec_support);
          }
       } break;
       default:
@@ -716,6 +1033,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
    uint32_t maxSlices = 0u;
    uint32_t supportedSliceStructures = 0u;
    uint32_t maxReferencesPerFrame = 0u;
+   struct d3d12_encode_codec_support codec_specific_support;
+   memset(&codec_specific_support, 0, sizeof(codec_specific_support));
    switch (param) {
       case PIPE_VIDEO_CAP_NPOT_TEXTURES:
          return 1;
@@ -726,6 +1045,9 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
       case PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME:
       case PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE:
       case PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME:
+      case PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS:
+      case PIPE_VIDEO_CAP_ENC_HEVC_BLOCK_SIZES:
+      case PIPE_VIDEO_CAP_ENC_HEVC_PREDICTION_DIRECTION:
       {
          if (d3d12_has_video_encode_support(pscreen,
                                             profile,
@@ -733,21 +1055,42 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
                                             maxResEncode,
                                             maxSlices,
                                             supportedSliceStructures,
-                                            maxReferencesPerFrame)) {
-            if (param == PIPE_VIDEO_CAP_MAX_WIDTH) {
-               return maxResEncode.Width;
-            } else if (param == PIPE_VIDEO_CAP_MAX_HEIGHT) {
-               return maxResEncode.Height;
-            } else if (param == PIPE_VIDEO_CAP_MAX_LEVEL) {
-               return maxLvlEncode;
-            } else if (param == PIPE_VIDEO_CAP_SUPPORTED) {
-               return 1;
-            } else if (param == PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME) {
-               return maxSlices;
-            } else if (param == PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE) {
-               return supportedSliceStructures;
-            } else if (param == PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME) {
-               return maxReferencesPerFrame;
+                                            maxReferencesPerFrame,
+                                            codec_specific_support)) {
+
+            DXGI_FORMAT format = d3d12_convert_pipe_video_profile_to_dxgi_format(profile);
+            auto pipeFmt = d3d12_get_pipe_format(format);
+            bool formatSupported = pscreen->is_video_format_supported(pscreen, pipeFmt, profile, entrypoint);
+            if (formatSupported) {
+               if (param == PIPE_VIDEO_CAP_MAX_WIDTH) {
+                  return maxResEncode.Width;
+               } else if (param == PIPE_VIDEO_CAP_MAX_HEIGHT) {
+                  return maxResEncode.Height;
+               } else if (param == PIPE_VIDEO_CAP_MAX_LEVEL) {
+                  return maxLvlEncode;
+               } else if (param == PIPE_VIDEO_CAP_SUPPORTED) {
+                  return 1;
+               } else if (param == PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME) {
+                  return maxSlices;
+               } else if (param == PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE) {
+                  return supportedSliceStructures;
+               } else if (param == PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME) {
+                  return maxReferencesPerFrame;
+               } else if (param == PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS) {
+                  /* get_video_param sets hevc_features.bits.config_supported = 1
+                     to distinguish between supported cap with all bits off and unsupported by driver
+                     with value = 0
+                  */
+                  return codec_specific_support.hevc_support.hevc_features.value;
+               } else if (param == PIPE_VIDEO_CAP_ENC_HEVC_BLOCK_SIZES) {
+                  /* get_video_param sets hevc_block_sizes.bits.config_supported = 1
+                     to distinguish between supported cap with all bits off and unsupported by driver
+                     with value = 0
+                  */
+                  return codec_specific_support.hevc_support.hevc_block_sizes.value;
+               } else if (param == PIPE_VIDEO_CAP_ENC_HEVC_PREDICTION_DIRECTION) {
+                  return codec_specific_support.hevc_support.prediction_direction;
+               }
             }
          }
          return 0;
