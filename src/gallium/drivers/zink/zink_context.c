@@ -427,11 +427,13 @@ zink_create_sampler_state(struct pipe_context *pctx,
                   cbci.format = VK_FORMAT_S8_UINT;
                else
                   cbci.format = zink_get_format(screen, util_format_get_depth_only(state->border_color_format));
+               /* these are identical unions */
+               memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
             } else {
                cbci.format = zink_get_format(screen, state->border_color_format);
+               for (unsigned i = 0; i < 4; i++)
+                  zink_format_clamp_channel_color(util_format_description(state->border_color_format), (void*)&cbci.customBorderColor, &state->border_color, i);
             }
-            /* these are identical unions */
-            memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
          }
          cbci.pNext = sci.pNext;
          sci.pNext = &cbci;
