@@ -2313,14 +2313,13 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
    NIR_PASS_V(shader, nir_remove_dead_variables, nir_var_shader_temp, NULL);
    optimize_nir(shader, NULL);
 
-   struct glsl_struct_field *fields = rzalloc_array(shader, struct glsl_struct_field, 2);
-   fields[0].name = ralloc_strdup(shader, "base");
-   fields[1].name = ralloc_strdup(shader, "unsized");
+   struct glsl_struct_field field = {0};
+   field.name = ralloc_strdup(shader, "base");
    if (shader->info.num_ubos) {
       if (shader->num_uniforms && zs->ubos_used & BITFIELD_BIT(0)) {
-         fields[0].type = glsl_array_type(glsl_uint_type(), max_uniform_size * 4, 4);
+         field.type = glsl_array_type(glsl_uint_type(), max_uniform_size * 4, 4);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
-                                                 glsl_array_type(glsl_interface_type(fields, 1, GLSL_INTERFACE_PACKING_STD430, false, "struct"), 1, 0),
+                                                 glsl_array_type(glsl_interface_type(&field, 1, GLSL_INTERFACE_PACKING_STD430, false, "struct"), 1, 0),
                                                  "uniform_0@32");
          var->interface_type = var->type;
          var->data.mode = nir_var_mem_ubo;
@@ -2330,14 +2329,14 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       unsigned num_ubos = shader->info.num_ubos - !!shader->info.first_ubo_is_default_ubo;
       uint32_t ubos_used = zs->ubos_used & ~BITFIELD_BIT(0);
       if (num_ubos && ubos_used) {
-         fields[0].type = glsl_array_type(glsl_uint_type(), max_ubo_size * 4, 4);
+         field.type = glsl_array_type(glsl_uint_type(), max_ubo_size * 4, 4);
          /* shrink array as much as possible */
          unsigned first_ubo = ffs(ubos_used) - 2;
          assert(first_ubo < PIPE_MAX_CONSTANT_BUFFERS);
          num_ubos -= first_ubo;
          assert(num_ubos);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
-                                   glsl_array_type(glsl_struct_type(fields, 1, "struct", false), num_ubos, 0),
+                                   glsl_array_type(glsl_struct_type(&field, 1, "struct", false), num_ubos, 0),
                                    "ubos@32");
          var->interface_type = var->type;
          var->data.mode = nir_var_mem_ubo;
@@ -2350,13 +2349,10 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       assert(first_ssbo < PIPE_MAX_SHADER_BUFFERS);
       unsigned num_ssbos = shader->info.num_ssbos - first_ssbo;
       assert(num_ssbos);
-      const struct glsl_type *ssbo_type = glsl_array_type(glsl_uint_type(), max_ssbo_size * 4, 4);
-      const struct glsl_type *unsized = glsl_array_type(glsl_uint_type(), 0, 4);
-      fields[0].type = ssbo_type;
-      fields[1].type = max_ssbo_size ? unsized : NULL;
-      unsigned field_count = max_ssbo_size && needs_size ? 2 : 1;
+      const struct glsl_type *ssbo_type = glsl_array_type(glsl_uint_type(), needs_size ? 0 : max_ssbo_size * 4, 4);
+      field.type = ssbo_type;
       nir_variable *var = nir_variable_create(shader, nir_var_mem_ssbo,
-                                              glsl_array_type(glsl_struct_type(fields, field_count, "struct", false), num_ssbos, 0),
+                                              glsl_array_type(glsl_struct_type(&field, 1, "struct", false), num_ssbos, 0),
                                               "ssbos@32");
       var->interface_type = var->type;
       var->data.mode = nir_var_mem_ssbo;
