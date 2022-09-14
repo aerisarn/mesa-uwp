@@ -410,35 +410,6 @@ init_render_queue_state(struct anv_queue *queue)
    return anv_queue_submit_simple_batch(queue, &batch);
 }
 
-static VkResult
-init_compute_queue_state(struct anv_queue *queue)
-{
-   struct anv_batch batch;
-
-   uint32_t cmds[64];
-   batch.start = batch.next = cmds;
-   batch.end = (void *) cmds + sizeof(cmds);
-
-   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
-      ps.MaskBits = 3;
-#endif
-#if GFX_VER >= 11
-      ps.MaskBits |= 0x10;
-      ps.MediaSamplerDOPClockGateEnable = true;
-#endif
-      ps.PipelineSelection = GPGPU;
-   }
-
-   init_common_queue_state(queue, &batch);
-
-   anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
-
-   assert(batch.next <= batch.end);
-
-   return anv_queue_submit_simple_batch(queue, &batch);
-}
-
 void
 genX(init_physical_device_state)(ASSERTED struct anv_physical_device *pdevice)
 {
@@ -456,9 +427,6 @@ genX(init_device_state)(struct anv_device *device)
       switch (queue->family->engine_class) {
       case I915_ENGINE_CLASS_RENDER:
          res = init_render_queue_state(queue);
-         break;
-      case I915_ENGINE_CLASS_COMPUTE:
-         res = init_compute_queue_state(queue);
          break;
       default:
          res = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);

@@ -679,11 +679,6 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
                                  I915_ENGINE_CLASS_RENDER);
       int g_count = 0;
       int c_count = 0;
-      if (env_var_as_boolean("INTEL_COMPUTE_CLASS", false))
-         c_count = intel_gem_count_engines(pdevice->engine_info,
-                                           I915_ENGINE_CLASS_COMPUTE);
-      enum drm_i915_gem_engine_class compute_class =
-         c_count < 1 ? I915_ENGINE_CLASS_RENDER : I915_ENGINE_CLASS_COMPUTE;
 
       anv_override_engine_counts(&gc_count, &g_count, &c_count);
 
@@ -709,7 +704,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
             .queueFlags = VK_QUEUE_COMPUTE_BIT |
                           VK_QUEUE_TRANSFER_BIT,
             .queueCount = c_count,
-            .engine_class = compute_class,
+            .engine_class = I915_ENGINE_CLASS_RENDER,
          };
       }
       /* Increase count below when other families are added as a reminder to
