@@ -495,7 +495,7 @@ static VkResult
 tu_descriptor_set_create(struct tu_device *device,
             struct tu_descriptor_pool *pool,
             struct tu_descriptor_set_layout *layout,
-            const uint32_t *variable_count,
+            uint32_t variable_count,
             struct tu_descriptor_set **out_set)
 {
    struct tu_descriptor_set *set;
@@ -526,16 +526,15 @@ tu_descriptor_set_create(struct tu_device *device,
    set->layout = layout;
    set->pool = pool;
    uint32_t layout_size = layout->size;
-   if (variable_count) {
-      assert(layout->has_variable_descriptors);
+   if (layout->has_variable_descriptors) {
       struct tu_descriptor_set_binding_layout *binding =
          &layout->binding[layout->binding_count - 1];
       if (binding->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          layout_size = binding->offset + A6XX_TEX_CONST_DWORDS * 4 +
-            ALIGN(*variable_count, A6XX_TEX_CONST_DWORDS * 4);
+            ALIGN(variable_count, A6XX_TEX_CONST_DWORDS * 4);
       } else {
          uint32_t stride = binding->size;
-         layout_size = binding->offset + *variable_count * stride;
+         layout_size = binding->offset + variable_count * stride;
       }
    }
 
@@ -619,7 +618,7 @@ tu_descriptor_set_create(struct tu_device *device,
             A6XX_TEX_CONST_DWORDS * 4;
          uint32_t size =
             (layout->has_variable_descriptors && i == layout->binding_count - 1) ?
-            *variable_count : layout->binding[i].size - A6XX_TEX_CONST_DWORDS * 4;
+            variable_count : layout->binding[i].size - A6XX_TEX_CONST_DWORDS * 4;
          size = ALIGN_POT(size, 16) / 16;
 
          ptr[0] = A6XX_UBO_0_BASE_LO(va);
@@ -844,24 +843,19 @@ tu_AllocateDescriptorSets(VkDevice _device,
 
    const VkDescriptorSetVariableDescriptorCountAllocateInfo *variable_counts =
       vk_find_struct_const(pAllocateInfo->pNext, DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO);
-   const uint32_t zero = 0;
+   if (variable_counts && !variable_counts->descriptorSetCount)
+      variable_counts = NULL;
 
    /* allocate a set of buffers for each shader to contain descriptors */
    for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
       TU_FROM_HANDLE(tu_descriptor_set_layout, layout,
              pAllocateInfo->pSetLayouts[i]);
 
-      const uint32_t *variable_count = NULL;
-      if (variable_counts) {
-         if (i < variable_counts->descriptorSetCount)
-            variable_count = variable_counts->pDescriptorCounts + i;
-         else
-            variable_count = &zero;
-      }
-
       assert(!(layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
 
-      result = tu_descriptor_set_create(device, pool, layout, variable_count, &set);
+      result = tu_descriptor_set_create(
+         device, pool, layout,
+         variable_counts ? variable_counts->pDescriptorCounts[i] : 0, &set);
       if (result != VK_SUCCESS)
          break;
 
