@@ -90,13 +90,13 @@ d3d12_video_buffer_create_impl(struct pipe_context *pipe,
    else
       pD3D12VideoBuffer->texture = (struct d3d12_resource *) pipe->screen->resource_create(pipe->screen, &templ);
 
-   d3d12_promote_to_permanent_residency((struct d3d12_screen*) pipe->screen, pD3D12VideoBuffer->texture);
-
    if (pD3D12VideoBuffer->texture == nullptr) {
       debug_printf("[d3d12_video_buffer] d3d12_video_buffer_create - Call to resource_create() to create "
                       "d3d12_resource failed\n");
       goto failed;
    }
+
+   d3d12_promote_to_permanent_residency((struct d3d12_screen*) pipe->screen, pD3D12VideoBuffer->texture);
 
    pD3D12VideoBuffer->num_planes = util_format_get_num_planes(pD3D12VideoBuffer->texture->overall_format);
    return &pD3D12VideoBuffer->base;
