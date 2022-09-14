@@ -430,9 +430,8 @@ create_gs_jit_context_type(struct gallivm_state *gallivm,
    return context_type;
 }
 
-
 static LLVMTypeRef
-create_gs_jit_input_type(struct gallivm_state *gallivm)
+create_gs_jit_input_type_deref(struct gallivm_state *gallivm)
 {
    LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
    LLVMTypeRef input_array;
@@ -440,9 +439,13 @@ create_gs_jit_input_type(struct gallivm_state *gallivm)
    input_array = LLVMVectorType(float_type, TGSI_NUM_CHANNELS); /* num primitives */
    input_array = LLVMArrayType(input_array, TGSI_NUM_CHANNELS); /* num channels */
    input_array = LLVMArrayType(input_array, PIPE_MAX_SHADER_INPUTS); /* num attrs per vertex */
-   input_array = LLVMPointerType(input_array, 0); /* num vertices per prim */
-
    return input_array;
+}
+
+static LLVMTypeRef
+create_gs_jit_input_type(struct gallivm_state *gallivm)
+{
+   return LLVMPointerType(create_gs_jit_input_type_deref(gallivm), 0); /* num vertices per prim */
 }
 
 /**
@@ -1716,6 +1719,10 @@ draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
    LLVMValueRef res;
    struct lp_type type = bld->type;
 
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+   LLVMTypeRef channel_vec_type = LLVMVectorType(float_type, TGSI_NUM_CHANNELS);
+   LLVMTypeRef input_array_type = create_gs_jit_input_type_deref(gallivm);
+
    if (is_vindex_indirect || is_aindex_indirect) {
       int i;
       res = bld->zero;
@@ -1738,8 +1745,8 @@ draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
          indices[1] = attr_chan_index;
          indices[2] = swizzle_index;
 
-         channel_vec = LLVMBuildGEP2(builder, gs->variant->input_array_type, gs->input, indices, 3, "");
-         channel_vec = LLVMBuildLoad(builder, channel_vec, "");
+         channel_vec = LLVMBuildGEP2(builder, input_array_type, gs->input, indices, 3, "");
+         channel_vec = LLVMBuildLoad2(builder, channel_vec_type, channel_vec, "");
          value = LLVMBuildExtractElement(builder, channel_vec, idx, "");
 
          res = LLVMBuildInsertElement(builder, res, value, idx, "");
@@ -1749,8 +1756,8 @@ draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
       indices[1] = attrib_index;
       indices[2] = swizzle_index;
 
-      res = LLVMBuildGEP2(builder, gs->variant->input_array_type, gs->input, indices, 3, "");
-      res = LLVMBuildLoad(builder, res, "");
+      res = LLVMBuildGEP2(builder, input_array_type, gs->input, indices, 3, "");
+      res = LLVMBuildLoad2(builder, channel_vec_type, res, "");
    }
 
    return res;
