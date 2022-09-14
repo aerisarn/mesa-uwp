@@ -588,6 +588,10 @@ fn lower_and_optimize_nir_late(
         nir.pass0(nir_lower_int64);
     }
 
+    if nir_options.lower_uniforms_to_ubo {
+        nir.pass0(rusticl_lower_inputs);
+    }
+
     nir.pass1(nir_lower_convert_alu_types, None);
 
     opt_nir(nir, dev);
@@ -988,15 +992,16 @@ impl Kernel {
                     init_data.len() as u32,
                 );
             }
-            let cso = ctx.create_compute_state(nir, input.len() as u32, local_size as u32);
+            let cso = ctx.create_compute_state(nir, local_size as u32);
 
             ctx.bind_compute_state(cso);
             ctx.bind_sampler_states(&samplers);
             ctx.set_sampler_views(&mut sviews);
             ctx.set_shader_images(&iviews);
             ctx.set_global_binding(resources.as_slice(), &mut globals);
+            ctx.set_constant_buffer(0, &input);
 
-            ctx.launch_grid(work_dim, block, grid, &input);
+            ctx.launch_grid(work_dim, block, grid);
 
             ctx.clear_global_binding(globals.len() as u32);
             ctx.clear_shader_images(iviews.len() as u32);
