@@ -310,7 +310,7 @@ zink_format_get_emulated_alpha(enum pipe_format format)
       if (format == PIPE_FORMAT_LATC2_SNORM)
          return PIPE_FORMAT_RGTC2_SNORM;
 
-      return util_format_luminance_to_red(format);
+      format = util_format_luminance_to_red(format);
    }
 
    return emulate_red_alpha(format);
