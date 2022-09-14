@@ -786,7 +786,7 @@ create_physical_device(struct v3dv_instance *instance,
    render_fd = open(path, O_RDWR | O_CLOEXEC);
    if (render_fd < 0) {
       fprintf(stderr, "Opening %s failed: %s\n", path, strerror(errno));
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      result = VK_ERROR_INITIALIZATION_FAILED;
       goto fail;
    }
 
@@ -854,17 +854,20 @@ create_physical_device(struct v3dv_instance *instance,
    device->master_fd = master_fd;    /* Master vc4 primary node */
 
    if (!v3d_get_device_info(device->render_fd, &device->devinfo, &v3dv_ioctl)) {
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to get info from device.");
       goto fail;
    }
 
    if (device->devinfo.ver < 42) {
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "Device version < 42.");
       goto fail;
    }
 
    if (!device_has_expected_features(device)) {
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "Kernel driver doesn't have required features.");
       goto fail;
    }
 
@@ -960,6 +963,7 @@ create_physical_device(struct v3dv_instance *instance,
    result = v3dv_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
+      result = VK_ERROR_INITIALIZATION_FAILED;
       goto fail;
    }
 
@@ -983,6 +987,11 @@ fail:
    return result;
 }
 
+/* This driver hook is expected to return VK_SUCCESS (unless a memory
+ * allocation error happened) if no compatible device is found. If a
+ * compatible device is found, it may return an error code if device
+ * inialization failed.
+ */
 static VkResult
 enumerate_devices(struct vk_instance *vk_instance)
 {
@@ -991,12 +1000,13 @@ enumerate_devices(struct vk_instance *vk_instance)
 
    /* TODO: Check for more devices? */
    drmDevicePtr devices[8];
-   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
    int max_devices;
 
    max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
    if (max_devices < 1)
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
+      return VK_SUCCESS;
+
+   VkResult result = VK_SUCCESS;
 
 #if !using_v3d_simulator
    int32_t v3d_idx = -1;
@@ -1011,7 +1021,7 @@ enumerate_devices(struct vk_instance *vk_instance)
           (devices[i]->deviceinfo.pci->vendor_id == 0x8086 ||
            devices[i]->deviceinfo.pci->vendor_id == 0x1002)) {
          result = create_physical_device(instance, devices[i], NULL);
-         if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
+         if (result == VK_SUCCESS)
             break;
       }
 #else
@@ -1051,10 +1061,10 @@ enumerate_devices(struct vk_instance *vk_instance)
    }
 
 #if !using_v3d_simulator
-   if (v3d_idx == -1 || vc4_idx == -1)
-      result = VK_ERROR_INCOMPATIBLE_DRIVER;
-   else
-      result = create_physical_device(instance, devices[v3d_idx], devices[vc4_idx]);
+   if (v3d_idx != -1 && vc4_idx != -1) {
+      result =
+         create_physical_device(instance, devices[v3d_idx], devices[vc4_idx]);
+   }
 #endif
 
    drmFreeDevices(devices, max_devices);
