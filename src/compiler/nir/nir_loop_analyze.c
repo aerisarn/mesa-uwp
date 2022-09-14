@@ -141,7 +141,8 @@ init_loop_def(nir_ssa_def *def, void *void_init_loop_state)
  * unrolling doesn't cause things to blow up too much.
  */
 static unsigned
-instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
+instr_cost(loop_info_state *state, nir_instr *instr,
+           const nir_shader_compiler_options *options)
 {
    if (instr->type == nir_instr_type_intrinsic ||
        instr->type == nir_instr_type_tex)
@@ -153,6 +154,36 @@ instr_cost(nir_instr *instr, const nir_shader_compiler_options *options)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    const nir_op_info *info = &nir_op_infos[alu->op];
    unsigned cost = 1;
+
+   if (nir_op_is_selection(alu->op)) {
+      nir_ssa_scalar cond_scalar = {alu->src[0].src.ssa, 0};
+      if (nir_is_terminator_condition_with_two_inputs(cond_scalar)) {
+         nir_instr *sel_cond = alu->src[0].src.ssa->parent_instr;
+         nir_alu_instr *sel_alu = nir_instr_as_alu(sel_cond);
+
+         nir_ssa_scalar rhs, lhs;
+         lhs = nir_ssa_scalar_chase_alu_src(cond_scalar, 0);
+         rhs = nir_ssa_scalar_chase_alu_src(cond_scalar, 1);
+
+         /* If the selects condition is a comparision between a constant and
+          * a basic induction variable we know that it will be eliminated once
+          * the loop is unrolled so here we assign it a cost of 0.
+          */
+         if ((nir_src_is_const(sel_alu->src[0].src) &&
+              get_loop_var(rhs.def, state)->type == basic_induction) ||
+             (nir_src_is_const(sel_alu->src[1].src) &&
+              get_loop_var(lhs.def, state)->type == basic_induction) ) {
+            /* Also if the selects condition is only used by the select then
+             * remove that alu instructons cost from the cost total also.
+             */
+            if (!list_is_empty(&sel_alu->dest.dest.ssa.if_uses) ||
+                !list_is_singular(&sel_alu->dest.dest.ssa.uses))
+               return 0;
+            else
+               return -1;
+         }
+      }
+   }
 
    if (alu->op == nir_op_flrp) {
       if ((options->lower_flrp16 && nir_dest_bit_size(alu->dest.dest) == 16) ||
@@ -1341,7 +1372,7 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
 
    nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
       nir_foreach_instr(instr, block) {
-         state->loop->info->instr_cost += instr_cost(instr, options);
+         state->loop->info->instr_cost += instr_cost(state, instr, options);
       }
 
       if (state->loop->info->force_unroll)
