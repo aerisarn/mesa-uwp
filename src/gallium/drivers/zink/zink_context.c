@@ -999,12 +999,31 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
          } else if (util_format_is_alpha(state->format)) {
             for (int i = 0; i < 4; ++i)
                swizzle[i] = clamp_alpha_swizzle(swizzle[i]);
-         } else if (util_format_is_luminance(state->format)) {
-            for (int i = 0; i < 4; ++i)
-               swizzle[i] = clamp_luminance_swizzle(swizzle[i]);
-         } else if (util_format_is_luminance_alpha(state->format)) {
-            for (int i = 0; i < 4; ++i)
-               swizzle[i] = clamp_luminance_alpha_swizzle(swizzle[i]);
+         } else if (util_format_is_luminance(pres->format) ||
+                    util_format_is_luminance_alpha(pres->format)) {
+            if (util_format_is_luminance(pres->format)) {
+               for (int i = 0; i < 4; ++i)
+                  swizzle[i] = clamp_luminance_swizzle(swizzle[i]);
+            } else {
+               for (int i = 0; i < 4; ++i)
+                  swizzle[i] = clamp_luminance_alpha_swizzle(swizzle[i]);
+            }
+            if (state->format != pres->format) {
+               /* luminance / luminance-alpha formats can be reinterpreted
+                * as red / red-alpha formats by the state-tracker, and we
+                * need to whack the green/blue channels here to the
+                * correct values for that to work.
+                */
+               enum pipe_format linear = util_format_linear(pres->format);
+               if (state->format == util_format_luminance_to_red(linear)) {
+                  assert(swizzle[1] == PIPE_SWIZZLE_X ||
+                         swizzle[1] == PIPE_SWIZZLE_0);
+                  assert(swizzle[2] == PIPE_SWIZZLE_X ||
+                         swizzle[2] == PIPE_SWIZZLE_0);
+                  swizzle[1] = swizzle[2] = PIPE_SWIZZLE_0;
+               } else
+                  assert(state->format == linear);
+            }
          }
 
          ivci.components.r = zink_component_mapping(swizzle[0]);
