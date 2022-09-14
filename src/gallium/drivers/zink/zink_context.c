@@ -417,9 +417,22 @@ zink_create_sampler_state(struct pipe_context *pctx,
             }
          }
          cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
-         cbci.format = screen->info.border_color_feats.customBorderColorWithoutFormat ? VK_FORMAT_UNDEFINED : zink_get_format(screen, state->border_color_format);
-         /* these are identical unions */
-         memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+         if (screen->info.border_color_feats.customBorderColorWithoutFormat) {
+            cbci.format = VK_FORMAT_UNDEFINED;
+            /* these are identical unions */
+            memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+         } else {
+            if (util_format_is_depth_or_stencil(state->border_color_format)) {
+               if (is_integer)
+                  cbci.format = VK_FORMAT_S8_UINT;
+               else
+                  cbci.format = zink_get_format(screen, util_format_get_depth_only(state->border_color_format));
+            } else {
+               cbci.format = zink_get_format(screen, state->border_color_format);
+            }
+            /* these are identical unions */
+            memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+         }
          cbci.pNext = sci.pNext;
          sci.pNext = &cbci;
          UNUSED uint32_t check = p_atomic_inc_return(&screen->cur_custom_border_color_samplers);
