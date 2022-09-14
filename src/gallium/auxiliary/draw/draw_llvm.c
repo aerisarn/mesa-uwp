@@ -1585,6 +1585,8 @@ generate_clipmask(struct draw_llvm *llvm,
 
    if (clip_user) {
       LLVMValueRef planes_ptr = draw_jit_context_planes(gallivm, context_type, context_ptr);
+      LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
+      LLVMTypeRef planes_type = LLVMArrayType(LLVMArrayType(float_type, 4), DRAW_TOTAL_CLIP_PLANES);
       LLVMValueRef indices[3];
       LLVMValueRef is_nan_or_inf;
 
@@ -1619,7 +1621,7 @@ generate_clipmask(struct draw_llvm *llvm,
 
             for (int i = 0; i < 4; ++i) {
                indices[2] = lp_build_const_int32(gallivm, i);
-               plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
+               plane_ptr = LLVMBuildGEP2(builder, planes_type, planes_ptr, indices, 3, "");
                plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr,
                                        (const char *[]){"plane_x", "plane_y", "plane_z", "plane_w"}[i]);
                planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
@@ -1663,12 +1665,13 @@ generate_clipmask(struct draw_llvm *llvm,
 static LLVMValueRef
 clipmask_booli8(struct gallivm_state *gallivm,
                 const struct lp_type vs_type,
+                LLVMTypeRef clipmask_bool_type,
                 LLVMValueRef clipmask_bool_ptr,
                 boolean edgeflag_in_clipmask)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMTypeRef int8_type = LLVMInt8TypeInContext(gallivm->context);
-   LLVMValueRef clipmask_bool = LLVMBuildLoad(builder, clipmask_bool_ptr, "");
+   LLVMValueRef clipmask_bool = LLVMBuildLoad2(builder, clipmask_bool_type, clipmask_bool_ptr, "");
    LLVMValueRef ret;
    struct lp_build_context bldivec;
 
@@ -1735,7 +1738,7 @@ draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
          indices[1] = attr_chan_index;
          indices[2] = swizzle_index;
 
-         channel_vec = LLVMBuildGEP(builder, gs->input, indices, 3, "");
+         channel_vec = LLVMBuildGEP2(builder, gs->variant->input_array_type, gs->input, indices, 3, "");
          channel_vec = LLVMBuildLoad(builder, channel_vec, "");
          value = LLVMBuildExtractElement(builder, channel_vec, idx, "");
 
@@ -1746,7 +1749,7 @@ draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
       indices[1] = attrib_index;
       indices[2] = swizzle_index;
 
-      res = LLVMBuildGEP(builder, gs->input, indices, 3, "");
+      res = LLVMBuildGEP2(builder, gs->variant->input_array_type, gs->input, indices, 3, "");
       res = LLVMBuildLoad(builder, res, "");
    }
 
@@ -2323,7 +2326,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    draw_llvm_image_soa_destroy(image);
 
    /* return clipping boolean value for function */
-   ret = clipmask_booli8(gallivm, vs_type, clipmask_bool_ptr,
+   ret = clipmask_booli8(gallivm, vs_type, blduivec.vec_type, clipmask_bool_ptr,
                          enable_cliptest && key->need_edgeflags);
 
    LLVMBuildRet(builder, ret);
