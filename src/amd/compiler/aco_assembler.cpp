@@ -298,7 +298,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       break;
    }
    case Format::VINTRP: {
-      Interp_instruction& interp = instr->vintrp();
+      VINTRP_instruction& interp = instr->vintrp();
       uint32_t encoding = 0;
 
       if (instr->opcode == aco_opcode::v_interp_p1ll_f16 ||

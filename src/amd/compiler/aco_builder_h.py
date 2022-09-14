@@ -530,7 +530,7 @@ formats = [("pseudo", [Format.PSEUDO], 'Pseudo_instruction', list(itertools.prod
            ("vopc_sdwa", [Format.VOPC, Format.SDWA], 'SDWA_instruction', itertools.product([1, 2], [2])),
            ("vop3", [Format.VOP3], 'VOP3_instruction', [(1, 3), (1, 2), (1, 1), (2, 2)]),
            ("vop3p", [Format.VOP3P], 'VOP3P_instruction', [(1, 2), (1, 3)]),
-           ("vintrp", [Format.VINTRP], 'Interp_instruction', [(1, 2), (1, 3)]),
+           ("vintrp", [Format.VINTRP], 'VINTRP_instruction', [(1, 2), (1, 3)]),
            ("vop1_dpp", [Format.VOP1, Format.DPP16], 'DPP16_instruction', [(1, 1)]),
            ("vop2_dpp", [Format.VOP2, Format.DPP16], 'DPP16_instruction', itertools.product([1, 2], [2, 3])),
            ("vopc_dpp", [Format.VOPC, Format.DPP16], 'DPP16_instruction', itertools.product([1, 2], [2])),

@@ -348,7 +348,7 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       break;
    }
    case Format::VINTRP: {
-      const Interp_instruction& vintrp = instr->vintrp();
+      const VINTRP_instruction& vintrp = instr->vintrp();
       fprintf(output, " attr%d.%c", vintrp.attribute, "xyzw"[vintrp.component]);
       break;
    }

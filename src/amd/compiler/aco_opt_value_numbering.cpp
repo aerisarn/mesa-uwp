@@ -98,7 +98,7 @@ struct InstrHash {
 
       switch (instr->format) {
       case Format::SMEM: return hash_murmur_32<SMEM_instruction>(instr);
-      case Format::VINTRP: return hash_murmur_32<Interp_instruction>(instr);
+      case Format::VINTRP: return hash_murmur_32<VINTRP_instruction>(instr);
       case Format::DS: return hash_murmur_32<DS_instruction>(instr);
       case Format::SOPP: return hash_murmur_32<SOPP_instruction>(instr);
       case Format::SOPK: return hash_murmur_32<SOPK_instruction>(instr);
@@ -217,8 +217,8 @@ struct InstrPred {
                 aS.disable_wqm == bS.disable_wqm && aS.prevent_overflow == bS.prevent_overflow;
       }
       case Format::VINTRP: {
-         Interp_instruction& aI = a->vintrp();
-         Interp_instruction& bI = b->vintrp();
+         VINTRP_instruction& aI = a->vintrp();
+         VINTRP_instruction& bI = b->vintrp();
          if (aI.attribute != bI.attribute)
             return false;
          if (aI.component != bI.component)

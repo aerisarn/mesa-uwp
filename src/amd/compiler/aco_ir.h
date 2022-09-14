@@ -1012,7 +1012,7 @@ struct VOP1_instruction;
 struct VOP2_instruction;
 struct VOPC_instruction;
 struct VOP3_instruction;
-struct Interp_instruction;
+struct VINTRP_instruction;
 struct DPP16_instruction;
 struct DPP8_instruction;
 struct SDWA_instruction;
@@ -1289,15 +1289,15 @@ struct Instruction {
       return *(VOP3_instruction*)this;
    }
    constexpr bool isVOP3() const noexcept { return (uint16_t)format & (uint16_t)Format::VOP3; }
-   Interp_instruction& vintrp() noexcept
+   VINTRP_instruction& vintrp() noexcept
    {
       assert(isVINTRP());
-      return *(Interp_instruction*)this;
+      return *(VINTRP_instruction*)this;
    }
-   const Interp_instruction& vintrp() const noexcept
+   const VINTRP_instruction& vintrp() const noexcept
    {
       assert(isVINTRP());
-      return *(Interp_instruction*)this;
+      return *(VINTRP_instruction*)this;
    }
    constexpr bool isVINTRP() const noexcept { return (uint16_t)format & (uint16_t)Format::VINTRP; }
    DPP16_instruction& dpp16() noexcept
@@ -1525,12 +1525,12 @@ struct SDWA_instruction : public Instruction {
 };
 static_assert(sizeof(SDWA_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
-struct Interp_instruction : public Instruction {
+struct VINTRP_instruction : public Instruction {
    uint8_t attribute;
    uint8_t component;
    uint16_t padding;
 };
-static_assert(sizeof(Interp_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
+static_assert(sizeof(VINTRP_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
 /**
  * Local and Global Data Sharing instructions
