@@ -481,7 +481,7 @@ panfrost_create_compute_state(
         assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
 
         panfrost_shader_get(pctx->screen, &ctx->shaders, &ctx->descs,
-                            so, &ctx->base.debug, v, cso->req_local_mem);
+                            so, &ctx->base.debug, v, cso->static_shared_mem);
 
         /* The NIR becomes invalid after this. For compute kernels, we never
          * need to access it again. Don't keep a dangling pointer around.

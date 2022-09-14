@@ -265,12 +265,12 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().texture_unmap.unwrap()(self.pipe.as_ptr(), tx) };
     }
 
-    pub fn create_compute_state(&self, nir: &NirShader, local_mem: u32) -> *mut c_void {
+    pub fn create_compute_state(&self, nir: &NirShader, static_local_mem: u32) -> *mut c_void {
         let state = pipe_compute_state {
             ir_type: pipe_shader_ir::PIPE_SHADER_IR_NIR,
             prog: nir.dup_for_driver().cast(),
             req_input_mem: 0,
-            req_local_mem: local_mem,
+            static_shared_mem: static_local_mem,
         };
         unsafe { self.pipe.as_ref().create_compute_state.unwrap()(self.pipe.as_ptr(), &state) }
     }
@@ -334,10 +334,17 @@ impl PipeContext {
         }
     }
 
-    pub fn launch_grid(&self, work_dim: u32, block: [u32; 3], grid: [u32; 3]) {
+    pub fn launch_grid(
+        &self,
+        work_dim: u32,
+        block: [u32; 3],
+        grid: [u32; 3],
+        variable_local_mem: u32,
+    ) {
         let info = pipe_grid_info {
             pc: 0,
             input: ptr::null(),
+            variable_shared_mem: variable_local_mem,
             work_dim: work_dim,
             block: block,
             last_block: [0; 3],

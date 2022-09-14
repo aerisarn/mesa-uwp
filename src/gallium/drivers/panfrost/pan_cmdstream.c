@@ -1625,7 +1625,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
 
         struct pan_tls_info info = {
                 .tls.size = ss->info.tls_size,
-                .wls.size = ss->info.wls_size,
+                .wls.size = ss->info.wls_size + grid->variable_shared_mem,
                 .wls.instances = panfrost_choose_wls_instance_count(grid),
         };
 

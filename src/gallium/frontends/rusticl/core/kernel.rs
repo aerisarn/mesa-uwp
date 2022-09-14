@@ -811,7 +811,9 @@ impl Kernel {
         let offsets = create_kernel_arr::<u64>(offsets, 0);
         let mut input: Vec<u8> = Vec::new();
         let mut resource_info = Vec::new();
-        let mut local_size: u64 = nir.shared_size() as u64;
+        // Set it once so we get the alignment padding right
+        let static_local_size: u64 = nir.shared_size() as u64;
+        let mut variable_local_size: u64 = static_local_size;
         let printf_size = q.device.printf_buffer_size() as u32;
         let mut samplers = Vec::new();
         let mut iviews = Vec::new();
@@ -876,13 +878,14 @@ impl Kernel {
                 KernelArgValue::LocalMem(size) => {
                     // TODO 32 bit
                     let pot = cmp::min(*size, 0x80);
-                    local_size = align(local_size, pot.next_power_of_two() as u64);
+                    variable_local_size =
+                        align(variable_local_size, pot.next_power_of_two() as u64);
                     if q.device.address_bits() == 64 {
-                        input.extend_from_slice(&local_size.to_ne_bytes());
+                        input.extend_from_slice(&variable_local_size.to_ne_bytes());
                     } else {
-                        input.extend_from_slice(&(local_size as u32).to_ne_bytes());
+                        input.extend_from_slice(&(variable_local_size as u32).to_ne_bytes());
                     }
-                    local_size += *size as u64;
+                    variable_local_size += *size as u64;
                 }
                 KernelArgValue::Sampler(sampler) => {
                     samplers.push(sampler.pipe());
@@ -896,6 +899,9 @@ impl Kernel {
                 }
             }
         }
+
+        // subtract the shader local_size as we only request something on top of that.
+        variable_local_size -= nir.shared_size() as u64;
 
         let mut printf_buf = None;
         for arg in &self.internal_args {
@@ -992,7 +998,7 @@ impl Kernel {
                     init_data.len() as u32,
                 );
             }
-            let cso = ctx.create_compute_state(nir, local_size as u32);
+            let cso = ctx.create_compute_state(nir, static_local_size as u32);
 
             ctx.bind_compute_state(cso);
             ctx.bind_sampler_states(&samplers);
@@ -1001,7 +1007,7 @@ impl Kernel {
             ctx.set_global_binding(resources.as_slice(), &mut globals);
             ctx.set_constant_buffer(0, &input);
 
-            ctx.launch_grid(work_dim, block, grid);
+            ctx.launch_grid(work_dim, block, grid, variable_local_size as u32);
 
             ctx.clear_global_binding(globals.len() as u32);
             ctx.clear_shader_images(iviews.len() as u32);

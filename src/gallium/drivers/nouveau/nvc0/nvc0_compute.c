@@ -446,7 +446,7 @@ nvc0_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_DATA (push, 0x800); /* WARP_CSTACK_SIZE */
 
    BEGIN_NVC0(push, NVC0_CP(SHARED_SIZE), 3);
-   PUSH_DATA (push, align(cp->cp.smem_size, 0x100));
+   PUSH_DATA (push, align(cp->cp.smem_size + info->variable_shared_mem, 0x100));
    PUSH_DATA (push, info->block[0] * info->block[1] * info->block[2]);
    PUSH_DATA (push, cp->num_barriers);
    BEGIN_NVC0(push, NVC0_CP(CP_GPR_ALLOC), 1);
