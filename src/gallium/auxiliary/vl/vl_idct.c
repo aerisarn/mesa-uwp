@@ -219,10 +219,10 @@ create_mismatch_frag_shader(struct vl_idct *idct)
    }
 
    for (i = 0; i < 8; ++i) {
-      struct ureg_src s_addr[2];
-      s_addr[0] = ureg_src(m[i][0]);
-      s_addr[1] = ureg_src(m[i][1]);
-      fetch_four(shader, m[i], s_addr, ureg_DECL_sampler(shader, 0), false);
+      struct ureg_src s_address[2];
+      s_address[0] = ureg_src(m[i][0]);
+      s_address[1] = ureg_src(m[i][1]);
+      fetch_four(shader, m[i], s_address, ureg_DECL_sampler(shader, 0), false);
    }
 
    for (i = 1; i < 8; ++i) {
@@ -355,20 +355,20 @@ create_stage1_frag_shader(struct vl_idct *idct)
    }
 
    for (i = 0; i < 4; ++i) {
-      struct ureg_src s_addr[2];
-      s_addr[0] = ureg_src(l[i][0]);
-      s_addr[1] = ureg_src(l[i][1]);
-      fetch_four(shader, l[i], s_addr, ureg_DECL_sampler(shader, 0), false);
+      struct ureg_src s_address[2];
+      s_address[0] = ureg_src(l[i][0]);
+      s_address[1] = ureg_src(l[i][1]);
+      fetch_four(shader, l[i], s_address, ureg_DECL_sampler(shader, 0), false);
    }
 
    for (i = 0; i < idct->nr_of_render_targets; ++i) {
-      struct ureg_src s_addr[2];
+      struct ureg_src s_address[2];
 
       increment_addr(shader, r, r_addr, true, true, i - (signed)idct->nr_of_render_targets / 2, VL_BLOCK_HEIGHT);
 
-      s_addr[0] = ureg_src(r[0]);
-      s_addr[1] = ureg_src(r[1]);
-      fetch_four(shader, r, s_addr, ureg_DECL_sampler(shader, 1), false);
+      s_address[0] = ureg_src(r[0]);
+      s_address[1] = ureg_src(r[1]);
+      fetch_four(shader, r, s_address, ureg_DECL_sampler(shader, 1), false);
 
       for (j = 0; j < 4; ++j) {
          matrix_mul(shader, ureg_writemask(fragment[i], TGSI_WRITEMASK_X << j), l[j], r);
