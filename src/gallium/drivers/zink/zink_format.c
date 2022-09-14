@@ -302,8 +302,16 @@ zink_format_get_emulated_alpha(enum pipe_format format)
 {
    if (util_format_is_alpha(format))
       return emulate_alpha(format);
-   if (util_format_is_luminance(format) || util_format_is_luminance_alpha(format))
+   if (util_format_is_luminance(format))
       return util_format_luminance_to_red(format);
+   if (util_format_is_luminance_alpha(format)) {
+      if (format == PIPE_FORMAT_LATC2_UNORM)
+         return PIPE_FORMAT_RGTC2_UNORM;
+      if (format == PIPE_FORMAT_LATC2_SNORM)
+         return PIPE_FORMAT_RGTC2_SNORM;
+
+      return util_format_luminance_to_red(format);
+   }
 
    return emulate_red_alpha(format);
 }
