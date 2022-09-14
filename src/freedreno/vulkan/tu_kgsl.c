@@ -223,13 +223,17 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
    static const char path[] = "/dev/kgsl-3d0";
    int fd;
 
-   if (instance->vk.enabled_extensions.KHR_display)
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+   if (instance->vk.enabled_extensions.KHR_display) {
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                        "I can't KHR_display");
+   }
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+      if (errno == ENOENT)
+         return VK_SUCCESS;
+
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                        "failed to open device %s", path);
    }
 
