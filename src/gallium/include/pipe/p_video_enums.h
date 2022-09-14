@@ -109,7 +109,7 @@ enum pipe_video_cap
    /* If true, when mapping planar textures like NV12 or P016 the mapped buffer contains
    all the planes contiguously. This allows for use with some frontends functions that
    require this like vaDeriveImage */
-   PIPE_VIDEO_SUPPORTS_CONTIGUOUS_PLANES_MAP = 27,
+   PIPE_VIDEO_CAP_SUPPORTS_CONTIGUOUS_PLANES_MAP = 27,
    PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE = 28,
    PIPE_VIDEO_CAP_ENC_HEVC_BLOCK_SIZES = 29,
    PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS = 30,
