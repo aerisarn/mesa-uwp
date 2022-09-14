@@ -62,6 +62,7 @@ apt-get install -y --no-remove \
       git-lfs \
       inetutils-syslogd \
       iptables \
+      jq \
       libasan6 \
       libexpat1 \
       libllvm13 \

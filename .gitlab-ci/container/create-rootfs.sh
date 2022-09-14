@@ -58,6 +58,7 @@ apt-get -y install --no-install-recommends \
     ca-certificates \
     firmware-realtek \
     initramfs-tools \
+    jq \
     libasan6 \
     libexpat1 \
     libpng16-16 \
