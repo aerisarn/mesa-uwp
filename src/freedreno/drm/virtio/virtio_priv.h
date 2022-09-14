@@ -174,6 +174,8 @@ struct virtio_bo {
    uint64_t offset;
    uint32_t res_id;
    uint32_t blob_id;
+   uint32_t upload_seqno;
+   bool has_upload_seqno;
 };
 FD_DEFINE_CAST(fd_bo, virtio_bo);
 

@@ -52,9 +52,23 @@ virtio_bo_offset(struct fd_bo *bo, uint64_t *offset)
 {
    struct virtio_bo *virtio_bo = to_virtio_bo(bo);
    int ret = bo_allocate(virtio_bo);
+
    if (ret)
       return ret;
+
+   /* If we have uploaded, we need to wait for host to handle that
+    * before we can allow guest-side CPU access:
+    */
+   if (virtio_bo->has_upload_seqno) {
+      virtio_bo->has_upload_seqno = false;
+      virtio_execbuf_flush(bo->dev);
+      virtio_host_sync(bo->dev, &(struct msm_ccmd_req) {
+         .seqno = virtio_bo->upload_seqno,
+      });
+   }
+
    *offset = virtio_bo->offset;
+
    return 0;
 }
 
@@ -186,12 +200,13 @@ static void
 bo_upload(struct fd_bo *bo, unsigned off, void *src, unsigned len)
 {
    unsigned req_len = sizeof(struct msm_ccmd_gem_upload_req) + align(len, 4);
+   struct virtio_bo *virtio_bo = to_virtio_bo(bo);
 
    uint8_t buf[req_len];
    struct msm_ccmd_gem_upload_req *req = (void *)buf;
 
    req->hdr = MSM_CCMD(GEM_UPLOAD, req_len);
-   req->res_id = to_virtio_bo(bo)->res_id;
+   req->res_id = virtio_bo->res_id;
    req->pad = 0;
    req->off = off;
    req->len = len;
@@ -199,6 +214,9 @@ bo_upload(struct fd_bo *bo, unsigned off, void *src, unsigned len)
    memcpy(req->payload, src, len);
 
    virtio_execbuf(bo->dev, &req->hdr, false);
+
+   virtio_bo->upload_seqno = req->hdr.seqno;
+   virtio_bo->has_upload_seqno = true;
 }
 
 static void
