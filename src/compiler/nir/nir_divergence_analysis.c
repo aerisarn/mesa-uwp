@@ -154,6 +154,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_ring_es2gs_offset_amd:
    case nir_intrinsic_load_ring_task_draw_amd:
    case nir_intrinsic_load_ring_task_payload_amd:
+   case nir_intrinsic_load_sample_positions_amd:
    case nir_intrinsic_load_task_ring_entry_amd:
    case nir_intrinsic_load_task_ib_addr:
    case nir_intrinsic_load_task_ib_stride:

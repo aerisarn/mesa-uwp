@@ -1303,6 +1303,9 @@ store("global_amd", [1, 1], indices=[BASE, ACCESS, ALIGN_MUL, ALIGN_OFFSET, WRIT
 # Same as shared_atomic_add, but with GDS. src[] = {store_val, gds_addr, m0}
 intrinsic("gds_atomic_add_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
 
+# src[] = { sample_id }
+intrinsic("load_sample_positions_amd", src_comp=[1], dest_comp=2, flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # Descriptor where TCS outputs are stored for TES
 system_value("ring_tess_offchip_amd", 4)
 system_value("ring_tess_offchip_offset_amd", 1)
