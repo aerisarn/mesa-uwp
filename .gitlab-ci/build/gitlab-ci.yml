@@ -389,8 +389,6 @@ debian-arm64-asan:
   extends:
     - debian-arm64
   variables:
-    C_ARGS: >
-      -Wno-error=stringop-truncation
     EXTRA_OPTION: >
       -D llvm=disabled
       -D b_sanitize=address
