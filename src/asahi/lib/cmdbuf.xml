@@ -682,6 +682,7 @@
 
   <!--- Command to launch a direct compute kernel -->
   <struct name="Launch" size="36">
+    <!-- Bottom 2 becomes 4 with excessive spilling? -->
     <field name="Unk 1" size="29" start="0:0" type="hex" default="0x1002"/>
     <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Compute Kernel"/>
     <field name="Pipeline" size="32" start="1:0" type="address"/>
@@ -759,6 +760,24 @@
     <field name="Encoder" start="14:0" size="64" type="address"/>
   </struct>
 
+  <struct name="Spill Buffer Histogram" size="60">
+    <field name="Bin 0" start="0:0" size="4" type="uint"/>
+    <field name="Bin 1" start="1:0" size="4" type="uint"/>
+    <field name="Bin 2" start="2:0" size="4" type="uint"/>
+    <field name="Bin 3" start="3:0" size="4" type="uint"/>
+    <field name="Bin 4" start="4:0" size="4" type="uint"/>
+    <field name="Bin 5" start="5:0" size="4" type="uint"/>
+    <field name="Bin 6" start="6:0" size="4" type="uint"/>
+    <field name="Bin 7" start="7:0" size="4" type="uint"/>
+    <field name="Bin 8" start="8:0" size="4" type="uint"/>
+    <field name="Bin 9" start="9:0" size="4" type="uint"/>
+    <field name="Bin 10" start="10:0" size="4" type="uint"/>
+    <field name="Bin 11" start="11:0" size="4" type="uint"/>
+    <field name="Bin 12" start="12:0" size="4" type="uint"/>
+    <field name="Bin 13" start="13:0" size="4" type="uint"/>
+    <field name="Bin 14" start="14:0" size="4" type="uint"/>
+  </struct>
+
   <struct name="IOGPU Compute" size="384">
     <field name="Deflake 1" start="20:0" size="64" type="address"/>
     <field name="Terminate of encoder" start="22:0" size="64" type="address"/>
@@ -773,7 +792,9 @@
     <field name="Unk 44" start="44:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 48" start="48:0" size="32" default="0x40" type="hex"/>
     <field name="Unk 56" start="56:0" size="32" default="6" type="hex"/>
+    <field name="Spilling unk 1" start="57:3" size="1" type="bool"/>
     <field name="Unk 58" start="58:0" size="32" default="0x62" type="hex"/>
+    <field name="Spill Buffer Histogram" start="60:0" size="480" type="Spill Buffer Histogram"/>
     <field name="Unk 75" start="75:0" size="32" default="0x10000" type="hex"/>
     <field name="Unk 94" start="94:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 95" start="95:0" size="32" default="0xffffffff" type="hex"/>
@@ -821,11 +842,16 @@
     <field name="Height 1" start="217:0" size="32" type="uint"/>
     <field name="Pointer" start="218:0" size="64" type="address"/>
 
+    <!-- 0x40 with frag spilling -->
+    <field name="Spilling unk 1" start="226:0" size="32" type="hex"/>
+    <field name="Spill Buffer Histogram" start="238:0" size="480" type="Spill Buffer Histogram"/>
+
     <!-- Encoded like the depth attachment -->
     <field name="Depth clear value" start="276:0" size="32" type="hex"/>
     <field name="Stencil clear value" start="277:0" size="8" type="uint"/>
     <field name="Unk 277" start="277:8" size="8" type="hex" default="3"/>
     <field name="Set when reloading Z or S 1" start="279:8" size="1" type="bool"/>
+    <field name="Set when frag shader spills" start="279:24" size="1" type="bool"/>
     <field name="Set when reloading Z or S 2" start="280:24" size="1" type="bool"/>
     <field name="Z16 Unorm attachment 2" start="281:8" size="1" type="bool"/>
     <field name="Unk 282" start="282:0" size="32" type="hex" default="0xffffffff"/>
