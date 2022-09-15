@@ -2818,6 +2818,9 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.dynamic_patch_control_points =
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
+   key.dynamic_rasterization_samples =
+      !!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !state->ms;
+
    return key;
 }
 
