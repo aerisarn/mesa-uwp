@@ -200,6 +200,8 @@ allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info 
       /* epilog continue PC */
       if (info->ps.has_epilog)
          user_sgpr_count += 1;
+      if (info->ps.needs_sample_positions && key->dynamic_rasterization_samples)
+         user_sgpr_count += 1;
       break;
    case MESA_SHADER_VERTEX:
       if (!args->is_gs_copy_shader)
@@ -836,6 +838,10 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ps_epilog_pc);
       }
 
+      if (info->ps.needs_sample_positions && key->dynamic_rasterization_samples) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ps_num_samples);
+      }
+
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
       if (args->explicit_scratch_args && gfx_level < GFX11) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
@@ -941,6 +947,8 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
    case MESA_SHADER_FRAGMENT:
       if (args->ps_epilog_pc.used)
          set_loc_shader(args, AC_UD_PS_EPILOG_PC, &user_sgpr_idx, 1);
+      if (args->ps_num_samples.used)
+         set_loc_shader(args, AC_UD_PS_NUM_SAMPLES, &user_sgpr_idx, 1);
       break;
    default:
       unreachable("Shader stage not implemented");
