@@ -537,7 +537,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_external_memory_host = device->rad_info.has_userptr,
       .EXT_global_priority = true,
       .EXT_global_priority_query = true,
-      .EXT_graphics_pipeline_library = !!(device->instance->perftest_flags & RADV_PERFTEST_GPL),
+      .EXT_graphics_pipeline_library = !device->use_llvm &&
+                                       !!(device->instance->perftest_flags & RADV_PERFTEST_GPL),
       .EXT_host_query_reset = true,
       .EXT_image_2d_view_of_3d = true,
       .EXT_image_drm_format_modifier = device->rad_info.gfx_level >= GFX9,
