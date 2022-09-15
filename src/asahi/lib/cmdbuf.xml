@@ -469,9 +469,16 @@
 
   <!-- PPP state ends -->
 
-  <!--- Commands valid within a pipeline -->
+  <!-- USC state starts -->
+  <enum name="USC Control">
+    <value name="Uniform" value="0x1d"/>
+    <value name="Shader" value="0x4d"/>
+    <value name="Sampler" value="0x9d"/>
+    <value name="Texture" value="0xdd"/>
+  </enum>
+
   <struct name="Bind uniform" size="8">
-    <field name="Tag" size="8" start="0:0" type="hex" default="0x1d"/>
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Uniform"/>
     <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
     <field name="Unk" size="4" start="0:16" type="hex" default="0x0"/>
     <!-- Exact split is unknown. -->
@@ -480,7 +487,7 @@
   </struct>
 
   <struct name="Bind texture" size="8">
-    <field name="Tag" size="8" start="0:0" type="hex" default="0xdd"/>
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Texture"/>
     <field name="Start" size="8" start="0:8" type="uint"/>
     <!-- Exact split is unknown. Count is at least 5 bits. Less than 8 bits. -->
     <field name="Count" size="7" start="0:20" type="uint"/>
@@ -488,7 +495,7 @@
   </struct>
 
   <struct name="Bind sampler" size="8">
-    <field name="Tag" size="8" start="0:0" type="hex" default="0x9d"/>
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Sampler"/>
     <field name="Start" size="8" start="0:8" type="uint"/>
     <field name="Count" size="7" start="0:20" type="uint"/>
     <!-- Exact split is unknown. -->
@@ -501,7 +508,7 @@
   </enum>
 
   <struct name="Set shader" size="24">
-    <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Shader"/>
     <field name="Uses shared memory" size="1" start="0:8" type="bool"/>
     <field name="Unk 1" size="16" start="0:8" type="hex" default="0x90"/>
     <field name="Shared memory per threadgroup in 256 bytes" size="8" start="0:24" type="uint"/>
@@ -536,7 +543,7 @@
   </struct>
 
   <struct name="Set shader extended" size="28">
-    <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Shader"/>
     <field name="Uses shared memory" size="1" start="0:8" type="bool"/>
     <field name="Unk 1" size="16" start="0:8" type="hex" default="0x10bd"/>
     <field name="Shared memory per threadgroup in 256 bytes" size="8" start="0:24" type="uint" default="0x20"/>
@@ -557,6 +564,8 @@
     <field name="Preshader code" size="32" start="5:16" type="address"/>
     <field name="Unk 7" size="16" start="6:16" type="hex" default="0x0"/> <!-- garbage? -->
   </struct>
+
+  <!-- USC commands end -->
 
   <!-- VDM commands start. VDM commands are padded out to 8b alignment. -->
   <enum name="VDM Block Type">
