@@ -150,7 +150,7 @@ a618_vk_full:
   # We use a longer timeout to keep the parallel down so that we don't lock up
   # too many runners for a long time when a dev is trying out at full VK status.
   timeout: 2h
-  parallel: 2
+  parallel: 3
   variables:
     # ran into OOM with VK-GL-CTS 1.2.8.0 at 6
     FDO_CI_CONCURRENT: 4
