@@ -197,17 +197,13 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
          transform[col][row] = instance.transform[col + row * 4];
 
    mat4 inv_transform = inverse(transform);
-   for (uint32_t col = 0; col < 3; col++)
-      for (uint32_t row = 0; row < 3; row++)
-         DEREF(node).wto_matrix[col + row * 4] = inv_transform[col][row];
+   for (uint32_t row = 0; row < 3; row++)
+      for (uint32_t col = 0; col < 4; col++)
+         DEREF(node).wto_matrix[row][col] = inv_transform[col][row];
 
-   DEREF(node).wto_matrix[3] = transform[3][0];
-   DEREF(node).wto_matrix[7] = transform[3][1];
-   DEREF(node).wto_matrix[11] = transform[3][2];
-
-   for (uint32_t col = 0; col < 3; col++)
+   for (uint32_t col = 0; col < 4; col++)
       for (uint32_t row = 0; row < 3; row++)
-         DEREF(node).otw_matrix[col + row * 3] = transform[col][row];
+         DEREF(node).otw_matrix[row][col] = transform[col][row];
 
    radv_accel_struct_header instance_header =
       DEREF(REF(radv_accel_struct_header)(instance.accelerationStructureReference));

@@ -611,43 +611,28 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                   vals[i] = nir_channel(&b_shader, wto_matrix[i], c);
 
                ret = nir_vec(&b_shader, vals, 3);
-               if (c == 3)
-                  ret = nir_fneg(&b_shader,
-                                 nir_build_vec3_mat_mult(&b_shader, ret, wto_matrix, false));
                break;
             }
             case nir_intrinsic_load_ray_object_to_world: {
                unsigned c = nir_intrinsic_column(intr);
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
-               if (c == 3) {
-                  nir_ssa_def *wto_matrix[3];
-                  nir_build_wto_matrix_load(&b_shader, instance_node_addr, wto_matrix);
-
-                  nir_ssa_def *vals[3];
-                  for (unsigned i = 0; i < 3; ++i)
-                     vals[i] = nir_channel(&b_shader, wto_matrix[i], c);
-
-                  ret = nir_vec(&b_shader, vals, 3);
-               } else {
-                  ret = nir_build_load_global(
-                     &b_shader, 3, 32, nir_iadd_imm(&b_shader, instance_node_addr, 92 + c * 12));
-               }
+               nir_ssa_def *rows[3];
+               for (unsigned r = 0; r < 3; ++r)
+                  rows[r] = nir_build_load_global(
+                     &b_shader, 4, 32,
+                     nir_iadd_imm(&b_shader, instance_node_addr,
+                                  offsetof(struct radv_bvh_instance_node, otw_matrix) + r * 16));
+               ret =
+                  nir_vec3(&b_shader, nir_channel(&b_shader, rows[0], c),
+                           nir_channel(&b_shader, rows[1], c), nir_channel(&b_shader, rows[2], c));
                break;
             }
             case nir_intrinsic_load_ray_object_origin: {
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
-               nir_ssa_def *wto_matrix[] = {
-                  nir_build_load_global(&b_shader, 4, 32,
-                                        nir_iadd_imm(&b_shader, instance_node_addr, 16),
-                                        .align_mul = 64, .align_offset = 16),
-                  nir_build_load_global(&b_shader, 4, 32,
-                                        nir_iadd_imm(&b_shader, instance_node_addr, 32),
-                                        .align_mul = 64, .align_offset = 32),
-                  nir_build_load_global(&b_shader, 4, 32,
-                                        nir_iadd_imm(&b_shader, instance_node_addr, 48),
-                                        .align_mul = 64, .align_offset = 48)};
-               ret = nir_build_vec3_mat_mult_pre(
-                  &b_shader, nir_load_var(&b_shader, vars->origin), wto_matrix);
+               nir_ssa_def *wto_matrix[3];
+               nir_build_wto_matrix_load(&b_shader, instance_node_addr, wto_matrix);
+               ret = nir_build_vec3_mat_mult(&b_shader, nir_load_var(&b_shader, vars->origin),
+                                             wto_matrix, true);
                break;
             }
             case nir_intrinsic_load_ray_object_direction: {
@@ -1539,17 +1524,14 @@ build_traversal_shader(struct radv_device *device,
             {
                /* instance */
                nir_ssa_def *instance_node_addr = build_node_to_addr(device, &b, bvh_node);
+               nir_ssa_def *wto_matrix[3];
+               nir_build_wto_matrix_load(&b, instance_node_addr, wto_matrix);
                nir_ssa_def *instance_data =
                   nir_build_load_global(&b, 4, 32, instance_node_addr, .align_mul = 64);
-               nir_ssa_def *wto_matrix[] = {
-                  nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_node_addr, 16),
-                                        .align_mul = 64, .align_offset = 16),
-                  nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_node_addr, 32),
-                                        .align_mul = 64, .align_offset = 32),
-                  nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, instance_node_addr, 48),
-                                        .align_mul = 64, .align_offset = 48)};
-               nir_ssa_def *instance_id =
-                  nir_build_load_global(&b, 1, 32, nir_iadd_imm(&b, instance_node_addr, 88));
+               nir_ssa_def *instance_id = nir_build_load_global(
+                  &b, 1, 32,
+                  nir_iadd_imm(&b, instance_node_addr,
+                               offsetof(struct radv_bvh_instance_node, instance_id)));
                nir_ssa_def *instance_and_mask = nir_channel(&b, instance_data, 2);
                nir_ssa_def *instance_mask = nir_ushr_imm(&b, instance_and_mask, 24);
 
@@ -1568,7 +1550,7 @@ build_traversal_shader(struct radv_device *device,
 
                nir_store_var(
                   &b, trav_vars.origin,
-                  nir_build_vec3_mat_mult_pre(&b, nir_load_var(&b, vars.origin), wto_matrix), 7);
+                  nir_build_vec3_mat_mult(&b, nir_load_var(&b, vars.origin), wto_matrix, true), 7);
                nir_store_var(
                   &b, trav_vars.dir,
                   nir_build_vec3_mat_mult(&b, nir_load_var(&b, vars.direction), wto_matrix, false),

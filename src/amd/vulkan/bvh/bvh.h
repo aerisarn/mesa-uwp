@@ -94,18 +94,12 @@ struct radv_bvh_instance_node {
    /* lower 24 bits are the sbt offset, upper 8 bits are VkGeometryInstanceFlagsKHR */
    uint32_t sbt_offset_and_flags;
 
-   /* The translation component is actually a pre-translation instead of a post-translation. If you
-    * want to get a proper matrix out of it you need to apply the directional component of the
-    * matrix to it. The pre-translation of the world->object matrix is the same as the
-    * post-translation of the object->world matrix so this way we can share data between both
-    * matrices. */
-   float wto_matrix[12];
-   uint32_t reserved[6];
+   float wto_matrix[3][4];
    uint32_t instance_id;
+   uint32_t reserved[3];
 
-   /* Object to world matrix transposed from the initial transform. Translate part is store in the
-    * wto_matrix. */
-   float otw_matrix[9];
+   /* Object to world matrix transposed from the initial transform. */
+   float otw_matrix[3][4];
 };
 
 struct radv_bvh_box16_node {

@@ -431,32 +431,23 @@ lower_rq_load(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
       nir_ssa_def *instance_node_addr =
          nir_bcsel(b, committed, rq_load_var(b, index, vars->closest.instance_addr),
                    rq_load_var(b, index, vars->candidate.instance_addr));
-      nir_ssa_def *wto_matrix[] = {
-         nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 16), .align_mul = 64,
-                               .align_offset = 16),
-         nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 32), .align_mul = 64,
-                               .align_offset = 32),
-         nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 48), .align_mul = 64,
-                               .align_offset = 48)};
-      return nir_build_vec3_mat_mult_pre(b, rq_load_var(b, index, vars->origin), wto_matrix);
+      nir_ssa_def *wto_matrix[3];
+      nir_build_wto_matrix_load(b, instance_node_addr, wto_matrix);
+      return nir_build_vec3_mat_mult(b, rq_load_var(b, index, vars->origin), wto_matrix, true);
    }
    case nir_ray_query_value_intersection_object_to_world: {
       nir_ssa_def *instance_node_addr =
          nir_bcsel(b, committed, rq_load_var(b, index, vars->closest.instance_addr),
                    rq_load_var(b, index, vars->candidate.instance_addr));
+      nir_ssa_def *rows[3];
+      for (unsigned r = 0; r < 3; ++r)
+         rows[r] = nir_build_load_global(
+            b, 4, 32,
+            nir_iadd_imm(b, instance_node_addr,
+                         offsetof(struct radv_bvh_instance_node, otw_matrix) + r * 16));
 
-      if (column == 3) {
-         nir_ssa_def *wto_matrix[3];
-         nir_build_wto_matrix_load(b, instance_node_addr, wto_matrix);
-
-         nir_ssa_def *vals[3];
-         for (unsigned i = 0; i < 3; ++i)
-            vals[i] = nir_channel(b, wto_matrix[i], column);
-
-         return nir_vec(b, vals, 3);
-      }
-
-      return nir_build_load_global(b, 3, 32, nir_iadd_imm(b, instance_node_addr, 92 + column * 12));
+      return nir_vec3(b, nir_channel(b, rows[0], column), nir_channel(b, rows[1], column),
+                      nir_channel(b, rows[2], column));
    }
    case nir_ray_query_value_intersection_primitive_index:
       return nir_bcsel(b, committed, rq_load_var(b, index, vars->closest.primitive_id),
@@ -479,9 +470,6 @@ lower_rq_load(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
       nir_ssa_def *vals[3];
       for (unsigned i = 0; i < 3; ++i)
          vals[i] = nir_channel(b, wto_matrix[i], column);
-
-      if (column == 3)
-         return nir_fneg(b, nir_build_vec3_mat_mult(b, nir_vec(b, vals, 3), wto_matrix, false));
 
       return nir_vec(b, vals, 3);
    }
@@ -728,15 +716,12 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
                   }
                   nir_pop_if(b, NULL);
 
-                  nir_ssa_def *wto_matrix[] = {
-                     nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 16),
-                                           .align_mul = 64, .align_offset = 16),
-                     nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 32),
-                                           .align_mul = 64, .align_offset = 32),
-                     nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 48),
-                                           .align_mul = 64, .align_offset = 48)};
-                  nir_ssa_def *instance_id =
-                     nir_build_load_global(b, 1, 32, nir_iadd_imm(b, instance_node_addr, 88));
+                  nir_ssa_def *wto_matrix[3];
+                  nir_build_wto_matrix_load(b, instance_node_addr, wto_matrix);
+                  nir_ssa_def *instance_id = nir_build_load_global(
+                     b, 1, 32,
+                     nir_iadd_imm(b, instance_node_addr,
+                                  offsetof(struct radv_bvh_instance_node, instance_id)));
 
                   rq_store_var(b, index, vars->trav.top_stack,
                                rq_load_var(b, index, vars->trav.stack), 1);
@@ -751,8 +736,8 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
                                nir_iadd_imm(b, rq_load_var(b, index, vars->trav.stack), 1), 1);
 
                   rq_store_var(b, index, vars->trav.origin,
-                               nir_build_vec3_mat_mult_pre(b, rq_load_var(b, index, vars->origin),
-                                                           wto_matrix),
+                               nir_build_vec3_mat_mult(b, rq_load_var(b, index, vars->origin),
+                                                       wto_matrix, true),
                                7);
                   rq_store_var(b, index, vars->trav.direction,
                                nir_build_vec3_mat_mult(b, rq_load_var(b, index, vars->direction),

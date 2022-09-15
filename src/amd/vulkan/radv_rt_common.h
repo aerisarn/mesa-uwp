@@ -52,8 +52,6 @@ nir_ssa_def *build_node_to_addr(struct radv_device *device, nir_builder *b, nir_
 nir_ssa_def *nir_build_vec3_mat_mult(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *matrix[],
                                      bool translation);
 
-nir_ssa_def *nir_build_vec3_mat_mult_pre(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *matrix[]);
-
 void nir_build_wto_matrix_load(nir_builder *b, nir_ssa_def *instance_addr, nir_ssa_def **out);
 
 nir_ssa_def *hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, nir_ssa_def *flags,

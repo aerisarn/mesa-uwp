@@ -264,13 +264,13 @@ calculate_instance_node_bounds(radv_bvh_instance_node instance)
    radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(instance.base_ptr));
 
    for (uint32_t comp = 0; comp < 3; ++comp) {
-      aabb.min[comp] = instance.wto_matrix[3 + 4 * comp];
-      aabb.max[comp] = instance.wto_matrix[3 + 4 * comp];
+      aabb.min[comp] = instance.otw_matrix[comp][3];
+      aabb.max[comp] = instance.otw_matrix[comp][3];
       for (uint32_t col = 0; col < 3; ++col) {
-         aabb.min[comp] += min(instance.otw_matrix[col + comp * 3] * header.aabb[0][col],
-                               instance.otw_matrix[col + comp * 3] * header.aabb[1][col]);
-         aabb.max[comp] += max(instance.otw_matrix[col + comp * 3] * header.aabb[0][col],
-                               instance.otw_matrix[col + comp * 3] * header.aabb[1][col]);
+         aabb.min[comp] += min(instance.otw_matrix[comp][col] * header.aabb[0][col],
+                               instance.otw_matrix[comp][col] * header.aabb[1][col]);
+         aabb.max[comp] += max(instance.otw_matrix[comp][col] * header.aabb[0][col],
+                               instance.otw_matrix[comp][col] * header.aabb[1][col]);
       }
    }
    return aabb;

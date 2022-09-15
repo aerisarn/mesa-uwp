@@ -510,25 +510,8 @@ rra_transcode_instance_node(struct rra_instance_node *dst, const struct radv_bvh
    dst->instance_id = src->instance_id;
    dst->blas_metadata_size = sizeof(struct rra_accel_struct_metadata);
 
-   float full_otw_matrix[16];
-   for (int row = 0; row < 3; ++row)
-      for (int col = 0; col < 3; ++col)
-         full_otw_matrix[row * 4 + col] = src->otw_matrix[row * 3 + col];
-
-   full_otw_matrix[3] = src->wto_matrix[3];
-   full_otw_matrix[7] = src->wto_matrix[7];
-   full_otw_matrix[11] = src->wto_matrix[11];
-
-   full_otw_matrix[12] = 0.0f;
-   full_otw_matrix[13] = 0.0f;
-   full_otw_matrix[14] = 0.0f;
-   full_otw_matrix[15] = 1.0f;
-
-   float full_wto_matrix[16];
-   util_invert_mat4x4(full_wto_matrix, full_otw_matrix);
-
-   memcpy(dst->wto_matrix, full_wto_matrix, sizeof(dst->wto_matrix));
-   memcpy(dst->otw_matrix, full_otw_matrix, sizeof(dst->otw_matrix));
+   memcpy(dst->wto_matrix, src->wto_matrix, sizeof(dst->wto_matrix));
+   memcpy(dst->otw_matrix, src->otw_matrix, sizeof(dst->otw_matrix));
 }
 
 static void

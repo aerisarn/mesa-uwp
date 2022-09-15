@@ -375,18 +375,6 @@ nir_build_vec3_mat_mult(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *matrix[],
    return nir_vec(b, result_components, 3);
 }
 
-nir_ssa_def *
-nir_build_vec3_mat_mult_pre(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *matrix[])
-{
-   nir_ssa_def *result_components[3] = {
-      nir_channel(b, matrix[0], 3),
-      nir_channel(b, matrix[1], 3),
-      nir_channel(b, matrix[2], 3),
-   };
-   return nir_build_vec3_mat_mult(b, nir_fsub(b, vec, nir_vec(b, result_components, 3)), matrix,
-                                  false);
-}
-
 void
 nir_build_wto_matrix_load(nir_builder *b, nir_ssa_def *instance_addr, nir_ssa_def **out)
 {
