@@ -204,15 +204,17 @@ _lima_resource_create_with_modifiers(struct pipe_screen *pscreen,
                          modifiers, count))
       should_tile = false;
 
+   width = templat->width0;
+   height = templat->height0;
+
    /* Don't align index, vertex or constant buffers */
-   if (templat->bind & (PIPE_BIND_INDEX_BUFFER |
-                        PIPE_BIND_VERTEX_BUFFER |
-                        PIPE_BIND_CONSTANT_BUFFER)) {
-      width = templat->width0;
-      height = templat->height0;
-   } else {
-      width = align(templat->width0, 16);
-      height = align(templat->height0, 16);
+   if (!(templat->bind & (PIPE_BIND_INDEX_BUFFER |
+                          PIPE_BIND_VERTEX_BUFFER |
+                          PIPE_BIND_CONSTANT_BUFFER))) {
+      if (templat->bind & PIPE_BIND_SHARED) {
+         width = align(width, 16);
+         height = align(height, 16);
+      }
       align_to_tile = true;
    }
 

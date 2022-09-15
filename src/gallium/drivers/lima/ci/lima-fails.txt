@@ -113,11 +113,6 @@ spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-05,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats@GL_COMPRESSED_ALPHA NPOT,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats@GL_COMPRESSED_INTENSITY NPOT,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats@GL_COMPRESSED_LUMINANCE_ALPHA NPOT,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats@GL_COMPRESSED_LUMINANCE NPOT,Fail
 spec@arb_texture_cube_map@copyteximage cube,Fail
 spec@arb_texture_cube_map@copyteximage cube samples=2,Fail
 spec@arb_texture_cube_map@copyteximage cube samples=4,Fail
@@ -190,27 +185,6 @@ spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB8,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB,Fail
 spec@ext_framebuffer_object@fbo-cubemap,Fail
 spec@ext_framebuffer_object@fbo-depth-sample-compare,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_ALPHA12 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_ALPHA16 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_ALPHA4 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_ALPHA8 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_ALPHA NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_INTENSITY12 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_INTENSITY16 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_INTENSITY4 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_INTENSITY8 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_INTENSITY NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE12_ALPHA12 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE12 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE16_ALPHA16 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE16 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE4_ALPHA4 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE4 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE8_ALPHA8 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE8 NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE_ALPHA NPOT,Fail
-spec@ext_framebuffer_object@fbo-generatemipmap-formats@GL_LUMINANCE NPOT,Fail
 spec@ext_framebuffer_object@fbo-maxsize,Fail
 spec@ext_framebuffer_object@fbo-readpixels-depth-formats,Fail
 spec@ext_framebuffer_object@fbo-readpixels-depth-formats@GL_DEPTH_COMPONENT/GL_FLOAT,Fail
@@ -675,15 +649,3 @@ spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt3_ext,Fail
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt5_ext,Fail
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_s3tc_dxt1_ext,Fail
-
-# generating non-power-of-two mipmaps fails, for some reason...
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats,Fail
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats@GL_COMPRESSED_RGBA_S3TC_DXT1_EXT NPOT,Fail
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats@GL_COMPRESSED_RGBA_S3TC_DXT3_EXT NPOT,Fail
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats@GL_COMPRESSED_RGBA_S3TC_DXT5_EXT NPOT,Fail
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats@GL_COMPRESSED_RGB_S3TC_DXT1_EXT NPOT,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT NPOT,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT NPOT,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT NPOT,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT NPOT,Fail
