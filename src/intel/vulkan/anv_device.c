@@ -921,12 +921,18 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       device->sync_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
    device->sync_types[st_idx++] = &device->sync_syncobj_type;
 
-   if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT))
-      device->sync_types[st_idx++] = &anv_bo_sync_type;
+   /* anv_bo_sync_type is only supported with i915 for now  */
+   if (device->info.kmd_type == INTEL_KMD_TYPE_I915) {
+      if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT))
+         device->sync_types[st_idx++] = &anv_bo_sync_type;
 
-   if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_TIMELINE)) {
-      device->sync_timeline_type = vk_sync_timeline_get_type(&anv_bo_sync_type);
-      device->sync_types[st_idx++] = &device->sync_timeline_type.sync;
+      if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_TIMELINE)) {
+         device->sync_timeline_type = vk_sync_timeline_get_type(&anv_bo_sync_type);
+         device->sync_types[st_idx++] = &device->sync_timeline_type.sync;
+      }
+   } else {
+      assert(device->sync_syncobj_type.features & VK_SYNC_FEATURE_TIMELINE);
+      assert(device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT);
    }
 
    device->sync_types[st_idx++] = NULL;
@@ -3051,6 +3057,8 @@ VkResult anv_CreateDevice(
 
    device->vk.command_buffer_ops = &anv_cmd_buffer_ops;
    device->vk.create_sync_for_memory = anv_create_sync_for_memory;
+   if (physical_device->info.kmd_type == INTEL_KMD_TYPE_I915)
+      device->vk.create_sync_for_memory = anv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->fd);
 
    uint32_t num_queues = 0;
