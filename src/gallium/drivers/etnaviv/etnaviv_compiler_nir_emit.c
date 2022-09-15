@@ -128,6 +128,7 @@ static const struct etna_op_info etna_ops[] = {
    IOP(ishl, LSHIFT, 0_X_1),
    IOP(ishr, RSHIFT, 0_X_1),
    UOP(ushr, RSHIFT, 0_X_1),
+   UOP(uclz, LEADZERO, 0_X_X),
 };
 
 void
