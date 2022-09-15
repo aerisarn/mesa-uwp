@@ -1377,6 +1377,7 @@ util_format_get_plane_format(enum pipe_format format, unsigned plane)
    case PIPE_FORMAT_IYUV:
    case PIPE_FORMAT_Y8_U8_V8_422_UNORM:
    case PIPE_FORMAT_Y8_U8_V8_444_UNORM:
+   case PIPE_FORMAT_Y8_400_UNORM:
       return PIPE_FORMAT_R8_UNORM;
    case PIPE_FORMAT_NV12:
    case PIPE_FORMAT_Y8_U8V8_422_UNORM:

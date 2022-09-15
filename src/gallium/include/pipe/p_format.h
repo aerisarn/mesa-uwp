@@ -295,6 +295,7 @@ enum pipe_format {
    PIPE_FORMAT_NV12,
    PIPE_FORMAT_NV21,
 
+   PIPE_FORMAT_Y8_400_UNORM,
    /* PIPE_FORMAT_Y8_U8_V8_420_UNORM = IYUV */
    /* PIPE_FORMAT_Y8_U8V8_420_UNORM = NV12 */
    PIPE_FORMAT_Y8_U8_V8_422_UNORM,
@@ -635,6 +636,8 @@ pipe_format_to_chroma_format(enum pipe_format format)
       case PIPE_FORMAT_Y8_U8_V8_444_UNORM:
       case PIPE_FORMAT_Y16_U16_V16_444_UNORM:
          return PIPE_VIDEO_CHROMA_FORMAT_444;
+      case PIPE_FORMAT_Y8_400_UNORM:
+         return PIPE_VIDEO_CHROMA_FORMAT_400;
       default:
          return PIPE_VIDEO_CHROMA_FORMAT_NONE;
    }
