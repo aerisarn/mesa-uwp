@@ -5543,6 +5543,13 @@ radv_pipeline_emit_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_c
       ctx_cs, R_028710_SPI_SHADER_Z_FORMAT,
       ac_get_spi_shader_z_format(ps->info.ps.writes_z, ps->info.ps.writes_stencil,
                                  ps->info.ps.writes_sample_mask, false));
+
+   struct radv_userdata_info *loc =
+      radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_FRAGMENT, AC_UD_PS_NUM_SAMPLES);
+   if (loc->sgpr_idx != -1) {
+      uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_FRAGMENT];
+      radeon_set_sh_reg(cs, base_reg + loc->sgpr_idx * 4, pipeline->ms.num_samples);
+   }
 }
 
 static void
