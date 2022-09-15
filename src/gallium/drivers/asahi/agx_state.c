@@ -1279,7 +1279,8 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
          cfg.code = cs->bo->ptr.gpu;
          cfg.register_quadwords = 0;
          cfg.unk_3 = 0x8d;
-         cfg.unk_1 = 0x2010bd;
+         cfg.unk_1 = 0x10bd;
+         cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
          cfg.unk_2 = 0x0d;
          cfg.loads_varyings = true;
          cfg.fragment_parameters.early_z_testing = !writes_sample_mask;
@@ -1328,7 +1329,8 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
    /* TODO: Can we prepack this? */
    agx_pack(record, SET_SHADER, cfg) {
       cfg.code = code;
-      cfg.unk_1 = 0x2010bd;
+      cfg.unk_1 = 0x10bd;
+      cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
       cfg.unk_2 = 0x0d;
       cfg.unk_3 = 0x8d;
       cfg.register_quadwords = 1;

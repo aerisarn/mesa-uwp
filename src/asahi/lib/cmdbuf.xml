@@ -502,7 +502,9 @@
 
   <struct name="Set shader" size="24">
     <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
-    <field name="Unk 1" size="24" start="0:8" type="hex" default="0x90"/>
+    <field name="Uses shared memory" size="1" start="0:8" type="bool"/>
+    <field name="Unk 1" size="16" start="0:8" type="hex" default="0x90"/>
+    <field name="Shared memory per threadgroup in 256 bytes" size="8" start="0:24" type="uint"/>
     <field name="Unk 2" size="8" start="1:0" type="hex" default="0x0d"/> <!-- TODO differs with stage -->
     <!--- Seemingly texture count related?,
           or number of registers in the preshader? 8 with <4 in the preshader,
@@ -535,7 +537,9 @@
 
   <struct name="Set shader extended" size="28">
     <field name="Tag" size="8" start="0:0" type="hex" default="0x4d"/>
-    <field name="Unk 1" size="24" start="0:8" type="hex" default="0x2010bd"/>
+    <field name="Uses shared memory" size="1" start="0:8" type="bool"/>
+    <field name="Unk 1" size="16" start="0:8" type="hex" default="0x10bd"/>
+    <field name="Shared memory per threadgroup in 256 bytes" size="8" start="0:24" type="uint" default="0x20"/>
     <field name="Unk 2" size="8" start="1:0" type="hex" default="0x0d"/>
     <field name="Loads varyings" size="1" start="1:8" type="bool"/>
     <field name="Unk 1 9" size="1" start="1:9" type="bool" default="0"/>
