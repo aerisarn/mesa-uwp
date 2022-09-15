@@ -1443,8 +1443,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
          if (added && !list_is_empty(&pane->graph_list)) {
             struct hud_graph *graph;
             graph = list_entry(pane->graph_list.prev, struct hud_graph, head);
-            strncpy(graph->name, s, sizeof(graph->name)-1);
-            graph->name[sizeof(graph->name)-1] = 0;
+            snprintf(graph->name, sizeof(graph->name), "%s", s);
          }
       }
 
