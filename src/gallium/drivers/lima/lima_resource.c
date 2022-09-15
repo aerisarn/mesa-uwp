@@ -119,7 +119,6 @@ setup_miptree(struct lima_resource *res,
          util_format_get_nblocksy(pres->format, aligned_height) *
          pres->array_size * depth;
 
-      res->levels[level].width = aligned_width;
       res->levels[level].stride = stride;
       res->levels[level].offset = size;
       res->levels[level].layer_stride = util_format_get_stride(pres->format, align(width, 16)) * align(height, 16);
@@ -376,11 +375,7 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
                  (res->bo->size - res->levels[0].offset), size);
          goto err_out;
       }
-
-      res->levels[0].width = width;
    }
-   else
-      res->levels[0].width = pres->width0;
 
    if (screen->ro) {
       /* Make sure that renderonly has a handle to our buffer in the
