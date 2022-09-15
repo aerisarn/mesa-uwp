@@ -35,5 +35,3 @@ dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
-spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
-spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
