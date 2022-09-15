@@ -1778,6 +1778,29 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                                   { 0.0f, vf_y_max, 0.0f },
                                   { vf_x_max, vf_y_max, 0.0f } };
 
+   if (PVR_HAS_FEATURE(dev_info, gs_rta_support)) {
+      struct util_dynarray passthrough_rta_vert_shader;
+
+      util_dynarray_init(&passthrough_rta_vert_shader, NULL);
+      pvr_hard_code_get_passthrough_rta_vertex_shader(
+         dev_info,
+         &passthrough_rta_vert_shader);
+
+      result = pvr_gpu_upload_usc(device,
+                                  passthrough_rta_vert_shader.data,
+                                  passthrough_rta_vert_shader.size,
+                                  cache_line_size,
+                                  &state->usc_multi_layer_vertex_shader_bo);
+      if (result != VK_SUCCESS) {
+         util_dynarray_fini(&passthrough_rta_vert_shader);
+         return result;
+      }
+
+      util_dynarray_fini(&passthrough_rta_vert_shader);
+   } else {
+      state->usc_multi_layer_vertex_shader_bo = NULL;
+   }
+
    pvr_hard_code_get_passthrough_vertex_shader(dev_info,
                                                &passthrough_vert_shader);
 
@@ -1787,7 +1810,7 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                                cache_line_size,
                                &state->usc_vertex_shader_bo);
    if (result != VK_SUCCESS)
-      return result;
+      goto err_free_usc_multi_layer_shader;
 
    result = pvr_gpu_upload(device,
                            device->heaps.general_heap,
@@ -1894,6 +1917,9 @@ err_free_verices_buffer:
 err_free_usc_shader:
    pvr_bo_free(device, state->usc_vertex_shader_bo);
 
+err_free_usc_multi_layer_shader:
+   pvr_bo_free(device, state->usc_multi_layer_vertex_shader_bo);
+
    return result;
 }
 
@@ -1905,6 +1931,7 @@ pvr_device_finish_graphics_static_clear_state(struct pvr_device *device)
    pvr_bo_free(device, state->pds.pvr_bo);
    pvr_bo_free(device, state->vertices_bo);
    pvr_bo_free(device, state->usc_vertex_shader_bo);
+   pvr_bo_free(device, state->usc_multi_layer_vertex_shader_bo);
 }
 
 /* FIXME: We should be calculating the size when we upload the code in
