@@ -2141,7 +2141,7 @@ bool radv_pipeline_has_ngg_passthrough(const struct radv_graphics_pipeline *pipe
 
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
 
-struct radv_userdata_info *radv_lookup_user_sgpr(struct radv_pipeline *pipeline,
+struct radv_userdata_info *radv_lookup_user_sgpr(const struct radv_pipeline *pipeline,
                                                  gl_shader_stage stage, int idx);
 
 struct radv_shader *radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage);
