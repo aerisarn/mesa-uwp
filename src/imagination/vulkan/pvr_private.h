@@ -111,6 +111,14 @@ enum pvr_sub_cmd_type {
    PVR_SUB_CMD_TYPE_GRAPHICS,
    PVR_SUB_CMD_TYPE_COMPUTE,
    PVR_SUB_CMD_TYPE_TRANSFER,
+   PVR_SUB_CMD_TYPE_EVENT,
+};
+
+enum pvr_event_type {
+   PVR_EVENT_TYPE_SET,
+   PVR_EVENT_TYPE_RESET,
+   PVR_EVENT_TYPE_WAIT,
+   PVR_EVENT_TYPE_BARRIER,
 };
 
 enum pvr_depth_stencil_usage {
@@ -710,6 +718,10 @@ struct pvr_sub_cmd_transfer {
    struct list_head transfer_cmds;
 };
 
+struct pvr_sub_cmd_event {
+   enum pvr_event_type type;
+};
+
 struct pvr_sub_cmd {
    /* This links the subcommand in pvr_cmd_buffer:sub_cmds list. */
    struct list_head link;
@@ -720,6 +732,7 @@ struct pvr_sub_cmd {
       struct pvr_sub_cmd_gfx gfx;
       struct pvr_sub_cmd_compute compute;
       struct pvr_sub_cmd_transfer transfer;
+      struct pvr_sub_cmd_event event;
    };
 };
 

@@ -104,6 +104,9 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       }
       break;
 
+   case PVR_SUB_CMD_TYPE_EVENT:
+      break;
+
    default:
       pvr_finishme("Unsupported sub-command type %d", sub_cmd->type);
       break;
@@ -261,6 +264,10 @@ static void pvr_cmd_buffer_update_barriers(struct pvr_cmd_buffer *cmd_buffer,
 
    case PVR_SUB_CMD_TYPE_TRANSFER:
       barriers = PVR_PIPELINE_STAGE_TRANSFER_BIT;
+      break;
+
+   case PVR_SUB_CMD_TYPE_EVENT:
+      barriers = 0;
       break;
 
    default:
@@ -1563,6 +1570,9 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    case PVR_SUB_CMD_TYPE_TRANSFER:
       break;
 
+   case PVR_SUB_CMD_TYPE_EVENT:
+      break;
+
    default:
       pvr_finishme("Unsupported sub-command type %d", sub_cmd->type);
       break;
@@ -1711,6 +1721,10 @@ static VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
 
    case PVR_SUB_CMD_TYPE_TRANSFER:
       list_inithead(&sub_cmd->transfer.transfer_cmds);
+      break;
+
+   case PVR_SUB_CMD_TYPE_EVENT:
+      /* TODO: Add support for joining consecutive event sub_cmd? */
       break;
 
    default:

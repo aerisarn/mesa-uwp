@@ -509,9 +509,14 @@ pvr_process_cmd_buffer(struct pvr_device *device,
                                             completions);
          break;
 
+      case PVR_SUB_CMD_TYPE_EVENT:
+         pvr_finishme("Add support to process event sub cmds.");
+         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         break;
+
       default:
-         pvr_finishme("Unsupported sub-command type %d", sub_cmd->type);
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         mesa_loge("Unsupported sub-command type %d", sub_cmd->type);
+         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       if (result != VK_SUCCESS) {
