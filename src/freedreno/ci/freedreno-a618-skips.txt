@@ -37,6 +37,3 @@ spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-el
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
-
-# Crashes in RA, but slow enough to get there that CI times out sometimes
-dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*

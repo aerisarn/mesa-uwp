@@ -4,3 +4,6 @@
 
 # Timeouts, passes otherwise
 KHR-GL33.texture_swizzle.smoke
+
+# Spends its time in nir_validate, timing out in CI sometimes.
+dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*
