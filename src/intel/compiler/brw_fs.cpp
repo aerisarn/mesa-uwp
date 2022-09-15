@@ -5948,7 +5948,7 @@ fs_visitor::optimize()
          snprintf(filename, 64, "%s%d-%s-%02d-%02d-" #pass,              \
                   stage_abbrev, dispatch_width, nir->info.name, iteration, pass_num); \
                                                                         \
-         backend_shader::dump_instructions(filename);                   \
+         dump_instructions(filename);                                   \
       }                                                                 \
                                                                         \
       validate();                                                       \
@@ -5962,7 +5962,7 @@ fs_visitor::optimize()
       snprintf(filename, 64, "%s%d-%s-00-00-start",
                stage_abbrev, dispatch_width, nir->info.name);
 
-      backend_shader::dump_instructions(filename);
+      dump_instructions(filename);
    }
 
    bool progress = false;
