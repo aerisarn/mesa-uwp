@@ -275,6 +275,13 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
                                         .base = sample_pos_offset, .access = ACCESS_NON_WRITEABLE);
       break;
    }
+   case nir_intrinsic_load_rasterization_samples_amd:
+      if (s->pl_key->dynamic_rasterization_samples) {
+         replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ps_num_samples);
+      } else {
+         replacement = nir_imm_int(b, s->pl_key->ps.num_samples);
+      }
+      break;
    default:
       break;
    }
