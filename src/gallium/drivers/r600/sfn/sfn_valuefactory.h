@@ -167,10 +167,12 @@ struct register_key_hash {
 class ChannelCounts {
 public:
    void inc_count(int chan) {++m_counts[chan];}
-   int least_used() const  {
+   int least_used(uint8_t mask) const  {
       int least_used = 0;
       uint32_t count = m_counts[0];
       for (int i = 1; i < 4; ++i) {
+         if (!((1 << i) & mask))
+            continue;
          if (count > m_counts[i]) {
             count = m_counts[i];
             least_used = i;
@@ -214,9 +216,9 @@ public:
                                                               const std::vector<int>& components);
 
 
-    PRegister dest(const nir_alu_dest& dest, int chan, Pin pin_channel);
-    PRegister dest(const nir_dest& dest, int chan, Pin pin_channel);
-    PRegister dest(const nir_ssa_def& dest, int chan, Pin pin_channel);
+    PRegister dest(const nir_alu_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+    PRegister dest(const nir_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+    PRegister dest(const nir_ssa_def& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
 
     PRegister dummy_dest(unsigned chan);
     PRegister temp_register(int pinned_channel = -1, bool is_ssa = true);

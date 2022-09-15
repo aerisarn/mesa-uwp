@@ -162,10 +162,10 @@ void ValueFactory::inject_value(const nir_dest& dest, int chan, PVirtualValue va
 }
 
 PRegister ValueFactory::dest(const nir_alu_dest& dst, int chan,
-                             Pin pin_channel)
+                             Pin pin_channel, uint8_t chan_mask)
 {
    sfn_log << SfnLog::reg << "Search (ref) " << &dst << "\n";
-   return dest(dst.dest, chan, pin_channel);
+   return dest(dst.dest, chan, pin_channel, chan_mask);
 }
 
 class TranslateRegister: public RegisterVisitor {
@@ -214,10 +214,11 @@ PRegister ValueFactory::resolve_array(nir_register *reg, nir_src *indirect,
    }
 }
 
-PRegister ValueFactory::dest(const nir_dest& dst, int chan, Pin pin_channel)
+PRegister ValueFactory::dest(const nir_dest& dst, int chan, Pin pin_channel,
+                             uint8_t chan_mask)
 {
    if (dst.is_ssa) {
-      return dest(dst.ssa, chan, pin_channel);
+      return dest(dst.ssa, chan, pin_channel, chan_mask);
    } else {
       return resolve_array(dst.reg.reg, dst.reg.indirect,
                            dst.reg.base_offset, chan);
@@ -253,7 +254,7 @@ PRegister ValueFactory::temp_register(int pinned_channel, bool is_ssa)
 {
    int sel = m_next_register_index++;
    int chan = (pinned_channel >= 0) ?
-            pinned_channel : m_channel_counts.least_used();
+            pinned_channel : m_channel_counts.least_used(0xf);
 
    auto reg = new Register( sel, chan,
                             pinned_channel >= 0 ? pin_chan : pin_free);
@@ -348,7 +349,8 @@ PRegister ValueFactory::dummy_dest(unsigned chan)
 }
 
 PRegister
-ValueFactory::dest(const nir_ssa_def& ssa, int chan, Pin pin_channel)
+ValueFactory::dest(const nir_ssa_def& ssa, int chan, Pin pin_channel,
+                   uint8_t chan_mask)
 {
    RegisterKey key(ssa.index, chan, vp_ssa);
 
@@ -364,11 +366,13 @@ ValueFactory::dest(const nir_ssa_def& ssa, int chan, Pin pin_channel)
       sel = isel->second;
    else {
       sel = m_next_register_index++;
+      sfn_log << SfnLog::reg << "Assign " << sel << " to index "
+              << ssa.index << " in " << &m_ssa_index_to_sel << "\n";
       m_ssa_index_to_sel[ssa.index] = sel;
    }
 
    if (pin_channel == pin_free)
-      chan = m_channel_counts.least_used();
+      chan = m_channel_counts.least_used(chan_mask);
 
    auto vreg = new Register( sel, chan, pin_channel);
    m_channel_counts.inc_count(chan);

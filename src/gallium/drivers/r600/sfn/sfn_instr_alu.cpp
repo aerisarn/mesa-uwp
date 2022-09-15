@@ -1808,9 +1808,10 @@ static bool emit_alu_b2x(const nir_alu_instr& alu, AluInlineConstants mask, Shad
 
    for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest) ; ++i) {
       if (alu.dest.write_mask & (1 << i)){
+         auto src = value_factory.src(alu.src[0], i);
          ir = new AluInstr(op2_and_int,
                            value_factory.dest(alu.dest, i, pin),
-                           value_factory.src(alu.src[0], i),
+                           src,
                            value_factory.inline_const(mask, 0),
                            {alu_write});
          if (alu.src[0].negate) ir->set_alu_flag(alu_src0_neg);
@@ -2396,17 +2397,20 @@ static bool emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, S
 
    auto pin = pin_for_components(alu);
 
+   unsigned ncomp = nir_dest_num_components(alu.dest.dest) == 4 ? 4 : 3;
+
    /* todo: Actually we need only three channels, but then we have
     * to make sure that we don't hava w dest */
-   for (unsigned j = 0; j < 4; ++j) {
+   for (unsigned j = 0; j < ncomp; ++j) {
       if (alu.dest.write_mask & (1 << j)) {
-         AluInstr::SrcValues srcs(4);
-         PRegister dest = value_factory.dest(alu.dest.dest, j, pin);
+         AluInstr::SrcValues srcs(ncomp);
+         PRegister dest = value_factory.dest(alu.dest.dest, j, pin,
+                                             (1 << ncomp) - 1);
 
-         for (unsigned i = 0; i < 4; ++i)
+         for (unsigned i = 0; i < ncomp; ++i)
             srcs[i] = value_factory.src(src0, j);
 
-         auto ir = new AluInstr(opcode, dest,  srcs,  AluInstr::last_write, 4);
+         auto ir = new AluInstr(opcode, dest,  srcs,  AluInstr::last_write, ncomp);
 
          if (alu.src[0].abs) ir->set_alu_flag(alu_src0_abs);
          if (alu.src[0].negate) ir->set_alu_flag(alu_src0_neg);
