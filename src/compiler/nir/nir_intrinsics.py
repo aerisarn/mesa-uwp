@@ -1334,6 +1334,8 @@ system_value("tcs_num_patches_amd", 1)
 system_value("tess_rel_patch_id_amd", 1)
 # Vertex offsets used for GS per-vertex inputs
 system_value("gs_vertex_offset_amd", 1, [BASE])
+# Number of rasterization samples
+system_value("rasterization_samples_amd", 1)
 
 # AMD merged shader intrinsics
 
