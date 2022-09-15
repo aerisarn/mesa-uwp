@@ -595,6 +595,30 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
             progress = true;
             break;
          }
+         case nir_intrinsic_load_barycentric_at_sample: {
+            nir_ssa_def *new_dest;
+
+            if (!key->ps.num_samples) {
+               new_dest =
+                  nir_load_barycentric_pixel(&b, 32,
+                                             .interp_mode = nir_intrinsic_interp_mode(intrin));
+            } else {
+               nir_ssa_def *sample_pos = nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa);
+
+               /* sample_pos -= 0.5 */
+               sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
+
+               new_dest =
+                  nir_load_barycentric_at_offset(&b, 32, sample_pos,
+                                                 .interp_mode = nir_intrinsic_interp_mode(intrin));
+            }
+
+            nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_dest);
+            nir_instr_remove(instr);
+
+            progress = true;
+            break;
+         }
          default:
             break;
          }
