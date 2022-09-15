@@ -128,7 +128,7 @@ a618_vk:
   extends:
     - .lava-test:arm64
     - .turnip-rules
-  parallel: 7
+  parallel: 9
   variables:
     VK_DRIVER: freedreno
     DEQP_SUITE: freedreno-a618-vk
