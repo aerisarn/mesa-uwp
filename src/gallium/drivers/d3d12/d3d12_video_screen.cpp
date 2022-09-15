@@ -153,6 +153,7 @@ d3d12_has_video_decode_support(struct pipe_screen *pscreen, enum pipe_video_prof
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH10:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
+      case PIPE_VIDEO_PROFILE_AV1_MAIN:
       {
          supportsProfile = true;
       } break;

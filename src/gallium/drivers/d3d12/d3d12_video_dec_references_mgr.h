@@ -56,6 +56,8 @@ struct d3d12_video_decoder_references_manager
 
    template <typename T, size_t size>
    void mark_references_in_use(const T (&picEntries)[size]);
+   template <typename T, size_t size>
+   void mark_references_in_use_av1(const T (&picEntries)[size]);
    void mark_reference_in_use(uint16_t index);
 
    uint16_t store_future_reference(uint16_t index,
@@ -67,6 +69,9 @@ struct d3d12_video_decoder_references_manager
    // after the method returns
    template <typename T, size_t size>
    void update_entries(T (&picEntries)[size], std::vector<D3D12_RESOURCE_BARRIER> &outNeededTransitions);
+
+   template <typename T, size_t size>
+   void update_entries_av1(T (&picEntries)[size], std::vector<D3D12_RESOURCE_BARRIER> &outNeededTransitions);
 
    void get_reference_only_output(
       struct pipe_video_buffer *  pCurrentDecodeTarget,
@@ -214,6 +219,67 @@ d3d12_video_decoder_references_manager::mark_references_in_use(const T (&picEntr
 {
    for (auto &picEntry : picEntries) {
       mark_reference_in_use(picEntry.Index7Bits);
+   }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------
+template <typename T, size_t size>
+void
+d3d12_video_decoder_references_manager::update_entries_av1(T (&picEntries)[size],
+                                                       std::vector<D3D12_RESOURCE_BARRIER> &outNeededTransitions)
+{
+   outNeededTransitions.clear();
+
+   for (auto &picEntry : picEntries) {
+      // uint16_t update_entry(
+      //     uint16_t index, // in
+      //     ID3D12Resource*& pOutputReference, // out -> new reference slot assigned or nullptr
+      //     uint32_t& OutputSubresource, // out -> new reference slot assigned or 0
+      //     bool& outNeedsTransitionToDecodeRead // out -> indicates if output resource argument has to be transitioned
+      //     to D3D12_RESOURCE_STATE_VIDEO_DECODE_READ by the caller
+      // );
+
+      ID3D12Resource *pOutputReference               = {};
+      uint32_t        OutputSubresource              = 0u;
+      bool            outNeedsTransitionToDecodeRead = false;
+
+      picEntry =
+         update_entry(picEntry, pOutputReference, OutputSubresource, outNeedsTransitionToDecodeRead);
+
+      if (outNeedsTransitionToDecodeRead) {
+         ///
+         /// The subresource indexing in D3D12 Video within the DPB doesn't take into account the Y, UV planes (ie.
+         /// subresource 0, 1, 2, 3..., N are different full NV12 references in the DPB) but when using the subresources
+         /// in other areas of D3D12 we need to convert it to the D3D12CalcSubresource format, explained in
+         /// https://docs.microsoft.com/en-us/windows/win32/direct3d12/subresources
+         ///
+         CD3DX12_RESOURCE_DESC refDesc(GetDesc(pOutputReference));
+         uint32_t              MipLevel, PlaneSlice, ArraySlice;
+         D3D12DecomposeSubresource(OutputSubresource,
+                                   refDesc.MipLevels,
+                                   refDesc.ArraySize(),
+                                   MipLevel,
+                                   ArraySlice,
+                                   PlaneSlice);
+
+         for (PlaneSlice = 0; PlaneSlice < m_formatInfo.PlaneCount; PlaneSlice++) {
+            uint planeOutputSubresource = refDesc.CalcSubresource(MipLevel, ArraySlice, PlaneSlice);
+            outNeededTransitions.push_back(CD3DX12_RESOURCE_BARRIER::Transition(pOutputReference,
+                                                                                D3D12_RESOURCE_STATE_COMMON,
+                                                                                D3D12_RESOURCE_STATE_VIDEO_DECODE_READ,
+                                                                                planeOutputSubresource));
+         }
+      }
+   }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------
+template <typename T, size_t size>
+void
+d3d12_video_decoder_references_manager::mark_references_in_use_av1(const T (&picEntries)[size])
+{
+   for (auto &picEntry : picEntries) {
+      mark_reference_in_use(picEntry);
    }
 }
 
