@@ -595,41 +595,22 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose)
    }
 }
 
-void
-agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
+static void
+agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
 {
-   agxdecode_dump_file_open();
+   agx_unpack(agxdecode_dump_stream, cmdbuf + 16, IOGPU_COMPUTE, cs);
+   DUMP_UNPACKED(IOGPU_COMPUTE, cs, "Compute\n");
 
-   struct agx_bo *cmdbuf = agxdecode_find_handle(cmdbuf_handle, AGX_ALLOC_CMDBUF);
-   struct agx_bo *map = agxdecode_find_handle(map_handle, AGX_ALLOC_MEMMAP);
-   assert(cmdbuf != NULL && "nonexistant command buffer");
-   assert(map != NULL && "nonexistant mapping");
+   agxdecode_stateful(encoder, "Encoder", agxdecode_cdm, verbose);
+}
 
-   /* Before decoding anything, validate the map. Set bo->mapped fields */
-   agxdecode_decode_segment_list(map->ptr.cpu);
-
-   /* Print the IOGPU stuff */
-   agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
-   DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
-
-   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 16,
-              IOGPU_GRAPHICS, gfx);
+static void
+agxdecode_gfx(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
+{
+   agx_unpack(agxdecode_dump_stream, cmdbuf + 16, IOGPU_GRAPHICS, gfx);
    DUMP_UNPACKED(IOGPU_GRAPHICS, gfx, "Graphics\n");
 
-   DUMP_CL(IOGPU_ATTACHMENT_COUNT, ((uint8_t *) cmdbuf->ptr.cpu +
-            cmd.attachment_offset), "Attachment count");
-
-   uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset);
-   unsigned attachment_count = attachments[3];
-   for (unsigned i = 0; i < attachment_count; ++i) {
-      uint32_t *ptr = attachments + 4 + (i * AGX_IOGPU_ATTACHMENT_LENGTH / 4);
-      DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
-   }
-
-   if (cmd.unk_5 == 3)
-      agxdecode_stateful(cmd.encoder, "Encoder", agxdecode_cdm, verbose);
-   else
-      agxdecode_stateful(cmd.encoder, "Encoder", agxdecode_vdm, verbose);
+   agxdecode_stateful(encoder, "Encoder", agxdecode_vdm, verbose);
 
    if (gfx.clear_pipeline_unk) {
       fprintf(agxdecode_dump_stream, "Unk: %X\n", gfx.clear_pipeline_unk);
@@ -653,6 +634,39 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       agxdecode_stateful(gfx.partial_store_pipeline,
             "Partial store pipeline", agxdecode_pipeline, verbose);
    }
+}
+
+void
+agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
+{
+   agxdecode_dump_file_open();
+
+   struct agx_bo *cmdbuf = agxdecode_find_handle(cmdbuf_handle, AGX_ALLOC_CMDBUF);
+   struct agx_bo *map = agxdecode_find_handle(map_handle, AGX_ALLOC_MEMMAP);
+   assert(cmdbuf != NULL && "nonexistant command buffer");
+   assert(map != NULL && "nonexistant mapping");
+
+   /* Before decoding anything, validate the map. Set bo->mapped fields */
+   agxdecode_decode_segment_list(map->ptr.cpu);
+
+   /* Print the IOGPU stuff */
+   agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
+   DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
+
+   DUMP_CL(IOGPU_ATTACHMENT_COUNT, ((uint8_t *) cmdbuf->ptr.cpu +
+            cmd.attachment_offset), "Attachment count");
+
+   uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset);
+   unsigned attachment_count = attachments[3];
+   for (unsigned i = 0; i < attachment_count; ++i) {
+      uint32_t *ptr = attachments + 4 + (i * AGX_IOGPU_ATTACHMENT_LENGTH / 4);
+      DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
+   }
+
+   if (cmd.unk_5 == 3)
+      agxdecode_cs((uint32_t *) cmdbuf->ptr.cpu, cmd.encoder, verbose);
+   else
+      agxdecode_gfx((uint32_t *) cmdbuf->ptr.cpu, cmd.encoder, verbose);
 
    agxdecode_map_read_write();
 }
