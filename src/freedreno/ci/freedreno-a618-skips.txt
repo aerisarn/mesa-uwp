@@ -38,9 +38,5 @@ spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
 
-# causes a hangcheck timeout due to https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3582
-dEQP-VK.image.sample_texture.128_bit_compressed_format_cubemap
-dEQP-VK.image.sample_texture.64_bit_compressed_format_cubemap
-
 # Crashes in RA, but slow enough to get there that CI times out sometimes
 dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*
