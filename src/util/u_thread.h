@@ -49,7 +49,7 @@
 
 #if DETECT_OS_LINUX && !defined(ANDROID)
 #include <sched.h>
-#elif defined(_WIN32) && !defined(__CYGWIN__)
+#elif defined(_WIN32) && !defined(HAVE_PTHREAD)
 #include <windows.h>
 #endif
 
@@ -93,7 +93,7 @@ util_get_current_cpu(void)
 #if DETECT_OS_LINUX && !defined(ANDROID)
    return sched_getcpu();
 
-#elif defined(_WIN32) && !defined(__CYGWIN__)
+#elif defined(_WIN32) && !defined(HAVE_PTHREAD)
    return GetCurrentProcessorNumber();
 
 #else
@@ -188,7 +188,7 @@ util_set_thread_affinity(thrd_t thread,
    }
    return pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) == 0;
 
-#elif defined(_WIN32) && !defined(__CYGWIN__)
+#elif defined(_WIN32) && !defined(HAVE_PTHREAD)
    DWORD_PTR m = mask[0];
 
    if (sizeof(m) > 4 && num_mask_bits > 32)

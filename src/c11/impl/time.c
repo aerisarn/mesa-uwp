@@ -32,7 +32,7 @@
 
 #ifndef HAVE_TIMESPEC_GET
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
+#if defined(_WIN32) && !defined(HAVE_PTHREAD)
 
 #include <windows.h>
 
