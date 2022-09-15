@@ -110,9 +110,9 @@ DEFINE_ENUM_FLAG_OPERATORS(d3d12_video_encoder_config_dirty_flags);
 
 struct d3d12_video_encoder
 {
-   struct pipe_video_codec base;
-   struct pipe_screen *    m_screen;
-   struct d3d12_screen *   m_pD3D12Screen;
+   struct pipe_video_codec base = {};
+   struct pipe_screen *    m_screen = {};
+   struct d3d12_screen *   m_pD3D12Screen = {};
 
    ///
    /// D3D12 objects and context info
@@ -121,35 +121,35 @@ struct d3d12_video_encoder
    const uint m_NodeMask  = 0u;
    const uint m_NodeIndex = 0u;
 
-   ComPtr<ID3D12Fence> m_spFence;
+   ComPtr<ID3D12Fence> m_spFence = {};
    uint                m_fenceValue = 1u;
 
-   ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice;
-   ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder;
-   ComPtr<ID3D12VideoEncoderHeap>        m_spVideoEncoderHeap;
-   ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue;
-   ComPtr<ID3D12CommandAllocator>        m_spCommandAllocator;
-   ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList;
-   std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList;
+   ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice = {};
+   ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder = {};
+   ComPtr<ID3D12VideoEncoderHeap>        m_spVideoEncoderHeap = {};
+   ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue = {};
+   ComPtr<ID3D12CommandAllocator>        m_spCommandAllocator = {};
+   ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList = {};
+   std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList = {};
 
-   std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager;
-   std::unique_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager;
-   std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder;
+   std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager = {};
+   std::unique_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager = {};
+   std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder = {};
 
    bool m_needsGPUFlush = false;
 
-   ComPtr<ID3D12Resource> m_spResolvedMetadataBuffer;
-   ComPtr<ID3D12Resource> m_spMetadataOutputBuffer;
+   ComPtr<ID3D12Resource> m_spResolvedMetadataBuffer = {};
+   ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
 
-   std::vector<uint8_t> m_BitstreamHeadersBuffer;
+   std::vector<uint8_t> m_BitstreamHeadersBuffer = {};
 
    struct
    {
-      bool m_fArrayOfTexturesDpb;
+      bool m_fArrayOfTexturesDpb = false;
 
-      D3D12_VIDEO_ENCODER_SUPPORT_FLAGS                          m_SupportFlags;
-      D3D12_VIDEO_ENCODER_VALIDATION_FLAGS                       m_ValidationFlags;
-      D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS m_currentResolutionSupportCaps;
+      D3D12_VIDEO_ENCODER_SUPPORT_FLAGS                          m_SupportFlags = {};
+      D3D12_VIDEO_ENCODER_VALIDATION_FLAGS                       m_ValidationFlags = {};
+      D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOLUTION_SUPPORT_LIMITS m_currentResolutionSupportCaps = {};
       union
       {
          D3D12_VIDEO_ENCODER_PROFILE_H264 m_H264Profile;
@@ -169,14 +169,14 @@ struct d3d12_video_encoder
       } m_encoderCodecSpecificConfigCaps = {};
 
       // Required size for the layout-resolved metadata buffer of current frame to be encoded
-      size_t m_resolvedLayoutMetadataBufferRequiredSize;
+      size_t m_resolvedLayoutMetadataBufferRequiredSize = 0;
 
       // The maximum number of slices that the output of the current frame to be encoded will contain
-      uint32_t m_MaxSlicesInOutput;
+      uint32_t m_MaxSlicesInOutput = 0;
 
-      D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOURCE_REQUIREMENTS m_ResourceRequirementsCaps;
+      D3D12_FEATURE_DATA_VIDEO_ENCODER_RESOURCE_REQUIREMENTS m_ResourceRequirementsCaps = {};
 
-   } m_currentEncodeCapabilities;
+   } m_currentEncodeCapabilities = {};
 
    struct
    {
@@ -207,9 +207,9 @@ struct d3d12_video_encoder
 
       struct
       {
-         D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE  m_Mode;
-         D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAGS m_Flags;
-         DXGI_RATIONAL                          m_FrameRate;
+         D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE  m_Mode = {};
+         D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAGS m_Flags = {};
+         DXGI_RATIONAL                          m_FrameRate = {};
          union
          {
             D3D12_VIDEO_ENCODER_RATE_CONTROL_CQP  m_Configuration_CQP;
@@ -226,7 +226,7 @@ struct d3d12_video_encoder
       } m_encoderCodecSpecificConfigDesc = {};
 
 
-      D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE m_encoderSliceConfigMode;
+      D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE m_encoderSliceConfigMode = {};
       union
       {
          D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES m_SlicesPartition_H264;
