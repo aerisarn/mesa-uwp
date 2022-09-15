@@ -3683,6 +3683,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    assert(stage->info.wave_size && stage->info.workgroup_size);
 
    if (stage->stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS(_, stage->nir, nir_opt_cse);
       NIR_PASS(_, stage->nir, radv_lower_fs_intrinsics, stage, pipeline_key);
    }
 
