@@ -759,6 +759,26 @@
     <field name="Encoder" start="14:0" size="64" type="address"/>
   </struct>
 
+  <struct name="IOGPU Compute" size="384">
+    <field name="Deflake 1" start="20:0" size="64" type="address"/>
+    <field name="Terminate of encoder" start="22:0" size="64" type="address"/>
+    <field name="Deflake 2" start="26:0" size="64" type="address"/>
+    <field name="Deflake 3" start="28:0" size="64" type="address"/>
+    <field name="Deflake 4" start="30:0" size="64" type="address"/>
+    <field name="Deflake 5" start="32:0" size="64" type="address"/>
+    <field name="Unk 34" start="34:0" size="32" default="1" type="hex"/>
+    <field name="Unk address" start="36:0" size="64" type="address"/>
+    <field name="Unk 40" start="40:0" size="32" default="0x1c" type="hex"/>
+    <field name="Encoder ID" start="41:0" size="32" type="hex"/>
+    <field name="Unk 44" start="44:0" size="32" default="0xffffffff" type="hex"/>
+    <field name="Unk 48" start="48:0" size="32" default="0x40" type="hex"/>
+    <field name="Unk 56" start="56:0" size="32" default="6" type="hex"/>
+    <field name="Unk 58" start="58:0" size="32" default="0x62" type="hex"/>
+    <field name="Unk 75" start="75:0" size="32" default="0x10000" type="hex"/>
+    <field name="Unk 94" start="94:0" size="32" default="0xffffffff" type="hex"/>
+    <field name="Unk 95" start="95:0" size="32" default="0xffffffff" type="hex"/>
+  </struct>
+
   <struct name="IOGPU Graphics" size="1920">
     <!-- if either deflake address is null, rendering gets flaky for high
          geometry counts -->
