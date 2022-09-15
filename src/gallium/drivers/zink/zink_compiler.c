@@ -1186,6 +1186,10 @@ get_bo_var(nir_shader *shader, struct bo_vars *bo, bool ssbo, nir_src *src, unsi
             var = bo->ubo[32 >> 4];
       }
       var = nir_variable_clone(var, shader);
+      if (ssbo)
+         var->name = ralloc_asprintf(shader, "%s@%u", "ssbos", bit_size);
+      else
+         var->name = ralloc_asprintf(shader, "%s@%u", idx ? "ubos" : "uniform_0", bit_size);
       *ptr = var;
       nir_shader_add_variable(shader, var);
 
@@ -2317,7 +2321,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
          fields[0].type = glsl_array_type(glsl_uint_type(), max_uniform_size * 4, 4);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
                                                  glsl_array_type(glsl_interface_type(fields, 1, GLSL_INTERFACE_PACKING_STD430, false, "struct"), 1, 0),
-                                                 "uniform_0");
+                                                 "uniform_0@32");
          var->interface_type = var->type;
          var->data.mode = nir_var_mem_ubo;
          var->data.driver_location = 0;
@@ -2334,7 +2338,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
          assert(num_ubos);
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ubo,
                                    glsl_array_type(glsl_struct_type(fields, 1, "struct", false), num_ubos, 0),
-                                   "ubos");
+                                   "ubos@32");
          var->interface_type = var->type;
          var->data.mode = nir_var_mem_ubo;
          var->data.driver_location = first_ubo + !!shader->info.first_ubo_is_default_ubo;
@@ -2353,7 +2357,7 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
       unsigned field_count = max_ssbo_size && needs_size ? 2 : 1;
       nir_variable *var = nir_variable_create(shader, nir_var_mem_ssbo,
                                               glsl_array_type(glsl_struct_type(fields, field_count, "struct", false), num_ssbos, 0),
-                                              "ssbos");
+                                              "ssbos@32");
       var->interface_type = var->type;
       var->data.mode = nir_var_mem_ssbo;
       var->data.driver_location = first_ssbo;
