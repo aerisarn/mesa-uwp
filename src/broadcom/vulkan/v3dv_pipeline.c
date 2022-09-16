@@ -1431,6 +1431,7 @@ pipeline_stage_create_binning(const struct v3dv_pipeline_stage *src,
     * we only have to run the relevant NIR lowerings once for render shaders
     */
    p_stage->nir = NULL;
+   p_stage->program_id = src->program_id;
    p_stage->spec_info = src->spec_info;
    p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
    memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
@@ -2370,12 +2371,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       if (p_stage == NULL)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-      /* Note that we are assigning program_id slightly differently that
-       * v3d. Here we are assigning one per pipeline stage, so vs and vs_bin
-       * would have a different program_id, while v3d would have the same for
-       * both. For the case of v3dv, it is more natural to have an id this way,
-       * as right now we are using it for debugging, not for shader-db.
-       */
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
 
