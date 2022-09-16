@@ -2522,12 +2522,8 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    unsigned blend_clamp = 0, blend_bypass = 0;
 
    desc = util_format_description(surf->base.format);
-   for (firstchan = 0; firstchan < 4; firstchan++) {
-      if (desc->channel[firstchan].type != UTIL_FORMAT_TYPE_VOID) {
-         break;
-      }
-   }
-   if (firstchan == 4 || desc->channel[firstchan].type == UTIL_FORMAT_TYPE_FLOAT) {
+   firstchan = util_format_get_first_non_void_channel(surf->base.format);
+   if (firstchan == -1 || desc->channel[firstchan].type == UTIL_FORMAT_TYPE_FLOAT) {
       ntype = V_028C70_NUMBER_FLOAT;
    } else {
       ntype = V_028C70_NUMBER_UNORM;
