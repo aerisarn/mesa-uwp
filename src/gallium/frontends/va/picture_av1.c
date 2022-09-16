@@ -370,13 +370,20 @@ void vlVaHandlePictureParameterBufferAV1(vlVaDriver *drv, vlVaContext *context, 
    }
 }
 
-void vlVaHandleSliceParameterBufferAV1(vlVaContext *context, vlVaBuffer *buf, unsigned int num)
+void vlVaHandleSliceParameterBufferAV1(vlVaContext *context, vlVaBuffer *buf, unsigned num_slice_buffers, unsigned num_slices)
 {
-   VASliceParameterBufferAV1 *av1 = buf->data;
+   for (uint32_t buffer_idx = 0; buffer_idx < buf->num_elements; buffer_idx++) {
+      uint32_t slice_index =
+               /* slices obtained so far from vaRenderPicture in previous calls*/
+               num_slices +
+               /* current slice index processing this VASliceParameterBufferAV1 */
+               buffer_idx;
 
-   context->desc.av1.slice_parameter.slice_data_size[num] = av1->slice_data_size;
-   context->desc.av1.slice_parameter.slice_data_offset[num] = av1->slice_data_offset;
-   context->desc.av1.slice_parameter.slice_data_row[num] = av1->tile_row;
-   context->desc.av1.slice_parameter.slice_data_col[num] = av1->tile_column;
-   context->desc.av1.slice_parameter.slice_data_anchor_frame_idx[num] = av1->anchor_frame_idx;
+      VASliceParameterBufferAV1 *av1 = &(((VASliceParameterBufferAV1*)buf->data)[buffer_idx]);
+      context->desc.av1.slice_parameter.slice_data_size[slice_index] = av1->slice_data_size;
+      context->desc.av1.slice_parameter.slice_data_offset[slice_index] = av1->slice_data_offset;
+      context->desc.av1.slice_parameter.slice_data_row[slice_index] = av1->tile_row;
+      context->desc.av1.slice_parameter.slice_data_col[slice_index] = av1->tile_column;
+      context->desc.av1.slice_parameter.slice_data_anchor_frame_idx[slice_index] = av1->anchor_frame_idx;
+   }
 }

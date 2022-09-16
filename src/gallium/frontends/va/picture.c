@@ -261,7 +261,7 @@ handleIQMatrixBuffer(vlVaContext *context, vlVaBuffer *buf)
 }
 
 static void
-handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf, unsigned num)
+handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf, unsigned num_slice_buffers, unsigned num_slices)
 {
    switch (u_reduce_video_profile(context->templat.profile)) {
    case PIPE_VIDEO_FORMAT_MPEG12:
@@ -293,7 +293,7 @@ handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf, unsigned num)
       break;
 
    case PIPE_VIDEO_FORMAT_AV1:
-      vlVaHandleSliceParameterBufferAV1(context, buf, num);
+      vlVaHandleSliceParameterBufferAV1(context, buf, num_slice_buffers, num_slices);
       break;
 
    default:
@@ -695,6 +695,7 @@ vlVaRenderPicture(VADriverContextP ctx, VAContextID context_id, VABufferID *buff
 
    unsigned i;
    unsigned slice_param_idx = 0;
+   unsigned slice_idx = 0;
 
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -735,8 +736,20 @@ vlVaRenderPicture(VADriverContextP ctx, VAContextID context_id, VABufferID *buff
          break;
 
       case VASliceParameterBufferType:
-         handleSliceParameterBuffer(context, buf, slice_param_idx++);
-         break;
+      {
+         /* Some apps like gstreamer send all the slices at once
+            and some others send individual VASliceParameterBufferType buffers
+
+            slice_param_idx is the zero based count of VASliceParameterBufferType
+               (including multiple buffers with num_elements > 1) received
+               before this call to handleSliceParameterBuffer
+
+            slice_idx is the zero based number of total slices received
+               before this call to handleSliceParameterBuffer
+         */
+         handleSliceParameterBuffer(context, buf, slice_param_idx++, slice_idx);
+         slice_idx += buf->num_elements;
+      } break;
 
       case VASliceDataBufferType:
          vaStatus = handleVASliceDataBufferType(context, buf);
