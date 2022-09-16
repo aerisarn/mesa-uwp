@@ -76,7 +76,7 @@ struct pr_opt_ctx {
             if (all_same)
                instr_idx_by_regs[block->index][i] = instr_idx_by_regs[first_pred][i];
             else
-               instr_idx_by_regs[block->index][i] = not_written_in_block;
+               instr_idx_by_regs[block->index][i] = written_by_multiple_instrs;
          }
       }
    }
