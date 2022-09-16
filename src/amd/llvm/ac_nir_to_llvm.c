@@ -2440,22 +2440,6 @@ static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
    return 0;
 }
 
-static LLVMValueRef adjust_sample_index_using_fmask(struct ac_llvm_context *ctx,
-                                                    LLVMValueRef coord_x, LLVMValueRef coord_y,
-                                                    LLVMValueRef coord_z, LLVMValueRef sample_index,
-                                                    LLVMValueRef fmask_desc_ptr)
-{
-   if (!fmask_desc_ptr)
-      return sample_index;
-
-   unsigned sample_chan = coord_z ? 3 : 2;
-   LLVMValueRef addr[4] = {coord_x, coord_y, coord_z};
-   addr[sample_chan] = sample_index;
-
-   ac_apply_fmask_to_sample(ctx, fmask_desc_ptr, addr, coord_z != NULL);
-   return addr[sample_chan];
-}
-
 static nir_deref_instr *get_image_deref(const nir_intrinsic_instr *instr)
 {
    assert(instr->src[0].is_ssa);
@@ -4554,7 +4538,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
 
 static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
                            struct waterfall_context *wctx, LLVMValueRef *res_ptr,
-                           LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr)
+                           LLVMValueRef *samp_ptr)
 {
    bool texture_handle_divergent = false;
    bool sampler_handle_divergent = false;
@@ -4566,7 +4550,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
 
    *res_ptr = NULL;
    *samp_ptr = NULL;
-   *fmask_ptr = NULL;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_texture_deref:
@@ -4695,10 +4678,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
          *samp_ptr = sici_fix_sampler_aniso(ctx, *res_ptr, *samp_ptr);
    }
-   if (ctx->ac.gfx_level < GFX11 &&
-       fmask_ptr && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_samples_identical))
-      *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_FMASK, &instr->instr,
-                                    texture_dynamic_index, false, false);
 }
 
 static LLVMValueRef apply_round_slice(struct ac_llvm_context *ctx, LLVMValueRef coord)
@@ -4713,12 +4692,12 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 {
    LLVMValueRef result = NULL;
    struct ac_image_args args = {0};
-   LLVMValueRef fmask_ptr = NULL, sample_index = NULL;
+   LLVMValueRef sample_index = NULL;
    LLVMValueRef ddx = NULL, ddy = NULL;
    unsigned offset_src = 0;
    struct waterfall_context wctx[2] = {{{0}}};
 
-   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr);
+   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler);
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
@@ -4909,17 +4888,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
       result = emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0);
       goto write_result;
-   }
-
-   if (ctx->ac.gfx_level < GFX11 &&
-       (instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ||
-        instr->sampler_dim == GLSL_SAMPLER_DIM_MS) &&
-       instr->op != nir_texop_fragment_fetch_amd &&
-       instr->op != nir_texop_fragment_mask_fetch_amd) {
-      unsigned sample_chan = instr->is_array ? 3 : 2;
-      args.coords[sample_chan] = adjust_sample_index_using_fmask(
-         &ctx->ac, args.coords[0], args.coords[1], instr->is_array ? args.coords[2] : NULL,
-         args.coords[sample_chan], fmask_ptr);
    }
 
    if (args.offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
