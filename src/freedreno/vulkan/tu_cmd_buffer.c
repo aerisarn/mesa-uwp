@@ -2091,6 +2091,9 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       descriptors_state->sets[idx] = set;
 
+      if (set->layout->has_inline_uniforms)
+         cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
+
       if (!set->layout->dynamic_offset_size)
          continue;
 
@@ -4452,6 +4455,8 @@ tu6_user_consts_size(const struct tu_pipeline *pipeline,
       dwords += 4 + num_units;
    }
 
+   dwords += 4 * link->tu_const_state.num_inline_ubos;
+
    return dwords;
 }
 
@@ -4459,6 +4464,7 @@ static void
 tu6_emit_user_consts(struct tu_cs *cs,
                      const struct tu_pipeline *pipeline,
                      gl_shader_stage type,
+                     struct tu_descriptor_state *descriptors,
                      uint32_t *push_constants)
 {
    const struct tu_program_descriptor_linkage *link =
@@ -4479,6 +4485,20 @@ tu6_emit_user_consts(struct tu_cs *cs,
       tu_cs_emit(cs, 0);
       for (unsigned i = 0; i < num_units; i++)
          tu_cs_emit(cs, push_constants[i + offset]);
+   }
+
+   /* Emit loads of inline uniforms. These load directly from the uniform's
+    * storage space inside the descriptor set.
+    */
+   for (unsigned i = 0; i < link->tu_const_state.num_inline_ubos; i++) {
+      const struct tu_inline_ubo *ubo = &link->tu_const_state.ubos[i];
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(ubo->const_offset_vec4) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+            CP_LOAD_STATE6_0_NUM_UNIT(ubo->size_vec4));
+      tu_cs_emit_qw(cs, descriptors->sets[ubo->base]->va + ubo->offset);
    }
 }
 
@@ -4518,14 +4538,14 @@ tu6_const_size(struct tu_cmd_buffer *cmd,
    uint32_t dwords = 0;
 
    if (pipeline->shared_consts.dwords > 0) {
-      dwords = pipeline->shared_consts.dwords + 4;
+      dwords += pipeline->shared_consts.dwords + 4;
+   }
+
+   if (compute) {
+      dwords += tu6_user_consts_size(pipeline, MESA_SHADER_COMPUTE);
    } else {
-      if (compute) {
-         dwords = tu6_user_consts_size(pipeline, MESA_SHADER_COMPUTE);
-      } else {
-         for (uint32_t type = MESA_SHADER_VERTEX; type <= MESA_SHADER_FRAGMENT; type++)
-            dwords += tu6_user_consts_size(pipeline, type);
-      }
+      for (uint32_t type = MESA_SHADER_VERTEX; type <= MESA_SHADER_FRAGMENT; type++)
+         dwords += tu6_user_consts_size(pipeline, type);
    }
 
    return dwords;
@@ -4554,13 +4574,17 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
             &pipeline->program.link[i];
          assert(!link->tu_const_state.push_consts.dwords);
       }
+   }
+
+   if (compute) {
+      tu6_emit_user_consts(&cs, pipeline, MESA_SHADER_COMPUTE,
+                           tu_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE),
+                           cmd->push_constants);
    } else {
-      if (compute) {
-         tu6_emit_user_consts(&cs, pipeline, MESA_SHADER_COMPUTE, cmd->push_constants);
-      } else {
-         for (uint32_t type = MESA_SHADER_VERTEX; type <= MESA_SHADER_FRAGMENT; type++)
-            tu6_emit_user_consts(&cs, pipeline, type, cmd->push_constants);
-      }
+      struct tu_descriptor_state *descriptors  =
+         tu_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+      for (uint32_t type = MESA_SHADER_VERTEX; type <= MESA_SHADER_FRAGMENT; type++)
+         tu6_emit_user_consts(&cs, pipeline, type, descriptors, cmd->push_constants);
    }
 
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);

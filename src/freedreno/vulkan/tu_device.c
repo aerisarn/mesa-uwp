@@ -1097,19 +1097,12 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
    p->maxComputeWorkgroupSubgroups = 16; /* max_waves */
    p->requiredSubgroupSizeStages = VK_SHADER_STAGE_ALL;
 
-   /* Inline uniform buffers are just normal UBOs */
-   p->maxInlineUniformBlockSize = MAX_UNIFORM_BUFFER_RANGE;
-
-   /* Halve the normal limit on the number of descriptors, see below. */
-   p->maxPerStageDescriptorInlineUniformBlocks = max_descriptor_set_size / 2;
-   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = max_descriptor_set_size / 2;
-   p->maxDescriptorSetInlineUniformBlocks = max_descriptor_set_size / 2;
-   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = max_descriptor_set_size / 2;
-   /* Because we halve the normal limit on the number of descriptors, in the
-    * worst case each descriptor takes up half the space, leaving the rest for
-    * the actual data.
-    */
-   p->maxInlineUniformTotalSize = MAX_SET_SIZE / 2;
+   p->maxInlineUniformBlockSize = MAX_INLINE_UBO_RANGE;
+   p->maxPerStageDescriptorInlineUniformBlocks = MAX_INLINE_UBOS;
+   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_INLINE_UBOS;
+   p->maxDescriptorSetInlineUniformBlocks = MAX_INLINE_UBOS;
+   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_INLINE_UBOS;
+   p->maxInlineUniformTotalSize = MAX_INLINE_UBOS * MAX_INLINE_UBO_RANGE;
 
    p->integerDotProduct8BitUnsignedAccelerated = false;
    p->integerDotProduct8BitSignedAccelerated = false;
