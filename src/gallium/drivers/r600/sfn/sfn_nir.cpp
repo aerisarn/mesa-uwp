@@ -755,6 +755,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
    NIR_PASS_V(sh, nir_lower_phis_to_scalar, false);
    NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
+   NIR_PASS_V(sh, r600_nir_lower_int_tg4);
    NIR_PASS_V(sh, r600::r600_nir_lower_tex_to_backend, rctx->b.gfx_level);
 
 
@@ -787,7 +788,6 @@ int r600_shader_from_nir(struct r600_context *rctx,
    while (optimize_once(sh));
 
    NIR_PASS_V(sh, nir_lower_bool_to_int32);
-   NIR_PASS_V(sh, r600_nir_lower_int_tg4);
    NIR_PASS_V(sh, nir_opt_algebraic_late);
 
    if (sh->info.stage == MESA_SHADER_FRAGMENT)

@@ -87,7 +87,8 @@ r600_nir_lower_int_tg4_impl(nir_function_impl *impl)
          if (instr->type == nir_instr_type_tex) {
             nir_tex_instr *tex = nir_instr_as_tex(instr);
             if (tex->op == nir_texop_tg4 &&
-                tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE) {
+                tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE &&
+                nir_tex_instr_src_index(tex, nir_tex_src_backend1) < 0) {
                if (nir_alu_type_get_base_type(tex->dest_type) != nir_type_float) {
                   if (tex->sampler_dim != GLSL_SAMPLER_DIM_RECT)
                      lower_coord_shift_normalized(&b, tex);
