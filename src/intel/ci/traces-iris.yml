@@ -508,19 +508,6 @@ traces:
       checksum: 5d152ef79b699de16dfc1e2c72951346
     gl-intel-cml:
       checksum: 5d152ef79b699de16dfc1e2c72951346
-  glmark2/terrain-v2.trace:
-    gl-intel-apl:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
-    gl-intel-glk:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
-    gl-intel-amly:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
-    gl-intel-kbl:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
-    gl-intel-whl:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
-    gl-intel-cml:
-      checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
   glmark2/texture:texture-filter=linear-v2.trace:
     gl-intel-apl:
       checksum: 9c15add29b4c783c93e1cc0d0fa0b084
