@@ -51,13 +51,13 @@ def begin_end_tp(name, args=[], tp_struct=None, tp_print=None,
         tu_default_tps.append(name)
     Tracepoint('start_{0}'.format(name),
                toggle_name=name,
-               tp_perfetto='tu_perfetto_start_{0}'.format(name))
-    Tracepoint('end_{0}'.format(name),
-               toggle_name=name,
                args=args,
                tp_struct=tp_struct,
-               tp_perfetto='tu_perfetto_end_{0}'.format(name),
+               tp_perfetto='tu_perfetto_start_{0}'.format(name),
                tp_print=tp_print)
+    Tracepoint('end_{0}'.format(name),
+               toggle_name=name,
+               tp_perfetto='tu_perfetto_end_{0}'.format(name))
 
 begin_end_tp('cmd_buffer',
     args=[ArgStruct(type='const struct tu_cmd_buffer *', var='cmd')],

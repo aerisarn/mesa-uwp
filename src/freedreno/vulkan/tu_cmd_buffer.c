@@ -1518,7 +1518,6 @@ static void
 tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
                     struct tu_renderpass_result *autotune_result)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_tiling_config *tiling = cmd->state.tiling;
 
    /* Create gmem stores now (at EndRenderPass time)) because they needed to
@@ -1569,7 +1568,7 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
 
    tu6_tile_render_end(cmd, &cmd->cs, autotune_result);
 
-   trace_end_render_pass(&cmd->trace, &cmd->cs, fb, tiling);
+   trace_end_render_pass(&cmd->trace, &cmd->cs);
 
    /* tu6_render_tile has cloned these tracepoints for each tile */
    if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end))
@@ -1598,7 +1597,7 @@ tu_cmd_render_sysmem(struct tu_cmd_buffer *cmd,
 
    tu6_sysmem_render_end(cmd, &cmd->cs, autotune_result);
 
-   trace_end_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer, cmd->state.tiling);
+   trace_end_render_pass(&cmd->trace, &cmd->cs);
 }
 
 void
@@ -1808,7 +1807,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    /* setup initial configuration into command buffer */
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-      trace_start_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs);
+      trace_start_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs, cmd_buffer);
 
       switch (cmd_buffer->queue_family_index) {
       case TU_QUEUE_GENERAL:
@@ -1822,7 +1821,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
       trace_start_cmd_buffer(&cmd_buffer->trace,
-            pass_continue ? &cmd_buffer->draw_cs : &cmd_buffer->cs);
+            pass_continue ? &cmd_buffer->draw_cs : &cmd_buffer->cs, cmd_buffer);
 
       assert(pBeginInfo->pInheritanceInfo);
 
@@ -2514,7 +2513,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
       tu_flush_all_pending(&cmd_buffer->state.renderpass_cache);
       tu_emit_cache_flush_renderpass(cmd_buffer, &cmd_buffer->draw_cs);
 
-      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->draw_cs, cmd_buffer);
+      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->draw_cs);
    } else {
       tu_flush_all_pending(&cmd_buffer->state.cache);
       cmd_buffer->state.cache.flush_bits |=
@@ -2522,7 +2521,7 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
          TU_CMD_FLAG_CCU_FLUSH_DEPTH;
       tu_emit_cache_flush(cmd_buffer, &cmd_buffer->cs);
 
-      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs, cmd_buffer);
+      trace_end_cmd_buffer(&cmd_buffer->trace, &cmd_buffer->cs);
    }
 
    tu_cs_end(&cmd_buffer->cs);
@@ -4195,7 +4194,8 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    }
    tu_choose_gmem_layout(cmd);
 
-   trace_start_render_pass(&cmd->trace, &cmd->cs);
+   trace_start_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer,
+                           cmd->state.tiling);
 
    /* Note: because this is external, any flushes will happen before draw_cs
     * gets called. However deferred flushes could have to happen later as part
@@ -4332,9 +4332,9 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
       cmd->state.suspended_pass.gmem_layout = cmd->state.gmem_layout;
    }
 
-   if (!resuming) {
-      trace_start_render_pass(&cmd->trace, &cmd->cs);
-   }
+   if (!resuming)
+      trace_start_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer,
+                              cmd->state.tiling);
 
    if (!resuming || cmd->state.suspend_resume == SR_NONE) {
       cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
@@ -5618,7 +5618,9 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
                    A6XX_HLSQ_CS_KERNEL_GROUP_Y(1),
                    A6XX_HLSQ_CS_KERNEL_GROUP_Z(1));
 
-   trace_start_compute(&cmd->trace, cs);
+   trace_start_compute(&cmd->trace, cs, info->indirect != NULL, local_size[0],
+                       local_size[1], local_size[2], info->blocks[0],
+                       info->blocks[1], info->blocks[2]);
 
    if (info->indirect) {
       uint64_t iova = info->indirect->iova + info->indirect_offset;
@@ -5638,10 +5640,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, CP_EXEC_CS_3_NGROUPS_Z(info->blocks[2]));
    }
 
-   trace_end_compute(&cmd->trace, cs,
-                     info->indirect != NULL,
-                     local_size[0], local_size[1], local_size[2],
-                     info->blocks[0], info->blocks[1], info->blocks[2]);
+   trace_end_compute(&cmd->trace, cs);
 
    /* For the workaround above, because it's using the "wrong" context for
     * SP_FS_INSTRLEN we should emit another dummy event write to avoid a
