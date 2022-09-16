@@ -2355,6 +2355,7 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 		nliteral = 0;
 		last = 1;
 		LIST_FOR_EACH_ENTRY(alu, &cf->alu, list) {
+			const char chan[] = "xyzwt";
 			const char *omod_str[] = {"","*2","*4","/2"};
 			const struct alu_op_info *aop = r600_isa_alu(alu->op);
 			int o = 0;
@@ -2365,6 +2366,7 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 				o += fprintf(stderr, "%4d ", ++ngr);
 			else
 				o += fprintf(stderr, "     ");
+			o += fprintf(stderr, "%c:", chan[alu->dst.chan]);
 			o += fprintf(stderr, "%c%c %c ", alu->execute_mask ? 'M':' ',
 					alu->update_pred ? 'P':' ',
 					alu->pred_sel ? alu->pred_sel==2 ? '0':'1':' ');
