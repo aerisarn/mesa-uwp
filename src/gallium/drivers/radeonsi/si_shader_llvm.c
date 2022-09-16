@@ -724,27 +724,14 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    }
 }
 
-static LLVMValueRef si_llvm_load_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set,
-                                              unsigned base_index, unsigned constant_index,
-                                              LLVMValueRef dynamic_index,
-                                              enum ac_descriptor_type desc_type, bool image,
-                                              bool write, bool bindless)
+static LLVMValueRef si_llvm_load_sampler_desc(struct ac_shader_abi *abi, LLVMValueRef index,
+                                              enum ac_descriptor_type desc_type)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    LLVMBuilderRef builder = ctx->ac.builder;
 
-   /* always 0 for OpenGL */
-   assert(!descriptor_set);
-
-   /* all image and texture has been lowered to bindless one in nir */
-   assert(bindless);
-
-   if (dynamic_index && LLVMTypeOf(dynamic_index) == ctx->ac.i32) {
-      /* image desc has been lowered in nir, we only expect texture here */
-      assert(!image);
-
+   if (index && LLVMTypeOf(index) == ctx->ac.i32) {
       bool is_vec4 = false;
-      LLVMValueRef index = dynamic_index;
 
       switch (desc_type) {
       case AC_DESC_IMAGE:
@@ -779,7 +766,7 @@ static LLVMValueRef si_llvm_load_sampler_desc(struct ac_shader_abi *abi, unsigne
       return ac_build_load_to_sgpr(&ctx->ac, list, index);
    }
 
-   return dynamic_index;
+   return index;
 }
 
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,

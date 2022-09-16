@@ -4502,10 +4502,7 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx, nir_deref_instr
                                      enum ac_descriptor_type desc_type, const nir_instr *instr,
                                      LLVMValueRef index, bool image, bool write)
 {
-   struct sampler_desc_address addr = get_sampler_desc_internal(ctx, deref_instr, instr, image);
-   return ctx->abi->load_sampler_desc(ctx->abi, addr.descriptor_set, addr.base_index,
-                                      addr.constant_index, index, desc_type, addr.image, write,
-                                      addr.bindless);
+   return ctx->abi->load_sampler_desc(ctx->abi, index, desc_type);
 }
 
 /* Disable anisotropic filtering if BASE_LEVEL == LAST_LEVEL.
@@ -4623,12 +4620,12 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
          sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, true);
 
       if (texture_dynamic_handle)
-         *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
-                                                main_descriptor, false, false, true);
+         *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, texture_dynamic_handle,
+                                                main_descriptor);
 
       if (samp_ptr && sampler_dynamic_handle) {
-         *samp_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, sampler_dynamic_handle,
-                                                 AC_DESC_SAMPLER, false, false, true);
+         *samp_ptr = ctx->abi->load_sampler_desc(ctx->abi, sampler_dynamic_handle,
+                                                 AC_DESC_SAMPLER);
 
          if (ctx->abi->disable_aniso_single_level &&
              instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
