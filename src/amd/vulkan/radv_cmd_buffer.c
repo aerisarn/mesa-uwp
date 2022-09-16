@@ -1408,6 +1408,8 @@ radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
     */
    assert(G_00B848_VGPRS(ps_shader->config.rsrc1) >= G_00B848_VGPRS(ps_epilog->rsrc1));
 
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, ps_epilog->bo);
+
    assert((ps_epilog->va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
 
    struct radv_userdata_info *loc =

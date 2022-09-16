@@ -3108,13 +3108,7 @@ non_uniform_access_callback(const nir_src *src, void *_)
 VkResult
 radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
 {
-   struct radv_shader_part *ps_epilog = NULL;
    uint32_t code_size = 0;
-
-   if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
-      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
-      ps_epilog = graphics_pipeline->ps_epilog;
-   }
 
    /* Compute the total code size. */
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
@@ -3127,10 +3121,6 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
 
    if (pipeline->gs_copy_shader) {
       code_size += align(pipeline->gs_copy_shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
-   }
-
-   if (ps_epilog) {
-      code_size += align(ps_epilog->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
    }
 
    /* Allocate memory for all shader binaries. */
@@ -3166,15 +3156,6 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
       if (!radv_shader_binary_upload(device, pipeline->gs_copy_shader->binary,
                                      pipeline->gs_copy_shader, dest_ptr))
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-      slab_offset += align(pipeline->gs_copy_shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
-   }
-
-   if (ps_epilog) {
-      ps_epilog->va = slab_va + slab_offset;
-
-      void *dest_ptr = slab_ptr + slab_offset;
-      radv_shader_part_binary_upload(ps_epilog->binary, dest_ptr);
    }
 
    return VK_SUCCESS;
