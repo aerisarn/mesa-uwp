@@ -2908,32 +2908,6 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
    return result;
 }
 
-static LLVMValueRef visit_image_descriptor(struct ac_nir_context *ctx,
-                                           const nir_intrinsic_instr *instr,
-                                           bool bindless)
-{
-   enum glsl_sampler_dim dim;
-
-   if (bindless) {
-      dim = nir_intrinsic_image_dim(instr);
-   } else {
-      const struct glsl_type *type = get_image_deref(instr)->type;
-      dim = glsl_get_sampler_dim(type);
-   }
-
-   nir_deref_instr *deref_instr = NULL;
-   if (instr->src[0].ssa->parent_instr->type == nir_instr_type_deref)
-      deref_instr = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
-
-   LLVMValueRef dynamic_index = get_sampler_desc_index(ctx, deref_instr, &instr->instr, true);
-
-   if (dim == GLSL_SAMPLER_DIM_BUF) {
-      return get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_BUFFER, false);
-   } else {
-      return get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
-   }
-}
-
 static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
    LLVMValueRef cond;
@@ -3846,12 +3820,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_image_deref_atomic_fmax:
       result = visit_image_atomic(ctx, instr, false);
       break;
-   case nir_intrinsic_image_deref_descriptor_amd:
-      result = visit_image_descriptor(ctx, instr, false);
-      break;
-   case nir_intrinsic_bindless_image_descriptor_amd:
-      result = visit_image_descriptor(ctx, instr, true);
-      break;
    case nir_intrinsic_shader_clock:
       result = ac_build_shader_clock(&ctx->ac, nir_intrinsic_memory_scope(instr));
       break;
@@ -4586,8 +4554,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
 
 static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
                            struct waterfall_context *wctx, LLVMValueRef *res_ptr,
-                           LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr,
-                           bool divergent)
+                           LLVMValueRef *samp_ptr, LLVMValueRef *fmask_ptr)
 {
    bool texture_handle_divergent = false;
    bool sampler_handle_divergent = false;
@@ -4668,11 +4635,11 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       /* descriptor handles given through nir_tex_src_{texture,sampler}_handle */
       if (instr->texture_non_uniform ||
           (ctx->abi->use_waterfall_for_divergent_tex_samplers && texture_handle_divergent))
-         texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, divergent);
+         texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, true);
 
       if (instr->sampler_non_uniform ||
          (ctx->abi->use_waterfall_for_divergent_tex_samplers && sampler_handle_divergent))
-         sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, divergent);
+         sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, true);
 
       if (texture_dynamic_handle)
          *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
@@ -4713,11 +4680,11 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
     */
    if (instr->texture_non_uniform ||
        (ctx->abi->use_waterfall_for_divergent_tex_samplers && texture_deref_instr->dest.ssa.divergent))
-      texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, divergent);
+      texture_dynamic_index = enter_waterfall(ctx, wctx + 0, texture_dynamic_index, true);
 
    if (instr->sampler_non_uniform ||
        (ctx->abi->use_waterfall_for_divergent_tex_samplers && sampler_deref_instr->dest.ssa.divergent))
-      sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, divergent);
+      sampler_dynamic_index = enter_waterfall(ctx, wctx + 1, sampler_dynamic_index, true);
 
    *res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr,
                                texture_dynamic_index, false, false);
@@ -4751,20 +4718,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    unsigned offset_src = 0;
    struct waterfall_context wctx[2] = {{{0}}};
 
-   /* Don't use the waterfall loop when returning a descriptor. */
-   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr,
-                  instr->op != nir_texop_descriptor_amd &&
-                  instr->op != nir_texop_sampler_descriptor_amd);
-
-   if (instr->op == nir_texop_descriptor_amd) {
-      result = args.resource;
-      goto write_result;
-   }
-
-   if (instr->op == nir_texop_sampler_descriptor_amd) {
-      result = args.sampler;
-      goto write_result;
-   }
+   tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr);
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
