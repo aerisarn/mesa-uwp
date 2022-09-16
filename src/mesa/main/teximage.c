@@ -3514,26 +3514,7 @@ egl_image_target_texture(struct gl_context *ctx,
                          const char *caller)
 {
    struct gl_texture_image *texImage;
-   bool valid_target;
    FLUSH_VERTICES(ctx, 0, 0);
-
-   switch (target) {
-   case GL_TEXTURE_2D:
-      valid_target = _mesa_has_OES_EGL_image(ctx) ||
-                     (tex_storage && _mesa_has_EXT_EGL_image_storage(ctx));
-      break;
-   case GL_TEXTURE_EXTERNAL_OES:
-      valid_target = _mesa_has_OES_EGL_image_external(ctx);
-      break;
-   default:
-      valid_target = false;
-      break;
-   }
-
-   if (!valid_target) {
-      _mesa_error(ctx, tex_storage ? GL_INVALID_OPERATION : GL_INVALID_ENUM, "%s(target=%d)", caller, target);
-      return;
-   }
 
    if (!texObj)
       texObj = _mesa_get_current_tex_object(ctx, target);
@@ -3587,7 +3568,24 @@ _mesa_EGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
    const char *func = "glEGLImageTargetTexture2D";
    GET_CURRENT_CONTEXT(ctx);
 
-   egl_image_target_texture(ctx, NULL, target, image, false, func);
+   bool valid_target;
+   switch (target) {
+   case GL_TEXTURE_2D:
+      valid_target = _mesa_has_OES_EGL_image(ctx);
+      break;
+   case GL_TEXTURE_EXTERNAL_OES:
+      valid_target = _mesa_has_OES_EGL_image_external(ctx);
+      break;
+   default:
+      valid_target = false;
+      break;
+   }
+
+   if (valid_target) {
+      egl_image_target_texture(ctx, NULL, target, image, false, func);
+   } else {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", func, target);
+   }
 }
 
 static void
@@ -3606,7 +3604,42 @@ egl_image_target_texture_storage(struct gl_context *ctx,
       return;
    }
 
-   egl_image_target_texture(ctx, texObj, target, image, true, caller);
+   /*
+    * <target> must be one of GL_TEXTURE_2D, GL_TEXTURE_2D_ARRAY,
+    * GL_TEXTURE_3D, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_ARRAY. On
+    * OpenGL implementations (non-ES), <target> can also be GL_TEXTURE_1D or
+    * GL_TEXTURE_1D_ARRAY.
+    * If the implementation supports OES_EGL_image_external, <target> can be
+    * GL_TEXTURE_EXTERNAL_OES.
+    */
+   bool valid_target;
+   switch (target) {
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_2D_ARRAY:
+   case GL_TEXTURE_3D:
+   case GL_TEXTURE_CUBE_MAP:
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+      valid_target = true;
+      break;
+   case GL_TEXTURE_1D:
+   case GL_TEXTURE_1D_ARRAY:
+      /* No eglImageOES for 1D textures */
+      valid_target = !_mesa_is_gles(ctx);
+      break;
+   case GL_TEXTURE_EXTERNAL_OES:
+      valid_target = _mesa_has_OES_EGL_image_external(ctx);
+      break;
+   default:
+      valid_target = false;
+      break;
+   }
+
+   if (valid_target) {
+      egl_image_target_texture(ctx, texObj, target, image, true, caller);
+   } else {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(target=%d)", caller, target);
+   }
+
 }
 
 
@@ -3616,6 +3649,13 @@ _mesa_EGLImageTargetTexStorageEXT(GLenum target, GLeglImageOES image,
 {
    const char *func = "glEGLImageTargetTexStorageEXT";
    GET_CURRENT_CONTEXT(ctx);
+
+   if (!(_mesa_is_desktop_gl(ctx) && ctx->Version >= 42) &&
+       !_mesa_is_gles3(ctx) && !_mesa_has_ARB_texture_storage(ctx)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+         "OpenGL 4.2, OpenGL ES 3.0 or ARB_texture_storage required");
+      return;
+   }
 
    egl_image_target_texture_storage(ctx, NULL, target, image, attrib_list,
                                     func);
@@ -3629,10 +3669,16 @@ _mesa_EGLImageTargetTextureStorageEXT(GLuint texture, GLeglImageOES image,
    const char *func = "glEGLImageTargetTextureStorageEXT";
    GET_CURRENT_CONTEXT(ctx);
 
-   if (!(_mesa_is_desktop_gl(ctx) && ctx->Version >= 45) &&
-       !_mesa_has_ARB_direct_state_access(ctx) &&
+   if (!_mesa_has_ARB_direct_state_access(ctx) &&
        !_mesa_has_EXT_direct_state_access(ctx)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "direct access not supported");
+      return;
+   }
+
+   if (!(_mesa_is_desktop_gl(ctx) && ctx->Version >= 42) &&
+       !_mesa_is_gles3(ctx) && !_mesa_has_ARB_texture_storage(ctx)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+         "OpenGL 4.2, OpenGL ES 3.0 or ARB_texture_storage required");
       return;
    }
 
