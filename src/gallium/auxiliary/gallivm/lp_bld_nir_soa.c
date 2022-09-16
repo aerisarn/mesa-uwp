@@ -95,7 +95,7 @@ invocation_0_must_be_active(struct lp_build_nir_context *bld_base)
 }
 
 static LLVMValueRef
-lp_build_zero_bits(struct gallivm_state *gallivm, int bit_size)
+lp_build_zero_bits(struct gallivm_state *gallivm, int bit_size, bool is_float)
 {
    if (bit_size == 64)
       return LLVMConstInt(LLVMInt64TypeInContext(gallivm->context), 0, 0);
@@ -104,7 +104,7 @@ lp_build_zero_bits(struct gallivm_state *gallivm, int bit_size)
    else if (bit_size == 8)
       return LLVMConstInt(LLVMInt8TypeInContext(gallivm->context), 0, 0);
    else
-      return lp_build_const_int32(gallivm, 0);
+      return is_float ? lp_build_const_float(gallivm, 0) : lp_build_const_int32(gallivm, 0);
 }
 
 static LLVMValueRef
@@ -925,6 +925,25 @@ static void emit_store_global(struct lp_build_nir_context *bld_base,
    }
 }
 
+static bool atomic_op_is_float(nir_intrinsic_op nir_op)
+{
+   switch (nir_op) {
+   case nir_intrinsic_shared_atomic_fadd:
+   case nir_intrinsic_shared_atomic_fmin:
+   case nir_intrinsic_shared_atomic_fmax:
+   case nir_intrinsic_global_atomic_fadd:
+   case nir_intrinsic_global_atomic_fmin:
+   case nir_intrinsic_global_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
+      return true;
+   default:
+      break;
+   }
+   return false;
+}
+
 static void emit_atomic_global(struct lp_build_nir_context *bld_base,
                                nir_intrinsic_op nir_op,
                                unsigned addr_bit_size,
@@ -936,7 +955,11 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-   struct lp_build_context *atom_bld = get_int_bld(bld_base, true, val_bit_size);
+   bool is_flt = atomic_op_is_float(nir_op);
+   struct lp_build_context *atom_bld = is_flt ? get_flt_bld(bld_base, val_bit_size) : get_int_bld(bld_base, true, val_bit_size);
+   if (is_flt)
+      val = LLVMBuildBitCast(builder, val, atom_bld->vec_type, "");
+
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
                                            LLVMTypeOf(val), "");
    LLVMValueRef exec_mask = mask_vec(bld_base);
@@ -998,6 +1021,17 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
       case nir_intrinsic_global_atomic_imax:
          op = LLVMAtomicRMWBinOpMax;
          break;
+      case nir_intrinsic_global_atomic_fadd:
+         op = LLVMAtomicRMWBinOpFAdd;
+         break;
+#if LLVM_VERSION_MAJOR >= 15
+      case nir_intrinsic_global_atomic_fmin:
+         op = LLVMAtomicRMWBinOpFMin;
+         break;
+      case nir_intrinsic_global_atomic_fmax:
+         op = LLVMAtomicRMWBinOpFmax;
+         break;
+#endif
       default:
          unreachable("unknown atomic op");
       }
@@ -1093,7 +1127,7 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
 
          LLVMValueRef scalar;
          /* If loading outside the UBO, we need to skip the load and read 0 instead. */
-         LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+         LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size, false);
          LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
          LLVMBuildStore(builder, zero, res_store);
 
@@ -1225,7 +1259,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
          LLVMValueRef scalar;
          /* If loading outside the SSBO, we need to skip the load and read 0 instead. */
          if (ssbo_limit) {
-            LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+            LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size, false);
             LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
             LLVMBuildStore(builder, zero, res_store);
 
@@ -1285,7 +1319,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
       LLVMBuildStore(builder, temp_res, result[c]);
       lp_build_else(&ifthen);
       temp_res = LLVMBuildLoad2(builder, load_bld->vec_type, result[c], "");
-      LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+      LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size, false);
       temp_res = LLVMBuildInsertElement(builder, temp_res, zero, loop_state.counter, "");
       LLVMBuildStore(builder, temp_res, result[c]);
       lp_build_endif(&ifthen);
@@ -1397,6 +1431,7 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
 
 }
 
+
 static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
                             nir_intrinsic_op nir_op,
                             uint32_t bit_size,
@@ -1409,7 +1444,8 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    uint32_t shift_val = bit_size_to_shift_size(bit_size);
-   struct lp_build_context *atomic_bld = get_int_bld(bld_base, true, bit_size);
+   bool is_float = atomic_op_is_float(nir_op);
+   struct lp_build_context *atomic_bld = is_float ? get_flt_bld(bld_base, bit_size) : get_int_bld(bld_base, true, bit_size);
 
    offset = lp_build_shr_imm(uint_bld, offset, shift_val);
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
@@ -1498,6 +1534,20 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
       case nir_intrinsic_shared_atomic_imax:
          op = LLVMAtomicRMWBinOpMax;
          break;
+      case nir_intrinsic_shared_atomic_fadd:
+      case nir_intrinsic_ssbo_atomic_fadd:
+         op = LLVMAtomicRMWBinOpFAdd;
+         break;
+#if LLVM_VERSION_MAJOR >= 15
+      case nir_intrinsic_shared_atomic_fmin:
+      case nir_intrinsic_ssbo_atomic_fmin:
+         op = LLVMAtomicRMWBinOpFMin;
+         break;
+      case nir_intrinsic_shared_atomic_fmax:
+      case nir_intrinsic_ssbo_atomic_fmax:
+         op = LLVMAtomicRMWBinOpFMax;
+         break;
+#endif
       default:
          unreachable("unknown atomic op");
       }
@@ -1511,7 +1561,7 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
    LLVMBuildStore(builder, temp_res, atom_res);
    lp_build_else(&ifthen);
    temp_res = LLVMBuildLoad2(builder, atomic_bld->vec_type, atom_res, "");
-   LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+   LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size, is_float);
    temp_res = LLVMBuildInsertElement(builder, temp_res, zero, loop_state.counter, "");
    LLVMBuildStore(builder, temp_res, atom_res);
    lp_build_endif(&ifthen);
@@ -2581,7 +2631,7 @@ emit_load_scratch(struct lp_build_nir_context *bld_base,
       LLVMBuildStore(builder, temp_res, result);
       lp_build_else(&ifthen);
       temp_res = LLVMBuildLoad2(builder, load_bld->vec_type, result, "");
-      LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+      LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size, false);
       temp_res = LLVMBuildInsertElement(builder, temp_res, zero, loop_state.counter, "");
       LLVMBuildStore(builder, temp_res, result);
       lp_build_endif(&ifthen);

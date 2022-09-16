@@ -1702,6 +1702,17 @@ visit_atomic_image(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_image_atomic_imax:
       params.op = LLVMAtomicRMWBinOpMax;
       break;
+   case nir_intrinsic_image_atomic_fadd:
+      params.op = LLVMAtomicRMWBinOpFAdd;
+      break;
+#if LLVM_VERSION >= 15
+   case nir_intrinsic_image_atomic_fmin:
+      params.op = LLVMAtomicRMWBinOpMin;
+      break;
+   case nir_intrinsic_image_atomic_fmax:
+      params.op = LLVMAtomicRMWBinOpMax;
+      break;
+#endif
    default:
       break;
    }
@@ -2056,6 +2067,9 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_fadd:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
       visit_ssbo_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_image_load:
@@ -2074,6 +2088,9 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_image_atomic_fmin:
+   case nir_intrinsic_image_atomic_fmax:
       visit_atomic_image(bld_base, instr, result);
       break;
    case nir_intrinsic_image_size:
@@ -2098,6 +2115,9 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_intrinsic_shared_atomic_fadd:
+   case nir_intrinsic_shared_atomic_fmin:
+   case nir_intrinsic_shared_atomic_fmax:
       visit_shared_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_control_barrier:
@@ -2131,6 +2151,9 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_global_atomic_fadd:
+   case nir_intrinsic_global_atomic_fmin:
+   case nir_intrinsic_global_atomic_fmax:
       visit_global_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_vote_all:

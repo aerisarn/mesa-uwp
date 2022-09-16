@@ -4571,8 +4571,12 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
       return;
    }
 
+   LLVMTypeRef ref_type = (format == PIPE_FORMAT_R32_FLOAT) ?
+      LLVMFloatTypeInContext(gallivm->context) :
+      LLVMInt32TypeInContext(gallivm->context);
+
    LLVMTypeRef atom_res_elem_type =
-      LLVMVectorType(LLVMInt32TypeInContext(gallivm->context), type.length);
+      LLVMVectorType(ref_type, type.length);
    LLVMValueRef atom_res = lp_build_alloca(gallivm, atom_res_elem_type, "");
 
    offset = LLVMBuildGEP(gallivm->builder, base_ptr, &offset, 1, "");
@@ -4600,9 +4604,9 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
    LLVMValueRef cast_base_ptr =
       LLVMBuildExtractElement(gallivm->builder, offset, loop_state.counter, "");
    cast_base_ptr = LLVMBuildBitCast(gallivm->builder, cast_base_ptr,
-              LLVMPointerType(LLVMInt32TypeInContext(gallivm->context), 0), "");
+              LLVMPointerType(ref_type, 0), "");
    data = LLVMBuildBitCast(gallivm->builder, data,
-                           LLVMInt32TypeInContext(gallivm->context), "");
+                           ref_type, "");
 
    if (img_op == LP_IMG_ATOMIC_CAS) {
       LLVMValueRef cas_src_ptr =
@@ -4610,7 +4614,7 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
                                  loop_state.counter, "");
       LLVMValueRef cas_src =
          LLVMBuildBitCast(gallivm->builder, cas_src_ptr,
-                          LLVMInt32TypeInContext(gallivm->context), "");
+                          ref_type, "");
       data = LLVMBuildAtomicCmpXchg(gallivm->builder, cast_base_ptr, data,
                                     cas_src,
                                     LLVMAtomicOrderingSequentiallyConsistent,
