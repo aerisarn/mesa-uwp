@@ -1574,7 +1574,6 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    switch (instr->op) {
    case nir_texop_txf:
    case nir_texop_txf_ms:
-   case nir_texop_samples_identical:
       args->opcode = args->level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS
                         ? ac_image_load
                         : ac_image_load_mip;
@@ -3763,7 +3762,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_sparse_load:
-   case nir_intrinsic_image_deref_samples_identical:
       result = visit_image_load(ctx, instr, false);
       break;
    case nir_intrinsic_bindless_image_store:
@@ -4590,13 +4588,13 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       instr->sampler_dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
 
    if (plane >= 0) {
-      assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
+      assert(instr->op != nir_texop_txf_ms);
       assert(instr->sampler_dim != GLSL_SAMPLER_DIM_BUF);
 
       main_descriptor = AC_DESC_PLANE_0 + plane;
    }
 
-   if (instr->op == nir_texop_fragment_mask_fetch_amd || instr->op == nir_texop_samples_identical) {
+   if (instr->op == nir_texop_fragment_mask_fetch_amd) {
       /* The fragment mask is fetched from the compressed
        * multisampled surface.
        */
@@ -4875,21 +4873,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    if (sample_index && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_fragment_fetch_amd))
       args.coords[instr->coord_components] = sample_index;
 
-   if (instr->op == nir_texop_samples_identical) {
-      assert(ctx->ac.gfx_level < GFX11);
-      struct ac_image_args txf_args = {0};
-      memcpy(txf_args.coords, args.coords, sizeof(txf_args.coords));
-
-      txf_args.dmask = 0xf;
-      txf_args.resource = args.resource;
-      txf_args.dim = instr->is_array ? ac_image_2darray : ac_image_2d;
-      result = build_tex_intrinsic(ctx, instr, &txf_args);
-
-      result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
-      result = emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0);
-      goto write_result;
-   }
-
    if (args.offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
       int num_offsets = instr->src[offset_src].src.ssa->num_components;
       num_offsets = MIN2(num_offsets, instr->coord_components);
@@ -4971,7 +4954,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    if (instr->is_sparse)
       result = ac_build_concat(&ctx->ac, result, code);
 
-write_result:
    if (result) {
       assert(instr->dest.is_ssa);
       result = ac_to_integer(&ctx->ac, result);
