@@ -4682,9 +4682,14 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
          *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
                                                 main_descriptor, false, false, true);
 
-      if (samp_ptr && sampler_dynamic_handle)
+      if (samp_ptr && sampler_dynamic_handle) {
          *samp_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, sampler_dynamic_handle,
                                                  AC_DESC_SAMPLER, false, false, true);
+
+         if (ctx->abi->disable_aniso_single_level &&
+             instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
+            *samp_ptr = sici_fix_sampler_aniso(ctx, *res_ptr, *samp_ptr);
+      }
       return;
    }
 

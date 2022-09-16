@@ -135,6 +135,9 @@ struct ac_shader_abi {
     * waterfall to avoid incorrect rendering. */
    bool use_waterfall_for_divergent_tex_samplers;
 
+   /* Whether to disable anisotropic filtering. */
+   bool disable_aniso_single_level;
+
    /* Number of all interpolated inputs */
    unsigned num_interp;
 };
