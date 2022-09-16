@@ -149,8 +149,8 @@ lower_load_push_constant(struct tu_device *dev,
        */
       base += dev->compiler->shared_consts_base_offset * 4;
    } else {
-      assert(base >= shader->push_consts.lo * 4);
-      base -= shader->push_consts.lo * 4;
+      assert(base >= shader->const_state.push_consts.lo * 4);
+      base -= shader->const_state.push_consts.lo * 4;
    }
 
    nir_ssa_def *load =
@@ -627,8 +627,8 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
    }
 
    if (min >= max) {
-      tu_shader->push_consts.lo = 0;
-      tu_shader->push_consts.dwords = 0;
+      tu_shader->const_state.push_consts.lo = 0;
+      tu_shader->const_state.push_consts.dwords = 0;
       return;
    }
 
@@ -640,9 +640,9 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
     * Note there's an alignment requirement of 16 dwords on OFFSET. Expand
     * the range and change units accordingly.
     */
-   tu_shader->push_consts.lo = (min / 4) / 4 * 4;
-   tu_shader->push_consts.dwords =
-      align(max, 16) / 4 - tu_shader->push_consts.lo;
+   tu_shader->const_state.push_consts.lo = (min / 4) / 4 * 4;
+   tu_shader->const_state.push_consts.dwords =
+      align(max, 16) / 4 - tu_shader->const_state.push_consts.lo;
 }
 
 static bool
@@ -652,6 +652,13 @@ tu_lower_io(nir_shader *shader, struct tu_device *dev,
 {
    if (!tu6_shared_constants_enable(layout, dev->compiler))
       gather_push_constants(shader, tu_shader);
+
+   struct tu_const_state *const_state = &tu_shader->const_state;
+   unsigned reserved_consts_vec4 =
+      align(DIV_ROUND_UP(const_state->push_consts.dwords, 4),
+            dev->compiler->const_upload_unit);
+
+   tu_shader->reserved_user_consts_vec4 = reserved_consts_vec4;
 
    struct lower_instr_params params = {
       .dev = dev,
@@ -842,14 +849,13 @@ tu_shader_create(struct tu_device *dev,
 
    ir3_finalize_nir(dev->compiler, nir);
 
-   uint32_t reserved_consts_vec4 = align(shader->push_consts.dwords, 16) / 4;
    bool shared_consts_enable = tu6_shared_constants_enable(layout, dev->compiler);
    if (shared_consts_enable)
-      assert(!shader->push_consts.dwords);
+      assert(!shader->const_state.push_consts.dwords);
 
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
-                           .reserved_user_consts = reserved_consts_vec4,
+                           .reserved_user_consts = shader->reserved_user_consts_vec4,
                            .shared_consts_enable = shared_consts_enable,
                            .api_wavesize = key->api_wavesize,
                            .real_wavesize = key->real_wavesize,

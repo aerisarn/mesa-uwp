@@ -4089,8 +4089,8 @@ tu6_user_consts_size(const struct tu_pipeline *pipeline,
       &pipeline->program.link[type];
    uint32_t dwords = 0;
 
-   if (link->push_consts.dwords > 0) {
-      unsigned num_units = link->push_consts.dwords;
+   if (link->tu_const_state.push_consts.dwords > 0) {
+      unsigned num_units = link->tu_const_state.push_consts.dwords;
       dwords += 4 + num_units;
    }
 
@@ -4106,9 +4106,9 @@ tu6_emit_user_consts(struct tu_cs *cs,
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
 
-   if (link->push_consts.dwords > 0) {
-      unsigned num_units = link->push_consts.dwords;
-      unsigned offset = link->push_consts.lo;
+   if (link->tu_const_state.push_consts.dwords > 0) {
+      unsigned num_units = link->tu_const_state.push_consts.dwords;
+      unsigned offset = link->tu_const_state.push_consts.lo;
 
       /* DST_OFF and NUM_UNIT requires vec4 units */
       tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + num_units);
@@ -4194,7 +4194,7 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
       for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->program.link); i++) {
          const struct tu_program_descriptor_linkage *link =
             &pipeline->program.link[i];
-         assert(!link->push_consts.dwords);
+         assert(!link->tu_const_state.push_consts.dwords);
       }
    } else {
       if (compute) {

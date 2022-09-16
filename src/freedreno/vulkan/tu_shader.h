@@ -18,11 +18,17 @@ struct tu_push_constant_range
    uint32_t dwords;
 };
 
+struct tu_const_state
+{
+   struct tu_push_constant_range push_consts;
+};
+
 struct tu_shader
 {
    struct ir3_shader *ir3_shader;
 
-   struct tu_push_constant_range push_consts;
+   struct tu_const_state const_state;
+   unsigned reserved_user_consts_vec4;
    uint8_t active_desc_sets;
 };
 

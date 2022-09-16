@@ -56,7 +56,7 @@ struct tu_compiled_shaders
 {
    struct vk_pipeline_cache_object base;
 
-   struct tu_push_constant_range push_consts[MESA_SHADER_STAGES];
+   struct tu_const_state const_state[MESA_SHADER_STAGES];
    uint8_t active_desc_sets;
 
    struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
@@ -78,7 +78,7 @@ struct tu_program_descriptor_linkage
 
    uint32_t constlen;
 
-   struct tu_push_constant_range push_consts;
+   struct tu_const_state tu_const_state;
 };
 
 struct tu_pipeline_executable {
