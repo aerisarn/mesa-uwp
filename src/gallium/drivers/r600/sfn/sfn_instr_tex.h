@@ -174,11 +174,14 @@ private:
    static bool emit_tex_txs(nir_tex_instr *tex, Inputs& src,
                             RegisterVec4::Swizzle dest_swz, Shader& shader);
    static bool emit_tex_lod(nir_tex_instr* tex, Inputs& src, Shader& shader);
-   static bool emit_tex_tg4(nir_tex_instr* instr, Inputs& src , Shader& shader);
    static bool emit_tex_texture_samples(nir_tex_instr* instr, Inputs& src, Shader& shader);
    static bool emit_lowered_tex(nir_tex_instr* instr, Inputs& src, Shader& shader);
+   static void emit_set_gradients(nir_tex_instr* tex, int sampler_id,
+                                  Inputs& src, TexInstr *irt,  Shader& shader);
+   static void emit_set_offsets(nir_tex_instr* tex, int sampler_id,
+                                Inputs& src, TexInstr *irt,  Shader& shader);
 
-   void set_coord_offsets(nir_src *offset);
+   bool set_coord_offsets(nir_src *offset);
    void set_rect_coordinate_flags(nir_tex_instr* instr);
    void add_prepare_instr(TexInstr *ir) {m_prepare_instr.push_back(ir);};
 

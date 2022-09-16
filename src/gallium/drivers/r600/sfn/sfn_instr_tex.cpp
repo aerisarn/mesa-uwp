@@ -350,8 +350,6 @@ bool TexInstr::from_nir(nir_tex_instr *tex, Shader& shader)
          return emit_tex_lod(tex, src, shader);
       case nir_texop_query_levels:
          return emit_tex_txs(tex, src, {3,7,7,7}, shader);
-      case nir_texop_tg4:
-         return emit_tex_tg4(tex, src, shader);
       case nir_texop_texture_samples:
          return emit_tex_texture_samples(tex, src, shader);
       default:
@@ -401,6 +399,57 @@ get_sampler_id(int sampler_id, const nir_variable *deref)
    return result;
 }
 
+void TexInstr::emit_set_gradients(nir_tex_instr* tex, int sampler_id,
+                                  Inputs& src, TexInstr *irt,  Shader& shader)
+{
+   TexInstr *grad[2] = {nullptr, nullptr};
+   RegisterVec4 empty_dst(0, false, {0,0,0,0}, pin_group);
+   grad[0] = new TexInstr(set_gradient_h, empty_dst, {7,7,7,7}, src.ddx,
+                          sampler_id,
+                          sampler_id + R600_MAX_CONST_BUFFERS,
+                          src.sampler_offset);
+   grad[0]->set_rect_coordinate_flags(tex);
+   grad[0]->set_always_keep();
+
+   grad[1] = new TexInstr(set_gradient_v, empty_dst, {7,7,7,7}, src.ddy,
+                          sampler_id, sampler_id + R600_MAX_CONST_BUFFERS,
+                          src.sampler_offset);
+   grad[1]->set_rect_coordinate_flags(tex);
+   grad[1]->set_always_keep();
+   irt->add_prepare_instr(grad[0]);
+   irt->add_prepare_instr(grad[1]);
+   if (shader.last_txd())
+      irt->add_required_instr(shader.last_txd());
+   shader.set_last_txd(irt);
+}
+
+void TexInstr::emit_set_offsets(nir_tex_instr* tex, int sampler_id,
+                                Inputs& src, TexInstr *irt,  Shader& shader)
+{
+   RegisterVec4::Swizzle swizzle = {4,4,4,4};
+   int src_components = tex->coord_components;
+   if (tex->is_array)
+      --src_components;
+
+   for (int i = 0; i < src_components; ++i)
+      swizzle[i] = i;
+
+   int noffsets = tex->coord_components;
+   if (tex->is_array)
+      --noffsets;
+
+   auto ofs = shader.value_factory().src_vec4(*src.offset, pin_group, swizzle);
+   RegisterVec4 empty_dst(0, false, {0,0,0,0}, pin_group);
+
+   auto set_ofs = new TexInstr(TexInstr::set_offsets, empty_dst, {7,7,7,7},
+                               ofs, sampler_id,
+                               sampler_id + R600_MAX_CONST_BUFFERS,
+                               src.sampler_offset);
+   set_ofs->set_always_keep();
+   irt->add_prepare_instr(set_ofs);
+}
+
+
 bool TexInstr::emit_lowered_tex(nir_tex_instr* tex, Inputs& src, Shader& shader)
 {
    assert(src.backend1);
@@ -418,8 +467,7 @@ bool TexInstr::emit_lowered_tex(nir_tex_instr* tex, Inputs& src, Shader& shader)
    int32_t coord_mask = params[0].i32;
    int32_t flags = params[1].i32;
    int32_t inst_mode = params[2].i32;
-
-   TexInstr *grad[2] = {nullptr, nullptr};
+   uint32_t dst_swz_packed = params[3].u32;
 
    auto dst = vf.dest_vec4(tex->dest, pin_group);
 
@@ -429,29 +477,23 @@ bool TexInstr::emit_lowered_tex(nir_tex_instr* tex, Inputs& src, Shader& shader)
 
    auto src_coord = vf.src_vec4(*src.backend1, pin_group, src_swizzle);
 
-   auto irt = new TexInstr(src.opcode, dst, {0,1,2,3},  src_coord, sampler.id,
+   RegisterVec4::Swizzle dst_swz = {0,1,2,3};
+   if (dst_swz_packed) {
+      for (int i = 0; i < 4; ++i) {
+         dst_swz[i] = (dst_swz_packed >> (8 * i)) & 0xff;
+      }
+   }
+   auto irt = new TexInstr(src.opcode, dst, dst_swz,  src_coord, sampler.id,
                            sampler.id + R600_MAX_CONST_BUFFERS,
                            src.sampler_offset);
 
-   if (tex->op == nir_texop_txd) {
-      RegisterVec4 empty_dst(0, false, {0,0,0,0}, pin_group);
-      grad[0] = new TexInstr(set_gradient_h, empty_dst, {7,7,7,7}, src.ddx,
-                             sampler.id,
-                             sampler.id + R600_MAX_CONST_BUFFERS,
-                             src.sampler_offset);
-      grad[0]->set_rect_coordinate_flags(tex);
-      grad[0]->set_always_keep();
+   if (tex->op == nir_texop_txd)
+      emit_set_gradients(tex, sampler.id, src, irt, shader);
 
-      grad[1] = new TexInstr(set_gradient_v, empty_dst, {7,7,7,7}, src.ddy,
-                             sampler.id, sampler.id + R600_MAX_CONST_BUFFERS,
-                             src.sampler_offset);
-      grad[1]->set_rect_coordinate_flags(tex);
-      grad[1]->set_always_keep();
-      irt->add_prepare_instr(grad[0]);
-      irt->add_prepare_instr(grad[1]);
-      if (shader.last_txd())
-         irt->add_required_instr(shader.last_txd());
-      shader.set_last_txd(irt);
+
+   if (!irt->set_coord_offsets(src.offset)) {
+      assert(tex->op == nir_texop_tg4);
+      emit_set_offsets(tex, sampler.id, src, irt, shader);
    }
 
    for (const auto f : TexFlags) {
@@ -459,7 +501,7 @@ bool TexInstr::emit_lowered_tex(nir_tex_instr* tex, Inputs& src, Shader& shader)
          irt->set_tex_flag(f);
    }
 
-   irt->set_coord_offsets(src.offset);
+
    irt->set_inst_mode(inst_mode);
 
    shader.emit_instruction(irt);
@@ -572,89 +614,6 @@ bool TexInstr::emit_tex_txs(nir_tex_instr *tex, Inputs& src,
       }
    }
 
-   return true;
-}
-
-bool TexInstr::emit_tex_tg4(nir_tex_instr* tex, Inputs& src , Shader& shader)
-{
-   auto& vf = shader.value_factory();
-
-   r600::sfn_log << SfnLog::instr << "emit '"
-              << *reinterpret_cast<nir_instr*>(tex)
-              << "' (" << __func__ << ")\n";
-
-   TexInstr *set_ofs = nullptr;
-
-   auto src_coord = prepare_source(tex, src, shader);
-
-   r600::sfn_log << SfnLog::instr << "emit '"
-                 << *reinterpret_cast<nir_instr*>(tex)
-                 << "' (" << __func__ << ")\n";
-
-   auto dst = vf.dest_vec4(tex->dest, pin_group);
-
-   RegisterVec4 empty_dst(125, false, {7,7,7,7}, pin_group);
-
-   /* pre CAYMAN needs swizzle */
-   auto dest_swizzle = shader.chip_class() <= ISA_CC_EVERGREEN ?
-            RegisterVec4::Swizzle{1, 2, 0, 3} :
-            RegisterVec4::Swizzle{0, 1, 2, 3};
-
-   auto sampler = get_sampler_id(tex->sampler_index, src.sampler_deref);
-   assert(!sampler.indirect && "Indirect sampler selection not yet supported");
-
-   bool literal_offset = false;
-   if (src.offset) {
-      literal_offset =  nir_src_as_const_value(*src.offset) != 0;
-      r600::sfn_log << SfnLog::tex << " really have offsets and they are " <<
-                       (literal_offset ? "l" : "varying") <<
-                       "\n";
-
-      if (!literal_offset) {
-         RegisterVec4::Swizzle swizzle = {4,4,4,4};
-         int src_components = tex->coord_components;
-         if (tex->is_array)
-            --src_components;
-
-         for (int i = 0; i < src_components; ++i)
-            swizzle[i] = i;
-
-         int noffsets = tex->coord_components;
-         if (tex->is_array)
-            --noffsets;
-
-         auto ofs = vf.src_vec4(*src.offset, pin_group, swizzle);
-         RegisterVec4 dummy(0, true, {7,7,7,7});
-
-         set_ofs = new TexInstr(TexInstr::set_offsets, dummy, {7,7,7,7},
-                                ofs, sampler.id,
-                                sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
-      } else {
-         src.opcode = src.opcode == gather4_o ? gather4 : gather4_c;
-      }
-   }
-
-   auto irt = new TexInstr(src.opcode, dst, dest_swizzle, src_coord, sampler.id,
-                           sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
-
-   irt->set_gather_comp(tex->component);
-
-   if (tex->is_array)
-      irt->set_tex_flag(z_unnormalized);
-
-   if (literal_offset) {
-      r600::sfn_log << SfnLog::tex << "emit literal offsets\n";
-      irt->set_coord_offsets(src.offset);
-   }
-
-   irt->set_rect_coordinate_flags(tex);
-
-   if (set_ofs) {
-      set_ofs->set_always_keep();
-      irt->add_prepare_instr(set_ofs);
-   }
-
-   shader.emit_instruction(irt);
    return true;
 }
 
@@ -806,11 +765,12 @@ auto TexInstr::Inputs::get_opcode(const nir_tex_instr& instr) -> Opcode
       return get_resinfo;
    case nir_texop_txd:
       return instr.is_shadow ? sample_c_g : sample_g;
-   case nir_texop_tg4:
+   case nir_texop_tg4: {
+      auto var_offset = offset && nir_src_as_const_value(*offset) == nullptr;
       return instr.is_shadow ?
-               (offset ? gather4_c_o : gather4_c) :
-               (offset ? gather4_o : gather4);
-
+               (var_offset ? gather4_c_o : gather4_c) :
+               (var_offset ? gather4_o : gather4);
+   }
    case nir_texop_txf_ms:
       return ld;
    case nir_texop_query_levels:
@@ -860,17 +820,21 @@ RegisterVec4::Swizzle TexInstr::Inputs::swizzle_from_ncomps(int comps) const
    return swz;
 }
 
-void TexInstr::set_coord_offsets(nir_src *offset)
+bool TexInstr::set_coord_offsets(nir_src *offset)
 {
    if (!offset)
-      return;
+      return true;
 
-   assert(offset->is_ssa);
+   if (!offset->is_ssa)
+      return false;
+
    auto literal = nir_src_as_const_value(*offset);
-   assert(literal);
+   if (!literal)
+      return false;
 
    for (int i = 0; i < offset->ssa->num_components; ++i)
       set_offset(i, literal[i].i32);
+   return true;
 }
 
 void TexInstr::set_rect_coordinate_flags(nir_tex_instr* instr)
@@ -890,6 +854,7 @@ private:
 
    nir_ssa_def *lower_tex(nir_tex_instr *tex);
    nir_ssa_def *lower_txf(nir_tex_instr *tex);
+   nir_ssa_def *lower_tg4(nir_tex_instr *tex);
    nir_ssa_def *lower_txf_ms(nir_tex_instr *tex);
    nir_ssa_def *lower_txf_ms_direct(nir_tex_instr *tex);
 
@@ -931,6 +896,7 @@ bool LowerTexToBackend::filter(const nir_instr *instr) const
    case nir_texop_txl:
    case nir_texop_txf:
    case nir_texop_txd:
+   case nir_texop_tg4:
    case nir_texop_txf_ms:
       break;
    default:
@@ -953,6 +919,8 @@ nir_ssa_def *LowerTexToBackend::lower(nir_instr *instr)
       return lower_tex(tex);
    case nir_texop_txf:
       return lower_txf(tex);
+   case nir_texop_tg4:
+      return lower_tg4(tex);
    case nir_texop_txf_ms:
       if (m_chip_class < EVERGREEN)
          return lower_txf_ms_direct(tex);
@@ -995,6 +963,30 @@ nir_ssa_def *LowerTexToBackend::lower_txf(nir_tex_instr *tex)
    nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask,
                                          tex->is_array ? 0x4 : 0, 0, 0);
 
+   return finalize(tex, backend1, backend2);
+}
+
+nir_ssa_def *LowerTexToBackend::lower_tg4(nir_tex_instr *tex)
+{
+   std::array<nir_ssa_def *, 4> new_coord = {
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr
+   };
+
+   get_src_coords(tex, new_coord, false);
+   uint32_t dest_swizzle = m_chip_class <= EVERGREEN ?
+                              1 | (2 << 8) | (0 << 16) | (3 << 24) : 0;
+
+   int used_coord_mask = 0;
+   int unnormalized_mask = 0;
+   nir_ssa_def *backend1 = prepare_coord(tex, unnormalized_mask, used_coord_mask);
+
+   nir_ssa_def *backend2 = nir_imm_ivec4(b, used_coord_mask,
+                                         unnormalized_mask,
+                                         tex->component,
+                                         dest_swizzle);
    return finalize(tex, backend1, backend2);
 }
 
