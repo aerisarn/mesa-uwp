@@ -2559,7 +2559,9 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
                       !bld->static_sampler_state->min_max_lod_equal &&
                       !explicit_lod);
       lp_build_cube_lookup(bld, coords, derivs, &cube_rho, &cube_derivs, need_derivs);
-      derivs = &cube_derivs;
+      if (need_derivs)
+         derivs = &cube_derivs;
+
       if (target == PIPE_TEXTURE_CUBE_ARRAY && !is_lodq) {
          /* calculate cube layer coord now */
          LLVMValueRef layer = lp_build_iround(&bld->coord_bld, coords[3]);
