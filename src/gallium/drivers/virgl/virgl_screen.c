@@ -673,14 +673,8 @@ virgl_is_vertex_format_supported(struct pipe_screen *screen,
       return true;
    }
 
-   /* Find the first non-VOID channel. */
-   for (i = 0; i < 4; i++) {
-      if (format_desc->channel[i].type != UTIL_FORMAT_TYPE_VOID) {
-         break;
-      }
-   }
-
-   if (i == 4)
+   i = util_format_get_first_non_void_channel(format);
+   if (i == -1)
       return false;
 
    if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
@@ -873,14 +867,8 @@ virgl_is_format_supported( struct pipe_screen *screen,
      goto out_lookup;
    }
 
-   /* Find the first non-VOID channel. */
-   for (i = 0; i < 4; i++) {
-      if (format_desc->channel[i].type != UTIL_FORMAT_TYPE_VOID) {
-         break;
-      }
-   }
-
-   if (i == 4)
+   i = util_format_get_first_non_void_channel(format);
+   if (i == -1)
       return false;
 
    /* no L4A4 */
