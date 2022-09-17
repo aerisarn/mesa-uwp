@@ -2846,7 +2846,7 @@ is_residency_code(nir_ssa_def *src)
    nir_instr *parent = src->parent_instr;
    while (1) {
       if (parent->type == nir_instr_type_intrinsic) {
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent);
+         ASSERTED nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent);
          assert(intr->intrinsic == nir_intrinsic_is_sparse_texels_resident);
          return false;
       }
