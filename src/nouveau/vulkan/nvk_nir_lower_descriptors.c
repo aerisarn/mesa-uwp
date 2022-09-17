@@ -2,13 +2,12 @@
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_nir.h"
-#include "nvk_pipeline_layout.h"
 
 #include "nir_builder.h"
 #include "nir_deref.h"
 
 struct lower_descriptors_ctx {
-   const struct nvk_pipeline_layout *layout;
+   const struct vk_pipeline_layout *layout;
    bool clamp_desc_array_bounds;
    nir_address_format desc_addr_format;
    nir_address_format ubo_addr_format;
@@ -33,8 +32,12 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
                 const struct lower_descriptors_ctx *ctx)
 {
    assert(set < NVK_MAX_SETS);
+
+   const struct vk_pipeline_layout *layout = ctx->layout;
+   const struct nvk_descriptor_set_layout *set_layout =
+         vk_to_nvk_descriptor_set_layout(layout->set_layouts[set]);
    const struct nvk_descriptor_set_binding_layout *binding_layout =
-      &ctx->layout->set[set].layout->binding[binding];
+      &set_layout->binding[binding];
 
    if (ctx->clamp_desc_array_bounds)
       index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
@@ -43,8 +46,11 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
       /* Get the index in the root descriptor table dynamic_buffers array. */
+      uint8_t dynamic_buffer_start =
+         nvk_descriptor_set_layout_dynbuf_start(layout, set);
+
       index = nir_iadd_imm(b, index,
-                           ctx->layout->set[set].dynamic_buffer_start +
+                           dynamic_buffer_start +
                            binding_layout->dynamic_buffer_index);
 
       nir_ssa_def *root_desc_offset =
@@ -298,7 +304,7 @@ lower_descriptors_instr(nir_builder *b, nir_instr *instr,
 
 bool
 nvk_nir_lower_descriptors(nir_shader *nir,
-                          const struct nvk_pipeline_layout *layout,
+                          const struct vk_pipeline_layout *layout,
                           bool robust_buffer_access)
 {
    struct lower_descriptors_ctx ctx = {

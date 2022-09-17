@@ -1,7 +1,6 @@
 #include "nvk_pipeline.h"
 
 #include "nvk_device.h"
-#include "nvk_pipeline_layout.h"
 #include "nvk_shader.h"
 #include "nv_push.h"
 #include "vk_nir.h"
@@ -199,7 +198,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *pPipeline)
 {
-   VK_FROM_HANDLE(nvk_pipeline_layout, pipeline_layout, pCreateInfo->layout);
+   VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    struct nvk_physical_device *pdevice = nvk_device_physical(device);
    struct nvk_graphics_pipeline *pipeline;
    VkResult result = VK_SUCCESS;

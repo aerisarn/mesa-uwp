@@ -2,7 +2,6 @@
 #include "nvk_device.h"
 #include "nvk_shader.h"
 #include "nvk_physical_device.h"
-#include "nvk_pipeline_layout.h"
 #include "nvk_nir.h"
 
 #include "nouveau_bo.h"
@@ -154,7 +153,7 @@ assign_io_locations(nir_shader *nir)
 
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
-              const struct nvk_pipeline_layout *layout)
+              const struct vk_pipeline_layout *layout)
 {
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);

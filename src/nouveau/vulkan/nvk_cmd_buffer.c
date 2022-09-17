@@ -5,7 +5,6 @@
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_pipeline.h"
-#include "nvk_pipeline_layout.h"
 #include "nvk_physical_device.h"
 
 #include "nouveau_context.h"
@@ -282,7 +281,7 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                           const uint32_t *pDynamicOffsets)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   VK_FROM_HANDLE(nvk_pipeline_layout, pipeline_layout, layout);
+   VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, layout);
    struct nvk_descriptor_state *desc =
       nvk_get_descriptors_state(cmd, pipelineBindPoint);
 
@@ -291,7 +290,7 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       unsigned set_idx = i + firstSet;
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
       const struct nvk_descriptor_set_layout *set_layout =
-         pipeline_layout->set[set_idx].layout;
+         vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set_idx]);
 
       if (desc->sets[set_idx] != set) {
          if (set->bo)
@@ -306,7 +305,7 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       if (set_layout->dynamic_buffer_count > 0) {
          const uint32_t dynamic_buffer_start =
-            pipeline_layout->set[set_idx].dynamic_buffer_start;
+            nvk_descriptor_set_layout_dynbuf_start(pipeline_layout, set_idx);
 
          for (uint32_t j = 0; j < set_layout->dynamic_buffer_count; j++) {
             struct nvk_buffer_address addr = set->dynamic_buffers[j];
@@ -353,7 +352,7 @@ nvk_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
                             const VkWriteDescriptorSet *pDescriptorWrites)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   VK_FROM_HANDLE(nvk_pipeline_layout, pipeline_layout, layout);
+   VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, layout);
    struct nvk_descriptor_state *desc =
       nvk_get_descriptors_state(cmd, pipelineBindPoint);
 
@@ -371,8 +370,11 @@ nvk_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
    /* Pushing descriptors replaces whatever sets are bound */
    desc->sets[set] = NULL;
 
+   struct nvk_descriptor_set_layout *set_layout =
+      vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set]);
+
    nvk_push_descriptor_set_update(desc->push[set],
-                                  pipeline_layout->set[set].layout,
+                                  set_layout,
                                   descriptorWriteCount, pDescriptorWrites);
    desc->push_dirty |= BITFIELD_BIT(set);
 }

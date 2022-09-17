@@ -9,7 +9,6 @@
 
 struct vk_shader_module;
 struct nvk_device;
-struct nvk_pipeline_layout;
 struct nvk_physical_device;
 
 #define GF100_SHADER_HEADER_SIZE (20 * 4)
@@ -75,7 +74,7 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice);
 
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
-              const struct nvk_pipeline_layout *layout);
+              const struct vk_pipeline_layout *layout);
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,

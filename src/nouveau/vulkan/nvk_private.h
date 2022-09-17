@@ -10,6 +10,7 @@
 #include "vulkan/runtime/vk_log.h"
 #include "vulkan/util/vk_alloc.h"
 #include "vulkan/util/vk_util.h"
+#include "vulkan/runtime/vk_pipeline_layout.h"
 
 #include <fcntl.h>
 #include <xf86drm.h>

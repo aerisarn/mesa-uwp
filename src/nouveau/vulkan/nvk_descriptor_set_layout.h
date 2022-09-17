@@ -60,4 +60,13 @@ void nvk_descriptor_stride_align_for_type(VkDescriptorType type,
                                           const VkMutableDescriptorTypeListVALVE *type_list,
                                           uint32_t *stride, uint32_t *align);
 
+static inline struct nvk_descriptor_set_layout *
+vk_to_nvk_descriptor_set_layout(struct vk_descriptor_set_layout *layout)
+{
+   return container_of(layout, struct nvk_descriptor_set_layout, vk);
+}
+
+uint8_t
+nvk_descriptor_set_layout_dynbuf_start(const struct vk_pipeline_layout *pipeline_layout,
+                                       int set_layout_idx);
 #endif

@@ -44,8 +44,6 @@ nvk_files = files(
   'nvk_physical_device.h',
   'nvk_pipeline.c',
   'nvk_pipeline.h',
-  'nvk_pipeline_layout.c',
-  'nvk_pipeline_layout.h',
   'nvk_private.h',
   'nvk_queue.c',
   'nvk_queue.h',
