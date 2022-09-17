@@ -31,7 +31,7 @@
 
 /*
  * Helper util to update expected vsc draw and primitive stream sizes, see
- * https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format
+ * https://gitlab.freedesktop.org/freedreno/freedreno/-/wikis/Visibility-Stream-Format
  */
 
 enum bits_per {
@@ -41,7 +41,7 @@ enum bits_per {
 
 /**
  * Determine # of bits required to store a given number, see
- * https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format#numbers
+ * https://gitlab.freedesktop.org/freedreno/freedreno/-/wikis/Visibility-Stream-Format#numbers
  */
 static unsigned
 number_size_bits(unsigned nr)
@@ -53,7 +53,7 @@ number_size_bits(unsigned nr)
 
 /**
  * Determine # of bits requred to store a given bitfield, see
- * https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format#bitfields
+ * https://gitlab.freedesktop.org/freedreno/freedreno/-/wikis/Visibility-Stream-Format#bitfields
  */
 static unsigned
 bitfield_size_bits(unsigned n)
@@ -85,7 +85,7 @@ prim_count(const struct pipe_draw_info *info,
  * conservatively large primitive stream sizes.  (Ie. 10x what is needed, vs.
  * 20x)
  *
- * https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format#primitive-streams
+ * https://gitlab.freedesktop.org/freedreno/freedreno/-/wikis/Visibility-Stream-Format#primitive-streams
  */
 static unsigned
 primitive_stream_size_bits(const struct pipe_draw_info *info,
@@ -111,7 +111,7 @@ primitive_stream_size_bits(const struct pipe_draw_info *info,
  *    the size of the corresponding primitive stream in DWORD's.
  *  - Checksum
  *
- * https://github.com/freedreno/freedreno/wiki/Visibility-Stream-Format#draw-streams
+ * https://gitlab.freedesktop.org/freedreno/freedreno/-/wikis/Visibility-Stream-Format#draw-streams
  */
 static unsigned
 draw_stream_size_bits(const struct pipe_draw_info *info, unsigned num_bins,
