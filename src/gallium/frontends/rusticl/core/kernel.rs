@@ -1013,6 +1013,7 @@ impl Kernel {
             ctx.clear_shader_images(iviews.len() as u32);
             ctx.clear_sampler_views(sviews.len() as u32);
             ctx.clear_sampler_states(samplers.len() as u32);
+            ctx.bind_compute_state(ptr::null_mut());
             ctx.delete_compute_state(cso);
             ctx.memory_barrier(PIPE_BARRIER_GLOBAL_BUFFER);
 
