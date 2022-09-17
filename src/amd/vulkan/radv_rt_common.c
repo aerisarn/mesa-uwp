@@ -527,7 +527,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
                          const struct radv_ray_traversal_args *args)
 {
    nir_variable *incomplete = nir_local_variable_create(b->impl, glsl_bool_type(), "incomplete");
-   nir_store_var(b, incomplete, nir_ine_imm(b, args->accel_struct, 0), 0x1);
+   nir_store_var(b, incomplete, nir_ine_imm(b, args->root_bvh_base, 0), 0x1);
 
    nir_push_if(b, nir_load_var(b, incomplete));
    {
@@ -551,8 +551,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
             instance_exit->control = nir_selection_control_dont_flatten;
             {
                nir_store_deref(b, args->vars.top_stack, nir_imm_int(b, 0), 1);
-               nir_store_deref(b, args->vars.bvh_base, build_addr_to_node(b, args->accel_struct),
-                               1);
+               nir_store_deref(b, args->vars.bvh_base, args->root_bvh_base, 1);
                nir_store_deref(b, args->vars.origin, args->origin, 7);
                nir_store_deref(b, args->vars.dir, args->dir, 7);
                nir_store_deref(b, args->vars.inv_dir, nir_fdiv(b, vec3ones, args->dir), 7);

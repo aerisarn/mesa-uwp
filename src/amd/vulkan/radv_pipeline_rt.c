@@ -1395,7 +1395,14 @@ build_traversal_shader(struct radv_device *device,
 
    nir_push_if(&b, nir_ine_imm(&b, accel_struct, 0));
    {
-      nir_store_var(&b, trav_vars.bvh_base, build_addr_to_node(&b, accel_struct), 1);
+      nir_ssa_def *bvh_offset = nir_build_load_global(
+         &b, 1, 32,
+         nir_iadd_imm(&b, accel_struct, offsetof(struct radv_accel_struct_header, bvh_offset)),
+         .access = ACCESS_NON_WRITEABLE);
+      nir_ssa_def *root_bvh_base = nir_iadd(&b, accel_struct, nir_u2u64(&b, bvh_offset));
+      root_bvh_base = build_addr_to_node(&b, root_bvh_base);
+
+      nir_store_var(&b, trav_vars.bvh_base, root_bvh_base, 1);
 
       nir_ssa_def *vec3ones = nir_channels(&b, nir_imm_vec4(&b, 1.0, 1.0, 1.0, 1.0), 0x7);
 
@@ -1435,7 +1442,7 @@ build_traversal_shader(struct radv_device *device,
       };
 
       struct radv_ray_traversal_args args = {
-         .accel_struct = accel_struct,
+         .root_bvh_base = root_bvh_base,
          .flags = nir_load_var(&b, vars.flags),
          .cull_mask = nir_load_var(&b, vars.cull_mask),
          .origin = nir_load_var(&b, vars.origin),

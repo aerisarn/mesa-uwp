@@ -188,6 +188,8 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
    REF(radv_ir_instance_node) node = REF(radv_ir_instance_node)(dst_ptr);
 
    AccelerationStructureInstance instance = DEREF(REF(AccelerationStructureInstance)(src_ptr));
+   DEREF(node).base_ptr = instance.accelerationStructureReference;
+
    if (instance.accelerationStructureReference == 0)
       return false;
 
@@ -195,7 +197,6 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
 
    radv_accel_struct_header instance_header =
       DEREF(REF(radv_accel_struct_header)(instance.accelerationStructureReference));
-   DEREF(node).base_ptr = instance.accelerationStructureReference;
 
    bounds = calculate_instance_node_bounds(DEREF(node).base_ptr, DEREF(node).otw_matrix);
 

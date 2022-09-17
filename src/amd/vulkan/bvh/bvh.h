@@ -64,8 +64,8 @@ struct radv_accel_struct_geometry_info {
 };
 
 struct radv_accel_struct_header {
+   uint32_t bvh_offset;
    uint32_t reserved;
-   uint32_t reserved2;
    float aabb[2][3];
 
    /* Everything after this gets updated/copied from the CPU. */
@@ -132,7 +132,7 @@ struct radv_bvh_aabb_node {
 };
 
 struct radv_bvh_instance_node {
-   uint64_t base_ptr;
+   uint64_t bvh_ptr;
    /* lower 24 bits are the custom instance index, upper 8 bits are the visibility mask */
    uint32_t custom_instance_and_mask;
    /* lower 24 bits are the sbt offset, upper 8 bits are VkGeometryInstanceFlagsKHR */
@@ -141,7 +141,8 @@ struct radv_bvh_instance_node {
    mat3x4 wto_matrix;
 
    uint32_t instance_id;
-   uint32_t reserved[3];
+   uint32_t bvh_offset;
+   uint32_t reserved[2];
 
    /* Object to world matrix transposed from the initial transform. */
    mat3x4 otw_matrix;

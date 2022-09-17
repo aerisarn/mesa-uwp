@@ -134,7 +134,7 @@ struct radv_ray_traversal_vars {
 };
 
 struct radv_ray_traversal_args {
-   nir_ssa_def *accel_struct;
+   nir_ssa_def *root_bvh_base;
    nir_ssa_def *flags;
    nir_ssa_def *cull_mask;
    nir_ssa_def *origin;

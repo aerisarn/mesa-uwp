@@ -158,7 +158,7 @@ struct ray_query_intersection_vars {
 };
 
 struct ray_query_vars {
-   rq_variable *accel_struct;
+   rq_variable *root_bvh_base;
    rq_variable *flags;
    rq_variable *cull_mask;
    rq_variable *origin;
@@ -242,8 +242,8 @@ init_ray_query_vars(nir_shader *shader, nir_function_impl *impl, unsigned array_
 {
    const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
 
-   dst->accel_struct = rq_variable_create(shader, impl, array_length, glsl_uint64_t_type(),
-                                          VAR_NAME("_accel_struct"));
+   dst->root_bvh_base = rq_variable_create(shader, impl, array_length, glsl_uint64_t_type(),
+                                           VAR_NAME("_root_bvh_base"));
    dst->flags =
       rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_flags"));
    dst->cull_mask =
@@ -353,7 +353,6 @@ static void
 lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
                     struct ray_query_vars *vars)
 {
-   rq_store_var(b, index, vars->accel_struct, instr->src[1].ssa, 0x1);
    rq_store_var(b, index, vars->flags, instr->src[2].ssa, 0x1);
    rq_store_var(b, index, vars->cull_mask, nir_iand_imm(b, instr->src[3].ssa, 0xff), 0x1);
 
@@ -372,16 +371,28 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
    rq_store_var(b, index, vars->closest.intersection_type, nir_imm_int(b, intersection_type_none),
                 0x1);
 
-   nir_ssa_def *accel_struct = rq_load_var(b, index, vars->accel_struct);
+   nir_ssa_def *accel_struct = instr->src[1].ssa;
 
    nir_push_if(b, nir_ine_imm(b, accel_struct, 0));
    {
-      rq_store_var(b, index, vars->trav.bvh_base, build_addr_to_node(b, accel_struct), 1);
+      nir_ssa_def *bvh_offset = nir_build_load_global(
+         b, 1, 32,
+         nir_iadd_imm(b, accel_struct, offsetof(struct radv_accel_struct_header, bvh_offset)),
+         .access = ACCESS_NON_WRITEABLE);
+      nir_ssa_def *bvh_base = nir_iadd(b, accel_struct, nir_u2u64(b, bvh_offset));
+      bvh_base = build_addr_to_node(b, bvh_base);
+
+      rq_store_var(b, index, vars->root_bvh_base, bvh_base, 0x1);
+      rq_store_var(b, index, vars->trav.bvh_base, bvh_base, 1);
 
       rq_store_var(b, index, vars->trav.stack, nir_imm_int(b, 0), 0x1);
       rq_store_var(b, index, vars->trav.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
 
       rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, 0), 1);
+   }
+   nir_push_else(b, NULL);
+   {
+      rq_store_var(b, index, vars->root_bvh_base, nir_imm_int64(b, 0), 0x1);
    }
    nir_pop_if(b, NULL);
 
@@ -623,7 +634,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
    };
 
    struct radv_ray_traversal_args args = {
-      .accel_struct = rq_load_var(b, index, vars->accel_struct),
+      .root_bvh_base = rq_load_var(b, index, vars->root_bvh_base),
       .flags = rq_load_var(b, index, vars->flags),
       .cull_mask = rq_load_var(b, index, vars->cull_mask),
       .origin = rq_load_var(b, index, vars->origin),

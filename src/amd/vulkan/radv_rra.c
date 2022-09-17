@@ -465,9 +465,11 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
             leaf_nodes_size, internal_nodes_size, parent_table_size, is_bottom_level);
       } else if (type == radv_bvh_node_instance) {
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
-         if (!_mesa_hash_table_u64_search(accel_struct_vas, src->base_ptr)) {
-            rra_accel_struct_validation_fail(offset, "Invalid instance node pointer 0x%llx",
-                                             (unsigned long long)src->base_ptr);
+         uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
+         if (!_mesa_hash_table_u64_search(accel_struct_vas, blas_va)) {
+            rra_accel_struct_validation_fail(offset,
+                                             "Invalid instance node pointer 0x%llx (offset: 0x%x)",
+                                             (unsigned long long)src->bvh_ptr, src->bvh_offset);
             result = false;
          }
       }
@@ -521,6 +523,8 @@ static void
 rra_transcode_instance_node(struct rra_transcoding_context *ctx,
                             const struct radv_bvh_instance_node *src)
 {
+   uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
+
    struct rra_instance_node *dst = (struct rra_instance_node *)(ctx->dst + ctx->dst_leaf_offset);
    ctx->dst_leaf_offset += sizeof(struct rra_instance_node);
 
@@ -528,7 +532,7 @@ rra_transcode_instance_node(struct rra_transcoding_context *ctx,
    dst->mask = src->custom_instance_and_mask >> 24;
    dst->sbt_offset = src->sbt_offset_and_flags & 0xffffff;
    dst->instance_flags = src->sbt_offset_and_flags >> 24;
-   dst->blas_va = (src->base_ptr + sizeof(struct rra_accel_struct_metadata)) >> 3;
+   dst->blas_va = (blas_va + sizeof(struct rra_accel_struct_metadata)) >> 3;
    dst->instance_id = src->instance_id;
    dst->blas_metadata_size = sizeof(struct rra_accel_struct_metadata);
 
@@ -649,7 +653,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    uint32_t src_root_offset = (RADV_BVH_ROOT_NODE & ~7) << 3;
 
    if (should_validate)
-      if (!rra_validate_node(accel_struct_vas, data,
+      if (!rra_validate_node(accel_struct_vas, data + header->bvh_offset,
                              (struct radv_bvh_box32_node *)(data + src_root_offset),
                              src_root_offset, src_leaf_nodes_size, src_internal_nodes_size,
                              node_parent_table_size, !is_tlas)) {
@@ -677,7 +681,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    }
 
    struct rra_transcoding_context ctx = {
-      .src = data,
+      .src = data + header->bvh_offset,
       .dst = dst_structure_data,
       .dst_leaf_offset = RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size,
       .dst_internal_offset = RRA_ROOT_NODE_OFFSET,
@@ -687,7 +691,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       .leaf_index = 0,
    };
 
-   rra_transcode_internal_node(&ctx, (const void *)(data + src_root_offset));
+   rra_transcode_internal_node(&ctx, (const void *)(data + header->bvh_offset + src_root_offset));
 
    struct rra_accel_struct_chunk_header chunk_header = {
       .metadata_offset = 0,

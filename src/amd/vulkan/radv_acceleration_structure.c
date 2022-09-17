@@ -717,6 +717,7 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
       const struct convert_internal_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .output_bvh = accel_struct->va,
+         .output_bvh_offset = 0,
          .leaf_node_count = bvh_states[i].leaf_node_count,
          .internal_node_count = bvh_states[i].internal_node_count,
          .geometry_type = geometry_type,
