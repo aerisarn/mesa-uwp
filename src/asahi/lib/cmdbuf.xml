@@ -507,10 +507,17 @@
     <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
+  <enum name="Shared layout">
+    <value name="Vertex/compute" value="0x24"/>
+    <value name="32x32" value="0x2f"/>
+    <value name="32x16" value="0x3f"/>
+    <value name="16x16" value="0x36"/>
+  </enum>
+
   <struct name="USC Shared" size="4">
     <field name="Tag" size="8" start="0" type="USC Control" default="Shared"/>
     <field name="Uses shared memory" size="1" start="8" type="bool"/>
-    <field name="Unk 1" size="12" start="8" type="hex" default="0x48"/>
+    <field name="Shared layout" size="6" start="10" type="Shared layout"/>
     <field name="Pixel stride in 8 bytes" size="4" start="20" type="uint"/>
     <field name="Shared memory per threadgroup in 256 bytes" size="8" start="24" type="uint"/>
   </struct>

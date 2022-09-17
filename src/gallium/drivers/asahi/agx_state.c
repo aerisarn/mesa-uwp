@@ -1321,11 +1321,11 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    agx_usc_pack(&b, SHARED, cfg) {
       if (stage == PIPE_SHADER_FRAGMENT) {
          cfg.uses_shared_memory = true;
-         cfg.unk_1 = 0xbc;
+         cfg.shared_layout = AGX_SHARED_LAYOUT_32X32;
          cfg.pixel_stride_in_8_bytes = 1;
          cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
       } else {
-         cfg.unk_1 = 0x90;
+         cfg.shared_layout = AGX_SHARED_LAYOUT_VERTEX_COMPUTE;
       }
    }
 
@@ -1369,7 +1369,7 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
 
    agx_usc_pack(&b, SHARED, cfg) {
       cfg.uses_shared_memory = true;
-      cfg.unk_1 = 0xbc;
+      cfg.shared_layout = AGX_SHARED_LAYOUT_32X32;
       cfg.pixel_stride_in_8_bytes = 1;
       cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
    }
@@ -1450,7 +1450,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
 
    agx_usc_pack(&b, SHARED, cfg) {
       cfg.uses_shared_memory = true;
-      cfg.unk_1 = 0xbc;
+      cfg.shared_layout = AGX_SHARED_LAYOUT_32X32;
       cfg.pixel_stride_in_8_bytes = 1;
       cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
    }
@@ -1489,7 +1489,7 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
 
    agx_usc_pack(&b, SHARED, cfg) {
       cfg.uses_shared_memory = true;
-      cfg.unk_1 = 0xbc;
+      cfg.shared_layout = AGX_SHARED_LAYOUT_32X32;
       cfg.pixel_stride_in_8_bytes = 1;
       cfg.shared_memory_per_threadgroup_in_256_bytes = 32;
    }
