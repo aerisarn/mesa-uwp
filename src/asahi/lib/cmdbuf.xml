@@ -510,7 +510,8 @@
   <struct name="USC Shared" size="4">
     <field name="Tag" size="8" start="0" type="USC Control" default="Shared"/>
     <field name="Uses shared memory" size="1" start="8" type="bool"/>
-    <field name="Unk 1" size="16" start="8" type="hex" default="0x90"/>
+    <field name="Unk 1" size="12" start="8" type="hex" default="0x48"/>
+    <field name="Pixel stride in 8 bytes" size="4" start="20" type="uint"/>
     <field name="Shared memory per threadgroup in 256 bytes" size="8" start="24" type="uint"/>
   </struct>
 
