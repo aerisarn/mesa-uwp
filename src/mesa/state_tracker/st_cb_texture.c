@@ -191,7 +191,7 @@ copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct gl_texture_object *stObj = texImage->TexObject;
-   struct pipe_resource *src = stObj->pt;
+   ASSERTED struct pipe_resource *src = stObj->pt;
    enum pipe_format dst_format = dst->format;
    mesa_format mesa_format;
    GLenum gl_target = texImage->TexObject->Target;
