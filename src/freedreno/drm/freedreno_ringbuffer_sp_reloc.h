@@ -31,26 +31,28 @@
 #define X(n) n##_64
 #endif
 
-static void X(emit_reloc_common)(struct fd_ringbuffer *ring,
-                                 const struct fd_reloc *reloc)
+static void X(emit_reloc_common)(struct fd_ringbuffer *ring, uint64_t iova)
 {
-   (*ring->cur++) = (uint32_t)reloc->iova;
 #if PTRSZ == 64
-   (*ring->cur++) = (uint32_t)(reloc->iova >> 32);
+   uint64_t *p64 = (uint64_t *)ring->cur;
+   *p64 = iova;
+   ring->cur += 2;
+#else
+   (*ring->cur++) = (uint32_t)iova;
 #endif
 }
 
 static void X(fd_ringbuffer_sp_emit_reloc_nonobj)(struct fd_ringbuffer *ring,
                                                   const struct fd_reloc *reloc)
 {
-   X(emit_reloc_common)(ring, reloc);
+   X(emit_reloc_common)(ring, reloc->iova);
    fd_ringbuffer_sp_emit_bo_nonobj(ring, reloc->bo);
 }
 
 static void X(fd_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
                                                const struct fd_reloc *reloc)
 {
-   X(emit_reloc_common)(ring, reloc);
+   X(emit_reloc_common)(ring, reloc->iova);
    fd_ringbuffer_sp_emit_bo_obj(ring, reloc->bo);
 }
 
