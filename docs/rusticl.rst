@@ -1,10 +1,29 @@
 Rusticl
 =======
 
-The easiest way to build Rusticl is by either installing ``rustc``,
-``rustfmt`` and ``bindgen`` from your distribution or to simply use
-rustup. Just make sure that the ``rustfmt`` and ``bindgen`` components
-are installed. Then simply add ``-Dgallium-rusticl=true -Dllvm=enabled
+To build Rusticl you need to satisfy the following build dependencies:
+
+-  ``rustc``
+-  ``rustfmt`` (highly recommended, but only *required* for CI builds
+   or when authoring patches)
+-  ``bindgen``
+-  `LLVM <https://github.com/llvm/llvm-project/>`__ built with
+   ``libclc`` and ``-DLLVM_ENABLE_DUMP=ON``.
+-  `SPIRV-Tools <https://github.com/KhronosGroup/SPIRV-Tools>`__
+-  `SPIRV-LLVM-Translator
+   <https://github.com/KhronosGroup/SPIRV-LLVM-Translator>`__ for a
+   ``libLLVMSPIRVLib.so`` matching your version of LLVM, ie. if you're
+   using LLVM 15 (``libLLVM.so.15``), then you need a
+   ``libLLVMSPIRVLib.so.15``.
+
+The minimum versions to build Rusticl are:
+
+-  Rust: 1.59
+-  Meson: 0.61.4
+-  LLVM: 11.0.0 (recommended: 15.0.0)
+-  SPIRV-Tools: any version (recommended: v2022.3)
+
+Afterwards you only need to add ``-Dgallium-rusticl=true -Dllvm=enabled
 -Drust_std=2021`` to your build options.
 
 Most of the code related to Mesa's C code lives inside ``/mesa``, with
