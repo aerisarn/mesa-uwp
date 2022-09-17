@@ -25,7 +25,8 @@ nvk_CreatePipelineLayout(VkDevice _device,
    for (uint32_t s = 0; s < pCreateInfo->setLayoutCount; s++) {
       VK_FROM_HANDLE(nvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[s]);
-      layout->set[s].layout = nvk_descriptor_set_layout_ref(set_layout);
+      vk_descriptor_set_layout_ref(&set_layout->vk);
+      layout->set[s].layout = set_layout;
       layout->set[s].dynamic_buffer_start = dynamic_buffer_count;
       dynamic_buffer_count += set_layout->dynamic_buffer_count;
    }
@@ -55,7 +56,7 @@ nvk_DestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
       return;
 
    for (uint32_t s = 0; s < layout->num_sets; s++)
-      nvk_descriptor_set_layout_unref(device, layout->set[s].layout);
+      vk_descriptor_set_layout_unref(&device->vk, &layout->set[s].layout->vk);
 
    vk_object_free(&device->vk, pAllocator, layout);
 }

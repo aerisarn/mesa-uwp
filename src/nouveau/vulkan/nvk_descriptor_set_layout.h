@@ -3,6 +3,7 @@
 
 #include "nvk_private.h"
 
+#include "vulkan/runtime/vk_descriptor_set_layout.h"
 #include "vulkan/runtime/vk_object.h"
 
 struct nvk_device;
@@ -34,9 +35,7 @@ struct nvk_descriptor_set_binding_layout {
 };
 
 struct nvk_descriptor_set_layout {
-   struct vk_object_base base;
-
-   uint32_t ref_cnt;
+   struct vk_descriptor_set_layout vk;
 
    unsigned char sha1[20];
 
@@ -53,31 +52,12 @@ struct nvk_descriptor_set_layout {
    struct nvk_descriptor_set_binding_layout binding[0];
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set_layout, base, VkDescriptorSetLayout,
+VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set_layout, vk.base,
+                       VkDescriptorSetLayout,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 
 void nvk_descriptor_stride_align_for_type(VkDescriptorType type,
                                           const VkMutableDescriptorTypeListVALVE *type_list,
                                           uint32_t *stride, uint32_t *align);
-
-void nvk_descriptor_set_layout_destroy(struct nvk_device *device,
-                                       struct nvk_descriptor_set_layout *layout);
-
-static inline struct nvk_descriptor_set_layout *
-nvk_descriptor_set_layout_ref(struct nvk_descriptor_set_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   p_atomic_inc(&layout->ref_cnt);
-   return layout;
-}
-
-static inline void
-nvk_descriptor_set_layout_unref(struct nvk_device *device,
-                                struct nvk_descriptor_set_layout *layout)
-{
-   assert(layout && layout->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&layout->ref_cnt))
-      nvk_descriptor_set_layout_destroy(device, layout);
-}
 
 #endif
