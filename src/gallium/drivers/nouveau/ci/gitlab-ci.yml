@@ -34,7 +34,7 @@
     - .nouveau-bm-test
   variables:
     BM_BOOTFS: /baremetal-files/jetson-nano/
-    BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init"
+    BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init nfsroot=,tcp,nfsvers=4.2"
     GPU_VERSION: nouveau-gm20b
     # 4 CPUs, but spawn a couple extra threads to make sure they stay busy while
     # some are waiting for the GPU.
@@ -62,6 +62,7 @@ gm20b-gles-full:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_SUITE: nouveau-gm20b
+    TEST_PHASE_TIMEOUT: 120
 
 gm20b-gles:
   extends:
