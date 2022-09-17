@@ -558,7 +558,7 @@ iris_hiz_exec(struct iris_context *ice,
               unsigned int num_layers, enum isl_aux_op op,
               bool update_clear_depth)
 {
-   struct intel_device_info *devinfo = &batch->screen->devinfo;
+   ASSERTED struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    assert(iris_resource_level_has_hiz(devinfo, res, level));
    assert(op != ISL_AUX_OP_NONE);
@@ -848,7 +848,7 @@ iris_resource_set_aux_state(struct iris_context *ice,
                             enum isl_aux_state aux_state)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   ASSERTED struct intel_device_info *devinfo = &screen->devinfo;
 
    num_layers = miptree_layer_range_length(res, level, start_layer, num_layers);
 
