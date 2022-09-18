@@ -127,16 +127,7 @@ last_writer_idx(pr_opt_ctx& ctx, const Operand& op)
    if (op.isConstant() || op.isUndefined())
       return const_or_undef;
 
-   assert(op.physReg().reg() < max_reg_cnt);
-   Idx instr_idx = ctx.instr_idx_by_regs[ctx.current_block->index][op.physReg().reg()];
-
-#ifndef NDEBUG
-   /* Debug mode:  */
-   instr_idx = last_writer_idx(ctx, op.physReg(), op.regClass());
-   assert(instr_idx != written_by_multiple_instrs);
-#endif
-
-   return instr_idx;
+   return last_writer_idx(ctx, op.physReg(), op.regClass());
 }
 
 bool
