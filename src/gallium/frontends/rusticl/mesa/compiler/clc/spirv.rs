@@ -350,7 +350,7 @@ impl SPIRVBin {
 
     pub fn print(&self) {
         unsafe {
-            clc_dump_spirv(&self.spirv, stderr);
+            clc_dump_spirv(&self.spirv, stderr_ptr());
         }
     }
 }

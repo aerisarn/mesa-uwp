@@ -1,4 +1,5 @@
 #include "rusticl_mesa_inline_bindings_wrapper.h"
+#include "rusticl_system_bindings.h"
 
 #include "compiler/clc/clc.h"
 #include "compiler/clc/clc_helpers.h"

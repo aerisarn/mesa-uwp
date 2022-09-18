@@ -156,6 +156,21 @@ rusticl_opencl_gen = static_library(
   ],
 )
 
+rusticl_system_bindings_wrapper = static_library(
+  'system_bindings',
+  [
+    'rusticl_system_bindings.c',
+    'rusticl_system_bindings.h',
+  ],
+  gnu_symbol_visibility : 'hidden',
+  include_directories : [
+    inc_include,
+  ],
+  c_args : [
+    pre_args,
+  ],
+)
+
 rusticl_mesa_bindings_inline_wrapper = static_library(
   'mesa_bindings_inline_wrapper',
   [
@@ -222,8 +237,7 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--whitelist-type', 'float_controls',
     '--whitelist-var', 'PIPE_.*',
     '--bitfield-enum', 'pipe_map_flags',
-    '--allowlist-var', 'stderr',
-    '--allowlist-var', 'stdout',
+    '--allowlist-function', 'std(err|out)_ptr',
     '--bitfield-enum', 'nir_lower_int64_options',
     '--allowlist-type', 'pipe_tex_wrap',
     '--constified-enum-module', 'pipe_tex_wrap',
@@ -283,6 +297,7 @@ libmesa_rust = static_library(
     libmesa_rust_gen,
     libmesa_rust_util,
     rusticl_mesa_bindings_inline_wrapper,
+    rusticl_system_bindings_wrapper,
   ]
 )
 

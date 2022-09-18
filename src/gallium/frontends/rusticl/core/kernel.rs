@@ -940,7 +940,7 @@ impl Kernel {
 
                 unsafe {
                     u_printf(
-                        stdout,
+                        stdout_ptr(),
                         buf.as_ptr().cast(),
                         buf.len(),
                         printf_format.as_ptr(),

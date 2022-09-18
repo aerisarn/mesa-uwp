@@ -93,7 +93,7 @@ impl NirShader {
     }
 
     pub fn print(&self) {
-        unsafe { nir_print_shader(self.nir.as_ptr(), stderr) };
+        unsafe { nir_print_shader(self.nir.as_ptr(), stderr_ptr()) };
     }
 
     pub fn get_nir(&self) -> *mut nir_shader {
