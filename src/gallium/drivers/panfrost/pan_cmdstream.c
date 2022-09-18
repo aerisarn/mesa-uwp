@@ -1587,6 +1587,29 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         return ubos.gpu;
 }
 
+/*
+ * Choose the number of WLS instances to allocate. This must be a power-of-two.
+ * The number of WLS instances limits the number of concurrent tasks on a given
+ * shader core, setting to the (rounded) total number of tasks avoids any
+ * throttling. Smaller values save memory at the expense of possible throttling.
+ *
+ * With indirect dispatch, we don't know at launch-time how many tasks will be
+ * needed, so we use a conservative value that's unlikely to cause slowdown in
+ * practice without wasting too much memory.
+ */
+static unsigned
+panfrost_choose_wls_instance_count(const struct pipe_grid_info *grid)
+{
+        if (grid->indirect) {
+                /* May need tuning in the future, conservative guess */
+                return 128;
+        } else {
+                return util_next_power_of_two(grid->grid[0]) *
+                       util_next_power_of_two(grid->grid[1]) *
+                       util_next_power_of_two(grid->grid[2]);
+        }
+}
+
 static mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
                             const struct pipe_grid_info *grid)
@@ -1601,9 +1624,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         struct pan_tls_info info = {
                 .tls.size = ss->info.tls_size,
                 .wls.size = ss->info.wls_size,
-                .wls.dim.x = grid->grid[0],
-                .wls.dim.y = grid->grid[1],
-                .wls.dim.z = grid->grid[2],
+                .wls.instances = panfrost_choose_wls_instance_count(grid),
         };
 
         if (ss->info.tls_size) {
@@ -1616,10 +1637,8 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         }
 
         if (ss->info.wls_size) {
-                unsigned size =
-                        pan_wls_adjust_size(info.wls.size) *
-                        pan_wls_instances(&info.wls.dim) *
-                        dev->core_id_range;
+                unsigned size = pan_wls_adjust_size(info.wls.size) *
+                                info.wls.instances * dev->core_id_range;
 
                 struct panfrost_bo *bo =
                         panfrost_batch_get_shared_memory(batch, size, 1);
@@ -4138,12 +4157,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        struct panfrost_shader_state *cs =
-                &ctx->shader[PIPE_SHADER_COMPUTE]->variants[0];
-
-        /* Indirect dispatch can't handle workgroup local storage since that
-         * would require dynamic memory allocation. Bail in this case. */
-        if (info->indirect && ((cs->info.wls_size != 0) || !PAN_GPU_INDIRECTS)) {
+        if (info->indirect && !PAN_GPU_INDIRECTS) {
                 struct pipe_transfer *transfer;
                 uint32_t *params = pipe_buffer_map_range(pipe, info->indirect,
                                 info->indirect_offset,
@@ -4215,6 +4229,9 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 cfg.samplers = batch->samplers[PIPE_SHADER_COMPUTE];
         }
 #else
+        struct panfrost_shader_state *cs =
+                &ctx->shader[PIPE_SHADER_COMPUTE]->variants[0];
+
         pan_section_pack(t.cpu, COMPUTE_JOB, PAYLOAD, cfg) {
                 cfg.workgroup_size_x = info->block[0];
                 cfg.workgroup_size_y = info->block[1];

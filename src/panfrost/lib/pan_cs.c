@@ -566,7 +566,7 @@ GENX(pan_emit_tls)(const struct pan_tls_info *info,
                         assert((info->wls.ptr & 0xffffffff00000000ULL) == ((info->wls.ptr + info->wls.size - 1) & 0xffffffff00000000ULL));
                         cfg.wls_base_pointer = info->wls.ptr;
                         unsigned wls_size = pan_wls_adjust_size(info->wls.size);
-                        cfg.wls_instances = pan_wls_instances(&info->wls.dim);
+                        cfg.wls_instances = info->wls.instances;
                         cfg.wls_size_scale = util_logbase2(wls_size) + 1;
                 } else {
                         cfg.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
