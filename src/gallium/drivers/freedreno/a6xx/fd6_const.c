@@ -278,7 +278,7 @@ fd6_build_user_consts(struct fd6_emit *emit)
    for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
       if (!variants[i])
          continue;
-      ir3_emit_user_consts(ctx->screen, variants[i], constobj,
+      ir3_emit_user_consts(variants[i], constobj,
                            &ctx->constbuf[types[i]]);
       fd6_emit_ubos(ctx, variants[i], constobj, &ctx->constbuf[types[i]]);
    }
