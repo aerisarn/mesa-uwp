@@ -238,27 +238,25 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
    }
 }
 
-static unsigned
-user_consts_cmdstream_size(struct ir3_shader_variant *v)
+unsigned
+fd6_user_consts_cmdstream_size(struct ir3_shader_variant *v)
 {
+   if (!v)
+      return 0;
+
    struct ir3_const_state *const_state = ir3_const_state(v);
    struct ir3_ubo_analysis_state *ubo_state = &const_state->ubo_state;
+   unsigned packets, size;
 
-   if (unlikely(!ubo_state->cmdstream_size)) {
-      unsigned packets, size;
+   /* pre-calculate size required for userconst stateobj: */
+   ir3_user_consts_size(ubo_state, &packets, &size);
 
-      /* pre-calculate size required for userconst stateobj: */
-      ir3_user_consts_size(ubo_state, &packets, &size);
+   /* also account for UBO addresses: */
+   packets += 1;
+   size += 2 * const_state->num_ubos;
 
-      /* also account for UBO addresses: */
-      packets += 1;
-      size += 2 * const_state->num_ubos;
-
-      unsigned sizedwords = (4 * packets) + size;
-      ubo_state->cmdstream_size = sizedwords * 4;
-   }
-
-   return ubo_state->cmdstream_size;
+   unsigned sizedwords = (4 * packets) + size;
+   return sizedwords * 4;
 }
 
 struct fd_ringbuffer *
@@ -272,13 +270,7 @@ fd6_build_user_consts(struct fd6_emit *emit)
       emit->vs, emit->hs, emit->ds, emit->gs, emit->fs,
    };
    struct fd_context *ctx = emit->ctx;
-   unsigned sz = 0;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
-      if (!variants[i])
-         continue;
-      sz += user_consts_cmdstream_size(variants[i]);
-   }
+   unsigned sz = emit->prog->user_consts_cmdstream_size;
 
    struct fd_ringbuffer *constobj =
       fd_submit_new_ringbuffer(ctx->batch->submit, sz, FD_RINGBUFFER_STREAMING);

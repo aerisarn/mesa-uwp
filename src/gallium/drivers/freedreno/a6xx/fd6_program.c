@@ -1288,6 +1288,14 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
    if (stream_output->num_outputs > 0)
       state->stream_output = stream_output;
 
+   /* Note that binning pass uses same const state as draw pass: */
+   state->user_consts_cmdstream_size =
+         fd6_user_consts_cmdstream_size(state->vs) +
+         fd6_user_consts_cmdstream_size(state->hs) +
+         fd6_user_consts_cmdstream_size(state->ds) +
+         fd6_user_consts_cmdstream_size(state->gs) +
+         fd6_user_consts_cmdstream_size(state->fs);
+
    return &state->base;
 }
 
