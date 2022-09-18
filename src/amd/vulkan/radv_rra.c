@@ -1056,7 +1056,7 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
    struct rra_accel_struct_copy copy = {0};
    result = rra_init_acceleration_structure_copy(vk_device, queue->vk.queue_family_index, &copy);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto init_fail;
 
    uint32_t struct_count = _mesa_hash_table_num_entries(device->rra_trace.accel_structs);
    hash_entries = malloc(sizeof(*hash_entries) * struct_count);
@@ -1114,12 +1114,12 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
    /* All info is available, dump header now */
    fseek(file, 0, SEEK_SET);
    rra_dump_header(file, chunk_info_offset, file_end - chunk_info_offset);
-
-   fclose(file);
 copy_fail:
    radv_DestroyBuffer(vk_device, copy.buffer, NULL);
    radv_FreeMemory(vk_device, copy.memory, NULL);
    vk_common_DestroyCommandPool(vk_device, copy.pool, NULL);
+init_fail:
+   fclose(file);
 fail:
    free(hash_entries);
    free(accel_struct_offsets);
