@@ -214,7 +214,7 @@ allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info 
          user_sgpr_count += 1; /* tcs_offchip_layout */
       break;
    case MESA_SHADER_TESS_EVAL:
-      count_tes_user_sgprs(key);
+      user_sgpr_count += count_tes_user_sgprs(key);
       break;
    case MESA_SHADER_GEOMETRY:
       if (has_previous_stage) {
