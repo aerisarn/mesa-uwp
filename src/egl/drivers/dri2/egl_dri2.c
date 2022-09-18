@@ -2900,7 +2900,7 @@ dri2_query_dma_buf_modifiers(_EGLDisplay *disp, EGLint format,
       return dri2_egl_error_unlock(dri2_dpy, EGL_BAD_PARAMETER, "invalid value for max count of formats");
 
    if (max > 0 && modifiers == NULL)
-      dri2_egl_error_unlock(dri2_dpy, EGL_BAD_PARAMETER, "invalid modifiers array");
+      return dri2_egl_error_unlock(dri2_dpy, EGL_BAD_PARAMETER, "invalid modifiers array");
 
    if (dri2_dpy->image->base.version < 15 ||
        dri2_dpy->image->queryDmaBufModifiers == NULL) {
