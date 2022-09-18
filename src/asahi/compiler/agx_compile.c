@@ -528,14 +528,13 @@ agx_emit_load_global(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 static agx_instr *
 agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
 {
-   bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
    nir_src *offset = nir_get_io_offset_src(instr);
 
-   if (!kernel_input && !nir_src_is_const(instr->src[0]))
+   if (!nir_src_is_const(instr->src[0]))
       unreachable("todo: indirect UBO access");
 
-   /* UBO blocks are specified (kernel inputs are always 0) */
-   uint32_t block = kernel_input ? 0 : nir_src_as_uint(instr->src[0]);
+   /* UBO blocks are specified */
+   uint32_t block = nir_src_as_uint(instr->src[0]);
 
    /* Each UBO has a 64-bit = 4 x 16-bit address */
    unsigned num_ubos = b->shader->nir->info.num_ubos;
@@ -665,7 +664,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      return NULL;
 
   case nir_intrinsic_load_ubo:
-  case nir_intrinsic_load_kernel_input:
      return agx_emit_load_ubo(b, dst, instr);
 
   case nir_intrinsic_load_frag_coord:
