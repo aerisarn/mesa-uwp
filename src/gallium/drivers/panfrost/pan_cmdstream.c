@@ -4199,19 +4199,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
         struct panfrost_ptr t =
                 pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
 
-        /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
-         * reuse the graphics path for this by lowering to Gallium */
-
-        struct pipe_constant_buffer ubuf = {
-                .buffer = NULL,
-                .buffer_offset = 0,
-                .buffer_size = ctx->shader[PIPE_SHADER_COMPUTE]->req_input_mem,
-                .user_buffer = info->input
-        };
-
-        if (info->input)
-                pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, false, &ubuf);
-
         /* Invoke according to the grid info */
 
         unsigned num_wg[3] = { info->grid[0], info->grid[1], info->grid[2] };

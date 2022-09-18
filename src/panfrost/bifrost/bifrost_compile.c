@@ -1107,12 +1107,11 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
         bool offset_is_const = nir_src_is_const(*offset);
         bi_index dyn_offset = bi_src_index(offset);
         uint32_t const_offset = offset_is_const ? nir_src_as_uint(*offset) : 0;
-        bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
 
         bi_load_ubo_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
                         bi_dest_index(&instr->dest), offset_is_const ?
                         bi_imm_u32(const_offset) : dyn_offset,
-                        kernel_input ? bi_zero() : bi_src_index(&instr->src[0]));
+                        bi_src_index(&instr->src[0]));
 }
 
 static void
@@ -1640,7 +1639,6 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ubo:
-        case nir_intrinsic_load_kernel_input:
                 bi_emit_load_ubo(b, instr);
                 break;
 

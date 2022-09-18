@@ -1814,7 +1814,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_shared:
         case nir_intrinsic_load_scratch:
         case nir_intrinsic_load_input:
-        case nir_intrinsic_load_kernel_input:
         case nir_intrinsic_load_interpolated_input: {
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
                 bool is_global = instr->intrinsic == nir_intrinsic_load_global ||
@@ -1822,7 +1821,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 bool is_shared = instr->intrinsic == nir_intrinsic_load_shared;
                 bool is_scratch = instr->intrinsic == nir_intrinsic_load_scratch;
                 bool is_flat = instr->intrinsic == nir_intrinsic_load_input;
-                bool is_kernel = instr->intrinsic == nir_intrinsic_load_kernel_input;
                 bool is_interp = instr->intrinsic == nir_intrinsic_load_interpolated_input;
 
                 /* Get the base type of the intrinsic */
@@ -1853,9 +1851,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(&instr->dest);
 
-                if (is_kernel) {
-                        emit_ubo_read(ctx, &instr->instr, reg, offset, indirect_offset, 0, 0, nr_comp);
-                } else if (is_ubo) {
+                if (is_ubo) {
                         nir_src index = instr->src[0];
 
                         /* TODO: Is indirect block number possible? */
