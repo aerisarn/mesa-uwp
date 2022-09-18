@@ -248,29 +248,35 @@ fd6_user_consts_cmdstream_size(struct ir3_shader_variant *v)
    return sizedwords * 4;
 }
 
+static void
+emit_user_consts(const struct ir3_shader_variant *v,
+                 struct fd_ringbuffer *ring,
+                 struct fd_constbuf_stateobj *constbuf)
+{
+   ir3_emit_user_consts(v, ring, constbuf);
+   fd6_emit_ubos(v, ring, constbuf);
+}
+
 struct fd_ringbuffer *
 fd6_build_user_consts(struct fd6_emit *emit)
 {
-   static const enum pipe_shader_type types[] = {
-      PIPE_SHADER_VERTEX,   PIPE_SHADER_TESS_CTRL, PIPE_SHADER_TESS_EVAL,
-      PIPE_SHADER_GEOMETRY, PIPE_SHADER_FRAGMENT,
-   };
-   struct ir3_shader_variant *variants[] = {
-      emit->vs, emit->hs, emit->ds, emit->gs, emit->fs,
-   };
    struct fd_context *ctx = emit->ctx;
    unsigned sz = emit->prog->user_consts_cmdstream_size;
 
    struct fd_ringbuffer *constobj =
       fd_submit_new_ringbuffer(ctx->batch->submit, sz, FD_RINGBUFFER_STREAMING);
 
-   for (unsigned i = 0; i < ARRAY_SIZE(types); i++) {
-      if (!variants[i])
-         continue;
-      ir3_emit_user_consts(variants[i], constobj,
-                           &ctx->constbuf[types[i]]);
-      fd6_emit_ubos(variants[i], constobj, &ctx->constbuf[types[i]]);
+   /* TODO would be nice to templatize the variants (ie. HAS_GS and HAS_TESS) */
+
+   emit_user_consts(emit->vs, constobj, &ctx->constbuf[PIPE_SHADER_VERTEX]);
+   if (emit->hs) {
+      emit_user_consts(emit->hs, constobj, &ctx->constbuf[PIPE_SHADER_TESS_CTRL]);
+      emit_user_consts(emit->ds, constobj, &ctx->constbuf[PIPE_SHADER_TESS_EVAL]);
    }
+   if (emit->gs) {
+      emit_user_consts(emit->gs, constobj, &ctx->constbuf[PIPE_SHADER_GEOMETRY]);
+   }
+   emit_user_consts(emit->fs, constobj, &ctx->constbuf[PIPE_SHADER_FRAGMENT]);
 
    return constobj;
 }
