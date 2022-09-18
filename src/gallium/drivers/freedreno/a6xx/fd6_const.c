@@ -187,8 +187,8 @@ fd6_build_tess_consts(struct fd6_emit *emit)
 }
 
 static void
-fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
-              struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
+fd6_emit_ubos(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
+              struct fd_constbuf_stateobj *constbuf)
 {
    const struct ir3_const_state *const_state = ir3_const_state(v);
    int num_ubos = const_state->num_ubos;
@@ -215,17 +215,6 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
       }
 
       struct pipe_constant_buffer *cb = &constbuf->cb[i];
-
-      /* If we have user pointers (constbuf 0, aka GL uniforms), upload them
-       * to a buffer now, and save it in the constbuf so that we don't have
-       * to reupload until they get changed.
-       */
-      if (cb->user_buffer) {
-         struct pipe_context *pctx = &ctx->base;
-         u_upload_data(pctx->stream_uploader, 0, cb->buffer_size, 64,
-                       cb->user_buffer, &cb->buffer_offset, &cb->buffer);
-         cb->user_buffer = NULL;
-      }
 
       if (cb->buffer) {
          int size_vec4s = DIV_ROUND_UP(cb->buffer_size, 16);
@@ -280,7 +269,7 @@ fd6_build_user_consts(struct fd6_emit *emit)
          continue;
       ir3_emit_user_consts(variants[i], constobj,
                            &ctx->constbuf[types[i]]);
-      fd6_emit_ubos(ctx, variants[i], constobj, &ctx->constbuf[types[i]]);
+      fd6_emit_ubos(variants[i], constobj, &ctx->constbuf[types[i]]);
    }
 
    return constobj;
@@ -337,7 +326,7 @@ fd6_emit_cs_consts(const struct ir3_shader_variant *v,
                    const struct pipe_grid_info *info)
 {
    ir3_emit_cs_consts(v, ring, ctx, info);
-   fd6_emit_ubos(ctx, v, ring, &ctx->constbuf[PIPE_SHADER_COMPUTE]);
+   fd6_emit_ubos(v, ring, &ctx->constbuf[PIPE_SHADER_COMPUTE]);
 }
 
 void
