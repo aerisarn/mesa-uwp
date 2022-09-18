@@ -1044,55 +1044,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord:
+      case nir_tex_src_backend1:
          coords = index;
-
-         /* Array textures are indexed by a floating-point in NIR, but by an
-          * integer in AGX. Convert the array index from float-to-int for array
-          * textures. The array index is the last source in NIR. The conversion
-          * is according to the rule from 8.9 ("Texture Functions") of the GLSL
-          * ES 3.20 specification:
-          *
-          *     max(0, min(d - 1, floor(layer + 0.5))) =
-          *     max(0, min(d - 1, f32_to_u32(layer + 0.5))) =
-          *     min(d - 1, f32_to_u32(layer + 0.5))
-          *
-          * For txf, the coordinates are already integers, so we only need to
-          * clamp (not convert).
-          */
-         if (instr->is_array) {
-            unsigned nr = nir_src_num_components(instr->src[i].src);
-            agx_index channels[4] = {};
-
-            for (unsigned i = 0; i < nr; ++i)
-               channels[i] = agx_emit_extract(b, index, i);
-
-            agx_index d1 = agx_indexed_sysval(b->shader,
-                  AGX_PUSH_ARRAY_SIZE_MINUS_1, AGX_SIZE_16,
-                  instr->texture_index, 1);
-
-            agx_index layer = channels[nr - 1];
-
-            if (!txf) {
-               layer = agx_fadd(b, channels[nr - 1], agx_immediate_f(0.5f));
-
-               layer = agx_convert(b, agx_immediate(AGX_CONVERT_F_TO_U32), layer,
-                                      AGX_ROUND_RTZ);
-            }
-
-            agx_index layer16 = agx_temp(b->shader, AGX_SIZE_16);
-            agx_mov_to(b, layer16, layer);
-
-            layer = agx_icmpsel(b, layer16, d1, layer16, d1, AGX_ICOND_ULT);
-
-            agx_index layer32 = agx_temp(b->shader, AGX_SIZE_32);
-            agx_mov_to(b, layer32, layer);
-
-            channels[nr - 1] = layer32;
-            coords = agx_vec4(b, channels[0], channels[1], channels[2], channels[3]);
-         } else {
-            coords = index;
-         }
-
          break;
 
       case nir_tex_src_lod:
@@ -1834,6 +1787,7 @@ agx_compile_shader_nir(nir_shader *nir,
    };
 
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, agx_nir_lower_array_texture);
    NIR_PASS_V(nir, agx_lower_resinfo);
    NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
