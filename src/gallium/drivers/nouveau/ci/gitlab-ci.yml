@@ -5,7 +5,6 @@
     - .nouveau-rules
   variables:
     BM_BOOTFS: /baremetal-files/jetson-tk1/
-    BM_POE_TIMEOUT: 300
     BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init ip=dhcp root=/dev/nfs nfsroot=,tcp,nfsvers=4.2"
     FLAKES_CHANNEL: "#nouveau-ci"
     GPU_VERSION: nouveau-gk20a
