@@ -4947,6 +4947,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
         NIR_PASS_V(nir, pan_lower_sample_pos);
         NIR_PASS_V(nir, nir_lower_bit_size, bi_lower_bit_size, NULL);
+        NIR_PASS_V(nir, nir_lower_64bit_phis);
 
         if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
                 NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
