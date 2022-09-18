@@ -48,10 +48,19 @@ struct Idx {
    uint32_t instr;
 };
 
-Idx not_written_in_block{UINT32_MAX, 0};
-Idx clobbered{UINT32_MAX, 1};
+/** Indicates that a register range was not yet written in the shader. */
+Idx not_written_yet{UINT32_MAX, 0};
+
+/** Indicates that an operand is constant or undefined, not written by any instruction. */
 Idx const_or_undef{UINT32_MAX, 2};
-Idx written_by_multiple_instrs{UINT32_MAX, 3};
+
+/**
+ * Indicates that a register range was overwritten but we can't track the instruction that wrote it.
+ * Possible reasons for this:
+ * - Some registers in the range were overwritten by different instructions.
+ * - The register was used as a subdword definition which we don't support here.
+ */
+Idx overwritten_untrackable{UINT32_MAX, 3};
 
 struct pr_opt_ctx {
    Program* program;
@@ -67,7 +76,7 @@ struct pr_opt_ctx {
 
       if ((block->kind & block_kind_loop_header) || block->linear_preds.empty()) {
          std::fill(instr_idx_by_regs[block->index].begin(), instr_idx_by_regs[block->index].end(),
-                   not_written_in_block);
+                   not_written_yet);
       } else {
          const uint32_t first_linear_pred = block->linear_preds[0];
          const std::vector<uint32_t>& linear_preds = block->linear_preds;
@@ -81,7 +90,7 @@ struct pr_opt_ctx {
             if (all_same)
                instr_idx_by_regs[block->index][i] = instr_idx_by_regs[first_linear_pred][i];
             else
-               instr_idx_by_regs[block->index][i] = written_by_multiple_instrs;
+               instr_idx_by_regs[block->index][i] = overwritten_untrackable;
          }
 
          if (!block->logical_preds.empty()) {
@@ -101,7 +110,7 @@ struct pr_opt_ctx {
                if (all_same)
                   instr_idx_by_regs[block->index][i] = instr_idx_by_regs[first_logical_pred][i];
                else
-                  instr_idx_by_regs[block->index][i] = written_by_multiple_instrs;
+                  instr_idx_by_regs[block->index][i] = overwritten_untrackable;
             }
          } else {
             /* If a block has no logical predecessors, it is not part of the
@@ -128,7 +137,7 @@ save_reg_writes(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       Idx idx{ctx.current_block->index, ctx.current_instr_idx};
 
       if (def.regClass().is_subdword())
-         idx = clobbered;
+         idx = overwritten_untrackable;
 
       assert((r + dw_size) <= max_reg_cnt);
       assert(def.size() == dw_size || def.regClass().is_subdword());
@@ -150,7 +159,7 @@ last_writer_idx(pr_opt_ctx& ctx, PhysReg physReg, RegClass rc)
                   ctx.instr_idx_by_regs[ctx.current_block->index].begin() + r + dw_size,
                   [instr_idx](Idx i) { return i == instr_idx; });
 
-   return all_same ? instr_idx : written_by_multiple_instrs;
+   return all_same ? instr_idx : overwritten_untrackable;
 }
 
 Idx
@@ -162,11 +171,17 @@ last_writer_idx(pr_opt_ctx& ctx, const Operand& op)
    return last_writer_idx(ctx, op.physReg(), op.regClass());
 }
 
+/**
+ * Check whether a register has been overwritten since the given location.
+ * This is an important part of checking whether certain optimizations are
+ * valid.
+ * Note that the decision is made based on registers and not on SSA IDs.
+ */
 bool
-is_clobbered_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& idx)
+is_overwritten_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& since_idx)
 {
-   /* If we didn't find an instruction, assume that the register is clobbered. */
-   if (!idx.found())
+   /* If we didn't find an instruction, assume that the register is overwritten. */
+   if (!since_idx.found())
       return true;
 
    /* TODO: We currently can't keep track of subdword registers. */
@@ -179,14 +194,14 @@ is_clobbered_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& idx)
 
    for (unsigned r = begin_reg; r < end_reg; ++r) {
       Idx& i = ctx.instr_idx_by_regs[current_block_idx][r];
-      if (i == clobbered || i == written_by_multiple_instrs)
+      if (i == overwritten_untrackable)
          return true;
-      else if (i == not_written_in_block)
+      else if (i == not_written_yet)
          continue;
 
       assert(i.found());
 
-      if (i.block > idx.block || (i.block == idx.block && i.instr > idx.instr))
+      if (i.block > since_idx.block || (i.block == since_idx.block && i.instr > since_idx.instr))
          return true;
    }
 
@@ -195,9 +210,9 @@ is_clobbered_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& idx)
 
 template <typename T>
 bool
-is_clobbered_since(pr_opt_ctx& ctx, const T& t, const Idx& idx)
+is_overwritten_since(pr_opt_ctx& ctx, const T& t, const Idx& idx)
 {
-   return is_clobbered_since(ctx, t.physReg(), t.regClass(), idx);
+   return is_overwritten_since(ctx, t.physReg(), t.regClass(), idx);
 }
 
 void
@@ -207,7 +222,7 @@ try_apply_branch_vcc(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
     *
     * vcc = ...                      ; last_vcc_wr
     * sX, scc = s_and_bXX vcc, exec  ; op0_instr
-    * (...vcc and exec must not be clobbered inbetween...)
+    * (...vcc and exec must not be overwritten inbetween...)
     * s_cbranch_XX scc               ; instr
     *
     * If possible, the above is optimized into:
@@ -230,15 +245,15 @@ try_apply_branch_vcc(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
    /* We need to make sure:
     * - the instructions that wrote the operand register and VCC are both found
     * - the operand register used by the branch, and VCC were both written in the current block
-    * - EXEC hasn't been clobbered since the last VCC write
-    * - VCC hasn't been clobbered since the operand register was written
+    * - EXEC hasn't been overwritten since the last VCC write
+    * - VCC hasn't been overwritten since the operand register was written
     *   (ie. the last VCC writer precedes the op0 writer)
     */
    if (!op0_instr_idx.found() || !last_vcc_wr_idx.found() ||
        op0_instr_idx.block != ctx.current_block->index ||
        last_vcc_wr_idx.block != ctx.current_block->index ||
-       is_clobbered_since(ctx, exec, ctx.program->lane_mask, last_vcc_wr_idx) ||
-       is_clobbered_since(ctx, vcc, ctx.program->lane_mask, op0_instr_idx))
+       is_overwritten_since(ctx, exec, ctx.program->lane_mask, last_vcc_wr_idx) ||
+       is_overwritten_since(ctx, vcc, ctx.program->lane_mask, op0_instr_idx))
       return;
 
    Instruction* op0_instr = ctx.get(op0_instr_idx);
@@ -343,9 +358,9 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
              ctx.uses[wr_instr->definitions[0].tempId()] > 1)
             return;
 
-         /* Check whether the operands of the writer are clobbered. */
+         /* Check whether the operands of the writer are overwritten. */
          for (const Operand& op : wr_instr->operands) {
-            if (!op.isConstant() && is_clobbered_since(ctx, op, wr_idx))
+            if (!op.isConstant() && is_overwritten_since(ctx, op, wr_idx))
                return;
          }
 
@@ -477,7 +492,7 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
          continue;
 
       /* Don't propagate DPP if the source register is overwritten since the move. */
-      if (is_clobbered_since(ctx, mov->operands[0], op_instr_idx))
+      if (is_overwritten_since(ctx, mov->operands[0], op_instr_idx))
          continue;
 
       if (i && !can_swap_operands(instr, &instr->opcode))
