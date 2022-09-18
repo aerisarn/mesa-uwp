@@ -1,18 +1,26 @@
+# General settings for bare-metal nouveau testing on either arm64 or armhf.
+.nouveau-bm-test:
+  extends:
+    - .nouveau-rules
+  variables:
+    FLAKES_CHANNEL: "#nouveau-ci"
+    # We package nouveau as a module so that we can load it after the firmware is
+    # available on NFS.
+    HWCI_KERNEL_MODULES: tegra-drm,nouveau
+  script:
+    - ./install/bare-metal/poe-powered.sh
+
 .gk20a-test:
   extends:
     - .baremetal-test-armhf
-    - .use-debian/arm_test
-    - .nouveau-rules
+    - .nouveau-bm-test
   variables:
     BM_BOOTFS: /baremetal-files/jetson-tk1/
     BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init ip=dhcp root=/dev/nfs nfsroot=,tcp,nfsvers=4.2"
-    FLAKES_CHANNEL: "#nouveau-ci"
     GPU_VERSION: nouveau-gk20a
-    # We package nouveau as a module so that we can load it after the firmware is
-    # available on NFS.
-    HWCI_KERNEL_MODULES: nouveau
-  script:
-    - ./install/bare-metal/poe-powered.sh
+    # 4 CPUs, but spawn a couple extra threads to make sure they stay busy while
+    # some are waiting for the GPU.
+    FDO_CI_CONCURRENT: 6
   needs:
     - debian/arm_test
     - job: debian-armhf
@@ -23,16 +31,14 @@
 .gm20b-test:
   extends:
     - .baremetal-test-arm64
-    - .nouveau-rules
+    - .nouveau-bm-test
   variables:
-    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /baremetal-files/jetson-nano/
     BM_CMDLINE: "console=ttyS0,115200n8 rw nfsrootdebug init=/init"
-    FLAKES_CHANNEL: "#nouveau-ci"
     GPU_VERSION: nouveau-gm20b
-    # We package these as modules so that we can load them after the firmware is
-    # available on NFS.
-    HWCI_KERNEL_MODULES: tegra-drm,nouveau
+    # 4 CPUs, but spawn a couple extra threads to make sure they stay busy while
+    # some are waiting for the GPU.
+    FDO_CI_CONCURRENT: 6
   script:
     - ./install/bare-metal/poe-powered.sh
   tags:
@@ -46,9 +52,6 @@ gk20a-gles:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_SUITE: nouveau-gk20a
-    # 4 CPUs, but spawn a couple extra threads to make sure they stay busy while
-    # some are waiting for the GPU.
-    FDO_CI_CONCURRENT: 6
 
 # Single Jetson Nano board at anholt's house.
 gm20b-gles-full:
@@ -57,10 +60,8 @@ gm20b-gles-full:
     - .test-manual-mr
   timeout: 2h
   variables:
+    HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_SUITE: nouveau-gm20b
-    # 4 CPUs, but spawn a couple extra threads to make sure they stay busy while
-    # some are waiting for the GPU.
-    FDO_CI_CONCURRENT: 6
 
 gm20b-gles:
   extends:
