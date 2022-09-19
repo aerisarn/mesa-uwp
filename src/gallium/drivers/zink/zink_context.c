@@ -3744,10 +3744,10 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    if (res->obj->needs_zs_evaluate)
       imb.pNext = &res->obj->zs_evaluate;
    res->obj->needs_zs_evaluate = false;
-   if (res->dmabuf_acquire) {
-      imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+   if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
+      imb.srcQueueFamilyIndex = res->queue;
       imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
-      res->dmabuf_acquire = false;
+      res->queue = VK_QUEUE_FAMILY_IGNORED;
    }
    bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
    VKCTX(CmdPipelineBarrier)(
@@ -3791,10 +3791,10 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
    if (res->obj->needs_zs_evaluate)
       imb.pNext = &res->obj->zs_evaluate;
    res->obj->needs_zs_evaluate = false;
-   if (res->dmabuf_acquire) {
-      imb.srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+   if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
+      imb.srcQueueFamilyIndex = res->queue;
       imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
-      res->dmabuf_acquire = false;
+      res->queue = VK_QUEUE_FAMILY_IGNORED;
    }
    VkDependencyInfo dep = {
       VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -4366,7 +4366,7 @@ zink_flush_resource(struct pipe_context *pctx,
       }
       ctx->batch.swapchain = res;
    } else if (res->dmabuf)
-      res->dmabuf_acquire = true;
+      res->queue = VK_QUEUE_FAMILY_FOREIGN_EXT;
 }
 
 static struct pipe_stream_output_target *

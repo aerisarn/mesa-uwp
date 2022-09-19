@@ -1232,8 +1232,10 @@ resource_create(struct pipe_screen *pscreen,
          res->need_2D = (screen->need_2D_zs && util_format_is_depth_or_stencil(templ->format)) ||
                         (screen->need_2D_sparse && (templ->flags & PIPE_RESOURCE_FLAG_SPARSE));
       }
-      res->dmabuf = res->dmabuf_acquire = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
-      res->layout = res->dmabuf_acquire ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
+      res->dmabuf = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
+      if (res->dmabuf)
+         res->queue = VK_QUEUE_FAMILY_FOREIGN_EXT;
+      res->layout = res->dmabuf ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
       res->linear = linear;
       res->aspect = aspect_from_format(templ->format);
    }
