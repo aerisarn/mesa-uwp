@@ -155,7 +155,7 @@ hgl_st_framebuffer_validate_textures(struct pipe_frontend_drawable *drawable,
 static bool
 hgl_st_framebuffer_validate(struct st_context *st,
 	struct pipe_frontend_drawable *drawable, const enum st_attachment_type *statts,
-	unsigned count, struct pipe_resource **out)
+	unsigned count, struct pipe_resource **out, struct pipe_resource **resolve)
 {
 	struct hgl_context* context;
 	struct hgl_buffer* buffer;
