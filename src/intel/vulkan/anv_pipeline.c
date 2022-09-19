@@ -1644,15 +1644,10 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_pipeline *pipeline,
 static void
 anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
 {
-   bool uses_wide_subgroup_intrinsics;
-
    switch (info->stage) {
    case MESA_SHADER_COMPUTE:
-      uses_wide_subgroup_intrinsics = info->cs.uses_wide_subgroup_intrinsics;
-      break;
    case MESA_SHADER_TASK:
    case MESA_SHADER_MESH:
-      uses_wide_subgroup_intrinsics = info->mesh.uses_wide_subgroup_intrinsics;
       break;
    default:
       return;
@@ -1667,7 +1662,7 @@ anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
     * subgroup than we choose for the execution.
     */
    if (device->physical->instance->assume_full_subgroups &&
-       uses_wide_subgroup_intrinsics &&
+       info->uses_wide_subgroup_intrinsics &&
        info->subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
        local_size &&
        local_size % BRW_SUBGROUP_SIZE == 0)

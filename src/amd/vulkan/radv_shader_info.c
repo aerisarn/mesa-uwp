@@ -627,7 +627,7 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir,
    /* Games don't always request full subgroups when they should, which can cause bugs if cswave32
     * is enabled.
     */
-   if (device->physical_device->cs_wave_size == 32 && nir->info.cs.uses_wide_subgroup_intrinsics &&
+   if (device->physical_device->cs_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics &&
        !req_subgroup_size && local_size % RADV_SUBGROUP_SIZE == 0)
       require_full_subgroups = true;
 

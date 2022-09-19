@@ -1679,7 +1679,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
        * subgroup than we choose for the execution.
        */
       if (device->physical->instance->assume_full_subgroups &&
-          stage.nir->info.cs.uses_wide_subgroup_intrinsics &&
+          stage.nir->info.uses_wide_subgroup_intrinsics &&
           stage.nir->info.subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
           local_size &&
           local_size % BRW_SUBGROUP_SIZE == 0)
