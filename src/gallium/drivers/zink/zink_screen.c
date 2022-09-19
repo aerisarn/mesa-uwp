@@ -2511,6 +2511,19 @@ zink_get_disk_shader_cache(struct pipe_screen *_screen)
    return screen->disk_cache;
 }
 
+VkSemaphore
+zink_create_semaphore(struct zink_screen *screen)
+{
+   VkSemaphoreCreateInfo sci = {
+      VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+      NULL,
+      0
+   };
+   VkSemaphore sem = VK_NULL_HANDLE;
+   VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem);
+   return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
