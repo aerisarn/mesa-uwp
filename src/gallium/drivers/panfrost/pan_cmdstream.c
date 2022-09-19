@@ -4219,6 +4219,9 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->indirect)
                 num_wg[0] = num_wg[1] = num_wg[2] = 1;
 
+        /* Conservatively assume workgroup size changes every launch */
+        ctx->dirty |= PAN_DIRTY_PARAMS;
+
         panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
 
 #if PAN_ARCH <= 7
