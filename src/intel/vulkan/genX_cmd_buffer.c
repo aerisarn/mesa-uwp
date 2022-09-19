@@ -3757,14 +3757,20 @@ void genX(CmdDraw)(
                         "draw", count);
    trace_intel_begin_draw(&cmd_buffer->trace);
 
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
+   /* Select pipeline here to allow
+    * cmd_buffer_emit_vertex_constants_and_flush() without flushing before
+    * cmd_buffer_flush_gfx_state().
+    */
+   genX(flush_pipeline_select_3d)(cmd_buffer);
 
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
    cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data,
                                               firstVertex, firstInstance, 0,
-                                              true);
+                                              false /* force_flush */);
+
+   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -3857,12 +3863,20 @@ void genX(CmdDrawIndexed)(
                         count);
    trace_intel_begin_draw_indexed(&cmd_buffer->trace);
 
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
+   /* Select pipeline here to allow
+    * cmd_buffer_emit_vertex_constants_and_flush() without flushing before
+    * cmd_buffer_flush_gfx_state().
+    */
+   genX(flush_pipeline_select_3d)(cmd_buffer);
 
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 
-   cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data, vertexOffset, firstInstance, 0, true);
+   cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data,
+                                              vertexOffset, firstInstance,
+                                              0, false /* force_flush */);
+
+   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4025,7 +4039,11 @@ void genX(CmdDrawIndirectByteCountEXT)(
                         instanceCount * pipeline->instance_multiplier);
    trace_intel_begin_draw_indirect_byte_count(&cmd_buffer->trace);
 
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
+   /* Select pipeline here to allow
+    * cmd_buffer_emit_vertex_constants_and_flush() without flushing before
+    * emit_base_vertex_instance() & emit_draw_index().
+    */
+   genX(flush_pipeline_select_3d)(cmd_buffer);
 
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
@@ -4036,10 +4054,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
    if (vs_prog_data->uses_drawid)
       emit_draw_index(cmd_buffer, 0);
 
-   /* Emitting draw index or vertex index BOs may result in needing
-    * additional VF cache flushes.
-    */
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
