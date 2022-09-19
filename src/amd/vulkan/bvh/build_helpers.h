@@ -229,7 +229,7 @@ struct key_id_pair {
 TYPE(key_id_pair, 8);
 
 TYPE(radv_accel_struct_serialization_header, 56);
-TYPE(radv_accel_struct_header, 88);
+TYPE(radv_accel_struct_header, 96);
 TYPE(radv_bvh_triangle_node, 64);
 TYPE(radv_bvh_aabb_node, 64);
 TYPE(radv_bvh_instance_node, 128);
