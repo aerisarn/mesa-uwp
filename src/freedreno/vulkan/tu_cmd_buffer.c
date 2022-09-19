@@ -4208,25 +4208,21 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
-static bool
-tu6_writes_depth(struct tu_cmd_buffer *cmd, bool depth_test_enable)
-{
-   bool depth_write_enable =
-      cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-
-   VkCompareOp depth_compare_op =
-      (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
-
-   bool depth_compare_op_writes = depth_compare_op != VK_COMPARE_OP_NEVER;
-
-   return depth_test_enable && depth_write_enable && depth_compare_op_writes;
-}
-
-static bool
-tu6_writes_stencil(struct tu_cmd_buffer *cmd)
+/* Various frontends (ANGLE, zink at least) will enable stencil testing with
+ * what works out to be no-op writes.  Simplify what they give us into flags
+ * that LRZ can use.
+ */
+static void
+tu6_update_simplified_stencil_state(struct tu_cmd_buffer *cmd)
 {
    bool stencil_test_enable =
       cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
+
+   if (!stencil_test_enable) {
+      cmd->state.stencil_front_write = false;
+      cmd->state.stencil_back_write = false;
+      return;
+   }
 
    bool stencil_front_writemask =
       (cmd->state.pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
@@ -4261,9 +4257,30 @@ tu6_writes_stencil(struct tu_cmd_buffer *cmd)
       back_fail_op != VK_STENCIL_OP_KEEP ||
       back_depth_fail_op != VK_STENCIL_OP_KEEP;
 
-   return stencil_test_enable &&
-      ((stencil_front_writemask && stencil_front_op_writes) ||
-       (stencil_back_writemask && stencil_back_op_writes));
+   cmd->state.stencil_front_write =
+      stencil_front_op_writes && stencil_front_writemask;
+   cmd->state.stencil_back_write =
+      stencil_back_op_writes && stencil_back_writemask;
+}
+
+static bool
+tu6_writes_depth(struct tu_cmd_buffer *cmd, bool depth_test_enable)
+{
+   bool depth_write_enable =
+      cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+
+   VkCompareOp depth_compare_op =
+      (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
+
+   bool depth_compare_op_writes = depth_compare_op != VK_COMPARE_OP_NEVER;
+
+   return depth_test_enable && depth_write_enable && depth_compare_op_writes;
+}
+
+static bool
+tu6_writes_stencil(struct tu_cmd_buffer *cmd)
+{
+   return cmd->state.stencil_front_write || cmd->state.stencil_back_write;
 }
 
 static void
@@ -4394,6 +4411,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 
       cmd->state.lrz_and_depth_plane_state =
          tu_cs_draw_state(&cmd->sub_cs, &cs, size);
+      tu6_update_simplified_stencil_state(cmd);
       tu6_emit_lrz(cmd, &cs);
       tu6_build_depth_plane_z_mode(cmd, &cs);
    }

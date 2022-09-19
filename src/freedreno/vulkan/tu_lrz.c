@@ -802,16 +802,6 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    /* Invalidate LRZ and disable write if stencil test is enabled */
    bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
    if (!disable_lrz && stencil_test_enable) {
-      bool stencil_front_writemask =
-         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
-         (cmd->state.dynamic_stencil_wrmask & 0xff) :
-         (pipeline->ds.stencil_wrmask & 0xff);
-
-      bool stencil_back_writemask =
-         (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) ?
-         ((cmd->state.dynamic_stencil_wrmask & 0xff00) >> 8) :
-         (pipeline->ds.stencil_wrmask & 0xff00) >> 8;
-
       VkCompareOp stencil_front_compare_op =
          (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC__SHIFT;
 
@@ -821,11 +811,11 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
       bool lrz_allowed = true;
       lrz_allowed = lrz_allowed && tu6_stencil_op_lrz_allowed(
                                       &gras_lrz_cntl, stencil_front_compare_op,
-                                      stencil_front_writemask);
+                                      cmd->state.stencil_front_write);
 
       lrz_allowed = lrz_allowed && tu6_stencil_op_lrz_allowed(
                                       &gras_lrz_cntl, stencil_back_compare_op,
-                                      stencil_back_writemask);
+                                      cmd->state.stencil_back_write);
 
       /* Without depth write it's enough to make sure that depth test
        * is executed after stencil test, so temporary disabling LRZ is enough.
