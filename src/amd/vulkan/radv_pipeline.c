@@ -3962,12 +3962,13 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
    radv_pipeline_load_retained_shaders(pipeline, stages);
 
-   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
-      if (!stages[s].entrypoint)
-         continue;
+   if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
-      if (stages[s].stage < MESA_SHADER_FRAGMENT || stages[s].stage == MESA_SHADER_MESH)
-         *last_vgt_api_stage = stages[s].stage;
+      radv_foreach_stage(s, graphics_pipeline->active_stages) {
+         if (s < MESA_SHADER_FRAGMENT || s == MESA_SHADER_MESH)
+            *last_vgt_api_stage = s;
+      }
    }
 
    ASSERTED bool primitive_shading =
