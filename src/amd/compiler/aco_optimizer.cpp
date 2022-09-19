@@ -4715,6 +4715,41 @@ try_convert_sopc_to_sopk(aco_ptr<Instruction>& instr)
    instr_sopk->operands.pop_back();
 }
 
+static void
+unswizzle_vop3p_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   /* This opt is only beneficial for v_pk_fma_f16 because we can use v_pk_fmac_f16 if the
+    * instruction doesn't use swizzles. */
+   if (instr->opcode != aco_opcode::v_pk_fma_f16)
+      return;
+
+   VOP3P_instruction& vop3p = instr->vop3p();
+
+   unsigned literal_swizzle = ~0u;
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      if (!instr->operands[i].isLiteral())
+         continue;
+      unsigned new_swizzle = ((vop3p.opsel_lo >> i) & 0x1) | (((vop3p.opsel_hi >> i) & 0x1) << 1);
+      if (literal_swizzle != ~0u && new_swizzle != literal_swizzle)
+         return; /* Literal swizzles conflict. */
+      literal_swizzle = new_swizzle;
+   }
+
+   if (literal_swizzle == 0b10 || literal_swizzle == ~0u)
+      return; /* already unswizzled */
+
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      if (!instr->operands[i].isLiteral())
+         continue;
+      uint32_t literal = instr->operands[i].constantValue();
+      literal = (literal >> (16 * (literal_swizzle & 0x1)) & 0xffff) |
+                (literal >> (8 * (literal_swizzle & 0x2)) << 16);
+      instr->operands[i] = Operand::literal32(literal);
+      vop3p.opsel_lo &= ~(1 << i);
+      vop3p.opsel_hi |= (1 << i);
+   }
+}
+
 void
 apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -4786,6 +4821,9 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (instr->opcode == aco_opcode::s_add_u32 && ctx.uses[instr->definitions[1].tempId()] == 0 &&
        (instr->operands[0].isLiteral() || instr->operands[1].isLiteral()))
       instr->opcode = aco_opcode::s_add_i32;
+
+   if (instr->isVOP3P())
+      unswizzle_vop3p_literals(ctx, instr);
 
    ctx.instructions.emplace_back(std::move(instr));
 }
