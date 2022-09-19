@@ -1459,17 +1459,17 @@ update_queue_props(struct zink_screen *screen)
    uint32_t sparse_only = UINT32_MAX;
    screen->sparse_queue = UINT32_MAX;
    for (uint32_t i = 0; i < num_queues; i++) {
-      if (!found_gfx && (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-         screen->gfx_queue = i;
+      if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+         if (found_gfx)
+            continue;
+         screen->sparse_queue = screen->gfx_queue = i;
          screen->max_queues = props[i].queueCount;
          screen->timestamp_valid_bits = props[i].timestampValidBits;
          found_gfx = true;
-         if (props[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
-            screen->sparse_queue = i;
       } else if (props[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
          sparse_only = i;
    }
-   if (screen->sparse_queue == UINT32_MAX)
+   if (sparse_only != UINT32_MAX)
       screen->sparse_queue = sparse_only;
    free(props);
 }
@@ -1479,12 +1479,10 @@ init_queue(struct zink_screen *screen)
 {
    simple_mtx_init(&screen->queue_lock, mtx_plain);
    VKSCR(GetDeviceQueue)(screen->dev, screen->gfx_queue, 0, &screen->queue);
-   if (screen->sparse_queue != UINT32_MAX) {
-      if (screen->sparse_queue != screen->gfx_queue)
-         VKSCR(GetDeviceQueue)(screen->dev, screen->sparse_queue, 0, &screen->queue_sparse);
-      else
-         screen->queue_sparse = screen->queue;
-   }
+   if (screen->sparse_queue != screen->gfx_queue)
+      VKSCR(GetDeviceQueue)(screen->dev, screen->sparse_queue, 0, &screen->queue_sparse);
+   else
+      screen->queue_sparse = screen->queue;
 }
 
 static void
@@ -2138,17 +2136,27 @@ zink_create_logical_device(struct zink_screen *screen)
 {
    VkDevice dev = VK_NULL_HANDLE;
 
-   VkDeviceQueueCreateInfo qci = {0};
+   VkDeviceQueueCreateInfo qci[2] = {0};
+   uint32_t queues[3] = {
+      screen->gfx_queue,
+      screen->sparse_queue,
+   };
    float dummy = 0.0f;
-   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-   qci.queueFamilyIndex = screen->gfx_queue;
-   qci.queueCount = screen->threaded && screen->max_queues > 1 ? 2 : 1;
-   qci.pQueuePriorities = &dummy;
+   for (unsigned i = 0; i < ARRAY_SIZE(qci); i++) {
+      qci[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+      qci[i].queueFamilyIndex = queues[i];
+      qci[i].queueCount = 1;
+      qci[i].pQueuePriorities = &dummy;
+   }
+
+   unsigned num_queues = 1;
+   if (screen->sparse_queue != screen->gfx_queue)
+      num_queues++;
 
    VkDeviceCreateInfo dci = {0};
    dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-   dci.queueCreateInfoCount = 1;
-   dci.pQueueCreateInfos = &qci;
+   dci.queueCreateInfoCount = num_queues;
+   dci.pQueueCreateInfos = qci;
    /* extensions don't have bool members in pEnabledFeatures.
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
