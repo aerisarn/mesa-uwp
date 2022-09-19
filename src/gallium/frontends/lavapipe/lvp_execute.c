@@ -2894,15 +2894,20 @@ static void handle_clear_ds_image(struct vk_cmd_queue_entry *cmd,
       uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
       for (unsigned j = 0; j < level_count; j++) {
          struct pipe_surface *surf;
-         unsigned width, height;
-
+         unsigned width, height, depth;
          width = u_minify(image->bo->width0, range->baseMipLevel + j);
          height = u_minify(image->bo->height0, range->baseMipLevel + j);
+
+         if (image->bo->target == PIPE_TEXTURE_3D)
+            depth = u_minify(image->bo->depth0, range->baseMipLevel + j);
+         else {
+            depth = vk_image_subresource_layer_count(&image->vk, range);
+         }
 
          surf = create_img_surface_bo(state, range,
                                       image->bo, image->bo->format,
                                       width, height,
-                                      0, vk_image_subresource_layer_count(&image->vk, range) - 1, j);
+                                      0, depth - 1, j);
 
          state->pctx->clear_depth_stencil(state->pctx,
                                           surf,
