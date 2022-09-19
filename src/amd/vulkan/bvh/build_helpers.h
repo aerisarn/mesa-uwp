@@ -192,6 +192,8 @@ TYPE(vec2, 4);
 TYPE(vec3, 4);
 TYPE(vec4, 4);
 
+TYPE(uvec4, 16);
+
 TYPE(VOID_REF, 8);
 
 void
