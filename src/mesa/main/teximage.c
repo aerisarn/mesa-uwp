@@ -3543,13 +3543,32 @@ egl_image_target_texture(struct gl_context *ctx,
 
       texObj->External = GL_TRUE;
 
+      struct st_egl_image stimg;
+      bool native_supported;
+      if (!st_get_egl_image(ctx, image, PIPE_BIND_SAMPLER_VIEW, caller,
+                            &stimg, &native_supported))
+         return;
+
       if (tex_storage) {
-         st_egl_image_target_tex_storage(ctx, target, texObj, texImage,
-                                         image);
+         /* EXT_EGL_image_storage
+          * If the EGL image was created using EGL_EXT_image_dma_buf_import,
+          * then the following applies:
+          *    - <target> must be GL_TEXTURE_2D or GL_TEXTURE_EXTERNAL_OES.
+          *    Otherwise, the error INVALID_OPERATION is generated.
+          */
+         if (stimg.imported_dmabuf &&
+             (target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES)) {
+            _mesa_error(ctx, GL_INVALID_OPERATION,
+                        "%s(texture is imported from dmabuf)", caller);
+            return;
+         }
+         st_bind_egl_image(ctx, texObj, texImage, &stimg, true, native_supported);
       } else {
-         st_egl_image_target_texture_2d(ctx, target, texObj, texImage,
-                                        image);
+         st_bind_egl_image(ctx, texObj, texImage, &stimg,
+                           target != GL_TEXTURE_EXTERNAL_OES, native_supported);
       }
+
+      pipe_resource_reference(&stimg.texture, NULL);
 
       _mesa_dirty_texobj(ctx, texObj);
    }
