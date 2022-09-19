@@ -1202,6 +1202,7 @@ resource_create(struct pipe_screen *pscreen,
       return NULL;
    }
 
+   res->queue = VK_QUEUE_FAMILY_IGNORED;
    res->internal_format = templ->format;
    if (templ->target == PIPE_BUFFER) {
       util_range_init(&res->valid_buffer_range);
@@ -1267,6 +1268,7 @@ resource_create(struct pipe_screen *pscreen,
       res->linear = false;
       res->swapchain = true;
    }
+
    if (!res->obj->host_visible)
       res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
    if (res->obj->is_buffer) {
@@ -1327,6 +1329,7 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    staging.all_binds = 0;
    res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
    res->obj = new_obj;
+   res->queue = VK_QUEUE_FAMILY_IGNORED;
    for (unsigned i = 0; i <= res->base.b.last_level; i++) {
       struct pipe_box box = {0, 0, 0,
                              u_minify(res->base.b.width0, i),
@@ -1677,6 +1680,7 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    /* this ref must be transferred before rebind or else BOOM */
    zink_batch_reference_resource_move(&ctx->batch, res);
    res->obj = new_obj;
+   res->queue = VK_QUEUE_FAMILY_IGNORED;
    zink_resource_rebind(ctx, res);
    return true;
 }

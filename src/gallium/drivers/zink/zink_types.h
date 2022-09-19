@@ -1182,6 +1182,7 @@ struct zink_resource {
    enum pipe_format internal_format:16;
 
    struct zink_resource_object *obj;
+   uint32_t queue;
    union {
       struct {
          struct util_range valid_buffer_range;
