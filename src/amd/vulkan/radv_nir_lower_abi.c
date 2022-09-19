@@ -255,21 +255,16 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_load_sample_positions_amd: {
-      uint32_t sample_pos_offset = RING_PS_SAMPLE_POSITIONS * 16;
+      uint32_t sample_pos_offset = (RING_PS_SAMPLE_POSITIONS * 16) - 8;
 
       nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, s->args->ring_offsets);
       nir_ssa_def *addr = nir_pack_64_2x32(b, ring_offsets);
       nir_ssa_def *sample_id = nir_umin(b, intrin->src[0].ssa, nir_imm_int(b, 7));
       nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3); /* 2 floats containing samplepos.xy */
 
-      if (s->pl_key->ps.num_samples == 2) {
-         sample_pos_offset += 1 << 3;
-      } else if (s->pl_key->ps.num_samples == 4) {
-         sample_pos_offset += 3 << 3;
-      } else {
-         assert(s->pl_key->ps.num_samples == 8);
-         sample_pos_offset += 7 << 3;
-      }
+      nir_const_value *const_num_samples = nir_src_as_const_value(intrin->src[1]);
+      assert(const_num_samples);
+      sample_pos_offset += (const_num_samples->u32 << 3);
 
       replacement = nir_load_global_amd(b, 2, 32, addr, offset,
                                         .base = sample_pos_offset, .access = ACCESS_NON_WRITEABLE);
