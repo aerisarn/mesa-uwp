@@ -1687,6 +1687,14 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_barrier(b);
                 break;
 
+        case nir_intrinsic_scoped_barrier:
+                assert(b->shader->stage != MESA_SHADER_FRAGMENT);
+                assert(nir_intrinsic_memory_scope(instr) > NIR_SCOPE_SUBGROUP &&
+                       "todo: subgroup barriers (different divergence rules)");
+
+                bi_barrier(b);
+                break;
+
         case nir_intrinsic_shared_atomic_add:
         case nir_intrinsic_shared_atomic_imin:
         case nir_intrinsic_shared_atomic_umin:
