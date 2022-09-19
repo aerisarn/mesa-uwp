@@ -263,8 +263,11 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3); /* 2 floats containing samplepos.xy */
 
       nir_const_value *const_num_samples = nir_src_as_const_value(intrin->src[1]);
-      assert(const_num_samples);
-      sample_pos_offset += (const_num_samples->u32 << 3);
+      if (const_num_samples) {
+         sample_pos_offset += (const_num_samples->u32 << 3);
+      } else {
+         offset = nir_iadd(b, offset, nir_ishl_imm(b, intrin->src[1].ssa, 3));
+      }
 
       replacement = nir_load_global_amd(b, 2, 32, addr, offset,
                                         .base = sample_pos_offset, .access = ACCESS_NON_WRITEABLE);

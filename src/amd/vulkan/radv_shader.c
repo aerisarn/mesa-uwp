@@ -599,20 +599,44 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
             nir_ssa_def *num_samples = nir_load_rasterization_samples_amd(&b);
             nir_ssa_def *new_dest;
 
-            if (!key->ps.num_samples) {
-               new_dest =
-                  nir_load_barycentric_pixel(&b, 32,
-                                             .interp_mode = nir_intrinsic_interp_mode(intrin));
+            if (key->dynamic_rasterization_samples) {
+               nir_ssa_def *res1, *res2;
+
+               nir_push_if(&b, nir_ieq_imm(&b, num_samples, 1));
+               {
+                  res1 = nir_load_barycentric_pixel(&b, 32,
+                                                    .interp_mode = nir_intrinsic_interp_mode(intrin));
+               }
+               nir_push_else(&b, NULL);
+               {
+                  nir_ssa_def *sample_pos =
+                     nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
+
+                  /* sample_pos -= 0.5 */
+                  sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
+
+                  res2 = nir_load_barycentric_at_offset(&b, 32, sample_pos,
+                                                        .interp_mode = nir_intrinsic_interp_mode(intrin));
+               }
+               nir_pop_if(&b, NULL);
+
+               new_dest = nir_if_phi(&b, res1, res2);
             } else {
-               nir_ssa_def *sample_pos =
-                  nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
+               if (!key->ps.num_samples) {
+                  new_dest =
+                     nir_load_barycentric_pixel(&b, 32,
+                                                .interp_mode = nir_intrinsic_interp_mode(intrin));
+               } else {
+                  nir_ssa_def *sample_pos =
+                     nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
 
-               /* sample_pos -= 0.5 */
-               sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
+                  /* sample_pos -= 0.5 */
+                  sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
 
-               new_dest =
-                  nir_load_barycentric_at_offset(&b, 32, sample_pos,
-                                                 .interp_mode = nir_intrinsic_interp_mode(intrin));
+                  new_dest =
+                     nir_load_barycentric_at_offset(&b, 32, sample_pos,
+                                                    .interp_mode = nir_intrinsic_interp_mode(intrin));
+               }
             }
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_dest);
@@ -628,7 +652,7 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
    }
 
    if (progress)
-      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+      nir_metadata_preserve(impl, 0);
    else
       nir_metadata_preserve(impl, nir_metadata_all);
 
