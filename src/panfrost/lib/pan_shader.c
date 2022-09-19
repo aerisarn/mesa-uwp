@@ -332,6 +332,10 @@ GENX(pan_shader_compile)(nir_shader *s,
 
         info->sampler_count = info->texture_count = BITSET_LAST_BIT(s->info.textures_used);
 
+        unsigned execution_mode = s->info.float_controls_execution_mode;
+        info->ftz_fp16 = nir_is_denorm_flush_to_zero(execution_mode, 16);
+        info->ftz_fp32 = nir_is_denorm_flush_to_zero(execution_mode, 32);
+
 #if PAN_ARCH >= 6
         /* This is "redundant" information, but is needed in a draw-time hot path */
         for (unsigned i = 0; i < ARRAY_SIZE(info->bifrost.blend); ++i) {

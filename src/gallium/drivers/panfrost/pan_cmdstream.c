@@ -4649,6 +4649,25 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         return so;
 }
 
+#if PAN_ARCH >= 9
+static enum mali_flush_to_zero_mode
+panfrost_ftz_mode(struct pan_shader_info *info)
+{
+        if (info->ftz_fp32) {
+                if (info->ftz_fp16)
+                        return MALI_FLUSH_TO_ZERO_MODE_ALWAYS;
+                else
+                        return MALI_FLUSH_TO_ZERO_MODE_DX11;
+        } else {
+                /* We don't have a "flush FP16, preserve FP32" mode, but APIs
+                 * should not be able to generate that.
+                 */
+                assert(!info->ftz_fp16 && !info->ftz_fp32);
+                return MALI_FLUSH_TO_ZERO_MODE_PRESERVE_SUBNORMALS;
+        }
+}
+#endif
+
 static void
 prepare_shader(struct panfrost_shader_state *state,
             struct panfrost_pool *pool, bool upload)
@@ -4696,6 +4715,7 @@ prepare_shader(struct panfrost_shader_state *state,
                 cfg.register_allocation = pan_register_allocation(state->info.work_reg_count);
                 cfg.binary = state->bin.gpu;
                 cfg.preload.r48_r63 = (state->info.preload >> 48);
+                cfg.flush_to_zero_mode = panfrost_ftz_mode(&state->info);
 
                 if (cfg.stage == MALI_SHADER_STAGE_FRAGMENT)
                         cfg.requires_helper_threads = state->info.contains_barrier;
@@ -4711,6 +4731,7 @@ prepare_shader(struct panfrost_shader_state *state,
                 cfg.register_allocation = pan_register_allocation(state->info.work_reg_count);
                 cfg.binary = state->bin.gpu + state->info.vs.no_psiz_offset;
                 cfg.preload.r48_r63 = (state->info.preload >> 48);
+                cfg.flush_to_zero_mode = panfrost_ftz_mode(&state->info);
         }
 
         if (!secondary_enable)
@@ -4724,6 +4745,7 @@ prepare_shader(struct panfrost_shader_state *state,
                 cfg.register_allocation = pan_register_allocation(work_count);
                 cfg.binary = state->bin.gpu + state->info.vs.secondary_offset;
                 cfg.preload.r48_r63 = (state->info.vs.secondary_preload >> 48);
+                cfg.flush_to_zero_mode = panfrost_ftz_mode(&state->info);
         }
 #endif
 }
