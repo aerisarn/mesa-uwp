@@ -23,6 +23,7 @@ bvh_shaders = [
   'lbvh_internal.comp',
   'leaf.comp',
   'morton.comp',
+  'converter_internal.comp',
 ]
 
 bvh_include_dir = meson.source_root() + '/src/amd/vulkan/bvh'

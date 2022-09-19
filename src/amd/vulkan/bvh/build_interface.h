@@ -75,4 +75,12 @@ struct copy_args {
    uint32_t mode;
 };
 
+struct convert_internal_args {
+   VOID_REF intermediate_bvh;
+   VOID_REF output_bvh;
+   uint32_t leaf_node_count;
+   uint32_t internal_node_count;
+   uint32_t geometry_type;
+};
+
 #endif

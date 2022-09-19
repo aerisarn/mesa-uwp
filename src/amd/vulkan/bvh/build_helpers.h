@@ -379,4 +379,23 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
    return aabb;
 }
 
+AABB
+load_aabb(REF(radv_ir_node) node) {
+   AABB bounds;
+   bounds.min.x = DEREF(node).aabb[0][0];
+   bounds.min.y = DEREF(node).aabb[0][1];
+   bounds.min.z = DEREF(node).aabb[0][2];
+   bounds.max.x = DEREF(node).aabb[1][0];
+   bounds.max.y = DEREF(node).aabb[1][1];
+   bounds.max.z = DEREF(node).aabb[1][2];
+   return bounds;
+}
+
+float
+aabb_surface_area(AABB aabb)
+{
+   vec3 diagonal = aabb.max - aabb.min;
+   return 2 * diagonal.x * diagonal.y + 2 * diagonal.y * diagonal.z + 2 * diagonal.x * diagonal.z;
+}
+
 #endif
