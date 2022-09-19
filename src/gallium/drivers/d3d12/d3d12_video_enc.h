@@ -138,10 +138,17 @@ struct d3d12_video_encoder
 
    bool m_needsGPUFlush = false;
 
-   ComPtr<ID3D12Resource> m_spResolvedMetadataBuffer = {};
-   ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
+   struct EncodedBitstreamResolvedMetadata
+   {
+      ComPtr<ID3D12Resource> spBuffer;
+      size_t bufferSize;
+      size_t codecHeadersSize;
+   };
 
    std::vector<uint8_t> m_BitstreamHeadersBuffer = {};
+   std::vector<EncodedBitstreamResolvedMetadata> m_spEncodedFrameMetadata;
+   
+   ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
 
    struct
    {
@@ -167,9 +174,6 @@ struct d3d12_video_encoder
          D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264 m_H264CodecCaps;
          D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_HEVC m_HEVCCodecCaps;
       } m_encoderCodecSpecificConfigCaps = {};
-
-      // Required size for the layout-resolved metadata buffer of current frame to be encoded
-      size_t m_resolvedLayoutMetadataBufferRequiredSize = 0;
 
       // The maximum number of slices that the output of the current frame to be encoded will contain
       uint32_t m_MaxSlicesInOutput = 0;
