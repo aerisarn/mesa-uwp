@@ -985,6 +985,23 @@ vtn_handle_phi_second_pass(struct vtn_builder *b, SpvOp opcode,
 }
 
 static void
+vtn_emit_ret_store(struct vtn_builder *b, const struct vtn_block *block)
+{
+   if ((*block->branch & SpvOpCodeMask) != SpvOpReturnValue)
+      return;
+
+   vtn_fail_if(b->func->type->return_type->base_type == vtn_base_type_void,
+               "Return with a value from a function returning void");
+   struct vtn_ssa_value *src = vtn_ssa_value(b, block->branch[1]);
+   const struct glsl_type *ret_type =
+      glsl_get_bare_type(b->func->type->return_type->type);
+   nir_deref_instr *ret_deref =
+      nir_build_deref_cast(&b->nb, nir_load_param(&b->nb, 0),
+                           nir_var_function_temp, ret_type, 0);
+   vtn_local_store(b, src, ret_deref, 0);
+}
+
+static void
 vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
                 const struct vtn_block *block,
                 nir_variable *switch_fall_var, bool *has_switch_break)
@@ -1007,6 +1024,8 @@ vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
    case vtn_branch_type_loop_back_edge:
       break;
    case vtn_branch_type_return:
+      vtn_assert(block);
+      vtn_emit_ret_store(b, block);
       nir_jump(&b->nb, nir_jump_return);
       break;
    case vtn_branch_type_discard:
@@ -1122,23 +1141,6 @@ vtn_selection_control(struct vtn_builder *b, struct vtn_if *vtn_if)
 }
 
 static void
-vtn_emit_ret_store(struct vtn_builder *b, struct vtn_block *block)
-{
-   if ((*block->branch & SpvOpCodeMask) != SpvOpReturnValue)
-      return;
-
-   vtn_fail_if(b->func->type->return_type->base_type == vtn_base_type_void,
-               "Return with a value from a function returning void");
-   struct vtn_ssa_value *src = vtn_ssa_value(b, block->branch[1]);
-   const struct glsl_type *ret_type =
-      glsl_get_bare_type(b->func->type->return_type->type);
-   nir_deref_instr *ret_deref =
-      nir_build_deref_cast(&b->nb, nir_load_param(&b->nb, 0),
-                           nir_var_function_temp, ret_type, 0);
-   vtn_local_store(b, src, ret_deref, 0);
-}
-
-static void
 vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
                             nir_variable *switch_fall_var,
                             bool *has_switch_break,
@@ -1159,8 +1161,6 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
          vtn_foreach_instruction(b, block_start, block_end, handler);
 
          block->end_nop = nir_nop(&b->nb);
-
-         vtn_emit_ret_store(b, block);
 
          if (block->branch_type != vtn_branch_type_none) {
             vtn_emit_branch(b, block->branch_type, block,
