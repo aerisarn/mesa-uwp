@@ -4158,7 +4158,16 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                      batch->rsd[PIPE_SHADER_COMPUTE],
                                      panfrost_emit_shared_memory(batch, info));
 
-                cfg.allow_merging_workgroups = cs->info.cs.allow_merging_workgroups;
+                /* Workgroups may be merged if the shader does not use barriers
+                 * or shared memory. This condition is checked against the
+                 * static shared_size at compile-time. We need to check the
+                 * variable shared size at launch_grid time, because the
+                 * compiler doesn't know about that.
+                 */
+                cfg.allow_merging_workgroups =
+                        cs->info.cs.allow_merging_workgroups &&
+                        (info->variable_shared_mem == 0);
+
                 cfg.task_increment = 1;
                 cfg.task_axis = MALI_TASK_AXIS_Z;
         }

@@ -335,7 +335,10 @@ struct pan_shader_info {
 
                 struct {
                         /* Is it legal to merge workgroups? This is true if the
-                         * shader uses neither barriers nor shared memory.
+                         * shader uses neither barriers nor shared memory. This
+                         * requires caution: if the API allows specifying shared
+                         * memory at launch time (instead of compile time), that
+                         * memory will not be accounted for by the compiler.
                          *
                          * Used by the Valhall hardware.
                          */
