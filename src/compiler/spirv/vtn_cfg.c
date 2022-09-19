@@ -308,6 +308,12 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpReturn:
    case SpvOpReturnValue:
    case SpvOpUnreachable:
+      if (b->wa_ignore_return_after_emit_mesh_tasks &&
+          opcode == SpvOpReturn && !b->block) {
+            /* At this point block was already reset by
+             * SpvOpEmitMeshTasksEXT. */
+            break;
+      }
       vtn_assert(b->block && b->block->branch == NULL);
       b->block->branch = w;
       b->block = NULL;

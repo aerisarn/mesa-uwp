@@ -6379,6 +6379,17 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
    b->wa_llvm_spirv_ignore_workgroup_initializer =
       b->options->environment == NIR_SPIRV_OPENCL && is_llvm_spirv_translator;
 
+   /* Older versions of GLSLang would incorrectly emit OpReturn after
+    * OpEmitMeshTasksEXT. This is incorrect since the latter is already
+    * a terminator instruction.
+    *
+    * See https://github.com/KhronosGroup/glslang/issues/3020 for details.
+    */
+   b->wa_ignore_return_after_emit_mesh_tasks =
+      (b->generator_id == vtn_generator_glslang_reference_front_end ||
+       b->generator_id == vtn_generator_shaderc_over_glslang) &&
+      generator_version < 11;
+
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
    if (words[4] != 0) {
