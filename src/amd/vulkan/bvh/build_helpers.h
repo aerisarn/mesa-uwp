@@ -157,19 +157,18 @@
 #define VK_GEOMETRY_TYPE_TRIANGLES_KHR 0
 #define VK_GEOMETRY_TYPE_AABBS_KHR     1
 
-#define TYPE(type, size)                                                                           \
-   layout(buffer_reference) buffer type##_ref                                                      \
+#define TYPE(type, align)                                                                          \
+   layout(buffer_reference, buffer_reference_align = align) buffer type##_ref                      \
    {                                                                                               \
       type value;                                                                                  \
-   };                                                                                              \
-   const uint32_t type##_size = size
+   };
 
 #define REF(type)  type##_ref
 #define VOID_REF   uint64_t
 #define NULL       0
 #define DEREF(var) var.value
 
-#define SIZEOF(type) type##_size
+#define SIZEOF(type) uint32_t(uint64_t(REF(type)(uint64_t(0))+1))
 
 #define OFFSET(ptr, offset) (uint64_t(ptr) + offset)
 
@@ -189,9 +188,9 @@ TYPE(uint64_t, 8);
 
 TYPE(float, 4);
 
-TYPE(vec2, 8);
-TYPE(vec3, 12);
-TYPE(vec4, 16);
+TYPE(vec2, 4);
+TYPE(vec3, 4);
+TYPE(vec4, 4);
 
 TYPE(VOID_REF, 8);
 
@@ -220,26 +219,21 @@ struct AABB {
    vec3 min;
    vec3 max;
 };
-TYPE(AABB, 24);
+TYPE(AABB, 4);
 
 struct key_id_pair {
    uint32_t id;
    uint32_t key;
 };
-TYPE(key_id_pair, 8);
+TYPE(key_id_pair, 4);
 
-TYPE(radv_accel_struct_serialization_header, 56);
-TYPE(radv_accel_struct_header, 96);
-TYPE(radv_bvh_triangle_node, 64);
-TYPE(radv_bvh_aabb_node, 64);
-TYPE(radv_bvh_instance_node, 128);
-TYPE(radv_bvh_box16_node, 64);
-TYPE(radv_bvh_box32_node, 128);
-
-struct bvh_node {
-   uint8_t reserved[128];
-};
-TYPE(bvh_node, 128);
+TYPE(radv_accel_struct_serialization_header, 8);
+TYPE(radv_accel_struct_header, 8);
+TYPE(radv_bvh_triangle_node, 4);
+TYPE(radv_bvh_aabb_node, 4);
+TYPE(radv_bvh_instance_node, 8);
+TYPE(radv_bvh_box16_node, 4);
+TYPE(radv_bvh_box32_node, 4);
 
 uint32_t
 id_to_offset(uint32_t id)

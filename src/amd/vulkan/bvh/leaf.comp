@@ -46,7 +46,6 @@ layout(push_constant) uniform CONSTS {
 struct triangle_indices {
    uint32_t index[3];
 };
-TYPE(triangle_indices, 12);
 
 triangle_indices
 load_indices(VOID_REF indices, uint32_t index_format, uint32_t global_id)
@@ -89,7 +88,6 @@ load_indices(VOID_REF indices, uint32_t index_format, uint32_t global_id)
 struct triangle_vertices {
    vec4 vertex[3];
 };
-TYPE(triangle_vertices, 48);
 
 TYPE(float16_t, 2);
 
@@ -181,7 +179,7 @@ struct AccelerationStructureInstance {
    uint32_t sbt_offset_and_flags;
    uint64_t accelerationStructureReference;
 };
-TYPE(AccelerationStructureInstance, 64);
+TYPE(AccelerationStructureInstance, 8);
 
 /* Returns whether the instance is active. */
 bool
