@@ -6353,22 +6353,15 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          key.ps.has_epilog = true;
       }
 
-      /* FIXME: Force the driver to retain the NIR shaders (after SPIRV->NIR) because it doesn't yet
-       * support pre-rasterization stages. This is very suboptimal, slow but good enough for a
-       * start.
-       */
-      VkPipelineCreateFlags flags = pCreateInfo->flags;
-      if (pipeline->base.active_stages & (VK_SHADER_STAGE_VERTEX_BIT |
-                                          VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                                          VK_SHADER_STAGE_GEOMETRY_BIT |
-                                          VK_SHADER_STAGE_MESH_BIT_NV)) {
-         flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+      /* Compile the pre-rasterization stages only when the vertex input interface is missing. */
+      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) &&
+          !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT)) {
+         key.vs.has_prolog = true;
       }
 
       result = radv_create_shaders(&pipeline->base.base, pipeline_layout, device, cache, &key,
-                                   pCreateInfo->pStages, pCreateInfo->stageCount, flags, NULL,
-                                   creation_feedback, NULL, NULL,
+                                   pCreateInfo->pStages, pCreateInfo->stageCount, pCreateInfo->flags,
+                                   NULL, creation_feedback, NULL, NULL,
                                    &pipeline->base.last_vgt_api_stage);
       if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED)
          goto fail_shaders;
