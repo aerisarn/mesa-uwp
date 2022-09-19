@@ -738,6 +738,7 @@ dri_get_egl_image(struct st_manager *smapi,
    stimg->format = map ? map->pipe_format : img->texture->format;
    stimg->level = img->level;
    stimg->layer = img->layer;
+   stimg->imported_dmabuf = img->imported_dmabuf;
 
    if (img->imported_dmabuf && map) {
       /* Guess sized internal format for dma-bufs. Could be used
