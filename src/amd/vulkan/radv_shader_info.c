@@ -1207,8 +1207,10 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
 
    uint64_t ps_inputs_read = fs_stage->nir->info.inputs_read;
 
-   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
-   if (es_stage->stage == MESA_SHADER_TESS_EVAL) {
+   unsigned num_vertices_per_prim = 0;
+   if (es_stage->stage == MESA_SHADER_VERTEX) {
+      num_vertices_per_prim = radv_get_num_vertices_per_prim(pipeline_key);
+   } else if (es_stage->stage == MESA_SHADER_TESS_EVAL) {
       num_vertices_per_prim = es_stage->nir->info.tess.point_mode ? 1 :
          es_stage->nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES ? 2 : 3;
    }

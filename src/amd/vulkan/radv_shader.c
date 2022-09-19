@@ -1347,16 +1347,7 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
          BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
 
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
-      if (pl_key->vs.topology == V_008958_DI_PT_NONE) {
-         /* When the topology is unknown (with graphics pipeline library), use the maximum number of
-          * vertices per primitives for simplicity, the HW will ignore the extra bits if points or
-          * lines are used anyways.
-          */
-         num_vertices_per_prim = 3;
-      } else {
-         /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-         num_vertices_per_prim = si_conv_prim_to_gs_out(pl_key->vs.topology) + 1;
-      }
+      num_vertices_per_prim = radv_get_num_vertices_per_prim(pl_key);
 
       /* Manually mark the instance ID used, so the shader can repack it. */
       if (pl_key->vs.instance_rate_inputs)

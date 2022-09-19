@@ -2958,6 +2958,22 @@ radv_rast_prim_is_points_or_lines(unsigned rast_prim)
    return radv_rast_prim_is_point(rast_prim) || radv_rast_prim_is_line(rast_prim);
 }
 
+static inline unsigned
+radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
+{
+   if (pipeline_key->vs.topology == V_008958_DI_PT_NONE) {
+      /* When the topology is unknown (with graphics pipeline library), return the maximum number of
+       * vertices per primitives for VS. This is used to lower NGG (the HW will ignore the extra
+       * bits for points/lines) and also to enable NGG culling unconditionally (it will be disabled
+       * dynamically for points/lines).
+       */
+      return 3;
+   } else {
+      /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
+      return si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
+   }
+}
+
 static inline uint32_t
 si_translate_stencil_op(enum VkStencilOp op)
 {

@@ -7063,16 +7063,33 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 }
 
 ALWAYS_INLINE static bool
-radv_skip_ngg_culling(bool has_tess, const unsigned vtx_cnt,
-                      bool indirect)
+radv_skip_ngg_culling(struct radv_cmd_buffer *cmd_buffer,
+                      const struct radv_graphics_pipeline *pipeline,
+                      const struct radv_draw_info *draw_info)
 {
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
    /* If we have to draw only a few vertices, we get better latency if
     * we disable NGG culling.
     *
     * When tessellation is used, what matters is the number of tessellated
     * vertices, so let's always assume it's not a small draw.
     */
-   return !has_tess && !indirect && vtx_cnt < 128;
+   if (pipeline->last_vgt_api_stage != MESA_SHADER_VERTEX)
+      return false;
+
+   if (!draw_info->indirect && draw_info->count < 128)
+      return true;
+
+   /* With graphics pipeline library, NGG culling is enabled unconditionally because we don't know
+    * the primitive topology at compile time, but we should still disable it dynamically for points
+    * or lines.
+    */
+   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->primitive_topology) + 1;
+   if (num_vertices_per_prim != 3)
+      return true;
+
+   return false;
 }
 
 ALWAYS_INLINE static uint32_t
@@ -7148,8 +7165,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
    /* Check small draw status:
     * For small draw calls, we disable culling by setting the SGPR to 0.
     */
-   const bool skip =
-      radv_skip_ngg_culling(stage == MESA_SHADER_TESS_EVAL, draw_info->count, draw_info->indirect);
+   const bool skip = radv_skip_ngg_culling(cmd_buffer, pipeline, draw_info);
 
    /* See if anything changed. */
    if (!dirty && skip == cmd_buffer->state.last_nggc_skip)
