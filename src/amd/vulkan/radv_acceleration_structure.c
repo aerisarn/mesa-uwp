@@ -39,8 +39,8 @@ static const uint32_t morton_spv[] = {
 #include "bvh/morton.comp.spv.h"
 };
 
-static const uint32_t internal_spv[] = {
-#include "bvh/internal.comp.spv.h"
+static const uint32_t lbvh_internal_spv[] = {
+#include "bvh/lbvh_internal.comp.spv.h"
 };
 
 static const uint32_t copy_spv[] = {
@@ -219,8 +219,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    struct radv_meta_state *state = &device->meta_state;
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.copy_pipeline,
                         &state->alloc);
-   radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.internal_pipeline,
-                        &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device),
+                        state->accel_struct_build.lbvh_internal_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.morton_pipeline,
@@ -228,7 +228,7 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.copy_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
-                              state->accel_struct_build.internal_p_layout, &state->alloc);
+                              state->accel_struct_build.lbvh_internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.leaf_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -320,10 +320,10 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   result = create_build_pipeline_spv(device, internal_spv, sizeof(internal_spv),
-                                      sizeof(struct internal_args),
-                                      &device->meta_state.accel_struct_build.internal_pipeline,
-                                      &device->meta_state.accel_struct_build.internal_p_layout);
+   result = create_build_pipeline_spv(
+      device, lbvh_internal_spv, sizeof(lbvh_internal_spv), sizeof(struct lbvh_internal_args),
+      &device->meta_state.accel_struct_build.lbvh_internal_pipeline,
+      &device->meta_state.accel_struct_build.lbvh_internal_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -552,7 +552,7 @@ radv_CmdBuildAccelerationStructuresKHR(
    cmd_buffer->state.flush_bits |= flush_bits;
 
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        cmd_buffer->device->meta_state.accel_struct_build.internal_pipeline);
+                        cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_pipeline);
    bool progress = true;
    for (unsigned iter = 0; progress; ++iter) {
       progress = false;
@@ -587,7 +587,7 @@ radv_CmdBuildAccelerationStructuresKHR(
                              radv_bvh_node_internal);
          }
 
-         const struct internal_args consts = {
+         const struct lbvh_internal_args consts = {
             .bvh = accel_struct->va,
             .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
             .dst_ids = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
@@ -596,7 +596,7 @@ radv_CmdBuildAccelerationStructuresKHR(
          };
 
          radv_CmdPushConstants(commandBuffer,
-                               cmd_buffer->device->meta_state.accel_struct_build.internal_p_layout,
+                               cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_p_layout,
                                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
          radv_unaligned_dispatch(cmd_buffer, dst_node_count, 1, 1);
          if (!final_iter)

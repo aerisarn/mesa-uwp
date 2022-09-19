@@ -20,7 +20,7 @@
 
 bvh_shaders = [
   'copy.comp',
-  'internal.comp',
+  'lbvh_internal.comp',
   'leaf.comp',
   'morton.comp',
 ]

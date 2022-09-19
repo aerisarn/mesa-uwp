@@ -57,7 +57,7 @@ struct morton_args {
    REF(key_id_pair) ids;
 };
 
-struct internal_args {
+struct lbvh_internal_args {
    VOID_REF bvh;
    REF(key_id_pair) src_ids;
    REF(key_id_pair) dst_ids;
