@@ -640,6 +640,7 @@ zink_create_gfx_program(struct zink_context *ctx,
         zink_shader_tcs_create(screen, stages[MESA_SHADER_VERTEX], vertices_per_patch);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    }
+   prog->stages_remaining = prog->stages_present;
 
    assign_io(prog, prog->shaders);
 

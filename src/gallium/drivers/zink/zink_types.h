@@ -798,6 +798,7 @@ struct zink_gfx_program {
    struct zink_program base;
 
    uint32_t stages_present; //mask of stages present in this program
+   uint32_t stages_remaining; //mask of zink_shader remaining in this program
    struct nir_shader *nir[ZINK_GFX_SHADER_COUNT];
 
    struct zink_shader_module *modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here

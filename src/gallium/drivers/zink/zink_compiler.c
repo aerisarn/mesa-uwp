@@ -3253,8 +3253,10 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
          _mesa_hash_table_remove(ht, he);
          prog->base.removed = true;
       }
-      if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
+      if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated) {
          prog->shaders[stage] = NULL;
+         prog->stages_remaining &= ~BITFIELD_BIT(stage);
+      }
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->generated)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
