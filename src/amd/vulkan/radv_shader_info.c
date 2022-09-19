@@ -500,7 +500,6 @@ gather_shader_info_mesh(const nir_shader *nir, struct radv_shader_info *info)
     * - with GS_FAST_LAUNCH=1 every lane's VGPRs are initialized to the same input vertex index
     *
     */
-   ngg_info->enable_vertex_grouping = true;
    ngg_info->esgs_ring_size = 1;
    ngg_info->hw_max_esverts = 1;
    ngg_info->max_gsprims = 1;
@@ -1177,7 +1176,6 @@ gfx10_get_ngg_info(const struct radv_device *device, struct radv_pipeline_stage 
    out->prim_amp_factor = prim_amp_factor;
    out->max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
    out->ngg_emit_size = max_gsprims * gsprim_lds_size;
-   out->enable_vertex_grouping = true;
 
    /* Don't count unusable vertices. */
    out->esgs_ring_size = MIN2(max_esverts, max_gsprims * max_verts_per_prim) * esvert_lds_size * 4;
@@ -1226,8 +1224,7 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
 
    /* Invocations that process an input vertex */
    const struct gfx10_ngg_info *ngg_info = &es_stage->info.ngg_info;
-   unsigned max_vtx_in = MIN2(256, ngg_info->enable_vertex_grouping ?
-         ngg_info->hw_max_esverts : num_vertices_per_prim * ngg_info->max_gsprims);
+   unsigned max_vtx_in = MIN2(256, ngg_info->hw_max_esverts);
 
    unsigned lds_bytes_if_culling_off = 0;
    /* We need LDS space when VS needs to export the primitive ID. */
