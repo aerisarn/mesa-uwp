@@ -164,6 +164,7 @@ struct rendering_state {
 
    VkRect2D render_area;
    bool suspending;
+   bool render_cond;
    uint32_t color_att_count;
    struct lvp_render_attachment *color_att;
    struct lvp_render_attachment depth_att;
@@ -1486,6 +1487,9 @@ static void render_clear_fast(struct rendering_state *state)
       goto slow_clear;
 
    if (state->info.view_mask)
+      goto slow_clear;
+
+   if (state->render_cond)
       goto slow_clear;
 
    uint32_t buffers = 0;
@@ -3444,6 +3448,7 @@ static void handle_begin_conditional_rendering(struct vk_cmd_queue_entry *cmd,
                                                struct rendering_state *state)
 {
    struct VkConditionalRenderingBeginInfoEXT *bcr = cmd->u.begin_conditional_rendering_ext.conditional_rendering_begin;
+   state->render_cond = true;
    state->pctx->render_condition_mem(state->pctx,
                                      lvp_buffer_from_handle(bcr->buffer)->bo,
                                      bcr->offset,
@@ -3452,6 +3457,7 @@ static void handle_begin_conditional_rendering(struct vk_cmd_queue_entry *cmd,
 
 static void handle_end_conditional_rendering(struct rendering_state *state)
 {
+   state->render_cond = false;
    state->pctx->render_condition_mem(state->pctx, NULL, 0, false);
 }
 
