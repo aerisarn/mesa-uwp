@@ -622,17 +622,8 @@ genX(emit_l3_config)(struct anv_batch *batch,
 }
 
 void
-genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
-                       const struct vk_sample_locations_state *sl)
+genX(emit_multisample)(struct anv_batch *batch, uint32_t samples)
 {
-   if (sl != NULL) {
-      assert(sl->per_pixel == samples);
-      assert(sl->grid_size.width == 1);
-      assert(sl->grid_size.height == 1);
-   } else {
-      sl = vk_standard_sample_locations_state(samples);
-   }
-
    anv_batch_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
       ms.NumberofMultisamples       = __builtin_ffs(samples) - 1;
 
