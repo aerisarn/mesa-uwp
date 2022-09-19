@@ -975,6 +975,7 @@ vtn_handle_phi_second_pass(struct vtn_builder *b, SpvOp opcode,
 
 static void
 vtn_emit_branch(struct vtn_builder *b, enum vtn_branch_type branch_type,
+                const struct vtn_block *block,
                 nir_variable *switch_fall_var, bool *has_switch_break)
 {
    switch (branch_type) {
@@ -1120,7 +1121,7 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
          vtn_emit_ret_store(b, block);
 
          if (block->branch_type != vtn_branch_type_none) {
-            vtn_emit_branch(b, block->branch_type,
+            vtn_emit_branch(b, block->branch_type, block,
                             switch_fall_var, has_switch_break);
             return;
          }
@@ -1142,7 +1143,7 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
                vtn_emit_cf_list_structured(b, &vtn_if->then_body,
                                            switch_fall_var, &sw_break, handler);
             } else {
-               vtn_emit_branch(b, vtn_if->then_type, switch_fall_var, &sw_break);
+               vtn_emit_branch(b, vtn_if->then_type, NULL, switch_fall_var, &sw_break);
             }
             break;
          }
@@ -1156,7 +1157,7 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
             vtn_emit_cf_list_structured(b, &vtn_if->then_body,
                                         switch_fall_var, &sw_break, handler);
          } else {
-            vtn_emit_branch(b, vtn_if->then_type, switch_fall_var, &sw_break);
+            vtn_emit_branch(b, vtn_if->then_type, NULL, switch_fall_var, &sw_break);
          }
 
          nir_push_else(&b->nb, nif);
@@ -1164,7 +1165,7 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
             vtn_emit_cf_list_structured(b, &vtn_if->else_body,
                                         switch_fall_var, &sw_break, handler);
          } else {
-            vtn_emit_branch(b, vtn_if->else_type, switch_fall_var, &sw_break);
+            vtn_emit_branch(b, vtn_if->else_type, NULL, switch_fall_var, &sw_break);
          }
 
          nir_pop_if(&b->nb, nif);
