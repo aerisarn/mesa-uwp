@@ -65,6 +65,7 @@ struct ntv_context {
    SpvId samplers[PIPE_MAX_SAMPLERS];
    unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
    unsigned samplers_used : PIPE_MAX_SAMPLERS;
+   unsigned samplers_used_mediump : PIPE_MAX_SAMPLERS;
    SpvId entry_ifaces[PIPE_MAX_SHADER_INPUTS * 4 + PIPE_MAX_SHADER_OUTPUTS * 4];
    size_t num_entry_ifaces;
 
@@ -965,6 +966,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
    bool is_sampler = glsl_type_is_sampler(type);
    SpvId image_type = get_bare_image_type(ctx, var, is_sampler);
    SpvId var_type = is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
+   bool mediump = (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW);
 
    int index = var->data.driver_location;
    assert(!is_sampler || (!(ctx->samplers_used & (1 << index))));
@@ -984,6 +986,11 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
    SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
                                          SpvStorageClassUniformConstant);
 
+   if (mediump) {
+      spirv_builder_emit_decoration(&ctx->builder, var_id,
+                                    SpvDecorationRelaxedPrecision);
+   }
+
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
@@ -998,6 +1005,8 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
       ctx->sampler_types[index] = image_type;
       ctx->samplers[index] = var_id;
       ctx->samplers_used |= 1 << index;
+      if (mediump)
+         ctx->samplers_used_mediump |= 1 << index;
    } else {
       ctx->image_types[index] = image_type;
       ctx->images[index] = var_id;
@@ -2848,6 +2857,7 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId img_var = get_src(ctx, &intr->src[0]);
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
    nir_variable *var = deref->deref_type == nir_deref_type_var ? deref->var : get_var_from_image(ctx, img_var);
+   bool mediump = (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW);
    SpvId img_type = var->data.bindless ? get_bare_image_type(ctx, var, false) : ctx->image_types[var->data.driver_location];
    const struct glsl_type *type = glsl_without_array(var->type);
    SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
@@ -2862,6 +2872,12 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                  img, coord, 0, sample, 0, sparse);
    if (sparse)
       result = extract_sparse_load(ctx, result, dest_type, &intr->dest.ssa);
+
+   if (!sparse && mediump) {
+      spirv_builder_emit_decoration(&ctx->builder, result,
+                                    SpvDecorationRelaxedPrecision);
+   }
+
    store_dest(ctx, &intr->dest, result, nir_type_float);
 }
 
@@ -3676,8 +3692,10 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                const_offset, offset, min_lod, tex->is_sparse);
    }
 
-   spirv_builder_emit_decoration(&ctx->builder, result,
-                                 SpvDecorationRelaxedPrecision);
+   if (!bindless_var && (ctx->samplers_used_mediump & (1 << tex->texture_index))) {
+      spirv_builder_emit_decoration(&ctx->builder, result,
+                                    SpvDecorationRelaxedPrecision);
+   }
 
    if (tex->is_sparse)
       result = extract_sparse_load(ctx, result, actual_dest_type, &tex->dest.ssa);
