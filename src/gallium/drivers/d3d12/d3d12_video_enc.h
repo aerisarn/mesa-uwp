@@ -255,12 +255,11 @@ struct d3d12_video_encoder
       ComPtr<ID3D12Resource> spBuffer;
       size_t bufferSize;
       size_t codecHeadersSize;
+      ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
    };
 
    std::vector<uint8_t> m_BitstreamHeadersBuffer = {};
    std::vector<EncodedBitstreamResolvedMetadata> m_spEncodedFrameMetadata;
-   
-   ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
 
    struct D3D12EncodeCapabilities m_currentEncodeCapabilities = { };
    struct D3D12EncodeConfiguration m_currentEncodeConfig = { };

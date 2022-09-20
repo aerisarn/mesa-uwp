@@ -1181,20 +1181,20 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
       }
    }
 
-   if ((pD3D12Enc->m_spMetadataOutputBuffer == nullptr) ||
-       (GetDesc(pD3D12Enc->m_spMetadataOutputBuffer.Get()).Width <
+   if ((pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer == nullptr) ||
+       (GetDesc(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get()).Width <
         pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.MaxEncoderOutputMetadataBufferSize)) {
       CD3DX12_RESOURCE_DESC metadataBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
          pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.MaxEncoderOutputMetadataBufferSize);
 
-      pD3D12Enc->m_spMetadataOutputBuffer.Reset();
+      pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Reset();
       HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->CreateCommittedResource(
          &Properties,
          D3D12_HEAP_FLAG_NONE,
          &metadataBufferDesc,
          D3D12_RESOURCE_STATE_COMMON,
          nullptr,
-         IID_PPV_ARGS(pD3D12Enc->m_spMetadataOutputBuffer.GetAddressOf()));
+         IID_PPV_ARGS(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.GetAddressOf()));
 
       if (FAILED(hr)) {
          debug_printf("CreateCommittedResource failed with HR %x\n", hr);
@@ -1403,7 +1403,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       CD3DX12_RESOURCE_BARRIER::Transition(pOutputBufferD3D12Res,
                                            D3D12_RESOURCE_STATE_COMMON,
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE),
-      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spMetadataOutputBuffer.Get(),
+      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get(),
                                            D3D12_RESOURCE_STATE_COMMON,
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE)
    };
@@ -1556,7 +1556,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       // D3D12_VIDEO_ENCODER_RECONSTRUCTED_PICTURE
       reconPicOutputTextureDesc,
       // D3D12_VIDEO_ENCODER_ENCODE_OPERATION_METADATA_BUFFER
-      { pD3D12Enc->m_spMetadataOutputBuffer.Get(), 0 }
+      { pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get(), 0 }
    };
 
    // Upload the CPU buffers with the bitstream headers to the compressed bitstream resource in the interval [0,
@@ -1588,7 +1588,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].spBuffer.Get(),
                                            D3D12_RESOURCE_STATE_COMMON,
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE),
-      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spMetadataOutputBuffer.Get(),
+      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get(),
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE,
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ),
       CD3DX12_RESOURCE_BARRIER::Transition(pInputVideoD3D12Res,
@@ -1608,7 +1608,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       pD3D12Enc->m_currentEncodeConfig.m_encodeFormatInfo.Format,
       // D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC
       pD3D12Enc->m_currentEncodeConfig.m_currentResolution,
-      { pD3D12Enc->m_spMetadataOutputBuffer.Get(), 0 }
+      { pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get(), 0 }
    };
 
    const D3D12_VIDEO_ENCODER_RESOLVE_METADATA_OUTPUT_ARGUMENTS outputMetadataCmd = {
@@ -1644,7 +1644,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].spBuffer.Get(),
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE,
                                            D3D12_RESOURCE_STATE_COMMON),
-      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spMetadataOutputBuffer.Get(),
+      CD3DX12_RESOURCE_BARRIER::Transition(pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].m_spMetadataOutputBuffer.Get(),
                                            D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ,
                                            D3D12_RESOURCE_STATE_COMMON),
    };
