@@ -1029,7 +1029,7 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
          op = LLVMAtomicRMWBinOpFMin;
          break;
       case nir_intrinsic_global_atomic_fmax:
-         op = LLVMAtomicRMWBinOpFmax;
+         op = LLVMAtomicRMWBinOpFMax;
          break;
 #endif
       default:
