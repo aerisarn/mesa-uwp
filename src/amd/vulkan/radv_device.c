@@ -566,6 +566,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_depth_clip_control = true,
       .EXT_depth_clip_enable = true,
       .EXT_depth_range_unrestricted = true,
+      .EXT_descriptor_buffer = true,
       .EXT_descriptor_indexing = true,
       .EXT_discard_rectangles = true,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
@@ -1939,6 +1940,15 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3ShadingRateImageEnable = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT: {
+         VkPhysicalDeviceDescriptorBufferFeaturesEXT *features =
+            (VkPhysicalDeviceDescriptorBufferFeaturesEXT *)ext;
+         features->descriptorBuffer = true;
+         features->descriptorBufferCaptureReplay = false;
+         features->descriptorBufferImageLayoutIgnored = true;
+         features->descriptorBufferPushDescriptors = true;
+         break;
+      }
       default:
          break;
       }
@@ -2724,6 +2734,44 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *properties =
             (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *)ext;
          properties->dynamicPrimitiveTopologyUnrestricted = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT: {
+         VkPhysicalDeviceDescriptorBufferPropertiesEXT *properties =
+            (VkPhysicalDeviceDescriptorBufferPropertiesEXT *)ext;
+         properties->combinedImageSamplerDescriptorSingleArray = true;
+         properties->bufferlessPushDescriptors = true;
+         properties->allowSamplerImageViewPostSubmitCreation = false;
+         properties->descriptorBufferOffsetAlignment = 4;
+         properties->maxDescriptorBufferBindings = MAX_SETS;
+         properties->maxResourceDescriptorBufferBindings = MAX_SETS;
+         properties->maxSamplerDescriptorBufferBindings = MAX_SETS;
+         properties->maxEmbeddedImmutableSamplerBindings = MAX_SETS;
+         properties->maxEmbeddedImmutableSamplers = radv_max_descriptor_set_size();
+         properties->bufferCaptureReplayDescriptorDataSize = 0;
+         properties->imageCaptureReplayDescriptorDataSize = 0;
+         properties->imageViewCaptureReplayDescriptorDataSize = 0;
+         properties->samplerCaptureReplayDescriptorDataSize = 0;
+         properties->accelerationStructureCaptureReplayDescriptorDataSize = 0;
+         properties->samplerDescriptorSize = 16;
+         properties->combinedImageSamplerDescriptorSize = 96;
+         properties->sampledImageDescriptorSize = 64;
+         properties->storageImageDescriptorSize = 32;
+         properties->uniformTexelBufferDescriptorSize = 16;
+         properties->robustUniformTexelBufferDescriptorSize = 16;
+         properties->storageTexelBufferDescriptorSize = 16;
+         properties->robustStorageTexelBufferDescriptorSize = 16;
+         properties->uniformBufferDescriptorSize = 16;
+         properties->robustUniformBufferDescriptorSize = 16;
+         properties->storageBufferDescriptorSize = 16;
+         properties->robustStorageBufferDescriptorSize = 16;
+         properties->inputAttachmentDescriptorSize = 64;
+         properties->accelerationStructureDescriptorSize = 16;
+         properties->maxSamplerDescriptorBufferRange = UINT32_MAX;
+         properties->maxResourceDescriptorBufferRange = UINT32_MAX;
+         properties->samplerDescriptorBufferAddressSpaceSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
+         properties->resourceDescriptorBufferAddressSpaceSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
+         properties->descriptorBufferAddressSpaceSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
          break;
       }
       default:
