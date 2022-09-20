@@ -275,12 +275,14 @@ _eglCheckSync(_EGLDisplay *disp, _EGLSync *s, const char *msg)
 /**
  * Lookup and lock a display.
  */
-static inline _EGLDisplay *
+_EGLDisplay *
 _eglLockDisplay(EGLDisplay dpy)
 {
    _EGLDisplay *disp = _eglLookupDisplay(dpy);
-   if (disp)
-      egl_lock(disp);
+   if (disp) {
+      u_rwlock_rdlock(&disp->TerminateLock);
+      simple_mtx_lock(&disp->Mutex);
+   }
    return disp;
 }
 
@@ -288,10 +290,11 @@ _eglLockDisplay(EGLDisplay dpy)
 /**
  * Unlock a display.
  */
-static inline void
+void
 _eglUnlockDisplay(_EGLDisplay *disp)
 {
-   egl_unlock(disp);
+   simple_mtx_unlock(&disp->Mutex);
+   u_rwlock_rdunlock(&disp->TerminateLock);
 }
 
 static void
@@ -1609,8 +1612,7 @@ _eglWaitClientCommon(void)
    if (!ctx)
       RETURN_EGL_SUCCESS(NULL, EGL_TRUE);
 
-   disp = ctx->Resource.Display;
-   egl_lock(disp);
+   disp = _eglLockDisplay(ctx->Resource.Display);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||
@@ -1655,8 +1657,7 @@ eglWaitNative(EGLint engine)
 
    _EGL_FUNC_START(NULL, EGL_OBJECT_THREAD_KHR, NULL);
 
-   disp = ctx->Resource.Display;
-   egl_lock(disp);
+   disp = _eglLockDisplay(ctx->Resource.Display);
 
    /* let bad current context imply bad current surface */
    if (_eglGetContextHandle(ctx) == EGL_NO_CONTEXT ||

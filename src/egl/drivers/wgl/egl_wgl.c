@@ -212,12 +212,9 @@ static bool
 wgl_validate_egl_image(struct st_manager *smapi, void *image)
 {
    struct wgl_egl_display *wgl_dpy = (struct wgl_egl_display *)smapi;
-   _EGLDisplay *disp = wgl_dpy->parent;
-   _EGLImage *img;
-
-   egl_lock(disp);
-   img = _eglLookupImage(image, disp);
-   egl_unlock(disp);
+   _EGLDisplay *disp = _eglLockDisplay(wgl_dpy->parent);
+   _EGLImage *img = _eglLookupImage(image, disp);
+   _eglUnlockDisplay(disp);
 
    if (img == NULL) {
       _eglError(EGL_BAD_PARAMETER, "wgl_validate_egl_image");

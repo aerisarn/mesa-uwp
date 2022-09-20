@@ -653,12 +653,9 @@ dri2_add_pbuffer_configs_for_visuals(_EGLDisplay *disp)
 GLboolean
 dri2_validate_egl_image(void *image, void *data)
 {
-   _EGLDisplay *disp = data;
-   _EGLImage *img;
-
-   egl_lock(disp);
-   img = _eglLookupImage(image, disp);
-   egl_unlock(disp);
+   _EGLDisplay *disp = _eglLockDisplay(data);
+   _EGLImage *img = _eglLookupImage(image, disp);
+   _eglUnlockDisplay(disp);
 
    if (img == NULL) {
       _eglError(EGL_BAD_PARAMETER, "dri2_validate_egl_image");

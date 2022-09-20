@@ -225,19 +225,14 @@ struct _egl_display
    EGLGetBlobFuncANDROID BlobCacheGet;
 };
 
-static inline void
-egl_lock(_EGLDisplay *disp)
-{
-   u_rwlock_rdlock(&disp->TerminateLock);
-   simple_mtx_lock(&disp->Mutex);
-}
 
-static inline void
-egl_unlock(_EGLDisplay *disp)
-{
-   simple_mtx_unlock(&disp->Mutex);
-   u_rwlock_rdunlock(&disp->TerminateLock);
-}
+extern _EGLDisplay *
+_eglLockDisplay(EGLDisplay dpy);
+
+
+extern void
+_eglUnlockDisplay(_EGLDisplay *disp);
+
 
 extern _EGLPlatformType
 _eglGetNativePlatform(void *nativeDisplay);
