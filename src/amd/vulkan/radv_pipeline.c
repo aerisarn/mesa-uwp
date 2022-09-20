@@ -2091,9 +2091,11 @@ radv_should_export_multiview(const struct radv_pipeline_stage *producer,
                              const struct radv_pipeline_stage *consumer,
                              const struct radv_pipeline_key *pipeline_key)
 {
-   /* Export the layer in the last VGT stage if multiview is used. */
+   /* Export the layer in the last VGT stage if multiview is used. When the next stage is unknown
+    * (with graphics pipeline library), the layer is exported unconditionally.
+    */
    return pipeline_key->has_multiview_view_index &&
-          consumer->stage == MESA_SHADER_FRAGMENT &&
+          (!consumer || consumer->stage == MESA_SHADER_FRAGMENT) &&
           !(producer->nir->info.outputs_written & VARYING_BIT_LAYER);
 }
 
@@ -2495,14 +2497,14 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
       NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
    }
 
+   if (radv_should_export_multiview(vs_stage, next_stage, pipeline_key)) {
+      NIR_PASS(_, vs_stage->nir, radv_export_multiview);
+   }
+
    if (next_stage) {
       assert(next_stage->nir->info.stage == MESA_SHADER_TESS_CTRL ||
              next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
              next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
-
-      if (radv_should_export_multiview(vs_stage, next_stage, pipeline_key)) {
-         NIR_PASS(_, vs_stage->nir, radv_export_multiview);
-      }
 
       radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
    }
@@ -2565,13 +2567,13 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
       NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
    }
 
+   if (radv_should_export_multiview(tes_stage, next_stage, pipeline_key)) {
+      NIR_PASS(_, tes_stage->nir, radv_export_multiview);
+   }
+
    if (next_stage) {
       assert(next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
              next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
-
-      if (radv_should_export_multiview(tes_stage, next_stage, pipeline_key)) {
-         NIR_PASS(_, tes_stage->nir, radv_export_multiview);
-      }
 
       radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
    }
@@ -2596,12 +2598,12 @@ radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_sta
 {
    assert(gs_stage->nir->info.stage == MESA_SHADER_GEOMETRY);
 
+   if (radv_should_export_multiview(gs_stage, fs_stage, pipeline_key)) {
+      NIR_PASS(_, gs_stage->nir, radv_export_multiview);
+   }
+
    if (fs_stage) {
       assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
-
-      if (radv_should_export_multiview(gs_stage, fs_stage, pipeline_key)) {
-         NIR_PASS(_, gs_stage->nir, radv_export_multiview);
-      }
 
       radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
    }
