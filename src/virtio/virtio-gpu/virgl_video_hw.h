@@ -396,6 +396,143 @@ struct virgl_h265_picture_desc
    uint8_t reserved[2];
 };
 
+struct virgl_h265_enc_seq_param
+{
+   uint8_t  general_profile_idc;
+   uint8_t  general_level_idc;
+   uint8_t  general_tier_flag;
+   uint8_t  strong_intra_smoothing_enabled_flag;
+
+   uint32_t intra_period;
+   uint32_t ip_period;
+
+   uint16_t pic_width_in_luma_samples;
+   uint16_t pic_height_in_luma_samples;
+
+   uint32_t chroma_format_idc;
+   uint32_t bit_depth_luma_minus8;
+   uint32_t bit_depth_chroma_minus8;
+
+   uint8_t  amp_enabled_flag;
+   uint8_t  sample_adaptive_offset_enabled_flag;
+   uint8_t  pcm_enabled_flag;
+   uint8_t  sps_temporal_mvp_enabled_flag;
+
+   uint8_t  log2_min_luma_coding_block_size_minus3;
+   uint8_t  log2_diff_max_min_luma_coding_block_size;
+   uint8_t  log2_min_transform_block_size_minus2;
+   uint8_t  log2_diff_max_min_transform_block_size;
+
+   uint16_t conf_win_left_offset;
+   uint16_t conf_win_right_offset;
+   uint16_t conf_win_top_offset;
+   uint16_t conf_win_bottom_offset;
+
+   uint32_t vui_parameters_present_flag;
+   struct {
+      uint32_t aspect_ratio_info_present_flag: 1;
+      uint32_t timing_info_present_flag: 1;
+      uint32_t reserved:30;
+   } vui_flags;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t num_units_in_tick;
+   uint32_t time_scale;
+
+   uint8_t  max_transform_hierarchy_depth_inter;
+   uint8_t  max_transform_hierarchy_depth_intra;
+   uint8_t  conformance_window_flag;
+   uint8_t  reserved;
+};
+
+struct virgl_h265_enc_pic_param
+{
+   uint8_t log2_parallel_merge_level_minus2;
+   uint8_t nal_unit_type;
+   uint8_t constrained_intra_pred_flag;
+   uint8_t pps_loop_filter_across_slices_enabled_flag;
+
+   uint8_t transform_skip_enabled_flag;
+   uint8_t reserved[3];
+};
+
+struct virgl_h265_enc_slice_param
+{
+   uint8_t max_num_merge_cand;
+   int8_t  slice_cb_qp_offset;
+   int8_t  slice_cr_qp_offset;
+   int8_t  slice_beta_offset_div2;
+
+   uint32_t slice_deblocking_filter_disabled_flag;
+
+   int8_t  slice_tc_offset_div2;
+   uint8_t cabac_init_flag;
+   uint8_t slice_loop_filter_across_slices_enabled_flag;
+   uint8_t reserved;
+};
+
+struct virgl_h265_enc_rate_control
+{
+   uint32_t target_bitrate;
+   uint32_t peak_bitrate;
+   uint32_t frame_rate_num;
+   uint32_t frame_rate_den;
+   uint32_t quant_i_frames;
+   uint32_t quant_p_frames;
+   uint32_t quant_b_frames;
+   uint32_t vbv_buffer_size;
+   uint32_t vbv_buf_lv;
+   uint32_t target_bits_picture;
+   uint32_t peak_bits_picture_integer;
+   uint32_t peak_bits_picture_fraction;
+   uint32_t fill_data_enable;
+   uint32_t skip_frame_enable;
+   uint32_t enforce_hrd;
+   uint32_t max_au_size;
+   uint32_t max_qp;
+   uint32_t min_qp;
+
+   uint8_t  rate_ctrl_method; /* see enum pipe_h2645_enc_rate_control_method */
+   uint8_t  reserved[3];
+};
+
+struct virgl_h265_slice_descriptor
+{
+   uint32_t slice_segment_address;
+   uint32_t num_ctu_in_slice;
+
+   uint8_t  slice_type; /* see enum pipe_h265_slice_type */
+   uint8_t  reserved[3];
+};
+
+struct virgl_h265_enc_picture_desc
+{
+   struct virgl_base_picture_desc base;
+
+   struct virgl_h265_enc_seq_param seq;
+   struct virgl_h265_enc_pic_param pic;
+   struct virgl_h265_enc_slice_param slice;
+   struct virgl_h265_enc_rate_control rc;
+
+   uint32_t decoded_curr_pic;
+   uint32_t reference_frames[16];
+   uint32_t frame_num;
+   uint32_t pic_order_cnt;
+   uint32_t pic_order_cnt_type;
+   uint32_t num_ref_idx_l0_active_minus1;
+   uint32_t num_ref_idx_l1_active_minus1;
+   uint32_t ref_idx_l0_list[15];
+   uint32_t ref_idx_l1_list[15];
+   uint32_t num_slice_descriptors;
+   struct virgl_h265_slice_descriptor slices_descriptors[128];
+   struct virgl_enc_quality_modes quality_modes;
+
+   uint8_t  picture_type; /* see enum pipe_h2645_enc_picture_type */
+   uint8_t  not_referenced;
+   uint8_t  reserved[2];
+};
+
 struct virgl_mpeg4_picture_desc
 {
    struct virgl_base_picture_desc base;
@@ -427,6 +564,7 @@ union virgl_picture_desc {
     struct virgl_h265_picture_desc h265;
     struct virgl_mpeg4_picture_desc mpeg4;
     struct virgl_h264_enc_picture_desc h264_enc;
+    struct virgl_h265_enc_picture_desc h265_enc;
 };
 
 enum virgl_video_encode_stat {

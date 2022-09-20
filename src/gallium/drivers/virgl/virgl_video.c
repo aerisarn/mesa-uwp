@@ -410,6 +410,121 @@ static int fill_h265_picture_desc(const struct pipe_picture_desc *desc,
     return 0;
 }
 
+static int fill_h265_enc_picture_desc(const struct pipe_picture_desc *desc,
+                                      union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_h265_enc_picture_desc *vh265 = &vdsc->h265_enc;
+    struct pipe_h265_enc_picture_desc *h265 = (struct pipe_h265_enc_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vh265->base);
+
+    ITEM_SET(vh265, h265, seq.general_profile_idc);
+    ITEM_SET(vh265, h265, seq.general_level_idc);
+    ITEM_SET(vh265, h265, seq.general_tier_flag);
+    ITEM_SET(vh265, h265, seq.intra_period);
+    ITEM_SET(vh265, h265, seq.ip_period);
+    ITEM_SET(vh265, h265, seq.pic_width_in_luma_samples);
+    ITEM_SET(vh265, h265, seq.pic_height_in_luma_samples);
+    ITEM_SET(vh265, h265, seq.chroma_format_idc);
+    ITEM_SET(vh265, h265, seq.bit_depth_luma_minus8);
+    ITEM_SET(vh265, h265, seq.bit_depth_chroma_minus8);
+    ITEM_SET(vh265, h265, seq.strong_intra_smoothing_enabled_flag);
+    ITEM_SET(vh265, h265, seq.amp_enabled_flag);
+    ITEM_SET(vh265, h265, seq.sample_adaptive_offset_enabled_flag);
+    ITEM_SET(vh265, h265, seq.pcm_enabled_flag);
+    ITEM_SET(vh265, h265, seq.sps_temporal_mvp_enabled_flag);
+    ITEM_SET(vh265, h265, seq.log2_min_luma_coding_block_size_minus3);
+    ITEM_SET(vh265, h265, seq.log2_diff_max_min_luma_coding_block_size);
+    ITEM_SET(vh265, h265, seq.log2_min_transform_block_size_minus2);
+    ITEM_SET(vh265, h265, seq.log2_diff_max_min_transform_block_size);
+    ITEM_SET(vh265, h265, seq.max_transform_hierarchy_depth_inter);
+    ITEM_SET(vh265, h265, seq.max_transform_hierarchy_depth_intra);
+    ITEM_SET(vh265, h265, seq.conformance_window_flag);
+    ITEM_SET(vh265, h265, seq.conf_win_left_offset);
+    ITEM_SET(vh265, h265, seq.conf_win_right_offset);
+    ITEM_SET(vh265, h265, seq.conf_win_top_offset);
+    ITEM_SET(vh265, h265, seq.conf_win_bottom_offset);
+    ITEM_SET(vh265, h265, seq.vui_parameters_present_flag);
+    ITEM_SET(vh265, h265, seq.vui_flags.aspect_ratio_info_present_flag);
+    ITEM_SET(vh265, h265, seq.vui_flags.timing_info_present_flag);
+    ITEM_SET(vh265, h265, seq.aspect_ratio_idc);
+    ITEM_SET(vh265, h265, seq.sar_width);
+    ITEM_SET(vh265, h265, seq.sar_height);
+    ITEM_SET(vh265, h265, seq.num_units_in_tick);
+    ITEM_SET(vh265, h265, seq.time_scale);
+
+    ITEM_SET(vh265, h265, pic.log2_parallel_merge_level_minus2);
+    ITEM_SET(vh265, h265, pic.nal_unit_type);
+    ITEM_SET(vh265, h265, pic.constrained_intra_pred_flag);
+    ITEM_SET(vh265, h265, pic.pps_loop_filter_across_slices_enabled_flag);
+    ITEM_SET(vh265, h265, pic.transform_skip_enabled_flag);
+
+    ITEM_SET(vh265, h265, slice.max_num_merge_cand);
+    ITEM_SET(vh265, h265, slice.slice_cb_qp_offset);
+    ITEM_SET(vh265, h265, slice.slice_cr_qp_offset);
+    ITEM_SET(vh265, h265, slice.slice_beta_offset_div2);
+    ITEM_SET(vh265, h265, slice.slice_tc_offset_div2);
+    ITEM_SET(vh265, h265, slice.cabac_init_flag);
+    ITEM_SET(vh265, h265, slice.slice_deblocking_filter_disabled_flag);
+    ITEM_SET(vh265, h265, slice.slice_loop_filter_across_slices_enabled_flag);
+
+    ITEM_SET(vh265, h265, rc.rate_ctrl_method);
+    ITEM_SET(vh265, h265, rc.target_bitrate);
+    ITEM_SET(vh265, h265, rc.peak_bitrate);
+    ITEM_SET(vh265, h265, rc.frame_rate_num);
+    ITEM_SET(vh265, h265, rc.frame_rate_den);
+    ITEM_SET(vh265, h265, rc.quant_i_frames);
+    ITEM_SET(vh265, h265, rc.quant_p_frames);
+    ITEM_SET(vh265, h265, rc.quant_b_frames);
+    ITEM_SET(vh265, h265, rc.vbv_buffer_size);
+    ITEM_SET(vh265, h265, rc.vbv_buf_lv);
+    ITEM_SET(vh265, h265, rc.target_bits_picture);
+    ITEM_SET(vh265, h265, rc.peak_bits_picture_integer);
+    ITEM_SET(vh265, h265, rc.peak_bits_picture_fraction);
+    ITEM_SET(vh265, h265, rc.fill_data_enable);
+    ITEM_SET(vh265, h265, rc.skip_frame_enable);
+    ITEM_SET(vh265, h265, rc.enforce_hrd);
+    ITEM_SET(vh265, h265, rc.max_au_size);
+    ITEM_SET(vh265, h265, rc.max_qp);
+    ITEM_SET(vh265, h265, rc.min_qp);
+
+    ITEM_SET(vh265, h265, picture_type);
+    ITEM_SET(vh265, h265, decoded_curr_pic);
+
+    for (i = 0; i < 16; i++) {
+        ITEM_SET(vh265, h265, reference_frames[i]);
+    }
+
+    ITEM_SET(vh265, h265, frame_num);
+    ITEM_SET(vh265, h265, pic_order_cnt);
+    ITEM_SET(vh265, h265, pic_order_cnt_type);
+
+    ITEM_SET(vh265, h265, quality_modes.level);
+    ITEM_SET(vh265, h265, quality_modes.preset_mode);
+    ITEM_SET(vh265, h265, quality_modes.pre_encode_mode);
+    ITEM_SET(vh265, h265, quality_modes.vbaq_mode);
+
+    ITEM_SET(vh265, h265, num_ref_idx_l0_active_minus1);
+    ITEM_SET(vh265, h265, num_ref_idx_l1_active_minus1);
+
+    for (i = 0; i < 15; i++) {
+        ITEM_SET(vh265, h265, ref_idx_l0_list[i]);
+        ITEM_SET(vh265, h265, ref_idx_l1_list[i]);
+    }
+
+    ITEM_SET(vh265, h265, not_referenced);
+
+    ITEM_SET(vh265, h265, num_slice_descriptors);
+    for (i = 0; i < vh265->num_slice_descriptors; i++) {
+        ITEM_SET(vh265, h265, slices_descriptors[i].slice_segment_address);
+        ITEM_SET(vh265, h265, slices_descriptors[i].num_ctu_in_slice);
+        ITEM_SET(vh265, h265, slices_descriptors[i].slice_type);
+    }
+
+    return 0;
+}
+
 static int fill_mpeg4_picture_desc(const struct pipe_picture_desc *desc,
                                    union virgl_picture_desc *vdsc)
 {
@@ -468,6 +583,8 @@ static int fill_enc_picture_desc(const struct pipe_picture_desc *desc,
     switch (u_reduce_video_profile(desc->profile)) {
     case PIPE_VIDEO_FORMAT_MPEG4_AVC:
         return fill_h264_enc_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_HEVC:
+        return fill_h265_enc_picture_desc(desc, vdsc);
     default:
         return -1;
     }
