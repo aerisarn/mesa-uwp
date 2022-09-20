@@ -376,7 +376,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
          .float_controls = true,
          .float32_atomic_add = true,
 #if LLVM_VERSION_MAJOR >= 15
-         .float32_atomic_minmax = true,
+         .float32_atomic_min_max = true,
 #endif
          .image_ms_array = true,
          .image_read_without_format = true,
