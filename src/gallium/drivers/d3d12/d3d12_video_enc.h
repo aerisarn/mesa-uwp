@@ -236,7 +236,6 @@ struct d3d12_video_encoder
    ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder = {};
    ComPtr<ID3D12VideoEncoderHeap>        m_spVideoEncoderHeap = {};
    ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue = {};
-   ComPtr<ID3D12CommandAllocator>        m_spCommandAllocator = {};
    ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList = {};
    std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList = {};
 
@@ -258,6 +257,13 @@ struct d3d12_video_encoder
 
    struct D3D12EncodeCapabilities m_currentEncodeCapabilities = { };
    struct D3D12EncodeConfiguration m_currentEncodeConfig = { };
+
+   struct InFlightEncodeResources
+   {
+      ComPtr<ID3D12CommandAllocator> m_spCommandAllocator = {};
+   };
+
+   std::vector<InFlightEncodeResources> m_inflightResourcesPool;
 };
 
 bool
@@ -325,6 +331,7 @@ d3d12_video_encoder_get_current_codec(struct d3d12_video_encoder *pD3D12Enc);
 bool d3d12_video_encoder_negotiate_requested_features_and_d3d12_driver_caps(struct d3d12_video_encoder *pD3D12Enc, D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT &capEncoderSupportData);
 bool d3d12_video_encoder_query_d3d12_driver_caps(struct d3d12_video_encoder *pD3D12Enc, D3D12_FEATURE_DATA_VIDEO_ENCODER_SUPPORT &capEncoderSupportData);
 bool d3d12_video_encoder_check_subregion_mode_support(struct d3d12_video_encoder *pD3D12Enc, D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE requestedSlicesMode);
+uint64_t d3d12_video_encoder_pool_current_index(struct d3d12_video_encoder *pD3D12Enc);
 
 ///
 /// d3d12_video_encoder functions ends

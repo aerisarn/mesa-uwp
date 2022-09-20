@@ -47,6 +47,12 @@
 
 #include <cmath>
 
+uint64_t
+d3d12_video_encoder_pool_current_index(struct d3d12_video_encoder *pD3D12Enc)
+{
+   return pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_ASYNC_DEPTH;
+}
+
 /**
  * flush any outstanding command buffers to the hardware
  * should be called before a video_buffer is acessed by the gallium frontend again
@@ -108,18 +114,10 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
                     "fenceValue: %" PRIu64 "\n",
                     pD3D12Enc->m_fenceValue);
 
-      hr = pD3D12Enc->m_spCommandAllocator->Reset();
+      hr = pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator->Reset();
       if (FAILED(hr)) {
          debug_printf(
             "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12CommandAllocator failed with HR %x\n",
-            hr);
-         goto flush_fail;
-      }
-
-      hr = pD3D12Enc->m_spEncodeCommandList->Reset(pD3D12Enc->m_spCommandAllocator.Get());
-      if (FAILED(hr)) {
-         debug_printf(
-            "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12GraphicsCommandList failed with HR %x\n",
             hr);
          goto flush_fail;
       }
@@ -966,22 +964,32 @@ d3d12_video_encoder_create_command_objects(struct d3d12_video_encoder *pD3D12Enc
       return false;
    }
 
-   hr = pD3D12Enc->m_pD3D12Screen->dev->CreateCommandAllocator(
-      D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE,
-      IID_PPV_ARGS(pD3D12Enc->m_spCommandAllocator.GetAddressOf()));
-   if (FAILED(hr)) {
-      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_create_command_objects - Call to "
-                      "CreateCommandAllocator failed with HR %x\n",
-                      hr);
+   for (auto& inputResource : pD3D12Enc->m_inflightResourcesPool)
+   {
+      // Create associated command allocator for Encode, Resolve operations
+      hr = pD3D12Enc->m_pD3D12Screen->dev->CreateCommandAllocator(
+         D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE,
+         IID_PPV_ARGS(inputResource.m_spCommandAllocator.GetAddressOf()));
+      if (FAILED(hr)) {
+         debug_printf("[d3d12_video_encoder] d3d12_video_encoder_create_command_objects - Call to "
+                        "CreateCommandAllocator failed with HR %x\n",
+                        hr);
+         return false;
+      }
+   }
+
+   ComPtr<ID3D12Device4> spD3D12Device4;
+   if (FAILED(pD3D12Enc->m_pD3D12Screen->dev->QueryInterface(
+          IID_PPV_ARGS(spD3D12Device4.GetAddressOf())))) {
+      debug_printf(
+         "[d3d12_video_encoder] d3d12_video_encoder_create_encoder - D3D12 Device has no Video encode support\n");
       return false;
    }
 
-   hr =
-      pD3D12Enc->m_pD3D12Screen->dev->CreateCommandList(0,
-                                                        D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE,
-                                                        pD3D12Enc->m_spCommandAllocator.Get(),
-                                                        nullptr,
-                                                        IID_PPV_ARGS(pD3D12Enc->m_spEncodeCommandList.GetAddressOf()));
+   hr = spD3D12Device4->CreateCommandList1(0,
+                        D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE,
+                        D3D12_COMMAND_LIST_FLAG_NONE,
+                        IID_PPV_ARGS(pD3D12Enc->m_spEncodeCommandList.GetAddressOf()));
 
    if (FAILED(hr)) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_create_command_objects - Call to CreateCommandList "
@@ -1004,6 +1012,7 @@ d3d12_video_encoder_create_encoder(struct pipe_context *context, const struct pi
    struct d3d12_video_encoder *pD3D12Enc = new d3d12_video_encoder;
 
    pD3D12Enc->m_spEncodedFrameMetadata.resize(D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT, {nullptr, 0, 0});
+   pD3D12Enc->m_inflightResourcesPool.resize(D3D12_VIDEO_ENC_ASYNC_DEPTH, { 0 });
 
    pD3D12Enc->base         = *codec;
    pD3D12Enc->m_screen     = context->screen;
@@ -1156,12 +1165,21 @@ d3d12_video_encoder_begin_frame(struct pipe_video_codec * codec,
    // d3d12_video_encoder_encode_bitstream
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);
+   HRESULT hr = S_OK;
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame started for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
    if (!d3d12_video_encoder_reconfigure_session(pD3D12Enc, target, picture)) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame - Failure on "
                       "d3d12_video_encoder_reconfigure_session\n");
+      goto fail;
+   }
+
+   hr = pD3D12Enc->m_spEncodeCommandList->Reset(pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get());
+   if (FAILED(hr)) {
+      debug_printf(
+         "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12GraphicsCommandList failed with HR %x\n",
+         hr);
       goto fail;
    }
 
@@ -1515,6 +1533,16 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       { pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].spBuffer.Get(), 0 }
    };
    pD3D12Enc->m_spEncodeCommandList->ResolveEncoderOutputMetadata(&inputMetadataCmd, &outputMetadataCmd);
+
+   debug_printf("[d3d12_video_encoder_encode_bitstream] EncodeFrame slot %" PRIu64 " encoder %p encoderheap %p input tex %p output bitstream %p raw metadata buf %p resolved metadata buf %p Command allocator %p\n",
+               d3d12_video_encoder_pool_current_index(pD3D12Enc),
+               pD3D12Enc->m_spVideoEncoder.Get(),
+               pD3D12Enc->m_spVideoEncoderHeap.Get(),
+               inputStreamArguments.pInputFrame,
+               outputStreamArguments.Bitstream.pBuffer,
+               inputMetadataCmd.HWLayoutMetadata.pBuffer,
+               outputMetadataCmd.ResolvedLayoutMetadata.pBuffer,
+               pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get());
 
    // Transition DPB reference pictures back to COMMON
    if ((referenceFramesDescriptor.NumTexture2Ds > 0) ||
