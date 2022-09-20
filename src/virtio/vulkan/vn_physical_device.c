@@ -200,8 +200,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT_OF(features2, VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, feats->vertex_attribute_divisor, EXT_vertex_attribute_divisor);
    VN_ADD_EXT_TO_PNEXT_OF(features2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, EXT_ycbcr_2plane_444_formats);
 
-   /* Vendor */
-   VN_ADD_EXT_TO_PNEXT_OF(features2, MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, feats->mutable_descriptor_type, VALVE_mutable_descriptor_type);
+   if (exts->EXT_mutable_descriptor_type || exts->VALVE_mutable_descriptor_type) {
+      VN_ADD_TO_PNEXT_OF(features2, MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT, feats->mutable_descriptor_type);
+   }
 
    /* clang-format on */
 
@@ -1075,6 +1076,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
       .EXT_depth_clip_enable = true,
+      .EXT_mutable_descriptor_type = true,
 
       /* vendor */
       .VALVE_mutable_descriptor_type = true,
@@ -1713,14 +1715,12 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(INDEX_TYPE_UINT8_FEATURES_EXT, index_type_uint8);
       CASE(LINE_RASTERIZATION_FEATURES_EXT, line_rasterization);
       CASE(MULTI_DRAW_FEATURES_EXT, multi_draw);
+      CASE(MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT, mutable_descriptor_type);
       CASE(PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, primitive_topology_list_restart);
       CASE(PROVOKING_VERTEX_FEATURES_EXT, provoking_vertex);
       CASE(ROBUSTNESS_2_FEATURES_EXT, robustness_2);
       CASE(TRANSFORM_FEEDBACK_FEATURES_EXT, transform_feedback);
       CASE(VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, vertex_attribute_divisor);
-
-      /* vendor */
-      CASE(MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE, mutable_descriptor_type);
 
          /* clang-format on */
 

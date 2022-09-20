@@ -40,15 +40,13 @@ struct vn_physical_device_features {
    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8;
    VkPhysicalDeviceLineRasterizationFeaturesEXT line_rasterization;
    VkPhysicalDeviceMultiDrawFeaturesEXT multi_draw;
+   VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type;
    VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
       primitive_topology_list_restart;
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2FeaturesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertex_attribute_divisor;
-
-   /* vendor */
-   VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE mutable_descriptor_type;
 };
 
 struct vn_physical_device_properties {
