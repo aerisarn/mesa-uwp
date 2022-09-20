@@ -2087,20 +2087,31 @@ find_layer_out_var(nir_shader *nir)
 }
 
 static bool
-radv_lower_multiview(nir_shader *nir)
+radv_should_export_multiview(const struct radv_pipeline_stage *producer,
+                             const struct radv_pipeline_stage *consumer,
+                             const struct radv_pipeline_key *pipeline_key)
 {
-   /* This pass is not suitable for mesh shaders, because it can't know
-    * the mapping between API mesh shader invocations and output primitives.
-    * Needs to be handled in ac_nir_lower_ngg.
-    */
-   if (nir->info.stage == MESA_SHADER_MESH)
-      return false;
+   /* Export the layer in the last VGT stage if multiview is used. */
+   return pipeline_key->has_multiview_view_index &&
+          consumer->stage == MESA_SHADER_FRAGMENT &&
+          !(producer->nir->info.outputs_written & VARYING_BIT_LAYER);
+}
 
+static bool
+radv_export_multiview(nir_shader *nir)
+{
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
    nir_builder b;
    nir_builder_init(&b, impl);
+
+   /* This pass is not suitable for mesh shaders, because it can't know the mapping between API mesh
+    * shader invocations and output primitives. Needs to be handled in ac_nir_lower_ngg.
+    */
+   assert(nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL ||
+          nir->info.stage == MESA_SHADER_GEOMETRY);
 
    /* Iterate in reverse order since there should be only one deref store to POS after
     * lower_io_to_temporaries for vertex shaders and inject the layer there. For geometry shaders,
@@ -2360,12 +2371,6 @@ radv_pipeline_link_shaders(const struct radv_device *device,
          NIR_PASS(_, consumer, radv_lower_viewport_to_zero);
       }
 
-      /* Export the layer in the last VGT stage if multiview is used. */
-      if (pipeline_key->has_multiview_view_index &&
-          !(producer->info.outputs_written & VARYING_BIT_LAYER)) {
-         NIR_PASS(_, producer, radv_lower_multiview);
-      }
-
       /* Lower the view index to map on the layer. */
       NIR_PASS(_, consumer, radv_lower_view_index, producer->info.stage == MESA_SHADER_MESH);
    }
@@ -2489,6 +2494,10 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
          NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
       }
 
+      if (radv_should_export_multiview(vs_stage, next_stage, pipeline_key)) {
+         NIR_PASS(_, vs_stage->nir, radv_export_multiview);
+      }
+
       radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
    }
 
@@ -2554,6 +2563,10 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
          NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
       }
 
+      if (radv_should_export_multiview(tes_stage, next_stage, pipeline_key)) {
+         NIR_PASS(_, tes_stage->nir, radv_export_multiview);
+      }
+
       radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
    }
 
@@ -2579,6 +2592,10 @@ radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_sta
 
    if (fs_stage) {
       assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
+
+      if (radv_should_export_multiview(gs_stage, fs_stage, pipeline_key)) {
+         NIR_PASS(_, gs_stage->nir, radv_export_multiview);
+      }
 
       radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
    }
