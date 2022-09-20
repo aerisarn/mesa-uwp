@@ -430,3 +430,153 @@ BEGIN_TEST(optimizer_postRA.dpp)
    finish_optimizer_postRA_test();
 END_TEST
 
+BEGIN_TEST(optimizer_postRA.dpp_across_cf)
+   //>> v1: %a:v[0], v1: %b:v[1], v1: %c:v[2], v1: %d:v[3], s2: %e:s[0-1] = p_startpgm
+   if (!setup_cs("v1 v1 v1 v1 s2", GFX10_3))
+      return;
+
+   aco_ptr<Instruction>& startpgm = bld.instructions->at(0);
+   startpgm->definitions[0].setFixed(PhysReg(256));
+   startpgm->definitions[1].setFixed(PhysReg(257));
+   startpgm->definitions[2].setFixed(PhysReg(258));
+   startpgm->definitions[3].setFixed(PhysReg(259));
+   startpgm->definitions[4].setFixed(PhysReg(0));
+
+   Operand a(inputs[0], PhysReg(256)); /* source for DPP */
+   Operand b(inputs[1], PhysReg(257)); /* source for fadd */
+   Operand c(inputs[2], PhysReg(258)); /* buffer store address */
+   Operand d(inputs[3], PhysReg(259)); /* buffer store value */
+   Operand e(inputs[4], PhysReg(0));   /* condition */
+   PhysReg reg_v12(268); /* temporary register */
+
+   Temp dpp_tmp = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1, reg_v12), a, dpp_row_mirror);
+
+   //! s2: %saved_exec:s[84-85],  s1: %0:scc,  s2: %0:exec = s_and_saveexec_b64 %e:s[0-1], %0:exec
+   //! s2: %0:vcc = p_cbranch_nz BB1, BB2
+
+   emit_divergent_if_else(program.get(), bld, e, [&]() -> void {
+      /* --- logical then --- */
+      //! BB1
+      //! /* logical preds: BB0, / linear preds: BB0, / kind: */
+      //! p_logical_start
+
+      //! buffer_store_dword %c:v[2], 0, %d:v[3], 0 offen storage: semantics: scope:invocation
+      bld.mubuf(aco_opcode::buffer_store_dword, c, Operand::zero(), d, Operand::zero(), 0, true);
+
+      //! p_logical_end
+      //! s2: %0:vcc = p_branch BB3
+
+      /* --- linear then --- */
+      //! BB2
+      //! /* logical preds: / linear preds: BB0, / kind: */
+      //! s2: %0:vcc = p_branch BB3
+
+      /* --- invert --- */
+      //! BB3
+      //! /* logical preds: / linear preds: BB1, BB2, / kind: invert, */
+      //! s2: %0:exec,  s1: %0:scc = s_andn2_b64 %saved_exec:s[84-85], %0:exec
+      //! s2: %0:vcc = p_cbranch_nz BB4, BB5
+   }, [&]() -> void {
+      /* --- logical else --- */
+      //! BB4
+      //! /* logical preds: BB0, / linear preds: BB3, / kind: */
+      //! p_logical_start
+      //! p_logical_end
+      //! s2: %0:vcc = p_branch BB6
+
+      /* --- linear else --- */
+      //! BB5
+      //! /* logical preds: / linear preds: BB3, / kind: */
+      //! s2: %0:vcc = p_branch BB6
+   });
+
+   /* --- merge block --- */
+   //! BB6
+   //! /* logical preds: BB1, BB4, / linear preds: BB4, BB5, / kind: uniform, merge, */
+   //! s2: %0:exec = p_parallelcopy %saved_exec:s[84-85]
+
+   //! v1: %res10:v[12] = v_add_f32 %a:v[0], %b:v[1] row_mirror bound_ctrl:1
+   //! p_unit_test 10, %res10:v[12]
+   Temp result = bld.vop2(aco_opcode::v_add_f32, bld.def(v1, reg_v12), Operand(dpp_tmp, reg_v12), b);
+   writeout(10, Operand(result, reg_v12));
+
+   finish_optimizer_postRA_test();
+END_TEST
+
+BEGIN_TEST(optimizer_postRA.dpp_across_cf_overwritten)
+   //>> v1: %a:v[0], v1: %b:v[1], v1: %c:v[2], v1: %d:v[3], s2: %e:s[0-1], s1: %f:s[2] = p_startpgm
+   if (!setup_cs("v1 v1 v1 v1 s2 s1", GFX10_3))
+      return;
+
+   aco_ptr<Instruction>& startpgm = bld.instructions->at(0);
+   startpgm->definitions[0].setFixed(PhysReg(256));
+   startpgm->definitions[1].setFixed(PhysReg(257));
+   startpgm->definitions[2].setFixed(PhysReg(258));
+   startpgm->definitions[3].setFixed(PhysReg(259));
+   startpgm->definitions[4].setFixed(PhysReg(0));
+   startpgm->definitions[5].setFixed(PhysReg(2));
+
+   Operand a(inputs[0], PhysReg(256)); /* source for DPP */
+   Operand b(inputs[1], PhysReg(257)); /* source for fadd */
+   Operand d(inputs[3], PhysReg(259)); /* buffer store value */
+   Operand e(inputs[4], PhysReg(0));   /* condition */
+   Operand f(inputs[5], PhysReg(2));   /* buffer store address (scalar) */
+   PhysReg reg_v12(268); /* temporary register */
+
+   //! v1: %dpp_tmp:v[12] = v_mov_b32 %a:v[0] row_mirror bound_ctrl:1
+   Temp dpp_tmp = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1, reg_v12), a, dpp_row_mirror);
+
+   //! s2: %saved_exec:s[84-85],  s1: %0:scc,  s2: %0:exec = s_and_saveexec_b64 %e:s[0-1], %0:exec
+   //! s2: %0:vcc = p_cbranch_nz BB1, BB2
+
+   emit_divergent_if_else(program.get(), bld, e, [&]() -> void {
+      /* --- logical then --- */
+      //! BB1
+      //! /* logical preds: BB0, / linear preds: BB0, / kind: */
+      //! p_logical_start
+
+      //! v1: %addr:v[0] = p_parallelcopy %f:s[2]
+      Temp addr = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(v1, a.physReg()), f);
+
+      //! buffer_store_dword %addr:v[0], 0, %d:v[3], 0 offen storage: semantics: scope:invocation
+      bld.mubuf(aco_opcode::buffer_store_dword, Operand(addr, a.physReg()), Operand::zero(), d, Operand::zero(), 0, true);
+
+      //! p_logical_end
+      //! s2: %0:vcc = p_branch BB3
+
+      /* --- linear then --- */
+      //! BB2
+      //! /* logical preds: / linear preds: BB0, / kind: */
+      //! s2: %0:vcc = p_branch BB3
+
+      /* --- invert --- */
+      //! BB3
+      //! /* logical preds: / linear preds: BB1, BB2, / kind: invert, */
+      //! s2: %0:exec,  s1: %0:scc = s_andn2_b64 %saved_exec:s[84-85], %0:exec
+      //! s2: %0:vcc = p_cbranch_nz BB4, BB5
+   }, [&]() -> void {
+      /* --- logical else --- */
+      //! BB4
+      //! /* logical preds: BB0, / linear preds: BB3, / kind: */
+      //! p_logical_start
+      //! p_logical_end
+      //! s2: %0:vcc = p_branch BB6
+
+      /* --- linear else --- */
+      //! BB5
+      //! /* logical preds: / linear preds: BB3, / kind: */
+      //! s2: %0:vcc = p_branch BB6
+   });
+
+   /* --- merge block --- */
+   //! BB6
+   //! /* logical preds: BB1, BB4, / linear preds: BB4, BB5, / kind: uniform, merge, */
+   //! s2: %0:exec = p_parallelcopy %saved_exec:s[84-85]
+
+   //! v1: %result:v[12] = v_add_f32 %dpp_mov_tmp:v[12], %b:v[1]
+   Temp result = bld.vop2(aco_opcode::v_add_f32, bld.def(v1, reg_v12), Operand(dpp_tmp, reg_v12), b);
+   //! p_unit_test 10, %result:v[12]
+   writeout(10, Operand(result, reg_v12));
+
+   finish_optimizer_postRA_test();
+END_TEST
