@@ -3082,17 +3082,6 @@ tu_GetMemoryFdPropertiesKHR(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_GetPhysicalDeviceExternalFenceProperties(
-   VkPhysicalDevice physicalDevice,
-   const VkPhysicalDeviceExternalFenceInfo *pExternalFenceInfo,
-   VkExternalFenceProperties *pExternalFenceProperties)
-{
-   pExternalFenceProperties->exportFromImportedHandleTypes = 0;
-   pExternalFenceProperties->compatibleHandleTypes = 0;
-   pExternalFenceProperties->externalFenceFeatures = 0;
-}
-
-VKAPI_ATTR void VKAPI_CALL
 tu_GetDeviceGroupPeerMemoryFeatures(
    VkDevice device,
    uint32_t heapIndex,
