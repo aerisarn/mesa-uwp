@@ -673,7 +673,7 @@ zink_create_gfx_program(struct zink_context *ctx,
          simple_mtx_lock(&prog->shaders[i]->lock);
          _mesa_set_add(prog->shaders[i]->programs, prog);
          simple_mtx_unlock(&prog->shaders[i]->lock);
-         zink_gfx_program_reference(ctx, NULL, prog);
+         zink_gfx_program_reference(screen, NULL, prog);
          _mesa_sha1_update(&sctx, prog->shaders[i]->base.sha1, sizeof(prog->shaders[i]->base.sha1));
       }
    }
@@ -687,7 +687,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
 fail:
    if (prog)
-      zink_destroy_gfx_program(ctx, prog);
+      zink_destroy_gfx_program(screen, prog);
    return NULL;
 }
 
@@ -894,9 +894,8 @@ zink_program_num_bindings(const struct zink_program *pg, bool is_compute)
 }
 
 static void
-deinit_program(struct zink_context *ctx, struct zink_program *pg)
+deinit_program(struct zink_screen *screen, struct zink_program *pg)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    util_queue_fence_wait(&pg->cache_fence);
    if (pg->layout)
       VKSCR(DestroyPipelineLayout)(screen->dev, pg->layout, NULL);
@@ -907,11 +906,10 @@ deinit_program(struct zink_context *ctx, struct zink_program *pg)
 }
 
 void
-zink_destroy_gfx_program(struct zink_context *ctx,
+zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   deinit_program(ctx, &prog->base);
+   deinit_program(screen, &prog->base);
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (prog->shaders[i]) {
@@ -959,11 +957,10 @@ zink_destroy_gfx_program(struct zink_context *ctx,
 }
 
 void
-zink_destroy_compute_program(struct zink_context *ctx,
+zink_destroy_compute_program(struct zink_screen *screen,
                              struct zink_compute_program *comp)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   deinit_program(ctx, &comp->base);
+   deinit_program(screen, &comp->base);
 
    if (comp->shader)
       _mesa_set_remove_key(comp->shader->programs, comp);
@@ -1264,7 +1261,7 @@ static void
 zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_compute_program *comp = cso;
-   zink_compute_program_reference(zink_context(pctx), &comp, NULL);
+   zink_compute_program_reference(zink_screen(pctx->screen), &comp, NULL);
 }
 
 void

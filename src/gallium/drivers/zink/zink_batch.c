@@ -87,7 +87,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    set_foreach_remove(&bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
       zink_batch_usage_unset(&pg->batch_uses, bs);
-      zink_program_reference(ctx, &pg, NULL);
+      zink_program_reference(screen, &pg, NULL);
    }
 
    bs->resource_size = 0;

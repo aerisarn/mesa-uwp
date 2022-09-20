@@ -3260,7 +3260,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->generated)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
-      zink_gfx_program_reference(ctx, &prog, NULL);
+      zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
    }
    if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated) {
       /* automatically destroy generated tcs shaders when tes is destroyed */
