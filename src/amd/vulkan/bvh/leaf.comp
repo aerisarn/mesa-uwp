@@ -174,7 +174,7 @@ load_vertices(VOID_REF vertices, triangle_indices indices, uint32_t vertex_forma
 
 /* A GLSL-adapted copy of VkAccelerationStructureInstanceKHR. */
 struct AccelerationStructureInstance {
-   float transform[12];
+   mat3x4 transform;
    uint32_t custom_instance_and_mask;
    uint32_t sbt_offset_and_flags;
    uint64_t accelerationStructureReference;
@@ -191,19 +191,13 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
    if (instance.accelerationStructureReference == 0)
       return false;
 
-   mat4 transform = mat4(1.0);
-   for (uint32_t col = 0; col < 4; col++)
-      for (uint32_t row = 0; row < 3; row++)
-         transform[col][row] = instance.transform[col + row * 4];
+   mat4 transform = mat4(instance.transform);
 
-   mat4 inv_transform = inverse(transform);
-   for (uint32_t row = 0; row < 3; row++)
-      for (uint32_t col = 0; col < 4; col++)
-         DEREF(node).wto_matrix[row][col] = inv_transform[col][row];
-
-   for (uint32_t col = 0; col < 4; col++)
-      for (uint32_t row = 0; row < 3; row++)
-         DEREF(node).otw_matrix[row][col] = transform[col][row];
+   /* We store everything as mat3x4 for layout reasons but the conceptual matrix
+    * is really a mat4x3. So transpose it temporarily for the invertion. */
+   mat4 inv_transform = transpose(inverse(transpose(transform)));
+   DEREF(node).wto_matrix = mat3x4(inv_transform);
+   DEREF(node).otw_matrix = mat3x4(transform);
 
    radv_accel_struct_header instance_header =
       DEREF(REF(radv_accel_struct_header)(instance.accelerationStructureReference));

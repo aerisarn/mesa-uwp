@@ -33,6 +33,11 @@
 #define VK_UUID_SIZE 16
 #else
 #include <vulkan/vulkan.h>
+
+typedef struct {
+   float values[3][4];
+} mat3x4;
+
 #endif
 
 struct radv_accel_struct_serialization_header {
@@ -94,12 +99,13 @@ struct radv_bvh_instance_node {
    /* lower 24 bits are the sbt offset, upper 8 bits are VkGeometryInstanceFlagsKHR */
    uint32_t sbt_offset_and_flags;
 
-   float wto_matrix[3][4];
+   mat3x4 wto_matrix;
+
    uint32_t instance_id;
    uint32_t reserved[3];
 
    /* Object to world matrix transposed from the initial transform. */
-   float otw_matrix[3][4];
+   mat3x4 otw_matrix;
 };
 
 struct radv_bvh_box16_node {

@@ -510,8 +510,8 @@ rra_transcode_instance_node(struct rra_instance_node *dst, const struct radv_bvh
    dst->instance_id = src->instance_id;
    dst->blas_metadata_size = sizeof(struct rra_accel_struct_metadata);
 
-   memcpy(dst->wto_matrix, src->wto_matrix, sizeof(dst->wto_matrix));
-   memcpy(dst->otw_matrix, src->otw_matrix, sizeof(dst->otw_matrix));
+   memcpy(dst->wto_matrix, src->wto_matrix.values, sizeof(dst->wto_matrix));
+   memcpy(dst->otw_matrix, src->otw_matrix.values, sizeof(dst->otw_matrix));
 }
 
 static void
