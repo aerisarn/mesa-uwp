@@ -1825,7 +1825,7 @@ dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
    rdraw = (rsurf) ? dri2_dpy->vtbl->get_dri_drawable(rsurf) : NULL;
    cctx = (dri2_ctx) ? dri2_ctx->dri_context : NULL;
 
-   if (cctx || ddraw || rdraw) {
+   if (cctx) {
       if (!dri2_dpy->core->bindContext(cctx, ddraw, rdraw)) {
          _EGLContext *tmp_ctx;
 
