@@ -624,6 +624,8 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!prog)
       goto fail;
 
+   prog->ctx = ctx;
+
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       util_dynarray_init(&prog->shader_cache[i][0][0], NULL);
       util_dynarray_init(&prog->shader_cache[i][0][1], NULL);

@@ -797,6 +797,8 @@ struct zink_gfx_output_key {
 struct zink_gfx_program {
    struct zink_program base;
 
+   struct zink_context *ctx; //the owner context
+
    uint32_t stages_present; //mask of stages present in this program
    uint32_t stages_remaining; //mask of zink_shader remaining in this program
    struct nir_shader *nir[ZINK_GFX_SHADER_COUNT];
