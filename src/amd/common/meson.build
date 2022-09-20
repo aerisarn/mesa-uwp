@@ -102,7 +102,7 @@ amd_common_files = files(
   'ac_perfcounter.h',
 )
 
-if not with_platform_windows
+if dep_elf.found()
   amd_common_files += files(
     'ac_rtld.c',
     'ac_rtld.h',

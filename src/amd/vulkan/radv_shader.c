@@ -41,7 +41,7 @@
 #include "util/debug.h"
 #include "ac_binary.h"
 #include "ac_nir.h"
-#ifndef _WIN32
+#if defined(USE_LIBELF)
 #include "ac_rtld.h"
 #endif
 #include "aco_interface.h"
@@ -1955,7 +1955,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
    }
 }
 
-#ifndef _WIN32
+#if defined(USE_LIBELF)
 static bool
 radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shader,
                       const struct radv_shader_binary *binary, struct ac_rtld_binary *rtld_binary)
@@ -2006,7 +2006,7 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
                           struct radv_shader *shader, void *dest_ptr)
 {
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
-#ifdef _WIN32
+#if !defined(USE_LIBELF)
       return false;
 #else
       struct ac_rtld_binary rtld_binary = {0};
@@ -2059,7 +2059,7 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
    shader->binary = binary;
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
-#ifdef _WIN32
+#if !defined(USE_LIBELF)
       free(shader);
       return NULL;
 #else
@@ -2110,7 +2110,7 @@ radv_shader_create(struct radv_device *device, struct radv_shader_binary *binary
    }
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
-#ifdef _WIN32
+#if !defined(USE_LIBELF)
       free(shader);
       return NULL;
 #else
