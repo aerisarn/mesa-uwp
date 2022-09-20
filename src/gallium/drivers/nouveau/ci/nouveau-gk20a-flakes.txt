@@ -67,3 +67,6 @@ KHR-GLES31.core.texture_gather.plain-gather-float-cube-rgba
 KHR-GLES31.core.texture_gather.swizzle
 KHR-GLES31.core.texture_storage_multisample.FunctionalTests.verify_sample_masking_for_non_integer_color_renderable_internalformats
 KHR-GLES31.core.vertex_attrib_binding.*
+
+dEQP-GLES3.functional.multisample.fbo_8_samples.proportionality_alpha_to_coverage
+dEQP-GLES3.functional.multisample.fbo_max_samples.proportionality_alpha_to_coverage
