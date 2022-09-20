@@ -3248,11 +3248,14 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
          unsigned stages_present = prog->stages_present;
          if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
             stages_present &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
-         struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(stages_present)];
+         unsigned idx = zink_program_cache_stages(stages_present);
+         struct hash_table *ht = &ctx->program_cache[idx];
+         simple_mtx_lock(&ctx->program_lock[idx]);
          struct hash_entry *he = _mesa_hash_table_search(ht, prog->shaders);
          assert(he);
          _mesa_hash_table_remove(ht, he);
          prog->base.removed = true;
+         simple_mtx_unlock(&ctx->program_lock[idx]);
       }
       if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated) {
          prog->shaders[stage] = NULL;

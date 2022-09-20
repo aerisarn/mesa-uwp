@@ -1112,6 +1112,8 @@ zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen)
    _mesa_hash_table_init(&ctx->program_cache[5], ctx, hash_gfx_program<5>, equals_gfx_program<5>);
    _mesa_hash_table_init(&ctx->program_cache[6], ctx, hash_gfx_program<6>, equals_gfx_program<6>);
    _mesa_hash_table_init(&ctx->program_cache[7], ctx, hash_gfx_program<7>, equals_gfx_program<7>);
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_lock); i++)
+      simple_mtx_init(&ctx->program_lock[i], mtx_plain);
 }
 
 void

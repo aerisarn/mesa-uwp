@@ -97,10 +97,12 @@ zink_context_destroy(struct pipe_context *pctx)
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++) {
+      simple_mtx_lock((&ctx->program_lock[i]));
       hash_table_foreach(&ctx->program_cache[i], entry) {
          struct zink_program *pg = entry->data;
          pg->removed = true;
       }
+      simple_mtx_unlock((&ctx->program_lock[i]));
    }
 
    if (ctx->blitter)
@@ -158,6 +160,8 @@ zink_context_destroy(struct pipe_context *pctx)
    slab_destroy_child(&ctx->transfer_pool);
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_cache); i++)
       _mesa_hash_table_clear(&ctx->program_cache[i], NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->program_lock); i++)
+      simple_mtx_destroy(&ctx->program_lock[i]);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
