@@ -906,7 +906,7 @@ eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_list,
 
    if (!share && share_list != EGL_NO_CONTEXT)
       RETURN_EGL_ERROR(disp, EGL_BAD_CONTEXT, EGL_NO_CONTEXT);
-   else if(share && share->Resource.Display != disp) {
+   else if (share && share->Resource.Display != disp) {
       /* From the spec.
        *
        * "An EGL_BAD_MATCH error is generated if an OpenGL or OpenGL ES
