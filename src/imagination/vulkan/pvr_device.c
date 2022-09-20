@@ -2582,7 +2582,18 @@ VkResult pvr_GetEventStatus(VkDevice _device, VkEvent _event)
 
 VkResult pvr_SetEvent(VkDevice _device, VkEvent _event)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_event, event, _event);
+
+   if (event->sync) {
+      PVR_FROM_HANDLE(pvr_device, device, _device);
+
+      const VkResult result = vk_sync_signal(&device->vk, event->sync, 0);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   event->state = PVR_EVENT_STATE_SET_BY_HOST;
+
    return VK_SUCCESS;
 }
 
