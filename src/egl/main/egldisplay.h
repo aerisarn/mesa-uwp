@@ -255,25 +255,7 @@ _eglCleanupDisplay(_EGLDisplay *disp);
 
 
 extern EGLBoolean
-_eglCheckDisplayHandle(EGLDisplay dpy);
-
-
-extern EGLBoolean
 _eglCheckResource(void *res, _EGLResourceType type, _EGLDisplay *disp);
-
-
-/**
- * Lookup a handle to find the linked display.
- * Return NULL if the handle has no corresponding linked display.
- */
-static inline _EGLDisplay *
-_eglLookupDisplay(EGLDisplay dpy)
-{
-   _EGLDisplay *disp = (_EGLDisplay *) dpy;
-   if (!_eglCheckDisplayHandle(dpy))
-      disp = NULL;
-   return disp;
-}
 
 
 /**

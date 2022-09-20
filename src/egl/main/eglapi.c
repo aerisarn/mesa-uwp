@@ -273,6 +273,27 @@ _eglCheckSync(_EGLDisplay *disp, _EGLSync *s, const char *msg)
 
 
 /**
+ * Lookup a handle to find the linked display.
+ * Return NULL if the handle has no corresponding linked display.
+ */
+static _EGLDisplay *
+_eglLookupDisplay(EGLDisplay dpy)
+{
+   simple_mtx_lock(_eglGlobal.Mutex);
+
+   _EGLDisplay *cur = _eglGlobal.DisplayList;
+   while (cur) {
+      if (cur == (_EGLDisplay *) dpy)
+         break;
+      cur = cur->Next;
+   }
+   simple_mtx_unlock(_eglGlobal.Mutex);
+
+   return cur;
+}
+
+
+/**
  * Lookup and lock a display.
  */
 _EGLDisplay *

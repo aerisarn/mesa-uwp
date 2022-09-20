@@ -375,26 +375,6 @@ _eglCleanupDisplay(_EGLDisplay *disp)
 
 
 /**
- * Return EGL_TRUE if the given handle is a valid handle to a display.
- */
-EGLBoolean
-_eglCheckDisplayHandle(EGLDisplay dpy)
-{
-   _EGLDisplay *cur;
-
-   simple_mtx_lock(_eglGlobal.Mutex);
-   cur = _eglGlobal.DisplayList;
-   while (cur) {
-      if (cur == (_EGLDisplay *) dpy)
-         break;
-      cur = cur->Next;
-   }
-   simple_mtx_unlock(_eglGlobal.Mutex);
-   return (cur != NULL);
-}
-
-
-/**
  * Return EGL_TRUE if the given resource is valid.  That is, the display does
  * own the resource.
  */
