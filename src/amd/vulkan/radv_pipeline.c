@@ -5456,7 +5456,7 @@ radv_pipeline_emit_ps_inputs(struct radeon_cmdbuf *ctx_cs,
 
    if (ps->info.ps.viewport_index_input && !mesh)
       single_slot_to_ps_input(outinfo, VARYING_SLOT_VIEWPORT, ps_input_cntl, &ps_offset,
-                              false, false, true);
+                              false, true, true);
 
    if (ps->info.ps.has_pcoord)
       ps_input_cntl[ps_offset++] = S_028644_PT_SPRITE_TEX(1) | S_028644_OFFSET(0x20);
@@ -5485,7 +5485,7 @@ radv_pipeline_emit_ps_inputs(struct radeon_cmdbuf *ctx_cs,
 
    if (ps->info.ps.viewport_index_input && mesh)
       single_slot_to_ps_input(outinfo, VARYING_SLOT_VIEWPORT, ps_input_cntl, &ps_offset,
-                              false, false, false);
+                              false, true, false);
 
    input_mask_to_ps_inputs(outinfo, ps, ps->info.ps.input_per_primitive_mask,
                            ps_input_cntl, &ps_offset);
