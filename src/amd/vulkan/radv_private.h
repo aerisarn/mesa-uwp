@@ -943,6 +943,7 @@ struct radv_device {
    bool uses_device_generated_commands;
 };
 
+bool radv_device_set_pstate(struct radv_device *device, bool enable);
 bool radv_device_acquire_performance_counters(struct radv_device *device);
 void radv_device_release_performance_counters(struct radv_device *device);
 

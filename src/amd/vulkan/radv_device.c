@@ -7347,8 +7347,8 @@ radv_GetPhysicalDeviceFragmentShadingRatesKHR(
    return vk_outarray_status(&out);
 }
 
-static bool
-radv_thread_trace_set_pstate(struct radv_device *device, bool enable)
+bool
+radv_device_set_pstate(struct radv_device *device, bool enable)
 {
    struct radeon_winsys *ws = device->ws;
    enum radeon_ctx_pstate pstate = enable ? RADEON_CTX_PSTATE_PEAK : RADEON_CTX_PSTATE_NONE;
@@ -7371,7 +7371,7 @@ radv_device_acquire_performance_counters(struct radv_device *device)
    simple_mtx_lock(&device->pstate_mtx);
 
    if (device->pstate_cnt == 0) {
-      result = radv_thread_trace_set_pstate(device, true);
+      result = radv_device_set_pstate(device, true);
       if (result)
          ++device->pstate_cnt;
    }
@@ -7386,7 +7386,7 @@ radv_device_release_performance_counters(struct radv_device *device)
    simple_mtx_lock(&device->pstate_mtx);
 
    if (--device->pstate_cnt == 0)
-      radv_thread_trace_set_pstate(device, false);
+      radv_device_set_pstate(device, false);
 
    simple_mtx_unlock(&device->pstate_mtx);
 }
