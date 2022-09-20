@@ -1225,7 +1225,6 @@ dri2_display_release(_EGLDisplay *disp)
    if (!p_atomic_dec_zero(&dri2_dpy->ref_count))
       return;
 
-   _eglCleanupDisplay(disp);
    dri2_display_destroy(disp);
 }
 
@@ -1327,9 +1326,6 @@ dri2_egl_surface_free_local_buffers(struct dri2_egl_surface *dri2_surf)
 static EGLBoolean
 dri2_terminate(_EGLDisplay *disp)
 {
-   /* Release all non-current Context/Surfaces. */
-   _eglReleaseDisplayResources(disp);
-
    dri2_display_release(disp);
 
    return EGL_TRUE;

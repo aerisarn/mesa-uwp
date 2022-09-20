@@ -779,14 +779,9 @@ eglTerminate(EGLDisplay dpy)
       RETURN_EGL_ERROR(NULL, EGL_BAD_DISPLAY, EGL_FALSE);
 
    if (disp->Initialized) {
+      _eglReleaseDisplayResources(disp);
       disp->Driver->Terminate(disp);
-      /* do not reset disp->Driver */
-      disp->ClientAPIsString[0] = 0;
-      disp->Initialized = EGL_FALSE;
-
-      /* Reset blob cache funcs on terminate. */
-      disp->BlobCacheSet = NULL;
-      disp->BlobCacheGet = NULL;
+      _eglCleanupDisplay(disp);
    }
 
    simple_mtx_unlock(&disp->Mutex);

@@ -370,7 +370,13 @@ _eglCleanupDisplay(_EGLDisplay *disp)
       disp->Configs = NULL;
    }
 
-   /* XXX incomplete */
+   /* do not reset disp->Driver */
+   disp->ClientAPIsString[0] = 0;
+   disp->Initialized = EGL_FALSE;
+
+   /* Reset blob cache funcs on terminate. */
+   disp->BlobCacheSet = NULL;
+   disp->BlobCacheGet = NULL;
 }
 
 
