@@ -21,6 +21,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "nir_opcodes.h"
 #include "zink_context.h"
 #include "zink_compiler.h"
 #include "zink_program.h"
@@ -3028,6 +3029,56 @@ match_tex_dests(nir_shader *shader)
    return nir_shader_instructions_pass(shader, match_tex_dests_instr, nir_metadata_dominance, NULL);
 }
 
+static bool
+split_bitfields_instr(nir_builder *b, nir_instr *in, void *data)
+{
+   if (in->type != nir_instr_type_alu)
+      return false;
+   nir_alu_instr *alu = nir_instr_as_alu(in);
+   switch (alu->op) {
+   case nir_op_ubitfield_extract:
+   case nir_op_ibitfield_extract:
+   case nir_op_bitfield_insert:
+      break;
+   default:
+      return false;
+   }
+   unsigned num_components = nir_dest_num_components(alu->dest.dest);
+   if (num_components == 1)
+      return false;
+   b->cursor = nir_before_instr(in);
+   nir_ssa_def *dests[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < num_components; i++) {
+      if (alu->op == nir_op_bitfield_insert)
+         dests[i] = nir_bitfield_insert(b,
+                                        nir_channel(b, alu->src[0].src.ssa, alu->src[0].swizzle[i]),
+                                        nir_channel(b, alu->src[1].src.ssa, alu->src[1].swizzle[i]),
+                                        nir_channel(b, alu->src[2].src.ssa, alu->src[2].swizzle[i]),
+                                        nir_channel(b, alu->src[3].src.ssa, alu->src[3].swizzle[i]));
+      else if (alu->op == nir_op_ubitfield_extract)
+         dests[i] = nir_ubitfield_extract(b,
+                                          nir_channel(b, alu->src[0].src.ssa, alu->src[0].swizzle[i]),
+                                          nir_channel(b, alu->src[1].src.ssa, alu->src[1].swizzle[i]),
+                                          nir_channel(b, alu->src[2].src.ssa, alu->src[2].swizzle[i]));
+      else
+         dests[i] = nir_ibitfield_extract(b,
+                                          nir_channel(b, alu->src[0].src.ssa, alu->src[0].swizzle[i]),
+                                          nir_channel(b, alu->src[1].src.ssa, alu->src[1].swizzle[i]),
+                                          nir_channel(b, alu->src[2].src.ssa, alu->src[2].swizzle[i]));
+   }
+   nir_ssa_def *dest = nir_vec(b, dests, num_components);
+   nir_ssa_def_rewrite_uses_after(&alu->dest.dest.ssa, dest, in);
+   nir_instr_remove(in);
+   return true;
+}
+
+
+static bool
+split_bitfields(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, split_bitfields_instr, nir_metadata_dominance, NULL);
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -3066,6 +3117,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
    NIR_PASS_V(nir, lower_sparse);
+   NIR_PASS_V(nir, split_bitfields);
 
    if (screen->info.have_EXT_shader_demote_to_helper_invocation) {
       NIR_PASS_V(nir, nir_lower_discard_or_demote,
