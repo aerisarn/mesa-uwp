@@ -236,6 +236,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_non_seamless_cube_map = true,
       .EXT_tooling_info = true,
       .EXT_inline_uniform_block = true,
+      .EXT_mutable_descriptor_type = true,
    };
 }
 
@@ -797,9 +798,9 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->transformFeedbackPreservesProvokingVertex = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
-         VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
-            (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT: {
+         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT *features =
+            (VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT *)ext;
          features->mutableDescriptorType = true;
          break;
       }

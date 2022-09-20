@@ -82,7 +82,7 @@ is_dynamic(VkDescriptorType type)
 
 static uint32_t
 mutable_descriptor_size(struct tu_device *dev,
-                        const VkMutableDescriptorTypeListVALVE *list)
+                        const VkMutableDescriptorTypeListEXT *list)
 {
    uint32_t max_size = 0;
 
@@ -110,10 +110,10 @@ tu_CreateDescriptorSetLayout(
       vk_find_struct_const(
          pCreateInfo->pNext,
          DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
-   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(
          pCreateInfo->pNext,
-         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
    uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
@@ -184,7 +184,7 @@ tu_CreateDescriptorSetLayout(
       set_layout->binding[b].dynamic_offset_offset = dynamic_offset_size;
       set_layout->binding[b].shader_stages = binding->stageFlags;
 
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          /* For mutable descriptor types we must allocate a size that fits the
           * largest descriptor type that the binding can mutate to.
           */
@@ -286,10 +286,10 @@ tu_GetDescriptorSetLayoutSupport(
       vk_find_struct(
          (void *) pCreateInfo->pNext,
          DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT);
-   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(
          pCreateInfo->pNext,
-         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
    if (variable_count) {
       variable_count->maxVariableDescriptorCount = 0;
@@ -304,8 +304,8 @@ tu_GetDescriptorSetLayoutSupport(
 
       if (is_dynamic(binding->descriptorType)) {
          descriptor_sz = 0;
-      } else if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
-         const VkMutableDescriptorTypeListVALVE *list =
+      } else if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
+         const VkMutableDescriptorTypeListEXT *list =
             &mutable_info->pMutableDescriptorTypeLists[i];
 
          for (uint32_t j = 0; j < list->descriptorTypeCount; j++) {
@@ -669,9 +669,9 @@ tu_CreateDescriptorPool(VkDevice _device,
    uint64_t bo_size = 0, dynamic_size = 0;
    VkResult ret;
 
-   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const( pCreateInfo->pNext,
-         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+         MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
    const VkDescriptorPoolInlineUniformBlockCreateInfo *inline_info =
       vk_find_struct_const(pCreateInfo->pNext,
@@ -696,7 +696,7 @@ tu_CreateDescriptorPool(VkDevice _device,
          dynamic_size += descriptor_size(device, NULL, pool_size->type) *
             pool_size->descriptorCount;
          break;
-      case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+      case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
              mutable_info->pMutableDescriptorTypeLists[i].descriptorTypeCount > 0) {
             bo_size +=
@@ -738,7 +738,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    }
 
    if (bo_size) {
-      if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE)) {
+      if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT)) {
          ret = tu_bo_init_new(device, &pool->bo, bo_size, TU_BO_ALLOC_ALLOW_DUMP, "descriptor pool");
          if (ret)
             goto fail_alloc;
