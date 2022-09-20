@@ -3243,7 +3243,8 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       struct zink_gfx_program *prog = (void*)entry->key;
       gl_shader_stage stage = shader->nir->info.stage;
       assert(stage < ZINK_GFX_SHADER_COUNT);
-      if (!prog->base.removed && (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
+      if (!prog->base.removed && prog->stages_present == prog->stages_remaining &&
+          (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)) {
          unsigned stages_present = prog->stages_present;
          if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->is_generated)
             stages_present &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
