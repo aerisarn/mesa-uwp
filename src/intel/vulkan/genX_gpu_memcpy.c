@@ -201,7 +201,6 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
 
    anv_batch_emit(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType         = SEQUENTIAL;
-      prim.PrimitiveTopologyType    = _3DPRIM_POINTLIST;
       prim.VertexCountPerInstance   = size / bs;
       prim.StartVertexLocation      = 0;
       prim.InstanceCount            = 1;
