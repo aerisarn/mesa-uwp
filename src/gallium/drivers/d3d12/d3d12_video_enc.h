@@ -240,7 +240,7 @@ struct d3d12_video_encoder
    std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList = {};
 
    std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager = {};
-   std::unique_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager = {};
+   std::shared_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager = {};
    std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder = {};
 
    struct EncodedBitstreamResolvedMetadata
@@ -260,6 +260,14 @@ struct d3d12_video_encoder
 
    struct InFlightEncodeResources
    {
+      // In case of reconfigurations that trigger creation of new
+      // encoder or encoderheap or reference frames allocations
+      // we need to keep a reference alive to the ones that
+      // are currently in-flight
+      ComPtr<ID3D12VideoEncoder> m_spEncoder = {};
+      ComPtr<ID3D12VideoEncoderHeap> m_spEncoderHeap = {};
+      std::shared_ptr<d3d12_video_dpb_storage_manager_interface> m_References = {};
+
       ComPtr<ID3D12CommandAllocator> m_spCommandAllocator = {};
    };
 

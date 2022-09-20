@@ -123,6 +123,13 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
          goto flush_fail;
       }
 
+      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_with_token - resetting ID3D12CommandAllocator %p suceeded.\n",
+         pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get());
+
+      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoder.Reset();
+      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoderHeap.Reset();
+      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_References.reset();
+
       // Validate device was not removed
       hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
       if (hr != S_OK) {
@@ -1708,6 +1715,12 @@ d3d12_video_encoder_end_frame(struct pipe_video_codec * codec,
 
    // Signal finish of current frame encoding to the picture management tracker
    pD3D12Enc->m_upDPBManager->end_frame();
+
+   // Save extra references of Encoder, EncoderHeap and DPB allocations in case
+   // there's a reconfiguration that trigers the construction of new objects
+   pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoder = pD3D12Enc->m_spVideoEncoder;
+   pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoderHeap = pD3D12Enc->m_spVideoEncoderHeap;
+   pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_References = pD3D12Enc->m_upDPBStorageManager;
 
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
