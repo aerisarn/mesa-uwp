@@ -122,7 +122,7 @@ struct d3d12_video_encoder
    const uint m_NodeIndex = 0u;
 
    ComPtr<ID3D12Fence> m_spFence = {};
-   uint                m_fenceValue = 1u;
+   uint64_t            m_fenceValue = 1u;
 
    ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice = {};
    ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder = {};

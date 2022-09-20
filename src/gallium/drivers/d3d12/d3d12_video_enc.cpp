@@ -73,7 +73,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Nothing to flush, all up to date.\n");
    } else {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Will flush video queue work and CPU wait "
-                    "on fenceValue: %d\n",
+                    "on fenceValue: %" PRIu64 "\n",
                     pD3D12Enc->m_fenceValue);
 
       HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
@@ -105,7 +105,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
       pD3D12Enc->m_spEncodeCommandQueue->Signal(pD3D12Enc->m_spFence.Get(), pD3D12Enc->m_fenceValue);
       pD3D12Enc->m_spFence->SetEventOnCompletion(pD3D12Enc->m_fenceValue, nullptr);
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush - ExecuteCommandLists finished on signal with "
-                    "fenceValue: %d\n",
+                    "fenceValue: %" PRIu64 "\n",
                     pD3D12Enc->m_fenceValue);
 
       hr = pD3D12Enc->m_spCommandAllocator->Reset();
@@ -135,7 +135,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
       }
 
       debug_printf(
-         "[d3d12_video_encoder] d3d12_video_encoder_flush - GPU signaled execution finalized for fenceValue: %d\n",
+         "[d3d12_video_encoder] d3d12_video_encoder_flush - GPU signaled execution finalized for fenceValue: %" PRIu64 "\n",
          pD3D12Enc->m_fenceValue);
 
       pD3D12Enc->m_fenceValue++;
@@ -144,7 +144,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
    return;
 
 flush_fail:
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush failed for fenceValue: %d\n", pD3D12Enc->m_fenceValue);
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush failed for fenceValue: %" PRIu64 "\n", pD3D12Enc->m_fenceValue);
    assert(false);
 }
 
@@ -1153,7 +1153,7 @@ d3d12_video_encoder_begin_frame(struct pipe_video_codec * codec,
    // d3d12_video_encoder_encode_bitstream
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame started for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame started for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
    if (!d3d12_video_encoder_reconfigure_session(pD3D12Enc, target, picture)) {
@@ -1162,12 +1162,12 @@ d3d12_video_encoder_begin_frame(struct pipe_video_codec * codec,
       goto fail;
    }
 
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame finalized for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
    return;
 
 fail:
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame failed for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame failed for fenceValue: %" PRIu64 "\n",
                 pD3D12Enc->m_fenceValue);
    assert(false);
 }
@@ -1238,7 +1238,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 {
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_encode_bitstream started for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_encode_bitstream started for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
    assert(pD3D12Enc->m_spD3D12VideoDevice);
    assert(pD3D12Enc->m_spEncodeCommandQueue);
@@ -1532,7 +1532,7 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
    pD3D12Enc->m_spEncodeCommandList->ResourceBarrier(_countof(rgRevertResolveMetadataStateTransitions),
                                                      rgRevertResolveMetadataStateTransitions);
 
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_encode_bitstream finalized for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_encode_bitstream finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 }
 
@@ -1644,13 +1644,13 @@ d3d12_video_encoder_end_frame(struct pipe_video_codec * codec,
 {
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame started for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame started for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
    // Signal finish of current frame encoding to the picture management tracker
    pD3D12Enc->m_upDPBManager->end_frame();
 
-   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame finalized for fenceValue: %d\n",
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
    ///
