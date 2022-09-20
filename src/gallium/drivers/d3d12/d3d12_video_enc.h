@@ -123,6 +123,7 @@ struct d3d12_video_encoder
 
    ComPtr<ID3D12Fence> m_spFence = {};
    uint64_t            m_fenceValue = 1u;
+   bool                m_bPendingWorkNotFlushed = false;
 
    ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice = {};
    ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder = {};
@@ -135,8 +136,6 @@ struct d3d12_video_encoder
    std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager = {};
    std::unique_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager = {};
    std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder = {};
-
-   bool m_needsGPUFlush = false;
 
    struct EncodedBitstreamResolvedMetadata
    {

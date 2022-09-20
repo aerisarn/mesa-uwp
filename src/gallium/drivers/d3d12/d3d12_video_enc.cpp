@@ -69,7 +69,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
    pD3D12Enc->m_spEncodeCommandQueue->Wait(casted_completion_fence->cmdqueue_fence, casted_completion_fence->value);
    pD3D12Enc->m_pD3D12Screen->base.fence_reference(&pD3D12Enc->m_pD3D12Screen->base, &completion_fence, NULL);
 
-   if (!pD3D12Enc->m_needsGPUFlush) {
+   if (!pD3D12Enc->m_bPendingWorkNotFlushed) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Nothing to flush, all up to date.\n");
    } else {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Will flush video queue work and CPU wait "
@@ -139,7 +139,7 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
          pD3D12Enc->m_fenceValue);
 
       pD3D12Enc->m_fenceValue++;
-      pD3D12Enc->m_needsGPUFlush = false;
+      pD3D12Enc->m_bPendingWorkNotFlushed = false;
    }
    return;
 
@@ -161,9 +161,10 @@ d3d12_video_encoder_destroy(struct pipe_video_codec *codec)
       return;
    }
 
-   d3d12_video_encoder_flush(codec);   // Flush pending work before destroying.
-
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
+
+   if(pD3D12Enc->m_bPendingWorkNotFlushed)
+      d3d12_video_encoder_flush(codec);   // Flush pending work before destroying.
 
    // Call d3d12_video_encoder dtor to make ComPtr and other member's destructors work
    delete pD3D12Enc;
@@ -1550,10 +1551,6 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
    assert(pD3D12Enc);
 
-   if (pD3D12Enc->m_needsGPUFlush) {
-      d3d12_video_encoder_flush(codec);
-   }
-
    uint64_t requested_metadata_fence = ((uint64_t) feedback);
 
    if((pD3D12Enc->m_fenceValue - requested_metadata_fence) > D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT)
@@ -1679,9 +1676,5 @@ d3d12_video_encoder_end_frame(struct pipe_video_codec * codec,
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_end_frame finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
-   ///
-   /// Flush work to the GPU and blocking wait until encode finishes
-   ///
-   pD3D12Enc->m_needsGPUFlush = true;
-   d3d12_video_encoder_flush(codec);
+   pD3D12Enc->m_bPendingWorkNotFlushed = true;
 }
