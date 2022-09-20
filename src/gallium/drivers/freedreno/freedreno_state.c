@@ -611,6 +611,8 @@ fd_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
          ctx->streamout.verts_written = 0;
       }
 
+      if (so->targets[i])
+         fd_resource_set_usage(so->targets[i]->buffer, FD_DIRTY_STREAMOUT);
       pipe_so_target_reference(&so->targets[i], targets[i]);
    }
 
