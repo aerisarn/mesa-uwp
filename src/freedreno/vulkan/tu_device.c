@@ -73,7 +73,7 @@ tu_device_get_cache_uuid(struct tu_physical_device *device, void *uuid)
    return 0;
 }
 
-#define TU_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#define TU_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
 
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_EnumerateInstanceVersion(uint32_t *pApiVersion)
