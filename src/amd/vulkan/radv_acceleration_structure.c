@@ -843,8 +843,14 @@ radv_CmdBuildAccelerationStructuresKHR(
             (src_scratch_offset == buffer_1_offset) ? buffer_2_offset : buffer_1_offset;
 
          uint32_t dst_node_offset = bvh_states[i].node_offset;
-         if (final_iter)
+         if (final_iter) {
             dst_node_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64);
+
+            /* Make sure we build the BVH so the hardcoded root node is valid. */
+            STATIC_ASSERT(RADV_BVH_ROOT_NODE ==
+                          DIV_ROUND_UP(sizeof(struct radv_accel_struct_header), 64) * 8 +
+                             radv_bvh_node_internal);
+         }
 
          const struct internal_args consts = {
             .bvh = accel_struct->va,

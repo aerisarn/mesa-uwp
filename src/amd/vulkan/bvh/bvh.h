@@ -53,8 +53,8 @@ struct radv_accel_struct_geometry_info {
 };
 
 struct radv_accel_struct_header {
-   uint32_t root_node_offset;
    uint32_t reserved;
+   uint32_t reserved2;
    float aabb[2][3];
 
    /* Everything after this gets updated/copied from the CPU. */
@@ -118,5 +118,8 @@ struct radv_bvh_box32_node {
    float coords[4][2][3];
    uint32_t reserved[4];
 };
+
+/* 128 bytes of header & a box32 node */
+#define RADV_BVH_ROOT_NODE (0x10 + radv_bvh_node_internal)
 
 #endif

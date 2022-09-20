@@ -366,12 +366,9 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
    {
       rq_store_var(b, index, vars->trav.bvh_base, build_addr_to_node(b, accel_struct), 1);
 
-      nir_ssa_def *bvh_root =
-         nir_build_load_global(b, 1, 32, accel_struct, .access = ACCESS_NON_WRITEABLE,
-                               .align_mul = 64, .align_offset = 0);
-
       rq_store_var(b, index, vars->trav.stack, nir_imm_int(b, 1), 0x1);
-      rq_store_array(b, index, vars->stack, nir_imm_int(b, 0), bvh_root, 0x1);
+      rq_store_array(b, index, vars->stack, nir_imm_int(b, 0), nir_imm_int(b, RADV_BVH_ROOT_NODE),
+                     0x1);
 
       rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, 0), 1);
 
@@ -749,7 +746,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
                                1);
 
                   rq_store_array(b, index, vars->stack, rq_load_var(b, index, vars->trav.stack),
-                                 nir_iand_imm(b, nir_channel(b, instance_data, 0), 63), 0x1);
+                                 nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
                   rq_store_var(b, index, vars->trav.stack,
                                nir_iadd_imm(b, rq_load_var(b, index, vars->trav.stack), 1), 1);
 

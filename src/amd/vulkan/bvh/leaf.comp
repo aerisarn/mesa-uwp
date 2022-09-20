@@ -211,8 +211,7 @@ build_instance(inout AABB bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t g
 
    radv_accel_struct_header instance_header =
       DEREF(REF(radv_accel_struct_header)(instance.accelerationStructureReference));
-   DEREF(node).base_ptr =
-      instance.accelerationStructureReference | instance_header.root_node_offset;
+   DEREF(node).base_ptr = instance.accelerationStructureReference;
 
    for (uint32_t comp = 0; comp < 3; ++comp) {
       bounds.min[comp] = transform[3][comp];

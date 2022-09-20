@@ -1422,9 +1422,6 @@ build_traversal_shader(struct radv_device *device,
    {
       nir_store_var(&b, trav_vars.bvh_base, build_addr_to_node(&b, accel_struct), 1);
 
-      nir_ssa_def *bvh_root = nir_build_load_global(
-         &b, 1, 32, accel_struct, .access = ACCESS_NON_WRITEABLE, .align_mul = 64);
-
       nir_ssa_def *desc = create_bvh_descriptor(&b);
       nir_ssa_def *vec3ones = nir_channels(&b, nir_imm_vec4(&b, 1.0, 1.0, 1.0, 1.0), 0x7);
 
@@ -1438,7 +1435,7 @@ build_traversal_shader(struct radv_device *device,
       nir_store_var(&b, trav_vars.lds_stack_base, stack_base, 1);
 
       nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
-      nir_store_var(&b, trav_vars.current_node, bvh_root, 0x1);
+      nir_store_var(&b, trav_vars.current_node, nir_imm_int(&b, RADV_BVH_ROOT_NODE), 0x1);
 
       nir_push_loop(&b);
 
@@ -1567,8 +1564,7 @@ build_traversal_shader(struct radv_device *device,
                              build_addr_to_node(
                                 &b, nir_pack_64_2x32(&b, nir_channels(&b, instance_data, 0x3))),
                              1);
-               nir_store_var(&b, trav_vars.current_node,
-                             nir_iand_imm(&b, nir_channel(&b, instance_data, 0), 63), 1);
+               nir_store_var(&b, trav_vars.current_node, nir_imm_int(&b, RADV_BVH_ROOT_NODE), 1);
 
                nir_store_var(
                   &b, trav_vars.origin,
