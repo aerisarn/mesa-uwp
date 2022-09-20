@@ -117,7 +117,8 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
       hr = pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator->Reset();
       if (FAILED(hr)) {
          debug_printf(
-            "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12CommandAllocator failed with HR %x\n",
+            "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12CommandAllocator %p failed with HR %x\n",
+            pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get(),
             hr);
          goto flush_fail;
       }
@@ -253,6 +254,7 @@ d3d12_video_encoder_reconfigure_encoder_objects(struct d3d12_video_encoder *pD3D
                                  1u;   // adding an extra slot as we also need to count the current frame output recon
                                        // allocation along max reference frame allocations
       assert(texturePoolSize < UINT16_MAX);
+      pD3D12Enc->m_upDPBStorageManager.reset();
       if (fArrayOfTextures) {
          pD3D12Enc->m_upDPBStorageManager = std::make_unique<d3d12_array_of_textures_dpb_manager>(
             static_cast<uint16_t>(texturePoolSize),
@@ -314,6 +316,7 @@ d3d12_video_encoder_reconfigure_encoder_objects(struct d3d12_video_encoder *pD3D
                                                pD3D12Enc->m_currentEncodeConfig.m_encoderMotionPrecisionLimit };
 
       // Create encoder
+      pD3D12Enc->m_spVideoEncoder.Reset();
       HRESULT hr = pD3D12Enc->m_spD3D12VideoDevice->CreateVideoEncoder(&encoderDesc,
                                                              IID_PPV_ARGS(pD3D12Enc->m_spVideoEncoder.GetAddressOf()));
       if (FAILED(hr)) {
@@ -362,6 +365,7 @@ d3d12_video_encoder_reconfigure_encoder_objects(struct d3d12_video_encoder *pD3D
                                                  &pD3D12Enc->m_currentEncodeConfig.m_currentResolution };
 
       // Create encoder heap
+      pD3D12Enc->m_spVideoEncoderHeap.Reset();
       HRESULT hr = pD3D12Enc->m_spD3D12VideoDevice->CreateVideoEncoderHeap(&heapDesc,
                                                                            IID_PPV_ARGS(pD3D12Enc->m_spVideoEncoderHeap.GetAddressOf()));
       if (FAILED(hr)) {
@@ -401,6 +405,8 @@ d3d12_video_encoder_reconfigure_encoder_objects(struct d3d12_video_encoder *pD3D
 void
 d3d12_video_encoder_create_reference_picture_manager(struct d3d12_video_encoder *pD3D12Enc)
 {
+   pD3D12Enc->m_upDPBManager.reset();
+   pD3D12Enc->m_upBitstreamBuilder.reset();
    enum pipe_video_format codec = u_reduce_video_profile(pD3D12Enc->base.profile);
    switch (codec) {
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
@@ -1095,6 +1101,7 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
       CD3DX12_RESOURCE_DESC resolvedMetadataBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
          pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].bufferSize);
 
+      pD3D12Enc->m_spEncodedFrameMetadata[pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].spBuffer.Reset();
       HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->CreateCommittedResource(
          &Properties,
          D3D12_HEAP_FLAG_NONE,
@@ -1115,6 +1122,7 @@ d3d12_video_encoder_prepare_output_buffers(struct d3d12_video_encoder *pD3D12Enc
       CD3DX12_RESOURCE_DESC metadataBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(
          pD3D12Enc->m_currentEncodeCapabilities.m_ResourceRequirementsCaps.MaxEncoderOutputMetadataBufferSize);
 
+      pD3D12Enc->m_spMetadataOutputBuffer.Reset();
       HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->CreateCommittedResource(
          &Properties,
          D3D12_HEAP_FLAG_NONE,
