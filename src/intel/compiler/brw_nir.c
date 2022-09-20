@@ -1165,7 +1165,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    }
 
    if (gl_shader_stage_can_set_fragment_shading_rate(nir->info.stage))
-      brw_nir_lower_shading_rate_output(nir);
+      NIR_PASS(_, nir, brw_nir_lower_shading_rate_output);
 
    brw_nir_optimize(nir, compiler, is_scalar, false);
 
