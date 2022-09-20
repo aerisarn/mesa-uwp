@@ -1249,11 +1249,13 @@ radv_link_shaders_info(struct radv_device *device,
                        struct radv_pipeline_stage *producer, struct radv_pipeline_stage *consumer,
                        const struct radv_pipeline_key *pipeline_key)
 {
-   /* Export primitive ID or clip/cull distances if necessary. */
-   if (consumer && consumer->stage == MESA_SHADER_FRAGMENT) {
+   /* Export primitive ID and clip/cull distances if read by the FS, or export unconditionally when
+    * the next stage is unknown (with graphics pipeline library).
+    */
+   if (!consumer || consumer->stage == MESA_SHADER_FRAGMENT) {
       struct radv_vs_output_info *outinfo = &producer->info.outinfo;
-      const bool ps_prim_id_in = consumer->info.ps.prim_id_input;
-      const bool ps_clip_dists_in = !!consumer->info.ps.num_input_clips_culls;
+      const bool ps_prim_id_in = !consumer || consumer->info.ps.prim_id_input;
+      const bool ps_clip_dists_in = !consumer || !!consumer->info.ps.num_input_clips_culls;
 
       if (ps_prim_id_in &&
           (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL)) {
