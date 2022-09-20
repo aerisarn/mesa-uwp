@@ -6870,6 +6870,23 @@ flush_vbos(struct iris_context *ice, struct iris_batch *batch)
    }
 }
 
+static bool
+point_or_line_list(enum pipe_prim_type prim_type)
+{
+   switch (prim_type) {
+   case PIPE_PRIM_POINTS:
+   case PIPE_PRIM_LINES:
+   case PIPE_PRIM_LINE_STRIP:
+   case PIPE_PRIM_LINES_ADJACENCY:
+   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+   case PIPE_PRIM_LINE_LOOP:
+      return true;
+   default:
+      return false;
+   }
+   return false;
+}
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -7091,6 +7108,17 @@ iris_upload_render_state(struct iris_context *ice,
          }
       }
    }
+
+#if GFX_VERx10 == 125
+   if (point_or_line_list(ice->state.prim_mode) ||
+       indirect || (sc->count == 1 || sc->count == 2)) {
+         iris_emit_pipe_control_write(batch, "Wa_14016118574",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      batch->screen->workaround_bo,
+                                      batch->screen->workaround_address.offset,
+                                      0ull);
+   }
+#endif
 
    iris_batch_sync_region_end(batch);
 
