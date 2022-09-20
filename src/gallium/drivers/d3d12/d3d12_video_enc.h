@@ -78,11 +78,18 @@ d3d12_video_encoder_end_frame(struct pipe_video_codec * codec,
                               struct pipe_picture_desc *picture);
 
 /**
- * flush any outstanding command buffers to the hardware
- * should be called before a video_buffer is acessed by the gallium frontend again
+ * flush async any outstanding command buffers to the hardware
+ * and returns to the caller without waiting for completion
  */
 void
 d3d12_video_encoder_flush(struct pipe_video_codec *codec);
+
+/**
+ * Waits until the async work from the fenceValue has been completed in the device
+ * and releases the in-flight resources
+ */
+void
+d3d12_video_encoder_sync_completion(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns);
 
 ///
 /// Pipe video interface ends

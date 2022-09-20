@@ -53,10 +53,6 @@ d3d12_video_encoder_pool_current_index(struct d3d12_video_encoder *pD3D12Enc)
    return pD3D12Enc->m_fenceValue % D3D12_VIDEO_ENC_ASYNC_DEPTH;
 }
 
-/**
- * flush any outstanding command buffers to the hardware
- * should be called before a video_buffer is acessed by the gallium frontend again
- */
 void
 d3d12_video_encoder_flush(struct pipe_video_codec *codec)
 {
@@ -78,8 +74,8 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
    if (!pD3D12Enc->m_bPendingWorkNotFlushed) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Nothing to flush, all up to date.\n");
    } else {
-      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Will flush video queue work and CPU wait "
-                    "on fenceValue: %" PRIu64 "\n",
+      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Will flush video queue work async"
+                    " on fenceValue: %" PRIu64 "\n",
                     pD3D12Enc->m_fenceValue);
 
       HRESULT hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
@@ -90,9 +86,6 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
                          hr);
          goto flush_fail;
       }
-
-      // Close and execute command list and wait for idle on CPU blocking
-      // this method before resetting list and allocator for next submission.
 
       if (pD3D12Enc->m_transitionsBeforeCloseCmdList.size() > 0) {
          pD3D12Enc->m_spEncodeCommandList->ResourceBarrier(pD3D12Enc->m_transitionsBeforeCloseCmdList.size(),
@@ -109,26 +102,6 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
       ID3D12CommandList *ppCommandLists[1] = { pD3D12Enc->m_spEncodeCommandList.Get() };
       pD3D12Enc->m_spEncodeCommandQueue->ExecuteCommandLists(1, ppCommandLists);
       pD3D12Enc->m_spEncodeCommandQueue->Signal(pD3D12Enc->m_spFence.Get(), pD3D12Enc->m_fenceValue);
-      pD3D12Enc->m_spFence->SetEventOnCompletion(pD3D12Enc->m_fenceValue, nullptr);
-      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush - ExecuteCommandLists finished on signal with "
-                    "fenceValue: %" PRIu64 "\n",
-                    pD3D12Enc->m_fenceValue);
-
-      hr = pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator->Reset();
-      if (FAILED(hr)) {
-         debug_printf(
-            "[d3d12_video_encoder] d3d12_video_encoder_flush - resetting ID3D12CommandAllocator %p failed with HR %x\n",
-            pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get(),
-            hr);
-         goto flush_fail;
-      }
-
-      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_with_token - resetting ID3D12CommandAllocator %p suceeded.\n",
-         pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spCommandAllocator.Get());
-
-      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoder.Reset();
-      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_spEncoderHeap.Reset();
-      pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_References.reset();
 
       // Validate device was not removed
       hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
@@ -140,10 +113,6 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
          goto flush_fail;
       }
 
-      debug_printf(
-         "[d3d12_video_encoder] d3d12_video_encoder_flush - GPU signaled execution finalized for fenceValue: %" PRIu64 "\n",
-         pD3D12Enc->m_fenceValue);
-
       pD3D12Enc->m_fenceValue++;
       pD3D12Enc->m_bPendingWorkNotFlushed = false;
    }
@@ -151,6 +120,91 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
 
 flush_fail:
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush failed for fenceValue: %" PRIu64 "\n", pD3D12Enc->m_fenceValue);
+   assert(false);
+}
+
+void
+d3d12_video_encoder_ensure_fence_finished(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns)
+{
+      struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
+      HRESULT hr = S_OK;
+      UINT64 completedValue = pD3D12Enc->m_spFence->GetCompletedValue();
+
+      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_ensure_fence_finished - Waiting for fence (with timeout_ns %" PRIu64 ") to finish with "
+                    "fenceValue: %" PRIu64 " - Current Fence Completed Value %ld\n",
+                    timeout_ns, fenceValueToWaitOn, completedValue);
+
+      if(completedValue < fenceValueToWaitOn) {
+
+         HANDLE              event = { };
+         int                 event_fd = 0;
+         event = d3d12_fence_create_event(&event_fd);
+
+         hr = pD3D12Enc->m_spFence->SetEventOnCompletion(fenceValueToWaitOn, event);
+         if (FAILED(hr)) {
+            debug_printf(
+               "[d3d12_video_encoder] d3d12_video_encoder_ensure_fence_finished - SetEventOnCompletion for fenceValue %" PRIu64 " failed with HR %x\n",
+               fenceValueToWaitOn, hr);
+            goto ensure_fence_finished_fail;
+         }
+
+         d3d12_fence_wait_event(event, event_fd, timeout_ns);
+         d3d12_fence_close_event(event, event_fd);
+
+         debug_printf("[d3d12_video_encoder] d3d12_video_encoder_ensure_fence_finished - Waiting on fence to be done with "
+               "fenceValue: %" PRIu64 " - current CompletedValue: %" PRIu64 "\n",
+               fenceValueToWaitOn,
+               completedValue);
+      } else {
+         debug_printf("[d3d12_video_encoder] d3d12_video_encoder_ensure_fence_finished - Fence already done with "
+               "fenceValue: %" PRIu64 " - current CompletedValue: %" PRIu64 "\n",
+               fenceValueToWaitOn,
+               completedValue);
+      }
+      return;
+
+ensure_fence_finished_fail:
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_completion failed for fenceValue: %" PRIu64 "\n", fenceValueToWaitOn);
+   assert(false);
+}
+
+void
+d3d12_video_encoder_sync_completion(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns)
+{
+      struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
+      assert(pD3D12Enc);
+      assert(pD3D12Enc->m_spD3D12VideoDevice);
+      assert(pD3D12Enc->m_spEncodeCommandQueue);
+      HRESULT hr = S_OK;
+
+      d3d12_video_encoder_ensure_fence_finished(codec, fenceValueToWaitOn, timeout_ns);
+
+      debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_completion - resetting ID3D12CommandAllocator %p suceeded.\n",
+         pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_spCommandAllocator.Get());
+
+      // Release references granted on end_frame for this inflight operations
+      pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_spEncoder.Reset();
+      pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_spEncoderHeap.Reset();
+      pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_References.reset();
+
+      // Validate device was not removed
+      hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
+      if (hr != S_OK) {
+         debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_completion"
+                         " - D3D12Device was removed AFTER d3d12_video_encoder_ensure_fence_finished "
+                         "execution with HR %x, but wasn't before.\n",
+                         hr);
+         goto sync_with_token_fail;
+      }
+
+      debug_printf(
+         "[d3d12_video_encoder] d3d12_video_encoder_sync_completion - GPU execution finalized for fenceValue: %" PRIu64 "\n",
+         fenceValueToWaitOn);
+
+      return;
+
+sync_with_token_fail:
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_sync_completion failed for fenceValue: %" PRIu64 "\n", fenceValueToWaitOn);
    assert(false);
 }
 
@@ -169,8 +223,12 @@ d3d12_video_encoder_destroy(struct pipe_video_codec *codec)
 
    struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
 
-   if(pD3D12Enc->m_bPendingWorkNotFlushed)
-      d3d12_video_encoder_flush(codec);   // Flush pending work before destroying.
+      // Flush pending work before destroying
+   if(pD3D12Enc->m_bPendingWorkNotFlushed){
+      uint64_t curBatchFence = pD3D12Enc->m_fenceValue;
+      d3d12_video_encoder_flush(codec);
+      d3d12_video_encoder_sync_completion(codec, curBatchFence, PIPE_TIMEOUT_INFINITE);
+   }
 
    // Call d3d12_video_encoder dtor to make ComPtr and other member's destructors work
    delete pD3D12Enc;
@@ -1184,6 +1242,16 @@ d3d12_video_encoder_begin_frame(struct pipe_video_codec * codec,
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame started for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);
 
+   ///
+   /// Wait here to make sure the next in flight resource set is empty before using it
+   ///
+   uint64_t fenceValueToWaitOn = static_cast<uint64_t>(std::max(static_cast<int64_t>(0l), static_cast<int64_t>(pD3D12Enc->m_fenceValue) - static_cast<int64_t>(D3D12_VIDEO_ENC_ASYNC_DEPTH) ));
+
+   debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame Waiting for completion of in flight resource sets with previous work with fenceValue: %" PRIu64 "\n",
+                 fenceValueToWaitOn);
+
+   d3d12_video_encoder_ensure_fence_finished(codec, fenceValueToWaitOn, PIPE_TIMEOUT_INFINITE);
+
    if (!d3d12_video_encoder_reconfigure_session(pD3D12Enc, target, picture)) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame - Failure on "
                       "d3d12_video_encoder_reconfigure_session\n");
@@ -1595,6 +1663,13 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
    assert(pD3D12Enc);
 
    uint64_t requested_metadata_fence = ((uint64_t) feedback);
+   d3d12_video_encoder_sync_completion(codec, requested_metadata_fence, PIPE_TIMEOUT_INFINITE);
+
+   debug_printf("d3d12_video_encoder_get_feedback with feedback: %" PRIu64 ", resources slot %" PRIu64 " metadata resolved ID3D12Resource buffer %p metadata required size %" PRIu64 "\n",
+      requested_metadata_fence,
+      (requested_metadata_fence % D3D12_VIDEO_ENC_ASYNC_DEPTH),
+      pD3D12Enc->m_spEncodedFrameMetadata[requested_metadata_fence % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].spBuffer.Get(),
+      pD3D12Enc->m_spEncodedFrameMetadata[requested_metadata_fence % D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT].bufferSize);
 
    if((pD3D12Enc->m_fenceValue - requested_metadata_fence) > D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT)
    {
@@ -1618,7 +1693,8 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
 
    // Read metadata from encoderMetadata
    if (encoderMetadata.EncodeErrorFlags != D3D12_VIDEO_ENCODER_ENCODE_ERROR_FLAG_NO_ERROR) {
-      debug_printf("[d3d12_video_encoder] Encode GPU command failed - EncodeErrorFlags: %" PRIu64 "\n",
+      debug_printf("[d3d12_video_encoder] Encode GPU command for fence %" PRIu64 " failed - EncodeErrorFlags: %" PRIu64 "\n",
+                      requested_metadata_fence,
                       encoderMetadata.EncodeErrorFlags);
       *size = 0;
       assert(false);
