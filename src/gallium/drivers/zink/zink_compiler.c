@@ -3236,7 +3236,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 }
 
 void
-zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
+zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
    assert(shader->nir->info.stage != MESA_SHADER_COMPUTE);
    set_foreach(shader->programs, entry) {
@@ -3264,11 +3264,11 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->generated)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
-      zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
+      zink_gfx_program_reference(screen, &prog, NULL);
    }
    if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated) {
       /* automatically destroy generated tcs shaders when tes is destroyed */
-      zink_shader_free(ctx, shader->generated);
+      zink_shader_free(screen, shader->generated);
       shader->generated = NULL;
    }
    _mesa_set_destroy(shader->programs, NULL);

@@ -1269,7 +1269,7 @@ zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
 void
 zink_delete_shader_state(struct pipe_context *pctx, void *cso)
 {
-   zink_shader_free(zink_context(pctx), cso);
+   zink_shader_free(zink_screen(pctx->screen), cso);
 }
 
 void *
