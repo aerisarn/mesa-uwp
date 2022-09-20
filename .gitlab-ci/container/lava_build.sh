@@ -110,6 +110,7 @@ apt-get install -y --no-remove \
                    libxkbcommon-dev \
                    ninja-build \
                    patch \
+                   protobuf-compiler \
                    python-is-python3 \
                    python3-distutils \
                    python3-mako \

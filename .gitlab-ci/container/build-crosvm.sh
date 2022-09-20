@@ -3,18 +3,14 @@
 
 set -ex
 
-SCRIPT_DIR="$(pwd)"
-
 git config --global user.email "mesa@example.com"
 git config --global user.name "Mesa CI"
 
-CROSVM_VERSION=c7cd0e0114c8363b884ba56d8e12adee718dcc93
-git clone --single-branch -b main --no-checkout https://chromium.googlesource.com/chromiumos/platform/crosvm /platform/crosvm
+CROSVM_VERSION=acd262cb42111c53b580a67355e795775545cced
+git clone --single-branch -b main --no-checkout https://chromium.googlesource.com/crosvm/crosvm /platform/crosvm
 pushd /platform/crosvm
 git checkout "$CROSVM_VERSION"
 git submodule update --init
-# Apply all crosvm patches for Mesa CI
-git am "$SCRIPT_DIR"/.gitlab-ci/container/build-crosvm_*.patch
 
 VIRGLRENDERER_VERSION=3c5a9bbb7464e0e91e446991055300f4f989f6a9
 rm -rf third_party/virglrenderer

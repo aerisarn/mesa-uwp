@@ -42,6 +42,7 @@ STABLE_EPHEMERAL=" \
       meson \
       patch \
       pkg-config \
+      protobuf-compiler \
       python3-dev \
       python3-pip \
       python3-setuptools \
@@ -121,6 +122,9 @@ pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@34f4ade9
 
 # Needed for manipulation with traces yaml files.
 pip3 install yq
+
+# Needed for crosvm compilation.
+update-alternatives --install /usr/bin/clang clang /usr/bin/clang-11 100
 
 ############### Build LLVM-SPIRV translator
 

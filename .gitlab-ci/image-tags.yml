@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-09-26-clc"
+   DEBIAN_BASE_TAG: "2022-09-28-crosvm"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
    DEBIAN_BUILD_TAG: "2022-09-26-clc"
@@ -15,7 +15,7 @@ variables:
    DEBIAN_X86_TEST_VK_TAG: "2022-09-27-clc"
 
    FEDORA_X86_BUILD_TAG: "2022-09-22-python3-ply-2"
-   KERNEL_ROOTFS_TAG: "2022-09-20-wine-lava"
+   KERNEL_ROOTFS_TAG: "2022-09-28-crosvm"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-08-17-bump"
