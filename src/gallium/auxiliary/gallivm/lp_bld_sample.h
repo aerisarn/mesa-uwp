@@ -169,6 +169,7 @@ struct lp_static_texture_state
 {
    /* pipe_sampler_view's state */
    enum pipe_format format;
+   enum pipe_format res_format;
    unsigned swizzle_r:3;     /**< PIPE_SWIZZLE_* */
    unsigned swizzle_g:3;
    unsigned swizzle_b:3;
@@ -433,6 +434,9 @@ struct lp_build_sample_context
 
    /** Integer vector with texture width, height, depth */
    LLVMValueRef int_size;
+   LLVMValueRef int_tex_blocksize;
+   LLVMValueRef int_tex_blocksize_log2;
+   LLVMValueRef int_view_blocksize;
 
    LLVMValueRef border_color_clamped;
 
@@ -613,6 +617,15 @@ lp_build_mipmap_level_sizes(struct lp_build_sample_context *bld,
                             LLVMValueRef *row_stride_vec,
                             LLVMValueRef *img_stride_vec);
 
+LLVMValueRef
+lp_build_scale_view_dims(struct lp_build_context *bld, LLVMValueRef size,
+                         LLVMValueRef tex_blocksize,
+                         LLVMValueRef tex_blocksize_log2,
+                         LLVMValueRef view_blocksize);
+
+LLVMValueRef
+lp_build_scale_view_dim(struct gallivm_state *gallivm, LLVMValueRef size,
+                        unsigned tex_blocksize, unsigned view_blocksize);
 
 void
 lp_build_extract_image_sizes(struct lp_build_sample_context *bld,

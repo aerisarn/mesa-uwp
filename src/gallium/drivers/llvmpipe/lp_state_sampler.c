@@ -475,11 +475,6 @@ prepare_shader_images(
          unsigned num_layers = img->depth0;
          unsigned num_samples = img->nr_samples;
 
-         const uint32_t bw = util_format_get_blockwidth(view->resource->format);
-         const uint32_t bh = util_format_get_blockheight(view->resource->format);
-
-         width = DIV_ROUND_UP(width, bw);
-         height = DIV_ROUND_UP(height, bh);
          width = u_minify(width, view->u.tex.level);
          height = u_minify(height, view->u.tex.level);
 
