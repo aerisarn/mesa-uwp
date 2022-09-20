@@ -1044,6 +1044,8 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
    struct d3d12_encode_codec_support codec_specific_support;
    memset(&codec_specific_support, 0, sizeof(codec_specific_support));
    switch (param) {
+      case PIPE_VIDEO_CAP_ENC_SUPPORTS_ASYNC_OPERATION:
+         return D3D12_VIDEO_ENC_ASYNC;
       case PIPE_VIDEO_CAP_REQUIRES_FLUSH_ON_END_FRAME:
          return 1;
       case PIPE_VIDEO_CAP_NPOT_TEXTURES:

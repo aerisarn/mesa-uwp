@@ -82,6 +82,8 @@ const bool D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE = debug_get_bool_option("
 //
 const bool D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG = debug_get_bool_option("D3D12_VIDEO_ENC_FALLBACK_SLICE_CONFIG", false);
 
+const bool D3D12_VIDEO_ENC_ASYNC = debug_get_bool_option("D3D12_VIDEO_ENC_ASYNC", true);
+
 constexpr unsigned int D3D12_VIDEO_H264_MB_IN_PIXELS = 16;
 
 enum d3d12_video_decode_config_specific_flags
