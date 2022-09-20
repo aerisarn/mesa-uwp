@@ -207,6 +207,11 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       prim.StartInstanceLocation    = 0;
       prim.BaseVertexLocation       = 0;
    }
+
+#if GFX_VERx10 == 125
+   genX(batch_emit_dummy_post_sync_op)(batch, device, _3DPRIM_POINTLIST,
+                                       size / bs);
+#endif
 }
 
 void

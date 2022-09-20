@@ -148,6 +148,11 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
                               struct anv_address addr,
                               bool end_of_pipe);
 
+void genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
+                                         struct anv_device *device,
+                                         uint32_t primitive_topology,
+                                         uint32_t vertex_count);
+
 void
 genX(rasterization_mode)(VkPolygonMode raster_mode,
                          VkLineRasterizationModeEXT line_mode,

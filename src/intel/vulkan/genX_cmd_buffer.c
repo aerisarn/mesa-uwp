@@ -97,6 +97,15 @@ is_render_queue_cmd_buffer(const struct anv_cmd_buffer *cmd_buffer)
    return (queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
 }
 
+ALWAYS_INLINE static void
+genX(emit_dummy_post_sync_op)(struct anv_cmd_buffer *cmd_buffer,
+                              uint32_t vertex_count)
+{
+   genX(batch_emit_dummy_post_sync_op)(&cmd_buffer->batch, cmd_buffer->device,
+                                       cmd_buffer->state.gfx.primitive_topology,
+                                       vertex_count);
+}
+
 void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3808,6 +3817,10 @@ void genX(CmdDraw)(
       prim.BaseVertexLocation       = 0;
    }
 
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, vertexCount);
+#endif
+
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
    trace_intel_end_draw(&cmd_buffer->trace, count);
@@ -3856,6 +3869,11 @@ void genX(CmdDrawMultiEXT)(
          prim.StartInstanceLocation    = firstInstance;
          prim.BaseVertexLocation       = 0;
       }
+
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, draw->vertexCount);
+#endif
+
    }
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
@@ -3911,6 +3929,10 @@ void genX(CmdDrawIndexed)(
       prim.StartInstanceLocation    = firstInstance;
       prim.BaseVertexLocation       = vertexOffset;
    }
+
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, indexCount);
+#endif
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
@@ -3976,6 +3998,9 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+#if GFX_VERx10 == 125
+         genX(emit_dummy_post_sync_op)(cmd_buffer, draw->indexCount);
+#endif
             emitted = false;
          }
       } else {
@@ -3998,6 +4023,9 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+#if GFX_VERx10 == 125
+         genX(emit_dummy_post_sync_op)(cmd_buffer, draw->indexCount);
+#endif
          }
       }
    } else {
@@ -4016,6 +4044,9 @@ void genX(CmdDrawMultiIndexedEXT)(
             prim.StartInstanceLocation    = firstInstance;
             prim.BaseVertexLocation       = draw->vertexOffset;
          }
+#if GFX_VERx10 == 125
+         genX(emit_dummy_post_sync_op)(cmd_buffer, draw->indexCount);
+#endif
       }
    }
 
@@ -4096,6 +4127,10 @@ void genX(CmdDrawIndirectByteCountEXT)(
       prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
    }
+
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
+#endif
 
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
@@ -4186,6 +4221,10 @@ void genX(CmdDrawIndirect)(
          prim.VertexAccessType         = SEQUENTIAL;
       }
 
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
+#endif
+
       update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
       offset += stride;
@@ -4242,6 +4281,10 @@ void genX(CmdDrawIndexedIndirect)(
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = RANDOM;
       }
+
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
+#endif
 
       update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
@@ -4390,6 +4433,10 @@ void genX(CmdDrawIndirectCount)(
          prim.VertexAccessType         = SEQUENTIAL;
       }
 
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
+#endif
+
       update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
       offset += stride;
@@ -4457,6 +4504,10 @@ void genX(CmdDrawIndexedIndirectCount)(
          prim.PredicateEnable          = true;
          prim.VertexAccessType         = RANDOM;
       }
+
+#if GFX_VERx10 == 125
+   genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
+#endif
 
       update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
@@ -7028,5 +7079,33 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
       struct mi_builder b;
       mi_builder_init(&b, device->info, batch);
       mi_store(&b, mi_mem64(addr), mi_reg64(TIMESTAMP));
+   }
+}
+
+void
+genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
+                                    struct anv_device *device,
+                                    uint32_t primitive_topology,
+                                    uint32_t vertex_count)
+{
+#if GFX_VERx10 != 125
+   return;
+#endif
+   if ((primitive_topology == _3DPRIM_POINTLIST ||
+        primitive_topology == _3DPRIM_LINELIST ||
+        primitive_topology == _3DPRIM_LINESTRIP ||
+        primitive_topology == _3DPRIM_LINELIST_ADJ ||
+        primitive_topology == _3DPRIM_LINESTRIP_ADJ ||
+        primitive_topology == _3DPRIM_LINELOOP ||
+        primitive_topology == _3DPRIM_POINTLIST_BF ||
+        primitive_topology == _3DPRIM_LINESTRIP_CONT ||
+        primitive_topology == _3DPRIM_LINESTRIP_BF ||
+        primitive_topology == _3DPRIM_LINESTRIP_CONT_BF) ||
+       (vertex_count == 1 || vertex_count == 2)) {
+      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+         pc.PostSyncOperation = WriteImmediateData;
+         pc.Address = device->workaround_address;
+         anv_debug_dump_pc(pc);
+      }
    }
 }
