@@ -2763,38 +2763,23 @@ static void EGLAPIENTRY
 eglSetBlobCacheFuncsANDROID(EGLDisplay *dpy, EGLSetBlobFuncANDROID set,
                             EGLGetBlobFuncANDROID get)
 {
-   /* This function does not return anything so we cannot
-    * utilize the helper macros _EGL_FUNC_START or _EGL_CHECK_DISPLAY.
-    */
    _EGLDisplay *disp = _eglLockDisplay(dpy);
-   _eglSetFuncName(__func__, disp, EGL_OBJECT_DISPLAY_KHR, NULL);
+   _EGL_FUNC_START(disp, EGL_NONE, NULL);
 
-   if (!_eglCheckDisplay(disp, __func__)) {
-      if (disp)
-         _eglUnlockDisplay(disp);
-      return;
-   }
+   _EGL_CHECK_DISPLAY(disp, /* void */);
 
-   if (!set || !get) {
-      _eglError(EGL_BAD_PARAMETER,
-                "eglSetBlobCacheFuncsANDROID: NULL handler given");
-      _eglUnlockDisplay(disp);
-      return;
-   }
+   if (!set || !get)
+      RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, /* void */);
 
-   if (disp->BlobCacheSet) {
-      _eglError(EGL_BAD_PARAMETER,
-                "eglSetBlobCacheFuncsANDROID: functions already set");
-      _eglUnlockDisplay(disp);
-      return;
-   }
+   if (disp->BlobCacheSet)
+      RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, /* void */);
 
    disp->BlobCacheSet = set;
    disp->BlobCacheGet = get;
 
    disp->Driver->SetBlobCacheFuncsANDROID(disp, set, get);
 
-   _eglUnlockDisplay(disp);
+   RETURN_EGL_SUCCESS(disp, /* void */);
 }
 
 static EGLBoolean EGLAPIENTRY
