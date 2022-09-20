@@ -41,6 +41,7 @@
 #include "hwdef/rogue_hw_utils.h"
 #include "pipe/p_defines.h"
 #include "pvr_bo.h"
+#include "pvr_clear.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
 #include "pvr_debug.h"
@@ -1769,14 +1770,17 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
    const float vf_y_max = (float)rogue_get_param_vf_max_y(dev_info);
    const struct rogue_shader_binary *passthrough_vert_shader;
    struct pvr_pds_vertex_shader_program pds_program;
-   size_t staging_buffer_size;
-   uint32_t *staging_buffer;
    VkResult result;
 
    const float vertices[4][3] = { { 0.0f, 0.0f, 0.0f },
                                   { vf_x_max, 0.0f, 0.0f },
                                   { 0.0f, vf_y_max, 0.0f },
                                   { vf_x_max, vf_y_max, 0.0f } };
+
+   static_assert(ARRAY_SIZE(vertices) == PVR_CLEAR_VERTEX_COUNT,
+                 "Size mismatch");
+   static_assert(ARRAY_SIZE(vertices[0]) == PVR_CLEAR_VERTEX_COORDINATES,
+                 "Size mismatch");
 
    if (PVR_HAS_FEATURE(dev_info, gs_rta_support)) {
       struct util_dynarray passthrough_rta_vert_shader;
@@ -1821,63 +1825,16 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
    if (result != VK_SUCCESS)
       goto err_free_usc_shader;
 
-   pds_program = (struct pvr_pds_vertex_shader_program) {
-      .num_streams = 1,
-      .streams = {
-         [0] = {
-            .address = state->vertices_bo->vma->dev_addr.addr,
-            .stride = sizeof(vertices[0]),
-            .num_elements = 1,
-            .elements = {
-               [0] = {
-                  .size = sizeof(vertices[0]),
-               },
-            },
-         },
-      },
-   };
+   pvr_pds_clear_vertex_shader_program_init_base(&pds_program,
+                                                 state->usc_vertex_shader_bo);
 
-   pvr_pds_setup_doutu(&pds_program.usc_task_control,
-                       state->usc_vertex_shader_bo->vma->dev_addr.addr,
-                       0,
-                       PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
-                       false);
-
-   pvr_pds_vertex_shader(&pds_program, NULL, PDS_GENERATE_SIZES, dev_info);
-
-   staging_buffer_size =
-      (pds_program.code_size + pds_program.data_size) * sizeof(*staging_buffer);
-
-   staging_buffer = vk_alloc(&device->vk.alloc,
-                             staging_buffer_size,
-                             8,
-                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!staging_buffer)
-      goto err_free_verices_buffer;
-
-   pvr_pds_vertex_shader(&pds_program,
-                         staging_buffer,
-                         PDS_GENERATE_DATA_SEGMENT,
-                         dev_info);
-   pvr_pds_vertex_shader(&pds_program,
-                         &staging_buffer[pds_program.data_size],
-                         PDS_GENERATE_CODE_SEGMENT,
-                         dev_info);
-
-   /* FIXME: Figure out the define for alignment of 16. */
-   result = pvr_gpu_upload_pds(device,
-                               &staging_buffer[0],
-                               pds_program.data_size,
-                               16,
-                               &staging_buffer[pds_program.data_size],
-                               pds_program.code_size,
-                               16,
-                               16,
-                               &state->pds);
+   result =
+      pvr_pds_clear_vertex_shader_program_create_and_upload(&pds_program,
+                                                            device,
+                                                            state->vertices_bo,
+                                                            &state->pds);
    if (result != VK_SUCCESS)
-      goto err_free_staging_buffer;
-
-   vk_free(&device->vk.alloc, staging_buffer);
+      goto err_free_verices_buffer;
 
    pvr_device_setup_graphics_static_clear_ppp_base(&state->ppp_base);
    pvr_device_setup_graphics_static_clear_ppp_templates(state->ppp_templates);
@@ -1907,9 +1864,6 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
       state->large_clear_vdm_words);
 
    return VK_SUCCESS;
-
-err_free_staging_buffer:
-   vk_free(&device->vk.alloc, staging_buffer);
 
 err_free_verices_buffer:
    pvr_bo_free(device, state->vertices_bo);
