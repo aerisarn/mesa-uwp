@@ -307,6 +307,20 @@ _eglLockDisplay(EGLDisplay dpy)
    return disp;
 }
 
+/**
+ * Lookup and write-lock a display. Should only be called from
+ * eglTerminate.
+ */
+static _EGLDisplay *
+_eglWriteLockDisplay(EGLDisplay dpy)
+{
+   _EGLDisplay *disp = _eglLookupDisplay(dpy);
+   if (disp) {
+      u_rwlock_wrlock(&disp->TerminateLock);
+      simple_mtx_lock(&disp->Mutex);
+   }
+   return disp;
+}
 
 /**
  * Unlock a display.
@@ -757,15 +771,12 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
 EGLBoolean EGLAPIENTRY
 eglTerminate(EGLDisplay dpy)
 {
-   _EGLDisplay *disp = _eglLookupDisplay(dpy);
+   _EGLDisplay *disp = _eglWriteLockDisplay(dpy);
 
    _EGL_FUNC_START(disp, EGL_OBJECT_DISPLAY_KHR, NULL);
 
    if (!disp)
       RETURN_EGL_ERROR(NULL, EGL_BAD_DISPLAY, EGL_FALSE);
-
-   u_rwlock_wrlock(&disp->TerminateLock);
-   simple_mtx_lock(&disp->Mutex);
 
    if (disp->Initialized) {
       disp->Driver->Terminate(disp);
