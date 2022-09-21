@@ -1687,6 +1687,7 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
          D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT);
       *size = 0;
       assert(false);
+      return;
    }
 
    D3D12_VIDEO_ENCODER_OUTPUT_METADATA                       encoderMetadata;
@@ -1705,6 +1706,7 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
                       encoderMetadata.EncodeErrorFlags);
       *size = 0;
       assert(false);
+      return;
    }
 
    assert(encoderMetadata.EncodedBitstreamWrittenBytesCount > 0u);
