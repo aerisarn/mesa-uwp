@@ -32,6 +32,7 @@
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
 #include "st_cb_eglimage.h"
+#include "st_cb_texture.h"
 #include "st_context.h"
 #include "st_texture.h"
 #include "st_format.h"
@@ -271,6 +272,11 @@ st_bind_egl_image(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    GLenum internalFormat;
    mesa_format texFormat;
+
+   if (stimg->texture->target != gl_target_to_pipe(texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, __func__);
+      return;
+   }
 
    if (stimg->internalformat) {
       internalFormat = stimg->internalformat;
