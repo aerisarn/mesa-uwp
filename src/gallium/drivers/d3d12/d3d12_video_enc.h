@@ -225,8 +225,8 @@ struct D3D12EncodeConfiguration
 struct d3d12_video_encoder
 {
    struct pipe_video_codec base = {};
-   struct pipe_screen *    m_screen = {};
-   struct d3d12_screen *   m_pD3D12Screen = {};
+   struct pipe_screen *    m_screen = nullptr;
+   struct d3d12_screen *   m_pD3D12Screen = nullptr;
 
    ///
    /// D3D12 objects and context info
@@ -235,34 +235,34 @@ struct d3d12_video_encoder
    const uint m_NodeMask  = 0u;
    const uint m_NodeIndex = 0u;
 
-   ComPtr<ID3D12Fence> m_spFence = {};
+   ComPtr<ID3D12Fence> m_spFence;
    uint64_t            m_fenceValue = 1u;
    bool                m_bPendingWorkNotFlushed = false;
 
-   ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice = {};
-   ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder = {};
-   ComPtr<ID3D12VideoEncoderHeap>        m_spVideoEncoderHeap = {};
-   ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue = {};
-   ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList = {};
-   std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList = {};
+   ComPtr<ID3D12VideoDevice3>            m_spD3D12VideoDevice;
+   ComPtr<ID3D12VideoEncoder>            m_spVideoEncoder;
+   ComPtr<ID3D12VideoEncoderHeap>        m_spVideoEncoderHeap;
+   ComPtr<ID3D12CommandQueue>            m_spEncodeCommandQueue;
+   ComPtr<ID3D12VideoEncodeCommandList2> m_spEncodeCommandList;
+   std::vector<D3D12_RESOURCE_BARRIER>   m_transitionsBeforeCloseCmdList;
 
-   std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager = {};
-   std::shared_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager = {};
-   std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder = {};
+   std::unique_ptr<d3d12_video_encoder_references_manager_interface> m_upDPBManager;
+   std::shared_ptr<d3d12_video_dpb_storage_manager_interface>        m_upDPBStorageManager;
+   std::unique_ptr<d3d12_video_bitstream_builder_interface>          m_upBitstreamBuilder;
 
    struct EncodedBitstreamResolvedMetadata
    {
       ComPtr<ID3D12Resource> spBuffer;
-      size_t bufferSize;
-      size_t codecHeadersSize;
-      ComPtr<ID3D12Resource> m_spMetadataOutputBuffer = {};
+      size_t bufferSize = 0;
+      size_t codecHeadersSize = 0;
+      ComPtr<ID3D12Resource> m_spMetadataOutputBuffer;
    };
 
-   std::vector<uint8_t> m_BitstreamHeadersBuffer = {};
+   std::vector<uint8_t> m_BitstreamHeadersBuffer;
    std::vector<EncodedBitstreamResolvedMetadata> m_spEncodedFrameMetadata;
 
-   struct D3D12EncodeCapabilities m_currentEncodeCapabilities = { };
-   struct D3D12EncodeConfiguration m_currentEncodeConfig = { };
+   struct D3D12EncodeCapabilities m_currentEncodeCapabilities = {};
+   struct D3D12EncodeConfiguration m_currentEncodeConfig = {};
 
    struct InFlightEncodeResources
    {
@@ -270,11 +270,11 @@ struct d3d12_video_encoder
       // encoder or encoderheap or reference frames allocations
       // we need to keep a reference alive to the ones that
       // are currently in-flight
-      ComPtr<ID3D12VideoEncoder> m_spEncoder = {};
-      ComPtr<ID3D12VideoEncoderHeap> m_spEncoderHeap = {};
-      std::shared_ptr<d3d12_video_dpb_storage_manager_interface> m_References = {};
+      ComPtr<ID3D12VideoEncoder> m_spEncoder;
+      ComPtr<ID3D12VideoEncoderHeap> m_spEncoderHeap;
+      std::shared_ptr<d3d12_video_dpb_storage_manager_interface> m_References;
 
-      ComPtr<ID3D12CommandAllocator> m_spCommandAllocator = {};
+      ComPtr<ID3D12CommandAllocator> m_spCommandAllocator;
    };
 
    std::vector<InFlightEncodeResources> m_inflightResourcesPool;
