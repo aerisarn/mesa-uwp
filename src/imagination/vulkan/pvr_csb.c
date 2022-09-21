@@ -154,33 +154,7 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
       csb->end += stream_link_space;
       assert(csb->next + stream_link_space <= csb->end);
 
-      switch (csb->stream_type) {
-      case PVR_CMD_STREAM_TYPE_GRAPHICS:
-         pvr_csb_emit (csb, VDMCTRL_STREAM_LINK0, link) {
-            link.link_addrmsb = pvr_bo->vma->dev_addr;
-         }
-
-         pvr_csb_emit (csb, VDMCTRL_STREAM_LINK1, link) {
-            link.link_addrlsb = pvr_bo->vma->dev_addr;
-         }
-
-         break;
-
-      case PVR_CMD_STREAM_TYPE_COMPUTE:
-         pvr_csb_emit (csb, CDMCTRL_STREAM_LINK0, link) {
-            link.link_addrmsb = pvr_bo->vma->dev_addr;
-         }
-
-         pvr_csb_emit (csb, CDMCTRL_STREAM_LINK1, link) {
-            link.link_addrlsb = pvr_bo->vma->dev_addr;
-         }
-
-         break;
-
-      default:
-         unreachable("Unknown stream type");
-         break;
-      }
+      pvr_csb_emit_link(csb, pvr_bo->vma->dev_addr, false);
    }
 
    csb->pvr_bo = pvr_bo;
@@ -227,6 +201,50 @@ void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
    assert(csb->next <= csb->end);
 
    return p;
+}
+
+/**
+ * \brief Adds VDMCTRL_STREAM_LINK/CDMCTRL_STREAM_LINK dwords into the control
+ * stream pointed by csb object.
+ *
+ * \param[in] csb  Control Stream Builder object to add LINK dwords to.
+ * \param[in] addr Device virtual address of the sub control stream to link to.
+ * \param[in] ret  Selects whether the sub control stream will return or
+ *                 terminate.
+ */
+void pvr_csb_emit_link(struct pvr_csb *csb, pvr_dev_addr_t addr, bool ret)
+{
+   /* Stream return is only supported for graphics control stream. */
+   assert(!ret || csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS);
+
+   switch (csb->stream_type) {
+   case PVR_CMD_STREAM_TYPE_GRAPHICS:
+      pvr_csb_emit (csb, VDMCTRL_STREAM_LINK0, link) {
+         link.link_addrmsb = addr;
+         link.with_return = ret;
+      }
+
+      pvr_csb_emit (csb, VDMCTRL_STREAM_LINK1, link) {
+         link.link_addrlsb = addr;
+      }
+
+      break;
+
+   case PVR_CMD_STREAM_TYPE_COMPUTE:
+      pvr_csb_emit (csb, CDMCTRL_STREAM_LINK0, link) {
+         link.link_addrmsb = addr;
+      }
+
+      pvr_csb_emit (csb, CDMCTRL_STREAM_LINK1, link) {
+         link.link_addrlsb = addr;
+      }
+
+      break;
+
+   default:
+      unreachable("Unknown stream type");
+      break;
+   }
 }
 
 /**
