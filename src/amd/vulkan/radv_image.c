@@ -2553,9 +2553,8 @@ radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
 
    view->bo = buffer->bo;
    view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset, pCreateInfo->range);
-   view->vk_format = pCreateInfo->format;
 
-   radv_make_buffer_descriptor(device, buffer, view->vk_format, pCreateInfo->offset, view->range,
+   radv_make_buffer_descriptor(device, buffer, pCreateInfo->format, pCreateInfo->offset, view->range,
                                view->state);
 }
 

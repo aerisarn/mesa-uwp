@@ -2624,7 +2624,6 @@ struct radv_sampler_ycbcr_conversion {
 struct radv_buffer_view {
    struct vk_object_base base;
    struct radeon_winsys_bo *bo;
-   VkFormat vk_format;
    uint64_t range; /**< VkBufferViewCreateInfo::range */
    uint32_t state[4];
 };
