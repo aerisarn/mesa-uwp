@@ -8,10 +8,6 @@
 #include "vn_cs.h"
 #include "vn_renderer.h"
 
-enum vn_ring_status_flag {
-   VN_RING_STATUS_IDLE = 1u << 0,
-};
-
 static uint32_t
 vn_ring_load_head(const struct vn_ring *ring)
 {
@@ -240,7 +236,11 @@ vn_ring_submit(struct vn_ring *ring,
    }
 
    vn_ring_store_tail(ring);
-   const bool notify = vn_ring_load_status(ring) & VN_RING_STATUS_IDLE;
+   const VkRingStatusFlagsMESA status = vn_ring_load_status(ring);
+   if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
+      vn_log(NULL, "vn_ring_submit abort on fatal");
+      abort();
+   }
 
    vn_ring_retire_submits(ring, cur_seqno);
 
@@ -248,7 +248,9 @@ vn_ring_submit(struct vn_ring *ring,
    list_addtail(&submit->head, &ring->submits);
 
    *seqno = submit->seqno;
-   return notify;
+
+   /* notify renderer to wake up ring if idle */
+   return status & VK_RING_STATUS_IDLE_BIT_MESA;
 }
 
 /**
