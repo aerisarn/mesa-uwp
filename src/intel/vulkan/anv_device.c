@@ -1500,6 +1500,7 @@ void anv_GetPhysicalDeviceFeatures2(
          features->taskShader = pdevice->vk.supported_extensions.EXT_mesh_shader;
          features->multiviewMeshShader = false;
          features->primitiveFragmentShadingRateMeshShader = features->meshShader;
+         features->meshShaderQueries = false;
          break;
       }
 
