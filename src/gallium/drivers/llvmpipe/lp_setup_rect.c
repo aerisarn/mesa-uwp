@@ -675,13 +675,12 @@ do_rect_ccw(struct lp_setup_context *setup,
        SAME_Y(rv0, rv3) && SAME_Y(rv1, rv2)) {
       const struct lp_setup_variant_key *key = &setup->setup.variant->key;
       const unsigned n = key->num_inputs;
-      unsigned i, j;
 
       /* We have a rectangle.  Check that the other attributes are
        * coplanar.
        */
-      for (i = 0; i < n; i++) {
-         for (j = 0; j < 4; j++) {
+      for (unsigned i = 0; i < n; i++) {
+         for (unsigned j = 0; j < 4; j++) {
             if (key->inputs[i].usage_mask & (1<<j)) {
                unsigned k = key->inputs[i].src_index;
                float dxdx1, dxdx2, dxdy1, dxdy2;
@@ -810,6 +809,10 @@ setup_rect_noop(struct lp_setup_context *setup,
 }
 
 
+/*
+ * Return true if the rect is handled here, else return false indicating
+ * the caller should render with triangles instead.
+ */
 static boolean
 setup_rect_both(struct lp_setup_context *setup,
                 const float (*v0)[4],
