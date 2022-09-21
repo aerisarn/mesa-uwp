@@ -259,14 +259,22 @@ void pvr_pack_clear_vdm_state(
    uint32_t temps,
    uint32_t index_count,
    uint32_t vs_output_size_in_bytes,
+   uint32_t layer_count,
    uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT])
 {
    const uint32_t vs_output_size =
       DIV_ROUND_UP(vs_output_size_in_bytes,
                    PVRX(VDMCTRL_VDM_STATE4_VS_OUTPUT_SIZE_UNIT_SIZE));
+   const bool needs_instance_count =
+      !PVR_HAS_FEATURE(dev_info, gs_rta_support) && layer_count > 1;
    uint32_t *stream = state_buffer;
    uint32_t max_instances;
    uint32_t cam_size;
+
+   /* The layer count should at least be 1. For vkCmdClearAttachment() the spec.
+    * guarantees that the layer count is not 0.
+    */
+   assert(layer_count != 0);
 
    pvr_calculate_vertex_cam_size(dev_info,
                                  vs_output_size,
@@ -301,9 +309,11 @@ void pvr_pack_clear_vdm_state(
 
    pvr_csb_pack (stream, VDMCTRL_VDM_STATE5, state5) {
       state5.vs_max_instances = max_instances;
-      /* TODO: Where does the 3 * sizeof(uint32_t) come from? */
+      /* This is the size of the input vertex. The hw manages the USC
+       * temporaries separately so we don't need to include them here.
+       */
       state5.vs_usc_unified_size =
-         DIV_ROUND_UP(3 * sizeof(uint32_t),
+         DIV_ROUND_UP(PVR_CLEAR_VERTEX_COORDINATES * sizeof(uint32_t),
                       PVRX(VDMCTRL_VDM_STATE5_VS_USC_UNIFIED_SIZE_UNIT_SIZE));
       state5.vs_pds_temp_size =
          DIV_ROUND_UP(temps,
@@ -316,6 +326,7 @@ void pvr_pack_clear_vdm_state(
 
    pvr_csb_pack (stream, VDMCTRL_INDEX_LIST0, index_list0) {
       index_list0.index_count_present = true;
+      index_list0.index_instance_count_present = needs_instance_count;
       index_list0.primitive_topology =
          PVRX(VDMCTRL_PRIMITIVE_TOPOLOGY_TRI_STRIP);
    }
@@ -326,5 +337,12 @@ void pvr_pack_clear_vdm_state(
    }
    stream += pvr_cmd_length(VDMCTRL_INDEX_LIST2);
 
-   assert((uint64_t)(stream - state_buffer) == PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+   if (needs_instance_count) {
+      pvr_csb_pack (stream, VDMCTRL_INDEX_LIST3, index_list3) {
+         index_list3.instance_count = layer_count - 1;
+      }
+      stream += pvr_cmd_length(VDMCTRL_INDEX_LIST3);
+   }
+
+   assert((uint64_t)(stream - state_buffer) <= PVR_CLEAR_VDM_STATE_DWORD_COUNT);
 }

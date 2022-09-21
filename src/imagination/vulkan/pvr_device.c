@@ -1776,6 +1776,7 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                             pds_program.temps_used,
                             3,
                             4 * sizeof(uint32_t),
+                            1,
                             state->vdm_words);
 
    /* TODO: Figure out where the 4 * sizeof(uint32_t) comes from. */
@@ -1784,6 +1785,7 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                             pds_program.temps_used,
                             4,
                             4 * sizeof(uint32_t),
+                            1,
                             state->large_clear_vdm_words);
 
    return VK_SUCCESS;

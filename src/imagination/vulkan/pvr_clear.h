@@ -32,11 +32,15 @@
 #define PVR_CLEAR_VERTEX_COUNT 4
 #define PVR_CLEAR_VERTEX_COORDINATES 3
 
+/* We don't always need ROGUE_VDMCTRL_INDEX_LIST3 so maybe change the code to
+ * not have it in here but use an alternative definition when needed if we want
+ * to really squeeze out a some bytes of memory.
+ */
 #define PVR_CLEAR_VDM_STATE_DWORD_COUNT                                        \
    (pvr_cmd_length(VDMCTRL_VDM_STATE0) + pvr_cmd_length(VDMCTRL_VDM_STATE2) +  \
     pvr_cmd_length(VDMCTRL_VDM_STATE3) + pvr_cmd_length(VDMCTRL_VDM_STATE4) +  \
     pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
-    pvr_cmd_length(VDMCTRL_INDEX_LIST2))
+    pvr_cmd_length(VDMCTRL_INDEX_LIST2) + pvr_cmd_length(VDMCTRL_INDEX_LIST3))
 
 struct pvr_bo;
 struct pvr_cmd_buffer;
@@ -93,6 +97,7 @@ void pvr_pack_clear_vdm_state(
    uint32_t temps,
    uint32_t index_count,
    uint32_t vs_output_size_in_bytes,
+   uint32_t layer_count,
    uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT]);
 
 #endif /* PVR_CLEAR_H */
