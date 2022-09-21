@@ -2722,6 +2722,10 @@ void radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
                                    uint32_t set, uint32_t descriptorWriteCount,
                                    const VkWriteDescriptorSet *pDescriptorWrites);
 
+void radv_make_texel_buffer_descriptor(struct radv_device *device, uint64_t va,
+                                       VkFormat vk_format, unsigned offset, unsigned range,
+                                       uint32_t *state);
+
 uint32_t radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                        const VkImageSubresourceRange *range, uint32_t value);
 
