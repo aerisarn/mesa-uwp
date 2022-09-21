@@ -405,13 +405,12 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
       FALLTHROUGH;
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
-      if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
+      switch (param) {
+      case PIPE_SHADER_CAP_PREFERRED_IR:
          if (lscreen->use_tgsi)
             return PIPE_SHADER_IR_TGSI;
          else
             return PIPE_SHADER_IR_NIR;
-      }
-      switch (param) {
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
          /* At this time, the draw module and llvmpipe driver only
           * support vertex shader texture lookups when LLVM is enabled in
