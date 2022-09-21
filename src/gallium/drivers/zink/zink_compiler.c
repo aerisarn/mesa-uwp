@@ -1567,7 +1567,7 @@ rewrite_64bit_type(nir_shader *nir, const struct glsl_type *type, nir_variable *
 {
    if (glsl_type_is_array(type)) {
       const struct glsl_type *child = glsl_get_array_element(type);
-      unsigned elements = glsl_get_aoa_size(type);
+      unsigned elements = glsl_array_size(type);
       unsigned stride = glsl_get_explicit_stride(type);
       return glsl_array_type(rewrite_64bit_type(nir, child, var), elements, stride);
    }
