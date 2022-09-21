@@ -24,12 +24,14 @@
 #ifndef PVR_CLEAR_H
 #define PVR_CLEAR_H
 
+#include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
 #define PVR_CLEAR_VERTEX_COUNT 4
 #define PVR_CLEAR_VERTEX_COORDINATES 3
 
 struct pvr_bo;
+struct pvr_cmd_buffer;
 struct pvr_device;
 struct pvr_pds_upload;
 struct pvr_pds_vertex_shader_program;
@@ -43,5 +45,37 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload(
    struct pvr_device *device,
    const struct pvr_bo *vertices_bo,
    struct pvr_pds_upload *const upload_out);
+VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
+   struct pvr_pds_vertex_shader_program *program,
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_bo *vertices_bo,
+   struct pvr_pds_upload *const pds_upload_out);
+
+void pvr_pds_clear_rta_vertex_shader_program_init_base(
+   struct pvr_pds_vertex_shader_program *program,
+   const struct pvr_bo *usc_shader_bo);
+
+/* Each code and data upload function clears the other's fields in the
+ * pds_upload_out. So when uploading the code, the data fields will be 0.
+ */
+VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
+   struct pvr_pds_vertex_shader_program *program,
+   struct pvr_cmd_buffer *cmd_buffer,
+   uint32_t base_array_layer,
+   struct pvr_pds_upload *const pds_upload_out);
+
+static inline VkResult
+pvr_pds_clear_rta_vertex_shader_program_create_and_upload_data(
+   struct pvr_pds_vertex_shader_program *program,
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_bo *vertices_bo,
+   struct pvr_pds_upload *const pds_upload_out)
+{
+   return pvr_pds_clear_vertex_shader_program_create_and_upload_data(
+      program,
+      cmd_buffer,
+      vertices_bo,
+      pds_upload_out);
+}
 
 #endif /* PVR_CLEAR_H */

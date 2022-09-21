@@ -119,3 +119,136 @@ err_exit:
    *upload_out = (struct pvr_pds_upload){ 0 };
    return result;
 }
+
+VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
+   struct pvr_pds_vertex_shader_program *program,
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_bo *vertices_bo,
+   struct pvr_pds_upload *const pds_upload_out)
+{
+   struct pvr_device_info *dev_info = &cmd_buffer->device->pdevice->dev_info;
+   uint32_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   program->streams[0].address = vertices_bo->vma->dev_addr.addr;
+
+   pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+   staging_buffer_size = program->data_size * sizeof(*staging_buffer);
+
+   staging_buffer = vk_alloc(&cmd_buffer->device->vk.alloc,
+                             staging_buffer_size,
+                             8,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!staging_buffer) {
+      *pds_upload_out = (struct pvr_pds_upload){ 0 };
+
+      result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      cmd_buffer->state.status = result;
+      return result;
+   }
+
+   pvr_pds_vertex_shader(program,
+                         staging_buffer,
+                         PDS_GENERATE_DATA_SEGMENT,
+                         dev_info);
+
+   result = pvr_cmd_buffer_upload_pds(cmd_buffer,
+                                      staging_buffer,
+                                      program->data_size,
+                                      4,
+                                      NULL,
+                                      0,
+                                      0,
+                                      4,
+                                      pds_upload_out);
+   if (result != VK_SUCCESS) {
+      vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);
+
+      *pds_upload_out = (struct pvr_pds_upload){ 0 };
+
+      cmd_buffer->state.status = result;
+      return result;
+   }
+
+   vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);
+
+   return VK_SUCCESS;
+}
+
+void pvr_pds_clear_rta_vertex_shader_program_init_base(
+   struct pvr_pds_vertex_shader_program *program,
+   const struct pvr_bo *usc_shader_bo)
+{
+   pvr_pds_clear_vertex_shader_program_init_base(program, usc_shader_bo);
+
+   /* We'll set the render target index to be the instance id + base array
+    * layer. Since the base array layer can change in between clear rects, we
+    * don't set it here and ask for it when generating the code and data
+    * section.
+    */
+   /* This is 3 because the instance id register will follow the xyz coordinate
+    * registers in the register file.
+    * TODO: Maybe we want this to be hooked up to the compiler?
+    */
+   program->iterate_instance_id = true;
+   program->instance_id_register = 3;
+}
+
+VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
+   struct pvr_pds_vertex_shader_program *program,
+   struct pvr_cmd_buffer *cmd_buffer,
+   uint32_t base_array_layer,
+   struct pvr_pds_upload *const pds_upload_out)
+{
+   struct pvr_device_info *dev_info = &cmd_buffer->device->pdevice->dev_info;
+   uint32_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   program->instance_id_modifier = base_array_layer;
+
+   pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+   staging_buffer_size = program->code_size * sizeof(*staging_buffer);
+
+   staging_buffer = vk_alloc(&cmd_buffer->device->vk.alloc,
+                             staging_buffer_size,
+                             8,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!staging_buffer) {
+      *pds_upload_out = (struct pvr_pds_upload){ 0 };
+
+      result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      cmd_buffer->state.status = result;
+      return result;
+   }
+
+   pvr_pds_vertex_shader(program,
+                         staging_buffer,
+                         PDS_GENERATE_CODE_SEGMENT,
+                         dev_info);
+
+   result = pvr_cmd_buffer_upload_pds(cmd_buffer,
+                                      NULL,
+                                      0,
+                                      0,
+                                      staging_buffer,
+                                      program->code_size,
+                                      4,
+                                      4,
+                                      pds_upload_out);
+   if (result != VK_SUCCESS) {
+      vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);
+
+      *pds_upload_out = (struct pvr_pds_upload){ 0 };
+
+      cmd_buffer->state.status = result;
+      return result;
+   }
+
+   vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);
+
+   return VK_SUCCESS;
+}
