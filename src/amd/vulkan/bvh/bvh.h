@@ -159,7 +159,7 @@ struct radv_bvh_box32_node {
    uint32_t reserved[4];
 };
 
-/* 128 bytes of header & a box32 node */
-#define RADV_BVH_ROOT_NODE (0x10 + radv_bvh_node_internal)
+/* a box32 node */
+#define RADV_BVH_ROOT_NODE radv_bvh_node_internal
 
 #endif

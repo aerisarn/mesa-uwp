@@ -61,6 +61,7 @@ static const uint32_t convert_internal_spv[] = {
 #define KEY_ID_PAIR_SIZE 8
 
 struct acceleration_structure_layout {
+   uint32_t bvh_offset;
    uint32_t size;
 };
 
@@ -119,6 +120,9 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
    if (accel_struct) {
       uint32_t offset = 0;
       offset += ALIGN(sizeof(struct radv_accel_struct_header), 64);
+
+      accel_struct->bvh_offset = offset;
+
       offset += bvh_leaf_size * leaf_count;
       offset += sizeof(struct radv_bvh_box32_node) * internal_count;
       offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
@@ -637,11 +641,6 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 
          uint32_t dst_node_offset = bvh_states[i].node_offset;
 
-         /* Make sure we build the BVH so the hardcoded root node is valid. */
-         STATIC_ASSERT(RADV_BVH_ROOT_NODE ==
-                       DIV_ROUND_UP(sizeof(struct radv_accel_struct_header), 64) * 8 +
-                          radv_bvh_node_internal);
-
          const struct lbvh_internal_args consts = {
             .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
             .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
@@ -680,7 +679,7 @@ convert_leaf_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
 
       const struct convert_leaf_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
-         .output_bvh = accel_struct->va,
+         .output_bvh = accel_struct->va + bvh_states[i].accel_struct.bvh_offset,
          .geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
                                                 : pInfos[i].ppGeometries[0]->geometryType,
       };
@@ -716,8 +715,8 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
 
       const struct convert_internal_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
-         .output_bvh = accel_struct->va,
-         .output_bvh_offset = 0,
+         .output_bvh = accel_struct->va + bvh_states[i].accel_struct.bvh_offset,
+         .output_bvh_offset = bvh_states[i].accel_struct.bvh_offset,
          .leaf_node_count = bvh_states[i].leaf_node_count,
          .internal_node_count = bvh_states[i].internal_node_count,
          .geometry_type = geometry_type,
@@ -795,7 +794,7 @@ radv_CmdBuildAccelerationStructuresKHR(
          pInfos[i].geometryCount * sizeof(struct radv_accel_struct_geometry_info);
 
       header.instance_offset =
-         align(sizeof(struct radv_accel_struct_header), 64) + sizeof(struct radv_bvh_box32_node);
+         bvh_states[i].accel_struct.bvh_offset + sizeof(struct radv_bvh_box32_node);
       header.instance_count = is_tlas ? bvh_states[i].leaf_node_count : 0;
       header.compacted_size = bvh_states[i].accel_struct.size;
 
