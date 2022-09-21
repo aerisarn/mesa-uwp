@@ -1673,8 +1673,9 @@ d3d12_video_encoder_get_feedback(struct pipe_video_codec *codec, void *feedback,
 
    if((pD3D12Enc->m_fenceValue - requested_metadata_fence) > D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT)
    {
-      debug_printf("[d3d12_video_encoder_get_feedback] Requested metadata for fence %" PRIu64 " at current fence %" PRIu64 "\n"
-         " is too far back in time for the ring buffer of size %" PRIu64 " we keep track off",
+      debug_printf("[d3d12_video_encoder_get_feedback] Requested metadata for fence %" PRIu64 " at current fence %" PRIu64
+         " is too far back in time for the ring buffer of size %" PRIu64 " we keep track off - "
+         " Please increase the D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT environment variable and try again.\n",
          requested_metadata_fence,
          pD3D12Enc->m_fenceValue,
          D3D12_VIDEO_ENC_METADATA_BUFFERS_COUNT);
