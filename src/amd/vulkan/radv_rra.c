@@ -55,7 +55,7 @@ enum rra_file_api {
 
 struct rra_file_chunk_description {
    char name[16];
-   bool is_zstd_compressed;
+   uint32_t is_zstd_compressed;
    enum rra_chunk_type type;
    uint64_t header_offset;
    uint64_t header_size;
@@ -197,10 +197,10 @@ static_assert(sizeof(struct rra_accel_struct_chunk_header) == 28,
 
 struct rra_accel_struct_post_build_info {
    uint32_t bvh_type : 1;
-   uint32_t : 5;
+   uint32_t reserved1 : 5;
    uint32_t tri_compression_mode : 2;
    uint32_t fp16_interior_mode : 2;
-   uint32_t : 6;
+   uint32_t reserved2 : 6;
    uint32_t build_flags : 16;
 };
 
@@ -629,20 +629,20 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
          return VK_ERROR_VALIDATION_FAILED_EXT;
       }
 
-   uint32_t *node_parent_table = malloc(node_parent_table_size);
+   uint32_t *node_parent_table = calloc(node_parent_table_size, 1);
    if (!node_parent_table) {
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
    node_parent_table[rra_parent_table_index_from_offset(RRA_ROOT_NODE_OFFSET, node_parent_table_size)] = 0xffffffff;
 
-   uint32_t *leaf_node_ids = malloc(primitive_count * sizeof(uint32_t));
+   uint32_t *leaf_node_ids = calloc(primitive_count, sizeof(uint32_t));
    if (!leaf_node_ids) {
       free(node_parent_table);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
    uint8_t *dst_structure_data =
-      malloc(RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size + dst_leaf_nodes_size);
+      calloc(RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size + dst_leaf_nodes_size, 1);
    if (!dst_structure_data) {
       free(node_parent_table);
       free(leaf_node_ids);
