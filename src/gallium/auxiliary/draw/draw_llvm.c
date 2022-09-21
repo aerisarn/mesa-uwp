@@ -606,16 +606,20 @@ create_tcs_jit_input_type(struct gallivm_state *gallivm)
 }
 
 static LLVMTypeRef
-create_tcs_jit_output_type(struct gallivm_state *gallivm)
+create_tcs_jit_output_type_deref(struct gallivm_state *gallivm)
 {
    LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
    LLVMTypeRef output_array;
 
    output_array = LLVMArrayType(float_type, TGSI_NUM_CHANNELS); /* num channels */
    output_array = LLVMArrayType(output_array, PIPE_MAX_SHADER_INPUTS); /* num attrs per vertex */
-   output_array = LLVMPointerType(output_array, 0); /* num vertices per prim */
-
    return output_array;
+}
+
+static LLVMTypeRef
+create_tcs_jit_output_type(struct gallivm_state *gallivm)
+{
+   return LLVMPointerType(create_tcs_jit_output_type_deref(gallivm), 0); /* num vertices per prim */
 }
 
 static LLVMTypeRef
@@ -3161,6 +3165,8 @@ draw_tcs_llvm_emit_fetch_output(const struct lp_build_tcs_iface *tes_iface,
    LLVMValueRef indices[3];
    LLVMValueRef res;
    struct lp_type type = bld->type;
+   LLVMTypeRef output_type = create_tcs_jit_output_type_deref(gallivm);
+   LLVMTypeRef float_type = LLVMFloatTypeInContext(gallivm->context);
 
    if (is_vindex_indirect || is_aindex_indirect || is_sindex_indirect) {
       int i;
@@ -3190,8 +3196,8 @@ draw_tcs_llvm_emit_fetch_output(const struct lp_build_tcs_iface *tes_iface,
          indices[1] = attr_chan_index;
          indices[2] = swiz_chan_index;
 
-         channel_vec = LLVMBuildGEP(builder, tcs->output, indices, 3, "");
-         channel_vec = LLVMBuildLoad(builder, channel_vec, "");
+         channel_vec = LLVMBuildGEP2(builder, output_type, tcs->output, indices, 3, "");
+         channel_vec = LLVMBuildLoad2(builder, float_type, channel_vec, "");
 
          res = LLVMBuildInsertElement(builder, res, channel_vec, idx, "");
       }
@@ -3200,8 +3206,8 @@ draw_tcs_llvm_emit_fetch_output(const struct lp_build_tcs_iface *tes_iface,
       indices[1] = attrib_index;
       indices[2] = swizzle_index;
 
-      res = LLVMBuildGEP(builder, tcs->output, indices, 3, "");
-      res = LLVMBuildLoad(builder, res, "");
+      res = LLVMBuildGEP2(builder, output_type, tcs->output, indices, 3, "");
+      res = LLVMBuildLoad2(builder, float_type, res, "");
       res = lp_build_broadcast_scalar(bld, res);
    }
    return res;
