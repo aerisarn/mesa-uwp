@@ -1747,7 +1747,7 @@ zink_set_shader_images(struct pipe_context *pctx,
          memcpy(&image_view->base, images + i, sizeof(struct pipe_image_view));
          update = true;
          update_descriptor_state_image(ctx, p_stage, start_slot + i, res);
-         if (zink_resource_access_is_write(access))
+         if (zink_resource_access_is_write(access) || !res->obj->is_buffer)
             res->obj->unordered_read = res->obj->unordered_write = false;
          else
             res->obj->unordered_read = false;
@@ -1875,6 +1875,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
              if (!a)
                 update = true;
              zink_batch_resource_usage_set(&ctx->batch, res, false, false);
+             res->obj->unordered_write = false;
          }
          res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
          res->obj->unordered_read = false;
@@ -2032,6 +2033,7 @@ zink_make_texture_handle_resident(struct pipe_context *pctx, uint64_t handle, bo
          check_for_layout_update(ctx, res, false);
          check_for_layout_update(ctx, res, true);
          zink_batch_resource_usage_set(&ctx->batch, res, false, false);
+         res->obj->unordered_write = false;
       }
       util_dynarray_append(&ctx->di.bindless[0].resident, struct zink_bindless_descriptor *, bd);
       uint32_t h = is_buffer ? handle + ZINK_MAX_BINDLESS_HANDLES : handle;
@@ -2147,6 +2149,7 @@ zink_make_image_handle_resident(struct pipe_context *pctx, uint64_t handle, unsi
          finalize_image_bind(ctx, res, false);
          finalize_image_bind(ctx, res, true);
          zink_batch_resource_usage_set(&ctx->batch, res, zink_resource_access_is_write(access), false);
+         res->obj->unordered_write = false;
       }
       util_dynarray_append(&ctx->di.bindless[1].resident, struct zink_bindless_descriptor *, bd);
       uint32_t h = is_buffer ? handle + ZINK_MAX_BINDLESS_HANDLES : handle;
@@ -2671,7 +2674,7 @@ update_resource_refs_for_stage(struct zink_context *ctx, gl_shader_stage stage)
             bool is_buffer = res->obj->is_buffer;
             bool is_write = zink_resource_access_is_write(get_access_flags_for_binding(ctx, i, stage, j));
             zink_batch_resource_usage_set(batch, res, is_write, is_buffer);
-            if (is_write)
+            if (is_write || !res->obj->is_buffer)
                res->obj->unordered_read = res->obj->unordered_write = false;
             else
                res->obj->unordered_read = false;
@@ -2709,7 +2712,7 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
          util_dynarray_foreach(&ctx->di.bindless[i].resident, struct zink_bindless_descriptor*, bd) {
             struct zink_resource *res = zink_descriptor_surface_resource(&(*bd)->ds);
             zink_batch_resource_usage_set(&ctx->batch, res, (*bd)->access & PIPE_IMAGE_ACCESS_WRITE, res->obj->is_buffer);
-            if ((*bd)->access & PIPE_IMAGE_ACCESS_WRITE)
+            if ((*bd)->access & PIPE_IMAGE_ACCESS_WRITE || !res->obj->is_buffer)
                res->obj->unordered_read = res->obj->unordered_write = false;
             else
                res->obj->unordered_read = false;
