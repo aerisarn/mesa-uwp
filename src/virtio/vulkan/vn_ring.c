@@ -30,8 +30,14 @@ vn_ring_store_tail(struct vn_ring *ring)
 static uint32_t
 vn_ring_load_status(const struct vn_ring *ring)
 {
-   /* this must be called and ordered after vn_ring_store_tail */
+   /* must be called and ordered after vn_ring_store_tail for idle status */
    return atomic_load_explicit(ring->shared.status, memory_order_seq_cst);
+}
+
+bool
+vn_ring_fatal(const struct vn_ring *ring)
+{
+   return vn_ring_load_status(ring) & VK_RING_STATUS_FATAL_BIT_MESA;
 }
 
 static void
