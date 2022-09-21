@@ -42,6 +42,12 @@ layout(push_constant) uniform CONSTS {
    convert_internal_args args;
 };
 
+void set_parent(uint32_t child, uint32_t parent)
+{
+   uint64_t addr = args.output_bvh - child / 8 * 4 - 4;
+   DEREF(REF(uint32_t)(addr)) = parent;
+}
+
 void
 main()
 {
@@ -74,14 +80,12 @@ main()
    radv_ir_box_node src =
       DEREF(INDEX(radv_ir_box_node, intermediate_internal_nodes, global_id));
 
-   REF(radv_bvh_box32_node) out_internal_nodes =
-      REF(radv_bvh_box32_node) OFFSET(args.output_bvh, dst_internal_offset);
-   REF(radv_bvh_box32_node) dst_node = INDEX(radv_bvh_box32_node, out_internal_nodes, global_id);
+  uint32_t dst_node_offset = dst_internal_offset + global_id * SIZEOF(radv_bvh_box32_node);
+   if (global_id == args.internal_node_count - 1)
+      dst_node_offset = id_to_offset(RADV_BVH_ROOT_NODE);
 
-   if (global_id == args.internal_node_count - 1) {
-      dst_node = REF(radv_bvh_box32_node)
-         OFFSET(args.output_bvh, id_to_offset(RADV_BVH_ROOT_NODE));
-   }
+   REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, dst_node_offset));
+   uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_internal);
 
    uint32_t found_child_count = 0;
    uint32_t children[4] = {NULL_NODE_ID, NULL_NODE_ID, NULL_NODE_ID, NULL_NODE_ID};
@@ -156,7 +160,10 @@ main()
       DEREF(dst_node).coords[i][1][0] = child_aabb.max.x;
       DEREF(dst_node).coords[i][1][1] = child_aabb.max.y;
       DEREF(dst_node).coords[i][1][2] = child_aabb.max.z;
-      children[i] = pack_node_id(dst_offset, ir_type_to_bvh_type(type));
+
+      uint32_t child_id = pack_node_id(dst_offset, ir_type_to_bvh_type(type));
+      children[i] = child_id;
+      set_parent(child_id, node_id);
    }
 
    for (uint i = found_child_count; i < 4; ++i) {
@@ -171,5 +178,7 @@ main()
       REF(radv_accel_struct_header) header = REF(radv_accel_struct_header)(args.output_bvh - args.output_bvh_offset);
       DEREF(header).aabb = src.base.aabb;
       DEREF(header).bvh_offset = args.output_bvh_offset;
+
+      set_parent(RADV_BVH_ROOT_NODE, NULL_NODE_ID);
    }
 }

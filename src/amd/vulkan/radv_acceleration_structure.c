@@ -118,13 +118,20 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
    }
 
    if (accel_struct) {
+      uint64_t bvh_size =
+         bvh_leaf_size * leaf_count + sizeof(struct radv_bvh_box32_node) * internal_count;
       uint32_t offset = 0;
-      offset += ALIGN(sizeof(struct radv_accel_struct_header), 64);
+      offset += sizeof(struct radv_accel_struct_header);
 
+      /* Parent links, which have to go directly before bvh_offset as we index them using negative
+       * offsets from there. */
+      offset += bvh_size / 64 * 4;
+
+      /* The BVH and hence bvh_offset needs 64 byte alignment for RT nodes. */
+      offset = ALIGN(offset, 64);
       accel_struct->bvh_offset = offset;
 
-      offset += bvh_leaf_size * leaf_count;
-      offset += sizeof(struct radv_bvh_box32_node) * internal_count;
+      offset += bvh_size;
       offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
 
       accel_struct->size = offset;
