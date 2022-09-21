@@ -775,6 +775,12 @@ struct pvr_sub_cmd {
 
    enum pvr_sub_command_flags flags;
 
+   /* True if the sub_cmd is owned by this command buffer. False if taken from
+    * a secondary command buffer, in that case we are not supposed to free any
+    * resources associated with the sub_cmd.
+    */
+   bool owned;
+
    union {
       struct pvr_sub_cmd_gfx gfx;
       struct pvr_sub_cmd_compute compute;
