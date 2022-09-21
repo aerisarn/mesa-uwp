@@ -1644,7 +1644,6 @@ deref_is_matrix(nir_deref_instr *deref)
    return NULL;
 }
 
-/* rewrite all input/output variables using 32bit types and load/stores */
 static bool
 lower_64bit_vars_function(nir_shader *shader, nir_function *function, nir_variable *var, struct hash_table *derefs, struct set *deletes)
 {
@@ -1881,6 +1880,14 @@ lower_64bit_vars(nir_shader *shader)
    struct set *deletes = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    nir_foreach_variable_with_modes(var, shader, nir_var_shader_in | nir_var_shader_out)
       progress |= lower_64bit_vars_loop(shader, var, derefs, deletes);
+   nir_foreach_function(function, shader) {
+      nir_foreach_function_temp_variable(var, function->impl) {
+         if (!glsl_type_contains_64bit(var->type))
+            continue;
+         var->type = rewrite_64bit_type(shader, var->type, var);
+         progress |= lower_64bit_vars_function(shader, function, var, derefs, deletes);
+      }
+   }
    ralloc_free(deletes);
    ralloc_free(derefs);
    if (progress) {
