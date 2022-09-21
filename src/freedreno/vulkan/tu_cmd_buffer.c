@@ -2564,15 +2564,11 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
       cmd->state.rp.has_tess = true;
 
-      /* maximum number of patches that can fit in tess factor/param buffers */
-      uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
-                           TU_TESS_PARAM_SIZE / pipeline->program.hs_param_stride);
-      /* convert from # of patches to draw count */
-      subdraw_size *= pipeline->tess.patch_control_points;
-
-      /* TODO: Move this packet to pipeline state, since it's constant based on the pipeline. */
-      tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
-      tu_cs_emit(cs, subdraw_size);
+      if (!(pipeline->dynamic_state_mask &
+            BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS)))
+         cmd->state.patch_control_points = pipeline->tess.patch_control_points;
+      else
+         cmd->state.dirty |= TU_CMD_DIRTY_PATCH_CONTROL_POINTS;
    }
 
    cmd->state.line_mode = pipeline->rast.line_mode;
@@ -3030,7 +3026,11 @@ VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer,
                                uint32_t patchControlPoints)
 {
-   tu_stub();
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.patch_control_points = patchControlPoints;
+
+   cmd->state.dirty |= TU_CMD_DIRTY_PATCH_CONTROL_POINTS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4465,6 +4465,15 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu6_emit_blend(&cs, cmd);
    }
 
+   if (cmd->state.dirty & TU_CMD_DIRTY_PATCH_CONTROL_POINTS) {
+      bool tess = cmd->state.pipeline->active_stages &
+         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
+                                             tess ? TU6_EMIT_PATCH_CONTROL_POINTS_DWORDS : 0);
+      tu6_emit_patch_control_points(&cs, cmd->state.pipeline,
+                                    cmd->state.patch_control_points);
+   }
+
    /* for the first draw in a renderpass, re-emit all the draw states
     *
     * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
@@ -4502,7 +4511,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       /* emit draw states that were just updated
        * note we eventually don't want to have to emit anything here
        */
-      bool emit_binding_stride = false, emit_blend = false;
+      bool emit_binding_stride = false, emit_blend = false,
+           emit_patch_control_points = false;
       uint32_t draw_state_count =
          ((cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
@@ -4522,6 +4532,13 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          draw_state_count += 1;
       }
 
+      if ((cmd->state.dirty & TU_CMD_DIRTY_PATCH_CONTROL_POINTS) &&
+          (pipeline->dynamic_state_mask &
+           BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS))) {
+         emit_patch_control_points = true;
+         draw_state_count += 1;
+      }
+
       if (draw_state_count > 0)
          tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
 
@@ -4538,6 +4555,10 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if (emit_blend) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_BLEND,
                                cmd->state.dynamic_state[TU_DYNAMIC_STATE_BLEND]);
+      }
+      if (emit_patch_control_points) {
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
+                               cmd->state.dynamic_state[TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS]);
       }
       if (cmd->state.dirty & TU_CMD_DIRTY_VS_PARAMS)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
@@ -4564,7 +4585,7 @@ tu_draw_initiator(struct tu_cmd_buffer *cmd, enum pc_di_src_sel src_sel)
    enum pc_di_primtype primtype = cmd->state.primtype;
 
    if (primtype == DI_PT_PATCHES0)
-      primtype += pipeline->tess.patch_control_points;
+      primtype += cmd->state.patch_control_points;
 
    uint32_t initiator =
       CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |

@@ -1165,8 +1165,7 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *hs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
-             const struct ir3_shader_variant *fs,
-             uint32_t patch_control_points)
+             const struct ir3_shader_variant *fs)
 {
    /* note: doesn't compile as static because of the array regs.. */
    const struct reg_config {
@@ -1416,39 +1415,6 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (hs) {
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs->tess.tcs_vertices_out);
-
-      uint32_t patch_local_mem_size_16b =
-         patch_control_points * vs->output_size / 4;
-
-      /* Total attribute slots in HS incoming patch. */
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
-      tu_cs_emit(cs, patch_local_mem_size_16b);
-
-      const uint32_t wavesize = 64;
-      const uint32_t vs_hs_local_mem_size = 16384;
-
-      uint32_t max_patches_per_wave;
-      if (cs->device->physical_device->info->a6xx.tess_use_shared) {
-         /* HS invocations for a patch are always within the same wave,
-          * making barriers less expensive. VS can't have barriers so we
-          * don't care about VS invocations being in the same wave.
-          */
-         max_patches_per_wave = wavesize / hs->tess.tcs_vertices_out;
-      } else {
-         /* VS is also in the same wave */
-         max_patches_per_wave =
-            wavesize / MAX2(patch_control_points, hs->tess.tcs_vertices_out);
-      }
-
-      uint32_t patches_per_wave =
-         MIN2(vs_hs_local_mem_size / (patch_local_mem_size_16b * 16),
-              max_patches_per_wave);
-
-      uint32_t wave_input_size = DIV_ROUND_UP(
-         patches_per_wave * patch_local_mem_size_16b * 16, 256);
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
-      tu_cs_emit(cs, wave_input_size);
 
       /* In SPIR-V generated from GLSL, the tessellation primitive params are
        * are specified in the tess eval shader, but in SPIR-V generated from
@@ -1723,55 +1689,140 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 }
 
 static void
-tu6_emit_geom_tess_consts(struct tu_cs *cs,
-                          const struct ir3_shader_variant *vs,
-                          const struct ir3_shader_variant *hs,
-                          const struct ir3_shader_variant *ds,
-                          const struct ir3_shader_variant *gs,
-                          uint32_t cps_per_patch)
+tu6_emit_vs_params(struct tu_cs *cs,
+                   const struct ir3_const_state *const_state,
+                   unsigned constlen,
+                   unsigned param_stride,
+                   unsigned num_vertices)
 {
-   struct tu_device *dev = cs->device;
-
-   uint32_t num_vertices =
-         hs ? cps_per_patch : gs->gs.vertices_in;
-
    uint32_t vs_params[4] = {
-      vs->output_size * num_vertices * 4,  /* vs primitive stride */
-      vs->output_size * 4,                 /* vs vertex stride */
+      param_stride * num_vertices * 4,  /* vs primitive stride */
+      param_stride * 4,                 /* vs vertex stride */
       0,
       0,
    };
-   uint32_t vs_base = ir3_const_state(vs)->offsets.primitive_param;
+   uint32_t vs_base = const_state->offsets.primitive_param;
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, vs_base, SB6_VS_SHADER, 0,
                   ARRAY_SIZE(vs_params), vs_params);
+}
 
-   if (hs) {
-      assert(ds->type != MESA_SHADER_NONE);
-
-      /* Create the shared tess factor BO the first time tess is used on the device. */
+static void
+tu_get_tess_iova(struct tu_device *dev,
+                 uint64_t *tess_factor_iova,
+                 uint64_t *tess_param_iova)
+{
+   /* Create the shared tess factor BO the first time tess is used on the device. */
+   if (!dev->tess_bo) {
       mtx_lock(&dev->mutex);
       if (!dev->tess_bo)
          tu_bo_init_new(dev, &dev->tess_bo, TU_TESS_BO_SIZE, TU_BO_ALLOC_NO_FLAGS, "tess");
       mtx_unlock(&dev->mutex);
+   }
 
-      uint64_t tess_factor_iova = dev->tess_bo->iova;
-      uint64_t tess_param_iova = tess_factor_iova + TU_TESS_FACTOR_SIZE;
+   *tess_factor_iova = dev->tess_bo->iova;
+   *tess_param_iova = dev->tess_bo->iova + TU_TESS_FACTOR_SIZE;
+}
 
-      uint32_t hs_params[8] = {
-         vs->output_size * num_vertices * 4,  /* hs primitive stride */
-         vs->output_size * 4,                 /* hs vertex stride */
-         hs->output_size,
-         cps_per_patch,
-         tess_param_iova,
-         tess_param_iova >> 32,
-         tess_factor_iova,
-         tess_factor_iova >> 32,
-      };
+void
+tu6_emit_patch_control_points(struct tu_cs *cs,
+                              const struct tu_pipeline *pipeline,
+                              unsigned patch_control_points)
+{
+   if (!(pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT))
+      return;
 
-      uint32_t hs_base = hs->const_state->offsets.primitive_param;
-      uint32_t hs_param_dwords = MIN2((hs->constlen - hs_base) * 4, ARRAY_SIZE(hs_params));
-      tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
-                     hs_param_dwords, hs_params);
+   struct tu_device *dev = cs->device;
+
+   tu6_emit_vs_params(cs,
+                      &pipeline->program.link[MESA_SHADER_VERTEX].const_state,
+                      pipeline->program.link[MESA_SHADER_VERTEX].constlen,
+                      pipeline->program.vs_param_stride,
+                      patch_control_points);
+
+   uint64_t tess_factor_iova, tess_param_iova;
+   tu_get_tess_iova(dev, &tess_factor_iova, &tess_param_iova);
+
+   uint32_t hs_params[8] = {
+      pipeline->program.vs_param_stride * patch_control_points * 4,  /* hs primitive stride */
+      pipeline->program.vs_param_stride * 4,                         /* hs vertex stride */
+      pipeline->program.hs_param_stride,
+      patch_control_points,
+      tess_param_iova,
+      tess_param_iova >> 32,
+      tess_factor_iova,
+      tess_factor_iova >> 32,
+   };
+
+   const struct ir3_const_state *hs_const =
+      &pipeline->program.link[MESA_SHADER_TESS_CTRL].const_state;
+   unsigned hs_constlen =
+      pipeline->program.link[MESA_SHADER_TESS_CTRL].constlen;
+   uint32_t hs_base = hs_const->offsets.primitive_param;
+   uint32_t hs_param_dwords = MIN2((hs_constlen - hs_base) * 4, ARRAY_SIZE(hs_params));
+   tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
+                  hs_param_dwords, hs_params);
+
+   uint32_t patch_local_mem_size_16b =
+      patch_control_points * pipeline->program.vs_param_stride / 4;
+
+   /* Total attribute slots in HS incoming patch. */
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
+   tu_cs_emit(cs, patch_local_mem_size_16b);
+
+   const uint32_t wavesize = 64;
+   const uint32_t vs_hs_local_mem_size = 16384;
+
+   uint32_t max_patches_per_wave;
+   if (dev->physical_device->info->a6xx.tess_use_shared) {
+      /* HS invocations for a patch are always within the same wave,
+       * making barriers less expensive. VS can't have barriers so we
+       * don't care about VS invocations being in the same wave.
+       */
+      max_patches_per_wave = wavesize / pipeline->program.hs_vertices_out;
+   } else {
+      /* VS is also in the same wave */
+      max_patches_per_wave =
+         wavesize / MAX2(patch_control_points,
+                         pipeline->program.hs_vertices_out);
+   }
+
+   uint32_t patches_per_wave =
+      MIN2(vs_hs_local_mem_size / (patch_local_mem_size_16b * 16),
+           max_patches_per_wave);
+
+   uint32_t wave_input_size = DIV_ROUND_UP(
+      patches_per_wave * patch_local_mem_size_16b * 16, 256);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
+   tu_cs_emit(cs, wave_input_size);
+
+   /* maximum number of patches that can fit in tess factor/param buffers */
+   uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
+                        TU_TESS_PARAM_SIZE / (pipeline->program.hs_param_stride * 4));
+   /* convert from # of patches to draw count */
+   subdraw_size *= patch_control_points;
+
+   tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
+   tu_cs_emit(cs, subdraw_size);
+}
+
+static void
+tu6_emit_geom_tess_consts(struct tu_cs *cs,
+                          const struct ir3_shader_variant *vs,
+                          const struct ir3_shader_variant *hs,
+                          const struct ir3_shader_variant *ds,
+                          const struct ir3_shader_variant *gs)
+{
+   struct tu_device *dev = cs->device;
+
+   if (gs && !hs) {
+      tu6_emit_vs_params(cs, ir3_const_state(vs), vs->constlen,
+                         vs->output_size, gs->gs.vertices_in);
+   }
+
+   if (hs) {
+      uint64_t tess_factor_iova, tess_param_iova;
+      tu_get_tess_iova(dev, &tess_factor_iova, &tess_param_iova);
 
       uint32_t ds_params[8] = {
          gs ? ds->output_size * gs->gs.vertices_in * 4 : 0,  /* ds primitive stride */
@@ -1793,7 +1844,7 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
    if (gs) {
       const struct ir3_shader_variant *prev = ds ? ds : vs;
       uint32_t gs_params[4] = {
-         prev->output_size * num_vertices * 4,  /* gs primitive stride */
+         prev->output_size * gs->gs.vertices_in * 4,  /* gs primitive stride */
          prev->output_size * 4,                 /* gs vertex stride */
          0,
          0,
@@ -1842,7 +1893,6 @@ tu6_emit_program(struct tu_cs *cs,
    const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
    const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
    gl_shader_stage stage = MESA_SHADER_VERTEX;
-   uint32_t cps_per_patch = pipeline->tess.patch_control_points;
    bool multi_pos_output = vs->multi_pos_output;
 
   /* Don't use the binning pass variant when GS is present because we don't
@@ -1899,7 +1949,7 @@ tu6_emit_program(struct tu_cs *cs,
 
    tu6_emit_vfd_dest(cs, vs);
 
-   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
+   tu6_emit_vpc(cs, vs, hs, ds, gs, fs);
 
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
@@ -1912,7 +1962,7 @@ tu6_emit_program(struct tu_cs *cs,
    }
 
    if (gs || hs) {
-      tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs, cps_per_patch);
+      tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs);
    }
 }
 
@@ -3644,6 +3694,10 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_VERTEX_INPUT) |
             BIT(TU_DYNAMIC_STATE_VB_STRIDE);
          break;
+      case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3699,7 +3753,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(VK_DYNAMIC_STATE_SCISSOR) |
             BIT(VK_DYNAMIC_STATE_LINE_WIDTH) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BIAS) |
-            BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD);
+            BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD) |
+            BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);
       }
 
       if (library->state &
@@ -3819,6 +3874,19 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
    link->constlen = v->constlen;
 }
 
+static bool
+tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
+                         uint32_t id, uint32_t size)
+{
+   assert(id < ARRAY_SIZE(pipeline->dynamic_state));
+
+   if (pipeline->dynamic_state_mask & BIT(id))
+      return false;
+
+   pipeline->dynamic_state[id] = tu_cs_draw_state(&pipeline->cs, cs, size);
+   return true;
+}
+
 static void
 tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                                         struct tu_pipeline *pipeline)
@@ -3857,22 +3925,21 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                               builder->variants[i]);
    }
 
+   struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
    struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
-   if (hs)
-      pipeline->program.hs_param_stride = hs->output_size * 4;
-}
+   if (hs) {
+      pipeline->program.vs_param_stride = vs->output_size;
+      pipeline->program.hs_param_stride = hs->output_size;
+      pipeline->program.hs_vertices_out = hs->tess.tcs_vertices_out;
 
-static bool
-tu_pipeline_static_state(struct tu_pipeline *pipeline, struct tu_cs *cs,
-                         uint32_t id, uint32_t size)
-{
-   assert(id < ARRAY_SIZE(pipeline->dynamic_state));
-
-   if (pipeline->dynamic_state_mask & BIT(id))
-      return false;
-
-   pipeline->dynamic_state[id] = tu_cs_draw_state(&pipeline->cs, cs, size);
-   return true;
+      struct tu_cs cs;
+      if (tu_pipeline_static_state(pipeline, &cs,
+                                   TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
+                                   TU6_EMIT_PATCH_CONTROL_POINTS_DWORDS)) {
+         tu6_emit_patch_control_points(&cs, pipeline,
+                                       pipeline->tess.patch_control_points);
+      }
+   }
 }
 
 static void
@@ -3970,8 +4037,12 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    const VkPipelineTessellationStateCreateInfo *tess_info =
       builder->create_info->pTessellationState;
 
-   assert(tess_info->patchControlPoints <= 32);
-   pipeline->tess.patch_control_points = tess_info->patchControlPoints;
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS))) {
+      assert(tess_info->patchControlPoints <= 32);
+      pipeline->tess.patch_control_points = tess_info->patchControlPoints;
+   }
+
    const VkPipelineTessellationDomainOriginStateCreateInfo *domain_info =
          vk_find_struct_const(tess_info->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
    pipeline->tess.upper_left_domain_origin = !domain_info ||

@@ -66,8 +66,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_RASTERIZER_DISCARD = BIT(10),
    TU_CMD_DIRTY_VIEWPORTS = BIT(11),
    TU_CMD_DIRTY_BLEND = BIT(12),
+   TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(13),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(13)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(14)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -407,6 +408,8 @@ struct tu_cmd_state
    VkSampleCountFlagBits samples;
    bool msaa_disable;
    bool z_negative_one_to_one;
+
+   unsigned patch_control_points;
 
    /* VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT and
     * VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT are allowed to run simultaniously,
