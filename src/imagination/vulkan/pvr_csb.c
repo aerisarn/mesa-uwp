@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <vulkan/vulkan.h>
 
 #include "hwdef/rogue_hw_utils.h"
@@ -37,6 +38,8 @@
 #include "pvr_csb.h"
 #include "pvr_device_info.h"
 #include "pvr_private.h"
+#include "util/list.h"
+#include "util/u_dynarray.h"
 #include "vk_log.h"
 
 /**
@@ -131,7 +134,7 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
 {
    const uint8_t stream_link_space = (pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
                                       pvr_cmd_length(VDMCTRL_STREAM_LINK1)) *
-                                     4;
+                                     sizeof(uint32_t);
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&csb->device->pdevice->dev_info);
    struct pvr_bo *pvr_bo;
@@ -218,6 +221,52 @@ void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
    assert(csb->next <= csb->end);
 
    return p;
+}
+
+/**
+ * \brief Copies control stream words from src csb into dst csb.
+ *
+ * The intended use is to copy PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED type
+ * control stream into PVR_CMD_STREAM_TYPE_GRAPHICS type device accessible
+ * control stream for processing.
+ *
+ * This is mainly for secondary command buffers created with
+ * VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT flag. In that case we need to
+ * copy secondary control stream into the primary control stream for processing.
+ * This is done as part of vkCmdExecuteCommands.
+ *
+ * We create deferred control stream which is basically the same control stream
+ * but based in host side memory to avoid reserving device side resource.
+ *
+ * \param[in,out] csb_dst Destination control Stream Builder object.
+ * \param[in]     csb_src Source Control Stream Builder object.
+ */
+void pvr_csb_copy(struct pvr_csb *csb_dst, struct pvr_csb *csb_src)
+{
+   const uint8_t stream_link_space = (pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
+                                      pvr_cmd_length(VDMCTRL_STREAM_LINK1)) *
+                                     sizeof(uint32_t);
+   const uint32_t size =
+      util_dynarray_num_elements(&csb_src->deferred_cs_mem, char);
+   const uint8_t *start = util_dynarray_begin(&csb_src->deferred_cs_mem);
+
+   /* Only deferred control stream supported as src. */
+   assert(csb_src->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED);
+
+   /* Only graphics control stream supported as dst. */
+   assert(csb_dst->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS);
+
+   /* TODO: For now we don't support deferred streams bigger than one csb buffer
+    * object size.
+    *
+    * While adding support for this make sure to not break the words/dwords
+    * over two csb buffers.
+    */
+   pvr_finishme("Add support to copy streams bigger than one csb buffer");
+
+   assert(size < (PVR_CMD_BUFFER_CSB_BO_SIZE - stream_link_space));
+
+   memcpy(pvr_csb_alloc_dwords(csb_dst, size), start, size);
 }
 
 /**
