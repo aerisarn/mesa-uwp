@@ -4265,7 +4265,8 @@ pvr_cmd_uses_deferred_cs_cmds(struct pvr_cmd_buffer *const cmd_buffer)
       VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
    return cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-          cmd_buffer->usage_flags & deferred_control_stream_flags;
+          (cmd_buffer->usage_flags & deferred_control_stream_flags) ==
+             deferred_control_stream_flags;
 }
 
 /* Largest valid PPP State update in words = 31
