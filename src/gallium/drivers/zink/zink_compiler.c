@@ -1874,6 +1874,7 @@ lower_64bit_vars(nir_shader *shader)
    if (progress) {
       nir_lower_alu_to_scalar(shader, filter_64_bit_instr, NULL);
       nir_lower_phis_to_scalar(shader, false);
+      optimize_nir(shader, NULL);
    }
    return progress;
 }
