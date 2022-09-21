@@ -133,8 +133,8 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       attachments[num_attachments].flags = 0;
       pstate->attachments[num_attachments].format = attachments[num_attachments].format = rt->format;
       pstate->attachments[num_attachments].samples = attachments[num_attachments].samples = rt->samples;
-      attachments[num_attachments].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[num_attachments].loadOp = get_rt_loadop(rt, rt->clear_color);
+      attachments[num_attachments].stencilLoadOp = get_rt_loadop(rt, rt->clear_stencil);
       /* TODO: need replicate EXT */
       //attachments[num_attachments].storeOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
       //attachments[num_attachments].stencilStoreOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
@@ -356,6 +356,7 @@ zink_init_zs_attachment(struct zink_context *ctx, struct zink_rt_attrib *rt)
       /* depth write + sample */
       rt->mixed_zs = needs_write_z && zsbuf->bind_count[0];
    rt->needs_write = needs_write_z | needs_write_s;
+   rt->invalid = !zsbuf->valid;
 }
 
 void

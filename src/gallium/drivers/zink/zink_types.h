@@ -866,10 +866,8 @@ struct zink_rt_attrib {
      bool clear_stencil;
      bool fbfetch;
   };
-  union {
-     bool invalid;
-     bool needs_write;
-  };
+  bool invalid;
+  bool needs_write;
   bool resolve;
   bool mixed_zs;
 };
