@@ -4542,21 +4542,31 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       struct pvr_deferred_cs_command cmd;
 
       if (deferred_secondary) {
+         const uint32_t num_dwords = pvr_cmd_length(VDMCTRL_PPP_STATE0) +
+                                     pvr_cmd_length(VDMCTRL_PPP_STATE1);
+
+         uint32_t *vdm_state = pvr_csb_alloc_dwords(control_stream, num_dwords);
+         if (!vdm_state) {
+            cmd_buffer->state.status = pvr_csb_get_status(control_stream);
+            return cmd_buffer->state.status;
+         }
+
          cmd = (struct pvr_deferred_cs_command){
             .type = PVR_DEFERRED_CS_COMMAND_TYPE_DBSC,
-            .dbsc = ppp_state->depthbias_scissor_indices,
+            .dbsc = {
+               .state = ppp_state->depthbias_scissor_indices,
+               .vdm_state = vdm_state,
+            },
          };
       } else {
-         /* clang-format off */
          cmd = (struct pvr_deferred_cs_command){
             .type = PVR_DEFERRED_CS_COMMAND_TYPE_DBSC2,
             .dbsc2 = {
                .state = ppp_state->depthbias_scissor_indices,
                .ppp_cs_bo = pvr_bo,
                .patch_offset = dbsc_patching_offset,
-            }
+            },
          };
-         /* clang-format on */
       }
 
       util_dynarray_append(&cmd_buffer->deferred_csb_commands,

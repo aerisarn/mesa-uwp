@@ -867,7 +867,11 @@ struct pvr_ppp_state {
 struct pvr_deferred_cs_command {
    enum pvr_deferred_cs_command_type type;
    union {
-      struct pvr_ppp_dbsc dbsc;
+      struct {
+         struct pvr_ppp_dbsc state;
+
+         uint32_t *vdm_state;
+      } dbsc;
 
       struct {
          struct pvr_ppp_dbsc state;
