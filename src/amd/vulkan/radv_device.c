@@ -413,7 +413,10 @@ radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 static bool
 radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
 {
-   return false;
+   /* TODO: implement task/mesh on GFX11 */
+   return pdevice->use_ngg && !pdevice->use_llvm && pdevice->rad_info.gfx_level == GFX10_3 &&
+          !(pdevice->instance->debug_flags & (RADV_DEBUG_NO_COMPUTE_QUEUE | RADV_DEBUG_NO_IBS)) &&
+          pdevice->rad_info.has_gang_submit;
 }
 
 static bool
@@ -600,8 +603,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_load_store_op_none = true,
       .EXT_memory_budget = true,
       .EXT_memory_priority = true,
-      .EXT_mesh_shader =
-         radv_taskmesh_enabled(device) && device->instance->perftest_flags & RADV_PERFTEST_EXT_MS,
+      .EXT_mesh_shader = radv_taskmesh_enabled(device),
       .EXT_multi_draw = true,
       .EXT_mutable_descriptor_type = true, /* Trivial promotion from VALVE. */
       .EXT_non_seamless_cube_map = true,
@@ -1099,7 +1101,6 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"nv_ms", RADV_PERFTEST_NV_MS},
                                                              {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
                                                              {"gpl", RADV_PERFTEST_GPL},
-                                                             {"ext_ms", RADV_PERFTEST_EXT_MS},
                                                              {"ngg_streamout", RADV_PERFTEST_NGG_STREAMOUT},
                                                              {NULL, 0}};
 
