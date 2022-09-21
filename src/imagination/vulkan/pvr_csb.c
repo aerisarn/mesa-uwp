@@ -82,7 +82,11 @@ void pvr_csb_init(struct pvr_device *device,
    csb->device = device;
    csb->stream_type = stream_type;
    csb->status = VK_SUCCESS;
-   list_inithead(&csb->pvr_bo_list);
+
+   if (stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED)
+      util_dynarray_init(&csb->deferred_cs_mem, NULL);
+   else
+      list_inithead(&csb->pvr_bo_list);
 }
 
 /**
@@ -94,9 +98,13 @@ void pvr_csb_init(struct pvr_device *device,
  */
 void pvr_csb_finish(struct pvr_csb *csb)
 {
-   list_for_each_entry_safe (struct pvr_bo, pvr_bo, &csb->pvr_bo_list, link) {
-      list_del(&pvr_bo->link);
-      pvr_bo_free(csb->device, pvr_bo);
+   if (csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED) {
+      util_dynarray_fini(&csb->deferred_cs_mem);
+   } else {
+      list_for_each_entry_safe (struct pvr_bo, pvr_bo, &csb->pvr_bo_list, link) {
+         list_del(&pvr_bo->link);
+         pvr_bo_free(csb->device, pvr_bo);
+      }
    }
 
    /* Leave the csb in a reset state to catch use after destroy instances */
@@ -185,9 +193,18 @@ static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
 void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
 {
    const uint32_t required_space = num_dwords * 4;
+   void *p;
 
    if (csb->status != VK_SUCCESS)
       return NULL;
+
+   if (csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED) {
+      p = util_dynarray_grow_bytes(&csb->deferred_cs_mem, 1, required_space);
+      if (!p)
+         csb->status = vk_error(csb->device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      return p;
+   }
 
    if (csb->next + required_space > csb->end) {
       bool ret = pvr_csb_buffer_extend(csb);
@@ -195,7 +212,7 @@ void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
          return NULL;
    }
 
-   void *p = csb->next;
+   p = csb->next;
 
    csb->next += required_space;
    assert(csb->next <= csb->end);
@@ -214,6 +231,9 @@ void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
  */
 void pvr_csb_emit_link(struct pvr_csb *csb, pvr_dev_addr_t addr, bool ret)
 {
+   /* Not supported for deferred control stream. */
+   assert(csb->stream_type != PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED);
+
    /* Stream return is only supported for graphics control stream. */
    assert(!ret || csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS);
 
@@ -258,7 +278,8 @@ void pvr_csb_emit_link(struct pvr_csb *csb, pvr_dev_addr_t addr, bool ret)
 VkResult pvr_csb_emit_return(struct pvr_csb *csb)
 {
    /* STREAM_RETURN is only supported by graphics control stream. */
-   assert(csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS);
+   assert(csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS ||
+          csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED);
 
    /* clang-format off */
    pvr_csb_emit(csb, VDMCTRL_STREAM_RETURN, ret);
