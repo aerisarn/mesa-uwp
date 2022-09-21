@@ -366,40 +366,15 @@ struct bvh_state {
    uint32_t internal_node_count;
 };
 
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdBuildAccelerationStructuresKHR(
-   VkCommandBuffer commandBuffer, uint32_t infoCount,
-   const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
-   const VkAccelerationStructureBuildRangeInfoKHR *const *ppBuildRangeInfos)
+static void
+build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
+             const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+             const VkAccelerationStructureBuildRangeInfoKHR *const *ppBuildRangeInfos,
+             struct bvh_state *bvh_states, enum radv_cmd_flush_bits flush_bits)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_meta_saved_state saved_state;
-
-   enum radv_cmd_flush_bits flush_bits =
-      RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-      radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
-                            NULL) |
-      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
-                            NULL);
-
-   radv_meta_save(
-      &saved_state, cmd_buffer,
-      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
-   struct bvh_state *bvh_states = calloc(infoCount, sizeof(struct bvh_state));
-
-   for (uint32_t i = 0; i < infoCount; ++i) {
-      /* Clear the bvh bounds with int max/min. */
-      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress, 3 * sizeof(float),
-                             0x7fffffff);
-      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
-                             3 * sizeof(float), 0x80000000);
-   }
-
-   cmd_buffer->state.flush_bits |= flush_bits;
-
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.leaf_pipeline);
-
    for (uint32_t i = 0; i < infoCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
@@ -488,7 +463,14 @@ radv_CmdBuildAccelerationStructuresKHR(
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
+}
 
+static void
+morton_generate(VkCommandBuffer commandBuffer, uint32_t infoCount,
+                const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+                struct bvh_state *bvh_states, enum radv_cmd_flush_bits flush_bits)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.morton_pipeline);
 
@@ -509,7 +491,14 @@ radv_CmdBuildAccelerationStructuresKHR(
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
+}
 
+static void
+morton_sort(VkCommandBuffer commandBuffer, uint32_t infoCount,
+            const VkAccelerationStructureBuildGeometryInfoKHR *pInfos, struct bvh_state *bvh_states,
+            enum radv_cmd_flush_bits flush_bits)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    for (uint32_t i = 0; i < infoCount; ++i) {
       struct radix_sort_vk_memory_requirements requirements;
       radix_sort_vk_get_memory_requirements(
@@ -550,7 +539,14 @@ radv_CmdBuildAccelerationStructuresKHR(
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
+}
 
+static void
+lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
+                    const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+                    struct bvh_state *bvh_states, enum radv_cmd_flush_bits flush_bits)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_pipeline);
    bool progress = true;
@@ -595,9 +591,9 @@ radv_CmdBuildAccelerationStructuresKHR(
             .fill_count = bvh_states[i].node_count | (final_iter ? 0x80000000U : 0),
          };
 
-         radv_CmdPushConstants(commandBuffer,
-                               cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_p_layout,
-                               VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+         radv_CmdPushConstants(
+            commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_p_layout,
+            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
          radv_unaligned_dispatch(cmd_buffer, dst_node_count, 1, 1);
          if (!final_iter)
             bvh_states[i].node_offset += dst_node_count * 128;
@@ -606,6 +602,47 @@ radv_CmdBuildAccelerationStructuresKHR(
          bvh_states[i].scratch_offset = dst_scratch_offset;
       }
    }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBuildAccelerationStructuresKHR(
+   VkCommandBuffer commandBuffer, uint32_t infoCount,
+   const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+   const VkAccelerationStructureBuildRangeInfoKHR *const *ppBuildRangeInfos)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_meta_saved_state saved_state;
+
+   enum radv_cmd_flush_bits flush_bits =
+      RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+      radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
+                            NULL) |
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT,
+                            NULL);
+
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
+   struct bvh_state *bvh_states = calloc(infoCount, sizeof(struct bvh_state));
+
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      /* Clear the bvh bounds with int max/min. */
+      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress, 3 * sizeof(float),
+                             0x7fffffff);
+      si_cp_dma_clear_buffer(cmd_buffer, pInfos[i].scratchData.deviceAddress + 3 * sizeof(float),
+                             3 * sizeof(float), 0x80000000);
+   }
+
+   cmd_buffer->state.flush_bits |= flush_bits;
+
+   build_leaves(commandBuffer, infoCount, pInfos, ppBuildRangeInfos, bvh_states, flush_bits);
+
+   morton_generate(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
+
+   morton_sort(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
+
+   lbvh_build_internal(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
+
    for (uint32_t i = 0; i < infoCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
