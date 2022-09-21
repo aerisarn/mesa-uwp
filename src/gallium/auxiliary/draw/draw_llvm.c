@@ -1843,9 +1843,11 @@ draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
       lp_build_if(&ifthen, gallivm, this_cond);
       prims_emitted = LLVMBuildMul(gallivm->builder, prims_emitted, lp_build_const_int32(gallivm, variant->shader->base.num_vertex_streams), "");
       prims_emitted = LLVMBuildAdd(gallivm->builder, prims_emitted, lp_build_const_int32(gallivm, stream), "");
-      store_ptr = LLVMBuildGEP(builder, prim_lengts_ptr, &prims_emitted, 1, "");
-      store_ptr = LLVMBuildLoad(builder, store_ptr, "");
-      store_ptr = LLVMBuildGEP(builder, store_ptr, &ind, 1, "");
+      LLVMTypeRef int_type = LLVMInt32TypeInContext(gallivm->context);
+      LLVMTypeRef prim_lengths_type = LLVMPointerType(int_type, 0);
+      store_ptr = LLVMBuildGEP2(builder, prim_lengths_type, prim_lengts_ptr, &prims_emitted, 1, "");
+      store_ptr = LLVMBuildLoad2(builder, prim_lengths_type, store_ptr, "");
+      store_ptr = LLVMBuildGEP2(builder, int_type, store_ptr, &ind, 1, "");
       LLVMBuildStore(builder, num_vertices, store_ptr);
       lp_build_endif(&ifthen);
    }
