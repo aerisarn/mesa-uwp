@@ -329,6 +329,40 @@ lower_dual_blend(nir_shader *shader)
    return progress;
 }
 
+static bool
+lower_64bit_pack_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_alu)
+      return false;
+   nir_alu_instr *alu_instr = (nir_alu_instr *) instr;
+   if (alu_instr->op != nir_op_pack_64_2x32 &&
+       alu_instr->op != nir_op_unpack_64_2x32)
+      return false;
+   b->cursor = nir_before_instr(&alu_instr->instr);
+   nir_ssa_def *src = nir_ssa_for_alu_src(b, alu_instr, 0);
+   nir_ssa_def *dest;
+   switch (alu_instr->op) {
+   case nir_op_pack_64_2x32:
+      dest = nir_pack_64_2x32_split(b, nir_channel(b, src, 0), nir_channel(b, src, 1));
+      break;
+   case nir_op_unpack_64_2x32:
+      dest = nir_vec2(b, nir_unpack_64_2x32_split_x(b, src), nir_unpack_64_2x32_split_y(b, src));
+      break;
+   default:
+      unreachable("Impossible opcode");
+   }
+   nir_ssa_def_rewrite_uses(&alu_instr->dest.dest.ssa, dest);
+   nir_instr_remove(&alu_instr->instr);
+   return true;
+}
+
+static bool
+lower_64bit_pack(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, lower_64bit_pack_instr,
+                                       nir_metadata_block_index | nir_metadata_dominance, NULL);
+}
+
 void
 zink_screen_init_compiler(struct zink_screen *screen)
 {
@@ -581,6 +615,8 @@ optimize_nir(struct nir_shader *s, struct zink_shader *zs)
       progress = false;
       if (s->options->lower_int64_options)
          NIR_PASS_V(s, nir_lower_int64);
+      if (s->options->lower_doubles_options & nir_lower_fp64_full_software)
+         NIR_PASS_V(s, lower_64bit_pack);
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
       NIR_PASS(progress, s, nir_lower_alu_to_scalar, filter_pack_instr, NULL);
       NIR_PASS(progress, s, nir_opt_copy_prop_vars);
