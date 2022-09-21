@@ -136,11 +136,12 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       }
    }
 
-   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT)
-      VKCTX(CmdBindVertexBuffers2EXT)(batch->state->cmdbuf, 0,
-                                          elems->hw_state.num_bindings,
-                                          buffers, buffer_offsets, NULL, buffer_strides);
-   else if (elems->hw_state.num_bindings)
+   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT) {
+      if (elems->hw_state.num_bindings)
+         VKCTX(CmdBindVertexBuffers2EXT)(batch->state->cmdbuf, 0,
+                                             elems->hw_state.num_bindings,
+                                             buffers, buffer_offsets, NULL, buffer_strides);
+   } else if (elems->hw_state.num_bindings)
       VKSCR(CmdBindVertexBuffers)(batch->state->cmdbuf, 0,
                              elems->hw_state.num_bindings,
                              buffers, buffer_offsets);

@@ -240,7 +240,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    }
    if (screen->info.have_EXT_vertex_input_dynamic_state)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_EXT;
-   else if (screen->info.have_EXT_extended_dynamic_state && state->uses_dynamic_stride)
+   else if (screen->info.have_EXT_extended_dynamic_state && state->uses_dynamic_stride && state->element_state->num_attribs)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
    if (screen->info.have_EXT_extended_dynamic_state2) {
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE;
