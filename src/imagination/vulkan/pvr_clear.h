@@ -27,12 +27,21 @@
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
+#include "pvr_csb.h"
+
 #define PVR_CLEAR_VERTEX_COUNT 4
 #define PVR_CLEAR_VERTEX_COORDINATES 3
+
+#define PVR_CLEAR_VDM_STATE_DWORD_COUNT                                        \
+   (pvr_cmd_length(VDMCTRL_VDM_STATE0) + pvr_cmd_length(VDMCTRL_VDM_STATE2) +  \
+    pvr_cmd_length(VDMCTRL_VDM_STATE3) + pvr_cmd_length(VDMCTRL_VDM_STATE4) +  \
+    pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
+    pvr_cmd_length(VDMCTRL_INDEX_LIST2))
 
 struct pvr_bo;
 struct pvr_cmd_buffer;
 struct pvr_device;
+struct pvr_device_info;
 struct pvr_pds_upload;
 struct pvr_pds_vertex_shader_program;
 
@@ -77,5 +86,13 @@ pvr_pds_clear_rta_vertex_shader_program_create_and_upload_data(
       vertices_bo,
       pds_upload_out);
 }
+
+void pvr_pack_clear_vdm_state(
+   const struct pvr_device_info *const dev_info,
+   const struct pvr_pds_upload *const program,
+   uint32_t temps,
+   uint32_t index_count,
+   uint32_t vs_output_size_in_bytes,
+   uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT]);
 
 #endif /* PVR_CLEAR_H */

@@ -38,6 +38,7 @@
 
 #include "compiler/shader_enums.h"
 #include "hwdef/rogue_hw_defs.h"
+#include "pvr_clear.h"
 #include "pvr_csb.h"
 #include "pvr_device_info.h"
 #include "pvr_entrypoints.h"
@@ -342,12 +343,6 @@ struct pvr_static_clear_ppp_template {
       struct PVRX(TA_OUTPUT_SEL) output_sel;
    } config;
 };
-
-#define PVR_CLEAR_VDM_STATE_DWORD_COUNT                                        \
-   (pvr_cmd_length(VDMCTRL_VDM_STATE0) + pvr_cmd_length(VDMCTRL_VDM_STATE2) +  \
-    pvr_cmd_length(VDMCTRL_VDM_STATE3) + pvr_cmd_length(VDMCTRL_VDM_STATE4) +  \
-    pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
-    pvr_cmd_length(VDMCTRL_INDEX_LIST2))
 
 struct pvr_compute_query_shader {
    struct pvr_bo *usc_bo;

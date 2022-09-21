@@ -252,3 +252,79 @@ VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
 
    return VK_SUCCESS;
 }
+
+void pvr_pack_clear_vdm_state(
+   const struct pvr_device_info *const dev_info,
+   const struct pvr_pds_upload *const program,
+   uint32_t temps,
+   uint32_t index_count,
+   uint32_t vs_output_size_in_bytes,
+   uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT])
+{
+   const uint32_t vs_output_size =
+      DIV_ROUND_UP(vs_output_size_in_bytes,
+                   PVRX(VDMCTRL_VDM_STATE4_VS_OUTPUT_SIZE_UNIT_SIZE));
+   uint32_t *stream = state_buffer;
+   uint32_t max_instances;
+   uint32_t cam_size;
+
+   pvr_calculate_vertex_cam_size(dev_info,
+                                 vs_output_size,
+                                 true,
+                                 &cam_size,
+                                 &max_instances);
+
+   pvr_csb_pack (stream, VDMCTRL_VDM_STATE0, state0) {
+      state0.vs_data_addr_present = true;
+      state0.vs_other_present = true;
+      state0.cam_size = cam_size;
+      state0.uvs_scratch_size_select =
+         PVRX(VDMCTRL_UVS_SCRATCH_SIZE_SELECT_FIVE);
+      state0.flatshade_control = PVRX(VDMCTRL_FLATSHADE_CONTROL_VERTEX_0);
+   }
+   stream += pvr_cmd_length(VDMCTRL_VDM_STATE0);
+
+   pvr_csb_pack (stream, VDMCTRL_VDM_STATE2, state2) {
+      state2.vs_pds_data_base_addr = PVR_DEV_ADDR(program->data_offset);
+   }
+   stream += pvr_cmd_length(VDMCTRL_VDM_STATE2);
+
+   pvr_csb_pack (stream, VDMCTRL_VDM_STATE3, state3) {
+      state3.vs_pds_code_base_addr = PVR_DEV_ADDR(program->code_offset);
+   }
+   stream += pvr_cmd_length(VDMCTRL_VDM_STATE3);
+
+   pvr_csb_pack (stream, VDMCTRL_VDM_STATE4, state4) {
+      state4.vs_output_size = vs_output_size;
+   }
+   stream += pvr_cmd_length(VDMCTRL_VDM_STATE4);
+
+   pvr_csb_pack (stream, VDMCTRL_VDM_STATE5, state5) {
+      state5.vs_max_instances = max_instances;
+      /* TODO: Where does the 3 * sizeof(uint32_t) come from? */
+      state5.vs_usc_unified_size =
+         DIV_ROUND_UP(3 * sizeof(uint32_t),
+                      PVRX(VDMCTRL_VDM_STATE5_VS_USC_UNIFIED_SIZE_UNIT_SIZE));
+      state5.vs_pds_temp_size =
+         DIV_ROUND_UP(temps,
+                      PVRX(VDMCTRL_VDM_STATE5_VS_PDS_TEMP_SIZE_UNIT_SIZE));
+      state5.vs_pds_data_size =
+         DIV_ROUND_UP(program->data_size << 2,
+                      PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE));
+   }
+   stream += pvr_cmd_length(VDMCTRL_VDM_STATE5);
+
+   pvr_csb_pack (stream, VDMCTRL_INDEX_LIST0, index_list0) {
+      index_list0.index_count_present = true;
+      index_list0.primitive_topology =
+         PVRX(VDMCTRL_PRIMITIVE_TOPOLOGY_TRI_STRIP);
+   }
+   stream += pvr_cmd_length(VDMCTRL_INDEX_LIST0);
+
+   pvr_csb_pack (stream, VDMCTRL_INDEX_LIST2, index_list3) {
+      index_list3.index_count = index_count;
+   }
+   stream += pvr_cmd_length(VDMCTRL_INDEX_LIST2);
+
+   assert((uint64_t)(stream - state_buffer) == PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+}
