@@ -1496,12 +1496,21 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
    struct zink_resource *res = zink_resource(pres);
    struct zink_context *ctx = zink_context(pctx);
 
-   /* if the surface has never been acquired, there's nothing to present,
-    * so this is a no-op */
-   if (!zink_is_swapchain(res) || (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx) && res->obj->last_dt_idx == UINT32_MAX))
+   /* if the surface is no longer a swapchain, this is a no-op */
+   if (!zink_is_swapchain(res))
       return;
 
    ctx = zink_tc_context_unwrap(pctx);
+
+   if (!zink_kopper_acquired(res->obj->dt, res->obj->dt_idx)) {
+      /* swapbuffers to an undefined surface: acquire and present garbage */
+      zink_kopper_acquire(ctx, res, UINT64_MAX);
+      ctx->needs_present = res;
+      /* set batch usage to submit acquire semaphore */
+      zink_batch_resource_usage_set(&ctx->batch, res, true, false);
+   }
+
+   /* handle any outstanding acquire submits (not just from above) */
    if (ctx->batch.swapchain || ctx->needs_present) {
       ctx->batch.has_work = true;
       pctx->flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
@@ -1511,15 +1520,9 @@ zink_flush_frontbuffer(struct pipe_screen *pscreen,
       }
    }
 
-   if (zink_kopper_acquired(res->obj->dt, res->obj->dt_idx))
-      zink_kopper_present_queue(screen, res);
-   else {
-      assert(res->obj->last_dt_idx != UINT32_MAX);
-      if (!zink_kopper_last_present_eq(res->obj->dt, res->obj->last_dt_idx)) {
-         zink_kopper_acquire_readback(ctx, res);
-         zink_kopper_present_readback(ctx, res);
-      }
-   }
+   /* always verify that this was acquired */
+   assert(zink_kopper_acquired(res->obj->dt, res->obj->dt_idx));
+   zink_kopper_present_queue(screen, res);
 }
 
 bool
