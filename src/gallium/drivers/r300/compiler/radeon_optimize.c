@@ -154,7 +154,7 @@ static void copy_propagate(struct radeon_compiler * c, struct rc_instruction * i
 		       copy_propagate_scan_read, NULL,
 		       is_src_clobbered_scan_write);
 
-	if (reader_data.Abort || reader_data.ReaderCount == 0 || reader_data.ReadersAfterEndloop)
+	if (reader_data.Abort || reader_data.ReaderCount == 0)
 		return;
 
 	/* We can propagate SaturateMode if all the readers are MOV instructions
