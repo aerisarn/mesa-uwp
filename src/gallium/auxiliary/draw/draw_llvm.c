@@ -3232,6 +3232,7 @@ draw_tcs_llvm_emit_store_output(const struct lp_build_tcs_iface *tes_iface,
    LLVMValueRef indices[3];
    LLVMValueRef res;
    struct lp_type type = bld->type;
+   LLVMTypeRef output_type = create_tcs_jit_output_type_deref(gallivm);
 
    if (is_vindex_indirect || is_aindex_indirect || is_sindex_indirect) {
       int i;
@@ -3261,7 +3262,7 @@ draw_tcs_llvm_emit_store_output(const struct lp_build_tcs_iface *tes_iface,
          indices[1] = attr_chan_index;
          indices[2] = swiz_chan_index;
 
-         channel_vec = LLVMBuildGEP(builder, tcs->output, indices, 3, "");
+         channel_vec = LLVMBuildGEP2(builder, output_type, tcs->output, indices, 3, "");
 
          res = LLVMBuildExtractElement(builder, value, idx, "");
 
@@ -3277,7 +3278,7 @@ draw_tcs_llvm_emit_store_output(const struct lp_build_tcs_iface *tes_iface,
       indices[1] = attrib_index;
       indices[2] = swizzle_index;
 
-      res = LLVMBuildGEP(builder, tcs->output, indices, 3, "");
+      res = LLVMBuildGEP2(builder, output_type, tcs->output, indices, 3, "");
       for (unsigned i = 0; i < type.length; ++i) {
          LLVMValueRef idx = lp_build_const_int32(gallivm, i);
          LLVMValueRef val = LLVMBuildExtractElement(builder, value, idx, "");
