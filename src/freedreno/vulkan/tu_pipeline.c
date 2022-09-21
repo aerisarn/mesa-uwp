@@ -1772,13 +1772,11 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
       uint32_t hs_param_dwords = MIN2((hs->constlen - hs_base) * 4, ARRAY_SIZE(hs_params));
       tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
                      hs_param_dwords, hs_params);
-      if (gs)
-         num_vertices = gs->gs.vertices_in;
 
       uint32_t ds_params[8] = {
-         ds->output_size * num_vertices * 4,  /* ds primitive stride */
-         ds->output_size * 4,                 /* ds vertex stride */
-         hs->output_size,                     /* hs vertex stride (dwords) */
+         gs ? ds->output_size * gs->gs.vertices_in * 4 : 0,  /* ds primitive stride */
+         ds->output_size * 4,                                /* ds vertex stride */
+         hs->output_size,                                    /* hs vertex stride (dwords) */
          hs->tess.tcs_vertices_out,
          tess_param_iova,
          tess_param_iova >> 32,
@@ -3978,7 +3976,6 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
          vk_find_struct_const(tess_info->pNext, PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
    pipeline->tess.upper_left_domain_origin = !domain_info ||
          domain_info->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
-   const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
 }
 
 static void
