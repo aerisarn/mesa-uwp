@@ -2069,9 +2069,13 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_builtin_unop(ctx, GLSLstd450PackHalf2x16, get_dest_type(ctx, &alu->dest.dest, nir_type_uint), src[0]);
       break;
 
+   case nir_op_unpack_64_2x32:
+      assert(nir_op_infos[alu->op].num_inputs == 1);
+      result = emit_builtin_unop(ctx, GLSLstd450UnpackDouble2x32, get_dest_type(ctx, &alu->dest.dest, nir_type_uint), src[0]);
+      break;
+
    BUILTIN_UNOPF(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)
    BUILTIN_UNOPF(nir_op_pack_64_2x32, GLSLstd450PackDouble2x32)
-   BUILTIN_UNOPF(nir_op_unpack_64_2x32, GLSLstd450UnpackDouble2x32)
 #undef BUILTIN_UNOP
 #undef BUILTIN_UNOPF
 
