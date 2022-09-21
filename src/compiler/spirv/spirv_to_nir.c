@@ -6305,6 +6305,13 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    return true;
 }
 
+static bool
+is_glslang(const struct vtn_builder *b)
+{
+   return b->generator_id == vtn_generator_glslang_reference_front_end ||
+          b->generator_id == vtn_generator_shaderc_over_glslang;
+}
+
 struct vtn_builder*
 vtn_create_builder(const uint32_t *words, size_t word_count,
                    gl_shader_stage stage, const char *entry_point_name,
@@ -6352,9 +6359,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * commands.  Prior to that, we need to fix them up ourselves.  This
     * GLSLang fix caused them to bump to generator version 3.
     */
-   b->wa_glslang_cs_barrier =
-      (b->generator_id == vtn_generator_glslang_reference_front_end &&
-       generator_version < 3);
+   b->wa_glslang_cs_barrier = is_glslang(b) && generator_version < 3;
 
    /* Identifying the LLVM-SPIRV translator:
     *
@@ -6386,9 +6391,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * See https://github.com/KhronosGroup/glslang/issues/3020 for details.
     */
    b->wa_ignore_return_after_emit_mesh_tasks =
-      (b->generator_id == vtn_generator_glslang_reference_front_end ||
-       b->generator_id == vtn_generator_shaderc_over_glslang) &&
-      generator_version < 11;
+      is_glslang(b) && generator_version < 11;
 
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
@@ -6531,11 +6534,9 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
     *
     * Related glslang issue: https://github.com/KhronosGroup/glslang/issues/2416
     */
-   bool glslang = b->generator_id == vtn_generator_glslang_reference_front_end ||
-                  b->generator_id == vtn_generator_shaderc_over_glslang;
    bool dxsc = b->generator_id == vtn_generator_spiregg;
    b->convert_discard_to_demote = ((dxsc && !b->uses_demote_to_helper_invocation) ||
-                                   (glslang && b->source_lang == SpvSourceLanguageHLSL)) &&
+                                   (is_glslang(b) && b->source_lang == SpvSourceLanguageHLSL)) &&
                                   options->caps.demote_to_helper_invocation;
 
    if (!options->create_library && b->entry_point == NULL) {
