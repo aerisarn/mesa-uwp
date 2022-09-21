@@ -66,7 +66,7 @@ main()
 
    uint32_t intermediate_leaf_nodes_size = args.leaf_node_count * intermediate_leaf_node_size;
    uint32_t dst_leaf_offset =
-      align(SIZEOF(radv_accel_struct_header), 64) + SIZEOF(radv_bvh_box32_node);
+      id_to_offset(RADV_BVH_ROOT_NODE) + SIZEOF(radv_bvh_box32_node);
    uint32_t dst_internal_offset = dst_leaf_offset + args.leaf_node_count * output_leaf_node_size;
 
    REF(radv_ir_box_node) intermediate_internal_nodes =

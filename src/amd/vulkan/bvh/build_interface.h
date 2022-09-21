@@ -83,4 +83,10 @@ struct convert_internal_args {
    uint32_t geometry_type;
 };
 
+struct convert_leaf_args {
+   VOID_REF intermediate_bvh;
+   VOID_REF output_bvh;
+   uint32_t geometry_type;
+};
+
 #endif
