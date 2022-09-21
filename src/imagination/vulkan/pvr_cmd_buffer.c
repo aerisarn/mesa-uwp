@@ -1635,6 +1635,18 @@ static void pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer_state *state,
    state->dirty.viewport = true;
 }
 
+static inline bool
+pvr_cmd_uses_deferred_cs_cmds(struct pvr_cmd_buffer *const cmd_buffer)
+{
+   const VkCommandBufferUsageFlags deferred_control_stream_flags =
+      VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT &
+      VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+   return cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+          (cmd_buffer->usage_flags & deferred_control_stream_flags) ==
+             deferred_control_stream_flags;
+}
+
 static VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                              enum pvr_sub_cmd_type type)
 {
@@ -1688,9 +1700,15 @@ static VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       sub_cmd->gfx.empty_cmd = true;
 
       pvr_reset_graphics_dirty_state(state, true);
-      pvr_csb_init(device,
-                   PVR_CMD_STREAM_TYPE_GRAPHICS,
-                   &sub_cmd->gfx.control_stream);
+      if (pvr_cmd_uses_deferred_cs_cmds(cmd_buffer)) {
+         pvr_csb_init(device,
+                      PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED,
+                      &sub_cmd->gfx.control_stream);
+      } else {
+         pvr_csb_init(device,
+                      PVR_CMD_STREAM_TYPE_GRAPHICS,
+                      &sub_cmd->gfx.control_stream);
+      }
       break;
 
    case PVR_SUB_CMD_TYPE_COMPUTE:
@@ -4255,18 +4273,6 @@ static void pvr_setup_ppp_control(struct pvr_cmd_buffer *const cmd_buffer)
       ppp_state->ppp_control = ppp_control;
       header->pres_ppp_ctrl = true;
    }
-}
-
-static inline bool
-pvr_cmd_uses_deferred_cs_cmds(struct pvr_cmd_buffer *const cmd_buffer)
-{
-   const VkCommandBufferUsageFlags deferred_control_stream_flags =
-      VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT &
-      VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
-   return cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
-          (cmd_buffer->usage_flags & deferred_control_stream_flags) ==
-             deferred_control_stream_flags;
 }
 
 /* Largest valid PPP State update in words = 31
