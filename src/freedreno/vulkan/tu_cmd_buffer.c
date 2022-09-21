@@ -2566,7 +2566,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
       /* maximum number of patches that can fit in tess factor/param buffers */
       uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
-                           TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
+                           TU_TESS_PARAM_SIZE / pipeline->program.hs_param_stride);
       /* convert from # of patches to draw count */
       subdraw_size *= pipeline->tess.patch_control_points;
 

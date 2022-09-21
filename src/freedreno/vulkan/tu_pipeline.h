@@ -205,6 +205,8 @@ struct tu_pipeline
       struct tu_draw_state binning_state;
 
       struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
+
+      uint32_t hs_param_stride;
    } program;
 
    struct
@@ -217,7 +219,6 @@ struct tu_pipeline
    {
       uint32_t patch_type;
       uint32_t patch_control_points;
-      uint32_t param_stride;
       bool upper_left_domain_origin;
    } tess;
 

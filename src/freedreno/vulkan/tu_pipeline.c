@@ -3858,6 +3858,10 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                               &builder->const_state[i],
                               builder->variants[i]);
    }
+
+   struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
+   if (hs)
+      pipeline->program.hs_param_stride = hs->output_size * 4;
 }
 
 static bool
@@ -3975,7 +3979,6 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    pipeline->tess.upper_left_domain_origin = !domain_info ||
          domain_info->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
    const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
-   pipeline->tess.param_stride = hs->output_size * 4;
 }
 
 static void
