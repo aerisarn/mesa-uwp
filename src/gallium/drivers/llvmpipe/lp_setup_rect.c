@@ -472,10 +472,10 @@ lp_rect_cw(struct lp_setup_context *setup,
 
 /**
  * Take the six vertices for two triangles and try to determine if they
- * form a screen-aligned quad/rectangle.  If so, draw the rect directly,
- * else, draw as two regular triangles.
+ * form a screen-aligned quad/rectangle.  If so, draw the rect directly
+ * and return true.  Else, return false.
  */
-static boolean
+static bool
 do_rect_ccw(struct lp_setup_context *setup,
             const float (*v0)[4],
             const float (*v1)[4],
@@ -525,7 +525,7 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v2;
          rv3 = v0;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else if (SAME_POS(v0, v5)) {
       if (SAME_POS(v2, v3)) {
@@ -557,7 +557,7 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v2;
          rv3 = v0;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else if (SAME_POS(v0, v4)) {
       if (SAME_POS(v2, v5)) {
@@ -589,7 +589,7 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v2;
          rv3 = v0;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else if (SAME_POS(v2, v3)) {
       if (SAME_POS(v1, v4)) {
@@ -607,7 +607,7 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v0;
          rv3 = v1;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else if (SAME_POS(v2, v5)) {
       if (SAME_POS(v1, v3)) {
@@ -625,7 +625,7 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v0;
          rv3 = v1;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else if (SAME_POS(v2, v4)) {
       if (SAME_POS(v1, v5)) {
@@ -643,10 +643,10 @@ do_rect_ccw(struct lp_setup_context *setup,
          rv2 = v0;
          rv3 = v1;
       } else {
-         goto emit_triangles;
+         return false;
       }
    } else {
-      goto emit_triangles;
+      return false;
    }
 
 #define SAME_X(A, B)   (A[0][0] == B[0][0])
@@ -690,7 +690,7 @@ do_rect_ccw(struct lp_setup_context *setup,
                dxdy2 = rv3[k][j] - rv2[k][j];
                if (dxdx1 != dxdx2 ||
                    dxdy1 != dxdy2) {
-                  goto emit_triangles;
+                  return false;
                }
             }
          }
@@ -701,13 +701,12 @@ do_rect_ccw(struct lp_setup_context *setup,
        * function was previously misnamed.
        */
       lp_rect_cw(setup, rv0, rv2, rv1, front);
-      return TRUE;
+      return true;
    } else {
       /* setup->quad(setup, rv0, rv1, rv2, rv3); */
    }
 
-emit_triangles:
-   return FALSE;
+   return false;
 }
 
 
