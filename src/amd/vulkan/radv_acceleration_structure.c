@@ -828,9 +828,8 @@ radv_CmdBuildAccelerationStructuresKHR(
          geometry_infos[j].primitive_count = ppBuildRangeInfos[i][j].primitiveCount;
       }
 
-      radv_update_buffer_cp(cmd_buffer,
-                            radv_buffer_get_va(accel_struct->bo) + accel_struct->mem_offset + base,
-                            (const char *)&header + base, sizeof(header) - base);
+      radv_update_buffer_cp(cmd_buffer, accel_struct->va + base, (const char *)&header + base,
+                            sizeof(header) - base);
 
       VkDeviceSize geometry_infos_offset = header.compacted_size - geometry_infos_size;
 
