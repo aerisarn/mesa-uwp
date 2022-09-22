@@ -1771,7 +1771,9 @@ if draw_with_llvm
   llvm_modules += 'native'
 endif
 
-if with_amd_vk or with_gallium_radeonsi or with_gallium_opencl
+if with_intel_clc
+  _llvm_version = '>= 13.0.0'
+elif with_amd_vk or with_gallium_radeonsi or with_gallium_opencl
   _llvm_version = '>= 11.0.0'
 elif with_clc
   _llvm_version = '>= 10.0.0'
@@ -1888,12 +1890,18 @@ if with_opencl_spirv
 
   # Require an SPIRV-LLVM-Translator version compatible with the chosen LLVM
   # one.
+
+  # This first version check is still needed as maybe LLVM 8.0 was picked but
+  # we do not want to accept SPIRV-LLVM-Translator 8.0.0.1 as that version
+  # does not have the required API and those are only available starting from
+  # 8.0.1.3.
+  _llvmspirvlib_min_version = '>= 8.0.1.3'
+  if with_intel_clc
+    _llvmspirvlib_min_version = '>= 13.0.0.0'
+  endif
+
   _llvmspirvlib_version = [
-    # This first version check is still needed as maybe LLVM 8.0 was picked but
-    # we do not want to accept SPIRV-LLVM-Translator 8.0.0.1 as that version does
-    # not have the required API and those are only available starting from
-    # 8.0.1.3.
-    '>= 8.0.1.3',
+    _llvmspirvlib_min_version,
     '>= @0@.@1@'.format(chosen_llvm_version_major, chosen_llvm_version_minor),
     '< @0@.@1@'.format(chosen_llvm_version_major, chosen_llvm_version_minor + 1) ]
 
