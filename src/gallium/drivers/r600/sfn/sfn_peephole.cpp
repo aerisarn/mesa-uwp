@@ -67,6 +67,20 @@ bool peephole(Shader& sh)
    return peephole.progress;
 }
 
+class ReplacePredicate : public AluInstrVisitor {
+public:
+   ReplacePredicate(AluInstr *pred):
+      m_pred(pred) {}
+
+   using AluInstrVisitor::visit;
+
+   void visit(AluInstr *alu) override;
+
+   AluInstr *m_pred;
+   bool success{false};
+};
+
+
 void PeepholeVisitor::visit(AluInstr *instr)
 {
    switch (instr->opcode()) {
@@ -90,6 +104,17 @@ void PeepholeVisitor::visit(AluInstr *instr)
           src_is_zero(instr->psrc(1)))
          convert_to_mov(instr, 2);
       break;
+   case op2_killne_int:
+      if (src_is_zero(instr->psrc(1))) {
+         auto src0 = instr->psrc(0)->as_register();
+         if (src0 && src0->is_ssa()) {
+            auto parent = *src0->parents().begin();
+            ReplacePredicate visitor(instr);
+            parent->accept(visitor);
+            progress |= visitor.success;
+         }
+      }
+
    default:
       ;
    }
@@ -141,18 +166,6 @@ void PeepholeVisitor::visit(Block *instr)
       i->accept(*this);
 }
 
-class ReplaceIfPredicate : public AluInstrVisitor {
-public:
-   ReplaceIfPredicate(AluInstr *pred):
-      m_pred(pred) {}
-
-   using AluInstrVisitor::visit;
-
-   void visit(AluInstr *alu) override;
-
-   AluInstr *m_pred;
-   bool success{false};
-};
 
 void PeepholeVisitor::visit(IfInstr *instr)
 {
@@ -166,7 +179,7 @@ void PeepholeVisitor::visit(IfInstr *instr)
          assert(src0->parents().size() == 1);
          auto parent = *src0->parents().begin();
 
-         ReplaceIfPredicate visitor(pred);
+         ReplacePredicate visitor(pred);
          parent->accept(visitor);
          progress |= visitor.success;
       }
@@ -207,12 +220,28 @@ static EAluOp pred_from_op(EAluOp pred_op, EAluOp op)
       default:
          return op0_nop;
       }
+   case op2_killne_int:
+      switch (op) {
+      case op2_setge_dx10 : return op2_killge;
+      case op2_setgt_dx10 : return op2_killgt;
+      case op2_sete_dx10 : return op2_kille;
+      case op2_setne_dx10 : return op2_killne;
+      case op2_setge_int : return op2_killge_int;
+      case op2_setgt_int : return op2_killgt_int;
+      case op2_setge_uint : return op2_killge_uint;
+      case op2_setgt_uint : return op2_killgt_uint;
+      case op2_sete_int : return op2_kille_int;
+      case op2_setne_int : return op2_killne_int;
+      default:
+         return op0_nop;
+      }
+
    default:
       return op0_nop;
    }
 }
 
-void ReplaceIfPredicate::visit(AluInstr *alu)
+void ReplacePredicate::visit(AluInstr *alu)
 {
    auto new_op = pred_from_op(m_pred->opcode(), alu->opcode());
 
