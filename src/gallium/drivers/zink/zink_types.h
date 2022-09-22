@@ -991,14 +991,14 @@ struct zink_resource {
          uint32_t ssbo_bind_mask[MESA_SHADER_STAGES];
       };
       struct {
-         VkSparseImageMemoryRequirements sparse;
-         VkFormat format;
-         VkImageLayout layout;
-         VkImageAspectFlags aspect;
          bool linear;
          bool need_2D;
          bool valid;
          uint8_t fb_bind_count; //not counted in all_binds
+         VkSparseImageMemoryRequirements sparse;
+         VkFormat format;
+         VkImageLayout layout;
+         VkImageAspectFlags aspect;
       };
    };
    uint32_t sampler_binds[MESA_SHADER_STAGES];
