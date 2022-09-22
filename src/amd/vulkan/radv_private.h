@@ -2158,6 +2158,9 @@ void radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct
 void radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice,
                                       struct radeon_cmdbuf *cs, const struct radv_shader *shader);
 
+void radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
+                                const struct radv_pipeline_layout *layout);
+
 struct radv_graphics_pipeline_create_info {
    bool use_rectlist;
    bool db_depth_clear;
@@ -2167,6 +2170,9 @@ struct radv_graphics_pipeline_create_info {
    bool resummarize_enable;
    uint32_t custom_blend_mode;
 };
+
+struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_pipeline *pipeline,
+                                                    VkPipelineCreateFlags flags);
 
 void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline,
                         enum radv_pipeline_type type);
@@ -2180,13 +2186,6 @@ VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkComputePipelineCreateInfo *pCreateInfo,
                                       const VkAllocationCallbacks *pAllocator,
                                       VkPipeline *pPipeline);
-
-VkResult radv_rt_pipeline_create_(VkDevice _device, VkPipelineCache _cache,
-                                  const VkComputePipelineCreateInfo *pCreateInfo,
-                                  const VkAllocationCallbacks *pAllocator,
-                                  const uint8_t *custom_hash,
-                                  struct radv_pipeline_shader_stack_size *rt_stack_sizes,
-                                  uint32_t rt_group_count, VkPipeline *pPipeline);
 
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
