@@ -925,7 +925,7 @@ impl Kernel {
                         } else {
                             input.extend_from_slice(&(mem.offset as u32).to_ne_bytes());
                         }
-                        resource_info.push((Some(res.clone()), arg.offset));
+                        resource_info.push((res.clone(), arg.offset));
                     } else {
                         let format = mem.image_format.to_pipe_format().unwrap();
                         let (formats, orders) = if arg.kind == KernelArgType::Image {
@@ -985,7 +985,7 @@ impl Kernel {
                 InternalKernelArgType::ConstantBuffer => {
                     assert!(dev_state.constant_buffer.is_some());
                     input.extend_from_slice(null_ptr);
-                    resource_info.push((dev_state.constant_buffer.clone(), arg.offset));
+                    resource_info.push((dev_state.constant_buffer.clone().unwrap(), arg.offset));
                 }
                 InternalKernelArgType::GlobalWorkOffsets => {
                     if q.device.address_bits() == 64 {
@@ -1007,7 +1007,7 @@ impl Kernel {
                     );
 
                     input.extend_from_slice(null_ptr);
-                    resource_info.push((Some(buf.clone()), arg.offset));
+                    resource_info.push((buf.clone(), arg.offset));
 
                     printf_buf = Some(buf);
                 }

@@ -356,11 +356,8 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().launch_grid.unwrap()(self.pipe.as_ptr(), &info) }
     }
 
-    pub fn set_global_binding(&self, res: &[Option<Arc<PipeResource>>], out: &mut [*mut u32]) {
-        let mut res: Vec<_> = res
-            .iter()
-            .map(|o| o.as_ref().map_or(ptr::null_mut(), |r| r.pipe()))
-            .collect();
+    pub fn set_global_binding(&self, res: &[Arc<PipeResource>], out: &mut [*mut u32]) {
+        let mut res: Vec<_> = res.iter().map(|r| r.pipe()).collect();
         unsafe {
             self.pipe.as_ref().set_global_binding.unwrap()(
                 self.pipe.as_ptr(),
