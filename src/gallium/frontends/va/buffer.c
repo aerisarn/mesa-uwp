@@ -398,6 +398,7 @@ vlVaReleaseBufferHandle(VADriverContextP ctx, VABufferID buf_id)
    return VA_STATUS_SUCCESS;
 }
 
+#if VA_CHECK_VERSION(1, 15, 0)
 VAStatus
 vlVaSyncBuffer(VADriverContextP ctx, VABufferID buf_id, uint64_t timeout_ns)
 {
@@ -473,3 +474,4 @@ vlVaSyncBuffer(VADriverContextP ctx, VABufferID buf_id, uint64_t timeout_ns)
    mtx_unlock(&drv->mutex);
    return VA_STATUS_SUCCESS;
 }
+#endif
