@@ -3279,8 +3279,10 @@ bind_framebuffer(GLenum target, GLuint framebuffer)
       /* Binding the window system framebuffer (which was originally set
        * with MakeCurrent).
        */
-      newDrawFb = ctx->WinSysDrawBuffer;
-      newReadFb = ctx->WinSysReadBuffer;
+      if (bindDrawBuf)
+         newDrawFb = ctx->WinSysDrawBuffer;
+      if (bindReadBuf)
+         newReadFb = ctx->WinSysReadBuffer;
    }
 
    _mesa_bind_framebuffers(ctx,
