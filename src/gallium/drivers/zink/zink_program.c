@@ -575,6 +575,7 @@ zink_gfx_program_update(struct zink_context *ctx)
       } else {
          ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
+         zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
       }
@@ -645,6 +646,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
       } else {
          ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
+         zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
       }
@@ -903,7 +905,6 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!zink_descriptor_program_init(ctx, &prog->base))
       goto fail;
 
-   zink_screen_get_pipeline_cache(screen, &prog->base, false);
    return prog;
 
 fail:
