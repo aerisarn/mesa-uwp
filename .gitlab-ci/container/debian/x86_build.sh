@@ -70,6 +70,8 @@ rm -rf $XORGMACROS_VERSION
 
 . .gitlab-ci/container/build-llvm-spirv.sh
 
+. .gitlab-ci/container/build-libclc.sh
+
 . .gitlab-ci/container/build-libdrm.sh
 
 . .gitlab-ci/container/build-wayland.sh

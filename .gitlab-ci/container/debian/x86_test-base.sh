@@ -126,6 +126,10 @@ pip3 install yq
 
 . .gitlab-ci/container/build-llvm-spirv.sh
 
+############### Build libclc
+
+. .gitlab-ci/container/build-libclc.sh
+
 ############### Build libdrm
 
 . .gitlab-ci/container/build-libdrm.sh

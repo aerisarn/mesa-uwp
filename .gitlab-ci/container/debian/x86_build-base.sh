@@ -38,7 +38,6 @@ apt-get install -y --no-remove \
         kmod \
         libclang-13-dev \
         libclang-11-dev \
-        libclc-dev \
         libelf-dev \
         libepoxy-dev \
         libexpat1-dev \

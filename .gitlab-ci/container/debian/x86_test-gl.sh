@@ -64,10 +64,6 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/container/container_pre_build.sh
 
-############### Build libclc
-
-. .gitlab-ci/container/build-libclc.sh
-
 ############### Build piglit
 
 PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_DMA_BUF_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
