@@ -1942,6 +1942,8 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.cs_grow = radv_amdgpu_cs_grow;
    ws->base.cs_finalize = radv_amdgpu_cs_finalize;
    ws->base.cs_reset = radv_amdgpu_cs_reset;
+   ws->base.cs_chain = radv_amdgpu_cs_chain;
+   ws->base.cs_unchain = radv_amdgpu_cs_unchain;
    ws->base.cs_add_buffer = radv_amdgpu_cs_add_buffer;
    ws->base.cs_execute_secondary = radv_amdgpu_cs_execute_secondary;
    ws->base.cs_submit = radv_amdgpu_winsys_cs_submit;

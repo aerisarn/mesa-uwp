@@ -283,6 +283,10 @@ struct radeon_winsys {
 
    void (*cs_reset)(struct radeon_cmdbuf *cs);
 
+   bool (*cs_chain)(struct radeon_cmdbuf *cs, struct radeon_cmdbuf *next_cs, bool pre_en);
+
+   void (*cs_unchain)(struct radeon_cmdbuf *cs);
+
    VkResult (*cs_finalize)(struct radeon_cmdbuf *cs);
 
    void (*cs_grow)(struct radeon_cmdbuf *cs, size_t min_size);
