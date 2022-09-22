@@ -1563,7 +1563,7 @@ update_binds_for_samplerviews(struct zink_context *ctx, struct zink_resource *re
 static void
 flush_pending_clears(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (res->fb_binds && ctx->clears_enabled)
+   if (res->fb_bind_count && ctx->clears_enabled)
       zink_fb_clears_apply(ctx, &res->base.b);
 }
 
@@ -2802,8 +2802,8 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    if (changed) {
       ctx->rp_changed = true;
    }
-   res->fb_binds--;
-   if (!res->fb_binds) {
+   res->fb_bind_count--;
+   if (!res->fb_bind_count) {
       check_resource_for_batch_ref(ctx, res);
       if (res->sampler_bind_count[0])
          update_res_sampler_layouts(ctx, res);
@@ -2930,7 +2930,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
                }
             }
          }
-         res->fb_binds++;
+         res->fb_bind_count++;
          if (util_format_has_alpha1(psurf->format)) {
             if (!res->valid && !zink_fb_clear_full_exists(ctx, i))
                ctx->void_clears |= (PIPE_CLEAR_COLOR0 << i);
@@ -2947,7 +2947,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
       if (zink_csurface(psurf)->info.layerCount > layers)
          ctx->fb_layer_mismatch |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
-      zink_resource(psurf->texture)->fb_binds++;
+      zink_resource(psurf->texture)->fb_bind_count++;
       switch (psurf->format) {
       case PIPE_FORMAT_Z16_UNORM:
       case PIPE_FORMAT_Z16_UNORM_S8_UINT:
@@ -3294,7 +3294,7 @@ resource_check_defer_image_barrier(struct zink_context *ctx, struct zink_resourc
    bool is_shader = is_shader_pipline_stage(pipeline);
    if ((is_shader || !res->bind_count[is_compute]) &&
        /* if no layout change is needed between gfx and compute, do nothing */
-       !res->bind_count[!is_compute] && (!is_compute || !res->fb_binds))
+       !res->bind_count[!is_compute] && (!is_compute || !res->fb_bind_count))
       return;
 
    if (res->bind_count[!is_compute] && is_shader) {

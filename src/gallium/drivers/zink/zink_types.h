@@ -998,7 +998,7 @@ struct zink_resource {
          bool linear;
          bool need_2D;
          bool valid;
-         uint8_t fb_binds; //not counted in all_binds
+         uint8_t fb_bind_count; //not counted in all_binds
       };
    };
    uint32_t sampler_binds[MESA_SHADER_STAGES];
