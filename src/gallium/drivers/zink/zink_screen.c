@@ -77,6 +77,7 @@ zink_debug_options[] = {
    { "sync", ZINK_DEBUG_SYNC, "Force synchronization before draws/dispatches" },
    { "compact", ZINK_DEBUG_COMPACT, "Use only 4 descriptor sets" },
    { "noreorder", ZINK_DEBUG_NOREORDER, "Do not reorder command streams" },
+   { "gpl", ZINK_DEBUG_GPL, "Force using Graphics Pipeline Library for all shaders" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2220,7 +2221,6 @@ static void
 init_driver_workarounds(struct zink_screen *screen)
 {
    /* enable implicit sync for all non-mesa drivers */
-   screen->driver_workarounds.force_pipeline_library = debug_get_bool_option("ZINK_PIPELINE_LIBRARY_FORCE", false);
    screen->driver_workarounds.implicit_sync = true;
    switch (screen->info.driver_props.driverID) {
    case VK_DRIVER_ID_MESA_RADV:
@@ -2238,14 +2238,14 @@ init_driver_workarounds(struct zink_screen *screen)
    if (screen->info.have_EXT_graphics_pipeline_library)
       screen->info.have_EXT_graphics_pipeline_library = screen->info.have_EXT_extended_dynamic_state &&
                                                         screen->info.have_EXT_extended_dynamic_state2 &&
-                                                        (screen->driver_workarounds.force_pipeline_library ||
+                                                        ((zink_debug & ZINK_DEBUG_GPL) ||
                                                          screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) &&
                                                         screen->info.have_KHR_dynamic_rendering &&
                                                         screen->info.have_EXT_non_seamless_cube_map &&
                                                         (screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
                                                          screen->is_cpu ||
-                                                         screen->driver_workarounds.force_pipeline_library);
-   if (!screen->driver_workarounds.force_pipeline_library)
+                                                         (zink_debug & ZINK_DEBUG_GPL));
+   if (!(zink_debug & ZINK_DEBUG_GPL))
       screen->info.have_EXT_graphics_pipeline_library = false;
    screen->driver_workarounds.broken_l4a4 = screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
    screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
@@ -2555,10 +2555,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
 
-   if (!screen->driver_workarounds.force_pipeline_library)
+   if (!(zink_debug & ZINK_DEBUG_GPL))
       screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;
    if (screen->optimal_keys)
-      screen->driver_workarounds.force_pipeline_library = false;
+      screen->info.have_EXT_graphics_pipeline_library = false;
 
    return screen;
 

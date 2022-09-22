@@ -239,7 +239,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          struct set_entry *he = NULL;
          /* TODO: this will eventually be pre-populated by async shader compile */
          //struct set_entry *he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
-         if (!he && screen->driver_workarounds.force_pipeline_library) {
+         if (!he && (zink_debug & ZINK_DEBUG_GPL)) {
             create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state, mode);
             he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
             assert(he);

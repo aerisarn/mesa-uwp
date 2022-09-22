@@ -180,6 +180,7 @@ enum zink_debug {
    ZINK_DEBUG_SYNC = (1<<4),
    ZINK_DEBUG_COMPACT = (1<<5),
    ZINK_DEBUG_NOREORDER = (1<<6),
+   ZINK_DEBUG_GPL = (1<<7),
 };
 
 
@@ -1168,7 +1169,6 @@ struct zink_screen {
       bool depth_clip_control_missing;
       bool implicit_sync;
       bool always_feedback_loop;
-      bool force_pipeline_library;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
    } driver_workarounds;

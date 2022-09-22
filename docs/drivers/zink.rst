@@ -273,6 +273,8 @@ variable:
    Use a maximum of 4 descriptor sets
 ``noreorder``
    Do not reorder or optimize GL command streams
+``gpl``
+   Force using Graphics Pipeline Library for all shaders
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^
