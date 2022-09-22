@@ -934,10 +934,8 @@ __glXInitialize(Display * dpy)
 
    dpyPriv->zombieGLXDrawable = _mesa_pointer_set_create(NULL);
 
-#ifndef GLX_USE_APPLEGL
    /* Set the logger before the *CreateDisplay functions. */
    loader_set_logger(glx_message);
-#endif
 
    /*
     ** Initialize the direct rendering per display data and functions.
