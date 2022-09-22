@@ -67,6 +67,7 @@ dnf install -y --setopt=install_weak_deps=False \
     python3-mako \
     python3-devel \
     python3-mako \
+    python3-ply \
     vulkan-headers \
     spirv-tools-devel \
     spirv-llvm-translator-devel \
