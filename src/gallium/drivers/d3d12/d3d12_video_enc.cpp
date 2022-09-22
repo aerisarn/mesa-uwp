@@ -1462,15 +1462,20 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 
          CD3DX12_RESOURCE_DESC referencesTexArrayDesc(GetDesc(referenceFramesDescriptor.ppTexture2Ds[0]));
 
-         for (uint32_t referenceSubresource = 0; referenceSubresource < referencesTexArrayDesc.DepthOrArraySize;
-              referenceSubresource++) {
+#if DEBUG
+   // the reconpic output should be all the same texarray allocation
+   if((reconPicOutputTextureDesc.pReconstructedPicture) && (referenceFramesDescriptor.NumTexture2Ds > 0))
+      assert(referenceFramesDescriptor.ppTexture2Ds[0] == reconPicOutputTextureDesc.pReconstructedPicture);
 
+   for (uint32_t refIndex = 0; refIndex < referenceFramesDescriptor.NumTexture2Ds; refIndex++) {
             // all reference frames inputs should be all the same texarray allocation
             assert(referenceFramesDescriptor.ppTexture2Ds[0] ==
-                   referenceFramesDescriptor.ppTexture2Ds[referenceSubresource]);
+                   referenceFramesDescriptor.ppTexture2Ds[refIndex]);
+   }
+#endif
 
-            // the reconpic output should be all the same texarray allocation
-            assert(referenceFramesDescriptor.ppTexture2Ds[0] == reconPicOutputTextureDesc.pReconstructedPicture);
+         for (uint32_t referenceSubresource = 0; referenceSubresource < referencesTexArrayDesc.DepthOrArraySize;
+              referenceSubresource++) {
 
             uint32_t MipLevel, PlaneSlice, ArraySlice;
             D3D12DecomposeSubresource(referenceSubresource,
