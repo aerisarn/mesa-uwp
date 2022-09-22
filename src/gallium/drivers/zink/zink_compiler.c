@@ -3387,6 +3387,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
          _mesa_hash_table_remove(ht, he);
          prog->base.removed = true;
          simple_mtx_unlock(&prog->ctx->program_lock[idx]);
+         util_queue_fence_wait(&prog->base.cache_fence);
       }
       if (stage != MESA_SHADER_TESS_CTRL || !shader->is_generated) {
          prog->shaders[stage] = NULL;

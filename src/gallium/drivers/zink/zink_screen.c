@@ -176,11 +176,18 @@ zink_set_max_shader_compiler_threads(struct pipe_screen *pscreen, unsigned max_t
 static bool
 zink_is_parallel_shader_compilation_finished(struct pipe_screen *screen, void *shader, enum pipe_shader_type shader_type)
 {
-   /* not supported yet */
-   if (shader_type != MESA_SHADER_COMPUTE)
-      return true;
-   struct zink_program *pg = shader;
-   return !pg->can_precompile || util_queue_fence_is_signalled(&pg->cache_fence);
+   if (shader_type == MESA_SHADER_COMPUTE) {
+      struct zink_program *pg = shader;
+      return !pg->can_precompile || util_queue_fence_is_signalled(&pg->cache_fence);
+   }
+
+   struct zink_shader *zs = shader;
+   bool finished = true;
+   set_foreach(zs->programs, entry) {
+      struct zink_gfx_program *prog = (void*)entry->key;
+      finished &= util_queue_fence_is_signalled(&prog->base.cache_fence);
+   }
+   return finished;
 }
 
 static VkDeviceSize
