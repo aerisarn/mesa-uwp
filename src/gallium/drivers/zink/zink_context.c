@@ -2803,6 +2803,7 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       ctx->rp_changed = true;
    }
    res->fb_bind_count--;
+   res->fb_binds &= ~BITFIELD_BIT(idx);
    if (!res->fb_bind_count) {
       check_resource_for_batch_ref(ctx, res);
       if (res->sampler_bind_count[0])
@@ -2931,6 +2932,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
             }
          }
          res->fb_bind_count++;
+         res->fb_binds |= BITFIELD_BIT(i);
          if (util_format_has_alpha1(psurf->format)) {
             if (!res->valid && !zink_fb_clear_full_exists(ctx, i))
                ctx->void_clears |= (PIPE_CLEAR_COLOR0 << i);
@@ -2948,6 +2950,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       if (zink_csurface(psurf)->info.layerCount > layers)
          ctx->fb_layer_mismatch |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       zink_resource(psurf->texture)->fb_bind_count++;
+      zink_resource(psurf->texture)->fb_binds |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       switch (psurf->format) {
       case PIPE_FORMAT_Z16_UNORM:
       case PIPE_FORMAT_Z16_UNORM_S8_UINT:

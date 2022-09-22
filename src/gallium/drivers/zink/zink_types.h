@@ -995,6 +995,7 @@ struct zink_resource {
          bool need_2D;
          bool valid;
          uint8_t fb_bind_count; //not counted in all_binds
+         uint16_t fb_binds; /* mask of attachment idx; zs is PIPE_MAX_COLOR_BUFS */
          VkSparseImageMemoryRequirements sparse;
          VkFormat format;
          VkImageLayout layout;
