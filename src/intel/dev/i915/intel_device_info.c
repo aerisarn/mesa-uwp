@@ -541,12 +541,15 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
 
 bool intel_device_info_i915_get_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
-   if (intel_get_and_process_hwconfig_table(fd, devinfo)) {
-      /* After applying hwconfig values, some items need to be recalculated. */
-      devinfo->max_cs_threads =
-         devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+   void *hwconfig_blob;
+   int32_t len;
 
-      intel_device_info_update_cs_workgroup_threads(devinfo);
+   hwconfig_blob = intel_i915_query_alloc(fd, DRM_I915_QUERY_HWCONFIG_BLOB, &len);
+   if (hwconfig_blob) {
+      if (intel_hwconfig_process_table(devinfo, hwconfig_blob, len))
+         intel_device_info_update_after_hwconfig(devinfo);
+
+      free(hwconfig_blob);
    }
 
    int val;

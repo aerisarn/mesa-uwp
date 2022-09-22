@@ -1557,3 +1557,13 @@ bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int
    return intel_device_info_i915_query_regions(devinfo, fd, true) ||
           intel_device_info_compute_system_memory(devinfo, true);
 }
+
+void
+intel_device_info_update_after_hwconfig(struct intel_device_info *devinfo)
+{
+   /* After applying hwconfig values, some items need to be recalculated. */
+   devinfo->max_cs_threads =
+      devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+
+   intel_device_info_update_cs_workgroup_threads(devinfo);
+}

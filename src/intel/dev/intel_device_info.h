@@ -545,6 +545,7 @@ void intel_device_info_update_pixel_pipes(struct intel_device_info *devinfo, uin
 void intel_device_info_update_l3_banks(struct intel_device_info *devinfo);
 void intel_device_info_update_cs_workgroup_threads(struct intel_device_info *devinfo);
 bool intel_device_info_compute_system_memory(struct intel_device_info *devinfo, bool update);
+void intel_device_info_update_after_hwconfig(struct intel_device_info *devinfo);
 
 #ifdef __cplusplus
 }
