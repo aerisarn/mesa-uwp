@@ -872,9 +872,6 @@ __glXInitialize(Display * dpy)
 {
    XExtCodes *codes;
    struct glx_display *dpyPriv, *d;
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-   Bool glx_direct, glx_accel;
-#endif
    int i, majorVersion = 0;
 
    _XLockMutex(_Xglobal_lock);
@@ -924,8 +921,8 @@ __glXInitialize(Display * dpy)
    dpyPriv->glXDrawHash = __glxHashCreate();
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-   glx_direct = !env_var_as_boolean("LIBGL_ALWAYS_INDIRECT", false);
-   glx_accel = !env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
+   Bool glx_direct = !env_var_as_boolean("LIBGL_ALWAYS_INDIRECT", false);
+   Bool glx_accel = !env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
    const char *env = getenv("MESA_LOADER_DRIVER_OVERRIDE");
    Bool explicit_zink = env && !strcmp(env, "zink");
    Bool infer_zink = false;
