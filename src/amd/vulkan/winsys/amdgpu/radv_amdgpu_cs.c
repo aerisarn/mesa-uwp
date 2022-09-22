@@ -509,6 +509,57 @@ radv_amdgpu_cs_reset(struct radeon_cmdbuf *_cs)
    }
 }
 
+static void
+radv_amdgpu_cs_unchain(struct radeon_cmdbuf *cs)
+{
+   struct radv_amdgpu_cs *acs = radv_amdgpu_cs(cs);
+
+   if (!acs->is_chained)
+      return;
+
+   assert(cs->cdw <= cs->max_dw + 4);
+   assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
+
+   acs->is_chained = false;
+   cs->buf[cs->cdw - 4] = PKT3_NOP_PAD;
+   cs->buf[cs->cdw - 3] = PKT3_NOP_PAD;
+   cs->buf[cs->cdw - 2] = PKT3_NOP_PAD;
+   cs->buf[cs->cdw - 1] = PKT3_NOP_PAD;
+}
+
+static bool
+radv_amdgpu_cs_chain(struct radeon_cmdbuf *cs, struct radeon_cmdbuf *next_cs, bool pre_ena)
+{
+   /* Chains together two CS (command stream) objects by editing
+    * the end of the first CS to add a command that jumps to the
+    * second CS.
+    *
+    * After this, it is enough to submit the first CS to the GPU
+    * and not necessary to submit the second CS because it is already
+    * executed by the first.
+    */
+
+   struct radv_amdgpu_cs *acs = radv_amdgpu_cs(cs);
+   struct radv_amdgpu_cs *next_acs = radv_amdgpu_cs(next_cs);
+
+   /* Only some HW IP types have packets that we can use for chaining. */
+   if (!hw_can_chain(acs->hw_ip))
+      return false;
+
+   assert(cs->cdw <= cs->max_dw + 4);
+   assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
+
+   acs->is_chained = true;
+
+   cs->buf[cs->cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
+   cs->buf[cs->cdw - 3] = next_acs->ib.ib_mc_address;
+   cs->buf[cs->cdw - 2] = next_acs->ib.ib_mc_address >> 32;
+   cs->buf[cs->cdw - 1] =
+      S_3F2_CHAIN(1) | S_3F2_VALID(1) | S_3F2_PRE_ENA(pre_ena) | next_acs->ib.size;
+
+   return true;
+}
+
 static int
 radv_amdgpu_cs_find_buffer(struct radv_amdgpu_cs *cs, uint32_t bo)
 {
@@ -897,35 +948,18 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    struct radv_amdgpu_cs_request request;
    struct radv_amdgpu_cs_ib_info ibs[1 + AMD_NUM_IP_TYPES];
+   bool enable_preemption = cs0->hw_ip == AMDGPU_HW_IP_GFX && uses_shadow_regs;
    unsigned num_handles = 0;
-   uint32_t pre_ena = cs0->hw_ip == AMDGPU_HW_IP_GFX && uses_shadow_regs ? S_3F2_PRE_ENA(1) : 0;
+
    VkResult result;
 
    for (unsigned i = cs_count; i--;) {
-      struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
+      struct radeon_cmdbuf *cmdbuf = cs_array[i];
 
-      if (cs->is_chained) {
-         assert(cs->base.cdw <= cs->base.max_dw + 4);
-         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
-
-         cs->is_chained = false;
-         cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 2] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 1] =  PKT3_NOP_PAD;
-      }
+      radv_amdgpu_cs_unchain(cmdbuf);
 
       if (i + 1 < cs_count) {
-         struct radv_amdgpu_cs *next = radv_amdgpu_cs(cs_array[i + 1]);
-         assert(cs->base.cdw <= cs->base.max_dw + 4);
-         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
-
-         cs->is_chained = true;
-
-         cs->base.buf[cs->base.cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
-         cs->base.buf[cs->base.cdw - 3] = next->ib.ib_mc_address;
-         cs->base.buf[cs->base.cdw - 2] = next->ib.ib_mc_address >> 32;
-         cs->base.buf[cs->base.cdw - 1] = S_3F2_CHAIN(1) | S_3F2_VALID(1) | pre_ena | next->ib.size;
+         radv_amdgpu_cs_chain(cmdbuf, cs_array[i + 1], enable_preemption);
       }
    }
 
@@ -1019,16 +1053,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
 
       ibs[i + preamble_count] = cs->ib;
-
-      if (cs->is_chained) {
-         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
-
-         cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 2] =  PKT3_NOP_PAD;
-         cs->base.buf[cs->base.cdw - 1] =  PKT3_NOP_PAD;
-         cs->is_chained = false;
-      }
+      radv_amdgpu_cs_unchain(&cs->base);
 
       if (uses_shadow_regs && cs->ib.ip_type == AMDGPU_HW_IP_GFX)
          cs->ib.flags |= AMDGPU_IB_FLAG_PREEMPT;
