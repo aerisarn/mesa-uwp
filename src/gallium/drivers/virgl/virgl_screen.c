@@ -338,6 +338,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       if (vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_VIDEO_MEMORY)
          return vscreen->caps.caps.v2.max_video_memory;
       return 0;
+   case PIPE_CAP_TEXTURE_SHADOW_LOD:
+      return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_TEXTURE_SHADOW_LOD;
    case PIPE_CAP_NATIVE_FENCE_FD:
       return vscreen->vws->supports_fences;
    case PIPE_CAP_DEST_SURFACE_SRGB_CONTROL:

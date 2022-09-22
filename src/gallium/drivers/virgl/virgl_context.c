@@ -673,11 +673,37 @@ static void virgl_set_constant_buffer(struct pipe_context *ctx,
    }
 }
 
+static bool
+lower_gles_arrayshadow_offset_filter(const nir_instr *instr,
+                                     UNUSED const void *data)
+{
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+   if (!tex->is_shadow || !tex->is_array)
+      return false;
+
+   // textureGradOffset can be used directly
+   int grad_index = nir_tex_instr_src_index(tex, nir_tex_src_ddx);
+   int proj_index = nir_tex_instr_src_index(tex, nir_tex_src_projector);
+   if (grad_index >= 0 && proj_index < 0)
+      return false;
+
+   int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_offset);
+   if (offset_index >= 0)
+      return true;
+
+   return false;
+}
+
 static void *virgl_shader_encoder(struct pipe_context *ctx,
                                   const struct pipe_shader_state *shader,
                                   unsigned type)
 {
    struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_screen *rs = virgl_screen(ctx->screen);
    uint32_t handle;
    const struct tgsi_token *tokens;
    const struct tgsi_token *ntt_tokens = NULL;
@@ -690,6 +716,16 @@ static void *virgl_shader_encoder(struct pipe_context *ctx,
          .unoptimized_ra = true,
          .lower_fabs = true
       };
+
+      if (!(rs->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_TEXTURE_SHADOW_LOD) &&
+          rs->caps.caps.v2.capability_bits & VIRGL_CAP_HOST_IS_GLES) {
+         nir_lower_tex_options lower_tex_options = {
+            .lower_offset_filter = lower_gles_arrayshadow_offset_filter,
+         };
+
+         NIR_PASS_V(shader->ir.nir, nir_lower_tex, &lower_tex_options);
+      }
+
       nir_shader *s = nir_shader_clone(NULL, shader->ir.nir);
 
       /* Propagare the separable shader property to the host, unless
@@ -700,7 +736,7 @@ static void *virgl_shader_encoder(struct pipe_context *ctx,
       tokens = shader->tokens;
    }
 
-   new_tokens = virgl_tgsi_transform((struct virgl_screen *)vctx->base.screen, tokens, is_separable);
+   new_tokens = virgl_tgsi_transform(rs, tokens, is_separable);
    if (!new_tokens)
       return NULL;
 
