@@ -29,10 +29,16 @@
 #define radv_bvh_node_instance 6
 #define radv_bvh_node_aabb 7
 
+#define radv_ir_node_triangle 0
+#define radv_ir_node_internal 1
+#define radv_ir_node_instance 2
+#define radv_ir_node_aabb 3
+
 #ifdef VULKAN
 #define VK_UUID_SIZE 16
 #else
 #include <vulkan/vulkan.h>
+typedef struct radv_ir_node radv_ir_node;
 
 typedef struct {
    float values[3][4];
@@ -72,6 +78,41 @@ struct radv_accel_struct_header {
    uint64_t size;
    uint32_t build_flags;
    uint32_t internal_node_count;
+};
+
+struct radv_ir_node {
+   float sah_cost;
+   uint32_t parent;
+   float aabb[2][3];
+};
+
+struct radv_ir_box_node {
+   radv_ir_node base;
+   uint32_t children[2];
+};
+
+struct radv_ir_aabb_node {
+   radv_ir_node base;
+   uint32_t primitive_id;
+   uint32_t geometry_id_and_flags;
+};
+
+struct radv_ir_triangle_node {
+   radv_ir_node base;
+   float coords[3][3];
+   uint32_t triangle_id;
+   uint32_t id;
+   uint32_t geometry_id_and_flags;
+};
+
+struct radv_ir_instance_node {
+   radv_ir_node base;
+   /* See radv_bvh_instance_node */
+   uint64_t base_ptr;
+   uint32_t custom_instance_and_mask;
+   uint32_t sbt_offset_and_flags;
+   mat3x4 otw_matrix;
+   uint32_t instance_id;
 };
 
 struct radv_bvh_triangle_node {

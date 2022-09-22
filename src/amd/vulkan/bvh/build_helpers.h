@@ -196,6 +196,13 @@ TYPE(uvec4, 16);
 
 TYPE(VOID_REF, 8);
 
+/* copied from u_math.h */
+uint32_t
+align(uint32_t value, uint32_t alignment)
+{
+   return (value + alignment - 1) & ~(alignment - 1);
+}
+
 void
 min_float_emulated(REF(int32_t) addr, float f)
 {
@@ -237,6 +244,14 @@ TYPE(radv_bvh_instance_node, 8);
 TYPE(radv_bvh_box16_node, 4);
 TYPE(radv_bvh_box32_node, 4);
 
+TYPE(radv_ir_node, 4);
+TYPE(radv_ir_box_node, 4);
+TYPE(radv_ir_triangle_node, 4);
+TYPE(radv_ir_aabb_node, 4);
+TYPE(radv_ir_instance_node, 8);
+
+#define NULL_NODE_ID 0xFFFFFFFF
+
 uint32_t
 id_to_offset(uint32_t id)
 {
@@ -255,7 +270,40 @@ pack_node_id(uint32_t offset, uint32_t type)
    return (offset >> 3) | type;
 }
 
-#define NULL_NODE_ID 0xFFFFFFFF
+uint32_t
+ir_id_to_offset(uint32_t id)
+{
+   return id & (~3u);
+}
+
+uint32_t
+ir_id_to_type(uint32_t id)
+{
+   return id & 3u;
+}
+
+uint32_t
+pack_ir_node_id(uint32_t offset, uint32_t type)
+{
+   return offset | type;
+}
+
+uint32_t
+ir_type_to_bvh_type(uint32_t type)
+{
+   switch (type) {
+   case radv_ir_node_triangle:
+      return radv_bvh_node_triangle;
+   case radv_ir_node_internal:
+      return radv_bvh_node_internal;
+   case radv_ir_node_instance:
+      return radv_bvh_node_instance;
+   case radv_ir_node_aabb:
+      return radv_bvh_node_aabb;
+   }
+   /* unreachable in valid nodes */
+   return NULL_NODE_ID;
+}
 
 AABB
 calculate_instance_node_bounds(radv_bvh_instance_node instance)
