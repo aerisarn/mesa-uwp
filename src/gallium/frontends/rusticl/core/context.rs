@@ -6,6 +6,7 @@ use crate::core::util::*;
 use crate::impl_cl_type_trait;
 
 use mesa_rust::pipe::resource::*;
+use mesa_rust::pipe::screen::ResourceType;
 use mesa_rust_util::properties::Properties;
 use rusticl_opencl_gen::*;
 
@@ -55,7 +56,9 @@ impl Context {
             }
 
             if resource.is_none() {
-                resource = dev.screen().resource_create_buffer(adj_size)
+                resource = dev
+                    .screen()
+                    .resource_create_buffer(adj_size, ResourceType::Normal)
             }
 
             let resource = resource.ok_or(CL_OUT_OF_RESOURCES);
@@ -113,9 +116,15 @@ impl Context {
             }
 
             if resource.is_none() {
-                resource = dev
-                    .screen()
-                    .resource_create_texture(width, height, depth, array_size, target, format)
+                resource = dev.screen().resource_create_texture(
+                    width,
+                    height,
+                    depth,
+                    array_size,
+                    target,
+                    format,
+                    ResourceType::Normal,
+                )
             }
 
             let resource = resource.ok_or(CL_OUT_OF_RESOURCES);
