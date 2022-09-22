@@ -1713,7 +1713,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    RADV_FROM_HANDLE(radv_device, device, _device);
    VkResult result;
    struct radv_pipeline *pipeline = NULL;
-   struct radv_compute_pipeline *compute_pipeline = NULL;
+   struct radv_ray_tracing_pipeline *rt_pipeline = NULL;
    struct radv_pipeline_shader_stack_size *stack_sizes = NULL;
    uint8_t hash[20];
    nir_shader *shader = NULL;
@@ -1757,8 +1757,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    /* First check if we can get things from the cache before we take the expensive step of
     * generating the nir. */
-   result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
-                                         stack_sizes, local_create_info.groupCount, pPipeline);
+   result = radv_rt_pipeline_create_(_device, _cache, &compute_info, pAllocator, hash, stack_sizes,
+                                     local_create_info.groupCount, pPipeline);
 
    if (result == VK_PIPELINE_COMPILE_REQUIRED) {
       if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
@@ -1773,24 +1773,24 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       shader = create_rt_shader(device, &local_create_info, stack_sizes);
       module.nir = shader;
       compute_info.flags = pCreateInfo->flags;
-      result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
-                                            stack_sizes, local_create_info.groupCount, pPipeline);
+      result = radv_rt_pipeline_create_(_device, _cache, &compute_info, pAllocator, hash,
+                                        stack_sizes, local_create_info.groupCount, pPipeline);
       stack_sizes = NULL;
 
       if (result != VK_SUCCESS)
          goto shader_fail;
    }
    pipeline = radv_pipeline_from_handle(*pPipeline);
-   compute_pipeline = radv_pipeline_to_compute(pipeline);
+   rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
 
-   compute_pipeline->rt_group_handles =
-      calloc(sizeof(*compute_pipeline->rt_group_handles), local_create_info.groupCount);
-   if (!compute_pipeline->rt_group_handles) {
+   rt_pipeline->group_handles =
+      calloc(sizeof(*rt_pipeline->group_handles), local_create_info.groupCount);
+   if (!rt_pipeline->group_handles) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto shader_fail;
    }
 
-   compute_pipeline->dynamic_stack_size = radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo);
+   rt_pipeline->dynamic_stack_size = radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo);
 
    /* For General and ClosestHit shaders, we can use the shader ID directly as handle.
     * As (potentially different) AnyHit shaders are inlined, for Intersection shaders
@@ -1801,17 +1801,17 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       switch (group_info->type) {
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
          if (group_info->generalShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[0] = group_info->generalShader + 2;
+            rt_pipeline->group_handles[i].handles[0] = group_info->generalShader + 2;
          break;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
          if (group_info->intersectionShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[1] = i + 2;
+            rt_pipeline->group_handles[i].handles[1] = i + 2;
          FALLTHROUGH;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
          if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[0] = group_info->closestHitShader + 2;
+            rt_pipeline->group_handles[i].handles[0] = group_info->closestHitShader + 2;
          if (group_info->anyHitShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[1] = i + 2;
+            rt_pipeline->group_handles[i].handles[1] = i + 2;
          break;
       case VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR:
          unreachable("VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR");
@@ -1862,16 +1862,16 @@ radv_GetRayTracingShaderGroupHandlesKHR(VkDevice device, VkPipeline _pipeline, u
                                         uint32_t groupCount, size_t dataSize, void *pData)
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
-   struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
+   struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
    char *data = pData;
 
-   STATIC_ASSERT(sizeof(*compute_pipeline->rt_group_handles) <= RADV_RT_HANDLE_SIZE);
+   STATIC_ASSERT(sizeof(*rt_pipeline->group_handles) <= RADV_RT_HANDLE_SIZE);
 
    memset(data, 0, groupCount * RADV_RT_HANDLE_SIZE);
 
    for (uint32_t i = 0; i < groupCount; ++i) {
-      memcpy(data + i * RADV_RT_HANDLE_SIZE, &compute_pipeline->rt_group_handles[firstGroup + i],
-             sizeof(*compute_pipeline->rt_group_handles));
+      memcpy(data + i * RADV_RT_HANDLE_SIZE, &rt_pipeline->group_handles[firstGroup + i],
+             sizeof(*rt_pipeline->group_handles));
    }
 
    return VK_SUCCESS;
@@ -1882,9 +1882,8 @@ radv_GetRayTracingShaderGroupStackSizeKHR(VkDevice device, VkPipeline _pipeline,
                                           VkShaderGroupShaderKHR groupShader)
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
-   struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
-   const struct radv_pipeline_shader_stack_size *stack_size =
-      &compute_pipeline->rt_stack_sizes[group];
+   struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
+   const struct radv_pipeline_shader_stack_size *stack_size = &rt_pipeline->stack_sizes[group];
 
    if (groupShader == VK_SHADER_GROUP_SHADER_ANY_HIT_KHR ||
        groupShader == VK_SHADER_GROUP_SHADER_INTERSECTION_KHR)

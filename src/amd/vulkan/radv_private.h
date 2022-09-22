@@ -1465,7 +1465,7 @@ struct radv_cmd_state {
    struct radv_graphics_pipeline *emitted_graphics_pipeline;
    struct radv_compute_pipeline *compute_pipeline;
    struct radv_compute_pipeline *emitted_compute_pipeline;
-   struct radv_compute_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */
+   struct radv_ray_tracing_pipeline *rt_pipeline; /* emitted = emitted_compute_pipeline */
    struct radv_dynamic_state dynamic;
    struct radv_vs_input_state dynamic_vs_input;
    struct radv_streamout_state streamout;
@@ -1924,10 +1924,12 @@ struct radv_binning_state {
 enum radv_pipeline_type {
    RADV_PIPELINE_GRAPHICS,
    RADV_PIPELINE_GRAPHICS_LIB,
-   /* Compute pipeline (incl raytracing pipeline) */
+   /* Compute pipeline */
    RADV_PIPELINE_COMPUTE,
    /* Pipeline library. This can't actually run and merely is a partial pipeline. */
-   RADV_PIPELINE_LIBRARY
+   RADV_PIPELINE_LIBRARY,
+   /* Raytracing pipeline */
+   RADV_PIPELINE_RAY_TRACING,
 };
 
 struct radv_pipeline_group_handle {
@@ -2063,12 +2065,6 @@ struct radv_compute_pipeline {
    struct radv_pipeline base;
 
    bool cs_regalloc_hang_bug;
-
-   /* Raytracing */
-   struct radv_pipeline_group_handle *rt_group_handles;
-   struct radv_pipeline_shader_stack_size *rt_stack_sizes;
-   bool dynamic_stack_size;
-   uint32_t group_count;
 };
 
 struct radv_library_pipeline {
@@ -2094,6 +2090,15 @@ struct radv_graphics_lib_pipeline {
    VkGraphicsPipelineLibraryFlagsEXT lib_flags;
 };
 
+struct radv_ray_tracing_pipeline {
+   struct radv_compute_pipeline base;
+
+   struct radv_pipeline_group_handle *group_handles;
+   struct radv_pipeline_shader_stack_size *stack_sizes;
+   uint32_t group_count;
+   bool dynamic_stack_size;
+};
+
 #define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)            \
    static inline struct radv_##pipe_type##_pipeline *                \
    radv_pipeline_to_##pipe_type(struct radv_pipeline *pipeline)      \
@@ -2106,6 +2111,7 @@ RADV_DECL_PIPELINE_DOWNCAST(graphics, RADV_PIPELINE_GRAPHICS)
 RADV_DECL_PIPELINE_DOWNCAST(graphics_lib, RADV_PIPELINE_GRAPHICS_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
 RADV_DECL_PIPELINE_DOWNCAST(library, RADV_PIPELINE_LIBRARY)
+RADV_DECL_PIPELINE_DOWNCAST(ray_tracing, RADV_PIPELINE_RAY_TRACING)
 
 struct radv_pipeline_stage {
    gl_shader_stage stage;
@@ -2173,9 +2179,14 @@ VkResult radv_graphics_pipeline_create(VkDevice device, VkPipelineCache cache,
 VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkComputePipelineCreateInfo *pCreateInfo,
                                       const VkAllocationCallbacks *pAllocator,
-                                      const uint8_t *custom_hash,
-                                      struct radv_pipeline_shader_stack_size *rt_stack_sizes,
-                                      uint32_t rt_group_count, VkPipeline *pPipeline);
+                                      VkPipeline *pPipeline);
+
+VkResult radv_rt_pipeline_create_(VkDevice _device, VkPipelineCache _cache,
+                                  const VkComputePipelineCreateInfo *pCreateInfo,
+                                  const VkAllocationCallbacks *pAllocator,
+                                  const uint8_t *custom_hash,
+                                  struct radv_pipeline_shader_stack_size *rt_stack_sizes,
+                                  uint32_t rt_group_count, VkPipeline *pPipeline);
 
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);

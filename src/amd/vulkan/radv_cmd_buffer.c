@@ -5133,15 +5133,15 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       break;
    }
    case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR: {
-      struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
+      struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
 
-      if (cmd_buffer->state.rt_pipeline == compute_pipeline)
+      if (cmd_buffer->state.rt_pipeline == rt_pipeline)
          return;
       radv_mark_descriptor_sets_dirty(cmd_buffer, pipelineBindPoint);
 
-      cmd_buffer->state.rt_pipeline = compute_pipeline;
+      cmd_buffer->state.rt_pipeline = rt_pipeline;
       cmd_buffer->push_constant_stages |= RADV_RT_STAGE_BITS;
-      if (compute_pipeline->dynamic_stack_size)
+      if (rt_pipeline->dynamic_stack_size)
          radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
       break;
    }
@@ -8522,7 +8522,7 @@ static void
 radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCommand2KHR *tables,
                 uint64_t indirect_va, enum radv_rt_mode mode)
 {
-   struct radv_compute_pipeline *pipeline = cmd_buffer->state.rt_pipeline;
+   struct radv_compute_pipeline *pipeline = &cmd_buffer->state.rt_pipeline->base;
    uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_COMPUTE];
 
    struct radv_dispatch_info info = {0};
@@ -8659,8 +8659,9 @@ radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size)
    unsigned scratch_bytes_per_wave = 0;
 
    if (cmd_buffer->state.rt_pipeline) {
-      scratch_bytes_per_wave = cmd_buffer->state.rt_pipeline->base.scratch_bytes_per_wave;
-      wave_size = cmd_buffer->state.rt_pipeline->base.shaders[MESA_SHADER_COMPUTE]->info.wave_size;
+      scratch_bytes_per_wave = cmd_buffer->state.rt_pipeline->base.base.scratch_bytes_per_wave;
+      wave_size =
+         cmd_buffer->state.rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->info.wave_size;
    }
 
    /* The hardware register is specified as a multiple of 256 DWORDS. */
