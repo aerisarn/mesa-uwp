@@ -24,6 +24,12 @@
 #include "compiler/v3d_compiler.h"
 #include "compiler/nir/nir_builder.h"
 
+/* Vulkan's robustBufferAccess feature is only concerned with buffers that are
+ * bound through descriptor sets, so shared memory is not included, but it may
+ * be useful to enable this for debugging.
+ */
+const bool robust_shared_enabled = false;
+
 static void
 rewrite_offset(nir_builder *b,
                nir_intrinsic_instr *instr,
@@ -172,8 +178,11 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
         case nir_intrinsic_shared_atomic_xor:
         case nir_intrinsic_shared_atomic_exchange:
         case nir_intrinsic_shared_atomic_comp_swap:
-                lower_shared(c, b, intr);
-                return true;
+                if (robust_shared_enabled) {
+                        lower_shared(c, b, intr);
+                        return true;
+                }
+                return false;
         default:
                 return false;
         }
