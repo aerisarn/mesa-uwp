@@ -2868,7 +2868,7 @@ static VkResult pvr_setup_descriptor_mappings(
    struct pvr_cmd_buffer *const cmd_buffer,
    enum pvr_stage_allocation stage,
    const struct pvr_stage_allocation_descriptor_state *descriptor_state,
-   UNUSED const pvr_dev_addr_t *const num_worgroups_buff_addr,
+   const pvr_dev_addr_t *const num_worgroups_buff_addr,
    uint32_t *const descriptor_data_offset_out)
 {
    const struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
@@ -2878,8 +2878,6 @@ static VkResult pvr_setup_descriptor_mappings(
    uint64_t *qword_buffer;
    struct pvr_bo *pvr_bo;
    VkResult result;
-
-   pvr_finishme("Handle num_worgroups_buff_addr");
 
    if (!pds_info->data_size_in_dwords)
       return VK_SUCCESS;
@@ -3060,6 +3058,22 @@ static VkResult pvr_setup_descriptor_mappings(
                       pds_info->data_size_in_dwords);
             break;
          }
+
+         case PVR_BUFFER_TYPE_BLEND_CONSTS:
+            if (stage == PVR_STAGE_ALLOCATION_COMPUTE) {
+               assert(num_worgroups_buff_addr->addr);
+
+               /* TODO: Check if we need to offset this (e.g. for just y and z),
+                * or cope with any reordering?
+                */
+               PVR_WRITE(qword_buffer,
+                         num_worgroups_buff_addr->addr,
+                         special_buff_entry->const_offset,
+                         pds_info->data_size_in_dwords);
+            } else {
+               pvr_finishme("Add blend constants support.");
+            }
+            break;
 
          default:
             unreachable("Unsupported special buffer type.");
