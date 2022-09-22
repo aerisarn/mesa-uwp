@@ -103,26 +103,31 @@ lower_shared(struct v3d_compile *c,
              nir_builder *b,
              nir_intrinsic_instr *instr)
 {
-        uint32_t type_sz;
+        uint32_t type_sz, offset_src;
         if (instr->intrinsic == nir_intrinsic_load_shared) {
+                offset_src = 0;
                 type_sz = nir_dest_bit_size(instr->dest) / 8;
+        } else if (instr->intrinsic == nir_intrinsic_store_shared) {
+                offset_src = 1;
+                type_sz = nir_src_bit_size(instr->src[0]) / 8;
         } else {
                 /* atomic */
+                offset_src = 0;
                 type_sz = 4;
         }
 
         b->cursor = nir_before_instr(&instr->instr);
         const uint32_t access_size = instr->num_components * type_sz;
         nir_ssa_def *max_access_offset =
-                nir_iadd(b, instr->src[0].ssa,
+                nir_iadd(b, instr->src[offset_src].ssa,
                             nir_imm_int(b, access_size - 1));
         nir_ssa_def *offset =
                 nir_bcsel(b, nir_uge(b, max_access_offset,
                                         nir_imm_int(b, c->s->info.shared_size)),
                              nir_imm_int(b, 0),
-                             instr->src[0].ssa);
+                             instr->src[offset_src].ssa);
 
-        nir_instr_rewrite_src(&instr->instr, &instr->src[0],
+        nir_instr_rewrite_src(&instr->instr, &instr->src[offset_src],
                               nir_src_for_ssa(offset));
 }
 
@@ -155,6 +160,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
         case nir_intrinsic_ssbo_atomic_comp_swap:
                 lower_atomic(c, b, intr);
                 return true;
+        case nir_intrinsic_store_shared:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_shared_atomic_add:
         case nir_intrinsic_shared_atomic_imin:
