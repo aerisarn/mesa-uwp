@@ -7296,7 +7296,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    for (unsigned i = 0; i < IRIS_MAX_GLOBAL_BINDINGS; i++) {
       struct pipe_resource *res = ice->state.global_bindings[i];
       if (!res)
-         continue;
+         break;
 
       iris_use_pinned_bo(batch, iris_resource_bo(res),
                          true, IRIS_DOMAIN_NONE);
