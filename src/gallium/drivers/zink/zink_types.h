@@ -1436,7 +1436,6 @@ struct zink_context {
    struct set rendering_state_cache;
    struct set render_pass_state_cache;
    struct hash_table *render_pass_cache;
-   bool new_swapchain;
    VkExtent2D swapchain_size;
    bool fb_changed;
    bool rp_changed; //force renderpass restart

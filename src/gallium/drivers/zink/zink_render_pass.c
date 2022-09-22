@@ -370,7 +370,7 @@ zink_init_color_attachment(struct zink_context *ctx, unsigned i, struct zink_rt_
       rt->format = surf->info.format[0];
       rt->samples = MAX3(transient ? transient->base.nr_samples : 0, psurf->texture->nr_samples, 1);
       rt->clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
-      rt->invalid = !zink_resource(psurf->texture)->valid || (ctx->new_swapchain && (psurf->texture->bind & PIPE_BIND_DISPLAY_TARGET));
+      rt->invalid = !zink_resource(psurf->texture)->valid;
       rt->fbfetch = (ctx->fbfetch_outputs & BITFIELD_BIT(i)) > 0;
    } else {
       memset(rt, 0, sizeof(struct zink_rt_attrib));
@@ -672,7 +672,6 @@ begin_render_pass(struct zink_context *ctx)
 
    VKCTX(CmdBeginRenderPass)(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
-   ctx->new_swapchain = false;
    return clear_buffers;
 }
 

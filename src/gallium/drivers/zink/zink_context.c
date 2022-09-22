@@ -2286,7 +2286,7 @@ begin_rendering(struct zink_context *ctx)
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
 
-         if (!surf || !zink_resource(surf->base.texture)->valid || (surf->is_swapchain && ctx->new_swapchain))
+         if (!surf || !zink_resource(surf->base.texture)->valid)
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          else
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -2423,7 +2423,6 @@ begin_rendering(struct zink_context *ctx)
 
    VKCTX(CmdBeginRendering)(ctx->batch.state->cmdbuf, &ctx->dynamic_fb.info);
    ctx->batch.in_rp = true;
-   ctx->new_swapchain = false;
    return clear_buffers;
 }
 
@@ -2787,11 +2786,8 @@ static bool
 rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res, bool from_set_fb)
 {
    bool rebind = false;
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
       rebind |= rebind_fb_surface(ctx, &ctx->fb_state.cbufs[i], match_res);
-      if (from_set_fb && ctx->fb_state.cbufs[i] && ctx->fb_state.cbufs[i]->texture->bind & PIPE_BIND_SCANOUT)
-         ctx->new_swapchain = true;
-   }
    rebind |= rebind_fb_surface(ctx, &ctx->fb_state.zsbuf, match_res);
    return rebind;
 }
