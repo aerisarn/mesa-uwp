@@ -1429,6 +1429,9 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
       rgReferenceTransitions.clear();
       rgReferenceTransitions.reserve(maxReferences);
 
+      if (reconPicOutputTextureDesc.pReconstructedPicture != nullptr)
+         picCtrlFlags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_FLAG_USED_AS_REFERENCE_PICTURE;
+
       // Check if array of textures vs texture array
 
       if (referenceFramesDescriptor.pSubresources == nullptr) {
@@ -1445,8 +1448,6 @@ d3d12_video_encoder_encode_bitstream(struct pipe_video_codec * codec,
 
          // Transition all subresources the output recon pic independent resource allocation
          if (reconPicOutputTextureDesc.pReconstructedPicture != nullptr) {
-            picCtrlFlags |= D3D12_VIDEO_ENCODER_PICTURE_CONTROL_FLAG_USED_AS_REFERENCE_PICTURE;
-
             rgReferenceTransitions.push_back(
                CD3DX12_RESOURCE_BARRIER::Transition(reconPicOutputTextureDesc.pReconstructedPicture,
                                                     D3D12_RESOURCE_STATE_COMMON,
