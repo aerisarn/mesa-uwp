@@ -19,6 +19,7 @@ STABLE_EPHEMERAL=" \
       bison \
       bzip2 \
       ccache \
+      cmake \
       clang-11 \
       flex \
       glslang-tools \
@@ -35,6 +36,8 @@ STABLE_EPHEMERAL=" \
       libwayland-dev \
       libx11-xcb-dev \
       libxext-dev \
+      llvm-13-dev \
+      llvm-11-dev \
       make \
       meson \
       patch \
@@ -43,6 +46,7 @@ STABLE_EPHEMERAL=" \
       python3-pip \
       python3-setuptools \
       python3-wheel \
+      spirv-tools \
       wayland-protocols \
       xz-utils \
       "
@@ -117,6 +121,10 @@ pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@34f4ade9
 
 # Needed for manipulation with traces yaml files.
 pip3 install yq
+
+############### Build LLVM-SPIRV translator
+
+. .gitlab-ci/container/build-llvm-spirv.sh
 
 ############### Build libdrm
 

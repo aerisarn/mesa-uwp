@@ -20,7 +20,6 @@ STABLE_EPHEMERAL=" \
       libclang-cpp13-dev \
       libclang-cpp11-dev \
       libgles2-mesa-dev \
-      libllvmspirvlib-dev \
       libpciaccess-dev \
       libpng-dev \
       libudev-dev \
@@ -32,7 +31,6 @@ STABLE_EPHEMERAL=" \
       libxrender-dev \
       llvm-13-dev \
       llvm-11-dev \
-      llvm-spirv \
       make \
       meson \
       ocl-icd-opencl-dev \
@@ -56,7 +54,6 @@ apt-get install -y --no-remove \
       libegl1 \
       libepoxy0 \
       libfdt1 \
-      libllvmspirvlib11 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
