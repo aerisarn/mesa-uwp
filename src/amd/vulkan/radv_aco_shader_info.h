@@ -141,7 +141,8 @@ radv_aco_convert_pipe_key(struct aco_stage_input *aco_info,
 
 static inline void
 radv_aco_convert_opts(struct aco_compiler_options *aco_info,
-                      const struct radv_nir_compiler_options *radv)
+                      const struct radv_nir_compiler_options *radv,
+                      const struct radv_shader_args *radv_args)
 {
    radv_aco_convert_pipe_key(&aco_info->key, &radv->key);
    ASSIGN_FIELD(robust_buffer_access);
@@ -157,6 +158,8 @@ radv_aco_convert_opts(struct aco_compiler_options *aco_info,
    ASSIGN_FIELD(address32_hi);
    ASSIGN_FIELD(debug.func);
    ASSIGN_FIELD(debug.private_data);
+   ASSIGN_FIELD(debug.private_data);
+   aco_info->load_grid_size_from_user_sgpr = radv_args->load_grid_size_from_user_sgpr;
 }
 #undef ASSIGN_VS_STATE_FIELD
 #undef ASSIGN_VS_STATE_FIELD_CP

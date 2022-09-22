@@ -2387,7 +2387,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    } else {
       struct aco_shader_info ac_info;
       struct aco_compiler_options ac_opts;
-      radv_aco_convert_opts(&ac_opts, &options);
+      radv_aco_convert_opts(&ac_opts, &options, args);
       radv_aco_convert_shader_info(&ac_info, info);
       aco_compile_shader(&ac_opts, &ac_info, shader_count, shaders, args, &radv_aco_build_shader_binary, (void **)&binary);
    }
@@ -2543,7 +2543,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct aco_vs_prolog_key ac_key;
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info);
-   radv_aco_convert_opts(&ac_opts, &options);
+   radv_aco_convert_opts(&ac_opts, &options, &args);
    radv_aco_convert_vs_prolog_key(&ac_key, key);
    aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_key, &args, &radv_aco_build_shader_part,
                          (void **)&binary);
@@ -2608,7 +2608,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    struct aco_ps_epilog_key ac_key;
    struct aco_compiler_options ac_opts;
    radv_aco_convert_shader_info(&ac_info, &info);
-   radv_aco_convert_opts(&ac_opts, &options);
+   radv_aco_convert_opts(&ac_opts, &options, &args);
    radv_aco_convert_ps_epilog_key(&ac_key, key);
    aco_compile_ps_epilog(&ac_opts, &ac_info, &ac_key, &args, &radv_aco_build_shader_part,
                          (void **)&binary);
