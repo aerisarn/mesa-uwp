@@ -2267,6 +2267,20 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.z16_unscaled_bias = 1<<15;
    else
       screen->driver_workarounds.z16_unscaled_bias = 1<<16;
+   /* these drivers don't use VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT, so it can always be set */
+   switch (screen->info.driver_props.driverID) {
+   case VK_DRIVER_ID_MESA_RADV:
+   case VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA:
+   case VK_DRIVER_ID_MESA_LLVMPIPE:
+   case VK_DRIVER_ID_MESA_VENUS:
+   case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
+   case VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS:
+   case VK_DRIVER_ID_IMAGINATION_PROPRIETARY:
+      screen->driver_workarounds.always_feedback_loop = screen->info.have_EXT_attachment_feedback_loop_layout;
+      break;
+   default:
+      break;
+   }
 }
 
 static struct zink_screen *

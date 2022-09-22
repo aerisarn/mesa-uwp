@@ -1786,7 +1786,8 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
          }
          ctx->feedback_loops &= ~BITFIELD_BIT(idx);
       }
-      if (feedback_loops && !ctx->feedback_loops) {
+      if (!zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop &&
+          feedback_loops && !ctx->feedback_loops) {
          /* unset feedback loop bits */
          if (ctx->gfx_pipeline_state.feedback_loop)
             ctx->gfx_pipeline_state.dirty = true;
@@ -2825,7 +2826,8 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       ctx->rp_layout_changed = true;
    }
    ctx->feedback_loops &= ~BITFIELD_BIT(idx);
-   if (feedback_loops && !ctx->feedback_loops) {
+   if (!zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop &&
+       feedback_loops && !ctx->feedback_loops) {
       /* unset feedback loop bits */
       if (ctx->gfx_pipeline_state.feedback_loop)
          ctx->gfx_pipeline_state.dirty = true;
