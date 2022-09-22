@@ -954,6 +954,11 @@ __glXInitialize(Display * dpy)
 #endif /* GLX_USE_DRM */
    if (glx_direct)
       dpyPriv->driswDisplay = driswCreateDisplay(dpy, explicit_zink | infer_zink);
+
+#ifdef GLX_USE_WINDOWSGL
+   if (glx_direct && glx_accel)
+      dpyPriv->windowsdriDisplay = driwindowsCreateDisplay(dpy);
+#endif
 #endif /* GLX_DIRECT_RENDERING && !GLX_USE_APPLEGL */
 
 #ifdef GLX_USE_APPLEGL
@@ -961,11 +966,6 @@ __glXInitialize(Display * dpy)
       free(dpyPriv);
       return NULL;
    }
-#endif
-
-#ifdef GLX_USE_WINDOWSGL
-   if (glx_direct && glx_accel)
-      dpyPriv->windowsdriDisplay = driwindowsCreateDisplay(dpy);
 #endif
 
    if (!AllocAndFetchScreenConfigs(dpy, dpyPriv)) {
