@@ -1526,6 +1526,17 @@ zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_sha
 }
 
 void
+zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode)
+{
+   struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
+   gkey->hw_rast_state = state->rast_state;
+   memcpy(gkey->modules, state->modules, sizeof(gkey->modules));
+   bool line = u_reduced_prim(mode) == PIPE_PRIM_LINES;
+   gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog, (struct zink_rasterizer_hw_state*)state, line);
+   _mesa_set_add(&prog->libs[get_primtype_idx(mode)], gkey);
+}
+
+void
 zink_program_init(struct zink_context *ctx)
 {
    ctx->base.create_vs_state = zink_create_cached_shader_state;

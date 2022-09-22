@@ -28,7 +28,6 @@
 #include "zink_pipeline.h"
 #include "zink_program.h"
 #include "zink_screen.h"
-#include "util/u_prim.h"
 
 
 template <zink_dynamic_state DYNAMIC_STATE>
@@ -42,32 +41,6 @@ hash_gfx_pipeline_state(const void *key)
    if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE)
       return hash;
    return XXH32(&state->dyn_state1, sizeof(state->dyn_state1), hash);
-}
-
-static unsigned
-get_primtype_idx(enum pipe_prim_type mode)
-{
-   if (mode == PIPE_PRIM_PATCHES)
-      return 3;
-   switch (u_reduced_prim(mode)) {
-   case PIPE_PRIM_POINTS:
-      return 0;
-   case PIPE_PRIM_LINES:
-      return 1;
-   default:
-      return 2;
-   }
-}
-
-static void
-create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode)
-{
-   struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
-   gkey->hw_rast_state = state->rast_state;
-   memcpy(gkey->modules, state->modules, sizeof(gkey->modules));
-   bool line = u_reduced_prim(mode) == PIPE_PRIM_LINES;
-   gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog, (struct zink_rasterizer_hw_state*)state, line);
-   _mesa_set_add(&prog->libs[get_primtype_idx(mode)], gkey);
 }
 
 template <bool HAS_DYNAMIC>
@@ -240,7 +213,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          /* TODO: this will eventually be pre-populated by async shader compile */
          //struct set_entry *he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
          if (!he && (zink_debug & ZINK_DEBUG_GPL)) {
-            create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state, mode);
+            zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state, mode);
             he = _mesa_set_search(&prog->libs[idx], &ctx->gfx_pipeline_state.gkey);
             assert(he);
          }

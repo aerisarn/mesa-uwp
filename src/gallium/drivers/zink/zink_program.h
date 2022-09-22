@@ -28,7 +28,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#include "util/u_prim.h"
 
 struct gfx_pipeline_cache_entry {
    struct zink_gfx_pipeline_state state;
@@ -123,9 +123,28 @@ zink_gfx_program_update(struct zink_context *ctx);
 void
 zink_gfx_program_update_optimal(struct zink_context *ctx);
 
+
+void
+zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state, enum pipe_prim_type mode);
 uint32_t hash_gfx_output(const void *key);
 uint32_t hash_gfx_input(const void *key);
 uint32_t hash_gfx_input_dynamic(const void *key);
+
+
+static inline unsigned
+get_primtype_idx(enum pipe_prim_type mode)
+{
+   if (mode == PIPE_PRIM_PATCHES)
+      return 3;
+   switch (u_reduced_prim(mode)) {
+   case PIPE_PRIM_POINTS:
+      return 0;
+   case PIPE_PRIM_LINES:
+      return 1;
+   default:
+      return 2;
+   }
+}
 
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
