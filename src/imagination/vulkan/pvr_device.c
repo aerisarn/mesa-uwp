@@ -2560,8 +2560,42 @@ void pvr_DestroyEvent(VkDevice _device,
 
 VkResult pvr_GetEventStatus(VkDevice _device, VkEvent _event)
 {
-   assert(!"Unimplemented");
-   return VK_SUCCESS;
+   PVR_FROM_HANDLE(pvr_device, device, _device);
+   PVR_FROM_HANDLE(pvr_event, event, _event);
+   VkResult result;
+
+   switch (event->state) {
+   case PVR_EVENT_STATE_SET_BY_DEVICE:
+      if (!event->sync)
+         return VK_EVENT_RESET;
+
+      result =
+         vk_sync_wait(&device->vk, event->sync, 0U, VK_SYNC_WAIT_COMPLETE, 0);
+      result = (result == VK_SUCCESS) ? VK_EVENT_SET : VK_EVENT_RESET;
+      break;
+
+   case PVR_EVENT_STATE_RESET_BY_DEVICE:
+      if (!event->sync)
+         return VK_EVENT_RESET;
+
+      result =
+         vk_sync_wait(&device->vk, event->sync, 0U, VK_SYNC_WAIT_COMPLETE, 0);
+      result = (result == VK_SUCCESS) ? VK_EVENT_RESET : VK_EVENT_SET;
+      break;
+
+   case PVR_EVENT_STATE_SET_BY_HOST:
+      result = VK_EVENT_SET;
+      break;
+
+   case PVR_EVENT_STATE_RESET_BY_HOST:
+      result = VK_EVENT_RESET;
+      break;
+
+   default:
+      unreachable("Event object in unknown state");
+   }
+
+   return result;
 }
 
 VkResult pvr_SetEvent(VkDevice _device, VkEvent _event)
