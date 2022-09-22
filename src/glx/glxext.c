@@ -974,6 +974,7 @@ __glXInitialize(Display * dpy)
 #endif
 
    if (!AllocAndFetchScreenConfigs(dpy, dpyPriv)) {
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
       Bool fail = true;
       /* if zink was inferred, retry without zink */
       if (infer_zink && !explicit_zink) {
@@ -985,6 +986,10 @@ __glXInitialize(Display * dpy)
          free(dpyPriv);
          return NULL;
       }
+#else
+      free(dpyPriv);
+      return NULL;
+#endif
    }
 
    __glX_send_client_info(dpyPriv);
