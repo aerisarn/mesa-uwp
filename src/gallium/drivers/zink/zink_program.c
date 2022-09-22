@@ -504,6 +504,21 @@ equals_gfx_input(const void *a, const void *b)
 }
 
 uint32_t
+hash_gfx_output_ds3(const void *key)
+{
+   const uint8_t *data = key;
+   return _mesa_hash_data(data, sizeof(uint32_t));
+}
+
+static bool
+equals_gfx_output_ds3(const void *a, const void *b)
+{
+   const uint8_t *da = a;
+   const uint8_t *db = b;
+   return !memcmp(da, db, sizeof(uint32_t));
+}
+
+uint32_t
 hash_gfx_output(const void *key)
 {
    const uint8_t *data = key;
@@ -1555,8 +1570,12 @@ zink_program_init(struct zink_context *ctx)
       _mesa_set_init(&ctx->gfx_inputs, ctx, hash_gfx_input_dynamic, equals_gfx_input_dynamic);
    else
       _mesa_set_init(&ctx->gfx_inputs, ctx, hash_gfx_input, equals_gfx_input);
-   _mesa_set_init(&ctx->gfx_outputs, ctx, hash_gfx_output, equals_gfx_output);
+   if (zink_screen(ctx->base.screen)->have_full_ds3)
+      _mesa_set_init(&ctx->gfx_outputs, ctx, hash_gfx_output_ds3, equals_gfx_output_ds3);
+   else
+      _mesa_set_init(&ctx->gfx_outputs, ctx, hash_gfx_output, equals_gfx_output);
    /* validate struct packing */
+   STATIC_ASSERT(offsetof(struct zink_gfx_output_key, sample_mask) == sizeof(uint32_t));
    STATIC_ASSERT(offsetof(struct zink_gfx_pipeline_state, vertex_buffers_enabled_mask) - offsetof(struct zink_gfx_pipeline_state, input) ==
                  offsetof(struct zink_gfx_input_key, vertex_buffers_enabled_mask) - offsetof(struct zink_gfx_input_key, input));
    STATIC_ASSERT(offsetof(struct zink_gfx_pipeline_state, vertex_strides) - offsetof(struct zink_gfx_pipeline_state, input) ==

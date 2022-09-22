@@ -814,12 +814,17 @@ struct zink_gfx_input_key {
 
 struct zink_gfx_output_key {
    /* order matches zink_gfx_output_key */
-   unsigned force_persample_interp:1;
-   uint32_t rast_samples:7; //1 extra bit
-   uint32_t min_samples:6;
-   uint32_t feedback_loop : 1;
-   uint32_t feedback_loop_zs : 1;
-   uint32_t rp_state : 16;
+   union {
+      struct {
+         unsigned force_persample_interp:1;
+         uint32_t rast_samples:7; //1 extra bit
+         uint32_t min_samples:6;
+         uint32_t feedback_loop : 1;
+         uint32_t feedback_loop_zs : 1;
+         uint32_t rp_state : 16;
+      };
+      uint32_t key;
+   };
 
    /* TODO: compress these */
    VkSampleMask sample_mask;

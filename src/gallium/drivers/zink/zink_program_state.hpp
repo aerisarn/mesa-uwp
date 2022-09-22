@@ -94,6 +94,20 @@ find_or_create_input(struct zink_context *ctx, VkPrimitiveTopology vkmode)
 }
 
 static struct zink_gfx_output_key *
+find_or_create_output_ds3(struct zink_context *ctx)
+{
+   uint32_t hash = hash_gfx_output_ds3(&ctx->gfx_pipeline_state);
+   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_outputs, hash, &ctx->gfx_pipeline_state);
+   if (!he) {
+      struct zink_gfx_output_key *okey = rzalloc(ctx, struct zink_gfx_output_key);
+      memcpy(okey, &ctx->gfx_pipeline_state, sizeof(uint32_t));
+      okey->pipeline = zink_create_gfx_pipeline_output(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state);
+      he = _mesa_set_add_pre_hashed(&ctx->gfx_outputs, hash, okey);
+   }
+   return (struct zink_gfx_output_key*)he->key;
+}
+
+static struct zink_gfx_output_key *
 find_or_create_output(struct zink_context *ctx)
 {
    uint32_t hash = hash_gfx_output(&ctx->gfx_pipeline_state);
@@ -222,7 +236,9 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
             struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 ?
                                               find_or_create_input_dynamic(ctx, vkmode) :
                                               find_or_create_input(ctx, vkmode);
-            struct zink_gfx_output_key *okey = find_or_create_output(ctx);
+            struct zink_gfx_output_key *okey = DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 && screen->have_full_ds3 ?
+                                               find_or_create_output_ds3(ctx) :
+                                               find_or_create_output(ctx);
             pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline);
          }
       }
