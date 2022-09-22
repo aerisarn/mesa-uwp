@@ -239,10 +239,10 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
 fail_queue:
    nvk_queue_finish(device, &device->queue);
-fail_queue_submit:
-   pthread_cond_destroy(&device->queue_submit);
 fail_zero_page:
    nouveau_ws_bo_destroy(device->zero_page);
+fail_queue_submit:
+   pthread_cond_destroy(&device->queue_submit);
 fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_slm:
