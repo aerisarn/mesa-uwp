@@ -484,6 +484,7 @@ union radv_shader_arena_block {
 struct radv_shader {
    uint32_t ref_count;
 
+   struct radeon_winsys_bo *bo; /* Not NULL if imported from a lib */
    uint64_t va;
 
    struct ac_shader_config config;

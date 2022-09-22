@@ -1518,6 +1518,22 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
 
+   /* With graphics pipeline library, binaries are uploaded from a library and they hold a pointer
+    * to the slab BO.
+    */
+   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      struct radv_shader *shader = pipeline->base.shaders[s];
+
+      if (!shader || !shader->bo)
+         continue;
+
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, shader->bo);
+   }
+
+   if (pipeline->base.gs_copy_shader && pipeline->base.gs_copy_shader->bo) {
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.gs_copy_shader->bo);
+   }
+
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, &pipeline->base);
 

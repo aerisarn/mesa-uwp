@@ -227,11 +227,6 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       radv_pipeline_layout_finish(device, &gfx_pipeline_lib->layout);
 
       for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-         if (pipeline->shaders[i]) {
-            free(pipeline->shaders[i]->binary);
-            pipeline->shaders[i]->binary = NULL;
-         }
-
          ralloc_free(pipeline->retained_shaders[i].nir);
       }
 
@@ -1652,12 +1647,23 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
          continue;
 
       pipeline->base.shaders[s] = radv_shader_ref(lib->base.base.shaders[s]);
+
+      /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
+      pipeline->base.shaders[s]->bo = lib->base.base.slab_bo;
    }
 
    /* Import the GS copy shader if present. */
    if (lib->base.base.gs_copy_shader) {
       assert(!pipeline->base.gs_copy_shader);
       pipeline->base.gs_copy_shader = radv_shader_ref(lib->base.base.gs_copy_shader);
+
+      /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
+      pipeline->base.gs_copy_shader->bo = lib->base.base.slab_bo;
+   }
+
+   /* Refcount the slab BO to make sure it's not freed when the library is destroyed. */
+   if (lib->base.base.slab) {
+      p_atomic_inc(&lib->base.base.slab->ref_count);
    }
 
    /* Import the PS epilog if present. */
@@ -3222,10 +3228,13 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
       if (!shader)
          continue;
 
+      if (shader->bo)
+         continue;
+
       code_size += align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
    }
 
-   if (pipeline->gs_copy_shader) {
+   if (pipeline->gs_copy_shader && !pipeline->gs_copy_shader->bo) {
       code_size += align(pipeline->gs_copy_shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
    }
 
@@ -3246,6 +3255,9 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
       if (!shader)
          continue;
 
+      if (shader->bo)
+         continue;
+
       shader->va = slab_va + slab_offset;
 
       void *dest_ptr = slab_ptr + slab_offset;
@@ -3255,7 +3267,7 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline)
       slab_offset += align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
    }
 
-   if (pipeline->gs_copy_shader) {
+   if (pipeline->gs_copy_shader && !pipeline->gs_copy_shader->bo) {
       pipeline->gs_copy_shader->va = slab_va + slab_offset;
 
       void *dest_ptr = slab_ptr + slab_offset;
@@ -4210,13 +4222,13 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
-   if (pipeline->gs_copy_shader && !(flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
+   if (pipeline->gs_copy_shader) {
       free(pipeline->gs_copy_shader->binary);
       pipeline->gs_copy_shader->binary = NULL;
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (pipeline->shaders[i] && !(flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
+      if (pipeline->shaders[i]) {
          free(pipeline->shaders[i]->binary);
          pipeline->shaders[i]->binary = NULL;
       }
