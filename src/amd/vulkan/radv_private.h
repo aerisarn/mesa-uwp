@@ -774,6 +774,16 @@ struct radv_queue_state {
    struct radeon_cmdbuf *continue_preamble_cs;
    struct radeon_cmdbuf *gang_wait_preamble_cs;
    struct radeon_cmdbuf *gang_wait_postamble_cs;
+
+   /* the uses_shadow_regs here will be set only for general queue */
+   bool uses_shadow_regs;
+   /* register state is saved in shadowed_regs buffer */
+   struct radeon_winsys_bo *shadowed_regs;
+   /* shadow regs preamble ib. This will be the first preamble ib.
+    * This ib has the packets to start register shadowing.
+    */
+   struct radeon_winsys_bo *shadow_regs_ib;
+   uint32_t shadow_regs_ib_size_dw;
 };
 
 struct radv_queue {
@@ -1014,6 +1024,8 @@ struct radv_device {
    struct radeon_cmdbuf **perf_counter_lock_cs;
 
    bool uses_device_generated_commands;
+
+   bool uses_shadow_regs;
 };
 
 bool radv_device_set_pstate(struct radv_device *device, bool enable);
@@ -1700,6 +1712,15 @@ void si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scis
 
 void si_write_guardband(struct radeon_cmdbuf *cs, int count, const VkViewport *viewports,
                         unsigned rast_prim, unsigned polygon_mode, float line_width);
+
+VkResult radv_create_shadow_regs_preamble(const struct radv_device *device,
+                                          struct radv_queue_state *queue_state);
+void radv_destroy_shadow_regs_preamble(struct radv_queue_state *queue_state,
+                                       struct radeon_winsys *ws);
+void radv_emit_shadow_regs_preamble(struct radeon_cmdbuf *cs, const struct radv_device *device,
+                                    struct radv_queue_state *queue_state);
+VkResult radv_init_shadowed_regs_buffer_state(const struct radv_device *device,
+                                              struct radv_queue *queue);
 
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                                    bool indirect_draw, bool count_from_stream_output,

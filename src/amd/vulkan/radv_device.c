@@ -3123,14 +3123,28 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
    if (result != VK_SUCCESS)
       return result;
 
-   queue->vk.driver_submit = radv_queue_submit;
+   queue->state.uses_shadow_regs =
+      device->uses_shadow_regs && queue->state.qf == RADV_QUEUE_GENERAL;
+   if (queue->state.uses_shadow_regs) {
+      result = radv_create_shadow_regs_preamble(device, &queue->state);
+      if (result != VK_SUCCESS)
+         goto fail;
+      result = radv_init_shadowed_regs_buffer_state(device, queue);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
 
+   queue->vk.driver_submit = radv_queue_submit;
    return VK_SUCCESS;
+fail:
+   vk_queue_finish(&queue->vk);
+   return result;
 }
 
 static void
 radv_queue_state_finish(struct radv_queue_state *queue, struct radv_device *device)
 {
+   radv_destroy_shadow_regs_preamble(queue, device->ws);
    if (queue->initial_full_flush_preamble_cs)
       device->ws->cs_destroy(queue->initial_full_flush_preamble_cs);
    if (queue->initial_preamble_cs)
@@ -3867,6 +3881,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    device->overallocation_disallowed = overallocation_disallowed;
    mtx_init(&device->overallocation_mutex, mtx_plain);
+
+   if (physical_device->rad_info.mid_command_buffer_preemption_enabled ||
+       device->instance->debug_flags & RADV_DEBUG_SHADOW_REGS)
+      device->uses_shadow_regs = true;
 
    /* Create one context per queue priority. */
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
@@ -5058,6 +5076,8 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
       /* Emit initial configuration. */
       switch (queue->qf) {
       case RADV_QUEUE_GENERAL:
+         if (queue->uses_shadow_regs)
+            radv_emit_shadow_regs_preamble(cs, device, queue);
          radv_init_graphics_state(cs, device);
 
          if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo || task_rings_bo) {

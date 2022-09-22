@@ -200,13 +200,15 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
    bool has_clear_state = physical_device->rad_info.has_clear_state;
    int i;
 
-   radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-   radeon_emit(cs, CC0_UPDATE_LOAD_ENABLES(1));
-   radeon_emit(cs, CC1_UPDATE_SHADOW_ENABLES(1));
+   if (!device->uses_shadow_regs) {
+      radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
+      radeon_emit(cs, CC0_UPDATE_LOAD_ENABLES(1));
+      radeon_emit(cs, CC1_UPDATE_SHADOW_ENABLES(1));
 
-   if (has_clear_state) {
-      radeon_emit(cs, PKT3(PKT3_CLEAR_STATE, 0, 0));
-      radeon_emit(cs, 0);
+      if (has_clear_state) {
+         radeon_emit(cs, PKT3(PKT3_CLEAR_STATE, 0, 0));
+         radeon_emit(cs, 0);
+      }
    }
 
    if (physical_device->rad_info.gfx_level <= GFX8)

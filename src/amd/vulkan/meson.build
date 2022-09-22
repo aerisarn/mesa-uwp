@@ -60,6 +60,7 @@ libradv_files = files(
   'radv_acceleration_structure.h',
   'radv_android.c',
   'radv_cmd_buffer.c',
+  'radv_cp_reg_shadowing.c',
   'radv_cs.h',
   'radv_debug.c',
   'radv_debug.h',
