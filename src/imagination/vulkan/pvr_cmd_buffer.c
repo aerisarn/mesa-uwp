@@ -3184,6 +3184,7 @@ pvr_compute_flat_pad_workgroup_size(const struct pvr_physical_device *pdevice,
 static void pvr_compute_update_kernel(
    struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_sub_cmd_compute *const sub_cmd,
+   pvr_dev_addr_t indirect_addr,
    const uint32_t global_workgroup_size[static const PVR_WORKGROUP_DIMENSIONS])
 {
    const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
@@ -3196,7 +3197,7 @@ static void pvr_compute_update_kernel(
       &pipeline->state.primary_program_info;
 
    struct pvr_compute_kernel_info info = {
-      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
+      .indirect_buffer_addr = indirect_addr,
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ANY),
       .pds_temp_size =
          DIV_ROUND_UP(program_info->temps_required << 2U,
@@ -3272,7 +3273,6 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
-   assert(compute_pipeline);
 
    if (!groupCountX || !groupCountY || !groupCountZ)
       return;
@@ -3325,14 +3325,71 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
 
    pvr_compute_update_shared(cmd_buffer, sub_cmd);
 
-   pvr_compute_update_kernel(cmd_buffer, sub_cmd, workgroup_size);
+   pvr_compute_update_kernel(cmd_buffer,
+                             sub_cmd,
+                             PVR_DEV_ADDR_INVALID,
+                             workgroup_size);
 }
 
 void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                              VkBuffer _buffer,
                              VkDeviceSize offset)
 {
-   assert(!"Unimplemented");
+   const uint32_t workgroup_size[PVR_WORKGROUP_DIMENSIONS] = { 1, 1, 1 };
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct pvr_compute_pipeline *compute_pipeline =
+      state->compute_pipeline;
+   const VkShaderStageFlags push_consts_stage_mask =
+      compute_pipeline->base.layout->push_constants_shader_stages;
+   PVR_FROM_HANDLE(pvr_buffer, buffer, _buffer);
+   struct pvr_sub_cmd_compute *sub_cmd;
+   pvr_dev_addr_t indirect_addr;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   indirect_addr = PVR_DEV_ADDR_OFFSET(buffer->dev_addr, offset);
+
+   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
+
+   sub_cmd = &state->current_sub_cmd->compute;
+   sub_cmd->uses_atomic_ops |= compute_pipeline->state.shader.uses_atomic_ops;
+   sub_cmd->uses_barrier |= compute_pipeline->state.shader.uses_barrier;
+
+   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
+      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
+       * check for dirty compute stage.
+       */
+      pvr_finishme("Add support for push constants.");
+   }
+
+   if (compute_pipeline->state.shader.uses_num_workgroups) {
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->state.descriptor,
+         &indirect_addr,
+         &state->pds_compute_descriptor_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   } else if ((compute_pipeline->base.layout
+                  ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
+               state->dirty.compute_desc_dirty) ||
+              state->dirty.compute_pipeline_binding) {
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->state.descriptor,
+         NULL,
+         &state->pds_compute_descriptor_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   }
+
+   pvr_compute_update_shared(cmd_buffer, sub_cmd);
+
+   pvr_compute_update_kernel(cmd_buffer, sub_cmd, indirect_addr, workgroup_size);
 }
 
 static void
