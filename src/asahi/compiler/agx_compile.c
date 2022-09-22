@@ -1246,10 +1246,8 @@ static void
 agx_emit_phis_deferred(agx_context *ctx)
 {
    agx_foreach_block(ctx, block) {
-      agx_foreach_instr_in_block(block, I) {
-         if (I->op == AGX_OPCODE_PHI)
-            agx_emit_phi_deferred(ctx, block, I);
-      }
+      agx_foreach_phi_in_block(block, I)
+         agx_emit_phi_deferred(ctx, block, I);
    }
 }
 

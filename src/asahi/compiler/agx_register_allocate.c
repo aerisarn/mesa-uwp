@@ -221,10 +221,7 @@ agx_insert_parallel_copies(agx_context *ctx, agx_block *block)
    agx_foreach_successor(block, succ) {
       assert(nr_phi == 0 && "control flow graph has a critical edge");
 
-      /* Phi nodes can only come at the start of the block */
-      agx_foreach_instr_in_block(succ, phi) {
-         if (phi->op != AGX_OPCODE_PHI) break;
-
+      agx_foreach_phi_in_block(succ, phi) {
          assert(!any_succ && "control flow graph has a critical edge");
          nr_phi++;
       }
@@ -242,9 +239,7 @@ agx_insert_parallel_copies(agx_context *ctx, agx_block *block)
 
       unsigned i = 0;
 
-      agx_foreach_instr_in_block(succ, phi) {
-         if (phi->op != AGX_OPCODE_PHI) break;
-
+      agx_foreach_phi_in_block(succ, phi) {
          agx_index dest = phi->dest[0];
          agx_index src = phi->src[pred_index];
 

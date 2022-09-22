@@ -536,6 +536,20 @@ agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
 #define agx_foreach_dest(ins, v) \
    for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
 
+/* Phis only come at the start so we stop as soon as we hit a non-phi */
+#define agx_foreach_phi_in_block(block, v) \
+   agx_foreach_instr_in_block(block, v) \
+      if (v->op != AGX_OPCODE_PHI) \
+         break; \
+      else
+
+/* Everything else comes after, so we stop as soon as we hit a phi in reverse */
+#define agx_foreach_non_phi_in_block_rev(block, v) \
+   agx_foreach_instr_in_block_rev(block, v) \
+      if (v->op == AGX_OPCODE_PHI) \
+         break; \
+      else
+
 /*
  * Find the index of a predecessor, used as the implicit order of phi sources.
  */
