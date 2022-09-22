@@ -5579,7 +5579,7 @@ radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submis
       .queue_index = queue->vk.index_in_family,
    };
 
-   return queue->device->ws->cs_submit(ctx, 1, &submit, submission->wait_count, submission->waits,
+   return queue->device->ws->cs_submit(ctx, &submit, submission->wait_count, submission->waits,
                                        submission->signal_count, submission->signals, false);
 }
 
@@ -5711,7 +5711,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       submit.preamble_count = submit_ace ? 4 : 1;
 
       result = queue->device->ws->cs_submit(
-         ctx, 1, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
+         ctx, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
          last_submit ? submission->signal_count : 0, submission->signals, can_patch);
 
       if (result != VK_SUCCESS)
@@ -5781,7 +5781,7 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
       .cs_count = 1,
    };
 
-   VkResult result = queue->device->ws->cs_submit(ctx, 1, &submit, 0, NULL, 0, NULL, false);
+   VkResult result = queue->device->ws->cs_submit(ctx, &submit, 0, NULL, 0, NULL, false);
    if (result != VK_SUCCESS)
       return false;
 
