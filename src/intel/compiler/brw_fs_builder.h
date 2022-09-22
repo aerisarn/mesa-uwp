@@ -782,6 +782,7 @@ namespace brw {
       UNDEF(const dst_reg &dst) const
       {
          assert(dst.file == VGRF);
+         assert(dst.offset % REG_SIZE == 0);
          instruction *inst = emit(SHADER_OPCODE_UNDEF,
                                   retype(dst, BRW_REGISTER_TYPE_UD));
          inst->size_written = shader->alloc.sizes[dst.nr] * REG_SIZE;
