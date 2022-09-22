@@ -113,7 +113,7 @@ get_disasm_string(aco::Program* program, std::vector<uint32_t>& code,
 
 static std::string
 aco_postprocess_shader(const struct aco_compiler_options* options,
-                       const struct radv_shader_args *args,
+                       const struct aco_shader_info *info,
                        std::unique_ptr<aco::Program>& program)
 {
    std::string llvm_ir;
@@ -122,7 +122,7 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
       aco_print_program(program.get(), stderr);
 
    aco::live live_vars;
-   if (!args->is_trap_handler_shader) {
+   if (!info->is_trap_handler_shader) {
       /* Phi lowering */
       aco::lower_phis(program.get());
       aco::dominator_tree(program.get());
@@ -167,7 +167,7 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
    if ((aco::debug_flags & aco::DEBUG_LIVE_INFO) && options->dump_shader)
       aco_print_program(program.get(), stderr, live_vars, aco::print_live_vars | aco::print_kill);
 
-   if (!args->is_trap_handler_shader) {
+   if (!info->is_trap_handler_shader) {
       if (!options->key.optimisations_disabled && !(aco::debug_flags & aco::DEBUG_NO_SCHED))
          aco::schedule_program(program.get(), live_vars);
       validate(program.get());
@@ -230,12 +230,12 @@ aco_compile_shader(const struct aco_compiler_options* options,
    program->debug.private_data = options->debug.private_data;
 
    /* Instruction Selection */
-   if (args->is_trap_handler_shader)
+   if (info->is_trap_handler_shader)
       aco::select_trap_handler_shader(program.get(), shaders[0], &config, options, info, args);
    else
       aco::select_program(program.get(), shader_count, shaders, &config, options, info, args);
 
-   std::string llvm_ir = aco_postprocess_shader(options, args, program);
+   std::string llvm_ir = aco_postprocess_shader(options, info, program);
 
    /* assembly */
    std::vector<uint32_t> code;
@@ -337,7 +337,7 @@ aco_compile_ps_epilog(const struct aco_compiler_options* options,
    /* Instruction selection */
    aco::select_ps_epilog(program.get(), key, &config, options, info, args);
 
-   aco_postprocess_shader(options, args, program);
+   aco_postprocess_shader(options, info, program);
 
    /* assembly */
    std::vector<uint32_t> code;

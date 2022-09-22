@@ -121,6 +121,9 @@ struct aco_shader_info {
    } cs;
 
    uint32_t gfx9_gs_ring_lds_size;
+
+   bool is_gs_copy_shader;
+   bool is_trap_handler_shader;
 };
 
 enum aco_compiler_debug_level {
