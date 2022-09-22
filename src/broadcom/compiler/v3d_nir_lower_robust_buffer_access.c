@@ -27,6 +27,7 @@
 static void
 rewrite_offset(nir_builder *b,
                nir_intrinsic_instr *instr,
+               uint32_t type_sz,
                uint32_t buffer_idx,
                uint32_t offset_src,
                nir_intrinsic_op buffer_size_op)
@@ -40,13 +41,20 @@ rewrite_offset(nir_builder *b,
         nir_ssa_dest_init(&size->instr, &size->dest, 1, 32, NULL);
         nir_builder_instr_insert(b, &size->instr);
 
-        /* All out TMU accesses are 32-bit aligned */
-        nir_ssa_def *aligned_buffer_size =
-                nir_iand(b, &size->dest.ssa, nir_imm_int(b, 0xfffffffc));
+        /* Compute the maximum offset being accessed and if it is
+         * out of bounds rewrite it to 0 to ensure the access is
+         * within bounds.
+         */
+        const uint32_t access_size = instr->num_components * type_sz;
+        nir_ssa_def *max_access_offset =
+                nir_iadd(b, instr->src[offset_src].ssa,
+                            nir_imm_int(b, access_size - 1));
+        nir_ssa_def *offset =
+                nir_bcsel(b, nir_uge(b, max_access_offset, &size->dest.ssa),
+                             nir_imm_int(b, 0),
+                             instr->src[offset_src].ssa);
 
         /* Rewrite offset */
-        nir_ssa_def *offset =
-                nir_umin(b, instr->src[offset_src].ssa, aligned_buffer_size);
         nir_instr_rewrite_src(&instr->instr, &instr->src[offset_src],
                               nir_src_for_ssa(offset));
 }
@@ -56,6 +64,7 @@ lower_load(struct v3d_compile *c,
            nir_builder *b,
            nir_intrinsic_instr *instr)
 {
+        uint32_t type_sz = nir_dest_bit_size(instr->dest) / 8;
         uint32_t index = nir_src_comp_as_uint(instr->src[0], 0);
 
         nir_intrinsic_op op;
@@ -67,7 +76,7 @@ lower_load(struct v3d_compile *c,
                 op = nir_intrinsic_get_ssbo_size;
         }
 
-        rewrite_offset(b, instr, index, 1, op);
+        rewrite_offset(b, instr, type_sz, index, 1, op);
 }
 
 static void
@@ -75,8 +84,9 @@ lower_store(struct v3d_compile *c,
             nir_builder *b,
             nir_intrinsic_instr *instr)
 {
+        uint32_t type_sz = nir_src_bit_size(instr->src[0]) / 8;
         uint32_t index = nir_src_comp_as_uint(instr->src[1], 0);
-        rewrite_offset(b, instr, index, 2, nir_intrinsic_get_ssbo_size);
+        rewrite_offset(b, instr, type_sz, index, 2, nir_intrinsic_get_ssbo_size);
 }
 
 static void
@@ -85,7 +95,7 @@ lower_atomic(struct v3d_compile *c,
              nir_intrinsic_instr *instr)
 {
         uint32_t index = nir_src_comp_as_uint(instr->src[0], 0);
-        rewrite_offset(b, instr, index, 1, nir_intrinsic_get_ssbo_size);
+        rewrite_offset(b, instr, 4, index, 1, nir_intrinsic_get_ssbo_size);
 }
 
 static void
@@ -93,10 +103,25 @@ lower_shared(struct v3d_compile *c,
              nir_builder *b,
              nir_intrinsic_instr *instr)
 {
+        uint32_t type_sz;
+        if (instr->intrinsic == nir_intrinsic_load_shared) {
+                type_sz = nir_dest_bit_size(instr->dest) / 8;
+        } else {
+                /* atomic */
+                type_sz = 4;
+        }
+
         b->cursor = nir_before_instr(&instr->instr);
-        nir_ssa_def *aligned_size =
-                nir_imm_int(b, c->s->info.shared_size & 0xfffffffc);
-        nir_ssa_def *offset = nir_umin(b, instr->src[0].ssa, aligned_size);
+        const uint32_t access_size = instr->num_components * type_sz;
+        nir_ssa_def *max_access_offset =
+                nir_iadd(b, instr->src[0].ssa,
+                            nir_imm_int(b, access_size - 1));
+        nir_ssa_def *offset =
+                nir_bcsel(b, nir_uge(b, max_access_offset,
+                                        nir_imm_int(b, c->s->info.shared_size)),
+                             nir_imm_int(b, 0),
+                             instr->src[0].ssa);
+
         nir_instr_rewrite_src(&instr->instr, &instr->src[0],
                               nir_src_for_ssa(offset));
 }
