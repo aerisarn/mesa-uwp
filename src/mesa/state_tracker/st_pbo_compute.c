@@ -1168,9 +1168,9 @@ fail:
    /* Unbind all because st/mesa won't do it if the current shader doesn't
     * use them.
     */
-   pipe->set_sampler_views(pipe, PIPE_SHADER_COMPUTE, 0, 0, false,
+   pipe->set_sampler_views(pipe, PIPE_SHADER_COMPUTE, 0, 0,
                            st->state.num_sampler_views[PIPE_SHADER_COMPUTE],
-                           NULL);
+                           false, NULL);
    st->state.num_sampler_views[PIPE_SHADER_COMPUTE] = 0;
    pipe->set_shader_buffers(pipe, PIPE_SHADER_COMPUTE, 0, 1, NULL, 0);
 
