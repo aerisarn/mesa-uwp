@@ -1777,6 +1777,22 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
       return;
    struct zink_resource *res = zink_resource(sv->base.texture);
    res->sampler_bind_count[stage == MESA_SHADER_COMPUTE]--;
+   if (stage != MESA_SHADER_COMPUTE && !res->sampler_bind_count[0] && res->fb_bind_count) {
+      unsigned feedback_loops = ctx->feedback_loops;
+      u_foreach_bit(idx, res->fb_binds) {
+         if (ctx->feedback_loops & BITFIELD_BIT(idx)) {
+            ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            ctx->rp_layout_changed = true;
+         }
+         ctx->feedback_loops &= ~BITFIELD_BIT(idx);
+      }
+      if (feedback_loops && !ctx->feedback_loops) {
+         /* unset feedback loop bits */
+         if (ctx->gfx_pipeline_state.feedback_loop)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.feedback_loop = false;
+      }
+   }
    update_res_bind_count(ctx, res, stage == MESA_SHADER_COMPUTE, true);
    res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
    if (res->obj->is_buffer) {
@@ -2803,6 +2819,18 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       ctx->rp_changed = true;
    }
    res->fb_bind_count--;
+   unsigned feedback_loops = ctx->feedback_loops;
+   if (ctx->feedback_loops & BITFIELD_BIT(idx)) {
+      ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      ctx->rp_layout_changed = true;
+   }
+   ctx->feedback_loops &= ~BITFIELD_BIT(idx);
+   if (feedback_loops && !ctx->feedback_loops) {
+      /* unset feedback loop bits */
+      if (ctx->gfx_pipeline_state.feedback_loop)
+         ctx->gfx_pipeline_state.dirty = true;
+      ctx->gfx_pipeline_state.feedback_loop = false;
+   }
    res->fb_binds &= ~BITFIELD_BIT(idx);
    if (!res->fb_bind_count) {
       check_resource_for_batch_ref(ctx, res);
@@ -3047,6 +3075,7 @@ access_src_flags(VkImageLayout layout)
       return VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
 
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT:
       return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
       return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
@@ -3083,6 +3112,7 @@ access_dst_flags(VkImageLayout layout)
       return VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
 
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT:
       return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
       return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;

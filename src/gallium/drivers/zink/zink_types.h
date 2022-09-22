@@ -646,7 +646,8 @@ struct zink_gfx_pipeline_state {
    uint32_t force_persample_interp:1; //duplicated for gpl hashing
    /* order matches zink_gfx_output_key: uint16_t offset */
    uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
-   uint32_t min_samples:8; // 2 extra bits (can be used for new members)
+   uint32_t min_samples:7; // 1 extra bit (can be used for new members)
+   uint32_t feedback_loop : 1;
    VkSampleMask sample_mask;
    unsigned rp_state;
    uint32_t blend_id;
@@ -799,7 +800,8 @@ struct zink_gfx_output_key {
    uint32_t _pad:15;
    uint32_t force_persample_interp:1;
    uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
-   uint32_t min_samples:8; // 2 extra bits (can be used for new members)
+   uint32_t min_samples:7; // 1 extra bit (can be used for new members)
+   uint32_t feedback_loop : 1;
    VkSampleMask sample_mask;
 
    unsigned rp_state;
@@ -870,6 +872,7 @@ struct zink_rt_attrib {
   bool needs_write;
   bool resolve;
   bool mixed_zs;
+  bool feedback_loop;
 };
 
 struct zink_render_pass_state {
@@ -1449,6 +1452,7 @@ struct zink_context {
    uint16_t rp_clears_enabled;
    uint16_t void_clears;
    uint16_t fbfetch_outputs;
+   uint16_t feedback_loops;
    struct zink_resource *needs_present;
 
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];

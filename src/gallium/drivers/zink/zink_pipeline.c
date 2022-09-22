@@ -323,6 +323,14 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+   if (state->feedback_loop) {
+      if (screen->info.have_EXT_attachment_feedback_loop_layout)
+         pci.flags = VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+      else {
+         static bool warn = false;
+         warn_missing_feature(warn, "EXT_attachment_feedback_loop_layout");
+      }
+   }
    pci.layout = prog->base.layout;
    if (state->render_pass)
       pci.renderPass = state->render_pass->render_pass;
@@ -486,6 +494,14 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.pNext = &gplci;
    pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+   if (state->feedback_loop) {
+      if (screen->info.have_EXT_attachment_feedback_loop_layout)
+         pci.flags = VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+      else {
+         static bool warn = false;
+         warn_missing_feature(warn, "EXT_attachment_feedback_loop_layout");
+      }
+   }
    pci.pColorBlendState = &blend_state;
    pci.pMultisampleState = &ms_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;

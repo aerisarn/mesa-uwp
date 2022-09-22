@@ -49,13 +49,15 @@ get_rt_loadop(const struct zink_rt_attrib *rt, bool clear)
 static VkImageLayout
 get_color_rt_layout(const struct zink_rt_attrib *rt)
 {
-   return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+   return rt->feedback_loop ? VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT : rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 }
 
 static VkImageLayout
 get_zs_rt_layout(const struct zink_rt_attrib *rt)
 {
    bool has_clear = rt->clear_color || rt->clear_stencil;
+   if (rt->feedback_loop)
+      return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
    if (rt->mixed_zs)
       return VK_IMAGE_LAYOUT_GENERAL;
    return rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
@@ -357,6 +359,7 @@ zink_init_zs_attachment(struct zink_context *ctx, struct zink_rt_attrib *rt)
       rt->mixed_zs = needs_write_z && zsbuf->bind_count[0];
    rt->needs_write = needs_write_z | needs_write_s;
    rt->invalid = !zsbuf->valid;
+   rt->feedback_loop = (ctx->feedback_loops & BITFIELD_BIT(PIPE_MAX_COLOR_BUFS)) > 0;
 }
 
 void
@@ -372,6 +375,7 @@ zink_init_color_attachment(struct zink_context *ctx, unsigned i, struct zink_rt_
       rt->clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
       rt->invalid = !zink_resource(psurf->texture)->valid;
       rt->fbfetch = (ctx->fbfetch_outputs & BITFIELD_BIT(i)) > 0;
+      rt->feedback_loop = (ctx->feedback_loops & BITFIELD_BIT(i)) > 0;
    } else {
       memset(rt, 0, sizeof(struct zink_rt_attrib));
       rt->format = VK_FORMAT_R8G8B8A8_UNORM;

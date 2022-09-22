@@ -271,9 +271,15 @@ zink_descriptor_util_image_layout_eval(const struct zink_context *ctx, const str
       if (!is_compute && res->fb_bind_count &&
           ctx->gfx_pipeline_state.render_pass && ctx->gfx_pipeline_state.render_pass->state.rts[ctx->fb_state.nr_cbufs].mixed_zs)
          return VK_IMAGE_LAYOUT_GENERAL;
-      if (res->obj->vkusage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-         return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    }
+   if (!is_compute && res->fb_bind_count && res->sampler_bind_count[0]) {
+      /* feedback loop */
+      if (zink_screen(ctx->base.screen)->info.have_EXT_attachment_feedback_loop_layout)
+         return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+      return VK_IMAGE_LAYOUT_GENERAL;
+   }
+   if (res->obj->vkusage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
