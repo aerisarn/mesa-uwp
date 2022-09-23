@@ -21,7 +21,7 @@ traces:
       checksum: c377f21f7bfaca0c04983612e7c9a7bb
   gputest/pixmark-piano-v2.trace:
     gl-virgl:
-      checksum: f2338b10aebf05d7c10d805852d2e774
+      checksum: a4f3552e26c31a6d143519ee7ad47eea
   gputest/triangle-v2.trace:
     gl-virgl:
       checksum: 5f694874b15bcd7a3689b387c143590b
@@ -33,13 +33,13 @@ traces:
       checksum: 784d20f0166ef66b4b65f25f2858a5ee
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false-v2.trace:
     gl-virgl:
-      checksum: 64c12e5b89aef72c95184e860c6a70a2
+      checksum: 040232e01e394a967dc3320bb9252870
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=subdata:interleave=false-v2.trace:
     gl-virgl:
-      checksum: dbe8fc3027495c3c433ff2638b789314
+      checksum: 64b8d02455330d4036e06430667559f5
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=true-v2.trace:
     gl-virgl:
-      checksum: 7dd3d9b641333dcd4fba4e04d0c20f93
+      checksum: df21895268db3ab185ae5ffa5b2d7f37
   glmark2/bump:bump-render=height-v2.trace:
     gl-virgl:
       checksum: cd32f46925906c53fae747372a8f2ed8
@@ -188,7 +188,7 @@ traces:
       checksum: b36c25e52624cbf8dab73b6acecb8e84
   supertuxkart/supertuxkart-mansion-egl-gles-v2.trace:
     gl-virgl:
-      checksum: 5f09cbda043d1b6ee41ab287209e903d
+      checksum: e3f0df3f1162f7e9658b9c9225f0c28c
   xonotic/xonotic-keybench-high-v2.trace:
     gl-virgl:
       checksum: 181424f3afd256108be63d8ea0669b6b
@@ -216,7 +216,7 @@ traces:
       label: [crash]
   godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc:
     gl-virgl:
-      checksum: 447cdd1fbb713ed04e4cf00b483916b0
+      checksum: 2703d52248a4c6e76a4e748f31f7fb4d
   ror/ror-default.trace:
     gl-virgl:
       label: [crash]
