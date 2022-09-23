@@ -682,6 +682,87 @@ struct virgl_mjpeg_picture_desc
     } slice_parameter;
 };
 
+struct virgl_vp9_segment_parameter
+{
+    struct {
+        uint16_t segment_reference_enabled:1;
+        uint16_t segment_reference:2;
+        uint16_t segment_reference_skipped:1;
+    } segment_flags;
+
+    uint8_t filter_level[4][2];
+    int16_t luma_ac_quant_scale;
+    int16_t luma_dc_quant_scale;
+    int16_t chroma_ac_quant_scale;
+    int16_t chroma_dc_quant_scale;
+};
+
+struct virgl_vp9_picture_desc
+{
+    struct virgl_base_picture_desc base;
+
+    uint32_t ref[16];
+
+    struct {
+        uint16_t frame_width;
+        uint16_t frame_height;
+
+        struct {
+            uint32_t  subsampling_x:1;
+            uint32_t  subsampling_y:1;
+            uint32_t  frame_type:1;
+            uint32_t  show_frame:1;
+            uint32_t  error_resilient_mode:1;
+            uint32_t  intra_only:1;
+            uint32_t  allow_high_precision_mv:1;
+            uint32_t  mcomp_filter_type:3;
+            uint32_t  frame_parallel_decoding_mode:1;
+            uint32_t  reset_frame_context:2;
+            uint32_t  refresh_frame_context:1;
+            uint32_t  frame_context_idx:2;
+            uint32_t  segmentation_enabled:1;
+            uint32_t  segmentation_temporal_update:1;
+            uint32_t  segmentation_update_map:1;
+            uint32_t  last_ref_frame:3;
+            uint32_t  last_ref_frame_sign_bias:1;
+            uint32_t  golden_ref_frame:3;
+            uint32_t  golden_ref_frame_sign_bias:1;
+            uint32_t  alt_ref_frame:3;
+            uint32_t  alt_ref_frame_sign_bias:1;
+            uint32_t  lossless_flag:1;
+        } pic_fields;
+
+        uint8_t filter_level;
+        uint8_t sharpness_level;
+        uint8_t log2_tile_rows;
+        uint8_t log2_tile_columns;
+        uint8_t frame_header_length_in_bytes;
+        uint16_t first_partition_size;
+        uint8_t mb_segment_tree_probs[7];
+        uint8_t segment_pred_probs[3];
+        uint8_t profile;
+        uint8_t bit_depth;
+
+        bool mode_ref_delta_enabled;
+        bool mode_ref_delta_update;
+
+        uint8_t base_qindex;
+        int8_t y_dc_delta_q;
+        int8_t uv_ac_delta_q;
+        int8_t uv_dc_delta_q;
+        uint8_t abs_delta;
+        uint8_t ref_deltas[4];
+        uint8_t mode_deltas[2];
+    } picture_parameter;
+
+    struct {
+        uint32_t slice_data_size;
+        uint32_t slice_data_offset;
+        uint32_t slice_data_flag;
+        struct virgl_vp9_segment_parameter seg_param[8];
+    } slice_parameter;
+};
+
 union virgl_picture_desc {
     struct virgl_base_picture_desc base;
     struct virgl_h264_picture_desc h264;
@@ -692,6 +773,7 @@ union virgl_picture_desc {
     struct virgl_mjpeg_picture_desc mjpeg;
     struct virgl_h264_enc_picture_desc h264_enc;
     struct virgl_h265_enc_picture_desc h265_enc;
+    struct virgl_vp9_picture_desc vp9;
 };
 
 enum virgl_video_encode_stat {
