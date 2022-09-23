@@ -534,7 +534,7 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.pNext = &gplci;
-   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
    static bool feedback_warn = false;
    if (state->feedback_loop) {
       if (screen->info.have_EXT_attachment_feedback_loop_layout)
@@ -623,7 +623,7 @@ zink_create_gfx_pipeline_input(struct zink_screen *screen,
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.pNext = &gplci;
-   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
    pci.pVertexInputState = &vertex_input_state;
    pci.pInputAssemblyState = &primitive_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
@@ -708,7 +708,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.pNext = &gplci;
-   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
    pci.layout = prog->base.layout;
    pci.pRasterizationState = &rast_state;
    pci.pViewportState = &viewport_state;
