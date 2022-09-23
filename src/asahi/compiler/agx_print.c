@@ -46,7 +46,7 @@ agx_print_sized(char prefix, unsigned value, enum agx_size size, FILE *fp)
 }
 
 static void
-agx_print_index(agx_index index, FILE *fp)
+agx_print_index(agx_index index, bool is_float, FILE *fp)
 {
    switch (index.type) {
    case AGX_INDEX_NULL:
@@ -67,7 +67,13 @@ agx_print_index(agx_index index, FILE *fp)
       break;
 
    case AGX_INDEX_IMMEDIATE:
-      fprintf(fp, "#%u", index.value);
+      if (is_float) {
+         assert(index.value < 0x100);
+         fprintf(fp, "#%f", agx_minifloat_decode(index.value));
+      } else {
+         fprintf(fp, "#%u", index.value);
+      }
+
       break;
 
    case AGX_INDEX_UNIFORM:
@@ -83,7 +89,7 @@ agx_print_index(agx_index index, FILE *fp)
    }
 
    /* Print length suffixes if not implied */
-   if (index.type == AGX_INDEX_NORMAL || index.type == AGX_INDEX_IMMEDIATE) {
+   if (index.type == AGX_INDEX_NORMAL) {
       if (index.size == AGX_SIZE_16)
          fprintf(fp, "h");
       else if (index.size == AGX_SIZE_64)
@@ -121,7 +127,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
       else
          print_comma = true;
 
-      agx_print_index(I->dest[d], fp);
+      agx_print_index(I->dest[d], false, fp);
    }
 
    for (unsigned s = 0; s < I->nr_srcs; ++s) {
@@ -130,7 +136,10 @@ agx_print_instr(agx_instr *I, FILE *fp)
       else
          print_comma = true;
 
-      agx_print_index(I->src[s], fp);
+      agx_print_index(I->src[s],
+            agx_opcodes_info[I->op].is_float &&
+            !(s >= 2 && I->op == AGX_OPCODE_FCMPSEL),
+            fp);
    }
 
    if (I->mask) {
