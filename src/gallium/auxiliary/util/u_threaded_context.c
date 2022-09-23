@@ -2731,6 +2731,12 @@ tc_buffer_subdata(struct pipe_context *_pipe,
 
       u_box_1d(offset, size, &box);
 
+      /* CPU storage is only useful for partial updates. It can add overhead
+       * on glBufferData calls so avoid using it.
+       */
+      if (!tres->cpu_storage && offset == 0 && size == resource->width0)
+         usage |= TC_TRANSFER_MAP_UPLOAD_CPU_STORAGE;
+
       map = tc_buffer_map(_pipe, resource, 0, usage, &box, &transfer);
       if (map) {
          memcpy(map, data, size);
