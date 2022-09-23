@@ -208,13 +208,12 @@ agx_block_add_successor(agx_block *block, agx_block *successor)
 static void
 agx_emit_split(agx_builder *b, agx_index *dests, agx_index vec, unsigned n)
 {
-   /* Setup the destinations */
-   for (unsigned i = 0; i < n; ++i) {
-      dests[i] = agx_temp(b->shader, vec.size);
-   }
+   agx_instr *I = agx_split(b, n, vec);
 
-   /* Emit the split */
-   agx_split_to(b, dests[0], dests[1], dests[2], dests[3], vec);
+   agx_foreach_dest(I, d) {
+      dests[d] = agx_temp(b->shader, vec.size);
+      I->dest[d] = dests[d];
+   }
 }
 
 static void
@@ -255,7 +254,10 @@ agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
 
    agx_index product = agx_temp(b->shader, P.size + 1);
    agx_imad_to(b, product, agx_abs(P), agx_abs(Q), agx_zero(), 0);
-   return agx_split_to(b, agx_null(), dst, agx_null(), agx_null(), product);
+
+   agx_instr *split = agx_split(b, 2, product);
+   split->dest[1] = dst;
+   return split;
 }
 
 static agx_index

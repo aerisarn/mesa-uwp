@@ -333,10 +333,12 @@ agx_ra(agx_context *ctx)
          unsigned width = agx_size_align_16(agx_split_width(ins));
 
          struct agx_copy copies[4];
+         assert(ins->nr_dests <= ARRAY_SIZE(copies));
+
          unsigned n = 0;
 
          /* Move the sources */
-         for (unsigned i = 0; i < 4; ++i) {
+         agx_foreach_dest(ins, i) {
             if (agx_is_null(ins->dest[i])) continue;
 
             copies[n++] = (struct agx_copy) {

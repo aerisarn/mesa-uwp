@@ -121,7 +121,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
 
    bool print_comma = false;
 
-   for (unsigned d = 0; d < info.nr_dests; ++d) {
+   agx_foreach_dest(I, d) {
       if (print_comma)
          fprintf(fp, ", ");
       else
@@ -130,7 +130,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
       agx_print_index(I->dest[d], false, fp);
    }
 
-   for (unsigned s = 0; s < I->nr_srcs; ++s) {
+   agx_foreach_src(I, s) {
       if (print_comma)
          fprintf(fp, ", ");
       else
