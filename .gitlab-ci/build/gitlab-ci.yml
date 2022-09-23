@@ -128,6 +128,7 @@ debian-testing-msan:
     - .meson-build
     - .ci-deqp-artifacts
   variables:
+    LLVM_VERSION: "13"
     UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=disabled
@@ -194,6 +195,7 @@ debian-build-testing:
 debian-release:
   extends: .meson-build
   variables:
+    LLVM_VERSION: "13"
     UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=dri
@@ -412,6 +414,7 @@ debian-arm64-build-test:
 debian-clang:
   extends: .meson-build
   variables:
+    LLVM_VERSION: "13"
     UNWIND: "enabled"
     GALLIUM_DUMP_CPU: "true"
     C_ARGS: >
@@ -484,6 +487,7 @@ windows-vs2019:
 .debian-cl:
   extends: .meson-build
   variables:
+    LLVM_VERSION: "13"
     UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=disabled
@@ -525,6 +529,7 @@ debian-rusticl:
 debian-vulkan:
   extends: .meson-build
   variables:
+    LLVM_VERSION: "13"
     UNWIND: "disabled"
     DRI_LOADERS: >
       -D glx=disabled

@@ -89,6 +89,10 @@ program/execute/vload/vload-half-constant: skip
 program/execute/vload/vload-half-global: skip
 program/execute/vload/vload-half-local: skip
 program/execute/vload/vload-half-private: skip
+program/execute/vload/vloada_half-float-constant: fail
+program/execute/vload/vloada_half-float-global: fail
+program/execute/vload/vloada_half-float-local: fail
+program/execute/vload/vloada_half-float-private: fail
 program/execute/vstore/vstore-double-global: skip
 program/execute/vstore/vstore-double-local: skip
 program/execute/vstore/vstore-double-private: skip

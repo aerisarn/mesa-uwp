@@ -8,16 +8,13 @@ api/clgetkernelarginfo: skip
 api/cllinkprogram: skip
 interop/egl_khr_cl_event2: skip
 program/build/include-directories: fail
-program/build/math-intrinsics: fail
 program/build/printf: skip
 program/check predefined preprocessor macros/__opencl_c_version__ must be consistent with host (if defined): skip
 program/check predefined preprocessor macros/__opencl_c_version__ must be defined for opencl 1.2 and later: skip
 program/check predefined preprocessor macros/cl_version_1_2 must be defined for opencl 1.2 and later: skip
 program/check predefined preprocessor macros/cl_version_2_0 must be defined for opencl 2.0 and later: skip
 program/execute/amdgcn-callee-saved-registers: skip
-program/execute/amdgcn-f16-inline-immediates: fail
-program/execute/amdgcn-f32-inline-immediates: fail
-program/execute/amdgcn-i16-inline-immediates: fail
+program/execute/amdgcn-f32-inline-immediates/add integer 64: fail
 program/execute/atomic_int64_add-global: skip
 program/execute/atomic_int64_add-global-return: skip
 program/execute/atomic_int64_add-local: skip
@@ -68,12 +65,14 @@ program/execute/call-clobbers-amdgcn: skip
 program/execute/calls-large-struct: crash
 program/execute/calls-struct/regs struct: fail
 program/execute/calls-struct/small struct in regs: fail
-program/execute/fdiv-modifiers-f32: fail
 program/execute/global-offset/3d, input dependent: fail
 program/execute/image-attributes: crash
 program/execute/load-hi16-generic: skip
 program/execute/load-lo16-generic: skip
-program/execute/mad-mix: fail
 program/execute/program-tester-check-local-size-test-should-skip/this test should skip: skip
 program/execute/scalar-logical-float: skip
 program/execute/store-hi16-generic: skip
+program/execute/vload/vloada_half-float-constant: fail
+program/execute/vload/vloada_half-float-global: fail
+program/execute/vload/vloada_half-float-local: fail
+program/execute/vload/vloada_half-float-private: fail
