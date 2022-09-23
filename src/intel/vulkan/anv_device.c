@@ -3923,6 +3923,13 @@ VkResult anv_AllocateMemory(
    if (!(mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
       alloc_flags |= ANV_BO_ALLOC_NO_LOCAL_MEM;
 
+   /* If the allocated buffer might end up in local memory and it's host
+    * visible, make CPU writes are combined, it should be faster.
+    */
+   if (!(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
+       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      alloc_flags |= ANV_BO_ALLOC_WRITE_COMBINE;
+
    if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
 
