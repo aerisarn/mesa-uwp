@@ -66,9 +66,9 @@ rewrite_offset(nir_builder *b,
 }
 
 static void
-lower_load(struct v3d_compile *c,
-           nir_builder *b,
-           nir_intrinsic_instr *instr)
+lower_buffer_load(struct v3d_compile *c,
+                  nir_builder *b,
+                  nir_intrinsic_instr *instr)
 {
         uint32_t type_sz = nir_dest_bit_size(instr->dest) / 8;
         uint32_t index = nir_src_comp_as_uint(instr->src[0], 0);
@@ -86,9 +86,9 @@ lower_load(struct v3d_compile *c,
 }
 
 static void
-lower_store(struct v3d_compile *c,
-            nir_builder *b,
-            nir_intrinsic_instr *instr)
+lower_buffer_store(struct v3d_compile *c,
+                   nir_builder *b,
+                   nir_intrinsic_instr *instr)
 {
         uint32_t type_sz = nir_src_bit_size(instr->src[0]) / 8;
         uint32_t index = nir_src_comp_as_uint(instr->src[1], 0);
@@ -96,18 +96,18 @@ lower_store(struct v3d_compile *c,
 }
 
 static void
-lower_atomic(struct v3d_compile *c,
-             nir_builder *b,
-             nir_intrinsic_instr *instr)
+lower_buffer_atomic(struct v3d_compile *c,
+                    nir_builder *b,
+                    nir_intrinsic_instr *instr)
 {
         uint32_t index = nir_src_comp_as_uint(instr->src[0], 0);
         rewrite_offset(b, instr, 4, index, 1, nir_intrinsic_get_ssbo_size);
 }
 
 static void
-lower_shared(struct v3d_compile *c,
-             nir_builder *b,
-             nir_intrinsic_instr *instr)
+lower_buffer_shared(struct v3d_compile *c,
+                    nir_builder *b,
+                    nir_intrinsic_instr *instr)
 {
         uint32_t type_sz, offset_src;
         if (instr->intrinsic == nir_intrinsic_load_shared) {
@@ -138,7 +138,7 @@ lower_shared(struct v3d_compile *c,
 }
 
 static bool
-lower_instr(nir_builder *b, nir_instr *instr, void *_state)
+lower_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
 {
         struct v3d_compile *c = _state;
 
@@ -149,10 +149,10 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
         switch (intr->intrinsic) {
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_ssbo:
-                lower_load(c, b, intr);
+                lower_buffer_load(c, b, intr);
                 return true;
         case nir_intrinsic_store_ssbo:
-                lower_store(c, b, intr);
+                lower_buffer_store(c, b, intr);
                 return true;
         case nir_intrinsic_ssbo_atomic_add:
         case nir_intrinsic_ssbo_atomic_imin:
@@ -164,7 +164,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
         case nir_intrinsic_ssbo_atomic_xor:
         case nir_intrinsic_ssbo_atomic_exchange:
         case nir_intrinsic_ssbo_atomic_comp_swap:
-                lower_atomic(c, b, intr);
+                lower_buffer_atomic(c, b, intr);
                 return true;
         case nir_intrinsic_store_shared:
         case nir_intrinsic_load_shared:
@@ -179,7 +179,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
         case nir_intrinsic_shared_atomic_exchange:
         case nir_intrinsic_shared_atomic_comp_swap:
                 if (robust_shared_enabled) {
-                        lower_shared(c, b, intr);
+                        lower_buffer_shared(c, b, intr);
                         return true;
                 }
                 return false;
@@ -191,7 +191,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *_state)
 bool
 v3d_nir_lower_robust_buffer_access(nir_shader *s, struct v3d_compile *c)
 {
-        return nir_shader_instructions_pass(s, lower_instr,
+        return nir_shader_instructions_pass(s, lower_buffer_instr,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance, c);
 }
