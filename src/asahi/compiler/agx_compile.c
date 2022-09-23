@@ -968,7 +968,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_vec4:
    {
       agx_index idx[] = { s0, s1, s2, s3 };
-      return agx_emit_combine_to(b, dst, 4, idx);
+      return agx_emit_combine_to(b, dst, srcs, idx);
    }
 
    case nir_op_vec8:
