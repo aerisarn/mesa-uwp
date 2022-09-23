@@ -111,10 +111,6 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
    }
 
    BITSET_SET(used_regs, 0); // control flow writes r0l
-   BITSET_SET(used_regs, 5*2); // TODO: precolouring, don't overwrite vertex ID
-   BITSET_SET(used_regs, (5*2 + 1));
-   BITSET_SET(used_regs, (6*2 + 0));
-   BITSET_SET(used_regs, (6*2 + 1));
 
    agx_foreach_instr_in_block(block, I) {
       /* Optimization: if a split contains the last use of a vector, the split
@@ -152,6 +148,21 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
             ssa_to_reg[I->dest[d].value] = reg + offset;
          }
 
+         continue;
+      } else if (I->op == AGX_OPCODE_PRELOAD) {
+         /* We must coalesce all preload moves */
+         assert(I->dest[0].type == AGX_INDEX_NORMAL);
+         assert(I->dest[0].size == I->src[0].size);
+         assert(I->src[0].type == AGX_INDEX_REGISTER);
+
+         unsigned base = I->src[0].value;
+
+         for (unsigned i = 0; i < agx_size_align_16(I->src[0].size); ++i) {
+            assert(!BITSET_TEST(used_regs, base + i));
+            BITSET_SET(used_regs, base + i);
+         }
+
+         ssa_to_reg[I->dest[0].value] = base;
          continue;
       }
 
@@ -363,17 +374,28 @@ agx_ra(agx_context *ctx)
       agx_insert_parallel_copies(ctx, block);
    }
 
-   /* Phi nodes can be removed now */
    agx_foreach_instr_global_safe(ctx, I) {
-      if (I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_LOGICAL_END)
+      switch (I->op) {
+      /* Pseudoinstructions for RA must be removed now */
+      case AGX_OPCODE_PHI:
+      case AGX_OPCODE_LOGICAL_END:
+      case AGX_OPCODE_PRELOAD:
          agx_remove_instruction(I);
+         break;
 
-      /* Remove identity moves */
-      if (I->op == AGX_OPCODE_MOV && I->src[0].type == AGX_INDEX_REGISTER &&
-          I->dest[0].size == I->src[0].size && I->src[0].value == I->dest[0].value) {
+      /* Coalesced moves can be removed */
+      case AGX_OPCODE_MOV:
+         if (I->src[0].type == AGX_INDEX_REGISTER &&
+             I->dest[0].size == I->src[0].size &&
+             I->src[0].value == I->dest[0].value) {
 
-         assert(I->dest[0].type == AGX_INDEX_REGISTER);
-         agx_remove_instruction(I);
+            assert(I->dest[0].type == AGX_INDEX_REGISTER);
+            agx_remove_instruction(I);
+         }
+         break;
+
+      default:
+         break;
       }
    }
 

@@ -53,6 +53,30 @@ int agx_debug = 0;
             __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 static agx_index
+agx_cached_preload(agx_context *ctx, agx_index *cache, unsigned base, enum agx_size size)
+{
+   if (agx_is_null(*cache)) {
+      agx_block *block = agx_start_block(ctx);
+      agx_builder b = agx_init_builder(ctx, agx_before_block(block));
+      *cache = agx_preload(&b, agx_register(base, size));
+   }
+
+   return *cache;
+}
+
+static agx_index
+agx_vertex_id(agx_builder *b)
+{
+   return agx_cached_preload(b->shader, &b->shader->vertex_id, 10, AGX_SIZE_32);
+}
+
+static agx_index
+agx_instance_id(agx_builder *b)
+{
+   return agx_cached_preload(b->shader, &b->shader->instance_id, 12, AGX_SIZE_32);
+}
+
+static agx_index
 agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
            gl_varying_slot slot, unsigned offset, unsigned count)
 {
@@ -327,13 +351,10 @@ agx_emit_load_attr(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_index shifted_stride = agx_mov_imm(b, 32, stride >> shift);
    agx_index src_offset = agx_mov_imm(b, 32, attrib.src_offset);
 
-   agx_index vertex_id = agx_register(10, AGX_SIZE_32);
-   agx_index instance_id = agx_register(12, AGX_SIZE_32);
-
    /* A nonzero divisor requires dividing the instance ID. A zero divisor
     * specifies per-instance data. */
-   agx_index element_id = (attrib.divisor == 0) ? vertex_id :
-                          agx_udiv_const(b, instance_id, attrib.divisor);
+   agx_index element_id = (attrib.divisor == 0) ? agx_vertex_id(b) :
+                          agx_udiv_const(b, agx_instance_id(b), attrib.divisor);
 
    agx_index offset = agx_imad(b, element_id, shifted_stride, src_offset, 0);
 
@@ -683,10 +704,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
               AGX_PUSH_TEXTURE_BASE, AGX_SIZE_64, 0, 4));
 
   case nir_intrinsic_load_vertex_id:
-     return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32)));
+     return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
   case nir_intrinsic_load_instance_id:
-     return agx_mov_to(b, dst, agx_abs(agx_register(12, AGX_SIZE_32)));
+     return agx_mov_to(b, dst, agx_abs(agx_instance_id(b)));
 
   case nir_intrinsic_load_blend_const_color_r_float: return agx_blend_const(b, dst, 0);
   case nir_intrinsic_load_blend_const_color_g_float: return agx_blend_const(b, dst, 1);

@@ -396,6 +396,11 @@ typedef struct {
     * components, populated by a split. */
    struct hash_table_u64 *allocated_vec;
 
+   /* During instruction selection, preloaded values,
+    * or NULL if it hasn't been preloaded
+    */
+   agx_index vertex_id, instance_id;
+
    /* Stats for shader-db */
    unsigned loop_count;
    unsigned spills;
@@ -454,6 +459,20 @@ static inline agx_index
 agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
 {
    return agx_vec_for_dest(ctx, &instr->dest);
+}
+
+static inline unsigned
+agx_num_predecessors(agx_block *block)
+{
+   return util_dynarray_num_elements(&block->predecessors, agx_block *);
+}
+
+static inline agx_block *
+agx_start_block(agx_context *ctx)
+{
+   agx_block *first = list_first_entry(&ctx->blocks, agx_block, link);
+   assert(agx_num_predecessors(first) == 0);
+   return first;
 }
 
 /* Iterators for AGX IR */
@@ -648,6 +667,25 @@ agx_after_block_logical(agx_block *block)
 
    /* If there's no p_logical_end, use the physical end */
    return agx_after_block(block);
+}
+
+
+static inline agx_cursor
+agx_before_nonempty_block(agx_block *block)
+{
+   agx_instr *I = list_first_entry(&block->instructions, agx_instr, link);
+   assert(I != NULL);
+
+   return agx_before_instr(I);
+}
+
+static inline agx_cursor
+agx_before_block(agx_block *block)
+{
+   if (list_is_empty(&block->instructions))
+      return agx_after_block(block);
+   else
+      return agx_before_nonempty_block(block);
 }
 
 /* IR builder in terms of cursor infrastructure */

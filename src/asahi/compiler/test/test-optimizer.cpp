@@ -165,3 +165,11 @@ TEST_F(Optimizer, IntCopypropDoesntConvert)
          agx_xor_to(b, out, cvt, wy);
    });
 }
+
+TEST_F(Optimizer, SkipPreloads)
+{
+   NEGCASE32({
+         agx_index preload = agx_preload(b, agx_register(0, AGX_SIZE_32));
+         agx_xor_to(b, out, preload, wy);
+   });
+}
