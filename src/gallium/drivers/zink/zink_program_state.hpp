@@ -68,7 +68,7 @@ find_or_create_input_dynamic(struct zink_context *ctx, VkPrimitiveTopology vkmod
    if (!he) {
       struct zink_gfx_input_key *ikey = rzalloc(ctx, struct zink_gfx_input_key);
       ikey->idx = ctx->gfx_pipeline_state.idx;
-      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ctx->element_state->binding_map, vkmode);
+      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, NULL, vkmode);
       he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
    }
    return (struct zink_gfx_input_key *)he->key;
@@ -87,7 +87,7 @@ find_or_create_input(struct zink_context *ctx, VkPrimitiveTopology vkmode)
       } else {
          memcpy(ikey, &ctx->gfx_pipeline_state.input, offsetof(struct zink_gfx_input_key, pipeline));
       }
-      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ctx->element_state->binding_map, vkmode);
+      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ikey->element_state->binding_map, vkmode);
       he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
    }
    return (struct zink_gfx_input_key*)he->key;
@@ -136,7 +136,7 @@ check_vertex_strides(struct zink_context *ctx)
 {
    const struct zink_vertex_elements_state *ves = ctx->element_state;
    for (unsigned i = 0; i < ves->hw_state.num_bindings; i++) {
-      const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->binding_map[i];
+      const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->hw_state.binding_map[i];
       unsigned stride = vb->buffer.resource ? vb->stride : 0;
       if (stride && stride < ves->min_stride[i])
          return false;
@@ -190,7 +190,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
 
          for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
-            const unsigned buffer_id = ctx->element_state->binding_map[i];
+            const unsigned buffer_id = ctx->element_state->hw_state.binding_map[i];
             struct pipe_vertex_buffer *vb = ctx->vertex_buffers + buffer_id;
             state->vertex_strides[buffer_id] = vb->buffer.resource ? vb->stride : 0;
             hash = XXH32(&state->vertex_strides[buffer_id], sizeof(uint32_t), hash);
@@ -247,7 +247,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->okey = okey;
          pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline, true);
       } else {
-         pipeline = zink_create_gfx_pipeline(screen, prog, state, ctx->element_state->binding_map, vkmode);
+         pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode);
       }
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;

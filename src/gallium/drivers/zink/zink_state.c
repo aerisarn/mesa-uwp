@@ -62,7 +62,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
 
       int binding = elem->vertex_buffer_index;
       if (buffer_map[binding] < 0) {
-         ves->binding_map[num_bindings] = binding;
+         ves->hw_state.binding_map[num_bindings] = binding;
          buffer_map[binding] = num_bindings++;
       }
       binding = buffer_map[binding];

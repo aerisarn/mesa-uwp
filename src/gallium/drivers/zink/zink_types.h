@@ -227,6 +227,7 @@ struct zink_vertex_elements_hw_state {
       } b;
       VkVertexInputBindingDescription2EXT dynbindings[PIPE_MAX_ATTRIBS];
    };
+   uint8_t binding_map[PIPE_MAX_ATTRIBS];
 };
 
 struct zink_vertex_elements_state {
@@ -236,7 +237,6 @@ struct zink_vertex_elements_state {
       VkVertexInputRate inputRate;
    } bindings[PIPE_MAX_ATTRIBS];
    uint32_t divisor[PIPE_MAX_ATTRIBS];
-   uint8_t binding_map[PIPE_MAX_ATTRIBS];
    uint32_t min_stride[PIPE_MAX_ATTRIBS]; //for dynamic_state1
    uint32_t decomposed_attrs;
    unsigned decomposed_attrs_size;
