@@ -40,7 +40,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
                          struct zink_gfx_pipeline_state *state,
                          const uint8_t *binding_map,
-                         VkPrimitiveTopology primitive_topology)
+                         VkPrimitiveTopology primitive_topology,
+                         bool optimize)
 {
    struct zink_rasterizer_hw_state *hw_rast_state = (void*)&state->dyn_state3;
    VkPipelineVertexInputStateCreateInfo vertex_input_state;
@@ -336,6 +337,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    static bool feedback_warn = false;
+   if (!optimize)
+      pci.flags |= VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    if (state->feedback_loop) {
       if (screen->info.have_EXT_attachment_feedback_loop_layout)
          pci.flags |= VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;

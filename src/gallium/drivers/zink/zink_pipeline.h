@@ -37,7 +37,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
                          struct zink_gfx_pipeline_state *state,
                          const uint8_t *binding_map,
-                         VkPrimitiveTopology primitive_topology);
+                         VkPrimitiveTopology primitive_topology,
+                         bool optimize);
 
 VkPipeline
 zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_program *comp, struct zink_compute_pipeline_state *state);

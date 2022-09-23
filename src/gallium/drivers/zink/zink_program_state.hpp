@@ -247,7 +247,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->okey = okey;
          pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline, true);
       } else {
-         pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode);
+         pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode, true);
       }
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
