@@ -599,6 +599,18 @@ get_copy_region_aux_settings(struct iris_context *ice,
       FALLTHROUGH;
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GFX12_CCS_E: {
+      /* If our source doesn't have any unresolved color, report an aux
+       * usage of ISL_AUX_USAGE_NONE.  This way, texturing won't even look
+       * at the aux surface and we can save some bandwidth.
+       */
+      if (!is_dest &&
+          !iris_has_invalid_primary(res, level, 1,
+                                    0, INTEL_REMAINING_LAYERS)) {
+         *out_aux_usage = ISL_AUX_USAGE_NONE;
+         *out_clear_supported = false;
+         break;
+      }
+
       /* blorp_copy may reinterpret the surface format and has limited support
        * for adjusting the clear color, so clear support may only be enabled
        * in some cases:
