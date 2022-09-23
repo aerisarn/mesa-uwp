@@ -1836,10 +1836,6 @@ agx_compile_shader_nir(nir_shader *nir,
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
    agx_stop(&_b);
 
-   /* Also add traps to match the blob, unsure what the function is */
-   for (unsigned i = 0; i < 8; ++i)
-      agx_trap(&_b);
-
    /* Index blocks now that we're done emitting so the order is consistent */
    agx_foreach_block(ctx, block)
       block->index = ctx->num_blocks++;
