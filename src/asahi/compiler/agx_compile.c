@@ -30,6 +30,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"noopt",     AGX_DBG_NOOPT,     "Disable backend optimizations"},
    {"wait",      AGX_DBG_WAIT,      "Wait after all async instructions"},
    {"nopreamble",AGX_DBG_NOPREAMBLE,"Do not use shader preambles"},
+   {"demand",    AGX_DBG_DEMAND,    "Bound tightly to register demand"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */

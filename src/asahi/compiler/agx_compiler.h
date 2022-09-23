@@ -355,6 +355,11 @@ typedef struct agx_block {
    BITSET_WORD *live_in;
    BITSET_WORD *live_out;
 
+   /* For visited blocks during register assignment and live-out registers, the
+    * mapping of SSA names to registers at the end of the block.
+    */
+   uint8_t *ssa_to_reg_out;
+
    /* Register allocation */
    BITSET_DECLARE(regs_out, AGX_NUM_REGS);
 
