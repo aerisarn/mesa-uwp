@@ -2592,9 +2592,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    /* temporarily disabled */
    screen->info.have_EXT_graphics_pipeline_library = false;
 
-   if (!(zink_debug & ZINK_DEBUG_GPL))
-      screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;
-   if (screen->optimal_keys)
+   screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;
+   if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
    return screen;

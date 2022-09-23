@@ -791,10 +791,8 @@ struct zink_program {
 typedef bool (*equals_gfx_pipeline_state_func)(const void *a, const void *b);
 
 struct zink_gfx_library_key {
-   union {
-      VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
-      uint32_t optimal_key; //equals_pipeline_lib_optimal
-   };
+   uint32_t optimal_key; //equals_pipeline_lib_optimal
+   VkShaderModule modules[ZINK_GFX_SHADER_COUNT];
    VkPipeline pipeline;
 };
 

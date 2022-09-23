@@ -217,6 +217,11 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
       VkPipeline pipeline = VK_NULL_HANDLE;
+      struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
+      if (!pc_entry)
+         return VK_NULL_HANDLE;
+      memcpy(&pc_entry->state, state, sizeof(*state));
+      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, pc_entry, pc_entry);
       if (HAVE_LIB &&
           /* TODO: if there's ever a dynamic render extension with input attachments */
           !ctx->gfx_pipeline_state.render_pass &&
@@ -225,41 +230,30 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
           !zink_get_fs_key(ctx)->fbfetch_ms &&
           !ctx->gfx_pipeline_state.force_persample_interp &&
           !ctx->gfx_pipeline_state.min_samples) {
-         struct set_entry *he = _mesa_set_search(&prog->libs, ctx->gfx_pipeline_state.modules);
-         if (!he && (zink_debug & ZINK_DEBUG_GPL)) {
-            zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state);
-            he = _mesa_set_search(&prog->libs, ctx->gfx_pipeline_state.modules);
-            assert(he);
-         }
-         if (he) {
-            struct zink_gfx_library_key *gkey = (struct zink_gfx_library_key *)he->key;
-            struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 ?
-                                              find_or_create_input_dynamic(ctx, vkmode) :
-                                              find_or_create_input(ctx, vkmode);
-            struct zink_gfx_output_key *okey = DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 && screen->have_full_ds3 ?
-                                               find_or_create_output_ds3(ctx) :
-                                               find_or_create_output(ctx);
-            pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline);
-         }
-      }
-      if (!pipeline) {
-         pipeline = zink_create_gfx_pipeline(screen, prog, state,
-                                             ctx->element_state->binding_map,
-                                             vkmode);
+         struct set_entry *he = _mesa_set_search(&prog->libs, &ctx->gfx_pipeline_state.optimal_key);
+         struct zink_gfx_library_key *gkey;
+         if (he)
+            gkey = (struct zink_gfx_library_key *)he->key;
+         else
+            gkey = zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state);
+         struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT ?
+                                             find_or_create_input_dynamic(ctx, vkmode) :
+                                             find_or_create_input(ctx, vkmode);
+         struct zink_gfx_output_key *okey = DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 && screen->have_full_ds3 ?
+                                             find_or_create_output_ds3(ctx) :
+                                             find_or_create_output(ctx);
+         pc_entry->ikey = ikey;
+         pc_entry->gkey = gkey;
+         pc_entry->okey = okey;
+         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline);
+      } else {
+         pipeline = zink_create_gfx_pipeline(screen, prog, state, ctx->element_state->binding_map, vkmode);
       }
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
       zink_screen_update_pipeline_cache(screen, &prog->base, false);
-      struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
-      if (!pc_entry)
-         return VK_NULL_HANDLE;
-
-      memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
-
-      entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, pc_entry, pc_entry);
-      assert(entry);
    }
 
    struct gfx_pipeline_cache_entry *cache_entry = (struct gfx_pipeline_cache_entry *)entry->data;

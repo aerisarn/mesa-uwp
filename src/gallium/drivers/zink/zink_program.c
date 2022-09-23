@@ -457,12 +457,6 @@ hash_pipeline_lib(const void *key)
 }
 
 static bool
-equals_pipeline_lib(const void *a, const void *b)
-{
-   return !memcmp(a, b, offsetof(struct zink_gfx_library_key, pipeline));
-}
-
-static bool
 equals_pipeline_lib_optimal(const void *a, const void *b)
 {
    return !memcmp(a, b, sizeof(uint32_t));
@@ -894,7 +888,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, screen->optimal_keys ? equals_pipeline_lib_optimal : equals_pipeline_lib);
+   _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, equals_pipeline_lib_optimal);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -1530,13 +1524,15 @@ zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_sha
    return util_live_shader_cache_get(pctx, &screen->shaders, shader, &cache_hit);
 }
 
-void
+struct zink_gfx_library_key *
 zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
    struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
-   memcpy(gkey->modules, state->modules, sizeof(gkey->modules));
+   gkey->optimal_key = state->optimal_key;
+   memcpy(gkey->modules, prog->modules, sizeof(gkey->modules));
    gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog);
    _mesa_set_add(&prog->libs, gkey);
+   return gkey;
 }
 
 void
