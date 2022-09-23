@@ -148,7 +148,7 @@ agx_emit_combine_to(agx_builder *b, agx_index dst, unsigned nr_srcs,
    if (nr_srcs == 1)
       return agx_mov_to(b, dst, srcs[0]);
 
-   agx_instr *I = agx_p_combine_to(b, dst, nr_srcs);
+   agx_instr *I = agx_combine_to(b, dst, nr_srcs);
 
    agx_foreach_src(I, s)
       I->src[s] = srcs[s];
@@ -214,7 +214,7 @@ agx_emit_split(agx_builder *b, agx_index *dests, agx_index vec, unsigned n)
    }
 
    /* Emit the split */
-   agx_p_split_to(b, dests[0], dests[1], dests[2], dests[3], vec);
+   agx_split_to(b, dests[0], dests[1], dests[2], dests[3], vec);
 }
 
 static void
@@ -255,7 +255,7 @@ agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
 
    agx_index product = agx_temp(b->shader, P.size + 1);
    agx_imad_to(b, product, agx_abs(P), agx_abs(Q), agx_zero(), 0);
-   return agx_p_split_to(b, agx_null(), dst, agx_null(), agx_null(), product);
+   return agx_split_to(b, agx_null(), dst, agx_null(), agx_null(), product);
 }
 
 static agx_index
@@ -1097,7 +1097,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
          /* We explicitly don't cache about the split cache for this */
          lod = agx_temp(b->shader, AGX_SIZE_32);
-         agx_instr *I = agx_p_combine_to(b, lod, 2 * n);
+         agx_instr *I = agx_combine_to(b, lod, 2 * n);
 
          for (unsigned i = 0; i < n; ++i) {
             I->src[(2 * i) + 0] = agx_emit_extract(b, index, i);
@@ -1156,7 +1156,7 @@ static void
 agx_emit_logical_end(agx_builder *b)
 {
    if (!b->shader->current_block->unconditional_jumps)
-      agx_p_logical_end(b);
+      agx_logical_end(b);
 }
 
 /* NIR loops are treated as a pair of AGX loops:

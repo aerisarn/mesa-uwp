@@ -655,7 +655,7 @@ agx_after_block_logical(agx_block *block)
 {
    /* Search for a p_logical_end */
    agx_foreach_instr_in_block_rev(block, I) {
-      if (I->op == AGX_OPCODE_P_LOGICAL_END)
+      if (I->op == AGX_OPCODE_LOGICAL_END)
          return agx_before_instr(I);
    }
 

@@ -263,10 +263,10 @@ op("and", _, srcs = 2)
 op("or", _, srcs = 2)
 
 # Indicates the logical end of the block, before final branches/control flow
-op("p_logical_end", _, dests = 0, srcs = 0, can_eliminate = False)
+op("logical_end", _, dests = 0, srcs = 0, can_eliminate = False)
 
-op("p_combine", _, srcs = VARIABLE)
-op("p_split", _, srcs = 1, dests = 4)
+op("combine", _, srcs = VARIABLE)
+op("split", _, srcs = 1, dests = 4)
 
 # Phis are special-cased in the IR as they (uniquely) can take an unbounded
 # number of source.

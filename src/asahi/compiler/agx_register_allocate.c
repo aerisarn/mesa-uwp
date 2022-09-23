@@ -45,7 +45,7 @@ agx_write_registers(agx_instr *I, unsigned d)
 
    case AGX_OPCODE_LDCF:
       return 6;
-   case AGX_OPCODE_P_COMBINE:
+   case AGX_OPCODE_COMBINE:
       return I->nr_srcs * size;
    default:
       return size;
@@ -120,7 +120,7 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
       /* Optimization: if a split contains the last use of a vector, the split
        * can be removed by assigning the destinations overlapping the source.
        */
-      if (I->op == AGX_OPCODE_P_SPLIT && I->src[0].kill) {
+      if (I->op == AGX_OPCODE_SPLIT && I->src[0].kill) {
          unsigned reg = ssa_to_reg[I->src[0].value];
          unsigned length = ncomps[I->src[0].value];
          unsigned width = agx_size_align_16(agx_split_width(I));
@@ -306,7 +306,7 @@ agx_ra(agx_context *ctx)
       /* Lower away RA pseudo-instructions */
       agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
 
-      if (ins->op == AGX_OPCODE_P_COMBINE) {
+      if (ins->op == AGX_OPCODE_COMBINE) {
          unsigned base = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
          unsigned width = agx_size_align_16(ins->dest[0].size);
 
@@ -328,7 +328,7 @@ agx_ra(agx_context *ctx)
          agx_emit_parallel_copies(&b, copies, n);
          agx_remove_instruction(ins);
          continue;
-      } else if (ins->op == AGX_OPCODE_P_SPLIT) {
+      } else if (ins->op == AGX_OPCODE_SPLIT) {
          unsigned base = agx_index_to_reg(ssa_to_reg, ins->src[0]);
          unsigned width = agx_size_align_16(agx_split_width(ins));
 
@@ -363,7 +363,7 @@ agx_ra(agx_context *ctx)
 
    /* Phi nodes can be removed now */
    agx_foreach_instr_global_safe(ctx, I) {
-      if (I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_P_LOGICAL_END)
+      if (I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_LOGICAL_END)
          agx_remove_instruction(I);
 
       /* Remove identity moves */
