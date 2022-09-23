@@ -2772,6 +2772,44 @@ combine_salu_lshl_add(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    return false;
 }
 
+/* s_abs_i32(s_sub_[iu]32(a, b)) -> s_absdiff_i32(a, b)
+ * s_abs_i32(s_add_[iu]32(a, #b)) -> s_absdiff_i32(a, -b)
+ */
+bool
+combine_sabsdiff(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (!instr->operands[0].isTemp() || !ctx.info[instr->operands[0].tempId()].is_add_sub())
+      return false;
+
+   Instruction* op_instr = follow_operand(ctx, instr->operands[0], false);
+   if (!op_instr)
+      return false;
+
+   if (op_instr->opcode == aco_opcode::s_add_i32 || op_instr->opcode == aco_opcode::s_add_u32) {
+      for (unsigned i = 0; i < 2; i++) {
+         uint64_t constant;
+         if (op_instr->operands[!i].isLiteral() ||
+             !is_operand_constant(ctx, op_instr->operands[i], 32, &constant))
+            continue;
+
+         if (op_instr->operands[i].isTemp())
+            ctx.uses[op_instr->operands[i].tempId()]--;
+         op_instr->operands[0] = op_instr->operands[!i];
+         op_instr->operands[1] = Operand::c32(-int32_t(constant));
+         goto use_absdiff;
+      }
+      return false;
+   }
+
+use_absdiff:
+   op_instr->opcode = aco_opcode::s_absdiff_i32;
+   std::swap(instr->definitions[0], op_instr->definitions[0]);
+   std::swap(instr->definitions[1], op_instr->definitions[1]);
+   ctx.uses[instr->operands[0].tempId()]--;
+
+   return true;
+}
+
 bool
 combine_add_sub_b2i(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode new_op, uint8_t ops)
 {
@@ -4186,6 +4224,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       } else if (combine_constant_comparison_ordering(ctx, instr)) {
       } else if (combine_salu_n2(ctx, instr)) {
       }
+   } else if (instr->opcode == aco_opcode::s_abs_i32) {
+      combine_sabsdiff(ctx, instr);
    } else if (instr->opcode == aco_opcode::v_and_b32) {
       combine_and_subbrev(ctx, instr);
    } else if (instr->opcode == aco_opcode::v_fma_f32 || instr->opcode == aco_opcode::v_fma_f16) {
