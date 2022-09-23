@@ -265,7 +265,7 @@ op("or", _, srcs = 2)
 # Indicates the logical end of the block, before final branches/control flow
 op("logical_end", _, dests = 0, srcs = 0, can_eliminate = False)
 
-op("combine", _, srcs = VARIABLE)
+op("collect", _, srcs = VARIABLE)
 op("split", _, srcs = 1, dests = VARIABLE)
 op("phi", _, srcs = VARIABLE)
 

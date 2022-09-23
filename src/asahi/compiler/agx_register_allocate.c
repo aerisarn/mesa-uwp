@@ -45,7 +45,7 @@ agx_write_registers(agx_instr *I, unsigned d)
 
    case AGX_OPCODE_LDCF:
       return 6;
-   case AGX_OPCODE_COMBINE:
+   case AGX_OPCODE_COLLECT:
       return I->nr_srcs * size;
    default:
       return size;
@@ -306,7 +306,7 @@ agx_ra(agx_context *ctx)
       /* Lower away RA pseudo-instructions */
       agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
 
-      if (ins->op == AGX_OPCODE_COMBINE) {
+      if (ins->op == AGX_OPCODE_COLLECT) {
          unsigned base = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
          unsigned width = agx_size_align_16(ins->dest[0].size);
 
