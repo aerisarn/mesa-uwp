@@ -245,7 +245,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->ikey = ikey;
          pc_entry->gkey = gkey;
          pc_entry->okey = okey;
-         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline);
+         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline, true);
       } else {
          pipeline = zink_create_gfx_pipeline(screen, prog, state, ctx->element_state->binding_map, vkmode);
       }
