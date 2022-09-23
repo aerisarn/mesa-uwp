@@ -128,10 +128,10 @@ d3d12_video_encoder_ensure_fence_finished(struct pipe_video_codec *codec, uint64
 {
       struct d3d12_video_encoder *pD3D12Enc = (struct d3d12_video_encoder *) codec;
       HRESULT hr = S_OK;
-      UINT64 completedValue = pD3D12Enc->m_spFence->GetCompletedValue();
+      uint64_t completedValue = pD3D12Enc->m_spFence->GetCompletedValue();
 
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_ensure_fence_finished - Waiting for fence (with timeout_ns %" PRIu64 ") to finish with "
-                    "fenceValue: %" PRIu64 " - Current Fence Completed Value %ld\n",
+                    "fenceValue: %" PRIu64 " - Current Fence Completed Value %" PRIu64 "\n",
                     timeout_ns, fenceValueToWaitOn, completedValue);
 
       if(completedValue < fenceValueToWaitOn) {
