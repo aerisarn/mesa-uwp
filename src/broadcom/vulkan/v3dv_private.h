@@ -313,6 +313,7 @@ struct v3dv_meta_texel_buffer_copy_pipeline {
 
 struct v3dv_pipeline_key {
    bool robust_buffer_access;
+   bool robust_image_access;
    uint8_t topology;
    uint8_t logicop_func;
    bool msaa;
@@ -518,7 +519,11 @@ struct v3dv_device {
     * attributes will create their own BO.
     */
    struct v3dv_bo *default_attribute_float;
+
    VkPhysicalDeviceFeatures features;
+   struct {
+      bool robustImageAccess;
+   } ext_features;
 
    void *device_address_mem_ctx;
    struct util_dynarray device_address_bo_list; /* Array of struct v3dv_bo * */

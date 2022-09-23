@@ -9,3 +9,4 @@ VK_EXT_mutable_descriptor_type on RADV
 VK_EXT_shader_atomic_float on lvp
 VK_EXT_shader_atomic_float2 on lvp
 GL_NV_shader_atomic_float on llvmpipe
+VK_EXT_image_robustness on v3dv

@@ -1598,6 +1598,9 @@ v3d_attempt_compile(struct v3d_compile *c)
                 NIR_PASS(_, c->s, v3d_nir_lower_robust_buffer_access, c);
         }
 
+        if (c->key->robust_image_access)
+                v3d_nir_lower_robust_image_access(c->s, c);
+
         NIR_PASS(_, c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
 
         NIR_PASS(_, c->s, v3d_nir_lower_load_store_bitsize, c);

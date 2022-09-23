@@ -176,6 +176,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_external_memory_dma_buf          = true,
       .EXT_host_query_reset                 = true,
       .EXT_image_drm_format_modifier        = true,
+      .EXT_image_robustness                 = true,
       .EXT_index_type_uint8                 = true,
       .EXT_line_rasterization               = true,
       .EXT_memory_budget                    = true,
@@ -1165,6 +1166,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .maintenance4 = true,
       .shaderZeroInitializeWorkgroupMemory = true,
       .synchronization2 = true,
+      .robustImageAccess = true,
    };
 
    VkPhysicalDeviceVulkan12Features vk12 = {
@@ -2068,6 +2070,11 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (features2) {
       memcpy(&device->features, &features2->features,
              sizeof(device->features));
+
+      const VkPhysicalDeviceImageRobustnessFeatures *irf =
+         vk_find_struct_const(pCreateInfo->pNext,
+         PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES);
+      device->ext_features.robustImageAccess = irf && irf->robustImageAccess;
    } else  if (pCreateInfo->pEnabledFeatures) {
       memcpy(&device->features, pCreateInfo->pEnabledFeatures,
              sizeof(device->features));
@@ -2075,6 +2082,10 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    if (device->features.robustBufferAccess)
       perf_debug("Device created with Robust Buffer Access enabled.\n");
+
+   if (device->ext_features.robustImageAccess)
+      perf_debug("Device created with Robust Image Access enabled.\n");
+
 
 #ifdef DEBUG
    v3dv_X(device, device_check_prepacked_sizes)();
