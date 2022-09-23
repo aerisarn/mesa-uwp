@@ -2282,8 +2282,30 @@ tc_buffer_map(struct pipe_context *_pipe,
       /* We can't let resource_copy_region disable the CPU storage. */
       assert(!(tres->b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY));
 
-      if (!tres->cpu_storage)
+      if (!tres->cpu_storage) {
          tres->cpu_storage = align_malloc(resource->width0, tc->map_buffer_alignment);
+
+         if (tres->cpu_storage && tres->valid_buffer_range.end) {
+            /* The GPU buffer contains valid data. Copy them to the CPU storage. */
+            struct pipe_box box2;
+            struct pipe_transfer *transfer2;
+
+            unsigned valid_range_len = tres->valid_buffer_range.end - tres->valid_buffer_range.start;
+            u_box_1d(tres->valid_buffer_range.start, valid_range_len, &box2);
+
+            tc_sync_msg(tc, "cpu storage GPU -> CPU copy");
+            tc_set_driver_thread(tc);
+
+            void *ret = pipe->buffer_map(pipe, tres->latest ? tres->latest : resource,
+                                         0, PIPE_MAP_READ, &box2, &transfer2);
+            memcpy(&((uint8_t*)tres->cpu_storage)[tres->valid_buffer_range.start],
+                   ret,
+                   valid_range_len);
+            pipe->buffer_unmap(pipe, transfer2);
+
+            tc_clear_driver_thread(tc);
+         }
+      }
 
       if (tres->cpu_storage) {
          struct threaded_transfer *ttrans = slab_zalloc(&tc->pool_transfers);
