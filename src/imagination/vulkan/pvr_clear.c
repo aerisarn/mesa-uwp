@@ -224,26 +224,58 @@ VkResult pvr_emit_ppp_from_template(
    return VK_SUCCESS;
 }
 
+/**
+ * \brief Generate and uploads vertices required to clear the rect area.
+ *
+ * We use the triangle strip topology for clears so this functions generates 4
+ * vertices to represent the rect. Note that the coordinates are in screen space
+ * and not NDC.
+ *
+ * \param[in]  device      Device to upload to.
+ * \param[in]  rect        Area to clear.
+ * \param[in]  depth       Depth (i.e. Z coordinate) of the area to clear.
+ * \param[out] pvr_bo_out  BO upload object.
+ * \return VK_SUCCESS if the upload succeeded.
+ */
+static VkResult pvr_clear_vertices_upload(struct pvr_device *device,
+                                          const VkRect2D *rect,
+                                          float depth,
+                                          struct pvr_bo **const pvr_bo_out)
+{
+   const float y1 = (float)(rect->offset.y + rect->extent.height);
+   const float x1 = (float)(rect->offset.x + rect->extent.width);
+   const float y0 = (float)rect->offset.y;
+   const float x0 = (float)rect->offset.x;
+
+   const float vertices[PVR_CLEAR_VERTEX_COUNT][PVR_CLEAR_VERTEX_COORDINATES] = {
+      [0] = { [0] = x0, [1] = y0, [2] = depth },
+      [1] = { [0] = x0, [1] = y1, [2] = depth },
+      [2] = { [0] = x1, [1] = y0, [2] = depth },
+      [3] = { [0] = x1, [1] = y1, [2] = depth }
+   };
+
+   return pvr_gpu_upload(device,
+                         device->heaps.general_heap,
+                         vertices,
+                         sizeof(vertices),
+                         4,
+                         pvr_bo_out);
+}
+
 VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
 {
-   struct pvr_device_static_clear_state *state = &device->static_clear_state;
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   const VkRect2D vf_rect = {
+      .offset = { .x = 0, .y = 0 },
+      .extent = { .width = rogue_get_param_vf_max_x(dev_info),
+                  .height = rogue_get_param_vf_max_y(dev_info) }
+   };
+
+   struct pvr_device_static_clear_state *state = &device->static_clear_state;
    const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
-   const float vf_x_max = (float)rogue_get_param_vf_max_x(dev_info);
-   const float vf_y_max = (float)rogue_get_param_vf_max_y(dev_info);
    const struct rogue_shader_binary *passthrough_vert_shader;
    struct pvr_pds_vertex_shader_program pds_program;
    VkResult result;
-
-   const float vertices[4][3] = { { 0.0f, 0.0f, 0.0f },
-                                  { vf_x_max, 0.0f, 0.0f },
-                                  { 0.0f, vf_y_max, 0.0f },
-                                  { vf_x_max, vf_y_max, 0.0f } };
-
-   static_assert(ARRAY_SIZE(vertices) == PVR_CLEAR_VERTEX_COUNT,
-                 "Size mismatch");
-   static_assert(ARRAY_SIZE(vertices[0]) == PVR_CLEAR_VERTEX_COORDINATES,
-                 "Size mismatch");
 
    if (PVR_HAS_FEATURE(dev_info, gs_rta_support)) {
       struct util_dynarray passthrough_rta_vert_shader;
@@ -279,12 +311,8 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
    if (result != VK_SUCCESS)
       goto err_free_usc_multi_layer_shader;
 
-   result = pvr_gpu_upload(device,
-                           device->heaps.general_heap,
-                           vertices,
-                           sizeof(vertices),
-                           sizeof(vertices[0][0]),
-                           &state->vertices_bo);
+   result =
+      pvr_clear_vertices_upload(device, &vf_rect, 0.0f, &state->vertices_bo);
    if (result != VK_SUCCESS)
       goto err_free_usc_shader;
 
