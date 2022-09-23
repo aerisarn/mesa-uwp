@@ -47,6 +47,14 @@ static const uint32_t copy_spv[] = {
 #include "bvh/copy.comp.spv.h"
 };
 
+static const uint32_t convert_leaf_spv[] = {
+#include "bvh/converter_leaf.comp.spv.h"
+};
+
+static const uint32_t convert_internal_spv[] = {
+#include "bvh/converter_internal.comp.spv.h"
+};
+
 /* Min and max bounds of the bvh used to compute morton codes */
 #define SCRATCH_TOTAL_BOUNDS_SIZE (6 * sizeof(float))
 
@@ -223,6 +231,10 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                         state->accel_struct_build.lbvh_internal_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
                         &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device),
+                        state->accel_struct_build.convert_leaf_pipeline, &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device),
+                        state->accel_struct_build.convert_internal_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.morton_pipeline,
                         &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -231,6 +243,10 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                               state->accel_struct_build.lbvh_internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.leaf_p_layout, &state->alloc);
+   radv_DestroyPipelineLayout(radv_device_to_handle(device),
+                              state->accel_struct_build.convert_leaf_p_layout, &state->alloc);
+   radv_DestroyPipelineLayout(radv_device_to_handle(device),
+                              state->accel_struct_build.convert_internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.morton_p_layout, &state->alloc);
 
@@ -324,6 +340,21 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
       device, lbvh_internal_spv, sizeof(lbvh_internal_spv), sizeof(struct lbvh_internal_args),
       &device->meta_state.accel_struct_build.lbvh_internal_pipeline,
       &device->meta_state.accel_struct_build.lbvh_internal_p_layout);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = create_build_pipeline_spv(device, convert_leaf_spv, sizeof(convert_leaf_spv),
+                                      sizeof(struct convert_leaf_args),
+                                      &device->meta_state.accel_struct_build.convert_leaf_pipeline,
+                                      &device->meta_state.accel_struct_build.convert_leaf_p_layout);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result =
+      create_build_pipeline_spv(device, convert_internal_spv, sizeof(convert_internal_spv),
+                                sizeof(struct convert_internal_args),
+                                &device->meta_state.accel_struct_build.convert_internal_pipeline,
+                                &device->meta_state.accel_struct_build.convert_internal_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
