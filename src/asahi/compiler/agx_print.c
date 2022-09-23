@@ -108,18 +108,9 @@ agx_print_instr(agx_instr *I, FILE *fp)
 {
    assert(I->op < AGX_NUM_OPCODES);
    struct agx_opcode_info info = agx_opcodes_info[I->op];
-
-   fprintf(fp, "   %s", info.name);
-
-   if (I->saturate)
-      fprintf(fp, ".sat");
-
-   if (I->last)
-      fprintf(fp, ".last");
-
-   fprintf(fp, " ");
-
    bool print_comma = false;
+
+   fprintf(fp, "   ");
 
    agx_foreach_dest(I, d) {
       if (print_comma)
@@ -129,6 +120,21 @@ agx_print_instr(agx_instr *I, FILE *fp)
 
       agx_print_index(I->dest[d], false, fp);
    }
+
+   if (I->nr_dests) {
+      fprintf(fp, " = ");
+      print_comma = false;
+   }
+
+   fprintf(fp, "%s", info.name);
+
+   if (I->saturate)
+      fprintf(fp, ".sat");
+
+   if (I->last)
+      fprintf(fp, ".last");
+
+   fprintf(fp, " ");
 
    agx_foreach_src(I, s) {
       if (print_comma)
