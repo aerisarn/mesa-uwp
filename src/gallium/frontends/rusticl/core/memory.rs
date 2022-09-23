@@ -380,8 +380,8 @@ impl Mem {
                 r,
                 offset.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
                 size.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
-                true,
                 rw,
+                ResourceMapType::Normal,
             )
         } else {
             q.device.helper_ctx().buffer_map_async(
@@ -414,7 +414,7 @@ impl Mem {
 
         let r = self.get_res()?.get(&q.device).unwrap();
         Ok(if let Some(ctx) = ctx {
-            ctx.texture_map(r, bx, true, rw)
+            ctx.texture_map(r, bx, rw, ResourceMapType::Normal)
         } else {
             q.device.helper_ctx().texture_map_async(r, bx)
         })

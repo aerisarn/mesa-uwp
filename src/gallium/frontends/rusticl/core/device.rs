@@ -91,11 +91,13 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
     }
 
     fn buffer_map_async(&self, res: &PipeResource, offset: i32, size: i32) -> PipeTransfer {
-        self.lock.buffer_map(res, offset, size, false, RWFlags::RW)
+        self.lock
+            .buffer_map(res, offset, size, RWFlags::RW, ResourceMapType::Async)
     }
 
     fn texture_map_async(&self, res: &PipeResource, bx: &pipe_box) -> PipeTransfer {
-        self.lock.texture_map(res, bx, false, RWFlags::RW)
+        self.lock
+            .texture_map(res, bx, RWFlags::RW, ResourceMapType::Async)
     }
 
     fn unmap(&self, tx: PipeTransfer) {

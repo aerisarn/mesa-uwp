@@ -11,6 +11,7 @@ use crate::impl_cl_type_trait;
 use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
 use mesa_rust::pipe::context::RWFlags;
+use mesa_rust::pipe::context::ResourceMapType;
 use mesa_rust::pipe::screen::ResourceType;
 use mesa_rust_gen::*;
 use mesa_rust_util::math::*;
@@ -943,7 +944,13 @@ impl Kernel {
 
             if let Some(printf_buf) = &printf_buf {
                 let tx = ctx
-                    .buffer_map(printf_buf, 0, printf_size as i32, true, RWFlags::RD)
+                    .buffer_map(
+                        printf_buf,
+                        0,
+                        printf_size as i32,
+                        RWFlags::RD,
+                        ResourceMapType::Normal,
+                    )
                     .with_ctx(ctx);
                 let mut buf: &[u8] =
                     unsafe { slice::from_raw_parts(tx.ptr().cast(), printf_size as usize) };
