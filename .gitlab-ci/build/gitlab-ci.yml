@@ -555,7 +555,7 @@ debian-vulkan:
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
-      -D intel-clc=enabled
+      -D intel-clc=disabled
       -D imagination-srv=true
 
 debian-i386:
