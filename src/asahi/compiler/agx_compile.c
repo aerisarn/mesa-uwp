@@ -1207,7 +1207,8 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 static void
 agx_emit_phi(agx_builder *b, nir_phi_instr *instr)
 {
-   agx_instr *I = agx_phi_to(b, agx_dest_index(&instr->dest));
+   agx_instr *I = agx_phi_to(b, agx_dest_index(&instr->dest),
+                             exec_list_length(&instr->srcs));
 
    /* Deferred */
    I->phi = instr;
@@ -1229,9 +1230,6 @@ agx_emit_phi_deferred(agx_context *ctx, agx_block *block, agx_instr *I)
 
    /* Guaranteed by lower_phis_to_scalar */
    assert(phi->dest.ssa.num_components == 1);
-
-   I->nr_srcs = exec_list_length(&phi->srcs);
-   I->src = rzalloc_array(I, agx_index, I->nr_srcs);
 
    nir_foreach_phi_src(src, phi) {
       agx_block *pred = agx_from_nir_block(ctx, src->pred);

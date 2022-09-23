@@ -288,12 +288,13 @@ typedef struct {
       nir_phi_instr *phi;
    };
 
+   /* Data flow */
+   agx_index *dest;
+
    enum agx_opcode op;
 
-   /* Data flow */
-   agx_index dest[AGX_MAX_DESTS];
-
-   unsigned nr_srcs;
+   uint8_t nr_dests;
+   uint8_t nr_srcs;
 
    union {
       uint32_t imm;
@@ -534,7 +535,7 @@ agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
    for (unsigned v = 0; v < ins->nr_srcs; ++v)
 
 #define agx_foreach_dest(ins, v) \
-   for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
+   for (unsigned v = 0; v < ins->nr_dests; ++v)
 
 /* Phis only come at the start so we stop as soon as we hit a non-phi */
 #define agx_foreach_phi_in_block(block, v) \
