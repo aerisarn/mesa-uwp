@@ -122,9 +122,17 @@ static VAStatus vlVaVidEngineBlit(vlVaDriver *drv, vlVaContext *context,
    if (deinterlace != VL_COMPOSITOR_NONE)
       return VA_STATUS_ERROR_UNIMPLEMENTED;
 
-   if (src->buffer_format != PIPE_FORMAT_NV12 ||
-       dst->buffer_format != PIPE_FORMAT_NV12)
-      return VA_STATUS_ERROR_UNIMPLEMENTED;
+   if (!drv->pipe->screen->is_video_format_supported(drv->pipe->screen,
+                                                     src->buffer_format,
+                                                     PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                     PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+      return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+
+   if (!drv->pipe->screen->is_video_format_supported(drv->pipe->screen,
+                                                     dst->buffer_format,
+                                                     PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                     PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+      return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
 
    struct u_rect src_rect;
    struct u_rect dst_rect;
