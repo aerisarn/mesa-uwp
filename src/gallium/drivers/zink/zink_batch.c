@@ -181,7 +181,9 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
       VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->barrier_cmdbuf);
    if (bs->cmdpool)
       VKSCR(DestroyCommandPool)(screen->dev, bs->cmdpool, NULL);
-
+   free(bs->real_objs.objs);
+   free(bs->slab_objs.objs);
+   free(bs->sparse_objs.objs);
    util_dynarray_fini(&bs->swapchain_obj);
    util_dynarray_fini(&bs->zombie_samplers);
    util_dynarray_fini(&bs->dead_framebuffers);
