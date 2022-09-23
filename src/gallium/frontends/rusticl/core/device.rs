@@ -48,9 +48,6 @@ pub trait HelperContextWrapper {
     where
         F: Fn(&HelperContext);
 
-    fn buffer_map_async(&self, res: &PipeResource, offset: i32, size: i32) -> PipeTransfer;
-    fn texture_map_async(&self, res: &PipeResource, bx: &pipe_box) -> PipeTransfer;
-
     fn buffer_map_directly(
         &self,
         res: &PipeResource,
@@ -114,16 +111,6 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
     {
         func(self);
         self.lock.flush()
-    }
-
-    fn buffer_map_async(&self, res: &PipeResource, offset: i32, size: i32) -> PipeTransfer {
-        self.lock
-            .buffer_map(res, offset, size, RWFlags::RW, ResourceMapType::Async)
-    }
-
-    fn texture_map_async(&self, res: &PipeResource, bx: &pipe_box) -> PipeTransfer {
-        self.lock
-            .texture_map(res, bx, RWFlags::RW, ResourceMapType::Async)
     }
 
     fn buffer_map_directly(

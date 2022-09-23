@@ -19,6 +19,7 @@ pub struct PipeContext {
 unsafe impl Send for PipeContext {}
 unsafe impl Sync for PipeContext {}
 
+#[derive(Clone, Copy)]
 #[repr(u32)]
 pub enum RWFlags {
     RD = pipe_map_flags::PIPE_MAP_READ.0,
