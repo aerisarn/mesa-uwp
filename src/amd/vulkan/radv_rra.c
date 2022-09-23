@@ -920,7 +920,7 @@ fail:
 
 static VkResult
 rra_copy_acceleration_structures(VkQueue vk_queue, struct rra_accel_struct_copy *dst,
-                                 struct hash_entry **last_entry, uint32_t count,
+                                 struct hash_entry **entries, uint32_t count,
                                  uint32_t *copied_structure_count)
 {
    RADV_FROM_HANDLE(radv_queue, queue, vk_queue);
@@ -948,13 +948,7 @@ rra_copy_acceleration_structures(VkQueue vk_queue, struct rra_accel_struct_copy 
 
    uint64_t dst_offset = 0;
    for (uint32_t i = 0; i < count;) {
-      struct hash_entry *entry =
-         _mesa_hash_table_next_entry(device->rra_trace.accel_structs, *last_entry);
-
-      if (!entry)
-         break;
-
-      *last_entry = entry;
+      struct hash_entry *entry = entries[i];
 
       VkResult event_result = radv_GetEventStatus(vk_device, radv_event_to_handle(entry->data));
       if (event_result != VK_EVENT_SET) {
@@ -1009,12 +1003,24 @@ fail:
    return result;
 }
 
+static int
+accel_struct_entry_cmp(const void *a, const void *b)
+{
+   struct hash_entry *entry_a = *(struct hash_entry *const *)a;
+   struct hash_entry *entry_b = *(struct hash_entry *const *)b;
+   const struct radv_acceleration_structure *s_a = entry_a->key;
+   const struct radv_acceleration_structure *s_b = entry_b->key;
+
+   return s_a->va > s_b->va ? 1 : s_a->va < s_b->va ? -1 : 0;
+}
+
 VkResult
 radv_rra_dump_trace(VkQueue vk_queue, char *filename)
 {
    RADV_FROM_HANDLE(radv_queue, queue, vk_queue);
    struct radv_device *device = queue->device;
    VkDevice vk_device = radv_device_to_handle(device);
+   struct hash_entry **hash_entries = NULL;
 
    uint32_t accel_struct_count = _mesa_hash_table_num_entries(device->rra_trace.accel_structs);
 
@@ -1052,10 +1058,24 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
    if (result != VK_SUCCESS)
       goto fail;
 
+   uint32_t struct_count = _mesa_hash_table_num_entries(device->rra_trace.accel_structs);
+   hash_entries = malloc(sizeof(*hash_entries) * struct_count);
+   if (!hash_entries) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+
    struct hash_entry *last_entry = NULL;
-   while (_mesa_hash_table_next_entry(device->rra_trace.accel_structs, last_entry)) {
+   for (unsigned i = 0;
+        (last_entry = _mesa_hash_table_next_entry(device->rra_trace.accel_structs, last_entry));
+        ++i)
+      hash_entries[i] = last_entry;
+
+   qsort(hash_entries, struct_count, sizeof(*hash_entries), accel_struct_entry_cmp);
+   for (unsigned j = 0; j < struct_count; j += RRA_COPY_BATCH_SIZE) {
       uint32_t copied_structure_count;
-      result = rra_copy_acceleration_structures(vk_queue, &copy, &last_entry, RRA_COPY_BATCH_SIZE,
+      result = rra_copy_acceleration_structures(vk_queue, &copy, hash_entries + j,
+                                                MIN2(RRA_COPY_BATCH_SIZE, struct_count - j),
                                                 &copied_structure_count);
       if (result != VK_SUCCESS)
          goto copy_fail;
@@ -1101,6 +1121,7 @@ copy_fail:
    radv_FreeMemory(vk_device, copy.memory, NULL);
    vk_common_DestroyCommandPool(vk_device, copy.pool, NULL);
 fail:
+   free(hash_entries);
    free(accel_struct_offsets);
    return result;
 }
