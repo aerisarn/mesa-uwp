@@ -488,7 +488,6 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    } else if (b->shader->did_writeout) {
 	   agx_writeout(b, 0x0004);
    } else {
-	   agx_writeout(b, 0xC200);
 	   agx_writeout(b, 0x000C);
    }
 
@@ -518,7 +517,6 @@ agx_emit_load_tile(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 
    /* TODO: Reverse-engineer interactions with MRT */
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
-   agx_writeout(b, 0xC200);
    agx_writeout(b, 0x0008);
    b->shader->did_writeout = true;
    b->shader->out->reads_tib = true;
@@ -656,7 +654,6 @@ static agx_instr *
 agx_emit_discard(agx_builder *b, nir_intrinsic_instr *instr)
 {
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
-   agx_writeout(b, 0xC200);
    agx_writeout(b, 0x0001);
    b->shader->did_writeout = true;
 
