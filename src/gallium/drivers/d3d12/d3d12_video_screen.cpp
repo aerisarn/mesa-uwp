@@ -49,16 +49,6 @@ struct d3d12_encode_codec_support {
    };
 };
 
-static bool
-d3d12_video_buffer_is_format_supported(struct pipe_screen *screen,
-                                       enum pipe_format format,
-                                       enum pipe_video_profile profile,
-                                       enum pipe_video_entrypoint entrypoint)
-{
-   return (format == PIPE_FORMAT_NV12);
-}
-
-
 struct d3d12_video_resolution_to_level_mapping_entry
 {
    D3D12_VIDEO_ENCODER_PICTURE_RESOLUTION_DESC resolution;
@@ -852,7 +842,7 @@ d3d12_screen_get_video_param_decode(struct pipe_screen *pscreen,
          return 0;
       } break;
       case PIPE_VIDEO_CAP_PREFERED_FORMAT:
-         return PIPE_FORMAT_NV12;
+         return (profile == PIPE_VIDEO_PROFILE_UNKNOWN) ? PIPE_FORMAT_NV12 : d3d12_get_pipe_format(d3d12_convert_pipe_video_profile_to_dxgi_format(profile));
       case PIPE_VIDEO_CAP_PREFERS_INTERLACED:
          return false;
       case PIPE_VIDEO_CAP_SUPPORTS_INTERLACED:
@@ -1109,7 +1099,7 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
          return 0;
       } break;
       case PIPE_VIDEO_CAP_PREFERED_FORMAT:
-         return PIPE_FORMAT_NV12;
+         return (profile == PIPE_VIDEO_PROFILE_UNKNOWN) ? PIPE_FORMAT_NV12 : d3d12_get_pipe_format(d3d12_convert_pipe_video_profile_to_dxgi_format(profile));
       case PIPE_VIDEO_CAP_PREFERS_INTERLACED:
          return false;
       case PIPE_VIDEO_CAP_SUPPORTS_INTERLACED:
@@ -1138,6 +1128,152 @@ d3d12_screen_get_video_param(struct pipe_screen *pscreen,
       return d3d12_screen_get_video_param_postproc(pscreen, profile, entrypoint, param);
    }
    return 0;
+}
+
+static bool
+is_d3d12_video_encode_format_supported(struct pipe_screen *screen,
+                                           pipe_format format,
+                                           enum pipe_video_profile profile)
+{
+   D3D12_VIDEO_ENCODER_PROFILE_H264 profH264 = {};
+   D3D12_VIDEO_ENCODER_PROFILE_HEVC profHEVC = {};
+   D3D12_FEATURE_DATA_VIDEO_ENCODER_INPUT_FORMAT capDataFmt = {};
+   capDataFmt.NodeIndex = 0;
+   capDataFmt.Codec = d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(profile);
+   capDataFmt.Format = d3d12_get_format(format);
+   switch (u_reduce_video_profile(profile)) {
+      case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      {
+         profH264 = d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_h264(profile);
+         capDataFmt.Profile.DataSize = sizeof(profH264);
+         capDataFmt.Profile.pH264Profile = &profH264;
+      } break;
+      case PIPE_VIDEO_FORMAT_HEVC:
+      {
+         profHEVC = d3d12_video_encoder_convert_profile_to_d3d12_enc_profile_hevc(profile);
+         capDataFmt.Profile.DataSize = sizeof(profHEVC);
+         capDataFmt.Profile.pHEVCProfile = &profHEVC;
+      } break;
+      default:
+      {
+         unreachable("Unsupported pipe_video_format");
+      } break;
+   }
+   ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
+   struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) screen;
+   if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf())))) {
+      // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice3)
+      return false;
+   }
+   HRESULT hr = spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_INPUT_FORMAT,
+                                                         &capDataFmt,
+                                                         sizeof(capDataFmt));
+   return SUCCEEDED(hr) && capDataFmt.IsSupported;
+}
+
+static bool
+is_d3d12_video_decode_format_supported(struct pipe_screen *screen,
+                                       pipe_format format,
+                                       enum pipe_video_profile profile)
+{
+   ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
+   struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) screen;
+   if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf()))))
+      return false; // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice3)
+
+   GUID decodeGUID = d3d12_video_decoder_convert_pipe_video_profile_to_d3d12_profile(profile);
+   GUID emptyGUID = {};
+   assert (decodeGUID != emptyGUID);
+
+   D3D12_VIDEO_DECODE_CONFIGURATION decoderConfig = { decodeGUID,
+                                                      D3D12_BITSTREAM_ENCRYPTION_TYPE_NONE,
+                                                      D3D12_VIDEO_FRAME_CODED_INTERLACE_TYPE_NONE };
+
+   D3D12_FEATURE_DATA_VIDEO_DECODE_FORMAT_COUNT decodeFormatCount = {0 /* NodeIndex*/, decoderConfig };
+   if(FAILED(spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_FORMAT_COUNT,
+                                                        &decodeFormatCount,
+                                                        sizeof(decodeFormatCount))))
+      return false;
+
+    std::vector<DXGI_FORMAT> supportedDecodeFormats;
+    supportedDecodeFormats.resize(decodeFormatCount.FormatCount);
+
+    D3D12_FEATURE_DATA_VIDEO_DECODE_FORMATS decodeFormats =
+    {
+        0, // NodeIndex
+        decoderConfig,
+        static_cast<UINT>(supportedDecodeFormats.size()),
+        supportedDecodeFormats.data()
+    };
+
+   if(FAILED(spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_DECODE_FORMATS,
+                                                         &decodeFormats,
+                                                         sizeof(decodeFormats))))
+      return false;
+
+   DXGI_FORMAT requestedDXGIFormat = d3d12_get_format(format);
+   for (DXGI_FORMAT fmt : supportedDecodeFormats)
+      if (fmt == requestedDXGIFormat)
+         return true;
+   return false;
+}
+
+static bool
+is_d3d12_video_process_format_supported(struct pipe_screen *screen,
+                                        pipe_format format)
+{
+   // Return both VPBlit support and format is in known list
+   return (screen->get_video_param(screen,
+                        PIPE_VIDEO_PROFILE_UNKNOWN,
+                        PIPE_VIDEO_ENTRYPOINT_PROCESSING,
+                        PIPE_VIDEO_CAP_SUPPORTED))
+   &&
+   ((format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_P010)
+      || (format == PIPE_FORMAT_R8G8B8A8_UNORM) || (format == PIPE_FORMAT_R8G8B8A8_UINT)
+      || (format == PIPE_FORMAT_R8G8B8X8_UNORM) || (format == PIPE_FORMAT_R8G8B8X8_UINT));
+}
+
+static bool
+is_d3d12_video_allowed_format(enum pipe_format format, enum pipe_video_entrypoint entrypoint)
+{
+   if (entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
+      return ((format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_P010));
+   } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
+      return ((format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_P010));
+   } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      return (format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_P010)
+         || (format == PIPE_FORMAT_R8G8B8A8_UNORM) || (format == PIPE_FORMAT_R8G8B8A8_UINT)
+         || (format == PIPE_FORMAT_R8G8B8X8_UNORM) || (format == PIPE_FORMAT_R8G8B8X8_UINT);
+   }
+   return false;
+}
+
+static bool
+d3d12_video_buffer_is_format_supported(struct pipe_screen *screen,
+                                       enum pipe_format format,
+                                       enum pipe_video_profile profile,
+                                       enum pipe_video_entrypoint entrypoint)
+{
+   // Check in allowed list of formats first
+   if(!is_d3d12_video_allowed_format(format, entrypoint))
+      return false;
+
+   // If the VA frontend asks for all profiles, assign
+   // a default profile based on the bitdepth
+   if(u_reduce_video_profile(profile) == PIPE_VIDEO_FORMAT_UNKNOWN)
+   {
+      profile = (format == PIPE_FORMAT_P010) ? PIPE_VIDEO_PROFILE_HEVC_MAIN_10 : PIPE_VIDEO_PROFILE_MPEG4_AVC_MAIN;
+   }
+
+   // Then check is the underlying driver supports the allowed formats
+   if (entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
+      return is_d3d12_video_decode_format_supported(screen, format, profile);
+   } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
+      return is_d3d12_video_encode_format_supported(screen, format, profile);
+   } else if (entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      return is_d3d12_video_process_format_supported(screen, format);
+   }
+   return false;
 }
 
 void

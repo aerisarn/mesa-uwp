@@ -1429,8 +1429,18 @@ d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType,
       case d3d12_video_decode_profile_type_h264:
          return D3D12_VIDEO_DECODE_PROFILE_H264;
       case d3d12_video_decode_profile_type_hevc:
-         return (decode_format == DXGI_FORMAT_NV12) ? D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN : D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10;
-         break;
+      {
+         switch (decode_format) {
+            case DXGI_FORMAT_NV12:
+               return D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN;
+            case DXGI_FORMAT_P010:
+               return D3D12_VIDEO_DECODE_PROFILE_HEVC_MAIN10;
+            default:
+            {
+               unreachable("Unsupported decode_format");
+            } break;
+         }
+      } break;
       case d3d12_video_decode_profile_type_av1:
          return D3D12_VIDEO_DECODE_PROFILE_AV1_PROFILE0;
          break;
