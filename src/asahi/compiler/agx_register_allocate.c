@@ -26,6 +26,13 @@
 
 /* SSA-based register allocator */
 
+struct ra_ctx {
+   agx_context *shader;
+   agx_block *block;
+   uint8_t *ssa_to_reg;
+   uint8_t *ncomps;
+};
+
 /** Returns number of registers written by an instruction */
 unsigned
 agx_write_registers(agx_instr *I, unsigned d)
@@ -101,9 +108,13 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
 /** Assign registers to SSA values in a block. */
 
 static void
-agx_ra_assign_local(agx_context *ctx, agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
+agx_ra_assign_local(struct ra_ctx *rctx)
 {
    BITSET_DECLARE(used_regs, AGX_NUM_REGS) = { 0 };
+
+   agx_block *block = rctx->block;
+   uint8_t *ssa_to_reg = rctx->ssa_to_reg;
+   uint8_t *ncomps = rctx->ncomps;
 
    agx_foreach_predecessor(block, pred) {
       for (unsigned i = 0; i < BITSET_WORDS(AGX_NUM_REGS); ++i)
@@ -113,7 +124,7 @@ agx_ra_assign_local(agx_context *ctx, agx_block *block, uint8_t *ssa_to_reg, uin
    /* Force the nesting counter r0l live throughout shaders using control flow.
     * This could be optimized (sync with agx_calc_register_demand).
     */
-   if (ctx->any_cf)
+   if (rctx->shader->any_cf)
       BITSET_SET(used_regs, 0);
 
    agx_foreach_instr_in_block(block, I) {
@@ -298,7 +309,12 @@ agx_ra(agx_context *ctx)
     * to a NIR invariant, so we do not need special handling for this.
     */
    agx_foreach_block(ctx, block) {
-      agx_ra_assign_local(ctx, block, ssa_to_reg, ncomps);
+      agx_ra_assign_local(&(struct ra_ctx) {
+         .shader = ctx,
+         .block = block,
+         .ssa_to_reg = ssa_to_reg,
+         .ncomps = ncomps
+      });
    }
 
    agx_foreach_instr_global(ctx, ins) {
