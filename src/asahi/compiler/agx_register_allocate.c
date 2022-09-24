@@ -31,6 +31,9 @@ struct ra_ctx {
    agx_block *block;
    uint8_t *ssa_to_reg;
    uint8_t *ncomps;
+
+   /* Maximum number of registers that RA is allowed to use */
+   unsigned bound;
 };
 
 /** Returns number of registers written by an instruction */
@@ -199,7 +202,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          if (I->dest[d].type == AGX_INDEX_NORMAL) {
             unsigned count = agx_write_registers(I, d);
             unsigned align = agx_size_align_16(I->dest[d].size);
-            unsigned reg = agx_assign_regs(used_regs, count, align, AGX_NUM_REGS);
+            unsigned reg = agx_assign_regs(used_regs, count, align, rctx->bound);
 
             ssa_to_reg[I->dest[d].value] = reg;
          }
@@ -313,7 +316,8 @@ agx_ra(agx_context *ctx)
          .shader = ctx,
          .block = block,
          .ssa_to_reg = ssa_to_reg,
-         .ncomps = ncomps
+         .ncomps = ncomps,
+         .bound = AGX_NUM_REGS
       });
    }
 
