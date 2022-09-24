@@ -46,22 +46,23 @@ main(void)
 {
    uint32_t global_id = gl_GlobalInvocationID.x;
 
-   bool fill_header = (args.fill_count & 0x80000000u) != 0;
-   uint32_t src_count = args.fill_count & 0x7FFFFFFFu;
+   bool is_root_node = (args.is_root_and_count & 0x80000000u) != 0;
+   uint32_t src_count = args.is_root_and_count & 0x7FFFFFFFu;
 
-   uint32_t src_index = global_id * 4;
-   uint32_t child_count = min(src_count - src_index, 4);
+   uint32_t src_index = global_id * 2;
+   uint32_t child_count = min(src_count - src_index, 2);
 
-   uint32_t dst_offset = args.dst_offset + global_id * SIZEOF(radv_bvh_box32_node);
+   uint32_t dst_offset = args.dst_offset + global_id * SIZEOF(radv_ir_box_node);
+   uint32_t current_id = pack_ir_node_id(dst_offset, radv_ir_node_internal);
 
-   REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.bvh, dst_offset));
+   REF(radv_ir_box_node) dst_node = REF(radv_ir_box_node)(OFFSET(args.bvh, dst_offset));
 
    AABB total_bounds;
    total_bounds.min = vec3(INFINITY);
    total_bounds.max = vec3(-INFINITY);
 
    bool is_active = false;
-   for (uint32_t i = 0; i < 4; i++) {
+   for (uint32_t i = 0; i < 2; i++) {
       AABB bounds;
       bounds.min = vec3(NAN);
       bounds.max = vec3(NAN);
@@ -69,38 +70,35 @@ main(void)
       uint32_t child_id = DEREF(INDEX(key_id_pair, args.src_ids, src_index + i)).id;
 
       if (i < child_count && child_id != NULL_NODE_ID) {
-         bounds = calculate_node_bounds(args.bvh, child_id);
+         VOID_REF node = OFFSET(args.bvh, ir_id_to_offset(child_id));
+         REF(radv_ir_node) child = REF(radv_ir_node)(node);
+         bounds = load_aabb(child);
+
          total_bounds.min = min(total_bounds.min, bounds.min);
          total_bounds.max = max(total_bounds.max, bounds.max);
          is_active = true;
+
+         DEREF(child).parent = current_id;
       } else {
          child_id = NULL_NODE_ID;
       }
 
       DEREF(dst_node).children[i] = child_id;
-
-      DEREF(dst_node).coords[i][0][0] = bounds.min.x;
-      DEREF(dst_node).coords[i][0][1] = bounds.min.y;
-      DEREF(dst_node).coords[i][0][2] = bounds.min.z;
-      DEREF(dst_node).coords[i][1][0] = bounds.max.x;
-      DEREF(dst_node).coords[i][1][1] = bounds.max.y;
-      DEREF(dst_node).coords[i][1][2] = bounds.max.z;
    }
+   DEREF(dst_node).base.aabb[0][0] = total_bounds.min.x;
+   DEREF(dst_node).base.aabb[0][1] = total_bounds.min.y;
+   DEREF(dst_node).base.aabb[0][2] = total_bounds.min.z;
+   DEREF(dst_node).base.aabb[1][0] = total_bounds.max.x;
+   DEREF(dst_node).base.aabb[1][1] = total_bounds.max.y;
+   DEREF(dst_node).base.aabb[1][2] = total_bounds.max.z;
 
-   uint32_t node_id = pack_node_id(dst_offset, radv_bvh_node_internal);
    /* An internal node is considered inactive if it has no children. Set the resulting scratch node
     * id to NULL_NODE_ID for more internal nodes to become inactive.
     */
-   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? node_id : NULL_NODE_ID;
+   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? current_id : NULL_NODE_ID;
 
-   if (fill_header) {
-      REF(radv_accel_struct_header) header = REF(radv_accel_struct_header)(args.bvh);
-
-      DEREF(header).aabb[0][0] = total_bounds.min.x;
-      DEREF(header).aabb[0][1] = total_bounds.min.y;
-      DEREF(header).aabb[0][2] = total_bounds.min.z;
-      DEREF(header).aabb[1][0] = total_bounds.max.x;
-      DEREF(header).aabb[1][1] = total_bounds.max.y;
-      DEREF(header).aabb[1][2] = total_bounds.max.z;
+   if (is_root_node) {
+      /* We're writing the root node, which doesn't have a parent */
+      DEREF(dst_node).base.parent = 0xFFFFFFFF;
    }
 }

@@ -306,19 +306,19 @@ ir_type_to_bvh_type(uint32_t type)
 }
 
 AABB
-calculate_instance_node_bounds(radv_bvh_instance_node instance)
+calculate_instance_node_bounds(uint64_t base_ptr, mat3x4 otw_matrix)
 {
    AABB aabb;
-   radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(instance.base_ptr));
+   radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(base_ptr));
 
    for (uint32_t comp = 0; comp < 3; ++comp) {
-      aabb.min[comp] = instance.otw_matrix[comp][3];
-      aabb.max[comp] = instance.otw_matrix[comp][3];
+      aabb.min[comp] = otw_matrix[comp][3];
+      aabb.max[comp] = otw_matrix[comp][3];
       for (uint32_t col = 0; col < 3; ++col) {
-         aabb.min[comp] += min(instance.otw_matrix[comp][col] * header.aabb[0][col],
-                               instance.otw_matrix[comp][col] * header.aabb[1][col]);
-         aabb.max[comp] += max(instance.otw_matrix[comp][col] * header.aabb[0][col],
-                               instance.otw_matrix[comp][col] * header.aabb[1][col]);
+         aabb.min[comp] += min(otw_matrix[comp][col] * header.aabb[0][col],
+                               otw_matrix[comp][col] * header.aabb[1][col]);
+         aabb.max[comp] += max(otw_matrix[comp][col] * header.aabb[0][col],
+                               otw_matrix[comp][col] * header.aabb[1][col]);
       }
    }
    return aabb;
@@ -359,7 +359,7 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
    }
    case radv_bvh_node_instance: {
       radv_bvh_instance_node instance = DEREF(REF(radv_bvh_instance_node)(node));
-      aabb = calculate_instance_node_bounds(instance);
+      aabb = calculate_instance_node_bounds(instance.base_ptr, instance.otw_matrix);
       break;
    }
    case radv_bvh_node_aabb: {

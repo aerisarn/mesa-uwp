@@ -62,7 +62,7 @@ struct lbvh_internal_args {
    REF(key_id_pair) src_ids;
    REF(key_id_pair) dst_ids;
    uint32_t dst_offset;
-   uint32_t fill_count;
+   uint32_t is_root_and_count;
 };
 
 #define RADV_COPY_MODE_COPY        0
