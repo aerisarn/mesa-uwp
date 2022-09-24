@@ -257,17 +257,6 @@ enum agx_lod_mode {
    AGX_LOD_MODE_LOD_GRAD_MIN = 12
 };
 
-enum agx_dim {
-   AGX_DIM_TEX_1D = 0,
-   AGX_DIM_TEX_1D_ARRAY = 1,
-   AGX_DIM_TEX_2D = 2,
-   AGX_DIM_TEX_2D_ARRAY = 3,
-   AGX_DIM_TEX_2D_MS = 4,
-   AGX_DIM_TEX_3D = 5,
-   AGX_DIM_TEX_CUBE = 6,
-   AGX_DIM_TEX_CUBE_ARRAY = 7
-};
-
 /* Forward declare for branch target */
 struct agx_block;
 

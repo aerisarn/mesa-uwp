@@ -93,7 +93,18 @@ SHIFT = immediate("shift")
 MASK = immediate("mask")
 BFI_MASK = immediate("bfi_mask")
 LOD_MODE = immediate("lod_mode", "enum agx_lod_mode")
-DIM = immediate("dim", "enum agx_dim")
+
+DIM = enum("dim", {
+    0: '1d',
+    1: '1d_array',
+    2: '2d',
+    3: '2d_array',
+    4: '2d_ms',
+    5: '3d',
+    6: 'cube',
+    7: 'cube_array'
+})
+
 OFFSET = immediate("offset", "bool")
 SHADOW = immediate("shadow", "bool")
 SCOREBOARD = immediate("scoreboard")

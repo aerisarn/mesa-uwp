@@ -173,7 +173,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
       else
          print_comma = true;
 
-      fprintf(fp, "dim %u", I->dim); // TODO enumify
+      fputs(agx_dim_as_str(I->dim), fp);
    }
 
    if (info.immediates & AGX_IMMEDIATE_SCOREBOARD) {
