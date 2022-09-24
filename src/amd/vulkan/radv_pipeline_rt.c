@@ -32,6 +32,10 @@
 #include "nir/nir_builder.h"
 #include "nir/nir_builtin_builder.h"
 
+/* Traversal stack size. This stack is put in LDS and experimentally 16 entries results in best
+ * performance. */
+#define MAX_STACK_ENTRY_COUNT 16
+
 static VkRayTracingPipelineCreateInfoKHR
 radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
@@ -1029,9 +1033,12 @@ struct rt_traversal_vars {
    nir_variable *hit;
    nir_variable *bvh_base;
    nir_variable *stack;
-   nir_variable *lds_stack_base;
    nir_variable *top_stack;
+   nir_variable *stack_base;
    nir_variable *current_node;
+   nir_variable *previous_node;
+   nir_variable *instance_top_node;
+   nir_variable *instance_bottom_node;
 };
 
 static struct rt_traversal_vars
@@ -1057,12 +1064,18 @@ init_traversal_vars(nir_builder *b)
                                       "traversal_bvh_base");
    ret.stack =
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "traversal_stack_ptr");
-   ret.lds_stack_base = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(),
-                                            "traversal_lds_stack_base");
    ret.top_stack = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(),
                                        "traversal_top_stack_ptr");
+   ret.stack_base =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "traversal_stack_base");
    ret.current_node =
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "current_node;");
+   ret.previous_node =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "previous_node");
+   ret.instance_top_node =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "instance_top_node");
+   ret.instance_bottom_node =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "instance_bottom_node");
    return ret;
 }
 
@@ -1313,64 +1326,13 @@ static void
 store_stack_entry(nir_builder *b, nir_ssa_def *index, nir_ssa_def *value,
                   const struct radv_ray_traversal_args *args)
 {
-   index = nir_umod(b, index, nir_imm_int(b, args->stack_stride * MAX_STACK_LDS_ENTRY_COUNT));
    nir_store_shared(b, value, index, .base = 0, .align_mul = 4);
 }
 
 static nir_ssa_def *
 load_stack_entry(nir_builder *b, nir_ssa_def *index, const struct radv_ray_traversal_args *args)
 {
-   nir_variable *ret = nir_local_variable_create(b->impl, glsl_uint_type(), "load_stack_result");
-   struct traversal_data *data = args->data;
-   nir_push_if(b, nir_ilt(b, index, nir_load_var(b, data->trav_vars->lds_stack_base)));
-   {
-      nir_ssa_def *scratch_addr =
-         nir_imul_imm(b, nir_udiv_imm(b, index, args->stack_stride), sizeof(uint32_t));
-      nir_store_var(b, ret, nir_load_scratch(b, 1, 32, scratch_addr), 0x1);
-      nir_store_var(b, data->trav_vars->lds_stack_base, index, 0x1);
-   }
-   nir_push_else(b, NULL);
-   {
-      nir_ssa_def *stack_ptr =
-         nir_umod(b, index, nir_imm_int(b, args->stack_stride * MAX_STACK_LDS_ENTRY_COUNT));
-      nir_store_var(b, ret, nir_load_shared(b, 1, 32, stack_ptr, .base = 0, .align_mul = 4), 0x1);
-   }
-   nir_pop_if(b, NULL);
-
-   return nir_load_var(b, ret);
-}
-
-static void
-check_stack_overflow(nir_builder *b, const struct radv_ray_traversal_args *args)
-{
-   struct traversal_data *data = args->data;
-
-   nir_ssa_def *might_overflow =
-      nir_ige(b,
-              nir_isub(b, nir_load_deref(b, args->vars.stack),
-                       nir_load_var(b, data->trav_vars->lds_stack_base)),
-              nir_imm_int(b, args->stack_stride * (MAX_STACK_LDS_ENTRY_COUNT - 2)));
-   nir_push_if(b, might_overflow);
-   {
-      nir_ssa_def *scratch_addr = nir_imul_imm(
-         b, nir_udiv_imm(b, nir_load_var(b, data->trav_vars->lds_stack_base), args->stack_stride),
-         sizeof(uint32_t));
-      for (int i = 0; i < 4; ++i) {
-         nir_ssa_def *lds_stack_ptr =
-            nir_umod(b, nir_load_var(b, data->trav_vars->lds_stack_base),
-                     nir_imm_int(b, args->stack_stride * MAX_STACK_LDS_ENTRY_COUNT));
-
-         nir_ssa_def *node = nir_load_shared(b, 1, 32, lds_stack_ptr, .base = 0, .align_mul = 4);
-         nir_store_scratch(b, node, scratch_addr);
-
-         nir_store_var(
-            b, data->trav_vars->lds_stack_base,
-            nir_iadd_imm(b, nir_load_var(b, data->trav_vars->lds_stack_base), args->stack_stride),
-            1);
-         scratch_addr = nir_iadd_imm(b, scratch_addr, sizeof(uint32_t));
-      }
-   }
-   nir_pop_if(b, NULL);
+   return nir_load_shared(b, 1, 32, index, .base = 0, .align_mul = 4);
 }
 
 static nir_shader *
@@ -1383,7 +1345,7 @@ build_traversal_shader(struct radv_device *device,
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
    b.shader->info.shared_size =
-      device->physical_device->rt_wave_size * MAX_STACK_LDS_ENTRY_COUNT * sizeof(uint32_t);
+      device->physical_device->rt_wave_size * MAX_STACK_ENTRY_COUNT * sizeof(uint32_t);
    struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, dst_vars->stack_sizes);
    map_rt_variables(var_remap, &vars, dst_vars);
 
@@ -1414,10 +1376,14 @@ build_traversal_shader(struct radv_device *device,
       nir_store_var(&b, trav_vars.instance_addr, nir_imm_int64(&b, 0), 1);
 
       nir_store_var(&b, trav_vars.stack, nir_imul_imm(&b, nir_load_local_invocation_index(&b), sizeof(uint32_t)), 1);
-      nir_store_var(&b, trav_vars.lds_stack_base, nir_load_var(&b, trav_vars.stack), 1);
+      nir_store_var(&b, trav_vars.stack_base, nir_load_var(&b, trav_vars.stack), 1);
       nir_store_var(&b, trav_vars.current_node, nir_imm_int(&b, RADV_BVH_ROOT_NODE), 0x1);
+      nir_store_var(&b, trav_vars.previous_node, nir_imm_int(&b, -1), 0x1);
+      nir_store_var(&b, trav_vars.instance_top_node, nir_imm_int(&b, -1), 0x1);
+      nir_store_var(&b, trav_vars.instance_bottom_node, nir_imm_int(&b, RADV_BVH_NO_INSTANCE_ROOT),
+                    0x1);
 
-      nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, -1), 1);
 
       struct radv_ray_traversal_vars trav_vars_args = {
          .tmax = nir_build_deref_var(&b, vars.tmax),
@@ -1427,7 +1393,11 @@ build_traversal_shader(struct radv_device *device,
          .bvh_base = nir_build_deref_var(&b, trav_vars.bvh_base),
          .stack = nir_build_deref_var(&b, trav_vars.stack),
          .top_stack = nir_build_deref_var(&b, trav_vars.top_stack),
+         .stack_base = nir_build_deref_var(&b, trav_vars.stack_base),
          .current_node = nir_build_deref_var(&b, trav_vars.current_node),
+         .previous_node = nir_build_deref_var(&b, trav_vars.previous_node),
+         .instance_top_node = nir_build_deref_var(&b, trav_vars.instance_top_node),
+         .instance_bottom_node = nir_build_deref_var(&b, trav_vars.instance_bottom_node),
          .instance_id = nir_build_deref_var(&b, trav_vars.instance_id),
          .instance_addr = nir_build_deref_var(&b, trav_vars.instance_addr),
          .custom_instance_and_mask = nir_build_deref_var(&b, trav_vars.custom_instance_and_mask),
@@ -1450,11 +1420,11 @@ build_traversal_shader(struct radv_device *device,
          .dir = nir_load_var(&b, vars.direction),
          .vars = trav_vars_args,
          .stack_stride = device->physical_device->rt_wave_size * sizeof(uint32_t),
+         .stack_entries = MAX_STACK_ENTRY_COUNT,
          .stack_store_cb = store_stack_entry,
          .stack_load_cb = load_stack_entry,
          .aabb_cb = handle_candidate_aabb,
          .triangle_cb = handle_candidate_triangle,
-         .check_stack_overflow_cb = check_stack_overflow,
          .data = &data,
       };
 
@@ -1643,7 +1613,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
       nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
    else
-      nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, MAX_STACK_SCRATCH_ENTRY_COUNT * 4), 0x1);
+      nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
 
    nir_loop *loop = nir_push_loop(&b);
 
@@ -1688,8 +1658,9 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    nir_pop_loop(&b, loop);
 
-   b.shader->scratch_size = MAX2(16, MAX_STACK_SCRATCH_ENTRY_COUNT * 4);
-   if (!radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
+   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
+      b.shader->scratch_size = 16; /* To enable scratch. */
+   else
       b.shader->scratch_size += compute_rt_stack_size(pCreateInfo, stack_sizes);
 
    /* Deal with all the inline functions. */

@@ -59,17 +59,6 @@ nir_ssa_def *hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, ni
 
 nir_ssa_def *create_bvh_descriptor(nir_builder *b);
 
-/*
- * A top-level AS can contain 2^24 children and a bottom-level AS can contain 2^24
- * triangles. At a branching factor of 4, that means we may need up to 24 levels of box
- * nodes + 1 triangle node
- * + 1 instance node. Furthermore, when processing a box node, worst case we actually
- * push all 4 children and remove one, so the DFS stack depth is box nodes * 3 + 2.
- */
-#define MAX_STACK_ENTRY_COUNT         76
-#define MAX_STACK_LDS_ENTRY_COUNT     16
-#define MAX_STACK_SCRATCH_ENTRY_COUNT (MAX_STACK_ENTRY_COUNT - MAX_STACK_LDS_ENTRY_COUNT)
-
 struct radv_ray_traversal_args;
 
 struct radv_leaf_intersection {
@@ -101,9 +90,6 @@ typedef void (*radv_rt_stack_store_cb)(nir_builder *b, nir_ssa_def *index, nir_s
 typedef nir_ssa_def *(*radv_rt_stack_load_cb)(nir_builder *b, nir_ssa_def *index,
                                               const struct radv_ray_traversal_args *args);
 
-typedef void (*radv_rt_check_stack_overflow_cb)(nir_builder *b,
-                                                const struct radv_ray_traversal_args *args);
-
 struct radv_ray_traversal_vars {
    /* For each accepted hit, tmax will be set to the t value. This allows for automatic intersection
     * culling.
@@ -119,12 +105,22 @@ struct radv_ray_traversal_vars {
    nir_deref_instr *bvh_base;
 
    /* stack is the current stack pointer/index. top_stack is the pointer/index that marks the end of
-    * traversal for the current BLAS/TLAS.
+    * traversal for the current BLAS/TLAS. stack_base is the low watermark of the short stack.
     */
    nir_deref_instr *stack;
    nir_deref_instr *top_stack;
+   nir_deref_instr *stack_base;
 
    nir_deref_instr *current_node;
+
+   /* The node visited in the previous iteration. This is used in backtracking to jump to its parent
+    * and then find the child after the previously visited node.
+    */
+   nir_deref_instr *previous_node;
+
+   /* When entering an instance these are the instance node and the root node of the BLAS */
+   nir_deref_instr *instance_top_node;
+   nir_deref_instr *instance_bottom_node;
 
    /* Information about the current instance used for culling. */
    nir_deref_instr *instance_id;
@@ -143,18 +139,23 @@ struct radv_ray_traversal_args {
 
    struct radv_ray_traversal_vars vars;
 
-   /* The increment/decrement used for radv_ray_traversal_vars::stack */
+   /* The increment/decrement used for radv_ray_traversal_vars::stack, and how many entries are
+    * available. */
    uint32_t stack_stride;
+   uint32_t stack_entries;
 
    radv_rt_stack_store_cb stack_store_cb;
    radv_rt_stack_load_cb stack_load_cb;
-   radv_rt_check_stack_overflow_cb check_stack_overflow_cb;
 
    radv_aabb_intersection_cb aabb_cb;
    radv_triangle_intersection_cb triangle_cb;
 
    void *data;
 };
+
+/* For the initialization of instance_bottom_node. Explicitly different than RADV_BVH_INVALID_NODE
+ * or any real node, to ensure we never exit an instance when we're not in one. */
+#define RADV_BVH_NO_INSTANCE_ROOT 0xfffffffeu
 
 /* Builds the ray traversal loop and returns whether traversal is incomplete, similar to
  * rayQueryProceedEXT. Traversal will only be considered incomplete, if one of the specified

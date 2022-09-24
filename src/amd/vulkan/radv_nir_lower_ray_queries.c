@@ -31,6 +31,11 @@
 #include "radv_rt_common.h"
 #include "radv_shader.h"
 
+/* Traversal stack size. Traversal supports backtracking so we can go deeper than this size if
+ * needed. However, we keep a large stack size to avoid it being put into registers, which hurts
+ * occupancy. */
+#define MAX_STACK_ENTRY_COUNT 76
+
 typedef struct {
    nir_variable *variable;
    unsigned array_length;
@@ -140,7 +145,11 @@ struct ray_query_traversal_vars {
    rq_variable *bvh_base;
    rq_variable *stack;
    rq_variable *top_stack;
+   rq_variable *stack_base;
    rq_variable *current_node;
+   rq_variable *previous_node;
+   rq_variable *instance_top_node;
+   rq_variable *instance_bottom_node;
 };
 
 struct ray_query_intersection_vars {
@@ -197,9 +206,16 @@ init_ray_query_traversal_vars(nir_shader *shader, nir_function_impl *impl, unsig
       rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_stack"));
    result.top_stack =
       rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_top_stack"));
+   result.stack_base =
+      rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_stack_base"));
    result.current_node =
       rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_current_node"));
-
+   result.previous_node =
+      rq_variable_create(shader, impl, array_length, glsl_uint_type(), VAR_NAME("_previous_node"));
+   result.instance_top_node = rq_variable_create(shader, impl, array_length, glsl_uint_type(),
+                                                 VAR_NAME("_instance_top_node"));
+   result.instance_bottom_node = rq_variable_create(shader, impl, array_length, glsl_uint_type(),
+                                                    VAR_NAME("_instance_bottom_node"));
    return result;
 }
 
@@ -387,8 +403,13 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
 
       rq_store_var(b, index, vars->trav.stack, nir_imm_int(b, 0), 0x1);
       rq_store_var(b, index, vars->trav.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
+      rq_store_var(b, index, vars->trav.previous_node, nir_imm_int(b, -1), 0x1);
+      rq_store_var(b, index, vars->trav.instance_top_node, nir_imm_int(b, -1), 0x1);
+      rq_store_var(b, index, vars->trav.instance_bottom_node,
+                   nir_imm_int(b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
 
-      rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, 0), 1);
+      rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, -1), 1);
+      rq_store_var(b, index, vars->trav.stack_base, nir_imm_int(b, 0), 1);
    }
    nir_push_else(b, NULL);
    {
@@ -621,7 +642,11 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
       .bvh_base = rq_deref_var(b, index, vars->trav.bvh_base),
       .stack = rq_deref_var(b, index, vars->trav.stack),
       .top_stack = rq_deref_var(b, index, vars->trav.top_stack),
+      .stack_base = rq_deref_var(b, index, vars->trav.stack_base),
       .current_node = rq_deref_var(b, index, vars->trav.current_node),
+      .previous_node = rq_deref_var(b, index, vars->trav.previous_node),
+      .instance_top_node = rq_deref_var(b, index, vars->trav.instance_top_node),
+      .instance_bottom_node = rq_deref_var(b, index, vars->trav.instance_bottom_node),
       .instance_id = rq_deref_var(b, index, vars->candidate.instance_id),
       .instance_addr = rq_deref_var(b, index, vars->candidate.instance_addr),
       .custom_instance_and_mask = rq_deref_var(b, index, vars->candidate.custom_instance_and_mask),
@@ -642,6 +667,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
       .dir = rq_load_var(b, index, vars->direction),
       .vars = trav_vars,
       .stack_stride = 1,
+      .stack_entries = MAX_STACK_ENTRY_COUNT,
       .stack_store_cb = store_stack_entry,
       .stack_load_cb = load_stack_entry,
       .aabb_cb = handle_candidate_aabb,
