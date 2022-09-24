@@ -3582,6 +3582,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          values[i] = ctx->args->workgroup_ids[i].used
                         ? ac_get_arg(&ctx->ac, ctx->args->workgroup_ids[i])
                         : ctx->ac.i32_0;
+         if (nir_dest_bit_size(instr->dest) == 64)
+            values[i] = LLVMBuildZExt(ctx->ac.builder, values[i], ctx->ac.i64, "");
       }
 
       result = ac_build_gather_values(&ctx->ac, values, 3);
@@ -3724,6 +3726,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
          result = ac_build_load_invariant(&ctx->ac, ptr, ctx->ac.i32_0);
       }
+      if (nir_dest_bit_size(instr->dest) == 64)
+         result = LLVMBuildZExt(ctx->ac.builder, result, LLVMVectorType(ctx->ac.i64, 3), "");
       break;
    case nir_intrinsic_load_local_invocation_index:
       result = visit_load_local_invocation_index(ctx);
