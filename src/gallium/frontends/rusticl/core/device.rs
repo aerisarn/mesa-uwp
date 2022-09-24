@@ -621,8 +621,12 @@ impl Device {
     }
 
     pub fn max_mem_alloc(&self) -> cl_ulong {
-        self.screen
-            .compute_param(pipe_compute_cap::PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE)
+        // TODO: at the moment gallium doesn't support bigger buffers
+        min(
+            self.screen
+                .compute_param(pipe_compute_cap::PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE),
+            0x80000000,
+        )
     }
 
     pub fn max_samplers(&self) -> cl_uint {
