@@ -379,11 +379,11 @@ UNUSED void
 print_reg(const RegisterFile& reg_file, PhysReg reg, bool has_adjacent_variable)
 {
    if (reg_file[reg] == 0xFFFFFFFF) {
-      printf(u8"☐");
+      printf((const char*)u8"☐");
    } else if (reg_file[reg]) {
       const bool show_subdword_alloc = (reg_file[reg] == 0xF0000000);
       if (show_subdword_alloc) {
-         const char* block_chars[] = {
+         auto block_chars = {
             // clang-format off
             u8"?", u8"▘", u8"▝", u8"▀",
             u8"▖", u8"▌", u8"▞", u8"▛",
@@ -397,18 +397,18 @@ print_reg(const RegisterFile& reg_file, PhysReg reg, bool has_adjacent_variable)
                index |= 1 << i;
             }
          }
-         printf("%s", block_chars[index]);
+         printf("%s", (const char*)(block_chars.begin()[index]));
       } else {
          /* Indicate filled register slot */
          if (!has_adjacent_variable) {
-            printf(u8"█");
+            printf((const char*)u8"█");
          } else {
             /* Use a slightly shorter box to leave a small gap between adjacent variables */
-            printf(u8"▉");
+            printf((const char*)u8"▉");
          }
       }
    } else {
-      printf(u8"·");
+      printf((const char*)u8"·");
    }
 }
 
