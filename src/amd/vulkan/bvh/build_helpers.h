@@ -158,7 +158,7 @@
 #define VK_GEOMETRY_TYPE_AABBS_KHR     1
 
 #define TYPE(type, align)                                                                          \
-   layout(buffer_reference, buffer_reference_align = align) buffer type##_ref                      \
+   layout(buffer_reference, buffer_reference_align = align, scalar) buffer type##_ref              \
    {                                                                                               \
       type value;                                                                                  \
    };
