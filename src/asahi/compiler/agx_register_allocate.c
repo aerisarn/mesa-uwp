@@ -101,7 +101,7 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
 /** Assign registers to SSA values in a block. */
 
 static void
-agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
+agx_ra_assign_local(agx_context *ctx, agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
 {
    BITSET_DECLARE(used_regs, AGX_NUM_REGS) = { 0 };
 
@@ -110,7 +110,11 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
          used_regs[i] |= (*pred)->regs_out[i];
    }
 
-   BITSET_SET(used_regs, 0); // control flow writes r0l
+   /* Force the nesting counter r0l live throughout shaders using control flow.
+    * This could be optimized (sync with agx_calc_register_demand).
+    */
+   if (ctx->any_cf)
+      BITSET_SET(used_regs, 0);
 
    agx_foreach_instr_in_block(block, I) {
       /* Optimization: if a split contains the last use of a vector, the split
@@ -294,7 +298,7 @@ agx_ra(agx_context *ctx)
     * to a NIR invariant, so we do not need special handling for this.
     */
    agx_foreach_block(ctx, block) {
-      agx_ra_assign_local(block, ssa_to_reg, ncomps);
+      agx_ra_assign_local(ctx, block, ssa_to_reg, ncomps);
    }
 
    agx_foreach_instr_global(ctx, ins) {
@@ -393,6 +397,14 @@ agx_ra(agx_context *ctx)
             agx_remove_instruction(I);
          }
          break;
+
+      /* Writes to the nesting counter lowered to the real register */
+      case AGX_OPCODE_NEST: {
+         agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+         agx_mov_to(&b, agx_register(0, AGX_SIZE_16), I->src[0]);
+         agx_remove_instruction(I);
+         break;
+      }
 
       default:
          break;

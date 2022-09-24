@@ -285,3 +285,6 @@ op("unit_test", _, dests = 0, srcs = 1, can_eliminate = False)
 # Like mov, but takes a register and can only appear at the start. Gauranteed
 # to be coalesced during RA, rather than lowered to a real move. 
 op("preload", _, srcs = 1)
+
+# Set the nesting counter. Lowers to mov r0l, x after RA.
+op("nest", _, dests = 0, srcs = 1, can_eliminate = False)

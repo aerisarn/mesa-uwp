@@ -1182,7 +1182,8 @@ agx_emit_logical_end(agx_builder *b)
       agx_logical_end(b);
 }
 
-/* NIR loops are treated as a pair of AGX loops:
+/*
+ * NIR loops are treated as a pair of AGX loops:
  *
  *    do {
  *       do {
@@ -1190,15 +1191,14 @@ agx_emit_logical_end(agx_builder *b)
  *       } while (0);
  *    } while (cond);
  *
- * By manipulating the nesting counter (r0l), we may break out of nested loops,
- * so under the model, both break and continue may be implemented as breaks,
- * where break breaks out of the outer loop (2 layers) and continue breaks out
- * of the inner loop (1 layer).
+ * By manipulating the nesting counter, we may break out of nested loops, so
+ * under the model, both break and continue may be implemented as breaks, where
+ * break breaks out of the outer loop (2 layers) and continue breaks out of the
+ * inner loop (1 layer).
  *
  * After manipulating the nesting counter directly, pop_exec #0 must be used to
  * flush the update to the execution mask.
  */
-
 static void
 agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 {
@@ -1217,8 +1217,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
    }
 
    /* Update the counter and flush */
-   agx_index r0l = agx_register(0, false);
-   agx_mov_to(b, r0l, agx_immediate(nestings));
+   agx_nest(b, agx_immediate(nestings));
 
    /* Jumps must come at the end of a block */
    agx_emit_logical_end(b);
@@ -1440,8 +1439,8 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
    ctx->loop_nesting = pushed_nesting;
 }
 
-/* Before the first control flow structure, the nesting counter (r0l) needs to
- * be zeroed for correct operation. This only happens at most once, since by
+/* Before the first control flow structure, the nesting counter needs to be
+ * zeroed for correct operation. This only happens at most once, since by
  * definition this occurs at the end of the first block, which dominates the
  * rest of the program. */
 
@@ -1452,9 +1451,7 @@ emit_first_cf(agx_context *ctx)
       return;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
-   agx_index r0l = agx_register(0, false);
-
-   agx_mov_to(&_b, r0l, agx_immediate(0));
+   agx_nest(&_b, agx_immediate(0));
    ctx->any_cf = true;
 }
 
