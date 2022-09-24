@@ -913,5 +913,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    } else {
       r600::sfn_log << r600::SfnLog::shader_info << "This is not a Geometry shader\n";
    }
+   ralloc_free(sh);
+
    return 0;
 }
