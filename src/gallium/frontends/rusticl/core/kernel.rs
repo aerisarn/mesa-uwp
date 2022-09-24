@@ -379,7 +379,7 @@ extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
 fn lower_and_optimize_nir_late(
     dev: &Device,
     nir: &mut NirShader,
-    args: usize,
+    args: &mut [KernelArg],
 ) -> Vec<InternalKernelArg> {
     let mut res = Vec::new();
     let nir_options = unsafe {
@@ -454,7 +454,7 @@ fn lower_and_optimize_nir_late(
     lower_state.base_global_invoc_id = nir.add_var(
         nir_variable_mode::nir_var_uniform,
         unsafe { glsl_vector_type(glsl_base_type::GLSL_TYPE_UINT64, 3) },
-        args + res.len() - 1,
+        args.len() + res.len() - 1,
         "base_global_invocation_id",
     );
     if nir.has_constant() {
@@ -466,7 +466,7 @@ fn lower_and_optimize_nir_late(
         lower_state.const_buf = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_uint64_t_type() },
-            args + res.len() - 1,
+            args.len() + res.len() - 1,
             "constant_buffer_addr",
         );
     }
@@ -479,7 +479,7 @@ fn lower_and_optimize_nir_late(
         lower_state.printf_buf = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_uint64_t_type() },
-            args + res.len() - 1,
+            args.len() + res.len() - 1,
             "printf_buffer_addr",
         );
     }
@@ -501,14 +501,14 @@ fn lower_and_optimize_nir_late(
         lower_state.format_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
-            args + res.len() - 2,
+            args.len() + res.len() - 2,
             "image_formats",
         );
 
         lower_state.order_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
-            args + res.len() - 1,
+            args.len() + res.len() - 1,
             "image_orders",
         );
     }
@@ -547,6 +547,11 @@ fn lower_and_optimize_nir_late(
     nir.pass1(nir_lower_convert_alu_types, None);
 
     opt_nir(nir, dev);
+
+    /* before passing it into drivers, assign locations as drivers might remove nir_variables or
+     * other things we depend on
+     */
+    KernelArg::assign_locations(args, &mut res, nir);
     dev.screen.finalize_nir(nir);
 
     nir.pass0(nir_opt_dce);
@@ -620,8 +625,7 @@ fn convert_spirv_to_nir(
 
             lower_and_optimize_nir_pre_inputs(d, &mut nir, &d.lib_clc);
             let mut args = KernelArg::from_spirv_nir(&args, &mut nir);
-            let mut internal_args = lower_and_optimize_nir_late(d, &mut nir, args.len());
-            KernelArg::assign_locations(&mut args, &mut internal_args, &mut nir);
+            let internal_args = lower_and_optimize_nir_late(d, &mut nir, &mut args);
 
             if let Some(cache) = cache {
                 let mut bin = Vec::new();
