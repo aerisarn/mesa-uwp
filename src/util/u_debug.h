@@ -46,6 +46,7 @@
 #endif
 
 #include "util/os_misc.h"
+#include "util/u_atomic.h"
 #include "util/detect_os.h"
 #include "util/macros.h"
 
@@ -374,9 +375,9 @@ debug_get_option_ ## suffix (void) \
 { \
    static bool initialized = false; \
    static const char * value; \
-   if (!initialized) { \
-      initialized = true; \
+   if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_option(name, dfault); \
+      p_atomic_set(&initialized, true); \
    } \
    return value; \
 }
@@ -397,9 +398,9 @@ debug_get_option_ ## sufix (void) \
 { \
    static bool initialized = false; \
    static bool value; \
-   if (!initialized) { \
-      initialized = true; \
+   if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_bool_option(name, dfault); \
+      p_atomic_set(&initialized, true); \
    } \
    return value; \
 }
@@ -410,9 +411,9 @@ debug_get_option_ ## sufix (void) \
 { \
    static bool initialized = false; \
    static long value; \
-   if (!initialized) { \
-      initialized = true; \
+   if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_num_option(name, dfault); \
+      p_atomic_set(&initialized, true); \
    } \
    return value; \
 }
@@ -423,9 +424,9 @@ debug_get_option_ ## sufix (void) \
 { \
    static bool initialized = false; \
    static unsigned long value; \
-   if (!initialized) { \
-      initialized = true; \
+   if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_flags_option(name, flags, dfault); \
+      p_atomic_set(&initialized, true); \
    } \
    return value; \
 }
