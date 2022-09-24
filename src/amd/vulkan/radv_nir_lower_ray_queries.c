@@ -403,10 +403,10 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
 
       rq_store_var(b, index, vars->trav.stack, nir_imm_int(b, 0), 0x1);
       rq_store_var(b, index, vars->trav.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
-      rq_store_var(b, index, vars->trav.previous_node, nir_imm_int(b, -1), 0x1);
-      rq_store_var(b, index, vars->trav.instance_top_node, nir_imm_int(b, -1), 0x1);
-      rq_store_var(b, index, vars->trav.instance_bottom_node,
-                   nir_imm_int(b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
+      rq_store_var(b, index, vars->trav.previous_node, nir_imm_int(b, RADV_BVH_INVALID_NODE), 0x1);
+      rq_store_var(b, index, vars->trav.instance_top_node, nir_imm_int(b, RADV_BVH_INVALID_NODE),
+                   0x1);
+      rq_store_var(b, index, vars->trav.instance_bottom_node, nir_imm_int(b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
 
       rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, -1), 1);
       rq_store_var(b, index, vars->trav.stack_base, nir_imm_int(b, 0), 1);

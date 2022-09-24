@@ -66,7 +66,7 @@ main(void)
 
       uint32_t child_id = DEREF(INDEX(key_id_pair, args.src_ids, src_index + i)).id;
 
-      if (i < child_count && child_id != NULL_NODE_ID) {
+      if (i < child_count && child_id != RADV_BVH_INVALID_NODE) {
          VOID_REF node = OFFSET(args.bvh, ir_id_to_offset(child_id));
          REF(radv_ir_node) child = REF(radv_ir_node)(node);
          bounds = load_aabb(child);
@@ -75,7 +75,7 @@ main(void)
          total_bounds.max = max(total_bounds.max, bounds.max);
          is_active = true;
       } else {
-         child_id = NULL_NODE_ID;
+         child_id = RADV_BVH_INVALID_NODE;
       }
 
       DEREF(dst_node).children[i] = child_id;
@@ -89,7 +89,7 @@ main(void)
    DEREF(dst_node).in_final_tree = FINAL_TREE_UNKNOWN;
 
    /* An internal node is considered inactive if it has no children. Set the resulting scratch node
-    * id to NULL_NODE_ID for more internal nodes to become inactive.
+    * id to RADV_BVH_INVALID_NODE for more internal nodes to become inactive.
     */
-   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? current_id : NULL_NODE_ID;
+   DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? current_id : RADV_BVH_INVALID_NODE;
 }

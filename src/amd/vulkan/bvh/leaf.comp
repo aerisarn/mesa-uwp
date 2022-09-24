@@ -308,7 +308,7 @@ main(void)
       is_active = build_instance(bounds, src_ptr, dst_ptr, global_id);
    }
 
-   DEREF(id_ptr).id = is_active ? pack_ir_node_id(dst_offset, node_type) : NULL_NODE_ID;
+   DEREF(id_ptr).id = is_active ? pack_ir_node_id(dst_offset, node_type) : RADV_BVH_INVALID_NODE;
 
    min_float_emulated(INDEX(int32_t, args.bounds, 0), bounds.min.x);
    min_float_emulated(INDEX(int32_t, args.bounds, 1), bounds.min.y);

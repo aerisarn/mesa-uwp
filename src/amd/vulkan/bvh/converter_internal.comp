@@ -98,11 +98,11 @@ main()
          continue;
 
       uint32_t found_child_count = 0;
-      uint32_t children[4] = {NULL_NODE_ID, NULL_NODE_ID,
-                              NULL_NODE_ID, NULL_NODE_ID};
+      uint32_t children[4] = {RADV_BVH_INVALID_NODE, RADV_BVH_INVALID_NODE,
+                              RADV_BVH_INVALID_NODE, RADV_BVH_INVALID_NODE};
 
       for (uint32_t i = 0; i < 2; ++i)
-         if (src.children[i] != NULL_NODE_ID)
+         if (src.children[i] != RADV_BVH_INVALID_NODE)
             children[found_child_count++] = src.children[i];
 
       while (found_child_count < 4) {
@@ -131,10 +131,10 @@ main()
             uint32_t grandchildren[2] = DEREF(child_node).children;
             uint32_t valid_grandchild_count = 0;
 
-            if (grandchildren[1] != NULL_NODE_ID)
+            if (grandchildren[1] != RADV_BVH_INVALID_NODE)
                ++valid_grandchild_count;
 
-            if (grandchildren[0] != NULL_NODE_ID)
+            if (grandchildren[0] != RADV_BVH_INVALID_NODE)
                ++valid_grandchild_count;
             else
                grandchildren[0] = grandchildren[1];
@@ -200,6 +200,6 @@ main()
       DEREF(header).aabb = src.base.aabb;
       DEREF(header).bvh_offset = args.output_bvh_offset;
 
-      set_parent(RADV_BVH_ROOT_NODE, NULL_NODE_ID);
+      set_parent(RADV_BVH_ROOT_NODE, RADV_BVH_INVALID_NODE);
    }
 }

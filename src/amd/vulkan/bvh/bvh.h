@@ -165,5 +165,6 @@ struct radv_bvh_box32_node {
 
 /* a box32 node */
 #define RADV_BVH_ROOT_NODE radv_bvh_node_internal
+#define RADV_BVH_INVALID_NODE 0xffffffffu
 
 #endif

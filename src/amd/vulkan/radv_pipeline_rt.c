@@ -1378,10 +1378,9 @@ build_traversal_shader(struct radv_device *device,
       nir_store_var(&b, trav_vars.stack, nir_imul_imm(&b, nir_load_local_invocation_index(&b), sizeof(uint32_t)), 1);
       nir_store_var(&b, trav_vars.stack_base, nir_load_var(&b, trav_vars.stack), 1);
       nir_store_var(&b, trav_vars.current_node, nir_imm_int(&b, RADV_BVH_ROOT_NODE), 0x1);
-      nir_store_var(&b, trav_vars.previous_node, nir_imm_int(&b, -1), 0x1);
-      nir_store_var(&b, trav_vars.instance_top_node, nir_imm_int(&b, -1), 0x1);
-      nir_store_var(&b, trav_vars.instance_bottom_node, nir_imm_int(&b, RADV_BVH_NO_INSTANCE_ROOT),
-                    0x1);
+      nir_store_var(&b, trav_vars.previous_node, nir_imm_int(&b, RADV_BVH_INVALID_NODE), 0x1);
+      nir_store_var(&b, trav_vars.instance_top_node, nir_imm_int(&b, RADV_BVH_INVALID_NODE), 0x1);
+      nir_store_var(&b, trav_vars.instance_bottom_node, nir_imm_int(&b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
 
       nir_store_var(&b, trav_vars.top_stack, nir_imm_int(&b, -1), 1);
 
