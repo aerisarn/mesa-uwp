@@ -1935,7 +1935,7 @@ endif
 
 dep_elf = dependency('libelf', required : false)
 if not with_platform_windows and not dep_elf.found()
-  dep_elf = cc.find_library('elf')
+  dep_elf = cc.find_library('elf', required : false)
 endif
 if dep_elf.found()
   pre_args += '-DUSE_LIBELF'
