@@ -916,9 +916,8 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       &render_pass_info->pass->hw_setup->renders[sub_cmd->hw_render_idx];
    struct pvr_render_job *job = &sub_cmd->job;
    struct pvr_pds_upload pds_pixel_event_program;
-
    uint32_t pbe_cs_words[PVR_MAX_COLOR_ATTACHMENTS]
-                        [ROGUE_NUM_PBESTATE_STATE_WORDS];
+                        [ROGUE_NUM_PBESTATE_STATE_WORDS] = { 0 };
    struct pvr_render_target *render_target;
    VkResult result;
 
