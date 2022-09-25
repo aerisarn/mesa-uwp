@@ -207,7 +207,7 @@ impl Device {
         // Max size of memory object allocation in bytes. The minimum value is
         // max(min(1024 × 1024 × 1024, 1/4th of CL_DEVICE_GLOBAL_MEM_SIZE), 32 × 1024 × 1024)
         // for devices that are not of type CL_DEVICE_TYPE_CUSTOM.
-        let mut limit = min(1024 * 1024 * 1024, self.global_mem_size());
+        let mut limit = min(1024 * 1024 * 1024, self.global_mem_size() / 4);
         limit = max(limit, 32 * 1024 * 1024);
         if self.max_mem_alloc() < limit {
             return true;
