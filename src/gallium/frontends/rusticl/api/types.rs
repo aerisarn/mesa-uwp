@@ -72,7 +72,7 @@ cl_callback!(
 );
 
 // a lot of APIs use 3 component vectors passed as C arrays
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CLVec<T> {
     vals: [T; 3],
 }
