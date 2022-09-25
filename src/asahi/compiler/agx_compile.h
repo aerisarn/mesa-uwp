@@ -157,6 +157,12 @@ struct agx_shader_info {
    struct agx_push push[AGX_MAX_PUSH_RANGES];
    union agx_varyings varyings;
 
+   /* Does the shader have a preamble? If so, it is at offset preamble_offset.
+    * The main shader is at offset main_offset. The preamble is executed first.
+    */
+   bool has_preamble;
+   unsigned preamble_offset, main_offset;
+
    /* Does the shader read the tilebuffer? */
    bool reads_tib;
 

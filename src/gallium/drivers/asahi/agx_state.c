@@ -1404,7 +1404,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
 
    agx_usc_pack(&b, SHADER, cfg) {
       cfg.loads_varyings = (stage == PIPE_SHADER_FRAGMENT);
-      cfg.code = cs->bo->ptr.gpu;
+      cfg.code = cs->bo->ptr.gpu + cs->info.main_offset;
       cfg.unk_2 = (stage == PIPE_SHADER_FRAGMENT) ? 2 : 3;
    }
 
@@ -1422,7 +1422,13 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
       }
    }
 
-   agx_usc_pack(&b, NO_PRESHADER, cfg);
+   if (cs->info.has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code = cs->bo->ptr.gpu + cs->info.preamble_offset;
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg);
+   }
 
    return agx_usc_fini(&b);
 }
