@@ -107,9 +107,9 @@ static bool pvr_is_subpass_initops_flush_needed(
    color_attachment_mask = 0;
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      const int32_t color_idx = subpass->color_attachments[i];
+      const uint32_t color_idx = subpass->color_attachments[i];
 
-      if (color_idx != -1)
+      if (color_idx != VK_ATTACHMENT_UNUSED)
          color_attachment_mask |= (1 << pass->attachments[color_idx].index);
    }
 
@@ -371,7 +371,7 @@ pvr_is_load_op_needed(const struct pvr_render_pass *pass,
    }
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      if (subpass->color_attachments[i] == -1)
+      if (subpass->color_attachments[i] == VK_ATTACHMENT_UNUSED)
          continue;
 
       if (hw_subpass->color_initops[i] == VK_ATTACHMENT_LOAD_OP_LOAD ||

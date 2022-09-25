@@ -1022,7 +1022,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                       dev_info);
 
    /* Setup depth/stencil job information. */
-   if (hw_render->ds_attach_idx != -1) {
+   if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       struct pvr_image_view *iview =
          render_pass_info->attachments[hw_render->ds_attach_idx];
       const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
@@ -1087,7 +1087,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       job->stencil_addr = PVR_DEV_ADDR_INVALID;
    }
 
-   if (hw_render->ds_attach_idx != -1) {
+   if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       struct pvr_image_view *iview =
          render_pass_info->attachments[hw_render->ds_attach_idx];
       const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
@@ -2288,7 +2288,7 @@ static void pvr_perform_start_of_render_attachment_clear(
       bool is_stencil;
       bool is_depth;
 
-      assert(hw_render->ds_attach_idx != -1);
+      assert(hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED);
       assert(index == 0);
 
       view_idx = hw_render->ds_attach_idx;
@@ -2372,7 +2372,7 @@ pvr_perform_start_of_render_clears(struct pvr_cmd_buffer *cmd_buffer)
       info->process_empty_tiles = false;
    }
 
-   if (hw_render->ds_attach_idx != -1) {
+   if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       uint32_t ds_index_list = 0;
 
       pvr_perform_start_of_render_attachment_clear(cmd_buffer,
@@ -2393,7 +2393,7 @@ static void pvr_stash_depth_format(struct pvr_cmd_buffer_state *state,
    const struct pvr_renderpass_hwsetup_render *hw_render =
       &pass->hw_setup->renders[sub_cmd->hw_render_idx];
 
-   if (hw_render->ds_attach_idx != -1) {
+   if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       struct pvr_image_view **iviews = state->render_pass_info.attachments;
 
       state->depth_format = iviews[hw_render->ds_attach_idx]->vk.format;
@@ -5849,7 +5849,7 @@ static bool pvr_is_stencil_store_load_needed(
        vk_dst_stage_mask & VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
       return false;
 
-   if (hw_render->ds_attach_idx == -1)
+   if (hw_render->ds_attach_idx == VK_ATTACHMENT_UNUSED)
       return false;
 
    for (uint32_t i = 0; i < memory_barrier_count; i++) {

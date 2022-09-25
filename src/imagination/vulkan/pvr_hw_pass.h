@@ -222,7 +222,7 @@ struct pvr_renderpass_hwsetup_render {
    /* Index of the attachment to use for depth/stencil load/store in this
     * render.
     */
-   int32_t ds_attach_idx;
+   uint32_t ds_attach_idx;
 
    /* Operation on the on-chip depth at the start of the render.
     * Either load from 'ds_attach_idx', clear using 'ds_attach_idx' or leave
