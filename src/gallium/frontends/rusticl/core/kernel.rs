@@ -534,7 +534,11 @@ fn lower_and_optimize_nir_late(
     }
 
     nir.pass1(nir_lower_readonly_images_to_tex, true);
-    nir.pass2(nir_lower_cl_images, true, true);
+    nir.pass2(
+        nir_lower_cl_images,
+        !dev.images_as_deref(),
+        !dev.samplers_as_deref(),
+    );
 
     nir.reset_scratch_size();
     nir.pass2(
