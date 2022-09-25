@@ -1778,7 +1778,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
                               info->renderArea.extent.width;
    state->framebuffer.height = info->renderArea.offset.y +
                                info->renderArea.extent.height;
-   state->framebuffer.layers = info->layerCount;
+   state->framebuffer.layers = info->viewMask ? util_last_bit(info->viewMask) : info->layerCount;
    state->framebuffer.nr_cbufs = info->colorAttachmentCount;
 
    state->color_att_count = info->colorAttachmentCount;
