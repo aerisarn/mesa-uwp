@@ -2210,10 +2210,8 @@ pvr_cmd_buffer_setup_attachments(struct pvr_cmd_buffer *cmd_buffer,
       return state->status;
    }
 
-   if (framebuffer) {
-      for (uint32_t i = 0; i < pass->attachment_count; i++)
-         info->attachments[i] = framebuffer->attachments[i];
-   }
+   for (uint32_t i = 0; i < pass->attachment_count; i++)
+      info->attachments[i] = framebuffer->attachments[i];
 
    return VK_SUCCESS;
 }
