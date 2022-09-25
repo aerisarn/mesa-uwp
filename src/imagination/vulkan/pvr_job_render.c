@@ -370,12 +370,12 @@ pvr_rt_get_isp_region_size(struct pvr_device *device,
 {
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    uint64_t rgn_size =
-      mtile_info->tiles_per_mtile_x * mtile_info->tiles_per_mtile_y;
+      (uint64_t)mtile_info->tiles_per_mtile_x * mtile_info->tiles_per_mtile_y;
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
       uint32_t version;
 
-      rgn_size *= mtile_info->mtiles_x * mtile_info->mtiles_y;
+      rgn_size *= (uint64_t)mtile_info->mtiles_x * mtile_info->mtiles_y;
 
       if (PVR_FEATURE_VALUE(dev_info,
                             simple_parameter_format_version,
@@ -476,7 +476,7 @@ pvr_rt_get_tail_ptr_stride_size(const struct pvr_device *device,
    max_num_mtiles = MAX2(util_next_power_of_two64(num_mtiles_x),
                          util_next_power_of_two64(num_mtiles_y));
 
-   size = max_num_mtiles * max_num_mtiles;
+   size = (uint64_t)max_num_mtiles * max_num_mtiles;
 
    if (PVR_FEATURE_VALUE(&device->pdevice->dev_info,
                          simple_parameter_format_version,
@@ -573,7 +573,7 @@ static void pvr_rt_get_region_headers_stride_size(
 {
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    const uint32_t rgn_header_size = rogue_get_region_header_size(dev_info);
-   uint32_t rgn_headers_size;
+   uint64_t rgn_headers_size;
    uint32_t num_tiles_x;
    uint32_t num_tiles_y;
    uint32_t group_size;
