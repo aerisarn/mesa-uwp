@@ -107,8 +107,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       blend_state.logicOpEnable = state->blend_state->logicop_enable;
       blend_state.logicOp = state->blend_state->logicop_func;
    }
-   if (screen->info.have_EXT_rasterization_order_attachment_access &&
-       prog->nir[MESA_SHADER_FRAGMENT]->info.fs.uses_fbfetch_output)
+   if (state->rast_attachment_order)
       blend_state.flags |= VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
 
    VkPipelineMultisampleStateCreateInfo ms_state = {0};
@@ -458,6 +457,8 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
 
    VkPipelineColorBlendStateCreateInfo blend_state = {0};
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+   if (state->rast_attachment_order)
+      blend_state.flags |= VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
    blend_state.attachmentCount = state->rendering_info.colorAttachmentCount;
    if (state->blend_state)
       blend_state.logicOp = state->blend_state->logicop_func;

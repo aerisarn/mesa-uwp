@@ -662,10 +662,11 @@ struct zink_pipeline_dynamic_state3 {
 struct zink_gfx_pipeline_state {
    /* order matches zink_gfx_output_key */
    unsigned force_persample_interp:1;
-   uint32_t rast_samples:7; //1 extra bit
+   uint32_t rast_samples:6;
    uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
    uint32_t feedback_loop_zs : 1;
+   uint32_t rast_attachment_order : 1;
    uint32_t rp_state : 16;
    VkSampleMask sample_mask;
    uint32_t blend_id;
@@ -815,10 +816,11 @@ struct zink_gfx_output_key {
    union {
       struct {
          unsigned force_persample_interp:1;
-         uint32_t rast_samples:7; //1 extra bit
+         uint32_t rast_samples:6;
          uint32_t min_samples:6;
          uint32_t feedback_loop : 1;
          uint32_t feedback_loop_zs : 1;
+         uint32_t rast_attachment_order : 1;
          uint32_t rp_state : 16;
       };
       uint32_t key;

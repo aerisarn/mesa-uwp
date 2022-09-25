@@ -1385,6 +1385,11 @@ zink_bind_fs_state(struct pipe_context *pctx,
          }
       }
       zink_update_fs_key_samples(ctx);
+      if (zink_screen(pctx->screen)->info.have_EXT_rasterization_order_attachment_access) {
+         if (ctx->gfx_pipeline_state.rast_attachment_order != nir->info.fs.uses_fbfetch_output)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.rast_attachment_order = nir->info.fs.uses_fbfetch_output;
+      }
    }
    zink_update_fbfetch(ctx);
 }
