@@ -31,6 +31,8 @@ struct ra_ctx {
    agx_block *block;
    uint8_t *ssa_to_reg;
    uint8_t *ncomps;
+   BITSET_WORD *visited;
+   BITSET_WORD *used_regs;
 
    /* Maximum number of registers that RA is allowed to use */
    unsigned bound;
@@ -108,6 +110,30 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
    unreachable("Could not find a free register");
 }
 
+/*
+ * Loop over live-in values at the start of the block and mark their registers
+ * as in-use. We process blocks in dominance order, so this handles everything
+ * but loop headers.
+ *
+ * For loop headers, this handles the forward edges but not the back edge.
+ * However, that's okay: we don't want to reserve the registers that are
+ * defined within the loop, because then we'd get a contradiction. Instead we
+ * leave them available and then they become fixed points of a sort.
+ */
+static void
+reserve_live_in(struct ra_ctx *rctx)
+{
+      int i;
+      BITSET_FOREACH_SET(i, rctx->block->live_in, rctx->shader->alloc) {
+         /* Skip values defined in loops when processing the loop header */
+         if (!BITSET_TEST(rctx->visited, i))
+            continue;
+
+         for (unsigned j = 0; j < rctx->ncomps[i]; ++j)
+            BITSET_SET(rctx->used_regs, rctx->ssa_to_reg[i] + j);
+      }
+}
+
 /** Assign registers to SSA values in a block. */
 
 static void
@@ -118,11 +144,9 @@ agx_ra_assign_local(struct ra_ctx *rctx)
    agx_block *block = rctx->block;
    uint8_t *ssa_to_reg = rctx->ssa_to_reg;
    uint8_t *ncomps = rctx->ncomps;
+   rctx->used_regs = used_regs;
 
-   agx_foreach_predecessor(block, pred) {
-      for (unsigned i = 0; i < BITSET_WORDS(AGX_NUM_REGS); ++i)
-         used_regs[i] |= (*pred)->regs_out[i];
-   }
+   reserve_live_in(rctx);
 
    /* Force the nesting counter r0l live throughout shaders using control flow.
     * This could be optimized (sync with agx_calc_register_demand).
@@ -164,6 +188,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
             assert(offset < length);
 
             ssa_to_reg[I->dest[d].value] = reg + offset;
+            BITSET_SET(rctx->visited, I->dest[d].value);
          }
 
          continue;
@@ -181,6 +206,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          }
 
          ssa_to_reg[I->dest[0].value] = base;
+         BITSET_SET(rctx->visited, I->dest[0].value);
          continue;
       }
 
@@ -205,6 +231,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
             unsigned reg = agx_assign_regs(used_regs, count, align, rctx->bound);
 
             ssa_to_reg[I->dest[d].value] = reg;
+            BITSET_SET(rctx->visited, I->dest[d].value);
          }
       }
    }
@@ -297,6 +324,7 @@ agx_ra(agx_context *ctx)
    agx_compute_liveness(ctx);
    uint8_t *ssa_to_reg = calloc(ctx->alloc, sizeof(uint8_t));
    uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
+   BITSET_WORD *visited = calloc(BITSET_WORDS(ctx->alloc), sizeof(BITSET_WORD));
 
    agx_foreach_instr_global(ctx, I) {
       agx_foreach_dest(I, d) {
@@ -317,6 +345,7 @@ agx_ra(agx_context *ctx)
          .block = block,
          .ssa_to_reg = ssa_to_reg,
          .ncomps = ncomps,
+         .visited = visited,
          .bound = AGX_NUM_REGS
       });
    }
@@ -433,5 +462,6 @@ agx_ra(agx_context *ctx)
 
    free(ssa_to_reg);
    free(ncomps);
+   free(visited);
    free(alloc);
 }
