@@ -833,7 +833,6 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
 
    bool have_fake_psiz = false;
    nir_foreach_shader_out_variable(var, zs->nir) {
-      var->data.explicit_xfb_buffer = 0;
       if (var->data.location == VARYING_SLOT_PSIZ && !var->data.explicit_location)
          have_fake_psiz = true;
    }
@@ -3181,6 +3180,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, match_tex_dests);
 
    ret->nir = nir;
+   nir_foreach_shader_out_variable(var, nir)
+      var->data.explicit_xfb_buffer = 0;
    if (so_info && so_info->num_outputs)
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
