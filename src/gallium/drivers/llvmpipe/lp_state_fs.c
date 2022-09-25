@@ -4492,8 +4492,8 @@ make_variant_key(struct llvmpipe_context *lp,
           * This will still work, the only downside is that not actually
           * used views may be included in the shader key.
           */
-         if (shader->info.base.file_mask[TGSI_FILE_SAMPLER_VIEW]
-             & (1u << (i & 31))) {
+         if ((shader->info.base.file_mask[TGSI_FILE_SAMPLER_VIEW]
+              & (1u << (i & 31))) || i > 31) {
             lp_sampler_static_texture_state(&fs_sampler[i].texture_state,
                                   lp->sampler_views[PIPE_SHADER_FRAGMENT][i]);
          }
@@ -4501,7 +4501,7 @@ make_variant_key(struct llvmpipe_context *lp,
    } else {
       key->nr_sampler_views = key->nr_samplers;
       for (unsigned i = 0; i < key->nr_sampler_views; ++i) {
-         if (shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) {
+         if ((shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) || i > 31) {
             lp_sampler_static_texture_state(&fs_sampler[i].texture_state,
                                  lp->sampler_views[PIPE_SHADER_FRAGMENT][i]);
          }
@@ -4515,7 +4515,7 @@ make_variant_key(struct llvmpipe_context *lp,
       memset(lp_image, 0,
              key->nr_images * sizeof *lp_image);
    for (unsigned i = 0; i < key->nr_images; ++i) {
-      if (shader->info.base.file_mask[TGSI_FILE_IMAGE] & (1 << i)) {
+      if ((shader->info.base.file_mask[TGSI_FILE_IMAGE] & (1 << i)) || i > 31) {
          lp_sampler_static_texture_state_image(&lp_image[i].image_state,
                                       &lp->images[PIPE_SHADER_FRAGMENT][i]);
       }
