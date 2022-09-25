@@ -2269,16 +2269,13 @@ static void pvr_perform_start_of_render_attachment_clear(
 {
    struct pvr_render_pass_info *info = &cmd_buffer->state.render_pass_info;
    const struct pvr_render_pass *pass = info->pass;
-   const struct pvr_renderpass_hwsetup_render *hw_render;
-   const struct pvr_renderpass_hwsetup *hw_setup;
+   const struct pvr_renderpass_hwsetup *hw_setup = pass->hw_setup;
+   const struct pvr_renderpass_hwsetup_render *hw_render =
+      &hw_setup->renders[hw_setup->subpass_map[info->subpass_idx].render];
    struct pvr_image_view *iview;
    uint32_t view_idx;
    uint32_t height;
    uint32_t width;
-
-   hw_setup = pass->hw_setup;
-   hw_render =
-      &hw_setup->renders[hw_setup->subpass_map[info->subpass_idx].render];
 
    if (is_depth_stencil) {
       bool stencil_clear;
@@ -2335,20 +2332,13 @@ pvr_perform_start_of_render_clears(struct pvr_cmd_buffer *cmd_buffer)
    const struct pvr_framebuffer *framebuffer = info->framebuffer;
    const struct pvr_render_pass *pass = info->pass;
    const struct pvr_renderpass_hwsetup *hw_setup = pass->hw_setup;
-   const struct pvr_renderpass_hwsetup_render *hw_render;
+   const struct pvr_renderpass_hwsetup_render *hw_render =
+      &hw_setup->renders[hw_setup->subpass_map[info->subpass_idx].render];
 
    /* Mask of attachment clears using index lists instead of background object
     * to clear.
     */
    uint32_t index_list_clear_mask = 0;
-
-   hw_render =
-      &hw_setup->renders[hw_setup->subpass_map[info->subpass_idx].render];
-   if (!hw_render) {
-      info->process_empty_tiles = false;
-      info->enable_bg_tag = false;
-      return;
-   }
 
    for (uint32_t i = 0; i < hw_render->color_init_count; i++) {
       pvr_perform_start_of_render_attachment_clear(cmd_buffer,
