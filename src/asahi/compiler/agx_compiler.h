@@ -53,6 +53,9 @@ extern int agx_debug;
 /* r0-r127 inclusive, as pairs of 16-bits, gives 256 registers */
 #define AGX_NUM_REGS (256)
 
+/* u0-u255 inclusive, as pairs of 16-bits */
+#define AGX_NUM_UNIFORMS (512)
+
 enum agx_index_type {
    AGX_INDEX_NULL = 0,
    AGX_INDEX_NORMAL = 1,
@@ -111,8 +114,10 @@ agx_get_index(unsigned value, enum agx_size size)
 }
 
 static inline agx_index
-agx_immediate(uint16_t imm)
+agx_immediate(uint32_t imm)
 {
+   assert(imm < (1 << 16) && "overflowed immediate");
+
    return (agx_index) {
       .value = imm,
       .size = AGX_SIZE_16,
@@ -129,8 +134,10 @@ agx_immediate_f(float f)
 
 /* in half-words, specify r0h as 1, r1 as 2... */
 static inline agx_index
-agx_register(uint8_t imm, enum agx_size size)
+agx_register(uint32_t imm, enum agx_size size)
 {
+   assert(imm < AGX_NUM_REGS);
+
    return (agx_index) {
       .value = imm,
       .size = size,
@@ -140,8 +147,10 @@ agx_register(uint8_t imm, enum agx_size size)
 
 /* Also in half-words */
 static inline agx_index
-agx_uniform(uint8_t imm, enum agx_size size)
+agx_uniform(uint32_t imm, enum agx_size size)
 {
+   assert(imm < AGX_NUM_UNIFORMS);
+
    return (agx_index) {
       .value = imm,
       .size = size,

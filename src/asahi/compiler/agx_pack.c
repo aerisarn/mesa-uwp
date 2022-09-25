@@ -182,11 +182,11 @@ agx_pack_alu_src(agx_index src)
          ((value >> 6) << 10);
    } else if (src.type == AGX_INDEX_UNIFORM) {
       assert(size == AGX_SIZE_16 || size == AGX_SIZE_32);
-      assert(value < 0x200);
+      assert(value < AGX_NUM_UNIFORMS);
 
       return
          (value & BITFIELD_MASK(6)) |
-         ((value >> 8) << 6) |
+         ((value & BITFIELD_BIT(8)) ? (1 << 6) : 0) |
          ((size == AGX_SIZE_32) ? (1 << 7) : 0) |
          (0x1 << 8) |
          (((value >> 6) & BITFIELD_MASK(2)) << 10);
