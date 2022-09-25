@@ -1132,25 +1132,6 @@ void
 zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog)
 {
-   deinit_program(screen, &prog->base);
-
-   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (prog->shaders[i]) {
-         _mesa_set_remove_key(prog->shaders[i]->programs, prog);
-         prog->shaders[i] = NULL;
-      }
-      destroy_shader_cache(screen, &prog->shader_cache[i][0][0]);
-      destroy_shader_cache(screen, &prog->shader_cache[i][0][1]);
-      destroy_shader_cache(screen, &prog->shader_cache[i][1][0]);
-      destroy_shader_cache(screen, &prog->shader_cache[i][1][1]);
-      ralloc_free(prog->nir[i]);
-   }
-
-   set_foreach_remove(&prog->libs, he) {
-      struct zink_gfx_library_key *gkey = (void*)he->key;
-      VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
-   }
-
    unsigned max_idx = ARRAY_SIZE(prog->pipelines[0]);
    if (screen->info.have_EXT_extended_dynamic_state) {
       /* only need first 3/4 for point/line/tri/patch */
@@ -1172,6 +1153,25 @@ zink_destroy_gfx_program(struct zink_screen *screen,
             free(pc_entry);
          }
       }
+   }
+
+   deinit_program(screen, &prog->base);
+
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
+      if (prog->shaders[i]) {
+         _mesa_set_remove_key(prog->shaders[i]->programs, prog);
+         prog->shaders[i] = NULL;
+      }
+      destroy_shader_cache(screen, &prog->shader_cache[i][0][0]);
+      destroy_shader_cache(screen, &prog->shader_cache[i][0][1]);
+      destroy_shader_cache(screen, &prog->shader_cache[i][1][0]);
+      destroy_shader_cache(screen, &prog->shader_cache[i][1][1]);
+      ralloc_free(prog->nir[i]);
+   }
+
+   set_foreach_remove(&prog->libs, he) {
+      struct zink_gfx_library_key *gkey = (void*)he->key;
+      VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
    }
 
    ralloc_free(prog);
