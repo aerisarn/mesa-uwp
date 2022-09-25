@@ -149,6 +149,7 @@ can_move_intrinsic(nir_intrinsic_instr *instr, opt_preamble_ctx *ctx)
    case nir_intrinsic_load_cull_small_primitives_enabled_amd:
    case nir_intrinsic_load_cull_any_enabled_amd:
    case nir_intrinsic_load_cull_small_prim_precision_amd:
+   case nir_intrinsic_load_texture_base_agx:
       return true;
 
    /* Intrinsics which can be moved depending on hardware */
