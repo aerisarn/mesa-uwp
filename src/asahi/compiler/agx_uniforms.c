@@ -52,6 +52,7 @@ agx_indexed_sysval(agx_context *ctx, enum agx_push_type type,
 
    unsigned base = ctx->push_base;
    ctx->push_base += length;
+   assert(ctx->push_base <= AGX_NUM_UNIFORMS);
 
    ctx->out->push[ctx->out->push_ranges++] = (struct agx_push) {
       .type = type,
@@ -82,6 +83,7 @@ agx_vbo_base(agx_context *ctx, unsigned vbo)
 
    unsigned base = ctx->push_base;
    ctx->push_base += 4;
+   assert(ctx->push_base <= AGX_NUM_UNIFORMS);
 
    ctx->out->push[ctx->out->push_ranges++] = (struct agx_push) {
       .type = AGX_PUSH_VBO_BASE,
