@@ -153,6 +153,7 @@ union agx_varyings {
 };
 
 struct agx_shader_info {
+   unsigned push_count;
    unsigned push_ranges;
    struct agx_push push[AGX_MAX_PUSH_RANGES];
    union agx_varyings varyings;

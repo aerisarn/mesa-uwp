@@ -374,9 +374,6 @@ typedef struct {
    struct agx_shader_info *out;
    struct agx_shader_key *key;
 
-   /* Place to start pushing new values */
-   unsigned push_base;
-
    /* Maximum block index */
    unsigned num_blocks;
 
