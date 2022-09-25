@@ -1737,6 +1737,94 @@ agx_flat_varying_mask(nir_shader *nir)
    return mask;
 }
 
+static bool
+agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
+{
+   return (agx_debug & agx_dbg_bit) &&
+          !(nir->info.internal && !(agx_debug & AGX_DBG_INTERNAL));
+}
+
+static unsigned
+agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
+                         struct agx_shader_key *key,
+                         struct util_debug_callback *debug,
+                         struct util_dynarray *binary,
+                         struct agx_shader_info *out)
+{
+   nir_index_blocks(impl);
+
+   agx_context *ctx = rzalloc(NULL, agx_context);
+   ctx->nir = nir;
+   ctx->out = out;
+   ctx->key = key;
+   ctx->stage = nir->info.stage;
+   ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
+   ctx->indexed_nir_blocks = rzalloc_array(ctx, agx_block *, impl->num_blocks);
+   list_inithead(&ctx->blocks);
+
+   ctx->alloc = impl->ssa_alloc;
+   emit_cf_list(ctx, &impl->body);
+   agx_emit_phis_deferred(ctx);
+
+   /* Stop the main shader or preamble shader after the exit block. For real
+    * functions, we would return here.
+    */
+   agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
+   agx_stop(&_b);
+
+   /* Index blocks now that we're done emitting so the order is consistent */
+   agx_foreach_block(ctx, block)
+      block->index = ctx->num_blocks++;
+
+   agx_validate(ctx, "IR translation");
+
+   if (agx_should_dump(nir, AGX_DBG_SHADERS))
+      agx_print_shader(ctx, stdout);
+
+   if (likely(!(agx_debug & AGX_DBG_NOOPT))) {
+      agx_optimizer(ctx);
+      agx_dce(ctx);
+      agx_validate(ctx, "Optimization");
+
+      if (agx_should_dump(nir, AGX_DBG_SHADERS))
+         agx_print_shader(ctx, stdout);
+   }
+
+   agx_ra(ctx);
+
+   if (ctx->stage == MESA_SHADER_VERTEX)
+      agx_set_st_vary_final(ctx);
+
+   if (agx_should_dump(nir, AGX_DBG_SHADERS))
+      agx_print_shader(ctx, stdout);
+
+   agx_lower_pseudo(ctx);
+
+   unsigned offset = binary->size;
+   agx_pack_binary(ctx, binary);
+
+   /* Don't dump statistics for preambles, since they're not worth optimizing */
+   if (!impl->function->is_preamble) {
+      char *stats;
+      int ret = agx_dump_stats(ctx, binary->size, &stats);
+
+      if (ret >= 0) {
+         if (agx_should_dump(nir, AGX_DBG_SHADERDB))
+            fprintf(stderr, "SHADER-DB: %s - %s\n", nir->info.label ?: "", stats);
+
+         if (debug)
+            util_debug_message(debug, SHADER_INFO, "%s", stats);
+
+         free(stats);
+      }
+   }
+
+   ralloc_free(ctx);
+
+   return offset;
+}
+
 void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
@@ -1746,19 +1834,12 @@ agx_compile_shader_nir(nir_shader *nir,
 {
    agx_debug = debug_get_option_agx_debug();
 
-   agx_context *ctx = rzalloc(NULL, agx_context);
-   ctx->nir = nir;
-   ctx->out = out;
-   ctx->key = key;
-   ctx->stage = nir->info.stage;
-   list_inithead(&ctx->blocks);
-
    memset(out, 0, sizeof *out);
 
-   if (ctx->stage == MESA_SHADER_VERTEX) {
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
       out->writes_psiz = nir->info.outputs_written &
          BITFIELD_BIT(VARYING_SLOT_PSIZ);
-   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
    }
 
@@ -1774,7 +1855,7 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
          glsl_type_size, 0);
-   if (ctx->stage == MESA_SHADER_FRAGMENT) {
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
        * exception, interpolate flat shaded at fp32. This works around a
        * hardware limitation. The resulting code (with an extra f2f16 at the end
@@ -1791,7 +1872,7 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_ssbo);
 
    /* Varying output is scalar, other I/O is vector */
-   if (ctx->stage == MESA_SHADER_VERTEX) {
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
    }
 
@@ -1823,82 +1904,24 @@ agx_compile_shader_nir(nir_shader *nir,
                                           nir_lower_terminate_if_to_cf));
 
    /* Must be last since NIR passes can remap driver_location freely */
-   if (ctx->stage == MESA_SHADER_VERTEX)
+   if (nir->info.stage == MESA_SHADER_VERTEX)
       agx_remap_varyings_vs(nir, &out->varyings.vs);
 
-   bool skip_internal = nir->info.internal;
-   skip_internal &= !(agx_debug & AGX_DBG_INTERNAL);
-
-   if (agx_debug & AGX_DBG_SHADERS && !skip_internal) {
+   if (agx_should_dump(nir, AGX_DBG_SHADERS))
       nir_print_shader(nir, stdout);
-   }
-
-   ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
 
    nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
+      if (!func->impl) continue;
 
-      nir_index_blocks(func->impl);
+      unsigned offset = agx_compile_function_nir(nir, func->impl, key, debug, binary, out);
 
-      ctx->indexed_nir_blocks =
-         rzalloc_array(ctx, agx_block *, func->impl->num_blocks);
-
-      ctx->alloc += func->impl->ssa_alloc;
-      emit_cf_list(ctx, &func->impl->body);
-      agx_emit_phis_deferred(ctx);
-      break; /* TODO: Multi-function shaders */
-   }
-
-   /* Terminate the shader after the exit block */
-   agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
-   agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
-   agx_stop(&_b);
-
-   /* Index blocks now that we're done emitting so the order is consistent */
-   agx_foreach_block(ctx, block)
-      block->index = ctx->num_blocks++;
-
-   agx_validate(ctx, "IR translation");
-
-   if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
-      agx_print_shader(ctx, stdout);
-
-   if (likely(!(agx_debug & AGX_DBG_NOOPT))) {
-      agx_optimizer(ctx);
-      agx_dce(ctx);
-      agx_validate(ctx, "Optimization");
-
-      if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
-         agx_print_shader(ctx, stdout);
-   }
-
-   agx_ra(ctx);
-
-   if (ctx->stage == MESA_SHADER_VERTEX)
-      agx_set_st_vary_final(ctx);
-
-   if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
-      agx_print_shader(ctx, stdout);
-
-   agx_lower_pseudo(ctx);
-
-   agx_pack_binary(ctx, binary);
-
-   if (!skip_internal) {
-      char *stats;
-      int ret = agx_dump_stats(ctx, binary->size, &stats);
-
-      if (ret >= 0) {
-         if (agx_debug & AGX_DBG_SHADERDB)
-            fprintf(stderr, "SHADER-DB: %s - %s\n", nir->info.label ?: "", stats);
-
-         if (debug)
-            util_debug_message(debug, SHADER_INFO, "%s", stats);
-
-         free(stats);
+      if (func->is_preamble) {
+         out->preamble_offset = offset;
+         out->has_preamble = true;
+      } else if (func->is_entrypoint) {
+         out->main_offset = offset;
+      } else {
+         unreachable("General functions not yet supported");
       }
    }
-
-   ralloc_free(ctx);
 }
