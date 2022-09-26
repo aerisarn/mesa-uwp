@@ -2727,8 +2727,9 @@ lp_build_clamp_border_color(struct lp_build_sample_context *bld,
     * we just cast the pointer to float array to pointer to vec4
     * (int or float).
     */
-   border_color_ptr = lp_build_array_get_ptr(gallivm, border_color_ptr,
-                                             lp_build_const_int32(gallivm, 0));
+   LLVMTypeRef border_color_type = LLVMArrayType(LLVMFloatTypeInContext(gallivm->context), 4);
+   border_color_ptr = lp_build_array_get_ptr2(gallivm, border_color_type, border_color_ptr,
+                                              lp_build_const_int32(gallivm, 0));
    border_color_ptr = LLVMBuildBitCast(builder, border_color_ptr,
                                        LLVMPointerType(vec4_bld.vec_type, 0), "");
    border_color = LLVMBuildLoad2(builder, vec4_bld.vec_type, border_color_ptr, "");
