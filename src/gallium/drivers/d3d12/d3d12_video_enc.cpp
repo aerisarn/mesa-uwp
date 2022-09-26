@@ -1279,7 +1279,7 @@ fail:
 }
 
 void
-d3d12_video_encoder_calculate_metadata_resolved_buffer_size(uint32_t maxSliceNumber, size_t &bufferSize)
+d3d12_video_encoder_calculate_metadata_resolved_buffer_size(uint32_t maxSliceNumber, uint64_t &bufferSize)
 {
    bufferSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA) +
                 (maxSliceNumber * sizeof(D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA));
@@ -1727,7 +1727,7 @@ void
 d3d12_video_encoder_extract_encode_metadata(
    struct d3d12_video_encoder *                               pD3D12Enc,
    ID3D12Resource *                                           pResolvedMetadataBuffer,   // input
-   size_t                                                     resourceMetadataSize,      // input
+   uint64_t                                                   resourceMetadataSize,      // input
    D3D12_VIDEO_ENCODER_OUTPUT_METADATA &                      parsedMetadata,            // output
    std::vector<D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA> &pSubregionsMetadata        // output
 )
@@ -1765,7 +1765,7 @@ d3d12_video_encoder_extract_encode_metadata(
    memset(&parsedMetadata, 0, sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA));
 
    // Calculate sizes
-   size_t encoderMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA);
+   uint64_t encoderMetadataSize = sizeof(D3D12_VIDEO_ENCODER_OUTPUT_METADATA);
 
    // Copy buffer to the appropriate D3D12_VIDEO_ENCODER_OUTPUT_METADATA memory layout
    parsedMetadata = *reinterpret_cast<D3D12_VIDEO_ENCODER_OUTPUT_METADATA *>(pMetadataBufferSrc);

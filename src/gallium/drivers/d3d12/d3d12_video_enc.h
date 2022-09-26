@@ -253,8 +253,8 @@ struct d3d12_video_encoder
    struct EncodedBitstreamResolvedMetadata
    {
       ComPtr<ID3D12Resource> spBuffer;
-      size_t bufferSize = 0;
-      size_t codecHeadersSize = 0;
+      uint64_t bufferSize = 0;
+      uint64_t codecHeadersSize = 0;
       ComPtr<ID3D12Resource> m_spMetadataOutputBuffer;
    };
 
@@ -317,7 +317,7 @@ d3d12_video_encoder_update_picparams_tracking(struct d3d12_video_encoder *pD3D12
                                               struct pipe_video_buffer *  srcTexture,
                                               struct pipe_picture_desc *  picture);
 void
-d3d12_video_encoder_calculate_metadata_resolved_buffer_size(uint32_t maxSliceNumber, size_t &bufferSize);
+d3d12_video_encoder_calculate_metadata_resolved_buffer_size(uint32_t maxSliceNumber, uint64_t &bufferSize);
 uint32_t
 d3d12_video_encoder_calculate_max_slices_count_in_output(
    D3D12_VIDEO_ENCODER_FRAME_SUBREGION_LAYOUT_MODE                          slicesMode,
@@ -335,7 +335,7 @@ void
 d3d12_video_encoder_extract_encode_metadata(
    struct d3d12_video_encoder *                               pD3D12Dec,
    ID3D12Resource *                                           pResolvedMetadataBuffer,
-   size_t                                                     resourceMetadataSize,
+   uint64_t                                                   resourceMetadataSize,
    D3D12_VIDEO_ENCODER_OUTPUT_METADATA &                      encoderMetadata,
    std::vector<D3D12_VIDEO_ENCODER_FRAME_SUBREGION_METADATA> &pSubregionsMetadata);
 
