@@ -382,9 +382,12 @@ agx_ra(agx_context *ctx)
             if (agx_is_null(ins->src[i])) continue;
             assert(ins->src[i].size == ins->dest[0].size);
 
+            bool is_uniform = ins->src[i].type == AGX_INDEX_UNIFORM;
+
             copies[n++] = (struct agx_copy) {
                .dest = base + (i * width),
-               .src = agx_index_to_reg(ssa_to_reg, ins->src[i]) ,
+               .is_uniform = is_uniform,
+               .src = is_uniform ? ins->src[i].value : agx_index_to_reg(ssa_to_reg, ins->src[i]),
                .size = ins->src[i].size
             };
          }
