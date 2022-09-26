@@ -71,7 +71,7 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
    indices[2] = lp_build_const_int32(gallivm, member_index);
 
    LLVMTypeRef buffer_type = lp_build_create_jit_buffer_type(gallivm);
-   LLVMTypeRef buffers_type = LLVMArrayType(buffer_type, LP_MAX_TGSI_CONST_BUFFERS);
+   LLVMTypeRef buffers_type = LLVMArrayType(buffer_type, buffers_limit);
    LLVMValueRef ptr = LLVMBuildGEP2(builder, buffers_type, buffers_ptr, indices, ARRAY_SIZE(indices), "");
 
    LLVMTypeRef res_type = LLVMStructGetTypeAtIndex(buffer_type, member_index);
