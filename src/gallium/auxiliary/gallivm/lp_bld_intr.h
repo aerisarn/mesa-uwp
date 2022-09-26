@@ -41,6 +41,7 @@
 #include "gallivm/lp_bld.h"
 #include "gallivm/lp_bld_init.h"
 
+struct lp_type;
 
 /**
  * Max number of arguments in an intrinsic.
@@ -57,6 +58,7 @@ enum lp_func_attr {
    LP_FUNC_ATTR_WRITEONLY    = (1 << 7),
    LP_FUNC_ATTR_INACCESSIBLE_MEM_ONLY = (1 << 8),
    LP_FUNC_ATTR_CONVERGENT   = (1 << 9),
+   LP_FUNC_ATTR_PRESPLITCORO = (1 << 10),
 
    /* Legacy intrinsic that needs attributes on function declarations
     * and they must match the internal LLVM definition exactly, otherwise
