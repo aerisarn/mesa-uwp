@@ -806,6 +806,8 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
                                        enum pipe_video_profile profile,
                                        enum pipe_video_entrypoint entrypoint)
 {
+   struct si_screen *sscreen = (struct si_screen *)screen;
+
    /* HEVC 10 bit decoding should use P010 instead of NV12 if possible */
    if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
       return (format == PIPE_FORMAT_NV12) || (format == PIPE_FORMAT_P010) ||
@@ -814,6 +816,16 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
    /* Vp9 profile 2 supports 10 bit decoding using P016 */
    if (profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
       return (format == PIPE_FORMAT_P010) || (format == PIPE_FORMAT_P016);
+
+   /* JPEG supports YUV400 and YUV444 */
+   if (profile == PIPE_VIDEO_PROFILE_JPEG_BASELINE) {
+      if (sscreen->info.family >= CHIP_NAVI21)
+         return (format == PIPE_FORMAT_NV12 || format == PIPE_FORMAT_Y8_400_UNORM ||
+                 format == PIPE_FORMAT_Y8_U8_V8_444_UNORM);
+      else
+         return (format == PIPE_FORMAT_NV12);
+
+   }
 
    /* we can only handle this one with UVD */
    if (profile != PIPE_VIDEO_PROFILE_UNKNOWN)
