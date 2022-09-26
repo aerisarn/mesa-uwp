@@ -1636,9 +1636,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    return VK_SUCCESS;
 }
 
-static void
-pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer *const cmd_buffer,
-                               bool start_geom)
+void pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer *const cmd_buffer,
+                                    bool start_geom)
 {
    struct vk_dynamic_graphics_state *const dynamic_state =
       &cmd_buffer->vk.dynamic_graphics_state;
@@ -2165,7 +2164,7 @@ static VkResult pvr_init_render_targets(struct pvr_device *device,
    return VK_SUCCESS;
 }
 
-static const struct pvr_renderpass_hwsetup_subpass *
+const struct pvr_renderpass_hwsetup_subpass *
 pvr_get_hw_subpass(const struct pvr_render_pass *pass, const uint32_t subpass)
 {
    const struct pvr_renderpass_hw_map *map =

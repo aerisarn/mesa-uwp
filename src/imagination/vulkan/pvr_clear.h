@@ -185,4 +185,9 @@ void pvr_pack_clear_vdm_state(
    uint32_t layer_count,
    uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT]);
 
+VkResult pvr_clear_vertices_upload(struct pvr_device *device,
+                                   const VkRect2D *rect,
+                                   float depth,
+                                   struct pvr_bo **const pvr_bo_out);
+
 #endif /* PVR_CLEAR_H */

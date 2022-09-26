@@ -1586,6 +1586,12 @@ void pvr_device_destroy_compute_query_programs(struct pvr_device *device);
 VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
                                const struct pvr_query_info *query_info);
 
+void pvr_reset_graphics_dirty_state(struct pvr_cmd_buffer *const cmd_buffer,
+                                    bool start_geom);
+
+const struct pvr_renderpass_hwsetup_subpass *
+pvr_get_hw_subpass(const struct pvr_render_pass *pass, const uint32_t subpass);
+
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)
 

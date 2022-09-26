@@ -237,10 +237,10 @@ VkResult pvr_emit_ppp_from_template(
  * \param[out] pvr_bo_out  BO upload object.
  * \return VK_SUCCESS if the upload succeeded.
  */
-static VkResult pvr_clear_vertices_upload(struct pvr_device *device,
-                                          const VkRect2D *rect,
-                                          float depth,
-                                          struct pvr_bo **const pvr_bo_out)
+VkResult pvr_clear_vertices_upload(struct pvr_device *device,
+                                   const VkRect2D *rect,
+                                   float depth,
+                                   struct pvr_bo **const pvr_bo_out)
 {
    const float y1 = (float)(rect->offset.y + rect->extent.height);
    const float x1 = (float)(rect->offset.x + rect->extent.width);
