@@ -92,22 +92,6 @@ fixup_regfootprint(struct ir3_shader_variant *v)
       }
    }
 
-   for (i = 0; i < v->outputs_count; i++) {
-      /* for ex, VS shaders with tess don't have normal varying outs: */
-      if (!VALIDREG(v->outputs[i].regid))
-         continue;
-      int32_t regid = v->outputs[i].regid + 3;
-      if (v->outputs[i].half) {
-         if (!v->mergedregs) {
-            v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
-         } else {
-            v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
-         }
-      } else {
-         v->info.max_reg = MAX2(v->info.max_reg, regid >> 2);
-      }
-   }
-
    for (i = 0; i < v->num_sampler_prefetch; i++) {
       unsigned n = util_last_bit(v->sampler_prefetch[i].wrmask) - 1;
       int32_t regid = v->sampler_prefetch[i].dst + n;
