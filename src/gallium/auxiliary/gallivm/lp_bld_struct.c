@@ -234,6 +234,35 @@ lp_build_pointer_get_unaligned(LLVMBuilderRef builder,
    return res;
 }
 
+LLVMValueRef
+lp_build_pointer_get_unaligned2(LLVMBuilderRef builder,
+                                LLVMTypeRef ptr_type,
+                                LLVMValueRef ptr,
+                                LLVMValueRef index,
+                                unsigned alignment)
+{
+   LLVMValueRef element_ptr;
+   LLVMValueRef res;
+   assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
+   element_ptr = LLVMBuildGEP2(builder, ptr_type, ptr, &index, 1, "");
+   res = LLVMBuildLoad2(builder, ptr_type, element_ptr, "");
+   if (alignment)
+      LLVMSetAlignment(res, alignment);
+#ifdef DEBUG
+   lp_build_name(res, "%s[%s]", LLVMGetValueName(ptr), LLVMGetValueName(index));
+#endif
+   return res;
+}
+
+
+LLVMValueRef
+lp_build_pointer_get2(LLVMBuilderRef builder,
+                      LLVMTypeRef ptr_type,
+                      LLVMValueRef ptr,
+                      LLVMValueRef index)
+{
+  return lp_build_pointer_get_unaligned2(builder, ptr_type, ptr, index, 0);
+}
 
 void
 lp_build_pointer_set(LLVMBuilderRef builder,

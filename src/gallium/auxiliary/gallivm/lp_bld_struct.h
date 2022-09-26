@@ -153,6 +153,30 @@ lp_build_pointer_get_unaligned(LLVMBuilderRef builder,
                                unsigned alignment);
 
 /**
+ * Get the value of an array element.
+ * This takes the explicit LLVM type of ptr, as required by LLVM-15 opaque-pointers.
+ */
+LLVMValueRef
+lp_build_pointer_get2(LLVMBuilderRef builder,
+                      LLVMTypeRef ptr_type,
+                      LLVMValueRef ptr,
+                      LLVMValueRef index);
+
+/**
+ * Get the value of an array element, with explicit alignment, and explicit type,
+ * This takes the explicit LLVM type of ptr, as required by LLVM-15 opaque-pointers.
+ *
+ * If the element size is different from the alignment this will
+ * cause llvm to emit an unaligned load
+ */
+LLVMValueRef
+lp_build_pointer_get_unaligned2(LLVMBuilderRef builder,
+                                LLVMTypeRef ptr_type,
+                                LLVMValueRef ptr,
+                                LLVMValueRef index,
+                                unsigned alignment);
+
+/**
  * Set the value of an array element.
  */
 void
