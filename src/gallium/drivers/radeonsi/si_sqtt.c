@@ -24,6 +24,7 @@
  */
 
 
+#include "hash_table.h"
 #include "si_pipe.h"
 #include "si_build_pm4.h"
 #include "si_compute.h"
@@ -54,6 +55,8 @@ si_thread_trace_init_bo(struct si_context *sctx)
    size = align64(sizeof(struct ac_thread_trace_info) * max_se,
                   1 << SQTT_BUFFER_ALIGN_SHIFT);
    size += sctx->thread_trace->buffer_size * (uint64_t)max_se;
+
+   sctx->thread_trace->pipeline_bos = _mesa_hash_table_u64_create(NULL);
 
    sctx->thread_trace->bo =
       ws->buffer_create(ws, size, 4096,
@@ -697,6 +700,12 @@ si_destroy_thread_trace(struct si_context *sctx)
    }
    simple_mtx_destroy(&sctx->thread_trace->rgp_code_object.lock);
 
+   hash_table_foreach(sctx->thread_trace->pipeline_bos->table, entry) {
+      struct si_sqtt_fake_pipeline *pipeline = (struct si_sqtt_fake_pipeline *)entry->data;
+      si_resource_reference(&pipeline->bo, NULL);
+      FREE(pipeline);
+   }
+
    free(sctx->thread_trace);
    sctx->thread_trace = NULL;
 
@@ -1010,7 +1019,7 @@ si_sqtt_pipe_to_rgp_shader_stage(union si_shader_key* key, enum pipe_shader_type
 
 static bool
 si_sqtt_add_code_object(struct si_context* sctx,
-                        uint64_t pipeline_hash,
+                        struct si_sqtt_fake_pipeline *pipeline,
                         bool is_compute)
 {
    struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
@@ -1023,8 +1032,8 @@ si_sqtt_add_code_object(struct si_context* sctx,
 
    record->shader_stages_mask = 0;
    record->num_shaders_combined = 0;
-   record->pipeline_hash[0] = pipeline_hash;
-   record->pipeline_hash[1] = pipeline_hash;
+   record->pipeline_hash[0] = pipeline->code_hash;
+   record->pipeline_hash[1] = pipeline->code_hash;
 
    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
       struct si_shader *shader;
@@ -1051,7 +1060,7 @@ si_sqtt_add_code_object(struct si_context* sctx,
       }
       memcpy(code, shader->binary.uploaded_code, shader->binary.uploaded_code_size);
 
-      uint64_t va = shader->bo->gpu_address;
+      uint64_t va = pipeline->bo->gpu_address + pipeline->offset[i];
       unsigned gl_shader_stage = tgsi_processor_to_shader_stage(i);
       record->shader_data[gl_shader_stage].hash[0] = _mesa_hash_data(code, shader->binary.uploaded_code_size);
       record->shader_data[gl_shader_stage].hash[1] = record->shader_data[gl_shader_stage].hash[0];
@@ -1079,21 +1088,21 @@ si_sqtt_add_code_object(struct si_context* sctx,
 }
 
 bool
-si_sqtt_register_pipeline(struct si_context* sctx, uint64_t pipeline_hash, uint64_t base_address, bool is_compute)
+si_sqtt_register_pipeline(struct si_context* sctx, struct si_sqtt_fake_pipeline *pipeline, bool is_compute)
 {
    struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
 
-   assert (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_hash));
+   assert (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline->code_hash));
 
-   bool result = ac_sqtt_add_pso_correlation(thread_trace_data, pipeline_hash);
+   bool result = ac_sqtt_add_pso_correlation(thread_trace_data, pipeline->code_hash);
    if (!result)
       return false;
 
-   result = ac_sqtt_add_code_object_loader_event(thread_trace_data, pipeline_hash, base_address);
+   result = ac_sqtt_add_code_object_loader_event(thread_trace_data, pipeline->code_hash, pipeline->bo->gpu_address);
    if (!result)
       return false;
 
-   return si_sqtt_add_code_object(sctx, pipeline_hash, is_compute);
+   return si_sqtt_add_code_object(sctx, pipeline, is_compute);
 }
 
 void
