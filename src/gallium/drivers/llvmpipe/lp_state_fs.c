@@ -3243,8 +3243,9 @@ generate_fragment(struct llvmpipe_context *lp,
     */
    if (shader->info.base.num_instructions > 1) {
       LLVMValueRef invocs, val;
+      LLVMTypeRef invocs_type = LLVMInt64TypeInContext(gallivm->context);
       invocs = lp_jit_thread_data_invocations(gallivm, variant->jit_thread_data_type, thread_data_ptr);
-      val = LLVMBuildLoad(builder, invocs, "");
+      val = LLVMBuildLoad2(builder, invocs_type, invocs, "");
       val = LLVMBuildAdd(builder, val,
                          LLVMConstInt(LLVMInt64TypeInContext(gallivm->context),
                                       1, 0),
