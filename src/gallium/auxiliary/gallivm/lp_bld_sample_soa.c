@@ -4669,7 +4669,9 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
       LLVMVectorType(ref_type, type.length);
    LLVMValueRef atom_res = lp_build_alloca(gallivm, atom_res_elem_type, "");
 
-   offset = LLVMBuildGEP(gallivm->builder, base_ptr, &offset, 1, "");
+   offset = LLVMBuildGEP2(gallivm->builder,
+                          LLVMInt8TypeInContext(gallivm->context),
+                          base_ptr, &offset, 1, "");
 
    struct lp_build_loop_state loop_state;
    lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
