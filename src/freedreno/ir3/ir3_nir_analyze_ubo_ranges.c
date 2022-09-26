@@ -425,7 +425,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 
    memset(state, 0, sizeof(*state));
 
-   uint32_t upload_remaining = max_upload - v->num_reserved_user_consts * 16;
+   uint32_t upload_remaining = max_upload;
    bool push_ubos = compiler->push_ubo_with_preamble;
    nir_foreach_function (function, nir) {
       if (function->impl && (!push_ubos || !function->is_preamble)) {
@@ -449,16 +449,16 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
     * first.
     */
 
-   uint32_t offset = v->num_reserved_user_consts * 16;
+   uint32_t offset = 0;
    for (uint32_t i = 0; i < state->num_enabled; i++) {
       uint32_t range_size = state->range[i].end - state->range[i].start;
 
       assert(offset <= max_upload);
-      state->range[i].offset = offset;
+      state->range[i].offset = offset + v->num_reserved_user_consts * 16;
       assert(offset <= max_upload);
       offset += range_size;
    }
-   state->size = offset - v->num_reserved_user_consts * 16;
+   state->size = offset;
 }
 
 bool
