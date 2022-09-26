@@ -2569,12 +2569,9 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct radv_shader_part *prolog;
    struct radv_shader_args args = {0};
    struct radv_nir_compiler_options options = {0};
-   options.family = device->physical_device->rad_info.family;
-   options.gfx_level = device->physical_device->rad_info.gfx_level;
-   options.has_3d_cube_border_color_mipmap = device->physical_device->rad_info.has_3d_cube_border_color_mipmap;
-   options.address32_hi = device->physical_device->rad_info.address32_hi;
-   options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS;
-   options.record_ir = device->instance->debug_flags & RADV_DEBUG_HANG;
+   radv_fill_nir_compiler_options(&options, device, NULL, false,
+                                  device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS, false,
+                                  device->instance->debug_flags & RADV_DEBUG_HANG, false);
 
    struct radv_shader_info info = {0};
    info.wave_size = key->wave32 ? 32 : 64;
@@ -2651,13 +2648,9 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    struct radv_shader_part *epilog;
    struct radv_shader_args args = {0};
    struct radv_nir_compiler_options options = {0};
-   options.family = device->physical_device->rad_info.family;
-   options.gfx_level = device->physical_device->rad_info.gfx_level;
-   options.address32_hi = device->physical_device->rad_info.address32_hi;
-   options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
-   options.record_ir = device->instance->debug_flags & RADV_DEBUG_HANG;
-   options.dump_preoptir = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
-   options.dump_shader = device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS;
+   radv_fill_nir_compiler_options(&options, device, NULL, false,
+                                  device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS, false,
+                                  device->instance->debug_flags & RADV_DEBUG_HANG, false);
 
    struct radv_shader_info info = {0};
    info.wave_size = key->wave32 ? 32 : 64;
