@@ -126,6 +126,7 @@ struct lvp_physical_device {
 
    struct pipe_loader_device *pld;
    struct pipe_screen *pscreen;
+   const nir_shader_compiler_options *drv_options[MESA_SHADER_STAGES];
    uint32_t max_images;
 
    struct vk_sync_timeline_type sync_timeline_type;

@@ -364,7 +364,6 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    struct lvp_device *pdevice = pipeline->device;
    gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
    assert(stage <= MESA_SHADER_COMPUTE && stage != MESA_SHADER_NONE);
-   const nir_shader_compiler_options *drv_options = pdevice->pscreen->get_compiler_options(pipeline->device->pscreen, PIPE_SHADER_IR_NIR, (enum pipe_shader_type)stage);
    VkResult result;
    nir_shader *nir;
 
@@ -420,7 +419,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    };
 
    result = vk_pipeline_shader_stage_to_nir(&pdevice->vk, sinfo,
-                                            &spirv_options, drv_options,
+                                            &spirv_options, pdevice->physical_device->drv_options[stage],
                                             NULL, &nir);
    if (result != VK_SUCCESS)
       return result;
