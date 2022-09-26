@@ -31,6 +31,7 @@
 
 #include "ac_rgp.h"
 #include "ac_sqtt.h"
+#include "u_debug.h"
 #include "util/u_memory.h"
 #include "tgsi/tgsi_from_mesa.h"
 
@@ -402,10 +403,11 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
                      sctx->thread_trace->bo,
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
-   ws->cs_add_buffer(cs,
-                     sctx->spm_trace.bo,
-                     RADEON_USAGE_READWRITE,
-                     RADEON_DOMAIN_VRAM);
+   if (sctx->spm_trace.bo)
+      ws->cs_add_buffer(cs,
+                        sctx->spm_trace.bo,
+                        RADEON_USAGE_READWRITE,
+                        RADEON_DOMAIN_VRAM);
 
    si_cp_dma_wait_for_idle(sctx, cs);
 
@@ -421,15 +423,16 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
    /* Enable SQG events that collects thread trace data. */
    si_emit_spi_config_cntl(sctx, cs, true);
 
-   si_pc_emit_spm_reset(cs);
-
-   si_pc_emit_shaders(cs, 0x7f);
-
-   si_emit_spm_setup(sctx, cs);
+   if (sctx->spm_trace.bo) {
+      si_pc_emit_spm_reset(cs);
+      si_pc_emit_shaders(cs, 0x7f);
+      si_emit_spm_setup(sctx, cs);
+   }
 
    si_emit_thread_trace_start(sctx, cs, family);
 
-   si_pc_emit_spm_start(cs);
+   if (sctx->spm_trace.bo)
+      si_pc_emit_spm_start(cs);
 }
 
 static void
@@ -457,15 +460,17 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
 
-   ws->cs_add_buffer(cs,
-                     sctx->spm_trace.bo,
-                     RADEON_USAGE_READWRITE,
-                     RADEON_DOMAIN_VRAM);
+   if (sctx->spm_trace.bo)
+      ws->cs_add_buffer(cs,
+                        sctx->spm_trace.bo,
+                        RADEON_USAGE_READWRITE,
+                        RADEON_DOMAIN_VRAM);
 
    si_cp_dma_wait_for_idle(sctx, cs);
 
-   si_pc_emit_spm_stop(cs, sctx->screen->info.never_stop_sq_perf_counters,
-                       sctx->screen->info.never_send_perfcounter_stop);
+   if (sctx->spm_trace.bo)
+      si_pc_emit_spm_stop(cs, sctx->screen->info.never_stop_sq_perf_counters,
+                          sctx->screen->info.never_send_perfcounter_stop);
 
    /* Make sure to wait-for-idle before stopping SQTT. */
    sctx->flags |=
@@ -476,7 +481,8 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    si_emit_thread_trace_stop(sctx, cs, family);
 
-   si_pc_emit_spm_reset(cs);
+   if (sctx->spm_trace.bo)
+      si_pc_emit_spm_reset(cs);
 
    /* Restore previous state by disabling SQG events. */
    si_emit_spi_config_cntl(sctx, cs, false);
@@ -642,7 +648,7 @@ si_init_thread_trace(struct si_context *sctx)
    list_inithead(&sctx->thread_trace->rgp_code_object.record);
    simple_mtx_init(&sctx->thread_trace->rgp_code_object.lock, mtx_plain);
 
-   if (sctx->gfx_level >= GFX10) {
+   if (sctx->gfx_level >= GFX10 && debug_get_bool_option("AMD_THREAD_TRACE_SPM", true)) {
       /* Limit SPM counters to GFX10+ for now */
       ASSERTED bool r = si_spm_init(sctx);
       assert(r);
@@ -709,7 +715,7 @@ si_destroy_thread_trace(struct si_context *sctx)
    free(sctx->thread_trace);
    sctx->thread_trace = NULL;
 
-   if (sctx->gfx_level >= GFX10)
+   if (sctx->spm_trace.bo)
       si_spm_finish(sctx);
 }
 
@@ -762,11 +768,11 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
       if (sctx->ws->fence_wait(sctx->ws, sctx->last_sqtt_fence, PIPE_TIMEOUT_INFINITE) &&
           si_get_thread_trace(sctx, &thread_trace)) {
          /* Map the SPM counter buffer */
-         if (sctx->gfx_level >= GFX10)
+         if (sctx->spm_trace.bo)
             sctx->spm_trace.ptr = sctx->ws->buffer_map(sctx->ws, sctx->spm_trace.bo,
                                                        NULL, PIPE_MAP_READ | RADEON_MAP_TEMPORARY);
 
-         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, &sctx->spm_trace);
+         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, sctx->spm_trace.bo ? &sctx->spm_trace : NULL);
 
          if (sctx->spm_trace.ptr)
             sctx->ws->buffer_unmap(sctx->ws, sctx->spm_trace.bo);
