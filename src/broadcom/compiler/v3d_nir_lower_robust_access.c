@@ -188,10 +188,128 @@ lower_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
         }
 }
 
+static void
+lower_image(struct v3d_compile *c,
+            nir_builder *b,
+            nir_intrinsic_instr *instr)
+{
+        b->cursor = nir_before_instr(&instr->instr);
+
+        uint32_t num_coords = nir_image_intrinsic_coord_components(instr);
+        bool is_array = nir_intrinsic_image_array(instr);
+        uint32_t image_idx = nir_src_as_uint(instr->src[0]);
+        nir_ssa_def *coord = instr->src[1].ssa;
+
+        /* Get image size */
+        nir_intrinsic_instr *size_inst =
+                nir_intrinsic_instr_create(c->s, nir_intrinsic_image_size);
+        size_inst->src[0] = nir_src_for_ssa(nir_imm_int(b, image_idx));
+        size_inst->src[1] = nir_src_for_ssa(nir_imm_int(b, 0));
+        nir_intrinsic_set_image_array(size_inst, is_array);
+        size_inst->num_components = num_coords;
+        nir_ssa_dest_init(&size_inst->instr, &size_inst->dest,
+                          num_coords, 32, NULL);
+        nir_ssa_def *size = &size_inst->dest.ssa;
+        nir_builder_instr_insert(b, &size_inst->instr);
+
+        /* Emit condition for out-of-bounds access */
+        nir_ssa_def *x = nir_channel(b, coord, 0);
+        nir_ssa_def *w = nir_channel(b, size, 0);
+        nir_ssa_def *oob_cond = nir_uge(b, x, w);
+
+        if (num_coords > 1) {
+                nir_ssa_def *y = nir_channel(b, coord, 1);
+                nir_ssa_def *h = nir_channel(b, size, 1);
+                oob_cond = nir_ior(b, oob_cond, nir_uge(b, y, h));
+        }
+
+        if (num_coords > 2) {
+                nir_ssa_def *z = nir_channel(b, coord, 2);
+                nir_ssa_def *d = nir_channel(b, size, 2);
+                if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_CUBE)
+                        d = nir_imul(b, nir_imm_int(b, 6), d);
+                oob_cond = nir_ior(b, oob_cond, nir_uge(b, z, d));
+        }
+
+        if (instr->intrinsic != nir_intrinsic_image_store) {
+                /* For out of bounds loads/atomics we want to return a zero
+                 * result. Loads may happen on integer or float images, but
+                 * because a zero vector has the same bit representation for
+                 * both we don't need to know the image format to return a
+                 * valid vector.
+                 *
+                 * Notice we can't use bcsel for this since we need to prevent
+                 * execution of the original instruction in case of OOB access.
+                 */
+                nir_ssa_def *res1, *res2;
+                nir_push_if(b, oob_cond);
+                        if (instr->intrinsic == nir_intrinsic_image_load)
+                                res1 = nir_imm_vec4(b, 0, 0, 0, 0);
+                        else
+                                res1 = nir_imm_int(b, 0);
+                nir_push_else(b, NULL);
+                        nir_instr *orig =
+                                nir_instr_clone(b->shader, &instr->instr);
+                        nir_builder_instr_insert(b, orig);
+                        res2 = &nir_instr_as_intrinsic(orig)->dest.ssa;
+                nir_pop_if(b, NULL);
+                nir_ssa_def *res = nir_if_phi(b, res1, res2);
+                nir_ssa_def_rewrite_uses(&instr->dest.ssa, res);
+        } else {
+                /* Drop OOB stores */
+                assert(instr->intrinsic == nir_intrinsic_image_store);
+                nir_push_if(b, nir_inot(b, oob_cond));
+                        nir_instr *orig =
+                                nir_instr_clone(b->shader, &instr->instr);
+                        nir_builder_instr_insert(b, orig);
+                nir_pop_if(b, NULL);
+        }
+
+        /* Drop original instruction */
+        nir_instr_remove(&instr->instr);
+}
+
+static bool
+lower_image_instr(nir_builder *b, nir_instr *instr, void *_state)
+{
+        struct v3d_compile *c = _state;
+
+        if (instr->type != nir_instr_type_intrinsic)
+                return false;
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+        switch (intr->intrinsic) {
+        case nir_intrinsic_image_load:
+        case nir_intrinsic_image_store:
+        case nir_intrinsic_image_atomic_add:
+        case nir_intrinsic_image_atomic_imin:
+        case nir_intrinsic_image_atomic_umin:
+        case nir_intrinsic_image_atomic_imax:
+        case nir_intrinsic_image_atomic_umax:
+        case nir_intrinsic_image_atomic_and:
+        case nir_intrinsic_image_atomic_or:
+        case nir_intrinsic_image_atomic_xor:
+        case nir_intrinsic_image_atomic_exchange:
+        case nir_intrinsic_image_atomic_comp_swap:
+                lower_image(c, b, intr);
+                return true;
+        default:
+                return false;
+        }
+}
+
 bool
 v3d_nir_lower_robust_buffer_access(nir_shader *s, struct v3d_compile *c)
 {
         return nir_shader_instructions_pass(s, lower_buffer_instr,
+                                            nir_metadata_block_index |
+                                            nir_metadata_dominance, c);
+}
+
+bool
+v3d_nir_lower_robust_image_access(nir_shader *s, struct v3d_compile *c)
+{
+        return nir_shader_instructions_pass(s, lower_image_instr,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance, c);
 }
