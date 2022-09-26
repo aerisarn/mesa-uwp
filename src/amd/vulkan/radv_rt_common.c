@@ -431,56 +431,61 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
    intersection.t = nir_channel(b, result, 0);
    nir_ssa_def *div = nir_channel(b, result, 1);
    intersection.t = nir_fdiv(b, intersection.t, div);
-   intersection.frontface = nir_flt(b, nir_imm_float(b, 0), div);
-   nir_ssa_def *switch_ccw = nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
-                                           VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR << 24);
-   intersection.frontface = nir_ixor(b, intersection.frontface, switch_ccw);
 
-   nir_ssa_def *not_cull =
-      nir_inot(b, nir_test_mask(b, args->flags, SpvRayFlagsSkipTrianglesKHRMask));
-   nir_ssa_def *not_facing_cull =
-      nir_ieq_imm(b,
-                  nir_iand(b, args->flags,
-                           nir_bcsel(b, intersection.frontface,
-                                     nir_imm_int(b, SpvRayFlagsCullFrontFacingTrianglesKHRMask),
-                                     nir_imm_int(b, SpvRayFlagsCullBackFacingTrianglesKHRMask))),
-                  0);
-
-   not_cull = nir_iand(
-      b, not_cull,
-      nir_ior(b, not_facing_cull,
-              nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
-                            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)));
-
-   nir_push_if(b,
-               nir_iand(b,
-                        nir_iand(b, nir_flt(b, intersection.t, nir_load_deref(b, args->vars.tmax)),
-                                 nir_flt(b, args->tmin, intersection.t)),
-                        not_cull));
+   nir_push_if(b, nir_flt(b, intersection.t, nir_load_deref(b, args->vars.tmax)));
    {
-      intersection.base.node_addr = build_node_to_addr(device, b, bvh_node);
-      nir_ssa_def *triangle_info =
-         nir_build_load_global(b, 2, 32,
-                               nir_iadd_imm(b, intersection.base.node_addr,
-                                            offsetof(struct radv_bvh_triangle_node, triangle_id)));
-      intersection.base.primitive_id = nir_channel(b, triangle_info, 0);
-      intersection.base.geometry_id_and_flags = nir_channel(b, triangle_info, 1);
-      intersection.base.opaque =
-         hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags), args->flags,
-                       intersection.base.geometry_id_and_flags);
+      intersection.frontface = nir_flt(b, nir_imm_float(b, 0), div);
+      nir_ssa_def *switch_ccw =
+         nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
+                       VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR << 24);
+      intersection.frontface = nir_ixor(b, intersection.frontface, switch_ccw);
 
-      not_cull = nir_ieq_imm(b,
-                             nir_iand(b, args->flags,
-                                      nir_bcsel(b, intersection.base.opaque,
-                                                nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
-                                                nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
-                             0);
-      nir_push_if(b, not_cull);
+      nir_ssa_def *not_cull =
+         nir_inot(b, nir_test_mask(b, args->flags, SpvRayFlagsSkipTrianglesKHRMask));
+      nir_ssa_def *not_facing_cull =
+         nir_ieq_imm(b,
+                     nir_iand(b, args->flags,
+                              nir_bcsel(b, intersection.frontface,
+                                        nir_imm_int(b, SpvRayFlagsCullFrontFacingTrianglesKHRMask),
+                                        nir_imm_int(b, SpvRayFlagsCullBackFacingTrianglesKHRMask))),
+                     0);
+
+      not_cull = nir_iand(
+         b, not_cull,
+         nir_ior(b, not_facing_cull,
+                 nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
+                               VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)));
+
+      nir_push_if(b, nir_iand(b,
+
+                              nir_flt(b, args->tmin, intersection.t), not_cull));
       {
-         nir_ssa_def *divs[2] = {div, div};
-         intersection.barycentrics = nir_fdiv(b, nir_channels(b, result, 0xc), nir_vec(b, divs, 2));
+         intersection.base.node_addr = build_node_to_addr(device, b, bvh_node);
+         nir_ssa_def *triangle_info = nir_build_load_global(
+            b, 2, 32,
+            nir_iadd_imm(b, intersection.base.node_addr,
+                         offsetof(struct radv_bvh_triangle_node, triangle_id)));
+         intersection.base.primitive_id = nir_channel(b, triangle_info, 0);
+         intersection.base.geometry_id_and_flags = nir_channel(b, triangle_info, 1);
+         intersection.base.opaque =
+            hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags), args->flags,
+                          intersection.base.geometry_id_and_flags);
 
-         args->triangle_cb(b, &intersection, args);
+         not_cull = nir_ieq_imm(b,
+                                nir_iand(b, args->flags,
+                                         nir_bcsel(b, intersection.base.opaque,
+                                                   nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
+                                                   nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
+                                0);
+         nir_push_if(b, not_cull);
+         {
+            nir_ssa_def *divs[2] = {div, div};
+            intersection.barycentrics =
+               nir_fdiv(b, nir_channels(b, result, 0xc), nir_vec(b, divs, 2));
+
+            args->triangle_cb(b, &intersection, args);
+         }
+         nir_pop_if(b, NULL);
       }
       nir_pop_if(b, NULL);
    }
