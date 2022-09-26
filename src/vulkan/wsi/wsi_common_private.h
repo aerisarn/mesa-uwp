@@ -63,6 +63,9 @@ struct wsi_drm_image_params {
    const uint64_t *const *modifiers;
 };
 
+typedef uint32_t (*wsi_memory_type_select_cb)(const struct wsi_device *wsi,
+                                              uint32_t type_bits);
+
 struct wsi_image_info {
    VkImageCreateInfo create;
    struct wsi_image_create_info wsi;
@@ -84,10 +87,8 @@ struct wsi_image_info {
    /* For buffer blit images, the size of the buffer in bytes */
    uint32_t linear_size;
 
-   uint32_t (*select_image_memory_type)(const struct wsi_device *wsi,
-                                        uint32_t type_bits);
-   uint32_t (*select_buffer_memory_type)(const struct wsi_device *wsi,
-                                         uint32_t type_bits);
+   wsi_memory_type_select_cb select_image_memory_type;
+   wsi_memory_type_select_cb select_buffer_memory_type;
 
    uint8_t *(*alloc_shm)(struct wsi_image *image, unsigned size);
 
