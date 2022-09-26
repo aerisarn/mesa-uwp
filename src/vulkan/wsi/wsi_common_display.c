@@ -1957,7 +1957,7 @@ wsi_display_surface_create_swapchain(
 
    VkResult result = wsi_swapchain_init(wsi_device, &chain->base, device,
                                         create_info, &image_params.base,
-                                        allocator, false);
+                                        allocator);
    if (result != VK_SUCCESS) {
       vk_free(allocator, chain);
       return result;

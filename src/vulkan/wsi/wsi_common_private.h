@@ -137,7 +137,6 @@ struct wsi_swapchain {
    int signal_dma_buf_from_semaphore;
    VkSemaphore dma_buf_semaphore;
 
-   bool image_info_owned;
    struct wsi_image_info image_info;
    uint32_t image_count;
 
@@ -174,8 +173,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
                    VkDevice device,
                    const VkSwapchainCreateInfoKHR *pCreateInfo,
                    const struct wsi_base_image_params *image_params,
-                   const VkAllocationCallbacks *pAllocator,
-                   bool use_buffer_blit);
+                   const VkAllocationCallbacks *pAllocator);
 
 enum VkPresentModeKHR
 wsi_swapchain_get_present_mode(struct wsi_device *wsi,

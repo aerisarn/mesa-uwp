@@ -321,8 +321,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
                    VkDevice _device,
                    const VkSwapchainCreateInfoKHR *pCreateInfo,
                    const struct wsi_base_image_params *image_params,
-                   const VkAllocationCallbacks *pAllocator,
-                   bool use_buffer_blit)
+                   const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(vk_device, device, _device);
    VkResult result;
@@ -334,16 +333,10 @@ wsi_swapchain_init(const struct wsi_device *wsi,
    chain->wsi = wsi;
    chain->device = _device;
    chain->alloc = *pAllocator;
-
-   chain->use_buffer_blit = use_buffer_blit || (WSI_DEBUG & WSI_DEBUG_BUFFER);
-   if (wsi->sw && !wsi->wants_linear)
-      chain->use_buffer_blit = true;
-
-   if (image_params != NULL && needs_buffer_blit(wsi, image_params))
-      chain->use_buffer_blit = true;
+   chain->use_buffer_blit = needs_buffer_blit(wsi, image_params);
 
    chain->buffer_blit_queue = VK_NULL_HANDLE;
-   if (use_buffer_blit && wsi->get_buffer_blit_queue)
+   if (chain->use_buffer_blit && wsi->get_buffer_blit_queue)
       chain->buffer_blit_queue = wsi->get_buffer_blit_queue(_device);
 
    int cmd_pools_count = chain->buffer_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
@@ -373,14 +366,10 @@ wsi_swapchain_init(const struct wsi_device *wsi,
          goto fail;
    }
 
-   if (image_params != NULL) {
-      result = configure_image(chain, pCreateInfo, image_params,
-                               &chain->image_info);
-      if (result != VK_SUCCESS)
-         goto fail;
-
-      chain->image_info_owned = true;
-   }
+   result = configure_image(chain, pCreateInfo, image_params,
+                            &chain->image_info);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    return VK_SUCCESS;
 
@@ -445,8 +434,7 @@ wsi_swapchain_get_present_mode(struct wsi_device *wsi,
 void
 wsi_swapchain_finish(struct wsi_swapchain *chain)
 {
-   if (chain->image_info_owned)
-      wsi_destroy_image_info(chain, &chain->image_info);
+   wsi_destroy_image_info(chain, &chain->image_info);
 
    if (chain->fences) {
       for (unsigned i = 0; i < chain->image_count; i++)

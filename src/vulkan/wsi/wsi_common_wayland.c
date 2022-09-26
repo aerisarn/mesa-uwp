@@ -1337,7 +1337,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    }
 
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                               pCreateInfo, image_params, pAllocator, false);
+                               pCreateInfo, image_params, pAllocator);
    if (result != VK_SUCCESS) {
       wsi_wl_display_unref(display);
       vk_free(pAllocator, chain);
