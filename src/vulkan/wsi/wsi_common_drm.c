@@ -601,6 +601,7 @@ static VkResult
 wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
                           const VkSwapchainCreateInfoKHR *pCreateInfo,
                           bool use_modifier,
+                          wsi_memory_type_select_cb select_buffer_memory_type,
                           struct wsi_image_info *info)
 {
    VkResult result =
@@ -613,7 +614,7 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
    info->prime_use_linear_modifier = use_modifier;
 
    info->create_mem = wsi_create_prime_image_mem;
-   info->select_buffer_memory_type = prime_select_buffer_memory_type;
+   info->select_buffer_memory_type = select_buffer_memory_type;
    info->select_image_memory_type = wsi_select_device_memory_type;
 
    return VK_SUCCESS;
@@ -623,7 +624,13 @@ bool
 wsi_drm_image_needs_buffer_blit(const struct wsi_device *wsi,
                                 const struct wsi_drm_image_params *params)
 {
-   return !params->same_gpu;
+   if (!params->same_gpu)
+      return true;
+
+   if (params->num_modifier_lists > 0 || wsi->supports_scanout)
+      return false;
+
+   return true;
 }
 
 VkResult
@@ -634,9 +641,13 @@ wsi_drm_configure_image(const struct wsi_swapchain *chain,
 {
    assert(params->base.image_type == WSI_IMAGE_TYPE_DRM);
 
-   if (!params->same_gpu) {
+   if (chain->use_buffer_blit) {
       bool use_modifier = params->num_modifier_lists > 0;
-      return wsi_configure_prime_image(chain, pCreateInfo, use_modifier, info);
+      wsi_memory_type_select_cb select_buffer_memory_type =
+         params->same_gpu ? wsi_select_device_memory_type :
+                            prime_select_buffer_memory_type;
+      return wsi_configure_prime_image(chain, pCreateInfo, use_modifier,
+                                       select_buffer_memory_type, info);
    } else {
       return wsi_configure_native_image(chain, pCreateInfo,
                                         params->num_modifier_lists,

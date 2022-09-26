@@ -76,6 +76,7 @@ wsi_device_init(struct wsi_device *wsi,
 
    wsi->instance_alloc = *alloc;
    wsi->pdevice = pdevice;
+   wsi->supports_scanout = true;
    wsi->sw = sw_device || (WSI_DEBUG & WSI_DEBUG_SW);
    wsi->wants_linear = (WSI_DEBUG & WSI_DEBUG_LINEAR) != 0;
 #define WSI_GET_CB(func) \
