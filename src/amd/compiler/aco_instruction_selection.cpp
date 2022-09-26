@@ -12563,7 +12563,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
    program->config->float_mode = program->blocks[0].fp_mode.val;
    /* addition on GFX6-8 requires a carry-out (we use VCC) */
    program->needs_vcc = program->gfx_level <= GFX8;
-   program->config->num_vgprs = get_vgpr_alloc(program, num_vgprs);
+   program->config->num_vgprs = std::min<uint16_t>(get_vgpr_alloc(program, num_vgprs), 256);
    program->config->num_sgprs = get_sgpr_alloc(program, num_sgprs);
 }
 
