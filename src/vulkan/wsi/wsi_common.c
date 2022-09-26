@@ -300,8 +300,7 @@ configure_image(const struct wsi_swapchain *chain,
    case WSI_IMAGE_TYPE_CPU: {
       const struct wsi_cpu_image_params *cpu_params =
          container_of(params, const struct wsi_cpu_image_params, base);
-      return wsi_configure_cpu_image_with_params(chain, pCreateInfo,
-                                                 cpu_params, info);
+      return wsi_configure_cpu_image(chain, pCreateInfo, cpu_params, info);
    }
 #ifdef HAVE_LIBDRM
    case WSI_IMAGE_TYPE_DRM: {
@@ -1727,15 +1726,30 @@ wsi_create_cpu_buffer_image_mem(const struct wsi_swapchain *chain,
    return VK_SUCCESS;
 }
 
+bool
+wsi_cpu_image_needs_buffer_blit(const struct wsi_device *wsi,
+                                const struct wsi_cpu_image_params *params)
+{
+   if (WSI_DEBUG & WSI_DEBUG_BUFFER)
+      return true;
+
+   if (wsi->wants_linear)
+      return false;
+
+   return true;
+}
+
 VkResult
 wsi_configure_cpu_image(const struct wsi_swapchain *chain,
                         const VkSwapchainCreateInfoKHR *pCreateInfo,
-                        uint8_t *(alloc_shm)(struct wsi_image *image,
-                                             unsigned size),
+                        const struct wsi_cpu_image_params *params,
                         struct wsi_image_info *info)
 {
-   const VkExternalMemoryHandleTypeFlags handle_types =
-      alloc_shm ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT : 0;
+   assert(params->base.image_type == WSI_IMAGE_TYPE_CPU);
+
+   VkExternalMemoryHandleTypeFlags handle_types = 0;
+   if (params->alloc_shm)
+      handle_types = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
 
    if (chain->use_buffer_blit) {
       VkResult result = wsi_configure_buffer_image(chain, pCreateInfo,
@@ -1760,31 +1774,7 @@ wsi_configure_cpu_image(const struct wsi_swapchain *chain,
       info->create_mem = wsi_create_cpu_linear_image_mem;
    }
 
-   info->alloc_shm = alloc_shm;
+   info->alloc_shm = params->alloc_shm;
 
    return VK_SUCCESS;
-}
-
-bool
-wsi_cpu_image_needs_buffer_blit(const struct wsi_device *wsi,
-                                const struct wsi_cpu_image_params *params)
-{
-   if (WSI_DEBUG & WSI_DEBUG_BUFFER)
-      return true;
-
-   if (wsi->wants_linear)
-      return false;
-
-   return true;
-}
-
-VkResult
-wsi_configure_cpu_image_with_params(const struct wsi_swapchain *chain,
-                                    const VkSwapchainCreateInfoKHR *pCreateInfo,
-                                    const struct wsi_cpu_image_params *params,
-                                    struct wsi_image_info *info)
-{
-   assert(params->base.image_type == WSI_IMAGE_TYPE_CPU);
-
-   return wsi_configure_cpu_image(chain, pCreateInfo, params->alloc_shm, info);
 }

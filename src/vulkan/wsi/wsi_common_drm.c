@@ -317,7 +317,7 @@ wsi_create_native_image_mem(const struct wsi_swapchain *chain,
                             const struct wsi_image_info *info,
                             struct wsi_image *image);
 
-VkResult
+static VkResult
 wsi_configure_native_image(const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
                            uint32_t num_modifier_lists,
@@ -597,7 +597,7 @@ wsi_create_prime_image_mem(const struct wsi_swapchain *chain,
    return VK_SUCCESS;
 }
 
-VkResult
+static VkResult
 wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
                           const VkSwapchainCreateInfoKHR *pCreateInfo,
                           bool use_modifier,

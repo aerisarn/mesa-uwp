@@ -200,36 +200,15 @@ wsi_drm_configure_image(const struct wsi_swapchain *chain,
                         const struct wsi_drm_image_params *params,
                         struct wsi_image_info *info);
 
-VkResult
-wsi_configure_native_image(const struct wsi_swapchain *chain,
-                           const VkSwapchainCreateInfoKHR *pCreateInfo,
-                           uint32_t num_modifier_lists,
-                           const uint32_t *num_modifiers,
-                           const uint64_t *const *modifiers,
-                           struct wsi_image_info *info);
-
-VkResult
-wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
-                          const VkSwapchainCreateInfoKHR *pCreateInfo,
-                          bool use_modifier,
-                          struct wsi_image_info *info);
-
-VkResult
-wsi_configure_cpu_image(const struct wsi_swapchain *chain,
-                        const VkSwapchainCreateInfoKHR *pCreateInfo,
-                        uint8_t *(alloc_shm)(struct wsi_image *image,
-                                             unsigned size),
-                        struct wsi_image_info *info);
-
 bool
 wsi_cpu_image_needs_buffer_blit(const struct wsi_device *wsi,
                                 const struct wsi_cpu_image_params *params);
 
 VkResult
-wsi_configure_cpu_image_with_params(const struct wsi_swapchain *chain,
-                                    const VkSwapchainCreateInfoKHR *pCreateInfo,
-                                    const struct wsi_cpu_image_params *params,
-                                    struct wsi_image_info *info);
+wsi_configure_cpu_image(const struct wsi_swapchain *chain,
+                        const VkSwapchainCreateInfoKHR *pCreateInfo,
+                        const struct wsi_cpu_image_params *params,
+                        struct wsi_image_info *info);
 
 VkResult
 wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
