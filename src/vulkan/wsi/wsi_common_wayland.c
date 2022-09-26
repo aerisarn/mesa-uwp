@@ -1225,7 +1225,6 @@ wsi_wl_swapchain_images_free(struct wsi_wl_swapchain *chain)
          }
       }
    }
-   wsi_destroy_image_info(&chain->base, &chain->base.image_info);
 }
 
 static void
@@ -1275,14 +1274,72 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    int num_images = pCreateInfo->minImageCount;
 
+   struct wsi_wl_display *display = NULL;
+   if (pCreateInfo->oldSwapchain) {
+      /* If we have an oldSwapchain parameter, copy the display struct over
+       * from the old one so we don't have to fully re-initialize it.
+       */
+      VK_FROM_HANDLE(wsi_wl_swapchain, old_chain, pCreateInfo->oldSwapchain);
+      display = wsi_wl_display_ref(old_chain->display);
+   } else {
+      result = wsi_wl_display_create(wsi, surface->display,
+                                     wsi_device->sw, &display);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   enum wsi_wl_buffer_type buffer_type;
+   struct wsi_base_image_params *image_params = NULL;
+   struct wsi_cpu_image_params cpu_image_params;
+   struct wsi_drm_image_params drm_image_params;
+   uint32_t num_drm_modifiers = 0;
+   const uint64_t *drm_modifiers = NULL;
+   if (wsi_device->sw) {
+      cpu_image_params = (struct wsi_cpu_image_params) {
+         .base.image_type = WSI_IMAGE_TYPE_CPU,
+      };
+      if (wsi_device->has_import_memory_host &&
+          !(WSI_DEBUG & WSI_DEBUG_NOSHM)) {
+         buffer_type = WSI_WL_BUFFER_GPU_SHM;
+         cpu_image_params.alloc_shm = wsi_wl_alloc_image_shm;
+      } else {
+         buffer_type = WSI_WL_BUFFER_SHM_MEMCPY;
+      }
+      image_params = &cpu_image_params.base;
+   } else {
+      drm_image_params = (struct wsi_drm_image_params) {
+         .base.image_type = WSI_IMAGE_TYPE_DRM,
+         .same_gpu = true,
+      };
+      /* Use explicit DRM format modifiers when both the server and the driver
+       * support them.
+       */
+      if (display->wl_dmabuf && wsi_device->supports_modifiers) {
+         struct wsi_wl_format *f = find_format(&display->formats,
+                                               pCreateInfo->imageFormat);
+         if (f != NULL) {
+            num_drm_modifiers = u_vector_length(&f->modifiers);
+            drm_modifiers = u_vector_tail(&f->modifiers);
+            drm_image_params.num_modifier_lists = 1;
+            drm_image_params.num_modifiers = &num_drm_modifiers;
+            drm_image_params.modifiers = &drm_modifiers;
+         }
+      }
+      buffer_type = WSI_WL_BUFFER_NATIVE;
+      image_params = &drm_image_params.base;
+   }
+
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
    chain = vk_zalloc(pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (chain == NULL)
+   if (chain == NULL) {
+      wsi_wl_display_unref(display);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
 
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                               pCreateInfo, NULL, pAllocator, false);
+                               pCreateInfo, image_params, pAllocator, false);
    if (result != VK_SUCCESS) {
+      wsi_wl_display_unref(display);
       vk_free(pAllocator, chain);
       return result;
    }
@@ -1296,31 +1353,17 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.queue_present = wsi_wl_swapchain_queue_present;
    chain->base.present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
    chain->base.image_count = num_images;
+   chain->display = display;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
-   if (wsi_device->sw) {
-      chain->buffer_type = (chain->base.wsi->has_import_memory_host &&
-                            !(WSI_DEBUG & WSI_DEBUG_NOSHM)) ?
-                           WSI_WL_BUFFER_GPU_SHM : WSI_WL_BUFFER_SHM_MEMCPY;
-      chain->shm_format = wl_shm_format_for_vk_format(chain->vk_format, alpha);
-   } else {
-      chain->buffer_type = WSI_WL_BUFFER_NATIVE;
+   chain->buffer_type = buffer_type;
+   if (buffer_type == WSI_WL_BUFFER_NATIVE) {
       chain->drm_format = wl_drm_format_for_vk_format(chain->vk_format, alpha);
-   }
-
-   if (pCreateInfo->oldSwapchain) {
-      /* If we have an oldSwapchain parameter, copy the display struct over
-       * from the old one so we don't have to fully re-initialize it.
-       */
-      VK_FROM_HANDLE(wsi_wl_swapchain, old_chain, pCreateInfo->oldSwapchain);
-      chain->display = wsi_wl_display_ref(old_chain->display);
    } else {
-      chain->display = NULL;
-      result = wsi_wl_display_create(wsi, surface->display,
-                                     wsi_device->sw, &chain->display);
-      if (result != VK_SUCCESS)
-         goto fail;
+      chain->shm_format = wl_shm_format_for_vk_format(chain->vk_format, alpha);
    }
+   chain->num_drm_modifiers = num_drm_modifiers;
+   chain->drm_modifiers = drm_modifiers;
 
    chain->surface = wl_proxy_create_wrapper(surface->surface);
    if (!chain->surface) {
@@ -1330,47 +1373,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    wl_proxy_set_queue((struct wl_proxy *) chain->surface,
                       chain->display->queue);
 
-   chain->num_drm_modifiers = 0;
-   chain->drm_modifiers = 0;
-
-   /* Use explicit DRM format modifiers when both the server and the driver
-    * support them.
-    */
-   if (chain->display->wl_dmabuf && chain->base.wsi->supports_modifiers) {
-      struct wsi_wl_format *f = find_format(&chain->display->formats, chain->vk_format);
-      if (f) {
-         chain->drm_modifiers = u_vector_tail(&f->modifiers);
-         chain->num_drm_modifiers = u_vector_length(&f->modifiers);
-      }
-   }
-
    chain->fifo_ready = true;
-
-   switch (chain->buffer_type) {
-   case WSI_WL_BUFFER_NATIVE:
-      result = wsi_configure_native_image(&chain->base, pCreateInfo,
-                                          chain->num_drm_modifiers > 0 ? 1 : 0,
-                                          &chain->num_drm_modifiers,
-                                          &chain->drm_modifiers,
-                                          &chain->base.image_info);
-      break;
-
-   case WSI_WL_BUFFER_GPU_SHM:
-      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
-                                       wsi_wl_alloc_image_shm,
-                                       &chain->base.image_info);
-      break;
-
-   case WSI_WL_BUFFER_SHM_MEMCPY:
-      result = wsi_configure_cpu_image(&chain->base, pCreateInfo,
-                                       NULL, &chain->base.image_info);
-      break;
-
-   default:
-      unreachable("Invalid buffer type");
-   }
-   if (result != VK_SUCCESS)
-      goto fail;
 
    for (uint32_t i = 0; i < chain->base.image_count; i++) {
       result = wsi_wl_image_init(chain, &chain->images[i],
