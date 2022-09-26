@@ -331,6 +331,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
        * We actually define lp_linear_elem not as a structure but simply as a
        * lp_linear_func pointer
        */
+      lp->jit_linear_func_type = func_type;
       linear_elem_type = LLVMPointerType(func_type, 0);
    }
 
@@ -343,8 +344,11 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
 
       elem_types[LP_JIT_LINEAR_CTX_CONSTANTS] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
       elem_types[LP_JIT_LINEAR_CTX_TEX] =
+      lp->jit_linear_textures_type =
             LLVMArrayType(linear_elem_ptr_type, LP_MAX_LINEAR_TEXTURES);
+
       elem_types[LP_JIT_LINEAR_CTX_INPUTS] =
+      lp->jit_linear_inputs_type =
             LLVMArrayType(linear_elem_ptr_type, LP_MAX_LINEAR_INPUTS);
       elem_types[LP_JIT_LINEAR_CTX_COLOR0] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
       elem_types[LP_JIT_LINEAR_CTX_BLEND_COLOR] = LLVMInt32TypeInContext(lc);

@@ -179,6 +179,9 @@ struct lp_fragment_shader_variant
    LLVMTypeRef jit_thread_data_ptr_type;
    LLVMTypeRef jit_linear_context_type;
    LLVMTypeRef jit_linear_context_ptr_type;
+   LLVMTypeRef jit_linear_func_type;
+   LLVMTypeRef jit_linear_inputs_type;
+   LLVMTypeRef jit_linear_textures_type;
 
    LLVMValueRef function[2]; // [RAST_WHOLE], [RAST_EDGE_TEST]
 
