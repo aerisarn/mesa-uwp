@@ -2033,7 +2033,7 @@ struct radv_graphics_pipeline {
    struct radv_userdata_info *last_vgt_api_stage_locs;
 
    /* Used for rbplus */
-   uint32_t col_format;
+   uint32_t col_format_non_compacted;
    uint32_t cb_target_mask;
 
    bool disable_out_of_order_rast_for_occlusion;

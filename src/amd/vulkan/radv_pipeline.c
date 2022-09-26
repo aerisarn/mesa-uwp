@@ -6189,6 +6189,9 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
 
+   /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
+   pipeline->col_format_non_compacted = blend.spi_shader_col_format;
+
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    if (!ps->info.ps.has_epilog) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
@@ -6211,8 +6214,10 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
     */
    if ((device->physical_device->rad_info.gfx_level <= GFX9 || ps->info.ps.can_discard) &&
        !blend.spi_shader_col_format) {
-      if (!ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask)
+      if (!ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask) {
          blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+         pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
+      }
    }
 
    if (!ps->info.ps.has_epilog) {
@@ -6224,7 +6229,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       blend.cb_shader_mask &= ps->info.ps.colors_written;
    }
 
-   pipeline->col_format = blend.spi_shader_col_format;
    pipeline->cb_target_mask = blend.cb_target_mask;
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {

@@ -1268,7 +1268,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
                      ? !G_028C74_FORCE_DST_ALPHA_1_GFX11(cb->cb_color_attrib)
                      : !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
 
-      uint32_t spi_format = (pipeline->col_format >> (i * 4)) & 0xf;
+      uint32_t spi_format = (pipeline->col_format_non_compacted >> (i * 4)) & 0xf;
       uint32_t colormask = (pipeline->cb_target_mask >> (i * 4)) & 0xf;
 
       if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 || format == V_028C70_COLOR_32)
