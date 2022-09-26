@@ -183,6 +183,11 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       state->final_hash ^= state->hash;
       state->dirty = false;
    }
+   if (screen->optimal_keys) {
+      ASSERTED const union zink_shader_key_optimal *opt = (union zink_shader_key_optimal*)&prog->last_variant_hash;
+      assert(opt->val == state->shader_keys_optimal.key.val);
+      assert(state->optimal_key == state->shader_keys_optimal.key.val);
+   }
    if (DYNAMIC_STATE < ZINK_DYNAMIC_VERTEX_INPUT && ctx->vertex_state_changed) {
       if (state->pipeline)
          state->final_hash ^= state->vertex_hash;
