@@ -32,6 +32,9 @@
 #include "agx_compiler.h"
 #include "agx_builder.h"
 
+/* Alignment for shader programs. I'm not sure what the optimal value is. */
+#define AGX_CODE_ALIGN 0x100
+
 static const struct debug_named_value agx_debug_options[] = {
    {"msgs",      AGX_DBG_MSGS,		"Print debug messages"},
    {"shaders",   AGX_DBG_SHADERS,	"Dump shaders in NIR and AIR"},
@@ -1801,7 +1804,15 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_lower_pseudo(ctx);
 
+   /* Pad binary */
+   if (binary->size % AGX_CODE_ALIGN) {
+      unsigned ngrow = AGX_CODE_ALIGN - (binary->size % AGX_CODE_ALIGN);
+      memset(util_dynarray_grow_bytes(binary, ngrow, 1), 0, ngrow);
+   }
+
    unsigned offset = binary->size;
+   assert((offset % AGX_CODE_ALIGN) == 0);
+
    agx_pack_binary(ctx, binary);
 
    /* Don't dump statistics for preambles, since they're not worth optimizing */
