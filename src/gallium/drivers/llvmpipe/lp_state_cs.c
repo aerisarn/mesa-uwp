@@ -327,9 +327,15 @@ generate_compute(struct llvmpipe_context *lp,
       struct lp_bld_tgsi_system_values system_values;
 
       memset(&system_values, 0, sizeof(system_values));
-      consts_ptr = lp_jit_cs_context_constants(gallivm, context_ptr);
-      ssbo_ptr = lp_jit_cs_context_ssbos(gallivm, context_ptr);
-      kernel_args_ptr = lp_jit_cs_context_kernel_args(gallivm, context_ptr);
+      consts_ptr = lp_jit_cs_context_constants(gallivm,
+                                               variant->jit_cs_context_type,
+                                               context_ptr);
+      ssbo_ptr = lp_jit_cs_context_ssbos(gallivm,
+                                         variant->jit_cs_context_type,
+                                         context_ptr);
+      kernel_args_ptr = lp_jit_cs_context_kernel_args(gallivm,
+                                                      variant->jit_cs_context_type,
+                                                      context_ptr);
 
       shared_ptr = lp_jit_cs_thread_data_shared(gallivm, thread_data_ptr);
 
@@ -444,7 +450,9 @@ generate_compute(struct llvmpipe_context *lp,
       params.shared_ptr = shared_ptr;
       params.coro = &coro_info;
       params.kernel_args = kernel_args_ptr;
-      params.aniso_filter_table = lp_jit_cs_context_aniso_filter_table(gallivm, context_ptr);
+      params.aniso_filter_table = lp_jit_cs_context_aniso_filter_table(gallivm,
+                                                                       variant->jit_cs_context_type,
+                                                                       context_ptr);
 
       if (shader->base.type == PIPE_SHADER_IR_TGSI)
          lp_build_tgsi_soa(gallivm, shader->base.tokens, &params, NULL);

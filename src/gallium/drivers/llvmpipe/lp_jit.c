@@ -486,6 +486,7 @@ lp_jit_create_cs_types(struct lp_compute_shader_variant *lp)
       LP_CHECK_STRUCT_SIZE(struct lp_jit_cs_context,
                            gallivm->target, cs_context_type);
 
+      lp->jit_cs_context_type = cs_context_type;
       lp->jit_cs_context_ptr_type = LLVMPointerType(cs_context_type, 0);
    }
 

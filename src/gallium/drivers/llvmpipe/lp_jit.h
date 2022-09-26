@@ -461,29 +461,29 @@ enum {
    LP_JIT_CS_CTX_COUNT
 };
 
-#define lp_jit_cs_context_constants(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_CONSTANTS, "constants")
+#define lp_jit_cs_context_constants(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_CONSTANTS, "constants")
 
-#define lp_jit_cs_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_TEXTURES, "textures")
+#define lp_jit_cs_context_textures(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_TEXTURES, "textures")
 
-#define lp_jit_cs_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SAMPLERS, "samplers")
+#define lp_jit_cs_context_samplers(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_SAMPLERS, "samplers")
 
-#define lp_jit_cs_context_images(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_IMAGES, "images")
+#define lp_jit_cs_context_images(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_IMAGES, "images")
 
-#define lp_jit_cs_context_ssbos(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SSBOS, "ssbos")
+#define lp_jit_cs_context_ssbos(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_SSBOS, "ssbos")
 
-#define lp_jit_cs_context_shared_size(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SHARED_SIZE, "shared_size")
+#define lp_jit_cs_context_shared_size(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_SHARED_SIZE, "shared_size")
 
-#define lp_jit_cs_context_kernel_args(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_CTX_KERNEL_ARGS, "kernel_args")
+#define lp_jit_cs_context_kernel_args(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_KERNEL_ARGS, "kernel_args")
 
-#define lp_jit_cs_context_aniso_filter_table(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
+#define lp_jit_cs_context_aniso_filter_table(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_CS_CTX_ANISO_FILTER_TABLE, "aniso_filter_table")
 
 
 typedef void

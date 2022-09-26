@@ -80,6 +80,7 @@ struct lp_compute_shader_variant
 {
    struct gallivm_state *gallivm;
 
+   LLVMTypeRef jit_cs_context_type;
    LLVMTypeRef jit_cs_context_ptr_type;
    LLVMTypeRef jit_cs_thread_data_ptr_type;
 
