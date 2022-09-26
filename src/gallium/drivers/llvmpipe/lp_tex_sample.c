@@ -335,7 +335,7 @@ lp_llvm_texture_cache_ptr(struct gallivm_state *gallivm,
    /* We use the same cache for all units */
    (void)unit;
 
-   return lp_jit_thread_data_cache(gallivm, thread_data_ptr);
+   return lp_jit_thread_data_cache(gallivm, LLVMGetElementType(LLVMTypeOf(thread_data_ptr)), thread_data_ptr);
 }
 #endif
 

@@ -351,6 +351,7 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
                      struct lp_type type,
                      LLVMTypeRef context_type,
                      LLVMValueRef context_ptr,
+                     LLVMTypeRef thread_data_type,
                      LLVMValueRef thread_data_ptr,
                      LLVMValueRef z)
 {
@@ -375,7 +376,8 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
     *      semantics.
     */
    viewport_index = lp_jit_thread_data_raster_state_viewport_index(gallivm,
-                       thread_data_ptr);
+                                                                   thread_data_type,
+                                                                   thread_data_ptr);
 
    /*
     * Load the min and max depth from the lp_jit_context.viewports
@@ -640,6 +642,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  LLVMValueRef color_stride_ptr,
                  LLVMValueRef color_sample_stride_ptr,
                  LLVMValueRef facing,
+                 LLVMTypeRef thread_data_type,
                  LLVMValueRef thread_data_ptr)
 {
    const struct tgsi_token *tokens = shader->base.tokens;
@@ -676,7 +679,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildSExt(gallivm->builder, system_values.front_facing,
                     LLVMInt32TypeInContext(gallivm->context), "");
    system_values.view_index =
-      lp_jit_thread_data_raster_state_view_index(gallivm, thread_data_ptr);
+      lp_jit_thread_data_raster_state_view_index(gallivm,
+                                                 thread_data_type,
+                                                 thread_data_ptr);
 
    unsigned depth_mode;
    const struct util_format_description *zs_format_desc = NULL;
@@ -880,7 +885,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
                                key->restrict_depth_values, type,
                                context_type, context_ptr,
-                               thread_data_ptr, z);
+                               thread_data_type, thread_data_ptr, z);
 
       lp_build_depth_stencil_load_swizzled(gallivm, type,
                                            zs_format_desc, key->resource_1d,
@@ -1261,7 +1266,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
                                key->restrict_depth_values, type,
                                context_type, context_ptr,
-                               thread_data_ptr, z);
+                               thread_data_type, thread_data_ptr, z);
 
       if (shader->info.base.writes_stencil) {
          LLVMValueRef idx = loop_state.counter;
@@ -1323,7 +1328,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    if (key->occlusion_count) {
-      LLVMValueRef counter = lp_jit_thread_data_counter(gallivm, thread_data_ptr);
+      LLVMValueRef counter = lp_jit_thread_data_counter(gallivm, thread_data_type, thread_data_ptr);
       lp_build_name(counter, "counter");
 
       lp_build_occlusion_count(gallivm, type,
@@ -3238,7 +3243,7 @@ generate_fragment(struct llvmpipe_context *lp,
     */
    if (shader->info.base.num_instructions > 1) {
       LLVMValueRef invocs, val;
-      invocs = lp_jit_thread_data_invocations(gallivm, thread_data_ptr);
+      invocs = lp_jit_thread_data_invocations(gallivm, variant->jit_thread_data_type, thread_data_ptr);
       val = LLVMBuildLoad(builder, invocs, "");
       val = LLVMBuildAdd(builder, val,
                          LLVMConstInt(LLVMInt64TypeInContext(gallivm->context),
@@ -3386,6 +3391,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        stride_ptr,
                        color_sample_stride_ptr,
                        facing,
+                       variant->jit_thread_data_type,
                        thread_data_ptr);
 
       for (unsigned i = 0; i < num_fs; i++) {

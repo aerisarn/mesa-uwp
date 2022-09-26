@@ -265,24 +265,24 @@ enum {
 };
 
 
-#define lp_jit_thread_data_cache(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_THREAD_DATA_CACHE, "cache")
+#define lp_jit_thread_data_cache(_gallivm, _type, _ptr)			\
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_THREAD_DATA_CACHE, "cache")
 
-#define lp_jit_thread_data_counter(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_THREAD_DATA_COUNTER, "counter")
+#define lp_jit_thread_data_counter(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_THREAD_DATA_COUNTER, "counter")
 
-#define lp_jit_thread_data_invocations(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_THREAD_DATA_INVOCATIONS, "invocs")
+#define lp_jit_thread_data_invocations(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_THREAD_DATA_INVOCATIONS, "invocs")
 
-#define lp_jit_thread_data_raster_state_viewport_index(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, \
-                       LP_JIT_THREAD_DATA_RASTER_STATE_VIEWPORT_INDEX, \
-                       "raster_state.viewport_index")
+#define lp_jit_thread_data_raster_state_viewport_index(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, \
+			LP_JIT_THREAD_DATA_RASTER_STATE_VIEWPORT_INDEX, \
+			"raster_state.viewport_index")
 
-#define lp_jit_thread_data_raster_state_view_index(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, \
-                       LP_JIT_THREAD_DATA_RASTER_STATE_VIEW_INDEX, \
-                       "raster_state.view_index")
+#define lp_jit_thread_data_raster_state_view_index(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, \
+			LP_JIT_THREAD_DATA_RASTER_STATE_VIEW_INDEX,	\
+			"raster_state.view_index")
 
 /**
  * typedef for fragment shader function
