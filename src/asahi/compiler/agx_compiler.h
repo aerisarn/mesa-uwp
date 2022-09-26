@@ -790,6 +790,7 @@ void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
 
 bool agx_lower_resinfo(nir_shader *s);
 bool agx_nir_lower_array_texture(nir_shader *s);
+bool agx_nir_opt_preamble(nir_shader *s, unsigned *preamble_size);
 
 #ifdef __cplusplus
 } /* extern C */
