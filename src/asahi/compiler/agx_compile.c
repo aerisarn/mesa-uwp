@@ -584,6 +584,24 @@ agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
    return NULL;
 }
 
+/* Preambles write directly to uniform registers, so move from uniform to GPR */
+static agx_instr *
+agx_emit_load_preamble(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
+{
+   assert(nir_dest_num_components(instr->dest) == 1 && "already scalarized");
+   return agx_mov_to(b, dst, agx_uniform(nir_intrinsic_base(instr), dst.size));
+}
+
+static agx_instr *
+agx_emit_store_preamble(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   assert(nir_src_num_components(instr->src[0]) == 1 && "already scalarized");
+
+   agx_index value = agx_src_index(&instr->src[0]);
+   agx_index offset = agx_immediate(nir_intrinsic_base(instr));
+   return agx_uniform_store(b, value, offset);
+}
+
 /*
  * Emit code to generate gl_FragCoord. The xy components are calculated from
  * special registers, whereas the zw components are interpolated varyings.
@@ -711,6 +729,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
   case nir_intrinsic_load_instance_id:
      return agx_mov_to(b, dst, agx_abs(agx_instance_id(b)));
+
+  case nir_intrinsic_load_preamble:
+     return agx_emit_load_preamble(b, dst, instr);
+
+  case nir_intrinsic_store_preamble:
+     return agx_emit_store_preamble(b, instr);
 
   case nir_intrinsic_load_blend_const_color_r_float: return agx_blend_const(b, dst, 0);
   case nir_intrinsic_load_blend_const_color_g_float: return agx_blend_const(b, dst, 1);
