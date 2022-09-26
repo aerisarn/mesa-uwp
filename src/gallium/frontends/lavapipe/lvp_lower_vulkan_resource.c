@@ -50,6 +50,8 @@ lower_vulkan_resource_index(const nir_instr *instr, const void *data_cb)
       case nir_intrinsic_image_deref_atomic_exchange:
       case nir_intrinsic_image_deref_atomic_comp_swap:
       case nir_intrinsic_image_deref_atomic_fadd:
+      case nir_intrinsic_image_deref_atomic_fmin:
+      case nir_intrinsic_image_deref_atomic_fmax:
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_samples:
          return true;
@@ -339,6 +341,8 @@ static nir_ssa_def *lower_vri_instr(struct nir_builder *b,
       case nir_intrinsic_image_deref_atomic_exchange:
       case nir_intrinsic_image_deref_atomic_comp_swap:
       case nir_intrinsic_image_deref_atomic_fadd:
+      case nir_intrinsic_image_deref_atomic_fmin:
+      case nir_intrinsic_image_deref_atomic_fmax:
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_samples:
          lower_image_intrinsic(b, intrin, data_cb);
