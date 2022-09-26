@@ -374,6 +374,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
       LP_CHECK_STRUCT_SIZE(struct lp_jit_linear_context,
                            gallivm->target, linear_context_type);
 
+      lp->jit_linear_context_type = linear_context_type;
       lp->jit_linear_context_ptr_type = LLVMPointerType(linear_context_type, 0);
    }
 

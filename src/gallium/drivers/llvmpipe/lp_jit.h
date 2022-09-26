@@ -366,23 +366,23 @@ enum {
 };
 
 
-#define lp_jit_linear_context_constants(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_LINEAR_CTX_CONSTANTS, "constants")
+#define lp_jit_linear_context_constants(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_CONSTANTS, "constants")
 
-#define lp_jit_linear_context_tex(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_TEX, "tex")
+#define lp_jit_linear_context_tex(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_TEX, "tex")
 
-#define lp_jit_linear_context_inputs(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_INPUTS, "inputs")
+#define lp_jit_linear_context_inputs(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_INPUTS, "inputs")
 
-#define lp_jit_linear_context_color0(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_COLOR0, "color0")
+#define lp_jit_linear_context_color0(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_COLOR0, "color0")
 
-#define lp_jit_linear_context_blend_color(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_BLEND_COLOR, "blend_color")
+#define lp_jit_linear_context_blend_color(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_BLEND_COLOR, "blend_color")
 
-#define lp_jit_linear_context_alpha_ref(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_LINEAR_CTX_ALPHA_REF, "alpha_ref_value")
+#define lp_jit_linear_context_alpha_ref(_gallivm, _type, _ptr) \
+   lp_build_struct_get_ptr2(_gallivm, _type, _ptr, LP_JIT_LINEAR_CTX_ALPHA_REF, "alpha_ref_value")
 
 
 typedef const uint8_t *

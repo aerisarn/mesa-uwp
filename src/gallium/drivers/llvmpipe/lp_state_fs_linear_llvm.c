@@ -336,20 +336,30 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
     * Get context data
     */
    LLVMValueRef consts_ptr =
-      lp_jit_linear_context_constants(gallivm, context_ptr);
+      lp_jit_linear_context_constants(gallivm,
+                                      variant->jit_linear_context_type,
+                                      context_ptr);
    LLVMValueRef interpolators_ptr =
-      lp_jit_linear_context_inputs(gallivm, context_ptr);
+      lp_jit_linear_context_inputs(gallivm,
+                                   variant->jit_linear_context_type,
+                                   context_ptr);
    LLVMValueRef samplers_ptr =
-      lp_jit_linear_context_tex(gallivm, context_ptr);
+      lp_jit_linear_context_tex(gallivm,
+                                variant->jit_linear_context_type,
+                                context_ptr);
 
    LLVMValueRef color0_ptr =
-      lp_jit_linear_context_color0(gallivm, context_ptr);
+      lp_jit_linear_context_color0(gallivm,
+                                   variant->jit_linear_context_type,
+                                   context_ptr);
    color0_ptr = LLVMBuildLoad(builder, color0_ptr, "");
    color0_ptr = LLVMBuildBitCast(builder, color0_ptr,
                                  LLVMPointerType(bld.vec_type, 0), "");
 
    LLVMValueRef blend_color =
-      lp_jit_linear_context_blend_color(gallivm, context_ptr);
+      lp_jit_linear_context_blend_color(gallivm,
+                                        variant->jit_linear_context_type,
+                                        context_ptr);
    blend_color = LLVMBuildLoad(builder, blend_color, "");
    blend_color = lp_build_broadcast(gallivm, LLVMVectorType(int32t, 4),
                                     blend_color);
@@ -357,7 +367,9 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
                                   LLVMVectorType(int8t, 16), "");
 
    LLVMValueRef alpha_ref =
-      lp_jit_linear_context_alpha_ref(gallivm, context_ptr);
+      lp_jit_linear_context_alpha_ref(gallivm,
+                                      variant->jit_linear_context_type,
+                                      context_ptr);
    alpha_ref = LLVMBuildLoad(builder, alpha_ref, "");
 
    /*
