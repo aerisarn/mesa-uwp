@@ -1809,7 +1809,8 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
    LLVMValueRef cnd = LLVMBuildICmp(builder, LLVMIntULT, stream_idx, lp_build_const_int32(gallivm, variant->shader->base.num_vertex_streams), "");
    struct lp_build_if_state if_ctx;
    lp_build_if(&if_ctx, gallivm, cnd);
-   io = lp_build_pointer_get(builder, io, LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), ""));
+   io = lp_build_pointer_get2(builder, variant->vertex_header_ptr_type,
+                              io, LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), ""));
 
    if (variant->key.clamp_vertex_color) {
       do_clamp_vertex_color(gallivm, gs_type,
@@ -4038,12 +4039,12 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
             if (i == 2) {
                if (variant->shader->base.prim_mode == PIPE_PRIM_TRIANGLES) {
                   tc_val = lp_build_const_float(gallivm, 1.0);
-                  tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get(builder, tess_coord[0], idx), "");
-                  tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get(builder, tess_coord[1], idx), "");
+                  tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get2(builder, flt_type, tess_coord[0], idx), "");
+                  tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get2(builder, flt_type, tess_coord[1], idx), "");
                } else
                   tc_val = lp_build_const_float(gallivm, 0.0);
             } else
-               tc_val = lp_build_pointer_get(builder, tess_coord[i], idx);
+               tc_val = lp_build_pointer_get2(builder, flt_type, tess_coord[i], idx);
 
             tess_coord_chan = LLVMBuildInsertElement(builder, tess_coord_chan, tc_val, lp_build_const_int32(gallivm, j), "");
          }
