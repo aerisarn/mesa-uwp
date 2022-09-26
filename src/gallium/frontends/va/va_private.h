@@ -53,7 +53,7 @@
 #define VL_VA_DRIVER(ctx) ((vlVaDriver *)ctx->pDriverData)
 #define VL_VA_PSCREEN(ctx) (VL_VA_DRIVER(ctx)->vscreen->pscreen)
 
-#define VL_VA_MAX_IMAGE_FORMATS 12
+#define VL_VA_MAX_IMAGE_FORMATS 14
 #define VL_VA_ENC_GOP_COEFF 16
 
 #define UINT_TO_PTR(x) ((void*)(uintptr_t)(x))
@@ -88,6 +88,8 @@ ChromaToPipe(int format)
       return PIPE_VIDEO_CHROMA_FORMAT_422;
    case VA_RT_FORMAT_YUV444:
       return PIPE_VIDEO_CHROMA_FORMAT_444;
+   case VA_RT_FORMAT_YUV400:
+      return PIPE_VIDEO_CHROMA_FORMAT_400;
    default:
       return PIPE_VIDEO_CHROMA_FORMAT_NONE;
    }
@@ -120,6 +122,10 @@ VaFourccToPipeFormat(unsigned format)
       return PIPE_FORMAT_B8G8R8X8_UNORM;
    case VA_FOURCC('R','G','B','X'):
       return PIPE_FORMAT_R8G8B8X8_UNORM;
+   case VA_FOURCC('Y','8','0','0'):
+      return PIPE_FORMAT_Y8_400_UNORM;
+   case VA_FOURCC('4','4','4','P'):
+      return PIPE_FORMAT_Y8_U8_V8_444_UNORM;
    default:
       assert(0);
       return PIPE_FORMAT_NONE;
@@ -152,6 +158,10 @@ PipeFormatToVaFourcc(enum pipe_format p_format)
       return VA_FOURCC('B','G','R','X');
    case PIPE_FORMAT_R8G8B8X8_UNORM:
       return VA_FOURCC('R','G','B','X');
+   case PIPE_FORMAT_Y8_400_UNORM:
+      return VA_FOURCC('Y','8','0','0');
+   case PIPE_FORMAT_Y8_U8_V8_444_UNORM:
+      return VA_FOURCC('4','4','4','P');
    default:
       assert(0);
       return -1;

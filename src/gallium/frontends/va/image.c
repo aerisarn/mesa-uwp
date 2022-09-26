@@ -49,6 +49,8 @@ static const VAImageFormat formats[] =
    {VA_FOURCC('Y','U','Y','V')},
    {VA_FOURCC('Y','U','Y','2')},
    {VA_FOURCC('U','Y','V','Y')},
+   {VA_FOURCC('Y','8','0','0')},
+   {VA_FOURCC('4','4','4','P')},
    {.fourcc = VA_FOURCC('B','G','R','A'), .byte_order = VA_LSB_FIRST, 32, 32,
     0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000},
    {.fourcc = VA_FOURCC('R','G','B','A'), .byte_order = VA_LSB_FIRST, 32, 32,
@@ -177,6 +179,24 @@ vlVaCreateImage(VADriverContextP ctx, VAImageFormat *format, int width, int heig
       img->pitches[0] = w * 4;
       img->offsets[0] = 0;
       img->data_size  = w * h * 4;
+      break;
+
+   case VA_FOURCC('Y','8','0','0'):
+      img->num_planes = 1;
+      img->pitches[0] = w;
+      img->offsets[0] = 0;
+      img->data_size  = w * h;
+      break;
+
+   case VA_FOURCC('4','4','4', 'P'):
+      img->num_planes = 3;
+      img->offsets[0] = 0;
+      img->offsets[1] = w * h;
+      img->offsets[2] = w * h * 2;
+      img->pitches[0] = w;
+      img->pitches[1] = w;
+      img->pitches[2] = w;
+      img->data_size  = w * h * 3;
       break;
 
    default:

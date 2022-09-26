@@ -506,6 +506,30 @@ vlVaQuerySurfaceAttributes(VADriverContextP ctx, VAConfigID config_id,
       i++;
    }
 
+   if (config->rt_format & VA_RT_FORMAT_YUV400) {
+      attribs[i].type = VASurfaceAttribPixelFormat;
+      attribs[i].value.type = VAGenericValueTypeInteger;
+      attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+      attribs[i].value.value.i = VA_FOURCC_Y800;
+      i++;
+   }
+
+   if (config->rt_format & VA_RT_FORMAT_YUV422) {
+      attribs[i].type = VASurfaceAttribPixelFormat;
+      attribs[i].value.type = VAGenericValueTypeInteger;
+      attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+      attribs[i].value.value.i = VA_FOURCC_YUY2;
+      i++;
+   }
+
+   if (config->rt_format & VA_RT_FORMAT_YUV444) {
+      attribs[i].type = VASurfaceAttribPixelFormat;
+      attribs[i].value.type = VAGenericValueTypeInteger;
+      attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+      attribs[i].value.value.i = VA_FOURCC_444P;
+      i++;
+   }
+
    attribs[i].type = VASurfaceAttribMemoryType;
    attribs[i].value.type = VAGenericValueTypeInteger;
    attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
@@ -935,6 +959,7 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
    if (VA_RT_FORMAT_YUV420 != format &&
        VA_RT_FORMAT_YUV422 != format &&
        VA_RT_FORMAT_YUV444 != format &&
+       VA_RT_FORMAT_YUV400 != format &&
        VA_RT_FORMAT_YUV420_10BPP != format &&
        VA_RT_FORMAT_RGB32  != format) {
       return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
