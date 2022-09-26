@@ -3574,13 +3574,16 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
                                                  context_ptr, texture_index,
                                                  NULL);
    bld.row_stride_array = dynamic_state->row_stride(gallivm, context_type,
-                                                    context_ptr, texture_index, NULL);
+                                                    context_ptr, texture_index, NULL,
+                                                    &bld.row_stride_type);
    bld.img_stride_array = dynamic_state->img_stride(gallivm, context_type,
-                                                    context_ptr, texture_index, NULL);
+                                                    context_ptr, texture_index, NULL,
+                                                    &bld.img_stride_type);
    bld.base_ptr = dynamic_state->base_ptr(gallivm, context_type,
                                           context_ptr, texture_index, NULL);
    bld.mip_offsets = dynamic_state->mip_offsets(gallivm, context_type,
-                                                context_ptr, texture_index, NULL);
+                                                context_ptr, texture_index, NULL,
+                                                &bld.mip_offsets_type);
 
    if (fetch_ms) {
       bld.sample_stride =
@@ -3820,9 +3823,12 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
          bld4.dynamic_state = bld.dynamic_state;
          bld4.format_desc = bld.format_desc;
          bld4.dims = bld.dims;
+         bld4.row_stride_type = bld.row_stride_type;
          bld4.row_stride_array = bld.row_stride_array;
+         bld4.img_stride_type = bld.img_stride_type;
          bld4.img_stride_array = bld.img_stride_array;
          bld4.base_ptr = bld.base_ptr;
+         bld4.mip_offsets_type = bld.mip_offsets_type;
          bld4.mip_offsets = bld.mip_offsets;
          bld4.int_size = bld.int_size;
          bld4.int_tex_blocksize = bld.int_tex_blocksize;
@@ -4813,11 +4819,11 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
    LLVMValueRef row_stride = dynamic_state->row_stride(gallivm,
                                                        params->context_type,
                                                        params->context_ptr,
-                                                       params->image_index, NULL);
+                                                       params->image_index, NULL, NULL);
    LLVMValueRef img_stride = dynamic_state->img_stride(gallivm,
                                                        params->context_type,
                                                        params->context_ptr,
-                                                       params->image_index, NULL);
+                                                       params->image_index, NULL, NULL);
    LLVMValueRef base_ptr = dynamic_state->base_ptr(gallivm,
                                                    params->context_type,
                                                    params->context_ptr,

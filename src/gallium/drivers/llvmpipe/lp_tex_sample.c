@@ -116,7 +116,8 @@ lp_llvm_texture_member(struct gallivm_state *gallivm,
                        LLVMValueRef texture_unit_offset,
                        unsigned member_index,
                        const char *member_name,
-                       boolean emit_load)
+                       boolean emit_load,
+                       LLVMTypeRef *out_type)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef indices[4];
@@ -155,6 +156,12 @@ lp_llvm_texture_member(struct gallivm_state *gallivm,
    } else
       res = ptr;
 
+   if (out_type) {
+      LLVMTypeRef tex_type = LLVMStructGetTypeAtIndex(context_type, LP_JIT_CTX_TEXTURES);
+      LLVMTypeRef res_type = LLVMStructGetTypeAtIndex(LLVMGetElementType(tex_type), member_index);
+      *out_type = res_type;
+   }
+
    lp_build_name(res, "context.texture%u.%s", texture_unit, member_name);
 
    return res;
@@ -180,7 +187,21 @@ lp_llvm_texture_member(struct gallivm_state *gallivm,
    { \
       return lp_llvm_texture_member(gallivm, context_type, context_ptr, \
                                     texture_unit, texture_unit_offset,  \
-                                    _index, #_name, _emit_load );       \
+                                    _index, #_name, _emit_load, NULL );      \
+   }
+
+#define LP_LLVM_TEXTURE_MEMBER_OUTTYPE(_name, _index, _emit_load)  \
+   static LLVMValueRef \
+   lp_llvm_texture_##_name(struct gallivm_state *gallivm, \
+                           LLVMTypeRef context_type, \
+                           LLVMValueRef context_ptr, \
+                           unsigned texture_unit,    \
+                           LLVMValueRef texture_unit_offset, \
+                           LLVMTypeRef *out_type)            \
+   { \
+      return lp_llvm_texture_member(gallivm, context_type, context_ptr, \
+                                    texture_unit, texture_unit_offset,  \
+                                    _index, #_name, _emit_load, out_type ); \
    }
 
 
@@ -190,9 +211,9 @@ LP_LLVM_TEXTURE_MEMBER(depth,      LP_JIT_TEXTURE_DEPTH, TRUE)
 LP_LLVM_TEXTURE_MEMBER(first_level, LP_JIT_TEXTURE_FIRST_LEVEL, TRUE)
 LP_LLVM_TEXTURE_MEMBER(last_level, LP_JIT_TEXTURE_LAST_LEVEL, TRUE)
 LP_LLVM_TEXTURE_MEMBER(base_ptr,   LP_JIT_TEXTURE_BASE, TRUE)
-LP_LLVM_TEXTURE_MEMBER(row_stride, LP_JIT_TEXTURE_ROW_STRIDE, FALSE)
-LP_LLVM_TEXTURE_MEMBER(img_stride, LP_JIT_TEXTURE_IMG_STRIDE, FALSE)
-LP_LLVM_TEXTURE_MEMBER(mip_offsets, LP_JIT_TEXTURE_MIP_OFFSETS, FALSE)
+LP_LLVM_TEXTURE_MEMBER_OUTTYPE(row_stride, LP_JIT_TEXTURE_ROW_STRIDE, FALSE)
+LP_LLVM_TEXTURE_MEMBER_OUTTYPE(img_stride, LP_JIT_TEXTURE_IMG_STRIDE, FALSE)
+LP_LLVM_TEXTURE_MEMBER_OUTTYPE(mip_offsets, LP_JIT_TEXTURE_MIP_OFFSETS, FALSE)
 LP_LLVM_TEXTURE_MEMBER(num_samples, LP_JIT_TEXTURE_NUM_SAMPLES, TRUE)
 LP_LLVM_TEXTURE_MEMBER(sample_stride, LP_JIT_TEXTURE_SAMPLE_STRIDE, TRUE)
 
@@ -339,13 +360,27 @@ lp_llvm_image_member(struct gallivm_state *gallivm,
                                   _index, #_name, _emit_load );  \
    }
 
+#define LP_LLVM_IMAGE_MEMBER_OUTTYPE(_name, _index, _emit_load)  \
+   static LLVMValueRef \
+   lp_llvm_image_##_name( struct gallivm_state *gallivm,               \
+                          LLVMTypeRef context_type,                    \
+                          LLVMValueRef context_ptr,                     \
+                          unsigned image_unit, LLVMValueRef image_unit_offset, \
+                          LLVMTypeRef *out_type)                        \
+   { \
+      assert(!out_type);                                                \
+      return lp_llvm_image_member(gallivm, context_type, context_ptr,    \
+                                  image_unit, image_unit_offset, \
+                                  _index, #_name, _emit_load );  \
+   }
+
 
 LP_LLVM_IMAGE_MEMBER(width,      LP_JIT_IMAGE_WIDTH, TRUE)
 LP_LLVM_IMAGE_MEMBER(height,     LP_JIT_IMAGE_HEIGHT, TRUE)
 LP_LLVM_IMAGE_MEMBER(depth,      LP_JIT_IMAGE_DEPTH, TRUE)
 LP_LLVM_IMAGE_MEMBER(base_ptr,   LP_JIT_IMAGE_BASE, TRUE)
-LP_LLVM_IMAGE_MEMBER(row_stride, LP_JIT_IMAGE_ROW_STRIDE, TRUE)
-LP_LLVM_IMAGE_MEMBER(img_stride, LP_JIT_IMAGE_IMG_STRIDE, TRUE)
+LP_LLVM_IMAGE_MEMBER_OUTTYPE(row_stride, LP_JIT_IMAGE_ROW_STRIDE, TRUE)
+LP_LLVM_IMAGE_MEMBER_OUTTYPE(img_stride, LP_JIT_IMAGE_IMG_STRIDE, TRUE)
 LP_LLVM_IMAGE_MEMBER(num_samples, LP_JIT_IMAGE_NUM_SAMPLES, TRUE)
 LP_LLVM_IMAGE_MEMBER(sample_stride, LP_JIT_IMAGE_SAMPLE_STRIDE, TRUE)
 

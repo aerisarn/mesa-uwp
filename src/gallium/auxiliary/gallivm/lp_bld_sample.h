@@ -272,14 +272,16 @@ struct lp_sampler_dynamic_state
    (*row_stride)(struct gallivm_state *gallivm,
                  LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
-                 unsigned texture_unit, LLVMValueRef texture_unit_offset);
+                 unsigned texture_unit, LLVMValueRef texture_unit_offset,
+                 LLVMTypeRef *out_type);
 
    /** Obtain stride in bytes between image slices (returns int32) */
    LLVMValueRef
    (*img_stride)(struct gallivm_state *gallivm,
                  LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
-                 unsigned texture_unit, LLVMValueRef texture_unit_offset);
+                 unsigned texture_unit, LLVMValueRef texture_unit_offset,\
+                 LLVMTypeRef *out_type);
 
    /** Obtain pointer to base of texture */
    LLVMValueRef
@@ -293,7 +295,8 @@ struct lp_sampler_dynamic_state
    (*mip_offsets)(struct gallivm_state *gallivm,
                   LLVMTypeRef context_type,
                   LLVMValueRef context_ptr,
-                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
+                  unsigned texture_unit, LLVMValueRef texture_unit_offset,
+                  LLVMTypeRef *out_type);
 
    /** Obtain number of samples (returns int32) */
    LLVMValueRef
@@ -447,9 +450,12 @@ struct lp_build_sample_context
    struct lp_build_context lodi_bld;
 
    /* Common dynamic state values */
+   LLVMTypeRef row_stride_type;
    LLVMValueRef row_stride_array;
+   LLVMTypeRef img_stride_type;
    LLVMValueRef img_stride_array;
    LLVMValueRef base_ptr;
+   LLVMTypeRef mip_offsets_type;
    LLVMValueRef mip_offsets;
    LLVMValueRef cache;
    LLVMValueRef sample_stride;
