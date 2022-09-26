@@ -434,6 +434,7 @@ struct lp_build_fs_llvm_iface {
    struct lp_build_fs_iface base;
    struct lp_build_interp_soa_context *interp;
    struct lp_build_for_loop_state *loop_state;
+   LLVMTypeRef mask_type;
    LLVMValueRef mask_store;
    LLVMValueRef sample_id;
    LLVMValueRef color_ptr_ptr;
@@ -463,7 +464,7 @@ fs_interp(const struct lp_build_fs_iface *iface,
       loc = TGSI_INTERPOLATE_LOC_SAMPLE;
 
    return lp_build_interp_soa(interp, bld->gallivm, fs_iface->loop_state->counter,
-                              fs_iface->mask_store,
+                              fs_iface->mask_type, fs_iface->mask_store,
                               attrib, chan, loc, attrib_indir, offsets);
 }
 
@@ -1005,7 +1006,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
    system_values.sample_pos = sample_pos_array;
 
-   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter, mask_store, sample_loop_state.counter);
+   lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter,
+                                         mask_type, mask_store, sample_loop_state.counter);
 
    struct lp_build_fs_llvm_iface fs_iface = {
      .base.interp_fn = fs_interp,
@@ -1013,6 +1015,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
      .interp = interp,
      .loop_state = &loop_state,
      .sample_id = system_values.sample_id,
+     .mask_type = mask_type,
      .mask_store = mask_store,
      .color_ptr_ptr = color_ptr_ptr,
      .color_stride_ptr = color_stride_ptr,
