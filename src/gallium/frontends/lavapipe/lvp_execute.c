@@ -378,7 +378,7 @@ static void emit_compute_state(struct rendering_state *state)
    if (state->sb_dirty[PIPE_SHADER_COMPUTE]) {
       state->pctx->set_shader_buffers(state->pctx, PIPE_SHADER_COMPUTE,
                                       0, state->num_shader_buffers[PIPE_SHADER_COMPUTE],
-                                      state->sb[PIPE_SHADER_COMPUTE], 0);
+                                      state->sb[PIPE_SHADER_COMPUTE], state->access[MESA_SHADER_COMPUTE].buffers_written);
       state->sb_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
