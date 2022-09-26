@@ -337,7 +337,9 @@ generate_compute(struct llvmpipe_context *lp,
                                                       variant->jit_cs_context_type,
                                                       context_ptr);
 
-      shared_ptr = lp_jit_cs_thread_data_shared(gallivm, thread_data_ptr);
+      shared_ptr = lp_jit_cs_thread_data_shared(gallivm,
+                                                variant->jit_cs_thread_data_type,
+                                                thread_data_ptr);
 
       LLVMValueRef coro_num_hdls = LLVMBuildMul(gallivm->builder, num_x_loop, block_y_size_arg, "");
       coro_num_hdls = LLVMBuildMul(gallivm->builder, coro_num_hdls, block_z_size_arg, "");

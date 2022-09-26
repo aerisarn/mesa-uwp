@@ -421,11 +421,11 @@ enum {
 };
 
 
-#define lp_jit_cs_thread_data_cache(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_THREAD_DATA_CACHE, "cache")
+#define lp_jit_cs_thread_data_cache(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_CS_THREAD_DATA_CACHE, "cache")
 
-#define lp_jit_cs_thread_data_shared(_gallivm, _ptr) \
-   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_THREAD_DATA_SHARED, "shared")
+#define lp_jit_cs_thread_data_shared(_gallivm, _type, _ptr) \
+   lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_CS_THREAD_DATA_SHARED, "shared")
 
 
 struct lp_jit_cs_context

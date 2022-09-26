@@ -431,6 +431,7 @@ lp_jit_create_cs_types(struct lp_compute_shader_variant *lp)
       thread_data_type = LLVMStructTypeInContext(lc, elem_types,
                                                  ARRAY_SIZE(elem_types), 0);
 
+      lp->jit_cs_thread_data_type = thread_data_type;
       lp->jit_cs_thread_data_ptr_type = LLVMPointerType(thread_data_type, 0);
    }
 
