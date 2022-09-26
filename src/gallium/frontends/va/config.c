@@ -135,6 +135,14 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                                                    ProfileToPipe(profile),
                                                    PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
                value |= VA_RT_FORMAT_YUV420_10BPP;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_Y8_400_UNORM,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
+               value |= VA_RT_FORMAT_YUV400;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_Y8_U8_V8_444_UNORM,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
+               value |= VA_RT_FORMAT_YUV444;
             break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
@@ -447,6 +455,14 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
        pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P016, p,
          config->entrypoint))
       supported_rt_formats |= VA_RT_FORMAT_YUV420_10BPP;
+   if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_Y8_400_UNORM,
+                                          ProfileToPipe(profile),
+                                          config->entrypoint))
+      supported_rt_formats |= VA_RT_FORMAT_YUV400;
+   if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_Y8_U8_V8_444_UNORM,
+                                          ProfileToPipe(profile),
+                                          config->entrypoint))
+      supported_rt_formats |= VA_RT_FORMAT_YUV444;
 
    for (int i = 0; i <num_attribs ; i++) {
       if (attrib_list[i].type != VAConfigAttribRTFormat &&
