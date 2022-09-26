@@ -110,6 +110,7 @@ struct lp_llvm_image_soa
  */
 static LLVMValueRef
 lp_llvm_texture_member(struct gallivm_state *gallivm,
+                       LLVMTypeRef context_type,
                        LLVMValueRef context_ptr,
                        unsigned texture_unit,
                        LLVMValueRef texture_unit_offset,
@@ -144,7 +145,7 @@ lp_llvm_texture_member(struct gallivm_state *gallivm,
    indices[3] = lp_build_const_int32(gallivm, member_index);
 
    LLVMValueRef ptr =
-      LLVMBuildGEP(builder, context_ptr, indices, ARRAY_SIZE(indices), "");
+      LLVMBuildGEP2(builder, context_type, context_ptr, indices, ARRAY_SIZE(indices), "");
 
    LLVMValueRef res = emit_load ? LLVMBuildLoad(builder, ptr, "") : ptr;
 
@@ -166,11 +167,12 @@ lp_llvm_texture_member(struct gallivm_state *gallivm,
 #define LP_LLVM_TEXTURE_MEMBER(_name, _index, _emit_load)  \
    static LLVMValueRef \
    lp_llvm_texture_##_name(struct gallivm_state *gallivm, \
+                           LLVMTypeRef context_type, \
                            LLVMValueRef context_ptr, \
                            unsigned texture_unit,    \
                            LLVMValueRef texture_unit_offset) \
    { \
-      return lp_llvm_texture_member(gallivm, context_ptr, \
+      return lp_llvm_texture_member(gallivm, context_type, context_ptr, \
                                     texture_unit, texture_unit_offset,  \
                                     _index, #_name, _emit_load );       \
    }
@@ -199,6 +201,7 @@ LP_LLVM_TEXTURE_MEMBER(sample_stride, LP_JIT_TEXTURE_SAMPLE_STRIDE, TRUE)
  */
 static LLVMValueRef
 lp_llvm_sampler_member(struct gallivm_state *gallivm,
+                       LLVMTypeRef context_type,
                        LLVMValueRef context_ptr,
                        unsigned sampler_unit,
                        unsigned member_index,
@@ -220,7 +223,7 @@ lp_llvm_sampler_member(struct gallivm_state *gallivm,
    indices[3] = lp_build_const_int32(gallivm, member_index);
 
    LLVMValueRef ptr =
-      LLVMBuildGEP(builder, context_ptr, indices, ARRAY_SIZE(indices), "");
+      LLVMBuildGEP2(builder, context_type, context_ptr, indices, ARRAY_SIZE(indices), "");
 
    LLVMValueRef res = emit_load ? LLVMBuildLoad(builder, ptr, "") : ptr;
 
@@ -233,10 +236,11 @@ lp_llvm_sampler_member(struct gallivm_state *gallivm,
 #define LP_LLVM_SAMPLER_MEMBER(_name, _index, _emit_load)  \
    static LLVMValueRef \
    lp_llvm_sampler_##_name( struct gallivm_state *gallivm, \
+                            LLVMTypeRef context_type, \
                             LLVMValueRef context_ptr, \
                             unsigned sampler_unit) \
    { \
-      return lp_llvm_sampler_member(gallivm, context_ptr, \
+      return lp_llvm_sampler_member(gallivm, context_type, context_ptr,  \
                                     sampler_unit, _index, #_name, _emit_load ); \
    }
 
@@ -258,6 +262,7 @@ LP_LLVM_SAMPLER_MEMBER(max_aniso, LP_JIT_SAMPLER_MAX_ANISO, TRUE)
  */
 static LLVMValueRef
 lp_llvm_image_member(struct gallivm_state *gallivm,
+                     LLVMTypeRef context_type,
                      LLVMValueRef context_ptr,
                      unsigned image_unit,
                      LLVMValueRef image_unit_offset,
@@ -285,7 +290,7 @@ lp_llvm_image_member(struct gallivm_state *gallivm,
    indices[3] = lp_build_const_int32(gallivm, member_index);
 
    LLVMValueRef ptr =
-      LLVMBuildGEP(builder, context_ptr, indices, ARRAY_SIZE(indices), "");
+      LLVMBuildGEP2(builder, context_type, context_ptr, indices, ARRAY_SIZE(indices), "");
 
    LLVMValueRef res = emit_load ? LLVMBuildLoad(builder, ptr, "") : ptr;
 
@@ -307,10 +312,11 @@ lp_llvm_image_member(struct gallivm_state *gallivm,
 #define LP_LLVM_IMAGE_MEMBER(_name, _index, _emit_load)  \
    static LLVMValueRef \
    lp_llvm_image_##_name( struct gallivm_state *gallivm,               \
+                          LLVMTypeRef context_type,                    \
                           LLVMValueRef context_ptr,                     \
                           unsigned image_unit, LLVMValueRef image_unit_offset) \
    { \
-      return lp_llvm_image_member(gallivm, context_ptr, \
+      return lp_llvm_image_member(gallivm, context_type, context_ptr,    \
                                   image_unit, image_unit_offset, \
                                   _index, #_name, _emit_load );  \
    }
@@ -329,13 +335,14 @@ LP_LLVM_IMAGE_MEMBER(sample_stride, LP_JIT_IMAGE_SAMPLE_STRIDE, TRUE)
 #if LP_USE_TEXTURE_CACHE
 static LLVMValueRef
 lp_llvm_texture_cache_ptr(struct gallivm_state *gallivm,
+                          LLVMTypeRef thread_data_type,
                           LLVMValueRef thread_data_ptr,
                           unsigned unit)
 {
    /* We use the same cache for all units */
    (void)unit;
 
-   return lp_jit_thread_data_cache(gallivm, LLVMGetElementType(LLVMTypeOf(thread_data_ptr)), thread_data_ptr);
+   return lp_jit_thread_data_cache(gallivm, thread_data_type, thread_data_ptr);
 }
 #endif
 

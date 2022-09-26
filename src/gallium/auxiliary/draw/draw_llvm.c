@@ -965,6 +965,7 @@ generate_vs(struct draw_llvm_variant *variant,
    params.consts_ptr = consts_ptr;
    params.system_values = system_values;
    params.inputs = inputs;
+   params.context_type = variant->context_type;
    params.context_ptr = context_ptr;
    params.sampler = draw_sampler;
    params.info = &llvm->draw->vs.vertex_shader->info;
@@ -2872,6 +2873,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.mask = &mask;
    params.consts_ptr = consts_ptr;
    params.system_values = &system_values;
+   params.context_type = variant->context_type;
    params.context_ptr = context_ptr;
    params.sampler = sampler;
    params.info = &llvm->draw->gs.geometry_shader->info;
@@ -3533,6 +3535,7 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
       params.mask = &mask;
       params.consts_ptr = consts_ptr;
       params.system_values = &system_values;
+      params.context_type = variant->context_type;
       params.context_ptr = context_ptr;
       params.sampler = sampler;
       params.info = &llvm->draw->tcs.tess_ctrl_shader->info;
@@ -4062,6 +4065,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
       params.mask = &mask;
       params.consts_ptr = consts_ptr;
       params.system_values = &system_values;
+      params.context_type = variant->context_type;
       params.context_ptr = context_ptr;
       params.sampler = sampler;
       params.info = &llvm->draw->tes.tess_eval_shader->info;

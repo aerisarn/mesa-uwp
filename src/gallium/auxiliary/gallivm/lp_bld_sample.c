@@ -266,7 +266,7 @@ lp_build_pmin(struct lp_build_sample_context *bld,
    boolean pmin_per_quad = pmin_bld->type.length != length;
    unsigned i;
 
-   first_level = bld->dynamic_state->first_level(bld->gallivm,
+   first_level = bld->dynamic_state->first_level(bld->gallivm, bld->context_type,
                                                  bld->context_ptr, texture_unit, NULL);
    first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
    int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
@@ -376,7 +376,7 @@ lp_build_rho(struct lp_build_sample_context *bld,
     * the messy cube maps for now) when requested.
     */
 
-   first_level = bld->dynamic_state->first_level(bld->gallivm,
+   first_level = bld->dynamic_state->first_level(bld->gallivm, bld->context_type,
                                                  bld->context_ptr, texture_unit, NULL);
    first_level_vec = lp_build_broadcast_scalar(int_size_bld, first_level);
    int_size = lp_build_minify(int_size_bld, bld->int_size, first_level_vec, TRUE);
@@ -854,7 +854,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
        * This is hit during mipmap generation.
        */
       LLVMValueRef min_lod =
-         dynamic_state->min_lod(bld->gallivm,
+         dynamic_state->min_lod(bld->gallivm, bld->context_type,
                                 bld->context_ptr, sampler_unit);
 
       lod = lp_build_broadcast_scalar(lodf_bld, min_lod);
@@ -952,7 +952,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
       /* add sampler lod bias */
       if (bld->static_sampler_state->lod_bias_non_zero) {
          LLVMValueRef sampler_lod_bias =
-            dynamic_state->lod_bias(bld->gallivm,
+            dynamic_state->lod_bias(bld->gallivm, bld->context_type,
                                     bld->context_ptr, sampler_unit);
          sampler_lod_bias = lp_build_broadcast_scalar(lodf_bld,
                                                       sampler_lod_bias);
@@ -966,7 +966,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
       /* clamp lod */
       if (bld->static_sampler_state->apply_max_lod) {
          LLVMValueRef max_lod =
-            dynamic_state->max_lod(bld->gallivm,
+            dynamic_state->max_lod(bld->gallivm, bld->context_type,
                                    bld->context_ptr, sampler_unit);
          max_lod = lp_build_broadcast_scalar(lodf_bld, max_lod);
 
@@ -974,7 +974,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
       }
       if (bld->static_sampler_state->apply_min_lod) {
          LLVMValueRef min_lod =
-            dynamic_state->min_lod(bld->gallivm,
+            dynamic_state->min_lod(bld->gallivm, bld->context_type,
                                    bld->context_ptr, sampler_unit);
          min_lod = lp_build_broadcast_scalar(lodf_bld, min_lod);
 
@@ -1032,9 +1032,9 @@ lp_build_nearest_mip_level(struct lp_build_sample_context *bld,
    struct lp_sampler_dynamic_state *dynamic_state = bld->dynamic_state;
    LLVMValueRef first_level, last_level, level;
 
-   first_level = dynamic_state->first_level(bld->gallivm,
+   first_level = dynamic_state->first_level(bld->gallivm, bld->context_type,
                                             bld->context_ptr, texture_unit, NULL);
-   last_level = dynamic_state->last_level(bld->gallivm,
+   last_level = dynamic_state->last_level(bld->gallivm, bld->context_type,
                                           bld->context_ptr, texture_unit, NULL);
    first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
    last_level = lp_build_broadcast_scalar(leveli_bld, last_level);
@@ -1094,9 +1094,9 @@ lp_build_linear_mip_levels(struct lp_build_sample_context *bld,
 
    assert(bld->num_lods == bld->num_mips);
 
-   first_level = dynamic_state->first_level(bld->gallivm,
+   first_level = dynamic_state->first_level(bld->gallivm, bld->context_type,
                                             bld->context_ptr, texture_unit, NULL);
-   last_level = dynamic_state->last_level(bld->gallivm,
+   last_level = dynamic_state->last_level(bld->gallivm, bld->context_type,
                                           bld->context_ptr, texture_unit, NULL);
    first_level = lp_build_broadcast_scalar(leveli_bld, first_level);
    last_level = lp_build_broadcast_scalar(leveli_bld, last_level);

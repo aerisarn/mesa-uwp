@@ -267,7 +267,9 @@ struct lp_build_tgsi_params {
    LLVMValueRef const_sizes_ptr;
    const struct lp_bld_tgsi_system_values *system_values;
    const LLVMValueRef (*inputs)[4];
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
+   LLVMTypeRef thread_data_type;
    LLVMValueRef thread_data_ptr;
    const struct lp_build_sampler_soa *sampler;
    const struct tgsi_shader_info *info;
@@ -521,7 +523,9 @@ struct lp_build_tgsi_soa_context
    LLVMValueRef consts_sizes[LP_MAX_TGSI_CONST_BUFFERS];
    const LLVMValueRef (*inputs)[TGSI_NUM_CHANNELS];
    LLVMValueRef (*outputs)[TGSI_NUM_CHANNELS];
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
+   LLVMTypeRef thread_data_type;
    LLVMValueRef thread_data_ptr;
 
    LLVMValueRef ssbo_ptr;

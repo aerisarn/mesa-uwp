@@ -447,6 +447,7 @@ generate_compute(struct llvmpipe_context *lp,
       params.mask = &mask;
       params.consts_ptr = consts_ptr;
       params.system_values = &system_values;
+      params.context_type = variant->jit_cs_context_type;
       params.context_ptr = context_ptr;
       params.sampler = sampler;
       params.info = &shader->info.base;

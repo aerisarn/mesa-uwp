@@ -1052,7 +1052,9 @@ generate_fs_loop(struct gallivm_state *gallivm,
    params.consts_ptr = consts_ptr;
    params.system_values = &system_values;
    params.inputs = interp->inputs;
+   params.context_type = context_type;
    params.context_ptr = context_ptr;
+   params.thread_data_type = thread_data_type;
    params.thread_data_ptr = thread_data_ptr;
    params.sampler = sampler;
    params.info = &shader->info.base;

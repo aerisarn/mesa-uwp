@@ -109,7 +109,9 @@ struct lp_sampler_params
    unsigned sampler_index;
    LLVMValueRef texture_index_offset;
    unsigned sample_key;
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
+   LLVMTypeRef thread_data_type;
    LLVMValueRef thread_data_ptr;
    const LLVMValueRef *coords;
    const LLVMValueRef *offsets;
@@ -127,6 +129,7 @@ struct lp_sampler_size_query_params
    unsigned texture_unit;
    LLVMValueRef texture_unit_offset;
    unsigned target;
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
    boolean is_sviewinfo;
    bool samples_only;
@@ -149,7 +152,9 @@ struct lp_img_params
    unsigned target;
    LLVMAtomicRMWBinOp op;
    LLVMValueRef exec_mask;
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
+   LLVMTypeRef thread_data_type;
    LLVMValueRef thread_data_ptr;
    const LLVMValueRef *coords;
    LLVMValueRef ms_index;
@@ -230,66 +235,77 @@ struct lp_sampler_dynamic_state
    /** Obtain the base texture width (or number of elements) (returns int32) */
    LLVMValueRef
    (*width)(struct gallivm_state *gallivm,
+            LLVMTypeRef context_type,
             LLVMValueRef context_ptr,
             unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the base texture height (returns int32) */
    LLVMValueRef
    (*height)(struct gallivm_state *gallivm,
+             LLVMTypeRef context_type,
              LLVMValueRef context_ptr,
              unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the base texture depth (or array size) (returns int32) */
    LLVMValueRef
    (*depth)(struct gallivm_state *gallivm,
+            LLVMTypeRef context_type,
             LLVMValueRef context_ptr,
             unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the first mipmap level (base level) (returns int32) */
    LLVMValueRef
    (*first_level)(struct gallivm_state *gallivm,
+                  LLVMTypeRef context_type,
                   LLVMValueRef context_ptr,
                   unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain the number of mipmap levels minus one (returns int32) */
    LLVMValueRef
    (*last_level)(struct gallivm_state *gallivm,
+                 LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain stride in bytes between image rows/blocks (returns int32) */
    LLVMValueRef
    (*row_stride)(struct gallivm_state *gallivm,
+                 LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain stride in bytes between image slices (returns int32) */
    LLVMValueRef
    (*img_stride)(struct gallivm_state *gallivm,
+                 LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
                  unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain pointer to base of texture */
    LLVMValueRef
    (*base_ptr)(struct gallivm_state *gallivm,
+               LLVMTypeRef context_type,
                LLVMValueRef context_ptr,
                unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain pointer to array of mipmap offsets */
    LLVMValueRef
    (*mip_offsets)(struct gallivm_state *gallivm,
+                  LLVMTypeRef context_type,
                   LLVMValueRef context_ptr,
                   unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain number of samples (returns int32) */
    LLVMValueRef
    (*num_samples)(struct gallivm_state *gallivm,
+                  LLVMTypeRef context_type,
                   LLVMValueRef context_ptr,
                   unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
    /** Obtain multisample stride (returns int32) */
    LLVMValueRef
    (*sample_stride)(struct gallivm_state *gallivm,
+                    LLVMTypeRef context_type,
                     LLVMValueRef context_ptr,
                     unsigned texture_unit, LLVMValueRef texture_unit_offset);
 
@@ -298,30 +314,35 @@ struct lp_sampler_dynamic_state
    /** Obtain texture min lod (returns float) */
    LLVMValueRef
    (*min_lod)(struct gallivm_state *gallivm,
+              LLVMTypeRef context_type,
               LLVMValueRef context_ptr,
               unsigned sampler_unit);
 
    /** Obtain texture max lod (returns float) */
    LLVMValueRef
    (*max_lod)(struct gallivm_state *gallivm,
+              LLVMTypeRef context_type,
               LLVMValueRef context_ptr,
               unsigned sampler_unit);
 
    /** Obtain texture lod bias (returns float) */
    LLVMValueRef
    (*lod_bias)(struct gallivm_state *gallivm,
+               LLVMTypeRef context_type,
                LLVMValueRef context_ptr,
                unsigned sampler_unit);
 
    /** Obtain texture border color (returns ptr to float[4]) */
    LLVMValueRef
    (*border_color)(struct gallivm_state *gallivm,
+                   LLVMTypeRef context_type,
                    LLVMValueRef context_ptr,
                    unsigned sampler_unit);
 
    /** Obtain maximum anisotropy */
    LLVMValueRef
    (*max_aniso)(struct gallivm_state *gallivm,
+                LLVMTypeRef context_type,
                 LLVMValueRef context_ptr,
                 unsigned sampler_unit);
 
@@ -332,6 +353,7 @@ struct lp_sampler_dynamic_state
     */
    LLVMValueRef
    (*cache_ptr)(struct gallivm_state *gallivm,
+                LLVMTypeRef thread_data_type,
                 LLVMValueRef thread_data_ptr,
                 unsigned unit);
 };
@@ -440,6 +462,7 @@ struct lp_build_sample_context
 
    LLVMValueRef border_color_clamped;
 
+   LLVMTypeRef context_type;
    LLVMValueRef context_ptr;
 
    LLVMValueRef aniso_filter_table;
