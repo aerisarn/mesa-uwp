@@ -69,13 +69,13 @@ static void get_rate_control_param(struct rvce_encoder *enc, struct pipe_h264_en
 static void get_motion_estimation_param(struct rvce_encoder *enc,
                                         struct pipe_h264_enc_picture_desc *pic)
 {
-   enc->enc_pic.me.motion_est_quarter_pixel = pic->motion_est.motion_est_quarter_pixel;
-   enc->enc_pic.me.enc_disable_sub_mode = pic->motion_est.enc_disable_sub_mode;
-   enc->enc_pic.me.lsmvert = pic->motion_est.lsmvert;
-   enc->enc_pic.me.enc_en_ime_overw_dis_subm = pic->motion_est.enc_en_ime_overw_dis_subm;
-   enc->enc_pic.me.enc_ime_overw_dis_subm_no = pic->motion_est.enc_ime_overw_dis_subm_no;
-   enc->enc_pic.me.enc_ime2_search_range_x = pic->motion_est.enc_ime2_search_range_x;
-   enc->enc_pic.me.enc_ime2_search_range_y = pic->motion_est.enc_ime2_search_range_y;
+   enc->enc_pic.me.motion_est_quarter_pixel = 0;
+   enc->enc_pic.me.enc_disable_sub_mode = 254;
+   enc->enc_pic.me.lsmvert = 0;
+   enc->enc_pic.me.enc_en_ime_overw_dis_subm = 0;
+   enc->enc_pic.me.enc_ime_overw_dis_subm_no = 0;
+   enc->enc_pic.me.enc_ime2_search_range_x = 1;
+   enc->enc_pic.me.enc_ime2_search_range_y = 1;
    enc->enc_pic.me.enc_ime_decimation_search = 0x00000001;
    enc->enc_pic.me.motion_est_half_pixel = 0x00000001;
    enc->enc_pic.me.enc_search_range_x = 0x00000010;
@@ -106,7 +106,7 @@ static void get_pic_control_param(struct rvce_encoder *enc, struct pipe_h264_enc
    enc->enc_pic.pc.enc_num_default_active_ref_l0 = 0x00000001;
    enc->enc_pic.pc.enc_num_default_active_ref_l1 = 0x00000001;
    enc->enc_pic.pc.enc_cabac_enable = pic->pic_ctrl.enc_cabac_enable;
-   enc->enc_pic.pc.enc_constraint_set_flags = pic->pic_ctrl.enc_constraint_set_flags;
+   enc->enc_pic.pc.enc_constraint_set_flags = 0x00000040;
 }
 
 static void get_task_info_param(struct rvce_encoder *enc)
