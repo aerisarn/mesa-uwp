@@ -2030,7 +2030,8 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
          use_buffer_blit = true;
 
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                               pCreateInfo, pAllocator, use_buffer_blit);
+                               pCreateInfo, NULL, pAllocator,
+                               use_buffer_blit);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 

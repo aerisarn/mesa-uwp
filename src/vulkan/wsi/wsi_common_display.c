@@ -1952,7 +1952,7 @@ wsi_display_surface_create_swapchain(
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                                        create_info, allocator, false);
+                                        create_info, NULL, allocator, false);
    if (result != VK_SUCCESS) {
       vk_free(allocator, chain);
       return result;

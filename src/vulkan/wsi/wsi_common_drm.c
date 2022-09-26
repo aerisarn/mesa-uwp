@@ -618,3 +618,30 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
 
    return VK_SUCCESS;
 }
+
+bool
+wsi_drm_image_needs_buffer_blit(const struct wsi_device *wsi,
+                                const struct wsi_drm_image_params *params)
+{
+   return !params->same_gpu;
+}
+
+VkResult
+wsi_drm_configure_image(const struct wsi_swapchain *chain,
+                        const VkSwapchainCreateInfoKHR *pCreateInfo,
+                        const struct wsi_drm_image_params *params,
+                        struct wsi_image_info *info)
+{
+   assert(params->base.image_type == WSI_IMAGE_TYPE_DRM);
+
+   if (!params->same_gpu) {
+      bool use_modifier = params->num_modifier_lists > 0;
+      return wsi_configure_prime_image(chain, pCreateInfo, use_modifier, info);
+   } else {
+      return wsi_configure_native_image(chain, pCreateInfo,
+                                        params->num_modifier_lists,
+                                        params->num_modifiers,
+                                        params->modifiers,
+                                        info);
+   }
+}
