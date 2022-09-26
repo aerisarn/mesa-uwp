@@ -55,10 +55,14 @@ enum pvr_reset_query_pool_pool_const {
 
 /* ClearAttachments. */
 enum pvr_clear_attachment_const {
-   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_0,
-   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_1,
-   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_2,
-   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_3,
+   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_0 = 0, /* Don't change. Indexes array.
+                                                */
+   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_1 = 1, /* Don't change. Indexes array.
+                                                */
+   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_2 = 2, /* Don't change. Indexes array.
+                                                */
+   PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_3 = 3, /* Don't change. Indexes array.
+                                                */
    PVR_CLEAR_ATTACHMENT_CONST_TILE_BUFFER_UPPER,
    PVR_CLEAR_ATTACHMENT_CONST_TILE_BUFFER_LOWER,
    PVR_CLEAR_ATTACHMENT_CONST_COUNT,

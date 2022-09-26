@@ -27,7 +27,10 @@
 
 #include "pvr_clear.h"
 #include "pvr_csb.h"
+#include "pvr_formats.h"
 #include "pvr_private.h"
+#include "pvr_shader_factory.h"
+#include "pvr_static_shaders.h"
 #include "util/list.h"
 #include "vk_alloc.h"
 #include "vk_command_buffer.h"
@@ -254,6 +257,256 @@ pvr_clear_template_idx_from_aspect(VkImageAspectFlags aspect)
    }
 }
 
+static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
+   struct pvr_cmd_buffer *cmd_buffer,
+   const struct pvr_shader_factory_info *shader_info,
+   const uint32_t clear_color[static const PVR_CLEAR_COLOR_ARRAY_SIZE],
+   ASSERTED bool uses_tile_buffer,
+   struct pvr_bo **const const_shareds_buffer_out)
+{
+   struct pvr_device *device = cmd_buffer->device;
+   struct pvr_bo *const_shareds_buffer;
+   uint32_t *buffer;
+   VkResult result;
+
+   /* TODO: This doesn't need to be aligned to slc size. Alignment to 4 is fine.
+    * Change pvr_cmd_buffer_alloc_mem() to take in an alignment?
+    */
+   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                     device->heaps.general_heap,
+                                     shader_info->const_shared_regs,
+                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                     &const_shareds_buffer);
+   if (result != VK_SUCCESS)
+      return result;
+
+   buffer = const_shareds_buffer->bo->map;
+
+   for (uint32_t i = 0; i < PVR_CLEAR_ATTACHMENT_CONST_COUNT; i++) {
+      uint32_t dest_idx = shader_info->driver_const_location_map[i];
+
+      if (dest_idx == PVR_CLEAR_ATTACHMENT_DEST_ID_UNUSED)
+         continue;
+
+      assert(dest_idx < shader_info->const_shared_regs);
+
+      switch (i) {
+      case PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_0:
+      case PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_1:
+      case PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_2:
+      case PVR_CLEAR_ATTACHMENT_CONST_COMPONENT_3:
+         buffer[dest_idx] = clear_color[i];
+         break;
+
+      case PVR_CLEAR_ATTACHMENT_CONST_TILE_BUFFER_UPPER:
+      case PVR_CLEAR_ATTACHMENT_CONST_TILE_BUFFER_LOWER:
+         assert(uses_tile_buffer);
+         buffer[dest_idx] = ~0;
+         pvr_finishme("Add support for tile buffer output clear.");
+         break;
+
+      default:
+         unreachable("Unsupported clear attachment const type.");
+      }
+   }
+
+   for (uint32_t i = 0; i < shader_info->num_static_const; i++) {
+      const struct pvr_static_buffer *static_buff =
+         &shader_info->static_const_buffer[i];
+
+      assert(static_buff->dst_idx < shader_info->const_shared_regs);
+
+      buffer[static_buff->dst_idx] = static_buff->value;
+   }
+
+   pvr_bo_cpu_unmap(device, const_shareds_buffer);
+
+   *const_shareds_buffer_out = const_shareds_buffer;
+
+   return VK_SUCCESS;
+}
+
+static VkResult pvr_clear_color_attachment_static(
+   struct pvr_cmd_buffer *cmd_buffer,
+   const struct usc_mrt_resource *mrt_resource,
+   VkFormat format,
+   uint32_t clear_color[static const PVR_CLEAR_COLOR_ARRAY_SIZE],
+   uint32_t template_idx,
+   uint32_t stencil,
+   bool vs_has_rt_id_output)
+{
+   struct pvr_device *device = cmd_buffer->device;
+   ASSERTED const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   ASSERTED const bool has_eight_output_registers =
+      PVR_HAS_FEATURE(dev_info, eight_output_registers);
+   const struct pvr_device_static_clear_state *dev_clear_state =
+      &device->static_clear_state;
+   const bool uses_tile_buffer = mrt_resource->type ==
+                                 USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+   const struct pvr_pds_clear_attachment_program_info *clear_attachment_program;
+   struct pvr_pds_pixel_shader_sa_program texture_program;
+   uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
+   const struct pvr_shader_factory_info *shader_info;
+   struct pvr_static_clear_ppp_template template;
+   struct pvr_bo *pds_texture_program_bo;
+   struct pvr_bo *const_shareds_buffer;
+   uint64_t pds_texture_program_addr;
+   uint32_t out_reg_count;
+   uint32_t output_offset;
+   struct pvr_bo *pvr_bo;
+   uint32_t program_idx;
+   uint32_t *buffer;
+   VkResult result;
+
+   out_reg_count =
+      DIV_ROUND_UP(pvr_get_pbe_accum_format_size_in_bytes(format), 4U);
+
+   if (uses_tile_buffer)
+      output_offset = mrt_resource->reg.offset;
+   else
+      output_offset = mrt_resource->mem.offset_dw;
+
+   assert(has_eight_output_registers || out_reg_count + output_offset <= 4);
+
+   program_idx = pvr_get_clear_attachment_program_index(out_reg_count,
+                                                        output_offset,
+                                                        uses_tile_buffer);
+
+   shader_info = clear_attachment_collection[program_idx].info;
+
+   result = pvr_clear_color_attachment_static_create_consts_buffer(
+      cmd_buffer,
+      shader_info,
+      clear_color,
+      uses_tile_buffer,
+      &const_shareds_buffer);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* clang-format off */
+   texture_program = (struct pvr_pds_pixel_shader_sa_program){
+      .num_texture_dma_kicks = 1,
+      .texture_dma_address = {
+         [0] = const_shareds_buffer->vma->dev_addr.addr,
+      }
+   };
+   /* clang-format on */
+
+   pvr_csb_pack (&texture_program.texture_dma_control[0],
+                 PDSINST_DOUT_FIELDS_DOUTD_SRC1,
+                 doutd_src1) {
+      doutd_src1.dest = PVRX(PDSINST_DOUTD_DEST_COMMON_STORE);
+      doutd_src1.bsize = shader_info->const_shared_regs;
+   }
+
+   clear_attachment_program =
+      &dev_clear_state->pds_clear_attachment_program_info[program_idx];
+
+   /* TODO: This doesn't need to be aligned to slc size. Alignment to 4 is fine.
+    * Change pvr_cmd_buffer_alloc_mem() to take in an alignment?
+    */
+   result = pvr_cmd_buffer_alloc_mem(
+      cmd_buffer,
+      device->heaps.pds_heap,
+      clear_attachment_program->texture_program_data_size,
+      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+      &pds_texture_program_bo);
+   if (result != VK_SUCCESS) {
+      list_del(&const_shareds_buffer->link);
+      pvr_bo_free(device, const_shareds_buffer);
+
+      return result;
+   }
+
+   buffer = pds_texture_program_bo->bo->map;
+   pds_texture_program_addr = pds_texture_program_bo->vma->dev_addr.addr -
+                              device->heaps.pds_heap->base_addr.addr;
+
+   pvr_pds_generate_pixel_shader_sa_texture_state_data(
+      &texture_program,
+      buffer,
+      &device->pdevice->dev_info);
+
+   pvr_bo_cpu_unmap(device, pds_texture_program_bo);
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE],
+                 TA_STATE_PDS_SHADERBASE,
+                 shaderbase) {
+      shaderbase.addr = clear_attachment_program->pixel_program_offset;
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXUNICODEBASE],
+                 TA_STATE_PDS_TEXUNICODEBASE,
+                 texunicodebase) {
+      texunicodebase.addr = clear_attachment_program->texture_program_offset;
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO1],
+                 TA_STATE_PDS_SIZEINFO1,
+                 sizeinfo1) {
+      sizeinfo1.pds_texturestatesize = DIV_ROUND_UP(
+         clear_attachment_program->texture_program_data_size,
+         PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEXTURESTATESIZE_UNIT_SIZE));
+
+      sizeinfo1.pds_tempsize =
+         DIV_ROUND_UP(clear_attachment_program->texture_program_pds_temps_count,
+                      PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEMPSIZE_UNIT_SIZE));
+   }
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO2],
+                 TA_STATE_PDS_SIZEINFO2,
+                 sizeinfo2) {
+      sizeinfo2.usc_sharedsize =
+         DIV_ROUND_UP(shader_info->const_shared_regs,
+                      PVRX(TA_STATE_PDS_SIZEINFO2_USC_SHAREDSIZE_UNIT_SIZE));
+   }
+
+   /* Dummy coefficient loading program. */
+   pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_VARYINGBASE] = 0;
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE],
+                 TA_STATE_PDS_TEXTUREDATABASE,
+                 texturedatabase) {
+      texturedatabase.addr = PVR_DEV_ADDR(pds_texture_program_addr);
+   }
+
+   template =
+      cmd_buffer->device->static_clear_state.ppp_templates[template_idx];
+
+   template.config.pds_state = &pds_state;
+
+   template.config.ispctl.upass =
+      cmd_buffer->state.render_pass_info.isp_userpass;
+
+   if (template_idx & PVR_STATIC_CLEAR_STENCIL_BIT)
+      template.config.ispa.sref = stencil;
+
+   if (vs_has_rt_id_output) {
+      template.config.output_sel.rhw_pres = true;
+      template.config.output_sel.render_tgt_pres = true;
+      template.config.output_sel.vtxsize = 4 + 1;
+   }
+
+   result = pvr_emit_ppp_from_template(
+      &cmd_buffer->state.current_sub_cmd->gfx.control_stream,
+      &template,
+      &pvr_bo);
+   if (result != VK_SUCCESS) {
+      list_del(&pds_texture_program_bo->link);
+      pvr_bo_free(device, pds_texture_program_bo);
+
+      list_del(&const_shareds_buffer->link);
+      pvr_bo_free(device, const_shareds_buffer);
+
+      cmd_buffer->state.status = result;
+      return result;
+   }
+
+   list_add(&pvr_bo->link, &cmd_buffer->bo_list);
+
+   return VK_SUCCESS;
+}
+
 static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                   uint32_t attachment_count,
                                   const VkClearAttachment *attachments,
@@ -266,6 +519,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       pvr_get_hw_subpass(pass, pass_info->subpass_idx);
    struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
    struct pvr_device_info *dev_info = &cmd_buffer->device->pdevice->dev_info;
+   struct pvr_render_subpass *sub_pass = &pass->subpasses[hw_pass->index];
    bool z_replicate = hw_pass->z_replicate != -1;
    uint32_t vs_output_size_in_bytes;
    bool vs_has_rt_id_output;
@@ -299,11 +553,71 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       float depth;
 
       if (attachment->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-         pvr_finishme("Implement clear for color attachment.");
+         uint32_t packed_clear_color[PVR_CLEAR_COLOR_ARRAY_SIZE];
+         const struct usc_mrt_resource *mrt_resource;
+         uint32_t global_attachment_idx;
+         uint32_t local_attachment_idx;
+         VkFormat format;
+
+         local_attachment_idx = attachment->colorAttachment;
+         mrt_resource = &hw_pass->setup.mrt_resources[local_attachment_idx];
+
+         assert(local_attachment_idx < sub_pass->color_count);
+         global_attachment_idx =
+            sub_pass->color_attachments[local_attachment_idx];
+
+         if (global_attachment_idx == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         assert(global_attachment_idx < pass->attachment_count);
+         format = pass->attachments[global_attachment_idx].vk_format;
+
+         assert(format != VK_FORMAT_UNDEFINED);
+
+         pvr_get_hw_clear_color(format,
+                                attachment->clearValue.color,
+                                packed_clear_color);
+
+         result = pvr_clear_color_attachment_static(cmd_buffer,
+                                                    mrt_resource,
+                                                    format,
+                                                    packed_clear_color,
+                                                    PVR_STATIC_CLEAR_COLOR_BIT,
+                                                    0,
+                                                    vs_has_rt_id_output);
+         if (result != VK_SUCCESS)
+            return;
       } else if (z_replicate &&
                  attachment->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         pvr_finishme("Implement clear for depth/depth+stencil attachment on "
-                      "z_replicate.");
+         const VkClearColorValue clear_color = {
+            .float32 = { [0] = attachment->clearValue.depthStencil.depth, },
+         };
+         const uint32_t stencil = attachment->clearValue.depthStencil.stencil;
+         uint32_t packed_clear_color[PVR_CLEAR_COLOR_ARRAY_SIZE];
+         const struct usc_mrt_resource *mrt_resource;
+         uint32_t template_idx;
+
+         template_idx =
+            pvr_clear_template_idx_from_aspect(attachment->aspectMask);
+
+         template_idx |= PVR_STATIC_CLEAR_COLOR_BIT;
+
+         assert(hw_pass->z_replicate > 0);
+         mrt_resource = &hw_pass->setup.mrt_resources[hw_pass->z_replicate];
+
+         pvr_get_hw_clear_color(VK_FORMAT_R32_SFLOAT,
+                                clear_color,
+                                packed_clear_color);
+
+         result = pvr_clear_color_attachment_static(cmd_buffer,
+                                                    mrt_resource,
+                                                    VK_FORMAT_R32_SFLOAT,
+                                                    packed_clear_color,
+                                                    template_idx,
+                                                    stencil,
+                                                    vs_has_rt_id_output);
+         if (result != VK_SUCCESS)
+            return;
       } else {
          struct pvr_static_clear_ppp_template template;
          uint32_t template_idx;
