@@ -528,28 +528,47 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
    }
 
    case AGX_OPCODE_DEVICE_LOAD:
+   case AGX_OPCODE_UNIFORM_STORE:
    {
-      assert(I->mask != 0);
-      assert(I->format <= 0x10);
+      bool is_uniform_store = I->op == AGX_OPCODE_UNIFORM_STORE;
+      bool is_store = is_uniform_store;
+      bool has_base = !is_uniform_store;
 
-      bool Rt, At, Ot;
-      unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
-      unsigned A = agx_pack_memory_base(I->src[0], &At);
-      unsigned O = agx_pack_memory_index(I->src[1], &Ot);
-      unsigned u1 = 1; // XXX
+      /* Uniform stores internally packed as 16-bit. Fix up the format, mask,
+       * and size so we can use scalar 32-bit values in the IR and avoid
+       * special casing earlier in the compiler.
+       */
+      enum agx_format format = is_uniform_store ? AGX_FORMAT_I16 : I->format;
+      agx_index reg = is_store ? I->src[0] : I->dest[0];
+      unsigned mask = I->mask;
+
+      if (is_uniform_store) {
+         mask = BITFIELD_MASK(agx_size_align_16(reg.size));
+         reg.size = AGX_SIZE_16;
+      }
+
+      bool Rt, At = false, Ot;
+      unsigned R = agx_pack_memory_reg(reg, &Rt);
+      unsigned A = has_base ? agx_pack_memory_base(I->src[0], &At) : 0;
+      unsigned O = agx_pack_memory_index(I->src[(has_base ? 1 : 0) + (is_store ? 1 : 0)], &Ot);
+      unsigned u1 = is_uniform_store ? 0 : 1; // XXX
       unsigned u3 = 0;
-      unsigned u4 = 4; // XXX
+      unsigned u4 = is_uniform_store ? 0 : 4; // XXX
       unsigned u5 = 0;
       bool L = true; /* TODO: when would you want short? */
 
+      assert(mask != 0);
+      assert(format <= 0x10);
+
       uint64_t raw =
-            0x05 |
-            ((I->format & BITFIELD_MASK(3)) << 7) |
+            agx_opcodes_info[I->op].encoding.exact |
+            ((format & BITFIELD_MASK(3)) << 7) |
             ((R & BITFIELD_MASK(6)) << 10) |
             ((A & BITFIELD_MASK(4)) << 16) |
             ((O & BITFIELD_MASK(4)) << 20) |
             (Ot ? (1 << 24) : 0) |
             (I->src[1].abs ? (1 << 25) : 0) |
+            (is_uniform_store ? (2 << 25) : 0) |
             (u1 << 26) |
             (At << 27) |
             (u3 << 28) |
@@ -560,10 +579,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
             (((uint64_t) I->shift) << 42) |
             (((uint64_t) u4) << 44) |
             (L ? (1ull << 47) : 0) |
-            (((uint64_t) (I->format >> 3)) << 48) |
+            (((uint64_t) (format >> 3)) << 48) |
             (((uint64_t) Rt) << 49) |
             (((uint64_t) u5) << 50) |
-            (((uint64_t) I->mask) << 52) |
+            (((uint64_t) mask) << 52) |
             (((uint64_t) (O >> 8)) << 56);
 
       unsigned size = L ? 8 : 6;
