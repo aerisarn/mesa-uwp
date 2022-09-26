@@ -170,6 +170,23 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
       /* Immediate inlining happens elsewhere */
       if (def->src[0].type == AGX_INDEX_IMMEDIATE) continue;
 
+      /* Not all instructions can take uniforms. Memory instructions can take
+       * uniforms, but only for their base (first) source and only in the
+       * low-half of the uniform file.
+       */
+      if (def->src[0].type == AGX_INDEX_UNIFORM &&
+          (I->op == AGX_OPCODE_TEXTURE_LOAD ||
+           I->op == AGX_OPCODE_TEXTURE_SAMPLE ||
+           (I->op == AGX_OPCODE_DEVICE_LOAD &&
+            (s != 0 || def->src[0].value >= 256)) ||
+           I->op == AGX_OPCODE_PHI ||
+           I->op == AGX_OPCODE_ST_TILE ||
+           I->op == AGX_OPCODE_LD_TILE ||
+           /*I->op == AGX_OPCODE_DEVICE_STORE ||*/
+           I->op == AGX_OPCODE_UNIFORM_STORE ||
+           I->op == AGX_OPCODE_ST_VARY))
+          continue;
+
       I->src[s] = agx_replace_index(src, def->src[0]);
    }
 }
