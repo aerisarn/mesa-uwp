@@ -108,8 +108,7 @@ static unsigned
 agx_pack_memory_reg(agx_index index, bool *flag)
 {
    assert(index.size == AGX_SIZE_16 || index.size == AGX_SIZE_32);
-   assert(index.size == AGX_SIZE_16 || (index.value & 1) == 0);
-   assert(index.value < 0x100);
+   assert_register_is_aligned(index);
 
    *flag = (index.size == AGX_SIZE_32);
    return index.value;
