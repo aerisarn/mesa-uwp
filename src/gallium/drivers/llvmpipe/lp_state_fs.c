@@ -322,7 +322,8 @@ find_output_by_semantic(const struct tgsi_shader_info *info,
  * Fetch the specified lp_jit_viewport structure for a given viewport_index.
  */
 static LLVMValueRef
-lp_llvm_viewport(LLVMValueRef context_ptr,
+lp_llvm_viewport(LLVMTypeRef context_type,
+                 LLVMValueRef context_ptr,
                  struct gallivm_state *gallivm,
                  LLVMValueRef viewport_index)
 {
@@ -332,7 +333,7 @@ lp_llvm_viewport(LLVMValueRef context_ptr,
    struct lp_type viewport_type =
       lp_type_float_vec(32, 32 * LP_JIT_VIEWPORT_NUM_FIELDS);
 
-   ptr = lp_jit_context_viewports(gallivm, context_ptr);
+   ptr = lp_jit_context_viewports(gallivm, context_type, context_ptr);
    ptr = LLVMBuildPointerCast(builder, ptr,
             LLVMPointerType(lp_build_vec_type(gallivm, viewport_type), 0), "");
 
@@ -348,6 +349,7 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
                      bool depth_clamp,
                      bool restrict_depth,
                      struct lp_type type,
+                     LLVMTypeRef context_type,
                      LLVMValueRef context_ptr,
                      LLVMValueRef thread_data_ptr,
                      LLVMValueRef z)
@@ -379,7 +381,7 @@ lp_build_depth_clamp(struct gallivm_state *gallivm,
     * Load the min and max depth from the lp_jit_context.viewports
     * array of lp_jit_viewport structures.
     */
-   viewport = lp_llvm_viewport(context_ptr, gallivm, viewport_index);
+   viewport = lp_llvm_viewport(context_type, context_ptr, gallivm, viewport_index);
 
    /* viewports[viewport_index].min_depth */
    min_depth = LLVMBuildExtractElement(builder, viewport,
@@ -622,6 +624,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  const struct lp_fragment_shader_variant_key *key,
                  LLVMBuilderRef builder,
                  struct lp_type type,
+                 LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
                  LLVMValueRef sample_pos_array,
                  LLVMValueRef num_loop,
@@ -721,15 +724,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMTypeRef int_vec_type = lp_build_vec_type(gallivm, int_type);
 
    LLVMValueRef stencil_refs[2];
-   stencil_refs[0] = lp_jit_context_stencil_ref_front_value(gallivm, context_ptr);
-   stencil_refs[1] = lp_jit_context_stencil_ref_back_value(gallivm, context_ptr);
+   stencil_refs[0] = lp_jit_context_stencil_ref_front_value(gallivm, context_type, context_ptr);
+   stencil_refs[1] = lp_jit_context_stencil_ref_back_value(gallivm, context_type, context_ptr);
    /* convert scalar stencil refs into vectors */
    stencil_refs[0] = lp_build_broadcast(gallivm, int_vec_type, stencil_refs[0]);
    stencil_refs[1] = lp_build_broadcast(gallivm, int_vec_type, stencil_refs[1]);
 
-   LLVMValueRef consts_ptr = lp_jit_context_constants(gallivm, context_ptr);
+   LLVMValueRef consts_ptr = lp_jit_context_constants(gallivm, context_type, context_ptr);
 
-   LLVMValueRef ssbo_ptr = lp_jit_context_ssbos(gallivm, context_ptr);
+   LLVMValueRef ssbo_ptr = lp_jit_context_ssbos(gallivm, context_type, context_ptr);
 
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS][TGSI_NUM_CHANNELS];
    memset(outputs, 0, sizeof outputs);
@@ -875,7 +878,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    if (depth_mode & EARLY_DEPTH_TEST) {
       z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
-                               key->restrict_depth_values, type, context_ptr,
+                               key->restrict_depth_values, type,
+                               context_type, context_ptr,
                                thread_data_ptr, z);
 
       lp_build_depth_stencil_load_swizzled(gallivm, type,
@@ -1028,7 +1032,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    params.info = &shader->info.base;
    params.ssbo_ptr = ssbo_ptr;
    params.image = image;
-   params.aniso_filter_table = lp_jit_context_aniso_filter_table(gallivm, context_ptr);
+   params.aniso_filter_table = lp_jit_context_aniso_filter_table(gallivm, context_type, context_ptr);
 
    /* Build the actual shader */
    if (shader->base.type == PIPE_SHADER_IR_TGSI)
@@ -1049,7 +1053,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
          LLVMValueRef alpha = LLVMBuildLoad(builder, outputs[color0][3], "alpha");
          LLVMValueRef alpha_ref_value;
 
-         alpha_ref_value = lp_jit_context_alpha_ref_value(gallivm, context_ptr);
+         alpha_ref_value = lp_jit_context_alpha_ref_value(gallivm, context_type, context_ptr);
          alpha_ref_value = lp_build_broadcast(gallivm, vec_type, alpha_ref_value);
 
          cbuf_format_desc = util_format_description(key->cbuf_format[0]);
@@ -1255,7 +1259,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
        * Clamp according to ARB_depth_clamp semantics.
        */
       z = lp_build_depth_clamp(gallivm, builder, key->depth_clamp,
-                               key->restrict_depth_values, type, context_ptr,
+                               key->restrict_depth_values, type,
+                               context_type, context_ptr,
                                thread_data_ptr, z);
 
       if (shader->info.base.writes_stencil) {
@@ -2358,6 +2363,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
                           struct lp_type fs_type,
                           LLVMValueRef* fs_mask,
                           LLVMValueRef fs_out_color[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS][4],
+                          LLVMTypeRef context_type,
                           LLVMValueRef context_ptr,
                           LLVMValueRef color_ptr,
                           LLVMValueRef stride,
@@ -2720,7 +2726,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
    /*
     * Blend Colour conversion
     */
-   blend_color = lp_jit_context_f_blend_color(gallivm, context_ptr);
+   blend_color = lp_jit_context_f_blend_color(gallivm, context_type, context_ptr);
    blend_color = LLVMBuildPointerCast(builder, blend_color,
                     LLVMPointerType(lp_build_vec_type(gallivm, fs_type), 0),
                                       "");
@@ -3313,7 +3319,7 @@ generate_fragment(struct llvmpipe_context *lp,
          if (key->multisample) {
             LLVMValueRef smask_val =
                LLVMBuildLoad(builder,
-                             lp_jit_context_sample_mask(gallivm, context_ptr),
+                             lp_jit_context_sample_mask(gallivm, variant->jit_context_type, context_ptr),
                              "");
 
             /*
@@ -3364,6 +3370,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        shader, key,
                        builder,
                        fs_type,
+                       variant->jit_context_type,
                        context_ptr,
                        glob_sample_pos,
                        num_loop,
@@ -3470,6 +3477,7 @@ generate_fragment(struct llvmpipe_context *lp,
                                       key->cbuf_format[cbuf],
                                       num_fs, fs_type, &fs_mask[mask_idx],
                                       fs_out_color[out_idx],
+                                      variant->jit_context_type,
                                       context_ptr, out_ptr, stride,
                                       partial_mask, do_branch);
          }

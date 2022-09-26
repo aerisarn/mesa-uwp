@@ -173,6 +173,7 @@ struct lp_fragment_shader_variant
 
    struct gallivm_state *gallivm;
 
+   LLVMTypeRef jit_context_type;
    LLVMTypeRef jit_context_ptr_type;
    LLVMTypeRef jit_thread_data_ptr_type;
    LLVMTypeRef jit_linear_context_ptr_type;
