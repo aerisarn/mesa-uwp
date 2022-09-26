@@ -859,14 +859,36 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
       realloc = true;
    }
 
-   if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_JPEG &&
-       surf->buffer->buffer_format == PIPE_FORMAT_NV12) {
-      if (context->mjpeg.sampling_factor == 0x211111 ||
-          context->mjpeg.sampling_factor == 0x221212) {
-         surf->templat.buffer_format = PIPE_FORMAT_YUYV;
+   if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_JPEG) {
+      if (surf->buffer->buffer_format == PIPE_FORMAT_NV12 &&
+          context->mjpeg.sampling_factor != MJPEG_SAMPLING_FACTOR_NV12) {
+         /* workaround to reallocate surface buffer with right format
+          * if it doesnt match with sampling_factor. ffmpeg doesnt
+          * use VASurfaceAttribPixelFormat and defaults to NV12.
+          */
+         switch (context->mjpeg.sampling_factor) {
+            case MJPEG_SAMPLING_FACTOR_YUV422:
+            case MJPEG_SAMPLING_FACTOR_YUY2:
+               surf->templat.buffer_format = PIPE_FORMAT_YUYV;
+               break;
+            case MJPEG_SAMPLING_FACTOR_YUV444:
+               surf->templat.buffer_format = PIPE_FORMAT_Y8_U8_V8_444_UNORM;
+               break;
+            case MJPEG_SAMPLING_FACTOR_YUV400:
+               surf->templat.buffer_format = PIPE_FORMAT_Y8_400_UNORM;
+               break;
+            default:
+               mtx_unlock(&drv->mutex);
+               return VA_STATUS_ERROR_INVALID_SURFACE;
+         }
          realloc = true;
-      } else if (context->mjpeg.sampling_factor != 0x221111) {
-         /* Not NV12 either */
+      }
+      /* check if format is supported before proceeding with realloc,
+       * also avoid submission if hardware doesnt support the format and
+       * applcation failed to check the supported rt_formats.
+       */
+      if (!screen->is_video_format_supported(screen, surf->templat.buffer_format,
+          PIPE_VIDEO_PROFILE_JPEG_BASELINE, PIPE_VIDEO_ENTRYPOINT_BITSTREAM)) {
          mtx_unlock(&drv->mutex);
          return VA_STATUS_ERROR_INVALID_SURFACE;
       }
