@@ -394,6 +394,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .has_txs = true,
       .lower_mul_2x32_64 = true,
       .support_16bit_alu = true, /* not quite what it sounds like */
+      .max_unroll_iterations = 0,
    };
 
    screen->nir_options = default_options;
@@ -405,6 +406,10 @@ zink_screen_init_compiler(struct zink_screen *screen)
       screen->nir_options.lower_doubles_options = ~0;
       screen->nir_options.lower_flrp64 = true;
       screen->nir_options.lower_ffma64 = true;
+      /* soft fp64 function inlining will blow up loop bodies and effectively
+       * stop Vulkan drivers from unrolling the loops.
+       */
+      screen->nir_options.max_unroll_iterations_fp64 = 32;
    }
 
    /*
