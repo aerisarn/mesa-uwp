@@ -2436,6 +2436,14 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             break;
          }
 
+         case MESA_SHADER_GEOMETRY:
+            if (zink_gs_key(key)->lower_line_stipple) {
+               NIR_PASS_V(nir, lower_line_stipple_gs);
+               NIR_PASS_V(nir, nir_lower_var_copies);
+               need_optimize = true;
+            }
+            break;
+
          default:
             break;
          }
@@ -2458,6 +2466,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          }
          break;
       case MESA_SHADER_FRAGMENT:
+         if (zink_fs_key(key)->lower_line_stipple)
+            NIR_PASS_V(nir, lower_line_stipple_fs);
          if (!zink_fs_key(key)->samples &&
             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
             /* VK will always use gl_SampleMask[] values even if sample count is 0,
@@ -3843,6 +3853,8 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->non_fs.generated_tcs)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
+      if (stage != MESA_SHADER_FRAGMENT && shader->non_fs.generated_gs)
+         prog->shaders[MESA_SHADER_GEOMETRY] = NULL;
       zink_gfx_program_reference(screen, &prog, NULL);
    }
    if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL &&
@@ -3850,6 +3862,12 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       /* automatically destroy generated tcs shaders when tes is destroyed */
       zink_shader_free(screen, shader->non_fs.generated_tcs);
       shader->non_fs.generated_tcs = NULL;
+   }
+   if (shader->nir->info.stage != MESA_SHADER_FRAGMENT &&
+       shader->non_fs.generated_gs) {
+      /* automatically destroy generated gs shaders when owner is destroyed */
+      zink_shader_free(screen, shader->non_fs.generated_gs);
+      shader->non_fs.generated_gs = NULL;
    }
    _mesa_set_destroy(shader->programs, NULL);
    ralloc_free(shader->nir);

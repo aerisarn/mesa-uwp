@@ -59,6 +59,7 @@ struct zink_vs_key {
 struct zink_gs_key {
    struct zink_vs_key_base base;
    uint8_t pad;
+   bool lower_line_stipple : 1;
    // not hashed
    unsigned size;
 };
@@ -69,7 +70,8 @@ struct zink_fs_key {
    bool force_dual_color_blend : 1;
    bool force_persample_interp : 1;
    bool fbfetch_ms : 1;
-   uint8_t pad : 3;
+   bool lower_line_stipple : 1;
+   uint8_t pad : 2;
    uint8_t coord_replace_bits;
 };
 

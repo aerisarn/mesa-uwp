@@ -587,7 +587,10 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
 
    state->base = *rs_state;
    state->base.line_stipple_factor++;
-   state->hw_state.line_stipple_enable = rs_state->line_stipple_enable;
+
+   state->hw_state.line_stipple_enable =
+      rs_state->line_stipple_enable &&
+      !screen->driver_workarounds.no_linestipple;
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
    state->hw_state.depth_clip = rs_state->depth_clip_near;
