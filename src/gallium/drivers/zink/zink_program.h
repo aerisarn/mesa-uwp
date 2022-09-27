@@ -257,6 +257,20 @@ zink_get_fs_key(struct zink_context *ctx)
           &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].key.fs;
 }
 
+static inline struct zink_gs_key *
+zink_set_gs_key(struct zink_context *ctx)
+{
+   ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_GEOMETRY);
+   assert(!zink_screen(ctx->base.screen)->optimal_keys);
+   return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].key.gs;
+}
+
+static inline const struct zink_gs_key *
+zink_get_gs_key(struct zink_context *ctx)
+{
+   return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].key.gs;
+}
+
 static inline bool
 zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
 {

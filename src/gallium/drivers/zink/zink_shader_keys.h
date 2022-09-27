@@ -56,6 +56,13 @@ struct zink_vs_key {
    unsigned size;
 };
 
+struct zink_gs_key {
+   struct zink_vs_key_base base;
+   uint8_t pad;
+   // not hashed
+   unsigned size;
+};
+
 struct zink_fs_key {
    bool coord_replace_yinvert : 1;
    bool samples : 1;
@@ -82,10 +89,11 @@ struct zink_shader_key_base {
  */
 struct zink_shader_key {
    union {
-      /* reuse vs key for now with tes/gs since we only use clip_halfz */
+      /* reuse vs key for now with tes since we only use clip_halfz */
       struct zink_vs_key vs;
       struct zink_vs_key_base vs_base;
       struct zink_tcs_key tcs;
+      struct zink_gs_key gs;
       struct zink_fs_key fs;
    } key;
    struct zink_shader_key_base base;
@@ -125,6 +133,13 @@ zink_vs_key(const struct zink_shader_key *key)
 {
    assert(key);
    return &key->key.vs;
+}
+
+static inline const struct zink_gs_key *
+zink_gs_key(const struct zink_shader_key *key)
+{
+   assert(key);
+   return &key->key.gs;
 }
 
 static inline const struct zink_tcs_key *
