@@ -1787,13 +1787,13 @@ create_instruction(aco_opcode opcode, Format format, uint32_t num_operands,
 {
    std::size_t size =
       sizeof(T) + num_operands * sizeof(Operand) + num_definitions * sizeof(Definition);
-   char* data = (char*)calloc(1, size);
+   void* data = calloc(1, size);
    T* inst = (T*)data;
 
    inst->opcode = opcode;
    inst->format = format;
 
-   uint16_t operands_offset = data + sizeof(T) - (char*)&inst->operands;
+   uint16_t operands_offset = sizeof(T) - offsetof(Instruction, operands);
    inst->operands = aco::span<Operand>(operands_offset, num_operands);
    uint16_t definitions_offset = (char*)inst->operands.end() - (char*)&inst->definitions;
    inst->definitions = aco::span<Definition>(definitions_offset, num_definitions);
