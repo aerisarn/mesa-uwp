@@ -901,8 +901,8 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          /* try shadowing only if it avoids a flush, otherwise staging would
           * be better:
           */
-         if (needs_flush && fd_try_shadow_resource(ctx, rsc, level, box,
-                                                   DRM_FORMAT_MOD_LINEAR)) {
+         if (needs_flush && !(usage & TC_TRANSFER_MAP_NO_INVALIDATE) &&
+               fd_try_shadow_resource(ctx, rsc, level, box, DRM_FORMAT_MOD_LINEAR)) {
             needs_flush = busy = false;
             ctx->stats.shadow_uploads++;
          } else {
@@ -1092,6 +1092,9 @@ fd_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *pctx,
 
    rsc->b.is_shared = true;
 
+   if (prsc->target == PIPE_BUFFER)
+      tc_buffer_disable_cpu_storage(&rsc->b.b);
+
    handle->modifier = fd_resource_modifier(rsc);
 
    DBG("%" PRSC_FMT ", modifier=%" PRIx64, PRSC_ARGS(prsc), handle->modifier);
@@ -1159,7 +1162,9 @@ alloc_resource_struct(struct pipe_screen *pscreen,
 
    pipe_reference_init(&rsc->track->reference, 1);
 
-   threaded_resource_init(prsc, false);
+   bool allow_cpu_storage = (tmpl->target == PIPE_BUFFER) &&
+                            (tmpl->width0 < 0x1000);
+   threaded_resource_init(prsc, allow_cpu_storage);
 
    if (tmpl->target == PIPE_BUFFER)
       rsc->b.buffer_id_unique = util_idalloc_mt_alloc(&screen->buffer_ids);
@@ -1422,6 +1427,9 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 
    if (!rsc)
       return NULL;
+
+   if (tmpl->target == PIPE_BUFFER)
+      tc_buffer_disable_cpu_storage(&rsc->b.b);
 
    struct fdl_slice *slice = fd_resource_slice(rsc, 0);
    struct pipe_resource *prsc = &rsc->b.b;
