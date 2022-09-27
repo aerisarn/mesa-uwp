@@ -3068,7 +3068,7 @@ static LLVMValueRef visit_first_invocation(struct ac_nir_context *ctx)
 
 static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
-   LLVMValueRef values[4], derived_ptr, index, ret;
+   LLVMValueRef values[16], derived_ptr, index, ret;
    unsigned const_off = nir_intrinsic_base(instr);
 
    LLVMTypeRef elem_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
@@ -3096,7 +3096,7 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
    LLVMValueRef src = get_src(ctx, instr->src[0]);
 
    int writemask = nir_intrinsic_write_mask(instr);
-   for (int chan = 0; chan < 4; chan++) {
+   for (int chan = 0; chan < 16; chan++) {
       if (!(writemask & (1 << chan))) {
          continue;
       }
