@@ -50,6 +50,7 @@
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_queue.h"
+#include "vk_pipeline.h"
 
 #include <xf86drm.h>
 
@@ -312,8 +313,6 @@ struct v3dv_meta_texel_buffer_copy_pipeline {
 };
 
 struct v3dv_pipeline_key {
-   bool robust_buffer_access;
-   bool robust_image_access;
    uint8_t topology;
    uint8_t logicop_func;
    bool msaa;
@@ -1705,6 +1704,8 @@ struct v3dv_pipeline_stage {
    uint32_t program_id;
 
    VkPipelineCreationFeedback feedback;
+
+   struct vk_pipeline_robustness_state robustness;
 };
 
 /* We are using the descriptor pool entry for two things:

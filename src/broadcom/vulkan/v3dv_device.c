@@ -183,6 +183,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_physical_device_drm              = true,
       .EXT_pipeline_creation_cache_control  = true,
       .EXT_pipeline_creation_feedback       = true,
+      .EXT_pipeline_robustness              = true,
       .EXT_primitive_topology_list_restart  = true,
       .EXT_private_data                     = true,
       .EXT_provoking_vertex                 = true,
@@ -1376,6 +1377,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT: {
+         VkPhysicalDevicePipelineRobustnessFeaturesEXT *features =
+            (void *) ext;
+         features->pipelineRobustness = true;
+         break;
+      }
+
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
@@ -1776,6 +1784,19 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(props->shaderModuleIdentifierAlgorithmUUID,
                 vk_shaderModuleIdentifierAlgorithmUUID,
                 sizeof(props->shaderModuleIdentifierAlgorithmUUID));
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: {
+         VkPhysicalDevicePipelineRobustnessPropertiesEXT *props =
+            (VkPhysicalDevicePipelineRobustnessPropertiesEXT *)ext;
+         props->defaultRobustnessStorageBuffers =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT;
+         props->defaultRobustnessUniformBuffers =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT;
+         props->defaultRobustnessVertexInputs =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT;
+         props->defaultRobustnessImages =
+            VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT;
          break;
       }
       default:

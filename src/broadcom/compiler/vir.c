@@ -1594,7 +1594,7 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS(_, c->s, nir_lower_idiv, &idiv_options);
         NIR_PASS(_, c->s, nir_lower_alu);
 
-        if (c->key->robust_buffer_access) {
+        if (c->key->robust_uniform_access || c->key->robust_storage_access) {
                 /* v3d_nir_lower_robust_buffer_access assumes constant buffer
                  * indices on ubo/ssbo intrinsics so run copy propagation and
                  * constant folding passes before we run the lowering to warrant

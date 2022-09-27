@@ -920,9 +920,7 @@ shader_debug_output(const char *message, void *data)
 static void
 pipeline_populate_v3d_key(struct v3d_key *key,
                           const struct v3dv_pipeline_stage *p_stage,
-                          uint32_t ucp_enables,
-                          bool robust_buffer_access,
-                          bool robust_image_access)
+                          uint32_t ucp_enables)
 {
    assert(p_stage->pipeline->shared_data &&
           p_stage->pipeline->shared_data->maps[p_stage->stage]);
@@ -986,8 +984,18 @@ pipeline_populate_v3d_key(struct v3d_key *key,
     */
    key->ucp_enables = ucp_enables;
 
-   key->robust_buffer_access = robust_buffer_access;
-   key->robust_image_access = robust_image_access;
+   const VkPipelineRobustnessBufferBehaviorEXT robust_buffer_enabled =
+      VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT;
+
+   const VkPipelineRobustnessImageBehaviorEXT robust_image_enabled =
+      VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_EXT;
+
+   key->robust_uniform_access =
+      p_stage->robustness.uniform_buffers == robust_buffer_enabled;
+   key->robust_storage_access =
+      p_stage->robustness.storage_buffers == robust_buffer_enabled;
+   key->robust_image_access =
+      p_stage->robustness.images == robust_image_enabled;
 
    key->environment = V3D_ENVIRONMENT_VULKAN;
 }
@@ -1041,9 +1049,7 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    struct v3dv_device *device = p_stage->pipeline->device;
    assert(device);
 
-   const bool rba = device->vk.enabled_features.robustBufferAccess;
-   const bool ria = device->vk.enabled_features.robustImageAccess;
-   pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables, rba, ria);
+   pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables);
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
@@ -1163,9 +1169,7 @@ pipeline_populate_v3d_gs_key(struct v3d_gs_key *key,
 
    memset(key, 0, sizeof(*key));
 
-   const bool rba = device->vk.enabled_features.robustBufferAccess;
-   const bool ria = device->vk.enabled_features.robustImageAccess;
-   pipeline_populate_v3d_key(&key->base, p_stage, 0, rba, ria);
+   pipeline_populate_v3d_key(&key->base, p_stage, 0);
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
 
@@ -1208,10 +1212,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
    assert(device);
 
    memset(key, 0, sizeof(*key));
-
-   const bool rba = device->vk.enabled_features.robustBufferAccess;
-   const bool ria = device->vk.enabled_features.robustImageAccess;
-   pipeline_populate_v3d_key(&key->base, p_stage, 0, rba, ria);
+   pipeline_populate_v3d_key(&key->base, p_stage, 0);
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
 
@@ -1334,6 +1335,7 @@ pipeline_stage_create_binning(const struct v3dv_pipeline_stage *src,
    p_stage->program_id = src->program_id;
    p_stage->spec_info = src->spec_info;
    p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
+   p_stage->robustness = src->robustness;
    memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
 
    return p_stage;
@@ -1874,9 +1876,6 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
 
    memset(key, 0, sizeof(*key));
 
-   key->robust_buffer_access = device->vk.enabled_features.robustBufferAccess;
-   key->robust_image_access = device->vk.enabled_features.robustImageAccess;
-
    const bool raster_enabled =
       !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
 
@@ -1969,8 +1968,6 @@ pipeline_populate_compute_key(struct v3dv_pipeline *pipeline,
     * example, which already flags compute shaders.
     */
    memset(key, 0, sizeof(*key));
-   key->robust_buffer_access = device->vk.enabled_features.robustBufferAccess;
-   key->robust_image_access = device->vk.enabled_features.robustImageAccess;
 }
 
 static struct v3dv_pipeline_shared_data *
@@ -2225,6 +2222,7 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
    p_stage->nir = nir;
    pipeline_compute_sha1_from_nir(p_stage);
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
+   p_stage->robustness = pipeline->stages[BROADCOM_SHADER_VERTEX]->robustness;
 
    pipeline->has_gs = true;
    pipeline->stages[BROADCOM_SHADER_GEOMETRY] = p_stage;
@@ -2302,7 +2300,11 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
 
-      vk_pipeline_hash_shader_stage(&pCreateInfo->pStages[i], NULL,
+      vk_pipeline_robustness_state_fill(&device->vk, &p_stage->robustness,
+                                        pCreateInfo->pNext, sinfo->pNext);
+
+      vk_pipeline_hash_shader_stage(&pCreateInfo->pStages[i],
+                                    &p_stage->robustness,
                                     p_stage->shader_sha1);
 
       pipeline->active_stages |= sinfo->stage;
@@ -2345,6 +2347,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->entrypoint = "main";
       p_stage->module = 0;
       p_stage->nir = b.shader;
+      vk_pipeline_robustness_state_fill(&device->vk, &p_stage->robustness,
+                                        NULL, NULL);
       pipeline_compute_sha1_from_nir(p_stage);
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
@@ -3086,7 +3090,12 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->spec_info = sinfo->pSpecializationInfo;
    p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
 
-   vk_pipeline_hash_shader_stage(&info->stage, NULL, p_stage->shader_sha1);
+   vk_pipeline_robustness_state_fill(&device->vk, &p_stage->robustness,
+                                     info->pNext, sinfo->pNext);
+
+   vk_pipeline_hash_shader_stage(&info->stage,
+                                 &p_stage->robustness,
+                                 p_stage->shader_sha1);
 
    p_stage->nir = NULL;
 
@@ -3139,9 +3148,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    struct v3d_key key;
    memset(&key, 0, sizeof(key));
-   const bool rba = pipeline->device->vk.enabled_features.robustBufferAccess;
-   const bool ria = pipeline->device->vk.enabled_features.robustImageAccess;
-   pipeline_populate_v3d_key(&key, p_stage, 0, rba, ria);
+   pipeline_populate_v3d_key(&key, p_stage, 0);
    pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE] =
       pipeline_compile_shader_variant(p_stage, &key, sizeof(key),
                                       alloc, &result);

@@ -404,7 +404,8 @@ struct v3d_key {
         uint8_t num_samplers_used;
         uint8_t ucp_enables;
         bool is_last_geometry_stage;
-        bool robust_buffer_access;
+        bool robust_uniform_access;
+        bool robust_storage_access;
         bool robust_image_access;
 
         enum v3d_execution_environment environment;
