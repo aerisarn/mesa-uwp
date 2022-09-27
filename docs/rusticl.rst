@@ -20,6 +20,7 @@ The minimum versions to build Rusticl are:
 
 -  Rust: 1.59
 -  Meson: 0.61.4
+-  Bindgen: 0.58.0
 -  LLVM: 11.0.0 (recommended: 15.0.0)
 -  SPIRV-Tools: any version (recommended: v2022.3)
 
