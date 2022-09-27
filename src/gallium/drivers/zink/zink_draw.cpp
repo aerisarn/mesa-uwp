@@ -638,7 +638,7 @@ zink_draw(struct pipe_context *pctx,
 
    if ((BATCH_CHANGED || rast_state_changed) && DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3) {
       VKCTX(CmdSetDepthClipEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clip);
-      VKCTX(CmdSetDepthClampEnableEXT)(batch->state->cmdbuf, !rast_state->hw_state.depth_clip);
+      VKCTX(CmdSetDepthClampEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clamp);
       VKCTX(CmdSetPolygonModeEXT)(batch->state->cmdbuf, (VkPolygonMode)rast_state->hw_state.polygon_mode);
       VKCTX(CmdSetDepthClipNegativeOneToOneEXT)(batch->state->cmdbuf, !rast_state->hw_state.clip_halfz);
       VKCTX(CmdSetProvokingVertexModeEXT)(batch->state->cmdbuf, rast_state->hw_state.pv_last ?

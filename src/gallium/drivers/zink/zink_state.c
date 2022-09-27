@@ -591,6 +591,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
    state->hw_state.depth_clip = rs_state->depth_clip_near;
+   state->hw_state.depth_clamp = rs_state->depth_clamp;
    state->hw_state.pv_last = !rs_state->flatshade_first;
    state->hw_state.clip_halfz = rs_state->clip_halfz;
 

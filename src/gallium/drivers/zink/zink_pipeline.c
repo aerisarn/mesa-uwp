@@ -153,7 +153,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
-   rast_state.depthClampEnable = true;
+   rast_state.depthClampEnable = hw_rast_state->depth_clamp;
    rast_state.rasterizerDiscardEnable = state->dyn_state2.rasterizer_discard;
    rast_state.polygonMode = hw_rast_state->polygon_mode;
    rast_state.cullMode = state->dyn_state1.cull_mode;
@@ -174,7 +174,6 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    } else {
       static bool warned = false;
       warn_missing_feature(warned, "VK_EXT_depth_clip_enable");
-      rast_state.depthClampEnable = !hw_rast_state->depth_clip;
    }
 
    VkPipelineRasterizationProvokingVertexStateCreateInfoEXT pv_state;
@@ -663,7 +662,6 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
    rast_state.depthBiasEnable = VK_TRUE;
-   rast_state.depthClampEnable = VK_TRUE;
 
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {0};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
