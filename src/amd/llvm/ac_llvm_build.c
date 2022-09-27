@@ -1308,7 +1308,7 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
        (!(cache_policy & ac_glc) || ctx->gfx_level >= GFX8)) {
       assert(vindex == NULL);
 
-      LLVMValueRef result[8];
+      LLVMValueRef result[32];
 
       LLVMValueRef offset = voffset ? voffset : ctx->i32_0;
       if (soffset)
