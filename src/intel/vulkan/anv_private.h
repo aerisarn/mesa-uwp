@@ -472,6 +472,62 @@ void __anv_perf_warn(struct anv_device *device,
 #define anv_assert(x)
 #endif
 
+enum anv_bo_alloc_flags {
+   /** Specifies that the BO must have a 32-bit address
+    *
+    * This is the opposite of EXEC_OBJECT_SUPPORTS_48B_ADDRESS.
+    */
+   ANV_BO_ALLOC_32BIT_ADDRESS =  (1 << 0),
+
+   /** Specifies that the BO may be shared externally */
+   ANV_BO_ALLOC_EXTERNAL =       (1 << 1),
+
+   /** Specifies that the BO should be mapped */
+   ANV_BO_ALLOC_MAPPED =         (1 << 2),
+
+   /** Specifies that the BO should be snooped so we get coherency */
+   ANV_BO_ALLOC_SNOOPED =        (1 << 3),
+
+   /** Specifies that the BO should be captured in error states */
+   ANV_BO_ALLOC_CAPTURE =        (1 << 4),
+
+   /** Specifies that the BO will have an address assigned by the caller
+    *
+    * Such BOs do not exist in any VMA heap.
+    */
+   ANV_BO_ALLOC_FIXED_ADDRESS = (1 << 5),
+
+   /** Enables implicit synchronization on the BO
+    *
+    * This is the opposite of EXEC_OBJECT_ASYNC.
+    */
+   ANV_BO_ALLOC_IMPLICIT_SYNC =  (1 << 6),
+
+   /** Enables implicit synchronization on the BO
+    *
+    * This is equivalent to EXEC_OBJECT_WRITE.
+    */
+   ANV_BO_ALLOC_IMPLICIT_WRITE = (1 << 7),
+
+   /** Has an address which is visible to the client */
+   ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
+
+   /** This buffer has implicit CCS data attached to it */
+   ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
+
+   /** This buffer is allocated from local memory and should be cpu visible */
+   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 10),
+
+   /** For non device local allocations */
+   ANV_BO_ALLOC_NO_LOCAL_MEM = (1 << 11),
+
+   /** For local memory, ensure that the writes are combined.
+    *
+    * Should be faster for bo pools, which write but do not read
+    */
+   ANV_BO_ALLOC_WRITE_COMBINE = (1 << 12),
+};
+
 struct anv_bo {
    const char *name;
 
@@ -669,6 +725,8 @@ struct anv_block_pool {
    uint32_t center_bo_offset;
 
    struct anv_block_state state;
+
+   enum anv_bo_alloc_flags bo_alloc_flags;
 };
 
 /* Block pools are backed by a fixed-size 1GB memfd */
@@ -822,6 +880,8 @@ struct anv_bo_pool {
    const char *name;
 
    struct anv_device *device;
+
+   enum anv_bo_alloc_flags bo_alloc_flags;
 
    struct util_sparse_array_free_list free_list[16];
 };
@@ -1222,62 +1282,6 @@ anv_mocs(const struct anv_device *device,
 
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
-
-enum anv_bo_alloc_flags {
-   /** Specifies that the BO must have a 32-bit address
-    *
-    * This is the opposite of EXEC_OBJECT_SUPPORTS_48B_ADDRESS.
-    */
-   ANV_BO_ALLOC_32BIT_ADDRESS =  (1 << 0),
-
-   /** Specifies that the BO may be shared externally */
-   ANV_BO_ALLOC_EXTERNAL =       (1 << 1),
-
-   /** Specifies that the BO should be mapped */
-   ANV_BO_ALLOC_MAPPED =         (1 << 2),
-
-   /** Specifies that the BO should be snooped so we get coherency */
-   ANV_BO_ALLOC_SNOOPED =        (1 << 3),
-
-   /** Specifies that the BO should be captured in error states */
-   ANV_BO_ALLOC_CAPTURE =        (1 << 4),
-
-   /** Specifies that the BO will have an address assigned by the caller
-    *
-    * Such BOs do not exist in any VMA heap.
-    */
-   ANV_BO_ALLOC_FIXED_ADDRESS = (1 << 5),
-
-   /** Enables implicit synchronization on the BO
-    *
-    * This is the opposite of EXEC_OBJECT_ASYNC.
-    */
-   ANV_BO_ALLOC_IMPLICIT_SYNC =  (1 << 6),
-
-   /** Enables implicit synchronization on the BO
-    *
-    * This is equivalent to EXEC_OBJECT_WRITE.
-    */
-   ANV_BO_ALLOC_IMPLICIT_WRITE = (1 << 7),
-
-   /** Has an address which is visible to the client */
-   ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS = (1 << 8),
-
-   /** This buffer has implicit CCS data attached to it */
-   ANV_BO_ALLOC_IMPLICIT_CCS = (1 << 9),
-
-   /** This buffer is allocated from local memory and should be cpu visible */
-   ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE = (1 << 10),
-
-   /** For non device local allocations */
-   ANV_BO_ALLOC_NO_LOCAL_MEM = (1 << 11),
-
-   /** For local memory, ensure that the writes are combined.
-    *
-    * Should be faster for bo pools, which write but do not read
-    */
-   ANV_BO_ALLOC_WRITE_COMBINE = (1 << 12),
-};
 
 VkResult anv_device_alloc_bo(struct anv_device *device,
                              const char *name, uint64_t size,

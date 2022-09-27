@@ -385,6 +385,13 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->state.next = 0;
    pool->state.end = 0;
 
+   pool->bo_alloc_flags =
+      ANV_BO_ALLOC_FIXED_ADDRESS |
+      ANV_BO_ALLOC_MAPPED |
+      ANV_BO_ALLOC_SNOOPED |
+      ANV_BO_ALLOC_CAPTURE |
+      (device->info->has_local_mem ? ANV_BO_ALLOC_WRITE_COMBINE : 0);
+
    result = anv_block_pool_expand_range(pool, initial_size);
    if (result != VK_SUCCESS)
       return result;
@@ -438,17 +445,13 @@ anv_block_pool_expand_range(struct anv_block_pool *pool, uint32_t size)
     * hard work for us.  When using softpin, we're in control and the fixed
     * addresses we choose are fine for base addresses.
     */
-   enum anv_bo_alloc_flags bo_alloc_flags = ANV_BO_ALLOC_CAPTURE;
 
    uint32_t new_bo_size = size - pool->size;
    struct anv_bo *new_bo = NULL;
    VkResult result = anv_device_alloc_bo(pool->device,
                                          pool->name,
                                          new_bo_size,
-                                         bo_alloc_flags |
-                                         ANV_BO_ALLOC_FIXED_ADDRESS |
-                                         ANV_BO_ALLOC_MAPPED |
-                                         ANV_BO_ALLOC_SNOOPED,
+                                         pool->bo_alloc_flags,
                                          pool->start_address + pool->size,
                                          &new_bo);
    if (result != VK_SUCCESS)
@@ -1102,6 +1105,12 @@ anv_bo_pool_init(struct anv_bo_pool *pool, struct anv_device *device,
 {
    pool->name = name;
    pool->device = device;
+   pool->bo_alloc_flags =
+      ANV_BO_ALLOC_MAPPED |
+      ANV_BO_ALLOC_SNOOPED |
+      ANV_BO_ALLOC_CAPTURE |
+      (device->info->has_local_mem ? ANV_BO_ALLOC_WRITE_COMBINE : 0);
+
    for (unsigned i = 0; i < ARRAY_SIZE(pool->free_list); i++) {
       util_sparse_array_free_list_init(&pool->free_list[i],
                                        &device->bo_cache.bo_map, 0,
@@ -1150,9 +1159,7 @@ anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
    VkResult result = anv_device_alloc_bo(pool->device,
                                          pool->name,
                                          pow2_size,
-                                         ANV_BO_ALLOC_MAPPED |
-                                         ANV_BO_ALLOC_SNOOPED |
-                                         ANV_BO_ALLOC_CAPTURE,
+                                         pool->bo_alloc_flags,
                                          0 /* explicit_address */,
                                          &bo);
    if (result != VK_SUCCESS)
