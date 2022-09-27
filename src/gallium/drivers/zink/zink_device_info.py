@@ -86,6 +86,7 @@ EXTENSIONS = [
     Extension("VK_KHR_get_memory_requirements2"),
     Extension("VK_EXT_post_depth_coverage"),
     Extension("VK_EXT_depth_clip_control", alias="clip_control", features=True),
+    Extension("VK_EXT_depth_clamp_zero_one", alias="clamp_01", features=True),
     Extension("VK_EXT_shader_subgroup_ballot"),
     Extension("VK_EXT_shader_subgroup_vote"),
     Extension("VK_EXT_shader_atomic_float", alias="atomic_float", features=True),
