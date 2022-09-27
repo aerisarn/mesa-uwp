@@ -583,6 +583,10 @@
       radv_flush_before_query_copy, def, \
       "Wait for timestamps to be written before a query copy command")
 
+#define DRI_CONF_RADV_ENABLE_UNIFIED_HEAP_ON_APU(def) \
+   DRI_CONF_OPT_B(radv_enable_unified_heap_on_apu, def, \
+                  "Enable an unified heap with DEVICE_LOCAL on integrated GPUs")
+
 /**
  * \brief ANV specific configuration options
  */

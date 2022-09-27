@@ -194,13 +194,21 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
    device->heaps = 0;
 
    if (!device->rad_info.has_dedicated_vram) {
-      /* On APUs, the carveout is usually too small for games that request a minimum VRAM size
-       * greater than it. To workaround this, we compute the total available memory size (GTT +
-       * visible VRAM size) and report 2/3 as VRAM and 1/3 as GTT.
-       */
       const uint64_t total_size = gtt_size + visible_vram_size;
-      visible_vram_size = align64((total_size * 2) / 3, device->rad_info.gart_page_size);
-      gtt_size = total_size - visible_vram_size;
+
+      if (device->instance->enable_unified_heap_on_apu) {
+         /* Some applications seem better when the driver exposes only one heap of VRAM on APUs. */
+         visible_vram_size = total_size;
+         gtt_size = 0;
+      } else {
+         /* On APUs, the carveout is usually too small for games that request a minimum VRAM size
+          * greater than it. To workaround this, we compute the total available memory size (GTT +
+          * visible VRAM size) and report 2/3 as VRAM and 1/3 as GTT.
+          */
+         visible_vram_size = align64((total_size * 2) / 3, device->rad_info.gart_page_size);
+         gtt_size = total_size - visible_vram_size;
+      }
+
       vram_size = 0;
    }
 
@@ -1078,6 +1086,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_DISABLE_SINKING_LOAD_INPUT_FS(false)
       DRI_CONF_RADV_DGC(false)
       DRI_CONF_RADV_FLUSH_BEFORE_QUERY_COPY(false)
+      DRI_CONF_RADV_ENABLE_UNIFIED_HEAP_ON_APU(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -1129,6 +1138,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    instance->flush_before_query_copy =
       driQueryOptionb(&instance->dri_options, "radv_flush_before_query_copy");
+
+   instance->enable_unified_heap_on_apu =
+      driQueryOptionb(&instance->dri_options, "radv_enable_unified_heap_on_apu");
 }
 
 static VkResult create_null_physical_device(struct vk_instance *vk_instance);
@@ -2740,48 +2752,72 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
     * in presence of shared buffers).
     */
    if (!device->rad_info.has_dedicated_vram) {
-      /* On APUs, the driver exposes fake heaps to the application because usually the carveout is
-       * too small for games but the budgets need to be redistributed accordingly.
-       */
+      if (device->instance->enable_unified_heap_on_apu) {
+         /* When the heaps are unified, only the visible VRAM heap is exposed on APUs. */
+         assert(device->heaps == RADV_HEAP_VRAM_VIS);
+         assert(device->memory_properties.memoryHeaps[0].flags == VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+         const uint8_t vram_vis_heap_idx = 0;
 
-      assert(device->heaps == (RADV_HEAP_GTT | RADV_HEAP_VRAM_VIS));
-      assert(device->memory_properties.memoryHeaps[0].flags == 0); /* GTT */
-      assert(device->memory_properties.memoryHeaps[1].flags == VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
-      uint8_t gtt_heap_idx = 0, vram_vis_heap_idx = 1;
+         /* Get the total heap size which is the visible VRAM heap size. */
+         uint64_t total_heap_size = device->memory_properties.memoryHeaps[vram_vis_heap_idx].size;
 
-      /* Get the visible VRAM/GTT heap sizes and internal usages. */
-      uint64_t gtt_heap_size = device->memory_properties.memoryHeaps[gtt_heap_idx].size;
-      uint64_t vram_vis_heap_size = device->memory_properties.memoryHeaps[vram_vis_heap_idx].size;
+         /* Get the different memory usages. */
+         uint64_t vram_vis_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM_VIS) +
+                                            device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
+         uint64_t gtt_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_GTT);
+         uint64_t total_internal_usage = vram_vis_internal_usage + gtt_internal_usage;
+         uint64_t total_system_usage = device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE) +
+                                       device->ws->query_value(device->ws, RADEON_GTT_USAGE);
+         uint64_t total_usage = MAX2(total_internal_usage, total_system_usage);
 
-      uint64_t vram_vis_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM_VIS) +
-                                         device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
-      uint64_t gtt_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_GTT);
+         /* Compute the total free space that can be allocated for this process accross all heaps. */
+         uint64_t total_free_space = total_heap_size - MIN2(total_heap_size, total_usage);
 
-      /* Compute the total heap size, internal and system usage. */
-      uint64_t total_heap_size = vram_vis_heap_size + gtt_heap_size;
-      uint64_t total_internal_usage = vram_vis_internal_usage + gtt_internal_usage;
-      uint64_t total_system_usage = device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE) +
-                                    device->ws->query_value(device->ws, RADEON_GTT_USAGE);
+         memoryBudget->heapBudget[vram_vis_heap_idx] = total_free_space + total_internal_usage;
+         memoryBudget->heapUsage[vram_vis_heap_idx] = total_internal_usage;
+      } else {
+         /* On APUs, the driver exposes fake heaps to the application because usually the carveout
+          * is too small for games but the budgets need to be redistributed accordingly.
+          */
+         assert(device->heaps == (RADV_HEAP_GTT | RADV_HEAP_VRAM_VIS));
+         assert(device->memory_properties.memoryHeaps[0].flags == 0); /* GTT */
+         assert(device->memory_properties.memoryHeaps[1].flags == VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+         const uint8_t gtt_heap_idx = 0, vram_vis_heap_idx = 1;
 
-      uint64_t total_usage = MAX2(total_internal_usage, total_system_usage);
+         /* Get the visible VRAM/GTT heap sizes and internal usages. */
+         uint64_t gtt_heap_size = device->memory_properties.memoryHeaps[gtt_heap_idx].size;
+         uint64_t vram_vis_heap_size = device->memory_properties.memoryHeaps[vram_vis_heap_idx].size;
 
-      /* Compute the total free space that can be allocated for this process accross all heaps. */
-      uint64_t total_free_space = total_heap_size - MIN2(total_heap_size, total_usage);
+         uint64_t vram_vis_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM_VIS) +
+                                            device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
+         uint64_t gtt_internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_GTT);
 
-      /* Compute the remaining visible VRAM size for this process. */
-      uint64_t vram_vis_free_space = vram_vis_heap_size - MIN2(vram_vis_heap_size, vram_vis_internal_usage);
+         /* Compute the total heap size, internal and system usage. */
+         uint64_t total_heap_size = vram_vis_heap_size + gtt_heap_size;
+         uint64_t total_internal_usage = vram_vis_internal_usage + gtt_internal_usage;
+         uint64_t total_system_usage = device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE) +
+                                       device->ws->query_value(device->ws, RADEON_GTT_USAGE);
 
-      /* Distribute the total free space (2/3rd as VRAM and 1/3rd as GTT) to match the heap sizes,
-       * and align down to the page size to be conservative.
-       */
-      vram_vis_free_space = ROUND_DOWN_TO(MIN2((total_free_space * 2) / 3, vram_vis_free_space),
-                                          device->rad_info.gart_page_size);
-      uint64_t gtt_free_space = total_free_space - vram_vis_free_space;
+         uint64_t total_usage = MAX2(total_internal_usage, total_system_usage);
 
-      memoryBudget->heapBudget[vram_vis_heap_idx] = vram_vis_free_space + vram_vis_internal_usage;
-      memoryBudget->heapUsage[vram_vis_heap_idx] = vram_vis_internal_usage;
-      memoryBudget->heapBudget[gtt_heap_idx] = gtt_free_space + gtt_internal_usage;
-      memoryBudget->heapUsage[gtt_heap_idx] = gtt_internal_usage;
+         /* Compute the total free space that can be allocated for this process accross all heaps. */
+         uint64_t total_free_space = total_heap_size - MIN2(total_heap_size, total_usage);
+
+         /* Compute the remaining visible VRAM size for this process. */
+         uint64_t vram_vis_free_space = vram_vis_heap_size - MIN2(vram_vis_heap_size, vram_vis_internal_usage);
+
+         /* Distribute the total free space (2/3rd as VRAM and 1/3rd as GTT) to match the heap sizes,
+          * and align down to the page size to be conservative.
+          */
+         vram_vis_free_space = ROUND_DOWN_TO(MIN2((total_free_space * 2) / 3, vram_vis_free_space),
+                                             device->rad_info.gart_page_size);
+         uint64_t gtt_free_space = total_free_space - vram_vis_free_space;
+
+         memoryBudget->heapBudget[vram_vis_heap_idx] = vram_vis_free_space + vram_vis_internal_usage;
+         memoryBudget->heapUsage[vram_vis_heap_idx] = vram_vis_internal_usage;
+         memoryBudget->heapBudget[gtt_heap_idx] = gtt_free_space + gtt_internal_usage;
+         memoryBudget->heapUsage[gtt_heap_idx] = gtt_internal_usage;
+      }
    } else {
       unsigned mask = device->heaps;
       unsigned heap = 0;
