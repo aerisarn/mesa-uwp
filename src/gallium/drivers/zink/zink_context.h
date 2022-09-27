@@ -153,7 +153,7 @@ zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen);
 void
 zink_init_grid_functions(struct zink_context *ctx);
 struct zink_context *
-zink_tc_context_unwrap(struct pipe_context *pctx);
+zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded);
 #ifdef __cplusplus
 }
 #endif

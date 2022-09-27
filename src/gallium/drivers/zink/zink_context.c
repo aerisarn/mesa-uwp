@@ -4853,12 +4853,10 @@ fail:
 }
 
 struct zink_context *
-zink_tc_context_unwrap(struct pipe_context *pctx)
+zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded)
 {
-   struct zink_context *ctx = zink_context(pctx);
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* need to get the actual zink_context, not the threaded context */
-   if (screen->threaded)
+   if (threaded)
       pctx = threaded_context_unwrap_sync(pctx);
    pctx = trace_get_possibly_threaded_context(pctx);
    return zink_context(pctx);
