@@ -2181,50 +2181,6 @@ radv_export_multiview(nir_shader *nir)
    return progress;
 }
 
-static bool
-radv_should_export_implicit_primitive_id(const struct radv_pipeline_stage *producer,
-                                         const struct radv_pipeline_stage *consumer)
-{
-   /* When the primitive ID is read by FS, we must ensure that it's exported by the previous vertex
-    * stage because it's implicit for VS or TES (but required by the Vulkan spec for GS or MS).
-    *
-    * There is two situations to handle:
-    *  - when the next stage is unknown (with graphics pipeline library), the primitive ID is
-    *  exported unconditionally
-    *  - when the pipeline uses NGG, the primitive ID is exported during NGG lowering
-    */
-   assert(producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL);
-
-   if ((producer->nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID) || producer->info.is_ngg)
-      return false;
-
-   return !consumer || (consumer->stage == MESA_SHADER_FRAGMENT &&
-          (consumer->nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID));
-}
-
-static bool
-radv_export_implicit_primitive_id(nir_shader *nir)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   nir_builder b;
-   nir_builder_init(&b, impl);
-
-   b.cursor = nir_after_cf_list(&impl->body);
-
-   nir_variable *var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), NULL);
-   var->data.location = VARYING_SLOT_PRIMITIVE_ID;
-   var->data.interpolation = INTERP_MODE_NONE;
-
-   nir_store_var(&b, var, nir_load_primitive_id(&b), 1);
-
-   /* Update outputs_written to reflect that the pass added a new output. */
-   nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_ID);
-
-   nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
-
-   return true;
-}
-
 static void
 radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
                        nir_shader *producer, nir_shader *consumer)
@@ -2511,10 +2467,6 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
 {
    assert(vs_stage->nir->info.stage == MESA_SHADER_VERTEX);
 
-   if (radv_should_export_implicit_primitive_id(vs_stage, next_stage)) {
-      NIR_PASS(_, vs_stage->nir, radv_export_implicit_primitive_id);
-   }
-
    if (radv_should_export_multiview(vs_stage, next_stage, pipeline_key)) {
       NIR_PASS(_, vs_stage->nir, radv_export_multiview);
    }
@@ -2580,10 +2532,6 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
                        const struct radv_pipeline_key *pipeline_key)
 {
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
-
-   if (radv_should_export_implicit_primitive_id(tes_stage, next_stage)) {
-      NIR_PASS(_, tes_stage->nir, radv_export_implicit_primitive_id);
-   }
 
    if (radv_should_export_multiview(tes_stage, next_stage, pipeline_key)) {
       NIR_PASS(_, tes_stage->nir, radv_export_multiview);
@@ -3899,6 +3847,10 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    bool lowered_ngg = pipeline_has_ngg && stage->stage == last_vgt_api_stage;
    if (lowered_ngg)
       radv_lower_ngg(device, stage, pipeline_key);
+
+   if (stage->stage == last_vgt_api_stage && stage->stage != MESA_SHADER_GEOMETRY && !lowered_ngg)
+      NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs,
+                 stage->info.outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1, true);
 
    NIR_PASS(_, stage->nir, nir_opt_idiv_const, 8);
 

@@ -9191,7 +9191,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_export_vertex_amd: {
-      ctx->block->kind |= block_kind_export_end;
       create_vs_exports(ctx);
       break;
    }
@@ -12099,9 +12098,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
       if (ctx.program->info.so.num_outputs && ctx.stage.hw == HWStage::VS)
          emit_streamout(&ctx, 0);
 
-      if (ctx.stage.hw == HWStage::VS) {
-         create_vs_exports(&ctx);
-      } else if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
+      if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,
                      memory_sync_info(storage_vmem_output, semantic_release, scope_device));

@@ -1278,7 +1278,7 @@ radv_link_shaders_info(struct radv_device *device,
 
       if (ps_prim_id_in &&
           (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL)) {
-         /* Mark the primitive ID as output when it's implicitly exported by VS or TES with NGG. */
+         /* Mark the primitive ID as output when it's implicitly exported by VS or TES. */
          if (outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED)
             outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = outinfo->param_exports++;
 

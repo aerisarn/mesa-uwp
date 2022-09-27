@@ -1161,15 +1161,9 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
 
    switch (ctx->stage) {
    case MESA_SHADER_VERTEX:
-      if (ctx->shader_info->vs.as_ls)
-         break; /* Lowered in NIR */
-      else if (ctx->shader_info->vs.as_es)
-         break; /* Lowered in NIR */
-      else if (ctx->shader_info->is_ngg)
-         break; /* Lowered in NIR */
-      else
-         handle_vs_outputs_post(ctx);
-      break;
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+      break; /* Lowered in NIR */
    case MESA_SHADER_FRAGMENT:
       handle_fs_outputs_post(ctx);
       break;
@@ -1178,16 +1172,6 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
          break; /* Lowered in NIR */
       else
          emit_gs_epilogue(ctx);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      break; /* Lowered in NIR */
-   case MESA_SHADER_TESS_EVAL:
-      if (ctx->shader_info->tes.as_es)
-         break; /* Lowered in NIR */
-      else if (ctx->shader_info->is_ngg)
-         break; /* Lowered in NIR */
-      else
-         handle_vs_outputs_post(ctx);
       break;
    default:
       break;
@@ -1462,7 +1446,9 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          ctx.abi.emit_vertex_with_counter = visit_emit_vertex_with_counter;
          ctx.abi.emit_primitive = visit_end_primitive;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
+         ctx.abi.export_vertex = radv_llvm_visit_export_vertex;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX) {
+         ctx.abi.export_vertex = radv_llvm_visit_export_vertex;
          ctx.abi.load_inputs = radv_load_vs_inputs;
       }
 
