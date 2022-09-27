@@ -330,3 +330,11 @@ VALU between the second VGPR write and the current instruction.
 
 Mitigated by:
 A va_vdst=0 wait: `s_waitcnt_deptr 0x0fff`
+
+### VALUMaskWriteHazard
+
+Triggered by:
+SALU writing then reading a SGPR that was previously used as a lane mask for a VALU.
+
+Mitigated by:
+A VALU instruction reading a SGPR or with literal, or a sa_sdst=0 wait: `s_waitcnt_depctr 0xfffe`

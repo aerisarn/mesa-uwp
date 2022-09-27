@@ -920,3 +920,72 @@ BEGIN_TEST(insert_nops.valu_partial_forwarding.control_flow)
 
    finish_insert_nops_test();
 END_TEST
+
+BEGIN_TEST(insert_nops.valu_mask_write)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   /* Basic case. */
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = v_cndmask_b32 0, 0, %0:s[0-1]
+   //! s1: %0:s[1] = s_mov_b32 0
+   //! s_waitcnt_depctr sa_sdst(0)
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(PhysReg(256), v1),
+                Operand::zero(), Operand::zero(), Operand(PhysReg(0), s2));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(1), s1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+
+   /* Mitigation. */
+   //! p_unit_test 1
+   //! v1: %0:v[0] = v_cndmask_b32 0, 0, %0:s[0-1]
+   //! v1: %0:v[1] = v_mov_b32 %0:s[1]
+   //! s1: %0:s[1] = s_mov_b32 0
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(PhysReg(256), v1),
+                Operand::zero(), Operand::zero(), Operand(PhysReg(0), s2));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(1), s1));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(1), s1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+
+   //! p_unit_test 2
+   //! v1: %0:v[0] = v_cndmask_b32 0, 0, %0:s[0-1]
+   //! s1: %0:s[1] = s_mov_b32 0
+   //! s_waitcnt_depctr sa_sdst(0)
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2));
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(PhysReg(256), v1),
+                Operand::zero(), Operand::zero(), Operand(PhysReg(0), s2));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(1), s1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+
+   //! p_unit_test 3
+   //! v1: %0:v[0] = v_cndmask_b32 0, 0, %0:s[0-1]
+   //! s1: %0:s[1] = s_mov_b32 0
+   //! s_waitcnt_depctr sa_sdst(0)
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3));
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(PhysReg(256), v1),
+                Operand::zero(), Operand::zero(), Operand(PhysReg(0), s2));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(1), s1), Operand::zero());
+   bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xfffe);
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+
+   /* Instruction which is both involved in the hazard and is a mitigation. */
+   //! p_unit_test 4
+   //! v1: %0:v[0] = v_cndmask_b32 %0:s[2], 0, %0:s[0-1]
+   //! s1: %0:s[1] = s_mov_b32 0
+   //! s_waitcnt_depctr sa_sdst(0)
+   //! s1: %0:s[2] = s_mov_b32 %0:s[1]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4));
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(PhysReg(256), v1),
+                Operand(PhysReg(2), s1), Operand::zero(), Operand(PhysReg(0), s2));
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(1), s1), Operand::zero());
+   bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg(2), s1), Operand(PhysReg(1), s1));
+
+   finish_insert_nops_test();
+END_TEST

@@ -292,6 +292,10 @@ struct NOP_ctx_gfx11 {
    VGPRCounterMap<15> valu_since_wr_by_trans;
    VGPRCounterMap<2> trans_since_wr_by_trans;
 
+   /* VALUMaskWriteHazard */
+   std::bitset<128> sgpr_read_by_valu_as_lanemask;
+   std::bitset<128> sgpr_read_by_valu_as_lanemask_then_wr_by_salu;
+
    void join(const NOP_ctx_gfx11& other)
    {
       has_Vcmpx |= other.has_Vcmpx;
@@ -300,6 +304,9 @@ struct NOP_ctx_gfx11 {
       vgpr_used_by_ds |= other.vgpr_used_by_ds;
       valu_since_wr_by_trans.join_min(other.valu_since_wr_by_trans);
       trans_since_wr_by_trans.join_min(other.trans_since_wr_by_trans);
+      sgpr_read_by_valu_as_lanemask |= other.sgpr_read_by_valu_as_lanemask;
+      sgpr_read_by_valu_as_lanemask_then_wr_by_salu |=
+         other.sgpr_read_by_valu_as_lanemask_then_wr_by_salu;
    }
 
    bool operator==(const NOP_ctx_gfx11& other)
@@ -309,7 +316,10 @@ struct NOP_ctx_gfx11 {
              vgpr_used_by_vmem_store == other.vgpr_used_by_vmem_store &&
              vgpr_used_by_ds == other.vgpr_used_by_ds &&
              valu_since_wr_by_trans == other.valu_since_wr_by_trans &&
-             trans_since_wr_by_trans == other.trans_since_wr_by_trans;
+             trans_since_wr_by_trans == other.trans_since_wr_by_trans &&
+             sgpr_read_by_valu_as_lanemask == other.sgpr_read_by_valu_as_lanemask &&
+             sgpr_read_by_valu_as_lanemask_then_wr_by_salu ==
+                other.sgpr_read_by_valu_as_lanemask_then_wr_by_salu;
    }
 };
 
@@ -723,6 +733,24 @@ check_written_regs(const aco_ptr<Instruction>& instr, const std::bitset<N>& chec
                          for (unsigned i = 0; i < def.size(); i++) {
                             unsigned def_reg = def.physReg() + i;
                             writes_any |= def_reg < check_regs.size() && check_regs[def_reg];
+                         }
+                         return writes_any;
+                      });
+}
+
+template <std::size_t N>
+bool
+check_read_regs(const aco_ptr<Instruction>& instr, const std::bitset<N>& check_regs)
+{
+   return std::any_of(instr->operands.begin(), instr->operands.end(),
+                      [&check_regs](const Operand& op) -> bool
+                      {
+                         if (op.isConstant())
+                            return false;
+                         bool writes_any = false;
+                         for (unsigned i = 0; i < op.size(); i++) {
+                            unsigned op_reg = op.physReg() + i;
+                            writes_any |= op_reg < check_regs.size() && check_regs[op_reg];
                          }
                          return writes_any;
                       });
@@ -1265,6 +1293,21 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
       va_vdst = 0;
    }
 
+   /* VALUMaskWriteHazard
+    * VALU reads SGPR as a lane mask and later written by SALU cannot safely be read by SALU.
+    */
+   if (state.program->wave_size == 64 && instr->isSALU() &&
+       check_written_regs(instr, ctx.sgpr_read_by_valu_as_lanemask)) {
+      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu = ctx.sgpr_read_by_valu_as_lanemask;
+      ctx.sgpr_read_by_valu_as_lanemask.reset();
+   } else if (state.program->wave_size == 64 && instr->isSALU() &&
+              check_read_regs(instr, ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu)) {
+      bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0xfffe);
+      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu.reset();
+   } else if (instr->opcode == aco_opcode::s_waitcnt_depctr && (instr->sopp().imm & 0x1) == 0) {
+      ctx.sgpr_read_by_valu_as_lanemask_then_wr_by_salu.reset();
+   }
+
    va_vdst = std::min(va_vdst, parse_vdst_wait(instr));
    if (va_vdst == 0) {
       ctx.valu_since_wr_by_trans.reset();
@@ -1284,6 +1327,28 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
          for (Definition& def : instr->definitions) {
             ctx.valu_since_wr_by_trans.set(def.physReg(), def.bytes());
             ctx.trans_since_wr_by_trans.set(def.physReg(), def.bytes());
+         }
+      }
+
+      if (state.program->wave_size == 64) {
+         for (Operand& op : instr->operands) {
+            if (op.isLiteral() || (!op.isConstant() && op.physReg().reg() < 128))
+               ctx.sgpr_read_by_valu_as_lanemask.reset();
+         }
+         switch (instr->opcode) {
+         case aco_opcode::v_addc_co_u32:
+         case aco_opcode::v_subb_co_u32:
+         case aco_opcode::v_subbrev_co_u32:
+         case aco_opcode::v_cndmask_b16:
+         case aco_opcode::v_cndmask_b32:
+         case aco_opcode::v_div_fmas_f32:
+         case aco_opcode::v_div_fmas_f64:
+            if (instr->operands.back().physReg() != exec) {
+               ctx.sgpr_read_by_valu_as_lanemask.set(instr->operands.back().physReg().reg());
+               ctx.sgpr_read_by_valu_as_lanemask.set(instr->operands.back().physReg().reg() + 1);
+            }
+            break;
+         default: break;
          }
       }
    }
