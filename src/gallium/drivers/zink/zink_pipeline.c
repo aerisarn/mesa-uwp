@@ -367,7 +367,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
+   if (prog->modules[MESA_SHADER_TESS_CTRL] && prog->modules[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->dyn_state2.vertices_per_patch;
       pci.pTessellationState = &tci;
@@ -717,7 +717,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
+   if (prog->modules[MESA_SHADER_TESS_CTRL] && prog->modules[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
       if (!screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
