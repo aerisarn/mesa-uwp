@@ -739,37 +739,37 @@ BEGIN_TEST(assembler.gfx11.vinterp)
    op2.setFixed(PhysReg(30));
 
    //>> v_interp_p10_f32 v42, v10, v20, s30 wait_exp:7              ; cd00072a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2);
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2);
 
    //! v_interp_p10_f32 v42, v10, v20, s30 wait_exp:6              ; cd00062a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 6);
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 6);
 
    //! v_interp_p2_f32 v42, v10, v20, s30                          ; cd01002a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p2_f32_inreg, dst, op0, op1, op2, 0);
+   bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, dst, op0, op1, op2, 0);
 
    //! v_interp_p10_f32 v42, -v10, v20, s30                        ; cd00002a 207a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp().neg[0] = true;
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp_inreg().neg[0] = true;
 
    //! v_interp_p10_f32 v42, v10, -v20, s30                        ; cd00002a 407a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp().neg[1] = true;
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp_inreg().neg[1] = true;
 
    //! v_interp_p10_f32 v42, v10, v20, -s30                        ; cd00002a 807a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp().neg[2] = true;
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp_inreg().neg[2] = true;
 
    //! v_interp_p10_f16_f32 v42, v10, v20, s30 op_sel:[1,0,0,0]    ; cd02082a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f16_f32_inreg, dst, op0, op1, op2, 0, 0x1);
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f16_f32_inreg, dst, op0, op1, op2, 0, 0x1);
 
    //! v_interp_p2_f16_f32 v42, v10, v20, s30 op_sel:[0,1,0,0]     ; cd03102a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p2_f16_f32_inreg, dst, op0, op1, op2, 0, 0x2);
+   bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, dst, op0, op1, op2, 0, 0x2);
 
    //! v_interp_p10_rtz_f16_f32 v42, v10, v20, s30 op_sel:[0,0,1,0] ; cd04202a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p10_rtz_f16_f32_inreg, dst, op0, op1, op2, 0, 0x4);
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_rtz_f16_f32_inreg, dst, op0, op1, op2, 0, 0x4);
 
    //! v_interp_p2_rtz_f16_f32 v42, v10, v20, s30 op_sel:[0,0,0,1] ; cd05402a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p2_rtz_f16_f32_inreg, dst, op0, op1, op2, 0, 0x8);
+   bld.vinterp_inreg(aco_opcode::v_interp_p2_rtz_f16_f32_inreg, dst, op0, op1, op2, 0, 0x8);
 
    //! v_interp_p10_f32 v42, v10, v20, s30 clamp                   ; cd00802a 007a290a
-   bld.vinterp(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp().clamp = true;
+   bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, dst, op0, op1, op2, 0).instr->vinterp_inreg().clamp = true;
 
    finish_assembler_test();
 END_TEST
