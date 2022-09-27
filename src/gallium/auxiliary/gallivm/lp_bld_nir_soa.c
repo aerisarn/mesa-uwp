@@ -1224,7 +1224,7 @@ mem_access_base_pointer(struct lp_build_nir_context *bld_base,
    }
 
    /* Cast it to the pointer type of the access this instruction is doing. */
-   if (bit_size == 32)
+   if (bit_size == 32 && !mem_bld->type.floating)
       return ptr;
    else
       return LLVMBuildBitCast(gallivm->builder, ptr, LLVMPointerType(mem_bld->elem_type, 0), "");
