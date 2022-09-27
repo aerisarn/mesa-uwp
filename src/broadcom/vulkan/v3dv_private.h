@@ -520,11 +520,6 @@ struct v3dv_device {
     */
    struct v3dv_bo *default_attribute_float;
 
-   VkPhysicalDeviceFeatures features;
-   struct {
-      bool robustImageAccess;
-   } ext_features;
-
    void *device_address_mem_ctx;
    struct util_dynarray device_address_bo_list; /* Array of struct v3dv_bo * */
 

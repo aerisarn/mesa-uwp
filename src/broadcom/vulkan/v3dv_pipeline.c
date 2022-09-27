@@ -1038,8 +1038,11 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
 
    memset(key, 0, sizeof(*key));
 
-   const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
-   const bool ria = p_stage->pipeline->device->ext_features.robustImageAccess;
+   struct v3dv_device *device = p_stage->pipeline->device;
+   assert(device);
+
+   const bool rba = device->vk.enabled_features.robustBufferAccess;
+   const bool ria = device->vk.enabled_features.robustImageAccess;
    pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables, rba, ria);
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
@@ -1155,10 +1158,13 @@ pipeline_populate_v3d_gs_key(struct v3d_gs_key *key,
    assert(p_stage->stage == BROADCOM_SHADER_GEOMETRY ||
           p_stage->stage == BROADCOM_SHADER_GEOMETRY_BIN);
 
+   struct v3dv_device *device = p_stage->pipeline->device;
+   assert(device);
+
    memset(key, 0, sizeof(*key));
 
-   const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
-   const bool ria = p_stage->pipeline->device->ext_features.robustImageAccess;
+   const bool rba = device->vk.enabled_features.robustBufferAccess;
+   const bool ria = device->vk.enabled_features.robustImageAccess;
    pipeline_populate_v3d_key(&key->base, p_stage, 0, rba, ria);
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
@@ -1198,10 +1204,13 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
    assert(p_stage->stage == BROADCOM_SHADER_VERTEX ||
           p_stage->stage == BROADCOM_SHADER_VERTEX_BIN);
 
+   struct v3dv_device *device = p_stage->pipeline->device;
+   assert(device);
+
    memset(key, 0, sizeof(*key));
 
-   const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
-   const bool ria = p_stage->pipeline->device->ext_features.robustImageAccess;
+   const bool rba = device->vk.enabled_features.robustBufferAccess;
+   const bool ria = device->vk.enabled_features.robustImageAccess;
    pipeline_populate_v3d_key(&key->base, p_stage, 0, rba, ria);
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
@@ -1859,12 +1868,13 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
                                struct v3dv_pipeline_key *key,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   memset(key, 0, sizeof(*key));
-   key->robust_buffer_access =
-      pipeline->device->features.robustBufferAccess;
+   struct v3dv_device *device = pipeline->device;
+   assert(device);
 
-   key->robust_image_access =
-      pipeline->device->ext_features.robustImageAccess;
+   memset(key, 0, sizeof(*key));
+
+   key->robust_buffer_access = device->vk.enabled_features.robustBufferAccess;
+   key->robust_image_access = device->vk.enabled_features.robustImageAccess;
 
    const bool raster_enabled =
       !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
@@ -1949,16 +1959,17 @@ pipeline_populate_compute_key(struct v3dv_pipeline *pipeline,
                               struct v3dv_pipeline_key *key,
                               const VkComputePipelineCreateInfo *pCreateInfo)
 {
+   struct v3dv_device *device = pipeline->device;
+   assert(device);
+
    /* We use the same pipeline key for graphics and compute, but we don't need
     * to add a field to flag compute keys because this key is not used alone
     * to search in the cache, we also use the SPIR-V or the serialized NIR for
     * example, which already flags compute shaders.
     */
    memset(key, 0, sizeof(*key));
-   key->robust_buffer_access =
-      pipeline->device->features.robustBufferAccess;
-   key->robust_image_access =
-      pipeline->device->ext_features.robustImageAccess;
+   key->robust_buffer_access = device->vk.enabled_features.robustBufferAccess;
+   key->robust_image_access = device->vk.enabled_features.robustImageAccess;
 }
 
 static struct v3dv_pipeline_shared_data *
@@ -3126,8 +3137,8 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    struct v3d_key key;
    memset(&key, 0, sizeof(key));
-   const bool rba = pipeline->device->features.robustBufferAccess;
-   const bool ria = pipeline->device->ext_features.robustImageAccess;
+   const bool rba = pipeline->device->vk.enabled_features.robustBufferAccess;
+   const bool ria = pipeline->device->vk.enabled_features.robustImageAccess;
    pipeline_populate_v3d_key(&key, p_stage, 0, rba, ria);
    pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE] =
       pipeline_compile_shader_variant(p_stage, &key, sizeof(key),

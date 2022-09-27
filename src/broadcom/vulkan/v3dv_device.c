@@ -2059,30 +2059,10 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->devinfo = physical_device->devinfo;
 
-   /* Vulkan 1.1 and VK_KHR_get_physical_device_properties2 added
-    * VkPhysicalDeviceFeatures2 which can be used in the pNext chain of
-    * vkDeviceCreateInfo, in which case it should be used instead of
-    * pEnabledFeatures.
-    */
-   const VkPhysicalDeviceFeatures2 *features2 =
-      vk_find_struct_const(pCreateInfo->pNext, PHYSICAL_DEVICE_FEATURES_2);
-   if (features2) {
-      memcpy(&device->features, &features2->features,
-             sizeof(device->features));
-
-      const VkPhysicalDeviceImageRobustnessFeatures *irf =
-         vk_find_struct_const(pCreateInfo->pNext,
-         PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES);
-      device->ext_features.robustImageAccess = irf && irf->robustImageAccess;
-   } else  if (pCreateInfo->pEnabledFeatures) {
-      memcpy(&device->features, pCreateInfo->pEnabledFeatures,
-             sizeof(device->features));
-   }
-
-   if (device->features.robustBufferAccess)
+   if (device->vk.enabled_features.robustBufferAccess)
       perf_debug("Device created with Robust Buffer Access enabled.\n");
 
-   if (device->ext_features.robustImageAccess)
+   if (device->vk.enabled_features.robustImageAccess)
       perf_debug("Device created with Robust Image Access enabled.\n");
 
 
