@@ -457,6 +457,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->instance_info.have_KHR_external_semaphore_capabilities && screen->info.have_KHR_external_semaphore_fd;
 
    case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
+   case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE:
    case PIPE_CAP_SHAREABLE_SHADERS:
    case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
    case PIPE_CAP_QUERY_MEMORY_INFO:
