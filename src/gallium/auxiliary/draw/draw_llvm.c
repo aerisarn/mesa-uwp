@@ -1283,6 +1283,7 @@ convert_to_aos(struct gallivm_state *gallivm,
                LLVMValueRef clipmask,
                int num_outputs,
                struct lp_type soa_type,
+               int primid_slot,
                boolean need_edgeflag)
 {
    LLVMBuilderRef builder = gallivm->builder;
@@ -1296,7 +1297,7 @@ convert_to_aos(struct gallivm_state *gallivm,
       LLVMValueRef aos[LP_MAX_VECTOR_WIDTH / 32];
       for (chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
          if (outputs[attrib][chan]) {
-            LLVMTypeRef single_type = lp_build_vec_type(gallivm, soa_type);
+            LLVMTypeRef single_type = (attrib == primid_slot) ? lp_build_int_vec_type(gallivm, soa_type) : lp_build_vec_type(gallivm, soa_type);
             LLVMValueRef out = LLVMBuildLoad2(builder, single_type, outputs[attrib][chan], "");
             lp_build_name(out, "output%u.%c", attrib, "xyzw"[chan]);
 #if DEBUG_STORE
@@ -1820,6 +1821,7 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                   io, indices,
                   outputs, clipmask,
                   gs_info->num_outputs, gs_type,
+                  -1,
                   FALSE);
    lp_build_endif(&if_ctx);
 }
@@ -2337,7 +2339,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
        * and transformed positions in data
        */
       convert_to_aos(gallivm, variant->vertex_header_type, io, NULL, outputs, clipmask,
-                     vs_info->num_outputs, vs_type,
+                     vs_info->num_outputs, vs_type, -1,
                      enable_cliptest && key->need_edgeflags);
    }
    lp_build_loop_end_cond(&lp_loop, count, step, LLVMIntUGE);
@@ -3918,6 +3920,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    LLVMValueRef step;
    struct lp_type tes_type;
    unsigned vector_length = variant->shader->base.vector_length;
+   int primid_slot = -1;
 
    memset(&system_values, 0, sizeof(system_values));
    memset(&outputs, 0, sizeof(outputs));
@@ -4020,6 +4023,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
          outputs[slot][i] = lp_build_alloca(gallivm, lp_build_int_vec_type(gallivm, tes_type), "primid");
          LLVMBuildStore(builder, system_values.prim_id, outputs[slot][i]);
       }
+      primid_slot = slot;
    }
    struct lp_build_loop_state lp_loop;
    lp_build_loop_begin(&lp_loop, gallivm, bld.zero);
@@ -4083,7 +4087,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
                                                      lp_int_type(tes_type), 0);
 
       convert_to_aos(gallivm, variant->vertex_header_type, io, NULL, outputs, clipmask,
-                     draw_total_tes_outputs(llvm->draw), tes_type, FALSE);
+                     draw_total_tes_outputs(llvm->draw), tes_type, primid_slot, FALSE);
    }
    lp_build_loop_end_cond(&lp_loop, num_tess_coord, step, LLVMIntUGE);
    draw_llvm_sampler_soa_destroy(sampler);
