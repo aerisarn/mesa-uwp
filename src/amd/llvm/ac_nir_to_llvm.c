@@ -1367,7 +1367,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 
 static bool visit_load_const(struct ac_nir_context *ctx, const nir_load_const_instr *instr)
 {
-   LLVMValueRef values[4], value = NULL;
+   LLVMValueRef values[16], value = NULL;
    LLVMTypeRef element_type = LLVMIntTypeInContext(ctx->ac.context, instr->def.bit_size);
 
    for (unsigned i = 0; i < instr->def.num_components; ++i) {
