@@ -32,6 +32,7 @@
 
 #include "nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_builtin_builder.h"
 
 #include "nir/tgsi_to_nir.h"
 #include "tgsi/tgsi_dump.h"
@@ -64,6 +65,8 @@ fields[member_idx].offset = offsetof(struct zink_gfx_push_constant, field);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED, framebuffer_is_layered);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL, default_inner_level);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL, default_outer_level);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN, line_stipple_pattern);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_VIEWPORT_SCALE, viewport_scale);
 
    pushconst = nir_variable_create(nir, nir_var_mem_push_const,
                                    glsl_struct_type(fields, ZINK_GFX_PUSHCONST_MAX, "struct", false),
@@ -268,6 +271,185 @@ lower_drawid(nir_shader *shader)
       return false;
 
    return nir_shader_instructions_pass(shader, lower_drawid_instr, nir_metadata_dominance, NULL);
+}
+
+struct lower_line_stipple_state {
+   nir_variable *pos_out;
+   nir_variable *stipple_out;
+   nir_variable *prev_pos;
+   nir_variable *pos_counter;
+   nir_variable *stipple_counter;
+};
+
+static nir_ssa_def *
+viewport_map(nir_builder *b, nir_ssa_def *vert,
+             nir_ssa_def *scale)
+{
+   nir_ssa_def *w_recip = nir_frcp(b, nir_channel(b, vert, 3));
+   nir_ssa_def *ndc_point = nir_fmul(b, nir_channels(b, vert, 0x3),
+                                        w_recip);
+   return nir_fmul(b, ndc_point, scale);
+}
+
+static bool
+lower_line_stipple_gs_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct lower_line_stipple_state *state = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_emit_vertex_with_counter &&
+       intrin->intrinsic != nir_intrinsic_emit_vertex)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_push_if(b, nir_ine_imm(b, nir_load_var(b, state->pos_counter), 0));
+   // viewport-map endpoints
+   nir_ssa_def *vp_scale = nir_load_push_constant(b, 2, 32,
+                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE),
+                                                  .base = 1,
+                                                  .range = 2);
+   nir_ssa_def *prev = nir_load_var(b, state->prev_pos);
+   nir_ssa_def *curr = nir_load_var(b, state->pos_out);
+   prev = viewport_map(b, prev, vp_scale);
+   curr = viewport_map(b, curr, vp_scale);
+
+   // calculate length of line
+   nir_ssa_def *len = nir_fast_distance(b, prev, curr);
+   // update stipple_counter
+   nir_store_var(b, state->stipple_counter,
+                    nir_fadd(b, nir_load_var(b, state->stipple_counter),
+                                len), 1);
+   nir_pop_if(b, NULL);
+   // emit stipple out
+   nir_copy_var(b, state->stipple_out, state->stipple_counter);
+   nir_copy_var(b, state->prev_pos, state->pos_out);
+
+   // update prev_pos and pos_counter for next vertex
+   b->cursor = nir_after_instr(instr);
+   nir_store_var(b, state->pos_counter,
+                    nir_iadd_imm(b, nir_load_var(b, state->pos_counter),
+                                    1), 1);
+
+   return true;
+}
+
+static bool
+lower_line_stipple_gs(nir_shader *shader)
+{
+   nir_builder b;
+   struct lower_line_stipple_state state;
+
+   state.pos_out =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      VARYING_SLOT_POS);
+
+   // if position isn't written, we have nothing to do
+   if (!state.pos_out)
+      return false;
+
+   state.stipple_out = nir_variable_create(shader, nir_var_shader_out,
+                                           glsl_float_type(),
+                                           "__stipple");
+   state.stipple_out->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
+   state.stipple_out->data.driver_location = shader->num_outputs++;
+   state.stipple_out->data.location = MIN2(util_last_bit64(shader->info.outputs_written) + 1, VARYING_SLOT_VAR0);
+   shader->info.outputs_written |= BITFIELD64_BIT(state.stipple_out->data.location);
+
+   // create temp variables
+   state.prev_pos = nir_variable_create(shader, nir_var_shader_temp,
+                                        glsl_vec4_type(),
+                                        "__prev_pos");
+   state.pos_counter = nir_variable_create(shader, nir_var_shader_temp,
+                                           glsl_uint_type(),
+                                           "__pos_counter");
+   state.stipple_counter = nir_variable_create(shader, nir_var_shader_temp,
+                                               glsl_float_type(),
+                                               "__stipple_counter");
+
+   // initialize pos_counter and stipple_counter
+   nir_function_impl *entry = nir_shader_get_entrypoint(shader);
+   nir_builder_init(&b, entry);
+   b.cursor = nir_before_cf_list(&entry->body);
+   nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
+   nir_store_var(&b, state.stipple_counter, nir_imm_float(&b, 0), 1);
+
+   return nir_shader_instructions_pass(shader, lower_line_stipple_gs_instr,
+                                       nir_metadata_dominance, &state);
+}
+
+static bool
+lower_line_stipple_fs(nir_shader *shader)
+{
+   nir_builder b;
+   nir_function_impl *entry = nir_shader_get_entrypoint(shader);
+   nir_builder_init(&b, entry);
+
+   // create stipple counter
+   nir_variable *stipple = nir_variable_create(shader, nir_var_shader_in,
+                                               glsl_float_type(),
+                                               "__stipple");
+   stipple->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
+   stipple->data.driver_location = shader->num_inputs++;
+   stipple->data.location = MIN2(util_last_bit64(shader->info.inputs_read) + 1, VARYING_SLOT_VAR0);
+   shader->info.inputs_read |= BITFIELD64_BIT(stipple->data.location);
+
+   nir_variable *sample_mask_out =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      FRAG_RESULT_SAMPLE_MASK);
+   if (!sample_mask_out) {
+      sample_mask_out = nir_variable_create(shader, nir_var_shader_out,
+                                        glsl_uint_type(), "sample_mask");
+      sample_mask_out->data.driver_location = shader->num_outputs++;
+      sample_mask_out->data.location = FRAG_RESULT_SAMPLE_MASK;
+   }
+
+   b.cursor = nir_after_cf_list(&entry->body);
+
+   nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
+                                                 nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
+                                                 .base = 1);
+   nir_ssa_def *factor = nir_i2f32(&b, nir_ishr_imm(&b, pattern, 16));
+   pattern = nir_iand_imm(&b, pattern, 0xffff);
+
+   nir_ssa_def *sample_mask_in = nir_load_sample_mask_in(&b);
+   nir_variable *v = nir_local_variable_create(entry, glsl_uint_type(), NULL);
+   nir_variable *sample_mask = nir_local_variable_create(entry, glsl_uint_type(), NULL);
+   nir_store_var(&b, v, sample_mask_in, 1);
+   nir_store_var(&b, sample_mask, sample_mask_in, 1);
+   nir_push_loop(&b);
+   {
+      nir_ssa_def *value = nir_load_var(&b, v);
+      nir_ssa_def *index = nir_ufind_msb(&b, value);
+      nir_ssa_def *index_mask = nir_ishl(&b, nir_imm_int(&b, 1), index);
+      nir_ssa_def *new_value = nir_ixor(&b, value, index_mask);
+      nir_store_var(&b, v, new_value,  1);
+      nir_push_if(&b, nir_ieq_imm(&b, value, 0));
+      nir_jump(&b, nir_jump_break);
+      nir_pop_if(&b, NULL);
+
+      nir_ssa_def *stipple_pos =
+         nir_interp_deref_at_sample(&b, 1, 32,
+            &nir_build_deref_var(&b, stipple)->dest.ssa, index);
+      stipple_pos = nir_fmod(&b, nir_fdiv(&b, stipple_pos, factor),
+                                 nir_imm_float(&b, 16.0));
+      stipple_pos = nir_f2i32(&b, stipple_pos);
+      nir_ssa_def *bit =
+         nir_iand_imm(&b, nir_ishr(&b, pattern, stipple_pos), 1);
+      nir_push_if(&b, nir_ieq_imm(&b, bit, 0));
+      {
+         nir_ssa_def *value = nir_load_var(&b, sample_mask);
+         value = nir_ixor(&b, value, index_mask);
+         nir_store_var(&b, sample_mask, value, 1);
+      }
+      nir_pop_if(&b, NULL);
+   }
+   nir_pop_loop(&b, NULL);
+   nir_store_var(&b, sample_mask_out, nir_load_var(&b, sample_mask), 1);
+
+   return true;
 }
 
 static bool

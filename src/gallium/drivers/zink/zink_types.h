@@ -804,6 +804,8 @@ struct zink_gfx_push_constant {
    unsigned framebuffer_is_layered;
    float default_inner_level[2];
    float default_outer_level[4];
+   uint32_t line_stipple_pattern;
+   float viewport_scale[2];
 };
 
 /* The order of the enums MUST match the order of the zink_gfx_push_constant
@@ -815,6 +817,8 @@ enum zink_gfx_push_constant_member {
    ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED,
    ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL,
    ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL,
+   ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN,
+   ZINK_GFX_PUSHCONST_VIEWPORT_SCALE,
    ZINK_GFX_PUSHCONST_MAX
 };
 
