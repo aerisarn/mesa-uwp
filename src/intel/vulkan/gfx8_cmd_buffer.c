@@ -209,12 +209,62 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer,
           wm_prog_data->computed_depth_mode != PSCDEPTH_OFF;
 }
 
+static void
+genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   const struct brw_tes_prog_data *tes_prog_data = get_tes_prog_data(pipeline);
+
+   if (!tes_prog_data ||
+       !anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TE), te);
+      return;
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TE), te) {
+      te.Partitioning = tes_prog_data->partitioning;
+      te.TEDomain = tes_prog_data->domain;
+      te.TEEnable = true;
+      te.MaximumTessellationFactorOdd = 63.0;
+      te.MaximumTessellationFactorNotOdd = 64.0;
+#if GFX_VERx10 >= 125
+      te.TessellationDistributionMode = TEDMODE_RR_FREE;
+      te.TessellationDistributionLevel = TEDLEVEL_PATCH;
+      /* 64_TRIANGLES */
+      te.SmallPatchThreshold = 3;
+      /* 1K_TRIANGLES */
+      te.TargetBlockSize = 8;
+      /* 1K_TRIANGLES */
+      te.LocalBOPAccumulatorThreshold = 1;
+#endif
+      if (dyn->ts.domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
+         te.OutputTopology = tes_prog_data->output_topology;
+      } else {
+         /* When the origin is upper-left, we have to flip the winding order */
+         if (tes_prog_data->output_topology == OUTPUT_TRI_CCW) {
+            te.OutputTopology = OUTPUT_TRI_CW;
+         } else if (tes_prog_data->output_topology == OUTPUT_TRI_CW) {
+            te.OutputTopology = OUTPUT_TRI_CCW;
+         } else {
+            te.OutputTopology = tes_prog_data->output_topology;
+         }
+      }
+   }
+}
+
 void
 genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
+
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+      genX(cmd_emit_te)(cmd_buffer);
+   }
 
 #if GFX_VER >= 11
    if (cmd_buffer->device->vk.enabled_extensions.KHR_fragment_shading_rate &&

@@ -1425,12 +1425,11 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 }
 
 static void
-emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
-                      const struct vk_tessellation_state *ts)
+emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
+                   const struct vk_tessellation_state *ts)
 {
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_HS), hs);
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TE), te);
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_DS), ds);
       return;
    }
@@ -1493,38 +1492,6 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
 
       hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
       hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
-   }
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_TE), te) {
-      te.Partitioning = tes_prog_data->partitioning;
-
-      if (ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
-         te.OutputTopology = tes_prog_data->output_topology;
-      } else {
-         /* When the origin is upper-left, we have to flip the winding order */
-         if (tes_prog_data->output_topology == OUTPUT_TRI_CCW) {
-            te.OutputTopology = OUTPUT_TRI_CW;
-         } else if (tes_prog_data->output_topology == OUTPUT_TRI_CW) {
-            te.OutputTopology = OUTPUT_TRI_CCW;
-         } else {
-            te.OutputTopology = tes_prog_data->output_topology;
-         }
-      }
-
-      te.TEDomain = tes_prog_data->domain;
-      te.TEEnable = true;
-      te.MaximumTessellationFactorOdd = 63.0;
-      te.MaximumTessellationFactorNotOdd = 64.0;
-#if GFX_VERx10 >= 125
-      te.TessellationDistributionMode = TEDMODE_RR_FREE;
-      te.TessellationDistributionLevel = TEDLEVEL_PATCH;
-      /* 64_TRIANGLES */
-      te.SmallPatchThreshold = 3;
-      /* 1K_TRIANGLES */
-      te.TargetBlockSize = 8;
-      /* 1K_TRIANGLES */
-      te.LocalBOPAccumulatorThreshold = 1;
-#endif
    }
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_DS), ds) {
@@ -2061,7 +2028,7 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
       emit_vertex_input(pipeline, state->vi);
 
       emit_3dstate_vs(pipeline);
-      emit_3dstate_hs_te_ds(pipeline, state->ts);
+      emit_3dstate_hs_ds(pipeline, state->ts);
       emit_3dstate_gs(pipeline);
 
       emit_3dstate_vf_statistics(pipeline);
