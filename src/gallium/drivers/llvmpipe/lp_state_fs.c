@@ -643,6 +643,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  struct lp_type type,
                  LLVMTypeRef context_type,
                  LLVMValueRef context_ptr,
+                 LLVMTypeRef sample_pos_type,
                  LLVMValueRef sample_pos_array,
                  LLVMValueRef num_loop,
                  struct lp_build_interp_soa_context *interp,
@@ -1020,6 +1021,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    }
    system_values.sample_pos = sample_pos_array;
+   system_values.sample_pos_type = sample_pos_type;
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter,
                                          mask_type, mask_store, sample_loop_state.counter);
@@ -3415,6 +3417,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        fs_type,
                        variant->jit_context_type,
                        context_ptr,
+                       LLVMTypeOf(sample_pos_array),
                        glob_sample_pos,
                        num_loop,
                        &interp,

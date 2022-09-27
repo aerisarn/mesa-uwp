@@ -183,6 +183,7 @@ struct lp_bld_tgsi_system_values {
    LLVMValueRef tess_inner;
    LLVMValueRef vertices_in;
    LLVMValueRef sample_id;
+   LLVMTypeRef sample_pos_type;
    LLVMValueRef sample_pos;
    LLVMValueRef sample_mask_in;
    LLVMValueRef view_index;

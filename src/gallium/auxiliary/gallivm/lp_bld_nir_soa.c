@@ -1893,7 +1893,8 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
       for (unsigned i = 0; i < 2; i++) {
          LLVMValueRef idx = LLVMBuildMul(gallivm->builder, bld->system_values.sample_id, lp_build_const_int32(gallivm, 2), "");
          idx = LLVMBuildAdd(gallivm->builder, idx, lp_build_const_int32(gallivm, i), "");
-         LLVMValueRef val = lp_build_array_get(gallivm, bld->system_values.sample_pos, idx);
+         LLVMValueRef val = lp_build_array_get2(gallivm, bld->system_values.sample_pos_type,
+                                                bld->system_values.sample_pos, idx);
          result[i] = lp_build_broadcast_scalar(&bld_base->base, val);
       }
       break;
