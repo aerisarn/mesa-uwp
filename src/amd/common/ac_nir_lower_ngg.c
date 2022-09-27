@@ -3880,8 +3880,8 @@ ms_calculate_output_layout(unsigned api_shared_size,
    ms_out_mem_layout l = { .lds = { .total_size = api_shared_size } };
 
    /* Outputs without cross-invocation access can be stored in variables. */
-   l.var.vtx_attr.mask = per_vertex_output_mask & ~lds_per_vertex_output_mask;
-   l.var.prm_attr.mask = per_primitive_output_mask & ~lds_per_primitive_output_mask;
+   l.var.vtx_attr.mask = per_vertex_output_mask & ~cross_invocation_output_access;
+   l.var.prm_attr.mask = per_primitive_output_mask & ~cross_invocation_output_access;
 
    /* Workgroup information, see ms_workgroup_* for the layout. */
    l.lds.workgroup_info_addr = ALIGN(l.lds.total_size, 16);
