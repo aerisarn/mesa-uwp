@@ -2337,6 +2337,18 @@ init_driver_workarounds(struct zink_screen *screen)
       /* performance */
       screen->info.border_color_feats.customBorderColorWithoutFormat = VK_FALSE;
    }
+
+   if ((!screen->info.have_EXT_line_rasterization ||
+        !screen->info.line_rast_feats.stippledBresenhamLines) &&
+       screen->info.feats.features.geometryShader &&
+       screen->info.feats.features.sampleRateShading) {
+      /* we're using stippledBresenhamLines as a proxy for all of these, to
+       * avoid accidentally changing behavior on VK-drivers where we don't
+       * want to add emulation.
+       */
+      screen->driver_workarounds.no_linestipple = true;
+   }
+
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE || 
        screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY || 
        screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY || 
@@ -2702,7 +2714,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
 
-   screen->optimal_keys = !screen->need_decompose_attrs && screen->info.have_EXT_non_seamless_cube_map && !screen->driconf.inline_uniforms;
+   screen->optimal_keys = !screen->need_decompose_attrs &&
+                          screen->info.have_EXT_non_seamless_cube_map &&
+                          !screen->driconf.inline_uniforms &&
+                          !screen->driver_workarounds.no_linestipple;
    if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;
 

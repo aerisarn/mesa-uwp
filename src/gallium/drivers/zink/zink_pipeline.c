@@ -677,7 +677,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT;
    if (screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_ENABLE_EXT;
-   if (screen->info.have_EXT_line_rasterization)
+   if (!screen->driver_workarounds.no_linestipple)
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
    assert(state_count < ARRAY_SIZE(dynamicStateEnables));
 
