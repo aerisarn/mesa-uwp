@@ -292,7 +292,15 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
          mode_idx += hw_rast_state->line_stipple_enable * 3;
          if (*(feat + mode_idx))
             rast_line_state.lineRasterizationMode = hw_rast_state->line_mode;
-         else
+         else if (hw_rast_state->line_stipple_enable &&
+                  screen->driver_workarounds.no_linestipple) {
+            /* drop line stipple, we can emulate it */
+            mode_idx -= hw_rast_state->line_stipple_enable * 3;
+            if (*(feat + mode_idx))
+               rast_line_state.lineRasterizationMode = hw_rast_state->line_mode;
+            else
+               warn_missing_feature(warned[mode_idx], features[hw_rast_state->line_mode][0]);
+         } else
             warn_missing_feature(warned[mode_idx], features[hw_rast_state->line_mode][hw_rast_state->line_stipple_enable]);
       }
 
