@@ -132,13 +132,6 @@ _mesa_glthread_init(struct gl_context *ctx)
       ctx->Const.BufferCreateMapUnsynchronizedThreadSafe &&
       ctx->Const.AllowMappedBuffersDuringExecution;
 
-   /* If the draw start index is non-zero, glthread can upload to offset 0,
-    * which means the attrib offset has to be -(first * stride).
-    * So require signed vertex buffer offsets.
-    */
-   glthread->SupportsNonVBOUploads = glthread->SupportsBufferUploads &&
-                                     ctx->Const.VertexBufferOffsetIsInt32;
-
    ctx->CurrentClientDispatch = ctx->MarshalExec;
 
    glthread->LastDListChangeBatchIndex = -1;

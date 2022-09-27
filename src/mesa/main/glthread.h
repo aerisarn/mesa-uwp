@@ -188,7 +188,6 @@ struct glthread_state
 
    /** Caps. */
    GLboolean SupportsBufferUploads;
-   GLboolean SupportsNonVBOUploads;
 
    /** Primitive restart state. */
    bool PrimitiveRestart;
@@ -251,7 +250,8 @@ void _mesa_glthread_finish_before(struct gl_context *ctx, const char *func);
 void _mesa_glthread_upload(struct gl_context *ctx, const void *data,
                            GLsizeiptr size, unsigned *out_offset,
                            struct gl_buffer_object **out_buffer,
-                           uint8_t **out_ptr);
+                           uint8_t **out_ptr,
+                           unsigned start_offset);
 void _mesa_glthread_reset_vao(struct glthread_vao *vao);
 void _mesa_error_glthread_safe(struct gl_context *ctx, GLenum error,
                                bool glthread, const char *format, ...);

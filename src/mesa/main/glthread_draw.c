@@ -69,7 +69,7 @@ upload_indices(struct gl_context *ctx, unsigned count, unsigned index_size,
    assert(count);
 
    _mesa_glthread_upload(ctx, *indices, index_size * count,
-                         &upload_offset, &upload_buffer, NULL);
+                         &upload_offset, &upload_buffer, NULL, 0);
    assert(upload_buffer);
    *indices = (const GLvoid*)(intptr_t)upload_offset;
 
@@ -89,7 +89,7 @@ upload_multi_indices(struct gl_context *ctx, unsigned total_count,
    assert(total_count);
 
    _mesa_glthread_upload(ctx, NULL, index_size * total_count,
-                         &upload_offset, &upload_buffer, &upload_ptr);
+                         &upload_offset, &upload_buffer, &upload_ptr, 0);
    assert(upload_buffer);
 
    for (unsigned i = 0, offset = 0; i < draw_count; i++) {
@@ -188,10 +188,14 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
          end = end_offset[binding_index];
          assert(start < end);
 
+         /* If the draw start index is non-zero, glthread can upload to offset 0,
+         * which means the attrib offset has to be -(first * stride).
+         * So use signed vertex buffer offsets when possible to save memory.
+         */
          const void *ptr = vao->Attrib[binding_index].Pointer;
          _mesa_glthread_upload(ctx, (uint8_t*)ptr + start,
                                end - start, &upload_offset,
-                               &upload_buffer, NULL);
+                               &upload_buffer, NULL, ctx->Const.VertexBufferOffsetIsInt32 ? 0 : start);
          assert(upload_buffer);
 
          buffers[num_buffers].buffer = upload_buffer;
@@ -239,9 +243,14 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
          size = stride * (num_vertices - 1) + element_size;
       }
 
+      /* If the draw start index is non-zero, glthread can upload to offset 0,
+       * which means the attrib offset has to be -(first * stride).
+       * So use signed vertex buffer offsets when possible to save memory.
+       */
       const void *ptr = vao->Attrib[binding_index].Pointer;
       _mesa_glthread_upload(ctx, (uint8_t*)ptr + offset,
-                            size, &upload_offset, &upload_buffer, NULL);
+                            size, &upload_offset, &upload_buffer, NULL,
+                            ctx->Const.VertexBufferOffsetIsInt32 ? 0 : offset);
       assert(upload_buffer);
 
       buffers[num_buffers].buffer = upload_buffer;
@@ -405,7 +414,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
 
    /* Upload and draw. */
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (!ctx->GLThread.SupportsNonVBOUploads ||
+   if (!ctx->GLThread.SupportsBufferUploads ||
        !upload_vertices(ctx, user_buffer_mask, first, count, baseinstance,
                         instance_count, buffers)) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
@@ -517,7 +526,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    }
 
    /* If the draw count is too high or negative, the queue can't be used. */
-   if (!ctx->GLThread.SupportsNonVBOUploads ||
+   if (!ctx->GLThread.SupportsBufferUploads ||
        draw_count < 0 || draw_count > MARSHAL_MAX_CMD_SIZE / 16)
       goto sync;
 
@@ -805,7 +814,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
       return;
    }
 
-   if (!ctx->GLThread.SupportsNonVBOUploads)
+   if (!ctx->GLThread.SupportsBufferUploads)
       goto sync;
 
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
@@ -1030,7 +1039,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
     * and index bounds are not valid. We would have to map the indices
     * to compute the index bounds, and for that we would have to sync anyway.
     */
-   if (!ctx->GLThread.SupportsNonVBOUploads ||
+   if (!ctx->GLThread.SupportsBufferUploads ||
        draw_count < 0 || draw_count > MARSHAL_MAX_CMD_SIZE / 32 ||
        (need_index_bounds && !has_user_indices))
       goto sync;

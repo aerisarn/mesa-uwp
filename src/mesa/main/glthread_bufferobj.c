@@ -66,7 +66,8 @@ void
 _mesa_glthread_upload(struct gl_context *ctx, const void *data,
                       GLsizeiptr size, unsigned *out_offset,
                       struct gl_buffer_object **out_buffer,
-                      uint8_t **out_ptr)
+                      uint8_t **out_ptr,
+                      unsigned start_offset)
 {
    struct glthread_state *glthread = &ctx->GLThread;
    const unsigned default_size = 1024 * 1024;
@@ -75,14 +76,14 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
       return;
 
    /* The alignment was chosen arbitrarily. */
-   unsigned offset = align(glthread->upload_offset, 8);
+   unsigned offset = align(glthread->upload_offset, 8) + start_offset;
 
    /* Allocate a new buffer if needed. */
    if (unlikely(!glthread->upload_buffer || offset + size > default_size)) {
       /* If the size is greater than the buffer size, allocate a separate buffer
        * just for this upload.
        */
-      if (unlikely(size > default_size)) {
+      if (unlikely(start_offset + size > default_size)) {
          uint8_t *ptr;
 
          assert(*out_buffer == NULL);
@@ -90,7 +91,8 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
          if (!*out_buffer)
             return;
 
-         *out_offset = 0;
+         ptr += start_offset;
+         *out_offset = start_offset;
          if (data)
             memcpy(ptr, data, size);
          else
@@ -107,7 +109,7 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
       glthread->upload_buffer =
          new_upload_buffer(ctx, default_size, &glthread->upload_ptr);
       glthread->upload_offset = 0;
-      offset = 0;
+      offset = start_offset;
 
       /* Since atomic operations are very very slow when 2 threads are not
        * sharing one L3 cache (which can happen on AMD Zen), prevent using
@@ -430,7 +432,7 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
       unsigned upload_offset = 0;
 
       _mesa_glthread_upload(ctx, data, size, &upload_offset, &upload_buffer,
-                            NULL);
+                            NULL, 0);
 
       if (upload_buffer) {
          _mesa_marshal_InternalBufferSubDataCopyMESA((GLintptr)upload_buffer,
