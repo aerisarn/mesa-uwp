@@ -55,26 +55,6 @@
 
 /**
  * Get value pointer to a structure member.
- * Deprecated (used only by llvmpipe); use lp_build_struct_get_ptr2() instead.
- */
-LLVMValueRef
-lp_build_struct_get_ptr(struct gallivm_state *gallivm,
-                        LLVMValueRef ptr,
-                        unsigned member,
-                        const char *name);
-
-/**
- * Get the value of a structure member.
- * Deprecated (used only by llvmpipe); use lp_build_struct_get2() instead.
- */
-LLVMValueRef
-lp_build_struct_get(struct gallivm_state *gallivm,
-                    LLVMValueRef ptr,
-                    unsigned member,
-                    const char *name);
-
-/**
- * Get value pointer to a structure member.
  * This takes the explicit LLVM type of ptr, as required by LLVM-15 opaque-pointers.
  */
 LLVMValueRef
@@ -106,51 +86,6 @@ lp_build_array_get2(struct gallivm_state *gallivm,
                     LLVMTypeRef array_type,
                     LLVMValueRef ptr,
                     LLVMValueRef index);
-
-/**
- * Get value pointer to an array element.
- */
-LLVMValueRef
-lp_build_array_get_ptr(struct gallivm_state *gallivm,
-                       LLVMValueRef ptr,
-                       LLVMValueRef index);
-
-/**
- * Get the value of an array element.
- */
-LLVMValueRef
-lp_build_array_get(struct gallivm_state *gallivm,
-                   LLVMValueRef ptr,
-                   LLVMValueRef index);
-
-/**
- * Set the value of an array element.
- */
-void
-lp_build_array_set(struct gallivm_state *gallivm,
-                   LLVMValueRef ptr,
-                   LLVMValueRef index,
-                   LLVMValueRef value);
-
-/**
- * Get the value of an array element.
- */
-LLVMValueRef
-lp_build_pointer_get(LLVMBuilderRef builder,
-                   LLVMValueRef ptr,
-                   LLVMValueRef index);
-
-/**
- * Get the value of an array element, with explicit alignment.
- *
- * If the element size is different from the alignment this will
- * cause llvm to emit an unaligned load
- */
-LLVMValueRef
-lp_build_pointer_get_unaligned(LLVMBuilderRef builder,
-                               LLVMValueRef ptr,
-                               LLVMValueRef index,
-                               unsigned alignment);
 
 /**
  * Get the value of an array element.
