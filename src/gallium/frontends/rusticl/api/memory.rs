@@ -510,7 +510,7 @@ fn validate_image_desc(
 
 fn validate_image_bounds(i: &Mem, origin: CLVec<usize>, region: CLVec<usize>) -> CLResult<()> {
     let bound = region + origin;
-    if bound > i.image_desc.size() {
+    if bound > i.image_desc.api_size() {
         return Err(CL_INVALID_VALUE);
     }
     Ok(())

@@ -66,6 +66,7 @@ pub trait CLImageDescInfo {
     fn row_pitch(&self) -> CLResult<u32>;
     fn slice_pitch(&self) -> CLResult<u32>;
     fn size(&self) -> CLVec<usize>;
+    fn api_size(&self) -> CLVec<usize>;
 
     fn dims(&self) -> u8 {
         self.type_info().0
@@ -122,6 +123,17 @@ impl CLImageDescInfo for cl_image_desc {
         depth = cmp::max(depth, 1);
 
         CLVec::new([self.image_width, height, depth])
+    }
+
+    fn api_size(&self) -> CLVec<usize> {
+        let mut size = self.size();
+
+        if self.is_array() && self.dims() == 1 {
+            size[1] = size[2];
+            size[2] = 1;
+        }
+
+        size
     }
 
     fn bx(&self) -> CLResult<pipe_box> {
