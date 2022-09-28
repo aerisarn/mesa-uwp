@@ -1848,11 +1848,12 @@ pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
       pipeline->stages[BROADCOM_SHADER_VERTEX];
    struct v3dv_pipeline_stage *p_stage_fs =
       pipeline->stages[BROADCOM_SHADER_FRAGMENT];
+   struct v3dv_pipeline_stage *p_stage_gs =
+      pipeline->stages[BROADCOM_SHADER_GEOMETRY];
 
    struct v3d_fs_key key;
-
    pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage_fs,
-                                pipeline->stages[BROADCOM_SHADER_GEOMETRY] != NULL,
+                                p_stage_gs != NULL,
                                 get_ucp_enable_mask(p_stage_vs));
 
    VkResult vk_result;
