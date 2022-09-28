@@ -35,7 +35,7 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_LOGIC_OP,
    TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
-   TU_DYNAMIC_STATE_GRAS_SU_CNTL = VK_DYNAMIC_STATE_LINE_WIDTH,
+   TU_DYNAMIC_STATE_RAST = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
 
 struct cache_entry;
@@ -130,15 +130,15 @@ struct tu_pipeline
    /* for dynamic states which use the same register: */
    struct {
       uint32_t gras_su_cntl, gras_su_cntl_mask;
+      uint32_t gras_cl_cntl;
       uint32_t pc_raster_cntl, pc_raster_cntl_mask;
       uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
       uint32_t rb_depth_cntl;
       enum a5xx_line_mode line_mode;
+      enum a6xx_polygon_mode polygon_mode;
       bool provoking_vertex_last;
 
       uint32_t multiview_mask;
-
-      struct tu_draw_state state;
    } rast;
 
    /* RB_DEPTH_CNTL state comes from both rast and depth/stencil state.
@@ -301,6 +301,13 @@ void tu6_emit_vertex_input(struct tu_cs *cs,
 void tu6_emit_patch_control_points(struct tu_cs *cs,
                                    const struct tu_pipeline *pipeline,
                                    unsigned patch_control_points);
+
+uint32_t tu6_rast_size(struct tu_device *dev);
+
+void tu6_emit_rast(struct tu_cs *cs,
+                   uint32_t gras_su_cntl,
+                   uint32_t gras_cl_cntl,
+                   enum a6xx_polygon_mode polygon_mode);
 
 uint32_t tu6_rb_mrt_control_rop(VkLogicOp op, bool *rop_reads_dst);
 

@@ -2578,11 +2578,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
       uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
 
-      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (6 + util_bitcount(mask)));
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (5 + util_bitcount(mask)));
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order.state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order.state_gmem);
 
@@ -2639,7 +2638,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
     * the relevant dirty bit is cleared to avoid overriding the non-dynamic
     * state with a dynamic state the next draw.
     */
-   UPDATE_REG(rast, gras_su_cntl, GRAS_SU_CNTL);
+   UPDATE_REG(rast, gras_su_cntl, RAST);
    UPDATE_REG(rast_ds, rb_depth_cntl, RB_DEPTH_CNTL);
    UPDATE_REG(ds, rb_stencil_cntl, RB_STENCIL_CNTL);
    UPDATE_REG(rast, pc_raster_cntl, RASTERIZER_DISCARD);
@@ -2732,7 +2731,7 @@ tu_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
    cmd->state.gras_su_cntl &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
    cmd->state.gras_su_cntl |= A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(lineWidth / 2.0f);
 
-   cmd->state.dirty |= TU_CMD_DIRTY_GRAS_SU_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2846,7 +2845,7 @@ tu_CmdSetCullModeEXT(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
    if (cullMode & VK_CULL_MODE_BACK_BIT)
       cmd->state.gras_su_cntl |= A6XX_GRAS_SU_CNTL_CULL_BACK;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_GRAS_SU_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2859,7 +2858,7 @@ tu_CmdSetFrontFaceEXT(VkCommandBuffer commandBuffer, VkFrontFace frontFace)
    if (frontFace == VK_FRONT_FACE_CLOCKWISE)
       cmd->state.gras_su_cntl |= A6XX_GRAS_SU_CNTL_FRONT_CW;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_GRAS_SU_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3016,7 +3015,7 @@ tu_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer,
    if (depthBiasEnable)
       cmd->state.gras_su_cntl |= A6XX_GRAS_SU_CNTL_POLY_OFFSET;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_GRAS_SU_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4472,9 +4471,11 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = cmd->state.vpc_unknown_9107));
    }
 
-   if (dirty & TU_CMD_DIRTY_GRAS_SU_CNTL) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_GRAS_SU_CNTL, 2);
-      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = cmd->state.gras_su_cntl));
+   if (dirty & TU_CMD_DIRTY_RAST) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RAST,
+                                             tu6_rast_size(cmd->device));
+      tu6_emit_rast(&cs, cmd->state.gras_su_cntl,
+                    pipeline->rast.gras_cl_cntl, pipeline->rast.polygon_mode);
    }
 
    if (dirty & TU_CMD_DIRTY_RB_DEPTH_CNTL) {
@@ -4542,7 +4543,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_RAST, pipeline->rast.state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order.state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order.state_gmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_CONST, cmd->state.shader_const);

@@ -3614,11 +3614,11 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_CULL_MODE:
          pipeline->rast.gras_su_cntl_mask &=
             ~(A6XX_GRAS_SU_CNTL_CULL_BACK | A6XX_GRAS_SU_CNTL_CULL_FRONT);
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RAST);
          break;
       case VK_DYNAMIC_STATE_FRONT_FACE:
          pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_FRONT_CW;
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RAST);
          break;
       case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
@@ -3669,7 +3669,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          break;
       case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
          pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RAST);
          break;
       case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
@@ -3760,7 +3760,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_VIEWPORT) |
             BIT(VK_DYNAMIC_STATE_SCISSOR) |
-            BIT(VK_DYNAMIC_STATE_LINE_WIDTH) |
+            BIT(TU_DYNAMIC_STATE_RAST) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BIAS) |
             BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD) |
             BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);
@@ -4099,6 +4099,40 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
       tu6_emit_scissor(&cs, vp_info->pScissors, vp_info->scissorCount);
 }
 
+uint32_t
+tu6_rast_size(struct tu_device *dev)
+{
+   return 11 + (dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
+}
+
+void
+tu6_emit_rast(struct tu_cs *cs,
+              uint32_t gras_su_cntl,
+              uint32_t gras_cl_cntl,
+              enum a6xx_polygon_mode polygon_mode)
+{
+   tu_cs_emit_regs(cs, A6XX_GRAS_SU_CNTL(.dword = gras_su_cntl));
+   tu_cs_emit_regs(cs, A6XX_GRAS_CL_CNTL(.dword = gras_cl_cntl));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_VPC_POLYGON_MODE(polygon_mode));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_PC_POLYGON_MODE(polygon_mode));
+
+   /* move to hw ctx init? */
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
+                   A6XX_GRAS_SU_POINT_SIZE(1.0f));
+
+   if (cs->device->physical_device->info->a6xx.has_shading_rate) {
+      tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A00());
+      tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A10());
+      tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A20());
+      tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A30());
+   }
+}
+
 static void
 tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                                         struct tu_pipeline *pipeline)
@@ -4106,7 +4140,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    const VkPipelineRasterizationStateCreateInfo *rast_info =
       builder->create_info->pRasterizationState;
 
-   enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
+   pipeline->rast.polygon_mode = tu6_polygon_mode(rast_info->polygonMode);
 
    bool depth_clip_disable = rast_info->depthClampEnable;
 
@@ -4129,36 +4163,13 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
       pipeline->rast.line_mode = BRESENHAM;
    }
 
-   struct tu_cs cs;
-   uint32_t cs_size = 9 +
-      (builder->device->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
-   pipeline->rast.state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
-
-   tu_cs_emit_regs(&cs,
-                   A6XX_GRAS_CL_CNTL(
-                     .znear_clip_disable = depth_clip_disable,
-                     .zfar_clip_disable = depth_clip_disable,
-                     .z_clamp_enable = rast_info->depthClampEnable,
-                     .zero_gb_scale_z = pipeline->viewport.z_negative_one_to_one ? 0 : 1,
-                     .vp_clip_code_ignore = 1));
-
-   tu_cs_emit_regs(&cs,
-                   A6XX_VPC_POLYGON_MODE(mode));
-
-   tu_cs_emit_regs(&cs,
-                   A6XX_PC_POLYGON_MODE(mode));
-
-   /* move to hw ctx init? */
-   tu_cs_emit_regs(&cs,
-                   A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
-                   A6XX_GRAS_SU_POINT_SIZE(1.0f));
-
-   if (builder->device->physical_device->info->a6xx.has_shading_rate) {
-      tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A00());
-      tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A10());
-      tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A20());
-      tu_cs_emit_regs(&cs, A6XX_RB_UNKNOWN_8A30());
-   }
+   pipeline->rast.gras_cl_cntl =
+       A6XX_GRAS_CL_CNTL(
+         .znear_clip_disable = depth_clip_disable,
+         .zfar_clip_disable = depth_clip_disable,
+         .z_clamp_enable = rast_info->depthClampEnable,
+         .zero_gb_scale_z = pipeline->viewport.z_negative_one_to_one ? 0 : 1,
+         .vp_clip_code_ignore = 1).value;
 
    const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
       vk_find_struct_const(rast_info->pNext,
@@ -4172,16 +4183,22 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
       pipeline->rast.vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
    }
 
+   pipeline->rast.gras_su_cntl =
+      tu6_gras_su_cntl(rast_info, pipeline->rast.line_mode, builder->multiview_mask != 0);
+
+   struct tu_cs cs;
+
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4)) {
       tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = pipeline->rast.pc_raster_cntl));
       tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = pipeline->rast.vpc_unknown_9107));
    }
 
-   pipeline->rast.gras_su_cntl =
-      tu6_gras_su_cntl(rast_info, pipeline->rast.line_mode, builder->multiview_mask != 0);
-
-   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_GRAS_SU_CNTL, 2))
-      tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = pipeline->rast.gras_su_cntl));
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RAST,
+                                tu6_rast_size(builder->device))) {
+      tu6_emit_rast(&cs, pipeline->rast.gras_su_cntl,
+                    pipeline->rast.gras_cl_cntl,
+                    pipeline->rast.polygon_mode);
+   }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BIAS, 4)) {
       tu6_emit_depth_bias(&cs, rast_info->depthBiasConstantFactor,
