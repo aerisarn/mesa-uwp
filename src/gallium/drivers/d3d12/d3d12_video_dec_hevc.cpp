@@ -138,7 +138,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_hevc(struct d3d12_video_decoder 
                   picture_hevc->slice_parameter.slice_count);
 
    uint64_t TotalSlicesDXVAArrayByteSize = picture_hevc->slice_parameter.slice_count * sizeof(DXVA_Slice_HEVC_Short);
-   pD3D12Dec->m_SliceControlBuffer.resize(TotalSlicesDXVAArrayByteSize);
+   vecOutSliceControlBuffers.resize(TotalSlicesDXVAArrayByteSize);
 
    uint8_t* pData = vecOutSliceControlBuffers.data();
    for (uint32_t sliceIdx = 0; sliceIdx < picture_hevc->slice_parameter.slice_count; sliceIdx++)

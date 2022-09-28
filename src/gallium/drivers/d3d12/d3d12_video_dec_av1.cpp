@@ -334,7 +334,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_av1(struct d3d12_video_decoder *
                   tile_count);
 
    uint64_t TotalSlicesDXVAArrayByteSize = tile_count * sizeof(DXVA_Tile_AV1);
-   pD3D12Dec->m_SliceControlBuffer.resize(TotalSlicesDXVAArrayByteSize);
+   vecOutSliceControlBuffers.resize(TotalSlicesDXVAArrayByteSize);
 
    uint8_t* pData = vecOutSliceControlBuffers.data();
    for (uint32_t tileIdx = 0; tileIdx < tile_count; tileIdx++)

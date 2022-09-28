@@ -140,7 +140,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
                   picture_h264->slice_count);
 
    uint64_t TotalSlicesDXVAArrayByteSize = picture_h264->slice_count * sizeof(DXVA_Slice_H264_Short);
-   pD3D12Dec->m_SliceControlBuffer.resize(TotalSlicesDXVAArrayByteSize);
+   vecOutSliceControlBuffers.resize(TotalSlicesDXVAArrayByteSize);
    uint8_t* pData = vecOutSliceControlBuffers.data();
    size_t processedBitstreamBytes = 0u;
    uint32_t sliceIdx = 0;
