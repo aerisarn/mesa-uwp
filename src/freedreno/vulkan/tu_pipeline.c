@@ -2801,7 +2801,7 @@ tu_hash_stage(struct mesa_sha1 *ctx,
       blob_finish(&blob);
    } else {
       unsigned char stage_hash[SHA1_DIGEST_LENGTH];
-      vk_pipeline_hash_shader_stage(stage, stage_hash);
+      vk_pipeline_hash_shader_stage(stage, NULL, stage_hash);
       _mesa_sha1_update(ctx, stage_hash, sizeof(stage_hash));
    }
    _mesa_sha1_update(ctx, key, sizeof(*key));

@@ -69,7 +69,7 @@ pipeline_compute_sha1_from_nir(struct v3dv_pipeline_stage *p_stage)
       .stage = mesa_to_vk_shader_stage(p_stage->nir->info.stage),
    };
 
-   vk_pipeline_hash_shader_stage(&info, p_stage->shader_sha1);
+   vk_pipeline_hash_shader_stage(&info, NULL, p_stage->shader_sha1);
 }
 
 void
@@ -2302,7 +2302,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
 
-      vk_pipeline_hash_shader_stage(&pCreateInfo->pStages[i], p_stage->shader_sha1);
+      vk_pipeline_hash_shader_stage(&pCreateInfo->pStages[i], NULL,
+                                    p_stage->shader_sha1);
 
       pipeline->active_stages |= sinfo->stage;
 
@@ -3085,7 +3086,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->spec_info = sinfo->pSpecializationInfo;
    p_stage->feedback = (VkPipelineCreationFeedback) { 0 };
 
-   vk_pipeline_hash_shader_stage(&info->stage, p_stage->shader_sha1);
+   vk_pipeline_hash_shader_stage(&info->stage, NULL, p_stage->shader_sha1);
 
    p_stage->nir = NULL;
 

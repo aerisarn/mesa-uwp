@@ -3626,7 +3626,7 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
       out_stage->spirv.size = minfo->codeSize;
    }
 
-   vk_pipeline_hash_shader_stage(sinfo, out_stage->shader_sha1);
+   vk_pipeline_hash_shader_stage(sinfo, NULL, out_stage->shader_sha1);
 }
 
 static struct radv_shader *
