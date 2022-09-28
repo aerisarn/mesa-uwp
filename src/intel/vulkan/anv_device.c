@@ -3588,6 +3588,11 @@ VkResult anv_CreateDevice(
       goto fail_default_pipeline_cache;
    }
 
+   /* The device (currently is ICL/TGL) does not have float64 support. */
+   if (!device->info->has_64bit_float &&
+      device->physical->instance->fp64_workaround_enabled)
+      anv_load_fp64_shader(device);
+
    result = anv_device_init_rt_shaders(device);
    if (result != VK_SUCCESS) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);

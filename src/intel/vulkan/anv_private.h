@@ -1145,6 +1145,9 @@ anv_device_upload_nir(struct anv_device *device,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20]);
 
+void
+anv_load_fp64_shader(struct anv_device *device);
+
 enum anv_rt_bvh_build_method {
    ANV_BVH_BUILD_METHOD_TRIVIAL,
    ANV_BVH_BUILD_METHOD_NEW_SAH,
@@ -1262,6 +1265,8 @@ struct anv_device {
     struct intel_debug_block_frame              *debug_frame_desc;
 
     struct intel_ds_device                       ds;
+
+    nir_shader                                  *fp64_nir;
 };
 
 static inline struct anv_state
