@@ -587,8 +587,9 @@ lp_build_depth_stencil_load_swizzled(struct gallivm_state *gallivm,
 
    /* Load current z/stencil values from z/stencil buffer */
    LLVMTypeRef load_ptr_type = LLVMPointerType(zs_dst_type, 0);
+   LLVMTypeRef int8_type = LLVMInt8TypeInContext(gallivm->context);
    LLVMValueRef zs_dst_ptr =
-      LLVMBuildGEP(builder, depth_ptr, &depth_offset1, 1, "");
+      LLVMBuildGEP2(builder, int8_type, depth_ptr, &depth_offset1, 1, "");
    zs_dst_ptr = LLVMBuildBitCast(builder, zs_dst_ptr, load_ptr_type, "");
    LLVMValueRef zs_dst1 = LLVMBuildLoad2(builder, zs_dst_type, zs_dst_ptr, "");
    LLVMValueRef zs_dst2;
@@ -596,7 +597,7 @@ lp_build_depth_stencil_load_swizzled(struct gallivm_state *gallivm,
       zs_dst2 = lp_build_undef(gallivm, zs_load_type);
    }
    else {
-      zs_dst_ptr = LLVMBuildGEP(builder, depth_ptr, &depth_offset2, 1, "");
+      zs_dst_ptr = LLVMBuildGEP2(builder, int8_type, depth_ptr, &depth_offset2, 1, "");
       zs_dst_ptr = LLVMBuildBitCast(builder, zs_dst_ptr, load_ptr_type, "");
       zs_dst2 = LLVMBuildLoad2(builder, zs_dst_type, zs_dst_ptr, "");
    }
@@ -733,9 +734,10 @@ lp_build_depth_stencil_write_swizzled(struct gallivm_state *gallivm,
 
    depth_offset2 = LLVMBuildAdd(builder, depth_offset1, depth_stride, "");
 
-   zs_dst_ptr1 = LLVMBuildGEP(builder, depth_ptr, &depth_offset1, 1, "");
+   LLVMTypeRef int8_type = LLVMInt8TypeInContext(gallivm->context);
+   zs_dst_ptr1 = LLVMBuildGEP2(builder, int8_type, depth_ptr, &depth_offset1, 1, "");
    zs_dst_ptr1 = LLVMBuildBitCast(builder, zs_dst_ptr1, load_ptr_type, "");
-   zs_dst_ptr2 = LLVMBuildGEP(builder, depth_ptr, &depth_offset2, 1, "");
+   zs_dst_ptr2 = LLVMBuildGEP2(builder, int8_type, depth_ptr, &depth_offset2, 1, "");
    zs_dst_ptr2 = LLVMBuildBitCast(builder, zs_dst_ptr2, load_ptr_type, "");
 
    if (format_desc->block.bits > 32) {
