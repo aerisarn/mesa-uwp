@@ -689,15 +689,6 @@ pvr_pds_compute_shader(struct pvr_pds_compute_shader_program *restrict program,
                        enum pvr_pds_generate_mode gen_mode,
                        const struct pvr_device_info *dev_info);
 
-#define pvr_pds_set_sizes_compute_shader(X, Y) \
-   pvr_pds_compute_shader(X, NULL, PDS_GENERATE_SIZES, Y)
-
-#define pvr_pds_generate_compute_shader_data_segment(X, Y, Z) \
-   pvr_pds_compute_shader(X, Y, PDS_GENERATE_DATA_SEGMENT, Z)
-
-#define pvr_pds_generate_compute_shader_code_segment(X, Y, Z) \
-   pvr_pds_compute_shader(X, Y, PDS_GENERATE_CODE_SEGMENT, Z)
-
 /* Vertex Secondary */
 #define pvr_pds_set_sizes_vertex_shader_sa(X, Y) \
    pvr_pds_vertex_shader_sa(X, NULL, PDS_GENERATE_SIZES, Y)

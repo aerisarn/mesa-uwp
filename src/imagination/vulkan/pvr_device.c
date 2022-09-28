@@ -1124,16 +1124,66 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
 
-static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
+static VkResult pvr_pds_compute_shader_create_and_upload(
+   struct pvr_device *device,
+   struct pvr_pds_compute_shader_program *program,
+   struct pvr_pds_upload *const pds_upload_out)
 {
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
-   struct pvr_pds_compute_shader_program program = { 0U };
    size_t staging_buffer_size;
    uint32_t *staging_buffer;
    uint32_t *data_buffer;
    uint32_t *code_buffer;
    VkResult result;
+
+   /* Calculate how much space we'll need for the compute shader PDS program.
+    */
+   pvr_pds_compute_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
+
+   /* FIXME: Fix the below inconsistency of code size being in bytes whereas
+    * data size being in dwords.
+    */
+   /* Code size is in bytes, data size in dwords. */
+   staging_buffer_size =
+      program->data_size * sizeof(uint32_t) + program->code_size;
+
+   staging_buffer = vk_alloc(&device->vk.alloc,
+                             staging_buffer_size,
+                             8U,
+                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!staging_buffer)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   data_buffer = staging_buffer;
+   code_buffer = pvr_pds_compute_shader(program,
+                                        data_buffer,
+                                        PDS_GENERATE_DATA_SEGMENT,
+                                        dev_info);
+
+   pvr_pds_compute_shader(program,
+                          code_buffer,
+                          PDS_GENERATE_CODE_SEGMENT,
+                          dev_info);
+
+   result = pvr_gpu_upload_pds(device,
+                               data_buffer,
+                               program->data_size,
+                               PVRX(CDMCTRL_KERNEL1_DATA_ADDR_ALIGNMENT),
+                               code_buffer,
+                               program->code_size / sizeof(uint32_t),
+                               PVRX(CDMCTRL_KERNEL2_CODE_ADDR_ALIGNMENT),
+                               cache_line_size,
+                               pds_upload_out);
+
+   vk_free(&device->vk.alloc, staging_buffer);
+
+   return result;
+}
+
+static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
+{
+   struct pvr_pds_compute_shader_program program = { 0U };
 
    STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) ==
                  ARRAY_SIZE(program.work_group_input_regs));
@@ -1153,44 +1203,10 @@ static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
    program.fence = true;
    program.clear_pds_barrier = true;
 
-   /* Calculate how much space we'll need for the compute shader PDS program.
-    */
-   pvr_pds_set_sizes_compute_shader(&program, dev_info);
-
-   /* FIXME: Fix the below inconsistency of code size being in bytes whereas
-    * data size being in dwords.
-    */
-   /* Code size is in bytes, data size in dwords. */
-   staging_buffer_size =
-      program.data_size * sizeof(uint32_t) + program.code_size;
-
-   staging_buffer = vk_alloc(&device->vk.alloc,
-                             staging_buffer_size,
-                             8U,
-                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!staging_buffer)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   data_buffer = staging_buffer;
-   code_buffer = pvr_pds_generate_compute_shader_data_segment(&program,
-                                                              data_buffer,
-                                                              dev_info);
-   pvr_pds_generate_compute_shader_code_segment(&program,
-                                                code_buffer,
-                                                dev_info);
-   result = pvr_gpu_upload_pds(device,
-                               data_buffer,
-                               program.data_size,
-                               PVRX(CDMCTRL_KERNEL1_DATA_ADDR_ALIGNMENT),
-                               code_buffer,
-                               program.code_size / sizeof(uint32_t),
-                               PVRX(CDMCTRL_KERNEL2_CODE_ADDR_ALIGNMENT),
-                               cache_line_size,
-                               &device->pds_compute_fence_program);
-
-   vk_free(&device->vk.alloc, staging_buffer);
-
-   return result;
+   return pvr_pds_compute_shader_create_and_upload(
+      device,
+      &program,
+      &device->pds_compute_fence_program);
 }
 
 static VkResult pvr_pds_idfwdf_programs_create_and_upload(
