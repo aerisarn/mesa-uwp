@@ -382,7 +382,7 @@ private:
    };
 
    InstructionChain m_chain_instr;
-   std::vector<Instr *> m_loops;
+   std::list<Instr *, Allocator<Instr *>> m_loops;
 };
 
 
