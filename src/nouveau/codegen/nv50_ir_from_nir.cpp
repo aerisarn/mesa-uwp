@@ -433,6 +433,7 @@ Converter::getOperation(nir_op op)
    case nir_op_ffloor:
       return OP_FLOOR;
    case nir_op_ffma:
+   case nir_op_ffmaz:
       /* No FMA op pre-nvc0 */
       if (info->target < 0xc0)
          return OP_MAD;
@@ -456,6 +457,7 @@ Converter::getOperation(nir_op op)
    case nir_op_irem:
       return OP_MOD;
    case nir_op_fmul:
+   case nir_op_fmulz:
    case nir_op_imul:
    case nir_op_imul_high:
    case nir_op_umul_high:
@@ -2568,6 +2570,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_fexp2:
    case nir_op_ffloor:
    case nir_op_ffma:
+   case nir_op_ffmaz:
    case nir_op_flog2:
    case nir_op_fmax:
    case nir_op_imax:
@@ -2579,6 +2582,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_imod:
    case nir_op_umod:
    case nir_op_fmul:
+   case nir_op_fmulz:
    case nir_op_imul:
    case nir_op_imul_high:
    case nir_op_umul_high:
@@ -2618,15 +2622,17 @@ Converter::visit(nir_alu_instr *insn)
          for (unsigned s = 0u; s < info.num_inputs; ++s) {
             i->setSrc(s, getSrc(&insn->src[s]));
 
-            if (this->info->io.mul_zero_wins) {
-               switch (op) {
-               case nir_op_fmul:
-               case nir_op_ffma:
-                  i->dnz = true;
-                  break;
-               default:
-                  break;
-               }
+            switch (op) {
+            case nir_op_fmul:
+            case nir_op_ffma:
+              i->dnz = this->info->io.mul_zero_wins;
+              break;
+            case nir_op_fmulz:
+            case nir_op_ffmaz:
+              i->dnz = true;
+              break;
+            default:
+               break;
             }
          }
          i->subOp = getSubOp(op);
@@ -3519,6 +3525,7 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type, bool prefer_n
    op.lower_mul_2x32_64 = true; // TODO
    op.lower_rotate = (chipset < NVISA_GV100_CHIPSET);
    op.has_imul24 = false;
+   op.has_fmulz = (prefer_nir && (chipset > NVISA_G80_CHIPSET));
    op.intel_vec4 = false;
    op.force_indirect_unrolling = (nir_variable_mode) (
       ((shader_type == PIPE_SHADER_FRAGMENT) ? nir_var_shader_out : 0) |
