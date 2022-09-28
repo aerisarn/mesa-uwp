@@ -150,8 +150,11 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
 
    assert(inst->header_size == 0);
 
-   fs_reg *payload_sources = new fs_reg[inst->mlen];
-   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(inst->mlen),
+   const unsigned length = 1 + per_slot_present + channel_mask_present +
+                           inst->components_read(URB_LOGICAL_SRC_DATA);
+
+   fs_reg *payload_sources = new fs_reg[length];
+   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(length),
                            BRW_REGISTER_TYPE_F);
 
    unsigned header_size = 0;
@@ -162,10 +165,10 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
    if (channel_mask_present)
       payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_CHANNEL_MASK];
 
-   for (unsigned i = header_size, j = 0; i < inst->mlen; i++, j++)
+   for (unsigned i = header_size, j = 0; i < length; i++, j++)
       payload_sources[i] = offset(inst->src[URB_LOGICAL_SRC_DATA], bld, j);
 
-   bld.LOAD_PAYLOAD(payload, payload_sources, inst->mlen, header_size);
+   bld.LOAD_PAYLOAD(payload, payload_sources, length, header_size);
 
    delete [] payload_sources;
 
@@ -180,6 +183,7 @@ lower_urb_write_logical_send(const fs_builder &bld, fs_inst *inst)
                              channel_mask_present,
                              inst->offset);
 
+   inst->mlen = length;
    inst->ex_desc = 0;
    inst->ex_mlen = 0;
    inst->send_has_side_effects = true;

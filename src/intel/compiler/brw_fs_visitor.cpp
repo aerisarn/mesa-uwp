@@ -1118,6 +1118,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
          srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF,
                                              alloc.allocate((dispatch_width / 8) * length),
                                              BRW_REGISTER_TYPE_F);
+         srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(length);
          abld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
 
          fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
@@ -1166,6 +1167,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = uniform_urb_handle;
       srcs[URB_LOGICAL_SRC_DATA] = payload;
+      srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(1);
 
       fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                                srcs, ARRAY_SIZE(srcs));
@@ -1218,6 +1220,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
       srcs[URB_LOGICAL_SRC_HANDLE] = uniform_urb_handle;
       srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = uniform_mask;
       srcs[URB_LOGICAL_SRC_DATA] = payload;
+      srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(4);
 
       fs_inst *inst = bld.exec_all().emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                           reg_undef, srcs, ARRAY_SIZE(srcs));

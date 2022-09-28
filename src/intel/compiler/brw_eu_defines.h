@@ -982,7 +982,7 @@ enum urb_logical_srcs {
    URB_LOGICAL_SRC_CHANNEL_MASK,
    /** Data to be written.  BAD_FILE for reads. */
    URB_LOGICAL_SRC_DATA,
-
+   URB_LOGICAL_SRC_COMPONENTS,
    URB_LOGICAL_NUM_SRCS
 };
 
