@@ -408,6 +408,7 @@ lp_build_sample_alpha_to_coverage(struct gallivm_state *gallivm,
                                   unsigned coverage_samples,
                                   LLVMValueRef num_loop,
                                   LLVMValueRef loop_counter,
+                                  LLVMTypeRef coverage_mask_type,
                                   LLVMValueRef coverage_mask_store,
                                   LLVMValueRef alpha)
 {
@@ -422,8 +423,9 @@ lp_build_sample_alpha_to_coverage(struct gallivm_state *gallivm,
 
       LLVMValueRef s_mask_idx = LLVMBuildMul(builder, lp_build_const_int32(gallivm, s), num_loop, "");
       s_mask_idx = LLVMBuildAdd(builder, s_mask_idx, loop_counter, "");
-      LLVMValueRef s_mask_ptr = LLVMBuildGEP(builder, coverage_mask_store, &s_mask_idx, 1, "");
-      LLVMValueRef s_mask = LLVMBuildLoad(builder, s_mask_ptr, "");
+      LLVMValueRef s_mask_ptr = LLVMBuildGEP2(builder, coverage_mask_type,
+                                              coverage_mask_store, &s_mask_idx, 1, "");
+      LLVMValueRef s_mask = LLVMBuildLoad2(builder, coverage_mask_type, s_mask_ptr, "");
       s_mask = LLVMBuildAnd(builder, s_mask, test, "");
       LLVMBuildStore(builder, s_mask, s_mask_ptr);
    }
@@ -1089,7 +1091,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
          } else {
             lp_build_sample_alpha_to_coverage(gallivm, type, key->coverage_samples, num_loop,
                                               loop_state.counter,
-                                              mask_store, alpha);
+                                              mask_type, mask_store, alpha);
          }
       }
    }
