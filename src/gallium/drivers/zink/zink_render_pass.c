@@ -58,8 +58,6 @@ get_zs_rt_layout(const struct zink_rt_attrib *rt)
    bool has_clear = rt->clear_color || rt->clear_stencil;
    if (rt->feedback_loop)
       return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
-   if (rt->mixed_zs)
-      return VK_IMAGE_LAYOUT_GENERAL;
    return rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 }
 
@@ -279,14 +277,10 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_rt_attrib *rt, bo
    }
 
    *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-   if (rt->mixed_zs) {
-      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-   } else {
-      if (!rt->clear_color && !rt->clear_stencil)
-         *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-      if (rt->clear_color || rt->clear_stencil || rt->needs_write)
-         *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-   }
+   if (!rt->clear_color && !rt->clear_stencil)
+      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+   if (rt->clear_color || rt->clear_stencil || rt->needs_write)
+      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
    return get_zs_rt_layout(rt);
 }
 
@@ -351,12 +345,6 @@ zink_init_zs_attachment(struct zink_context *ctx, struct zink_rt_attrib *rt)
 
    bool needs_write_s = rt->clear_stencil || (outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) ||
                         (zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) && (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL));
-   if (!needs_write_z && (!ctx->dsa_state || !ctx->dsa_state->base.depth_enabled))
-      /* depth sample, stencil write */
-      rt->mixed_zs = needs_write_s && zsbuf->bind_count[0];
-   else
-      /* depth write + sample */
-      rt->mixed_zs = needs_write_z && zsbuf->bind_count[0];
    rt->needs_write = needs_write_z | needs_write_s;
    rt->invalid = !zsbuf->valid;
    rt->feedback_loop = (ctx->feedback_loops & BITFIELD_BIT(PIPE_MAX_COLOR_BUFS)) > 0;

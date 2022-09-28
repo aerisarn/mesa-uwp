@@ -647,8 +647,9 @@ struct zink_gfx_pipeline_state {
    uint32_t force_persample_interp:1; //duplicated for gpl hashing
    /* order matches zink_gfx_output_key: uint16_t offset */
    uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
-   uint32_t min_samples:7; // 1 extra bit (can be used for new members)
+   uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
+   uint32_t feedback_loop_zs : 1;
    VkSampleMask sample_mask;
    unsigned rp_state;
    uint32_t blend_id;
@@ -801,8 +802,9 @@ struct zink_gfx_output_key {
    uint32_t _pad:15;
    uint32_t force_persample_interp:1;
    uint32_t rast_samples:8; // 2 extra bits (can be used for new members)
-   uint32_t min_samples:7; // 1 extra bit (can be used for new members)
+   uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
+   uint32_t feedback_loop_zs : 1;
    VkSampleMask sample_mask;
 
    unsigned rp_state;
@@ -872,7 +874,6 @@ struct zink_rt_attrib {
   bool invalid;
   bool needs_write;
   bool resolve;
-  bool mixed_zs;
   bool feedback_loop;
 };
 
@@ -1169,6 +1170,7 @@ struct zink_screen {
       bool depth_clip_control_missing;
       bool implicit_sync;
       bool always_feedback_loop;
+      bool always_feedback_loop_zs;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
    } driver_workarounds;

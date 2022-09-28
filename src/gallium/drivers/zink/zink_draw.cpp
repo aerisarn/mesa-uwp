@@ -298,13 +298,23 @@ update_barriers(struct zink_context *ctx, bool is_compute,
             if (!is_compute) {
                if (res->fb_bind_count && res->sampler_bind_count[0] && (!(ctx->feedback_loops & res->fb_binds))) {
                   /* new feedback loop detected */
-                  if (!ctx->gfx_pipeline_state.feedback_loop)
-                     ctx->gfx_pipeline_state.dirty = true;
-                  ctx->gfx_pipeline_state.feedback_loop = true;
+                  if (res->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
+                     if (!ctx->gfx_pipeline_state.feedback_loop)
+                        ctx->gfx_pipeline_state.dirty = true;
+                     ctx->gfx_pipeline_state.feedback_loop = true;
+                  } else {
+                     if (!ctx->gfx_pipeline_state.feedback_loop_zs)
+                        ctx->gfx_pipeline_state.dirty = true;
+                     ctx->gfx_pipeline_state.feedback_loop_zs = true;
+                  }
                   ctx->rp_layout_changed = true;
                   ctx->feedback_loops |= res->fb_binds;
-                  u_foreach_bit(idx, res->fb_binds)
-                     ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+                  u_foreach_bit(idx, res->fb_binds) {
+                     if (zink_screen(ctx->base.screen)->info.have_EXT_attachment_feedback_loop_layout)
+                        ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+                     else
+                        ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                  }
                }
             }
             if (layout != res->layout)

@@ -1778,20 +1778,24 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
    struct zink_resource *res = zink_resource(sv->base.texture);
    res->sampler_bind_count[stage == MESA_SHADER_COMPUTE]--;
    if (stage != MESA_SHADER_COMPUTE && !res->sampler_bind_count[0] && res->fb_bind_count) {
-      unsigned feedback_loops = ctx->feedback_loops;
       u_foreach_bit(idx, res->fb_binds) {
          if (ctx->feedback_loops & BITFIELD_BIT(idx)) {
             ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             ctx->rp_layout_changed = true;
          }
+         unsigned feedback_loops = ctx->feedback_loops;
          ctx->feedback_loops &= ~BITFIELD_BIT(idx);
-      }
-      if (!zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop &&
-          feedback_loops && !ctx->feedback_loops) {
-         /* unset feedback loop bits */
-         if (ctx->gfx_pipeline_state.feedback_loop)
-            ctx->gfx_pipeline_state.dirty = true;
-         ctx->gfx_pipeline_state.feedback_loop = false;
+         if (feedback_loops != ctx->feedback_loops) {
+            if (idx == PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop_zs) {
+               if (ctx->gfx_pipeline_state.feedback_loop_zs)
+                  ctx->gfx_pipeline_state.dirty = true;
+               ctx->gfx_pipeline_state.feedback_loop_zs = false;
+            } else if (idx < PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop) {
+               if (ctx->gfx_pipeline_state.feedback_loop)
+                  ctx->gfx_pipeline_state.dirty = true;
+               ctx->gfx_pipeline_state.feedback_loop = false;
+            }
+         }
       }
    }
    update_res_bind_count(ctx, res, stage == MESA_SHADER_COMPUTE, true);
@@ -2829,12 +2833,16 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       ctx->rp_layout_changed = true;
    }
    ctx->feedback_loops &= ~BITFIELD_BIT(idx);
-   if (!zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop &&
-       feedback_loops && !ctx->feedback_loops) {
-      /* unset feedback loop bits */
-      if (ctx->gfx_pipeline_state.feedback_loop)
-         ctx->gfx_pipeline_state.dirty = true;
-      ctx->gfx_pipeline_state.feedback_loop = false;
+   if (feedback_loops != ctx->feedback_loops) {
+      if (idx == PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop_zs) {
+         if (ctx->gfx_pipeline_state.feedback_loop_zs)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.feedback_loop_zs = false;
+      } else if (idx < PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop) {
+         if (ctx->gfx_pipeline_state.feedback_loop)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.feedback_loop = false;
+      }
    }
    res->fb_binds &= ~BITFIELD_BIT(idx);
    if (!res->fb_bind_count) {
