@@ -1576,7 +1576,7 @@ anv_device_map_bo(struct anv_device *device,
    if (bo->map_wc)
       gem_flags |= I915_MMAP_WC;
 
-   void *map = anv_gem_mmap(device, bo->gem_handle, offset, size, gem_flags);
+   void *map = anv_gem_mmap(device, bo, offset, size, gem_flags);
    if (unlikely(map == MAP_FAILED))
       return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
