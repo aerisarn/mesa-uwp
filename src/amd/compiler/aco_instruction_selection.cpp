@@ -12095,9 +12095,6 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info.so.num_outputs && ctx.stage.hw == HWStage::VS)
-         emit_streamout(&ctx, 0);
-
       if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,

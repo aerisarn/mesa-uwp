@@ -3850,7 +3850,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 
    if (stage->stage == last_vgt_api_stage && stage->stage != MESA_SHADER_GEOMETRY && !lowered_ngg)
       NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs,
-                 stage->info.outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1, true);
+                 stage->info.outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1, false);
 
    NIR_PASS(_, stage->nir, nir_opt_idiv_const, 8);
 
