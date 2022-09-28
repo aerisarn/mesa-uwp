@@ -1525,8 +1525,7 @@ to upconvert to 32b float internally?
 		<bitfield name="CLIP_DISABLE" pos="0" type="boolean"/>
 		<bitfield name="ZNEAR_CLIP_DISABLE" pos="1" type="boolean"/>
 		<bitfield name="ZFAR_CLIP_DISABLE" pos="2" type="boolean"/>
-		<!-- set with depthClampEnable, not clear what it does -->
-		<bitfield name="UNK5" pos="5" type="boolean"/>
+		<bitfield name="Z_CLAMP_ENABLE" pos="5" type="boolean"/>
 		<!-- controls near z clip behavior (set for vulkan) -->
 		<bitfield name="ZERO_GB_SCALE_Z" pos="6" type="boolean"/>
 		<!-- guess based on a3xx and meaning of bits 8 and 9

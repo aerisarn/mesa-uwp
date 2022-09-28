@@ -4036,8 +4036,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                    A6XX_GRAS_CL_CNTL(
                      .znear_clip_disable = builder->depth_clip_disable,
                      .zfar_clip_disable = builder->depth_clip_disable,
-                     /* TODO should this be depth_clip_disable instead? */
-                     .unk5 = rast_info->depthClampEnable,
+                     .z_clamp_enable = rast_info->depthClampEnable,
                      .zero_gb_scale_z = pipeline->viewport.z_negative_one_to_one ? 0 : 1,
                      .vp_clip_code_ignore = 1));
 
