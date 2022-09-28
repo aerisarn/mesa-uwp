@@ -90,6 +90,7 @@ struct lp_build_interp_soa_context
    double pos_offset;
    unsigned coverage_samples;
    LLVMValueRef num_loop;
+   LLVMTypeRef sample_pos_array_type;
    LLVMValueRef sample_pos_array;
 
    LLVMValueRef x;
@@ -124,6 +125,7 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
                          const struct lp_shader_input *inputs,
                          boolean pixel_center_integer,
                          unsigned coverage_samples,
+                         LLVMTypeRef sample_pos_array_type,
                          LLVMValueRef sample_pos_array,
                          LLVMValueRef num_loop,
                          LLVMBuilderRef builder,
