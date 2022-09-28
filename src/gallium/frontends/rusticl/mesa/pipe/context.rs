@@ -101,7 +101,7 @@ impl PipeContext {
         }
     }
 
-    pub fn clear_texture(&self, res: &PipeResource, pattern: &[u8], bx: &pipe_box) {
+    pub fn clear_texture(&self, res: &PipeResource, pattern: &[u32], bx: &pipe_box) {
         unsafe {
             self.pipe.as_ref().clear_texture.unwrap()(
                 self.pipe.as_ptr(),
