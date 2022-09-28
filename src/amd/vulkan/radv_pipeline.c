@@ -876,7 +876,8 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    else
       cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 
-   radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
+   if (state->rp)
+      radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
 
    pipeline->cb_color_control = cb_color_control;
 
@@ -2745,7 +2746,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    const struct radv_physical_device *pdevice = device->physical_device;
    struct radv_pipeline_key key = radv_generate_pipeline_key(&pipeline->base, pCreateInfo->flags);
 
-   key.has_multiview_view_index = !!state->rp->view_mask;
+   key.has_multiview_view_index = state->rp ? !!state->rp->view_mask : 0;
 
    if (pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT) {
       key.vs.has_prolog = true;
