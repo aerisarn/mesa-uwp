@@ -432,8 +432,7 @@ if with_platform_android and get_option('platform-sdk-version') >= 29
   # By default the NDK compiler, at least, emits emutls references instead of
   # ELF TLS, even when building targeting newer API levels.  Make it actually do
   # ELF TLS instead.
-  c_args += '-fno-emulated-tls'
-  cpp_args += '-fno-emulated-tls'
+  c_cpp_args += '-fno-emulated-tls'
 endif
 
 # -mtls-dialect=gnu2 speeds up non-initial-exec TLS significantly but requires
@@ -465,8 +464,7 @@ if not have_mtls_dialect
                 "movq y@GOTPCREL(%rip), %rdx\n"
                 "call *x@TLSCALL(%rax)\n"); }''', name: 'split TLSDESC')
           )
-      c_args += '-mtls-dialect=gnu2'
-      cpp_args += '-mtls-dialect=gnu2'
+      c_cpp_args += '-mtls-dialect=gnu2'
     endif
   endif
 endif
