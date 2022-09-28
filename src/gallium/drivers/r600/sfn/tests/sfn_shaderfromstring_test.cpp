@@ -18,8 +18,8 @@ class TestShaderFromString : public ::testing::Test
 {
 public:
    void SetUp() override {
-      m_instr_factory = new InstrFactory();
       init_pool();
+      m_instr_factory = new InstrFactory();
    }
 
    void TearDown() override {

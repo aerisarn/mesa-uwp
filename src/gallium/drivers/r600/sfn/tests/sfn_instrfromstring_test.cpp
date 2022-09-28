@@ -31,7 +31,10 @@ protected:
    void check(const Instr& eval, const Instr& expect);
    void check(const string& init, const Instr& expect);
 
-   InstrFactory m_instr_factory;
+   void SetUp() override;
+   void TearDown() override;
+
+   InstrFactory *m_instr_factory;
 
 };
 
@@ -693,7 +696,7 @@ TestInstrFromString::TestInstrFromString()
 
 PInst TestInstrFromString::from_string(const std::string& s)
 {
-   return m_instr_factory.from_string(s, 0);
+   return m_instr_factory->from_string(s, 0);
 }
 
 void TestInstrFromString::check(const Instr& eval, const Instr& expect)
@@ -714,15 +717,24 @@ void TestInstrFromString::check(const string& init, const Instr& expect)
 
 void TestInstrFromString::add_dest_from_string(const char *init)
 {
-   m_instr_factory.value_factory().dest_from_string(init);
+   m_instr_factory->value_factory().dest_from_string(init);
 }
 
 void TestInstrFromString::add_dest_vec4_from_string(const char *init)
 {
    RegisterVec4::Swizzle dummy;
-   m_instr_factory.value_factory().dest_vec4_from_string(init, dummy);
+   m_instr_factory->value_factory().dest_vec4_from_string(init, dummy);
 }
 
+void TestInstrFromString::SetUp()
+{
+   MemoryPool::instance().initialize();
+   m_instr_factory = new InstrFactory;
+}
 
+void TestInstrFromString::TearDown()
+{
+   MemoryPool::instance().free();
+}
 
 }

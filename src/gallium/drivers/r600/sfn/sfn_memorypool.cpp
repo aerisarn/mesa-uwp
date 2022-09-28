@@ -67,7 +67,6 @@ MemoryPool::MemoryPool() noexcept : impl(nullptr)
 MemoryPool& MemoryPool::instance()
 {
     static thread_local MemoryPool me;
-    me.initialize();
     return me;
 }
 
@@ -85,11 +84,13 @@ void MemoryPool::initialize()
 
 void *MemoryPool::allocate(size_t size)
 {
+   assert(impl);
    return impl->pool->allocate(size);
 }
 
 void *MemoryPool::allocate(size_t size, size_t align)
 {
+   assert(impl);
    return impl->pool->allocate(size, align);
 }
 
@@ -100,7 +101,7 @@ void MemoryPool::release_all()
 
 void init_pool()
 {
-    MemoryPool::instance();
+    MemoryPool::instance().initialize();
 }
 
 void release_pool()

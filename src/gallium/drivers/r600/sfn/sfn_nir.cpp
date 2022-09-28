@@ -638,6 +638,9 @@ bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
 
 class MallocPoolRelease {
 public:
+   MallocPoolRelease() {
+      r600::init_pool();
+   }
    ~MallocPoolRelease() {
       r600::release_pool();
    }
