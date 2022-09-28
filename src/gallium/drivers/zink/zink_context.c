@@ -2839,8 +2839,10 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    res->fb_binds &= ~BITFIELD_BIT(idx);
    if (!res->fb_bind_count) {
       check_resource_for_batch_ref(ctx, res);
-      if (res->sampler_bind_count[0])
+      if (res->sampler_bind_count[0]) {
          update_res_sampler_layouts(ctx, res);
+         _mesa_set_add(ctx->need_barriers[0], res);
+      }
    }
 }
 
