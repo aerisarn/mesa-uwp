@@ -3657,13 +3657,6 @@ radv_pipeline_nir_to_asm(struct radv_pipeline *pipeline, struct radv_pipeline_st
    bool pipeline_has_ngg = last_vgt_api_stage != MESA_SHADER_NONE &&
                            stages[last_vgt_api_stage].info.is_ngg;
 
-   if (stages[MESA_SHADER_GEOMETRY].nir && !pipeline_has_ngg) {
-      pipeline->gs_copy_shader =
-         radv_pipeline_create_gs_copy_shader(pipeline, stages, pipeline_key, pipeline_layout,
-                                             keep_executable_info, keep_statistic_info,
-                                             gs_copy_binary);
-   }
-
    for (int s = MESA_VULKAN_SHADER_STAGES - 1; s >= 0; s--) {
       if (!(active_stages & (1 << s)) || pipeline->shaders[s])
          continue;
@@ -3692,6 +3685,12 @@ radv_pipeline_nir_to_asm(struct radv_pipeline *pipeline, struct radv_pipeline_st
       pipeline->shaders[s] = radv_shader_nir_to_asm(device, &stages[s], shaders, shader_count,
                                                     pipeline_key, keep_executable_info,
                                                     keep_statistic_info, &binaries[s]);
+
+      if (s == MESA_SHADER_GEOMETRY && !pipeline_has_ngg) {
+         pipeline->gs_copy_shader = radv_pipeline_create_gs_copy_shader(
+            pipeline, stages, pipeline_key, pipeline_layout, keep_executable_info,
+            keep_statistic_info, gs_copy_binary);
+      }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
 
