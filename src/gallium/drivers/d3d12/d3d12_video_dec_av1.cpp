@@ -329,15 +329,15 @@ d3d12_video_decoder_prepare_dxva_slices_control_av1(struct d3d12_video_decoder *
                                                      std::vector<uint8_t> &vecOutSliceControlBuffers,
                                                      struct pipe_av1_picture_desc *picture_av1)
 {
-   uint32_t tile_count = picture_av1->picture_parameter.tile_cols * picture_av1->picture_parameter.tile_rows;
+   uint32_t tileCount = picture_av1->picture_parameter.tile_cols * picture_av1->picture_parameter.tile_rows;
    debug_printf("[d3d12_video_decoder_av1] Upper layer reported %d tiles for this frame, parsing them below...\n",
-                  tile_count);
+                  tileCount);
 
-   uint64_t TotalSlicesDXVAArrayByteSize = tile_count * sizeof(DXVA_Tile_AV1);
-   vecOutSliceControlBuffers.resize(TotalSlicesDXVAArrayByteSize);
+   uint64_t totalSlicesDXVAArrayByteSize = tileCount * sizeof(DXVA_Tile_AV1);
+   vecOutSliceControlBuffers.resize(totalSlicesDXVAArrayByteSize);
 
    uint8_t* pData = vecOutSliceControlBuffers.data();
-   for (uint32_t tileIdx = 0; tileIdx < tile_count; tileIdx++)
+   for (uint32_t tileIdx = 0; tileIdx < tileCount; tileIdx++)
    {
       DXVA_Tile_AV1 currentTileEntry = {};
       currentTileEntry.DataOffset   = picture_av1->slice_parameter.slice_data_offset[tileIdx];
@@ -365,7 +365,7 @@ d3d12_video_decoder_prepare_dxva_slices_control_av1(struct d3d12_video_decoder *
       memcpy(pData, &currentTileEntry, sizeof(DXVA_Tile_AV1));
       pData += sizeof(DXVA_Tile_AV1);
    }
-   assert(vecOutSliceControlBuffers.size() == TotalSlicesDXVAArrayByteSize);
+   assert(vecOutSliceControlBuffers.size() == totalSlicesDXVAArrayByteSize);
 }
 
 DXVA_PicParams_AV1
