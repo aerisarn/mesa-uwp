@@ -263,7 +263,6 @@ struct tu_pipeline_builder
 
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
-   bool depth_clip_disable;
    bool use_color_attachments;
    bool attachment_state_valid;
    VkFormat color_attachment_formats[MAX_RTS];
@@ -3743,6 +3742,15 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
          pipeline->prim_order = library->prim_order;
       }
 
+      if ((library->state &
+           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+          (library->state &
+           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
+          (library->state &
+           VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT)) {
+         pipeline->rast_ds = library->rast_ds;
+      }
+
       pipeline->dynamic_state_mask =
          (pipeline->dynamic_state_mask & ~library_dynamic_state) |
          (library->dynamic_state_mask & library_dynamic_state);
@@ -4009,12 +4017,15 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
-   builder->depth_clip_disable = rast_info->depthClampEnable;
+   bool depth_clip_disable = rast_info->depthClampEnable;
 
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
       vk_find_struct_const(rast_info, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
    if (depth_clip_state)
-      builder->depth_clip_disable = !depth_clip_state->depthClipEnable;
+      depth_clip_disable = !depth_clip_state->depthClipEnable;
+
+   pipeline->rast.rb_depth_cntl =
+      COND(rast_info->depthClampEnable, A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE);
 
    pipeline->rast.line_mode = RECTANGULAR;
 
@@ -4034,8 +4045,8 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
-                     .znear_clip_disable = builder->depth_clip_disable,
-                     .zfar_clip_disable = builder->depth_clip_disable,
+                     .znear_clip_disable = depth_clip_disable,
+                     .zfar_clip_disable = depth_clip_disable,
                      .z_clamp_enable = rast_info->depthClampEnable,
                      .zero_gb_scale_z = pipeline->viewport.z_negative_one_to_one ? 0 : 1,
                      .vp_clip_code_ignore = 1));
@@ -4121,9 +4132,6 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
             A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
             A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
 
-         if (builder->depth_clip_disable)
-            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
-
          if (ds_info->depthWriteEnable)
             rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
       }
@@ -4166,10 +4174,6 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
          ds_info->depthWriteEnable || ds_info->stencilTestEnable;
    }
 
-   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
-      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
-      tu_cs_emit(&cs, rb_depth_cntl);
-   }
    pipeline->ds.rb_depth_cntl = rb_depth_cntl;
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2)) {
@@ -4217,22 +4221,23 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 }
 
 static void
-tu_pipeline_builder_parse_ds_disable(struct tu_pipeline_builder *builder,
-                                     struct tu_pipeline *pipeline)
+tu_pipeline_builder_parse_rast_ds(struct tu_pipeline_builder *builder,
+                                  struct tu_pipeline *pipeline)
 {
    if (builder->rasterizer_discard)
       return;
 
-   /* If RB_DEPTH_CNTL is static state, then we can disable it ahead of time.
-    * However we only know whether RB_DEPTH_CNTL is dynamic in the fragment
-    * shader state and we only know whether it needs to be force-disabled in
-    * the output interface state.
-    */
+   pipeline->rast_ds.rb_depth_cntl =
+      pipeline->rast.rb_depth_cntl | pipeline->ds.rb_depth_cntl;
+   pipeline->rast_ds.rb_depth_cntl_mask = pipeline->ds.rb_depth_cntl_mask;
+
    struct tu_cs cs;
-   if (pipeline->output.rb_depth_cntl_disable &&
-       tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
-      tu_cs_emit(&cs, 0);
+      if (pipeline->output.rb_depth_cntl_disable)
+         tu_cs_emit(&cs, 0);
+      else
+         tu_cs_emit(&cs, pipeline->rast_ds.rb_depth_cntl);
    }
 }
 
@@ -4593,7 +4598,13 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
                           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
       tu_pipeline_builder_parse_rasterization_order(builder, *pipeline);
-      tu_pipeline_builder_parse_ds_disable(builder, *pipeline);
+   }
+
+   if (set_combined_state(builder, *pipeline,
+                          VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT |
+                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
+                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+      tu_pipeline_builder_parse_rast_ds(builder, *pipeline);
    }
 
    return VK_SUCCESS;

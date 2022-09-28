@@ -2610,7 +2610,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
     * state with a dynamic state the next draw.
     */
    UPDATE_REG(rast, gras_su_cntl, GRAS_SU_CNTL);
-   UPDATE_REG(ds, rb_depth_cntl, RB_DEPTH_CNTL);
+   UPDATE_REG(rast_ds, rb_depth_cntl, RB_DEPTH_CNTL);
    UPDATE_REG(ds, rb_stencil_cntl, RB_STENCIL_CNTL);
    UPDATE_REG(rast, pc_raster_cntl, RASTERIZER_DISCARD);
    UPDATE_REG(rast, vpc_unknown_9107, RASTERIZER_DISCARD);

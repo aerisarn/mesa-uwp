@@ -131,6 +131,7 @@ struct tu_pipeline
       uint32_t gras_su_cntl, gras_su_cntl_mask;
       uint32_t pc_raster_cntl, pc_raster_cntl_mask;
       uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
+      uint32_t rb_depth_cntl;
       enum a5xx_line_mode line_mode;
       bool provoking_vertex_last;
 
@@ -138,6 +139,12 @@ struct tu_pipeline
 
       struct tu_draw_state state;
    } rast;
+
+   /* RB_DEPTH_CNTL state comes from both rast and depth/stencil state.
+    */
+   struct {
+      uint32_t rb_depth_cntl, rb_depth_cntl_mask;
+   } rast_ds;
 
    struct {
       uint32_t rb_depth_cntl, rb_depth_cntl_mask;
