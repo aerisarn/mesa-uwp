@@ -1000,11 +1000,11 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
                                                     .vert = guardband_y));
    }
 
-   /* The clamp ranges are only used when the rasterizer disables
-    * depth clip.
+   /* The clamp ranges are only used when the rasterizer wants depth
+    * clamping.
     */
    if ((dirty & (FD_DIRTY_VIEWPORT | FD_DIRTY_RASTERIZER)) &&
-       fd_depth_clip_disabled(ctx)) {
+       fd_depth_clamp_enabled(ctx)) {
       float zmin, zmax;
       util_viewport_zmin_zmax(&ctx->viewport, ctx->rasterizer->clip_halfz,
                               &zmin, &zmax);
@@ -1054,7 +1054,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          state = fd6_zsa_state(
             ctx,
             util_format_is_pure_integer(pipe_surface_format(pfb->cbufs[0])),
-            fd_depth_clip_disabled(ctx));
+            fd_depth_clamp_enabled(ctx));
          fd_ringbuffer_ref(state);
          break;
       case FD6_GROUP_LRZ:

@@ -216,8 +216,8 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 
       OUT_PKT4(ring, REG_A6XX_RB_DEPTH_CNTL, 1);
       OUT_RING(ring,
-               so->rb_depth_cntl | COND(i & FD6_ZSA_DEPTH_CLIP_DISABLE,
-                                        A6XX_RB_DEPTH_CNTL_Z_CLIP_DISABLE));
+               so->rb_depth_cntl | COND(i & FD6_ZSA_DEPTH_CLAMP,
+                                        A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE));
 
       OUT_PKT4(ring, REG_A6XX_RB_STENCILMASK, 2);
       OUT_RING(ring, so->rb_stencilmask);

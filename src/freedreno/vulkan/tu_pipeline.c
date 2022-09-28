@@ -4123,7 +4123,7 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
             A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
 
          if (builder->depth_clip_disable)
-            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLIP_DISABLE;
+            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
 
          if (ds_info->depthWriteEnable)
             rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
