@@ -1595,7 +1595,6 @@ fs_visitor::emit_gs_thread_end()
       srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(0);
       inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                        srcs, ARRAY_SIZE(srcs));
-      inst->mlen = 1;
    } else {
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = gs_payload().urb_handles;
@@ -1603,7 +1602,6 @@ fs_visitor::emit_gs_thread_end()
       srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(1);
       inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                        srcs, ARRAY_SIZE(srcs));
-      inst->mlen = 2;
    }
    inst->eot = true;
    inst->offset = 0;
@@ -7085,7 +7083,6 @@ fs_visitor::emit_tcs_thread_end()
    srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(1);
    fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                             reg_undef, srcs, ARRAY_SIZE(srcs));
-   inst->mlen = 3;
    inst->eot = true;
 }
 

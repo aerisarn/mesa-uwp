@@ -1665,7 +1665,6 @@ emit_urb_direct_vec4_write(const fs_builder &bld,
 
       fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                 reg_undef, srcs, ARRAY_SIZE(srcs));
-      inst->mlen = 2 + length;
       inst->offset = urb_global_offset;
       assert(inst->offset < 2048);
    }
@@ -1741,7 +1740,6 @@ emit_urb_indirect_vec4_write(const fs_builder &bld,
 
       fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                 reg_undef, srcs, ARRAY_SIZE(srcs));
-      inst->mlen = 3 + length;
       inst->offset = 0;
    }
 }
@@ -1828,7 +1826,6 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
                                    reg_undef, srcs, ARRAY_SIZE(srcs));
-         inst->mlen = 3 + length;
          inst->offset = 0;
       }
    }

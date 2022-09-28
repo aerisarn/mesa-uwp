@@ -206,6 +206,7 @@ lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
    const fs_reg handle = inst->src[URB_LOGICAL_SRC_HANDLE];
    const fs_reg src = inst->components_read(URB_LOGICAL_SRC_DATA) ?
       inst->src[URB_LOGICAL_SRC_DATA] : fs_reg(brw_imm_ud(0));
+   assert(type_sz(src.type) == 4);
 
    /* Calculate the total number of components of the payload. */
    const unsigned src_comps = MAX2(1, inst->components_read(URB_LOGICAL_SRC_DATA));

@@ -2266,13 +2266,8 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
       fwa_bld.SHL(channel_mask, channel_mask, brw_imm_ud(16u));
    }
 
-   /* Store the control data bits in the message payload and send it. */
-   const unsigned header_size = 1 + unsigned(channel_mask.file != BAD_FILE) +
-      unsigned(per_slot_offset.file != BAD_FILE);
-
    /* If there are channel masks, add 3 extra copies of the data. */
    const unsigned length = 1 + 3 * unsigned(channel_mask.file != BAD_FILE);
-
    fs_reg sources[4];
 
    for (unsigned i = 0; i < ARRAY_SIZE(sources); i++)
@@ -2288,7 +2283,7 @@ fs_visitor::emit_gs_control_data_bits(const fs_reg &vertex_count)
 
    fs_inst *inst = abld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                              srcs, ARRAY_SIZE(srcs));
-   inst->mlen = header_size + length;
+
    /* We need to increment Global Offset by 256-bits to make room for
     * Broadwell's extra "Vertex Count" payload at the beginning of the
     * URB entry.  Since this is an OWord message, Global Offset is counted
@@ -2956,22 +2951,17 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
 
       assert(has_urb_lsc || m == (first_component + num_components));
 
-      unsigned header_size = 1 + unsigned(indirect_offset.file != BAD_FILE) +
-         unsigned(mask != WRITEMASK_XYZW);
-      const unsigned length = m;
-
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = tcs_payload().patch_urb_output;
       srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
       srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = mask_reg;
-      srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, length);
-      srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(length);
-      bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, length, 0);
+      srcs[URB_LOGICAL_SRC_DATA] = bld.vgrf(BRW_REGISTER_TYPE_F, m);
+      srcs[URB_LOGICAL_SRC_COMPONENTS] = brw_imm_ud(m);
+      bld.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], sources, m, 0);
 
       fs_inst *inst = bld.emit(SHADER_OPCODE_URB_WRITE_LOGICAL, reg_undef,
                                srcs, ARRAY_SIZE(srcs));
       inst->offset = imm_offset;
-      inst->mlen = header_size + length;
       break;
    }
 
