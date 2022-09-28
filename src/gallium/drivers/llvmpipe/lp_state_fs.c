@@ -1074,7 +1074,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
       if (color0 != -1 && outputs[color0][3]) {
          const struct util_format_description *cbuf_format_desc;
-         LLVMValueRef alpha = LLVMBuildLoad(builder, outputs[color0][3], "alpha");
+         LLVMValueRef alpha = LLVMBuildLoad2(builder, vec_type, outputs[color0][3], "alpha");
          LLVMValueRef alpha_ref_value;
 
          alpha_ref_value = lp_jit_context_alpha_ref_value(gallivm, context_type, context_ptr);
@@ -1095,7 +1095,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                            0);
 
       if (color0 != -1 && outputs[color0][3]) {
-         LLVMValueRef alpha = LLVMBuildLoad(builder, outputs[color0][3], "alpha");
+         LLVMValueRef alpha = LLVMBuildLoad2(builder, vec_type, outputs[color0][3], "alpha");
 
          if (!key->multisample) {
             lp_build_alpha_to_coverage(gallivm, type,
@@ -1130,7 +1130,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       lp_build_context_init(&smask_bld, gallivm, int_type);
 
       assert(smaski >= 0);
-      output_smask = LLVMBuildLoad(builder, outputs[smaski][0], "smask");
+      output_smask = LLVMBuildLoad2(builder, vec_type, outputs[smaski][0], "smask");
       output_smask = LLVMBuildBitCast(builder, output_smask, smask_bld.vec_type, "");
       if (!key->multisample && key->no_ms_sample_mask_out) {
          output_smask = lp_build_and(&smask_bld, output_smask, smask_bld.one);
@@ -1153,12 +1153,12 @@ generate_fs_loop(struct gallivm_state *gallivm,
       int pos0 = find_output_by_semantic(&shader->info.base,
                                          TGSI_SEMANTIC_POSITION,
                                          0);
-      LLVMValueRef out = LLVMBuildLoad(builder, outputs[pos0][2], "");
+      LLVMValueRef out = LLVMBuildLoad2(builder, vec_type, outputs[pos0][2], "");
       LLVMValueRef idx = loop_state.counter;
       if (key->min_samples > 1)
          idx = LLVMBuildAdd(builder, idx,
                             LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
-      LLVMValueRef ptr = LLVMBuildGEP(builder, z_out, &idx, 1, "");
+      LLVMValueRef ptr = LLVMBuildGEP2(builder, vec_type, z_out, &idx, 1, "");
       LLVMBuildStore(builder, out, ptr);
    }
 
@@ -1166,12 +1166,13 @@ generate_fs_loop(struct gallivm_state *gallivm,
       int sten_out = find_output_by_semantic(&shader->info.base,
                                              TGSI_SEMANTIC_STENCIL,
                                              0);
-      LLVMValueRef out = LLVMBuildLoad(builder, outputs[sten_out][1], "output.s");
+      LLVMValueRef out = LLVMBuildLoad2(builder, vec_type,
+                                        outputs[sten_out][1], "output.s");
       LLVMValueRef idx = loop_state.counter;
       if (key->min_samples > 1)
          idx = LLVMBuildAdd(builder, idx,
                             LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
-      LLVMValueRef ptr = LLVMBuildGEP(builder, s_out, &idx, 1, "");
+      LLVMValueRef ptr = LLVMBuildGEP2(builder, vec_type, s_out, &idx, 1, "");
       LLVMBuildStore(builder, out, ptr);
    }
 
@@ -1205,14 +1206,14 @@ generate_fs_loop(struct gallivm_state *gallivm,
                /* XXX: just initialize outputs to point at colors[] and
                 * skip this.
                 */
-               LLVMValueRef out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
+               LLVMValueRef out = LLVMBuildLoad2(builder, vec_type, outputs[attrib][chan], "");
                LLVMValueRef color_ptr;
                LLVMValueRef color_idx = loop_state.counter;
                if (key->min_samples > 1)
                   color_idx = LLVMBuildAdd(builder, color_idx,
                                            LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
-               color_ptr = LLVMBuildGEP(builder, out_color[cbuf][chan],
-                                        &color_idx, 1, "");
+               color_ptr = LLVMBuildGEP2(builder, vec_type, out_color[cbuf][chan],
+                                         &color_idx, 1, "");
                lp_build_name(out, "color%u.%c", attrib, "rgba"[chan]);
                LLVMBuildStore(builder, out, color_ptr);
             }
