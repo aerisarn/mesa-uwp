@@ -901,7 +901,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       R600_ERR("%s: Lowering to assembly failed\n", __func__);
 
       scheduled_shader->print(std::cerr);
-      /* For now crash if the shader could not be benerated */
+      /* For now crash if the shader could not be generated */
       assert(0);
       return -1;
    }
