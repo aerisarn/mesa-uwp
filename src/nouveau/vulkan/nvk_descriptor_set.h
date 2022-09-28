@@ -5,6 +5,7 @@
 
 #include "nouveau_bo.h"
 #include "vulkan/runtime/vk_object.h"
+#include "vulkan/runtime/vk_descriptor_update_template.h"
 
 struct nvk_descriptor_set_layout;
 
