@@ -5924,6 +5924,7 @@ radv_pipeline_init_vertex_input_state(struct radv_graphics_pipeline *pipeline,
          uint32_t binding = state->vi->attributes[i].binding;
          uint32_t offset = state->vi->attributes[i].offset;
 
+         pipeline->vs_input_state.attribute_mask |= BITFIELD_BIT(i);
          pipeline->vs_input_state.bindings[i] = binding;
          pipeline->vs_input_state.bindings_match_attrib &= binding == i;
 
