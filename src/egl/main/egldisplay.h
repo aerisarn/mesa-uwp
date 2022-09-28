@@ -38,6 +38,9 @@
 #include "egldefines.h"
 #include "eglarray.h"
 
+#ifdef HAVE_X11_PLATFORM
+#include <X11/Xlib.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
