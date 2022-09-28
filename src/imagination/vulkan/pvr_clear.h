@@ -24,10 +24,12 @@
 #ifndef PVR_CLEAR_H
 #define PVR_CLEAR_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
 #include "pvr_csb.h"
+#include "util/macros.h"
 
 #define PVR_CLEAR_VERTEX_COUNT 4
 #define PVR_CLEAR_VERTEX_COORDINATES 3
@@ -42,12 +44,95 @@
     pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
     pvr_cmd_length(VDMCTRL_INDEX_LIST2) + pvr_cmd_length(VDMCTRL_INDEX_LIST3))
 
+#define PVR_STATIC_CLEAR_PDS_STATE_COUNT          \
+   (pvr_cmd_length(TA_STATE_PDS_SHADERBASE) +     \
+    pvr_cmd_length(TA_STATE_PDS_TEXUNICODEBASE) + \
+    pvr_cmd_length(TA_STATE_PDS_SIZEINFO1) +      \
+    pvr_cmd_length(TA_STATE_PDS_SIZEINFO2) +      \
+    pvr_cmd_length(TA_STATE_PDS_VARYINGBASE) +    \
+    pvr_cmd_length(TA_STATE_PDS_TEXTUREDATABASE))
+
+/* These can be used as offsets within a PVR_STATIC_CLEAR_PDS_STATE_COUNT dwords
+ * sized array to get the respective state word.
+ *
+ * The values are based on the lengths of the state words.
+ */
+enum pvr_static_clear_ppp_pds_state_type {
+   /* Words enabled by pres_pds_state_ptr0. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE = 0,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXUNICODEBASE = 1,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO1 = 2,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO2 = 3,
+
+   /* Word enabled by pres_pds_state_ptr1. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_VARYINGBASE = 4,
+
+   /* Word enabled by pres_pds_state_ptr2. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE = 5,
+};
+
+static_assert(PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE + 1 ==
+                 PVR_STATIC_CLEAR_PDS_STATE_COUNT,
+              "pvr_static_clear_ppp_pds_state_type might require fixing.");
+
+enum pvr_static_clear_variant_bits {
+   PVR_STATIC_CLEAR_DEPTH_BIT = BITFIELD_BIT(0),
+   PVR_STATIC_CLEAR_STENCIL_BIT = BITFIELD_BIT(1),
+   PVR_STATIC_CLEAR_COLOR_BIT = BITFIELD_BIT(2),
+};
+
+#define PVR_STATIC_CLEAR_VARIANT_COUNT (PVR_STATIC_CLEAR_COLOR_BIT << 1U)
+
 struct pvr_bo;
 struct pvr_cmd_buffer;
 struct pvr_device;
 struct pvr_device_info;
 struct pvr_pds_upload;
 struct pvr_pds_vertex_shader_program;
+
+struct pvr_static_clear_ppp_base {
+   uint32_t wclamp;
+   uint32_t varying_word[3];
+   uint32_t ppp_ctrl;
+   uint32_t stream_out0;
+};
+
+struct pvr_static_clear_ppp_template {
+   /* Pre-packed control words. */
+   uint32_t header;
+   uint32_t ispb;
+
+   bool requires_pds_state;
+
+   /* Configurable control words.
+    * These are initialized and can be modified as needed before emitting them.
+    */
+   struct {
+      struct PVRX(TA_STATE_ISPCTL) ispctl;
+      struct PVRX(TA_STATE_ISPA) ispa;
+
+      /* In case the template requires_pds_state this needs to be a valid
+       * pointer to a pre-packed PDS state before emitting.
+       *
+       * Note: this is a pointer to an array of const uint32_t and not an array
+       * of pointers or a function pointer.
+       */
+      const uint32_t (*pds_state)[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
+
+      struct PVRX(TA_REGION_CLIP0) region_clip0;
+      struct PVRX(TA_REGION_CLIP1) region_clip1;
+
+      struct PVRX(TA_OUTPUT_SEL) output_sel;
+   } config;
+};
+
+VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device);
+void pvr_device_finish_graphics_static_clear_state(struct pvr_device *device);
+
+VkResult pvr_emit_ppp_from_template(
+   struct pvr_csb *const csb,
+   const struct pvr_static_clear_ppp_template *const template,
+   struct pvr_bo **const pvr_bo_out);
 
 void pvr_pds_clear_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,
