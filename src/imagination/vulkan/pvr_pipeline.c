@@ -418,8 +418,7 @@ static VkResult pvr_pds_vertex_attrib_program_create_and_upload(
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, allocator, entries_buffer);
       vk_free2(&device->vk.alloc, allocator, staging_buffer);
-
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return result;
    }
 
    vk_free2(&device->vk.alloc, allocator, staging_buffer);
@@ -519,7 +518,7 @@ static VkResult pvr_pds_vertex_attrib_programs_create_and_upload(
    return VK_SUCCESS;
 }
 
-static size_t pvr_pds_get_max_descriptor_upload_const_map_size_in_bytes()
+static size_t pvr_pds_get_max_descriptor_upload_const_map_size_in_bytes(void)
 {
    /* Maximum memory allocation needed for const map entries in
     * pvr_pds_generate_descriptor_upload_program().
@@ -781,7 +780,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
       vk_free2(&device->vk.alloc, allocator, entries_buffer);
       vk_free2(&device->vk.alloc, allocator, staging_buffer);
 
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return result;
    }
 
    vk_free2(&device->vk.alloc, allocator, staging_buffer);

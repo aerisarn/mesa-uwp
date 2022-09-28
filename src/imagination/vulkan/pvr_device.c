@@ -189,7 +189,7 @@ VkResult pvr_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                              pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
-      return vk_error(NULL, result);
+      return result;
    }
 
    pvr_process_debug_variable();
