@@ -3061,7 +3061,7 @@ static VkResult pvr_setup_descriptor_mappings(
             (struct pvr_const_map_entry_special_buffer *)entries;
 
          switch (special_buff_entry->buffer_type) {
-         case PVR_BUFFER_TYPES_COMPILE_TIME: {
+         case PVR_BUFFER_TYPE_COMPILE_TIME: {
             uint64_t addr = descriptor_state->static_consts->vma->dev_addr.addr;
 
             PVR_WRITE(qword_buffer,

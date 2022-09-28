@@ -1490,7 +1490,7 @@ void pvr_pds_generate_vertex_primary_program(
 }
 
 void pvr_pds_generate_descriptor_upload_program(
-   struct pvr_descriptor_program_input *input_program,
+   struct pvr_pds_descriptor_program_input *input_program,
    uint32_t *code_section,
    struct pvr_pds_info *info)
 {
@@ -1608,7 +1608,7 @@ void pvr_pds_generate_descriptor_upload_program(
          special_buffer_entry->buffer_index = buffer->source_offset;
          break;
       }
-      case PVR_BUFFER_TYPES_COMPILE_TIME: {
+      case PVR_BUFFER_TYPE_COMPILE_TIME: {
          struct pvr_const_map_entry_special_buffer *special_buffer_entry;
 
          special_buffer_entry =
@@ -1616,11 +1616,11 @@ void pvr_pds_generate_descriptor_upload_program(
                                                  sizeof(*special_buffer_entry));
          special_buffer_entry->type =
             PVR_PDS_CONST_MAP_ENTRY_TYPE_SPECIAL_BUFFER;
-         special_buffer_entry->buffer_type = PVR_BUFFER_TYPES_COMPILE_TIME;
+         special_buffer_entry->buffer_type = PVR_BUFFER_TYPE_COMPILE_TIME;
          special_buffer_entry->buffer_index = compile_time_buffer_index++;
          break;
       }
-      case PVR_BUFFER_TYPES_BUFFER_LENGTHS: {
+      case PVR_BUFFER_TYPE_BUFFER_LENGTHS: {
          struct pvr_const_map_entry_special_buffer *special_buffer_entry;
 
          special_buffer_entry =
@@ -1628,7 +1628,7 @@ void pvr_pds_generate_descriptor_upload_program(
                                                  sizeof(*special_buffer_entry));
          special_buffer_entry->type =
             PVR_PDS_CONST_MAP_ENTRY_TYPE_SPECIAL_BUFFER;
-         special_buffer_entry->buffer_type = PVR_BUFFER_TYPES_BUFFER_LENGTHS;
+         special_buffer_entry->buffer_type = PVR_BUFFER_TYPE_BUFFER_LENGTHS;
          break;
       }
       case PVR_BUFFER_TYPE_BLEND_CONSTS: {
@@ -1659,7 +1659,7 @@ void pvr_pds_generate_descriptor_upload_program(
          constant_buffer_entry->size_in_dwords = buffer->size_in_dwords;
          break;
       }
-      case PVR_BUFFER_TYPES_UBO_ZEROING: {
+      case PVR_BUFFER_TYPE_UBO_ZEROING: {
          struct pvr_const_map_entry_constant_buffer_zeroing
             *constant_buffer_entry;
 

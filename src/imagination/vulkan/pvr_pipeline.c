@@ -613,7 +613,7 @@ static VkResult pvr_pds_descriptor_program_setup_buffers(
        * Currently we're only setting up a single buffer.
        */
       buffers[buffer_count++] = (struct pvr_pds_buffer){
-         .type = PVR_BUFFER_TYPES_COMPILE_TIME,
+         .type = PVR_BUFFER_TYPE_COMPILE_TIME,
          .size_in_dwords = compile_time_consts_data->static_consts.num,
          .destination = compile_time_consts_data->static_consts.dest,
       };
@@ -649,7 +649,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
    const size_t const_entries_size_in_bytes =
       pvr_pds_get_max_descriptor_upload_const_map_size_in_bytes();
    struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
-   struct pvr_descriptor_program_input program = { 0 };
+   struct pvr_pds_descriptor_program_input program = { 0 };
    struct pvr_const_map_entry *entries_buffer;
    ASSERTED uint32_t code_size_in_dwords;
    uint32_t staging_buffer_size;

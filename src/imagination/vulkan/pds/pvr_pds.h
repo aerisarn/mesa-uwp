@@ -868,12 +868,12 @@ struct pvr_pds_descriptor_set {
 };
 
 #define PVR_BUFFER_TYPE_UBO (0)
-#define PVR_BUFFER_TYPES_COMPILE_TIME (1)
+#define PVR_BUFFER_TYPE_COMPILE_TIME (1)
 #define PVR_BUFFER_TYPE_BLEND_CONSTS (2)
 #define PVR_BUFFER_TYPE_PUSH_CONSTS (3)
-#define PVR_BUFFER_TYPES_BUFFER_LENGTHS (4)
+#define PVR_BUFFER_TYPE_BUFFER_LENGTHS (4)
 #define PVR_BUFFER_TYPE_DYNAMIC (5)
-#define PVR_BUFFER_TYPES_UBO_ZEROING (6)
+#define PVR_BUFFER_TYPE_UBO_ZEROING (6)
 #define PVR_BUFFER_TYPE_INVALID (~0)
 
 struct pvr_pds_buffer {
@@ -895,7 +895,7 @@ struct pvr_pds_buffer {
 
 #define PVR_PDS_MAX_BUFFERS (24)
 
-struct pvr_descriptor_program_input {
+struct pvr_pds_descriptor_program_input {
    /* User-specified descriptor sets. */
    unsigned int descriptor_set_count;
    struct pvr_pds_descriptor_set descriptor_sets[8];
@@ -1133,7 +1133,7 @@ struct pvr_pds_info {
 };
 
 void pvr_pds_generate_descriptor_upload_program(
-   struct pvr_descriptor_program_input *input_program,
+   struct pvr_pds_descriptor_program_input *input_program,
    uint32_t *code_section,
    struct pvr_pds_info *info);
 void pvr_pds_generate_vertex_primary_program(
