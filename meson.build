@@ -956,9 +956,6 @@ if with_platform_x11
       pre_args += '-DGLX_USE_WINDOWSGL'
     endif
   endif
-else
-  pre_args += '-DEGL_NO_X11'
-  gl_pkgconfig_c_flags += '-DEGL_NO_X11'
 endif
 
 with_android_stub = get_option('android-stub')
