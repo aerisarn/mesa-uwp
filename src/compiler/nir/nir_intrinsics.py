@@ -1342,6 +1342,16 @@ system_value("gs_vertex_offset_amd", 1, [BASE])
 # Number of rasterization samples
 system_value("rasterization_samples_amd", 1)
 
+# Descriptor where GS outputs are stored for GS copy shader to read on GFX6-9
+system_value("ring_gsvs_amd", 4)
+
+# Streamout configuration
+system_value("streamout_config_amd", 1)
+# Position to write within the streamout buffers
+system_value("streamout_write_index_amd", 1)
+# Offset to write within a streamout buffer
+system_value("streamout_offset_amd", 1, indices=[BASE])
+
 # AMD merged shader intrinsics
 
 # Whether the current invocation has an input vertex / primitive to process (also known as "ES thread" or "GS thread").

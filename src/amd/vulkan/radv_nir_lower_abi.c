@@ -35,6 +35,7 @@ typedef struct {
    const struct radv_shader_info *info;
    const struct radv_pipeline_key *pl_key;
    bool use_llvm;
+   uint32_t address32_hi;
 } lower_abi_state;
 
 static nir_ssa_def *
@@ -122,6 +123,12 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       }
 
       replacement = load_ring(b, stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS : RING_ESGS_VS, s);
+      break;
+   case nir_intrinsic_load_ring_gsvs_amd:
+      if (s->use_llvm)
+         break;
+
+      replacement = load_ring(b, RING_GSVS_VS, s);
       break;
    case nir_intrinsic_load_ring_es2gs_offset_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.es2gs_offset);
@@ -346,6 +353,23 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       /* No-op for RADV. */
       break;
 
+   case nir_intrinsic_load_streamout_config_amd:
+      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.streamout_config);
+      break;
+   case nir_intrinsic_load_streamout_write_index_amd:
+      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.streamout_write_index);
+      break;
+   case nir_intrinsic_load_streamout_buffer_amd: {
+      nir_ssa_def *ptr =
+         nir_pack_64_2x32_split(b, ac_nir_load_arg(b, &s->args->ac, s->args->streamout_buffers),
+                                nir_imm_int(b, s->address32_hi));
+      replacement = nir_load_smem_amd(b, 4, ptr, nir_imm_int(b, nir_intrinsic_base(intrin) * 16));
+      break;
+   }
+   case nir_intrinsic_load_streamout_offset_amd:
+      replacement =
+         ac_nir_load_arg(b, &s->args->ac, s->args->ac.streamout_offset[nir_intrinsic_base(intrin)]);
+      break;
    default:
       progress = false;
       break;
@@ -366,7 +390,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
 void
 radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
                    const struct radv_shader_info *info, const struct radv_shader_args *args,
-                   const struct radv_pipeline_key *pl_key, bool use_llvm)
+                   const struct radv_pipeline_key *pl_key, bool use_llvm, uint32_t address32_hi)
 {
    lower_abi_state state = {
       .gfx_level = gfx_level,
@@ -374,6 +398,7 @@ radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
       .args = args,
       .pl_key = pl_key,
       .use_llvm = use_llvm,
+      .address32_hi = address32_hi,
    };
 
    nir_shader_instructions_pass(shader, lower_abi_instr,

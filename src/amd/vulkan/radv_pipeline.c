@@ -3895,7 +3895,8 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,
-              radv_use_llvm_for_stage(device, stage->stage));
+              radv_use_llvm_for_stage(device, stage->stage),
+              device->physical_device->rad_info.address32_hi);
    radv_optimize_nir_algebraic(
       stage->nir, io_to_mem || lowered_ngg || stage->stage == MESA_SHADER_COMPUTE ||
       stage->stage == MESA_SHADER_TASK);

@@ -1335,6 +1335,8 @@ static LLVMValueRef radv_intrinsic_load(struct ac_shader_abi *abi, nir_intrinsic
       return ctx->esgs_ring;
    case nir_intrinsic_load_ring_attr_amd:
       return ctx->attr_ring;
+   case nir_intrinsic_load_ring_gsvs_amd:
+      return ctx->gsvs_ring[0];
    default:
       return NULL;
    }
