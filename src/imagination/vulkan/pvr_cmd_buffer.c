@@ -2781,7 +2781,7 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.pds_heap,
-                                     pds_info->data_size_in_dwords,
+                                     pds_info->data_size_in_dwords << 2,
                                      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
@@ -2896,7 +2896,7 @@ static VkResult pvr_setup_descriptor_mappings(
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.pds_heap,
-                                     pds_info->data_size_in_dwords,
+                                     pds_info->data_size_in_dwords << 2,
                                      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
