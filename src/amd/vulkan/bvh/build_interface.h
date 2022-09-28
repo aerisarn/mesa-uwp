@@ -34,7 +34,7 @@
 
 struct leaf_args {
    VOID_REF bvh;
-   REF(AABB) bounds;
+   REF(radv_ir_header) header;
    REF(key_id_pair) ids;
 
    VOID_REF data;
@@ -53,7 +53,7 @@ struct leaf_args {
 
 struct morton_args {
    VOID_REF bvh;
-   REF(AABB) bounds;
+   REF(radv_ir_header) header;
    REF(key_id_pair) ids;
 };
 

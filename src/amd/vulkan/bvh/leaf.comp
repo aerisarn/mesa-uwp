@@ -310,10 +310,10 @@ main(void)
 
    DEREF(id_ptr).id = is_active ? pack_ir_node_id(dst_offset, node_type) : RADV_BVH_INVALID_NODE;
 
-   atomicMin(DEREF(INDEX(int32_t, args.bounds, 0)), to_emulated_float(bounds.min.x));
-   atomicMin(DEREF(INDEX(int32_t, args.bounds, 1)), to_emulated_float(bounds.min.y));
-   atomicMin(DEREF(INDEX(int32_t, args.bounds, 2)), to_emulated_float(bounds.min.z));
-   atomicMax(DEREF(INDEX(int32_t, args.bounds, 3)), to_emulated_float(bounds.max.x));
-   atomicMax(DEREF(INDEX(int32_t, args.bounds, 4)), to_emulated_float(bounds.max.y));
-   atomicMax(DEREF(INDEX(int32_t, args.bounds, 5)), to_emulated_float(bounds.max.z));
+   atomicMin(DEREF(args.header).min_bounds[0], to_emulated_float(bounds.min.x));
+   atomicMin(DEREF(args.header).min_bounds[1], to_emulated_float(bounds.min.y));
+   atomicMin(DEREF(args.header).min_bounds[2], to_emulated_float(bounds.min.z));
+   atomicMax(DEREF(args.header).max_bounds[0], to_emulated_float(bounds.max.x));
+   atomicMax(DEREF(args.header).max_bounds[1], to_emulated_float(bounds.max.y));
+   atomicMax(DEREF(args.header).max_bounds[2], to_emulated_float(bounds.max.z));
 }

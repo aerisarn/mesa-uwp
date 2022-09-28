@@ -236,6 +236,7 @@ TYPE(radv_bvh_instance_node, 8);
 TYPE(radv_bvh_box16_node, 4);
 TYPE(radv_bvh_box32_node, 4);
 
+TYPE(radv_ir_header, 4);
 TYPE(radv_ir_node, 4);
 TYPE(radv_ir_box_node, 4);
 TYPE(radv_ir_triangle_node, 4);

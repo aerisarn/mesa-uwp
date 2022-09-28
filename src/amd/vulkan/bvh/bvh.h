@@ -120,6 +120,11 @@ struct radv_ir_instance_node {
    uint32_t instance_id;
 };
 
+struct radv_ir_header {
+   int32_t min_bounds[3];
+   int32_t max_bounds[3];
+};
+
 struct radv_bvh_triangle_node {
    float coords[3][3];
    uint32_t reserved[3];
