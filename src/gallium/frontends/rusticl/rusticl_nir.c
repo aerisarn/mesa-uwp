@@ -39,6 +39,14 @@ rusticl_lower_intrinsics_instr(
         }
 
         val = intrins->src[0].ssa;
+
+        if (val->parent_instr->type == nir_instr_type_deref) {
+            nir_deref_instr *deref = nir_instr_as_deref(val->parent_instr);
+            nir_variable *var = nir_deref_instr_get_variable(deref);
+            assert(var);
+            val = nir_imm_intN_t(b, var->data.binding, val->bit_size);
+        }
+
         // we put write images after read images
         if (glsl_type_is_image(var->type)) {
             val = nir_iadd_imm(b, val, b->shader->info.num_textures);
