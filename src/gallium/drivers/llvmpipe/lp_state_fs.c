@@ -332,12 +332,13 @@ lp_llvm_viewport(LLVMTypeRef context_type,
    LLVMValueRef res;
    struct lp_type viewport_type =
       lp_type_float_vec(32, 32 * LP_JIT_VIEWPORT_NUM_FIELDS);
+   LLVMTypeRef vtype = lp_build_vec_type(gallivm, viewport_type);
 
    ptr = lp_jit_context_viewports(gallivm, context_type, context_ptr);
    ptr = LLVMBuildPointerCast(builder, ptr,
-            LLVMPointerType(lp_build_vec_type(gallivm, viewport_type), 0), "");
+            LLVMPointerType(vtype, 0), "");
 
-   res = lp_build_pointer_get(builder, ptr, viewport_index);
+   res = lp_build_pointer_get2(builder, vtype, ptr, viewport_index);
 
    return res;
 }
