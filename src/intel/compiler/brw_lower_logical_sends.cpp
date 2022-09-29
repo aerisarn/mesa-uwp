@@ -40,18 +40,15 @@ lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst)
    assert(inst->size_written % REG_SIZE == 0);
    assert(inst->header_size == 0);
 
-   fs_reg *payload_sources = new fs_reg[inst->mlen];
-   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(inst->mlen),
-                           BRW_REGISTER_TYPE_F);
-
+   fs_reg payload_sources[2];
    unsigned header_size = 0;
    payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_HANDLE];
    if (per_slot_present)
       payload_sources[header_size++] = inst->src[URB_LOGICAL_SRC_PER_SLOT_OFFSETS];
 
-   bld.LOAD_PAYLOAD(payload, payload_sources, inst->mlen, header_size);
-
-   delete [] payload_sources;
+   fs_reg payload = fs_reg(VGRF, bld.shader->alloc.allocate(header_size),
+                           BRW_REGISTER_TYPE_F);
+   bld.LOAD_PAYLOAD(payload, payload_sources, header_size, header_size);
 
    inst->opcode = SHADER_OPCODE_SEND;
    inst->header_size = header_size;
@@ -63,6 +60,7 @@ lower_urb_read_logical_send(const fs_builder &bld, fs_inst *inst)
                              false,
                              inst->offset);
 
+   inst->mlen = header_size;
    inst->ex_desc = 0;
    inst->ex_mlen = 0;
    inst->send_is_volatile = true;

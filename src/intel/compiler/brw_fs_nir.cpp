@@ -2556,7 +2556,6 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
                               dst.component_size(inst->exec_size);
       }
       inst->offset = base_offset + nir_src_as_uint(offset_src);
-      inst->mlen = 1;
    } else {
       /* Indirect indexing - use per-slot offsets as well. */
       unsigned read_components = num_components + first_component;
@@ -2582,7 +2581,6 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
                               dst.component_size(inst->exec_size);
       }
       inst->offset = base_offset;
-      inst->mlen = 2;
    }
 }
 
@@ -2811,7 +2809,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                             ARRAY_SIZE(srcs));
          }
          inst->offset = imm_offset;
-         inst->mlen = 1;
       } else {
          /* Indirect indexing - use per-slot offsets as well. */
          srcs[URB_LOGICAL_SRC_PER_SLOT_OFFSETS] = indirect_offset;
@@ -2830,7 +2827,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                             srcs, ARRAY_SIZE(srcs));
          }
          inst->offset = imm_offset;
-         inst->mlen = 2;
       }
       inst->size_written = (num_components + first_component) *
                            inst->dst.component_size(inst->exec_size);
@@ -2884,7 +2880,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                inst->size_written = instr->num_components * REG_SIZE * reg_unit(devinfo);
             }
             inst->offset = imm_offset;
-            inst->mlen = 1;
          }
       } else {
          /* Indirect indexing - use per-slot offsets as well. */
@@ -2909,7 +2904,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
             inst->size_written = instr->num_components * REG_SIZE * reg_unit(devinfo);
          }
          inst->offset = imm_offset;
-         inst->mlen = 2;
       }
       break;
    }
@@ -3036,7 +3030,6 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
                                srcs, ARRAY_SIZE(srcs));
                inst->size_written = instr->num_components * REG_SIZE * reg_unit(devinfo);
             }
-            inst->mlen = 1;
             inst->offset = imm_offset;
          }
       } else {
@@ -3066,7 +3059,6 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
             inst = bld.emit(SHADER_OPCODE_URB_READ_LOGICAL, dest,
                             srcs, ARRAY_SIZE(srcs));
          }
-         inst->mlen = 2;
          inst->offset = imm_offset;
          inst->size_written = (num_components + first_component) *
                               inst->dst.component_size(inst->exec_size);

@@ -1861,7 +1861,6 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
    fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_LOGICAL, data,
                               srcs, ARRAY_SIZE(srcs));
-   inst->mlen = 1;
    inst->offset = urb_global_offset;
    assert(inst->offset < 2048);
    inst->size_written = num_regs * REG_SIZE;
@@ -1924,7 +1923,6 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_READ_LOGICAL,
                                    data, srcs, ARRAY_SIZE(srcs));
-         inst->mlen = 2;
          inst->offset = 0;
          inst->size_written = 4 * REG_SIZE;
 
