@@ -90,4 +90,20 @@ struct convert_leaf_args {
    uint32_t geometry_type;
 };
 
+struct ploc_prefix_scan_partition {
+   uint32_t aggregate;
+   uint32_t inclusive_sum;
+};
+
+#define PLOC_WORKGROUP_SIZE 1024
+
+struct ploc_args {
+   VOID_REF bvh;
+   VOID_REF prefix_scan_partitions;
+   REF(radv_ir_header) header;
+   VOID_REF ids_0;
+   VOID_REF ids_1;
+   uint32_t internal_node_offset;
+};
+
 #endif

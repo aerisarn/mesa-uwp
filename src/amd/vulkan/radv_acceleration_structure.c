@@ -43,6 +43,10 @@ static const uint32_t lbvh_internal_spv[] = {
 #include "bvh/lbvh_internal.comp.spv.h"
 };
 
+static const uint32_t ploc_spv[] = {
+#include "bvh/ploc_internal.comp.spv.h"
+};
+
 static const uint32_t copy_spv[] = {
 #include "bvh/copy.comp.spv.h"
 };
@@ -272,6 +276,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    struct radv_meta_state *state = &device->meta_state;
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.copy_pipeline,
                         &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.ploc_pipeline,
+                        &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device),
                         state->accel_struct_build.lbvh_internal_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
@@ -284,6 +290,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                         &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.copy_p_layout, &state->alloc);
+   radv_DestroyPipelineLayout(radv_device_to_handle(device),
+                              state->accel_struct_build.ploc_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.lbvh_internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -385,6 +393,12 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
       device, lbvh_internal_spv, sizeof(lbvh_internal_spv), sizeof(struct lbvh_internal_args),
       &device->meta_state.accel_struct_build.lbvh_internal_pipeline,
       &device->meta_state.accel_struct_build.lbvh_internal_p_layout);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = create_build_pipeline_spv(device, ploc_spv, sizeof(ploc_spv), sizeof(struct ploc_args),
+                                      &device->meta_state.accel_struct_build.ploc_pipeline,
+                                      &device->meta_state.accel_struct_build.ploc_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
