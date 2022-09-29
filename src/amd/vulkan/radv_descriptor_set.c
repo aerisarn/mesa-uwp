@@ -1042,31 +1042,12 @@ write_texel_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer
 }
 
 static ALWAYS_INLINE void
-write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
-                        unsigned *dst, struct radeon_winsys_bo **buffer_list,
-                        const VkDescriptorBufferInfo *buffer_info)
+write_buffer_descriptor(struct radv_device *device, unsigned *dst, uint64_t va, uint64_t range)
 {
-   RADV_FROM_HANDLE(radv_buffer, buffer, buffer_info->buffer);
-
-   if (!buffer) {
+   if (!va) {
       memset(dst, 0, 4 * 4);
-      if (!cmd_buffer)
-         *buffer_list = NULL;
       return;
    }
-
-   uint64_t va = radv_buffer_get_va(buffer->bo);
-
-   uint32_t range = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
-   assert(buffer->vk.size > 0 && range > 0);
-
-   /* robustBufferAccess is relaxed enough to allow this (in combination
-    * with the alignment/size we return from vkGetBufferMemoryRequirements)
-    * and this allows the shader compiler to create more efficient 8/16-bit
-    * buffer accesses. */
-   range = align(range, 4);
-
-   va += buffer_info->offset + buffer->offset;
 
    uint32_t rsrc_word3 =
       S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -1087,6 +1068,36 @@ write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_
    dst[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
    dst[2] = range;
    dst[3] = rsrc_word3;
+}
+
+static ALWAYS_INLINE void
+write_buffer_descriptor_impl(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
+                             unsigned *dst, struct radeon_winsys_bo **buffer_list,
+                             const VkDescriptorBufferInfo *buffer_info)
+{
+   RADV_FROM_HANDLE(radv_buffer, buffer, buffer_info->buffer);
+   uint64_t va = 0, range = 0;
+
+   if (buffer) {
+      va = radv_buffer_get_va(buffer->bo) + buffer_info->offset + buffer->offset;
+
+      range = vk_buffer_range(&buffer->vk, buffer_info->offset, buffer_info->range);
+      assert(buffer->vk.size > 0 && range > 0);
+
+      /* robustBufferAccess is relaxed enough to allow this (in combination with the alignment/size
+       * we return from vkGetBufferMemoryRequirements) and this allows the shader compiler to create
+       * more efficient 8/16-bit buffer accesses.
+       */
+      range = align(range, 4);
+   }
+
+   write_buffer_descriptor(device, dst, va, range);
+
+   if (!buffer) {
+      if (!cmd_buffer)
+         *buffer_list = NULL;
+      return;
+   }
 
    if (cmd_buffer)
       radv_cs_add_buffer(device->ws, cmd_buffer->cs, buffer->bo);
@@ -1138,17 +1149,17 @@ write_dynamic_buffer_descriptor(struct radv_device *device, struct radv_descript
 }
 
 static ALWAYS_INLINE void
-write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
-                       unsigned size, unsigned *dst, struct radeon_winsys_bo **buffer_list,
-                       VkDescriptorType descriptor_type, const VkDescriptorImageInfo *image_info)
+write_image_descriptor(unsigned *dst, unsigned size, VkDescriptorType descriptor_type,
+                       const VkDescriptorImageInfo *image_info)
 {
-   RADV_FROM_HANDLE(radv_image_view, iview, image_info->imageView);
+   struct radv_image_view *iview = NULL;
    union radv_descriptor *descriptor;
+
+   if (image_info)
+      iview = radv_image_view_from_handle(image_info->imageView);
 
    if (!iview) {
       memset(dst, 0, size);
-      if (!cmd_buffer)
-         *buffer_list = NULL;
       return;
    }
 
@@ -1160,6 +1171,22 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
    assert(size > 0);
 
    memcpy(dst, descriptor, size);
+}
+
+static ALWAYS_INLINE void
+write_image_descriptor_impl(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
+                            unsigned size, unsigned *dst, struct radeon_winsys_bo **buffer_list,
+                            VkDescriptorType descriptor_type, const VkDescriptorImageInfo *image_info)
+{
+   RADV_FROM_HANDLE(radv_image_view, iview, image_info->imageView);
+
+   write_image_descriptor(dst, size, descriptor_type, image_info);
+
+   if (!iview) {
+      if (!cmd_buffer)
+         *buffer_list = NULL;
+      return;
+   }
 
    const uint32_t max_bindings = sizeof(iview->image->bindings) /
                                  sizeof(iview->image->bindings[0]);
@@ -1181,8 +1208,8 @@ write_combined_image_sampler_descriptor(struct radv_device *device,
                                         VkDescriptorType descriptor_type,
                                         const VkDescriptorImageInfo *image_info, bool has_sampler)
 {
-   write_image_descriptor(device, cmd_buffer, sampler_offset, dst, buffer_list, descriptor_type,
-                          image_info);
+   write_image_descriptor_impl(device, cmd_buffer, sampler_offset, dst, buffer_list, descriptor_type,
+                               image_info);
    /* copy over sampler state */
    if (has_sampler) {
       RADV_FROM_HANDLE(radv_sampler, sampler, image_info->sampler);
@@ -1198,10 +1225,8 @@ write_sampler_descriptor(unsigned *dst, VkSampler _sampler)
 }
 
 static ALWAYS_INLINE void
-write_accel_struct(void *ptr, VkAccelerationStructureKHR _accel_struct)
+write_accel_struct(void *ptr, VkDeviceAddress va)
 {
-   RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, _accel_struct);
-   uint64_t va = accel_struct ? accel_struct->va : 0;
    memcpy(ptr, &va, sizeof(va));
 }
 
@@ -1259,8 +1284,8 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(device, cmd_buffer, ptr, buffer_list,
-                                    writeset->pBufferInfo + j);
+            write_buffer_descriptor_impl(device, cmd_buffer, ptr, buffer_list,
+                                         writeset->pBufferInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -1268,13 +1293,13 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
                                           writeset->pTexelBufferView[j]);
             break;
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            write_image_descriptor(device, cmd_buffer, 32, ptr, buffer_list,
-                                   writeset->descriptorType, writeset->pImageInfo + j);
+            write_image_descriptor_impl(device, cmd_buffer, 32, ptr, buffer_list,
+                                        writeset->descriptorType, writeset->pImageInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            write_image_descriptor(device, cmd_buffer, 64, ptr, buffer_list,
-                                   writeset->descriptorType, writeset->pImageInfo + j);
+            write_image_descriptor_impl(device, cmd_buffer, 64, ptr, buffer_list,
+                                        writeset->descriptorType, writeset->pImageInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
             unsigned sampler_offset = radv_combined_image_descriptor_sampler_offset(binding_layout);
@@ -1296,9 +1321,12 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
                memcpy(ptr, samplers + 4 * idx, 16);
             }
             break;
-         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-            write_accel_struct(ptr, accel_structs->pAccelerationStructures[j]);
+         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
+            RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
+                             accel_structs->pAccelerationStructures[j]);
+            write_accel_struct(ptr, accel_struct ? accel_struct->va : 0);
             break;
+         }
          default:
             break;
          }
@@ -1552,8 +1580,8 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(device, cmd_buffer, pDst, buffer_list,
-                                    (struct VkDescriptorBufferInfo *)pSrc);
+            write_buffer_descriptor_impl(device, cmd_buffer, pDst, buffer_list,
+                                         (struct VkDescriptorBufferInfo *)pSrc);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -1561,15 +1589,15 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
                                           *(VkBufferView *)pSrc);
             break;
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            write_image_descriptor(device, cmd_buffer, 32, pDst, buffer_list,
-                                   templ->entry[i].descriptor_type,
-                                   (struct VkDescriptorImageInfo *)pSrc);
+            write_image_descriptor_impl(device, cmd_buffer, 32, pDst, buffer_list,
+                                        templ->entry[i].descriptor_type,
+                                        (struct VkDescriptorImageInfo *)pSrc);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            write_image_descriptor(device, cmd_buffer, 64, pDst, buffer_list,
-                                   templ->entry[i].descriptor_type,
-                                   (struct VkDescriptorImageInfo *)pSrc);
+            write_image_descriptor_impl(device, cmd_buffer, 64, pDst, buffer_list,
+                                        templ->entry[i].descriptor_type,
+                                        (struct VkDescriptorImageInfo *)pSrc);
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             write_combined_image_sampler_descriptor(
@@ -1589,9 +1617,12 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
             else if (cmd_buffer && templ->entry[i].immutable_samplers)
                memcpy(pDst, templ->entry[i].immutable_samplers + 4 * j, 16);
             break;
-         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-            write_accel_struct(pDst, *(const VkAccelerationStructureKHR *)pSrc);
+         case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
+            RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
+                             *(const VkAccelerationStructureKHR *)pSrc);
+            write_accel_struct(pDst, accel_struct ? accel_struct->va : 0);
             break;
+         }
          default:
             break;
          }
