@@ -1640,7 +1640,10 @@ void virgl_encode_emit_string_marker(struct virgl_context *ctx,
 void virgl_encode_create_video_codec(struct virgl_context *ctx,
                                      struct virgl_video_codec *cdc)
 {
-   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_CREATE_VIDEO_CODEC, 0, 7));
+   struct virgl_screen *rs = virgl_screen(ctx->base.screen);
+   uint32_t len = rs->caps.caps.v2.host_feature_check_version >= 14 ? 8 : 7;
+
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_CREATE_VIDEO_CODEC, 0, len));
    virgl_encoder_write_dword(ctx->cbuf, cdc->handle);
    virgl_encoder_write_dword(ctx->cbuf, cdc->base.profile);
    virgl_encoder_write_dword(ctx->cbuf, cdc->base.entrypoint);
@@ -1648,6 +1651,8 @@ void virgl_encode_create_video_codec(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, cdc->base.level);
    virgl_encoder_write_dword(ctx->cbuf, cdc->base.width);
    virgl_encoder_write_dword(ctx->cbuf, cdc->base.height);
+   if (rs->caps.caps.v2.host_feature_check_version >= 14)
+       virgl_encoder_write_dword(ctx->cbuf, cdc->base.max_references);
 }
 
 void virgl_encode_destroy_video_codec(struct virgl_context *ctx,
