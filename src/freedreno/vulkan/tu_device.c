@@ -767,7 +767,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3DepthClipEnable = true;
          features->extendedDynamicState3LogicOpEnable = true;
          features->extendedDynamicState3SampleMask = true;
-         features->extendedDynamicState3RasterizationSamples = false;
+         features->extendedDynamicState3RasterizationSamples = true;
          features->extendedDynamicState3AlphaToCoverageEnable = false;
          features->extendedDynamicState3AlphaToOneEnable = false;
          features->extendedDynamicState3DepthClipNegativeOneToOne = false;

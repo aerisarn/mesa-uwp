@@ -3742,6 +3742,9 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->blend.rb_blend_cntl_mask &=
             ~A6XX_RB_BLEND_CNTL_SAMPLE_MASK__MASK;
          break;
+      case VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES);
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3835,7 +3838,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_BLEND) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
-            BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE);
+            BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE) |
+            BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES);
       }
 
       if ((library->state &

@@ -2631,7 +2631,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    tu6_update_msaa_disable(cmd);
 
-   tu6_update_msaa_samples(cmd, pipeline->output.samples);
+   if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES)))
+      tu6_update_msaa_samples(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
        (pipeline->viewport.z_negative_one_to_one != cmd->state.z_negative_one_to_one)) {
@@ -3186,6 +3187,15 @@ tu_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer,
       A6XX_RB_BLEND_CNTL_SAMPLE_MASK(*pSampleMask & 0xffff);
 
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
+                                 VkSampleCountFlagBits rasterizationSamples)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   tu6_update_msaa_samples(cmd, rasterizationSamples);
 }
 
 static void
