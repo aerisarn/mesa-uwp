@@ -763,8 +763,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)ext;
          features->extendedDynamicState3PolygonMode = true;
          features->extendedDynamicState3TessellationDomainOrigin = true;
-         features->extendedDynamicState3DepthClampEnable = false;
-         features->extendedDynamicState3DepthClipEnable = false;
+         features->extendedDynamicState3DepthClampEnable = true;
+         features->extendedDynamicState3DepthClipEnable = true;
          features->extendedDynamicState3LogicOpEnable = false;
          features->extendedDynamicState3SampleMask = false;
          features->extendedDynamicState3RasterizationSamples = false;

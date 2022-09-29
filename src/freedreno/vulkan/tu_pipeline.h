@@ -132,13 +132,14 @@ struct tu_pipeline
    /* for dynamic states which use the same register: */
    struct {
       uint32_t gras_su_cntl, gras_su_cntl_mask;
-      uint32_t gras_cl_cntl;
+      uint32_t gras_cl_cntl, gras_cl_cntl_mask;
       uint32_t pc_raster_cntl, pc_raster_cntl_mask;
       uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
-      uint32_t rb_depth_cntl;
+      uint32_t rb_depth_cntl, rb_depth_cntl_mask;
       enum a5xx_line_mode line_mode;
       enum a6xx_polygon_mode polygon_mode;
       bool provoking_vertex_last;
+      bool override_depth_clip;
 
       uint32_t multiview_mask;
    } rast;

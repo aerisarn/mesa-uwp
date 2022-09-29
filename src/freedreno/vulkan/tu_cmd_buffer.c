@@ -2648,6 +2648,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
     * state with a dynamic state the next draw.
     */
    UPDATE_REG(rast, gras_su_cntl, RAST);
+   UPDATE_REG(rast, gras_cl_cntl, RAST);
    UPDATE_REG(rast_ds, rb_depth_cntl, RB_DEPTH_CNTL);
    UPDATE_REG(ds, rb_stencil_cntl, RB_STENCIL_CNTL);
    UPDATE_REG(rast, pc_raster_cntl, RASTERIZER_DISCARD);
@@ -3114,6 +3115,34 @@ tu_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    cmd->state.tess_upper_left_domain_origin =
       domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetDepthClipEnableEXT(VkCommandBuffer commandBuffer,
+                            VkBool32 depthClipEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   cmd->state.gras_cl_cntl =
+      (cmd->state.gras_cl_cntl & ~(A6XX_GRAS_CL_CNTL_ZNEAR_CLIP_DISABLE |
+                                   A6XX_GRAS_CL_CNTL_ZFAR_CLIP_DISABLE)) |
+      COND(!depthClipEnable,
+           A6XX_GRAS_CL_CNTL_ZNEAR_CLIP_DISABLE |
+           A6XX_GRAS_CL_CNTL_ZFAR_CLIP_DISABLE);
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer,
+                             VkBool32 depthClampEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   cmd->state.gras_cl_cntl =
+      (cmd->state.gras_cl_cntl & ~A6XX_GRAS_CL_CNTL_Z_CLAMP_ENABLE) |
+      COND(depthClampEnable, A6XX_GRAS_CL_CNTL_Z_CLAMP_ENABLE);
+   cmd->state.rb_depth_cntl =
+      (cmd->state.rb_depth_cntl & ~A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE) |
+      COND(depthClampEnable, A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE);
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_RB_DEPTH_CNTL;
 }
 
 static void
@@ -4501,8 +4530,25 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (dirty & TU_CMD_DIRTY_RAST) {
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RAST,
                                              tu6_rast_size(cmd->device));
+      uint32_t gras_cl_cntl = cmd->state.gras_cl_cntl;
+      /* Implement this spec text from vkCmdSetDepthClampEnableEXT():
+       *
+       *    If the depth clamping state is changed dynamically, and the
+       *    pipeline was not created with
+       *    VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT enabled, then depth
+       *    clipping is enabled when depth clamping is disabled and vice
+       *    versa.
+       */
+      if (pipeline->rast.override_depth_clip) {
+         gras_cl_cntl =
+            (gras_cl_cntl & ~(A6XX_GRAS_CL_CNTL_ZFAR_CLIP_DISABLE |
+                              A6XX_GRAS_CL_CNTL_ZNEAR_CLIP_DISABLE)) |
+            COND(gras_cl_cntl & A6XX_GRAS_CL_CNTL_Z_CLAMP_ENABLE,
+                 A6XX_GRAS_CL_CNTL_ZFAR_CLIP_DISABLE |
+                 A6XX_GRAS_CL_CNTL_ZNEAR_CLIP_DISABLE);
+      }
       tu6_emit_rast(&cs, cmd->state.gras_su_cntl,
-                    pipeline->rast.gras_cl_cntl, cmd->state.polygon_mode);
+                    gras_cl_cntl, cmd->state.polygon_mode);
    }
 
    if (dirty & TU_CMD_DIRTY_RB_DEPTH_CNTL) {

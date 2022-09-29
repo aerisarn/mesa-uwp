@@ -3589,6 +3589,8 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       builder->create_info->pDynamicState;
 
    pipeline->rast.gras_su_cntl_mask = ~0u;
+   pipeline->rast.gras_cl_cntl_mask = ~0u;
+   pipeline->rast.rb_depth_cntl_mask = ~0u;
    pipeline->rast.pc_raster_cntl_mask = ~0u;
    pipeline->rast.vpc_unknown_9107_mask = ~0u;
    pipeline->ds.rb_depth_cntl_mask = ~0u;
@@ -3599,6 +3601,8 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
 
    if (!dynamic_info)
       return;
+
+   bool dynamic_depth_clip = false, dynamic_depth_clamp = false;
 
    for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
       VkDynamicState state = dynamic_info->pDynamicStates[i];
@@ -3716,11 +3720,31 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |=
             BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN);
          break;
+      case VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RAST);
+         pipeline->rast.gras_cl_cntl_mask &=
+            ~(A6XX_GRAS_CL_CNTL_ZNEAR_CLIP_DISABLE |
+              A6XX_GRAS_CL_CNTL_ZFAR_CLIP_DISABLE);
+         dynamic_depth_clip = true;
+         break;
+      case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_RAST)  |
+            BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         pipeline->rast.gras_cl_cntl_mask &=
+            ~A6XX_GRAS_CL_CNTL_Z_CLAMP_ENABLE;
+         pipeline->rast.rb_depth_cntl_mask &=
+            ~A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
+         dynamic_depth_clamp = true;
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
       }
    }
+
+   pipeline->rast.override_depth_clip =
+      dynamic_depth_clamp && !dynamic_depth_clip;
 }
 
 static void
@@ -4348,7 +4372,8 @@ tu_pipeline_builder_parse_rast_ds(struct tu_pipeline_builder *builder,
 
    pipeline->rast_ds.rb_depth_cntl =
       pipeline->rast.rb_depth_cntl | pipeline->ds.rb_depth_cntl;
-   pipeline->rast_ds.rb_depth_cntl_mask = pipeline->ds.rb_depth_cntl_mask;
+   pipeline->rast_ds.rb_depth_cntl_mask =
+      pipeline->rast.rb_depth_cntl_mask & pipeline->ds.rb_depth_cntl_mask;
 
    struct tu_cs cs;
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
