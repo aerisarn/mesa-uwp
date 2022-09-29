@@ -1,7 +1,9 @@
 #!/bin/bash
 
+set -e
+
 dxvk_install_release() {
-    local DXVK_VERSION=${1:-"1.10.1"}
+    local DXVK_VERSION=${1:-"1.10.3"}
 
     wget "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
     tar xzpf dxvk-"${DXVK_VERSION}".tar.gz
@@ -21,14 +23,14 @@ dxvk_install_pr() {
     # describe' is used by the dxvk build system to generate a
     # dxvk_version Meson variable, which is nice-to-have.
     git clone https://github.com/doitsujin/dxvk
-    pushd dxvk || exit 1
+    pushd dxvk
     git fetch origin pull/"$__prnum"/head:pr
     git checkout pr
     ./package-release.sh pr ../dxvk-build --no-package
-    popd || exit 1
-    pushd ./dxvk-build/dxvk-pr || exit 1
+    popd
+    pushd ./dxvk-build/dxvk-pr
     ./setup_dxvk.sh install
-    popd || exit 1
+    popd
     rm -rf ./dxvk-build ./dxvk
 }
 
