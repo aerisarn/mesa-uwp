@@ -2610,6 +2610,11 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          BIT(TU_DYNAMIC_STATE_POLYGON_MODE)))
        cmd->state.polygon_mode = pipeline->rast.polygon_mode;
 
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN)))
+       cmd->state.tess_upper_left_domain_origin =
+          pipeline->tess.upper_left_domain_origin;
+
    tu6_update_msaa(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
@@ -3100,6 +3105,15 @@ tu_CmdSetPolygonModeEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    cmd->state.polygon_mode = tu6_polygon_mode(polygonMode);
    cmd->state.dirty |= TU_CMD_DIRTY_RAST;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
+                                     VkTessellationDomainOrigin domainOrigin)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   cmd->state.tess_upper_left_domain_origin =
+      domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
 }
 
 static void
@@ -4437,7 +4451,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    bool primitive_restart = primitive_restart_enabled && indexed;
    bool provoking_vtx_last = pipeline->rast.provoking_vertex_last;
    bool tess_upper_left_domain_origin =
-      pipeline->tess.upper_left_domain_origin;
+      cmd->state.tess_upper_left_domain_origin;
 
    struct tu_primitive_params* prim_params = &cmd->state.last_prim_params;
 
