@@ -2354,7 +2354,7 @@ tu6_emit_blend_control(struct tu_pipeline *pipeline,
 {
    const uint32_t sample_mask =
       msaa_info->pSampleMask ? (*msaa_info->pSampleMask & 0xffff)
-                             : ((1 << msaa_info->rasterizationSamples) - 1);
+                             : 0xffff;
 
 
    pipeline->blend.sp_blend_cntl =
