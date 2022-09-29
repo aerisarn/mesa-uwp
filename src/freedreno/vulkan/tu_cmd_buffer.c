@@ -609,7 +609,29 @@ tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples,
 }
 
 static void
-tu6_update_msaa(struct tu_cmd_buffer *cmd, VkSampleCountFlagBits samples)
+tu6_update_msaa(struct tu_cmd_buffer *cmd)
+{
+   struct tu_cs cs;
+
+   cmd->state.msaa = tu_cs_draw_state(&cmd->sub_cs, &cs, 9);
+   tu6_emit_msaa(&cs, cmd->state.samples, cmd->state.msaa_disable);
+   if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
+      tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
+      tu_cs_emit_draw_state(&cmd->draw_cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
+   }
+}
+
+static void
+tu6_update_msaa_samples(struct tu_cmd_buffer *cmd, VkSampleCountFlagBits samples)
+{
+   if (cmd->state.samples != samples) {
+      cmd->state.samples = samples;
+      tu6_update_msaa(cmd);
+   }
+}
+
+static void
+tu6_update_msaa_disable(struct tu_cmd_buffer *cmd)
 {
    bool is_line =
       tu6_primtype_line(cmd->state.primtype) ||
@@ -618,17 +640,9 @@ tu6_update_msaa(struct tu_cmd_buffer *cmd, VkSampleCountFlagBits samples)
        cmd->state.pipeline->tess.patch_type == IR3_TESS_ISOLINES);
    bool msaa_disable = is_line && cmd->state.line_mode == BRESENHAM;
 
-   if (cmd->state.msaa_disable != msaa_disable ||
-       cmd->state.samples != samples) {
-      struct tu_cs cs;
-      cmd->state.msaa = tu_cs_draw_state(&cmd->sub_cs, &cs, 9);
-      tu6_emit_msaa(&cs, samples, msaa_disable);
-      if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
-         tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
-         tu_cs_emit_draw_state(&cmd->draw_cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
-      }
+   if (cmd->state.msaa_disable != msaa_disable) {
       cmd->state.msaa_disable = msaa_disable;
-      cmd->state.samples = samples;
+      tu6_update_msaa(cmd);
    }
 }
 
@@ -2615,7 +2629,9 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        cmd->state.tess_upper_left_domain_origin =
           pipeline->tess.upper_left_domain_origin;
 
-   tu6_update_msaa(cmd, pipeline->output.samples);
+   tu6_update_msaa_disable(cmd);
+
+   tu6_update_msaa_samples(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
        (pipeline->viewport.z_negative_one_to_one != cmd->state.z_negative_one_to_one)) {
@@ -2880,7 +2896,7 @@ tu_CmdSetPrimitiveTopologyEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    cmd->state.primtype = tu6_primtype(primitiveTopology);
-   tu6_update_msaa(cmd, cmd->state.samples);
+   tu6_update_msaa_disable(cmd);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3906,7 +3922,7 @@ tu_emit_subpass_begin(struct tu_cmd_buffer *cmd)
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
    if (cmd->state.subpass->samples != 0)
-      tu6_update_msaa(cmd, cmd->state.subpass->samples);
+      tu6_update_msaa_samples(cmd, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
