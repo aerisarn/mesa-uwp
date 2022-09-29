@@ -276,11 +276,28 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
          .heapIndex = visible_vram_index,
       };
+
+      device->memory_domains[type_count] = RADEON_DOMAIN_VRAM;
+      device->memory_flags[type_count] = RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_32BIT;
+      device->memory_properties.memoryTypes[type_count++] = (VkMemoryType){
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         .heapIndex = visible_vram_index,
+      };
    }
 
    if (gart_index >= 0) {
       device->memory_domains[type_count] = RADEON_DOMAIN_GTT;
       device->memory_flags[type_count] = RADEON_FLAG_CPU_ACCESS;
+      device->memory_properties.memoryTypes[type_count++] = (VkMemoryType){
+         .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = gart_index,
+      };
+
+      device->memory_domains[type_count] = RADEON_DOMAIN_GTT;
+      device->memory_flags[type_count] = RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_32BIT;
       device->memory_properties.memoryTypes[type_count++] = (VkMemoryType){
          .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
