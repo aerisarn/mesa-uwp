@@ -2461,7 +2461,8 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    }
 
    struct si_shader_context ctx;
-   si_llvm_context_init(&ctx, sscreen, compiler, wave32 ? 32 : 64, exports_color_null, exports_mrtz);
+   si_llvm_context_init(&ctx, sscreen, compiler, wave32 ? 32 : 64, exports_color_null, exports_mrtz,
+                        AC_FLOAT_MODE_DEFAULT_OPENGL);
 
    ctx.shader = &shader;
    ctx.stage = stage;

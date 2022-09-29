@@ -182,7 +182,8 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                      gl_shader_stage stage, const char *name, bool less_optimized);
 void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscreen,
                           struct ac_llvm_compiler *compiler, unsigned wave_size,
-                          bool exports_color_null, bool exports_mrtz);
+                          bool exports_color_null, bool exports_mrtz,
+                          enum ac_float_mode float_mode);
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTypeRef *return_types,
                          unsigned num_return_elems, unsigned max_workgroup_size);
 void si_llvm_create_main_func(struct si_shader_context *ctx);
