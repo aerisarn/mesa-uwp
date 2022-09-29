@@ -2433,10 +2433,6 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->box = *box;
    *ptransfer = xfer;
 
-   map->dest_had_defined_contents =
-      util_ranges_intersect(&res->valid_buffer_range, box->x,
-                            box->x + box->width);
-
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
