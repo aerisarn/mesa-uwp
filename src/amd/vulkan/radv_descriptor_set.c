@@ -305,9 +305,16 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
            binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
           binding->pImmutableSamplers) {
          set_layout->binding[b].immutable_samplers_offset = samplers_offset;
-         set_layout->binding[b].immutable_samplers_equal =
-            has_equal_immutable_samplers(binding->pImmutableSamplers, binding->descriptorCount);
          set_layout->has_immutable_samplers = true;
+
+         /* Do not optimize space for descriptor buffers and embedded samplers, otherwise the set
+          * layout size/offset are incorrect.
+          */
+         if (!(pCreateInfo->flags & (VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT |
+                                     VK_DESCRIPTOR_SET_LAYOUT_CREATE_EMBEDDED_IMMUTABLE_SAMPLERS_BIT_EXT))) {
+            set_layout->binding[b].immutable_samplers_equal =
+               has_equal_immutable_samplers(binding->pImmutableSamplers, binding->descriptorCount);
+         }
 
          for (uint32_t i = 0; i < binding->descriptorCount; i++)
             memcpy(samplers + 4 * i,
@@ -1720,4 +1727,136 @@ radv_DestroySamplerYcbcrConversion(VkDevice _device, VkSamplerYcbcrConversion yc
 
    vk_object_base_finish(&ycbcr_conversion->base);
    vk_free2(&device->vk.alloc, pAllocator, ycbcr_conversion);
+}
+
+/* VK_EXT_descriptor_buffer */
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDescriptorSetLayoutSizeEXT(VkDevice device, VkDescriptorSetLayout layout,
+                                   VkDeviceSize *pLayoutSizeInBytes)
+{
+   RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, layout);
+   *pLayoutSizeInBytes = set_layout->size;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDescriptorSetLayoutBindingOffsetEXT(VkDevice device, VkDescriptorSetLayout layout,
+                                            uint32_t binding, VkDeviceSize *pOffset)
+{
+   RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, layout);
+   *pOffset = set_layout->binding[binding].offset;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDescriptorEXT(VkDevice _device, const VkDescriptorGetInfoEXT *pDescriptorInfo,
+                      size_t dataSize, void *pDescriptor)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+
+   switch (pDescriptorInfo->type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER: {
+      write_sampler_descriptor(pDescriptor, *pDescriptorInfo->data.pSampler);
+      break;
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      write_image_descriptor(pDescriptor, 64, pDescriptorInfo->type,
+                             pDescriptorInfo->data.pCombinedImageSampler);
+      if (pDescriptorInfo->data.pCombinedImageSampler) {
+         write_sampler_descriptor((uint32_t *)pDescriptor + 20,
+                                  pDescriptorInfo->data.pCombinedImageSampler->sampler);
+      }
+      break;
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      write_image_descriptor(pDescriptor, 64, pDescriptorInfo->type,
+                             pDescriptorInfo->data.pInputAttachmentImage);
+      break;
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      write_image_descriptor(pDescriptor, 64, pDescriptorInfo->type,
+                             pDescriptorInfo->data.pSampledImage);
+      break;
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      write_image_descriptor(pDescriptor, 32, pDescriptorInfo->type,
+                             pDescriptorInfo->data.pStorageImage);
+      break;
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+      const VkDescriptorAddressInfoEXT *addr_info = pDescriptorInfo->data.pUniformBuffer;
+
+      write_buffer_descriptor(device, pDescriptor, addr_info ? addr_info->address : 0,
+                              addr_info ? addr_info->range : 0);
+      break;
+   }
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+      const VkDescriptorAddressInfoEXT *addr_info = pDescriptorInfo->data.pStorageBuffer;
+
+      write_buffer_descriptor(device, pDescriptor, addr_info ? addr_info->address : 0,
+                              addr_info ? addr_info->range : 0);
+      break;
+   }
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+      const VkDescriptorAddressInfoEXT *addr_info = pDescriptorInfo->data.pUniformTexelBuffer;
+
+      if (addr_info && addr_info->address) {
+         radv_make_texel_buffer_descriptor(device, addr_info->address, addr_info->format, 0,
+                                           addr_info->range, pDescriptor);
+      } else {
+         memset(pDescriptor, 0, 4 * 4);
+      }
+      break;
+   }
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+      const VkDescriptorAddressInfoEXT *addr_info = pDescriptorInfo->data.pStorageTexelBuffer;
+
+      if (addr_info && addr_info->address) {
+         radv_make_texel_buffer_descriptor(device, addr_info->address, addr_info->format, 0,
+                                           addr_info->range, pDescriptor);
+      } else {
+         memset(pDescriptor, 0, 4 * 4);
+      }
+      break;
+   }
+   case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+      write_accel_struct(pDescriptor, pDescriptorInfo->data.accelerationStructure);
+      break;
+   }
+   default:
+      unreachable("invalid descriptor type");
+   }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetBufferOpaqueCaptureDescriptorDataEXT(VkDevice device,
+                                             const VkBufferCaptureDescriptorDataInfoEXT *pInfo,
+                                             void *pData)
+{
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetImageOpaqueCaptureDescriptorDataEXT(VkDevice device,
+                                            const VkImageCaptureDescriptorDataInfoEXT *pInfo,
+                                            void *pData)
+{
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetImageViewOpaqueCaptureDescriptorDataEXT(VkDevice device,
+                                                const VkImageViewCaptureDescriptorDataInfoEXT *pInfo,
+                                                void *pData)
+{
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetSamplerOpaqueCaptureDescriptorDataEXT(VkDevice _device,
+                                              const VkSamplerCaptureDescriptorDataInfoEXT *pInfo,
+                                              void *pData)
+{
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetAccelerationStructureOpaqueCaptureDescriptorDataEXT(VkDevice device,
+                                                            const VkAccelerationStructureCaptureDescriptorDataInfoEXT *pInfo,
+                                                            void *pData)
+{
+   return VK_SUCCESS;
 }

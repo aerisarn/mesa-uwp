@@ -905,6 +905,21 @@ radv_emit_userdata_address(struct radv_device *device, struct radeon_cmdbuf *cs,
    radv_emit_shader_pointer(device, cs, base_reg + loc->sgpr_idx * 4, va, false);
 }
 
+static uint64_t
+radv_descriptor_get_va(const struct radv_descriptor_state *descriptors_state, unsigned set_idx)
+{
+   struct radv_descriptor_set *set = descriptors_state->sets[set_idx];
+   uint64_t va;
+
+   if (set) {
+      va = set->header.va;
+   } else {
+      va = descriptors_state->descriptor_buffers[set_idx];
+   }
+
+   return va;
+}
+
 static void
 radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *cs,
                               struct radv_pipeline *pipeline,
@@ -927,9 +942,9 @@ radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *
 
       radv_emit_shader_pointer_head(cs, sh_offset, count, true);
       for (int i = 0; i < count; i++) {
-         struct radv_descriptor_set *set = descriptors_state->sets[start + i];
+         uint64_t va = radv_descriptor_get_va(descriptors_state, start + i);
 
-         radv_emit_shader_pointer_body(device, cs, set->header.va, true);
+         radv_emit_shader_pointer_body(device, cs, va, true);
       }
    }
 }
@@ -4105,9 +4120,9 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
    for (unsigned i = 0; i < MAX_SETS; i++) {
       uint32_t *uptr = ((uint32_t *)ptr) + i;
       uint64_t set_va = 0;
-      struct radv_descriptor_set *set = descriptors_state->sets[i];
       if (descriptors_state->valid & (1u << i))
-         set_va = set->header.va;
+         set_va = radv_descriptor_get_va(descriptors_state, i);
+
       uptr[0] = set_va & 0xffffffff;
    }
 
@@ -10795,4 +10810,44 @@ radv_CmdBindPipelineShaderGroupNV(VkCommandBuffer commandBuffer,
 {
    fprintf(stderr, "radv: unimplemented vkCmdBindPipelineShaderGroupNV\n");
    abort();
+}
+
+/* VK_EXT_descriptor_buffer */
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBindDescriptorBuffersEXT(VkCommandBuffer commandBuffer, uint32_t bufferCount,
+                                 const VkDescriptorBufferBindingInfoEXT *pBindingInfos)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   for (uint32_t i = 0; i < bufferCount; i++) {
+      cmd_buffer->descriptor_buffers[i] = pBindingInfos[i].address;
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDescriptorBufferOffsetsEXT(VkCommandBuffer commandBuffer,
+                                      VkPipelineBindPoint pipelineBindPoint,
+                                      VkPipelineLayout _layout, uint32_t firstSet, uint32_t setCount,
+                                      const uint32_t *pBufferIndices, const VkDeviceSize *pOffsets)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_descriptor_state *descriptors_state =
+      radv_get_descriptors_state(cmd_buffer, pipelineBindPoint);
+
+   for (unsigned i = 0; i < setCount; i++) {
+      unsigned idx = i + firstSet;
+
+      descriptors_state->descriptor_buffers[idx] =
+         cmd_buffer->descriptor_buffers[pBufferIndices[i]] + pOffsets[i];
+
+      radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, NULL, idx);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdBindDescriptorBufferEmbeddedSamplersEXT(VkCommandBuffer commandBuffer,
+                                                VkPipelineBindPoint pipelineBindPoint,
+                                                VkPipelineLayout _layout, uint32_t set)
+{
+   /* This is a no-op because embedded samplers are inlined at compile time. */
 }
