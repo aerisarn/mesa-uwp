@@ -365,14 +365,25 @@ def select_baseline(basepath, gfx_level, gpu_name):
 
 filters_args = parse_test_filters(args.include_tests)
 baseline = select_baseline(base, gfx_level, gpu_name)
-flakes = os.path.join(
-    base, "{}-{}-flakes.csv".format(gfx_level_to_str(gfx_level), gpu_name)
-)
+flakes = [
+    f
+    for f in (
+        os.path.join(base, g)
+        for g in [
+            "radeonsi-flakes.csv",
+            "{}-{}-flakes.csv".format(gfx_level_to_str(gfx_level), gpu_name),
+        ]
+    )
+    if os.path.exists(f)
+]
+flakes_args = []
+for f in flakes:
+    flakes_args += ["--flakes", f]
 
 if os.path.exists(baseline):
     print_yellow("Baseline: {}".format(baseline))
-if os.path.exists(flakes):
-    print_yellow("[flakes {}]".format(flakes))
+if flakes_args:
+    print_yellow("Flakes: {}".format(flakes_args))
 
 # piglit test
 if args.piglit:
@@ -397,13 +408,10 @@ if args.piglit:
         str(args.jobs),
         "--skips",
         skips,
-    ] + filters_args
+    ] + filters_args + flakes_args
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
-
-    if os.path.exists(flakes):
-        cmd += ["--flakes", flakes]
 
     run_cmd(cmd, args.verbose)
     failures_path = os.path.join(out, "failures.csv")
@@ -446,12 +454,13 @@ if args.glcts:
         "--jobs",
         str(args.jobs),
         "--timeout",
-        "1000",
-    ] + filters_args
+        "1000"
+    ] + filters_args + flakes_args
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
     cmd += deqp_args
+
     run_cmd(cmd, args.verbose)
 
     failures_path = os.path.join(out, "failures.csv")
@@ -513,7 +522,8 @@ if args.deqp:
         os.path.join(output_folder, "deqp"),
         "--suite",
         suite_filename,
-    ] + filters_args
+    ] + filters_args + flakes_args
+
     run_cmd(cmd, args.verbose)
 
     failures_path = os.path.join(out, "failures.csv")
