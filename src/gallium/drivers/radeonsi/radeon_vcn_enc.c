@@ -163,6 +163,21 @@ static void radeon_vcn_enc_h264_get_rc_param(struct radeon_encoder *enc,
    enc->enc_pic.rc_per_pic.max_au_size = pic->rate_ctrl[0].max_au_size;
 }
 
+static void radeon_vcn_enc_h264_get_vui_param(struct radeon_encoder *enc,
+                                              struct pipe_h264_enc_picture_desc *pic)
+{
+   enc->enc_pic.vui_info.vui_parameters_present_flag =
+      pic->seq.vui_parameters_present_flag;
+   enc->enc_pic.vui_info.flags.aspect_ratio_info_present_flag =
+      pic->seq.vui_flags.aspect_ratio_info_present_flag;
+   enc->enc_pic.vui_info.flags.timing_info_present_flag =
+      pic->seq.vui_flags.timing_info_present_flag;
+   enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
+   enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
+   enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
+   enc->enc_pic.vui_info.num_units_in_tick = pic->seq.num_units_in_tick;
+   enc->enc_pic.vui_info.time_scale = pic->seq.time_scale;
+}
 
 static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
                                           struct pipe_h264_enc_picture_desc *pic)
@@ -185,6 +200,7 @@ static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_h264_get_cropping_param(enc, pic);
    radeon_vcn_enc_h264_get_rc_param(enc, pic);
    radeon_vcn_enc_h264_get_spec_misc_param(enc, pic);
+   radeon_vcn_enc_h264_get_vui_param(enc, pic);
 }
 
 static void radeon_vcn_enc_hevc_get_cropping_param(struct radeon_encoder *enc,
@@ -282,6 +298,21 @@ static void radeon_vcn_enc_hevc_get_rc_param(struct radeon_encoder *enc,
    enc->enc_pic.rc_per_pic.max_au_size = pic->rc.max_au_size;
 }
 
+static void radeon_vcn_enc_hevc_get_vui_param(struct radeon_encoder *enc,
+                                              struct pipe_h265_enc_picture_desc *pic)
+{
+   enc->enc_pic.vui_info.vui_parameters_present_flag = pic->seq.vui_parameters_present_flag;
+   enc->enc_pic.vui_info.flags.aspect_ratio_info_present_flag =
+      pic->seq.vui_flags.aspect_ratio_info_present_flag;
+   enc->enc_pic.vui_info.flags.timing_info_present_flag =
+      pic->seq.vui_flags.timing_info_present_flag;
+   enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
+   enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
+   enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
+   enc->enc_pic.vui_info.num_units_in_tick = pic->seq.num_units_in_tick;
+   enc->enc_pic.vui_info.time_scale = pic->seq.time_scale;
+}
+
 static void radeon_vcn_enc_hevc_get_param(struct radeon_encoder *enc,
                                           struct pipe_h265_enc_picture_desc *pic)
 {
@@ -337,6 +368,7 @@ static void radeon_vcn_enc_hevc_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_hevc_get_dbk_param(enc, pic);
    radeon_vcn_enc_hevc_get_rc_param(enc, pic);
    radeon_vcn_enc_hevc_get_rc_param(enc, pic);
+   radeon_vcn_enc_hevc_get_vui_param(enc, pic);
 }
 
 static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_picture_desc *picture)

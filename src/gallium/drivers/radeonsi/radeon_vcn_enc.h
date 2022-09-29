@@ -444,6 +444,20 @@ typedef struct rvcn_enc_quality_modes_s
    unsigned preset_mode;
 } rvcn_enc_quality_modes_t;
 
+typedef struct rvcn_enc_vui_info_s
+{
+   uint32_t vui_parameters_present_flag;
+   struct {
+      uint32_t aspect_ratio_info_present_flag : 1;
+      uint32_t timing_info_present_flag : 1;
+   } flags;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t num_units_in_tick;
+   uint32_t time_scale;
+}rvcn_enc_vui_info;
+
 typedef void (*radeon_enc_get_buffer)(struct pipe_resource *resource, struct pb_buffer **handle,
                                       struct radeon_surf **surface);
 
@@ -488,6 +502,7 @@ struct radeon_enc_pic {
    unsigned num_temporal_layers;
    unsigned temporal_layer_pattern_index;
    rvcn_enc_quality_modes_t quality_modes;
+   rvcn_enc_vui_info vui_info;
 
    bool not_referenced;
    bool is_ltr;
