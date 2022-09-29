@@ -2871,6 +2871,9 @@ typedef struct {
    /* Estimated cost (in number of instructions) of the loop */
    unsigned instr_cost;
 
+   /* Contains fp64 ops that will be lowered */
+   bool has_soft_fp64;
+
    /* Guessed trip count based on array indexing */
    unsigned guessed_trip_count;
 

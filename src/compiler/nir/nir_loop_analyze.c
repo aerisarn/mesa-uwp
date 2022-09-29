@@ -216,8 +216,10 @@ instr_cost(loop_info_state *state, nir_instr *instr,
          cost *= 20;
 
       /* If it's full software, it's even more expensive */
-      if (options->lower_doubles_options & nir_lower_fp64_full_software)
+      if (options->lower_doubles_options & nir_lower_fp64_full_software) {
          cost *= 100;
+         state->loop->info->has_soft_fp64 = true;
+      }
 
       return cost;
    } else {
