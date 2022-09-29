@@ -245,6 +245,12 @@ mkdir -p $ROOTFS/apitrace
 mv /apitrace/build $ROOTFS/apitrace
 rm -rf /apitrace
 
+############### Build ANGLE
+if [[ "$DEBIAN_ARCH" = "amd64" ]]; then
+  . .gitlab-ci/container/build-angle.sh
+  mv /angle /lava-files/rootfs-${DEBIAN_ARCH}/.
+  rm -rf /angle
+fi
 
 ############### Build dEQP runner
 . .gitlab-ci/container/build-deqp-runner.sh
