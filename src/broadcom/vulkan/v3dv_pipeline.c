@@ -104,22 +104,10 @@ pipeline_free_stages(struct v3dv_device *device,
 {
    assert(pipeline);
 
-   /* FIXME: we can't just use a loop over mesa stage due the bin, would be
-    * good to find an alternative.
-    */
-   destroy_pipeline_stage(device, pipeline->vs, pAllocator);
-   destroy_pipeline_stage(device, pipeline->vs_bin, pAllocator);
-   destroy_pipeline_stage(device, pipeline->gs, pAllocator);
-   destroy_pipeline_stage(device, pipeline->gs_bin, pAllocator);
-   destroy_pipeline_stage(device, pipeline->fs, pAllocator);
-   destroy_pipeline_stage(device, pipeline->cs, pAllocator);
-
-   pipeline->vs = NULL;
-   pipeline->vs_bin = NULL;
-   pipeline->gs = NULL;
-   pipeline->gs_bin = NULL;
-   pipeline->fs = NULL;
-   pipeline->cs = NULL;
+   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
+      destroy_pipeline_stage(device, pipeline->stages[stage], pAllocator);
+      pipeline->stages[stage] = NULL;
+   }
 }
 
 static void
@@ -1073,7 +1061,8 @@ pipeline_populate_v3d_key(struct v3d_key *key,
    switch (p_stage->stage) {
    case BROADCOM_SHADER_VERTEX:
    case BROADCOM_SHADER_VERTEX_BIN:
-      key->is_last_geometry_stage = p_stage->pipeline->gs == NULL;
+      key->is_last_geometry_stage =
+         p_stage->pipeline->stages[BROADCOM_SHADER_GEOMETRY] == NULL;
       break;
    case BROADCOM_SHADER_GEOMETRY:
    case BROADCOM_SHADER_GEOMETRY_BIN:
@@ -1342,7 +1331,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
          key->num_used_outputs = 0;
       } else {
          /* Linking against GS binning program */
-         assert(pipeline->gs);
+         assert(pipeline->stages[BROADCOM_SHADER_GEOMETRY]);
          struct v3dv_shader_variant *gs_bin_variant =
             pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN];
 
@@ -1357,7 +1346,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
             sizeof(key->used_outputs));
       }
    } else { /* Render VS */
-      if (pipeline->gs) {
+      if (pipeline->stages[BROADCOM_SHADER_GEOMETRY]) {
          /* Linking against GS render program */
          struct v3dv_shader_variant *gs_variant =
             pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY];
@@ -1508,20 +1497,22 @@ pipeline_hash_graphics(const struct v3dv_pipeline *pipeline,
                         sizeof(pipeline->layout->sha1));
    }
 
-   /* We need to include all shader stages in the sha1 key as linking may modify
-    * the shader code in any stage. An alternative would be to use the
+   /* We need to include all shader stages in the sha1 key as linking may
+    * modify the shader code in any stage. An alternative would be to use the
     * serialized NIR, but that seems like an overkill.
     */
-   _mesa_sha1_update(&ctx, pipeline->vs->shader_sha1,
-                     sizeof(pipeline->vs->shader_sha1));
+   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
+      if (broadcom_shader_stage_is_binning(stage))
+         continue;
 
-   if (pipeline->gs) {
-      _mesa_sha1_update(&ctx, pipeline->gs->shader_sha1,
-                        sizeof(pipeline->gs->shader_sha1));
+      struct v3dv_pipeline_stage *p_stage = pipeline->stages[stage];
+      if (p_stage == NULL)
+         continue;
+
+      assert(stage != BROADCOM_SHADER_COMPUTE);
+
+      _mesa_sha1_update(&ctx, p_stage->shader_sha1, sizeof(p_stage->shader_sha1));
    }
-
-   _mesa_sha1_update(&ctx, pipeline->fs->shader_sha1,
-                     sizeof(pipeline->fs->shader_sha1));
 
    _mesa_sha1_update(&ctx, key, sizeof(struct v3dv_pipeline_key));
 
@@ -1541,8 +1532,10 @@ pipeline_hash_compute(const struct v3dv_pipeline *pipeline,
                         sizeof(pipeline->layout->sha1));
    }
 
-   _mesa_sha1_update(&ctx, pipeline->cs->shader_sha1,
-                     sizeof(pipeline->cs->shader_sha1));
+   struct v3dv_pipeline_stage *p_stage =
+      pipeline->stages[BROADCOM_SHADER_COMPUTE];
+
+   _mesa_sha1_update(&ctx, p_stage->shader_sha1, sizeof(p_stage->shader_sha1));
 
    _mesa_sha1_update(&ctx, key, sizeof(struct v3dv_pipeline_key));
 
@@ -1864,24 +1857,29 @@ pipeline_compile_vertex_shader(struct v3dv_pipeline *pipeline,
                                const VkAllocationCallbacks *pAllocator,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   assert(pipeline->vs_bin != NULL);
-   if (pipeline->vs_bin->nir == NULL) {
-      assert(pipeline->vs->nir);
-      pipeline->vs_bin->nir = nir_shader_clone(NULL, pipeline->vs->nir);
+   struct v3dv_pipeline_stage *p_stage_vs =
+      pipeline->stages[BROADCOM_SHADER_VERTEX];
+   struct v3dv_pipeline_stage *p_stage_vs_bin =
+      pipeline->stages[BROADCOM_SHADER_VERTEX_BIN];
+
+   assert(p_stage_vs_bin != NULL);
+   if (p_stage_vs_bin->nir == NULL) {
+      assert(p_stage_vs->nir);
+      p_stage_vs_bin->nir = nir_shader_clone(NULL, p_stage_vs->nir);
    }
 
    VkResult vk_result;
    struct v3d_vs_key key;
-   pipeline_populate_v3d_vs_key(&key, pCreateInfo, pipeline->vs);
+   pipeline_populate_v3d_vs_key(&key, pCreateInfo, p_stage_vs);
    pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX] =
-      pipeline_compile_shader_variant(pipeline->vs, &key.base, sizeof(key),
+      pipeline_compile_shader_variant(p_stage_vs, &key.base, sizeof(key),
                                       pAllocator, &vk_result);
    if (vk_result != VK_SUCCESS)
       return vk_result;
 
-   pipeline_populate_v3d_vs_key(&key, pCreateInfo, pipeline->vs_bin);
+   pipeline_populate_v3d_vs_key(&key, pCreateInfo, p_stage_vs_bin);
    pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN] =
-      pipeline_compile_shader_variant(pipeline->vs_bin, &key.base, sizeof(key),
+      pipeline_compile_shader_variant(p_stage_vs_bin, &key.base, sizeof(key),
                                       pAllocator, &vk_result);
 
    return vk_result;
@@ -1892,26 +1890,30 @@ pipeline_compile_geometry_shader(struct v3dv_pipeline *pipeline,
                                  const VkAllocationCallbacks *pAllocator,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   assert(pipeline->gs);
+   struct v3dv_pipeline_stage *p_stage_gs =
+      pipeline->stages[BROADCOM_SHADER_GEOMETRY];
+   struct v3dv_pipeline_stage *p_stage_gs_bin =
+      pipeline->stages[BROADCOM_SHADER_GEOMETRY_BIN];
 
-   assert(pipeline->gs_bin != NULL);
-   if (pipeline->gs_bin->nir == NULL) {
-      assert(pipeline->gs->nir);
-      pipeline->gs_bin->nir = nir_shader_clone(NULL, pipeline->gs->nir);
+   assert(p_stage_gs);
+   assert(p_stage_gs_bin != NULL);
+   if (p_stage_gs_bin->nir == NULL) {
+      assert(p_stage_gs->nir);
+      p_stage_gs_bin->nir = nir_shader_clone(NULL, p_stage_gs->nir);
    }
 
    VkResult vk_result;
    struct v3d_gs_key key;
-   pipeline_populate_v3d_gs_key(&key, pCreateInfo, pipeline->gs);
+   pipeline_populate_v3d_gs_key(&key, pCreateInfo, p_stage_gs);
    pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY] =
-      pipeline_compile_shader_variant(pipeline->gs, &key.base, sizeof(key),
+      pipeline_compile_shader_variant(p_stage_gs, &key.base, sizeof(key),
                                       pAllocator, &vk_result);
    if (vk_result != VK_SUCCESS)
       return vk_result;
 
-   pipeline_populate_v3d_gs_key(&key, pCreateInfo, pipeline->gs_bin);
+   pipeline_populate_v3d_gs_key(&key, pCreateInfo, p_stage_gs_bin);
    pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN] =
-      pipeline_compile_shader_variant(pipeline->gs_bin, &key.base, sizeof(key),
+      pipeline_compile_shader_variant(p_stage_gs_bin, &key.base, sizeof(key),
                                       pAllocator, &vk_result);
 
    return vk_result;
@@ -1922,19 +1924,20 @@ pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
                                  const VkAllocationCallbacks *pAllocator,
                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   struct v3dv_pipeline_stage *p_stage = pipeline->vs;
-
-   p_stage = pipeline->fs;
+   struct v3dv_pipeline_stage *p_stage_vs =
+      pipeline->stages[BROADCOM_SHADER_VERTEX];
+   struct v3dv_pipeline_stage *p_stage_fs =
+      pipeline->stages[BROADCOM_SHADER_FRAGMENT];
 
    struct v3d_fs_key key;
 
-   pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage,
-                                pipeline->gs != NULL,
-                                get_ucp_enable_mask(pipeline->vs));
+   pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage_fs,
+                                pipeline->stages[BROADCOM_SHADER_GEOMETRY] != NULL,
+                                get_ucp_enable_mask(p_stage_vs));
 
    VkResult vk_result;
    pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT] =
-      pipeline_compile_shader_variant(p_stage, &key.base, sizeof(key),
+      pipeline_compile_shader_variant(p_stage_fs, &key.base, sizeof(key),
                                       pAllocator, &vk_result);
 
    return vk_result;
@@ -2077,7 +2080,8 @@ v3dv_pipeline_shared_data_new_empty(const unsigned char sha1_key[20],
          continue;
       }
 
-      if (stage == BROADCOM_SHADER_GEOMETRY && !pipeline->gs) {
+      if (stage == BROADCOM_SHADER_GEOMETRY &&
+          !pipeline->stages[BROADCOM_SHADER_GEOMETRY]) {
          /* We always inject a custom GS if we have multiview */
          if (!pipeline->subpass->view_mask)
             continue;
@@ -2137,35 +2141,16 @@ write_creation_feedback(struct v3dv_pipeline *pipeline,
 
       for (uint32_t i = 0; i < stage_count; i++) {
          gl_shader_stage s = vk_to_mesa_shader_stage(stages[i].stage);
-         switch (s) {
-         case MESA_SHADER_VERTEX:
-            create_feedback->pPipelineStageCreationFeedbacks[i] =
-               pipeline->vs->feedback;
+         enum broadcom_shader_stage bs = gl_shader_stage_to_broadcom(s);
 
+         create_feedback->pPipelineStageCreationFeedbacks[i] =
+            pipeline->stages[bs]->feedback;
+
+         if (broadcom_shader_stage_is_render_with_binning(bs)) {
+            enum broadcom_shader_stage bs_bin =
+               broadcom_binning_shader_stage_for_render_stage(bs);
             create_feedback->pPipelineStageCreationFeedbacks[i].duration +=
-               pipeline->vs_bin->feedback.duration;
-            break;
-
-         case MESA_SHADER_GEOMETRY:
-            create_feedback->pPipelineStageCreationFeedbacks[i] =
-               pipeline->gs->feedback;
-
-            create_feedback->pPipelineStageCreationFeedbacks[i].duration +=
-               pipeline->gs_bin->feedback.duration;
-            break;
-
-         case MESA_SHADER_FRAGMENT:
-            create_feedback->pPipelineStageCreationFeedbacks[i] =
-               pipeline->fs->feedback;
-            break;
-
-         case MESA_SHADER_COMPUTE:
-            create_feedback->pPipelineStageCreationFeedbacks[i] =
-               pipeline->cs->feedback;
-            break;
-
-         default:
-            unreachable("not supported shader stage");
+               pipeline->stages[bs_bin]->feedback.duration;
          }
       }
    }
@@ -2219,8 +2204,9 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
                           const VkAllocationCallbacks *pAllocator)
 {
    /* Create the passthrough GS from the VS output interface */
-   pipeline->vs->nir = pipeline_stage_get_nir(pipeline->vs, pipeline, cache);
-   nir_shader *vs_nir = pipeline->vs->nir;
+   struct v3dv_pipeline_stage *p_stage_vs = pipeline->stages[BROADCOM_SHADER_VERTEX];
+   p_stage_vs->nir = pipeline_stage_get_nir(p_stage_vs, pipeline, cache);
+   nir_shader *vs_nir = p_stage_vs->nir;
 
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY, options,
@@ -2318,13 +2304,13 @@ pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
 
    pipeline->has_gs = true;
-   pipeline->gs = p_stage;
+   pipeline->stages[BROADCOM_SHADER_GEOMETRY] = p_stage;
    pipeline->active_stages |= MESA_SHADER_GEOMETRY;
 
-   pipeline->gs_bin =
-      pipeline_stage_create_binning(pipeline->gs, pAllocator);
-      if (pipeline->gs_bin == NULL)
-         return false;
+   pipeline->stages[BROADCOM_SHADER_GEOMETRY_BIN] =
+      pipeline_stage_create_binning(p_stage, pAllocator);
+   if (pipeline->stages[BROADCOM_SHADER_GEOMETRY_BIN] == NULL)
+      return false;
 
    return true;
 }
@@ -2384,8 +2370,11 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
 
+      enum broadcom_shader_stage broadcom_stage =
+         gl_shader_stage_to_broadcom(stage);
+
       p_stage->pipeline = pipeline;
-      p_stage->stage = gl_shader_stage_to_broadcom(stage);
+      p_stage->stage = broadcom_stage;
       p_stage->entrypoint = sinfo->pName;
       p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
@@ -2398,36 +2387,24 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
        * worry about getting the nir shader for now.
        */
       p_stage->nir = NULL;
-
-      switch(stage) {
-      case MESA_SHADER_VERTEX:
-         pipeline->vs = p_stage;
-         pipeline->vs_bin =
-            pipeline_stage_create_binning(pipeline->vs, pAllocator);
-         if (pipeline->vs_bin == NULL)
-            return VK_ERROR_OUT_OF_HOST_MEMORY;
-         break;
-
-      case MESA_SHADER_GEOMETRY:
+      pipeline->stages[broadcom_stage] = p_stage;
+      if (broadcom_stage == BROADCOM_SHADER_GEOMETRY)
          pipeline->has_gs = true;
-         pipeline->gs = p_stage;
-         pipeline->gs_bin =
-            pipeline_stage_create_binning(pipeline->gs, pAllocator);
-         if (pipeline->gs_bin == NULL)
+
+      if (broadcom_shader_stage_is_render_with_binning(broadcom_stage)) {
+         enum broadcom_shader_stage broadcom_stage_bin =
+            broadcom_binning_shader_stage_for_render_stage(broadcom_stage);
+
+         pipeline->stages[broadcom_stage_bin] =
+            pipeline_stage_create_binning(p_stage, pAllocator);
+
+         if (pipeline->stages[broadcom_stage_bin] == NULL)
             return VK_ERROR_OUT_OF_HOST_MEMORY;
-         break;
-
-      case MESA_SHADER_FRAGMENT:
-         pipeline->fs = p_stage;
-         break;
-
-      default:
-         unreachable("not supported shader stage");
       }
    }
 
    /* Add a no-op fragment shader if needed */
-   if (!pipeline->fs) {
+   if (!pipeline->stages[BROADCOM_SHADER_FRAGMENT]) {
       nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                      &v3dv_nir_options,
                                                      "noop_fs");
@@ -2448,14 +2425,15 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
 
-      pipeline->fs = p_stage;
+      pipeline->stages[BROADCOM_SHADER_FRAGMENT] = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
    }
 
    /* If multiview is enabled, we inject a custom passthrough geometry shader
     * to broadcast draw calls to the appropriate views.
     */
-   assert(!pipeline->subpass->view_mask || (!pipeline->has_gs && !pipeline->gs));
+   assert(!pipeline->subpass->view_mask ||
+          (!pipeline->has_gs && !pipeline->stages[BROADCOM_SHADER_GEOMETRY]));
    if (pipeline->subpass->view_mask) {
       if (!pipeline_add_multiview_gs(pipeline, cache, pAllocator))
          return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -2484,9 +2462,9 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX]);
          assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN]);
          assert(pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT]);
-         assert(!pipeline->gs ||
+         assert(!pipeline->stages[BROADCOM_SHADER_GEOMETRY] ||
                 pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY]);
-         assert(!pipeline->gs ||
+         assert(!pipeline->stages[BROADCOM_SHADER_GEOMETRY] ||
                 pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN]);
 
          if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
@@ -2506,39 +2484,43 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    pipeline->shared_data =
       v3dv_pipeline_shared_data_new_empty(pipeline->sha1, pipeline, true);
 
-   pipeline->vs->feedback.flags |=
+   struct v3dv_pipeline_stage *p_stage_vs = pipeline->stages[BROADCOM_SHADER_VERTEX];
+   struct v3dv_pipeline_stage *p_stage_fs = pipeline->stages[BROADCOM_SHADER_FRAGMENT];
+   struct v3dv_pipeline_stage *p_stage_gs = pipeline->stages[BROADCOM_SHADER_GEOMETRY];
+
+   p_stage_vs->feedback.flags |=
       VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
-   if (pipeline->gs)
-      pipeline->gs->feedback.flags |=
+   if (p_stage_gs)
+      p_stage_gs->feedback.flags |=
          VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
-   pipeline->fs->feedback.flags |=
+   p_stage_fs->feedback.flags |=
       VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
-   if (!pipeline->vs->nir)
-      pipeline->vs->nir = pipeline_stage_get_nir(pipeline->vs, pipeline, cache);
-   if (pipeline->gs && !pipeline->gs->nir)
-      pipeline->gs->nir = pipeline_stage_get_nir(pipeline->gs, pipeline, cache);
-   if (!pipeline->fs->nir)
-      pipeline->fs->nir = pipeline_stage_get_nir(pipeline->fs, pipeline, cache);
+   if (!p_stage_vs->nir)
+      p_stage_vs->nir = pipeline_stage_get_nir(p_stage_vs, pipeline, cache);
+   if (p_stage_gs && !p_stage_gs->nir)
+      p_stage_gs->nir = pipeline_stage_get_nir(p_stage_gs, pipeline, cache);
+   if (!p_stage_fs->nir)
+      p_stage_fs->nir = pipeline_stage_get_nir(p_stage_fs, pipeline, cache);
 
    /* Linking + pipeline lowerings */
-   if (pipeline->gs) {
-      link_shaders(pipeline->gs->nir, pipeline->fs->nir);
-      link_shaders(pipeline->vs->nir, pipeline->gs->nir);
+   if (p_stage_gs) {
+      link_shaders(p_stage_gs->nir, p_stage_fs->nir);
+      link_shaders(p_stage_vs->nir, p_stage_gs->nir);
    } else {
-      link_shaders(pipeline->vs->nir, pipeline->fs->nir);
+      link_shaders(p_stage_vs->nir, p_stage_fs->nir);
    }
 
-   pipeline_lower_nir(pipeline, pipeline->fs, pipeline->layout);
-   lower_fs_io(pipeline->fs->nir);
+   pipeline_lower_nir(pipeline, p_stage_fs, pipeline->layout);
+   lower_fs_io(p_stage_fs->nir);
 
-   if (pipeline->gs) {
-      pipeline_lower_nir(pipeline, pipeline->gs, pipeline->layout);
-      lower_gs_io(pipeline->gs->nir);
+   if (p_stage_gs) {
+      pipeline_lower_nir(pipeline, p_stage_gs, pipeline->layout);
+      lower_gs_io(p_stage_gs->nir);
    }
 
-   pipeline_lower_nir(pipeline, pipeline->vs, pipeline->layout);
-   lower_vs_io(pipeline->vs->nir);
+   pipeline_lower_nir(pipeline, p_stage_vs, pipeline->layout);
+   lower_vs_io(p_stage_vs->nir);
 
    /* Compiling to vir */
    VkResult vk_result;
@@ -2552,7 +2534,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    assert(!pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY] &&
           !pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN]);
 
-   if (pipeline->gs) {
+   if (p_stage_gs) {
       vk_result =
          pipeline_compile_geometry_shader(pipeline, pAllocator, pCreateInfo);
       if (vk_result != VK_SUCCESS)
@@ -3183,7 +3165,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    p_stage->nir = NULL;
 
-   pipeline->cs = p_stage;
+   pipeline->stages[BROADCOM_SHADER_COMPUTE] = p_stage;
    pipeline->active_stages |= sinfo->stage;
 
    /* First we try to get the variants from the pipeline cache (unless we are
@@ -3371,34 +3353,9 @@ static nir_shader *
 pipeline_get_nir(struct v3dv_pipeline *pipeline,
                  enum broadcom_shader_stage stage)
 {
-   switch (stage) {
-   case BROADCOM_SHADER_VERTEX:
-      if (pipeline->vs)
-         return pipeline->vs->nir;
-      break;
-   case BROADCOM_SHADER_VERTEX_BIN:
-      if(pipeline->vs_bin)
-         return pipeline->vs_bin->nir;
-      break;
-   case BROADCOM_SHADER_GEOMETRY:
-      if(pipeline->gs)
-         return pipeline->gs->nir;
-      break;
-   case BROADCOM_SHADER_GEOMETRY_BIN:
-      if (pipeline->gs_bin)
-         return pipeline->gs_bin->nir;
-      break;
-   case BROADCOM_SHADER_FRAGMENT:
-      if (pipeline->fs)
-         return pipeline->fs->nir;
-      break;
-   case BROADCOM_SHADER_COMPUTE:
-      if(pipeline->cs)
-         return pipeline->cs->nir;
-      break;
-   default:
-      unreachable("Unsupported shader stage");
-   }
+   assert(stage >= 0 && stage < BROADCOM_SHADER_STAGES);
+   if (pipeline->stages[stage])
+      return pipeline->stages[stage]->nir;
 
    return NULL;
 }
