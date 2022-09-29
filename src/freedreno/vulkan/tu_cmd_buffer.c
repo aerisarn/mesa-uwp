@@ -2679,12 +2679,14 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.pipeline_blend_enable = pipeline->blend.blend_enable;
       cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
    }
-   if (cmd->state.logic_op_enabled != pipeline->blend.logic_op_enabled) {
+   if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE)) &&
+       cmd->state.logic_op_enabled != pipeline->blend.logic_op_enabled) {
       cmd->state.logic_op_enabled = pipeline->blend.logic_op_enabled;
       cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
    }
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP)) &&
-       cmd->state.rop_reads_dst != pipeline->blend.rop_reads_dst) {
+       cmd->state.rb_mrt_control_rop != pipeline->blend.rb_mrt_control_rop) {
+      cmd->state.rb_mrt_control_rop = pipeline->blend.rb_mrt_control_rop;
       cmd->state.rop_reads_dst = pipeline->blend.rop_reads_dst;
       cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
    }
@@ -3061,6 +3063,17 @@ tu_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer,
 
    cmd->state.rb_mrt_control_rop =
       tu6_rb_mrt_control_rop(logicOp, &cmd->state.rop_reads_dst);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetLogicOpEnableEXT(VkCommandBuffer commandBuffer,
+                          VkBool32 logicOpEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.logic_op_enabled = logicOpEnable;
 
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
 }
@@ -4416,9 +4429,8 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
       if (color_write_enable & BIT(i)) {
          tu_cs_emit(cs, cmd->state.rb_mrt_control[i] |
-                        ((cmd->state.logic_op_enabled ?
-                          cmd->state.rb_mrt_control_rop : 0) &
-                         ~pipeline->blend.rb_mrt_control_mask));
+                        (cmd->state.logic_op_enabled ?
+                         cmd->state.rb_mrt_control_rop : 0));
          tu_cs_emit(cs, cmd->state.rb_mrt_blend_control[i]);
       } else {
          tu_cs_emit(cs, 0);

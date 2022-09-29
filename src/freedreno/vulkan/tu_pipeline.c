@@ -2250,13 +2250,10 @@ tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att,
 
 static uint32_t
 tu6_rb_mrt_control(const VkPipelineColorBlendAttachmentState *att,
-                   uint32_t rb_mrt_control_rop,
                    bool has_alpha)
 {
    uint32_t rb_mrt_control =
       A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE(att->colorWriteMask);
-
-   rb_mrt_control |= rb_mrt_control_rop;
 
    if (att->blendEnable) {
       rb_mrt_control |= A6XX_RB_MRT_CONTROL_BLEND;
@@ -2297,12 +2294,9 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
    *rop_reads_dst = false;
    *color_bandwidth_per_sample = 0;
 
-   uint32_t rb_mrt_control_rop = 0;
-   if (blend_info->logicOpEnable) {
-      pipeline->blend.logic_op_enabled = true;
-      rb_mrt_control_rop = tu6_rb_mrt_control_rop(blend_info->logicOp,
-                                                  rop_reads_dst);
-   }
+   pipeline->blend.rb_mrt_control_rop =
+      tu6_rb_mrt_control_rop(blend_info->logicOp, rop_reads_dst);
+   pipeline->blend.logic_op_enabled = blend_info->logicOpEnable;
 
    uint32_t total_bpp = 0;
    pipeline->blend.num_rts = blend_info->attachmentCount;
@@ -2318,7 +2312,7 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
          const bool has_alpha = vk_format_has_alpha(format);
 
          rb_mrt_control =
-            tu6_rb_mrt_control(att, rb_mrt_control_rop, has_alpha);
+            tu6_rb_mrt_control(att, has_alpha);
          rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
 
          /* calculate bpp based on format and write mask */
@@ -2340,7 +2334,7 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
          if (att->blendEnable)
             pipeline->blend.blend_enable |= BIT(i);
 
-         if (att->blendEnable || *rop_reads_dst) {
+         if (att->blendEnable || (blend_info->logicOpEnable && *rop_reads_dst)) {
             total_bpp += write_bpp;
          }
       }
@@ -2391,7 +2385,9 @@ tu6_emit_blend(struct tu_cs *cs,
 
    for (unsigned i = 0; i < pipeline->blend.num_rts; i++) {
       tu_cs_emit_regs(cs,
-                      A6XX_RB_MRT_CONTROL(i, .dword = pipeline->blend.rb_mrt_control[i]),
+                      A6XX_RB_MRT_CONTROL(i, .dword = pipeline->blend.rb_mrt_control[i] |
+                                                      (pipeline->blend.logic_op_enabled ?
+                                                       pipeline->blend.rb_mrt_control_rop : 0)),
                       A6XX_RB_MRT_BLEND_CONTROL(i, .dword = pipeline->blend.rb_mrt_blend_control[i]));
    }
 }
@@ -3686,9 +3682,14 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_LOGIC_OP_EXT:
          pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
          pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
-         pipeline->blend.rb_mrt_control_mask &= ~A6XX_RB_MRT_CONTROL_ROP_CODE__MASK;
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_LOGIC_OP);
+         break;
+      case VK_DYNAMIC_STATE_LOGIC_OP_ENABLE_EXT:
+         pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_BLEND);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE);
          break;
       case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
          pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
@@ -3829,6 +3830,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS) |
             BIT(TU_DYNAMIC_STATE_BLEND) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
+            BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
             BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE);
       }
 
@@ -4474,7 +4476,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    }
 
    uint32_t blend_enable_mask =
-      pipeline->blend.rop_reads_dst ? 
+      (pipeline->blend.logic_op_enabled && pipeline->blend.rop_reads_dst) ? 
       pipeline->blend.color_write_enable :
       pipeline->blend.blend_enable;
    tu6_emit_blend_control(pipeline, blend_enable_mask,

@@ -33,6 +33,7 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
    TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
    TU_DYNAMIC_STATE_LOGIC_OP,
+   TU_DYNAMIC_STATE_LOGIC_OP_ENABLE,
    TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE,
    TU_DYNAMIC_STATE_POLYGON_MODE,
    TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN,
@@ -161,6 +162,7 @@ struct tu_pipeline
    struct {
       unsigned num_rts;
       uint32_t rb_mrt_control[MAX_RTS], rb_mrt_control_mask;
+      uint32_t rb_mrt_control_rop;
       uint32_t rb_mrt_blend_control[MAX_RTS];
       uint32_t sp_blend_cntl, sp_blend_cntl_mask;
       uint32_t rb_blend_cntl, rb_blend_cntl_mask;
