@@ -215,6 +215,17 @@ struct vk_discard_rectangles_state {
    VkRect2D rectangles[MESA_VK_MAX_DISCARD_RECTANGLES];
 };
 
+enum PACKED vk_mesa_depth_clip_enable {
+   /** Depth clipping should be disabled */
+   VK_MESA_DEPTH_CLIP_ENABLE_FALSE = 0,
+
+   /** Depth clipping should be enabled */
+   VK_MESA_DEPTH_CLIP_ENABLE_TRUE = 1,
+
+   /** Depth clipping should be enabled iff depth clamping is disabled */
+   VK_MESA_DEPTH_CLIP_ENABLE_NOT_CLAMP,
+};
+
 struct vk_rasterization_state {
    /** VkPipelineRasterizationStateCreateInfo::rasterizerDiscardEnable
     *
@@ -234,10 +245,7 @@ struct vk_rasterization_state {
     *
     * MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE
     */
-   bool depth_clip_enable;
-
-   /** denotes the presence of VkPipelineRasterizationDepthClipStateCreateInfoEXT */
-   bool depth_clip_present;
+   enum vk_mesa_depth_clip_enable depth_clip_enable;
 
    /** VkPipelineRasterizationStateCreateInfo::polygonMode
     *
@@ -341,6 +349,17 @@ struct vk_rasterization_state {
       } stipple;
    } line;
 };
+
+static inline bool
+vk_rasterization_state_depth_clip_enable(const struct vk_rasterization_state *rs)
+{
+   switch (rs->depth_clip_enable) {
+   case VK_MESA_DEPTH_CLIP_ENABLE_FALSE:     return false;
+   case VK_MESA_DEPTH_CLIP_ENABLE_TRUE:      return true;
+   case VK_MESA_DEPTH_CLIP_ENABLE_NOT_CLAMP: return !rs->depth_clamp_enable;
+   }
+   unreachable("Invalid depth clip enable");
+}
 
 struct vk_fragment_shading_rate_state {
    /** VkPipelineFragmentShadingRateStateCreateInfoKHR::fragmentSize

@@ -741,11 +741,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE)) {
          state->depth_clamp_sets_clip = false;
       } else {
-         if (!ps->rs->depth_clip_present)
-            state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !state->rs_state.depth_clamp;
-         else
-            state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = ps->rs->depth_clip_enable;
-         state->depth_clamp_sets_clip = !ps->rs->depth_clip_present;
+         state->rs_state.depth_clip_near = state->rs_state.depth_clip_far =
+            vk_rasterization_state_depth_clip_enable(ps->rs);
+         state->depth_clamp_sets_clip =
+            ps->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_NOT_CLAMP;
       }
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))

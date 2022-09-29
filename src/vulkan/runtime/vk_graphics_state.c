@@ -507,8 +507,14 @@ vk_rasterization_state_init(struct vk_rasterization_state *rs,
     *    depth clipping is disabled when
     *    VkPipelineRasterizationStateCreateInfo::depthClampEnable is VK_TRUE.
     */
-   rs->depth_clamp_enable = rs_info->depthClampEnable;
-   rs->depth_clip_enable = !rs_info->depthClampEnable;
+   if (IS_DYNAMIC(RS_DEPTH_CLAMP_ENABLE)) {
+      rs->depth_clip_enable = VK_MESA_DEPTH_CLIP_ENABLE_NOT_CLAMP;
+   } else {
+      rs->depth_clamp_enable = rs_info->depthClampEnable;
+      rs->depth_clip_enable = rs_info->depthClampEnable ?
+                              VK_MESA_DEPTH_CLIP_ENABLE_FALSE :
+                              VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
+   }
 
    rs->polygon_mode = rs_info->polygonMode;
 
@@ -535,8 +541,9 @@ vk_rasterization_state_init(struct vk_rasterization_state *rs,
       case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
          const VkPipelineRasterizationDepthClipStateCreateInfoEXT *rdc_info =
             (const VkPipelineRasterizationDepthClipStateCreateInfoEXT *)ext;
-         rs->depth_clip_enable = rdc_info->depthClipEnable;
-         rs->depth_clip_present = true;
+         rs->depth_clip_enable = rdc_info->depthClipEnable ?
+                                 VK_MESA_DEPTH_CLIP_ENABLE_TRUE :
+                                 VK_MESA_DEPTH_CLIP_ENABLE_FALSE;
          break;
       }
 
@@ -1988,8 +1995,9 @@ vk_common_CmdSetDepthClipEnableEXT(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
    struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
 
-   SET_DYN_BOOL(dyn, RS_DEPTH_CLIP_ENABLE,
-                rs.depth_clip_enable, depthClipEnable);
+   SET_DYN_VALUE(dyn, RS_DEPTH_CLIP_ENABLE, rs.depth_clip_enable,
+                 depthClipEnable ? VK_MESA_DEPTH_CLIP_ENABLE_TRUE :
+                                   VK_MESA_DEPTH_CLIP_ENABLE_FALSE);
 }
 
 VKAPI_ATTR void VKAPI_CALL
