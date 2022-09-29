@@ -2383,6 +2383,41 @@ can_promote_to_async(const struct iris_resource *res,
                                  box->x + box->width);
 }
 
+static bool
+prefer_cpu_access(const struct iris_resource *res,
+                  const struct pipe_box *box,
+                  enum pipe_map_flags usage,
+                  unsigned level,
+                  bool map_would_stall)
+{
+   const enum iris_mmap_mode mmap_mode = iris_bo_mmap_mode(res->bo);
+
+   /* We must be able to map it. */
+   if (mmap_mode == IRIS_MMAP_NONE)
+      return false;
+
+   const bool write = usage & PIPE_MAP_WRITE;
+   const bool read = usage & PIPE_MAP_READ;
+
+   /* We want to avoid uncached reads because they are slow. */
+   if (read && mmap_mode != IRIS_MMAP_WB)
+      return false;
+
+   /* We want to avoid stalling.  We can't avoid stalling for reads, though,
+    * because the destination of a GPU staging copy would be busy and stall
+    * in the exact same manner.  So don't consider it for those.
+    */
+   if (map_would_stall && !read)
+      return false;
+
+   /* Use the GPU for writes if it would compress the data. */
+   if (write && isl_aux_usage_has_compression(res->aux.usage))
+      return false;
+
+   /* Writes & Cached CPU reads are fine as long as the primary is valid. */
+   return !iris_has_invalid_primary(res, level, 1, box->z, box->depth);
+}
+
 static void *
 iris_transfer_map(struct pipe_context *ctx,
                   struct pipe_resource *resource,
@@ -2486,30 +2521,8 @@ iris_transfer_map(struct pipe_context *ctx,
    if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base.b, &res->valid_buffer_range, box->x, box->x + box->width);
 
-   if (iris_bo_mmap_mode(res->bo) != IRIS_MMAP_NONE) {
-      /* GPU copies are not useful for buffer reads.  Instead of stalling to
-       * read from the original buffer, we'd simply copy it to a temporary...
-       * then stall (a bit longer) to read from that buffer.
-       *
-       * Images are less clear-cut.  Resolves can be destructive, removing
-       * some of the underlying compression, so we'd rather blit the data to
-       * a linear temporary and map that, to avoid the resolve.
-       */
-      if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
-          !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
-         usage |= PIPE_MAP_DIRECTLY;
-      }
-
-      /* We can map directly if it wouldn't stall, there's no compression,
-       * and we aren't doing an uncached read.
-       */
-      if (!map_would_stall &&
-          !isl_aux_usage_has_compression(res->aux.usage) &&
-          !((usage & PIPE_MAP_READ) &&
-            iris_bo_mmap_mode(res->bo) != IRIS_MMAP_WB)) {
-         usage |= PIPE_MAP_DIRECTLY;
-      }
-   }
+   if (prefer_cpu_access(res, box, usage, level, map_would_stall))
+      usage |= PIPE_MAP_DIRECTLY;
 
    /* TODO: Teach iris_map_tiled_memcpy about Tile4... */
    if (res->surf.tiling == ISL_TILING_4)
