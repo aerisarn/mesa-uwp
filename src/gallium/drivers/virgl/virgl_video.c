@@ -33,6 +33,7 @@
 #include "virgl_resource.h"
 #include "virgl_encode.h"
 #include "virgl_video.h"
+#include "virtio-gpu/virgl_video_hw.h"
 
 /*
  * The max size of bs buffer is approximately:
