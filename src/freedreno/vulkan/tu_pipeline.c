@@ -2629,8 +2629,7 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
     * just checked in tu6_emit_fs_inputs.  We will also copy the value to
     * tu_shader_key::force_sample_interp in a bit.
     */
-   if (msaa_info && msaa_info->sampleShadingEnable &&
-       (msaa_info->minSampleShading * msaa_info->rasterizationSamples) > 1.0f)
+   if (msaa_info && msaa_info->sampleShadingEnable)
       key->sample_shading = true;
 }
 
