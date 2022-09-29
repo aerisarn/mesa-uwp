@@ -2539,7 +2539,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
    const unsigned mag_filter = bld->static_sampler_state->mag_img_filter;
    const unsigned target = bld->static_texture_state->target;
    const bool aniso = bld->static_sampler_state->aniso;
-   LLVMValueRef first_level, cube_rho = NULL;
+   LLVMValueRef first_level = NULL;
    LLVMValueRef lod_ipart = NULL;
    struct lp_derivatives cube_derivs;
 
@@ -2550,7 +2550,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
 
    /*
     * Choose cube face, recompute texcoords for the chosen face and
-    * compute rho here too (as it requires transform of derivatives).
+    * calculate / transform derivatives.
     */
    if (target == PIPE_TEXTURE_CUBE || target == PIPE_TEXTURE_CUBE_ARRAY) {
       boolean need_derivs;
@@ -2558,7 +2558,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
                       mip_filter != PIPE_TEX_MIPFILTER_NONE) &&
                       !bld->static_sampler_state->min_max_lod_equal &&
                       !explicit_lod);
-      lp_build_cube_lookup(bld, coords, derivs, &cube_rho, &cube_derivs, need_derivs);
+      lp_build_cube_lookup(bld, coords, derivs, &cube_derivs, need_derivs);
       if (need_derivs)
          derivs = &cube_derivs;
 
@@ -2618,7 +2618,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
        * distinguish between minification/magnification with one mipmap level.
        */
       lp_build_lod_selector(bld, is_lodq, texture_index, sampler_index,
-                            coords[0], coords[1], coords[2], cube_rho,
+                            coords[0], coords[1], coords[2],
                             derivs, lod_bias, explicit_lod,
                             mip_filter, max_aniso, lod,
                             &lod_ipart, lod_fpart, lod_pos_or_zero);
