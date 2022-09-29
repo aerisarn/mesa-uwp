@@ -456,10 +456,23 @@ struct h265_slice_descriptor
    enum pipe_h265_slice_type slice_type;
 };
 
+struct pipe_h264_enc_seq_param
+{
+   unsigned enc_constraint_set_flags;
+   unsigned enc_frame_cropping_flag;
+   unsigned enc_frame_crop_left_offset;
+   unsigned enc_frame_crop_right_offset;
+   unsigned enc_frame_crop_top_offset;
+   unsigned enc_frame_crop_bottom_offset;
+   unsigned pic_order_cnt_type;
+   unsigned num_temporal_layers;
+};
+
 struct pipe_h264_enc_picture_desc
 {
    struct pipe_picture_desc base;
 
+   struct pipe_h264_enc_seq_param seq;
    struct pipe_h264_enc_rate_control rate_ctrl[4];
 
    struct pipe_h264_enc_motion_estimation motion_est;
