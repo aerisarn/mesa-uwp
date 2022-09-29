@@ -6389,9 +6389,13 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * a terminator instruction.
     *
     * See https://github.com/KhronosGroup/glslang/issues/3020 for details.
+    *
+    * Clay Shader Compiler (used by GravityMark) is also affected.
     */
    b->wa_ignore_return_after_emit_mesh_tasks =
-      is_glslang(b) && generator_version < 11;
+      (is_glslang(b) && generator_version < 11) ||
+      (b->generator_id == vtn_generator_clay_shader_compiler &&
+       generator_version < 18);
 
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
