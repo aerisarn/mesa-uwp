@@ -54,7 +54,7 @@ void
 main()
 {
    /* Revert the order so we start at the root */
-   uint32_t global_id = args.internal_node_count - 1 - gl_GlobalInvocationID.x;
+   uint32_t global_id = DEREF(args.header).ir_internal_node_count - 1 - gl_GlobalInvocationID.x;
 
    uint32_t intermediate_leaf_node_size;
    uint32_t output_leaf_node_size;
@@ -84,7 +84,7 @@ main()
    radv_ir_box_node src = DEREF(src_node);
 
   uint32_t dst_node_offset = dst_internal_offset + global_id * SIZEOF(radv_bvh_box32_node);
-   if (global_id == args.internal_node_count - 1)
+   if (global_id == DEREF(args.header).ir_internal_node_count - 1)
       dst_node_offset = id_to_offset(RADV_BVH_ROOT_NODE);
 
    REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, dst_node_offset));
@@ -196,7 +196,7 @@ main()
       break;
    }
 
-   if (global_id == args.internal_node_count - 1) {
+   if (global_id == DEREF(args.header).ir_internal_node_count - 1) {
       REF(radv_accel_struct_header) header = REF(radv_accel_struct_header)(args.output_bvh - args.output_bvh_offset);
       DEREF(header).aabb = src.base.aabb;
       DEREF(header).bvh_offset = args.output_bvh_offset;

@@ -80,7 +80,6 @@ struct radv_accel_struct_header {
    uint64_t instance_count;
    uint64_t size;
    uint32_t build_flags;
-   uint32_t internal_node_count;
 };
 
 struct radv_ir_node {
@@ -123,6 +122,7 @@ struct radv_ir_instance_node {
 struct radv_ir_header {
    int32_t min_bounds[3];
    int32_t max_bounds[3];
+   uint32_t ir_internal_node_count;
 };
 
 struct radv_bvh_triangle_node {

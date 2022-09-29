@@ -651,6 +651,15 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          bvh_states[i].scratch_offset = dst_scratch_offset;
       }
    }
+
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      radv_update_buffer_cp(cmd_buffer,
+                            pInfos[i].scratchData.deviceAddress +
+                               bvh_states[i].scratch.header_offset +
+                               offsetof(struct radv_ir_header, ir_internal_node_count),
+                            &bvh_states[i].internal_node_count, 4);
+   }
+
    cmd_buffer->state.flush_bits |= flush_bits;
 }
 
@@ -708,9 +717,9 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
       const struct convert_internal_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .output_bvh = accel_struct->va + bvh_states[i].accel_struct.bvh_offset,
+         .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
          .output_bvh_offset = bvh_states[i].accel_struct.bvh_offset,
          .leaf_node_count = bvh_states[i].leaf_node_count,
-         .internal_node_count = bvh_states[i].internal_node_count,
          .geometry_type = geometry_type,
       };
       radv_CmdPushConstants(
@@ -806,7 +815,6 @@ radv_CmdBuildAccelerationStructuresKHR(
 
       header.build_flags = pInfos[i].flags;
       header.geometry_count = pInfos[i].geometryCount;
-      header.internal_node_count = bvh_states[i].internal_node_count;
 
       struct radv_accel_struct_geometry_info *geometry_infos = malloc(geometry_infos_size);
       if (!geometry_infos)

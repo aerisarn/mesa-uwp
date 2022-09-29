@@ -78,9 +78,9 @@ struct copy_args {
 struct convert_internal_args {
    VOID_REF intermediate_bvh;
    VOID_REF output_bvh;
+   REF(radv_ir_header) header;
    uint32_t output_bvh_offset;
    uint32_t leaf_node_count;
-   uint32_t internal_node_count;
    uint32_t geometry_type;
 };
 
