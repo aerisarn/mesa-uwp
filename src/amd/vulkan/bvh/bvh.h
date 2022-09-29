@@ -81,8 +81,6 @@ struct radv_accel_struct_header {
 };
 
 struct radv_ir_node {
-   float sah_cost;
-   uint32_t parent;
    float aabb[2][3];
 };
 

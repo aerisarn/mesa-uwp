@@ -628,7 +628,6 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          progress = true;
 
          uint32_t dst_node_count = MAX2(1, DIV_ROUND_UP(bvh_states[i].node_count, 2));
-         bool final_iter = dst_node_count == 1;
 
          uint32_t src_scratch_offset = bvh_states[i].scratch_offset;
          uint32_t dst_scratch_offset =
@@ -648,7 +647,7 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
             .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
             .dst_ids = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
             .dst_offset = dst_node_offset,
-            .is_root_and_count = bvh_states[i].node_count | (final_iter ? 0x80000000U : 0),
+            .src_count = bvh_states[i].node_count,
          };
 
          radv_CmdPushConstants(

@@ -46,11 +46,8 @@ main(void)
 {
    uint32_t global_id = gl_GlobalInvocationID.x;
 
-   bool is_root_node = (args.is_root_and_count & 0x80000000u) != 0;
-   uint32_t src_count = args.is_root_and_count & 0x7FFFFFFFu;
-
    uint32_t src_index = global_id * 2;
-   uint32_t child_count = min(src_count - src_index, 2);
+   uint32_t child_count = min(args.src_count - src_index, 2);
 
    uint32_t dst_offset = args.dst_offset + global_id * SIZEOF(radv_ir_box_node);
    uint32_t current_id = pack_ir_node_id(dst_offset, radv_ir_node_internal);
@@ -77,8 +74,6 @@ main(void)
          total_bounds.min = min(total_bounds.min, bounds.min);
          total_bounds.max = max(total_bounds.max, bounds.max);
          is_active = true;
-
-         DEREF(child).parent = current_id;
       } else {
          child_id = NULL_NODE_ID;
       }
@@ -96,9 +91,4 @@ main(void)
     * id to NULL_NODE_ID for more internal nodes to become inactive.
     */
    DEREF(INDEX(key_id_pair, args.dst_ids, global_id)).id = is_active ? current_id : NULL_NODE_ID;
-
-   if (is_root_node) {
-      /* We're writing the root node, which doesn't have a parent */
-      DEREF(dst_node).base.parent = 0xFFFFFFFF;
-   }
 }
