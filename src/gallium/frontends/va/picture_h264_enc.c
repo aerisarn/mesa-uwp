@@ -162,6 +162,8 @@ vlVaHandleVAEncSliceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *contex
 VAStatus
 vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *buf)
 {
+   uint32_t num_units_in_tick = 0, time_scale  = 0;
+
    VAEncSequenceParameterBufferH264 *h264 = (VAEncSequenceParameterBufferH264 *)buf->data;
    if (!context->decoder) {
       context->templat.max_references = h264->max_num_ref_frames;
@@ -177,9 +179,31 @@ vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *con
    if (context->gop_coeff > VL_VA_ENC_GOP_COEFF)
       context->gop_coeff = VL_VA_ENC_GOP_COEFF;
    context->desc.h264enc.gop_size = h264->intra_idr_period * context->gop_coeff;
-   context->desc.h264enc.rate_ctrl[0].frame_rate_num = h264->time_scale / 2;
-   context->desc.h264enc.rate_ctrl[0].frame_rate_den = h264->num_units_in_tick;
    context->desc.h264enc.seq.pic_order_cnt_type = h264->seq_fields.bits.pic_order_cnt_type;
+   context->desc.h264enc.seq.vui_parameters_present_flag = h264->vui_parameters_present_flag;
+   if (h264->vui_parameters_present_flag) {
+      context->desc.h264enc.seq.vui_flags.aspect_ratio_info_present_flag =
+         h264->vui_fields.bits.aspect_ratio_info_present_flag;
+      context->desc.h264enc.seq.aspect_ratio_idc = h264->aspect_ratio_idc;
+      context->desc.h264enc.seq.sar_width = h264->sar_width;
+      context->desc.h264enc.seq.sar_height = h264->sar_height;
+      context->desc.h264enc.seq.vui_flags.timing_info_present_flag =
+         h264->vui_fields.bits.timing_info_present_flag;
+      num_units_in_tick = h264->num_units_in_tick;
+      time_scale = h264->time_scale;
+   } else
+      context->desc.h264enc.seq.vui_flags.timing_info_present_flag = 0;
+
+   if (!context->desc.h264enc.seq.vui_flags.timing_info_present_flag) {
+      /* if not present, set default value */
+      num_units_in_tick = PIPE_DEFAULT_FRAME_RATE_DEN;
+      time_scale = PIPE_DEFAULT_FRAME_RATE_NUM * 2;
+   }
+
+   context->desc.h264enc.seq.num_units_in_tick = num_units_in_tick;
+   context->desc.h264enc.seq.time_scale = time_scale;
+   context->desc.h264enc.rate_ctrl[0].frame_rate_num = time_scale / 2;
+   context->desc.h264enc.rate_ctrl[0].frame_rate_den = num_units_in_tick;
 
    if (h264->frame_cropping_flag) {
       context->desc.h264enc.seq.enc_frame_cropping_flag = h264->frame_cropping_flag;

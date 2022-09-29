@@ -40,7 +40,10 @@
 extern "C" {
 #endif
 
-#define PIPE_H265_MAX_REFERENCES 15
+#define PIPE_H265_MAX_REFERENCES      15
+#define PIPE_DEFAULT_FRAME_RATE_DEN   1
+#define PIPE_DEFAULT_FRAME_RATE_NUM   30
+#define PIPE_H2645_EXTENDED_SAR       255
 
 /*
  * see table 6-12 in the spec
@@ -460,6 +463,16 @@ struct pipe_h264_enc_seq_param
    unsigned enc_frame_crop_bottom_offset;
    unsigned pic_order_cnt_type;
    unsigned num_temporal_layers;
+   uint32_t vui_parameters_present_flag;
+   struct {
+      uint32_t aspect_ratio_info_present_flag: 1;
+      uint32_t timing_info_present_flag: 1;
+   } vui_flags;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t num_units_in_tick;
+   uint32_t time_scale;
 };
 
 struct pipe_h264_enc_picture_desc
@@ -531,6 +544,16 @@ struct pipe_h265_enc_seq_param
    uint16_t conf_win_right_offset;
    uint16_t conf_win_top_offset;
    uint16_t conf_win_bottom_offset;
+   uint32_t vui_parameters_present_flag;
+   struct {
+      uint32_t aspect_ratio_info_present_flag: 1;
+      uint32_t timing_info_present_flag: 1;
+   } vui_flags;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t num_units_in_tick;
+   uint32_t time_scale;
 };
 
 struct pipe_h265_enc_pic_param
@@ -1101,7 +1124,7 @@ enum pipe_h265_enc_pred_direction
    PIPE_H265_PRED_DIRECTION_BI_NOT_EMPTY = 0x4,
 };
 
-/* To be used on each h265 feature bit field 
+/* To be used on each h265 feature bit field
    defined in pipe_h265_enc_cap_features
 */
 enum pipe_h265_enc_feature
