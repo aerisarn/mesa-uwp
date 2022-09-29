@@ -5375,7 +5375,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * for SURFTYPE_BUFFER, we can just use the SIMD8 variant regardless of
        * the dispatch width.
        */
-      const fs_builder ubld = bld.exec_all().group(8, 0);
+      const fs_builder ubld = bld.exec_all().group(8 * reg_unit(devinfo), 0);
       fs_reg src_payload = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       fs_reg ret_payload = ubld.vgrf(BRW_REGISTER_TYPE_UD, 4);
 
@@ -5391,8 +5391,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       fs_inst *inst = ubld.emit(SHADER_OPCODE_GET_BUFFER_SIZE, ret_payload,
                                 srcs, GET_BUFFER_SIZE_SRCS);
       inst->header_size = 0;
-      inst->mlen = 1;
-      inst->size_written = 4 * REG_SIZE;
+      inst->mlen = reg_unit(devinfo);
+      inst->size_written = 4 * REG_SIZE * reg_unit(devinfo);
 
       /* SKL PRM, vol07, 3D Media GPGPU Engine, Bounds Checking and Faulting:
        *
