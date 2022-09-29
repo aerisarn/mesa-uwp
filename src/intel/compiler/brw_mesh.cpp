@@ -1260,6 +1260,7 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
    }
 
    case nir_intrinsic_load_draw_id:
+      dest = retype(dest, BRW_REGISTER_TYPE_UD);
       bld.MOV(dest, payload.extended_parameter_0);
       break;
 
