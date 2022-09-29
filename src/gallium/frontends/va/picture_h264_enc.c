@@ -215,6 +215,7 @@ vlVaHandleVAEncSequenceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *con
    context->desc.h264enc.seq.time_scale = time_scale;
    context->desc.h264enc.rate_ctrl[0].frame_rate_num = time_scale / 2;
    context->desc.h264enc.rate_ctrl[0].frame_rate_den = num_units_in_tick;
+   context->desc.h264enc.intra_idr_period = h264->intra_idr_period;
 
    if (h264->frame_cropping_flag) {
       context->desc.h264enc.seq.enc_frame_cropping_flag = h264->frame_cropping_flag;
