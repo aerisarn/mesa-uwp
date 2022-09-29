@@ -51,6 +51,13 @@ struct virgl_base_picture_desc {
 
 };
 
+struct virgl_enc_quality_modes {
+    uint32_t level;
+    uint32_t preset_mode;
+    uint32_t pre_encode_mode;
+    uint32_t vbaq_mode;
+};
+
 /* H.264 sequence parameter set */
 struct virgl_h264_sps {
     uint8_t  level_idc;
@@ -139,6 +146,120 @@ struct virgl_h264_picture_desc {
     uint8_t  num_ref_frames;
     uint8_t  reserved[2];
 };
+
+struct virgl_h264_enc_seq_param
+{
+   uint32_t enc_constraint_set_flags;
+   uint32_t enc_frame_cropping_flag;
+   uint32_t enc_frame_crop_left_offset;
+   uint32_t enc_frame_crop_right_offset;
+   uint32_t enc_frame_crop_top_offset;
+   uint32_t enc_frame_crop_bottom_offset;
+   uint32_t pic_order_cnt_type;
+   uint32_t num_temporal_layers;
+   uint32_t vui_parameters_present_flag;
+   struct {
+      uint32_t aspect_ratio_info_present_flag: 1;
+      uint32_t timing_info_present_flag: 1;
+      uint32_t reserved:30;
+   } vui_flags;
+   uint32_t aspect_ratio_idc;
+   uint32_t sar_width;
+   uint32_t sar_height;
+   uint32_t num_units_in_tick;
+   uint32_t time_scale;
+};
+
+struct virgl_h264_enc_rate_control
+{
+    uint32_t target_bitrate;
+    uint32_t peak_bitrate;
+    uint32_t frame_rate_num;
+    uint32_t frame_rate_den;
+    uint32_t vbv_buffer_size;
+    uint32_t vbv_buf_lv;
+    uint32_t target_bits_picture;
+    uint32_t peak_bits_picture_integer;
+    uint32_t peak_bits_picture_fraction;
+    uint32_t fill_data_enable;
+    uint32_t skip_frame_enable;
+    uint32_t enforce_hrd;
+    uint32_t max_au_size;
+    uint32_t max_qp;
+    uint32_t min_qp;
+
+    uint8_t  rate_ctrl_method; /* see enum pipe_h2645_enc_rate_control_method */
+    uint8_t  reserved[3];
+};
+
+struct virgl_h264_enc_motion_estimation
+{
+    uint32_t motion_est_quarter_pixel;
+    uint32_t enc_disable_sub_mode;
+    uint32_t lsmvert;
+    uint32_t enc_en_ime_overw_dis_subm;
+    uint32_t enc_ime_overw_dis_subm_no;
+    uint32_t enc_ime2_search_range_x;
+    uint32_t enc_ime2_search_range_y;
+};
+
+struct virgl_h264_enc_pic_control
+{
+    uint32_t enc_cabac_enable;
+    uint32_t enc_cabac_init_idc;
+};
+
+struct virgl_h264_slice_descriptor
+{
+   uint32_t macroblock_address;
+   uint32_t num_macroblocks;
+
+   uint8_t  slice_type; /* see enum pipe_h264_slice_type  */
+   uint8_t  reserved[3];
+};
+
+struct virgl_h264_enc_picture_desc
+{
+   struct virgl_base_picture_desc base;
+
+   struct virgl_h264_enc_seq_param seq;
+   struct virgl_h264_enc_rate_control rate_ctrl[4];
+   struct virgl_h264_enc_motion_estimation motion_est;
+   struct virgl_h264_enc_pic_control pic_ctrl;
+
+   uint32_t intra_idr_period;
+
+   uint32_t quant_i_frames;
+   uint32_t quant_p_frames;
+   uint32_t quant_b_frames;
+
+   uint32_t frame_num;
+   uint32_t frame_num_cnt;
+   uint32_t p_remain;
+   uint32_t i_remain;
+   uint32_t idr_pic_id;
+   uint32_t gop_cnt;
+   uint32_t pic_order_cnt;
+   uint32_t num_ref_idx_l0_active_minus1;
+   uint32_t num_ref_idx_l1_active_minus1;
+   uint32_t ref_idx_l0_list[32];
+   uint8_t  l0_is_long_term[32];
+   uint32_t ref_idx_l1_list[32];
+   uint8_t  l1_is_long_term[32];
+   uint32_t gop_size;
+   struct virgl_enc_quality_modes quality_modes;
+
+   uint32_t num_slice_descriptors;
+   struct virgl_h264_slice_descriptor slices_descriptors[128];
+
+   uint8_t  picture_type; /* see enum pipe_h2645_enc_picture_type */
+   uint8_t  not_referenced;
+   uint8_t  is_ltr;
+   uint8_t  enable_vui;
+
+   uint32_t ltr_index;
+};
+
 
 struct virgl_h265_sps
 {
@@ -305,6 +426,21 @@ union virgl_picture_desc {
     struct virgl_h264_picture_desc h264;
     struct virgl_h265_picture_desc h265;
     struct virgl_mpeg4_picture_desc mpeg4;
+    struct virgl_h264_enc_picture_desc h264_enc;
+};
+
+enum virgl_video_encode_stat {
+    VIRGL_VIDEO_ENCODE_STAT_NOT_STARTED = 0,
+    VIRGL_VIDEO_ENCODE_STAT_IN_PROGRESS,
+    VIRGL_VIDEO_ENCODE_STAT_SUCCESS,
+    VIRGL_VIDEO_ENCODE_STAT_FAILURE,
+};
+
+struct virgl_video_encode_feedback {
+    uint8_t stat;           /* see enum virgl_video_encode_stat */
+    uint8_t reserved[3];
+
+    uint32_t coded_size;    /* size of encoded data in bytes */
 };
 
 #endif /* VIRGL_VIDEO_HW_H */

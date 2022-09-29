@@ -1706,6 +1706,19 @@ void virgl_encode_decode_bitstream(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, cdc->bs_size);
 }
 
+void virgl_encode_encode_bitstream(struct virgl_context *ctx,
+                                   struct virgl_video_codec *cdc,
+                                   struct virgl_video_buffer *buf,
+                                   struct virgl_resource *tgt)
+{
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_ENCODE_BITSTREAM, 0, 5));
+   virgl_encoder_write_dword(ctx->cbuf, cdc->handle);
+   virgl_encoder_write_dword(ctx->cbuf, buf->handle);
+   virgl_encoder_write_res(ctx, tgt);
+   virgl_encoder_write_res(ctx, virgl_resource(cdc->desc_buffers[cdc->cur_buffer]));
+   virgl_encoder_write_res(ctx, virgl_resource(cdc->feed_buffers[cdc->cur_buffer]));
+}
+
 void virgl_encode_end_frame(struct virgl_context *ctx,
                             struct virgl_video_codec *cdc,
                             struct virgl_video_buffer *buf)

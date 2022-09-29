@@ -39,6 +39,7 @@
 #include "virgl_context.h"
 #include "vl/vl_video_buffer.h"
 #include "pipe/p_video_codec.h"
+#include "virtio-gpu/virgl_video_hw.h"
 
 #define VIRGL_VIDEO_CODEC_BUF_NUM    10
 
@@ -47,11 +48,13 @@ struct virgl_video_codec {
 
     uint32_t handle;
     struct virgl_context *vctx;
+    union virgl_picture_desc desc;
 
     uint32_t bs_size;                   /* size of data in bs_buffer */
     uint32_t cur_buffer;                /* index of current bs/desc buffer */
     struct pipe_resource *bs_buffers[VIRGL_VIDEO_CODEC_BUF_NUM];
     struct pipe_resource *desc_buffers[VIRGL_VIDEO_CODEC_BUF_NUM];
+    struct pipe_resource *feed_buffers[VIRGL_VIDEO_CODEC_BUF_NUM];
 };
 
 struct virgl_video_buffer {
