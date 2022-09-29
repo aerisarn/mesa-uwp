@@ -3707,6 +3707,11 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |=
             BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);
          break;
+      case VK_DYNAMIC_STATE_POLYGON_MODE_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_RAST) |
+            BIT(TU_DYNAMIC_STATE_POLYGON_MODE);
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3763,7 +3768,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_RAST) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BIAS) |
             BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD) |
-            BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);
+            BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS) |
+            BIT(TU_DYNAMIC_STATE_POLYGON_MODE);
       }
 
       if (library->state &

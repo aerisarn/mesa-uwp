@@ -2606,6 +2606,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)))
       cmd->state.primtype = pipeline->ia.primtype;
 
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_POLYGON_MODE)))
+       cmd->state.polygon_mode = pipeline->rast.polygon_mode;
+
    tu6_update_msaa(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
@@ -3087,6 +3091,15 @@ tu_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmentC
 
    cmd->state.color_write_enable = color_write_enable;
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetPolygonModeEXT(VkCommandBuffer commandBuffer,
+                        VkPolygonMode polygonMode)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   cmd->state.polygon_mode = tu6_polygon_mode(polygonMode);
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 static void
@@ -4475,7 +4488,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RAST,
                                              tu6_rast_size(cmd->device));
       tu6_emit_rast(&cs, cmd->state.gras_su_cntl,
-                    pipeline->rast.gras_cl_cntl, pipeline->rast.polygon_mode);
+                    pipeline->rast.gras_cl_cntl, cmd->state.polygon_mode);
    }
 
    if (dirty & TU_CMD_DIRTY_RB_DEPTH_CNTL) {

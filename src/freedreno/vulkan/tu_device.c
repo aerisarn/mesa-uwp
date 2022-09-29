@@ -761,7 +761,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
          VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features =
             (VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *)ext;
-         features->extendedDynamicState3PolygonMode = false;
+         features->extendedDynamicState3PolygonMode = true;
          features->extendedDynamicState3TessellationDomainOrigin = false;
          features->extendedDynamicState3DepthClampEnable = false;
          features->extendedDynamicState3DepthClipEnable = false;
