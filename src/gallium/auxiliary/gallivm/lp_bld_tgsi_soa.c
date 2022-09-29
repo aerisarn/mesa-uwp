@@ -447,15 +447,18 @@ get_file_ptr(struct lp_build_tgsi_soa_context *bld,
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    LLVMValueRef (*array_of_vars)[TGSI_NUM_CHANNELS];
    LLVMValueRef var_of_array;
+   LLVMTypeRef type_of_array;
 
    switch (file) {
    case TGSI_FILE_TEMPORARY:
       array_of_vars = bld->temps;
       var_of_array = bld->temps_array;
+      type_of_array = bld->temps_array_type;
       break;
    case TGSI_FILE_OUTPUT:
       array_of_vars = bld->outputs;
       var_of_array = bld->outputs_array;
+      type_of_array = bld->outputs_array_type;
       break;
    default:
       assert(0);
@@ -466,13 +469,15 @@ get_file_ptr(struct lp_build_tgsi_soa_context *bld,
 
    if (bld->indirect_files & (1 << file)) {
       LLVMValueRef lindex = lp_build_const_int32(bld->bld_base.base.gallivm, index * 4 + chan);
-      if (LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(var_of_array))) == LLVMArrayTypeKind) {
+      /* I'm not sure the other path ever gets hit, but leave until someone figures it out,
+         this check doesn't work with opaque pointers. */
+      if (1) {//LLVMGetTypeKind(LLVMGetElementType(LLVMTypeOf(var_of_array))) == LLVMArrayTypeKind) {
          LLVMValueRef gep[2];
          gep[0] = lp_build_const_int32(bld->bld_base.base.gallivm, 0);
          gep[1] = lindex;
-         return LLVMBuildGEP2(builder, bld->bld_base.base.vec_type, var_of_array, gep, 2, "");
+         return LLVMBuildGEP2(builder, type_of_array, var_of_array, gep, 2, "");
       } else {
-         return LLVMBuildGEP2(builder, bld->bld_base.base.vec_type, var_of_array, &lindex, 1, "");
+         return LLVMBuildGEP2(builder, type_of_array, var_of_array, &lindex, 1, "");
       }
    }
    else {
@@ -4293,6 +4298,7 @@ static void emit_prologue(struct lp_build_tgsi_context * bld_base)
 
    if (bld->indirect_files & (1 << TGSI_FILE_TEMPORARY)) {
       unsigned array_size = bld_base->info->file_max[TGSI_FILE_TEMPORARY] * 4 + 4;
+      bld->temps_array_type = LLVMArrayType(bld_base->base.vec_type, array_size);
       bld->temps_array = lp_build_alloca_undef(gallivm,
                                                LLVMArrayType(bld_base->base.vec_type, array_size),
                                                "temp_array");
@@ -4302,6 +4308,7 @@ static void emit_prologue(struct lp_build_tgsi_context * bld_base)
       LLVMValueRef array_size =
          lp_build_const_int32(gallivm,
                             bld_base->info->file_max[TGSI_FILE_OUTPUT] * 4 + 4);
+      bld->outputs_array_type = bld_base->base.vec_type;
       bld->outputs_array = lp_build_array_alloca(gallivm,
                                                 bld_base->base.vec_type, array_size,
                                                 "output_array");

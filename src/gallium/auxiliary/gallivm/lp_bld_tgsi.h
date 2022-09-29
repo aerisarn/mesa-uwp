@@ -545,12 +545,14 @@ struct lp_build_tgsi_soa_context
     * set in the indirect_files field.
     * The temps[] array above is unused then.
     */
+   LLVMTypeRef temps_array_type;
    LLVMValueRef temps_array;
 
    /* We allocate/use this array of output if (1 << TGSI_FILE_OUTPUT) is
     * set in the indirect_files field.
     * The outputs[] array above is unused then.
     */
+   LLVMTypeRef outputs_array_type;
    LLVMValueRef outputs_array;
 
    /* We allocate/use this array of inputs if (1 << TGSI_FILE_INPUT) is
