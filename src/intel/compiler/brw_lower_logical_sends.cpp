@@ -200,10 +200,11 @@ lower_urb_write_logical_send_xe2(const fs_builder &bld, fs_inst *inst)
 
    /* Get the logical send arguments. */
    const fs_reg handle = inst->src[URB_LOGICAL_SRC_HANDLE];
-   const fs_reg src = inst->src[URB_LOGICAL_SRC_DATA];
+   const fs_reg src = inst->components_read(URB_LOGICAL_SRC_DATA) ?
+      inst->src[URB_LOGICAL_SRC_DATA] : fs_reg(brw_imm_ud(0));
 
    /* Calculate the total number of components of the payload. */
-   const unsigned src_comps = inst->components_read(URB_LOGICAL_SRC_DATA);
+   const unsigned src_comps = MAX2(1, inst->components_read(URB_LOGICAL_SRC_DATA));
    const unsigned src_sz = type_sz(src.type);
 
    fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD);
