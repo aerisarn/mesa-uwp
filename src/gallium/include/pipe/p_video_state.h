@@ -428,12 +428,6 @@ struct pipe_h264_enc_pic_control
 {
    unsigned enc_cabac_enable;
    unsigned enc_cabac_init_idc;
-   unsigned enc_constraint_set_flags;
-   unsigned enc_frame_cropping_flag;
-   unsigned enc_frame_crop_left_offset;
-   unsigned enc_frame_crop_right_offset;
-   unsigned enc_frame_crop_top_offset;
-   unsigned enc_frame_crop_bottom_offset;
 };
 
 struct h264_slice_descriptor
@@ -490,7 +484,6 @@ struct pipe_h264_enc_picture_desc
    unsigned idr_pic_id;
    unsigned gop_cnt;
    unsigned pic_order_cnt;
-   unsigned pic_order_cnt_type;
    unsigned num_ref_idx_l0_active_minus1;
    unsigned num_ref_idx_l1_active_minus1;
    unsigned ref_idx_l0_list[32];
@@ -498,7 +491,6 @@ struct pipe_h264_enc_picture_desc
    unsigned ref_idx_l1_list[32];
    bool l1_is_long_term[32];
    unsigned gop_size;
-   unsigned num_temporal_layers;
    struct pipe_enc_quality_modes quality_modes;
 
    bool not_referenced;
