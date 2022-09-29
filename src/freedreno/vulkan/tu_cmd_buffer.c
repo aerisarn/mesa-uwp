@@ -3158,6 +3158,20 @@ tu_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_RB_DEPTH_CNTL;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer,
+                       VkSampleCountFlagBits samples,
+                       const VkSampleMask *pSampleMask)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.rb_blend_cntl =
+      (cmd->state.rb_blend_cntl & ~A6XX_RB_BLEND_CNTL_SAMPLE_MASK__MASK) |
+      A6XX_RB_BLEND_CNTL_SAMPLE_MASK(*pSampleMask & 0xffff);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
 static void
 tu_flush_for_access(struct tu_cache_state *cache,
                     enum tu_cmd_access_mask src_mask,
