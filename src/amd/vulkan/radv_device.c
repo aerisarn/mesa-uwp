@@ -4061,6 +4061,10 @@ radv_fill_shader_rings(struct radv_device *device, uint32_t *map, bool add_sampl
       } else if (device->physical_device->rad_info.gfx_level >= GFX10) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
+      } else if (device->physical_device->rad_info.gfx_level >= GFX8) {
+         /* DATA_FORMAT is STRIDE[14:17] for MUBUF with ADD_TID_ENABLE=1 */
+         desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                    S_008F0C_DATA_FORMAT(0) | S_008F0C_ELEMENT_SIZE(1);
       } else {
          desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
                     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) | S_008F0C_ELEMENT_SIZE(1);
@@ -4133,6 +4137,10 @@ radv_fill_shader_rings(struct radv_device *device, uint32_t *map, bool add_sampl
       } else if (device->physical_device->rad_info.gfx_level >= GFX10) {
          desc[7] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
+      } else if (device->physical_device->rad_info.gfx_level >= GFX8) {
+         /* DATA_FORMAT is STRIDE[14:17] for MUBUF with ADD_TID_ENABLE=1 */
+         desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                    S_008F0C_DATA_FORMAT(0) | S_008F0C_ELEMENT_SIZE(1);
       } else {
          desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
                     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) | S_008F0C_ELEMENT_SIZE(1);
