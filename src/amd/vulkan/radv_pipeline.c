@@ -3597,15 +3597,21 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
                                     struct radv_shader_binary **gs_copy_binary)
 {
    struct radv_device *device = pipeline->device;
-   struct radv_shader_info info = {0};
 
-   radv_nir_shader_info_pass(device, stages[MESA_SHADER_GEOMETRY].nir, pipeline_layout, pipeline_key,
-                             &info);
+   const struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
+   nir_shader *nir =
+      ac_nir_create_gs_copy_shader(stages[MESA_SHADER_GEOMETRY].nir, false, VARYING_SLOT_MAX,
+                                   gs_info->gs.output_usage_mask, gs_info->gs.output_streams, NULL);
+   nir_validate_shader(nir, "after ac_nir_create_gs_copy_shader");
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
+   struct radv_shader_info info = {0};
+   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, &info);
    info.wave_size = 64; /* Wave32 not supported. */
    info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
-   info.ballot_bit_size = 64;
+   info.so = gs_info->so;
 
-   if (stages[MESA_SHADER_GEOMETRY].info.outinfo.export_clip_dists) {
+   if (gs_info->outinfo.export_clip_dists) {
       if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
          info.outinfo.vs_output_param_offset[VARYING_SLOT_CLIP_DIST0] = info.outinfo.param_exports++;
       if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST1)
@@ -3622,8 +3628,12 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    info.user_sgprs_locs = gs_copy_args.user_sgprs_locs;
    info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
 
-   return radv_create_gs_copy_shader(device, stages[MESA_SHADER_GEOMETRY].nir, &info, &gs_copy_args,
-                                     gs_copy_binary, keep_executable_info, keep_statistic_info,
+   NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &info,
+              &gs_copy_args, pipeline_key, radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX),
+              device->physical_device->rad_info.address32_hi);
+
+   return radv_create_gs_copy_shader(device, nir, &info, &gs_copy_args, gs_copy_binary,
+                                     keep_executable_info, keep_statistic_info,
                                      pipeline_key->optimisations_disabled);
 }
 

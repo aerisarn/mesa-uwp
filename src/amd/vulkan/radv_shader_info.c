@@ -463,7 +463,7 @@ gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
       assert(stream < 4);
 
       info->gs.num_stream_output_components[stream] += num_components;
-      info->gs.output_streams[idx] = stream;
+      info->gs.output_streams[idx] = stream | (stream << 2) | (stream << 4) | (stream << 6);
    }
 }
 

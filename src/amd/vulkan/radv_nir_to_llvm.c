@@ -205,10 +205,12 @@ visit_emit_vertex_with_counter(struct ac_shader_abi *abi, unsigned stream, LLVMV
       bool *is_16bit_ptr = &abi->is_16bit[i * 4];
       int length = util_last_bit(output_usage_mask);
 
-      if (!(ctx->output_mask & (1ull << i)) || output_stream != stream)
+      if (!(ctx->output_mask & (1ull << i)))
          continue;
 
       for (unsigned j = 0; j < length; j++) {
+         if (((output_stream >> (j * 2)) & 0x3) != stream)
+            continue;
          if (!(output_usage_mask & (1 << j)))
             continue;
 
@@ -1029,11 +1031,11 @@ handle_vs_outputs_post(struct radv_shader_context *ctx)
       outputs[noutput].slot_name = i;
       outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
 
-      if (ctx->stage == MESA_SHADER_VERTEX && !ctx->args->is_gs_copy_shader) {
+      if (ctx->stage == MESA_SHADER_VERTEX) {
          outputs[noutput].usage_mask = ctx->shader_info->vs.output_usage_mask[i];
       } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
          outputs[noutput].usage_mask = ctx->shader_info->tes.output_usage_mask[i];
-      } else if (ctx->args->is_gs_copy_shader|| ctx->stage == MESA_SHADER_GEOMETRY) {
+      } else if (ctx->stage == MESA_SHADER_GEOMETRY) {
          outputs[noutput].usage_mask = ctx->shader_info->gs.output_usage_mask[i];
       }
 
@@ -1661,7 +1663,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
       offset = 0;
       for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
          unsigned output_usage_mask = ctx->shader_info->gs.output_usage_mask[i];
-         unsigned output_stream = ctx->shader_info->gs.output_streams[i];
+         unsigned output_stream = ctx->shader_info->gs.output_streams[i] & 0x3;
          int length = util_last_bit(output_usage_mask);
 
          if (!(ctx->output_mask & (1ull << i)) || output_stream != stream)
@@ -1764,9 +1766,5 @@ llvm_compile_shader(const struct radv_nir_compiler_options *options,
 
    radv_init_llvm_compiler(&ac_llvm, options->family, tm_options, info->wave_size);
 
-   if (args->is_gs_copy_shader) {
-      radv_compile_gs_copy_shader(&ac_llvm, options, info, *shaders, binary, args);
-   } else {
-      radv_compile_nir_shader(&ac_llvm, options, info, binary, args, shaders, shader_count);
-   }
+   radv_compile_nir_shader(&ac_llvm, options, info, binary, args, shaders, shader_count);
 }

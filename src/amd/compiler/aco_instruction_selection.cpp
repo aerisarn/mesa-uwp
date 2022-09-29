@@ -7810,10 +7810,9 @@ visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
 
    unsigned offset = 0;
    for (unsigned i = 0; i <= VARYING_SLOT_VAR31; i++) {
-      if (ctx->program->info.gs.output_streams[i] != stream)
-         continue;
-
       for (unsigned j = 0; j < 4; j++) {
+         if (((ctx->program->info.gs.output_streams[i] >> (j * 2)) & 0x3) != stream)
+            continue;
          if (!(ctx->program->info.gs.output_usage_mask[i] & (1 << j)))
             continue;
 
@@ -12179,7 +12178,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 
       unsigned offset = 0;
       for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-         if (program->info.gs.output_streams[i] != stream)
+         if ((program->info.gs.output_streams[i] & 0x3) != stream)
             continue;
 
          unsigned output_usage_mask = program->info.gs.output_usage_mask[i];
