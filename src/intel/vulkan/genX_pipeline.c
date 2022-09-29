@@ -772,36 +772,6 @@ const uint32_t genX(vk_to_intel_logic_op)[] = {
    [VK_LOGIC_OP_SET]                         = LOGICOP_SET,
 };
 
-static const uint32_t vk_to_intel_blend[] = {
-   [VK_BLEND_FACTOR_ZERO]                    = BLENDFACTOR_ZERO,
-   [VK_BLEND_FACTOR_ONE]                     = BLENDFACTOR_ONE,
-   [VK_BLEND_FACTOR_SRC_COLOR]               = BLENDFACTOR_SRC_COLOR,
-   [VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR]     = BLENDFACTOR_INV_SRC_COLOR,
-   [VK_BLEND_FACTOR_DST_COLOR]               = BLENDFACTOR_DST_COLOR,
-   [VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR]     = BLENDFACTOR_INV_DST_COLOR,
-   [VK_BLEND_FACTOR_SRC_ALPHA]               = BLENDFACTOR_SRC_ALPHA,
-   [VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA]     = BLENDFACTOR_INV_SRC_ALPHA,
-   [VK_BLEND_FACTOR_DST_ALPHA]               = BLENDFACTOR_DST_ALPHA,
-   [VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA]     = BLENDFACTOR_INV_DST_ALPHA,
-   [VK_BLEND_FACTOR_CONSTANT_COLOR]          = BLENDFACTOR_CONST_COLOR,
-   [VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR]= BLENDFACTOR_INV_CONST_COLOR,
-   [VK_BLEND_FACTOR_CONSTANT_ALPHA]          = BLENDFACTOR_CONST_ALPHA,
-   [VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA]= BLENDFACTOR_INV_CONST_ALPHA,
-   [VK_BLEND_FACTOR_SRC_ALPHA_SATURATE]      = BLENDFACTOR_SRC_ALPHA_SATURATE,
-   [VK_BLEND_FACTOR_SRC1_COLOR]              = BLENDFACTOR_SRC1_COLOR,
-   [VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR]    = BLENDFACTOR_INV_SRC1_COLOR,
-   [VK_BLEND_FACTOR_SRC1_ALPHA]              = BLENDFACTOR_SRC1_ALPHA,
-   [VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA]    = BLENDFACTOR_INV_SRC1_ALPHA,
-};
-
-static const uint32_t vk_to_intel_blend_op[] = {
-   [VK_BLEND_OP_ADD]                         = BLENDFUNCTION_ADD,
-   [VK_BLEND_OP_SUBTRACT]                    = BLENDFUNCTION_SUBTRACT,
-   [VK_BLEND_OP_REVERSE_SUBTRACT]            = BLENDFUNCTION_REVERSE_SUBTRACT,
-   [VK_BLEND_OP_MIN]                         = BLENDFUNCTION_MIN,
-   [VK_BLEND_OP_MAX]                         = BLENDFUNCTION_MAX,
-};
-
 const uint32_t genX(vk_to_intel_compare_op)[] = {
    [VK_COMPARE_OP_NEVER]                        = PREFILTEROP_NEVER,
    [VK_COMPARE_OP_LESS]                         = PREFILTEROP_LESS,
@@ -837,15 +807,6 @@ const uint32_t genX(vk_to_intel_primitive_type)[] = {
    [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
-static bool
-is_dual_src_blend_factor(VkBlendFactor factor)
-{
-   return factor == VK_BLEND_FACTOR_SRC1_COLOR ||
-          factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR ||
-          factor == VK_BLEND_FACTOR_SRC1_ALPHA ||
-          factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
-}
-
 static inline uint32_t *
 write_disabled_blend(uint32_t *state)
 {
@@ -864,9 +825,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
               const struct vk_color_blend_state *cb,
               const struct vk_multisample_state *ms)
 {
-   struct anv_device *device = pipeline->base.device;
-   const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
-
    struct GENX(BLEND_STATE) blend_state = {
       .AlphaToCoverageEnable = ms && ms->alpha_to_coverage_enable,
    };
@@ -882,7 +840,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
    uint32_t *state_pos = blend_state_start;
 
    state_pos += GENX(BLEND_STATE_length);
-   struct GENX(BLEND_STATE_ENTRY) bs0 = { 0 };
    for (unsigned i = 0; i < surface_count; i++) {
       struct anv_pipeline_binding *binding = &map->surface_to_descriptor[i];
 
@@ -897,9 +854,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          state_pos = write_disabled_blend(state_pos);
          continue;
       }
-
-      const struct vk_color_blend_attachment_state *a =
-         &cb->attachments[binding->index];
 
       struct GENX(BLEND_STATE_ENTRY) entry = {
          /* Vulkan specification 1.2.168, VkLogicOp:
@@ -922,76 +876,11 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .ColorClampRange = COLORCLAMP_RTFORMAT,
          .PreBlendColorClampEnable = true,
          .PostBlendColorClampEnable = true,
-         .SourceBlendFactor = vk_to_intel_blend[a->src_color_blend_factor],
-         .DestinationBlendFactor = vk_to_intel_blend[a->dst_color_blend_factor],
-         .ColorBlendFunction = vk_to_intel_blend_op[a->color_blend_op],
-         .SourceAlphaBlendFactor = vk_to_intel_blend[a->src_alpha_blend_factor],
-         .DestinationAlphaBlendFactor = vk_to_intel_blend[a->dst_alpha_blend_factor],
-         .AlphaBlendFunction = vk_to_intel_blend_op[a->alpha_blend_op],
       };
 
-      if (a->src_color_blend_factor != a->src_alpha_blend_factor ||
-          a->dst_color_blend_factor != a->dst_alpha_blend_factor ||
-          a->color_blend_op != a->alpha_blend_op) {
-         blend_state.IndependentAlphaBlendEnable = true;
-      }
-
-      /* The Dual Source Blending documentation says:
-       *
-       * "If SRC1 is included in a src/dst blend factor and
-       * a DualSource RT Write message is not used, results
-       * are UNDEFINED. (This reflects the same restriction in DX APIs,
-       * where undefined results are produced if “o1” is not written
-       * by a PS – there are no default values defined)."
-       *
-       * There is no way to gracefully fix this undefined situation
-       * so we just disable the blending to prevent possible issues.
-       */
-      if (!wm_prog_data->dual_src_blend &&
-          (is_dual_src_blend_factor(a->src_color_blend_factor) ||
-           is_dual_src_blend_factor(a->dst_color_blend_factor) ||
-           is_dual_src_blend_factor(a->src_alpha_blend_factor) ||
-           is_dual_src_blend_factor(a->dst_alpha_blend_factor))) {
-         vk_logw(VK_LOG_OBJS(&device->vk.base),
-                 "Enabled dual-src blend factors without writing both targets "
-                 "in the shader.  Disabling blending to avoid GPU hangs.");
-         entry.ColorBufferBlendEnable = false;
-      }
-
-      /* Our hardware applies the blend factor prior to the blend function
-       * regardless of what function is used.  Technically, this means the
-       * hardware can do MORE than GL or Vulkan specify.  However, it also
-       * means that, for MIN and MAX, we have to stomp the blend factor to
-       * ONE to make it a no-op.
-       */
-      if (a->color_blend_op == VK_BLEND_OP_MIN ||
-          a->color_blend_op == VK_BLEND_OP_MAX) {
-         entry.SourceBlendFactor = BLENDFACTOR_ONE;
-         entry.DestinationBlendFactor = BLENDFACTOR_ONE;
-      }
-      if (a->alpha_blend_op == VK_BLEND_OP_MIN ||
-          a->alpha_blend_op == VK_BLEND_OP_MAX) {
-         entry.SourceAlphaBlendFactor = BLENDFACTOR_ONE;
-         entry.DestinationAlphaBlendFactor = BLENDFACTOR_ONE;
-      }
       GENX(BLEND_STATE_ENTRY_pack)(NULL, state_pos, &entry);
       state_pos += GENX(BLEND_STATE_ENTRY_length);
-      if (i == 0)
-         bs0 = entry;
    }
-
-   struct GENX(3DSTATE_PS_BLEND) blend = {
-      GENX(3DSTATE_PS_BLEND_header),
-   };
-   blend.AlphaToCoverageEnable         = blend_state.AlphaToCoverageEnable;
-   blend.SourceAlphaBlendFactor        = bs0.SourceAlphaBlendFactor;
-   blend.DestinationAlphaBlendFactor   = bs0.DestinationAlphaBlendFactor;
-   blend.SourceBlendFactor             = bs0.SourceBlendFactor;
-   blend.DestinationBlendFactor        = bs0.DestinationBlendFactor;
-   blend.AlphaTestEnable               = false;
-   blend.IndependentAlphaBlendEnable   = blend_state.IndependentAlphaBlendEnable;
-
-   GENX(3DSTATE_PS_BLEND_pack)(NULL, pipeline->gfx8.ps_blend, &blend);
 
    GENX(BLEND_STATE_pack)(NULL, blend_state_start, &blend_state);
 }

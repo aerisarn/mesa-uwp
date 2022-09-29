@@ -2980,7 +2980,6 @@ struct anv_graphics_pipeline {
       uint32_t                                  sf[4];
       uint32_t                                  raster[5];
       uint32_t                                  wm[2];
-      uint32_t                                  ps_blend[2];
       uint32_t                                  blend_state[1 + MAX_RTS * 2];
       uint32_t                                  streamout_state[5];
    } gfx8;
@@ -3877,6 +3876,24 @@ anv_line_rasterization_mode(VkLineRasterizationModeEXT line_mode,
    default:                                           \
       unreachable("Invalid provoking vertex mode");   \
    }                                                  \
+
+static inline bool
+anv_is_dual_src_blend_factor(VkBlendFactor factor)
+{
+   return factor == VK_BLEND_FACTOR_SRC1_COLOR ||
+          factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR ||
+          factor == VK_BLEND_FACTOR_SRC1_ALPHA ||
+          factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+}
+
+static inline bool
+anv_is_dual_src_blend_equation(const struct vk_color_blend_attachment_state *cb)
+{
+   return anv_is_dual_src_blend_factor(cb->src_color_blend_factor) &&
+          anv_is_dual_src_blend_factor(cb->dst_color_blend_factor) &&
+          anv_is_dual_src_blend_factor(cb->src_alpha_blend_factor) &&
+          anv_is_dual_src_blend_factor(cb->dst_alpha_blend_factor);
+}
 
 VkFormatFeatureFlags2
 anv_get_image_format_features2(const struct intel_device_info *devinfo,

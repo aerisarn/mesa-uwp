@@ -254,6 +254,36 @@ genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+const uint32_t genX(vk_to_intel_blend)[] = {
+   [VK_BLEND_FACTOR_ZERO]                    = BLENDFACTOR_ZERO,
+   [VK_BLEND_FACTOR_ONE]                     = BLENDFACTOR_ONE,
+   [VK_BLEND_FACTOR_SRC_COLOR]               = BLENDFACTOR_SRC_COLOR,
+   [VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR]     = BLENDFACTOR_INV_SRC_COLOR,
+   [VK_BLEND_FACTOR_DST_COLOR]               = BLENDFACTOR_DST_COLOR,
+   [VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR]     = BLENDFACTOR_INV_DST_COLOR,
+   [VK_BLEND_FACTOR_SRC_ALPHA]               = BLENDFACTOR_SRC_ALPHA,
+   [VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA]     = BLENDFACTOR_INV_SRC_ALPHA,
+   [VK_BLEND_FACTOR_DST_ALPHA]               = BLENDFACTOR_DST_ALPHA,
+   [VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA]     = BLENDFACTOR_INV_DST_ALPHA,
+   [VK_BLEND_FACTOR_CONSTANT_COLOR]          = BLENDFACTOR_CONST_COLOR,
+   [VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR]= BLENDFACTOR_INV_CONST_COLOR,
+   [VK_BLEND_FACTOR_CONSTANT_ALPHA]          = BLENDFACTOR_CONST_ALPHA,
+   [VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA]= BLENDFACTOR_INV_CONST_ALPHA,
+   [VK_BLEND_FACTOR_SRC_ALPHA_SATURATE]      = BLENDFACTOR_SRC_ALPHA_SATURATE,
+   [VK_BLEND_FACTOR_SRC1_COLOR]              = BLENDFACTOR_SRC1_COLOR,
+   [VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR]    = BLENDFACTOR_INV_SRC1_COLOR,
+   [VK_BLEND_FACTOR_SRC1_ALPHA]              = BLENDFACTOR_SRC1_ALPHA,
+   [VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA]    = BLENDFACTOR_INV_SRC1_ALPHA,
+};
+
+static const uint32_t genX(vk_to_intel_blend_op)[] = {
+   [VK_BLEND_OP_ADD]                         = BLENDFUNCTION_ADD,
+   [VK_BLEND_OP_SUBTRACT]                    = BLENDFUNCTION_SUBTRACT,
+   [VK_BLEND_OP_REVERSE_SUBTRACT]            = BLENDFUNCTION_REVERSE_SUBTRACT,
+   [VK_BLEND_OP_MIN]                         = BLENDFUNCTION_MIN,
+   [VK_BLEND_OP_MAX]                         = BLENDFUNCTION_MAX,
+};
+
 void
 genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -533,26 +563,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_ALPHA_TO_ONE_ENABLE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS)) {
       const uint8_t color_writes = dyn->cb.color_write_enables;
       const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
+      const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
       bool has_writeable_rt =
          anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
          (color_writes & ((1u << state->color_att_count) - 1)) != 0;
-
-      /* 3DSTATE_PS_BLEND to be consistent with the rest of the
-       * BLEND_STATE_ENTRY.
-       */
-      uint32_t ps_blend_dwords[GENX(3DSTATE_PS_BLEND_length)];
-      struct GENX(3DSTATE_PS_BLEND) ps_blend = {
-         GENX(3DSTATE_PS_BLEND_header),
-         .HasWriteableRT = has_writeable_rt,
-         .ColorBufferBlendEnable =
-            !dyn->cb.logic_op_enable && dyn->cb.attachments[0].blend_enable,
-      };
-      GENX(3DSTATE_PS_BLEND_pack)(NULL, ps_blend_dwords, &ps_blend);
-      anv_batch_emit_merge(&cmd_buffer->batch, ps_blend_dwords,
-                           pipeline->gfx8.ps_blend);
 
       uint32_t blend_dws[GENX(BLEND_STATE_length) +
                          MAX_RTS * GENX(BLEND_STATE_ENTRY_length)];
@@ -562,10 +580,11 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(BLEND_STATE) blend_state = {
          .AlphaToOneEnable = dyn->ms.alpha_to_one_enable,
       };
-      GENX(BLEND_STATE_pack)(NULL, dws, &blend_state);
 
       /* Jump to blend entries. */
       dws += GENX(BLEND_STATE_length);
+
+      struct GENX(BLEND_STATE_ENTRY) bs0 = { 0 };
 
       for (uint32_t i = 0; i < MAX_RTS; i++) {
          /* Disable anything above the current number of color attachments. */
@@ -589,8 +608,87 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
             .ColorBufferBlendEnable =
                !dyn->cb.logic_op_enable && dyn->cb.attachments[i].blend_enable,
          };
+
+         /* Setup blend equation. */
+         entry.SourceBlendFactor =
+            genX(vk_to_intel_blend)[dyn->cb.attachments[i].src_color_blend_factor];
+         entry.DestinationBlendFactor =
+            genX(vk_to_intel_blend)[dyn->cb.attachments[i].dst_color_blend_factor];
+         entry.ColorBlendFunction =
+            genX(vk_to_intel_blend_op)[dyn->cb.attachments[i].color_blend_op];
+         entry.SourceAlphaBlendFactor =
+            genX(vk_to_intel_blend)[dyn->cb.attachments[i].src_alpha_blend_factor];
+         entry.DestinationAlphaBlendFactor =
+            genX(vk_to_intel_blend)[dyn->cb.attachments[i].dst_alpha_blend_factor];
+         entry.AlphaBlendFunction =
+            genX(vk_to_intel_blend_op)[dyn->cb.attachments[i].alpha_blend_op];
+
+         if (dyn->cb.attachments[i].src_color_blend_factor !=
+             dyn->cb.attachments[i].src_alpha_blend_factor ||
+             dyn->cb.attachments[i].dst_color_blend_factor !=
+             dyn->cb.attachments[i].dst_alpha_blend_factor ||
+             dyn->cb.attachments[i].color_blend_op !=
+             dyn->cb.attachments[i].alpha_blend_op) {
+            blend_state.IndependentAlphaBlendEnable = true;
+         }
+
+         /* The Dual Source Blending documentation says:
+          *
+          * "If SRC1 is included in a src/dst blend factor and
+          * a DualSource RT Write message is not used, results
+          * are UNDEFINED. (This reflects the same restriction in DX APIs,
+          * where undefined results are produced if “o1” is not written
+          * by a PS – there are no default values defined)."
+          *
+          * There is no way to gracefully fix this undefined situation
+          * so we just disable the blending to prevent possible issues.
+          */
+         if (wm_prog_data && !wm_prog_data->dual_src_blend &&
+             anv_is_dual_src_blend_equation(&dyn->cb.attachments[i])) {
+            entry.ColorBufferBlendEnable = false;
+         }
+
+         /* Our hardware applies the blend factor prior to the blend function
+          * regardless of what function is used.  Technically, this means the
+          * hardware can do MORE than GL or Vulkan specify.  However, it also
+          * means that, for MIN and MAX, we have to stomp the blend factor to
+          * ONE to make it a no-op.
+          */
+         if (dyn->cb.attachments[i].color_blend_op == VK_BLEND_OP_MIN ||
+             dyn->cb.attachments[i].color_blend_op == VK_BLEND_OP_MAX) {
+            entry.SourceBlendFactor = BLENDFACTOR_ONE;
+            entry.DestinationBlendFactor = BLENDFACTOR_ONE;
+         }
+         if (dyn->cb.attachments[i].alpha_blend_op == VK_BLEND_OP_MIN ||
+             dyn->cb.attachments[i].alpha_blend_op == VK_BLEND_OP_MAX) {
+            entry.SourceAlphaBlendFactor = BLENDFACTOR_ONE;
+            entry.DestinationAlphaBlendFactor = BLENDFACTOR_ONE;
+         }
+
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
+
+         if (i == 0)
+            bs0 = entry;
+
          dws += GENX(BLEND_STATE_ENTRY_length);
+      }
+
+      /* Generate blend state after entries. */
+      GENX(BLEND_STATE_pack)(NULL, blend_dws, &blend_state);
+
+      /* 3DSTATE_PS_BLEND to be consistent with the rest of the
+       * BLEND_STATE_ENTRY.
+       */
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_PS_BLEND), blend) {
+         blend.HasWriteableRT                = has_writeable_rt,
+         blend.ColorBufferBlendEnable        = bs0.ColorBufferBlendEnable;
+         blend.SourceAlphaBlendFactor        = bs0.SourceAlphaBlendFactor;
+         blend.DestinationAlphaBlendFactor   = bs0.DestinationAlphaBlendFactor;
+         blend.SourceBlendFactor             = bs0.SourceBlendFactor;
+         blend.DestinationBlendFactor        = bs0.DestinationBlendFactor;
+         blend.AlphaTestEnable               = false;
+         blend.IndependentAlphaBlendEnable   = blend_state.IndependentAlphaBlendEnable;
+         blend.AlphaToCoverageEnable         = dyn->ms.alpha_to_coverage_enable;
       }
 
       uint32_t num_dwords = GENX(BLEND_STATE_length) +
