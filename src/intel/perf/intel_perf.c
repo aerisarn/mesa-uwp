@@ -468,6 +468,12 @@ get_register_queries_function(const struct intel_device_info *devinfo)
       return intel_oa_register_queries_dg1;
    case INTEL_PLATFORM_ADL:
       return intel_oa_register_queries_adl;
+   case INTEL_PLATFORM_DG2_G10:
+      return intel_oa_register_queries_acmgt3;
+   case INTEL_PLATFORM_DG2_G11:
+      return intel_oa_register_queries_acmgt1;
+   case INTEL_PLATFORM_DG2_G12:
+      return intel_oa_register_queries_acmgt2;
    default:
       return NULL;
    }
