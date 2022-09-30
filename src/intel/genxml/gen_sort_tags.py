@@ -4,10 +4,20 @@
 
 from __future__ import annotations
 from collections import OrderedDict
+import argparse
+import copy
 import pathlib
 import re
 import xml.etree.ElementTree as et
 import typing
+
+if typing.TYPE_CHECKING:
+    class Args(typing.Protocol):
+
+        files: typing.List[pathlib.Path]
+        validate: bool
+        quiet: bool
+
 
 def get_filename(element: et.Element) -> str:
     return element.attrib['filename']
@@ -70,7 +80,7 @@ class Struct(object):
 
 
 # ordering of the various tag attributes
-genxml_desc = {
+GENXML_DESC = {
     'genxml'      : [ 'name', 'gen', ],
     'enum'        : [ 'name', 'value', 'prefix', ],
     'struct'      : [ 'name', 'length', ],
@@ -88,12 +98,8 @@ def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
         f.write('\n')
     spaces = ''.rjust(offset * space_delta)
     f.write('{0}<{1}'.format(spaces, node.tag))
-    attribs = genxml_desc[node.tag]
-    for a in node.attrib:
-        assert a in attribs 
-    for a in attribs:
-        if a in node.attrib:
-            f.write(' {0}="{1}"'.format(a, node.attrib[a]))
+    for k, v in node.attrib.items():
+        f.write(f' {k}="{v}"')
     children = list(node)
     if len(children) > 0:
         f.write('>\n')
@@ -104,9 +110,43 @@ def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
         f.write('/>\n')
 
 
-def process(filename: pathlib.Path) -> None:
+def node_validator(old: et.Element, new: et.Element) -> bool:
+    """Compare to ElementTree Element nodes.
+    
+    There is no builtin equality method, so calling `et.Element == et.Element` is
+    equivalent to calling `et.Element is et.Element`. We instead want to compare
+    that the contents are the same, including the order of children and attributes
+    """
+    return (
+        # Check that the attributes are the same
+        old.tag == new.tag and
+        old.text == new.text and
+        old.tail == new.tail and
+        list(old.attrib.items()) == list(new.attrib.items()) and
+        len(old) == len(new) and
+
+        # check that there are no unexpected attributes
+        set(new.attrib).issubset(GENXML_DESC[new.tag]) and
+
+        # check that the attributes are sorted
+        list(new.attrib) == list(old.attrib) and
+        all(node_validator(f, s) for f, s in zip(old, new))
+    )
+
+
+def process_attribs(elem: et.Element) -> None:
+    valid = GENXML_DESC[elem.tag]
+    # sort and prune attributes
+    elem.attrib = OrderedDict(sorted(((k, v) for k, v in elem.attrib.items() if k in valid),
+                                     key=lambda x: valid.index(x[0])))
+    for e in elem:
+        process_attribs(e)
+
+
+def process(filename: pathlib.Path, validate: bool) -> None:
     xml = et.parse(filename)
-    genxml = xml.getroot()
+    genxml: et.Element = xml.getroot()
+    original = copy.deepcopy(genxml) if validate else genxml
 
     enums = sorted(genxml.findall('enum'), key=get_name)
     enum_dict: typing.Dict[str, et.Element] = {}
@@ -140,19 +180,36 @@ def process(filename: pathlib.Path) -> None:
     for r in registers:
         r[:] = sorted(r, key=get_start)
 
-    genxml[:] = enums + list(sorted_structs.values()) + instructions + registers
+    new_elems = enums + list(sorted_structs.values()) + instructions + registers
+    for n in new_elems:
+        process_attribs(n)
+    genxml[:] = new_elems
 
-    tmp = filename.with_suffix(f'{filename.suffix}.tmp')
-    with tmp.open('w') as f:
-        f.write('<?xml version="1.0" ?>\n')
-        print_node(f, 0, genxml)
-    filename.unlink()
-    tmp.rename(filename)
+    if validate:
+        for old, new in zip(original, genxml):
+            assert node_validator(old, new), f'{filename} is invalid, run gen_sort_tags.py and commit that'
+    else:
+
+        tmp = filename.with_suffix(f'{filename.suffix}.tmp')
+        with tmp.open('w') as f:
+            f.write('<?xml version="1.0" ?>\n')
+            print_node(f, 0, genxml)
+        filename.unlink()
+        tmp.rename(filename)
     
 
 if __name__ == '__main__':
-    folder = pathlib.Path('.')
-    for f in folder.glob('*.xml'):
-        print('Processing {}... '.format(f), end='', flush=True)
-        process(f)
-        print('done.')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('files', nargs='*',
+                        default=pathlib.Path(__file__).parent.glob('*.xml'),
+                        type=pathlib.Path)
+    parser.add_argument('--validate', action='store_true')
+    parser.add_argument('--quiet', action='store_true')
+    args: Args = parser.parse_args()
+
+    for f in args.files:
+        if not args.quiet:
+            print('Processing {}... '.format(f), end='', flush=True)
+        process(f, args.validate)
+        if not args.quiet:
+            print('done.')
