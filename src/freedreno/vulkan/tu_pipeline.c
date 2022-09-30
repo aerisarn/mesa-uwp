@@ -3745,6 +3745,15 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES);
          break;
+      case VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE) |
+            BIT(TU_DYNAMIC_STATE_BLEND);
+         pipeline->blend.rb_blend_cntl_mask &=
+            ~A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE;
+         pipeline->blend.sp_blend_cntl_mask &=
+            ~A6XX_SP_BLEND_CNTL_ALPHA_TO_COVERAGE;
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3839,7 +3848,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
             BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE) |
-            BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES);
+            BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES) |
+            BIT(TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE);
       }
 
       if ((library->state &
@@ -4432,9 +4442,14 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       builder->use_color_attachments ? builder->create_info->pColorBlendState
                                      : &dummy_blend_info;
 
+   bool alpha_to_coverage =
+      !(pipeline->dynamic_state_mask &
+        BIT(TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE)) &&
+      msaa_info->alphaToCoverageEnable;
+
    bool no_earlyz = builder->depth_attachment_format == VK_FORMAT_S8_UINT ||
       /* alpha to coverage can behave like a discard */
-      msaa_info->alphaToCoverageEnable;
+      alpha_to_coverage;
    pipeline->lrz.force_late_z |= no_earlyz;
 
    pipeline->output.subpass_feedback_loop_color =
@@ -4475,7 +4490,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
                             &pipeline->blend.rop_reads_dst,
                             &pipeline->output.color_bandwidth_per_sample);
 
-   if (msaa_info->alphaToCoverageEnable && pipeline->blend.num_rts == 0) {
+   if (alpha_to_coverage && pipeline->blend.num_rts == 0) {
       /* In addition to changing the *_OUTPUT_CNTL1 registers, this will also
        * make sure we disable memory writes for MRT0 rather than using
        * whatever setting was leftover.

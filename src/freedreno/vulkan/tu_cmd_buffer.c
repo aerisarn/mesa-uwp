@@ -3198,6 +3198,23 @@ tu_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
    tu6_update_msaa_samples(cmd, rasterizationSamples);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetAlphaToCoverageEnableEXT(VkCommandBuffer commandBuffer,
+                                  VkBool32 alphaToCoverageEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.alpha_to_coverage = alphaToCoverageEnable;
+   cmd->state.rb_blend_cntl =
+      (cmd->state.rb_blend_cntl & ~A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE) |
+      COND(alphaToCoverageEnable, A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE);
+   cmd->state.sp_blend_cntl =
+      (cmd->state.sp_blend_cntl & ~A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE) |
+      COND(alphaToCoverageEnable, A6XX_RB_BLEND_CNTL_ALPHA_TO_COVERAGE);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
 static void
 tu_flush_for_access(struct tu_cache_state *cache,
                     enum tu_cmd_access_mask src_mask,
@@ -4440,8 +4457,14 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                  : A6XX_LATE_Z;
    }
 
-   if ((cmd->state.pipeline->lrz.force_late_z &&
-        !cmd->state.pipeline->lrz.fs.force_early_z) || !depth_test_enable)
+   bool force_late_z = cmd->state.pipeline->lrz.force_late_z ||
+      /* If enabled dynamically, alpha-to-coverage can behave like a discard.
+       */
+      ((cmd->state.pipeline->dynamic_state_mask &
+        BIT(TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE)) &&
+       cmd->state.alpha_to_coverage);
+   if ((force_late_z && !cmd->state.pipeline->lrz.fs.force_early_z) ||
+       !depth_test_enable)
       zmode = A6XX_LATE_Z;
 
    /* User defined early tests take precedence above all else */
@@ -4465,7 +4488,14 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
        BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE))
       color_write_enable &= cmd->state.color_write_enable;
 
-   for (unsigned i = 0; i < pipeline->blend.num_rts; i++) {
+   unsigned num_rts = pipeline->blend.num_rts;
+   if (num_rts == 0 &&
+       (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE)) &&
+       cmd->state.alpha_to_coverage) {
+      num_rts = 1;
+   }
+
+   for (unsigned i = 0; i < num_rts; i++) {
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_CONTROL(i), 2);
       if (color_write_enable & BIT(i)) {
          tu_cs_emit(cs, cmd->state.rb_mrt_control[i] |
@@ -4482,8 +4512,8 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
    if (!(cmd->state.logic_op_enabled && cmd->state.rop_reads_dst))
       blend_enable_mask &= cmd->state.pipeline_blend_enable;
 
-   tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
-   tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
+   tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = num_rts));
+   tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = num_rts));
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_BLEND_CNTL, 1);
    tu_cs_emit(cs, cmd->state.sp_blend_cntl |
                   (A6XX_SP_BLEND_CNTL_ENABLE_BLEND(blend_enable_mask) &

@@ -345,6 +345,7 @@ struct tu_cmd_state
    uint32_t color_write_enable;
    bool logic_op_enabled;
    bool rop_reads_dst;
+   bool alpha_to_coverage;
    enum pc_di_primtype primtype;
    bool primitive_restart_enable;
    bool tess_upper_left_domain_origin;
