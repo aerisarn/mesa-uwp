@@ -3392,6 +3392,25 @@ tu_CmdSetColorBlendEquationEXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer,
+                           uint32_t firstAttachment,
+                           uint32_t attachmentCount,
+                           const VkColorComponentFlags *pColorWriteMasks)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      unsigned att = i + firstAttachment;
+      cmd->state.rb_mrt_control[att] =
+         (cmd->state.rb_mrt_control[att] &
+          ~A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE__MASK) |
+         A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE(pColorWriteMasks[i]);
+   }
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
 static void
 tu_flush_for_access(struct tu_cache_state *cache,
                     enum tu_cmd_access_mask src_mask,

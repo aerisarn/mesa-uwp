@@ -780,7 +780,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3SampleLocationsEnable = true;
          features->extendedDynamicState3ColorBlendEnable = true;
          features->extendedDynamicState3ColorBlendEquation = true;
-         features->extendedDynamicState3ColorWriteMask = false;
+         features->extendedDynamicState3ColorWriteMask = true;
          features->extendedDynamicState3ViewportWScalingEnable = false;
          features->extendedDynamicState3ViewportSwizzle = false;
          features->extendedDynamicState3ShadingRateImageEnable = false;
