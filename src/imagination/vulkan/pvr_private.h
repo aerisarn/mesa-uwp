@@ -165,21 +165,6 @@ enum pvr_stage_allocation {
    PVR_STAGE_ALLOCATION_COUNT
 };
 
-/* Scissor accumulation state defines
- *  - Disabled means that a clear has been detected, and scissor accumulation
- *    should stop.
- *  - Check for clear is when there's no clear loadops, but there could be
- *    another clear call that would be broken via scissoring
- *  - Enabled means that a scissor has been set in the pipeline, and
- *    accumulation can continue
- */
-enum pvr_scissor_accum_state {
-   PVR_SCISSOR_ACCUM_INVALID = 0, /* Explicitly treat 0 as invalid */
-   PVR_SCISSOR_ACCUM_DISABLED,
-   PVR_SCISSOR_ACCUM_CHECK_FOR_CLEAR,
-   PVR_SCISSOR_ACCUM_ENABLED,
-};
-
 #define PVR_STATIC_CLEAR_PDS_STATE_COUNT          \
    (pvr_cmd_length(TA_STATE_PDS_SHADERBASE) +     \
     pvr_cmd_length(TA_STATE_PDS_TEXUNICODEBASE) + \
@@ -976,14 +961,6 @@ struct pvr_cmd_buffer_state {
    struct PVRX(TA_STATE_HEADER) emit_header;
 
    struct {
-      /* FIXME: Check if we need a dirty state flag for the given scissor
-       * accumulation state.
-       * Check whether these members should be moved in the top level struct
-       * and this struct replaces with just pvr_dynamic_state "dynamic".
-       */
-      enum pvr_scissor_accum_state scissor_accum_state;
-      VkRect2D scissor_accum_bounds;
-
       struct pvr_dynamic_state common;
    } dynamic;
 

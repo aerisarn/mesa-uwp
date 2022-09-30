@@ -2584,16 +2584,6 @@ void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    pvr_perform_start_of_render_clears(cmd_buffer);
    pvr_stash_depth_format(&cmd_buffer->state,
                           &cmd_buffer->state.current_sub_cmd->gfx);
-
-   if (!pvr_loadops_contain_clear(pass->hw_setup)) {
-      state->dynamic.scissor_accum_state = PVR_SCISSOR_ACCUM_CHECK_FOR_CLEAR;
-      state->dynamic.scissor_accum_bounds.offset.x = 0;
-      state->dynamic.scissor_accum_bounds.offset.y = 0;
-      state->dynamic.scissor_accum_bounds.extent.width = 0;
-      state->dynamic.scissor_accum_bounds.extent.height = 0;
-   } else {
-      state->dynamic.scissor_accum_state = PVR_SCISSOR_ACCUM_DISABLED;
-   }
 }
 
 VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
