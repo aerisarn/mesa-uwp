@@ -2383,6 +2383,16 @@ iris_transfer_map(struct pipe_context *ctx,
    if (res->base.is_user_ptr)
       usage |= PIPE_MAP_PERSISTENT;
 
+   /* Promote discarding a range to discarding the entire buffer where
+    * possible.  This may allow us to replace the backing storage entirely
+    * and let us do an unsynchronized map when we otherwise wouldn't.
+    */
+   if (resource->target == PIPE_BUFFER &&
+       (usage & PIPE_MAP_DISCARD_RANGE) &&
+       box->x == 0 && box->width == resource->width0) {
+      usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
+   }
+
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       /* Replace the backing storage with a fresh buffer for non-async maps */
       if (!(usage & (PIPE_MAP_UNSYNCHRONIZED |
