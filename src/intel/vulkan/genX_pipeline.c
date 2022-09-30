@@ -736,21 +736,6 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    /* On Gfx8+ 3DSTATE_MULTISAMPLE only holds the number of samples. */
    genX(emit_multisample)(&pipeline->base.batch,
                           pipeline->rasterization_samples);
-
-   /* From the Vulkan 1.0 spec:
-    *    If pSampleMask is NULL, it is treated as if the mask has all bits
-    *    enabled, i.e. no coverage is removed from fragments.
-    *
-    * 3DSTATE_SAMPLE_MASK.SampleMask is 16 bits.
-    */
-   uint32_t sample_mask = 0xffff;
-
-   if (ms != NULL)
-      sample_mask &= ms->sample_mask;
-
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
-      sm.SampleMask = sample_mask;
-   }
 }
 
 const uint32_t genX(vk_to_intel_logic_op)[] = {

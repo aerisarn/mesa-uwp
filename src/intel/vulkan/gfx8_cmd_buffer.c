@@ -254,6 +254,29 @@ genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+static void
+genX(cmd_emit_sample_mask)(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+
+   if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT))
+      return;
+
+   /* From the Vulkan 1.0 spec:
+   *    If pSampleMask is NULL, it is treated as if the mask has all bits
+    *    enabled, i.e. no coverage is removed from fragments.
+    *
+    * 3DSTATE_SAMPLE_MASK.SampleMask is 16 bits.
+    */
+   uint32_t sample_mask = 0xffff;
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
+      sm.SampleMask = dyn->ms.sample_mask & sample_mask;
+   }
+}
+
 const uint32_t genX(vk_to_intel_blend)[] = {
    [VK_BLEND_FACTOR_ZERO]                    = BLENDFACTOR_ZERO,
    [VK_BLEND_FACTOR_ONE]                     = BLENDFACTOR_ONE,
@@ -402,6 +425,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          ccp.ColorCalcStatePointerValid = true;
       }
    }
+
+   if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_MASK)))
+      genX(cmd_emit_sample_mask)(cmd_buffer);
 
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                        ANV_CMD_DIRTY_RENDER_TARGETS)) ||
