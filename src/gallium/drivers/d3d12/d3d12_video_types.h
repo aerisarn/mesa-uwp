@@ -110,6 +110,7 @@ enum d3d12_video_decode_profile_type
    d3d12_video_decode_profile_type_h264,
    d3d12_video_decode_profile_type_hevc,
    d3d12_video_decode_profile_type_av1,
+   d3d12_video_decode_profile_type_vp9,
    d3d12_video_decode_profile_type_max_valid
 };
 

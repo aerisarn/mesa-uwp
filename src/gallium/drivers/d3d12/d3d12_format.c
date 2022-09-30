@@ -470,9 +470,11 @@ d3d12_convert_pipe_video_profile_to_dxgi_format(enum pipe_video_profile profile)
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN:
       case PIPE_VIDEO_PROFILE_AV1_MAIN:
+      case PIPE_VIDEO_PROFILE_VP9_PROFILE0:   
          return DXGI_FORMAT_NV12;
       case PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH10:
       case PIPE_VIDEO_PROFILE_HEVC_MAIN_10:
+      case PIPE_VIDEO_PROFILE_VP9_PROFILE2:
          return DXGI_FORMAT_P010;
       default:
       {

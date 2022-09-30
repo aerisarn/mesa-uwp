@@ -69,6 +69,7 @@ if with_gallium_d3d12_video
     'd3d12_video_encoder_nalu_writer_hevc.cpp',
     'd3d12_video_encoder_references_manager_hevc.cpp',
     'd3d12_video_dec_av1.cpp',
+    'd3d12_video_dec_vp9.cpp',
   ]
 endif
 
