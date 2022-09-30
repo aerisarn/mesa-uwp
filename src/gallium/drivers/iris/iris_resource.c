@@ -1914,47 +1914,54 @@ iris_replace_buffer_storage(struct pipe_context *ctx,
    iris_bo_unreference(old_bo);
 }
 
-static void
-iris_invalidate_resource(struct pipe_context *ctx,
-                         struct pipe_resource *resource)
+/**
+ * Discard a buffer's contents and replace it's backing storage with a
+ * fresh, idle buffer if necessary.
+ *
+ * Returns true if the storage can be considered idle.
+ */
+static bool
+iris_invalidate_buffer(struct iris_context *ice, struct iris_resource *res)
 {
-   struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_context *ice = (void *) ctx;
-   struct iris_resource *res = (void *) resource;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
 
-   if (resource->target != PIPE_BUFFER)
-      return;
+   if (res->base.b.target != PIPE_BUFFER)
+      return false;
 
-   /* If it's already invalidated, don't bother doing anything. */
+   /* If it's already invalidated, don't bother doing anything.
+    * We consider the storage to be idle, because either it was freshly
+    * allocated (and not busy), or a previous call here was what cleared
+    * the range, and that call replaced the storage with an idle buffer.
+    */
    if (res->valid_buffer_range.start > res->valid_buffer_range.end)
-      return;
+      return true;
 
    if (!resource_is_busy(ice, res)) {
       /* The resource is idle, so just mark that it contains no data and
        * keep using the same underlying buffer object.
        */
       util_range_set_empty(&res->valid_buffer_range);
-      return;
+      return true;
    }
 
    /* Otherwise, try and replace the backing storage with a new BO. */
 
    /* We can't reallocate memory we didn't allocate in the first place. */
    if (res->bo->gem_handle && res->bo->real.userptr)
-      return;
+      return false;
 
    /* Nor can we allocate buffers we imported or exported. */
    if (iris_bo_is_external(res->bo))
-      return;
+      return false;
 
    struct iris_bo *old_bo = res->bo;
    struct iris_bo *new_bo =
-      iris_bo_alloc(screen->bufmgr, res->bo->name, resource->width0,
-                    iris_buffer_alignment(resource->width0),
+      iris_bo_alloc(screen->bufmgr, res->bo->name, res->base.b.width0,
+                    iris_buffer_alignment(res->base.b.width0),
                     iris_memzone_for_address(old_bo->address),
                     old_bo->real.protected ? BO_ALLOC_PROTECTED : 0);
    if (!new_bo)
-      return;
+      return false;
 
    /* Swap out the backing storage */
    res->bo = new_bo;
@@ -1967,6 +1974,19 @@ iris_invalidate_resource(struct pipe_context *ctx,
    util_range_set_empty(&res->valid_buffer_range);
 
    iris_bo_unreference(old_bo);
+
+   /* The new buffer is idle. */
+   return true;
+}
+
+static void
+iris_invalidate_resource(struct pipe_context *ctx,
+                         struct pipe_resource *resource)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_resource *res = (void *) resource;
+
+   iris_invalidate_buffer(ice, res);
 }
 
 static void
@@ -2399,9 +2419,9 @@ iris_transfer_map(struct pipe_context *ctx,
 
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       /* Replace the backing storage with a fresh buffer for non-async maps */
-      if (!(usage & (PIPE_MAP_UNSYNCHRONIZED |
-                     TC_TRANSFER_MAP_NO_INVALIDATE)))
-         iris_invalidate_resource(ctx, resource);
+      if (!(usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INVALIDATE))
+          && iris_invalidate_buffer(ice, res))
+         usage |= PIPE_MAP_UNSYNCHRONIZED;
 
       /* If we can discard the whole resource, we can discard the range. */
       usage |= PIPE_MAP_DISCARD_RANGE;
