@@ -203,10 +203,6 @@ if with_gallium_vdpau
   subdir('frontends/vdpau')
   subdir('targets/vdpau')
 endif
-if with_gallium_xvmc
-  subdir('frontends/xvmc')
-  subdir('targets/xvmc')
-endif
 if with_gallium_omx != 'disabled'
   subdir('frontends/omx')
   subdir('targets/omx')
