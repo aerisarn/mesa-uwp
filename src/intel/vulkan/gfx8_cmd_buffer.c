@@ -291,7 +291,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_MODE)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_MODE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLIP_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE)) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_RASTER::APIMode
        *    3DSTATE_RASTER::DXMultisampleRasterizationEnable
@@ -316,6 +318,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       bool aa_enable = anv_rasterization_aa_mode(dynamic_raster_mode,
                                                  line_mode);
 
+      bool depth_clip_enable =
+         vk_rasterization_state_depth_clip_enable(&dyn->rs);
+
       uint32_t raster_dw[GENX(3DSTATE_RASTER_length)];
       struct GENX(3DSTATE_RASTER) raster = {
          GENX(3DSTATE_RASTER_header),
@@ -332,6 +337,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetClamp             = dyn->rs.depth_bias.clamp,
          .FrontFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
          .BackFaceFillMode = genX(vk_to_intel_fillmode)[dyn->rs.polygon_mode],
+         .ViewportZFarClipTestEnable = depth_clip_enable,
+         .ViewportZNearClipTestEnable = depth_clip_enable,
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,

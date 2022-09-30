@@ -3142,6 +3142,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 
    if (!(cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) &&
+       !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT) &&
        !BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE))
       return;
@@ -3157,6 +3158,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 
    struct GENX(3DSTATE_CLIP) clip = {
       GENX(3DSTATE_CLIP_header),
+      .APIMode = dyn->vp.depth_clip_negative_one_to_one ? APIMODE_OGL : APIMODE_D3D,
       .ViewportXYClipTestEnable = xy_clip_test_enable,
    };
    uint32_t dwords[GENX(3DSTATE_CLIP_length)];
@@ -3195,10 +3197,7 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
    struct anv_state sf_clip_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
 
-   bool negative_one_to_one =
-      cmd_buffer->state.gfx.pipeline->negative_one_to_one;
-
-   float scale = negative_one_to_one ? 0.5f : 1.0f;
+   float scale = dyn->vp.depth_clip_negative_one_to_one ? 0.5f : 1.0f;
 
    for (uint32_t i = 0; i < count; i++) {
       const VkViewport *vp = &viewports[i];
@@ -3211,7 +3210,7 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
          .ViewportMatrixElementm22 = (vp->maxDepth - vp->minDepth) * scale,
          .ViewportMatrixElementm30 = vp->x + vp->width / 2,
          .ViewportMatrixElementm31 = vp->y + vp->height / 2,
-         .ViewportMatrixElementm32 = negative_one_to_one ?
+         .ViewportMatrixElementm32 = dyn->vp.depth_clip_negative_one_to_one ?
             (vp->minDepth + vp->maxDepth) * scale : vp->minDepth,
          .XMinClipGuardband = -1.0f,
          .XMaxClipGuardband = 1.0f,
@@ -3290,8 +3289,7 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 }
 
 static void
-cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
-                               bool depth_clamp_enable)
+cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
@@ -3312,8 +3310,8 @@ cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
       float max_depth = MAX2(vp->minDepth, vp->maxDepth);
 
       struct GENX(CC_VIEWPORT) cc_viewport = {
-         .MinimumDepth = depth_clamp_enable ? min_depth : 0.0f,
-         .MaximumDepth = depth_clamp_enable ? max_depth : 1.0f,
+         .MinimumDepth = dyn->rs.depth_clamp_enable ? min_depth : 0.0f,
+         .MaximumDepth = dyn->rs.depth_clamp_enable ? max_depth : 1.0f,
       };
 
       GENX(CC_VIEWPORT_pack)(NULL, cc_state.map + i * 8, &cc_viewport);
@@ -3633,10 +3631,11 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                        ANV_CMD_DIRTY_RENDER_TARGETS)) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) ||
-       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS)) {
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)) {
       cmd_buffer_emit_viewport(cmd_buffer);
-      cmd_buffer_emit_depth_viewport(cmd_buffer,
-                                     pipeline->depth_clamp_enable);
+      cmd_buffer_emit_depth_viewport(cmd_buffer);
       cmd_buffer_emit_scissor(cmd_buffer);
    }
 

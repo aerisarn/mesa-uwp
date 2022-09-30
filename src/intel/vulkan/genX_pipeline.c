@@ -739,9 +739,6 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
    raster.ScissorRectangleEnable = true;
 
-   raster.ViewportZFarClipTestEnable = pipeline->depth_clip_enable;
-   raster.ViewportZNearClipTestEnable = pipeline->depth_clip_enable;
-
    raster.ConservativeRasterizationEnable =
       rs->conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
 
@@ -1032,7 +1029,6 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.ClipEnable               = true;
    clip.StatisticsEnable         = true;
    clip.EarlyCullEnable          = true;
-   clip.APIMode                  = pipeline->negative_one_to_one ? APIMODE_OGL : APIMODE_D3D;
    clip.GuardbandClipTestEnable  = true;
 
    clip.VertexSubPixelPrecisionSelect = _8Bit;

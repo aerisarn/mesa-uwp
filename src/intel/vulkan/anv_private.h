@@ -2959,11 +2959,8 @@ struct anv_graphics_pipeline {
    uint32_t                                     view_mask;
    uint32_t                                     instance_multiplier;
 
-   bool                                         depth_clamp_enable;
-   bool                                         depth_clip_enable;
    bool                                         kill_pixel;
    bool                                         force_fragment_thread_dispatch;
-   bool                                         negative_one_to_one;
 
    uint32_t                                     vb_used;
    struct anv_pipeline_vertex_binding {
