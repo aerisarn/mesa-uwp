@@ -114,7 +114,6 @@ def process(filename: os.PathLike[str]) -> None:
     enums = sorted(genxml.findall('enum'), key=get_name)
     enum_dict: typing.Dict[str, et.Element] = {}
     for e in enums:
-        values = e.findall('./value')
         e[:] = sorted(e, key=get_value)
         enum_dict[e.attrib['name']] = e
 
