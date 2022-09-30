@@ -72,6 +72,17 @@ error2aub = executable(
   install : true
 )
 
+error2hangdump = executable(
+  'intel_error2hangdump',
+  files('error2hangdump.c'),
+  dependencies : [dep_zlib, dep_dl, dep_thread, dep_m],
+  include_directories : [inc_include, inc_src, inc_intel],
+  link_with : [libintel_dev],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  install : true
+)
+
 intel_hang_replay = executable(
   'intel_hang_replay',
   files('intel_hang_replay.c'),
