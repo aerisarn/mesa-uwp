@@ -45,7 +45,7 @@ def add_struct_refs(items: typing.OrderedDict[str, bool], node: et.Element) -> N
             t = node.attrib['type']
             items[t] = True
         return
-    if node.tag != 'struct' and node.tag != 'group':
+    if node.tag not in {'struct', 'group'}:
         return
     for c in node:
         add_struct_refs(items, c)
