@@ -650,14 +650,7 @@ struct zink_pipeline_dynamic_state2 {
    uint16_t vertices_per_patch; //5 bits
 };
 
-struct zink_pipeline_dynamic_state3 {
-   unsigned polygon_mode : 2; //VkPolygonMode
-   unsigned line_mode : 2; //VkLineRasterizationModeEXT
-   unsigned depth_clamp:1;
-   unsigned pv_last:1;
-   unsigned line_stipple_enable:1;
-   unsigned clip_halfz:1;
-};
+#define zink_pipeline_dynamic_state3 zink_rasterizer_hw_state
 
 struct zink_gfx_pipeline_state {
    /* order matches zink_gfx_output_key */
