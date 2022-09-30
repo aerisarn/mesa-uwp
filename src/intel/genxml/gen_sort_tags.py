@@ -74,7 +74,7 @@ genxml_desc = {
     'genxml'      : [ 'name', 'gen', ],
     'enum'        : [ 'name', 'value', 'prefix', ],
     'struct'      : [ 'name', 'length', ],
-    'field'       : [ 'name', 'start', 'end', 'type', 'default', 'prefix', ],
+    'field'       : [ 'name', 'start', 'end', 'type', 'default', 'prefix', 'nonzero' ],
     'instruction' : [ 'name', 'bias', 'length', 'engine', ],
     'value'       : [ 'name', 'value', ],
     'group'       : [ 'count', 'start', 'size', ],
