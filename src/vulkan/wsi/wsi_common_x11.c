@@ -2200,9 +2200,6 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    assert(chain->has_present_queue || !chain->has_acquire_queue);
 
-   for (int i = 0; i < ARRAY_SIZE(modifiers); i++)
-      vk_free(pAllocator, modifiers[i]);
-
    /* It is safe to set it here as only one swapchain can be associated with
     * the window, and swapchain creation does the association. At this point
     * we know the creation is going to succeed. */
