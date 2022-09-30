@@ -20,6 +20,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
+ * Capture the hanging application with INTEL_DEBUG=capture-all
+ *
+ * Turn the error state into a replay file with :
+ *    $ intel_error2hangdump error_state
+ *
+ * Replay with :
+ *    $ intel_hang_replay -d error_state.dmp
  */
 
 #include <fcntl.h>
@@ -151,6 +158,7 @@ struct gem_bo {
    uint32_t gem_handle;
    uint64_t offset;
    uint64_t size;
+   bool     hw_img;
 };
 
 static int
@@ -272,22 +280,28 @@ main(int argc, char *argv[])
    util_dynarray_init(&buffers, mem_ctx);
 
    union intel_hang_dump_block_all block_header;
-   struct intel_hang_dump_block_exec init = {}, exec = {};
+   struct intel_hang_dump_block_exec init = {
+      .offset = -1,
+   }, exec = {
+      .offset = -1,
+   };
 
    while (read(file_fd, &block_header.base, sizeof(block_header.base)) ==
           sizeof(block_header.base)) {
 
       static const size_t block_size[] = {
-         [INTEL_HANG_DUMP_BLOCK_TYPE_HEADER] = sizeof(struct intel_hang_dump_block_header),
-         [INTEL_HANG_DUMP_BLOCK_TYPE_BO]     = sizeof(struct intel_hang_dump_block_bo),
-         [INTEL_HANG_DUMP_BLOCK_TYPE_MAP]    = sizeof(struct intel_hang_dump_block_map),
-         [INTEL_HANG_DUMP_BLOCK_TYPE_EXEC]   = sizeof(struct intel_hang_dump_block_exec),
+         [INTEL_HANG_DUMP_BLOCK_TYPE_HEADER]   = sizeof(struct intel_hang_dump_block_header),
+         [INTEL_HANG_DUMP_BLOCK_TYPE_BO]       = sizeof(struct intel_hang_dump_block_bo),
+         [INTEL_HANG_DUMP_BLOCK_TYPE_MAP]      = sizeof(struct intel_hang_dump_block_map),
+         [INTEL_HANG_DUMP_BLOCK_TYPE_EXEC]     = sizeof(struct intel_hang_dump_block_exec),
+         [INTEL_HANG_DUMP_BLOCK_TYPE_HW_IMAGE] = sizeof(struct intel_hang_dump_block_hw_image),
       };
 
       assert(block_header.base.type < ARRAY_SIZE(block_size));
 
       size_t remaining_size = block_size[block_header.base.type] - sizeof(block_header.base);
       ssize_t ret = read(file_fd, &block_header.base + 1, remaining_size);
+      bool has_hw_image = false;
       assert(ret == remaining_size);
 
       switch (block_header.base.type) {
@@ -298,9 +312,11 @@ main(int argc, char *argv[])
 
       case INTEL_HANG_DUMP_BLOCK_TYPE_BO: {
          struct gem_bo *bo = util_dynarray_grow(&buffers, struct gem_bo, 1);
-         bo->file_offset = lseek(file_fd, 0, SEEK_CUR);
-         bo->offset = block_header.bo.offset;
-         bo->size = block_header.bo.size;
+         *bo = (struct gem_bo) {
+            .file_offset = lseek(file_fd, 0, SEEK_CUR),
+            .offset = block_header.bo.offset,
+            .size = block_header.bo.size,
+         };
          total_vma += bo->size;
          skip_data(file_fd, bo->size);
          if (list) {
@@ -310,11 +326,31 @@ main(int argc, char *argv[])
          break;
       }
 
+      case INTEL_HANG_DUMP_BLOCK_TYPE_HW_IMAGE: {
+         struct gem_bo *bo = util_dynarray_grow(&buffers, struct gem_bo, 1);
+         *bo = (struct gem_bo) {
+            .file_offset = lseek(file_fd, 0, SEEK_CUR),
+            .offset = 0,
+            .size = block_header.hw_img.size,
+            .hw_img = true,
+         };
+         total_vma += bo->size;
+         skip_data(file_fd, bo->size);
+         if (list) {
+            fprintf(stderr, "buffer: offset=0x%016lx size=0x%016lx name=hw_img\n",
+                    bo->offset, bo->size);
+         }
+         has_hw_image = true;
+         break;
+      }
+
       case INTEL_HANG_DUMP_BLOCK_TYPE_MAP: {
          struct gem_bo *bo = util_dynarray_grow(&buffers, struct gem_bo, 1);
-         bo->file_offset = 0;
-         bo->offset = block_header.map.offset;
-         bo->size = block_header.map.size;
+         *bo = (struct gem_bo) {
+            .file_offset = 0,
+            .offset = block_header.map.offset,
+            .size = block_header.map.size,
+         };
          total_vma += bo->size;
          if (list) {
             fprintf(stderr, "map   : offset=0x%016lx size=0x%016lx name=%s\n",
@@ -324,7 +360,7 @@ main(int argc, char *argv[])
       }
 
       case INTEL_HANG_DUMP_BLOCK_TYPE_EXEC: {
-         if (init.offset == 0) {
+         if (init.offset == 0 && !has_hw_image) {
             if (list)
                fprintf(stderr, "init  : offset=0x%016lx\n", block_header.exec.offset);
             init = block_header.exec;
@@ -437,6 +473,9 @@ main(int argc, char *argv[])
                                 EXEC_OBJECT_PINNED,
             .offset           = bo->offset,
          };
+
+         if (bo->hw_img)
+            execbuf_bo->flags |= EXEC_OBJECT_NEEDS_GTT;
       }
 
       assert(batch_bo != NULL);
@@ -446,37 +485,47 @@ main(int argc, char *argv[])
 
       int ret;
 
-      fprintf(stderr, "init: 0x%016lx\n", init_bo->offset);
-      *execbuf_bo = (struct drm_i915_gem_exec_object2) {
-         .handle           = init_bo->gem_handle,
-         .relocation_count = 0,
-         .relocs_ptr       = 0,
-         .flags            = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
-                             EXEC_OBJECT_PINNED |
-                             EXEC_OBJECT_WRITE /* to be able to wait on the BO */,
-         .offset           = init_bo->offset,
-      };
-      ret = execbuffer(drm_fd, &execbuffer_bos, init_bo, init.offset);
-      if (ret != 0) {
-         fprintf(stderr, "initialization buffer failed to execute errno=%i\n", errno);
-         exit(-1);
+      if (init_bo) {
+         fprintf(stderr, "init: 0x%016lx\n", init_bo->offset);
+         *execbuf_bo = (struct drm_i915_gem_exec_object2) {
+            .handle           = init_bo->gem_handle,
+            .relocation_count = 0,
+            .relocs_ptr       = 0,
+            .flags            = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
+                                EXEC_OBJECT_PINNED |
+                                EXEC_OBJECT_WRITE /* to be able to wait on the BO */,
+            .offset           = init_bo->offset,
+         };
+         ret = execbuffer(drm_fd, &execbuffer_bos, init_bo, init.offset);
+         if (ret != 0) {
+            fprintf(stderr, "initialization buffer failed to execute errno=%i\n", errno);
+            exit(-1);
+         }
+      } else {
+         fprintf(stderr, "no init BO\n");
       }
 
-      fprintf(stderr, "exec: 0x%016lx aperture=%.2fMb\n", batch_bo->offset,
-              gem_allocated / 1024.0 / 1024.0);
-      *execbuf_bo = (struct drm_i915_gem_exec_object2) {
-         .handle           = batch_bo->gem_handle,
-         .relocation_count = 0,
-         .relocs_ptr       = 0,
-         .flags            = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
-                             EXEC_OBJECT_PINNED |
-                             EXEC_OBJECT_WRITE /* to be able to wait on the BO */,
-         .offset           = batch_bo->offset,
-      };
-      ret = execbuffer(drm_fd, &execbuffer_bos, batch_bo, exec.offset);
-      if (ret != 0) {
-         fprintf(stderr, "replayed buffer failed to execute errno=%i\n", errno);
-         exit(-1);
+      if (batch_bo) {
+         fprintf(stderr, "exec: 0x%016lx aperture=%.2fMb\n", batch_bo->offset,
+                 gem_allocated / 1024.0 / 1024.0);
+         *execbuf_bo = (struct drm_i915_gem_exec_object2) {
+            .handle           = batch_bo->gem_handle,
+            .relocation_count = 0,
+            .relocs_ptr       = 0,
+            .flags            = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
+                                EXEC_OBJECT_PINNED |
+                                EXEC_OBJECT_WRITE /* to be able to wait on the BO */,
+            .offset           = batch_bo->offset,
+         };
+         ret = execbuffer(drm_fd, &execbuffer_bos, batch_bo, exec.offset);
+         if (ret != 0) {
+            fprintf(stderr, "replayed buffer failed to execute errno=%i\n", errno);
+            exit(-1);
+         } else {
+            fprintf(stderr, "exec completed successfully\n");
+         }
+      } else {
+         fprintf(stderr, "no exec BO\n");
       }
    }
 

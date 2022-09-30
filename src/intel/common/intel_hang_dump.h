@@ -36,10 +36,11 @@
 #define INTEL_HANG_DUMP_MAGIC   (0x4245012345676463)
 
 enum intel_hang_dump_block_type {
-   INTEL_HANG_DUMP_BLOCK_TYPE_HEADER = 1,
-   INTEL_HANG_DUMP_BLOCK_TYPE_BO     = 2,
-   INTEL_HANG_DUMP_BLOCK_TYPE_MAP    = 3,
-   INTEL_HANG_DUMP_BLOCK_TYPE_EXEC  = 4,
+   INTEL_HANG_DUMP_BLOCK_TYPE_HEADER    = 1,
+   INTEL_HANG_DUMP_BLOCK_TYPE_BO        = 2,
+   INTEL_HANG_DUMP_BLOCK_TYPE_MAP       = 3,
+   INTEL_HANG_DUMP_BLOCK_TYPE_EXEC      = 4,
+   INTEL_HANG_DUMP_BLOCK_TYPE_HW_IMAGE  = 5,
 };
 
 struct intel_hang_dump_block_base {
@@ -92,12 +93,22 @@ struct intel_hang_dump_block_exec {
    uint64_t offset;
 };
 
+struct intel_hang_dump_block_hw_image {
+   struct intel_hang_dump_block_base base;
+
+   /* Buffer size */
+   uint64_t size;
+
+   /* Data follows */
+};
+
 union intel_hang_dump_block_all {
-   struct intel_hang_dump_block_base   base;
-   struct intel_hang_dump_block_header header;
-   struct intel_hang_dump_block_bo     bo;
-   struct intel_hang_dump_block_map    map;
-   struct intel_hang_dump_block_exec   exec;
+   struct intel_hang_dump_block_base     base;
+   struct intel_hang_dump_block_header   header;
+   struct intel_hang_dump_block_bo       bo;
+   struct intel_hang_dump_block_map      map;
+   struct intel_hang_dump_block_exec     exec;
+   struct intel_hang_dump_block_hw_image hw_img;
 };
 
 #endif /* INTEL_HANG_DUMP_H */
