@@ -2701,7 +2701,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
       }
 
-      if (cmd->state.rb_mrt_blend_control[i] != pipeline->blend.rb_mrt_blend_control[i]) {
+      if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND_EQUATION)) &&
+          cmd->state.rb_mrt_blend_control[i] != pipeline->blend.rb_mrt_blend_control[i]) {
          cmd->state.rb_mrt_blend_control[i] = pipeline->blend.rb_mrt_blend_control[i];
          cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
       }
@@ -3333,6 +3334,59 @@ tu_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer,
       cmd->state.rb_mrt_control[i] =
          (cmd->state.rb_mrt_control[i] & ~blend_enable) |
          COND(pColorBlendEnables[i], blend_enable);
+   }
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetColorBlendEquationEXT(VkCommandBuffer commandBuffer,
+                               uint32_t firstAttachment,
+                               uint32_t attachmentCount,
+                               const VkColorBlendEquationEXT *pColorBlendEquation)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      unsigned att = i + firstAttachment;
+      const VkColorBlendEquationEXT *equation = &pColorBlendEquation[i];
+
+      const enum a3xx_rb_blend_opcode color_op = tu6_blend_op(equation->colorBlendOp);
+      const enum adreno_rb_blend_factor src_color_factor =
+         tu6_blend_factor(equation->srcColorBlendFactor);
+      const enum adreno_rb_blend_factor dst_color_factor =
+         tu6_blend_factor(equation->dstColorBlendFactor);
+      const enum a3xx_rb_blend_opcode alpha_op = tu6_blend_op(equation->alphaBlendOp);
+      const enum adreno_rb_blend_factor src_alpha_factor =
+         tu6_blend_factor(equation->srcAlphaBlendFactor);
+      const enum adreno_rb_blend_factor dst_alpha_factor =
+         tu6_blend_factor(equation->dstAlphaBlendFactor);
+
+      cmd->state.rb_mrt_blend_control[att] = A6XX_RB_MRT_BLEND_CONTROL(0,
+         .rgb_src_factor = src_color_factor,
+         .rgb_blend_opcode = color_op,
+         .rgb_dest_factor = dst_color_factor,
+         .alpha_src_factor = src_alpha_factor,
+         .alpha_blend_opcode = alpha_op,
+         .alpha_dest_factor = dst_alpha_factor).value;
+
+      /* Dual-src blend can only be on attachment 0, so we don't need to worry
+       * about OR'ing together the state from multiple attachments and can set
+       * DUAL_COLOR_IN_ENABLE right here.
+       */
+      if (att == 0) {
+         bool dual_src_blend =
+            tu_blend_factor_is_dual_src(equation->srcColorBlendFactor) ||
+            tu_blend_factor_is_dual_src(equation->dstColorBlendFactor) ||
+            tu_blend_factor_is_dual_src(equation->srcAlphaBlendFactor) ||
+            tu_blend_factor_is_dual_src(equation->dstAlphaBlendFactor);
+         cmd->state.sp_blend_cntl =
+            (cmd->state.sp_blend_cntl & ~A6XX_SP_BLEND_CNTL_DUAL_COLOR_IN_ENABLE) |
+            COND(dual_src_blend, A6XX_SP_BLEND_CNTL_DUAL_COLOR_IN_ENABLE);
+         cmd->state.rb_blend_cntl =
+            (cmd->state.rb_blend_cntl & ~A6XX_RB_BLEND_CNTL_DUAL_COLOR_IN_ENABLE) |
+            COND(dual_src_blend, A6XX_RB_BLEND_CNTL_DUAL_COLOR_IN_ENABLE);
+      }
    }
 
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;

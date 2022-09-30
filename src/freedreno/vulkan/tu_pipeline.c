@@ -307,19 +307,6 @@ tu_logic_op_reads_dst(VkLogicOp op)
    }
 }
 
-static bool tu_blend_factor_is_dual_src(VkBlendFactor factor)
-{
-   switch (factor) {
-   case VK_BLEND_FACTOR_SRC1_COLOR:
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
-   case VK_BLEND_FACTOR_SRC1_ALPHA:
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
-      return true;
-   default:
-      return false;
-   }
-}
-
 static bool
 tu_blend_state_is_dual_src(const VkPipelineColorBlendStateCreateInfo *info)
 {
@@ -3790,6 +3777,13 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
          pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
          break;
+      case VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_BLEND) |
+            BIT(TU_DYNAMIC_STATE_BLEND_EQUATION);
+         pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_DUAL_COLOR_IN_ENABLE;
+         pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_DUAL_COLOR_IN_ENABLE;
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3894,6 +3888,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE) |
             BIT(TU_DYNAMIC_STATE_BLEND) |
             BIT(TU_DYNAMIC_STATE_BLEND_ENABLE) |
+            BIT(TU_DYNAMIC_STATE_BLEND_EQUATION) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
             BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE) |
@@ -4557,6 +4552,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       pipeline->blend.color_write_enable :
       pipeline->blend.blend_enable;
    tu6_emit_blend_control(pipeline, blend_enable_mask,
+                          !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND_EQUATION)) &&
                           tu_blend_state_is_dual_src(blend_info), msaa_info);
 
    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_BLEND,
