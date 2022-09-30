@@ -3255,6 +3255,19 @@ tu_CmdSetDepthClipNegativeOneToOneEXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_VIEWPORTS;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetRasterizationStreamEXT(VkCommandBuffer commandBuffer,
+                                uint32_t rasterizationStream)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.pc_raster_cntl =
+      (cmd->state.pc_raster_cntl & ~A6XX_PC_RASTER_CNTL_STREAM__MASK) |
+      A6XX_PC_RASTER_CNTL_STREAM(rasterizationStream);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_PC_RASTER_CNTL;
+}
+
 static void
 tu_flush_for_access(struct tu_cache_state *cache,
                     enum tu_cmd_access_mask src_mask,
