@@ -3598,6 +3598,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       return;
 
    bool dynamic_depth_clip = false, dynamic_depth_clamp = false;
+   bool dynamic_viewport = false, dynamic_viewport_range = false;
 
    for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
       VkDynamicState state = dynamic_info->pDynamicStates[i];
@@ -3606,6 +3607,8 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          if (state == VK_DYNAMIC_STATE_LINE_WIDTH)
             pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
          pipeline->dynamic_state_mask |= BIT(state);
+         if (state == VK_DYNAMIC_STATE_VIEWPORT)
+            dynamic_viewport = true;
          break;
       case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
@@ -3627,6 +3630,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          break;
       case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
          pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_VIEWPORT);
+         dynamic_viewport = true;
          break;
       case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
          pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_SCISSOR);
@@ -3759,6 +3763,15 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->blend.rb_blend_cntl_mask &=
             ~A6XX_RB_BLEND_CNTL_ALPHA_TO_ONE;
          break;
+      case VK_DYNAMIC_STATE_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(VK_DYNAMIC_STATE_VIEWPORT) |
+            BIT(TU_DYNAMIC_STATE_RAST) |
+            BIT(TU_DYNAMIC_STATE_VIEWPORT_RANGE);
+         pipeline->rast.gras_cl_cntl_mask &=
+            ~A6XX_GRAS_CL_CNTL_ZERO_GB_SCALE_Z;
+         dynamic_viewport_range = true;
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3767,6 +3780,14 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
 
    pipeline->rast.override_depth_clip =
       dynamic_depth_clamp && !dynamic_depth_clip;
+
+   /* If the viewport range is dynamic, the viewport may need to be adjusted
+    * dynamically so we can't emit it up-front, but we need to copy the state
+    * viewport state to the dynamic state as if we had called CmdSetViewport()
+    * when binding the pipeline.
+    */
+   pipeline->viewport.set_dynamic_vp_to_static =
+      dynamic_viewport_range && !dynamic_viewport;
 }
 
 static void
@@ -3820,7 +3841,8 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD) |
             BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS) |
             BIT(TU_DYNAMIC_STATE_POLYGON_MODE) |
-            BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN);
+            BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN) |
+            BIT(TU_DYNAMIC_STATE_VIEWPORT_RANGE);
       }
 
       if (library->state &
@@ -4152,8 +4174,13 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
 
    struct tu_cs cs;
 
-   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * vp_info->viewportCount))
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * vp_info->viewportCount)) {
       tu6_emit_viewport(&cs, vp_info->pViewports, vp_info->viewportCount, pipeline->viewport.z_negative_one_to_one);
+   } else if (pipeline->viewport.set_dynamic_vp_to_static) {
+      memcpy(pipeline->viewport.viewports, vp_info->pViewports,
+             vp_info->viewportCount * sizeof(*vp_info->pViewports));
+      pipeline->viewport.num_viewports = vp_info->viewportCount;
+   }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * vp_info->scissorCount))
       tu6_emit_scissor(&cs, vp_info->pScissors, vp_info->scissorCount);

@@ -39,6 +39,8 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN,
    TU_DYNAMIC_STATE_MSAA_SAMPLES,
    TU_DYNAMIC_STATE_ALPHA_TO_COVERAGE,
+   TU_DYNAMIC_STATE_DEPTH_CLIP_RANGE,
+   TU_DYNAMIC_STATE_VIEWPORT_RANGE,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
    TU_DYNAMIC_STATE_RAST = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
@@ -243,6 +245,9 @@ struct tu_pipeline
    struct tu_lrz_pipeline lrz;
 
    struct {
+      VkViewport viewports[MAX_VIEWPORTS];
+      unsigned num_viewports;
+      bool set_dynamic_vp_to_static;
       bool z_negative_one_to_one;
    } viewport;
 

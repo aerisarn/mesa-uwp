@@ -2635,8 +2635,21 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       tu6_update_msaa_samples(cmd, pipeline->output.samples);
 
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
+       !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VIEWPORT_RANGE)) &&
        (pipeline->viewport.z_negative_one_to_one != cmd->state.z_negative_one_to_one)) {
       cmd->state.z_negative_one_to_one = pipeline->viewport.z_negative_one_to_one;
+      cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
+   }
+
+   if (pipeline->viewport.set_dynamic_vp_to_static) {
+      memcpy(cmd->state.viewport, pipeline->viewport.viewports,
+             pipeline->viewport.num_viewports *
+             sizeof(pipeline->viewport.viewports[0]));
+
+      /* Any viewports set dynamically are invalidated when the pipeline is
+       * bound, so we don't need to take the max here.
+       */
+      cmd->state.max_viewport = pipeline->viewport.num_viewports;
       cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
    }
 
@@ -3226,6 +3239,20 @@ tu_CmdSetAlphaToOneEnableEXT(VkCommandBuffer commandBuffer,
       COND(alphaToOneEnable, A6XX_RB_BLEND_CNTL_ALPHA_TO_ONE);
 
    cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetDepthClipNegativeOneToOneEXT(VkCommandBuffer commandBuffer,
+                                      VkBool32 negativeOneToOne)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.gras_cl_cntl =
+      (cmd->state.gras_cl_cntl & ~A6XX_GRAS_CL_CNTL_ZERO_GB_SCALE_Z) |
+      COND(!negativeOneToOne, A6XX_GRAS_CL_CNTL_ZERO_GB_SCALE_Z);
+   cmd->state.z_negative_one_to_one = negativeOneToOne;
+
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_VIEWPORTS;
 }
 
 static void
@@ -4675,7 +4702,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (dirty & TU_CMD_DIRTY_VIEWPORTS) {
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
       tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport,
-                        pipeline->viewport.z_negative_one_to_one);
+                        cmd->state.z_negative_one_to_one);
    }
 
    if (dirty & TU_CMD_DIRTY_BLEND) {
