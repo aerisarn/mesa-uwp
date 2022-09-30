@@ -2632,6 +2632,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        cmd->state.tess_upper_left_domain_origin =
           pipeline->tess.upper_left_domain_origin;
 
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_PROVOKING_VTX)))
+       cmd->state.provoking_vertex_last = pipeline->rast.provoking_vertex_last;
+
    tu6_update_msaa_disable(cmd);
 
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_MSAA_SAMPLES)))
@@ -3287,6 +3291,16 @@ tu_CmdSetLineRasterizationModeEXT(VkCommandBuffer commandBuffer,
       A6XX_GRAS_SU_CNTL_LINE_MODE(cmd->state.line_mode);
 
    cmd->state.dirty |= TU_CMD_DIRTY_RAST;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetProvokingVertexModeEXT(VkCommandBuffer commandBuffer,
+                                VkProvokingVertexModeEXT provokingVertexMode)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.provoking_vertex_last =
+      provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
 }
 
 static void
@@ -4634,7 +4648,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       primitive_restart_enabled = cmd->state.primitive_restart_enable;
 
    bool primitive_restart = primitive_restart_enabled && indexed;
-   bool provoking_vtx_last = pipeline->rast.provoking_vertex_last;
+   bool provoking_vtx_last = cmd->state.provoking_vertex_last;
    bool tess_upper_left_domain_origin =
       cmd->state.tess_upper_left_domain_origin;
 

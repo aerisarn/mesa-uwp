@@ -349,6 +349,7 @@ struct tu_cmd_state
    enum pc_di_primtype primtype;
    bool primitive_restart_enable;
    bool tess_upper_left_domain_origin;
+   bool provoking_vertex_last;
 
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
