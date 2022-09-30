@@ -3680,7 +3680,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
          pipeline->rast.pc_raster_cntl_mask &= ~A6XX_PC_RASTER_CNTL_DISCARD;
          pipeline->rast.vpc_unknown_9107_mask &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PC_RASTER_CNTL);
          break;
       case VK_DYNAMIC_STATE_LOGIC_OP_EXT:
          pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
@@ -3838,7 +3838,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(VK_DYNAMIC_STATE_SCISSOR) |
             BIT(TU_DYNAMIC_STATE_RAST) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BIAS) |
-            BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD) |
+            BIT(TU_DYNAMIC_STATE_PC_RASTER_CNTL) |
             BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS) |
             BIT(TU_DYNAMIC_STATE_POLYGON_MODE) |
             BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN) |
@@ -4275,7 +4275,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    struct tu_cs cs;
 
-   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4)) {
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_PC_RASTER_CNTL, 4)) {
       tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = pipeline->rast.pc_raster_cntl));
       tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = pipeline->rast.vpc_unknown_9107));
    }

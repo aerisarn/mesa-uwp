@@ -2681,8 +2681,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    UPDATE_REG(rast, gras_cl_cntl, RAST);
    UPDATE_REG(rast_ds, rb_depth_cntl, RB_DEPTH_CNTL);
    UPDATE_REG(ds, rb_stencil_cntl, RB_STENCIL_CNTL);
-   UPDATE_REG(rast, pc_raster_cntl, RASTERIZER_DISCARD);
-   UPDATE_REG(rast, vpc_unknown_9107, RASTERIZER_DISCARD);
+   UPDATE_REG(rast, pc_raster_cntl, PC_RASTER_CNTL);
+   UPDATE_REG(rast, vpc_unknown_9107, PC_RASTER_CNTL);
    UPDATE_REG(blend, sp_blend_cntl, BLEND);
    UPDATE_REG(blend, rb_blend_cntl, BLEND);
 
@@ -3082,7 +3082,7 @@ tu_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
       cmd->state.vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
    }
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RASTERIZER_DISCARD;
+   cmd->state.dirty |= TU_CMD_DIRTY_PC_RASTER_CNTL;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4643,8 +4643,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu6_build_depth_plane_z_mode(cmd, &cs);
    }
 
-   if (dirty & TU_CMD_DIRTY_RASTERIZER_DISCARD) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4);
+   if (dirty & TU_CMD_DIRTY_PC_RASTER_CNTL) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_PC_RASTER_CNTL, 4);
       tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = cmd->state.pc_raster_cntl));
       tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = cmd->state.vpc_unknown_9107));
    }
