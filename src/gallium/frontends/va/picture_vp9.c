@@ -327,13 +327,13 @@ void vlVaDecoderVP9BitstreamHeader(vlVaContext *context, vlVaBuffer *buf)
             /* update_ref_delta */
             if (vp9_u(&vlc, 1))
                /* ref_deltas */
-               vp9_s(&vlc, 6);
+               context->desc.vp9.picture_parameter.ref_deltas[i] = vp9_s(&vlc, 6);
          }
          for (i = 0; i < 2; ++i) {
             /* update_mode_delta */
             if (vp9_u(&vlc, 1))
                /* mode_deltas */
-               vp9_s(&vlc, 6);
+               context->desc.vp9.picture_parameter.mode_deltas[i] = vp9_s(&vlc, 6);
          }
       }
    }

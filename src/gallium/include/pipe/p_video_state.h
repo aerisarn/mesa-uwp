@@ -899,6 +899,8 @@ struct pipe_vp9_picture_desc
       int8_t uv_ac_delta_q;
       int8_t uv_dc_delta_q;
       uint8_t abs_delta;
+      uint8_t ref_deltas[4];
+      uint8_t mode_deltas[2];
    } picture_parameter;
 
    struct {
