@@ -6875,8 +6875,8 @@
   </instruction>
 
   <register name="3D_CHICKEN3" length="1" num="0x2090">
-     <field name="AA Line Quality Fix" start="5" end="5" type="bool"/>
-     <field name="AA Line Quality Fix Mask" start="21" end="21" type="bool"/>
+    <field name="AA Line Quality Fix" start="5" end="5" type="bool"/>
+    <field name="AA Line Quality Fix Mask" start="21" end="21" type="bool"/>
   </register>
 
   <register name="BCS_INSTDONE" length="1" num="0x2206c">
@@ -6926,14 +6926,6 @@
     <field name="NP Early Z Fails Disable Mask" start="29" end="29" type="bool"/>
     <field name="Blend Optimization Fix Disable Mask" start="30" end="30" type="bool"/>
     <field name="Color Compression Disable Mask" start="31" end="31" type="bool"/>
-  </register>
-
-  <register name="GT_MODE" length="1" num="0x7008">
-     <field name="Binding Table Alignment" start="10" end="10" type="uint">
-       <value name="BTP_15_5" value="0"/>
-       <value name="BTP_18_8" value="1"/>
-     </field>
-     <field name="Binding Table Alignment Mask" start="26" end="26" type="bool"/>
   </register>
 
   <register name="CACHE_MODE_SS" length="1" num="0x0e420">
@@ -6996,6 +6988,14 @@
 
   <register name="GS_PRIMITIVES_COUNT" length="2" num="0x2330">
     <field name="GS Primitives Count Report" start="0" end="63" type="uint"/>
+  </register>
+
+  <register name="GT_MODE" length="1" num="0x7008">
+    <field name="Binding Table Alignment" start="10" end="10" type="uint">
+      <value name="BTP_15_5" value="0"/>
+      <value name="BTP_18_8" value="1"/>
+    </field>
+    <field name="Binding Table Alignment Mask" start="26" end="26" type="bool"/>
   </register>
 
   <register name="HALF_SLICE_CHICKEN7" length="1" num="0x0e194">
@@ -7121,8 +7121,8 @@
 
   <register name="SAMPLER_MODE" length="1" num="0x0e18c">
     <field name="Headerless Message for Pre-emptable Contexts" start="5" end="5" type="bool"/>
-    <field name="Headerless Message for Pre-emptable Contexts Mask" start="21" end="21" type="bool"/>
     <field name="Enable Small PL" start="15" end="15" type="bool"/>
+    <field name="Headerless Message for Pre-emptable Contexts Mask" start="21" end="21" type="bool"/>
     <field name="Enable Small PL Mask" start="31" end="31" type="bool"/>
   </register>
 

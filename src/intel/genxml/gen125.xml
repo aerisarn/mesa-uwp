@@ -761,7 +761,7 @@
       <value name="LINEAR" value="0"/>
       <value name="TILE64" value="1"/>
       <value name="XMAJOR" value="2"/>
-      <value name="TILE4"  value="3"/>
+      <value name="TILE4" value="3"/>
     </field>
     <field name="Surface Horizontal Alignment" start="14" end="15" type="uint">
       <value name="HALIGN_16" value="0"/>
@@ -910,6 +910,53 @@
     <field name="Meta" start="512" end="1023" type="RT_BVH_METADATA"/>
   </struct>
 
+  <struct name="RT_BVH_INSTANCE_LEAF" length="32">
+    <field name="Shader Index" start="0" end="23" type="uint"/>
+    <field name="Geometry Ray Mask" start="24" end="31" type="uint"/>
+    <field name="Instance Contribution To Hit Group Index" start="32" end="55" type="uint"/>
+    <field name="Leaf Type" start="61" end="61" type="uint">
+      <value name="TYPE_OPAQUE_CULLING_ENABLED" value="0"/>
+      <value name="TYPE_OPAQUE_CULLING_DISABLED" value="1"/>
+    </field>
+    <field name="Geometry Flags" start="62" end="63" type="uint">
+      <value name="GEOMETRY_OPAQUE" value="1"/>
+    </field>
+    <field name="Start Node Address" start="64" end="111" type="address"/>
+    <field name="Instance Flags" start="112" end="119" type="uint">
+      <value name="TRIANGLE_CULL_DISABLE" value="1"/>
+      <value name="TRIANGLE_FRONT_COUNTERCLOCKWISE" value="2"/>
+      <value name="FORCE_OPAQUE" value="4"/>
+      <value name="FORCE_NON_OPAQUE" value="8"/>
+    </field>
+    <field name="World To Object m00" start="128" end="159" type="float"/>
+    <field name="World To Object m01" start="160" end="191" type="float"/>
+    <field name="World To Object m02" start="192" end="223" type="float"/>
+    <field name="World To Object m10" start="224" end="255" type="float"/>
+    <field name="World To Object m11" start="256" end="287" type="float"/>
+    <field name="World To Object m12" start="288" end="319" type="float"/>
+    <field name="World To Object m20" start="320" end="351" type="float"/>
+    <field name="World To Object m21" start="352" end="383" type="float"/>
+    <field name="World To Object m22" start="384" end="415" type="float"/>
+    <field name="Object To World m30" start="416" end="447" type="float"/>
+    <field name="Object To World m31" start="448" end="479" type="float"/>
+    <field name="Object To World m32" start="480" end="511" type="float"/>
+    <field name="BVH Address" start="512" end="559" type="address"/>
+    <field name="Instance ID" start="576" end="607" type="uint"/>
+    <field name="Instance Index" start="608" end="639" type="uint"/>
+    <field name="Object To World m00" start="640" end="671" type="float"/>
+    <field name="Object To World m01" start="672" end="703" type="float"/>
+    <field name="Object To World m02" start="704" end="735" type="float"/>
+    <field name="Object To World m10" start="736" end="767" type="float"/>
+    <field name="Object To World m11" start="768" end="799" type="float"/>
+    <field name="Object To World m12" start="800" end="831" type="float"/>
+    <field name="Object To World m20" start="832" end="863" type="float"/>
+    <field name="Object To World m21" start="864" end="895" type="float"/>
+    <field name="Object To World m22" start="896" end="927" type="float"/>
+    <field name="World To Object m30" start="928" end="959" type="float"/>
+    <field name="World To Object m31" start="960" end="991" type="float"/>
+    <field name="World To Object m32" start="992" end="1023" type="float"/>
+  </struct>
+
   <struct name="RT_BVH_INTERNAL_NODE" length="16">
     <field name="Origin" start="0" end="95" type="RT_BVH_VEC3"/>
     <field name="Child Offset" start="96" end="127" type="int"/>
@@ -964,6 +1011,15 @@
     </field>
   </struct>
 
+  <struct name="RT_BVH_PROCEDURAL_LEAF" length="16">
+    <field name="Leaf Descriptor" start="0" end="63" type="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR"/>
+    <field name="Num Primitives" start="64" end="67" type="uint"/>
+    <field name="Last Primitive" start="83" end="95" type="uint"/>
+    <group count="13" start="96" size="32">
+      <field name="Primitive Index" start="0" end="31" type="uint"/>
+    </group>
+  </struct>
+
   <struct name="RT_BVH_QUAD_LEAF" length="16">
     <field name="Leaf Descriptor" start="0" end="63" type="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR"/>
     <field name="Primitive Index 0" start="64" end="95" type="uint"/>
@@ -974,64 +1030,6 @@
     <field name="Last Quad" start="118" end="118" type="bool"/>
     <group count="4" start="128" size="96">
       <field name="Quad Vertex" start="0" end="95" type="RT_BVH_VEC3"/>
-    </group>
-  </struct>
-
-  <struct name="RT_BVH_INSTANCE_LEAF" length="32">
-    <field name="Shader Index" start="0" end="23" type="uint"/>
-    <field name="Geometry Ray Mask" start="24" end="31" type="uint"/>
-    <field name="Instance Contribution To Hit Group Index" start="32" end="55" type="uint"/>
-    <field name="Leaf Type" start="61" end="61" type="uint">
-      <value name="TYPE_OPAQUE_CULLING_ENABLED" value="0"/>
-      <value name="TYPE_OPAQUE_CULLING_DISABLED" value="1"/>
-    </field>
-    <field name="Geometry Flags" start="62" end="63" type="uint">
-      <value name="GEOMETRY_OPAQUE" value="1"/>
-    </field>
-    <field name="Start Node Address" start="64" end="111" type="address"/>
-    <field name="Instance Flags" start="112" end="119" type="uint">
-      <value name="TRIANGLE_CULL_DISABLE" value="1"/>
-      <value name="TRIANGLE_FRONT_COUNTERCLOCKWISE" value="2"/>
-      <value name="FORCE_OPAQUE" value="4"/>
-      <value name="FORCE_NON_OPAQUE" value="8"/>
-    </field>
-    <field name="World To Object m00" start="128" end="159" type="float"/>
-    <field name="World To Object m01" start="160" end="191" type="float"/>
-    <field name="World To Object m02" start="192" end="223" type="float"/>
-    <field name="World To Object m10" start="224" end="255" type="float"/>
-    <field name="World To Object m11" start="256" end="287" type="float"/>
-    <field name="World To Object m12" start="288" end="319" type="float"/>
-    <field name="World To Object m20" start="320" end="351" type="float"/>
-    <field name="World To Object m21" start="352" end="383" type="float"/>
-    <field name="World To Object m22" start="384" end="415" type="float"/>
-    <field name="Object To World m30" start="416" end="447" type="float"/>
-    <field name="Object To World m31" start="448" end="479" type="float"/>
-    <field name="Object To World m32" start="480" end="511" type="float"/>
-    <field name="BVH Address" start="512" end="559" type="address"/>
-    <field name="Instance ID" start="576" end="607" type="uint"/>
-    <field name="Instance Index" start="608" end="639" type="uint"/>
-    <field name="Object To World m00" start="640" end="671" type="float"/>
-    <field name="Object To World m01" start="672" end="703" type="float"/>
-    <field name="Object To World m02" start="704" end="735" type="float"/>
-    <field name="Object To World m10" start="736" end="767" type="float"/>
-    <field name="Object To World m11" start="768" end="799" type="float"/>
-    <field name="Object To World m12" start="800" end="831" type="float"/>
-    <field name="Object To World m20" start="832" end="863" type="float"/>
-    <field name="Object To World m21" start="864" end="895" type="float"/>
-    <field name="Object To World m22" start="896" end="927" type="float"/>
-    <field name="World To Object m30" start="928" end="959" type="float"/>
-    <field name="World To Object m31" start="960" end="991" type="float"/>
-    <field name="World To Object m32" start="992" end="1023" type="float"/>
-  </struct>
-
-  <struct name="RT_BVH_PROCEDURAL_LEAF" length="16">
-    <field name="Leaf Descriptor" start="0" end="63" type="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR"/>
-
-    <!-- Software defined -->
-    <field name="Num Primitives" start="64" end="67" type="uint"/>
-    <field name="Last Primitive" start="83" end="95" type="uint"/>
-    <group count="13" start="96" size="32">
-      <field name="Primitive Index" start="0" end="31" type="uint"/>
     </group>
   </struct>
 
@@ -3015,36 +3013,6 @@
     <field name="Last Pixel Enable" start="127" end="127" type="bool"/>
   </instruction>
 
-  <instruction name="3DSTATE_SUBSLICE_HASH_TABLE" bias="2" length="14">
-    <field name="DWord Length" start="0" end="7" type="uint" default="12"/>
-    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="31"/>
-    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
-    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
-    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <group count="8" start="32" size="2">
-      <field name="Slice Hash Control" start="0" end="1" type="uint">
-        <value name="COMPUTED" value="0"/>
-        <value name="UNBALANCED_TABLE_0" value="1"/>
-        <value name="TABLE_0" value="2"/>
-        <value name="TABLE_1" value="3"/>
-      </field>
-    </group>
-    <field name="Slice Table Mode" start="62" end="63" type="uint">
-      <value name="SINGLE_TABLE" value="0"/>
-      <value name="DUAL_TABLE" value="1"/>
-    </field>
-    <group count="8" start="64" size="16">
-      <group count="16" start="0" size="1">
-        <field name="Two Way Table Entry" start="0" end="0" type="uint"/>
-      </group>
-    </group>
-    <group count="8" start="192" size="32">
-      <group count="16" start="0" size="2">
-        <field name="Three Way Table Entry" start="0" end="1" type="uint"/>
-      </group>
-    </group>
-  </instruction>
-
   <instruction name="3DSTATE_SLICE_TABLE_STATE_POINTERS" bias="2" length="2">
     <field name="DWord Length" start="0" end="7" type="uint" default="0"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="32"/>
@@ -3193,6 +3161,36 @@
     <field name="Buffer 1 Surface Pitch" start="112" end="123" type="uint"/>
     <field name="Buffer 2 Surface Pitch" start="128" end="139" type="uint"/>
     <field name="Buffer 3 Surface Pitch" start="144" end="155" type="uint"/>
+  </instruction>
+
+  <instruction name="3DSTATE_SUBSLICE_HASH_TABLE" bias="2" length="14">
+    <field name="DWord Length" start="0" end="7" type="uint" default="12"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="31"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <group count="8" start="32" size="2">
+      <field name="Slice Hash Control" start="0" end="1" type="uint">
+        <value name="COMPUTED" value="0"/>
+        <value name="UNBALANCED_TABLE_0" value="1"/>
+        <value name="TABLE_0" value="2"/>
+        <value name="TABLE_1" value="3"/>
+      </field>
+    </group>
+    <field name="Slice Table Mode" start="62" end="63" type="uint">
+      <value name="SINGLE_TABLE" value="0"/>
+      <value name="DUAL_TABLE" value="1"/>
+    </field>
+    <group count="8" start="64" size="16">
+      <group count="16" start="0" size="1">
+        <field name="Two Way Table Entry" start="0" end="0" type="uint"/>
+      </group>
+    </group>
+    <group count="8" start="192" size="32">
+      <group count="16" start="0" size="2">
+        <field name="Three Way Table Entry" start="0" end="1" type="uint"/>
+      </group>
+    </group>
   </instruction>
 
   <instruction name="3DSTATE_TASK_CONTROL" bias="2" length="3">
@@ -7576,11 +7574,11 @@
       <value name="PARTIAL_RESOLVE" value="2"/>
     </field>
     <field name="Color Depth" start="19" end="21" type="uint" prefix="XY_BPP">
-      <value name="8_BIT"   value="0"/>
-      <value name="16_BIT"  value="1"/>
-      <value name="32_BIT"  value="2"/>
-      <value name="64_BIT"  value="3"/>
-      <value name="96_BIT"  value="4"/>
+      <value name="8_BIT" value="0"/>
+      <value name="16_BIT" value="1"/>
+      <value name="32_BIT" value="2"/>
+      <value name="64_BIT" value="3"/>
+      <value name="96_BIT" value="4"/>
       <value name="128_BIT" value="5"/>
     </field>
     <field name="Opcode" start="22" end="28" type="uint" default="0x41"/>
@@ -7664,7 +7662,6 @@
     <field name="Destination Mip Tail Start LOD" start="584" end="587" type="uint"/>
     <field name="Destination Depth/Stencil Resource" start="594" end="594" type="bool"/>
     <field name="Destination Array Index" start="597" end="607" type="uint"/>
-
     <field name="Source Surface Height" start="608" end="621" type="uint"/>
     <field name="Source Surface Width" start="622" end="635" type="uint"/>
     <field name="Source Surface Type" start="637" end="639" type="uint" prefix="XY_SURFTYPE">
@@ -7700,11 +7697,11 @@
       <value name="FAST_CLEAR_0" value="2"/>
     </field>
     <field name="Color Depth" start="19" end="21" type="uint" prefix="XY_BPP">
-      <value name="8_BIT"   value="0"/>
-      <value name="16_BIT"  value="1"/>
-      <value name="32_BIT"  value="2"/>
-      <value name="64_BIT"  value="3"/>
-      <value name="96_BIT"  value="4"/>
+      <value name="8_BIT" value="0"/>
+      <value name="16_BIT" value="1"/>
+      <value name="32_BIT" value="2"/>
+      <value name="64_BIT" value="3"/>
+      <value name="96_BIT" value="4"/>
       <value name="128_BIT" value="5"/>
     </field>
     <field name="Opcode" start="22" end="28" type="uint" default="0x44"/>
@@ -7735,7 +7732,7 @@
       <value name="SYSTEM" value="1"/>
     </field>
     <group count="4" start="224" size="32">
-       <field name="Fill Color" start="0" end="31" type="uint"/>
+      <field name="Fill Color" start="0" end="31" type="uint"/>
     </group>
     <field name="Destination Compression Format" start="352" end="356" type="uint"/>
     <field name="Destination Clear Value Enable" start="357" end="357" type="bool"/>
@@ -7828,8 +7825,8 @@
   </register>
 
   <register name="CHICKEN_RASTER_1" length="1" num="0x6204">
-     <field name="AA Line Quality Fix" start="5" end="5" type="bool"/>
-     <field name="AA Line Quality Fix Mask" start="21" end="21" type="bool"/>
+    <field name="AA Line Quality Fix" start="5" end="5" type="bool"/>
+    <field name="AA Line Quality Fix Mask" start="21" end="21" type="bool"/>
   </register>
 
   <register name="CL_INVOCATION_COUNT" length="2" num="0x2338">
@@ -7943,6 +7940,23 @@
     <field name="SDE Done" start="22" end="22" type="bool"/>
     <field name="RCCFBC CS Done" start="23" end="23" type="bool"/>
     <field name="TSG1 Done" start="24" end="24" type="bool"/>
+  </register>
+
+  <register name="INSTDONE_GEOM" length="1" num="0x666c">
+    <field name="VFL Done" start="1" end="1" type="bool"/>
+    <field name="VS Done" start="2" end="2" type="bool"/>
+    <field name="HS Done" start="3" end="3" type="bool"/>
+    <field name="TE Done" start="4" end="4" type="bool"/>
+    <field name="DS Done" start="5" end="5" type="bool"/>
+    <field name="GS Done" start="6" end="6" type="bool"/>
+    <field name="SOL Done" start="7" end="7" type="bool"/>
+    <field name="CL Done" start="8" end="8" type="bool"/>
+    <field name="SF Done" start="9" end="9" type="bool"/>
+    <field name="TDG1 Done" start="11" end="11" type="bool"/>
+    <field name="URBM Done" start="13" end="13" type="bool"/>
+    <field name="SVG Done" start="14" end="14" type="bool"/>
+    <field name="TSG0 Done" start="17" end="17" type="bool"/>
+    <field name="SDE Done" start="22" end="22" type="bool"/>
   </register>
 
   <register name="L3ALLOC" length="1" num="0xB134">
@@ -8080,23 +8094,6 @@
     <field name="DAPRBE2 Done" start="13" end="13" type="bool"/>
   </register>
 
-  <register name="INSTDONE_GEOM" length="1" num="0x666c">
-    <field name="VFL Done" start="1" end="1" type="bool"/>
-    <field name="VS Done" start="2" end="2" type="bool"/>
-    <field name="HS Done" start="3" end="3" type="bool"/>
-    <field name="TE Done" start="4" end="4" type="bool"/>
-    <field name="DS Done" start="5" end="5" type="bool"/>
-    <field name="GS Done" start="6" end="6" type="bool"/>
-    <field name="SOL Done" start="7" end="7" type="bool"/>
-    <field name="CL Done" start="8" end="8" type="bool"/>
-    <field name="SF Done" start="9" end="9" type="bool"/>
-    <field name="TDG1 Done" start="11" end="11" type="bool"/>
-    <field name="URBM Done" start="13" end="13" type="bool"/>
-    <field name="SVG Done" start="14" end="14" type="bool"/>
-    <field name="TSG0 Done" start="17" end="17" type="bool"/>
-    <field name="SDE Done" start="22" end="22" type="bool"/>
-  </register>
-
   <register name="SLICE_COMMON_ECO_CHICKEN1" length="1" num="0x731c">
     <field name="State Cache Redirect To CS Section Enable" start="11" end="11" type="bool"/>
     <field name="State Cache Redirect To CS Section Enable Mask" start="27" end="27" type="bool"/>
@@ -8185,10 +8182,10 @@
   </register>
 
   <register name="VFG_PREEMPTION_CHICKEN_BITS" length="1" num="0x83B4">
-    <field name="Batch Preemption Disable" start="8" end="8" type="bool"/>
     <field name="PolygonTrifanLineLoop Preemption Disable" start="4" end="4" type="bool"/>
-    <field name="Batch Preemption Disable Mask" start="24" end="24" type="bool"/>
+    <field name="Batch Preemption Disable" start="8" end="8" type="bool"/>
     <field name="PolygonTrifanLineLoop Preemption Disable Mask" start="20" end="20" type="bool"/>
+    <field name="Batch Preemption Disable Mask" start="24" end="24" type="bool"/>
   </register>
 
   <register name="VS_INVOCATION_COUNT" length="2" num="0x2320">
