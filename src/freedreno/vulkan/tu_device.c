@@ -1344,8 +1344,8 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
          }
          properties->maxSampleLocationGridSize = (VkExtent2D) { 1 , 1 };
-         properties->sampleLocationCoordinateRange[0] = 0.0f;
-         properties->sampleLocationCoordinateRange[1] = 0.9375f;
+         properties->sampleLocationCoordinateRange[0] = SAMPLE_LOCATION_MIN;
+         properties->sampleLocationCoordinateRange[1] = SAMPLE_LOCATION_MAX;
          properties->sampleLocationSubPixelBits = 4;
          properties->variableSampleLocations = true;
          break;

@@ -2161,9 +2161,21 @@ tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp
       A6XX_RB_SAMPLE_CONFIG_LOCATION_ENABLE;
    uint32_t sample_locations = 0;
    for (uint32_t i = 0; i < samp_loc->sampleLocationsCount; i++) {
+      /* From VkSampleLocationEXT:
+       *
+       *    The values specified in a VkSampleLocationEXT structure are always
+       *    clamped to the implementation-dependent sample location coordinate
+       *    range
+       *    [sampleLocationCoordinateRange[0],sampleLocationCoordinateRange[1]]
+       */
+      float x = CLAMP(samp_loc->pSampleLocations[i].x, SAMPLE_LOCATION_MIN,
+                      SAMPLE_LOCATION_MAX);
+      float y = CLAMP(samp_loc->pSampleLocations[i].y, SAMPLE_LOCATION_MIN,
+                      SAMPLE_LOCATION_MAX);
+
       sample_locations |=
-         (A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_X(samp_loc->pSampleLocations[i].x) |
-          A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_Y(samp_loc->pSampleLocations[i].y)) << i*8;
+         (A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_X(x) |
+          A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_Y(y)) << i*8;
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 2);
