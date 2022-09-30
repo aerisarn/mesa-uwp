@@ -9,9 +9,6 @@ import re
 import xml.etree.ElementTree as et
 import typing
 
-if typing.TYPE_CHECKING:
-    import os
-
 def get_filename(element: et.Element) -> str:
     return element.attrib['filename']
 
@@ -107,7 +104,7 @@ def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
         f.write('/>\n')
 
 
-def process(filename: os.PathLike[str]) -> None:
+def process(filename: pathlib.Path) -> None:
     xml = et.parse(filename)
     genxml = xml.getroot()
 
@@ -145,10 +142,13 @@ def process(filename: os.PathLike[str]) -> None:
 
     genxml[:] = enums + list(sorted_structs.values()) + instructions + registers
 
-    with open(filename, 'w') as f:
+    tmp = filename.with_suffix(f'{filename.suffix}.tmp')
+    with tmp.open('w') as f:
         f.write('<?xml version="1.0" ?>\n')
         print_node(f, 0, genxml)
-
+    filename.unlink()
+    tmp.rename(filename)
+    
 
 if __name__ == '__main__':
     folder = pathlib.Path('.')
