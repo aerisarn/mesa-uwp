@@ -107,16 +107,16 @@ namespace {
     * the sources.
     */
    unsigned
-   required_dst_byte_offset(const fs_inst *inst)
+   required_dst_byte_offset(const intel_device_info *devinfo, const fs_inst *inst)
    {
       for (unsigned i = 0; i < inst->sources; i++) {
          if (!is_uniform(inst->src[i]) && !inst->is_control_source(i))
-            if (reg_offset(inst->src[i]) % REG_SIZE !=
-                reg_offset(inst->dst) % REG_SIZE)
+            if (reg_offset(inst->src[i]) % (reg_unit(devinfo) * REG_SIZE) !=
+                reg_offset(inst->dst) % (reg_unit(devinfo) * REG_SIZE))
                return 0;
       }
 
-      return reg_offset(inst->dst) % REG_SIZE;
+      return reg_offset(inst->dst) % (reg_unit(devinfo) * REG_SIZE);
    }
 
    /*
@@ -274,8 +274,8 @@ namespace {
          return true;
       }
 
-      const unsigned dst_byte_offset = reg_offset(inst->dst) % REG_SIZE;
-      const unsigned src_byte_offset = reg_offset(inst->src[i]) % REG_SIZE;
+      const unsigned dst_byte_offset = reg_offset(inst->dst) % (reg_unit(devinfo) * REG_SIZE);
+      const unsigned src_byte_offset = reg_offset(inst->src[i]) % (reg_unit(devinfo) * REG_SIZE);
 
       return has_dst_aligned_region_restriction(devinfo, inst) &&
              !is_uniform(inst->src[i]) &&
@@ -295,13 +295,13 @@ namespace {
          return false;
       } else {
          const brw_reg_type exec_type = get_exec_type(inst);
-         const unsigned dst_byte_offset = reg_offset(inst->dst) % REG_SIZE;
+         const unsigned dst_byte_offset = reg_offset(inst->dst) % (reg_unit(devinfo) * REG_SIZE);
          const bool is_narrowing_conversion = !is_byte_raw_mov(inst) &&
             type_sz(inst->dst.type) < type_sz(exec_type);
 
          return (has_dst_aligned_region_restriction(devinfo, inst) &&
                  (required_dst_byte_stride(inst) != byte_stride(inst->dst) ||
-                  required_dst_byte_offset(inst) != dst_byte_offset)) ||
+                  required_dst_byte_offset(devinfo, inst) != dst_byte_offset)) ||
                 (is_narrowing_conversion &&
                  required_dst_byte_stride(inst) != byte_stride(inst->dst));
       }
