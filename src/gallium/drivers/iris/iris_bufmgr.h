@@ -529,8 +529,6 @@ int iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 
 uint32_t iris_bo_export_gem_handle(struct iris_bo *bo);
 
-int iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *out);
-
 /**
  * Returns the BO's address relative to the appropriate base address.
  *

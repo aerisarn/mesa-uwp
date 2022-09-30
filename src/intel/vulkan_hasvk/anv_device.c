@@ -946,8 +946,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    /* Check if we can read the GPU timestamp register from the CPU */
    uint64_t u64_ignore;
-   device->has_reg_timestamp = anv_gem_reg_read(fd, TIMESTAMP | I915_REG_READ_8B_WA,
-                                                &u64_ignore) == 0;
+   device->has_reg_timestamp = intel_gem_read_render_timestamp(fd, &u64_ignore);
 
    device->always_flush_cache = INTEL_DEBUG(DEBUG_STALL) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
@@ -4453,7 +4452,6 @@ VkResult anv_GetCalibratedTimestampsEXT(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    uint64_t timestamp_frequency = device->info->timestamp_frequency;
-   int  ret;
    int d;
    uint64_t begin, end;
    uint64_t max_clock_period = 0;
@@ -4467,10 +4465,7 @@ VkResult anv_GetCalibratedTimestampsEXT(
    for (d = 0; d < timestampCount; d++) {
       switch (pTimestampInfos[d].timeDomain) {
       case VK_TIME_DOMAIN_DEVICE_EXT:
-         ret = anv_gem_reg_read(device->fd, TIMESTAMP | I915_REG_READ_8B_WA,
-                                &pTimestamps[d]);
-
-         if (ret != 0) {
+         if (!intel_gem_read_render_timestamp(device->fd, &pTimestamps[d])) {
             return vk_device_set_lost(&device->vk, "Failed to read the "
                                       "TIMESTAMP register: %m");
          }

@@ -2261,16 +2261,6 @@ iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
    }
 }
 
-int
-iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
-{
-   struct drm_i915_reg_read reg_read = { .offset = offset };
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_REG_READ, &reg_read);
-
-   *result = reg_read.val;
-   return ret;
-}
-
 static struct intel_buffer *
 intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 {

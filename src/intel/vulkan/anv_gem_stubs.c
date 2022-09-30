@@ -179,9 +179,3 @@ anv_gem_get_engine_info(int fd)
 {
    unreachable("Unused");
 }
-
-int
-anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
-{
-   unreachable("Unused");
-}

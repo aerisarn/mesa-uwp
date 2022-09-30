@@ -1604,16 +1604,6 @@ crocus_destroy_hw_context(struct crocus_bufmgr *bufmgr, uint32_t ctx_id)
    }
 }
 
-int
-crocus_reg_read(struct crocus_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
-{
-   struct drm_i915_reg_read reg_read = { .offset = offset };
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_REG_READ, &reg_read);
-
-   *result = reg_read.val;
-   return ret;
-}
-
 static int
 gem_param(int fd, int name)
 {

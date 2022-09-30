@@ -385,19 +385,6 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
    return args.handle;
 }
 
-int
-anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
-{
-   struct drm_i915_reg_read args = {
-      .offset = offset
-   };
-
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_REG_READ, &args);
-
-   *result = args.val;
-   return ret;
-}
-
 struct drm_i915_query_engine_info *
 anv_gem_get_engine_info(int fd)
 {

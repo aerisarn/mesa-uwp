@@ -23,6 +23,8 @@
 #include "intel_gem.h"
 #include "drm-uapi/i915_drm.h"
 
+#define RCS_TIMESTAMP 0x2358
+
 bool
 intel_gem_supports_syncobj_wait(int fd)
 {
@@ -151,4 +153,16 @@ intel_gem_create_context_engines(int fd,
       return -1;
 
    return create.ctx_id;
+}
+
+bool intel_gem_read_render_timestamp(int fd, uint64_t *value)
+{
+   struct drm_i915_reg_read reg_read = {
+      .offset = RCS_TIMESTAMP | I915_REG_READ_8B_WA,
+   };
+
+   int ret = intel_ioctl(fd, DRM_IOCTL_I915_REG_READ, &reg_read);
+   if (ret == 0)
+      *value = reg_read.val;
+   return ret == 0;
 }
