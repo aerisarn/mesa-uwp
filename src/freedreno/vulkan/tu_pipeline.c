@@ -2139,26 +2139,28 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissors, uint32_t scissor_co
 }
 
 void
+tu6_emit_sample_locations_enable(struct tu_cs *cs, bool enable)
+{
+   uint32_t sample_config =
+      COND(enable, A6XX_RB_SAMPLE_CONFIG_LOCATION_ENABLE);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 1);
+   tu_cs_emit(cs, sample_config);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CONFIG, 1);
+   tu_cs_emit(cs, sample_config);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 1);
+   tu_cs_emit(cs, sample_config);
+}
+
+void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc)
 {
-   if (!samp_loc) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 1);
-      tu_cs_emit(cs, 0);
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CONFIG, 1);
-      tu_cs_emit(cs, 0);
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 1);
-      tu_cs_emit(cs, 0);
-      return;
-   }
-
    assert(samp_loc->sampleLocationsPerPixel == samp_loc->sampleLocationsCount);
    assert(samp_loc->sampleLocationGridSize.width == 1);
    assert(samp_loc->sampleLocationGridSize.height == 1);
 
-   uint32_t sample_config =
-      A6XX_RB_SAMPLE_CONFIG_LOCATION_ENABLE;
    uint32_t sample_locations = 0;
    for (uint32_t i = 0; i < samp_loc->sampleLocationsCount; i++) {
       /* From VkSampleLocationEXT:
@@ -2178,16 +2180,13 @@ tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp
           A6XX_RB_SAMPLE_LOCATION_0_SAMPLE_0_Y(y)) << i*8;
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CONFIG, 2);
-   tu_cs_emit(cs, sample_config);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_LOCATION_0, 1);
    tu_cs_emit(cs, sample_locations);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_CONFIG, 2);
-   tu_cs_emit(cs, sample_config);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_SAMPLE_LOCATION_0, 1);
    tu_cs_emit(cs, sample_locations);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 2);
-   tu_cs_emit(cs, sample_config);
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_LOCATION_0, 1);
    tu_cs_emit(cs, sample_locations);
 }
 
@@ -3625,6 +3624,9 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
          break;
+      case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE);
+         break;
       case VK_DYNAMIC_STATE_CULL_MODE:
          pipeline->rast.gras_su_cntl_mask &=
             ~(A6XX_GRAS_SU_CNTL_CULL_BACK | A6XX_GRAS_SU_CNTL_CULL_FRONT);
@@ -3900,6 +3902,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_BLEND_CONSTANTS) |
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS) |
+            BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE) |
             BIT(TU_DYNAMIC_STATE_BLEND) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
@@ -4608,12 +4611,22 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
       vk_find_struct_const(msaa_info->pNext, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT);
    const VkSampleLocationsInfoEXT *samp_loc = NULL;
 
-   if (sample_locations && sample_locations->sampleLocationsEnable)
+   if (sample_locations)
       samp_loc = &sample_locations->sampleLocationsInfo;
 
-    if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
-                                 samp_loc ? 9 : 6)) {
+    bool samp_loc_enable = sample_locations &&
+       sample_locations->sampleLocationsEnable;
+
+    if (samp_loc &&
+        ((pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE)) ||
+         samp_loc_enable) &&
+        tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS, 6)) {
       tu6_emit_sample_locations(&cs, samp_loc);
+    }
+
+    if (tu_pipeline_static_state(pipeline, &cs,
+                                 TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE, 6)) {
+       tu6_emit_sample_locations_enable(&cs, samp_loc_enable);
     }
 }
 

@@ -21,6 +21,7 @@ enum tu_dynamic_state
 {
    /* re-use VK_DYNAMIC_STATE_ enums for non-extended dynamic states */
    TU_DYNAMIC_STATE_SAMPLE_LOCATIONS = VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1,
+   TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE,
    TU_DYNAMIC_STATE_RB_DEPTH_CNTL,
    TU_DYNAMIC_STATE_RB_STENCIL_CNTL,
    TU_DYNAMIC_STATE_VB_STRIDE,
@@ -294,6 +295,9 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scs, uint32_t scissor_count);
 
 void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);
+
+void
+tu6_emit_sample_locations_enable(struct tu_cs *cs, bool enable);
 
 void
 tu6_emit_depth_bias(struct tu_cs *cs,

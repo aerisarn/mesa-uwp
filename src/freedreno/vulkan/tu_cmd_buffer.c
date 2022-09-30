@@ -2874,11 +2874,22 @@ tu_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
                             const VkSampleLocationsInfoEXT* pSampleLocationsInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS, 9);
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS, 6);
 
    assert(pSampleLocationsInfo);
 
    tu6_emit_sample_locations(&cs, pSampleLocationsInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetSampleLocationsEnableEXT(VkCommandBuffer commandBuffer,
+                                  VkBool32 sampleLocationsEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE, 6);
+
+   tu6_emit_sample_locations_enable(&cs, sampleLocationsEnable);
 }
 
 VKAPI_ATTR void VKAPI_CALL
