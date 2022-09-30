@@ -485,10 +485,10 @@ d3d12_video_encoder_update_h264_gop_configuration(struct d3d12_video_encoder *pD
       uint32_t GOPLength = picture->gop_size / GOPCoeff;
       uint32_t PPicturePeriod = std::ceil(GOPLength / (double) (picture->p_remain / GOPCoeff)) - 1;
 
-      if (picture->pic_order_cnt_type == 1u) {
+      if (picture->seq.pic_order_cnt_type == 1u) {
          debug_printf("[d3d12_video_encoder_h264] Upper layer is requesting pic_order_cnt_type %d but D3D12 Video "
                          "only supports pic_order_cnt_type = 0 or pic_order_cnt_type = 2\n",
-                         picture->pic_order_cnt_type);
+                         picture->seq.pic_order_cnt_type);
          return false;
       }
 
@@ -498,14 +498,14 @@ d3d12_video_encoder_update_h264_gop_configuration(struct d3d12_video_encoder *pD
       double log2_max_pic_order_cnt_lsb_minus4 = std::max(0.0, std::ceil(std::log2(max_pic_order_cnt_lsb)) - 4);
       assert(log2_max_frame_num_minus4 < UCHAR_MAX);
       assert(log2_max_pic_order_cnt_lsb_minus4 < UCHAR_MAX);
-      assert(picture->pic_order_cnt_type < UCHAR_MAX);
+      assert(picture->seq.pic_order_cnt_type < UCHAR_MAX);
 
       // Set dirty flag if m_H264GroupOfPictures changed
       auto previousGOPConfig = pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_H264GroupOfPictures;
       pD3D12Enc->m_currentEncodeConfig.m_encoderGOPConfigDesc.m_H264GroupOfPictures = {
          GOPLength,
          PPicturePeriod,
-         static_cast<uint8_t>(picture->pic_order_cnt_type),
+         static_cast<uint8_t>(picture->seq.pic_order_cnt_type),
          static_cast<uint8_t>(log2_max_frame_num_minus4),
          static_cast<uint8_t>(log2_max_pic_order_cnt_lsb_minus4)
       };
@@ -535,7 +535,7 @@ d3d12_video_encoder_convert_h264_codec_configuration(struct d3d12_video_encoder 
       config.ConfigurationFlags |= D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_FLAG_ENABLE_CABAC_ENCODING;
    }
 
-   pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_H264CodecCaps = 
+   pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_H264CodecCaps =
    {
       D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT_H264_FLAG_NONE,
       D3D12_VIDEO_ENCODER_CODEC_CONFIGURATION_H264_SLICES_DEBLOCKING_MODE_FLAG_NONE
@@ -616,12 +616,12 @@ d3d12_video_encoder_update_current_encoder_config_state_h264(struct d3d12_video_
    pD3D12Enc->m_currentEncodeConfig.m_currentResolution.Height = srcTexture->height;
 
    // Set resolution codec dimensions (ie. cropping)
-   if (h264Pic->pic_ctrl.enc_frame_cropping_flag) {
-      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.left = h264Pic->pic_ctrl.enc_frame_crop_left_offset;
-      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.right = h264Pic->pic_ctrl.enc_frame_crop_right_offset;
-      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.top = h264Pic->pic_ctrl.enc_frame_crop_top_offset;
+   if (h264Pic->seq.enc_frame_cropping_flag) {
+      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.left = h264Pic->seq.enc_frame_crop_left_offset;
+      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.right = h264Pic->seq.enc_frame_crop_right_offset;
+      pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.top = h264Pic->seq.enc_frame_crop_top_offset;
       pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig.bottom =
-         h264Pic->pic_ctrl.enc_frame_crop_bottom_offset;
+         h264Pic->seq.enc_frame_crop_bottom_offset;
    } else {
       memset(&pD3D12Enc->m_currentEncodeConfig.m_FrameCroppingCodecConfig,
              0,
