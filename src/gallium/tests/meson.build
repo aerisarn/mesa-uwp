@@ -25,5 +25,3 @@ endif
 if with_gallium_softpipe
   subdir('unit')
 endif
-
-subdir('graw')
