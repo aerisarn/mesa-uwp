@@ -1943,6 +1943,10 @@ iris_invalidate_resource(struct pipe_context *ctx,
    if (res->bo->gem_handle && res->bo->real.userptr)
       return;
 
+   /* Nor can we allocate buffers we imported or exported. */
+   if (iris_bo_is_external(res->bo))
+      return;
+
    struct iris_bo *old_bo = res->bo;
    struct iris_bo *new_bo =
       iris_bo_alloc(screen->bufmgr, res->bo->name, resource->width0,
