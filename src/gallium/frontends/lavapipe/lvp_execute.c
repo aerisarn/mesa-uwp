@@ -850,6 +850,8 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->dsa_dirty = true;
    }
 
+   state->blend_state.independent_blend_enable = ps->rp->color_attachment_count > 1;
+
    if (ps->cb) {
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
          state->blend_state.logicop_enable = ps->cb->logic_op_enable;
@@ -858,8 +860,6 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES))
          state->color_write_disables = ~ps->cb->color_write_enables;
-
-      state->blend_state.independent_blend_enable = (ps->cb->attachment_count > 1);
 
       for (unsigned i = 0; i < ps->cb->attachment_count; i++) {
          const struct vk_color_blend_attachment_state *att = &ps->cb->attachments[i];
@@ -905,7 +905,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          memcpy(state->blend_color.color, ps->cb->blend_constants, 4 * sizeof(float));
          state->blend_color_dirty = true;
       }
-   } else {
+   } else if (ps->rp->color_attachment_count == 0) {
       memset(&state->blend_state, 0, sizeof(state->blend_state));
       state->blend_dirty = true;
    }
