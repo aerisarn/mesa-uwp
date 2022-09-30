@@ -307,20 +307,6 @@ tu_logic_op_reads_dst(VkLogicOp op)
    }
 }
 
-static VkBlendFactor
-tu_blend_factor_no_dst_alpha(VkBlendFactor factor)
-{
-   /* treat dst alpha as 1.0 and avoid reading it */
-   switch (factor) {
-   case VK_BLEND_FACTOR_DST_ALPHA:
-      return VK_BLEND_FACTOR_ONE;
-   case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
-      return VK_BLEND_FACTOR_ZERO;
-   default:
-      return factor;
-   }
-}
-
 static bool tu_blend_factor_is_dual_src(VkBlendFactor factor)
 {
    switch (factor) {
@@ -2235,16 +2221,13 @@ tu6_emit_depth_bias(struct tu_cs *cs,
 }
 
 static uint32_t
-tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att,
-                         bool has_alpha)
+tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att)
 {
    const enum a3xx_rb_blend_opcode color_op = tu6_blend_op(att->colorBlendOp);
-   const enum adreno_rb_blend_factor src_color_factor = tu6_blend_factor(
-      has_alpha ? att->srcColorBlendFactor
-                : tu_blend_factor_no_dst_alpha(att->srcColorBlendFactor));
-   const enum adreno_rb_blend_factor dst_color_factor = tu6_blend_factor(
-      has_alpha ? att->dstColorBlendFactor
-                : tu_blend_factor_no_dst_alpha(att->dstColorBlendFactor));
+   const enum adreno_rb_blend_factor src_color_factor =
+      tu6_blend_factor(att->srcColorBlendFactor);
+   const enum adreno_rb_blend_factor dst_color_factor =
+      tu6_blend_factor(att->dstColorBlendFactor);
    const enum a3xx_rb_blend_opcode alpha_op = tu6_blend_op(att->alphaBlendOp);
    const enum adreno_rb_blend_factor src_alpha_factor =
       tu6_blend_factor(att->srcAlphaBlendFactor);
@@ -2260,18 +2243,14 @@ tu6_rb_mrt_blend_control(const VkPipelineColorBlendAttachmentState *att,
 }
 
 static uint32_t
-tu6_rb_mrt_control(const VkPipelineColorBlendAttachmentState *att,
-                   bool has_alpha)
+tu6_rb_mrt_control(const VkPipelineColorBlendAttachmentState *att)
 {
    uint32_t rb_mrt_control =
       A6XX_RB_MRT_CONTROL_COMPONENT_ENABLE(att->colorWriteMask);
 
-   if (att->blendEnable) {
-      rb_mrt_control |= A6XX_RB_MRT_CONTROL_BLEND;
-
-      if (has_alpha)
-         rb_mrt_control |= A6XX_RB_MRT_CONTROL_BLEND2;
-   }
+   rb_mrt_control |= COND(att->blendEnable,
+                          A6XX_RB_MRT_CONTROL_BLEND |
+                          A6XX_RB_MRT_CONTROL_BLEND2);
 
    return rb_mrt_control;
 }
@@ -2320,11 +2299,9 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
       uint32_t rb_mrt_blend_control = 0;
       if (format != VK_FORMAT_UNDEFINED &&
           (!color_info || color_info->pColorWriteEnables[i])) {
-         const bool has_alpha = vk_format_has_alpha(format);
-
          rb_mrt_control =
-            tu6_rb_mrt_control(att, has_alpha);
-         rb_mrt_blend_control = tu6_rb_mrt_blend_control(att, has_alpha);
+            tu6_rb_mrt_control(att);
+         rb_mrt_blend_control = tu6_rb_mrt_blend_control(att);
 
          /* calculate bpp based on format and write mask */
          uint32_t write_bpp = 0;
