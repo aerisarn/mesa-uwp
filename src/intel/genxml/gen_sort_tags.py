@@ -60,7 +60,7 @@ class Struct(object):
             if d in struct_dict:
                 self.deps[d] = struct_dict[d]
             else:
-                assert(d in enum_dict)
+                assert d in enum_dict
 
     def add_xml(self, items):
         for d in self.deps.values():
@@ -89,7 +89,7 @@ def print_node(f, offset, node):
     f.write('{0}<{1}'.format(spaces, node.tag))
     attribs = genxml_desc[node.tag]
     for a in node.attrib:
-        assert(a in attribs)
+        assert a in attribs 
     for a in attribs:
         if a in node.attrib:
             f.write(' {0}="{1}"'.format(a, node.attrib[a]))
