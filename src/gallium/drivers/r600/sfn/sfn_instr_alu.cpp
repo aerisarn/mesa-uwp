@@ -1925,6 +1925,10 @@ static bool emit_alu_op3(const nir_alu_instr& alu, EAluOp opcode, Shader& shader
          if (src[1]->negate) ir->set_alu_flag(alu_src1_neg);
          if (src[2]->negate) ir->set_alu_flag(alu_src2_neg);
 
+         assert(!src[0]->abs);
+         assert(!src[1]->abs);
+         assert(!src[2]->abs);
+
          if (alu.dest.saturate) ir->set_alu_flag(alu_dst_clamp);
          ir->set_alu_flag(alu_write);
          shader.emit_instruction(ir);
