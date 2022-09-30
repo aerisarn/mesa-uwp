@@ -2615,7 +2615,10 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       }
    }
 
-   cmd->state.line_mode = pipeline->rast.line_mode;
+   if (!(pipeline->dynamic_state_mask &
+         BIT(TU_DYNAMIC_STATE_LINE_MODE)))
+      cmd->state.line_mode = pipeline->rast.line_mode;
+
    if (!(pipeline->dynamic_state_mask &
          BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)))
       cmd->state.primtype = pipeline->ia.primtype;
@@ -3266,6 +3269,24 @@ tu_CmdSetRasterizationStreamEXT(VkCommandBuffer commandBuffer,
       A6XX_PC_RASTER_CNTL_STREAM(rasterizationStream);
 
    cmd->state.dirty |= TU_CMD_DIRTY_PC_RASTER_CNTL;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetLineRasterizationModeEXT(VkCommandBuffer commandBuffer,
+                                  VkLineRasterizationModeEXT lineRasterizationMode)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.line_mode = lineRasterizationMode ==
+      VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT ? BRESENHAM : RECTANGULAR;
+
+   tu6_update_msaa_disable(cmd);
+
+   cmd->state.gras_su_cntl =
+      (cmd->state.gras_su_cntl & ~A6XX_GRAS_SU_CNTL_LINE_MODE__MASK) |
+      A6XX_GRAS_SU_CNTL_LINE_MODE(cmd->state.line_mode);
+
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST;
 }
 
 static void

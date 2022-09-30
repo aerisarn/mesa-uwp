@@ -774,7 +774,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3RasterizationStream = true;
          features->extendedDynamicState3ConservativeRasterizationMode = false;
          features->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
-         features->extendedDynamicState3LineRasterizationMode = false;
+         features->extendedDynamicState3LineRasterizationMode = true;
          features->extendedDynamicState3LineStippleEnable = false;
          features->extendedDynamicState3ProvokingVertexMode = false;
          features->extendedDynamicState3SampleLocationsEnable = false;
