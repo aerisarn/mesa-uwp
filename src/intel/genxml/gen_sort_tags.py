@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
-# Copyright © 2019 Intel Corporation
+# Copyright © 2019, 2022 Intel Corporation
 # SPDX-License-Identifier: MIT
 
+from __future__ import annotations
 from collections import OrderedDict
-import os
 import pathlib
 import re
 import xml.etree.ElementTree as et
+import typing
 
-def get_filename(element):
+if typing.TYPE_CHECKING:
+    import os
+
+def get_filename(element: et.Element) -> str:
     return element.attrib['filename']
 
-def get_name(element):
+def get_name(element: et.Element) -> str:
     return element.attrib['name']
 
-def get_value(element):
+def get_value(element: et.Element) -> int:
     return int(element.attrib['value'], 0)
 
-def get_start(element):
+def get_start(element: et.Element) -> int:
     return int(element.attrib['start'], 0)
 
 
@@ -32,10 +36,10 @@ BASE_TYPES = {
 
 FIXED_PATTERN = re.compile(r"(s|u)(\d+)\.(\d+)")
 
-def is_base_type(name):
-    return name in BASE_TYPES or FIXED_PATTERN.match(name)
+def is_base_type(name: str) -> bool:
+    return name in BASE_TYPES or FIXED_PATTERN.match(name) is not None
 
-def add_struct_refs(items, node):
+def add_struct_refs(items: typing.OrderedDict[str, bool], node: et.Element) -> None:
     if node.tag == 'field':
         if 'type' in node.attrib and not is_base_type(node.attrib['type']):
             t = node.attrib['type']
@@ -48,13 +52,13 @@ def add_struct_refs(items, node):
 
 
 class Struct(object):
-    def __init__(self, xml):
+    def __init__(self, xml: et.Element):
         self.xml = xml
         self.name = xml.attrib['name']
-        self.deps = OrderedDict()
+        self.deps: typing.OrderedDict[str, Struct] = OrderedDict()
 
-    def find_deps(self, struct_dict, enum_dict):
-        deps = OrderedDict()
+    def find_deps(self, struct_dict, enum_dict) -> None:
+        deps: typing.OrderedDict[str, bool] = OrderedDict()
         add_struct_refs(deps, self.xml)
         for d in deps.keys():
             if d in struct_dict:
@@ -62,7 +66,7 @@ class Struct(object):
             else:
                 assert d in enum_dict
 
-    def add_xml(self, items):
+    def add_xml(self, items: typing.OrderedDict[str, et.Element]) -> None:
         for d in self.deps.values():
             d.add_xml(items)
         items[self.name] = self.xml
@@ -82,7 +86,7 @@ genxml_desc = {
 
 space_delta = 2
 
-def print_node(f, offset, node):
+def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
     if node.tag in [ 'enum', 'struct', 'instruction', 'register' ]:
         f.write('\n')
     spaces = ''.rjust(offset * space_delta)
@@ -103,12 +107,12 @@ def print_node(f, offset, node):
         f.write('/>\n')
 
 
-def process(filename):
+def process(filename: os.PathLike[str]) -> None:
     xml = et.parse(filename)
     genxml = xml.getroot()
 
     enums = sorted(genxml.findall('enum'), key=get_name)
-    enum_dict = {}
+    enum_dict: typing.Dict[str, et.Element] = {}
     for e in enums:
         values = e.findall('./value')
         e[:] = sorted(e, key=get_value)
@@ -118,19 +122,19 @@ def process(filename):
     # them alphabetically and then build a graph of dependencies. Finally we go
     # through the alphabetically sorted list and print out dependencies first.
     structs = sorted(xml.findall('./struct'), key=get_name)
-    wrapped_struct_dict = {}
+    wrapped_struct_dict: typing.Dict[str, Struct] = {}
     for s in structs:
         s[:] = sorted(s, key=get_start)
         ws = Struct(s)
         wrapped_struct_dict[ws.name] = ws
 
-    for s in wrapped_struct_dict:
-        wrapped_struct_dict[s].find_deps(wrapped_struct_dict, enum_dict)
+    for ws in wrapped_struct_dict.values():
+        ws.find_deps(wrapped_struct_dict, enum_dict)
 
-    sorted_structs = OrderedDict()
-    for _s in structs:
-        s = wrapped_struct_dict[_s.attrib['name']]
-        s.add_xml(sorted_structs)
+    sorted_structs: typing.OrderedDict[str, et.Element] = OrderedDict()
+    for s in structs:
+        _s = wrapped_struct_dict[s.attrib['name']]
+        _s.add_xml(sorted_structs)
 
     instructions = sorted(xml.findall('./instruction'), key=get_name)
     for i in instructions:
