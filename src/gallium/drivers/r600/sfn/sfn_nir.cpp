@@ -569,6 +569,7 @@ optimize_once(nir_shader *shader)
    NIR_PASS(progress, shader, nir_opt_conditional_discard);
    NIR_PASS(progress, shader, nir_opt_dce);
    NIR_PASS(progress, shader, nir_opt_undef);
+   NIR_PASS(progress, shader, nir_opt_loop_unroll);
    return progress;
 }
 
