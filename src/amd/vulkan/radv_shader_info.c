@@ -287,15 +287,9 @@ gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
    so->num_outputs = xfb->output_count;
 
    for (unsigned i = 0; i < xfb->output_count; i++) {
-      struct radv_stream_output *output = &so->outputs[i];
-
-      output->buffer = xfb->outputs[i].buffer;
-      output->stream = xfb->buffer_to_stream[xfb->outputs[i].buffer];
-      output->offset = xfb->outputs[i].offset;
-      output->location = xfb->outputs[i].location;
-      output->component_mask = xfb->outputs[i].component_mask;
-
-      so->enabled_stream_buffers_mask |= (1 << output->buffer) << (output->stream * 4);
+      unsigned output_buffer = xfb->outputs[i].buffer;
+      unsigned stream = xfb->buffer_to_stream[xfb->outputs[i].buffer];
+      so->enabled_stream_buffers_mask |= (1 << output_buffer) << (stream * 4);
    }
 
    for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++) {
