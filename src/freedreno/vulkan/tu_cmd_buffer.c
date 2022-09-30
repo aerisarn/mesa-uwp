@@ -2712,8 +2712,9 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.pipeline_color_write_enable = pipeline->blend.color_write_enable;
       cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
    }
-   if (cmd->state.pipeline_blend_enable != pipeline->blend.blend_enable) {
-      cmd->state.pipeline_blend_enable = pipeline->blend.blend_enable;
+   if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND_ENABLE)) &&
+       cmd->state.blend_enable != pipeline->blend.blend_enable) {
+      cmd->state.blend_enable = pipeline->blend.blend_enable;
       cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
    }
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE)) &&
@@ -3312,6 +3313,29 @@ tu_CmdSetProvokingVertexModeEXT(VkCommandBuffer commandBuffer,
 
    cmd->state.provoking_vertex_last =
       provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer,
+                             uint32_t firstAttachment,
+                             uint32_t attachmentCount,
+                             const VkBool32 *pColorBlendEnables)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      unsigned att = i + firstAttachment;
+      cmd->state.blend_enable =
+         (cmd->state.blend_enable & ~BIT(att)) |
+         COND(pColorBlendEnables[i], BIT(att));
+      const uint32_t blend_enable =
+         A6XX_RB_MRT_CONTROL_BLEND | A6XX_RB_MRT_CONTROL_BLEND2;
+      cmd->state.rb_mrt_control[i] =
+         (cmd->state.rb_mrt_control[i] & ~blend_enable) |
+         COND(pColorBlendEnables[i], blend_enable);
+   }
+
+   cmd->state.dirty |= TU_CMD_DIRTY_BLEND;
 }
 
 static void
@@ -4609,7 +4633,7 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
 
    uint32_t blend_enable_mask = color_write_enable;
    if (!(cmd->state.logic_op_enabled && cmd->state.rop_reads_dst))
-      blend_enable_mask &= cmd->state.pipeline_blend_enable;
+      blend_enable_mask &= cmd->state.blend_enable;
 
    tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = num_rts));
    tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = num_rts));

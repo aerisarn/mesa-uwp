@@ -341,7 +341,7 @@ struct tu_cmd_state
    uint32_t rb_mrt_control[MAX_RTS], rb_mrt_blend_control[MAX_RTS];
    uint32_t rb_mrt_control_rop;
    uint32_t rb_blend_cntl, sp_blend_cntl;
-   uint32_t pipeline_color_write_enable, pipeline_blend_enable;
+   uint32_t pipeline_color_write_enable, blend_enable;
    uint32_t color_write_enable;
    bool logic_op_enabled;
    bool rop_reads_dst;

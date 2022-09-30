@@ -2319,11 +2319,14 @@ tu6_emit_rb_mrt_controls(struct tu_pipeline *pipeline,
          total_bpp += write_bpp;
 
          pipeline->blend.color_write_enable |= BIT(i);
-         if (att->blendEnable)
-            pipeline->blend.blend_enable |= BIT(i);
 
-         if (att->blendEnable || (blend_info->logicOpEnable && *rop_reads_dst)) {
-            total_bpp += write_bpp;
+         if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND_ENABLE))) {
+            if (att->blendEnable)
+               pipeline->blend.blend_enable |= BIT(i);
+
+            if (att->blendEnable || (blend_info->logicOpEnable && *rop_reads_dst)) {
+               total_bpp += write_bpp;
+            }
          }
       }
 
@@ -3778,6 +3781,15 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_PROVOKING_VERTEX_MODE_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PROVOKING_VTX);
          break;
+      case VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT:
+         pipeline->dynamic_state_mask |=
+            BIT(TU_DYNAMIC_STATE_BLEND) |
+            BIT(TU_DYNAMIC_STATE_BLEND_ENABLE);
+         pipeline->blend.rb_mrt_control_mask &=
+            ~(A6XX_RB_MRT_CONTROL_BLEND | A6XX_RB_MRT_CONTROL_BLEND2);
+         pipeline->blend.sp_blend_cntl_mask &= ~A6XX_SP_BLEND_CNTL_ENABLE_BLEND__MASK;
+         pipeline->blend.rb_blend_cntl_mask &= ~A6XX_RB_BLEND_CNTL_ENABLE_BLEND__MASK;
+         break;
       default:
          assert(!"unsupported dynamic state");
          break;
@@ -3881,6 +3893,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS) |
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE) |
             BIT(TU_DYNAMIC_STATE_BLEND) |
+            BIT(TU_DYNAMIC_STATE_BLEND_ENABLE) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
             BIT(TU_DYNAMIC_STATE_LOGIC_OP_ENABLE) |
             BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE) |
@@ -4561,7 +4574,10 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
     * Therefore, we need to emit it in a separate draw state. We keep
     * it disabled for sysmem path as well for the moment.
     */
-   if (blend_enable_mask)
+   if (blend_enable_mask &&
+       !(pipeline->dynamic_state_mask &
+        (BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
+         BIT(TU_DYNAMIC_STATE_BLEND_ENABLE))))
       pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
 
    for (int i = 0; i < blend_info->attachmentCount; i++) {
