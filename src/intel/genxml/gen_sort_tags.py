@@ -21,19 +21,19 @@ def get_start(element):
     return int(element.attrib['start'], 0)
 
 
-base_types = [
+BASE_TYPES = {
     'address',
     'offset',
     'int',
     'uint',
     'bool',
     'float',
-]
+}
 
 FIXED_PATTERN = re.compile(r"(s|u)(\d+)\.(\d+)")
 
 def is_base_type(name):
-    return name in base_types or FIXED_PATTERN.match(name)
+    return name in BASE_TYPES or FIXED_PATTERN.match(name)
 
 def add_struct_refs(items, node):
     if node.tag == 'field':
