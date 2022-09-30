@@ -3176,7 +3176,7 @@ radv_queue_ring(struct radv_queue *queue)
  * specific shader stage (developers only).
  */
 static inline bool
-radv_use_llvm_for_stage(struct radv_device *device, UNUSED gl_shader_stage stage)
+radv_use_llvm_for_stage(const struct radv_device *device, UNUSED gl_shader_stage stage)
 {
    return device->physical_device->use_llvm;
 }
