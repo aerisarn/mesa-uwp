@@ -30,11 +30,10 @@ base_types = [
     'float',
 ]
 
-ufixed_pattern = re.compile(r"u(\d+)\.(\d+)")
-sfixed_pattern = re.compile(r"s(\d+)\.(\d+)")
+FIXED_PATTERN = re.compile(r"(s|u)(\d+)\.(\d+)")
 
 def is_base_type(name):
-    return name in base_types or sfixed_pattern.match(name) or ufixed_pattern.match(name)
+    return name in base_types or FIXED_PATTERN.match(name)
 
 def add_struct_refs(items, node):
     if node.tag == 'field':
