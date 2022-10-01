@@ -226,13 +226,6 @@ def prefixed_upper_name(prefix, name):
 def enum_name(name):
     return "{}_{}".format(global_prefix, safe_name(name)).lower()
 
-def num_from_str(num_str):
-    if num_str.lower().startswith('0x'):
-        return int(num_str, base=16)
-    else:
-        assert(not num_str.startswith('0') and 'octals numbers not allowed')
-        return int(num_str)
-
 MODIFIERS = ["shr", "minus", "align", "log2"]
 
 def parse_modifier(modifier):
