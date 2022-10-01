@@ -84,9 +84,13 @@ struct radv_ir_node {
    float aabb[2][3];
 };
 
+#define FINAL_TREE_PRESENT 0
+#define FINAL_TREE_NOT_PRESENT 1
+#define FINAL_TREE_UNKNOWN 2
 struct radv_ir_box_node {
    radv_ir_node base;
    uint32_t children[2];
+   uint32_t in_final_tree;
 };
 
 struct radv_ir_aabb_node {
