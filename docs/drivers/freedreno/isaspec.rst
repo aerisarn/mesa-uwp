@@ -2,7 +2,7 @@ ISASPEC - XML Based ISA Specification
 =====================================
 
 isaspec provides a mechanism to describe an instruction set in xml, and
-generate a disassembler and assembler (eventually).  The intention is
+generate a disassembler and assembler.  The intention is
 to describe the instruction set more formally than hand-coded assembler
 and disassembler, and better decouple the shader compiler from the
 underlying instruction encoding to simplify dealing with instruction
