@@ -102,9 +102,6 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define PREFIX2(A, B) MALI_ ## A ## _ ## B
 #define PREFIX4(A, B, C, D) MALI_ ## A ## _ ## B ## _ ## C ## _ ## D
 
-#define pan_prepare(dst, T)                                 \\
-   *(dst) = (struct PREFIX1(T)){ PREFIX2(T, header) }
-
 #define pan_pack(dst, T, name)                              \\
    for (struct PREFIX1(T) name = { PREFIX2(T, header) }, \\
         *_loop_terminate = (void *) (dst);                  \\

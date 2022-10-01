@@ -89,9 +89,6 @@ __gen_unpack_sint(const uint8_t *restrict cl, uint32_t start, uint32_t end)
    return util_sign_extend(val, size);
 }
 
-#define agx_prepare(dst, T)                                 \\
-   *(dst) = (struct AGX_ ## T){ AGX_ ## T ## _header }
-
 #define agx_pack(dst, T, name)                              \\
    for (struct AGX_ ## T name = { AGX_ ## T ## _header }, \\
         *_loop_terminate = (void *) (dst);                  \\
