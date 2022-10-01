@@ -526,7 +526,6 @@ class Parser(object):
             print(pack_header)
         elif name == "struct":
             name = attrs["name"]
-            self.no_direct_packing = attrs.get("no-direct-packing", False)
             object_name = self.gen_prefix(safe_name(name.upper()))
             self.struct = object_name
 
@@ -619,9 +618,8 @@ class Parser(object):
 
         self.emit_template_struct(self.struct, self.group)
         self.emit_header(name)
-        if self.no_direct_packing == False:
-            self.emit_pack_function(self.struct, self.group)
-            self.emit_unpack_function(self.struct, self.group)
+        self.emit_pack_function(self.struct, self.group)
+        self.emit_unpack_function(self.struct, self.group)
         self.emit_print_function(self.struct, self.group)
 
     def enum_prefix(self, name):
