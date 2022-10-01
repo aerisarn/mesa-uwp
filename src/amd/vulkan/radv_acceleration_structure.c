@@ -682,8 +682,8 @@ convert_leaf_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
       const struct convert_leaf_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .output_bvh = accel_struct->va,
-         .geometry_type = pInfos->pGeometries ? pInfos->pGeometries[0].geometryType
-                                              : pInfos->ppGeometries[0]->geometryType,
+         .geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
+                                                : pInfos[i].ppGeometries[0]->geometryType,
       };
       radv_CmdPushConstants(commandBuffer,
                             cmd_buffer->device->meta_state.accel_struct_build.convert_leaf_p_layout,
@@ -712,8 +712,8 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
        * because it will be multiplied with 0.
        */
       if (pInfos[i].geometryCount)
-         geometry_type = pInfos->pGeometries ? pInfos->pGeometries[0].geometryType
-                                             : pInfos->ppGeometries[0]->geometryType;
+         geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
+                                               : pInfos[i].ppGeometries[0]->geometryType;
 
       const struct convert_internal_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
