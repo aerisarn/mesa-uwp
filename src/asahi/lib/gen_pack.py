@@ -522,7 +522,7 @@ class Parser(object):
         return '{}_{}'.format(global_prefix.upper(), name)
 
     def start_element(self, name, attrs):
-        if name == "agxml":
+        if name == "genxml":
             print(pack_header)
         elif name == "struct":
             name = attrs["name"]
@@ -559,7 +559,7 @@ class Parser(object):
         elif name  == "enum":
             self.emit_enum()
             self.enum = None
-        elif name == "agxml":
+        elif name == "genxml":
             print('#endif')
 
     def emit_header(self, name):

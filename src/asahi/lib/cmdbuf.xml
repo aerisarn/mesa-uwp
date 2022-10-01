@@ -1,4 +1,6 @@
-<agxml>
+<?xml version="1.0" ?>
+<genxml>
+
   <enum name="Channel">
     <value name="R" value="0"/>
     <value name="G" value="1"/>
@@ -902,4 +904,4 @@
     <field name="Count" start="3:0" size="32" type="uint"/>
   </struct>
 
-</agxml>
+</genxml>
