@@ -312,11 +312,6 @@ class Field(object):
         else:
             self.prefix = None
 
-        if "exact" in attrs:
-            self.exact = int(attrs["exact"])
-        else:
-            self.exact = None
-
         self.default = attrs.get("default")
 
         # Map enum values
@@ -387,9 +382,6 @@ class Group(object):
                 print("   int dummy;")
 
             for field in self.fields:
-                if field.exact is not None:
-                    continue
-
                 field.emit_template_struct(dim)
 
     class Word:
@@ -448,8 +440,6 @@ class Group(object):
             if field.modifier is None:
                 continue
 
-            assert(field.exact is None)
-
             if field.modifier[0] == "shr":
                 shift = field.modifier[1]
                 mask = hex((1 << shift) - 1)
@@ -481,7 +471,7 @@ class Group(object):
                 start -= contrib_word_start
                 end -= contrib_word_start
 
-                value = str(field.exact) if field.exact is not None else "values->{}".format(contributor.path)
+                value = "values->{}".format(contributor.path)
                 if field.modifier is not None:
                     if field.modifier[0] == "shr":
                         value = "{} >> {}".format(value, field.modifier[1])
