@@ -909,6 +909,7 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
             struct fd_resource *staging_rsc = NULL;
 
             if (needs_flush) {
+               perf_debug_ctx(ctx, "flushing: %" PRSC_FMT, PRSC_ARGS(prsc));
                flush_resource(ctx, rsc, usage);
                needs_flush = false;
             }
