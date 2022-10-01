@@ -32,6 +32,7 @@
 #include "util/u_upload_mgr.h"
 #include "driver_trace/tr_context.h"
 #include "util/log.h"
+#include "util/perf/cpu_trace.h"
 #include "compiler/shader_info.h"
 
 #if TC_DEBUG >= 1
@@ -392,6 +393,8 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
    struct tc_batch *next = &tc->batch_slots[tc->next];
    bool synced = false;
 
+   MESA_TRACE_BEGIN(func);
+
    tc_debug_check(tc);
 
    /* Only wait for queued calls... */
@@ -421,10 +424,12 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
 
       if (tc_strcmp(func, "tc_destroy") != 0) {
          tc_printf("sync %s %s", func, info);
-	  }
+      }
    }
 
    tc_debug_check(tc);
+
+   MESA_TRACE_END();
 }
 
 #define tc_sync(tc) _tc_sync(tc, "", __func__)
