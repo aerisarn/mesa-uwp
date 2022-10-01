@@ -229,7 +229,7 @@ class Field(object):
             type = 'uint64_t'
         elif self.type == 'int':
             type = 'int32_t'
-        elif self.type in ['uint', 'uint/float', 'hex']:
+        elif self.type in ['uint', 'hex']:
             type = 'uint32_t'
         elif self.type in self.parser.structs:
             type = 'struct ' + self.parser.gen_prefix(safe_name(self.type.upper()))
@@ -459,7 +459,7 @@ class Group(object):
             args.append(str(fieldref.start))
             args.append(str(fieldref.end))
 
-            if field.type in set(["uint", "uint/float", "address", "hex"]) | self.parser.enums:
+            if field.type in set(["uint", "address", "hex"]) | self.parser.enums:
                 convert = "__gen_unpack_uint"
             elif field.type == "int":
                 convert = "__gen_unpack_sint"
@@ -519,8 +519,6 @@ class Group(object):
                 print('   fprintf(fp, "%*s{}: 0x%" PRIx64 "\\n", indent, "", {});'.format(name, val))
             elif field.type == "hex":
                 print('   fprintf(fp, "%*s{}: 0x%" PRIx32 "\\n", indent, "", {});'.format(name, val))
-            elif field.type == "uint/float":
-                print('   fprintf(fp, "%*s{}: 0x%X (%f)\\n", indent, "", {}, uif({}));'.format(name, val, val))
             else:
                 print('   fprintf(fp, "%*s{}: %u\\n", indent, "", {});'.format(name, val))
 
