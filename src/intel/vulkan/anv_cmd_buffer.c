@@ -57,12 +57,10 @@ static void
 anv_cmd_pipeline_state_finish(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_cmd_pipeline_state *pipe_state)
 {
-   for (uint32_t i = 0; i < ARRAY_SIZE(pipe_state->push_descriptors); i++) {
-      if (pipe_state->push_descriptors[i]) {
-         anv_descriptor_set_layout_unref(cmd_buffer->device,
-             pipe_state->push_descriptors[i]->set.layout);
-         vk_free(&cmd_buffer->vk.pool->alloc, pipe_state->push_descriptors[i]);
-      }
+   if (pipe_state->push_descriptor) {
+      anv_descriptor_set_layout_unref(cmd_buffer->device,
+                                      pipe_state->push_descriptor->set.layout);
+      vk_free(&cmd_buffer->vk.pool->alloc, pipe_state->push_descriptor);
    }
 }
 
@@ -877,7 +875,7 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    }
 
    struct anv_push_descriptor_set **push_set =
-      &pipe_state->push_descriptors[_set];
+      &pipe_state->push_descriptor;
 
    if (*push_set == NULL) {
       *push_set = vk_zalloc(&cmd_buffer->vk.pool->alloc,

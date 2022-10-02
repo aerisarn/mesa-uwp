@@ -2433,7 +2433,7 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
  */
 struct anv_cmd_pipeline_state {
    struct anv_descriptor_set *descriptors[MAX_SETS];
-   struct anv_push_descriptor_set *push_descriptors[MAX_SETS];
+   struct anv_push_descriptor_set *push_descriptor;
 
    struct anv_push_constants push_constants;
 
