@@ -3690,8 +3690,10 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .BufferSize = size
       });
 
+#if GFX_VER == 9
    genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer,
                                                   index, addr, size);
+#endif
 }
 
 static void
@@ -3743,6 +3745,7 @@ static void
 update_dirty_vbs_for_gfx8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t access_type)
 {
+#if GFX_VER == 9
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
 
@@ -3756,6 +3759,7 @@ update_dirty_vbs_for_gfx8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
    genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(cmd_buffer,
                                                        access_type == RANDOM,
                                                        vb_used);
+#endif
 }
 
 ALWAYS_INLINE static void
@@ -5907,6 +5911,7 @@ genX(cmd_buffer_emit_gfx12_depth_wa)(struct anv_cmd_buffer *cmd_buffer,
 #endif
 }
 
+#if GFX_VER == 9
 /* From the Skylake PRM, 3DSTATE_VERTEX_BUFFERS:
  *
  *    "The VF cache needs to be invalidated before binding and then using
@@ -5970,9 +5975,6 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint32_t access_type,
                                                     uint64_t vb_used)
 {
-   if (GFX_VER > 9)
-      return;
-
    if (access_type == RANDOM) {
       /* We have an index buffer */
       struct anv_vb_cache_range *bound = &cmd_buffer->state.gfx.ib_bound_range;
@@ -6001,6 +6003,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
       }
    }
 }
+#endif /* GFX_VER == 9 */
 
 /**
  * Update the pixel hashing modes that determine the balancing of PS threads
