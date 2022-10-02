@@ -217,7 +217,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
       VkPipeline pipeline = VK_NULL_HANDLE;
-      struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
+      struct zink_gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(zink_gfx_pipeline_cache_entry);
       if (!pc_entry)
          return VK_NULL_HANDLE;
       memcpy(&pc_entry->state, state, sizeof(*state));
@@ -256,7 +256,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       pc_entry->pipeline = pipeline;
    }
 
-   struct gfx_pipeline_cache_entry *cache_entry = (struct gfx_pipeline_cache_entry *)entry->data;
+   struct zink_gfx_pipeline_cache_entry *cache_entry = (struct zink_gfx_pipeline_cache_entry *)entry->data;
    state->pipeline = cache_entry->pipeline;
    if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
       prog->last_finalized_hash[rp_idx][idx] = state->final_hash;

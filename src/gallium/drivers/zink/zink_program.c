@@ -1147,7 +1147,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    for (unsigned r = 0; r < ARRAY_SIZE(prog->pipelines); r++) {
       for (int i = 0; i < max_idx; ++i) {
          hash_table_foreach(&prog->pipelines[r][i], entry) {
-            struct gfx_pipeline_cache_entry *pc_entry = entry->data;
+            struct zink_gfx_pipeline_cache_entry *pc_entry = entry->data;
 
             VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
             free(pc_entry);

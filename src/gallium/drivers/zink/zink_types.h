@@ -826,6 +826,15 @@ struct zink_gfx_output_key {
    VkPipeline pipeline;
 };
 
+struct zink_gfx_pipeline_cache_entry {
+   struct zink_gfx_pipeline_state state;
+   VkPipeline pipeline;
+   /* GPL only */
+   struct zink_gfx_input_key *ikey;
+   struct zink_gfx_library_key *gkey;
+   struct zink_gfx_output_key *okey;
+};
+
 struct zink_gfx_program {
    struct zink_program base;
 
