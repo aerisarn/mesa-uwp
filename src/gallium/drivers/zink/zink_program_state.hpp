@@ -208,7 +208,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    const int rp_idx = state->render_pass ? 1 : 0;
    if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2) {
       if (prog->last_finalized_hash[rp_idx][idx] == state->final_hash && !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx])) {
-         state->pipeline = prog->last_pipeline[rp_idx][idx];
+         state->pipeline = prog->last_pipeline[rp_idx][idx]->pipeline;
          return state->pipeline;
       }
    }
@@ -260,7 +260,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    state->pipeline = cache_entry->pipeline;
    if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
       prog->last_finalized_hash[rp_idx][idx] = state->final_hash;
-      prog->last_pipeline[rp_idx][idx] = state->pipeline;
+      prog->last_pipeline[rp_idx][idx] = cache_entry;
    }
    return state->pipeline;
 }

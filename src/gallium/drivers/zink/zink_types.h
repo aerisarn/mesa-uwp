@@ -859,7 +859,7 @@ struct zink_gfx_program {
    uint8_t inline_variants; //which stages are using inlined uniforms
 
    uint32_t last_finalized_hash[2][4]; //[dynamic, renderpass][primtype idx]
-   VkPipeline last_pipeline[2][4]; //[dynamic, renderpass][primtype idx]
+   struct zink_gfx_pipeline_cache_entry *last_pipeline[2][4]; //[dynamic, renderpass][primtype idx]
 
    struct set libs; //zink_gfx_library_key -> VkPipeline
 };
