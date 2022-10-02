@@ -1795,6 +1795,14 @@ struct anv_descriptor_set {
     */
    uint32_t size;
 
+   /* Is this descriptor set a push descriptor */
+   bool is_push;
+
+   /* Bitfield of descriptors for which we need to generate surface states.
+    * Only valid for push descriptors
+    */
+   uint32_t generate_surface_states;
+
    /* State relative to anv_descriptor_pool::bo */
    struct anv_state desc_mem;
    /* Surface state for the descriptor buffer */
@@ -1908,13 +1916,17 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
 void
 anv_descriptor_set_write_buffer(struct anv_device *device,
                                 struct anv_descriptor_set *set,
-                                struct anv_state_stream *alloc_stream,
                                 VkDescriptorType type,
                                 struct anv_buffer *buffer,
                                 uint32_t binding,
                                 uint32_t element,
                                 VkDeviceSize offset,
                                 VkDeviceSize range);
+
+void
+anv_descriptor_write_surface_state(struct anv_device *device,
+                                   struct anv_descriptor *desc,
+                                   struct anv_state surface_state);
 
 void
 anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
@@ -1934,7 +1946,6 @@ anv_descriptor_set_write_inline_uniform_data(struct anv_device *device,
 void
 anv_descriptor_set_write_template(struct anv_device *device,
                                   struct anv_descriptor_set *set,
-                                  struct anv_state_stream *alloc_stream,
                                   const struct vk_descriptor_update_template *template,
                                   const void *data);
 
@@ -2545,6 +2556,7 @@ struct anv_cmd_state {
 
    enum anv_pipe_bits                           pending_pipe_bits;
    VkShaderStageFlags                           descriptors_dirty;
+   VkShaderStageFlags                           push_descriptors_dirty;
    VkShaderStageFlags                           push_constants_dirty;
 
    struct anv_vertex_binding                    vertex_bindings[MAX_VBS];

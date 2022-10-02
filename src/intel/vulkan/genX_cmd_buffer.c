@@ -2661,6 +2661,51 @@ flush_descriptor_sets(struct anv_cmd_buffer *cmd_buffer,
    return flushed;
 }
 
+/* This functions generates surface states used by a pipeline for push
+ * descriptors. This is delayed to the draw/dispatch time to avoid allocation
+ * and surface state generation when a pipeline is not going to use the
+ * binding table to access any push descriptor data.
+ */
+static void
+flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
+                          struct anv_cmd_pipeline_state *state,
+                          struct anv_pipeline *pipeline)
+{
+   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
+   struct anv_descriptor_set *set = &state->push_descriptor->set;
+   struct anv_descriptor_set_layout *layout = set->layout;
+
+   if (pipeline->use_push_descriptor) {
+      while (set->generate_surface_states) {
+         int desc_idx = u_bit_scan(&set->generate_surface_states);
+         struct anv_descriptor *desc = &set->descriptors[desc_idx];
+         struct anv_buffer_view *bview = desc->set_buffer_view;
+
+         bview->surface_state =
+            anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
+                                   isl_dev->ss.size, isl_dev->ss.align);
+         anv_descriptor_write_surface_state(cmd_buffer->device, desc,
+                                            bview->surface_state);
+      }
+   }
+
+   if (pipeline->use_push_descriptor_buffer) {
+      enum isl_format format =
+         anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+      set->desc_surface_state =
+         anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
+                                isl_dev->ss.size, isl_dev->ss.align);
+      anv_fill_buffer_surface_state(cmd_buffer->device,
+                                    set->desc_surface_state,
+                                    format, ISL_SWIZZLE_IDENTITY,
+                                    ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
+                                    set->desc_addr,
+                                    layout->descriptor_buffer_size, 1);
+   }
+}
+
 static void
 cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
                                     uint32_t stages)
@@ -3522,6 +3567,18 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       vk_dynamic_graphics_state_any_dirty(dyn);
    uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
                                 pipeline->active_stages;
+
+   const uint32_t push_descriptor_dirty =
+      cmd_buffer->state.push_descriptors_dirty &
+      pipeline->base.use_push_descriptor;
+   if (push_descriptor_dirty) {
+      flush_push_descriptor_set(cmd_buffer,
+                                &cmd_buffer->state.gfx.base,
+                                &pipeline->base);
+      descriptors_dirty |= push_descriptor_dirty;
+      cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
+   }
+
    if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
        !any_dynamic_state_dirty &&
        !cmd_buffer->state.push_constants_dirty)
@@ -4991,6 +5048,17 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
        * so flag push constants as dirty if we change the pipeline.
        */
       cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
+   }
+
+   const uint32_t push_descriptor_dirty =
+      cmd_buffer->state.push_descriptors_dirty &
+      pipeline->base.use_push_descriptor;
+   if (push_descriptor_dirty) {
+      flush_push_descriptor_set(cmd_buffer,
+                                &cmd_buffer->state.compute.base,
+                                &pipeline->base);
+      cmd_buffer->state.descriptors_dirty |= push_descriptor_dirty;
+      cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
    }
 
    if ((cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_COMPUTE_BIT) ||
