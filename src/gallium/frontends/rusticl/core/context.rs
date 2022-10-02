@@ -43,6 +43,7 @@ impl Context {
         size: usize,
         user_ptr: *mut c_void,
         copy: bool,
+        res_type: ResourceType,
     ) -> CLResult<HashMap<Arc<Device>, Arc<PipeResource>>> {
         let adj_size: u32 = size.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
         let mut res = HashMap::new();
@@ -56,9 +57,7 @@ impl Context {
             }
 
             if resource.is_none() {
-                resource = dev
-                    .screen()
-                    .resource_create_buffer(adj_size, ResourceType::Normal)
+                resource = dev.screen().resource_create_buffer(adj_size, res_type)
             }
 
             let resource = resource.ok_or(CL_OUT_OF_RESOURCES);
@@ -84,6 +83,7 @@ impl Context {
         format: &cl_image_format,
         user_ptr: *mut c_void,
         copy: bool,
+        res_type: ResourceType,
     ) -> CLResult<HashMap<Arc<Device>, Arc<PipeResource>>> {
         let width = desc
             .image_width
@@ -117,13 +117,7 @@ impl Context {
 
             if resource.is_none() {
                 resource = dev.screen().resource_create_texture(
-                    width,
-                    height,
-                    depth,
-                    array_size,
-                    target,
-                    format,
-                    ResourceType::Normal,
+                    width, height, depth, array_size, target, format, res_type,
                 )
             }
 

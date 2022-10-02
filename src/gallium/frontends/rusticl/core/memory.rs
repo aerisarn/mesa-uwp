@@ -291,12 +291,18 @@ impl Mem {
         host_ptr: *mut c_void,
         props: Vec<cl_mem_properties>,
     ) -> CLResult<Arc<Mem>> {
-        if bit_check(flags, CL_MEM_ALLOC_HOST_PTR) {
-            println!("host ptr semantics not implemented!");
-        }
+        let res_type = if bit_check(flags, CL_MEM_ALLOC_HOST_PTR) {
+            ResourceType::Staging
+        } else {
+            ResourceType::Normal
+        };
 
-        let buffer =
-            context.create_buffer(size, host_ptr, bit_check(flags, CL_MEM_COPY_HOST_PTR))?;
+        let buffer = context.create_buffer(
+            size,
+            host_ptr,
+            bit_check(flags, CL_MEM_COPY_HOST_PTR),
+            res_type,
+        )?;
 
         let host_ptr = if bit_check(flags, CL_MEM_USE_HOST_PTR) {
             host_ptr
@@ -365,10 +371,6 @@ impl Mem {
         host_ptr: *mut c_void,
         props: Vec<cl_mem_properties>,
     ) -> CLResult<Arc<Mem>> {
-        if bit_check(flags, CL_MEM_ALLOC_HOST_PTR) {
-            println!("host ptr semantics not implemented!");
-        }
-
         // we have to sanitize the image_desc a little for internal use
         let api_image_desc = image_desc;
         let dims = image_desc.dims();
@@ -383,12 +385,19 @@ impl Mem {
             image_desc.image_array_size = 1;
         }
 
+        let res_type = if bit_check(flags, CL_MEM_ALLOC_HOST_PTR) {
+            ResourceType::Staging
+        } else {
+            ResourceType::Normal
+        };
+
         let texture = if parent.is_none() {
             Some(context.create_texture(
                 &image_desc,
                 image_format,
                 host_ptr,
                 bit_check(flags, CL_MEM_COPY_HOST_PTR),
+                res_type,
             )?)
         } else {
             None
@@ -458,8 +467,8 @@ impl Mem {
 
         assert!(self.is_buffer());
 
-        // don't bother mapping directly if it's not UMA
-        let tx = if q.device.unified_memory() {
+        // don't bother mapping directly if it's not UMA or a staging buffer
+        let tx = if q.device.unified_memory() || bit_check(b.flags, CL_MEM_ALLOC_HOST_PTR) {
             ctx.buffer_map_directly(
                 r,
                 offset.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
@@ -519,7 +528,7 @@ impl Mem {
         let ctx = q.device.helper_ctx();
 
         // don't bother mapping directly if it's not UMA
-        let tx = if q.device.unified_memory() {
+        let tx = if q.device.unified_memory() || bit_check(self.flags, CL_MEM_ALLOC_HOST_PTR) {
             ctx.texture_map_directly(r, bx, rw)
         } else {
             None
