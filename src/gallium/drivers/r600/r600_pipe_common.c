@@ -588,6 +588,7 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	rctx->family = rscreen->family;
 	rctx->gfx_level = rscreen->gfx_level;
 
+	rctx->b.clear_buffer = u_default_clear_buffer;
 	rctx->b.invalidate_resource = r600_invalidate_resource;
 	rctx->b.resource_commit = r600_resource_commit;
 	rctx->b.buffer_map = r600_buffer_transfer_map;
