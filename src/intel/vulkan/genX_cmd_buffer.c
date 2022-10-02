@@ -7194,12 +7194,21 @@ void genX(CmdBindIndexBuffer)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
 
-   cmd_buffer->state.gfx.restart_index = restart_index_for_type(indexType);
-   cmd_buffer->state.gfx.index_buffer = buffer;
-   cmd_buffer->state.gfx.index_type = vk_to_intel_index_type(indexType);
-   cmd_buffer->state.gfx.index_offset = offset;
+   uint32_t restart_index = restart_index_for_type(indexType);
+   if (cmd_buffer->state.gfx.restart_index != restart_index) {
+      cmd_buffer->state.gfx.restart_index = restart_index;
+      cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RESTART_INDEX;
+   }
 
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
+   uint32_t index_type = vk_to_intel_index_type(indexType);
+   if (cmd_buffer->state.gfx.index_buffer != buffer ||
+       cmd_buffer->state.gfx.index_type != index_type ||
+       cmd_buffer->state.gfx.index_offset != offset) {
+      cmd_buffer->state.gfx.index_buffer = buffer;
+      cmd_buffer->state.gfx.index_type = vk_to_intel_index_type(indexType);
+      cmd_buffer->state.gfx.index_offset = offset;
+      cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
+   }
 }
 
 VkResult genX(CmdSetPerformanceOverrideINTEL)(

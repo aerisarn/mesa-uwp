@@ -2014,6 +2014,7 @@ enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_INDEX_BUFFER                        = 1 << 1,
    ANV_CMD_DIRTY_RENDER_TARGETS                      = 1 << 2,
    ANV_CMD_DIRTY_XFB_ENABLE                          = 1 << 3,
+   ANV_CMD_DIRTY_RESTART_INDEX                       = 1 << 4,
 };
 typedef enum anv_cmd_dirty_bits anv_cmd_dirty_mask_t;
 
