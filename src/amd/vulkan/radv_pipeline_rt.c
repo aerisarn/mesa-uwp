@@ -224,10 +224,6 @@ struct rt_variables {
    nir_variable *hit_kind;
    nir_variable *opaque;
 
-   /* Safeguard to ensure we don't end up in an infinite loop of non-existing case. Should not be
-    * needed but is extra anti-hang safety during bring-up. */
-   nir_variable *main_loop_case_visited;
-
    /* Output variables for intersection & anyhit shaders. */
    nir_variable *ahit_accept;
    nir_variable *ahit_terminate;
@@ -295,8 +291,6 @@ create_rt_variables(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR 
    vars.hit_kind = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "hit_kind");
    vars.opaque = nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "opaque");
 
-   vars.main_loop_case_visited =
-      nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "main_loop_case_visited");
    vars.ahit_accept =
       nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "ahit_accept");
    vars.ahit_terminate =
@@ -731,7 +725,6 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    reserve_stack_size(vars, shader->scratch_size);
 
    nir_push_if(b, nir_ieq_imm(b, idx, call_idx));
-   nir_store_var(b, vars->main_loop_case_visited, nir_imm_bool(b, true), 1);
    nir_inline_function_impl(b, nir_shader_get_entrypoint(shader), NULL, var_remap);
    nir_pop_if(b, NULL);
 
@@ -1504,7 +1497,6 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    /* For now, just inline the traversal shader */
    nir_push_if(b, nir_ieq_imm(b, nir_load_var(b, vars->idx), 1));
-   nir_store_var(b, vars->main_loop_case_visited, nir_imm_bool(b, true), 1);
    nir_inline_function_impl(b, nir_shader_get_entrypoint(shader), NULL, var_remap);
    nir_pop_if(b, NULL);
 
@@ -1646,16 +1638,11 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    else
       nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, MAX_STACK_SCRATCH_ENTRY_COUNT * 4), 0x1);
 
-   nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, true), 1);
-
    nir_loop *loop = nir_push_loop(&b);
 
-   nir_push_if(&b, nir_ior(&b, nir_ieq_imm(&b, nir_load_var(&b, vars.idx), 0),
-                           nir_inot(&b, nir_load_var(&b, vars.main_loop_case_visited))));
+   nir_push_if(&b, nir_ieq_imm(&b, nir_load_var(&b, vars.idx), 0));
    nir_jump(&b, nir_jump_break);
    nir_pop_if(&b, NULL);
-
-   nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, false), 1);
 
    insert_traversal(device, pCreateInfo, &b, &vars);
 
