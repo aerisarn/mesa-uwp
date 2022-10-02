@@ -428,6 +428,7 @@ Shader *Shader::translate_from_nir(nir_shader *nir, const pipe_stream_output_inf
    case MESA_SHADER_TESS_EVAL:
       shader = new TESShader(so_info, gs_shader, key);
       break;
+   case MESA_SHADER_KERNEL:
    case MESA_SHADER_COMPUTE:
       shader = new ComputeShader(key);
       break;
