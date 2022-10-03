@@ -32,6 +32,7 @@
 
 #include "util/u_debug.h"
 #include "util/u_memory.h"
+#include "util/bitscan.h"
 
 #include "cso_hash.h"
 
@@ -61,13 +62,7 @@ primeForNumBits(int numBits)
 static int
 countBits(int hint)
 {
-   int numBits = 0;
-   int bits = hint;
-
-   while (bits > 1) {
-      bits >>= 1;
-      numBits++;
-   }
+   int numBits = util_bitcount(hint);
 
    if (numBits >= (int)sizeof(prime_deltas)) {
       numBits = sizeof(prime_deltas) - 1;
