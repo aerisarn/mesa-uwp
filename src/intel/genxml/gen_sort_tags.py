@@ -94,8 +94,6 @@ GENXML_DESC = {
 space_delta = 2
 
 def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
-    if node.tag in [ 'enum', 'struct', 'instruction', 'register' ]:
-        f.write('\n')
     spaces = ''.rjust(offset * space_delta)
     f.write('{0}<{1}'.format(spaces, node.tag))
     for k, v in node.attrib.items():
