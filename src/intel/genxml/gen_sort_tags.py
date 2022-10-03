@@ -107,7 +107,7 @@ def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
             print_node(f, offset + 1, c)
         f.write('{0}</{1}>\n'.format(spaces, node.tag))
     else:
-        f.write('/>\n')
+        f.write(' />\n')
 
 
 def node_validator(old: et.Element, new: et.Element) -> bool:
