@@ -889,12 +889,10 @@ radv_GetDeviceAccelerationStructureCompatibilityKHR(
    VkAccelerationStructureCompatibilityKHR *pCompatibility)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   uint8_t zero[VK_UUID_SIZE] = {
-      0,
-   };
    bool compat =
       memcmp(pVersionInfo->pVersionData, device->physical_device->driver_uuid, VK_UUID_SIZE) == 0 &&
-      memcmp(pVersionInfo->pVersionData + VK_UUID_SIZE, zero, VK_UUID_SIZE) == 0;
+      memcmp(pVersionInfo->pVersionData + VK_UUID_SIZE, device->physical_device->cache_uuid,
+             VK_UUID_SIZE) == 0;
    *pCompatibility = compat ? VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR
                             : VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
 }
@@ -979,8 +977,10 @@ radv_CmdCopyAccelerationStructureToMemoryKHR(
    radv_meta_restore(&saved_state, cmd_buffer);
 
    /* Set the header of the serialized data. */
-   uint8_t header_data[2 * VK_UUID_SIZE] = {0};
+   uint8_t header_data[2 * VK_UUID_SIZE];
    memcpy(header_data, cmd_buffer->device->physical_device->driver_uuid, VK_UUID_SIZE);
+   memcpy(header_data + VK_UUID_SIZE, cmd_buffer->device->physical_device->cache_uuid,
+          VK_UUID_SIZE);
 
    radv_update_buffer_cp(cmd_buffer, pInfo->dst.deviceAddress, header_data, sizeof(header_data));
 }
