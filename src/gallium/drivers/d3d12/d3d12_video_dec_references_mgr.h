@@ -88,35 +88,32 @@ struct d3d12_video_decoder_references_manager
 
    void print_dpb();
 
+   uint8_t get_unused_index7bits()
+   {
+      for (uint32_t testIdx = 0; testIdx < 127; testIdx++) {
+         auto it = std::find_if(m_DecodeTargetToOriginalIndex7Bits.begin(), m_DecodeTargetToOriginalIndex7Bits.end(),
+            [&testIdx](const std::pair< struct pipe_video_buffer*, uint8_t > &p) {
+               return p.second == testIdx;
+            });
+
+         if (it == m_DecodeTargetToOriginalIndex7Bits.end())
+            return testIdx;
+      }
+      debug_printf(
+         "[d3d12_video_decoder_references_manager] d3d12_video_decoder_references_manager - Decode - No available "
+         "fresh indices left.\n");
+      assert(false);
+      return 0;
+   }
+
    ///
    /// Get the Index7Bits associated with this decode target
    /// If there isn't one assigned yet, gives out a fresh/unused Index7Bits
    ///
    uint8_t get_index7bits(struct pipe_video_buffer * pDecodeTarget) {
-      bool bDecodeTargetAlreadyHasIndex = (m_DecodeTargetToOriginalIndex7Bits.count(pDecodeTarget) > 0);
-      if(bDecodeTargetAlreadyHasIndex)
-      {
-         return m_DecodeTargetToOriginalIndex7Bits[pDecodeTarget];
-      } else {
-         uint8_t freshIdx = m_CurrentIndex7BitsAvailable;
-         
-         // Make sure next "available" index is not already used. Should be cleaned up and there shouldn't be never 127 in flight used indices
-            #if DEBUG
-               auto it = std::find_if(m_DecodeTargetToOriginalIndex7Bits.begin(), m_DecodeTargetToOriginalIndex7Bits.end(),
-                  [&freshIdx](const std::pair< struct pipe_video_buffer*, uint8_t > &p) {
-                     return p.second == freshIdx;
-                  });
-
-               assert(it == m_DecodeTargetToOriginalIndex7Bits.end());
-            #endif
-
-         // Point to next circular index for next call
-         m_CurrentIndex7BitsAvailable = ((m_CurrentIndex7BitsAvailable + 1) % 127);
-
-         // Assign freshIdx to pDecodeTarget
-         m_DecodeTargetToOriginalIndex7Bits[pDecodeTarget] = freshIdx;
-         return freshIdx;
-      }
+      if(m_DecodeTargetToOriginalIndex7Bits.count(pDecodeTarget) == 0)
+         m_DecodeTargetToOriginalIndex7Bits[pDecodeTarget] = get_unused_index7bits();
+      return m_DecodeTargetToOriginalIndex7Bits[pDecodeTarget];
    }
 
  private:
@@ -147,7 +144,6 @@ struct d3d12_video_decoder_references_manager
    std::vector<ReferenceData> m_referenceDXVAIndices;
    
    std::map<struct pipe_video_buffer *, uint8_t> m_DecodeTargetToOriginalIndex7Bits = { };
-   uint8_t m_CurrentIndex7BitsAvailable = 0;
  
    ComPtr<ID3D12Resource> m_pClearDecodedOutputTexture;
 
