@@ -3557,7 +3557,7 @@ egl_image_target_texture(struct gl_context *ctx,
           *    Otherwise, the error INVALID_OPERATION is generated.
           */
          if (stimg.imported_dmabuf &&
-             (target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES)) {
+             !(target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES)) {
             _mesa_error(ctx, GL_INVALID_OPERATION,
                         "%s(texture is imported from dmabuf)", caller);
             return;
