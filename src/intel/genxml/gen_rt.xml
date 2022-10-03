@@ -1,4 +1,4 @@
-<?xml version="1.0" ?>
+<?xml version='1.0' encoding='utf-8'?>
 <genxml name="RT" gen="">
   <struct name="BINDLESS_SHADER_RECORD" length="2">
     <field name="Offset To Local Arguments" start="0" end="2" type="uint" />
