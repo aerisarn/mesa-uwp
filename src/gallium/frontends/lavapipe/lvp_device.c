@@ -2223,8 +2223,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
-   sampler = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   sampler = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
+                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
