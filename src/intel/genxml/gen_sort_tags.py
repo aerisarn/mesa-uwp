@@ -165,7 +165,7 @@ def process(xml: et.ElementTree) -> None:
     genxml[:] = new_elems
     
 
-if __name__ == '__main__':
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('files', nargs='*',
                         default=pathlib.Path(__file__).parent.glob('*.xml'),
@@ -194,3 +194,7 @@ if __name__ == '__main__':
 
         if not args.quiet:
             print('done.')
+
+
+if __name__ == '__main__':
+    main()
