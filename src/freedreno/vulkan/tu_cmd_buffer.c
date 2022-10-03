@@ -2534,7 +2534,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS |
                        TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_VS_PARAMS;
 
-   if (pipeline->output.feedback_loop_may_involve_textures) {
+   if (pipeline->output.feedback_loop_may_involve_textures &&
+       !cmd->state.rp.disable_gmem) {
       /* VK_EXT_attachment_feedback_loop_layout allows feedback loop to involve
        * not only input attachments but also sampled images or image resources.
        * But we cannot just patch gmem for image in the descriptors.
@@ -2550,9 +2551,22 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        * - Check that both pipeline and attachments agree that feedback loop
        *   is needed.
        */
+      perf_debug(
+         cmd->device,
+         "Disabling gmem due to VK_EXT_attachment_feedback_loop_layout");
       cmd->state.rp.disable_gmem = true;
    }
-   cmd->state.rp.sysmem_single_prim_mode |= pipeline->prim_order.sysmem_single_prim_mode;
+
+   if (pipeline->prim_order.sysmem_single_prim_mode &&
+       !cmd->state.rp.sysmem_single_prim_mode) {
+      if (pipeline->output.subpass_feedback_loop_color ||
+          pipeline->output.subpass_feedback_loop_ds) {
+         perf_debug(cmd->device, "single_prim_mode due to feedback loop");
+      } else {
+         perf_debug(cmd->device, "single_prim_mode due to rast order access");
+      }
+      cmd->state.rp.sysmem_single_prim_mode = true;
+   }
 
    struct tu_cs *cs = &cmd->draw_cs;
 
