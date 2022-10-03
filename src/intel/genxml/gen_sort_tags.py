@@ -91,22 +91,6 @@ GENXML_DESC = {
     'register'    : [ 'name', 'length', 'num', ],
 }
 
-space_delta = 2
-
-def print_node(f: typing.TextIO, offset: int, node: et.Element) -> None:
-    spaces = ''.rjust(offset * space_delta)
-    f.write('{0}<{1}'.format(spaces, node.tag))
-    for k, v in node.attrib.items():
-        f.write(f' {k}="{v}"')
-    children = list(node)
-    if len(children) > 0:
-        f.write('>\n')
-        for c in children:
-            print_node(f, offset + 1, c)
-        f.write('{0}</{1}>\n'.format(spaces, node.tag))
-    else:
-        f.write(' />\n')
-
 
 def node_validator(old: et.Element, new: et.Element) -> bool:
     """Compare to ElementTree Element nodes.
@@ -187,11 +171,10 @@ def process(filename: pathlib.Path, validate: bool) -> None:
         for old, new in zip(original, genxml):
             assert node_validator(old, new), f'{filename} is invalid, run gen_sort_tags.py and commit that'
     else:
-
         tmp = filename.with_suffix(f'{filename.suffix}.tmp')
-        with tmp.open('w') as f:
-            f.write('<?xml version="1.0" ?>\n')
-            print_node(f, 0, genxml)
+        tree = et.ElementTree(genxml)
+        et.indent(tree, space='  ')
+        tree.write(tmp, encoding="utf-8", xml_declaration=True)
         filename.unlink()
         tmp.rename(filename)
     
