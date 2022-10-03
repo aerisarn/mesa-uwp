@@ -112,9 +112,11 @@ add_conv_test(struct gallivm_state *gallivm,
    LLVMValueRef src[LP_MAX_VECTOR_LENGTH];
    LLVMValueRef dst[LP_MAX_VECTOR_LENGTH];
    unsigned i;
+   LLVMTypeRef src_vec_type = lp_build_vec_type(gallivm, src_type);
+   LLVMTypeRef dst_vec_type = lp_build_vec_type(gallivm, dst_type);
 
-   args[0] = LLVMPointerType(lp_build_vec_type(gallivm, src_type), 0);
-   args[1] = LLVMPointerType(lp_build_vec_type(gallivm, dst_type), 0);
+   args[0] = LLVMPointerType(src_vec_type, 0);
+   args[1] = LLVMPointerType(dst_vec_type, 0);
 
    func = LLVMAddFunction(module, "test",
                           LLVMFunctionType(LLVMVoidTypeInContext(context),
@@ -128,15 +130,15 @@ add_conv_test(struct gallivm_state *gallivm,
 
    for(i = 0; i < num_srcs; ++i) {
       LLVMValueRef index = LLVMConstInt(LLVMInt32TypeInContext(context), i, 0);
-      LLVMValueRef ptr = LLVMBuildGEP(builder, src_ptr, &index, 1, "");
-      src[i] = LLVMBuildLoad(builder, ptr, "");
+      LLVMValueRef ptr = LLVMBuildGEP2(builder, src_vec_type, src_ptr, &index, 1, "");
+      src[i] = LLVMBuildLoad2(builder, src_vec_type, ptr, "");
    }
 
    lp_build_conv(gallivm, src_type, dst_type, src, num_srcs, dst, num_dsts);
 
    for(i = 0; i < num_dsts; ++i) {
       LLVMValueRef index = LLVMConstInt(LLVMInt32TypeInContext(context), i, 0);
-      LLVMValueRef ptr = LLVMBuildGEP(builder, dst_ptr, &index, 1, "");
+      LLVMValueRef ptr = LLVMBuildGEP2(builder, dst_vec_type, dst_ptr, &index, 1, "");
       LLVMBuildStore(builder, dst[i], ptr);
    }
 

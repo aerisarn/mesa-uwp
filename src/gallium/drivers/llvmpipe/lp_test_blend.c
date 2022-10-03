@@ -172,10 +172,10 @@ add_blend_test(struct gallivm_state *gallivm,
    builder = gallivm->builder;
    LLVMPositionBuilderAtEnd(builder, block);
 
-   src = LLVMBuildLoad(builder, src_ptr, "src");
-   src1 = LLVMBuildLoad(builder, src1_ptr, "src1");
-   dst = LLVMBuildLoad(builder, dst_ptr, "dst");
-   con = LLVMBuildLoad(builder, const_ptr, "const");
+   src = LLVMBuildLoad2(builder, vec_type, src_ptr, "src");
+   src1 = LLVMBuildLoad2(builder, vec_type, src1_ptr, "src1");
+   dst = LLVMBuildLoad2(builder, vec_type, dst_ptr, "dst");
+   con = LLVMBuildLoad2(builder, vec_type, const_ptr, "const");
 
    res = lp_build_blend_aos(gallivm, blend, format, type, rt, src, NULL,
                             src1, NULL, dst, NULL, con, NULL, swizzle, 4);
