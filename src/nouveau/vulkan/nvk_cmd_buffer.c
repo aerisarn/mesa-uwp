@@ -460,3 +460,26 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
       vk_push_print(fp, &push, &dev->pdev->info);
    }
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
+                                        VkDescriptorUpdateTemplate _template,
+                                        VkPipelineLayout _layout,
+                                        uint32_t set,
+                                        const void *pData)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(vk_descriptor_update_template, template, _template);
+   VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, _layout);
+
+   struct nvk_push_descriptor_set *push_set =
+      nvk_cmd_push_descriptors(cmd, template->bind_point, set);
+   if (unlikely(push_set == NULL))
+      return;
+
+   struct nvk_descriptor_set_layout *set_layout =
+      vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set]);
+
+   nvk_push_descriptor_set_update_template(push_set, set_layout,
+                                           template, pData);
+}

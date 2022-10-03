@@ -640,3 +640,17 @@ nvk_UpdateDescriptorSetWithTemplate(VkDevice device,
 
    nvk_descriptor_set_write_template(set, template, pData);
 }
+
+void
+nvk_push_descriptor_set_update_template(
+   struct nvk_push_descriptor_set *push_set,
+   struct nvk_descriptor_set_layout *layout,
+   const struct vk_descriptor_update_template *template,
+   const void *data)
+{
+   struct nvk_descriptor_set tmp_set = {
+      .layout = layout,
+      .mapped_ptr = push_set->data,
+   };
+   nvk_descriptor_set_write_template(&tmp_set, template, data);
+}

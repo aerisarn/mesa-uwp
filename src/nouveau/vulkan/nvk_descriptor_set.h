@@ -4,6 +4,7 @@
 #include "nvk_private.h"
 
 #include "nouveau_bo.h"
+#include "nvk_device.h"
 #include "vulkan/runtime/vk_object.h"
 #include "vulkan/runtime/vk_descriptor_update_template.h"
 
@@ -75,5 +76,12 @@ nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
                                struct nvk_descriptor_set_layout *layout,
                                uint32_t write_count,
                                const VkWriteDescriptorSet *writes);
+
+void
+nvk_push_descriptor_set_update_template(
+   struct nvk_push_descriptor_set *push_set,
+   struct nvk_descriptor_set_layout *layout,
+   const struct vk_descriptor_update_template *template,
+   const void *data);
 
 #endif
