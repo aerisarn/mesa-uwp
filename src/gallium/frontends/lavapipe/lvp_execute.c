@@ -525,21 +525,18 @@ static void emit_state(struct rendering_state *state)
    }
 
    for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
-
-      if (!state->sv_dirty[sh])
-         continue;
-
-      state->pctx->set_sampler_views(state->pctx, sh, 0, state->num_sampler_views[sh],
-                                     0, false, state->sv[sh]);
-      state->sv_dirty[sh] = false;
+      if (state->sv_dirty[sh]) {
+         state->pctx->set_sampler_views(state->pctx, sh, 0, state->num_sampler_views[sh],
+                                        0, false, state->sv[sh]);
+         state->sv_dirty[sh] = false;
+      }
    }
 
    for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
-      if (!state->ss_dirty[sh])
-         continue;
-
-      cso_set_samplers(state->cso, sh, state->num_sampler_states[sh], state->cso_ss_ptr[sh]);
-      state->ss_dirty[sh] = false;
+      if (state->ss_dirty[sh]) {
+         cso_set_samplers(state->cso, sh, state->num_sampler_states[sh], state->cso_ss_ptr[sh]);
+         state->ss_dirty[sh] = false;
+      }
    }
 
    if (state->vp_dirty) {
