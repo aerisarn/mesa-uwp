@@ -1076,15 +1076,12 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
       .EXT_depth_clip_enable = true,
-      .EXT_mutable_descriptor_type = true,
-
-      /* vendor */
-      .VALVE_mutable_descriptor_type = true,
       .EXT_image_drm_format_modifier = true,
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_line_rasterization = true,
       .EXT_multi_draw = true,
+      .EXT_mutable_descriptor_type = true,
       .EXT_primitive_topology_list_restart = true,
       /* TODO(VK_EXT_private_data): Support natively.
        *
@@ -1110,6 +1107,9 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_shader_stencil_export = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
+
+      /* vendor */
+      .VALVE_mutable_descriptor_type = true,
    };
 }
 
