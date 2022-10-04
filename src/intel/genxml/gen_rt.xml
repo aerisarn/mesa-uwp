@@ -1,6 +1,5 @@
 <?xml version="1.0" ?>
 <genxml name="RT" gen="">
-
   <struct name="BINDLESS_SHADER_RECORD" length="2">
     <field name="Offset To Local Arguments" start="0" end="2" type="uint" />
     <field name="Bindless Shader Dispatch Mode" start="4" end="4" type="uint">
@@ -9,23 +8,19 @@
     </field>
     <field name="Kernel Start Pointer" start="6" end="31" type="offset" />
   </struct>
-
   <struct name="RT_BVH_VEC3" length="3">
     <field name="X" start="0" end="31" type="float" />
     <field name="Y" start="32" end="63" type="float" />
     <field name="Z" start="64" end="95" type="float" />
   </struct>
-
   <struct name="RT_BVH_METADATA" length="16">
     <field name="Bounds Min" start="0" end="95" type="RT_BVH_VEC3" />
     <field name="Bounds Max" start="96" end="191" type="RT_BVH_VEC3" />
   </struct>
-
   <struct name="RT_BVH" length="32">
     <field name="Root Node Offset" start="0" end="63" type="offset" />
     <field name="Meta" start="512" end="1023" type="RT_BVH_METADATA" />
   </struct>
-
   <struct name="RT_BVH_INSTANCE_LEAF" length="32">
     <field name="Shader Index" start="0" end="23" type="uint" />
     <field name="Geometry Ray Mask" start="24" end="31" type="uint" />
@@ -72,7 +67,6 @@
     <field name="World To Object m31" start="960" end="991" type="float" />
     <field name="World To Object m32" start="992" end="1023" type="float" />
   </struct>
-
   <struct name="RT_BVH_INTERNAL_NODE" length="16">
     <field name="Origin" start="0" end="95" type="RT_BVH_VEC3" />
     <field name="Child Offset" start="96" end="127" type="int" />
@@ -111,7 +105,6 @@
       <field name="Child Upper Z Bound" start="0" end="7" type="uint" />
     </group>
   </struct>
-
   <struct name="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR" length="2">
     <field name="Shader Index" start="0" end="23" type="uint" />
     <field name="Geometry Ray Mask" start="24" end="31" type="uint" />
@@ -125,7 +118,6 @@
       <value name="GEOMETRY_OPAQUE" value="1" />
     </field>
   </struct>
-
   <struct name="RT_BVH_PROCEDURAL_LEAF" length="16">
     <field name="Leaf Descriptor" start="0" end="63" type="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR" />
     <field name="Num Primitives" start="64" end="67" type="uint" />
@@ -134,7 +126,6 @@
       <field name="Primitive Index" start="0" end="31" type="uint" />
     </group>
   </struct>
-
   <struct name="RT_BVH_QUAD_LEAF" length="16">
     <field name="Leaf Descriptor" start="0" end="63" type="RT_BVH_PRIMITIVE_LEAF_DESCRIPTOR" />
     <field name="Primitive Index 0" start="64" end="95" type="uint" />
@@ -147,12 +138,10 @@
       <field name="Quad Vertex" start="0" end="95" type="RT_BVH_VEC3" />
     </group>
   </struct>
-
   <struct name="RT_SHADER_TABLE" length="2">
     <field name="Base Address" start="0" end="47" type="address" />
     <field name="Stride" start="48" end="63" type="uint" />
   </struct>
-
   <struct name="RT_DISPATCH_GLOBALS" length="20">
     <field name="Mem Base Address" start="0" end="63" type="address" />
     <field name="Call Stack Handler" start="64" end="127" type="BINDLESS_SHADER_RECORD" />
@@ -171,16 +160,13 @@
     <field name="Callable Group Table" start="512" end="575" type="RT_SHADER_TABLE" />
     <field name="Resume Shader Table" start="576" end="639" type="address" />
   </struct>
-
   <struct name="RT_GENERAL_SBT_HANDLE" length="8">
     <field name="General" start="0" end="63" type="BINDLESS_SHADER_RECORD" />
   </struct>
-
   <struct name="RT_PROCEDURAL_SBT_HANDLE" length="8">
     <field name="Closest Hit" start="0" end="63" type="BINDLESS_SHADER_RECORD" />
     <field name="Intersection" start="64" end="127" type="BINDLESS_SHADER_RECORD" />
   </struct>
-
   <struct name="RT_TRIANGLES_SBT_HANDLE" length="8">
     <field name="Closest Hit" start="0" end="63" type="BINDLESS_SHADER_RECORD" />
     <field name="Any Hit" start="64" end="127" type="BINDLESS_SHADER_RECORD" />

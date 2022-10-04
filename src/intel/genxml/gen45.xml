@@ -1,6 +1,5 @@
 <?xml version="1.0" ?>
 <genxml name="CTG" gen="4.5">
-
   <enum name="3D_Color_Buffer_Blend_Factor" prefix="BLENDFACTOR">
     <value name="ONE" value="1" />
     <value name="SRC_COLOR" value="2" />
@@ -22,7 +21,6 @@
     <value name="INV_SRC1_COLOR" value="25" />
     <value name="INV_SRC1_ALPHA" value="26" />
   </enum>
-
   <enum name="3D_Color_Buffer_Blend_Function" prefix="BLENDFUNCTION">
     <value name="ADD" value="0" />
     <value name="SUBTRACT" value="1" />
@@ -30,7 +28,6 @@
     <value name="MIN" value="3" />
     <value name="MAX" value="4" />
   </enum>
-
   <enum name="3D_Compare_Function" prefix="COMPAREFUNCTION">
     <value name="ALWAYS" value="0" />
     <value name="NEVER" value="1" />
@@ -41,7 +38,6 @@
     <value name="NOTEQUAL" value="6" />
     <value name="GEQUAL" value="7" />
   </enum>
-
   <enum name="3D_Logic_Op_Function" prefix="LOGICOP">
     <value name="CLEAR" value="0" />
     <value name="NOR" value="1" />
@@ -60,7 +56,6 @@
     <value name="OR" value="14" />
     <value name="SET" value="15" />
   </enum>
-
   <enum name="3D_Prim_Topo_Type" prefix="3DPRIM">
     <value name="POINTLIST" value="1" />
     <value name="LINELIST" value="2" />
@@ -84,7 +79,6 @@
     <value name="LINESTRIP_CONT_BF" value="20" />
     <value name="TRIFAN_NOSTIPPLE" value="22" />
   </enum>
-
   <enum name="3D_Stencil_Operation" prefix="STENCILOP">
     <value name="KEEP" value="0" />
     <value name="ZERO" value="1" />
@@ -95,7 +89,6 @@
     <value name="DECR" value="6" />
     <value name="INVERT" value="7" />
   </enum>
-
   <enum name="3D_Vertex_Component_Control" prefix="VFCOMP">
     <value name="NOSTORE" value="0" />
     <value name="STORE_SRC" value="1" />
@@ -106,7 +99,6 @@
     <value name="STORE_IID" value="6" />
     <value name="STORE_PID" value="7" />
   </enum>
-
   <enum name="Texture_Coordinate_Mode" prefix="TCM">
     <value name="WRAP" value="0" />
     <value name="MIRROR" value="1" />
@@ -115,12 +107,10 @@
     <value name="CLAMP_BORDER" value="4" />
     <value name="MIRROR_ONCE" value="5" />
   </enum>
-
   <struct name="CC_VIEWPORT" length="2">
     <field name="Minimum Depth" start="0" end="31" type="float" />
     <field name="Maximum Depth" start="32" end="63" type="float" />
   </struct>
-
   <struct name="CLIP_STATE" length="11">
     <field name="GRF Register Count" start="1" end="3" type="uint" />
     <field name="Kernel Start Pointer" start="6" end="31" type="address" />
@@ -176,14 +166,12 @@
     <field name="Screen Space Viewport Y Min" start="288" end="319" type="float" />
     <field name="Screen Space Viewport Y Max" start="320" end="351" type="float" />
   </struct>
-
   <struct name="CLIP_VIEWPORT" length="4">
     <field name="XMin Clip Guardband" start="0" end="31" type="float" />
     <field name="XMax Clip Guardband" start="32" end="63" type="float" />
     <field name="YMin Clip Guardband" start="64" end="95" type="float" />
     <field name="YMax Clip Guardband" start="96" end="127" type="float" />
   </struct>
-
   <struct name="COLOR_CALC_STATE" length="8">
     <field name="Backface Stencil Pass Depth Pass Op" start="3" end="5" type="3D_Stencil_Operation" />
     <field name="Backface Stencil Pass Depth Fail Op" start="6" end="8" type="3D_Stencil_Operation" />
@@ -237,7 +225,6 @@
     <field name="Alpha Reference Value As UNORM8" start="224" end="255" type="uint" />
     <field name="Alpha Reference Value As FLOAT32" start="224" end="255" type="float" />
   </struct>
-
   <struct name="GS_STATE" length="7">
     <field name="GRF Register Count" start="1" end="3" type="uint" />
     <field name="Kernel Start Pointer" start="6" end="31" type="address" />
@@ -268,7 +255,6 @@
     <field name="Discard Adjacency" start="221" end="221" type="bool" />
     <field name="Reorder Enable" start="222" end="222" type="bool" />
   </struct>
-
   <struct name="RENDER_SURFACE_STATE" length="6">
     <field name="Cube Face Enable - Positive Z" start="0" end="0" type="bool" />
     <field name="Cube Face Enable - Negative Z" start="1" end="1" type="bool" />
@@ -328,14 +314,12 @@
     <field name="Y Offset" start="180" end="183" type="uint" />
     <field name="X Offset" start="185" end="191" type="uint" />
   </struct>
-
   <struct name="SAMPLER_BORDER_COLOR_STATE" length="12">
     <field name="Border Color Red" start="0" end="31" type="float" />
     <field name="Border Color Green" start="32" end="63" type="float" />
     <field name="Border Color Blue" start="64" end="95" type="float" />
     <field name="Border Color Alpha" start="96" end="127" type="float" />
   </struct>
-
   <struct name="SAMPLER_STATE" length="4">
     <field name="Shadow Function" start="0" end="2" type="uint" prefix="PREFILTEROP">
       <value name="ALWAYS" value="0" />
@@ -398,14 +382,12 @@
     <field name="Monochrome Filter Width" start="122" end="124" type="uint" />
     <field name="Monochrome Filter Height" start="125" end="127" type="uint" />
   </struct>
-
   <struct name="SCISSOR_RECT" length="2">
     <field name="Scissor Rectangle X Min" start="0" end="15" type="uint" />
     <field name="Scissor Rectangle Y Min" start="16" end="31" type="uint" />
     <field name="Scissor Rectangle X Max" start="32" end="47" type="uint" />
     <field name="Scissor Rectangle Y Max" start="48" end="63" type="uint" />
   </struct>
-
   <struct name="SF_STATE" length="8">
     <field name="GRF Register Count" start="1" end="3" type="uint" />
     <field name="Kernel Start Pointer" start="6" end="31" type="address" />
@@ -493,7 +475,6 @@
     </field>
     <field name="Last Pixel Enable" start="255" end="255" type="bool" />
   </struct>
-
   <struct name="SF_VIEWPORT" length="8">
     <field name="Viewport Matrix Element m00" start="0" end="31" type="float" />
     <field name="Viewport Matrix Element m11" start="32" end="63" type="float" />
@@ -503,7 +484,6 @@
     <field name="Viewport Matrix Element m32" start="160" end="191" type="float" />
     <field name="Scissor Rectangle" start="192" end="255" type="SCISSOR_RECT" />
   </struct>
-
   <struct name="VERTEX_BUFFER_STATE" length="4">
     <field name="Buffer Pitch" start="0" end="10" type="uint" />
     <field name="Buffer Access Type" start="26" end="26" type="uint">
@@ -515,7 +495,6 @@
     <field name="Max Index" start="64" end="95" type="uint" />
     <field name="Instance Data Step Rate" start="96" end="127" type="uint" />
   </struct>
-
   <struct name="VERTEX_ELEMENT_STATE" length="2">
     <field name="Source Element Offset" start="0" end="10" type="uint" />
     <field name="Source Element Format" start="16" end="24" type="uint" />
@@ -527,7 +506,6 @@
     <field name="Component 1 Control" start="56" end="58" type="3D_Vertex_Component_Control" />
     <field name="Component 0 Control" start="60" end="62" type="3D_Vertex_Component_Control" />
   </struct>
-
   <struct name="VS_STATE" length="7">
     <field name="GRF Register Count" start="1" end="3" type="uint" />
     <field name="Kernel Start Pointer" start="6" end="31" type="address" />
@@ -560,7 +538,6 @@
     <field name="Enable" start="192" end="192" type="bool" />
     <field name="Vertex Cache Disable" start="193" end="193" type="bool" />
   </struct>
-
   <struct name="WM_STATE" length="8">
     <field name="GRF Register Count 0" start="1" end="3" type="uint" />
     <field name="Kernel Start Pointer 0" start="6" end="31" type="address" />
@@ -619,7 +596,6 @@
     <field name="Global Depth Offset Constant" start="192" end="223" type="float" />
     <field name="Global Depth Offset Scale" start="224" end="255" type="float" />
   </struct>
-
   <instruction name="3DPRIMITIVE" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="Indirect Vertex Count" start="9" end="9" type="uint" />
@@ -638,7 +614,6 @@
     <field name="Start Instance Location" start="128" end="159" type="uint" />
     <field name="Base Vertex Location" start="160" end="191" type="int" />
   </instruction>
-
   <instruction name="3DSTATE_AA_LINE_PARAMETERS" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="10" />
@@ -650,7 +625,6 @@
     <field name="AA Coverage EndCap Slope" start="64" end="71" type="u0.8" />
     <field name="AA Coverage EndCap Bias" start="80" end="87" type="u0.8" />
   </instruction>
-
   <instruction name="3DSTATE_BINDING_TABLE_POINTERS" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1" />
@@ -663,7 +637,6 @@
     <field name="Pointer to SF Binding Table" start="133" end="159" type="offset" />
     <field name="Pointer to PS Binding Table" start="165" end="191" type="offset" />
   </instruction>
-
   <instruction name="3DSTATE_CONSTANT_COLOR" bias="2" length="5" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="3" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1" />
@@ -675,7 +648,6 @@
     <field name="Blend Constant Color Blue" start="96" end="127" type="float" />
     <field name="Blend Constant Color Alpha" start="128" end="159" type="float" />
   </instruction>
-
   <instruction name="3DSTATE_DEPTH_BUFFER" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="5" />
@@ -725,7 +697,6 @@
     <field name="Depth Coordinate Offset X" start="160" end="175" type="int" />
     <field name="Depth Coordinate Offset Y" start="176" end="191" type="int" />
   </instruction>
-
   <instruction name="3DSTATE_DRAWING_RECTANGLE" bias="2" length="4" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="2" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0" />
@@ -739,7 +710,6 @@
     <field name="Drawing Rectangle Origin X" start="96" end="111" type="int" />
     <field name="Drawing Rectangle Origin Y" start="112" end="127" type="int" />
   </instruction>
-
   <instruction name="3DSTATE_GLOBAL_DEPTH_OFFSET_CLAMP" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="9" />
@@ -748,7 +718,6 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
     <field name="Global Depth Offset Clamp" start="32" end="63" type="float" />
   </instruction>
-
   <instruction name="3DSTATE_INDEX_BUFFER" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="Index Format" start="8" end="9" type="uint" prefix="INDEX">
@@ -764,7 +733,6 @@
     <field name="Buffer Starting Address" start="32" end="63" type="address" />
     <field name="Buffer Ending Address" start="64" end="95" type="address" />
   </instruction>
-
   <instruction name="3DSTATE_LINE_STIPPLE" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="8" />
@@ -778,7 +746,6 @@
     <field name="Line Stipple Repeat Count" start="64" end="72" type="uint" />
     <field name="Line Stipple Inverse Repeat Count" start="80" end="95" type="u1.13" />
   </instruction>
-
   <instruction name="3DSTATE_PIPELINED_POINTERS" bias="2" length="7" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="5" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0" />
@@ -794,7 +761,6 @@
     <field name="Pointer to WM State" start="165" end="191" type="address" />
     <field name="Pointer to Color Calc State" start="197" end="223" type="address" />
   </instruction>
-
   <instruction name="3DSTATE_POLY_STIPPLE_OFFSET" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="6" />
@@ -804,7 +770,6 @@
     <field name="Polygon Stipple Y Offset" start="32" end="36" type="uint" />
     <field name="Polygon Stipple X Offset" start="40" end="44" type="uint" />
   </instruction>
-
   <instruction name="3DSTATE_POLY_STIPPLE_PATTERN" bias="2" length="33" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="31" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="7" />
@@ -815,7 +780,6 @@
       <field name="Pattern Row" start="0" end="31" type="uint" />
     </group>
   </instruction>
-
   <instruction name="3DSTATE_VERTEX_BUFFERS" bias="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="3" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="8" />
@@ -826,7 +790,6 @@
       <field name="Vertex Buffer State" start="0" end="127" type="VERTEX_BUFFER_STATE" />
     </group>
   </instruction>
-
   <instruction name="3DSTATE_VERTEX_ELEMENTS" bias="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="9" />
@@ -837,7 +800,6 @@
       <field name="Element" start="0" end="63" type="VERTEX_ELEMENT_STATE" />
     </group>
   </instruction>
-
   <instruction name="3DSTATE_VF_STATISTICS" bias="1" length="1" engine="render">
     <field name="Statistics Enable" start="0" end="0" type="bool" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="11" />
@@ -845,7 +807,6 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="1" />
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
   </instruction>
-
   <instruction name="CONSTANT_BUFFER" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="Valid" start="8" end="8" type="bool" default="0" />
@@ -856,7 +817,6 @@
     <field name="Buffer Length" start="32" end="37" type="uint" />
     <field name="Buffer Starting Address" start="38" end="63" type="address" />
   </instruction>
-
   <instruction name="CS_URB_STATE" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1" />
@@ -866,7 +826,6 @@
     <field name="Number of URB Entries" start="32" end="34" type="uint" />
     <field name="URB Entry Allocation Size" start="36" end="40" type="uint" />
   </instruction>
-
   <instruction name="MI_FLUSH" bias="1" length="1" engine="render">
     <field name="State/Instruction Cache Invalidate" start="1" end="1" type="uint">
       <value name="Don't Invalidate" value="0" />
@@ -883,7 +842,6 @@
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="4" />
     <field name="Command Type" start="29" end="31" type="uint" default="0" />
   </instruction>
-
   <instruction name="MI_LOAD_REGISTER_IMM" bias="2" length="3">
     <field name="DWord Length" start="0" end="5" type="uint" default="1" />
     <field name="Byte Write Disables" start="8" end="11" type="uint" />
@@ -896,7 +854,6 @@
       <field name="Data DWord" start="32" end="63" type="uint" />
     </group>
   </instruction>
-
   <instruction name="MI_STORE_DATA_IMM" bias="2" length="5">
     <field name="DWord Length" start="0" end="5" type="uint" default="2" />
     <field name="BitFieldName" start="21" end="21" type="uint" />
@@ -907,7 +864,6 @@
     <field name="Address" start="66" end="95" type="address" />
     <field name="Immediate Data" start="96" end="159" type="uint" />
   </instruction>
-
   <instruction name="MI_STORE_REGISTER_MEM" bias="2" length="3">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="Use Global GTT" start="22" end="22" type="bool" />
@@ -917,7 +873,6 @@
     <field name="Physical Start Address Extension" start="60" end="63" type="address" />
     <field name="Memory Address" start="66" end="95" type="address" />
   </instruction>
-
   <instruction name="PIPELINE_SELECT" bias="1" length="1" engine="render">
     <field name="Pipeline Selection" start="0" end="1" type="uint">
       <value name="3D" value="0" />
@@ -928,7 +883,6 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="1" />
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
   </instruction>
-
   <instruction name="PIPE_CONTROL" bias="2" length="4" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="2" />
     <field name="Notify Enable" start="8" end="8" type="bool" />
@@ -954,7 +908,6 @@
     <field name="Address" start="35" end="63" type="address" />
     <field name="Immediate Data" start="64" end="127" type="uint" />
   </instruction>
-
   <instruction name="STATE_BASE_ADDRESS" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1" />
@@ -972,7 +925,6 @@
     <field name="Indirect Object Access Upper Bound Modify Enable" start="160" end="160" type="bool" />
     <field name="Indirect Object Access Upper Bound" start="172" end="191" type="address" />
   </instruction>
-
   <instruction name="STATE_SIP" bias="2" length="2" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="2" />
@@ -981,7 +933,6 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
     <field name="System Instruction Pointer" start="36" end="63" type="offset" />
   </instruction>
-
   <instruction name="URB_FENCE" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="VS Unit URB Reallocation Request" start="8" end="8" type="bool" />
@@ -1001,7 +952,6 @@
     <field name="VFE Fence" start="74" end="83" type="uint" />
     <field name="CS Fence" start="84" end="94" type="uint" />
   </instruction>
-
   <instruction name="XY_COLOR_BLT" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="Tiling Enable" start="11" end="11" type="bool" />
@@ -1024,7 +974,6 @@
     <field name="Destination Base Address" start="128" end="159" type="address" />
     <field name="Solid Pattern Color" start="160" end="191" type="int" />
   </instruction>
-
   <instruction name="XY_SETUP_BLT" bias="2" length="8" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="6" />
     <field name="Tiling Enable" start="11" end="11" type="bool" />
@@ -1050,7 +999,6 @@
     <field name="Foreground Color" start="192" end="223" type="uint" />
     <field name="Pattern Base Address" start="224" end="255" type="uint" />
   </instruction>
-
   <instruction name="XY_SRC_COPY_BLT" bias="2" length="8" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="6" />
     <field name="Destination Tiling Enable" start="11" end="11" type="bool" />
@@ -1077,7 +1025,6 @@
     <field name="Source Pitch" start="192" end="207" type="int" />
     <field name="Source Base Address" start="224" end="255" type="address" />
   </instruction>
-
   <instruction name="XY_TEXT_IMMEDIATE_BLT" bias="2" length="3" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="Tiling Enable" start="11" end="11" type="bool" />
