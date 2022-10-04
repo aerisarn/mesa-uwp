@@ -101,6 +101,10 @@ enum wsi_wl_buffer_type {
    WSI_WL_BUFFER_SHM_MEMCPY,
 };
 
+struct wsi_wl_surface {
+   VkIcdSurfaceWayland base;
+};
+
 struct wsi_wl_swapchain {
    struct wsi_swapchain base;
 
@@ -921,6 +925,17 @@ wsi_wl_surface_get_present_rectangles(VkIcdSurfaceBase *surface,
    return vk_outarray_status(&out);
 }
 
+void
+wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
+                       const VkAllocationCallbacks *pAllocator)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   struct wsi_wl_surface *wsi_wl_surface =
+      wl_container_of((VkIcdSurfaceWayland *)icd_surface, wsi_wl_surface, base);
+
+   vk_free2(&instance->alloc, pAllocator, wsi_wl_surface);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 wsi_CreateWaylandSurfaceKHR(VkInstance _instance,
                             const VkWaylandSurfaceCreateInfoKHR *pCreateInfo,
@@ -928,14 +943,17 @@ wsi_CreateWaylandSurfaceKHR(VkInstance _instance,
                             VkSurfaceKHR *pSurface)
 {
    VK_FROM_HANDLE(vk_instance, instance, _instance);
+   struct wsi_wl_surface *wsi_wl_surface;
    VkIcdSurfaceWayland *surface;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR);
 
-   surface = vk_alloc2(&instance->alloc, pAllocator, sizeof *surface, 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (surface == NULL)
+   wsi_wl_surface = vk_zalloc2(&instance->alloc, pAllocator, sizeof *wsi_wl_surface,
+                               8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (wsi_wl_surface == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   surface = &wsi_wl_surface->base;
 
    surface->base.platform = VK_ICD_WSI_PLATFORM_WAYLAND;
    surface->display = pCreateInfo->display;
