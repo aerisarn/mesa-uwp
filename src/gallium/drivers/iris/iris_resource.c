@@ -2069,7 +2069,9 @@ iris_map_copy_region(struct iris_transfer *map)
       xfer->layer_stride = isl_surf_get_array_pitch(surf);
    }
 
-   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
+   if ((xfer->usage & PIPE_MAP_READ) ||
+       (res->base.b.target == PIPE_BUFFER &&
+        !(xfer->usage & PIPE_MAP_DISCARD_RANGE))) {
       iris_copy_region(map->blorp, map->batch, map->staging, 0, extra, 0, 0,
                        xfer->resource, xfer->level, box);
       /* Ensure writes to the staging BO land before we map it below. */
@@ -2207,7 +2209,7 @@ iris_map_s8(struct iris_transfer *map)
     * invalidate is set, since we'll be writing the whole rectangle from our
     * temporary buffer back out.
     */
-   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
+   if (xfer->usage & PIPE_MAP_READ) {
       uint8_t *untiled_s8_map = map->ptr;
       uint8_t *tiled_s8_map = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
@@ -2310,7 +2312,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
    const bool has_swizzling = false;
 
-   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
+   if (xfer->usage & PIPE_MAP_READ) {
       char *src = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
