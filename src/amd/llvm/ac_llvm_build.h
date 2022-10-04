@@ -63,6 +63,21 @@ struct ac_llvm_flow_state {
    unsigned depth;
 };
 
+struct ac_llvm_pointer {
+   union {
+      LLVMValueRef value;
+      LLVMValueRef v;
+   };
+   /* Doesn't support complex types (pointer to pointer to etc...),
+    * but this isn't a problem since there's no place where this
+    * would be required.
+    */
+   union {
+      LLVMTypeRef pointee_type;
+      LLVMTypeRef t;
+   };
+};
+
 struct ac_llvm_context {
    LLVMContextRef context;
    LLVMModuleRef module;
