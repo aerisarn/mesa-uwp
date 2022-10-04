@@ -1072,19 +1072,26 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = ac_find_lsb(&ctx->ac, ctx->ac.i32, src[0]);
       break;
    case nir_op_ufind_msb:
-      result = ac_build_umsb(&ctx->ac, src[0], ctx->ac.i32);
+      result = ac_build_umsb(&ctx->ac, src[0], ctx->ac.i32, false);
       break;
    case nir_op_ifind_msb:
       result = ac_build_imsb(&ctx->ac, src[0], ctx->ac.i32);
       break;
-  case nir_op_uclz: {
+   case nir_op_ufind_msb_rev:
+      result = ac_build_umsb(&ctx->ac, src[0], ctx->ac.i32, true);
+      break;
+   case nir_op_ifind_msb_rev:
+      result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.sffbh.i32", ctx->ac.i32, &src[0], 1,
+                                  AC_FUNC_ATTR_READNONE);
+      break;
+   case nir_op_uclz: {
       LLVMValueRef params[2] = {
          src[0],
          ctx->ac.i1false,
       };
       result = ac_build_intrinsic(&ctx->ac, "llvm.ctlz.i32", ctx->ac.i32, params, 2, AC_FUNC_ATTR_READNONE);
       break;
-  }
+   }
    case nir_op_uadd_carry:
       result = emit_uint_carry(&ctx->ac, "llvm.uadd.with.overflow.i32", src[0], src[1]);
       break;

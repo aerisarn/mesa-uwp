@@ -1877,7 +1877,8 @@ LLVMValueRef ac_build_imsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTy
    return LLVMBuildSelect(ctx->builder, cond, all_ones, msb, "");
 }
 
-LLVMValueRef ac_build_umsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTypeRef dst_type)
+LLVMValueRef ac_build_umsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTypeRef dst_type,
+                           bool rev)
 {
    const char *intrin_name;
    LLVMTypeRef type;
@@ -1923,9 +1924,11 @@ LLVMValueRef ac_build_umsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTy
 
    LLVMValueRef msb = ac_build_intrinsic(ctx, intrin_name, type, params, 2, AC_FUNC_ATTR_READNONE);
 
-   /* The HW returns the last bit index from MSB, but TGSI/NIR wants
-    * the index from LSB. Invert it by doing "31 - msb". */
-   msb = LLVMBuildSub(ctx->builder, highest_bit, msb, "");
+   if (!rev) {
+      /* The HW returns the last bit index from MSB, but TGSI/NIR wants
+       * the index from LSB. Invert it by doing "31 - msb". */
+      msb = LLVMBuildSub(ctx->builder, highest_bit, msb, "");
+   }
 
    if (bitsize == 64) {
       msb = LLVMBuildTrunc(ctx->builder, msb, ctx->i32, "");
