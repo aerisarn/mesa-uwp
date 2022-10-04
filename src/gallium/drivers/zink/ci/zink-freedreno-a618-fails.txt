@@ -8,9 +8,5 @@ dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.line
 # Passes on its own.  Need to extract and minify the failing caselist.
 dEQP-GLES31.functional.copy_image.non_compressed.viewclass_16_bits.r16ui_r16ui.cubemap_to_renderbuffer,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/18598/
-dEQP-GLES31.functional.texture.border_clamp.range_clamp.linear_srgb_color,Fail
-dEQP-GLES31.functional.texture.border_clamp.range_clamp.nearest_srgb_color,Fail
-
 # Some of the quads are missing?
 565-nozs-dEQP-GLES3.functional.color_clear.complex_rgb,Fail
