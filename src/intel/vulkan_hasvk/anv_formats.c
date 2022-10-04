@@ -861,6 +861,11 @@ get_buffer_format_features2(const struct intel_device_info *devinfo,
    if (isl_format == ISL_FORMAT_R32_SINT || isl_format == ISL_FORMAT_R32_UINT)
       flags |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
 
+   if (isl_format_supports_typed_reads(devinfo, isl_format))
+      flags |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT;
+   if (isl_format_supports_typed_writes(devinfo, isl_format))
+      flags |= VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
+
    return flags;
 }
 
