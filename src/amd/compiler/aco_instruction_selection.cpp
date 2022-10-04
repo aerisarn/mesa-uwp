@@ -1822,6 +1822,22 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       }
       break;
    }
+   case nir_op_ufind_msb_rev:
+   case nir_op_ifind_msb_rev: {
+      Temp src = get_alu_src(ctx, instr->src[0]);
+      if (src.regClass() == s1) {
+         aco_opcode op = instr->op == nir_op_ufind_msb_rev ? aco_opcode::s_flbit_i32_b32
+                                                           : aco_opcode::s_flbit_i32;
+         bld.sop1(op, Definition(dst), src);
+      } else if (src.regClass() == v1) {
+         aco_opcode op =
+            instr->op == nir_op_ufind_msb_rev ? aco_opcode::v_ffbh_u32 : aco_opcode::v_ffbh_i32;
+         emit_vop1_instruction(ctx, instr, op, dst);
+      } else {
+         isel_err(&instr->instr, "Unimplemented NIR instr bit size");
+      }
+      break;
+   }
    case nir_op_uclz: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (src.regClass() == s1) {
