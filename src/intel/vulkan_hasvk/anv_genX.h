@@ -108,8 +108,6 @@ void genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 void genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer);
 void genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer);
 
-void genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer);
-
 void genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer,
                                      bool enable);
 
