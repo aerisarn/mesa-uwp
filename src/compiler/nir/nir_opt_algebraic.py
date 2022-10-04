@@ -1674,12 +1674,17 @@ optimizations.extend([
    (('bcsel', ('ige', ('find_lsb', a), 0), ('find_lsb', a), -1), ('find_lsb', a)),
    (('bcsel', ('ige', ('ifind_msb', a), 0), ('ifind_msb', a), -1), ('ifind_msb', a)),
    (('bcsel', ('ige', ('ufind_msb', a), 0), ('ufind_msb', a), -1), ('ufind_msb', a)),
+   (('bcsel', ('ige', ('ifind_msb_rev', a), 0), ('ifind_msb_rev', a), -1), ('ifind_msb_rev', a)),
+   (('bcsel', ('ige', ('ufind_msb_rev', a), 0), ('ufind_msb_rev', a), -1), ('ufind_msb_rev', a)),
 
    (('bcsel', ('ine', a, 0), ('find_lsb', a), -1), ('find_lsb', a)),
    (('bcsel', ('ine', a, 0), ('ifind_msb', a), -1), ('ifind_msb', a)),
    (('bcsel', ('ine', a, 0), ('ufind_msb', a), -1), ('ufind_msb', a)),
+   (('bcsel', ('ine', a, 0), ('ifind_msb_rev', a), -1), ('ifind_msb_rev', a)),
+   (('bcsel', ('ine', a, 0), ('ufind_msb_rev', a), -1), ('ufind_msb_rev', a)),
 
    (('bcsel', ('ine', a, -1), ('ifind_msb', a), -1), ('ifind_msb', a)),
+   (('bcsel', ('ine', a, -1), ('ifind_msb_rev', a), -1), ('ifind_msb_rev', a)),
 
    (('~fmul', ('bcsel(is_used_once)', c, -1.0, 1.0), b), ('bcsel', c, ('fneg', b), b)),
    (('~fmul', ('bcsel(is_used_once)', c, 1.0, -1.0), b), ('bcsel', c, b, ('fneg', b))),
