@@ -3508,6 +3508,11 @@ typedef struct nir_shader_compiler_options {
    bool lower_mul_32x16;
 
    /**
+    * Set if uclz should be lowered to find_msb_rev.
+    */
+   bool lower_uclz;
+
+   /**
     * Should IO be re-vectorized?  Some scalar ISAs still operate on vec4's
     * for IO purposes and would prefer loads/stores be vectorized.
     */

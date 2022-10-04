@@ -1889,6 +1889,8 @@ optimizations.extend([
       ('ufind_msb_rev', 'value')),
      'options->lower_find_msb_to_reverse'),
 
+   (('uclz', a), ('umin', 32, ('ufind_msb_rev', a)), 'options->lower_uclz'),
+
    (('find_lsb', 'value'),
     ('ufind_msb', ('iand', 'value', ('ineg', 'value'))),
     'options->lower_find_lsb'),
