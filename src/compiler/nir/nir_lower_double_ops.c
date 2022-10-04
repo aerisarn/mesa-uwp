@@ -464,6 +464,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
    if (!(options & nir_lower_fp64_full_software))
       return NULL;
 
+
    assert(instr->dest.dest.is_ssa);
 
    const char *name;
@@ -609,6 +610,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       return false;
    }
 
+   assert(softfp64 != NULL);
    nir_function *func = nir_shader_get_function_for_name(softfp64, name);
 
    /* Another attempt, but this time with mangled names if softfp64
