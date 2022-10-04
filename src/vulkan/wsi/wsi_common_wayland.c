@@ -103,6 +103,8 @@ enum wsi_wl_buffer_type {
 
 struct wsi_wl_surface {
    VkIcdSurfaceWayland base;
+
+   struct wsi_wl_swapchain *chain;
 };
 
 struct wsi_wl_swapchain {
@@ -111,6 +113,8 @@ struct wsi_wl_swapchain {
    struct wsi_wl_display *display;
 
    struct wl_surface *surface;
+
+   struct wsi_wl_surface *wsi_wl_surface;
 
    struct wl_callback *frame;
 
@@ -1253,6 +1257,8 @@ wsi_wl_swapchain_chain_free(struct wsi_wl_swapchain *chain,
       wl_callback_destroy(chain->frame);
    if (chain->surface)
       wl_proxy_wrapper_destroy(chain->surface);
+   if (chain->wsi_wl_surface)
+      chain->wsi_wl_surface->chain = NULL;
 
    if (chain->display)
       wsi_wl_display_unref(chain->display);
@@ -1283,6 +1289,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                                 struct wsi_swapchain **swapchain_out)
 {
    VkIcdSurfaceWayland *surface = (VkIcdSurfaceWayland *)icd_surface;
+   struct wsi_wl_surface *wsi_wl_surface =
+      wl_container_of((VkIcdSurfaceWayland *)icd_surface, wsi_wl_surface, base);
    struct wsi_wayland *wsi =
       (struct wsi_wayland *)wsi_device->wsi[VK_ICD_WSI_PLATFORM_WAYLAND];
    struct wsi_wl_swapchain *chain;
@@ -1305,6 +1313,31 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       if (result != VK_SUCCESS)
          return result;
    }
+
+   size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
+   chain = vk_zalloc(pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (chain == NULL) {
+      wsi_wl_display_unref(display);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   /* We are taking ownership of the wsi_wl_surface, so remove ownership from
+    * oldSwapchain.
+    *
+    * If the surface is currently owned by a swapchain that is not
+    * oldSwapchain we should return VK_ERROR_NATIVE_WINDOW_IN_USE_KHR. There's
+    * an open issue tracking that:
+    *
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/7467
+    */
+   if (pCreateInfo->oldSwapchain) {
+      VK_FROM_HANDLE(wsi_wl_swapchain, old_chain, pCreateInfo->oldSwapchain);
+      old_chain->wsi_wl_surface = NULL;
+   }
+
+   /* Take ownership of the wsi_wl_surface */
+   chain->wsi_wl_surface = wsi_wl_surface;
+   wsi_wl_surface->chain = chain;
 
    enum wsi_wl_buffer_type buffer_type;
    struct wsi_base_image_params *image_params = NULL;
@@ -1345,13 +1378,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       }
       buffer_type = WSI_WL_BUFFER_NATIVE;
       image_params = &drm_image_params.base;
-   }
-
-   size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
-   chain = vk_zalloc(pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (chain == NULL) {
-      wsi_wl_display_unref(display);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
