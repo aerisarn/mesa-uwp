@@ -4338,10 +4338,9 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
       }
    }
 
-   uint32_t blend_enable_mask =
-      (cmd->state.logic_op_enabled && cmd->state.rop_reads_dst) ?
-      color_write_enable : (cmd->state.pipeline_blend_enable &
-                            cmd->state.color_write_enable);
+   uint32_t blend_enable_mask = color_write_enable;
+   if (!(cmd->state.logic_op_enabled && cmd->state.rop_reads_dst))
+      blend_enable_mask &= cmd->state.pipeline_blend_enable;
 
    tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
    tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = pipeline->blend.num_rts));
