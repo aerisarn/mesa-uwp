@@ -347,15 +347,19 @@ zink_format_clamp_channel_color(const struct util_format_description *desc, unio
    int non_void = util_format_get_first_non_void_channel(desc->format);
    switch (desc->channel[i].type) {
    case UTIL_FORMAT_TYPE_VOID:
-      if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_FLOAT) {
-         dst->f[i] = uif(UINT32_MAX);
+      if (non_void != -1) {
+         if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_FLOAT) {
+            dst->f[i] = uif(UINT32_MAX);
+         } else {
+            if (desc->channel[non_void].normalized)
+               dst->f[i] = 1.0;
+            else if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_SIGNED)
+               dst->i[i] = INT32_MAX;
+            else
+               dst->ui[i] = UINT32_MAX;
+         }
       } else {
-         if (desc->channel[non_void].normalized)
-            dst->f[i] = 1.0;
-         else if (desc->channel[non_void].type == UTIL_FORMAT_TYPE_SIGNED)
-            dst->i[i] = INT32_MAX;
-         else
-            dst->ui[i] = UINT32_MAX;
+         dst->ui[i] = src->ui[i];
       }
       break;
    case UTIL_FORMAT_TYPE_SIGNED:
