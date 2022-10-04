@@ -206,7 +206,7 @@ static void si_alpha_test(struct si_shader_context *ctx, LLVMValueRef alpha)
       LLVMRealPredicate cond = cond_map[ctx->shader->key.ps.part.epilog.alpha_func];
       assert(cond);
 
-      LLVMValueRef alpha_ref = LLVMGetParam(ctx->main_fn, SI_PARAM_ALPHA_REF);
+      LLVMValueRef alpha_ref = LLVMGetParam(ctx->main_fn.value, SI_PARAM_ALPHA_REF);
       if (LLVMTypeOf(alpha) == ctx->ac.f16)
          alpha_ref = LLVMBuildFPTrunc(ctx->ac.builder, alpha_ref, ctx->ac.f16, "");
 
@@ -500,7 +500,7 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
 
    /* Set SGPRs. */
    ret = LLVMBuildInsertValue(
-      builder, ret, ac_to_integer(&ctx->ac, LLVMGetParam(ctx->main_fn, SI_PARAM_ALPHA_REF)),
+      builder, ret, ac_to_integer(&ctx->ac, LLVMGetParam(ctx->main_fn.value, SI_PARAM_ALPHA_REF)),
       SI_SGPR_ALPHA_REF, "");
 
    /* Set VGPRs */
@@ -609,7 +609,7 @@ void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part
 
    /* Create the function. */
    si_llvm_create_func(ctx, "ps_prolog", return_types, num_returns, 0);
-   func = ctx->main_fn;
+   func = ctx->main_fn.value;
 
    /* Copy inputs to outputs. This should be no-op, as the registers match,
     * but it will prevent the compiler from overwriting them unintentionally.
@@ -849,7 +849,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
    /* Create the function. */
    si_llvm_create_func(ctx, "ps_epilog", NULL, 0, 0);
    /* Disable elimination of unused inputs. */
-   ac_llvm_add_target_dep_function_attr(ctx->main_fn, "InitialPSInputAddr", 0xffffff);
+   ac_llvm_add_target_dep_function_attr(ctx->main_fn.value, "InitialPSInputAddr", 0xffffff);
 
    /* Prepare color. */
    unsigned vgpr = ctx->args.num_sgprs_used;
@@ -861,7 +861,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 
       if (color_type != SI_TYPE_ANY32) {
          for (i = 0; i < 4; i++) {
-            color[write_i][i] = LLVMGetParam(ctx->main_fn, vgpr + i / 2);
+            color[write_i][i] = LLVMGetParam(ctx->main_fn.value, vgpr + i / 2);
             color[write_i][i] = LLVMBuildBitCast(ctx->ac.builder, color[write_i][i],
                                                  ctx->ac.v2f16, "");
             color[write_i][i] = ac_llvm_extract_elem(&ctx->ac, color[write_i][i], i % 2);
@@ -869,7 +869,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
          vgpr += 4;
       } else {
          for (i = 0; i < 4; i++)
-            color[write_i][i] = LLVMGetParam(ctx->main_fn, vgpr++);
+            color[write_i][i] = LLVMGetParam(ctx->main_fn.value, vgpr++);
       }
 
       si_llvm_build_clamp_alpha_test(ctx, color[write_i], write_i);
@@ -888,11 +888,11 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
                             util_bitcount(key->ps_epilog.colors_written) * 4;
 
       if (key->ps_epilog.writes_z)
-         depth = LLVMGetParam(ctx->main_fn, vgpr_index++);
+         depth = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
       if (key->ps_epilog.writes_stencil)
-         stencil = LLVMGetParam(ctx->main_fn, vgpr_index++);
+         stencil = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
       if (key->ps_epilog.writes_samplemask)
-         samplemask = LLVMGetParam(ctx->main_fn, vgpr_index++);
+         samplemask = LLVMGetParam(ctx->main_fn.value, vgpr_index++);
 
       ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, mrtz_alpha, false,
                       &exp.args[exp.num++]);
@@ -932,9 +932,14 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 
 void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader *shader)
 {
-   LLVMValueRef parts[3];
+   struct ac_llvm_pointer parts[3];
    unsigned num_parts = 0, main_index;
-   LLVMValueRef main_fn = ctx->main_fn;
+   struct ac_llvm_pointer main_fn = ctx->main_fn;
+   /* Preserve main arguments. */
+   enum ac_arg_type main_arg_types[AC_MAX_ARGS];
+   for (int i = 0; i < ctx->args.arg_count; i++)
+      main_arg_types[i] = ctx->args.args[i].type;
+
 
    union si_shader_part_key prolog_key;
    si_get_ps_prolog_key(shader, &prolog_key, false);
@@ -952,7 +957,7 @@ void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader
    si_llvm_build_ps_epilog(ctx, &epilog_key);
    parts[num_parts++] = ctx->main_fn;
 
-   si_build_wrapper_function(ctx, parts, num_parts, main_index, 0, false);
+   si_build_wrapper_function(ctx, parts, num_parts, main_index, 0, main_arg_types, false);
 }
 
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx)

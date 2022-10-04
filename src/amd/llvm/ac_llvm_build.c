@@ -4320,10 +4320,10 @@ LLVMValueRef ac_build_is_helper_invocation(struct ac_llvm_context *ctx)
    return LLVMBuildNot(ctx->builder, LLVMBuildAnd(ctx->builder, exact, postponed, ""), "");
 }
 
-LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMValueRef func, LLVMValueRef *args,
+LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMTypeRef fn_type, LLVMValueRef func, LLVMValueRef *args,
                            unsigned num_args)
 {
-   LLVMValueRef ret = LLVMBuildCall(ctx->builder, func, args, num_args, "");
+   LLVMValueRef ret = LLVMBuildCall2(ctx->builder, fn_type, func, args, num_args, "");
    LLVMSetInstructionCallConv(ret, LLVMGetFunctionCallConv(func));
    return ret;
 }
@@ -4538,6 +4538,7 @@ static LLVMTypeRef arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac
          base = ctx->v8i32;
          break;
       default:
+         assert(false);
          return NULL;
    }
 
@@ -4550,7 +4551,7 @@ static LLVMTypeRef arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac
    }
 }
 
-LLVMValueRef ac_build_main(const struct ac_shader_args *args, struct ac_llvm_context *ctx,
+struct ac_llvm_pointer ac_build_main(const struct ac_shader_args *args, struct ac_llvm_context *ctx,
                            enum ac_llvm_calling_convention convention, const char *name,
                            LLVMTypeRef ret_type, LLVMModuleRef module)
 {
@@ -4583,14 +4584,17 @@ LLVMValueRef ac_build_main(const struct ac_shader_args *args, struct ac_llvm_con
       }
    }
 
-   ctx->main_function = main_function;
+   ctx->main_function = (struct ac_llvm_pointer) {
+      .value = main_function,
+      .pointee_type = main_function_type
+   };
 
    /* Enable denormals for FP16 and FP64: */
    LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math", "ieee,ieee");
    /* Disable denormals for FP32: */
    LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math-f32",
                                       "preserve-sign,preserve-sign");
-   return main_function;
+   return ctx->main_function;
 }
 
 void ac_build_s_endpgm(struct ac_llvm_context *ctx)

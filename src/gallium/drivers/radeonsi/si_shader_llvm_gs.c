@@ -453,7 +453,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    LLVMBasicBlockRef end_bb;
    LLVMValueRef switch_inst;
 
-   end_bb = LLVMAppendBasicBlockInContext(ctx.ac.context, ctx.main_fn, "end");
+   end_bb = LLVMAppendBasicBlockInContext(ctx.ac.context, ctx.main_fn.value, "end");
    switch_inst = LLVMBuildSwitch(builder, stream_id, end_bb, 4);
 
    for (int stream = 0; stream < 4; stream++) {

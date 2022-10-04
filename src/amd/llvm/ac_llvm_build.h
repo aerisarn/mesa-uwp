@@ -83,7 +83,7 @@ struct ac_llvm_context {
    LLVMModuleRef module;
    LLVMBuilderRef builder;
 
-   LLVMValueRef main_function;
+   struct ac_llvm_pointer main_function;
 
    LLVMTypeRef voidt;
    LLVMTypeRef i1;
@@ -561,8 +561,8 @@ LLVMValueRef ac_build_load_helper_invocation(struct ac_llvm_context *ctx);
 
 LLVMValueRef ac_build_is_helper_invocation(struct ac_llvm_context *ctx);
 
-LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMValueRef func, LLVMValueRef *args,
-                           unsigned num_args);
+LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMTypeRef fn_type, LLVMValueRef func,
+                           LLVMValueRef *args, unsigned num_args);
 
 LLVMValueRef ac_build_atomic_rmw(struct ac_llvm_context *ctx, LLVMAtomicRMWBinOp op,
                                  LLVMValueRef ptr, LLVMValueRef val, const char *sync_scope);
@@ -595,7 +595,7 @@ LLVMTypeRef ac_arg_type_to_pointee_type(struct ac_llvm_context *ctx, enum ac_arg
 static inline LLVMValueRef ac_get_arg(struct ac_llvm_context *ctx, struct ac_arg arg)
 {
    assert(arg.used);
-   return LLVMGetParam(ctx->main_function, arg.arg_index);
+   return LLVMGetParam(ctx->main_function.value, arg.arg_index);
 }
 
 static inline LLVMTypeRef ac_get_arg_pointee_type(struct ac_llvm_context *ctx, const struct ac_shader_args *args, struct ac_arg arg)
@@ -613,9 +613,9 @@ enum ac_llvm_calling_convention
    AC_LLVM_AMDGPU_HS = 93,
 };
 
-LLVMValueRef ac_build_main(const struct ac_shader_args *args, struct ac_llvm_context *ctx,
-                           enum ac_llvm_calling_convention convention, const char *name,
-                           LLVMTypeRef ret_type, LLVMModuleRef module);
+struct ac_llvm_pointer ac_build_main(const struct ac_shader_args *args, struct ac_llvm_context *ctx,
+                                     enum ac_llvm_calling_convention convention, const char *name,
+                                     LLVMTypeRef ret_type, LLVMModuleRef module);
 void ac_build_s_endpgm(struct ac_llvm_context *ctx);
 
 void ac_build_triangle_strip_indices_to_triangle(struct ac_llvm_context *ctx, LLVMValueRef is_odd,

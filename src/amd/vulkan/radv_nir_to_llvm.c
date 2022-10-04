@@ -52,7 +52,7 @@ struct radv_shader_context {
 
    unsigned max_workgroup_size;
    LLVMContextRef context;
-   LLVMValueRef main_function;
+   struct ac_llvm_pointer main_function;
 
    LLVMValueRef descriptor_sets[MAX_SETS];
 
@@ -83,20 +83,20 @@ radv_shader_context_from_abi(struct ac_shader_abi *abi)
    return container_of(abi, struct radv_shader_context, abi);
 }
 
-static LLVMValueRef
+static struct ac_llvm_pointer
 create_llvm_function(struct ac_llvm_context *ctx, LLVMModuleRef module, LLVMBuilderRef builder,
                      const struct ac_shader_args *args, enum ac_llvm_calling_convention convention,
                      unsigned max_workgroup_size, const struct radv_nir_compiler_options *options)
 {
-   LLVMValueRef main_function = ac_build_main(args, ctx, convention, "main", ctx->voidt, module);
+   struct ac_llvm_pointer main_function = ac_build_main(args, ctx, convention, "main", ctx->voidt, module);
 
    if (options->address32_hi) {
-      ac_llvm_add_target_dep_function_attr(main_function, "amdgpu-32bit-address-high-bits",
+      ac_llvm_add_target_dep_function_attr(main_function.value, "amdgpu-32bit-address-high-bits",
                                            options->address32_hi);
    }
 
-   ac_llvm_set_workgroup_size(main_function, max_workgroup_size);
-   ac_llvm_set_target_features(main_function, ctx);
+   ac_llvm_set_workgroup_size(main_function.value, max_workgroup_size);
+   ac_llvm_set_target_features(main_function.value, ctx);
 
    return main_function;
 }
@@ -170,7 +170,7 @@ create_function(struct radv_shader_context *ctx, gl_shader_stage stage, bool has
 
    ctx->main_function =
       create_llvm_function(&ctx->ac, ctx->ac.module, ctx->ac.builder, &ctx->args->ac,
-                           get_llvm_calling_convention(ctx->main_function, stage),
+                           get_llvm_calling_convention(ctx->main_function.value, stage),
                            ctx->max_workgroup_size, ctx->options);
 
    ctx->ring_offsets = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.implicit.buffer.ptr",
@@ -1599,7 +1599,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
    LLVMBasicBlockRef end_bb;
    LLVMValueRef switch_inst;
 
-   end_bb = LLVMAppendBasicBlockInContext(ctx->ac.context, ctx->main_function, "end");
+   end_bb = LLVMAppendBasicBlockInContext(ctx->ac.context, ctx->main_function.value, "end");
    switch_inst = LLVMBuildSwitch(ctx->ac.builder, stream_id, end_bb, 4);
 
    for (unsigned stream = 0; stream < 4; stream++) {

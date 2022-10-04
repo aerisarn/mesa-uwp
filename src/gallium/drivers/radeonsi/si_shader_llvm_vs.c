@@ -76,11 +76,11 @@ static LLVMValueRef get_vertex_index(struct si_shader_context *ctx,
    if (divisor_is_one || divisor_is_fetched) {
       /* Add StartInstance. */
       index = LLVMBuildAdd(ctx->ac.builder, index,
-                           LLVMGetParam(ctx->main_fn, start_instance), "");
+                           LLVMGetParam(ctx->main_fn.value, start_instance), "");
    } else {
       /* VertexID + BaseVertex */
       index = LLVMBuildAdd(ctx->ac.builder, vertex_id,
-                           LLVMGetParam(ctx->main_fn, base_vertex), "");
+                           LLVMGetParam(ctx->main_fn.value, base_vertex), "");
    }
 
    return index;
@@ -103,8 +103,8 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       unsigned param_vs_blit_inputs = ctx->vs_blit_inputs.arg_index;
       if (input_index == 0) {
          /* Position: */
-         LLVMValueRef x1y1 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs);
-         LLVMValueRef x2y2 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 1);
+         LLVMValueRef x1y1 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs);
+         LLVMValueRef x2y2 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 1);
 
          LLVMValueRef x1 = unpack_sint16(ctx, x1y1, 0);
          LLVMValueRef y1 = unpack_sint16(ctx, x1y1, 1);
@@ -116,7 +116,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
 
          out[0] = LLVMBuildSIToFP(ctx->ac.builder, x, ctx->ac.f32, "");
          out[1] = LLVMBuildSIToFP(ctx->ac.builder, y, ctx->ac.f32, "");
-         out[2] = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 2);
+         out[2] = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 2);
          out[3] = ctx->ac.f32_1;
          return;
       }
@@ -126,19 +126,19 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
 
       if (vs_blit_property == SI_VS_BLIT_SGPRS_POS_COLOR) {
          for (int i = 0; i < 4; i++) {
-            out[i] = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 3 + i);
+            out[i] = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 3 + i);
          }
       } else {
          assert(vs_blit_property == SI_VS_BLIT_SGPRS_POS_TEXCOORD);
-         LLVMValueRef x1 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 3);
-         LLVMValueRef y1 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 4);
-         LLVMValueRef x2 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 5);
-         LLVMValueRef y2 = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 6);
+         LLVMValueRef x1 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 3);
+         LLVMValueRef y1 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 4);
+         LLVMValueRef x2 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 5);
+         LLVMValueRef y2 = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 6);
 
          out[0] = LLVMBuildSelect(ctx->ac.builder, sel_x1, x1, x2, "");
          out[1] = LLVMBuildSelect(ctx->ac.builder, sel_y1, y1, y2, "");
-         out[2] = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 7);
-         out[3] = LLVMGetParam(ctx->main_fn, param_vs_blit_inputs + 8);
+         out[2] = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 7);
+         out[3] = LLVMGetParam(ctx->main_fn.value, param_vs_blit_inputs + 8);
       }
       return;
    }
@@ -183,8 +183,9 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
                                       input_index, ctx->instance_divisor_constbuf,
                                       ctx->args.start_instance.arg_index,
                                       ctx->args.base_vertex.arg_index);
-   } else
-      vertex_index = LLVMGetParam(ctx->main_fn, ctx->vertex_index0.arg_index + input_index);
+   } else {
+      vertex_index = LLVMGetParam(ctx->main_fn.value, ctx->vertex_index0.arg_index + input_index);
+   }
 
    /* Use the open-coded implementation for all loads of doubles and
     * of dword-sized data that needs fixups. We need to insert conversion
@@ -961,7 +962,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
 
    /* Create the function. */
    si_llvm_create_func(ctx, "vs_prolog", returns, num_returns, 0);
-   func = ctx->main_fn;
+   func = ctx->main_fn.value;
 
    for (i = 0; i < num_input_vgprs; i++) {
       input_vgprs[i] = ac_get_arg(&ctx->ac, input_vgpr_param[i]);
