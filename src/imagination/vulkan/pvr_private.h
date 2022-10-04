@@ -46,6 +46,7 @@
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
 #include "pvr_pds.h"
+#include "pvr_shader_factory.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "rogue/rogue.h"
@@ -346,6 +347,21 @@ struct pvr_device {
 
       uint32_t vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
       uint32_t large_clear_vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
+
+      struct pvr_bo *usc_clear_attachment_programs;
+      struct pvr_bo *pds_clear_attachment_programs;
+      /* TODO: See if we can use PVR_CLEAR_ATTACHMENT_PROGRAM_COUNT to save some
+       * memory.
+       */
+      struct pvr_pds_clear_attachment_program_info {
+         pvr_dev_addr_t texture_program_offset;
+         pvr_dev_addr_t pixel_program_offset;
+
+         uint32_t texture_program_pds_temps_count;
+         /* Size in dwords. */
+         uint32_t texture_program_data_size;
+      } pds_clear_attachment_program_info
+         [PVR_CLEAR_ATTACHMENT_PROGRAM_COUNT_WITH_HOLES];
    } static_clear_state;
 
    struct {
