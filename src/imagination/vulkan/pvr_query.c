@@ -210,7 +210,18 @@ void pvr_CmdResetQueryPool(VkCommandBuffer commandBuffer,
                            uint32_t firstQuery,
                            uint32_t queryCount)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_query_info query_info;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   query_info.type = PVR_QUERY_TYPE_RESET_QUERY_POOL;
+
+   query_info.reset_query_pool.query_pool = queryPool;
+   query_info.reset_query_pool.first_query = firstQuery;
+   query_info.reset_query_pool.query_count = queryCount;
+
+   pvr_add_query_program(cmd_buffer, &query_info);
 }
 
 void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
