@@ -413,7 +413,7 @@ public:
       /* The size parameter refers to the total size of the buffer.
        * The usable data_size is size - sizeof(Buffer).
        */
-      size = std::max(size, minimum_size);
+      size = MAX2(size, minimum_size);
       buffer = (Buffer*)malloc(size);
       buffer->next = nullptr;
       buffer->data_size = size - sizeof(Buffer);
