@@ -759,17 +759,21 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sh, r600::r600_nir_lower_tex_to_backend, rctx->b.gfx_level);
 
 
-   NIR_PASS_V(sh, r600::r600_nir_split_64bit_io);
-   NIR_PASS_V(sh, r600::r600_split_64bit_alu_and_phi);
-   NIR_PASS_V(sh, nir_split_64bit_vec3_and_vec4);
-   NIR_PASS_V(sh, nir_lower_int64);
+   if ((sh->info.bit_sizes_float | sh->info.bit_sizes_int) & 64) {
+      NIR_PASS_V(sh, r600::r600_nir_split_64bit_io);
+      NIR_PASS_V(sh, r600::r600_split_64bit_alu_and_phi);
+      NIR_PASS_V(sh, nir_split_64bit_vec3_and_vec4);
+      NIR_PASS_V(sh, nir_lower_int64);
+   }
 
    NIR_PASS_V(sh, nir_lower_ubo_vec4);
 
    if (lower_64bit)
       NIR_PASS_V(sh, r600::r600_nir_64_to_vec2);
 
-   NIR_PASS_V(sh, r600::r600_split_64bit_uniforms_and_ubo);
+   if ((sh->info.bit_sizes_float | sh->info.bit_sizes_int) & 64)
+      NIR_PASS_V(sh, r600::r600_split_64bit_uniforms_and_ubo);
+
    /* Lower to scalar to let some optimization work out better */
    while(optimize_once(sh));
 
