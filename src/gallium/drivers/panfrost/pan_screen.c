@@ -458,7 +458,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return PIPE_SHADER_IR_NIR;
 
         case PIPE_SHADER_CAP_SUPPORTED_IRS:
-                return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
+                return (1 << PIPE_SHADER_IR_NIR);
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
                 return allow_side_effects ? 16 : 0;
