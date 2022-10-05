@@ -58,10 +58,11 @@ intel_gem_supports_syncobj_wait(int fd)
    return ret == -1 && errno == ETIME;
 }
 
-int
+bool
 intel_gem_create_context_engines(int fd,
                                  const struct intel_query_engine_info *info,
-                                 int num_engines, enum intel_engine_class *engine_classes)
+                                 int num_engines, enum intel_engine_class *engine_classes,
+                                 uint32_t *context_id)
 {
    assert(info != NULL);
    assert(num_engines <= 64);
@@ -95,7 +96,7 @@ intel_gem_create_context_engines(int fd,
              engine_class == INTEL_ENGINE_CLASS_COPY ||
              engine_class == INTEL_ENGINE_CLASS_COMPUTE);
       if (engine_counts[engine_class] <= 0)
-         return -1;
+         return false;
 
       /* Run through the engines reported by the kernel looking for the next
        * matching instance. We loop in case we want to create multiple
@@ -111,9 +112,8 @@ intel_gem_create_context_engines(int fd,
             break;
          }
       }
-      if (engine_instance < 0) {
-         return -1;
-      }
+      if (engine_instance < 0)
+         return false;
 
       engines_param.engines[i].engine_class = intel_engine_class_to_i915(engine_class);
       engines_param.engines[i].engine_instance = engine_instance;
@@ -136,9 +136,10 @@ intel_gem_create_context_engines(int fd,
       .extensions = (uintptr_t)&set_engines,
    };
    if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create) == -1)
-      return -1;
+      return false;
 
-   return create.ctx_id;
+   *context_id = create.ctx_id;
+   return true;
 }
 
 

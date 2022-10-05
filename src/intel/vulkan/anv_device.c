@@ -3155,15 +3155,19 @@ anv_device_setup_context(struct anv_device *device,
          for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
             engine_classes[engine_count++] = queue_family->engine_class;
       }
-      device->context_id =
-         intel_gem_create_context_engines(device->fd,
-                                          physical_device->engine_info,
-                                          engine_count, engine_classes);
+      if (!intel_gem_create_context_engines(device->fd,
+                                            physical_device->engine_info,
+                                            engine_count, engine_classes,
+                                            (uint32_t *)&device->context_id))
+         result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                            "kernel context creation failed");
    } else {
       assert(num_queues == 1);
       device->context_id = anv_gem_create_context(device);
    }
 
+   if (result != VK_SUCCESS)
+      return result;
    if (device->context_id == -1) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       return result;
