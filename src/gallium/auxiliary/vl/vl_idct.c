@@ -552,7 +552,6 @@ init_state(struct vl_idct *idct)
       sampler.mag_img_filter = PIPE_TEX_FILTER_NEAREST;
       sampler.compare_mode = PIPE_TEX_COMPARE_NONE;
       sampler.compare_func = PIPE_FUNC_ALWAYS;
-      sampler.normalized_coords = 1;
       idct->samplers[i] = idct->pipe->create_sampler_state(idct->pipe, &sampler);
       if (!idct->samplers[i])
          goto error_samplers;

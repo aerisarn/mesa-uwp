@@ -273,19 +273,19 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    sampler_state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    sampler_state.wrap_t = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    sampler_state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
-   sampler_state.normalized_coords = 1;
+   sampler_state.unnormalized_coords = 0;
    ctx->sampler_state = pipe->create_sampler_state(pipe, &sampler_state);
    if (ctx->has_texrect) {
-      sampler_state.normalized_coords = 0;
+      sampler_state.unnormalized_coords = 1;
       ctx->sampler_state_rect = pipe->create_sampler_state(pipe, &sampler_state);
    }
 
    sampler_state.min_img_filter = PIPE_TEX_FILTER_LINEAR;
    sampler_state.mag_img_filter = PIPE_TEX_FILTER_LINEAR;
-   sampler_state.normalized_coords = 1;
+   sampler_state.unnormalized_coords = 0;
    ctx->sampler_state_linear = pipe->create_sampler_state(pipe, &sampler_state);
    if (ctx->has_texrect) {
-      sampler_state.normalized_coords = 0;
+      sampler_state.unnormalized_coords = 1;
       ctx->sampler_state_rect_linear = pipe->create_sampler_state(pipe, &sampler_state);
    }
 

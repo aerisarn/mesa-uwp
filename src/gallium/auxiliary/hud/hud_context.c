@@ -1945,7 +1945,6 @@ hud_create(struct cso_context *cso, struct st_context_iface *st,
    hud->font_sampler_state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    hud->font_sampler_state.wrap_t = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    hud->font_sampler_state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
-   hud->font_sampler_state.normalized_coords = 1;
 
    /* constants */
    hud->constbuf.buffer_size = sizeof(hud->constants);

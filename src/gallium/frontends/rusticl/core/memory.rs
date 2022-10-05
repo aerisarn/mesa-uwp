@@ -1089,7 +1089,7 @@ impl Sampler {
 
         res.set_min_img_filter(img_filter);
         res.set_mag_img_filter(img_filter);
-        res.set_normalized_coords(normalized_coords.into());
+        res.set_unnormalized_coords((!normalized_coords).into());
         res.set_wrap_r(wrap);
         res.set_wrap_s(wrap);
         res.set_wrap_t(wrap);

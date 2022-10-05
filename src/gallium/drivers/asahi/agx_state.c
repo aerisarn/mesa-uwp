@@ -361,7 +361,7 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.wrap_s = agx_wrap_from_pipe(state->wrap_s);
       cfg.wrap_t = agx_wrap_from_pipe(state->wrap_t);
       cfg.wrap_r = agx_wrap_from_pipe(state->wrap_r);
-      cfg.pixel_coordinates = !state->normalized_coords;
+      cfg.pixel_coordinates = state->unnormalized_coords;
       cfg.compare_func = agx_compare_funcs[state->compare_func];
    }
 

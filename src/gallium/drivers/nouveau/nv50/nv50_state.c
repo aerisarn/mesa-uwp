@@ -40,8 +40,8 @@
 #include "nouveau_gldefs.h"
 
 /* Caveats:
- *  ! pipe_sampler_state.normalized_coords is ignored - rectangle textures will
- *     use non-normalized coordinates, everything else won't
+ *  ! pipe_sampler_state.unnormalized_coords is ignored - rectangle textures
+ *     will use non-normalized coordinates, everything else won't
  *    (The relevant bit is in the TIC entry and not the TSC entry.)
  *
  *  ! pipe_sampler_state.seamless_cube_map is ignored - seamless filtering is
@@ -530,7 +530,7 @@ nv50_sampler_state_create(struct pipe_context *pipe,
    if (nouveau_screen(pipe->screen)->class_3d >= NVE4_3D_CLASS) {
       if (cso->seamless_cube_map)
          so->tsc[1] |= GK104_TSC_1_CUBEMAP_INTERFACE_FILTERING;
-      if (!cso->normalized_coords)
+      if (cso->unnormalized_coords)
          so->tsc[1] |= GK104_TSC_1_FLOAT_COORD_NORMALIZATION_FORCE_UNNORMALIZED_COORDS;
    } else {
       so->seamless_cube_map = cso->seamless_cube_map;

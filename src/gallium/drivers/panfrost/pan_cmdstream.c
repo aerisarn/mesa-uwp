@@ -217,7 +217,7 @@ panfrost_create_sampler_state(
                 cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
 
-                cfg.normalized_coordinates = cso->normalized_coords;
+                cfg.normalized_coordinates = !cso->unnormalized_coords;
                 cfg.lod_bias = FIXED_16(cso->lod_bias, true);
                 cfg.minimum_lod = FIXED_16(cso->min_lod, false);
                 cfg.maximum_lod = FIXED_16(cso->max_lod, false);

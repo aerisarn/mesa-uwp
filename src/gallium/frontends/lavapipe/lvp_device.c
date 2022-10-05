@@ -2248,7 +2248,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
       sampler->state.max_anisotropy = pCreateInfo->maxAnisotropy;
    else
       sampler->state.max_anisotropy = 1;
-   sampler->state.normalized_coords = !pCreateInfo->unnormalizedCoordinates;
+   sampler->state.unnormalized_coords = pCreateInfo->unnormalizedCoordinates;
    sampler->state.compare_mode = pCreateInfo->compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
    sampler->state.compare_func = pCreateInfo->compareOp;
    sampler->state.seamless_cube_map = !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);

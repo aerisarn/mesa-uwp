@@ -746,7 +746,6 @@ get_sampler_state(struct d3d12_context *ctx)
    state.wrap_s = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    state.wrap_t = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
    state.wrap_r = PIPE_TEX_WRAP_CLAMP_TO_EDGE;
-   state.normalized_coords = 1;
 
    return ctx->sampler_state = ctx->base.create_sampler_state(&ctx->base, &state);
 }

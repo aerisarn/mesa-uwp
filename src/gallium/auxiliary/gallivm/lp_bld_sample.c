@@ -238,7 +238,7 @@ lp_sampler_static_sampler_state(struct lp_static_sampler_state *state,
       state->compare_func   = sampler->compare_func;
    }
 
-   state->normalized_coords = sampler->normalized_coords;
+   state->normalized_coords = !sampler->unnormalized_coords;
 }
 
 /* build aniso pmin value */

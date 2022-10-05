@@ -119,7 +119,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
       COND(cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE,
            A6XX_TEX_SAMP_1_MIPFILTER_LINEAR_FAR) |
       COND(!cso->seamless_cube_map, A6XX_TEX_SAMP_1_CUBEMAPSEAMLESSFILTOFF) |
-      COND(!cso->normalized_coords, A6XX_TEX_SAMP_1_UNNORM_COORDS);
+      COND(cso->unnormalized_coords, A6XX_TEX_SAMP_1_UNNORM_COORDS);
 
    so->texsamp0 |= A6XX_TEX_SAMP_0_LOD_BIAS(cso->lod_bias);
    so->texsamp1 |= A6XX_TEX_SAMP_1_MIN_LOD(cso->min_lod) |

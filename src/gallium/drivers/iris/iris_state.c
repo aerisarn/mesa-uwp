@@ -2064,7 +2064,7 @@ fill_sampler_state(uint32_t *sampler_state,
       samp.TCYAddressControlMode = translate_wrap(state->wrap_t);
       samp.TCZAddressControlMode = translate_wrap(state->wrap_r);
       samp.CubeSurfaceControlMode = state->seamless_cube_map;
-      samp.NonnormalizedCoordinateEnable = !state->normalized_coords;
+      samp.NonnormalizedCoordinateEnable = state->unnormalized_coords;
       samp.MinModeFilter = state->min_img_filter;
       samp.MagModeFilter = mag_img_filter;
       samp.MipModeFilter = translate_mip_filter(state->min_mip_filter);

@@ -544,7 +544,7 @@ void trace_dump_sampler_state(const struct pipe_sampler_state *state)
    trace_dump_member(uint, state, mag_img_filter);
    trace_dump_member(uint, state, compare_mode);
    trace_dump_member(uint, state, compare_func);
-   trace_dump_member(bool, state, normalized_coords);
+   trace_dump_member(bool, state, unnormalized_coords);
    trace_dump_member(uint, state, max_anisotropy);
    trace_dump_member(bool, state, seamless_cube_map);
    trace_dump_member(float, state, lod_bias);

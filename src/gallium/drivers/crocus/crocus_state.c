@@ -2372,7 +2372,7 @@ crocus_upload_sampler_state(struct crocus_batch *batch,
       samp.TCZAddressControlMode = wrap_r;
 
 #if GFX_VER >= 6
-      samp.NonnormalizedCoordinateEnable = !state->normalized_coords;
+      samp.NonnormalizedCoordinateEnable = state->unnormalized_coords;
 #endif
       samp.MinModeFilter = state->min_img_filter;
       samp.MagModeFilter = cso->mag_img_filter;
