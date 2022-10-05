@@ -105,14 +105,12 @@ struct wsi_wl_surface {
    VkIcdSurfaceWayland base;
 
    struct wsi_wl_swapchain *chain;
+   struct wl_surface *surface;
+   struct wsi_wl_display *display;
 };
 
 struct wsi_wl_swapchain {
    struct wsi_swapchain base;
-
-   struct wsi_wl_display *display;
-
-   struct wl_surface *surface;
 
    struct wsi_wl_surface *wsi_wl_surface;
 
@@ -937,7 +935,43 @@ wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
    struct wsi_wl_surface *wsi_wl_surface =
       wl_container_of((VkIcdSurfaceWayland *)icd_surface, wsi_wl_surface, base);
 
+   if (wsi_wl_surface->surface)
+      wl_proxy_wrapper_destroy(wsi_wl_surface->surface);
+
+   if (wsi_wl_surface->display)
+      wsi_wl_display_unref(wsi_wl_surface->display);
+
    vk_free2(&instance->alloc, pAllocator, wsi_wl_surface);
+}
+
+static VkResult wsi_wl_surface_init(struct wsi_wl_surface *wsi_wl_surface,
+                                    struct wsi_device *wsi_device)
+{
+   struct wsi_wayland *wsi =
+      (struct wsi_wayland *)wsi_device->wsi[VK_ICD_WSI_PLATFORM_WAYLAND];
+   VkResult result;
+
+   /* wsi_wl_surface has already been initialized. */
+   if (wsi_wl_surface->display)
+      return VK_SUCCESS;
+
+   result = wsi_wl_display_create(wsi, wsi_wl_surface->base.display,
+                                  wsi_device->sw, &wsi_wl_surface->display);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   wsi_wl_surface->surface = wl_proxy_create_wrapper(wsi_wl_surface->base.surface);
+   if (!wsi_wl_surface->surface) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+   wl_proxy_set_queue((struct wl_proxy *) wsi_wl_surface->surface,
+                      wsi_wl_surface->display->queue);
+
+   return VK_SUCCESS;
+
+fail:
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -982,9 +1016,10 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
                                     uint32_t *image_index)
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
+   struct wsi_wl_surface *wsi_wl_surface = chain->wsi_wl_surface;
    struct timespec start_time, end_time;
    struct timespec rel_timeout;
-   int wl_fd = wl_display_get_fd(chain->display->wl_display);
+   int wl_fd = wl_display_get_fd(wsi_wl_surface->display->wl_display);
 
    timespec_from_nsec(&rel_timeout, info->timeout);
 
@@ -993,8 +1028,8 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
 
    while (1) {
       /* Try to dispatch potential events. */
-      int ret = wl_display_dispatch_queue_pending(chain->display->wl_display,
-                                                  chain->display->queue);
+      int ret = wl_display_dispatch_queue_pending(wsi_wl_surface->display->wl_display,
+                                                  wsi_wl_surface->display->queue);
       if (ret < 0)
          return VK_ERROR_OUT_OF_DATE_KHR;
 
@@ -1015,8 +1050,8 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
          return VK_NOT_READY;
 
       /* Try to read events from the server. */
-      ret = wl_display_prepare_read_queue(chain->display->wl_display,
-                                          chain->display->queue);
+      ret = wl_display_prepare_read_queue(wsi_wl_surface->display->wl_display,
+                                          wsi_wl_surface->display->queue);
       if (ret < 0) {
          /* Another thread might have read events for our queue already. Go
           * back to dispatch them.
@@ -1034,7 +1069,7 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
       ret = ppoll(&pollfd, 1, &rel_timeout, NULL);
       if (ret <= 0) {
          int lerrno = errno;
-         wl_display_cancel_read(chain->display->wl_display);
+         wl_display_cancel_read(wsi_wl_surface->display->wl_display);
          if (ret < 0) {
             /* If ppoll() was interrupted, try again. */
             if (lerrno == EINTR || lerrno == EAGAIN)
@@ -1045,7 +1080,7 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
          continue;
       }
 
-      ret = wl_display_read_events(chain->display->wl_display);
+      ret = wl_display_read_events(wsi_wl_surface->display->wl_display);
       if (ret < 0)
          return VK_ERROR_OUT_OF_DATE_KHR;
    }
@@ -1072,6 +1107,7 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
                                const VkPresentRegionKHR *damage)
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
+   struct wsi_wl_surface *wsi_wl_surface = chain->wsi_wl_surface;
 
    if (chain->buffer_type == WSI_WL_BUFFER_SHM_MEMCPY) {
       struct wsi_wl_image *image = &chain->images[image_index];
@@ -1080,38 +1116,38 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
    }
    if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
       while (!chain->fifo_ready) {
-         int ret = wl_display_dispatch_queue(chain->display->wl_display,
-                                             chain->display->queue);
+         int ret = wl_display_dispatch_queue(wsi_wl_surface->display->wl_display,
+                                             wsi_wl_surface->display->queue);
          if (ret < 0)
             return VK_ERROR_OUT_OF_DATE_KHR;
       }
    }
 
    assert(image_index < chain->base.image_count);
-   wl_surface_attach(chain->surface, chain->images[image_index].buffer, 0, 0);
+   wl_surface_attach(wsi_wl_surface->surface, chain->images[image_index].buffer, 0, 0);
 
-   if (wl_surface_get_version(chain->surface) >= 4 && damage &&
+   if (wl_surface_get_version(wsi_wl_surface->surface) >= 4 && damage &&
        damage->pRectangles && damage->rectangleCount > 0) {
       for (unsigned i = 0; i < damage->rectangleCount; i++) {
          const VkRectLayerKHR *rect = &damage->pRectangles[i];
          assert(rect->layer == 0);
-         wl_surface_damage_buffer(chain->surface,
+         wl_surface_damage_buffer(wsi_wl_surface->surface,
                                   rect->offset.x, rect->offset.y,
                                   rect->extent.width, rect->extent.height);
       }
    } else {
-      wl_surface_damage(chain->surface, 0, 0, INT32_MAX, INT32_MAX);
+      wl_surface_damage(wsi_wl_surface->surface, 0, 0, INT32_MAX, INT32_MAX);
    }
 
    if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
-      chain->frame = wl_surface_frame(chain->surface);
+      chain->frame = wl_surface_frame(wsi_wl_surface->surface);
       wl_callback_add_listener(chain->frame, &frame_listener, chain);
       chain->fifo_ready = false;
    }
 
    chain->images[image_index].busy = true;
-   wl_surface_commit(chain->surface);
-   wl_display_flush(chain->display->wl_display);
+   wl_surface_commit(wsi_wl_surface->surface);
+   wl_display_flush(wsi_wl_surface->display->wl_display);
 
    return VK_SUCCESS;
 }
@@ -1159,7 +1195,7 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                   const VkSwapchainCreateInfoKHR *pCreateInfo,
                   const VkAllocationCallbacks* pAllocator)
 {
-   struct wsi_wl_display *display = chain->display;
+   struct wsi_wl_display *display = chain->wsi_wl_surface->display;
    VkResult result;
 
    result = wsi_create_image(&chain->base, &chain->base.image_info,
@@ -1255,13 +1291,8 @@ wsi_wl_swapchain_chain_free(struct wsi_wl_swapchain *chain,
 {
    if (chain->frame)
       wl_callback_destroy(chain->frame);
-   if (chain->surface)
-      wl_proxy_wrapper_destroy(chain->surface);
    if (chain->wsi_wl_surface)
       chain->wsi_wl_surface->chain = NULL;
-
-   if (chain->display)
-      wsi_wl_display_unref(chain->display);
 
    wsi_swapchain_finish(&chain->base);
 
@@ -1288,11 +1319,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                                 const VkAllocationCallbacks* pAllocator,
                                 struct wsi_swapchain **swapchain_out)
 {
-   VkIcdSurfaceWayland *surface = (VkIcdSurfaceWayland *)icd_surface;
    struct wsi_wl_surface *wsi_wl_surface =
       wl_container_of((VkIcdSurfaceWayland *)icd_surface, wsi_wl_surface, base);
-   struct wsi_wayland *wsi =
-      (struct wsi_wayland *)wsi_device->wsi[VK_ICD_WSI_PLATFORM_WAYLAND];
    struct wsi_wl_swapchain *chain;
    VkResult result;
 
@@ -1300,26 +1328,10 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
 
    int num_images = pCreateInfo->minImageCount;
 
-   struct wsi_wl_display *display = NULL;
-   if (pCreateInfo->oldSwapchain) {
-      /* If we have an oldSwapchain parameter, copy the display struct over
-       * from the old one so we don't have to fully re-initialize it.
-       */
-      VK_FROM_HANDLE(wsi_wl_swapchain, old_chain, pCreateInfo->oldSwapchain);
-      display = wsi_wl_display_ref(old_chain->display);
-   } else {
-      result = wsi_wl_display_create(wsi, surface->display,
-                                     wsi_device->sw, &display);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
    chain = vk_zalloc(pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (chain == NULL) {
-      wsi_wl_display_unref(display);
+   if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
 
    /* We are taking ownership of the wsi_wl_surface, so remove ownership from
     * oldSwapchain.
@@ -1338,6 +1350,10 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    /* Take ownership of the wsi_wl_surface */
    chain->wsi_wl_surface = wsi_wl_surface;
    wsi_wl_surface->chain = chain;
+
+   result = wsi_wl_surface_init(wsi_wl_surface, wsi_device);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    enum wsi_wl_buffer_type buffer_type;
    struct wsi_base_image_params *image_params = NULL;
@@ -1365,8 +1381,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       /* Use explicit DRM format modifiers when both the server and the driver
        * support them.
        */
-      if (display->wl_dmabuf && wsi_device->supports_modifiers) {
-         struct wsi_wl_format *f = find_format(&display->formats,
+      if (wsi_wl_surface->display->wl_dmabuf && wsi_device->supports_modifiers) {
+         struct wsi_wl_format *f = find_format(&wsi_wl_surface->display->formats,
                                                pCreateInfo->imageFormat);
          if (f != NULL) {
             num_drm_modifiers = u_vector_length(&f->modifiers);
@@ -1383,7 +1399,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
                                pCreateInfo, image_params, pAllocator);
    if (result != VK_SUCCESS) {
-      wsi_wl_display_unref(display);
       vk_free(pAllocator, chain);
       return result;
    }
@@ -1397,7 +1412,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.queue_present = wsi_wl_swapchain_queue_present;
    chain->base.present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
    chain->base.image_count = num_images;
-   chain->display = display;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
    chain->buffer_type = buffer_type;
@@ -1408,15 +1422,6 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    }
    chain->num_drm_modifiers = num_drm_modifiers;
    chain->drm_modifiers = drm_modifiers;
-
-   chain->surface = wl_proxy_create_wrapper(surface->surface);
-   if (!chain->surface) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
-   wl_proxy_set_queue((struct wl_proxy *) chain->surface,
-                      chain->display->queue);
-
    chain->fifo_ready = true;
 
    for (uint32_t i = 0; i < chain->base.image_count; i++) {
