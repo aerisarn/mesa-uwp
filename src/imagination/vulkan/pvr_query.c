@@ -233,7 +233,22 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                                  VkDeviceSize stride,
                                  VkQueryResultFlags flags)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_query_info query_info;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   query_info.type = PVR_QUERY_TYPE_COPY_QUERY_RESULTS;
+
+   query_info.copy_query_results.query_pool = queryPool;
+   query_info.copy_query_results.first_query = firstQuery;
+   query_info.copy_query_results.query_count = queryCount;
+   query_info.copy_query_results.dst_buffer = dstBuffer;
+   query_info.copy_query_results.dst_offset = dstOffset;
+   query_info.copy_query_results.stride = stride;
+   query_info.copy_query_results.flags = flags;
+
+   pvr_add_query_program(cmd_buffer, &query_info);
 }
 
 void pvr_CmdBeginQuery(VkCommandBuffer commandBuffer,
