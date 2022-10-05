@@ -475,9 +475,24 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
    return result;
 }
 
+struct rra_transcoding_context {
+   const uint8_t *src;
+   uint8_t *dst;
+   uint32_t dst_leaf_offset;
+   uint32_t dst_internal_offset;
+   uint32_t *parent_id_table;
+   uint32_t parent_id_table_size;
+   uint32_t *leaf_node_ids;
+   uint32_t leaf_index;
+};
+
 static void
-rra_transcode_triangle_node(struct rra_triangle_node *dst, const struct radv_bvh_triangle_node *src)
+rra_transcode_triangle_node(struct rra_transcoding_context *ctx,
+                            const struct radv_bvh_triangle_node *src)
 {
+   struct rra_triangle_node *dst = (struct rra_triangle_node *)(ctx->dst + ctx->dst_leaf_offset);
+   ctx->dst_leaf_offset += sizeof(struct rra_triangle_node);
+
    for (int i = 0; i < 3; ++i)
       for (int j = 0; j < 3; ++j)
          dst->coords[i][j] = src->coords[i][j];
@@ -488,8 +503,11 @@ rra_transcode_triangle_node(struct rra_triangle_node *dst, const struct radv_bvh
 }
 
 static void
-rra_transcode_aabb_node(struct rra_aabb_node *dst, const struct radv_bvh_aabb_node *src)
+rra_transcode_aabb_node(struct rra_transcoding_context *ctx, const struct radv_bvh_aabb_node *src)
 {
+   struct rra_aabb_node *dst = (struct rra_aabb_node *)(ctx->dst + ctx->dst_leaf_offset);
+   ctx->dst_leaf_offset += sizeof(struct rra_aabb_node);
+
    for (int i = 0; i < 2; ++i)
       for (int j = 0; j < 3; ++j)
          dst->aabb[i][j] = src->aabb[i][j];
@@ -500,8 +518,12 @@ rra_transcode_aabb_node(struct rra_aabb_node *dst, const struct radv_bvh_aabb_no
 }
 
 static void
-rra_transcode_instance_node(struct rra_instance_node *dst, const struct radv_bvh_instance_node *src)
+rra_transcode_instance_node(struct rra_transcoding_context *ctx,
+                            const struct radv_bvh_instance_node *src)
 {
+   struct rra_instance_node *dst = (struct rra_instance_node *)(ctx->dst + ctx->dst_leaf_offset);
+   ctx->dst_leaf_offset += sizeof(struct rra_instance_node);
+
    dst->custom_instance_id = src->custom_instance_and_mask & 0xffffff;
    dst->mask = src->custom_instance_and_mask >> 24;
    dst->sbt_offset = src->sbt_offset_and_flags & 0xffffff;
@@ -515,15 +537,12 @@ rra_transcode_instance_node(struct rra_instance_node *dst, const struct radv_bvh
 }
 
 static void
-rra_transcode_internal_node(struct rra_box32_node *dst, const struct radv_bvh_box32_node *src,
-                            uint32_t dst_offset, uint32_t src_root_offset,
-                            uint32_t src_leaf_node_size, uint32_t dst_leaf_node_size,
-                            uint32_t src_internal_nodes_size, uint32_t internal_node_count,
-                            uint32_t src_leaf_nodes_size, uint32_t *parent_id_table,
-                            uint32_t parent_id_table_size)
+rra_transcode_internal_node(struct rra_transcoding_context *ctx,
+                            const struct radv_bvh_box32_node *src)
 {
-   uint32_t src_leaf_nodes_offset = src_root_offset + sizeof(struct radv_bvh_box32_node);
-   uint32_t src_internal_nodes_offset = src_leaf_nodes_offset + src_leaf_nodes_size;
+   uint32_t dst_offset = ctx->dst_internal_offset;
+   ctx->dst_internal_offset += sizeof(struct rra_box32_node);
+   struct rra_box32_node *dst = (struct rra_box32_node *)(ctx->dst + dst_offset);
 
    memcpy(dst->coords, src->coords, sizeof(dst->coords));
 
@@ -534,24 +553,34 @@ rra_transcode_internal_node(struct rra_box32_node *dst, const struct radv_bvh_bo
       }
 
       uint32_t child_type = src->children[i] & 7;
-      uint32_t src_child_offset = (src->children[i] & (~7u)) << 3;
 
-      uint32_t dst_child_offset = RRA_ROOT_NODE_OFFSET;
+      uint32_t src_child_offset = (src->children[i] & (~7u)) << 3;
+      uint32_t dst_child_offset;
+
+      const void *src_child_node = ctx->src + src_child_offset;
       if (child_type == radv_bvh_node_internal) {
-         uint32_t dst_child_index =
-            (src_child_offset - src_internal_nodes_offset) / src_leaf_node_size;
-         dst_child_offset += sizeof(struct rra_box32_node) + dst_child_index * dst_leaf_node_size;
+         dst_child_offset = ctx->dst_internal_offset;
+         rra_transcode_internal_node(ctx, src_child_node);
       } else {
-         uint32_t dst_child_index = (src_child_offset - src_leaf_nodes_offset) / src_leaf_node_size;
-         dst_child_offset += internal_node_count * sizeof(struct rra_box32_node) +
-                             dst_child_index * dst_leaf_node_size;
+         dst_child_offset = ctx->dst_leaf_offset;
+
+         if (child_type == radv_bvh_node_triangle)
+            rra_transcode_triangle_node(ctx, src_child_node);
+         else if (child_type == radv_bvh_node_aabb)
+            rra_transcode_aabb_node(ctx, src_child_node);
+         else if (child_type == radv_bvh_node_instance)
+            rra_transcode_instance_node(ctx, src_child_node);
       }
 
-      dst->children[i] = child_type | (dst_child_offset >> 3);
+      uint32_t parent_id_index =
+         rra_parent_table_index_from_offset(dst_child_offset, ctx->parent_id_table_size);
+      ctx->parent_id_table[parent_id_index] = radv_bvh_node_internal | (dst_offset >> 3);
 
-      uint32_t parent_id_index = rra_parent_table_index_from_offset(
-         dst_child_offset, parent_id_table_size);
-      parent_id_table[parent_id_index] = radv_bvh_node_internal | (dst_offset >> 3);
+      uint32_t child_id = child_type | (dst_child_offset >> 3);
+      dst->children[i] = child_id;
+
+      if (child_type != radv_bvh_node_internal)
+         ctx->leaf_node_ids[ctx->leaf_index++] = child_id;
    }
 }
 
@@ -587,7 +616,6 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
 
    uint64_t src_primitive_size = 0;
    uint64_t dst_primitive_size = 0;
-   VkGeometryTypeKHR geometry_type = 0;
 
    struct radv_accel_struct_geometry_info *geometry_infos =
       (struct radv_accel_struct_geometry_info *)(data + geometry_infos_offset);
@@ -610,7 +638,6 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       default:
          unreachable("invalid geometry type");
       }
-      geometry_type = geometry_infos[i].type;
       src_leaf_nodes_size += geometry_infos[i].primitive_count * src_primitive_size;
       dst_leaf_nodes_size += geometry_infos[i].primitive_count * dst_primitive_size;
    }
@@ -649,62 +676,18 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   uint8_t *current_dst_data = dst_structure_data + RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size;
-   uint8_t *current_src_data = data + src_root_offset + sizeof(struct radv_bvh_box32_node);
-   /*
-    * Transcode leaf nodes
-    */
-   uint32_t current_leaf_node_index = 0;
-   for (uint32_t i = 0; i < primitive_count; ++i) {
-      uint32_t node_type;
-      switch (geometry_type) {
-      case VK_GEOMETRY_TYPE_TRIANGLES_KHR: {
-         node_type = radv_bvh_node_triangle;
-         rra_transcode_triangle_node((struct rra_triangle_node *)current_dst_data,
-                                     (const struct radv_bvh_triangle_node *)current_src_data);
-         break;
-      }
-      case VK_GEOMETRY_TYPE_AABBS_KHR: {
-         node_type = radv_bvh_node_aabb;
-         rra_transcode_aabb_node((struct rra_aabb_node *)current_dst_data,
-                                 (const struct radv_bvh_aabb_node *)current_src_data);
-         break;
-      }
-      case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-         node_type = radv_bvh_node_instance;
-         rra_transcode_instance_node((struct rra_instance_node *)current_dst_data,
-                                     (const struct radv_bvh_instance_node *)current_src_data);
-         break;
-      default:
-         unreachable("invalid geometry type");
-      }
-      current_dst_data += dst_primitive_size;
-      current_src_data += src_primitive_size;
+   struct rra_transcoding_context ctx = {
+      .src = data,
+      .dst = dst_structure_data,
+      .dst_leaf_offset = RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size,
+      .dst_internal_offset = RRA_ROOT_NODE_OFFSET,
+      .parent_id_table = node_parent_table,
+      .parent_id_table_size = node_parent_table_size,
+      .leaf_node_ids = leaf_node_ids,
+      .leaf_index = 0,
+   };
 
-      leaf_node_ids[current_leaf_node_index++] =
-         node_type | ((current_dst_data - dst_structure_data) >> 3);
-   }
-
-   current_dst_data = dst_structure_data + RRA_ROOT_NODE_OFFSET;
-   current_src_data = data + src_root_offset;
-
-   /*
-    * Transcode internal nodes
-    */
-   for (uint32_t i = 0; i < header->internal_node_count; ++i) {
-      rra_transcode_internal_node((struct rra_box32_node *)current_dst_data,
-                                  (const struct radv_bvh_box32_node *)current_src_data,
-                                  current_dst_data - dst_structure_data, src_root_offset,
-                                  src_primitive_size, dst_primitive_size,
-                                  src_internal_nodes_size - sizeof(struct radv_bvh_box32_node),
-                                  header->internal_node_count, src_leaf_nodes_size,
-                                  node_parent_table, node_parent_table_size);
-      current_dst_data += sizeof(struct rra_box32_node);
-      current_src_data += sizeof(struct radv_bvh_box32_node);
-
-      if (i == 0)
-         current_src_data += src_leaf_nodes_size;
-   }
+   rra_transcode_internal_node(&ctx, (const void *)(data + src_root_offset));
 
    struct rra_accel_struct_chunk_header chunk_header = {
       .metadata_offset = 0,
