@@ -337,7 +337,15 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
     * dedup this?
     */
 
-   /* TODO: Figure out where the 4 * sizeof(uint32_t) comes from. */
+   /* The large clear state words cover the max framebuffer. The normal clear
+    * state words cover only half (since 3 indices are passed, forming a single
+    * triangle, instead of 4) and are used when the render area fits within a
+    * quarter of the max framebuffer, i.e. fit within the single triangle.
+    */
+   /* 4 * sizeof(uint32_t) because of the 4 pixel output regs. */
+   /* TODO: Replace 4 * sizeof(uint32_t) with a defines from the compiler or
+    * hook up the value directly to it using some compiler info.
+    */
    pvr_pack_clear_vdm_state(&device->pdevice->dev_info,
                             &state->pds,
                             pds_program.temps_used,
@@ -346,7 +354,6 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                             1,
                             state->vdm_words);
 
-   /* TODO: Figure out where the 4 * sizeof(uint32_t) comes from. */
    pvr_pack_clear_vdm_state(&device->pdevice->dev_info,
                             &state->pds,
                             pds_program.temps_used,

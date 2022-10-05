@@ -2363,6 +2363,20 @@ pvr_cmd_buffer_set_clear_values(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
+/**
+ * \brief Indicates whether to use the large or normal clear state words.
+ *
+ * If the current render area can fit within a quarter of the max framebuffer
+ * that the device is capable of, we can use the normal clear state words,
+ * otherwise the large clear state words are needed.
+ *
+ * The requirement of a quarter of the max framebuffer comes from the index
+ * count used in the normal clear state words and the vertices uploaded at
+ * device creation.
+ *
+ * \param[in] cmd_buffer The command buffer for the clear.
+ * \return true if large clear state words are required.
+ */
 static bool
 pvr_is_large_clear_required(const struct pvr_cmd_buffer *const cmd_buffer)
 {
