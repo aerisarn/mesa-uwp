@@ -4845,6 +4845,27 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
       VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, 1);
 
+   if (!is_copy_only && zink_debug & ZINK_DEBUG_SHADERDB) {
+      if (!screen->info.have_EXT_vertex_input_dynamic_state) {
+         struct pipe_vertex_element velems[32] = {0};
+         for (unsigned i = 0; i < ARRAY_SIZE(velems); i++)
+            velems[i].src_format = PIPE_FORMAT_R8G8B8_UNORM;
+         void *state = ctx->base.create_vertex_elements_state(&ctx->base, ARRAY_SIZE(velems), velems);
+         ctx->base.bind_vertex_elements_state(&ctx->base, state);
+      }
+      ctx->gfx_pipeline_state.sample_mask = BITFIELD_MASK(32);
+      struct pipe_framebuffer_state fb = {0};
+      fb.cbufs[0] = ctx->dummy_surface[0];
+      fb.nr_cbufs = 1;
+      fb.width = fb.height = 256;
+      ctx->base.set_framebuffer_state(&ctx->base, &fb);
+      ctx->disable_color_writes = true;
+      struct pipe_depth_stencil_alpha_state dsa = {0};
+      void *state = ctx->base.create_depth_stencil_alpha_state(&ctx->base, &dsa);
+      ctx->base.bind_depth_stencil_alpha_state(&ctx->base, state);
+      zink_batch_rp(ctx);
+   }
+
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;
    }

@@ -187,6 +187,7 @@ enum zink_debug {
    ZINK_DEBUG_COMPACT = (1<<5),
    ZINK_DEBUG_NOREORDER = (1<<6),
    ZINK_DEBUG_GPL = (1<<7),
+   ZINK_DEBUG_SHADERDB = (1<<8),
 };
 
 

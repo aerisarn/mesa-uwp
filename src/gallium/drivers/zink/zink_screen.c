@@ -78,6 +78,7 @@ zink_debug_options[] = {
    { "compact", ZINK_DEBUG_COMPACT, "Use only 4 descriptor sets" },
    { "noreorder", ZINK_DEBUG_NOREORDER, "Do not reorder command streams" },
    { "gpl", ZINK_DEBUG_GPL, "Force using Graphics Pipeline Library for all shaders" },
+   { "shaderdb", ZINK_DEBUG_SHADERDB, "Do stuff to make shader-db work" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -205,6 +206,8 @@ get_video_mem(struct zink_screen *screen)
 static bool
 disk_cache_init(struct zink_screen *screen)
 {
+   if (zink_debug & ZINK_DEBUG_SHADERDB)
+      return true;
 #ifdef ENABLE_SHADER_CACHE
    static char buf[1000];
    snprintf(buf, sizeof(buf), "zink_%x04x", screen->info.props.vendorID);
