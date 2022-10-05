@@ -55,9 +55,10 @@
 #include "vk_deferred_operation.h"
 #include "vk_drm_syncobj.h"
 #include "common/intel_aux_map.h"
-#include "common/intel_defines.h"
 #include "common/intel_uuid.h"
 #include "perf/intel_perf.h"
+
+#include "i915/anv_device.h"
 
 #include "genxml/gen7_pack.h"
 #include "genxml/genX_bits.h"
@@ -760,68 +761,6 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
    }
    assert(family_count <= ANV_MAX_QUEUE_FAMILIES);
    pdevice->queue.family_count = family_count;
-}
-
-static VkResult
-anv_i915_physical_device_get_parameters(struct anv_physical_device *device)
-{
-   VkResult result = VK_SUCCESS;
-   int val, fd = device->local_fd;
-
-   if (!intel_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT, &val) || !val) {
-       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing gem wait");
-       return result;
-   }
-
-   if (!intel_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2, &val) || !val) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing execbuf2");
-      return result;
-   }
-
-   if (!device->info.has_llc &&
-       (!intel_gem_get_param(fd, I915_PARAM_MMAP_VERSION, &val) || val < 1)) {
-       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing wc mmap");
-       return result;
-   }
-
-   if (!intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN, &val) || !val) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing softpin");
-      return result;
-   }
-
-   if (!intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE_ARRAY, &val) || !val) {
-      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                         "kernel missing syncobj support");
-      return result;
-   }
-
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC, &val))
-      device->has_exec_async = val;
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE, &val))
-      device->has_exec_capture = val;
-
-   /* Start with medium; sorted low to high */
-   const VkQueueGlobalPriorityKHR priorities[] = {
-         VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR,
-         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
-         VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR,
-         VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR,
-   };
-   device->max_context_priority = VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR;
-   for (unsigned i = 0; i < ARRAY_SIZE(priorities); i++) {
-      if (!anv_gem_has_context_priority(fd, priorities[i]))
-         break;
-      device->max_context_priority = priorities[i];
-   }
-
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES, &val))
-      device->has_exec_timeline = val;
-
-   return result;
 }
 
 static VkResult
@@ -3174,86 +3113,6 @@ static struct intel_mapped_pinned_buffer_alloc aux_map_allocator = {
 
 static VkResult anv_device_check_status(struct vk_device *vk_device);
 
-static VkResult
-anv_device_setup_context(struct anv_device *device,
-                         const VkDeviceCreateInfo *pCreateInfo,
-                         const uint32_t num_queues)
-{
-   struct anv_physical_device *physical_device = device->physical;
-   VkResult result = VK_SUCCESS;
-
-   if (device->physical->engine_info) {
-      /* The kernel API supports at most 64 engines */
-      assert(num_queues <= 64);
-      enum intel_engine_class engine_classes[64];
-      int engine_count = 0;
-      for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
-         const VkDeviceQueueCreateInfo *queueCreateInfo =
-            &pCreateInfo->pQueueCreateInfos[i];
-
-         assert(queueCreateInfo->queueFamilyIndex <
-                physical_device->queue.family_count);
-         struct anv_queue_family *queue_family =
-            &physical_device->queue.families[queueCreateInfo->queueFamilyIndex];
-
-         for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
-            engine_classes[engine_count++] = queue_family->engine_class;
-      }
-      if (!intel_gem_create_context_engines(device->fd,
-                                            physical_device->engine_info,
-                                            engine_count, engine_classes,
-                                            (uint32_t *)&device->context_id))
-         result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
-                            "kernel context creation failed");
-   } else {
-      assert(num_queues == 1);
-      if (!intel_gem_create_context(device->fd, &device->context_id))
-         result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
-   }
-
-   if (result != VK_SUCCESS)
-      return result;
-
-   /* Here we tell the kernel not to attempt to recover our context but
-    * immediately (on the next batchbuffer submission) report that the
-    * context is lost, and we will do the recovery ourselves.  In the case
-    * of Vulkan, recovery means throwing VK_ERROR_DEVICE_LOST and letting
-    * the client clean up the pieces.
-    */
-   anv_gem_set_context_param(device->fd, device->context_id,
-                             I915_CONTEXT_PARAM_RECOVERABLE, false);
-
-   /* Check if client specified queue priority. */
-   const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
-      vk_find_struct_const(pCreateInfo->pQueueCreateInfos[0].pNext,
-                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
-
-   VkQueueGlobalPriorityKHR priority =
-      queue_priority ? queue_priority->globalPriority :
-         VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
-
-   /* As per spec, the driver implementation may deny requests to acquire
-    * a priority above the default priority (MEDIUM) if the caller does not
-    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
-    * is returned.
-    */
-   if (physical_device->max_context_priority >= VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
-      int err = anv_gem_set_context_param(device->fd, device->context_id,
-                                          I915_CONTEXT_PARAM_PRIORITY,
-                                          priority);
-      if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
-         result = vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
-         goto fail_context;
-      }
-   }
-
-   return result;
-
-fail_context:
-   intel_gem_destroy_context(device->fd, device->context_id);
-   return result;
-}
-
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -3367,7 +3226,7 @@ VkResult anv_CreateDevice(
    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
       num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
 
-   result = anv_device_setup_context(device, pCreateInfo, num_queues);
+   result = anv_i915_device_setup_context(device, pCreateInfo, num_queues);
    if (result != VK_SUCCESS)
       goto fail_fd;
 

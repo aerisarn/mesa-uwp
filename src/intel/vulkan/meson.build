@@ -132,6 +132,8 @@ foreach g : [['90', ['gfx8_cmd_buffer.c']],
 endforeach
 
 libanv_files = files(
+  'i915/anv_device.c',
+  'i915/anv_device.h',
   'layers/anv_doom64.c',
   'layers/anv_hitman3.c',
   'anv_allocator.c',

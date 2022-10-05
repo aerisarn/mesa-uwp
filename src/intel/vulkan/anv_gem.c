@@ -30,7 +30,6 @@
 #include <fcntl.h>
 
 #include "anv_private.h"
-#include "common/intel_defines.h"
 #include "common/intel_gem.h"
 
 /**
@@ -277,42 +276,6 @@ anv_gem_set_tiling(struct anv_device *device,
    } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
 
    return ret;
-}
-
-bool
-anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
-{
-   return !anv_gem_set_context_param(fd, 0, I915_CONTEXT_PARAM_PRIORITY,
-                                     priority);
-}
-
-static int
-vk_priority_to_i915(VkQueueGlobalPriorityKHR priority)
-{
-   switch (priority) {
-   case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
-      return INTEL_CONTEXT_LOW_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
-      return INTEL_CONTEXT_MEDIUM_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
-      return INTEL_CONTEXT_HIGH_PRIORITY;
-   case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_KHR:
-      return INTEL_CONTEXT_REALTIME_PRIORITY;
-   default:
-      unreachable("Invalid priority");
-   }
-}
-
-int
-anv_gem_set_context_param(int fd, uint32_t context, uint32_t param, uint64_t value)
-{
-   if (param == I915_CONTEXT_PARAM_PRIORITY)
-      value = vk_priority_to_i915(value);
-
-   int err = 0;
-   if (!intel_gem_set_context_param(fd, context, param, value))
-      err = -errno;
-   return err;
 }
 
 int
