@@ -227,18 +227,14 @@ void si_llvm_create_main_func(struct si_shader_context *ctx, bool ngg_cull_shade
 
    if (ctx->stage <= MESA_SHADER_GEOMETRY &&
        (shader->key.ge.as_ls || ctx->stage == MESA_SHADER_TESS_CTRL)) {
-      if (USE_LDS_SYMBOLS) {
-         /* The LSHS size is not known until draw time, so we append it
-          * at the end of whatever LDS use there may be in the rest of
-          * the shader (currently none, unless LLVM decides to do its
-          * own LDS-based lowering).
-          */
-         ctx->ac.lds = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
-                                                   "__lds_end", AC_ADDR_SPACE_LDS);
-         LLVMSetAlignment(ctx->ac.lds, 256);
-      } else {
-         ac_declare_lds_as_pointer(&ctx->ac);
-      }
+      /* The LSHS size is not known until draw time, so we append it
+       * at the end of whatever LDS use there may be in the rest of
+       * the shader (currently none, unless LLVM decides to do its
+       * own LDS-based lowering).
+       */
+      ctx->ac.lds = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
+                                                "__lds_end", AC_ADDR_SPACE_LDS);
+      LLVMSetAlignment(ctx->ac.lds, 256);
    }
 
    /* Unlike radv, we override these arguments in the prolog, so to the
