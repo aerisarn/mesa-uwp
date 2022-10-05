@@ -139,6 +139,8 @@ static void pvr_cmd_buffer_free_resources(struct pvr_cmd_buffer *cmd_buffer)
    vk_free(&cmd_buffer->vk.pool->alloc,
            cmd_buffer->state.render_pass_info.clear_values);
 
+   util_dynarray_fini(&cmd_buffer->state.query_indices);
+
    pvr_cmd_buffer_free_sub_cmds(cmd_buffer);
 
    list_for_each_entry_safe (struct pvr_bo, bo, &cmd_buffer->bo_list, link) {
@@ -1421,7 +1423,7 @@ pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
-static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
+VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
 {
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_sub_cmd *sub_cmd = state->current_sub_cmd;
@@ -1595,8 +1597,8 @@ pvr_cmd_uses_deferred_cs_cmds(const struct pvr_cmd_buffer *const cmd_buffer)
              deferred_control_stream_flags;
 }
 
-static VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
-                                             enum pvr_sub_cmd_type type)
+VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
+                                      enum pvr_sub_cmd_type type)
 {
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_device *device = cmd_buffer->device;
@@ -2472,7 +2474,11 @@ VkResult pvr_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
       if (result != VK_SUCCESS)
          return result;
+
+      state->vis_test_enabled = inheritance_info->occlusionQueryEnable;
    }
+
+   util_dynarray_init(&state->query_indices, NULL);
 
    memset(state->barriers_needed,
           0xFF,
@@ -3604,6 +3610,11 @@ pvr_setup_isp_faces_and_control(struct pvr_cmd_buffer *const cmd_buffer,
       ispctl.dbenable = !rasterizer_discard &&
                         dynamic_state->rs.depth_bias.enable &&
                         obj_type == PVRX(TA_OBJTYPE_TRIANGLE);
+      if (!rasterizer_discard && cmd_buffer->state.vis_test_enabled) {
+         ispctl.vistest = true;
+         ispctl.visreg = cmd_buffer->state.vis_reg;
+      }
+
       ispctl.scenable = !rasterizer_discard;
 
       ppp_state->isp.control_struct = ispctl;
@@ -4526,7 +4537,7 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
                           MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK) ||
               BITSET_TEST(dynamic_state->dirty,
                           MESA_VK_DYNAMIC_RS_LINE_WIDTH) ||
-              state->dirty.isp_userpass) {
+              state->dirty.isp_userpass || state->dirty.vis_test) {
       pvr_setup_isp_faces_and_control(cmd_buffer, NULL);
    }
 
@@ -4829,6 +4840,8 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    sub_cmd->frag_uses_texture_rw |= fragment_state->uses_texture_rw;
    sub_cmd->vertex_uses_texture_rw |= vertex_state->uses_texture_rw;
 
+   sub_cmd->job.get_vis_results = state->vis_test_enabled;
+
    fstencil_keep =
       (dynamic_state->ds.stencil.front.op.fail == VK_STENCIL_OP_KEEP) &&
       (dynamic_state->ds.stencil.front.op.pass == VK_STENCIL_OP_KEEP);
@@ -4937,6 +4950,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    state->dirty.gfx_pipeline_binding = false;
    state->dirty.isp_userpass = false;
    state->dirty.vertex_bindings = false;
+   state->dirty.vis_test = false;
 
    return VK_SUCCESS;
 }
@@ -5701,6 +5715,9 @@ pvr_execute_graphics_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_sub_cmd *primary_sub_cmd = state->current_sub_cmd;
    VkResult result;
 
+   /* Inherited queries are not supported. */
+   assert(!state->vis_test_enabled);
+
    if (list_is_empty(&sec_cmd_buffer->sub_cmds))
       return;
 
@@ -6430,6 +6447,11 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    if (state->status != VK_SUCCESS)
       return state->status;
+
+   /* TODO: We should be freeing all the resources, allocated for recording,
+    * here.
+    */
+   util_dynarray_fini(&state->query_indices);
 
    result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    if (result != VK_SUCCESS)

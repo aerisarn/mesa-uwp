@@ -684,6 +684,11 @@ struct pvr_sub_cmd_gfx {
    bool modifies_depth;
    bool modifies_stencil;
 
+   bool barrier_store;
+   bool barrier_load;
+
+   const struct pvr_query_pool *query_pool;
+
    /* Control stream builder object */
    struct pvr_csb control_stream;
 
@@ -961,6 +966,8 @@ struct pvr_cmd_buffer_state {
        */
       bool draw_base_instance : 1;
       bool draw_variant : 1;
+
+      bool vis_test;
    } dirty;
 
    struct pvr_cmd_buffer_draw_state draw_state;
@@ -969,6 +976,12 @@ struct pvr_cmd_buffer_state {
       uint32_t code_offset;
       const struct pvr_pds_info *info;
    } pds_shader;
+
+   const struct pvr_query_pool *query_pool;
+   bool vis_test_enabled;
+   uint32_t vis_reg;
+
+   struct util_dynarray query_indices;
 
    uint32_t max_shared_regs;
 
@@ -1553,6 +1566,10 @@ VkResult pvr_pds_unitex_state_program_create_and_upload(
 VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
                                            uint32_t capacity,
                                            uint32_t size_in_bytes);
+
+VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
+                                      enum pvr_sub_cmd_type type);
+VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer);
 
 void pvr_compute_update_shared_private(
    struct pvr_cmd_buffer *cmd_buffer,

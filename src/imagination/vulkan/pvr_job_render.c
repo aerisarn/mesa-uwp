@@ -1623,6 +1623,9 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
 
    if (job->frag_uses_atomic_ops)
       state->flags |= PVR_WINSYS_FRAG_FLAG_SINGLE_CORE;
+
+   if (job->get_vis_results)
+      state->flags |= PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS;
 }
 
 static void pvr_render_job_ws_submit_info_init(

@@ -230,7 +230,51 @@ void pvr_CmdBeginQuery(VkCommandBuffer commandBuffer,
                        uint32_t query,
                        VkQueryControlFlags flags)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   PVR_FROM_HANDLE(pvr_query_pool, pool, queryPool);
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   /* Occlusion queries can't be nested. */
+   assert(!state->vis_test_enabled);
+
+   if (state->current_sub_cmd) {
+      assert(state->current_sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS);
+
+      if (!state->current_sub_cmd->gfx.query_pool) {
+         state->current_sub_cmd->gfx.query_pool = pool;
+      } else if (state->current_sub_cmd->gfx.query_pool != pool) {
+         VkResult result;
+
+         /* Kick render. */
+         state->current_sub_cmd->gfx.barrier_store = true;
+
+         result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+         if (result != VK_SUCCESS)
+            return;
+
+         result =
+            pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
+         if (result != VK_SUCCESS)
+            return;
+
+         /* Use existing render setup, but load color attachments from HW
+          * BGOBJ.
+          */
+         state->current_sub_cmd->gfx.barrier_load = true;
+         state->current_sub_cmd->gfx.barrier_store = false;
+         state->current_sub_cmd->gfx.query_pool = pool;
+      }
+   }
+
+   state->query_pool = pool;
+   state->vis_test_enabled = true;
+   state->vis_reg = query;
+   state->dirty.vis_test = true;
+
+   /* Add the index to the list for this render. */
+   util_dynarray_append(&state->query_indices, __typeof__(query), query);
 }
 
 void pvr_CmdEndQuery(VkCommandBuffer commandBuffer,
