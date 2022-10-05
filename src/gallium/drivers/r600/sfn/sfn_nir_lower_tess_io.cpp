@@ -412,8 +412,16 @@ r600_lower_tess_io_impl(nir_builder *b, nir_instr *instr, enum pipe_prim_type pr
       nir_ssa_dest_init(&tf->instr, &tf->dest,
                         tf->num_components, 32, NULL);
       nir_builder_instr_insert(b, &tf->instr);
-
-      nir_ssa_def_rewrite_uses(&op->dest.ssa, &tf->dest.ssa);
+      if (ncomps < 4) {
+         auto undef = nir_ssa_undef(b, 1, 32);
+         nir_ssa_def *srcs[4] = {undef, undef, undef, undef};
+         for (unsigned i = 0; i < ncomps; ++i)
+            srcs[i] = nir_channel(b, &tf->dest.ssa, i);
+         auto help = nir_vec(b, srcs, 4);
+         nir_ssa_def_rewrite_uses(&op->dest.ssa, help);
+      } else {
+         nir_ssa_def_rewrite_uses(&op->dest.ssa, &tf->dest.ssa);
+      }
       nir_instr_remove(instr);
       return true;
    }
