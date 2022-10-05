@@ -3100,7 +3100,7 @@ static void pvr_compute_update_kernel(
       .pds_data_offset = pipeline->state.primary_program.data_offset,
       .pds_code_offset = pipeline->state.primary_program.code_offset,
 
-      .sd_type = PVRX(CDMCTRL_SD_TYPE_USC),
+      .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
 
       .usc_unified_size =
          DIV_ROUND_UP(pipeline->state.shader.input_register_count << 2U,
@@ -3134,6 +3134,9 @@ static void pvr_compute_update_kernel(
    work_size = MAX2(work_size, ROGUE_MAX_INSTANCES_PER_TASK);
 
    coeff_regs += pipeline->state.shader.const_shared_reg_count;
+
+   if (pipeline->state.shader.const_shared_reg_count > 0)
+      info.sd_type = PVRX(CDMCTRL_SD_TYPE_USC);
 
    work_size =
       pvr_compute_flat_pad_workgroup_size(pdevice, work_size, coeff_regs);
