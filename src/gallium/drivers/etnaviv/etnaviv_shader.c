@@ -435,6 +435,8 @@ etna_shader_variant(struct etna_shader *shader, struct etna_shader_key key,
 {
    struct etna_shader_variant *v;
 
+   assert(shader->specs->fragment_sampler_count <= ARRAY_SIZE(key.tex_swizzle));
+
    for (v = shader->variants; v; v = v->next)
       if (etna_shader_key_equal(&key, &v->key))
          return v;

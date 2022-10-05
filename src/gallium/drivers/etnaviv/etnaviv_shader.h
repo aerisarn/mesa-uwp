@@ -59,8 +59,8 @@ struct etna_shader_key
    };
 
    int num_texture_states;
-   nir_lower_tex_shadow_swizzle tex_swizzle[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   enum compare_func tex_compare_func[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   nir_lower_tex_shadow_swizzle tex_swizzle[16];
+   enum compare_func tex_compare_func[16];
 };
 
 static inline bool
