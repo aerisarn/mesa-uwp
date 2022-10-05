@@ -136,16 +136,16 @@ pub fn create_program_with_source(
         Box::new(unsafe { slice::from_raw_parts(lengths, count as usize) }.iter())
     };
 
-    let mut source = String::new();
-    // we don't want encoding or any other problems with the source to prevent compilations, so
-    // just use CString::from_vec_unchecked and to_string_lossy
+    // We don't want encoding or any other problems with the source to prevent
+    // compilation, so don't convert this to a Rust `String`.
+    let mut source = Vec::new();
     for (&string_ptr, len) in iter::zip(srcs, lengths) {
         unsafe {
             if *len == 0 {
-                source.push_str(&CStr::from_ptr(string_ptr).to_string_lossy());
+                source.extend_from_slice(CStr::from_ptr(string_ptr).to_bytes());
             } else {
                 let arr = slice::from_raw_parts(string_ptr.cast(), *len);
-                source.push_str(&CString::from_vec_unchecked(arr.to_vec()).to_string_lossy());
+                source.extend_from_slice(arr);
             }
         }
     }
