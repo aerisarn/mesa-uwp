@@ -739,35 +739,34 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
 
    if (prim_info->count == 0) {
       debug_printf("GS/IA didn't emit any vertices!\n");
-      goto out;
-   }
+   } else {
+      draw_stats_clipper_primitives(draw, prim_info);
 
-   draw_stats_clipper_primitives(draw, prim_info);
-
-   /*
-    * if there's no position, need to stop now, or the latter stages
-    * will try to access non-existent position output.
-    */
-   if (draw_current_shader_position_output(draw) != -1) {
-      if ((opt & PT_SHADE) && (gshader || tes_shader ||
-                               draw->vs.vertex_shader->info.writes_viewport_index)) {
-         clipped = draw_pt_post_vs_run( fpme->post_vs, vert_info, prim_info );
-      }
-      /* "clipped" also includes non-one edgeflag */
-      if (clipped) {
-         opt |= PT_PIPELINE;
-      }
-
-      /* Do we need to run the pipeline? Now will come here if clipped
+      /*
+       * if there's no position, need to stop now, or the latter stages
+       * will try to access non-existent position output.
        */
-      if (opt & PT_PIPELINE) {
-         pipeline( fpme, vert_info, prim_info );
-      }
-      else {
-         emit( fpme->emit, vert_info, prim_info );
+      if (draw_current_shader_position_output(draw) != -1) {
+         if ((opt & PT_SHADE) && (gshader || tes_shader ||
+                                  draw->vs.vertex_shader->info.writes_viewport_index)) {
+            clipped = draw_pt_post_vs_run( fpme->post_vs, vert_info, prim_info );
+         }
+         /* "clipped" also includes non-one edgeflag */
+         if (clipped) {
+            opt |= PT_PIPELINE;
+         }
+
+         /* Do we need to run the pipeline? Now will come here if clipped
+          */
+         if (opt & PT_PIPELINE) {
+            pipeline( fpme, vert_info, prim_info );
+         }
+         else {
+            emit( fpme->emit, vert_info, prim_info );
+         }
       }
    }
-out:
+
    FREE(vert_info->verts);
    if (gshader && gshader->num_vertex_streams > 1)
      for (unsigned i = 1; i < gshader->num_vertex_streams; i++)
