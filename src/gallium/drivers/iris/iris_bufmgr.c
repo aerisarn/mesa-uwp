@@ -1133,7 +1133,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    /* By default, capture all driver-internal buffers like shader kernels,
     * surface states, dynamic states, border colors, and so on.
     */
-   if (memzone < IRIS_MEMZONE_OTHER)
+   if (memzone < IRIS_MEMZONE_OTHER || INTEL_DEBUG(DEBUG_CAPTURE_ALL))
       bo->real.kflags |= EXEC_OBJECT_CAPTURE;
 
    assert(bo->real.map == NULL || bo->real.mmap_mode == mmap_mode);
@@ -1204,6 +1204,9 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    bo->bufmgr = bufmgr;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+
+   if (INTEL_DEBUG(DEBUG_CAPTURE_ALL))
+      bo->real.kflags |= EXEC_OBJECT_CAPTURE;
 
    simple_mtx_lock(&bufmgr->lock);
    bo->address = vma_alloc(bufmgr, memzone, size, 1);
@@ -1285,6 +1288,8 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    bo->real.imported = true;
    bo->real.mmap_mode = IRIS_MMAP_NONE;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   if (INTEL_DEBUG(DEBUG_CAPTURE_ALL))
+      bo->real.kflags |= EXEC_OBJECT_CAPTURE;
    bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    if (bo->address == 0ull) {
@@ -1913,6 +1918,8 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    bo->real.imported = true;
    bo->real.mmap_mode = IRIS_MMAP_NONE;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   if (INTEL_DEBUG(DEBUG_CAPTURE_ALL))
+      bo->real.kflags |= EXEC_OBJECT_CAPTURE;
    bo->gem_handle = handle;
 
    /* From the Bspec, Memory Compression - Gfx12:

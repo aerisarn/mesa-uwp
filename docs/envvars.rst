@@ -280,6 +280,9 @@ Intel driver environment variables
       emit messages about buffer objects
    ``bt``
       emit messages binding tables
+   ``capture-all``
+      flag all buffers to be captured by the kernel driver when
+      generating an error stage after a gpu hang
    ``clip``
       emit messages about the clip unit (for old gens, includes the CLIP
       program)

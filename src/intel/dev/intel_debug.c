@@ -93,6 +93,7 @@ static const struct debug_control debug_control[] = {
    { "task",        DEBUG_TASK },
    { "mesh",        DEBUG_MESH },
    { "stall",       DEBUG_STALL },
+   { "capture-all", DEBUG_CAPTURE_ALL },
    { NULL,    0 }
 };
 
