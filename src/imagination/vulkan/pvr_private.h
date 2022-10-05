@@ -1233,10 +1233,20 @@ struct pvr_query_pool {
 };
 
 struct pvr_private_compute_pipeline {
+   /* Used by pvr_compute_update_kernel_private(). */
+   uint32_t pds_code_offset;
+   uint32_t pds_data_offset;
+   uint32_t pds_data_size_dw;
+   uint32_t pds_temps_used;
+   uint32_t coeff_regs_count;
+   VkExtent3D workgroup_size;
+
    /* Used by pvr_compute_update_shared_private(). */
    uint32_t pds_shared_update_code_offset;
    uint32_t pds_shared_update_data_offset;
    uint32_t pds_shared_update_data_size_dw;
+
+   /* Used by both pvr_compute_update_{kernel,shared}_private(). */
    uint32_t const_shared_regs_count;
 
    pvr_dev_addr_t const_buffer_addr;
@@ -1548,6 +1558,11 @@ void pvr_compute_update_shared_private(
    struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_sub_cmd_compute *const sub_cmd,
    struct pvr_private_compute_pipeline *pipeline);
+void pvr_compute_update_kernel_private(
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_sub_cmd_compute *const sub_cmd,
+   struct pvr_private_compute_pipeline *pipeline,
+   const uint32_t global_workgroup_size[static const PVR_WORKGROUP_DIMENSIONS]);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)
