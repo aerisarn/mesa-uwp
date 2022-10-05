@@ -159,7 +159,8 @@ pub fn create_program_with_source(
     Ok(cl_program::from_arc(Program::new(
         &c,
         &c.devs,
-        CString::new(source).map_err(|_| CL_INVALID_VALUE)?,
+        // SAFETY: We've constructed `source` such that it contains no nul bytes.
+        unsafe { CString::from_vec_unchecked(source) },
     )))
 }
 
