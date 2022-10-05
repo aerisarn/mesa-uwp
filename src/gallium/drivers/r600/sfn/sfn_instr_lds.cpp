@@ -278,6 +278,7 @@ AluInstr *LDSAtomicInstr::split(std::vector<AluInstr *>& out_block, AluInstr *la
    if (last_lds_instr) {
       op_instr->add_required_instr(last_lds_instr);
    }
+   last_lds_instr = op_instr;
 
    out_block.push_back(op_instr);
    if (m_dest) {
