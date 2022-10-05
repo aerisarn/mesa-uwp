@@ -10,6 +10,7 @@ use rusticl_opencl_gen::*;
 
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::iter;
 use std::os::raw::c_char;
 use std::ptr;
 use std::slice;
@@ -113,16 +114,37 @@ pub fn create_program_with_source(
         return Err(CL_INVALID_VALUE);
     }
 
+    // "lengths argument is an array with the number of chars in each string
+    // (the string length). If an element in lengths is zero, its accompanying
+    // string is null-terminated. If lengths is NULL, all strings in the
+    // strings argument are considered null-terminated."
+    //
+    // Take either an iterator over the given slice or - if the `lengths`
+    // pointer is NULL - an iterator that always returns zero (infinite, but
+    // later bounded by being zipped with the finite `srcs`).
+    //
+    // Looping over different iterators is no problem as long as they return
+    // the same item type. However, since we can only decide which to use at
+    // runtime, we need to use dynamic dispatch. The compiler also needs to
+    // know how much space to reserve on the stack, but different
+    // implementations of the `Iterator` trait will need different amounts of
+    // memory. This is resolved by putting the actual iterator on the heap
+    // with `Box` and only a reference to it on the stack.
+    let lengths: Box<dyn Iterator<Item = &usize>> = if lengths.is_null() {
+        Box::new(iter::repeat(&0))
+    } else {
+        Box::new(unsafe { slice::from_raw_parts(lengths, count as usize) }.iter())
+    };
+
     let mut source = String::new();
     // we don't want encoding or any other problems with the source to prevent compilations, so
     // just use CString::from_vec_unchecked and to_string_lossy
-    for i in 0..count as usize {
+    for (&string_ptr, len) in iter::zip(srcs, lengths) {
         unsafe {
-            if lengths.is_null() || *lengths.add(i) == 0 {
-                source.push_str(&CStr::from_ptr(*strings.add(i)).to_string_lossy());
+            if *len == 0 {
+                source.push_str(&CStr::from_ptr(string_ptr).to_string_lossy());
             } else {
-                let l = *lengths.add(i);
-                let arr = slice::from_raw_parts(*strings.add(i).cast(), l);
+                let arr = slice::from_raw_parts(string_ptr.cast(), *len);
                 source.push_str(&CString::from_vec_unchecked(arr.to_vec()).to_string_lossy());
             }
         }
