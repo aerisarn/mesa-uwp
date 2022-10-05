@@ -2921,6 +2921,45 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
+void pvr_compute_update_shared_private(
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_sub_cmd_compute *const sub_cmd,
+   struct pvr_private_compute_pipeline *pipeline)
+{
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
+   const uint32_t const_shared_regs = pipeline->const_shared_regs_count;
+   struct pvr_csb *csb = &sub_cmd->control_stream;
+   struct pvr_compute_kernel_info info;
+
+   /* No shared regs, no need to use an allocation kernel. */
+   if (!const_shared_regs)
+      return;
+
+   info = (struct pvr_compute_kernel_info){
+      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
+      .usc_common_size =
+         DIV_ROUND_UP(const_shared_regs,
+                      PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE)),
+      .pds_data_size =
+         DIV_ROUND_UP(pipeline->pds_shared_update_data_size_dw << 2U,
+                      PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
+      .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
+      .pds_data_offset = pipeline->pds_shared_update_data_offset,
+      .pds_code_offset = pipeline->pds_shared_update_code_offset,
+      .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
+      .usc_common_shared = true,
+      .local_size = { 1, 1, 1 },
+      .global_size = { 1, 1, 1 },
+   };
+
+   /* We don't need to pad the workgroup size. */
+
+   info.max_instances =
+      pvr_compute_flat_slot_size(pdevice, const_shared_regs, false, 1U);
+
+   pvr_compute_generate_control_stream(csb, sub_cmd, &info);
+}
+
 static uint32_t
 pvr_compute_flat_pad_workgroup_size(const struct pvr_physical_device *pdevice,
                                     uint32_t workgroup_size,

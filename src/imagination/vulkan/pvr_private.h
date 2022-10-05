@@ -1232,6 +1232,16 @@ struct pvr_query_pool {
    struct pvr_bo *availability_buffer;
 };
 
+struct pvr_private_compute_pipeline {
+   /* Used by pvr_compute_update_shared_private(). */
+   uint32_t pds_shared_update_code_offset;
+   uint32_t pds_shared_update_data_offset;
+   uint32_t pds_shared_update_data_size_dw;
+   uint32_t const_shared_regs_count;
+
+   pvr_dev_addr_t const_buffer_addr;
+};
+
 struct pvr_render_target {
    struct pvr_rt_dataset *rt_dataset;
 
@@ -1533,6 +1543,11 @@ VkResult pvr_pds_unitex_state_program_create_and_upload(
 VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
                                            uint32_t capacity,
                                            uint32_t size_in_bytes);
+
+void pvr_compute_update_shared_private(
+   struct pvr_cmd_buffer *cmd_buffer,
+   struct pvr_sub_cmd_compute *const sub_cmd,
+   struct pvr_private_compute_pipeline *pipeline);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)
