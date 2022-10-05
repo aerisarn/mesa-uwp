@@ -2184,12 +2184,8 @@ iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
     * context is lost, and we will do the recovery ourselves.  Ideally,
     * we'll have two lost batches instead of a continual stream of hangs.
     */
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_RECOVERABLE,
-      .value = false,
-   };
-   intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
+   intel_gem_set_context_param(bufmgr->fd, ctx_id,
+                               I915_CONTEXT_PARAM_RECOVERABLE, false);
 }
 
 void
@@ -2198,16 +2194,11 @@ iris_hw_context_set_vm_id(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
    if (!bufmgr->use_global_vm)
       return;
 
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_VM,
-      .value = bufmgr->global_vm_id,
-   };
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
-   if (ret != 0) {
+   if (!intel_gem_set_context_param(bufmgr->fd, ctx_id,
+                                    I915_CONTEXT_PARAM_VM,
+                                    bufmgr->global_vm_id))
       DBG("DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM failed: %s\n",
           strerror(errno));
-   }
 }
 
 uint32_t
@@ -2251,15 +2242,9 @@ iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
                             uint32_t ctx_id,
                             int priority)
 {
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_PRIORITY,
-      .value = priority,
-   };
-   int err;
-
-   err = 0;
-   if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p))
+   int err = 0;
+   if (!intel_gem_set_context_param(bufmgr->fd, ctx_id,
+                                    I915_CONTEXT_PARAM_PRIORITY, priority))
       err = -errno;
 
    return err;

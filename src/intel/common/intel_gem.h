@@ -166,6 +166,9 @@ intel_gem_create_context_engines(int fd,
                                  const struct intel_query_engine_info *info,
                                  int num_engines, enum intel_engine_class *engine_classes,
                                  uint32_t *context_id);
+bool
+intel_gem_set_context_param(int fd, uint32_t context, uint32_t param,
+                            uint64_t value);
 
 bool intel_gem_read_render_timestamp(int fd, uint64_t *value);
 

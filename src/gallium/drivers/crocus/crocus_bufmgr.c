@@ -1538,12 +1538,8 @@ crocus_create_hw_context(struct crocus_bufmgr *bufmgr)
     * context is lost, and we will do the recovery ourselves.  Ideally,
     * we'll have two lost batches instead of a continual stream of hangs.
     */
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_RECOVERABLE,
-      .value = false,
-   };
-   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
+   intel_gem_set_context_param(bufmgr->fd, ctx_id,
+                               I915_CONTEXT_PARAM_RECOVERABLE, false);
 
    return ctx_id;
 }
@@ -1564,15 +1560,9 @@ crocus_hw_context_set_priority(struct crocus_bufmgr *bufmgr,
                                uint32_t ctx_id,
                                int priority)
 {
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_PRIORITY,
-      .value = priority,
-   };
-   int err;
-
-   err = 0;
-   if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p))
+   int err = 0;
+   if (!intel_gem_set_context_param(bufmgr->fd, ctx_id,
+                                    I915_CONTEXT_PARAM_PRIORITY, priority))
       err = -errno;
 
    return err;

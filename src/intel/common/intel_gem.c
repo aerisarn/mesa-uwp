@@ -161,6 +161,17 @@ intel_gem_create_context_engines(int fd,
    return true;
 }
 
+bool
+intel_gem_set_context_param(int fd, uint32_t context, uint32_t param,
+                            uint64_t value)
+{
+   struct drm_i915_gem_context_param p = {
+      .ctx_id = context,
+      .param = param,
+      .value = value,
+   };
+   return intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p) == 0;
+}
 
 bool intel_gem_read_render_timestamp(int fd, uint64_t *value)
 {

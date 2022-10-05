@@ -320,19 +320,13 @@ vk_priority_to_i915(VkQueueGlobalPriorityKHR priority)
 }
 
 int
-anv_gem_set_context_param(int fd, int context, uint32_t param, uint64_t value)
+anv_gem_set_context_param(int fd, uint32_t context, uint32_t param, uint64_t value)
 {
    if (param == I915_CONTEXT_PARAM_PRIORITY)
       value = vk_priority_to_i915(value);
 
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = context,
-      .param = param,
-      .value = value,
-   };
    int err = 0;
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p))
+   if (!intel_gem_set_context_param(fd, context, param, value))
       err = -errno;
    return err;
 }
