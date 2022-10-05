@@ -71,9 +71,6 @@ struct wsi_wl_display {
    /* Formats populated by zwp_linux_dmabuf_v1 or wl_shm interfaces */
    struct u_vector formats;
 
-   /* Only used for displays created by wsi_wl_display_create */
-   uint32_t refcount;
-
    bool sw;
 };
 
@@ -564,8 +561,6 @@ static const struct wl_registry_listener registry_listener = {
 static void
 wsi_wl_display_finish(struct wsi_wl_display *display)
 {
-   assert(display->refcount == 0);
-
    struct wsi_wl_format *f;
    u_vector_foreach(f, &display->formats)
       u_vector_finish(&f->modifiers);
@@ -652,8 +647,6 @@ out:
    /* We don't need this anymore */
    wl_registry_destroy(registry);
 
-   display->refcount = 0;
-
    return VK_SUCCESS;
 
 fail_registry:
@@ -683,25 +676,14 @@ wsi_wl_display_create(struct wsi_wayland *wsi, struct wl_display *wl_display,
       return result;
    }
 
-   display->refcount++;
    *display_out = display;
 
    return result;
 }
 
-static struct wsi_wl_display *
-wsi_wl_display_ref(struct wsi_wl_display *display)
-{
-   display->refcount++;
-   return display;
-}
-
 static void
-wsi_wl_display_unref(struct wsi_wl_display *display)
+wsi_wl_display_destroy(struct wsi_wl_display *display)
 {
-   if (display->refcount-- > 1)
-      return;
-
    struct wsi_wayland *wsi = display->wsi_wl;
    wsi_wl_display_finish(display);
    vk_free(wsi->alloc, display);
@@ -939,7 +921,7 @@ wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
       wl_proxy_wrapper_destroy(wsi_wl_surface->surface);
 
    if (wsi_wl_surface->display)
-      wsi_wl_display_unref(wsi_wl_surface->display);
+      wsi_wl_display_destroy(wsi_wl_surface->display);
 
    vk_free2(&instance->alloc, pAllocator, wsi_wl_surface);
 }
