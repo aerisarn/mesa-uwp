@@ -19,6 +19,9 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * 'pvr_write_query_to_buffer()' based on anv:
+ * Copyright © 2015 Intel Corporation
  */
 
 #include <assert.h>
@@ -115,6 +118,20 @@ void pvr_DestroyQueryPool(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, pool);
 }
 
+static inline void pvr_write_query_to_buffer(uint8_t *buffer,
+                                             VkQueryResultFlags flags,
+                                             uint32_t idx,
+                                             uint64_t value)
+{
+   if (flags & VK_QUERY_RESULT_64_BIT) {
+      uint64_t *query_data = (uint64_t *)buffer;
+      query_data[idx] = value;
+   } else {
+      uint32_t *query_data = (uint32_t *)buffer;
+      query_data[idx] = value;
+   }
+}
+
 VkResult pvr_GetQueryPoolResults(VkDevice _device,
                                  VkQueryPool queryPool,
                                  uint32_t firstQuery,
@@ -124,8 +141,68 @@ VkResult pvr_GetQueryPoolResults(VkDevice _device,
                                  VkDeviceSize stride,
                                  VkQueryResultFlags flags)
 {
-   assert(!"Unimplemented");
-   return VK_SUCCESS;
+   PVR_FROM_HANDLE(pvr_query_pool, pool, queryPool);
+   PVR_FROM_HANDLE(pvr_device, device, _device);
+   const uint32_t core_count = device->pdevice->dev_runtime_info.core_count;
+   volatile uint32_t *available = pool->availability_buffer->bo->map;
+   volatile uint32_t *query_results = pool->result_buffer->bo->map;
+   uint8_t *data = (uint8_t *)pData;
+   VkResult result = VK_SUCCESS;
+
+   VG(VALGRIND_MAKE_MEM_DEFINED(&available[firstQuery],
+                                queryCount * sizeof(uint32_t)));
+
+   for (uint32_t i = 0; i < core_count; i++) {
+      VG(VALGRIND_MAKE_MEM_DEFINED(
+         &query_results[firstQuery + i * pool->result_stride],
+         queryCount * sizeof(uint32_t)));
+   }
+
+   for (uint32_t i = 0; i < queryCount; i++) {
+      const bool is_available = !!available[firstQuery + i];
+      uint64_t count = 0;
+      uint32_t idx = 0;
+
+      /* From the Vulkan 1.0 spec:
+       *
+       *    Commands that wait indefinitely for device execution (namely
+       *    vkDeviceWaitIdle, vkQueueWaitIdle, vkWaitForFences or
+       *    vkAcquireNextImageKHR with a maximum timeout, and
+       *    vkGetQueryPoolResults with the VK_QUERY_RESULT_WAIT_BIT bit set in
+       *    flags) must return in finite time even in the case of a lost device,
+       *    and return either VK_SUCCESS or VK_ERROR_DEVICE_LOST.
+       */
+      if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+         /* Add support to wait for query results to be available. Also handle
+          * device loss scenario.
+          */
+         pvr_finishme("Unimplemented path.");
+      }
+
+      for (uint32_t j = 0; j < core_count; j++)
+         count += query_results[pool->result_stride * j + firstQuery + i];
+
+      if (is_available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+         pvr_write_query_to_buffer(data, flags, idx++, count);
+      else
+         result = VK_NOT_READY;
+
+      if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
+         pvr_write_query_to_buffer(data, flags, idx++, count);
+
+      data += stride;
+   }
+
+   VG(VALGRIND_MAKE_MEM_UNDEFINED(&available[firstQuery],
+                                  queryCount * sizeof(uint32_t)));
+
+   for (uint32_t i = 0; i < core_count; i++) {
+      VG(VALGRIND_MAKE_MEM_UNDEFINED(
+         &query_results[firstQuery + i * pool->result_stride],
+         queryCount * sizeof(uint32_t)));
+   }
+
+   return result;
 }
 
 void pvr_CmdResetQueryPool(VkCommandBuffer commandBuffer,
