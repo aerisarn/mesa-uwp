@@ -1594,10 +1594,8 @@ crocus_clone_hw_context(struct crocus_bufmgr *bufmgr, uint32_t ctx_id)
 void
 crocus_destroy_hw_context(struct crocus_bufmgr *bufmgr, uint32_t ctx_id)
 {
-   struct drm_i915_gem_context_destroy d = { .ctx_id = ctx_id };
-
    if (ctx_id != 0 &&
-       intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &d) != 0) {
+       !intel_gem_destroy_context(bufmgr->fd, ctx_id)) {
       fprintf(stderr, "DRM_IOCTL_I915_GEM_CONTEXT_DESTROY failed: %s\n",
               strerror(errno));
    }

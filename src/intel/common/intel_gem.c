@@ -69,6 +69,15 @@ intel_gem_create_context(int fd, uint32_t *context_id)
 }
 
 bool
+intel_gem_destroy_context(int fd, uint32_t context_id)
+{
+   struct drm_i915_gem_context_destroy destroy = {
+      .ctx_id = context_id,
+   };
+   return intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &destroy) == 0;
+}
+
+bool
 intel_gem_create_context_engines(int fd,
                                  const struct intel_query_engine_info *info,
                                  int num_engines, enum intel_engine_class *engine_classes,

@@ -302,16 +302,6 @@ anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
                                      priority);
 }
 
-int
-anv_gem_destroy_context(struct anv_device *device, int context)
-{
-   struct drm_i915_gem_context_destroy destroy = {
-      .ctx_id = context,
-   };
-
-   return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &destroy);
-}
-
 static int
 vk_priority_to_i915(VkQueueGlobalPriorityKHR priority)
 {

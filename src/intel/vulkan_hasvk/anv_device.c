@@ -2855,7 +2855,7 @@ anv_device_setup_context(struct anv_device *device,
    return result;
 
 fail_context:
-   anv_gem_destroy_context(device, device->context_id);
+   intel_gem_destroy_context(device->fd, device->context_id);
    return result;
 }
 
@@ -3263,7 +3263,7 @@ VkResult anv_CreateDevice(
       anv_queue_finish(&device->queues[i]);
    vk_free(&device->vk.alloc, device->queues);
  fail_context_id:
-   anv_gem_destroy_context(device, device->context_id);
+   intel_gem_destroy_context(device->fd, device->context_id);
  fail_fd:
    close(device->fd);
  fail_device:
@@ -3335,7 +3335,7 @@ void anv_DestroyDevice(
       anv_queue_finish(&device->queues[i]);
    vk_free(&device->vk.alloc, device->queues);
 
-   anv_gem_destroy_context(device, device->context_id);
+   intel_gem_destroy_context(device->fd, device->context_id);
 
    if (INTEL_DEBUG(DEBUG_BATCH))
       intel_batch_decode_ctx_finish(&device->decoder_ctx);
