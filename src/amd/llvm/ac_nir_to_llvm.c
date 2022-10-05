@@ -5185,110 +5185,6 @@ static LLVMTypeRef glsl_to_llvm_type(struct ac_llvm_context *ac, const struct gl
    return LLVMStructTypeInContext(ac->context, member_types, glsl_get_length(type), false);
 }
 
-static bool visit_deref(struct ac_nir_context *ctx, nir_deref_instr *instr)
-{
-   if (!nir_deref_mode_is_one_of(instr, nir_var_mem_shared | nir_var_mem_global))
-      return true;
-
-   LLVMValueRef result = NULL;
-   switch (instr->deref_type) {
-   case nir_deref_type_struct:
-      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
-         nir_deref_instr *parent = nir_deref_instr_parent(instr);
-         uint64_t offset = glsl_get_struct_field_offset(parent->type, instr->strct.index);
-         result = ac_build_gep_ptr(&ctx->ac, get_src(ctx, instr->parent),
-                                   LLVMConstInt(ctx->ac.i32, offset, 0));
-      } else {
-         result = ac_build_gep0(&ctx->ac, get_src(ctx, instr->parent),
-                                LLVMConstInt(ctx->ac.i32, instr->strct.index, 0));
-      }
-      break;
-   case nir_deref_type_array:
-      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
-         nir_deref_instr *parent = nir_deref_instr_parent(instr);
-         unsigned stride = glsl_get_explicit_stride(parent->type);
-
-         if ((glsl_type_is_matrix(parent->type) && glsl_matrix_type_is_row_major(parent->type)) ||
-             (glsl_type_is_vector(parent->type) && stride == 0))
-            stride = type_scalar_size_bytes(parent->type);
-
-         assert(stride > 0);
-         LLVMValueRef index = get_src(ctx, instr->arr.index);
-         if (LLVMTypeOf(index) != ctx->ac.i64)
-            index = LLVMBuildZExt(ctx->ac.builder, index, ctx->ac.i64, "");
-
-         LLVMValueRef offset =
-            LLVMBuildMul(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i64, stride, 0), "");
-
-         result = ac_build_gep_ptr(&ctx->ac, get_src(ctx, instr->parent), offset);
-      } else {
-         result =
-            ac_build_gep0(&ctx->ac, get_src(ctx, instr->parent), get_src(ctx, instr->arr.index));
-      }
-      break;
-   case nir_deref_type_ptr_as_array:
-      if (nir_deref_mode_is(instr, nir_var_mem_global)) {
-         unsigned stride = nir_deref_instr_array_stride(instr);
-
-         LLVMValueRef index = get_src(ctx, instr->arr.index);
-         if (LLVMTypeOf(index) != ctx->ac.i64)
-            index = LLVMBuildZExt(ctx->ac.builder, index, ctx->ac.i64, "");
-
-         LLVMValueRef offset =
-            LLVMBuildMul(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i64, stride, 0), "");
-
-         result = ac_build_gep_ptr(&ctx->ac, get_src(ctx, instr->parent), offset);
-      } else {
-         result =
-            ac_build_gep_ptr(&ctx->ac, get_src(ctx, instr->parent), get_src(ctx, instr->arr.index));
-      }
-      break;
-   case nir_deref_type_cast: {
-      result = get_src(ctx, instr->parent);
-
-      /* We can't use the structs from LLVM because the shader
-       * specifies its own offsets. */
-      LLVMTypeRef pointee_type = ctx->ac.i8;
-      if (nir_deref_mode_is(instr, nir_var_mem_shared))
-         pointee_type = glsl_to_llvm_type(&ctx->ac, instr->type);
-
-      unsigned address_space;
-
-      switch (instr->modes) {
-      case nir_var_mem_shared:
-         address_space = AC_ADDR_SPACE_LDS;
-         break;
-      case nir_var_mem_global:
-         address_space = AC_ADDR_SPACE_GLOBAL;
-         break;
-      default:
-         nir_print_instr(&instr->instr, stderr);
-         fprintf(stderr, "Unhandled address space %x\n", instr->modes);
-         return false;
-      }
-
-      LLVMTypeRef type = LLVMPointerType(pointee_type, address_space);
-
-      if (LLVMTypeOf(result) != type) {
-         if (LLVMGetTypeKind(LLVMTypeOf(result)) == LLVMVectorTypeKind) {
-            result = LLVMBuildBitCast(ctx->ac.builder, result, type, "");
-         } else {
-            result = LLVMBuildIntToPtr(ctx->ac.builder, result, type, "");
-         }
-      }
-      break;
-   }
-   default:
-      fprintf(stderr, "Unhandled deref_instr deref type: ");
-      nir_print_instr(&instr->instr, stderr);
-      fprintf(stderr, "\n");
-      return false;
-   }
-
-   ctx->ssa_defs[instr->dest.ssa.index] = result;
-   return true;
-}
-
 static bool visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list);
 
 static bool visit_block(struct ac_nir_context *ctx, nir_block *block)
@@ -5335,8 +5231,8 @@ static bool visit_block(struct ac_nir_context *ctx, nir_block *block)
             return false;
          break;
       case nir_instr_type_deref:
-         if (!visit_deref(ctx, nir_instr_as_deref(instr)))
-            return false;
+         assert (!nir_deref_mode_is_one_of(nir_instr_as_deref(instr),
+                                           nir_var_mem_shared | nir_var_mem_global));
          break;
       default:
          fprintf(stderr, "Unknown NIR instr type: ");
