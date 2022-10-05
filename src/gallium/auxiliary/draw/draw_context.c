@@ -49,29 +49,19 @@
 #include "gallivm/lp_bld_init.h"
 #include "gallivm/lp_bld_limits.h"
 #include "draw_llvm.h"
-
-boolean
-draw_get_option_use_llvm(void)
-{
-   return debug_get_bool_option("DRAW_USE_LLVM", TRUE);
-}
-#else
-boolean
-draw_get_option_use_llvm(void)
-{
-   return FALSE;
-}
 #endif
 
-bool
-draw_has_llvm(void)
+
+boolean
+draw_get_option_use_llvm(void)
 {
 #ifdef DRAW_LLVM_AVAILABLE
-   return draw_get_option_use_llvm();
+   return debug_get_bool_option("DRAW_USE_LLVM", TRUE);
 #else
-   return false;
+   return FALSE;
 #endif
 }
+
 
 /**
  * Create new draw module context with gallivm state for LLVM JIT.

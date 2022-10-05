@@ -67,7 +67,6 @@ struct draw_so_target {
    int internal_offset;
 };
 
-bool draw_has_llvm(void);
 
 struct draw_context *draw_create(struct pipe_context *pipe);
 
