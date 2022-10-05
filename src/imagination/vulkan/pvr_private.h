@@ -339,6 +339,17 @@ struct pvr_static_clear_ppp_template {
     pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
     pvr_cmd_length(VDMCTRL_INDEX_LIST2))
 
+struct pvr_compute_query_shader {
+   struct pvr_bo *usc_bo;
+
+   struct pvr_pds_upload pds_prim_code;
+   uint32_t primary_data_size_dw;
+   uint32_t primary_num_temps;
+
+   struct pvr_pds_info info;
+   struct pvr_pds_upload pds_sec_code;
+};
+
 struct pvr_device {
    struct vk_device vk;
    struct pvr_instance *instance;
@@ -366,6 +377,11 @@ struct pvr_device {
    uint64_t input_attachment_sampler;
 
    struct pvr_pds_upload pds_compute_fence_program;
+
+   /* Compute shaders for queries. */
+   struct pvr_compute_query_shader availability_shader;
+   struct pvr_compute_query_shader *copy_results_shaders;
+   struct pvr_compute_query_shader *reset_queries_shaders;
 
    struct {
       struct pvr_pds_upload pds;
@@ -1580,6 +1596,16 @@ void pvr_compute_update_kernel_private(
    struct pvr_sub_cmd_compute *const sub_cmd,
    struct pvr_private_compute_pipeline *pipeline,
    const uint32_t global_workgroup_size[static const PVR_WORKGROUP_DIMENSIONS]);
+
+size_t pvr_pds_get_max_descriptor_upload_const_map_size_in_bytes(void);
+
+VkResult pvr_pds_compute_shader_create_and_upload(
+   struct pvr_device *device,
+   struct pvr_pds_compute_shader_program *program,
+   struct pvr_pds_upload *const pds_upload_out);
+
+VkResult pvr_device_create_compute_query_programs(struct pvr_device *device);
+void pvr_device_destroy_compute_query_programs(struct pvr_device *device);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)

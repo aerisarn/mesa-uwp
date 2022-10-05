@@ -1124,7 +1124,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
 
-static VkResult pvr_pds_compute_shader_create_and_upload(
+VkResult pvr_pds_compute_shader_create_and_upload(
    struct pvr_device *device,
    struct pvr_pds_compute_shader_program *program,
    struct pvr_pds_upload *const pds_upload_out)
@@ -2168,9 +2168,13 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_free_nop_program;
 
-   result = pvr_device_init_compute_idfwdf_state(device);
+   result = pvr_device_create_compute_query_programs(device);
    if (result != VK_SUCCESS)
       goto err_pvr_free_compute_fence;
+
+   result = pvr_device_init_compute_idfwdf_state(device);
+   if (result != VK_SUCCESS)
+      goto err_pvr_destroy_compute_query_programs;
 
    result = pvr_device_init_graphics_static_clear_state(device);
    if (result != VK_SUCCESS)
@@ -2210,6 +2214,9 @@ err_pvr_finish_tile_buffer_state:
 
 err_pvr_finish_compute_idfwdf:
    pvr_device_finish_compute_idfwdf_state(device);
+
+err_pvr_destroy_compute_query_programs:
+   pvr_device_destroy_compute_query_programs(device);
 
 err_pvr_free_compute_fence:
    pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
@@ -2251,6 +2258,7 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_device_finish_tile_buffer_state(device);
    pvr_device_finish_graphics_static_clear_state(device);
    pvr_device_finish_compute_idfwdf_state(device);
+   pvr_device_destroy_compute_query_programs(device);
    pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
    pvr_bo_free(device, device->nop_program.pds.pvr_bo);
    pvr_bo_free(device, device->nop_program.usc);
