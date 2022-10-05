@@ -317,7 +317,7 @@ draw_set_mapped_shader_buffer(struct draw_context *draw,
 
 void
 draw_set_mapped_so_targets(struct draw_context *draw,
-                           int num_targets,
+                           unsigned num_targets,
                            struct draw_so_target *targets[PIPE_MAX_SO_BUFFERS]);
 
 
