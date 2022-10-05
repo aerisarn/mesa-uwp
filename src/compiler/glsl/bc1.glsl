@@ -31,9 +31,7 @@
 	#define const
 #endif
 
-// #include "/media/matias/Datos/SyntaxHighlightingMisc.h"
-
-#include "CrossPlatformSettings_piece_all.glsl"
+%s // include "CrossPlatformSettings_piece_all.glsl"
 
 #define FLT_MAX 340282346638528859811704183484516925440.0f
 

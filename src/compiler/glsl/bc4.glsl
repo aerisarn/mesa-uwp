@@ -33,9 +33,7 @@
 
 #define __sharedOnlyBarrier memoryBarrierShared();barrier();
 
-// #include "/media/matias/Datos/SyntaxHighlightingMisc.h"
-
-#include "CrossPlatformSettings_piece_all.glsl"
+%s // include "CrossPlatformSettings_piece_all.glsl"
 
 shared float2 g_minMaxValues[4u * 4u * 4u];
 shared uint2 g_mask[4u * 4u];

@@ -27,9 +27,7 @@
 
 #version 310 es
 
-// #include "/media/matias/Datos/SyntaxHighlightingMisc.h"
-
-#include "CrossPlatformSettings_piece_all.glsl"
+%s // include "CrossPlatformSettings_piece_all.glsl"
 
 layout( local_size_x = 8,  //
 		local_size_y = 8,  //
