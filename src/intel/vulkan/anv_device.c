@@ -687,7 +687,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       if (env_var_as_boolean("INTEL_COMPUTE_CLASS", false))
          c_count = intel_engines_count(pdevice->engine_info,
                                        INTEL_ENGINE_CLASS_COMPUTE);
-      enum drm_i915_gem_engine_class compute_class =
+      enum intel_engine_class compute_class =
          c_count < 1 ? INTEL_ENGINE_CLASS_RENDER : INTEL_ENGINE_CLASS_COMPUTE;
 
       anv_override_engine_counts(&gc_count, &g_count, &c_count);

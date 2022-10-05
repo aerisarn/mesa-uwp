@@ -267,13 +267,13 @@ static const char *
 queue_family_to_name(const struct anv_queue_family *family)
 {
    switch (family->engine_class) {
-   case I915_ENGINE_CLASS_RENDER:
+   case INTEL_ENGINE_CLASS_RENDER:
       return "render";
-   case I915_ENGINE_CLASS_COPY:
+   case INTEL_ENGINE_CLASS_COPY:
       return "copy";
-   case I915_ENGINE_CLASS_VIDEO:
+   case INTEL_ENGINE_CLASS_VIDEO:
       return "video";
-   case I915_ENGINE_CLASS_VIDEO_ENHANCE:
+   case INTEL_ENGINE_CLASS_VIDEO_ENHANCE:
       return "video-enh";
    default:
       return "unknown";
