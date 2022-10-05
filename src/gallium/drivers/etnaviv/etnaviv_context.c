@@ -161,7 +161,7 @@ etna_update_state_for_draw(struct etna_context *ctx, const struct pipe_draw_info
 }
 
 static bool
-etna_get_vs(struct etna_context *ctx, struct etna_shader_key key)
+etna_get_vs(struct etna_context *ctx, struct etna_shader_key* const key)
 {
    const struct etna_shader_variant *old = ctx->shader.vs;
 
@@ -177,7 +177,7 @@ etna_get_vs(struct etna_context *ctx, struct etna_shader_key key)
 }
 
 static bool
-etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
+etna_get_fs(struct etna_context *ctx, struct etna_shader_key* const key)
 {
    const struct etna_shader_variant *old = ctx->shader.fs;
 
@@ -189,15 +189,15 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
          if (ctx->sampler[i]->compare_mode == PIPE_TEX_COMPARE_NONE)
             continue;
 
-         key.has_sample_tex_compare = 1;
-         key.num_texture_states = ctx->num_fragment_sampler_views;
+         key->has_sample_tex_compare = 1;
+         key->num_texture_states = ctx->num_fragment_sampler_views;
 
-         key.tex_swizzle[i].swizzle_r = ctx->sampler_view[i]->swizzle_r;
-         key.tex_swizzle[i].swizzle_g = ctx->sampler_view[i]->swizzle_g;
-         key.tex_swizzle[i].swizzle_b = ctx->sampler_view[i]->swizzle_b;
-         key.tex_swizzle[i].swizzle_a = ctx->sampler_view[i]->swizzle_a;
+         key->tex_swizzle[i].swizzle_r = ctx->sampler_view[i]->swizzle_r;
+         key->tex_swizzle[i].swizzle_g = ctx->sampler_view[i]->swizzle_g;
+         key->tex_swizzle[i].swizzle_b = ctx->sampler_view[i]->swizzle_b;
+         key->tex_swizzle[i].swizzle_a = ctx->sampler_view[i]->swizzle_a;
 
-         key.tex_compare_func[i] = ctx->sampler[i]->compare_func;
+         key->tex_compare_func[i] = ctx->sampler[i]->compare_func;
       }
    }
 
@@ -297,7 +297,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (pfb->cbufs[0])
       key.frag_rb_swap = !!translate_pe_format_rb_swap(pfb->cbufs[0]->format);
 
-   if (!etna_get_vs(ctx, key) || !etna_get_fs(ctx, key)) {
+   if (!etna_get_vs(ctx, &key) || !etna_get_fs(ctx, &key)) {
       BUG("compiled shaders are not okay");
       return;
    }

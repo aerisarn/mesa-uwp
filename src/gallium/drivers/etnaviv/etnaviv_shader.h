@@ -64,7 +64,8 @@ struct etna_shader_key
 };
 
 static inline bool
-etna_shader_key_equal(struct etna_shader_key *a, struct etna_shader_key *b)
+etna_shader_key_equal(const struct etna_shader_key* const a,
+                      const struct etna_shader_key* const b)
 {
    /* slow-path if we need to check tex_{swizzle,compare_func} */
    if (unlikely(a->has_sample_tex_compare || b->has_sample_tex_compare))
@@ -98,8 +99,9 @@ bool
 etna_shader_update_vertex(struct etna_context *ctx);
 
 struct etna_shader_variant *
-etna_shader_variant(struct etna_shader *shader, struct etna_shader_key key,
-                   struct util_debug_callback *debug);
+etna_shader_variant(struct etna_shader *shader,
+                    const struct etna_shader_key* const key,
+                    struct util_debug_callback *debug);
 
 void
 etna_shader_init(struct pipe_context *pctx);

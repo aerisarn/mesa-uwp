@@ -399,7 +399,8 @@ etna_shader_update_vertex(struct etna_context *ctx)
 }
 
 static struct etna_shader_variant *
-create_variant(struct etna_shader *shader, struct etna_shader_key key)
+create_variant(struct etna_shader *shader,
+               const struct etna_shader_key* const key)
 {
    struct etna_shader_variant *v = CALLOC_STRUCT(etna_shader_variant);
    int ret;
@@ -408,7 +409,7 @@ create_variant(struct etna_shader *shader, struct etna_shader_key key)
       return NULL;
 
    v->shader = shader;
-   v->key = key;
+   v->key = *key;
    v->id = ++shader->variant_count;
 
    if (etna_disk_cache_retrieve(shader->compiler, v))
@@ -430,15 +431,16 @@ fail:
 }
 
 struct etna_shader_variant *
-etna_shader_variant(struct etna_shader *shader, struct etna_shader_key key,
-                   struct util_debug_callback *debug)
+etna_shader_variant(struct etna_shader *shader,
+                    const struct etna_shader_key* const key,
+                    struct util_debug_callback *debug)
 {
    struct etna_shader_variant *v;
 
-   assert(shader->specs->fragment_sampler_count <= ARRAY_SIZE(key.tex_swizzle));
+   assert(shader->specs->fragment_sampler_count <= ARRAY_SIZE(key->tex_swizzle));
 
    for (v = shader->variants; v; v = v->next)
-      if (etna_shader_key_equal(&key, &v->key))
+      if (etna_shader_key_equal(key, &v->key))
          return v;
 
    /* compile new variant if it doesn't exist already */
@@ -473,7 +475,7 @@ create_initial_variants_async(void *job, void *gdata, int thread_index)
    struct util_debug_callback debug = {};
    static struct etna_shader_key key;
 
-   etna_shader_variant(shader, key, &debug);
+   etna_shader_variant(shader, &key, &debug);
 }
 
 static void *
@@ -500,7 +502,7 @@ etna_create_shader_state(struct pipe_context *pctx,
 
    if (initial_variants_synchronous(ctx)) {
       struct etna_shader_key key = {};
-      etna_shader_variant(shader, key, &ctx->base.debug);
+      etna_shader_variant(shader, &key, &ctx->base.debug);
    } else {
       struct etna_screen *screen = ctx->screen;
       util_queue_add_job(&screen->shader_compiler_queue, shader, &shader->ready,
