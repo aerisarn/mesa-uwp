@@ -1163,9 +1163,9 @@ pvr_compute_flat_slot_size(const struct pvr_physical_device *pdevice,
     * number of coefficients allow us to have.
     */
    if (coeff_regs_count > 0U) {
-      /* If TA or 3D can overlap with CDM, or if the TA is running a geometry
-       * shader then we need to consider this in calculating max allowed
-       * work-groups.
+      /* If the geometry or fragment jobs can overlap with the compute job, or
+       * if there is a vertex shader already running then we need to consider
+       * this in calculating max allowed work-groups.
        */
       if (PVR_HAS_QUIRK(dev_info, 52354) &&
           (PVR_HAS_FEATURE(dev_info, compute_overlap) ||
@@ -6115,12 +6115,13 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
          }
 
          /* Multiple dispatches can be merged into a single job. When back to
-          * back dispatches have a sequential dependency (CDM -> CDM pipeline
-          * barrier) we need to do the following.
+          * back dispatches have a sequential dependency (Compute -> compute
+          * pipeline barrier) we need to do the following.
           *   - Dispatch a kernel which fences all previous memory writes and
           *     flushes the MADD cache.
-          *   - Issue a CDM fence which ensures all previous tasks emitted by
-          *     the CDM are completed before starting anything new.
+          *   - Issue a compute fence which ensures all previous tasks emitted
+          *     by the compute data master are completed before starting
+          *     anything new.
           */
 
          /* Issue Data Fence, Wait for Data Fence (IDFWDF) makes the PDS wait
