@@ -1462,8 +1462,7 @@ tu_set_input_attachments(struct tu_cmd_buffer *cmd, const struct tu_subpass *sub
 
 
 static void
-tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
-                         const VkClearValue *clear_values)
+tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd)
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
@@ -1477,7 +1476,7 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
    tu6_emit_blit_scissor(cmd, cs, false);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_gmem_attachment(cmd, cs, i, &clear_values[i]);
+      tu_clear_gmem_attachment(cmd, cs, i);
 
    tu_cond_exec_end(cs);
 
@@ -1487,7 +1486,7 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
    for (uint32_t i = 0; i < cmd->state.pass->attachment_count; ++i)
-      tu_clear_sysmem_attachment(cmd, cs, i, &clear_values[i]);
+      tu_clear_sysmem_attachment(cmd, cs, i);
 
    tu_cond_exec_end(cs);
 
@@ -1806,6 +1805,7 @@ static void tu_reset_render_pass(struct tu_cmd_buffer *cmd_buffer)
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.attachments = NULL;
+   cmd_buffer->state.clear_values = NULL;
    cmd_buffer->state.gmem_layout = TU_GMEM_LAYOUT_COUNT; /* invalid value to prevent looking up gmem offsets */
    memset(&cmd_buffer->state.rp, 0, sizeof(cmd_buffer->state.rp));
 
@@ -3641,12 +3641,13 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.framebuffer = fb;
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
-   cmd->state.attachments = (const struct tu_image_view **)
-      vk_alloc(&cmd->vk.pool->alloc, pass->attachment_count *
-               sizeof(cmd->state.attachments[0]), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
-   if (!cmd->state.attachments) {
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &cmd->state.attachments,
+                     const struct tu_image_view *, pass->attachment_count);
+   vk_multialloc_add(&ma, &cmd->state.clear_values, VkClearValue,
+                     pRenderPassBegin->clearValueCount);
+   if (!vk_multialloc_alloc(&ma, &cmd->vk.pool->alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
@@ -3660,6 +3661,9 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
          tu_image_view_from_handle(pAttachmentInfo->pAttachments[i]) :
          cmd->state.framebuffer->attachments[i].attachment;
    }
+   for (unsigned i = 0; i < pRenderPassBegin->clearValueCount; i++)
+         cmd->state.clear_values[i] = pRenderPassBegin->pClearValues[i];
+
    tu_choose_gmem_layout(cmd);
 
    trace_start_render_pass(&cmd->trace, &cmd->cs, cmd->state.framebuffer,
@@ -3677,11 +3681,11 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    if (pass->subpasses[0].feedback_invalidate)
       cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
 
-   tu_lrz_begin_renderpass(cmd, pRenderPassBegin->pClearValues);
+   tu_lrz_begin_renderpass(cmd);
 
    cmd->trace_renderpass_start = u_trace_end_iterator(&cmd->trace);
 
-   tu_emit_renderpass_begin(cmd, pRenderPassBegin->pClearValues);
+   tu_emit_renderpass_begin(cmd);
    tu_emit_subpass_begin(cmd);
 
    if (pass->has_fdm)
@@ -3693,7 +3697,6 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
                      const VkRenderingInfo *pRenderingInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   VkClearValue clear_values[2 * (MAX_RTS + 1)];
 
    tu_setup_dynamic_render_pass(cmd, pRenderingInfo);
    tu_setup_dynamic_framebuffer(cmd, pRenderingInfo);
@@ -3704,16 +3707,19 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
    cmd->state.render_area = pRenderingInfo->renderArea;
 
    cmd->state.attachments = cmd->dynamic_attachments;
+   cmd->state.clear_values = cmd->dynamic_clear_values;
 
    for (unsigned i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
       uint32_t a = cmd->dynamic_subpass.color_attachments[i].attachment;
       if (!pRenderingInfo->pColorAttachments[i].imageView)
          continue;
 
+      cmd->state.clear_values[a] =
+         pRenderingInfo->pColorAttachments[i].clearValue;
+
       TU_FROM_HANDLE(tu_image_view, view,
                      pRenderingInfo->pColorAttachments[i].imageView);
       cmd->state.attachments[a] = view;
-      clear_values[a] = pRenderingInfo->pColorAttachments[i].clearValue;
 
       a = cmd->dynamic_subpass.resolve_attachments[i].attachment;
       if (a != VK_ATTACHMENT_UNUSED) {
@@ -3734,12 +3740,12 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
          TU_FROM_HANDLE(tu_image_view, view, common_info->imageView);
          cmd->state.attachments[a] = view;
          if (pRenderingInfo->pDepthAttachment) {
-            clear_values[a].depthStencil.depth =
+            cmd->state.clear_values[a].depthStencil.depth =
                pRenderingInfo->pDepthAttachment->clearValue.depthStencil.depth;
          }
 
          if (pRenderingInfo->pStencilAttachment) {
-            clear_values[a].depthStencil.stencil =
+            cmd->state.clear_values[a].depthStencil.stencil =
                pRenderingInfo->pStencilAttachment->clearValue.depthStencil.stencil;
          }
 
@@ -3788,9 +3794,9 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
       cmd->state.lrz.valid = false;
    } else {
       if (resuming)
-         tu_lrz_begin_resumed_renderpass(cmd, clear_values);
+         tu_lrz_begin_resumed_renderpass(cmd);
       else
-         tu_lrz_begin_renderpass(cmd, clear_values);
+         tu_lrz_begin_renderpass(cmd);
    }
 
 
@@ -3812,7 +3818,7 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
    }
 
    if (!resuming) {
-      tu_emit_renderpass_begin(cmd, clear_values);
+      tu_emit_renderpass_begin(cmd);
       tu_emit_subpass_begin(cmd);
    }
 
