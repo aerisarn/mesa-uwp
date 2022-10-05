@@ -382,6 +382,8 @@ void
 iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   struct iris_screen *screen = (struct iris_screen *) ctx->screen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_COMPUTE];
 
    if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
@@ -434,7 +436,6 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
    ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_COMPUTE;
    ice->state.stage_dirty &= ~IRIS_ALL_STAGE_DIRTY_FOR_COMPUTE;
 
-   /* Note: since compute shaders can't access the framebuffer, there's
-    * no need to call iris_postdraw_update_resolve_tracking.
-    */
+   if (devinfo->ver >= 12)
+      iris_postdraw_update_image_resolve_tracking(ice, MESA_SHADER_COMPUTE);
 }

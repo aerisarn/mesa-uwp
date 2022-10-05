@@ -145,6 +145,10 @@ resolve_image_views(struct iris_context *ice,
                                       pview->u.tex.level, 1,
                                       pview->u.tex.first_layer, num_layers,
                                       aux_usage, false);
+
+         shs->image_aux_usage[i] = aux_usage;
+      } else {
+         shs->image_aux_usage[i] = ISL_AUX_USAGE_NONE;
       }
 
       iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_DATA_WRITE);
@@ -257,6 +261,39 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
    }
 }
 
+void
+iris_postdraw_update_image_resolve_tracking(struct iris_context *ice,
+                                            gl_shader_stage stage)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   ASSERTED struct intel_device_info *devinfo = &screen->devinfo;
+
+   assert(devinfo->ver >= 12);
+
+   const struct iris_shader_state *shs = &ice->state.shaders[stage];
+   const struct shader_info *info = iris_get_shader_info(ice, stage);
+
+   const uint64_t images_used = !info ? 0 :
+      (info->images_used[0] | ((uint64_t)info->images_used[1]) << 32);
+   uint64_t views = shs->bound_image_views & images_used;
+
+   while (views) {
+      const int i = u_bit_scan64(&views);
+      const struct pipe_image_view *pview = &shs->image[i].base;
+      struct iris_resource *res = (void *) pview->resource;
+
+      if (pview->shader_access & PIPE_IMAGE_ACCESS_WRITE &&
+          res->base.b.target != PIPE_BUFFER) {
+         unsigned num_layers =
+            pview->u.tex.last_layer - pview->u.tex.first_layer + 1;
+
+         iris_resource_finish_write(ice, res, pview->u.tex.level,
+                                    pview->u.tex.first_layer, num_layers,
+                                    shs->image_aux_usage[i]);
+      }
+   }
+}
+
 /**
  * \brief Call this after drawing to mark which buffers need resolving
  *
@@ -272,6 +309,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
 void
 iris_postdraw_update_resolve_tracking(struct iris_context *ice)
 {
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct intel_device_info *devinfo = &screen->devinfo;
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
    // XXX: front buffer drawing?
@@ -322,6 +361,12 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice)
          iris_resource_finish_render(ice, res, desc->tex.level,
                                      desc->tex.first_layer, num_layers,
                                      aux_usage);
+      }
+   }
+
+   if (devinfo->ver >= 12) {
+      for (gl_shader_stage stage = 0; stage < MESA_SHADER_COMPUTE; stage++) {
+         iris_postdraw_update_image_resolve_tracking(ice, stage);
       }
    }
 }

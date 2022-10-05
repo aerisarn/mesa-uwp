@@ -5137,8 +5137,7 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
                          IRIS_DOMAIN_NONE);
    }
 
-   enum isl_aux_usage aux_usage =
-      iris_image_view_aux_usage(ice, &iv->base, info);
+   enum isl_aux_usage aux_usage = shs->image_aux_usage[i];
 
    return use_surface_state(batch, &iv->surface_state, aux_usage);
 }
