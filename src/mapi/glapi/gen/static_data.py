@@ -1695,6 +1695,8 @@ offsets = {
     "ImportSemaphoreWin32HandleEXT": 1659,
     "ImportMemoryWin32NameEXT": 1660,
     "ImportSemaphoreWin32NameEXT": 1661,
+    "GetObjectLabelEXT": 1662,
+    "LabelObjectEXT": 1663,
 }
 
 functions = [
@@ -2139,6 +2141,7 @@ functions = [
     "GetnUniformuiv",
     "GetnUniformuivARB",
     "GetObjectLabel",
+    "GetObjectLabelEXT"
     "GetObjectParameterfvARB",
     "GetObjectParameterivARB",
     "GetObjectPtrLabel",
@@ -2270,6 +2273,7 @@ functions = [
     "IsTextureEXT",
     "IsTransformFeedback",
     "IsVertexArray",
+    "LabelObjectEXT",
     "Lightf",
     "Lightfv",
     "Lighti",

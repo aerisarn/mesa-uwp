@@ -12595,6 +12595,23 @@
     <enum name="GPU_MEMORY_INFO_EVICTED_MEMORY_NVX"           value="0x904B" />
 </category>
 
+<category name="GL_EXT_debug_label" number="439">
+  <function name="LabelObjectEXT" es1="1.1" es2="2.0">
+    <param name="type" type="GLenum"/>
+    <param name="object" type="GLuint"/>
+    <param name="length" type="GLsizei"/>
+    <param name="label" type="const GLchar *"/>
+  </function>
+
+  <function name="GetObjectLabelEXT" es1="1.1" es2="2.0">
+    <param name="type" type="GLenum"/>
+    <param name="object" type="GLuint"/>
+    <param name="bufSize" type="GLsizei"/>
+    <param name="length" type="GLsizei *"/>
+    <param name="label" type="GLchar *"/>
+  </function>
+</category>
+
 <xi:include href="AMD_gpu_shader_int64.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
 <category name="GL_NV_fill_rectangle" number="466">
