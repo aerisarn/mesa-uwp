@@ -219,6 +219,12 @@ enum pvr_deferred_cs_command_type {
    PVR_DEFERRED_CS_COMMAND_TYPE_DBSC2,
 };
 
+enum pvr_query_type {
+   PVR_QUERY_TYPE_AVAILABILITY_WRITE,
+   PVR_QUERY_TYPE_RESET_QUERY_POOL,
+   PVR_QUERY_TYPE_COPY_QUERY_RESULTS,
+};
+
 struct pvr_bo;
 struct pvr_bo_store;
 struct pvr_compute_ctx;
@@ -1282,6 +1288,35 @@ struct pvr_private_compute_pipeline {
    pvr_dev_addr_t const_buffer_addr;
 };
 
+struct pvr_query_info {
+   enum pvr_query_type type;
+
+   union {
+      struct {
+         uint32_t num_query_indices;
+         struct pvr_bo *index_bo;
+         uint32_t num_queries;
+         struct pvr_bo *availability_bo;
+      } availability_write;
+
+      struct {
+         VkQueryPool query_pool;
+         uint32_t first_query;
+         uint32_t query_count;
+      } reset_query_pool;
+
+      struct {
+         VkQueryPool query_pool;
+         uint32_t first_query;
+         uint32_t query_count;
+         VkBuffer dst_buffer;
+         VkDeviceSize dst_offset;
+         VkDeviceSize stride;
+         VkQueryResultFlags flags;
+      } copy_query_results;
+   };
+};
+
 struct pvr_render_target {
    struct pvr_rt_dataset *rt_dataset;
 
@@ -1584,10 +1619,18 @@ VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
                                            uint32_t capacity,
                                            uint32_t size_in_bytes);
 
+VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
+                                       const void *const data,
+                                       const size_t size,
+                                       struct pvr_bo **const pvr_bo_out);
+
 VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                       enum pvr_sub_cmd_type type);
 VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer);
 
+void pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
+                                struct pvr_sub_cmd_compute *const sub_cmd,
+                                bool deallocate_shareds);
 void pvr_compute_update_shared_private(
    struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_sub_cmd_compute *const sub_cmd,
@@ -1607,6 +1650,9 @@ VkResult pvr_pds_compute_shader_create_and_upload(
 
 VkResult pvr_device_create_compute_query_programs(struct pvr_device *device);
 void pvr_device_destroy_compute_query_programs(struct pvr_device *device);
+
+VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
+                               const struct pvr_query_info *query_info);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)
@@ -1735,6 +1781,18 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_render_pass,
          reported = true;                      \
       }                                        \
    } while (false)
+
+#define PVR_WRITE(_buffer, _value, _offset, _max)                \
+   do {                                                          \
+      __typeof__(_value) __value = _value;                       \
+      uint64_t __offset = _offset;                               \
+      uint32_t __nr_dwords = sizeof(__value) / sizeof(uint32_t); \
+      static_assert(__same_type(*_buffer, __value),              \
+                    "Buffer and value type mismatch");           \
+      assert((__offset + __nr_dwords) <= (_max));                \
+      assert((__offset % __nr_dwords) == 0U);                    \
+      _buffer[__offset / __nr_dwords] = __value;                 \
+   } while (0)
 
 /* A non-fatal assert. Useful for debugging. */
 #ifdef DEBUG

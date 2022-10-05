@@ -360,11 +360,10 @@ pvr_cmd_buffer_emit_ppp_state(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-static VkResult
-pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
-                              const void *const data,
-                              const size_t size,
-                              struct pvr_bo **const pvr_bo_out)
+VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
+                                       const void *const data,
+                                       const size_t size,
+                                       struct pvr_bo **const pvr_bo_out)
 {
    struct pvr_device *const device = cmd_buffer->device;
    const uint32_t cache_line_size =
@@ -1391,10 +1390,9 @@ pvr_compute_generate_idfwdf(struct pvr_cmd_buffer *cmd_buffer,
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
-static void
-pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
-                           struct pvr_sub_cmd_compute *const sub_cmd,
-                           bool deallocate_shareds)
+void pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
+                                struct pvr_sub_cmd_compute *const sub_cmd,
+                                bool deallocate_shareds)
 {
    const struct pvr_pds_upload *program =
       &cmd_buffer->device->pds_compute_fence_program;
@@ -2512,18 +2510,6 @@ VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-#define PVR_WRITE(_buffer, _value, _offset, _max)                \
-   do {                                                          \
-      __typeof__(_value) __value = _value;                       \
-      uint64_t __offset = _offset;                               \
-      uint32_t __nr_dwords = sizeof(__value) / sizeof(uint32_t); \
-      static_assert(__same_type(*_buffer, __value),              \
-                    "Buffer and value type mismatch");           \
-      assert((__offset + __nr_dwords) <= (_max));                \
-      assert((__offset % __nr_dwords) == 0U);                    \
-      _buffer[__offset / __nr_dwords] = __value;                 \
-   } while (0)
-
 static VkResult
 pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
                          const struct pvr_graphics_pipeline *const gfx_pipeline)
@@ -2871,8 +2857,6 @@ static VkResult pvr_setup_descriptor_mappings(
 
    return VK_SUCCESS;
 }
-
-#undef PVR_WRITE
 
 static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
                                       struct pvr_sub_cmd_compute *const sub_cmd)
