@@ -95,6 +95,7 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
          break;
 
       case PVR_SUB_CMD_TYPE_COMPUTE:
+      case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
          pvr_csb_finish(&sub_cmd->compute.control_stream);
          break;
 
@@ -273,7 +274,12 @@ static void pvr_cmd_buffer_update_barriers(struct pvr_cmd_buffer *cmd_buffer,
       barriers = PVR_PIPELINE_STAGE_COMPUTE_BIT;
       break;
 
+   case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
    case PVR_SUB_CMD_TYPE_TRANSFER:
+      /* Compute jobs are used for occlusion queries but to copy the results we
+       * have to sync with transfer jobs because vkCmdCopyQueryPoolResults() is
+       * deemed as a transfer operation by the spec.
+       */
       barriers = PVR_PIPELINE_STAGE_TRANSFER_BIT;
       break;
 
@@ -1489,6 +1495,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       break;
    }
 
+   case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
    case PVR_SUB_CMD_TYPE_COMPUTE: {
       struct pvr_sub_cmd_compute *const compute_sub_cmd = &sub_cmd->compute;
 
@@ -1663,6 +1670,7 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       }
       break;
 
+   case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
    case PVR_SUB_CMD_TYPE_COMPUTE:
       pvr_csb_init(device,
                    PVR_CMD_STREAM_TYPE_COMPUTE,
@@ -5686,6 +5694,7 @@ static VkResult pvr_execute_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       primary_sub_cmd->gfx = sec_sub_cmd->gfx;
       break;
 
+   case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
    case PVR_SUB_CMD_TYPE_COMPUTE:
       primary_sub_cmd->compute = sec_sub_cmd->compute;
       break;

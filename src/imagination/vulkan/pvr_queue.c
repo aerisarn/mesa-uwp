@@ -703,6 +703,10 @@ static VkResult pvr_process_cmd_buffer(
                                             per_cmd_buffer_syncobjs);
          break;
 
+      case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
+         pvr_finishme("Add support to occlusion query.");
+         break;
+
       case PVR_SUB_CMD_TYPE_EVENT:
          result = pvr_process_event_cmd(device,
                                         &sub_cmd->event,
