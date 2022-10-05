@@ -3546,8 +3546,10 @@ egl_image_target_texture(struct gl_context *ctx,
       struct st_egl_image stimg;
       bool native_supported;
       if (!st_get_egl_image(ctx, image, PIPE_BIND_SAMPLER_VIEW, caller,
-                            &stimg, &native_supported))
+                            &stimg, &native_supported)) {
+         _mesa_unlock_texture(ctx, texObj);
          return;
+      }
 
       if (tex_storage) {
          /* EXT_EGL_image_storage
@@ -3560,6 +3562,7 @@ egl_image_target_texture(struct gl_context *ctx,
              !(target == GL_TEXTURE_2D || target == GL_TEXTURE_EXTERNAL_OES)) {
             _mesa_error(ctx, GL_INVALID_OPERATION,
                         "%s(texture is imported from dmabuf)", caller);
+            _mesa_unlock_texture(ctx, texObj);
             return;
          }
          st_bind_egl_image(ctx, texObj, texImage, &stimg, true, native_supported);
