@@ -2229,12 +2229,10 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
 int
 iris_kernel_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 {
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_PRIORITY,
-   };
-   intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
-   return p.value; /* on error, return 0 i.e. default priority */
+   uint64_t priority = 0;
+   intel_gem_get_context_param(bufmgr->fd, ctx_id,
+                               I915_CONTEXT_PARAM_PRIORITY, &priority);
+   return priority; /* on error, return 0 i.e. default priority */
 }
 
 int
@@ -2253,12 +2251,11 @@ iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
 static bool
 iris_hw_context_get_protected(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 {
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_PROTECTED_CONTENT,
-   };
-   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
-   return p.value; /* on error, return 0 i.e. default priority */
+   uint64_t protected_content = 0;
+   intel_gem_get_context_param(bufmgr->fd, ctx_id,
+                               I915_CONTEXT_PARAM_PROTECTED_CONTENT,
+                               &protected_content);
+   return protected_content;
 }
 
 uint32_t
@@ -2373,17 +2370,13 @@ iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
 static void
 iris_bufmgr_init_global_vm(int fd, struct iris_bufmgr *bufmgr)
 {
-   struct drm_i915_gem_context_param gcp = {
-      .ctx_id = 0,
-      .param = I915_CONTEXT_PARAM_VM,
-   };
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &gcp)) {
+   uint64_t value;
+   if (!intel_gem_get_context_param(fd, 0, I915_CONTEXT_PARAM_VM, &value)) {
       bufmgr->use_global_vm = false;
       bufmgr->global_vm_id = 0;
    } else {
       bufmgr->use_global_vm = true;
-      bufmgr->global_vm_id = gcp.value;
+      bufmgr->global_vm_id = value;
    }
 }
 

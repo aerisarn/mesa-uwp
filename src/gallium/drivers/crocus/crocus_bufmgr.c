@@ -1547,12 +1547,10 @@ crocus_create_hw_context(struct crocus_bufmgr *bufmgr)
 static int
 crocus_hw_context_get_priority(struct crocus_bufmgr *bufmgr, uint32_t ctx_id)
 {
-   struct drm_i915_gem_context_param p = {
-      .ctx_id = ctx_id,
-      .param = I915_CONTEXT_PARAM_PRIORITY,
-   };
-   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
-   return p.value; /* on error, return 0 i.e. default priority */
+   uint64_t priority = 0;
+   intel_gem_get_context_param(bufmgr->fd, ctx_id,
+                               I915_CONTEXT_PARAM_PRIORITY, &priority);
+   return priority; /* on error, return 0 i.e. default priority */
 }
 
 int
