@@ -133,7 +133,7 @@ struct tu_pipeline
    /* mask of enabled dynamic states
     * if BIT(i) is set, pipeline->dynamic_state[i] is *NOT* used
     */
-   uint32_t dynamic_state_mask;
+   uint64_t dynamic_state_mask;
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
 
    VkGraphicsPipelineLibraryFlagsEXT state;

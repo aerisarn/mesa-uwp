@@ -3833,7 +3833,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       struct tu_pipeline *library = builder->libraries[i];
       pipeline->state |= library->state;
 
-      uint32_t library_dynamic_state = 0;
+      uint64_t library_dynamic_state = 0;
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) {
          pipeline->vi = library->vi;
