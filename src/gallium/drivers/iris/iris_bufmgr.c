@@ -2223,14 +2223,10 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
          return 0;
       }
    } else {
-      struct drm_i915_gem_context_create create = { };
-      int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);
-      if (ret != 0) {
-         DBG("DRM_IOCTL_I915_GEM_CONTEXT_CREATE failed: %s\n", strerror(errno));
+      if (!intel_gem_create_context(bufmgr->fd, &ctx_id)) {
+         DBG("intel_gem_create_context failed: %s\n", strerror(errno));
          return 0;
       }
-
-      ctx_id = create.ctx_id;
       iris_hw_context_set_unrecoverable(bufmgr, ctx_id);
    }
 

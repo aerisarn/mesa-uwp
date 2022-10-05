@@ -125,12 +125,6 @@ anv_gem_get_param(int fd, uint32_t param)
 }
 
 int
-anv_gem_create_context(struct anv_device *device)
-{
-   unreachable("Unused");
-}
-
-int
 anv_gem_destroy_context(struct anv_device *device, int context)
 {
    unreachable("Unused");

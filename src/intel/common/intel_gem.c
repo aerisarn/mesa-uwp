@@ -59,6 +59,16 @@ intel_gem_supports_syncobj_wait(int fd)
 }
 
 bool
+intel_gem_create_context(int fd, uint32_t *context_id)
+{
+   struct drm_i915_gem_context_create create = {};
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create))
+      return false;
+   *context_id = create.ctx_id;
+   return true;
+}
+
+bool
 intel_gem_create_context_engines(int fd,
                                  const struct intel_query_engine_info *info,
                                  int num_engines, enum intel_engine_class *engine_classes,

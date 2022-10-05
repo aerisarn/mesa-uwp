@@ -303,18 +303,6 @@ anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
 }
 
 int
-anv_gem_create_context(struct anv_device *device)
-{
-   struct drm_i915_gem_context_create create = { 0 };
-
-   int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);
-   if (ret == -1)
-      return -1;
-
-   return create.ctx_id;
-}
-
-int
 anv_gem_destroy_context(struct anv_device *device, int context)
 {
    struct drm_i915_gem_context_destroy destroy = {

@@ -1517,10 +1517,9 @@ init_cache_buckets(struct crocus_bufmgr *bufmgr)
 uint32_t
 crocus_create_hw_context(struct crocus_bufmgr *bufmgr)
 {
-   struct drm_i915_gem_context_create create = { };
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);
-   if (ret != 0) {
-      DBG("DRM_IOCTL_I915_GEM_CONTEXT_CREATE failed: %s\n", strerror(errno));
+   uint32_t ctx_id;
+   if (!intel_gem_create_context(bufmgr->fd, &ctx_id)) {
+      DBG("intel_gem_create_context failed: %s\n", strerror(errno));
       return 0;
    }
 
@@ -1540,13 +1539,13 @@ crocus_create_hw_context(struct crocus_bufmgr *bufmgr)
     * we'll have two lost batches instead of a continual stream of hangs.
     */
    struct drm_i915_gem_context_param p = {
-      .ctx_id = create.ctx_id,
+      .ctx_id = ctx_id,
       .param = I915_CONTEXT_PARAM_RECOVERABLE,
       .value = false,
    };
    drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
 
-   return create.ctx_id;
+   return ctx_id;
 }
 
 static int

@@ -3163,15 +3163,12 @@ anv_device_setup_context(struct anv_device *device,
                             "kernel context creation failed");
    } else {
       assert(num_queues == 1);
-      device->context_id = anv_gem_create_context(device);
+      if (!intel_gem_create_context(device->fd, &device->context_id))
+         result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    if (result != VK_SUCCESS)
       return result;
-   if (device->context_id == -1) {
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
-      return result;
-   }
 
    /* Here we tell the kernel not to attempt to recover our context but
     * immediately (on the next batchbuffer submission) report that the

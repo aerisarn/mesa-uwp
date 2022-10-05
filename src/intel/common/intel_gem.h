@@ -159,6 +159,7 @@ intel_i915_query_alloc(int fd, uint64_t query_id, int32_t *query_length)
 
 bool intel_gem_supports_syncobj_wait(int fd);
 
+bool intel_gem_create_context(int fd, uint32_t *context_id);
 bool
 intel_gem_create_context_engines(int fd,
                                  const struct intel_query_engine_info *info,
