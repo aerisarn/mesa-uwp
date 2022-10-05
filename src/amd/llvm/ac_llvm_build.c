@@ -2828,6 +2828,29 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx, LLVMTypeRef dst_type, LLVM
                           LLVMConstInt(ctx->i32, -1, 0), lsb, "");
 }
 
+LLVMTypeRef ac_arg_type_to_pointee_type(struct ac_llvm_context *ctx, enum ac_arg_type type) {
+   switch (type) {
+   case AC_ARG_CONST_PTR:
+      return ctx->i8;
+      break;
+   case AC_ARG_CONST_FLOAT_PTR:
+      return ctx->f32;
+      break;
+   case AC_ARG_CONST_PTR_PTR:
+      return ac_array_in_const32_addr_space(ctx->i8);
+      break;
+   case AC_ARG_CONST_DESC_PTR:
+      return ctx->v4i32;
+      break;
+   case AC_ARG_CONST_IMAGE_PTR:
+      return ctx->v8i32;
+   default:
+      /* Other ac_arg_type values aren't pointers. */
+      assert(false);
+      return NULL;
+   }
+}
+
 LLVMTypeRef ac_array_in_const_addr_space(LLVMTypeRef elem_type)
 {
    return LLVMPointerType(elem_type, AC_ADDR_SPACE_CONST);
@@ -4493,37 +4516,37 @@ void ac_build_export_prim(struct ac_llvm_context *ctx, const struct ac_ngg_prim 
 
 static LLVMTypeRef arg_llvm_type(enum ac_arg_type type, unsigned size, struct ac_llvm_context *ctx)
 {
-   if (type == AC_ARG_FLOAT) {
-      return size == 1 ? ctx->f32 : LLVMVectorType(ctx->f32, size);
-   } else if (type == AC_ARG_INT) {
-      return size == 1 ? ctx->i32 : LLVMVectorType(ctx->i32, size);
-   } else {
-      LLVMTypeRef ptr_type;
-      switch (type) {
+   LLVMTypeRef base;
+   switch (type) {
+      case AC_ARG_FLOAT:
+         return size == 1 ? ctx->f32 : LLVMVectorType(ctx->f32, size);
+      case AC_ARG_INT:
+         return size == 1 ? ctx->i32 : LLVMVectorType(ctx->i32, size);
       case AC_ARG_CONST_PTR:
-         ptr_type = ctx->i8;
+         base = ctx->i8;
          break;
       case AC_ARG_CONST_FLOAT_PTR:
-         ptr_type = ctx->f32;
+         base = ctx->f32;
          break;
       case AC_ARG_CONST_PTR_PTR:
-         ptr_type = ac_array_in_const32_addr_space(ctx->i8);
+         base = ac_array_in_const32_addr_space(ctx->i8);
          break;
       case AC_ARG_CONST_DESC_PTR:
-         ptr_type = ctx->v4i32;
+         base = ctx->v4i32;
          break;
       case AC_ARG_CONST_IMAGE_PTR:
-         ptr_type = ctx->v8i32;
+         base = ctx->v8i32;
          break;
       default:
-         unreachable("unknown arg type");
-      }
-      if (size == 1) {
-         return ac_array_in_const32_addr_space(ptr_type);
-      } else {
-         assert(size == 2);
-         return ac_array_in_const_addr_space(ptr_type);
-      }
+         return NULL;
+   }
+
+   assert(base);
+   if (size == 1) {
+      return ac_array_in_const32_addr_space(base);
+   } else {
+      assert(size == 2);
+      return ac_array_in_const_addr_space(base);
    }
 }
 
