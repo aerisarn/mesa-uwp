@@ -5830,8 +5830,39 @@ pvr_execute_graphics_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
       if (sec_sub_cmd->gfx.modifies_stencil)
          primary_sub_cmd->gfx.modifies_stencil = true;
 
-      pvr_finishme(
-         "Copy barrier related load/store information from secondary to primary command buffer.");
+      if (sec_sub_cmd->gfx.barrier_store) {
+         struct pvr_sub_cmd *sec_next =
+            list_entry(sec_sub_cmd->link.next, struct pvr_sub_cmd, link);
+
+         /* This shouldn't be the last sub cmd. There should be a barrier load
+          * subsequent to the barrier store.
+          */
+         assert(list_last_entry(&sec_cmd_buffer->sub_cmds,
+                                struct pvr_sub_cmd,
+                                link) != sec_sub_cmd);
+
+         /* Kick render to store stencil. */
+         state->current_sub_cmd->gfx.barrier_store = true;
+         state->current_sub_cmd->gfx.empty_cmd = false;
+
+         result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+         if (result != VK_SUCCESS)
+            return result;
+
+         result =
+            pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
+         if (result != VK_SUCCESS)
+            return result;
+
+         primary_sub_cmd = state->current_sub_cmd;
+
+         /* Use existing render setup, but load color attachments from HW
+          * Background object.
+          */
+         primary_sub_cmd->gfx.barrier_load = sec_next->gfx.barrier_load;
+         primary_sub_cmd->gfx.barrier_store = sec_next->gfx.barrier_store;
+         primary_sub_cmd->gfx.empty_cmd = false;
+      }
 
       if (!PVR_HAS_FEATURE(dev_info, gs_rta_support))
          pvr_finishme("Unimplemented path.");
