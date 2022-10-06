@@ -96,6 +96,7 @@ impl SPIRVBin {
             spirv_version: clc_spirv_version::CLC_SPIRV_VERSION_MAX,
             features: features,
             allowed_spirv_extensions: ptr::null(),
+            address_bits: 64,
         };
         let mut msgs: Vec<String> = Vec::new();
         let logger = clc_logger {
