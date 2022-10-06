@@ -4403,7 +4403,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       for (unsigned i = 0; i < instr->num_components; i++) {
          if (write_mask & (1 << i)) {
             LLVMValueRef gds_ptr =
-               ac_build_gep_ptr(&ctx->ac, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
+               ac_build_gep_ptr(&ctx->ac, ctx->ac.i32, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
             LLVMValueRef count =
                LLVMBuildExtractElement(ctx->ac.builder, add_count,
                                        LLVMConstInt(ctx->ac.i32, i, false), "");

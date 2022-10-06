@@ -251,7 +251,7 @@ LLVMValueRef ac_build_fs_interp_mov(struct ac_llvm_context *ctx, LLVMValueRef pa
                                     LLVMValueRef llvm_chan, LLVMValueRef attr_number,
                                     LLVMValueRef params);
 
-LLVMValueRef ac_build_gep_ptr(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_gep_ptr(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
                               LLVMValueRef index);
 
 LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, LLVMValueRef index);

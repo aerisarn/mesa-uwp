@@ -1084,10 +1084,10 @@ LLVMValueRef ac_build_fs_interp_mov(struct ac_llvm_context *ctx, LLVMValueRef pa
    }
 }
 
-LLVMValueRef ac_build_gep_ptr(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_gep_ptr(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
                               LLVMValueRef index)
 {
-   return LLVMBuildGEP(ctx->builder, base_ptr, &index, 1, "");
+   return LLVMBuildGEP2(ctx->builder, type, base_ptr, &index, 1, "");
 }
 
 LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, LLVMValueRef index)

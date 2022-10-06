@@ -412,7 +412,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
             for (unsigned i = 0; i < 4; i++) {
                if (ctx->shader->selector->info.base.xfb_stride[i]) {
                   LLVMValueRef gds_ptr =
-                     ac_build_gep_ptr(&ctx->ac, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
+                     ac_build_gep_ptr(&ctx->ac, ctx->ac.i32, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
 
                   dwords_written[i] = LLVMBuildAtomicRMW(builder, LLVMAtomicRMWBinOpAdd,
                                                          gds_ptr, dwords_written[i],
