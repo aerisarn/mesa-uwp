@@ -132,7 +132,6 @@ draw_pt_arrays(struct draw_context *draw,
    }
 
    for (unsigned i = 0; i < num_draws; i++) {
-      unsigned count = draw_info[i].count;
       /* Sanitize primitive length:
        */
       unsigned first, incr;
@@ -144,7 +143,7 @@ draw_pt_arrays(struct draw_context *draw,
          draw_pt_split_prim(prim, &first, &incr);
       }
 
-      count = draw_pt_trim_count(draw_info[i].count, first, incr);
+      unsigned count = draw_pt_trim_count(draw_info[i].count, first, incr);
       draw->pt.user.eltBias = draw->pt.user.eltSize ?
                               (index_bias_varies ? draw_info[i].index_bias : draw_info[0].index_bias) :
                               0;
