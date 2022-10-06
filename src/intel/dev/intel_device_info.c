@@ -2006,6 +2006,8 @@ intel_i915_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
    if (getparam(fd, I915_PARAM_MMAP_GTT_VERSION, &val))
       devinfo->has_mmap_offset = val >= 4;
+   if (getparam(fd, I915_PARAM_HAS_USERPTR_PROBE, &val))
+      devinfo->has_userptr_probe = val;
 
    return true;
 }

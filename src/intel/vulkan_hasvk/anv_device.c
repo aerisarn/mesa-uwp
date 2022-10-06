@@ -882,9 +882,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->always_flush_cache = INTEL_DEBUG(DEBUG_STALL) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE, &val))
-      device->has_userptr_probe = val;
-
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {
       result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);

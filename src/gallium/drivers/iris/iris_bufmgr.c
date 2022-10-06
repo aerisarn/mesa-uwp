@@ -2409,9 +2409,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->has_tiling_uapi = devinfo->has_tiling_uapi;
    bufmgr->bo_reuse = bo_reuse;
    bufmgr->has_mmap_offset = devinfo->has_mmap_offset;
-   int val;
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE, &val) && val >= 1)
-      bufmgr->has_userptr_probe = true;
+   bufmgr->has_userptr_probe = devinfo->has_userptr_probe;
    iris_bufmgr_get_meminfo(bufmgr, devinfo);
    bufmgr->all_vram_mappable = intel_vram_all_mappable(devinfo);
 

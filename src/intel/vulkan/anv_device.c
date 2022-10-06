@@ -799,9 +799,6 @@ anv_i915_physical_device_get_parameters(struct anv_physical_device *device)
    if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES, &val))
       device->has_exec_timeline = val;
 
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE, &val))
-      device->has_userptr_probe = val;
-
    return result;
 }
 

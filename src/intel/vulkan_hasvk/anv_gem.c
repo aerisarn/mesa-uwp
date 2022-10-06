@@ -147,7 +147,7 @@ anv_gem_userptr(struct anv_device *device, void *mem, size_t size)
       .flags = 0,
    };
 
-   if (device->physical->has_userptr_probe)
+   if (device->physical->info.has_userptr_probe)
       userptr.flags |= I915_USERPTR_PROBE;
 
    int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_USERPTR, &userptr);
