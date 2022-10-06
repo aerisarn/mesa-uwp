@@ -431,6 +431,19 @@ struct pipe_h264_enc_pic_control
 {
    unsigned enc_cabac_enable;
    unsigned enc_cabac_init_idc;
+   unsigned chroma_qp_index_offset;
+   unsigned second_chroma_qp_index_offset;
+   struct {
+      uint32_t deblocking_filter_control_present_flag : 1;
+      uint32_t redundant_pic_cnt_present_flag : 1;
+   };
+};
+
+struct pipe_h264_enc_dbk_param
+{
+   unsigned  disable_deblocking_filter_idc;
+   signed   alpha_c0_offset_div2;
+   signed   beta_offset_div2;
 };
 
 struct h264_slice_descriptor
@@ -484,6 +497,7 @@ struct pipe_h264_enc_picture_desc
 
    struct pipe_h264_enc_motion_estimation motion_est;
    struct pipe_h264_enc_pic_control pic_ctrl;
+   struct pipe_h264_enc_dbk_param dbk;
 
    unsigned quant_i_frames;
    unsigned quant_p_frames;
