@@ -144,9 +144,16 @@ draw_pt_arrays(struct draw_context *draw,
       }
 
       unsigned count = draw_pt_trim_count(draw_info[i].count, first, incr);
-      draw->pt.user.eltBias = draw->pt.user.eltSize ?
-                              (index_bias_varies ? draw_info[i].index_bias : draw_info[0].index_bias) :
-                              0;
+      if (draw->pt.user.eltSize) {
+         if (index_bias_varies) {
+            draw->pt.user.eltBias = draw_info[i].index_bias;
+         } else {
+            draw->pt.user.eltBias = draw_info[0].index_bias;
+         }
+      } else {
+         draw->pt.user.eltBias = 0;
+      }
+
       if (count >= first)
          frontend->run(frontend, draw_info[i].start, count);
 
