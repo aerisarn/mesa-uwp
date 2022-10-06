@@ -377,8 +377,10 @@ VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
                            size,
                            cache_line_size,
                            &pvr_bo);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      cmd_buffer->state.status = result;
       return result;
+   }
 
    list_add(&pvr_bo->link, &cmd_buffer->bo_list);
 
@@ -404,8 +406,10 @@ pvr_cmd_buffer_upload_usc(struct pvr_cmd_buffer *const cmd_buffer,
 
    result =
       pvr_gpu_upload_usc(device, code, code_size, code_alignment, &pvr_bo);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      cmd_buffer->state.status = result;
       return result;
+   }
 
    list_add(&pvr_bo->link, &cmd_buffer->bo_list);
 
@@ -437,8 +441,10 @@ pvr_cmd_buffer_upload_pds(struct pvr_cmd_buffer *const cmd_buffer,
                                code_alignment,
                                min_alignment,
                                pds_upload_out);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      cmd_buffer->state.status = result;
       return result;
+   }
 
    list_add(&pds_upload_out->pvr_bo->link, &cmd_buffer->bo_list);
 
@@ -1643,7 +1649,6 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
 
    switch (type) {
    case PVR_SUB_CMD_TYPE_GRAPHICS:
-
       sub_cmd->gfx.depth_usage = PVR_DEPTH_STENCIL_USAGE_UNDEFINED;
       sub_cmd->gfx.stencil_usage = PVR_DEPTH_STENCIL_USAGE_UNDEFINED;
       sub_cmd->gfx.modifies_depth = false;
