@@ -141,10 +141,20 @@ resolve_image_views(struct iris_context *ice,
          enum isl_aux_usage aux_usage =
             iris_image_view_aux_usage(ice, pview, info);
 
+         enum isl_format view_format = iris_image_view_get_format(ice, pview);
+
+         bool clear_supported = isl_aux_usage_has_fast_clears(aux_usage);
+
+         if (!iris_render_formats_color_compatible(view_format,
+                                                   res->surf.format,
+                                                   res->aux.clear_color,
+                                                   res->aux.clear_color_unknown))
+            clear_supported = false;
+
          iris_resource_prepare_access(ice, res,
                                       pview->u.tex.level, 1,
                                       pview->u.tex.first_layer, num_layers,
-                                      aux_usage, false);
+                                      aux_usage, clear_supported);
 
          shs->image_aux_usage[i] = aux_usage;
       } else {
