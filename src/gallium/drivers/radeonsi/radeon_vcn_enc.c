@@ -92,6 +92,17 @@ static void radeon_vcn_enc_h264_get_cropping_param(struct radeon_encoder *enc,
    }
 }
 
+static void radeon_vcn_enc_h264_get_dbk_param(struct radeon_encoder *enc,
+                                              struct pipe_h264_enc_picture_desc *pic)
+{
+   enc->enc_pic.h264_deblock.disable_deblocking_filter_idc =
+      CLAMP(pic->dbk.disable_deblocking_filter_idc, 0, 2);
+   enc->enc_pic.h264_deblock.alpha_c0_offset_div2 = pic->dbk.alpha_c0_offset_div2;
+   enc->enc_pic.h264_deblock.beta_offset_div2 = pic->dbk.beta_offset_div2;
+   enc->enc_pic.h264_deblock.cb_qp_offset = pic->pic_ctrl.chroma_qp_index_offset;
+   enc->enc_pic.h264_deblock.cr_qp_offset = pic->pic_ctrl.second_chroma_qp_index_offset;
+}
+
 static void radeon_vcn_enc_h264_get_spec_misc_param(struct radeon_encoder *enc,
                                                     struct pipe_h264_enc_picture_desc *pic)
 {
@@ -104,6 +115,10 @@ static void radeon_vcn_enc_h264_get_spec_misc_param(struct radeon_encoder *enc,
 
    enc->enc_pic.spec_misc.cabac_init_idc = enc->enc_pic.spec_misc.cabac_enable ?
                                            pic->pic_ctrl.enc_cabac_init_idc : 0;
+   enc->enc_pic.spec_misc.deblocking_filter_control_present_flag =
+      pic->pic_ctrl.deblocking_filter_control_present_flag;
+   enc->enc_pic.spec_misc.redundant_pic_cnt_present_flag =
+      pic->pic_ctrl.redundant_pic_cnt_present_flag;
 }
 
 static void radeon_vcn_enc_h264_get_rc_param(struct radeon_encoder *enc,
@@ -198,6 +213,7 @@ static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
    enc->enc_pic.is_ltr = pic->is_ltr;
    enc->enc_pic.ltr_idx = pic->is_ltr ? pic->ltr_index : 0;
    radeon_vcn_enc_h264_get_cropping_param(enc, pic);
+   radeon_vcn_enc_h264_get_dbk_param(enc, pic);
    radeon_vcn_enc_h264_get_rc_param(enc, pic);
    radeon_vcn_enc_h264_get_spec_misc_param(enc, pic);
    radeon_vcn_enc_h264_get_vui_param(enc, pic);

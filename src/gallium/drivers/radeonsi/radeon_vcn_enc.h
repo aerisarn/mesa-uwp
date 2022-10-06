@@ -226,6 +226,10 @@ typedef struct rvcn_enc_h264_spec_misc_s {
    uint32_t level_idc;
    uint32_t b_picture_enabled;
    uint32_t weighted_bipred_idc;
+   struct {
+      uint32_t deblocking_filter_control_present_flag:1;
+      uint32_t redundant_pic_cnt_present_flag:1;
+   };
 } rvcn_enc_h264_spec_misc_t;
 
 typedef struct rvcn_enc_hevc_spec_misc_s {
