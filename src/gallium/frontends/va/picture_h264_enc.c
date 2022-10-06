@@ -84,6 +84,13 @@ vlVaHandleVAEncPictureParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *cont
    context->desc.h264enc.pic_ctrl.enc_cabac_enable = h264->pic_fields.bits.entropy_coding_mode_flag;
    context->desc.h264enc.num_ref_idx_l0_active_minus1 = h264->num_ref_idx_l0_active_minus1;
    context->desc.h264enc.num_ref_idx_l1_active_minus1 = h264->num_ref_idx_l1_active_minus1;
+   context->desc.h264enc.pic_ctrl.deblocking_filter_control_present_flag
+      = h264->pic_fields.bits.deblocking_filter_control_present_flag;
+   context->desc.h264enc.pic_ctrl.redundant_pic_cnt_present_flag
+      = h264->pic_fields.bits.redundant_pic_cnt_present_flag;
+   context->desc.h264enc.pic_ctrl.chroma_qp_index_offset = h264->chroma_qp_index_offset;
+   context->desc.h264enc.pic_ctrl.second_chroma_qp_index_offset
+      = h264->second_chroma_qp_index_offset;
 
    return VA_STATUS_SUCCESS;
 }
@@ -148,6 +155,9 @@ vlVaHandleVAEncSliceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *contex
    }
 
    context->desc.h264enc.pic_ctrl.enc_cabac_init_idc = h264->cabac_init_idc;
+   context->desc.h264enc.dbk.disable_deblocking_filter_idc = h264->disable_deblocking_filter_idc;
+   context->desc.h264enc.dbk.alpha_c0_offset_div2 = h264->slice_alpha_c0_offset_div2;
+   context->desc.h264enc.dbk.beta_offset_div2 = h264->slice_beta_offset_div2;
 
    /* Handle the slice control parameters */
    if (context->desc.h264enc.num_slice_descriptors < ARRAY_SIZE(context->desc.h264enc.slices_descriptors)) {
