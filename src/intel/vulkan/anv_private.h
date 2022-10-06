@@ -964,7 +964,6 @@ struct anv_physical_device {
     bool                                        has_exec_capture;
     VkQueueGlobalPriorityKHR                    max_context_priority;
     bool                                        has_context_isolation;
-    bool                                        has_mmap_offset;
     bool                                        has_userptr_probe;
     uint64_t                                    gtt_size;
 

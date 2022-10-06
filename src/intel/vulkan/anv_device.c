@@ -799,9 +799,6 @@ anv_i915_physical_device_get_parameters(struct anv_physical_device *device)
    if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES, &val))
       device->has_exec_timeline = val;
 
-   if (intel_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION, &val))
-      device->has_mmap_offset = val >= 4;
-
    if (intel_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE, &val))
       device->has_userptr_probe = val;
 
@@ -4311,7 +4308,7 @@ VkResult anv_MapMemory(
 
    /* GEM will fail to map if the offset isn't 4k-aligned.  Round down. */
    uint64_t map_offset;
-   if (!device->physical->has_mmap_offset)
+   if (!device->physical->info.has_mmap_offset)
       map_offset = offset & ~4095ull;
    else
       map_offset = 0;

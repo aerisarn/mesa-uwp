@@ -146,6 +146,7 @@ struct intel_device_info
    bool has_local_mem;
    bool has_lsc;
    bool has_mesh_shading;
+   bool has_mmap_offset;
 
    /**
     * \name Intel hardware quirks

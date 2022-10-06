@@ -146,7 +146,7 @@ anv_gem_mmap(struct anv_device *device, uint32_t gem_handle,
              uint64_t offset, uint64_t size, uint32_t flags)
 {
    void *map;
-   if (device->physical->has_mmap_offset)
+   if (device->physical->info.has_mmap_offset)
       map = anv_gem_mmap_offset(device, gem_handle, offset, size, flags);
    else
       map = anv_gem_mmap_legacy(device, gem_handle, offset, size, flags);

@@ -1622,9 +1622,7 @@ crocus_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->has_llc = devinfo->has_llc;
    bufmgr->has_tiling_uapi = devinfo->has_tiling_uapi;
    bufmgr->bo_reuse = bo_reuse;
-   int val;
-   if (intel_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION, &val) && val >= 4)
-      bufmgr->has_mmap_offset = true;
+   bufmgr->has_mmap_offset = devinfo->has_mmap_offset;
 
    init_cache_buckets(bufmgr);
 
