@@ -278,23 +278,6 @@ anv_gem_set_tiling(struct anv_device *device,
    return ret;
 }
 
-int
-anv_gem_get_param(int fd, uint32_t param)
-{
-   int tmp;
-
-   drm_i915_getparam_t gp = {
-      .param = param,
-      .value = &tmp,
-   };
-
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
-   if (ret == 0)
-      return tmp;
-
-   return 0;
-}
-
 bool
 anv_gem_has_context_priority(int fd, VkQueueGlobalPriorityKHR priority)
 {

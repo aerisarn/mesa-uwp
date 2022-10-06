@@ -250,3 +250,13 @@ intel_gem_supports_protected_context(int fd)
 
    return ret;
 }
+
+bool
+intel_gem_get_param(int fd, uint32_t param, int *value)
+{
+   drm_i915_getparam_t gp = {
+      .param = param,
+      .value = value,
+   };
+   return intel_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp) == 0;
+}
