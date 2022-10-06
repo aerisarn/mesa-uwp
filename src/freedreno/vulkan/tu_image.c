@@ -268,10 +268,20 @@ tiling_possible(VkFormat format)
    return true;
 }
 
+/* Checks if we should advertise UBWC support for the given usage.
+ *
+ * Used by both vkCreateImage and vkGetPhysicalDeviceFormatProperties2, so the
+ * logical tu_device may be NULL.
+ */
 bool
-ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
-              VkImageUsageFlags stencil_usage, const struct fd_dev_info *info,
-              VkSampleCountFlagBits samples, bool use_z24uint_s8uint)
+ubwc_possible(struct tu_device *device,
+              VkFormat format,
+              VkImageType type,
+              VkImageUsageFlags usage,
+              VkImageUsageFlags stencil_usage,
+              const struct fd_dev_info *info,
+              VkSampleCountFlagBits samples,
+              bool use_z24uint_s8uint)
 {
    /* no UBWC with compressed formats, E5B9G9R9, S8_UINT
     * (S8_UINT because separate stencil doesn't have UBWC-enable bit)
@@ -297,7 +307,12 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
       return false;
 
    if (type == VK_IMAGE_TYPE_3D) {
-      tu_finishme("UBWC with 3D textures");
+      if (device) {
+         perf_debug(device,
+                    "Disabling UBWC for %s 3D image, but it should be "
+                    "possible to support.",
+                    util_format_name(vk_format_to_pipe_format(format)));
+      }
       return false;
    }
 
@@ -310,8 +325,15 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
     * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
     * behavior of no UBWC.
    */
-   if ((usage | stencil_usage) & VK_IMAGE_USAGE_STORAGE_BIT)
+   if ((usage | stencil_usage) & VK_IMAGE_USAGE_STORAGE_BIT) {
+      if (device) {
+         perf_debug(device,
+                    "Disabling UBWC for %s storage image, but should be "
+                    "possible to support",
+                    util_format_name(vk_format_to_pipe_format(format)));
+      }
       return false;
+   }
 
    /* Disable UBWC for D24S8 on A630 in some cases
     *
@@ -332,8 +354,19 @@ ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
        (stencil_usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))
       return false;
 
-   if (!info->a6xx.has_z24uint_s8uint && samples > VK_SAMPLE_COUNT_1_BIT)
+   /* This meant to disable UBWC for MSAA z24s8, but accidentally disables it
+    * for all MSAA.  https://gitlab.freedesktop.org/mesa/mesa/-/issues/7438
+    */
+   if (!info->a6xx.has_z24uint_s8uint && samples > VK_SAMPLE_COUNT_1_BIT) {
+      if (device) {
+         perf_debug(device,
+                    "Disabling UBWC for %d-sample %s image, but it should be "
+                    "possible to support",
+                    samples,
+                    util_format_name(vk_format_to_pipe_format(format)));
+      }
       return false;
+   }
 
    return true;
 }
@@ -421,7 +454,8 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
    /* Whether a view of the image with an R8G8 format could be made. */
    bool has_r8g8 = tu_is_r8g8(format);
 
-   if (!ubwc_possible(image->vk.format, pCreateInfo->imageType,
+   if (ubwc_enabled &&
+       !ubwc_possible(device, image->vk.format, pCreateInfo->imageType,
                       pCreateInfo->usage, image->vk.stencil_usage,
                       device->physical_device->info, pCreateInfo->samples,
                       device->use_z24uint_s8uint))
