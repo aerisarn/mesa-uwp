@@ -819,9 +819,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    assert(device->supports_48bit_addresses == !device->use_relocations);
    device->use_softpin = !device->use_relocations;
 
-   if (intel_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION, &val))
-      device->has_context_isolation = val;
-
    if (intel_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES, &val))
       device->has_exec_timeline = val;
    if (debug_get_bool_option("ANV_QUEUE_THREAD_DISABLE", false))
@@ -890,7 +887,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->compiler->shader_debug_log = compiler_debug_log;
    device->compiler->shader_perf_log = compiler_perf_log;
    device->compiler->constant_buffer_0_is_relative =
-      device->info.ver < 8 || !device->has_context_isolation;
+      device->info.ver < 8 || !device->info.has_context_isolation;
    device->compiler->supports_shader_constants = true;
    device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
 

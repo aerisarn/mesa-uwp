@@ -963,7 +963,6 @@ struct anv_physical_device {
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
     VkQueueGlobalPriorityKHR                    max_context_priority;
-    bool                                        has_context_isolation;
     uint64_t                                    gtt_size;
 
     bool                                        always_use_bindless;

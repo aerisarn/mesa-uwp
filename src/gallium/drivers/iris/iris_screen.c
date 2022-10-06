@@ -784,8 +784,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
     *
     * Checking the last feature availability will include all previous ones.
     */
-   int v;
-   if (!intel_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION, &v) || !v) {
+   if (!screen->devinfo.has_context_isolation) {
       debug_error("Kernel is too old (4.16+ required) or unusable for Iris.\n"
                   "Check your dmesg logs for loading failures.\n");
       return NULL;
