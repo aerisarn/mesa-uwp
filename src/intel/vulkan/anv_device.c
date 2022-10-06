@@ -968,11 +968,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (instance->vk.enabled_extensions.KHR_display) {
       master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
       if (master_fd >= 0) {
-         int val;
-         /* prod the device with a GETPARAM call which will fail if
-          * we don't have permission to even render on this device
-          */
-         if (!intel_gem_get_param(master_fd, I915_PARAM_CHIPSET_ID, &val) || !val) {
+         /* fail if we don't have permission to even render on this device */
+         if (!intel_gem_can_render_on_fd(master_fd)) {
             close(master_fd);
             master_fd = -1;
          }
