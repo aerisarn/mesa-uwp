@@ -118,14 +118,17 @@ struct draw_geometry_shader {
                          unsigned num_primitives,
                          float (**p_output)[4]);
 
-   void     (*prepare)(struct draw_geometry_shader *shader,
-                       const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
-                       const unsigned constants_size[PIPE_MAX_CONSTANT_BUFFERS]);
+   void (*prepare)(struct draw_geometry_shader *shader,
+                   const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
+                   const unsigned constants_size[PIPE_MAX_CONSTANT_BUFFERS]);
    void (*run)(struct draw_geometry_shader *shader,
                unsigned input_primitives, unsigned *out_prims);
 };
 
-void draw_geometry_shader_new_instance(struct draw_geometry_shader *gs);
+
+void
+draw_geometry_shader_new_instance(struct draw_geometry_shader *gs);
+
 
 /*
  * Returns the number of vertices emitted.
@@ -141,15 +144,18 @@ int draw_geometry_shader_run(struct draw_geometry_shader *shader,
                              struct draw_vertex_info *output_verts,
                              struct draw_prim_info *output_prims );
 
-void draw_geometry_shader_prepare(struct draw_geometry_shader *shader,
-                                  struct draw_context *draw);
+void
+draw_geometry_shader_prepare(struct draw_geometry_shader *shader,
+                             struct draw_context *draw);
 
-int draw_gs_max_output_vertices(struct draw_geometry_shader *shader,
-                                unsigned pipe_prim);
+int
+draw_gs_max_output_vertices(struct draw_geometry_shader *shader,
+                            unsigned pipe_prim);
 
 #ifdef DRAW_LLVM_AVAILABLE
-void draw_gs_set_current_variant(struct draw_geometry_shader *shader,
-                                 struct draw_gs_llvm_variant *variant);
+void
+draw_gs_set_current_variant(struct draw_geometry_shader *shader,
+                            struct draw_gs_llvm_variant *variant);
 #endif
 
 #endif
