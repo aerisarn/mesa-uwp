@@ -111,6 +111,7 @@ struct pr_opt_ctx {
                    not_written_yet);
       } else {
          reset_block_regs(block->linear_preds, block->index, 0, max_sgpr_cnt);
+         reset_block_regs(block->linear_preds, block->index, 251, 3);
 
          if (!block->logical_preds.empty()) {
             /* We assume that VGPRs are only read by blocks which have a logical predecessor,
