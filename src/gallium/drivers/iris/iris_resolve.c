@@ -1021,19 +1021,24 @@ iris_image_view_aux_usage(struct iris_context *ice,
    const unsigned level = res->base.b.target != PIPE_BUFFER ?
                           pview->u.tex.level : 0;
 
-   enum isl_format view_format = iris_image_view_get_format(ice, pview);
-   enum isl_aux_usage aux_usage =
-      iris_resource_texture_aux_usage(ice, res, view_format, level, 1);
-
    bool uses_atomic_load_store =
       ice->shaders.uncompiled[info->stage]->uses_atomic_load_store;
 
    /* On GFX12, compressed surfaces supports non-atomic operations. GFX12HP and
     * further, add support for all the operations.
     */
-   if (aux_usage == ISL_AUX_USAGE_GFX12_CCS_E &&
-       (devinfo->verx10 >= 125 || !uses_atomic_load_store))
-      return ISL_AUX_USAGE_GFX12_CCS_E;
+   if (devinfo->verx10 < 125 && uses_atomic_load_store)
+      return ISL_AUX_USAGE_NONE;
+
+   /* If the image is read-only, and doesn't have any unresolved color,
+    * report ISL_AUX_USAGE_NONE.  Bypassing useless aux can save bandwidth.
+    */
+   if (!(pview->access & PIPE_IMAGE_ACCESS_WRITE) &&
+       !iris_has_invalid_primary(res, level, 1, 0, INTEL_REMAINING_LAYERS))
+      return ISL_AUX_USAGE_NONE;
+
+   if (res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E)
+      return res->aux.usage;
 
    return ISL_AUX_USAGE_NONE;
 }
