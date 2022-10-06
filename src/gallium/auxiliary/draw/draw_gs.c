@@ -567,7 +567,7 @@ gs_tri_adj(struct draw_geometry_shader *shader,
 /**
  * Execute geometry shader.
  */
-int
+void
 draw_geometry_shader_run(struct draw_geometry_shader *shader,
                          const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
                          const unsigned constants_size[PIPE_MAX_CONSTANT_BUFFERS],
@@ -718,8 +718,6 @@ draw_geometry_shader_run(struct draw_geometry_shader *shader,
       debug_printf("stream %d: prims = %d verts = %d\n", i,
                    output_prims[i].primitive_count, output_verts[i].count);
 #endif
-
-   return 0;
 }
 
 
