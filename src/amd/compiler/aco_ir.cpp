@@ -38,6 +38,7 @@ uint64_t debug_flags = 0;
 
 static const struct debug_control aco_debug_options[] = {{"validateir", DEBUG_VALIDATE_IR},
                                                          {"validatera", DEBUG_VALIDATE_RA},
+                                                         {"novalidateir", DEBUG_NO_VALIDATE_IR},
                                                          {"perfwarn", DEBUG_PERFWARN},
                                                          {"force-waitcnt", DEBUG_FORCE_WAITCNT},
                                                          {"force-waitdeps", DEBUG_FORCE_WAITDEPS},
@@ -59,6 +60,9 @@ init_once()
    /* enable some flags by default on debug builds */
    debug_flags |= aco::DEBUG_VALIDATE_IR;
 #endif
+
+   if (debug_flags & aco::DEBUG_NO_VALIDATE_IR)
+      debug_flags &= ~aco::DEBUG_VALIDATE_IR;
 }
 
 void
