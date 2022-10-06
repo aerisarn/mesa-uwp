@@ -1099,10 +1099,9 @@ LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, L
    return LLVMBuildGEP(ctx->builder, base_ptr, indices, 2, "");
 }
 
-LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMValueRef ptr, LLVMValueRef index)
+LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef ptr, LLVMValueRef index)
 {
-   LLVMValueRef offset_ptr = LLVMBuildGEP(ctx->builder, ptr, &index, 1, "");
-   return LLVMBuildPointerCast(ctx->builder, offset_ptr, LLVMTypeOf(ptr), "");
+   return LLVMBuildGEP2(ctx->builder, type, ptr, &index, 1, "");
 }
 
 void ac_build_indexed_store(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, LLVMValueRef index,

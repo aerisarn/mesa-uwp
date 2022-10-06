@@ -279,7 +279,7 @@ static LLVMValueRef si_nir_load_sampler_desc(struct ac_shader_abi *abi, unsigned
        */
       dynamic_index =
          LLVMBuildMul(ctx->ac.builder, dynamic_index, LLVMConstInt(ctx->ac.i64, 2, 0), "");
-      list = ac_build_pointer_add(&ctx->ac, list, dynamic_index);
+      list = ac_build_pointer_add(&ctx->ac, ctx->ac.v8i32, list, dynamic_index);
       return si_load_sampler_desc(ctx, list, ctx->ac.i32_0, desc_type);
    }
 
