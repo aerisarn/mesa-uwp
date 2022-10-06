@@ -421,6 +421,12 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
    /* Whether a view of the image with an R8G8 format could be made. */
    bool has_r8g8 = tu_is_r8g8(format);
 
+   if (!ubwc_possible(image->vk.format, pCreateInfo->imageType,
+                      pCreateInfo->usage, image->vk.stencil_usage,
+                      device->physical_device->info, pCreateInfo->samples,
+                      device->use_z24uint_s8uint))
+      ubwc_enabled = false;
+
    /* Mutable images can be reinterpreted as any other compatible format.
     * This is a problem with UBWC (compression for different formats is different),
     * but also tiling ("swap" affects how tiled formats are stored in memory)
@@ -446,12 +452,6 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
          }
       }
    }
-
-   if (!ubwc_possible(image->vk.format, pCreateInfo->imageType,
-                      pCreateInfo->usage, image->vk.stencil_usage,
-                      device->physical_device->info, pCreateInfo->samples,
-                      device->use_z24uint_s8uint))
-      ubwc_enabled = false;
 
    /* expect UBWC enabled if we asked for it */
    if (modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED)
