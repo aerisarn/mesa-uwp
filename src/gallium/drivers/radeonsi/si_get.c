@@ -627,19 +627,57 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          return (sscreen->info.family >= CHIP_RAVEN) ? 1 : 0;
 
       case PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS:
-         if ((sscreen->info.family >= CHIP_RENOIR) &&
-                  (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN ||
-                   profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)) {
+         if ((sscreen->info.family >= CHIP_RAVEN) &&
+               (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN ||
+             profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)) {
             union pipe_h265_enc_cap_features pipe_features;
             pipe_features.value = 0;
 
-            pipe_features.bits.sao = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.amp = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.strong_intra_smoothing = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.constrained_intra_pred = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.deblocking_filter_disable
+                                                      = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            if (sscreen->info.family >= CHIP_RENOIR)
+               pipe_features.bits.sao = PIPE_H265_ENC_FEATURE_SUPPORTED;
+
             return pipe_features.value;
+         } else
+            return 0;
+
+      case PIPE_VIDEO_CAP_ENC_HEVC_BLOCK_SIZES:
+         if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN ||
+             profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10) {
+            union pipe_h265_enc_cap_block_sizes pipe_block_sizes;
+            pipe_block_sizes.value = 0;
+
+            pipe_block_sizes.bits.log2_max_coding_tree_block_size_minus3 = 3;
+            pipe_block_sizes.bits.log2_min_coding_tree_block_size_minus3 = 3;
+            pipe_block_sizes.bits.log2_min_luma_coding_block_size_minus3 = 0;
+            pipe_block_sizes.bits.log2_max_luma_transform_block_size_minus2 = 3;
+            pipe_block_sizes.bits.log2_min_luma_transform_block_size_minus2 = 0;
+
+            return pipe_block_sizes.value;
          } else
             return 0;
 
       case PIPE_VIDEO_CAP_ENC_SUPPORTS_ASYNC_OPERATION:
          return (sscreen->info.family >= CHIP_RAVEN) ? 1 : 0;
+
+      case PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME:
+         if (sscreen->info.family >= CHIP_RAVEN)
+            return 128;
+         else
+            return 1;
+
+      case PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE:
+         if (sscreen->info.family >= CHIP_RENOIR) {
+            int value = (PIPE_VIDEO_CAP_SLICE_STRUCTURE_POWER_OF_TWO_ROWS |
+                         PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_ROWS |
+                         PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_MULTI_ROWS);
+            return value;
+         } else
+            return 0;
 
       default:
          return 0;

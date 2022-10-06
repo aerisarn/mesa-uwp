@@ -135,6 +135,11 @@
 
 #define RENCODE_MAX_NUM_TEMPORAL_LAYERS                                             4
 
+#define PIPE_H265_ENC_CTB_SIZE                                                      64
+#define PIPE_H264_MB_SIZE                                                           16
+
+#define PIPE_ALIGN_IN_BLOCK_SIZE(value, align) (((value) + ((align) - 1))/(align))
+
 #define RADEON_ENC_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
 #define RADEON_ENC_BEGIN(cmd)                                                                      \
    {                                                                                               \

@@ -141,8 +141,6 @@ static void radeon_enc_layer_select(struct radeon_encoder *enc)
 static void radeon_enc_slice_control(struct radeon_encoder *enc)
 {
    enc->enc_pic.slice_ctrl.slice_control_mode = RENCODE_H264_SLICE_CONTROL_MODE_FIXED_MBS;
-   enc->enc_pic.slice_ctrl.num_mbs_per_slice =
-      align(enc->base.width, 16) / 16 * align(enc->base.height, 16) / 16;
 
    RADEON_ENC_BEGIN(enc->cmd.slice_control_h264);
    RADEON_ENC_CS(enc->enc_pic.slice_ctrl.slice_control_mode);
@@ -153,10 +151,6 @@ static void radeon_enc_slice_control(struct radeon_encoder *enc)
 static void radeon_enc_slice_control_hevc(struct radeon_encoder *enc)
 {
    enc->enc_pic.hevc_slice_ctrl.slice_control_mode = RENCODE_HEVC_SLICE_CONTROL_MODE_FIXED_CTBS;
-   enc->enc_pic.hevc_slice_ctrl.fixed_ctbs_per_slice.num_ctbs_per_slice =
-      align(enc->base.width, 64) / 64 * align(enc->base.height, 64) / 64;
-   enc->enc_pic.hevc_slice_ctrl.fixed_ctbs_per_slice.num_ctbs_per_slice_segment =
-      enc->enc_pic.hevc_slice_ctrl.fixed_ctbs_per_slice.num_ctbs_per_slice;
 
    RADEON_ENC_BEGIN(enc->cmd.slice_control_hevc);
    RADEON_ENC_CS(enc->enc_pic.hevc_slice_ctrl.slice_control_mode);
