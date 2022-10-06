@@ -2785,6 +2785,31 @@ emit_shared_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_global_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   unsigned bit_size = nir_src_bit_size(intr->src[1]);
+   SpvId dest_type = get_def_type(ctx, &intr->def, nir_type_uint);
+   nir_alu_type atype;
+   nir_alu_type ret_type = nir_atomic_op_type(nir_intrinsic_atomic_op(intr)) == nir_type_float ? nir_type_float : nir_type_uint;
+   SpvId param = get_src(ctx, &intr->src[1], &atype);
+
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilityPhysicalStorageBufferAddresses);
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassPhysicalStorageBuffer,
+                                                   dest_type);
+   SpvId ptr = emit_bitcast(ctx, pointer_type, get_src(ctx, &intr->src[0], &atype));
+
+   if (bit_size == 64)
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityInt64Atomics);
+   SpvId param2 = 0;
+
+   if (intr->intrinsic == nir_intrinsic_global_atomic_swap)
+      param2 = get_src(ctx, &intr->src[2], &atype);
+
+   handle_atomic_op(ctx, intr, ptr, param, param2, ret_type);
+}
+
+static void
 emit_get_ssbo_size(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId uint_type = get_uvec_type(ctx, 32, 1);
@@ -3281,6 +3306,11 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap:
       emit_shared_atomic_intrinsic(ctx, intr);
+      break;
+
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
+      emit_global_atomic_intrinsic(ctx, intr);
       break;
 
    case nir_intrinsic_begin_invocation_interlock:
