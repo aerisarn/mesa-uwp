@@ -711,6 +711,7 @@ struct pvr_sub_cmd_gfx {
    bool barrier_load;
 
    const struct pvr_query_pool *query_pool;
+   struct util_dynarray sec_query_indices;
 
    /* Control stream builder object */
    struct pvr_csb control_stream;
