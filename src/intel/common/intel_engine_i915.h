@@ -1,5 +1,5 @@
 /*
- * Copyright © 2015 Intel Corporation
+ * Copyright © 2022 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,46 +21,13 @@
  * IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
+#pragma once
 
 #include "intel_engine.h"
-#include "intel_engine_i915.h"
 
+#include "drm-uapi/i915_drm.h"
+
+enum drm_i915_gem_engine_class
+intel_engine_class_to_i915(enum intel_engine_class intel);
 struct intel_query_engine_info *
-intel_engine_get_info(int fd)
-{
-   return i915_engine_get_info(fd);
-}
-
-int
-intel_engines_count(const struct intel_query_engine_info *info,
-                    enum intel_engine_class engine_class)
-{
-   int count = 0;
-
-   for (int i = 0; i < info->num_engines; i++) {
-      if (info->engines[i].engine_class == engine_class)
-         count++;
-   }
-
-   return count;
-}
-
-const char *
-intel_engines_class_to_string(enum intel_engine_class engine_class)
-{
-   switch (engine_class) {
-   case INTEL_ENGINE_CLASS_RENDER:
-      return "render";
-   case INTEL_ENGINE_CLASS_COPY:
-      return "copy";
-   case INTEL_ENGINE_CLASS_VIDEO:
-      return "video";
-   case INTEL_ENGINE_CLASS_VIDEO_ENHANCE:
-      return "video-enh";
-   case INTEL_ENGINE_CLASS_COMPUTE:
-      return "compute";
-   default:
-      return "unknown";
-   }
-}
+i915_engine_get_info(int fd);

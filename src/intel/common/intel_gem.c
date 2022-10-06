@@ -23,6 +23,8 @@
 #include "intel_gem.h"
 #include "drm-uapi/i915_drm.h"
 
+#include "intel_engine_i915.h"
+
 #define RCS_TIMESTAMP 0x2358
 
 bool
