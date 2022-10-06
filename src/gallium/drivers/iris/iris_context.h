@@ -1078,8 +1078,7 @@ void iris_predraw_resolve_framebuffer(struct iris_context *ice,
 void iris_predraw_flush_buffers(struct iris_context *ice,
                                 struct iris_batch *batch,
                                 gl_shader_stage stage);
-void iris_postdraw_update_resolve_tracking(struct iris_context *ice,
-                                           struct iris_batch *batch);
+void iris_postdraw_update_resolve_tracking(struct iris_context *ice);
 void iris_cache_flush_for_render(struct iris_batch *batch,
                                  struct iris_bo *bo,
                                  enum isl_aux_usage aux_usage);

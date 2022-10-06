@@ -316,7 +316,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
 
    iris_handle_always_flush_cache(batch);
 
-   iris_postdraw_update_resolve_tracking(ice, batch);
+   iris_postdraw_update_resolve_tracking(ice);
 
    ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
    ice->state.stage_dirty &= ~IRIS_ALL_STAGE_DIRTY_FOR_RENDER;

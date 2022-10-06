@@ -280,8 +280,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
  * cache flush.
  */
 void
-iris_postdraw_update_resolve_tracking(struct iris_context *ice,
-                                      struct iris_batch *batch)
+iris_postdraw_update_resolve_tracking(struct iris_context *ice)
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
