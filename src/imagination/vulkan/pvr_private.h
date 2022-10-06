@@ -119,6 +119,7 @@ enum pvr_event_type {
 
 enum pvr_sub_command_flags {
    PVR_SUB_COMMAND_FLAG_WAIT_ON_PREVIOUS_FRAG = BITFIELD_BIT(0),
+   PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY = BITFIELD_BIT(1),
 };
 
 enum pvr_depth_stencil_usage {
@@ -1264,6 +1265,8 @@ struct pvr_query_pool {
     * Phantom.
     */
    uint32_t result_stride;
+
+   uint32_t query_count;
 
    struct pvr_bo *result_buffer;
    struct pvr_bo *availability_buffer;

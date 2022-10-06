@@ -1439,6 +1439,9 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_sub_cmd *sub_cmd = state->current_sub_cmd;
    struct pvr_device *device = cmd_buffer->device;
+   const struct pvr_query_pool *query_pool = NULL;
+   struct pvr_bo *query_indices_bo = NULL;
+   size_t query_indices_size = 0;
    VkResult result;
 
    /* FIXME: Is this NULL check required because this function is called from
@@ -1456,6 +1459,51 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    switch (sub_cmd->type) {
    case PVR_SUB_CMD_TYPE_GRAPHICS: {
       struct pvr_sub_cmd_gfx *const gfx_sub_cmd = &sub_cmd->gfx;
+
+      query_indices_size =
+         util_dynarray_num_elements(&state->query_indices, char);
+
+      if (query_indices_size > 0) {
+         const bool secondary_cont =
+            cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+            cmd_buffer->usage_flags &
+               VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+
+         assert(gfx_sub_cmd->query_pool);
+
+         if (secondary_cont) {
+            void *buff;
+
+            buff =
+               util_dynarray_grow_bytes(&state->query_indices,
+                                        1,
+                                        gfx_sub_cmd->sec_query_indices.size);
+            if (!buff) {
+               state->status =
+                  vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+               return state->status;
+            }
+
+            memcpy(buff, state->query_indices.data, state->query_indices.size);
+         } else {
+            const void *data = util_dynarray_begin(&state->query_indices);
+
+            result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                                   data,
+                                                   query_indices_size,
+                                                   &query_indices_bo);
+            if (result != VK_SUCCESS) {
+               state->status = result;
+               return result;
+            }
+
+            query_pool = gfx_sub_cmd->query_pool;
+         }
+
+         sub_cmd->flags |= PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY;
+
+         util_dynarray_clear(&state->query_indices);
+      }
 
       if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
          result = pvr_csb_emit_return(&gfx_sub_cmd->control_stream);
@@ -1529,6 +1577,26 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    }
 
    state->current_sub_cmd = NULL;
+
+   if (query_pool) {
+      struct pvr_query_info query_info;
+
+      assert(query_indices_bo);
+      assert(query_indices_size);
+
+      query_info.type = PVR_QUERY_TYPE_AVAILABILITY_WRITE;
+
+      /* sizeof(uint32_t) is for the size of single query. */
+      query_info.availability_write.num_query_indices =
+         query_indices_size / sizeof(uint32_t);
+      query_info.availability_write.index_bo = query_indices_bo;
+
+      query_info.availability_write.num_queries = query_pool->query_count;
+      query_info.availability_write.availability_bo =
+         query_pool->availability_buffer;
+
+      return pvr_add_query_program(cmd_buffer, &query_info);
+   }
 
    return VK_SUCCESS;
 }
@@ -1662,7 +1730,11 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       sub_cmd->gfx.framebuffer = state->render_pass_info.framebuffer;
       sub_cmd->gfx.empty_cmd = true;
 
+      if (state->vis_test_enabled)
+         sub_cmd->gfx.query_pool = state->query_pool;
+
       pvr_reset_graphics_dirty_state(cmd_buffer, true);
+
       if (pvr_cmd_uses_deferred_cs_cmds(cmd_buffer)) {
          pvr_csb_init(device,
                       PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED,

@@ -69,6 +69,8 @@ VkResult pvr_CreateQueryPool(VkDevice _device,
    pool->result_stride =
       ALIGN_POT(query_size, PVRX(CR_ISP_OCLQRY_BASE_ADDR_ALIGNMENT));
 
+   pool->query_count = pCreateInfo->queryCount;
+
    /* Each Phantom writes to a separate offset within the vis test heap so
     * allocate space for the total number of Phantoms.
     */
