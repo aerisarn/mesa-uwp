@@ -322,8 +322,7 @@ bool AluInstr::can_propagate_dest() const
 
    assert(m_dest);
 
-   if (src_reg->pin() == pin_fully ||
-       src_reg->pin() == pin_group) {
+   if (src_reg->pin() == pin_fully) {
       return false;
    }
 
