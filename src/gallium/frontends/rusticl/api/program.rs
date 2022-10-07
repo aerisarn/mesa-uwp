@@ -141,20 +141,20 @@ pub fn create_program_with_source(
     let mut source = Vec::new();
     for (&string_ptr, len) in iter::zip(srcs, lengths) {
         unsafe {
-            if *len == 0 {
-                source.extend_from_slice(CStr::from_ptr(string_ptr).to_bytes());
+            let arr = if *len == 0 {
+                CStr::from_ptr(string_ptr).to_bytes()
             } else {
                 // The spec doesn't say how nul bytes should be handled here or
                 // if they are legal at all. Assume they truncate the string.
                 let arr = slice::from_raw_parts(string_ptr.cast(), *len);
                 // TODO: simplify this a bit with from_bytes_until_nul once
                 // that's stabilized and available in our msrv
-                let arr = arr
-                    .iter()
+                arr.iter()
                     .position(|&x| x == 0)
-                    .map_or(arr, |nul_index| &arr[..nul_index]);
-                source.extend_from_slice(arr);
-            }
+                    .map_or(arr, |nul_index| &arr[..nul_index])
+            };
+
+            source.extend_from_slice(arr);
         }
     }
 
