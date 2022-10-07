@@ -276,6 +276,7 @@ struct pvr_queue {
 
    struct pvr_render_ctx *gfx_ctx;
    struct pvr_compute_ctx *compute_ctx;
+   struct pvr_compute_ctx *query_ctx;
    struct pvr_transfer_ctx *transfer_ctx;
 
    struct vk_sync *completion[PVR_JOB_TYPE_MAX];

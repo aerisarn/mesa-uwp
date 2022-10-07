@@ -61,6 +61,7 @@ static VkResult pvr_queue_init(struct pvr_device *device,
 {
    struct pvr_transfer_ctx *transfer_ctx;
    struct pvr_compute_ctx *compute_ctx;
+   struct pvr_compute_ctx *query_ctx;
    struct pvr_render_ctx *gfx_ctx;
    VkResult result;
 
@@ -83,17 +84,27 @@ static VkResult pvr_queue_init(struct pvr_device *device,
    if (result != VK_SUCCESS)
       goto err_transfer_ctx_destroy;
 
+   result = pvr_compute_ctx_create(device,
+                                   PVR_WINSYS_CTX_PRIORITY_MEDIUM,
+                                   &query_ctx);
+   if (result != VK_SUCCESS)
+      goto err_compute_ctx_destroy;
+
    result =
       pvr_render_ctx_create(device, PVR_WINSYS_CTX_PRIORITY_MEDIUM, &gfx_ctx);
    if (result != VK_SUCCESS)
-      goto err_compute_ctx_destroy;
+      goto err_query_ctx_destroy;
 
    queue->device = device;
    queue->gfx_ctx = gfx_ctx;
    queue->compute_ctx = compute_ctx;
+   queue->query_ctx = query_ctx;
    queue->transfer_ctx = transfer_ctx;
 
    return VK_SUCCESS;
+
+err_query_ctx_destroy:
+   pvr_compute_ctx_destroy(query_ctx);
 
 err_compute_ctx_destroy:
    pvr_compute_ctx_destroy(compute_ctx);
@@ -157,6 +168,7 @@ static void pvr_queue_finish(struct pvr_queue *queue)
    }
 
    pvr_render_ctx_destroy(queue->gfx_ctx);
+   pvr_compute_ctx_destroy(queue->query_ctx);
    pvr_compute_ctx_destroy(queue->compute_ctx);
    pvr_transfer_ctx_destroy(queue->transfer_ctx);
 
