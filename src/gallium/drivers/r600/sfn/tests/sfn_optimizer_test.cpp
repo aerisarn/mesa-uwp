@@ -268,6 +268,14 @@ TEST_F(TestShaderFromNir, ScheduleVSforTCS)
    check(schedule(sh), vtx_for_tcs_sched);
 }
 
+TEST_F(TestShaderFromNir, fs_opt_tex_coord)
+{
+   auto sh = from_string(fs_opt_tex_coord_init);
+
+   optimize(*sh);
+
+   check(sh, fs_opt_tex_coord_expect);
+}
 
 void TestShaderFromNir::check(Shader *s, const char *expect_orig)
 {

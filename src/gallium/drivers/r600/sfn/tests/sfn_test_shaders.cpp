@@ -2347,6 +2347,68 @@ EXPORT_DONE PIXEL 0 S25.xyzw
 )";
 
 
+const char *fs_opt_tex_coord_init =
+R"(FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+INPUT LOC:0 NAME:5 INTERP:2 SID:9 SPI_SID:10
+OUTPUT LOC:0 NAME:1 MASK:15
+REGISTERS R0.x@fully R0.y@fully
+SHADER
+ALU_GROUP_BEGIN
+  ALU INTERP_XY S1.x@chan : R0.y@fully Param0.x {W} VEC_210
+  ALU INTERP_XY S1.y@chan : R0.x@fully Param0.y {W} VEC_210
+  ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
+  ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU INTERP_ZW __.x@chan : R0.y@fully Param0.x {} VEC_210
+  ALU INTERP_ZW __.y@chan : R0.x@fully Param0.y {} VEC_210
+  ALU INTERP_ZW S1.z@chan : R0.y@fully Param0.z {W} VEC_210
+  ALU INTERP_ZW S1.w@chan : R0.x@fully Param0.w {WL} VEC_210
+ALU_GROUP_END
+ALU MOV S2.x@group : S1.z@chan {W}
+ALU MOV S2.y@group : S1.w@chan {WL}
+TEX SAMPLE S3.xyzw : S1.xy__ RID:18 SID:0 NNNN
+TEX SAMPLE S4.xyzw : S2.xy__ RID:18 SID:0 NNNN
+ALU ADD S5.x@group : S3.x@group S4.x@group {W}
+ALU ADD S5.y@group : S3.y@group S4.y@group {W}
+ALU ADD S5.z@group : S3.z@group S4.z@group {W}
+ALU ADD S5.w@group : S3.w@group S4.w@group {W}
+EXPORT_DONE PIXEL 0 S5.xyzw)";
+
+const char *fs_opt_tex_coord_expect =
+R"(FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+INPUT LOC:0 NAME:5 INTERP:2 SID:9 SPI_SID:10
+OUTPUT LOC:0 NAME:1 MASK:15
+REGISTERS R0.x@fully R0.y@fully
+SHADER
+ALU_GROUP_BEGIN
+   ALU INTERP_XY S1.x@chan : R0.y@fully Param0.x {W} VEC_210
+   ALU INTERP_XY S1.y@chan : R0.x@fully Param0.y {W} VEC_210
+   ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
+   ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+   ALU INTERP_ZW __.x@chan : R0.y@fully Param0.x {} VEC_210
+   ALU INTERP_ZW __.y@chan : R0.x@fully Param0.y {} VEC_210
+   ALU INTERP_ZW S1.z@chgr : R0.y@fully Param0.z {W} VEC_210
+   ALU INTERP_ZW S1.w@chgr : R0.x@fully Param0.w {WL} VEC_210
+ALU_GROUP_END
+TEX SAMPLE S3.xyzw : S1.xy__ RID:18 SID:0 NNNN
+TEX SAMPLE S4.xyzw : S1.zw__ RID:18 SID:0 NNNN
+ALU ADD S5.x@group : S3.x@group S4.x@group {W}
+ALU ADD S5.y@group : S3.y@group S4.y@group {W}
+ALU ADD S5.z@group : S3.z@group S4.z@group {W}
+ALU ADD S5.w@group : S3.w@group S4.w@group {W}
+EXPORT_DONE PIXEL 0 S5.xyzw)";
+
 const char *fs_with_loop_multislot_reuse =
 R"(FS
 CHIPCLASS CAYMAN
