@@ -506,8 +506,8 @@ draw_vbo(struct draw_context *draw,
    unsigned fpstate = util_fpstate_get();
    struct pipe_draw_info resolved_info;
    struct pipe_draw_start_count_bias resolved_draw;
-   struct pipe_draw_info *use_info = (struct pipe_draw_info *)info;
-   struct pipe_draw_start_count_bias *use_draws = (struct pipe_draw_start_count_bias *)draws;
+   const struct pipe_draw_info *use_info;
+   const struct pipe_draw_start_count_bias *use_draws;
 
    if (info->instance_count == 0)
       return;
@@ -523,6 +523,9 @@ draw_vbo(struct draw_context *draw,
       use_info = &resolved_info;
       use_draws = &resolved_draw;
       num_draws = 1;
+   } else {
+      use_info = info;
+      use_draws = draws;
    }
 
    if (info->index_size) {
