@@ -87,7 +87,7 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
          uint8_t *ptr;
 
          assert(*out_buffer == NULL);
-         *out_buffer = new_upload_buffer(ctx, size, &ptr);
+         *out_buffer = new_upload_buffer(ctx, size + start_offset, &ptr);
          if (!*out_buffer)
             return;
 
