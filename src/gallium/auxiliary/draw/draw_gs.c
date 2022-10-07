@@ -148,7 +148,6 @@ tgsi_fetch_gs_input(struct draw_geometry_shader *shader,
 #endif
       const float (*input)[4] = (const float (*)[4])
          ((const char *)input_ptr + (indices[i] * input_vertex_stride));
-      int vs_slot = 0;
       for (unsigned slot = 0; slot < shader->info.num_inputs; ++slot) {
          unsigned idx = i * TGSI_EXEC_MAX_INPUT_ATTRIBS + slot;
          if (shader->info.input_semantic_name[slot] == TGSI_SEMANTIC_PRIMID) {
@@ -158,7 +157,7 @@ tgsi_fetch_gs_input(struct draw_geometry_shader *shader,
             machine->Inputs[idx].xyzw[3].u[prim_idx] = shader->in_prim_idx;
          } else {
             /* TODO: Move this call out of the for(i) loop */
-            vs_slot = draw_gs_get_input_index(
+            int vs_slot = draw_gs_get_input_index(
                shader->info.input_semantic_name[slot],
                shader->info.input_semantic_index[slot],
                shader->input_info);
@@ -188,7 +187,6 @@ tgsi_fetch_gs_input(struct draw_geometry_shader *shader,
                             machine->Inputs[idx].xyzw[2].f[prim_idx],
                             machine->Inputs[idx].xyzw[3].f[prim_idx]);
 #endif
-               ++vs_slot;
             }
          }
       }
@@ -254,7 +252,6 @@ llvm_fetch_gs_input(struct draw_geometry_shader *shader,
 #endif
       const float (*input)[4] = (const float (*)[4])
          ((const char *)input_ptr + (indices[i] * input_vertex_stride));
-      int vs_slot = 0;
       for (unsigned slot = 0; slot < shader->info.num_inputs; ++slot) {
          if (shader->info.input_semantic_name[slot] == TGSI_SEMANTIC_PRIMID) {
             /* skip. we handle system values through gallivm */
@@ -264,7 +261,7 @@ llvm_fetch_gs_input(struct draw_geometry_shader *shader,
              * would make sense so hack around this later in gallivm.
              */
          } else {
-            vs_slot = draw_gs_get_input_index(
+            int vs_slot = draw_gs_get_input_index(
                shader->info.input_semantic_name[slot],
                shader->info.input_semantic_index[slot],
                shader->input_info);
@@ -294,7 +291,6 @@ llvm_fetch_gs_input(struct draw_geometry_shader *shader,
                             (*input_data)[i][slot][2][prim_idx],
                             (*input_data)[i][slot][3][prim_idx]);
 #endif
-               ++vs_slot;
             }
          }
       }
