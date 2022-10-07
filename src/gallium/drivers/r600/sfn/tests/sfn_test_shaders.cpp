@@ -2409,6 +2409,89 @@ ALU ADD S5.z@group : S3.z@group S4.z@group {W}
 ALU ADD S5.w@group : S3.w@group S4.w@group {W}
 EXPORT_DONE PIXEL 0 S5.xyzw)";
 
+const char *fs_sched_tex_coord_init =
+R"(FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+INPUT LOC:0 NAME:5 INTERP:2 SID:9 SPI_SID:10
+OUTPUT LOC:0 NAME:1 MASK:15
+REGISTERS R0.x@fully R0.y@fully
+SHADER
+ALU_GROUP_BEGIN
+  ALU INTERP_XY S1.x@chan : R0.y@fully Param0.x {W} VEC_210
+  ALU INTERP_XY S1.y@chan : R0.x@fully Param0.y {W} VEC_210
+  ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
+  ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU INTERP_ZW __.x@chan : R0.y@fully Param0.x {} VEC_210
+  ALU INTERP_ZW __.y@chan : R0.x@fully Param0.y {} VEC_210
+  ALU INTERP_ZW S1.z@chan : R0.y@fully Param0.z {W} VEC_210
+  ALU INTERP_ZW S1.w@chan : R0.x@fully Param0.w {WL} VEC_210
+ALU_GROUP_END
+ALU ADD S2.x@group : S1.x@chan S1.z@chan {W}
+ALU ADD S2.y@group : S1.y@chan S1.w@chan {WL}
+ALU MUL_IEEE S3.x@group : S1.x@chan S1.z@chan {W}
+ALU MUL_IEEE S3.y@group : S1.y@chan S1.w@chan {WL}
+
+TEX SAMPLE S4.xyzw : S2.xy__ RID:18 SID:0 NNNN
+TEX SAMPLE S5.xyzw : S3.xy__ RID:18 SID:0 NNNN
+ALU ADD S6.x@group : S5.x@group S4.x@group {W}
+ALU ADD S6.y@group : S5.y@group S4.y@group {W}
+ALU ADD S6.z@group : S5.z@group S4.z@group {W}
+ALU ADD S6.w@group : S5.w@group S4.w@group {W}
+EXPORT_DONE PIXEL 0 S5.xyzw)";
+
+
+const char *fs_sched_tex_coord_expect =
+R"(FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+INPUT LOC:0 NAME:5 INTERP:2 SID:9 SPI_SID:10
+OUTPUT LOC:0 NAME:1 MASK:15
+REGISTERS R0.x@fully R0.y@fully
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU INTERP_XY S1.x@chan : R0.y@fully Param0.x {W} VEC_210
+  ALU INTERP_XY S1.y@chan : R0.x@fully Param0.y {W} VEC_210
+  ALU INTERP_XY __.z@chan : R0.y@fully Param0.z {} VEC_210
+  ALU INTERP_XY __.w@chan : R0.x@fully Param0.w {L} VEC_210
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU INTERP_ZW __.x@chan : R0.y@fully Param0.x {} VEC_210
+  ALU INTERP_ZW __.y@chan : R0.x@fully Param0.y {} VEC_210
+  ALU INTERP_ZW S1.z@chan : R0.y@fully Param0.z {W} VEC_210
+  ALU INTERP_ZW S1.w@chan : R0.x@fully Param0.w {WL} VEC_210
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU ADD S2.x@group : S1.x@chan S1.z@chan {W}
+  ALU ADD S2.y@group : S1.y@chan S1.w@chan {W}
+  ALU MUL_IEEE S3.z@chgr : S1.x@chan S1.z@chan {W}
+  ALU MUL_IEEE S3.w@chgr : S1.y@chan S1.w@chan {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+TEX SAMPLE S4.xyzw : S2.xy__ RID:18 SID:0 NNNN
+TEX SAMPLE S5.xyzw : S3.zw__ RID:18 SID:0 NNNN
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+ALU ADD S6.x@group : S5.x@group S4.x@group {W}
+ALU ADD S6.y@group : S5.y@group S4.y@group {W}
+ALU ADD S6.z@group : S5.z@group S4.z@group {W}
+ALU ADD S6.w@group : S5.w@group S4.w@group {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+EXPORT_DONE PIXEL 0 S5.xyzw
+BLOCK_END)";
+
+
 const char *fs_with_loop_multislot_reuse =
 R"(FS
 CHIPCLASS CAYMAN

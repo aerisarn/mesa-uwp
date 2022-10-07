@@ -444,6 +444,18 @@ void AluInstr::set_sources(SrcValues src)
    }
 }
 
+uint8_t AluInstr::allowed_dest_chan_mask() const
+{
+   if (alu_slots() != 1) {
+      if (has_alu_flag(alu_is_cayman_trans)) {
+         return (1 << alu_slots()) - 1;
+      } else {
+         return 0;
+      }
+   }
+   return 0xf;
+}
+
 bool AluInstr::replace_dest(PRegister new_dest, AluInstr *move_instr)
 {
    if (m_dest->equal_to(*new_dest))
