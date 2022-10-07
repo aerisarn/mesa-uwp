@@ -377,7 +377,7 @@ typedef boolean
                       struct vertex_header *io,
                       const struct draw_vertex_buffer vbuffers[PIPE_MAX_ATTRIBS],
                       unsigned count,
-                      unsigned start_or_maxelt,
+                      unsigned start,
                       unsigned stride,
                       struct pipe_vertex_buffer *vertex_buffers,
                       unsigned instance_id,

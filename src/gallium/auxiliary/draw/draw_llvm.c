@@ -1924,7 +1924,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    LLVMBuilderRef builder;
    char func_name[64];
    struct lp_type vs_type;
-   LLVMValueRef count, fetch_elts, start_or_maxelt;
+   LLVMValueRef count, fetch_elts, start;
    LLVMValueRef vertex_id_offset;
    LLVMValueRef stride, step, io_itr;
    LLVMValueRef ind_vec, start_vec, have_elts, fetch_max, tmp;
@@ -2003,12 +2003,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    io_ptr                    = LLVMGetParam(variant_func, 1);
    vbuffers_ptr              = LLVMGetParam(variant_func, 2);
    count                     = LLVMGetParam(variant_func, 3);
-   /*
-    * XXX: the maxelt part is unused. Not really useful, since we cannot
-    * get index buffer overflows due to vsplit (which provides its own
-    * elts buffer, with a different size than what's passed in here).
-    */
-   start_or_maxelt           = LLVMGetParam(variant_func, 4);
+   start                     = LLVMGetParam(variant_func, 4);
    /*
     * XXX: stride is actually unused. The stride we use is strictly calculated
     * from the number of outputs (including the draw_extra outputs).
@@ -2028,7 +2023,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    lp_build_name(io_ptr, "io");
    lp_build_name(vbuffers_ptr, "vbuffers");
    lp_build_name(count, "count");
-   lp_build_name(start_or_maxelt, "start_or_maxelt");
+   lp_build_name(start, "start");
    lp_build_name(stride, "stride");
    lp_build_name(vb_ptr, "vb");
    lp_build_name(system_values.instance_id, "instance_id");
@@ -2087,7 +2082,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    /*
     * Only needed for non-indexed path.
     */
-   start_vec = lp_build_broadcast_scalar(&blduivec, start_or_maxelt);
+   start_vec = lp_build_broadcast_scalar(&blduivec, start);
 
    /*
     * Pre-calculate everything which is constant per shader invocation.
@@ -2304,7 +2299,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
       LLVMValueRef base_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, lp_build_const_int32(gallivm, 0));
       system_values.basevertex = lp_build_broadcast_scalar(&blduivec, base_vertex);
       /* first vertex is for Vulkan base vertex support */
-      LLVMValueRef first_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, start_or_maxelt);
+      LLVMValueRef first_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, start);
       system_values.firstvertex = lp_build_broadcast_scalar(&blduivec, first_vertex);
       system_values.vertex_id = true_index_array;
       system_values.vertex_id_nobase = LLVMBuildSub(builder, true_index_array,

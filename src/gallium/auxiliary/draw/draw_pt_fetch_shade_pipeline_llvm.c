@@ -593,15 +593,15 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
    }
 
    {
-      unsigned start_or_maxelt, vertex_id_offset;
+      unsigned start, vertex_id_offset;
       const unsigned *elts;
 
       if (fetch_info->linear) {
-         start_or_maxelt = fetch_info->start;
+         start = fetch_info->start;
          vertex_id_offset = draw->start_index;
          elts = NULL;
       } else {
-         start_or_maxelt = draw->pt.user.eltMax;
+         start = draw->pt.user.eltMax;
          vertex_id_offset = draw->pt.user.eltBias;
          elts = fetch_info->elts;
       }
@@ -610,7 +610,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
                                                 llvm_vert_info.verts,
                                                 draw->pt.user.vbuffer,
                                                 fetch_info->count,
-                                                start_or_maxelt,
+                                                start,
                                                 fpme->vertex_size,
                                                 draw->pt.vertex_buffer,
                                                 draw->instance_id,
