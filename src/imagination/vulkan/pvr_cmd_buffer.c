@@ -1579,6 +1579,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    state->current_sub_cmd = NULL;
 
    if (query_pool) {
+      struct pvr_sub_cmd_event *sub_cmd;
       struct pvr_query_info query_info;
 
       assert(query_indices_bo);
@@ -1594,6 +1595,25 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       query_info.availability_write.num_queries = query_pool->query_count;
       query_info.availability_write.availability_bo =
          query_pool->availability_buffer;
+
+      /* Insert a barrier after the graphics sub command and before the
+       * query sub command so that the availability write program waits for the
+       * fragment shader to complete.
+       */
+
+      result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
+      if (result != VK_SUCCESS)
+         return result;
+
+      sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
+
+      *sub_cmd = (struct pvr_sub_cmd_event) {
+         .type = PVR_EVENT_TYPE_BARRIER,
+         .barrier = {
+            .wait_for_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
+            .wait_at_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,
+         },
+      };
 
       return pvr_add_query_program(cmd_buffer, &query_info);
    }

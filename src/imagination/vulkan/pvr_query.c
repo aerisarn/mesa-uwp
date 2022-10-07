@@ -237,6 +237,8 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_query_info query_info;
+   struct pvr_sub_cmd_event *sub_cmd;
+   VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
@@ -250,7 +252,50 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    query_info.copy_query_results.stride = stride;
    query_info.copy_query_results.flags = flags;
 
+   result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
+   if (result != VK_SUCCESS)
+      return;
+
+   /* The Vulkan 1.3.231 spec says:
+    *
+    *    "vkCmdCopyQueryPoolResults is considered to be a transfer operation,
+    *    and its writes to buffer memory must be synchronized using
+    *    VK_PIPELINE_STAGE_TRANSFER_BIT and VK_ACCESS_TRANSFER_WRITE_BIT before
+    *    using the results."
+    *
+    */
+   /* We record barrier event sub commands to sync the compute job used for the
+    * copy query results program with transfer jobs to prevent an overlapping
+    * transfer job with the compute job.
+    */
+
+   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
+   *sub_cmd = (struct pvr_sub_cmd_event) {
+      .type = PVR_EVENT_TYPE_BARRIER,
+      .barrier = {
+         .wait_for_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
+         .wait_at_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,
+      },
+   };
+
+   result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+   if (result != VK_SUCCESS)
+      return;
+
    pvr_add_query_program(cmd_buffer, &query_info);
+
+   result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
+   if (result != VK_SUCCESS)
+      return;
+
+   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
+   *sub_cmd = (struct pvr_sub_cmd_event) {
+      .type = PVR_EVENT_TYPE_BARRIER,
+      .barrier = {
+         .wait_for_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,
+         .wait_at_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
+      },
+   };
 }
 
 void pvr_CmdBeginQuery(VkCommandBuffer commandBuffer,

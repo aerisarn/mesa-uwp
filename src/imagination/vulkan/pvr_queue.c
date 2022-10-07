@@ -364,6 +364,53 @@ pvr_process_transfer_cmds(struct pvr_device *device,
    return result;
 }
 
+static VkResult pvr_process_occlusion_query_cmd(
+   struct pvr_device *device,
+   struct pvr_queue *queue,
+   struct pvr_sub_cmd_compute *sub_cmd,
+   struct vk_sync *barrier,
+   struct vk_sync **waits,
+   uint32_t wait_count,
+   uint32_t *stage_flags,
+   struct vk_sync *completions[static PVR_JOB_TYPE_MAX])
+{
+   struct vk_sync *sync;
+   VkResult result;
+
+   /* TODO: Currently we add barrier event sub commands to handle the sync
+    * necessary for the different occlusion query types. Would we get any speed
+    * up in processing the queue by doing that sync here without using event sub
+    * commands?
+    */
+
+   result = vk_sync_create(&device->vk,
+                           &device->pdevice->ws->syncobj_type,
+                           0U,
+                           0UL,
+                           &sync);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = pvr_compute_job_submit(queue->query_ctx,
+                                   sub_cmd,
+                                   barrier,
+                                   waits,
+                                   wait_count,
+                                   stage_flags,
+                                   sync);
+   if (result != VK_SUCCESS) {
+      vk_sync_destroy(&device->vk, sync);
+      return result;
+   }
+
+   if (completions[PVR_JOB_TYPE_OCCLUSION_QUERY])
+      vk_sync_destroy(&device->vk, completions[PVR_JOB_TYPE_OCCLUSION_QUERY]);
+
+   completions[PVR_JOB_TYPE_OCCLUSION_QUERY] = sync;
+
+   return result;
+}
+
 static VkResult pvr_process_event_cmd_barrier(
    struct pvr_device *device,
    struct pvr_sub_cmd_event *sub_cmd,
@@ -679,6 +726,10 @@ static VkResult pvr_process_cmd_buffer(
                              sub_cmd,
                              &cmd_buffer->sub_cmds,
                              link) {
+      /* TODO: Process PVR_SUB_COMMAND_FLAG_WAIT_ON_PREVIOUS_FRAG and
+       * PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY flags.
+       */
+
       switch (sub_cmd->type) {
       case PVR_SUB_CMD_TYPE_GRAPHICS:
          result = pvr_process_graphics_cmd(device,
@@ -716,7 +767,15 @@ static VkResult pvr_process_cmd_buffer(
          break;
 
       case PVR_SUB_CMD_TYPE_OCCLUSION_QUERY:
-         pvr_finishme("Add support to occlusion query.");
+         result = pvr_process_occlusion_query_cmd(
+            device,
+            queue,
+            &sub_cmd->compute,
+            barriers[PVR_JOB_TYPE_OCCLUSION_QUERY],
+            waits,
+            wait_count,
+            stage_flags,
+            per_cmd_buffer_syncobjs);
          break;
 
       case PVR_SUB_CMD_TYPE_EVENT:
