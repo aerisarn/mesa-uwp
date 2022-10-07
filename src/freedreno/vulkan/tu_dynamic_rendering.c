@@ -201,8 +201,6 @@ tu_insert_dynamic_cmdbufs(struct tu_device *dev,
           * because we skip tu6_emit_hw().
           */
          cmd_buffer->state.ccu_state = old_cmds[i]->state.ccu_state;
-         cmd_buffer->vsc_draw_strm_pitch = old_cmds[i]->vsc_draw_strm_pitch;
-         cmd_buffer->vsc_prim_strm_pitch = old_cmds[i]->vsc_prim_strm_pitch;
          break;
       }
    }
