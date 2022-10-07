@@ -168,6 +168,10 @@
     # so only enable automatic testing when running in the context of Mesa to
     # prevent failures in forks.
     - if: '$CI_PROJECT_NAMESPACE != "mesa"'
+
+.austriancoder-farm-rules:
+  rules:
+    - if: '$AUSTRIANCODER_FARM == "offline"'
       when: never
 
 # Skips freedreno jobs if either of the farms we use are offline.
@@ -626,6 +630,7 @@
 .etnaviv-rules:
   stage: etnaviv
   rules:
+    - !reference [.austriancoder-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/etnaviv/**/*
