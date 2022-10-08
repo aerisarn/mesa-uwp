@@ -3320,7 +3320,13 @@ Converter::run()
    subgroup_options.ballot_components = 1;
    subgroup_options.lower_elect = true;
 
+   unsigned lower_flrp = (nir->options->lower_flrp16 ? 16 : 0) |
+                         (nir->options->lower_flrp32 ? 32 : 0) |
+                         (nir->options->lower_flrp64 ? 64 : 0);
+   assert(lower_flrp);
+
    /* prepare for IO lowering */
+   NIR_PASS_V(nir, nir_lower_flrp, lower_flrp, false);
    NIR_PASS_V(nir, nir_opt_deref);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
