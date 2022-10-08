@@ -2301,7 +2301,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
     * Since 3DSTATE_PUSH_CONSTANT_ALLOC_VS is programmed as part of
     * pipeline setup, we need to dirty push constants.
     */
-   cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
+   cmd_buffer->state.push_constants_dirty |= stages;
 }
 
 static VkResult
@@ -3616,7 +3616,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       /* Because we're pushing UBOs, we have to push whenever either
        * descriptors or push constants is dirty.
        */
-      dirty |= cmd_buffer->state.push_constants_dirty;
+      dirty |= cmd_buffer->state.push_constants_dirty & pipeline->active_stages;
       cmd_buffer_flush_push_constants(cmd_buffer,
                                       dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
 #if GFX_VERx10 >= 125
