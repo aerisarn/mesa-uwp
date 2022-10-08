@@ -208,9 +208,12 @@ void vlVaHandlePictureParameterBufferAV1(vlVaDriver *drv, vlVaContext *context, 
    context->desc.av1.picture_parameter.v_ac_delta_q = av1->v_ac_delta_q;
    context->desc.av1.picture_parameter.qmatrix_fields.using_qmatrix =
       av1->qmatrix_fields.bits.using_qmatrix;
-   context->desc.av1.picture_parameter.qmatrix_fields.qm_y = av1->qmatrix_fields.bits.qm_y & 0xf;
-   context->desc.av1.picture_parameter.qmatrix_fields.qm_u = av1->qmatrix_fields.bits.qm_u & 0xf;
-   context->desc.av1.picture_parameter.qmatrix_fields.qm_v = av1->qmatrix_fields.bits.qm_v & 0xf;
+   context->desc.av1.picture_parameter.qmatrix_fields.qm_y = av1->qmatrix_fields.bits.using_qmatrix
+      ? av1->qmatrix_fields.bits.qm_y : 0xf;
+   context->desc.av1.picture_parameter.qmatrix_fields.qm_u = av1->qmatrix_fields.bits.using_qmatrix
+      ? av1->qmatrix_fields.bits.qm_u : 0xf;
+   context->desc.av1.picture_parameter.qmatrix_fields.qm_v = av1->qmatrix_fields.bits.using_qmatrix
+      ? av1->qmatrix_fields.bits.qm_v : 0xf;
 
    /* Segmentation Params */
    context->desc.av1.picture_parameter.seg_info.segment_info_fields.enabled =
