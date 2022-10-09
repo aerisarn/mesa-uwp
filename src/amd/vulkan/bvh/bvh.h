@@ -41,6 +41,8 @@
 #include <vulkan/vulkan.h>
 typedef struct radv_ir_node radv_ir_node;
 
+typedef uint16_t float16_t;
+
 typedef struct {
    float values[3][4];
 } mat3x4;
@@ -155,7 +157,7 @@ struct radv_bvh_instance_node {
 
 struct radv_bvh_box16_node {
    uint32_t children[4];
-   uint32_t coords[4][3];
+   float16_t coords[4][2][3];
 };
 
 struct radv_bvh_box32_node {
