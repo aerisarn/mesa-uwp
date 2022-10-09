@@ -84,6 +84,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
       /* Vulkan 1.3 features */
       .inlineUniformBlock = true,
+      .privateData = true,
    };
 
    vk_foreach_struct(ext, pFeatures->pNext)
@@ -374,6 +375,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .EXT_extended_dynamic_state3 = true,
       .EXT_host_query_reset = true,
       .EXT_pci_bus_info = true,
+      .EXT_private_data = true,
       .EXT_vertex_input_dynamic_state = true,
    };
 }
