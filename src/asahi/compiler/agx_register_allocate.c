@@ -83,13 +83,11 @@ agx_split_width(const agx_instr *I)
 }
 
 static unsigned
-agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
+find_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
 {
    for (unsigned reg = 0; reg < max; reg += align) {
-      if (!BITSET_TEST_RANGE(used_regs, reg, reg + count - 1)) {
-         BITSET_SET_RANGE(used_regs, reg, reg + count - 1);
+      if (!BITSET_TEST_RANGE(used_regs, reg, reg + count - 1))
          return reg;
-      }
    }
 
    /* Couldn't find a free register, dump the state of the register file */
@@ -127,6 +125,20 @@ reserve_live_in(struct ra_ctx *rctx)
       }
 }
 
+static void
+assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
+{
+   assert(v.type == AGX_INDEX_NORMAL && "only SSA gets registers allocated");
+   rctx->ssa_to_reg[v.value] = reg;
+
+   assert(!BITSET_TEST(rctx->visited, v.value) && "SSA violated");
+   BITSET_SET(rctx->visited, v.value);
+
+   unsigned end = reg + rctx->ncomps[v.value] - 1;
+   assert(!BITSET_TEST_RANGE(rctx->used_regs, reg, end) && "no interference");
+   BITSET_SET_RANGE(rctx->used_regs, reg, end);
+}
+
 /** Assign registers to SSA values in a block. */
 
 static void
@@ -153,52 +165,25 @@ agx_ra_assign_local(struct ra_ctx *rctx)
        */
       if (I->op == AGX_OPCODE_SPLIT && I->src[0].kill) {
          unsigned reg = ssa_to_reg[I->src[0].value];
-         unsigned length = ncomps[I->src[0].value];
          unsigned width = agx_size_align_16(agx_split_width(I));
-         unsigned count = length / width;
 
          agx_foreach_dest(I, d) {
-            /* Skip excess components */
-            if (d >= count) {
-               assert(agx_is_null(I->dest[d]));
-               continue;
-            }
+            /* Free up the source */
+            unsigned offset_reg = reg + (d * width);
+            BITSET_CLEAR_RANGE(used_regs, offset_reg, offset_reg + width - 1);
 
-            /* The source of the split is killed. If a destination of the split
-             * is null, that channel is killed. Free it.
-             */
-            if (agx_is_null(I->dest[d])) {
-               BITSET_CLEAR_RANGE(used_regs, reg + (width * d),
-                                  reg + (width * d) + width - 1);
-               continue;
-            }
-
-            /* Otherwise, transfer the liveness */
-            unsigned offset = d * width;
-
-            assert(I->dest[d].type == AGX_INDEX_NORMAL);
-            assert(offset < length);
-
-            ssa_to_reg[I->dest[d].value] = reg + offset;
-            BITSET_SET(rctx->visited, I->dest[d].value);
+            /* Assign the destination where the source was */
+            if (!agx_is_null(I->dest[d]))
+               assign_regs(rctx, I->dest[d], offset_reg);
          }
 
          continue;
       } else if (I->op == AGX_OPCODE_PRELOAD) {
          /* We must coalesce all preload moves */
-         assert(I->dest[0].type == AGX_INDEX_NORMAL);
          assert(I->dest[0].size == I->src[0].size);
          assert(I->src[0].type == AGX_INDEX_REGISTER);
 
-         unsigned base = I->src[0].value;
-
-         for (unsigned i = 0; i < agx_size_align_16(I->src[0].size); ++i) {
-            assert(!BITSET_TEST(used_regs, base + i));
-            BITSET_SET(used_regs, base + i);
-         }
-
-         ssa_to_reg[I->dest[0].value] = base;
-         BITSET_SET(rctx->visited, I->dest[0].value);
+         assign_regs(rctx, I->dest[0], I->src[0].value);
          continue;
       }
 
@@ -219,10 +204,9 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          if (I->dest[d].type == AGX_INDEX_NORMAL) {
             unsigned count = agx_write_registers(I, d);
             unsigned align = agx_size_align_16(I->dest[d].size);
-            unsigned reg = agx_assign_regs(used_regs, count, align, rctx->bound);
 
-            ssa_to_reg[I->dest[d].value] = reg;
-            BITSET_SET(rctx->visited, I->dest[d].value);
+            assign_regs(rctx, I->dest[d],
+                        find_regs(used_regs, count, align, rctx->bound));
          }
       }
    }
