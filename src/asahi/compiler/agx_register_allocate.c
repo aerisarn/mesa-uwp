@@ -86,15 +86,8 @@ static unsigned
 agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
 {
    for (unsigned reg = 0; reg < max; reg += align) {
-      bool conflict = false;
-
-      for (unsigned j = 0; j < count; ++j)
-         conflict |= BITSET_TEST(used_regs, reg + j);
-
-      if (!conflict) {
-         for (unsigned j = 0; j < count; ++j)
-            BITSET_SET(used_regs, reg + j);
-
+      if (!BITSET_TEST_RANGE(used_regs, reg, reg + count - 1)) {
+         BITSET_SET_RANGE(used_regs, reg, reg + count - 1);
          return reg;
       }
    }
@@ -175,9 +168,8 @@ agx_ra_assign_local(struct ra_ctx *rctx)
              * is null, that channel is killed. Free it.
              */
             if (agx_is_null(I->dest[d])) {
-               for (unsigned i = 0; i < width; ++i)
-                  BITSET_CLEAR(used_regs, reg + (width * d) + i);
-
+               BITSET_CLEAR_RANGE(used_regs, reg + (width * d),
+                                  reg + (width * d) + width - 1);
                continue;
             }
 
@@ -216,8 +208,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
             unsigned reg = ssa_to_reg[I->src[s].value];
             unsigned count = ncomps[I->src[s].value];
 
-            for (unsigned i = 0; i < count; ++i)
-               BITSET_CLEAR(used_regs, reg + i);
+            BITSET_CLEAR_RANGE(used_regs, reg, reg + count - 1);
          }
       }
 
