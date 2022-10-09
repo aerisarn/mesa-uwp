@@ -222,7 +222,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
                             struct si_shader *shader, const struct pipe_stream_output_info *so,
                             struct util_debug_callback *debug, struct nir_shader *nir,
                             bool free_nir);
-LLVMValueRef si_llvm_build_attr_ring_desc(struct si_shader_context *ctx);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
@@ -263,7 +262,7 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
                                     struct si_shader_output_values *shader_out);
 void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_output_values *outputs,
                             unsigned noutput, unsigned stream);
-void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_export_threads,
+void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                               struct si_shader_output_values *outputs, unsigned noutput);
 void si_llvm_vs_build_end(struct si_shader_context *ctx);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);

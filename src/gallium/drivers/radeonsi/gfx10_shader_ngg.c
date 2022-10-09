@@ -119,7 +119,7 @@ void gfx10_ngg_export_vertex(struct ac_shader_abi *abi)
             LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
    }
 
-   si_llvm_build_vs_exports(ctx, NULL, outputs, num_outputs);
+   si_llvm_build_vs_exports(ctx, outputs, num_outputs);
 }
 
 void gfx10_ngg_atomic_add_prim_count(struct ac_shader_abi *abi, unsigned stream,

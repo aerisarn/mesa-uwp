@@ -732,7 +732,7 @@ static LLVMValueRef si_get_num_vertices_per_prim(struct si_shader_context *ctx)
    return LLVMConstInt(ctx->ac.i32, num_vertices, false);
 }
 
-LLVMValueRef si_llvm_build_attr_ring_desc(struct si_shader_context *ctx)
+static LLVMValueRef si_llvm_build_attr_ring_desc(struct si_shader_context *ctx)
 {
    struct si_shader *shader = ctx->shader;
 

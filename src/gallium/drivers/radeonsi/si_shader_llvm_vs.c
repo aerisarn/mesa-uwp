@@ -503,10 +503,8 @@ static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, const LLV
 /**
  * Generate export instructions for hardware VS shader stage or NGG GS stage
  * (position and parameter data only).
- *
- * \param num_export_threads  The number of threads that are active for exports. Only used by gfx11.
  */
-void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_export_threads,
+void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                               struct si_shader_output_values *outputs, unsigned noutput)
 {
    struct si_shader *shader = ctx->shader;
@@ -720,63 +718,9 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
                                   &param_exports[offset]);
    }
 
-   if (ctx->screen->info.gfx_level >= GFX11) {
-      /* Store primitive exports to alloca variables, so that we can read them outside this branch. */
-      for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
-         for (unsigned chan = 0; chan < 4; chan++) {
-            param_exports[i].out[chan] =
-               ac_build_alloca_init(&ctx->ac, param_exports[i].out[chan], "");
-         }
-      }
-      ac_build_endif(&ctx->ac, 0);
-
-      if (!num_export_threads)
-         num_export_threads = si_unpack_param(ctx, ctx->args.merged_wave_info, 0, 8);
-
-      /* We should always store full vec4s in groups of 8 lanes for the best performance even if
-       * some of them are garbage or have unused components, so align the number of export threads
-       * to 8.
-       */
-      num_export_threads = LLVMBuildAdd(ctx->ac.builder, num_export_threads,
-                                        LLVMConstInt(ctx->ac.i32, 7, 0), "");
-      num_export_threads = LLVMBuildAnd(ctx->ac.builder, num_export_threads,
-                                        LLVMConstInt(ctx->ac.i32, ~7, 0), "");
-      ac_build_ifcc(&ctx->ac,
-                    LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
-                                  ac_get_thread_id(&ctx->ac), num_export_threads, ""), 0);
-
-      LLVMValueRef attr_rsrc = si_llvm_build_attr_ring_desc(ctx);
-      LLVMValueRef attr_offset = LLVMBuildShl(ctx->ac.builder,
-                                              si_unpack_param(ctx, ctx->args.gs_attr_offset, 0, 15),
-                                              LLVMConstInt(ctx->ac.i32, 9, 0), ""); /* 512B increments */
-      LLVMValueRef vindex = gfx10_get_thread_id_in_tg(ctx);
-
-      LLVMValueRef soffset[32];
-
-      /* Compute scalar offsets first. */
-      for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
-         soffset[i] = LLVMBuildAdd(ctx->ac.builder, attr_offset,
-                                   LLVMConstInt(ctx->ac.i32, 32 * i * 16, 0), "");
-      }
-
-      /* Write attributes to the attribute ring buffer. */
-      for (unsigned i = 0; i < shader->info.nr_param_exports; i++) {
-         for (unsigned chan = 0; chan < 4; chan++) {
-            param_exports[i].out[chan] =
-               LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, param_exports[i].out[chan], "");
-         }
-
-         LLVMValueRef vdata = ac_build_gather_values_extended(&ctx->ac, param_exports[i].out,
-                                                              4, 1, false);
-
-         ac_build_buffer_store_dword(&ctx->ac, attr_rsrc, vdata, vindex,
-                                     ctx->ac.i32_0, soffset[i], ac_swizzled);
-      }
-   } else {
-      /* Export attributes using parameter exports. */
-      for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
-         ac_build_export(&ctx->ac, &param_exports[i]);
-   }
+   /* Export attributes using parameter exports. */
+   for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
+      ac_build_export(&ctx->ac, &param_exports[i]);
 }
 
 void si_llvm_vs_build_end(struct si_shader_context *ctx)
@@ -813,7 +757,7 @@ void si_llvm_vs_build_end(struct si_shader_context *ctx)
       i++;
    }
 
-   si_llvm_build_vs_exports(ctx, NULL, outputs, i);
+   si_llvm_build_vs_exports(ctx, outputs, i);
    FREE(outputs);
 }
 
