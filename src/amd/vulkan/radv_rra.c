@@ -292,6 +292,11 @@ struct rra_box32_node {
    uint32_t reserved[4];
 };
 
+struct rra_box16_node {
+   uint32_t children[4];
+   float16_t coords[4][2][3];
+};
+
 /*
  * RRA files contain this struct in place of hardware
  * instance nodes. They're named "instance desc" internally.
@@ -409,24 +414,32 @@ rra_accel_struct_validation_fail(uint32_t offset, const char *reason, ...)
 }
 
 static bool
-rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
-                  struct radv_bvh_box32_node *node, uint32_t root_node_offset,
-                  uint32_t leaf_nodes_size, uint32_t internal_nodes_size,
+is_internal_node(uint32_t type)
+{
+   return type == radv_bvh_node_box16 || type == radv_bvh_node_box32;
+}
+
+static bool
+rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *node,
+                  uint32_t root_node_offset, uint32_t leaf_nodes_size, uint32_t internal_nodes_size,
                   uint32_t parent_table_size, bool is_bottom_level)
 {
+   /* The child ids are located at offset=0 for both box16 and box32 nodes. */
+   uint32_t *children = node;
    bool result = true;
    uint32_t cur_offset = (uint8_t *)node - data;
    for (uint32_t i = 0; i < 4; ++i) {
-      if (isnan(node->coords[i][0][0]))
+      if (children[i] == 0xFFFFFFFF)
          continue;
 
-      uint32_t type = node->children[i] & 7;
-      uint32_t offset = (node->children[i] & (~7u)) << 3;
+      uint32_t type = children[i] & 7;
+      uint32_t offset = (children[i] & (~7u)) << 3;
 
       bool is_node_type_valid = true;
       bool node_type_matches_as_type = true;
 
       switch (type) {
+      case radv_bvh_node_box16:
       case radv_bvh_node_box32:
          break;
       case radv_bvh_node_instance:
@@ -459,10 +472,10 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
          continue;
       }
 
-      if (type == radv_bvh_node_box32) {
-         result &= rra_validate_node(
-            accel_struct_vas, data, (struct radv_bvh_box32_node *)(data + offset), root_node_offset,
-            leaf_nodes_size, internal_nodes_size, parent_table_size, is_bottom_level);
+      if (is_internal_node(type)) {
+         result &= rra_validate_node(accel_struct_vas, data, data + offset, root_node_offset,
+                                     leaf_nodes_size, internal_nodes_size, parent_table_size,
+                                     is_bottom_level);
       } else if (type == radv_bvh_node_instance) {
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
          uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
@@ -540,9 +553,31 @@ rra_transcode_instance_node(struct rra_transcoding_context *ctx,
    memcpy(dst->otw_matrix, src->otw_matrix.values, sizeof(dst->otw_matrix));
 }
 
+static uint32_t rra_transcode_node(struct rra_transcoding_context *ctx, uint32_t parent_id,
+                                   uint32_t src_id);
+
 static void
-rra_transcode_internal_node(struct rra_transcoding_context *ctx,
-                            const struct radv_bvh_box32_node *src)
+rra_transcode_box16_node(struct rra_transcoding_context *ctx, const struct radv_bvh_box16_node *src)
+{
+   uint32_t dst_offset = ctx->dst_internal_offset;
+   ctx->dst_internal_offset += sizeof(struct rra_box16_node);
+   struct rra_box16_node *dst = (struct rra_box16_node *)(ctx->dst + dst_offset);
+
+   memcpy(dst->coords, src->coords, sizeof(dst->coords));
+
+   for (uint32_t i = 0; i < 4; ++i) {
+      if (src->children[i] == 0xffffffff) {
+         dst->children[i] = 0xffffffff;
+         continue;
+      }
+
+      dst->children[i] =
+         rra_transcode_node(ctx, radv_bvh_node_box16 | (dst_offset >> 3), src->children[i]);
+   }
+}
+
+static void
+rra_transcode_box32_node(struct rra_transcoding_context *ctx, const struct radv_bvh_box32_node *src)
 {
    uint32_t dst_offset = ctx->dst_internal_offset;
    ctx->dst_internal_offset += sizeof(struct rra_box32_node);
@@ -556,36 +591,46 @@ rra_transcode_internal_node(struct rra_transcoding_context *ctx,
          continue;
       }
 
-      uint32_t child_type = src->children[i] & 7;
-
-      uint32_t src_child_offset = (src->children[i] & (~7u)) << 3;
-      uint32_t dst_child_offset;
-
-      const void *src_child_node = ctx->src + src_child_offset;
-      if (child_type == radv_bvh_node_box32) {
-         dst_child_offset = ctx->dst_internal_offset;
-         rra_transcode_internal_node(ctx, src_child_node);
-      } else {
-         dst_child_offset = ctx->dst_leaf_offset;
-
-         if (child_type == radv_bvh_node_triangle)
-            rra_transcode_triangle_node(ctx, src_child_node);
-         else if (child_type == radv_bvh_node_aabb)
-            rra_transcode_aabb_node(ctx, src_child_node);
-         else if (child_type == radv_bvh_node_instance)
-            rra_transcode_instance_node(ctx, src_child_node);
-      }
-
-      uint32_t parent_id_index =
-         rra_parent_table_index_from_offset(dst_child_offset, ctx->parent_id_table_size);
-      ctx->parent_id_table[parent_id_index] = radv_bvh_node_box32 | (dst_offset >> 3);
-
-      uint32_t child_id = child_type | (dst_child_offset >> 3);
-      dst->children[i] = child_id;
-
-      if (child_type != radv_bvh_node_box32)
-         ctx->leaf_node_ids[ctx->leaf_index++] = child_id;
+      dst->children[i] =
+         rra_transcode_node(ctx, radv_bvh_node_box32 | (dst_offset >> 3), src->children[i]);
    }
+}
+
+static uint32_t
+rra_transcode_node(struct rra_transcoding_context *ctx, uint32_t parent_id, uint32_t src_id)
+{
+   uint32_t node_type = src_id & 7;
+   uint32_t src_offset = (src_id & (~7u)) << 3;
+
+   uint32_t dst_offset;
+
+   const void *src_child_node = ctx->src + src_offset;
+   if (is_internal_node(node_type)) {
+      dst_offset = ctx->dst_internal_offset;
+      if (node_type == radv_bvh_node_box32)
+         rra_transcode_box32_node(ctx, src_child_node);
+      else
+         rra_transcode_box16_node(ctx, src_child_node);
+   } else {
+      dst_offset = ctx->dst_leaf_offset;
+
+      if (node_type == radv_bvh_node_triangle)
+         rra_transcode_triangle_node(ctx, src_child_node);
+      else if (node_type == radv_bvh_node_aabb)
+         rra_transcode_aabb_node(ctx, src_child_node);
+      else if (node_type == radv_bvh_node_instance)
+         rra_transcode_instance_node(ctx, src_child_node);
+   }
+
+   uint32_t parent_id_index =
+      rra_parent_table_index_from_offset(dst_offset, ctx->parent_id_table_size);
+   ctx->parent_id_table[parent_id_index] = parent_id;
+
+   uint32_t dst_id = node_type | (dst_offset >> 3);
+   if (is_internal_node(node_type))
+      ctx->leaf_node_ids[ctx->leaf_index++] = dst_id;
+
+   return dst_id;
 }
 
 struct rra_copied_accel_struct {
@@ -654,9 +699,9 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
 
    if (should_validate)
       if (!rra_validate_node(accel_struct_vas, data + header->bvh_offset,
-                             (struct radv_bvh_box32_node *)(data + src_root_offset),
-                             src_root_offset, src_leaf_nodes_size, src_internal_nodes_size,
-                             node_parent_table_size, !is_tlas)) {
+                             data + header->bvh_offset + src_root_offset, src_root_offset,
+                             src_leaf_nodes_size, src_internal_nodes_size, node_parent_table_size,
+                             !is_tlas)) {
          return VK_ERROR_VALIDATION_FAILED_EXT;
       }
 
@@ -664,8 +709,6 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    if (!node_parent_table) {
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
-
-   node_parent_table[rra_parent_table_index_from_offset(RRA_ROOT_NODE_OFFSET, node_parent_table_size)] = 0xffffffff;
 
    uint32_t *leaf_node_ids = calloc(primitive_count, sizeof(uint32_t));
    if (!leaf_node_ids) {
@@ -691,7 +734,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       .leaf_index = 0,
    };
 
-   rra_transcode_internal_node(&ctx, (const void *)(data + header->bvh_offset + src_root_offset));
+   rra_transcode_node(&ctx, 0xFFFFFFFF, RADV_BVH_ROOT_NODE);
 
    struct rra_accel_struct_chunk_header chunk_header = {
       .metadata_offset = 0,
