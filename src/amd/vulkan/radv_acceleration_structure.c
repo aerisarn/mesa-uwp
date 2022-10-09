@@ -268,19 +268,6 @@ radv_CopyAccelerationStructureKHR(VkDevice _device, VkDeferredOperationKHR defer
    return VK_ERROR_FEATURE_NOT_PRESENT;
 }
 
-static nir_builder
-create_accel_build_shader(struct radv_device *device, const char *name)
-{
-   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "%s", name);
-   b.shader->info.workgroup_size[0] = 64;
-
-   assert(b.shader->info.workgroup_size[1] == 1);
-   assert(b.shader->info.workgroup_size[2] == 1);
-   assert(!b.shader->info.workgroup_size_variable);
-
-   return b;
-}
-
 void
 radv_device_finish_accel_struct_build_state(struct radv_device *device)
 {
