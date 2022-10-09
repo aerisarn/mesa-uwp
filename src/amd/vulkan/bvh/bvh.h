@@ -25,6 +25,7 @@
 #define BVH_BVH_H
 
 #define radv_bvh_node_triangle 0
+#define radv_bvh_node_box16    4
 #define radv_bvh_node_box32    5
 #define radv_bvh_node_instance 6
 #define radv_bvh_node_aabb 7
