@@ -427,7 +427,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
       bool node_type_matches_as_type = true;
 
       switch (type) {
-      case radv_bvh_node_internal:
+      case radv_bvh_node_box32:
          break;
       case radv_bvh_node_instance:
          node_type_matches_as_type = !is_bottom_level;
@@ -459,7 +459,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data,
          continue;
       }
 
-      if (type == radv_bvh_node_internal) {
+      if (type == radv_bvh_node_box32) {
          result &= rra_validate_node(
             accel_struct_vas, data, (struct radv_bvh_box32_node *)(data + offset), root_node_offset,
             leaf_nodes_size, internal_nodes_size, parent_table_size, is_bottom_level);
@@ -562,7 +562,7 @@ rra_transcode_internal_node(struct rra_transcoding_context *ctx,
       uint32_t dst_child_offset;
 
       const void *src_child_node = ctx->src + src_child_offset;
-      if (child_type == radv_bvh_node_internal) {
+      if (child_type == radv_bvh_node_box32) {
          dst_child_offset = ctx->dst_internal_offset;
          rra_transcode_internal_node(ctx, src_child_node);
       } else {
@@ -578,12 +578,12 @@ rra_transcode_internal_node(struct rra_transcoding_context *ctx,
 
       uint32_t parent_id_index =
          rra_parent_table_index_from_offset(dst_child_offset, ctx->parent_id_table_size);
-      ctx->parent_id_table[parent_id_index] = radv_bvh_node_internal | (dst_offset >> 3);
+      ctx->parent_id_table[parent_id_index] = radv_bvh_node_box32 | (dst_offset >> 3);
 
       uint32_t child_id = child_type | (dst_child_offset >> 3);
       dst->children[i] = child_id;
 
-      if (child_type != radv_bvh_node_internal)
+      if (child_type != radv_bvh_node_box32)
          ctx->leaf_node_ids[ctx->leaf_index++] = child_id;
    }
 }

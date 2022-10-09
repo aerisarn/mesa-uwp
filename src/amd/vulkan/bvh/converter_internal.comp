@@ -87,7 +87,7 @@ main()
       dst_node_offset = id_to_offset(RADV_BVH_ROOT_NODE);
 
    REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, dst_node_offset));
-   uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_internal);
+   uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_box32);
 
    for (;;) {
       controlBarrier(gl_ScopeWorkgroup, gl_ScopeDevice, gl_StorageSemanticsBuffer,

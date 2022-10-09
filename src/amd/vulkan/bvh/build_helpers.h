@@ -293,7 +293,7 @@ ir_type_to_bvh_type(uint32_t type)
    case radv_ir_node_triangle:
       return radv_bvh_node_triangle;
    case radv_ir_node_internal:
-      return radv_bvh_node_internal;
+      return radv_bvh_node_box32;
    case radv_ir_node_instance:
       return radv_bvh_node_instance;
    case radv_ir_node_aabb:
@@ -340,7 +340,7 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
       aabb.max = max(max(v0, v1), v2);
       break;
    }
-   case radv_bvh_node_internal: {
+   case radv_bvh_node_box32: {
       radv_bvh_box32_node internal = DEREF(REF(radv_bvh_box32_node)(node));
       aabb.min = vec3(INFINITY);
       aabb.max = vec3(-INFINITY);

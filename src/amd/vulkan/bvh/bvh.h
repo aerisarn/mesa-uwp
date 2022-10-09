@@ -25,7 +25,7 @@
 #define BVH_BVH_H
 
 #define radv_bvh_node_triangle 0
-#define radv_bvh_node_internal 5
+#define radv_bvh_node_box32    5
 #define radv_bvh_node_instance 6
 #define radv_bvh_node_aabb 7
 
@@ -163,8 +163,7 @@ struct radv_bvh_box32_node {
    uint32_t reserved[4];
 };
 
-/* a box32 node */
-#define RADV_BVH_ROOT_NODE radv_bvh_node_internal
+#define RADV_BVH_ROOT_NODE radv_bvh_node_box32
 #define RADV_BVH_INVALID_NODE 0xffffffffu
 
 #endif
