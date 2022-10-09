@@ -94,11 +94,10 @@ agx_compose_float_src(agx_index to, agx_index from)
 static void
 agx_optimizer_fmov(agx_instr **defs, agx_instr *ins)
 {
-   agx_foreach_src(ins, s) {
+   agx_foreach_ssa_src(ins, s) {
       agx_index src = ins->src[s];
-      if (src.type != AGX_INDEX_NORMAL) continue;
-      
       agx_instr *def = defs[src.value];
+
       if (def == NULL) continue; /* happens for phis in loops */
       if (!agx_is_fmov(def)) continue;
       if (def->saturate) continue;
@@ -153,11 +152,10 @@ agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
 static void
 agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
 {
-   agx_foreach_src(I, s) {
+   agx_foreach_ssa_src(I, s) {
       agx_index src = I->src[s];
-      if (src.type != AGX_INDEX_NORMAL) continue;
-
       agx_instr *def = defs[src.value];
+
       if (def == NULL) continue; /* happens for phis in loops */
       if (def->op != AGX_OPCODE_MOV) continue;
 
@@ -204,9 +202,8 @@ agx_optimizer_forward(agx_context *ctx)
    agx_foreach_instr_global(ctx, I) {
       struct agx_opcode_info info = agx_opcodes_info[I->op];
 
-      agx_foreach_dest(I, d) {
-         if (I->dest[d].type == AGX_INDEX_NORMAL)
-            defs[I->dest[d].value] = I;
+      agx_foreach_ssa_dest(I, d) {
+         defs[I->dest[d].value] = I;
       }
 
       /* Optimize moves */

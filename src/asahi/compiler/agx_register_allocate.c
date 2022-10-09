@@ -70,7 +70,7 @@ agx_split_width(const agx_instr *I)
    enum agx_size width = ~0;
 
    agx_foreach_dest(I, d) {
-      if (agx_is_null(I->dest[d]))
+      if (I->dest[d].type == AGX_INDEX_NULL)
          continue;
       else if (width != ~0)
          assert(width == I->dest[d].size);
@@ -188,8 +188,8 @@ agx_ra_assign_local(struct ra_ctx *rctx)
       }
 
       /* First, free killed sources */
-      agx_foreach_src(I, s) {
-         if (I->src[s].type == AGX_INDEX_NORMAL && I->src[s].kill) {
+      agx_foreach_ssa_src(I, s) {
+         if (I->src[s].kill) {
             unsigned reg = ssa_to_reg[I->src[s].value];
             unsigned count = ncomps[I->src[s].value];
 
@@ -200,14 +200,12 @@ agx_ra_assign_local(struct ra_ctx *rctx)
       /* Next, assign destinations one at a time. This is always legal
        * because of the SSA form.
        */
-      agx_foreach_dest(I, d) {
-         if (I->dest[d].type == AGX_INDEX_NORMAL) {
-            unsigned count = agx_write_registers(I, d);
-            unsigned align = agx_size_align_16(I->dest[d].size);
+      agx_foreach_ssa_dest(I, d) {
+         unsigned count = agx_write_registers(I, d);
+         unsigned align = agx_size_align_16(I->dest[d].size);
 
-            assign_regs(rctx, I->dest[d],
-                        find_regs(used_regs, count, align, rctx->bound));
-         }
+         assign_regs(rctx, I->dest[d],
+                     find_regs(used_regs, count, align, rctx->bound));
       }
    }
 
@@ -302,9 +300,7 @@ agx_ra(agx_context *ctx)
    BITSET_WORD *visited = calloc(BITSET_WORDS(ctx->alloc), sizeof(BITSET_WORD));
 
    agx_foreach_instr_global(ctx, I) {
-      agx_foreach_dest(I, d) {
-         if (I->dest[d].type != AGX_INDEX_NORMAL) continue;
-
+      agx_foreach_ssa_dest(I, d) {
          unsigned v = I->dest[d].value;
          assert(ncomps[v] == 0 && "broken SSA");
          ncomps[v] = agx_write_registers(I, d);
@@ -331,18 +327,14 @@ agx_ra(agx_context *ctx)
    }
 
    agx_foreach_instr_global(ctx, ins) {
-      agx_foreach_src(ins, s) {
-         if (ins->src[s].type == AGX_INDEX_NORMAL) {
-            unsigned v = ssa_to_reg[ins->src[s].value];
-            ins->src[s] = agx_replace_index(ins->src[s], agx_register(v, ins->src[s].size));
-         }
+      agx_foreach_ssa_src(ins, s) {
+         unsigned v = ssa_to_reg[ins->src[s].value];
+         ins->src[s] = agx_replace_index(ins->src[s], agx_register(v, ins->src[s].size));
       }
 
-      agx_foreach_dest(ins, d) {
-         if (ins->dest[d].type == AGX_INDEX_NORMAL) {
-            unsigned v = ssa_to_reg[ins->dest[d].value];
-            ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
-         }
+      agx_foreach_ssa_dest(ins, d) {
+         unsigned v = ssa_to_reg[ins->dest[d].value];
+         ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
       }
    }
 
@@ -386,7 +378,8 @@ agx_ra(agx_context *ctx)
 
          /* Move the sources */
          agx_foreach_dest(ins, i) {
-            if (agx_is_null(ins->dest[i])) continue;
+            if (ins->dest[i].type != AGX_INDEX_REGISTER)
+               continue;
 
             copies[n++] = (struct agx_copy) {
                .dest = agx_index_to_reg(ssa_to_reg, ins->dest[i]),

@@ -549,6 +549,14 @@ agx_start_block(agx_context *ctx)
 #define agx_foreach_dest(ins, v) \
    for (unsigned v = 0; v < ins->nr_dests; ++v)
 
+#define agx_foreach_ssa_src(ins, v) \
+   agx_foreach_src(ins, v) \
+      if (ins->src[v].type == AGX_INDEX_NORMAL)
+
+#define agx_foreach_ssa_dest(ins, v) \
+   agx_foreach_dest(ins, v) \
+      if (ins->dest[v].type == AGX_INDEX_NORMAL)
+
 /* Phis only come at the start so we stop as soon as we hit a non-phi */
 #define agx_foreach_phi_in_block(block, v) \
    agx_foreach_instr_in_block(block, v) \
