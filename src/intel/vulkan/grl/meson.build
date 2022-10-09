@@ -155,7 +155,7 @@ foreach t : [['125', 'gfx125', 'dg2']]
      grl_genX_files, grl_metakernel_c, grl_metakernel_h],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler,
-      inc_intel, inc_anv,
+      inc_intel,
     ],
     c_args : [
       no_override_init_args, c_sse2_args,
@@ -167,7 +167,7 @@ foreach t : [['125', 'gfx125', 'dg2']]
     ],
     dependencies : [
       dep_valgrind, idep_nir_headers, idep_vulkan_util_headers, idep_vulkan_wsi_headers,
-      idep_vulkan_runtime_headers,
+      idep_vulkan_runtime_headers, idep_anv_headers,
     ],
     gnu_symbol_visibility : 'hidden',
   )
@@ -188,7 +188,7 @@ libgrl = static_library(
     inc_compiler,
   ],
   link_whole : [grl_genX_libs],
-  dependencies : libgrl_deps,
+  dependencies : [libgrl_deps, idep_anv_headers],
   install : true,
 )
 idep_grl = declare_dependency(

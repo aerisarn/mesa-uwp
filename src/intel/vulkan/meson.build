@@ -27,16 +27,6 @@ anv_flags = [
 
 anv_cpp_flags = []
 
-if with_intel_vk_rt
-  subdir('grl')
-  optional_libgrl = [libgrl]
-  anv_flags += '-DANV_SUPPORT_RT=1'
-else
-  idep_grl = null_dep
-  optional_libgrl = []
-  anv_flags += '-DANV_SUPPORT_RT=0'
-endif
-
 anv_entrypoints = custom_target(
   'anv_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],
@@ -51,6 +41,21 @@ anv_entrypoints = custom_target(
   ],
   depend_files : vk_entrypoints_gen_depend_files,
 )
+
+idep_anv_headers = declare_dependency(
+  sources : [anv_entrypoints[0]],
+  include_directories : inc_anv,
+)
+
+if with_intel_vk_rt
+  subdir('grl')
+  optional_libgrl = [libgrl]
+  anv_flags += '-DANV_SUPPORT_RT=1'
+else
+  idep_grl = null_dep
+  optional_libgrl = []
+  anv_flags += '-DANV_SUPPORT_RT=0'
+endif
 
 intel_icd = custom_target(
   'intel_icd',
