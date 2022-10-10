@@ -2298,9 +2298,11 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
        */
       LLVMValueRef base_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, lp_build_const_int32(gallivm, 0));
       system_values.basevertex = lp_build_broadcast_scalar(&blduivec, base_vertex);
+
       /* first vertex is for Vulkan base vertex support */
-      LLVMValueRef first_vertex = lp_build_select(&bld, have_elts, vertex_id_offset, start);
+      LLVMValueRef first_vertex = vertex_id_offset;
       system_values.firstvertex = lp_build_broadcast_scalar(&blduivec, first_vertex);
+
       system_values.vertex_id = true_index_array;
       system_values.vertex_id_nobase = LLVMBuildSub(builder, true_index_array,
                                                     lp_build_broadcast_scalar(&blduivec, vertex_id_offset), "");
