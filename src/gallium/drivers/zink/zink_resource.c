@@ -408,8 +408,7 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
                return usage;
          }
       }
-   } else
-   {
+   } else {
       VkFormatProperties props = screen->format_props[templ->format];
       VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
       if (ici->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
