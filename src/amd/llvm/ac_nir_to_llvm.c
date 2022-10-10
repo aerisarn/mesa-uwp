@@ -3170,10 +3170,6 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       src = ac_to_float(&ctx->ac, src);
       src_type = LLVMTypeOf(src);
 
-      LLVMTypeRef ptr_type =
-         LLVMPointerType(src_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
-      ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
-
       params[arg_count++] = ptr;
       params[arg_count++] = src;
       params[arg_count++] = ctx->ac.i32_0;
@@ -3226,10 +3222,6 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
 
       if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd) {
          val = ac_to_float(&ctx->ac, src);
-
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(LLVMTypeOf(val), LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
-         ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
       } else {
          val = ac_to_integer(&ctx->ac, src);
       }
