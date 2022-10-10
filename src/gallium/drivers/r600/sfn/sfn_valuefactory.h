@@ -54,6 +54,7 @@ struct LiveRangeEntry {
    int m_end{-1};
    int m_index{-1};
    int m_color{-1};
+   bool m_alu_clause_local{false};
    std::bitset<use_unspecified> m_use;
    Register *m_register;
 
