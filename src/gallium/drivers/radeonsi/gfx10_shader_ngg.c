@@ -1752,7 +1752,7 @@ void gfx10_ngg_build_end(struct si_shader_context *ctx)
    ac_build_endif(&ctx->ac, 6002);
 }
 
-static LLVMValueRef ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
+static struct ac_llvm_pointer ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
 {
    const struct si_shader_selector *sel = ctx->shader->selector;
    const struct si_shader_info *info = &sel->info;
@@ -1762,8 +1762,10 @@ static LLVMValueRef ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
       LLVMArrayType(ctx->ac.i8, 4),
    };
    LLVMTypeRef type = LLVMStructTypeInContext(ctx->ac.context, elements, 2, false);
-   type = LLVMPointerType(LLVMArrayType(type, 0), AC_ADDR_SPACE_LDS);
-   return LLVMBuildBitCast(ctx->ac.builder, ctx->gs_ngg_emit, type, "");
+   return (struct ac_llvm_pointer) {
+      .value = ctx->gs_ngg_emit,
+      .pointee_type = LLVMArrayType(type, 0)
+   };
 }
 
 /**
@@ -1800,7 +1802,7 @@ static LLVMValueRef ngg_gs_vertex_ptr(struct si_shader_context *ctx, LLVMValueRe
 {
    struct si_shader_selector *sel = ctx->shader->selector;
    LLVMBuilderRef builder = ctx->ac.builder;
-   LLVMValueRef storage = ngg_gs_get_vertex_storage(ctx);
+   struct ac_llvm_pointer storage = ngg_gs_get_vertex_storage(ctx);
 
    /* gs.vertices_out = 2^(write_stride_2exp) * some odd number */
    unsigned write_stride_2exp = ffs(sel->info.base.gs.vertices_out) - 1;
@@ -1811,7 +1813,7 @@ static LLVMValueRef ngg_gs_vertex_ptr(struct si_shader_context *ctx, LLVMValueRe
       vertexidx = LLVMBuildXor(builder, vertexidx, swizzle, "");
    }
 
-   return ac_build_gep0(&ctx->ac, storage, vertexidx);
+   return ac_build_gep0(&ctx->ac, storage.value, vertexidx);
 }
 
 static LLVMValueRef ngg_gs_emit_vertex_ptr(struct si_shader_context *ctx, LLVMValueRef gsthread,
