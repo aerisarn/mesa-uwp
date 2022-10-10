@@ -5109,6 +5109,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    tu_append_executable(pipeline, v, nir_initial_disasm);
 
+   pipeline->program.cs_instrlen = v->instrlen;
+
    vk_pipeline_cache_object_unref(&compiled->base);
    ralloc_free(pipeline_mem_ctx);
 

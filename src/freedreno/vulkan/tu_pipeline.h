@@ -210,6 +210,7 @@ struct tu_pipeline
       uint32_t vs_param_stride;
       uint32_t hs_param_stride;
       uint32_t hs_vertices_out;
+      uint32_t cs_instrlen;
    } program;
 
    struct

@@ -5161,6 +5161,30 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    struct tu_cs *cs = &cmd->cs;
    struct tu_pipeline *pipeline = cmd->state.compute_pipeline;
 
+   bool emit_instrlen_workaround =
+      pipeline->program.cs_instrlen >
+      cmd->device->physical_device->info->a6xx.instr_cache_size;
+
+   /* There appears to be a HW bug where in some rare circumstances it appears
+    * to accidentally use the FS instrlen instead of the CS instrlen, which
+    * affects all known gens. Based on various experiments it appears that the
+    * issue is that when prefetching a branch destination and there is a cache
+    * miss, when fetching from memory the HW bounds-checks the fetch against
+    * SP_CS_INSTRLEN, except when one of the two register contexts is active
+    * it accidentally fetches SP_FS_INSTRLEN from the other (inactive)
+    * context. To workaround it we set the FS instrlen here and do a dummy
+    * event to roll the context (because it fetches SP_FS_INSTRLEN from the
+    * "wrong" context). Because the bug seems to involve cache misses, we
+    * don't emit this if the entire CS program fits in cache, which will
+    * hopefully be the majority of cases.
+    *
+    * See https://gitlab.freedesktop.org/mesa/mesa/-/issues/5892
+    */
+   if (emit_instrlen_workaround) {
+      tu_cs_emit_regs(cs, A6XX_SP_FS_INSTRLEN(pipeline->program.cs_instrlen));
+      tu6_emit_event_write(cmd, cs, LABEL);
+   }
+
    /* TODO: We could probably flush less if we add a compute_flush_bits
     * bitfield.
     */
@@ -5222,6 +5246,16 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
                      info->indirect != NULL,
                      local_size[0], local_size[1], local_size[2],
                      info->blocks[0], info->blocks[1], info->blocks[2]);
+
+   /* For the workaround above, because it's using the "wrong" context for
+    * SP_FS_INSTRLEN we should emit another dummy event write to avoid a
+    * potential race between writing the register and the CP_EXEC_CS we just
+    * did. We don't need to reset the register because it will be re-emitted
+    * anyway when the next renderpass starts.
+    */
+   if (emit_instrlen_workaround) {
+      tu6_emit_event_write(cmd, cs, LABEL);
+   }
 
    tu_cs_emit_wfi(cs);
 }
