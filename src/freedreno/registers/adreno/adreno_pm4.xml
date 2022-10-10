@@ -70,6 +70,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<!-- a6xx events -->
 	<value name="CACHE_INVALIDATE" value="49" variants="A6XX"/>
+	<value name="LABEL" value="63" variants="A6XX-"/>
 
 	<!-- note, some of these are the same as a6xx, just named differently -->
 	<value name="CCU_INVALIDATE_DEPTH" value="24" variants="A7XX"/>
