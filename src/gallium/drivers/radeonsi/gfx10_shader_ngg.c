@@ -677,10 +677,12 @@ enum
 static LLVMValueRef si_build_gep_i8_var(struct si_shader_context *ctx, LLVMValueRef ptr,
                                         LLVMValueRef index)
 {
+#if LLVM_VERSION_MAJOR < 14
    LLVMTypeRef pi8 = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS);
+   ptr = LLVMBuildPointerCast(ctx->ac.builder, ptr, pi8, "");
+#endif
 
-   return LLVMBuildGEP(ctx->ac.builder, LLVMBuildPointerCast(ctx->ac.builder, ptr, pi8, ""), &index,
-                       1, "");
+   return LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, ptr, &index, 1, "");
 }
 
 static LLVMValueRef si_build_gep_i8(struct si_shader_context *ctx, LLVMValueRef ptr,
