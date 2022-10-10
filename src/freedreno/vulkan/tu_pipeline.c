@@ -2694,6 +2694,12 @@ tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *va
    util_dynarray_append(&pipeline->executables, struct tu_pipeline_executable, exe);
 }
 
+static bool
+can_remove_out_var(nir_variable *var, void *data)
+{
+   return !var->data.explicit_xfb_buffer && !var->data.explicit_xfb_stride;
+}
+
 static void
 tu_link_shaders(struct tu_pipeline_builder *builder,
                 nir_shader **shaders, unsigned shaders_count)
@@ -2716,7 +2722,11 @@ tu_link_shaders(struct tu_pipeline_builder *builder,
          NIR_PASS_V(consumer, nir_opt_dce);
       }
 
-      NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
+      const nir_remove_dead_variables_options out_var_opts = {
+         .can_remove_var = can_remove_out_var,
+      };
+      NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, &out_var_opts);
+
       NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
       bool progress = nir_remove_unused_varyings(producer, consumer);
