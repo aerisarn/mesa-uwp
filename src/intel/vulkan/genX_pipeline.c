@@ -1887,8 +1887,7 @@ emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
       return;
    }
 
-   uint32_t view_mask = rp->view_mask;
-   assert(replication_count == util_bitcount(view_mask));
+   assert(replication_count == util_bitcount(rp->view_mask));
    assert(replication_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr) {

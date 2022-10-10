@@ -137,7 +137,7 @@ anv_nir_lower_mesh_ext_instr(nir_builder *b, nir_instr *instr, void *data)
       assert(intrin->src[1].is_ssa);
       uint8_t components = intrin->src[1].ssa->num_components;
 
-      unsigned vertices_per_primitive =
+      ASSERTED unsigned vertices_per_primitive =
             num_mesh_vertices_per_primitive(b->shader->info.mesh.primitive_type);
       assert(vertices_per_primitive == components);
       assert(nir_intrinsic_write_mask(intrin) == (1u << components) - 1);
@@ -1975,7 +1975,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct vk_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info)
 {
-   const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
+   ASSERTED const VkPipelineShaderStageCreateInfo *sinfo = &info->stage;
    assert(sinfo->stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
    VkPipelineCreationFeedback pipeline_feedback = {
