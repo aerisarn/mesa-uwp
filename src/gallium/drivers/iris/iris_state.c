@@ -5001,7 +5001,8 @@ use_sampler_view(struct iris_context *ice,
                  struct iris_sampler_view *isv)
 {
    enum isl_aux_usage aux_usage =
-      iris_resource_texture_aux_usage(ice, isv->res, isv->view.format);
+      iris_resource_texture_aux_usage(ice, isv->res, isv->view.format,
+                                      isv->view.base_level, isv->view.levels);
 
    if (!isv->surface_state.ref.res)
       upload_surface_states(ice->state.surface_uploader, &isv->surface_state);

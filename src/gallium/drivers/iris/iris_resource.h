@@ -461,7 +461,9 @@ iris_resource_access_raw(struct iris_context *ice,
 
 enum isl_aux_usage iris_resource_texture_aux_usage(struct iris_context *ice,
                                                    const struct iris_resource *res,
-                                                   enum isl_format view_fmt);
+                                                   enum isl_format view_fmt,
+                                                   unsigned start_level,
+                                                   unsigned num_levels);
 void iris_resource_prepare_texture(struct iris_context *ice,
                                    struct iris_resource *res,
                                    enum isl_format view_format,
