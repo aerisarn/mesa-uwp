@@ -1317,7 +1317,7 @@ fs_reg
 fs_visitor::emit_sampleid_setup()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
-   brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
+   ASSERTED brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
    assert(devinfo->ver >= 6);
 
    const fs_builder abld = bld.annotate("compute sample id");
