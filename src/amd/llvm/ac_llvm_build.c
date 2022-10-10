@@ -1164,7 +1164,7 @@ LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, L
    return ac_build_load_custom(ctx, base_ptr, index, false, false, false);
 }
 
-LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
                                      LLVMValueRef index)
 {
    return ac_build_load_custom(ctx, base_ptr, index, false, true, false);

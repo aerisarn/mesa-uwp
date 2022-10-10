@@ -262,7 +262,7 @@ void ac_build_indexed_store(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, 
                             LLVMValueRef value);
 
 LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, LLVMValueRef index);
-LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
                                      LLVMValueRef index);
 LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
                                    LLVMValueRef index);

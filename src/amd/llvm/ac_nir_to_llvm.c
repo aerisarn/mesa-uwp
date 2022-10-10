@@ -3725,10 +3725,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (ctx->abi->load_grid_size_from_user_sgpr) {
          result = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
       } else {
-         LLVMTypeRef ptr_type = ac_array_in_const_addr_space(ctx->ac.v3i32);
          LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
-         ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
-         result = ac_build_load_invariant(&ctx->ac, ptr, ctx->ac.i32_0);
+         result = ac_build_load_invariant(&ctx->ac, ctx->ac.v3i32, ptr, ctx->ac.i32_0);
       }
       if (nir_dest_bit_size(instr->dest) == 64)
          result = LLVMBuildZExt(ctx->ac.builder, result, LLVMVectorType(ctx->ac.i64, 3), "");
