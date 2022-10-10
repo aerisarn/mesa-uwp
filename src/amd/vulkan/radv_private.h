@@ -1529,7 +1529,7 @@ struct radv_cmd_state {
    bool perfect_occlusion_queries_enabled;
    unsigned active_pipeline_queries;
    unsigned active_pipeline_gds_queries;
-   bool prims_gen_query_enabled;
+   unsigned active_prims_gen_queries;
    uint32_t trace_id;
    uint32_t last_ia_multi_vgt_param;
    uint32_t last_ge_cntl;
@@ -3112,7 +3112,7 @@ radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
 
    /* Streamout must be enabled for the PRIMITIVES_GENERATED query to work. */
-   return (so->streamout_enabled || cmd_buffer->state.prims_gen_query_enabled) &&
+   return (so->streamout_enabled || cmd_buffer->state.active_prims_gen_queries) &&
           !cmd_buffer->state.suspend_streamout;
 }
 

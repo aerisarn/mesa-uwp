@@ -1836,14 +1836,16 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       emit_sample_streamout(cmd_buffer, va, index);
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
-      if (!cmd_buffer->state.prims_gen_query_enabled) {
+      if (!cmd_buffer->state.active_prims_gen_queries) {
          bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
 
-         cmd_buffer->state.prims_gen_query_enabled = true;
+         cmd_buffer->state.active_prims_gen_queries++;
 
          if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
             radv_emit_streamout_enable(cmd_buffer);
          }
+      } else {
+         cmd_buffer->state.active_prims_gen_queries++;
       }
 
       emit_sample_streamout(cmd_buffer, va, index);
@@ -1932,14 +1934,16 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       emit_sample_streamout(cmd_buffer, va + 16, index);
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
-      if (cmd_buffer->state.prims_gen_query_enabled) {
+      if (cmd_buffer->state.active_prims_gen_queries == 1) {
          bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
 
-         cmd_buffer->state.prims_gen_query_enabled = false;
+         cmd_buffer->state.active_prims_gen_queries--;
 
          if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
             radv_emit_streamout_enable(cmd_buffer);
          }
+      } else {
+         cmd_buffer->state.active_prims_gen_queries--;
       }
 
       emit_sample_streamout(cmd_buffer, va + 16, index);

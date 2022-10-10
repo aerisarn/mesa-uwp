@@ -49,7 +49,7 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
    }
 
    /* Primitives generated queries. */
-   if (cmd_buffer->state.prims_gen_query_enabled) {
+   if (cmd_buffer->state.active_prims_gen_queries) {
       cmd_buffer->state.suspend_streamout = true;
       radv_emit_streamout_enable(cmd_buffer);
 
@@ -76,7 +76,7 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
    }
 
    /* Primitives generated queries. */
-   if (cmd_buffer->state.prims_gen_query_enabled) {
+   if (cmd_buffer->state.active_prims_gen_queries) {
       cmd_buffer->state.suspend_streamout = false;
       radv_emit_streamout_enable(cmd_buffer);
 
