@@ -610,26 +610,6 @@ fs_visitor::optimize_frontfacing_ternary(nir_alu_instr *instr,
    return true;
 }
 
-static void
-emit_find_msb_using_lzd(const fs_builder &bld,
-                        const fs_reg &result,
-                        const fs_reg &src)
-{
-   fs_inst *inst;
-   fs_reg temp = src;
-
-   bld.LZD(retype(result, BRW_REGISTER_TYPE_UD),
-           retype(temp, BRW_REGISTER_TYPE_UD));
-
-   /* LZD counts from the MSB side, while GLSL's findMSB() wants the count
-    * from the LSB side. Subtract the result from 31 to convert the MSB
-    * count into an LSB count.  If no bits are set, LZD will return 32.
-    * 31-32 = -1, which is exactly what findMSB() is supposed to return.
-    */
-   inst = bld.ADD(result, retype(result, BRW_REGISTER_TYPE_D), brw_imm_d(31));
-   inst->src[0].negate = true;
-}
-
 static brw_rnd_mode
 brw_rnd_mode_from_nir_op (const nir_op op) {
    switch (op) {
@@ -1676,13 +1656,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       assert(nir_src_bit_size(instr->src[0].src) < 64);
       bld.CBIT(result, op[0]);
       break;
-
-   case nir_op_ufind_msb: {
-      assert(nir_dest_bit_size(instr->dest.dest) == 32);
-      assert(nir_src_bit_size(instr->src[0].src) == 32);
-      emit_find_msb_using_lzd(bld, result, op[0]);
-      break;
-   }
 
    case nir_op_uclz:
       assert(nir_dest_bit_size(instr->dest.dest) == 32);

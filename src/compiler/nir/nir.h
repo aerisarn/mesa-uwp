@@ -3413,6 +3413,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_find_msb_to_reverse;
    /** Lowers ifind_msb to uclz and logic ops*/
    bool lower_ifind_msb_to_uclz;
+   /** Lowers ufind_msb to 31-uclz */
+   bool lower_ufind_msb_to_uclz;
    /** Lowers find_lsb to ufind_msb and logic ops */
    bool lower_find_lsb;
    bool lower_uadd_carry;
