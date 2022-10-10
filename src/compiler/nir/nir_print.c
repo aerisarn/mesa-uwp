@@ -1560,6 +1560,9 @@ print_if(nir_if *if_stmt, print_state *state, unsigned tabs)
    case nir_selection_control_dont_flatten:
       fprintf(fp, " /* don't flatten */");
       break;
+   case nir_selection_control_divergent_always_taken:
+      fprintf(fp, " /* divergent always taken */");
+      break;
    case nir_selection_control_none:
    default:
       break;
