@@ -421,8 +421,8 @@ is_internal_node(uint32_t type)
 
 static bool
 rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *node,
-                  uint32_t root_node_offset, uint32_t leaf_nodes_size, uint32_t internal_nodes_size,
-                  uint32_t parent_table_size, bool is_bottom_level)
+                  uint32_t root_node_offset, uint32_t size, uint32_t parent_table_size,
+                  bool is_bottom_level)
 {
    /* The child ids are located at offset=0 for both box16 and box32 nodes. */
    uint32_t *children = node;
@@ -466,16 +466,15 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
          result = false;
       }
 
-      if (offset > root_node_offset + leaf_nodes_size + internal_nodes_size) {
+      if (offset > size) {
          rra_accel_struct_validation_fail(cur_offset, "Invalid child offset (child index %u)", i);
          result = false;
          continue;
       }
 
       if (is_internal_node(type)) {
-         result &= rra_validate_node(accel_struct_vas, data, data + offset, root_node_offset,
-                                     leaf_nodes_size, internal_nodes_size, parent_table_size,
-                                     is_bottom_level);
+         result &= rra_validate_node(accel_struct_vas, data, data + offset, root_node_offset, size,
+                                     parent_table_size, is_bottom_level);
       } else if (type == radv_bvh_node_instance) {
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
          uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
@@ -633,6 +632,46 @@ rra_transcode_node(struct rra_transcoding_context *ctx, uint32_t parent_id, uint
    return dst_id;
 }
 
+struct rra_bvh_info {
+   uint32_t leaf_nodes_size;
+   uint32_t internal_nodes_size;
+};
+
+static void
+rra_gather_bvh_info(const uint8_t *bvh, uint32_t node_id, struct rra_bvh_info *dst)
+{
+   uint32_t node_type = node_id & 7;
+
+   switch (node_type) {
+   case radv_bvh_node_box16:
+      dst->internal_nodes_size += sizeof(struct rra_box16_node);
+      break;
+   case radv_bvh_node_box32:
+      dst->internal_nodes_size += sizeof(struct rra_box32_node);
+      break;
+   case radv_bvh_node_instance:
+      dst->leaf_nodes_size += sizeof(struct rra_instance_node);
+      break;
+   case radv_bvh_node_triangle:
+      dst->leaf_nodes_size += sizeof(struct rra_triangle_node);
+      break;
+   case radv_bvh_node_aabb:
+      dst->leaf_nodes_size += sizeof(struct rra_aabb_node);
+      break;
+   default:
+      break;
+   }
+
+   if (is_internal_node(node_type)) {
+      uint32_t node_offset = (node_id & (~7u)) << 3;
+      /* The child ids are located at offset=0 for both box16 and box32 nodes. */
+      const uint32_t *children = (const uint32_t *)(bvh + node_offset);
+      for (uint32_t i = 0; i < 4; i++)
+         if (children[i] != 0xffffffff)
+            rra_gather_bvh_info(bvh, children[i], dst);
+   }
+}
+
 struct rra_copied_accel_struct {
    VkAccelerationStructureKHR handle;
    uint8_t *data;
@@ -655,44 +694,19 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       header->compacted_size -
       header->geometry_count * sizeof(struct radv_accel_struct_geometry_info);
 
-   uint64_t src_leaf_nodes_size = 0;
-   uint64_t dst_leaf_nodes_size = 0;
+   struct rra_bvh_info bvh_info = {0};
+   rra_gather_bvh_info(data + header->bvh_offset, RADV_BVH_ROOT_NODE, &bvh_info);
+
    uint64_t primitive_count = 0;
-
-   uint32_t src_internal_nodes_size =
-      header->internal_node_count * sizeof(struct radv_bvh_box32_node);
-   uint32_t dst_internal_nodes_size = header->internal_node_count * sizeof(struct rra_box32_node);
-
-   uint64_t src_primitive_size = 0;
-   uint64_t dst_primitive_size = 0;
 
    struct radv_accel_struct_geometry_info *geometry_infos =
       (struct radv_accel_struct_geometry_info *)(data + geometry_infos_offset);
 
-   for (uint32_t i = 0; i < header->geometry_count; ++i) {
+   for (uint32_t i = 0; i < header->geometry_count; ++i)
       primitive_count += geometry_infos[i].primitive_count;
-      switch (geometry_infos[i].type) {
-      case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
-         src_primitive_size = sizeof(struct radv_bvh_triangle_node);
-         dst_primitive_size = sizeof(struct rra_triangle_node);
-         break;
-      case VK_GEOMETRY_TYPE_AABBS_KHR:
-         src_primitive_size = sizeof(struct radv_bvh_aabb_node);
-         dst_primitive_size = sizeof(struct rra_aabb_node);
-         break;
-      case VK_GEOMETRY_TYPE_INSTANCES_KHR:
-         src_primitive_size = sizeof(struct radv_bvh_instance_node);
-         dst_primitive_size = sizeof(struct rra_instance_node);
-         break;
-      default:
-         unreachable("invalid geometry type");
-      }
-      src_leaf_nodes_size += geometry_infos[i].primitive_count * src_primitive_size;
-      dst_leaf_nodes_size += geometry_infos[i].primitive_count * dst_primitive_size;
-   }
 
    uint32_t node_parent_table_size =
-      ((dst_leaf_nodes_size + dst_internal_nodes_size) / 64) * sizeof(uint32_t);
+      ((bvh_info.leaf_nodes_size + bvh_info.internal_nodes_size) / 64) * sizeof(uint32_t);
 
    /* convert root node id to offset */
    uint32_t src_root_offset = (RADV_BVH_ROOT_NODE & ~7) << 3;
@@ -700,8 +714,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    if (should_validate)
       if (!rra_validate_node(accel_struct_vas, data + header->bvh_offset,
                              data + header->bvh_offset + src_root_offset, src_root_offset,
-                             src_leaf_nodes_size, src_internal_nodes_size, node_parent_table_size,
-                             !is_tlas)) {
+                             accel_struct->size, node_parent_table_size, !is_tlas)) {
          return VK_ERROR_VALIDATION_FAILED_EXT;
       }
 
@@ -716,7 +729,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
    uint8_t *dst_structure_data =
-      calloc(RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size + dst_leaf_nodes_size, 1);
+      calloc(RRA_ROOT_NODE_OFFSET + bvh_info.internal_nodes_size + bvh_info.leaf_nodes_size, 1);
    if (!dst_structure_data) {
       free(node_parent_table);
       free(leaf_node_ids);
@@ -726,7 +739,7 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    struct rra_transcoding_context ctx = {
       .src = data + header->bvh_offset,
       .dst = dst_structure_data,
-      .dst_leaf_offset = RRA_ROOT_NODE_OFFSET + dst_internal_nodes_size,
+      .dst_leaf_offset = RRA_ROOT_NODE_OFFSET + bvh_info.internal_nodes_size,
       .dst_internal_offset = RRA_ROOT_NODE_OFFSET,
       .parent_id_table = node_parent_table,
       .parent_id_table_size = node_parent_table_size,
@@ -763,8 +776,8 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
 
    struct rra_accel_struct_metadata rra_metadata = {
       .virtual_address = va,
-      .byte_size =
-         dst_leaf_nodes_size + dst_internal_nodes_size + sizeof(struct rra_accel_struct_header),
+      .byte_size = bvh_info.leaf_nodes_size + bvh_info.internal_nodes_size +
+                   sizeof(struct rra_accel_struct_header),
    };
 
    fwrite(&chunk_header, sizeof(struct rra_accel_struct_chunk_header), 1, output);
@@ -779,15 +792,15 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
    fwrite(node_parent_table, 1, node_parent_table_size, output);
 
    if (is_tlas)
-      rra_dump_tlas_header(header, dst_leaf_nodes_size, dst_internal_nodes_size, primitive_count,
-                           output);
-   else
-      rra_dump_blas_header(header, geometry_infos, dst_leaf_nodes_size, dst_internal_nodes_size,
+      rra_dump_tlas_header(header, bvh_info.leaf_nodes_size, bvh_info.internal_nodes_size,
                            primitive_count, output);
+   else
+      rra_dump_blas_header(header, geometry_infos, bvh_info.leaf_nodes_size,
+                           bvh_info.internal_nodes_size, primitive_count, output);
 
    /* Write acceleration structure data  */
-   fwrite(dst_structure_data + RRA_ROOT_NODE_OFFSET, 1, dst_internal_nodes_size + dst_leaf_nodes_size,
-          output);
+   fwrite(dst_structure_data + RRA_ROOT_NODE_OFFSET, 1,
+          bvh_info.internal_nodes_size + bvh_info.leaf_nodes_size, output);
 
    if (!is_tlas)
       rra_dump_blas_geometry_infos(geometry_infos, header->geometry_count, output);
