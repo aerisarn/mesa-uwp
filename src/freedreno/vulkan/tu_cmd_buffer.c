@@ -2613,6 +2613,9 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
    }
 
+   if (!(pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)))
+      cmd->state.dirty &= ~TU_CMD_DIRTY_VIEWPORTS;
+
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VERTEX_INPUT)))
       tu_update_num_vbs(cmd, pipeline->vi.num_vbs);
 
