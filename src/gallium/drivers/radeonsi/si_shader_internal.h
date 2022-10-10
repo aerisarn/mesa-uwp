@@ -145,7 +145,7 @@ struct si_shader_context {
    LLVMValueRef gs_curprim_verts[4];
    LLVMValueRef gs_generated_prims[4];
    LLVMValueRef gs_ngg_emit;
-   LLVMValueRef gs_ngg_scratch;
+   struct ac_llvm_pointer gs_ngg_scratch;
    LLVMValueRef return_value;
 
    LLVMValueRef gs_emitted_vertices;

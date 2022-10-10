@@ -815,10 +815,8 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       return ac_get_arg(&ctx->ac, ctx->args.es2gs_offset);
 
    case nir_intrinsic_load_clip_half_line_width_amd: {
-      LLVMValueRef ptr =
-         LLVMBuildPointerCast(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->small_prim_cull_info),
-                              LLVMPointerType(ctx->ac.v2f32, AC_ADDR_SPACE_CONST_32BIT), "");
-      return ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
+      LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
+      return ac_build_load_to_sgpr2(&ctx->ac, ctx->ac.v2f32, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
    }
 
    case nir_intrinsic_load_viewport_xy_scale_and_offset: {
@@ -964,12 +962,14 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
             ctx->gs_generated_prims[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
          }
 
-         assert(!ctx->gs_ngg_scratch);
+         assert(!ctx->gs_ngg_scratch.value);
          LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
-         ctx->gs_ngg_scratch =
-            LLVMAddGlobalInAddressSpace(ctx->ac.module, ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);
-         LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(ai32));
-         LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+         ctx->gs_ngg_scratch = (struct ac_llvm_pointer) {
+            .value = LLVMAddGlobalInAddressSpace(ctx->ac.module, ai32, "ngg_scratch", AC_ADDR_SPACE_LDS),
+            .pointee_type = ai32
+         };
+         LLVMSetInitializer(ctx->gs_ngg_scratch.value, LLVMGetUndef(ai32));
+         LLVMSetAlignment(ctx->gs_ngg_scratch.value, 4);
 
          ctx->gs_ngg_emit = LLVMAddGlobalInAddressSpace(
             ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
@@ -1047,12 +1047,14 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       /* This is really only needed when streamout and / or vertex
        * compaction is enabled.
        */
-      if (!ctx->gs_ngg_scratch && (ctx->so.num_outputs || shader->key.ge.opt.ngg_culling)) {
+      if (!ctx->gs_ngg_scratch.value && (ctx->so.num_outputs || shader->key.ge.opt.ngg_culling)) {
          LLVMTypeRef asi32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
-         ctx->gs_ngg_scratch =
-            LLVMAddGlobalInAddressSpace(ctx->ac.module, asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
-         LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(asi32));
-         LLVMSetAlignment(ctx->gs_ngg_scratch, 4);
+         ctx->gs_ngg_scratch = (struct ac_llvm_pointer) {
+            .value = LLVMAddGlobalInAddressSpace(ctx->ac.module, asi32, "ngg_scratch", AC_ADDR_SPACE_LDS),
+            .pointee_type = asi32
+         };
+         LLVMSetInitializer(ctx->gs_ngg_scratch.value, LLVMGetUndef(asi32));
+         LLVMSetAlignment(ctx->gs_ngg_scratch.value, 4);
       }
    }
 

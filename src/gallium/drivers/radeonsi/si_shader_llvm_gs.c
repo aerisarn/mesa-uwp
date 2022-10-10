@@ -264,8 +264,9 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
    if (ctx->screen->info.gfx_level <= GFX8) {
       LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_ESGS, 0);
       LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+      LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
 
-      ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+      ctx->esgs_ring = ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr, offset);
 
       if (ctx->stage != MESA_SHADER_GEOMETRY) {
          LLVMValueRef desc1 = LLVMBuildExtractElement(builder, ctx->esgs_ring, ctx->ac.i32_1, "");
