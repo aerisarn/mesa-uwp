@@ -66,17 +66,18 @@ static LLVMValueRef ngg_get_ordered_id(struct si_shader_context *ctx)
 static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 {
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
-
-   return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
-                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_BUF, false));
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
+   return ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr,
+                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_BUF, false));
 }
 
 static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
 {
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
 
-   return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
-                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
+   return ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr,
+                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
 }
 
 /**
@@ -945,9 +946,10 @@ static void cull_primitive(struct si_shader_context *ctx,
    /* Load the viewport state for small prim culling. */
    bool prim_is_lines = shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES;
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->small_prim_cull_info);
    /* Lines will always use the non-AA viewport transformation. */
-   LLVMValueRef vp = ac_build_load_to_sgpr(&ctx->ac, ptr,
-                                           prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
+   LLVMValueRef vp = ac_build_load_to_sgpr2(&ctx->ac, type, ptr,
+                                            prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
    vp = LLVMBuildBitCast(builder, vp, ctx->ac.v4f32, "");
    vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
    vp_scale[1] = ac_llvm_extract_elem(&ctx->ac, vp, 1);
@@ -960,9 +962,7 @@ static void cull_primitive(struct si_shader_context *ctx,
    options.cull_w = true;
 
    if (prim_is_lines) {
-      ptr = LLVMBuildPointerCast(ctx->ac.builder, ptr,
-                                 LLVMPointerType(ctx->ac.v2f32, AC_ADDR_SPACE_CONST_32BIT), "");
-      LLVMValueRef terms = ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
+      LLVMValueRef terms = ac_build_load_to_sgpr2(&ctx->ac, ctx->ac.v2f32, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
       terms = LLVMBuildBitCast(builder, terms, ctx->ac.v2f32, "");
       clip_half_line_width[0] = ac_llvm_extract_elem(&ctx->ac, terms, 0);
       clip_half_line_width[1] = ac_llvm_extract_elem(&ctx->ac, terms, 1);

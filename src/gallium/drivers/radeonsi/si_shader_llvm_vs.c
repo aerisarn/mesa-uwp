@@ -168,8 +168,9 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       vb_desc = ac_get_arg(&ctx->ac, ctx->vb_descriptors[input_index]);
    } else {
       unsigned index = input_index - num_vbos_in_user_sgprs;
-      vb_desc = ac_build_load_to_sgpr(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.vertex_buffers),
-                                      LLVMConstInt(ctx->ac.i32, index, 0));
+      LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->args.vertex_buffers);
+      vb_desc = ac_build_load_to_sgpr2(&ctx->ac, type, ac_get_arg(&ctx->ac, ctx->args.vertex_buffers),
+                                       LLVMConstInt(ctx->ac.i32, index, 0));
    }
 
    if (ctx->abi.vertex_id_replaced) {
@@ -409,6 +410,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
       LLVMValueRef so_write_offset[4] = {};
       LLVMValueRef so_buffers[4];
       LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+      LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
 
       for (i = 0; i < 4; i++) {
          if (!so->stride[i])
@@ -416,7 +418,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
 
          LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_VS_STREAMOUT_BUF0 + i, 0);
 
-         so_buffers[i] = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+         so_buffers[i] = ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr, offset);
 
          LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->args.streamout_offset[i]);
          so_offset = LLVMBuildMul(builder, so_offset, LLVMConstInt(ctx->ac.i32, 4, 0), "");
@@ -450,8 +452,9 @@ void si_llvm_clipvertex_to_clipdist(struct si_shader_context *ctx,
    unsigned const_chan;
    LLVMValueRef base_elt;
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
-   LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, ptr, constbuf_index);
+   LLVMValueRef const_resource = ac_build_load_to_sgpr2(&ctx->ac, type, ptr, constbuf_index);
    unsigned clipdist_mask = ctx->shader->selector->info.clipdist_mask &
                             ~ctx->shader->key.ge.opt.kill_clip_distances;
 
@@ -816,8 +819,8 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
             LLVMBuildPointerCast(ctx->ac.builder,
                                  ac_get_arg(&ctx->ac, ctx->internal_bindings),
                                  LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_CONST_32BIT), "");
-         attr_address = ac_build_load_to_sgpr(&ctx->ac, ptr,
-                                              LLVMConstInt(ctx->ac.i32, SI_GS_ATTRIBUTE_RING * 4, 0));
+         attr_address = ac_build_load_to_sgpr2(&ctx->ac, ctx->ac.i32, ptr,
+                                               LLVMConstInt(ctx->ac.i32, SI_GS_ATTRIBUTE_RING * 4, 0));
       } else {
          attr_address = ac_get_arg(&ctx->ac, ctx->gs_attr_address);
       }
@@ -1036,7 +1039,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    if (key->vs_prolog.states.instance_divisor_is_fetched) {
       LLVMValueRef list = si_prolog_get_internal_bindings(ctx);
       LLVMValueRef buf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_INSTANCE_DIVISORS, 0);
-      instance_divisor_constbuf = ac_build_load_to_sgpr(&ctx->ac, list, buf_index);
+      instance_divisor_constbuf = ac_build_load_to_sgpr2(&ctx->ac, ctx->ac.v4i32, list, buf_index);
    }
 
    for (i = 0; i < key->vs_prolog.num_inputs; i++) {

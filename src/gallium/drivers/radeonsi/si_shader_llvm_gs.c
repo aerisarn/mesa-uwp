@@ -99,9 +99,10 @@ static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
 static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
 {
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
 
-   return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
-                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
+   return ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr,
+                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
 }
 
 void si_llvm_gs_build_end(struct si_shader_context *ctx)
@@ -306,7 +307,8 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_GSVS, 0);
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
-   LLVMValueRef base_ring = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
+   LLVMValueRef base_ring = ac_build_load_to_sgpr2(&ctx->ac, type, buf_ptr, offset);
 
    /* The conceptual layout of the GSVS ring is
     *   v0c0 .. vLv0 v0c1 .. vLc1 ..
@@ -433,8 +435,9 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    si_llvm_create_main_func(&ctx, false);
 
    LLVMValueRef buf_ptr = ac_get_arg(&ctx.ac, ctx.internal_bindings);
+   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx.ac, &ctx.args, ctx.internal_bindings);
    ctx.gsvs_ring[0] =
-      ac_build_load_to_sgpr(&ctx.ac, buf_ptr, LLVMConstInt(ctx.ac.i32, SI_RING_GSVS, 0));
+      ac_build_load_to_sgpr2(&ctx.ac, type, buf_ptr, LLVMConstInt(ctx.ac.i32, SI_RING_GSVS, 0));
 
    LLVMValueRef voffset =
       LLVMBuildMul(ctx.ac.builder, ctx.abi.vertex_id, LLVMConstInt(ctx.ac.i32, 4, 0), "");
