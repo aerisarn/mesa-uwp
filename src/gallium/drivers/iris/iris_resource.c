@@ -65,6 +65,7 @@ enum modifier_priority {
    MODIFIER_PRIORITY_4,
    MODIFIER_PRIORITY_4_DG2_RC_CCS,
    MODIFIER_PRIORITY_4_DG2_RC_CCS_CC,
+   MODIFIER_PRIORITY_4_MTL_RC_CCS,
 };
 
 static const uint64_t priority_to_modifier[] = {
@@ -78,6 +79,7 @@ static const uint64_t priority_to_modifier[] = {
    [MODIFIER_PRIORITY_4] = I915_FORMAT_MOD_4_TILED,
    [MODIFIER_PRIORITY_4_DG2_RC_CCS] = I915_FORMAT_MOD_4_TILED_DG2_RC_CCS,
    [MODIFIER_PRIORITY_4_DG2_RC_CCS_CC] = I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC,
+   [MODIFIER_PRIORITY_4_MTL_RC_CCS] = I915_FORMAT_MOD_4_TILED_MTL_RC_CCS,
 };
 
 static bool
@@ -116,6 +118,10 @@ modifier_is_supported(const struct intel_device_info *devinfo,
       if (!intel_device_info_is_dg2(devinfo))
          return false;
       break;
+   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
+      if (!intel_device_info_is_mtl(devinfo))
+         return false;
+      break;
    case DRM_FORMAT_MOD_INVALID:
    default:
       return false;
@@ -141,6 +147,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
          return false;
       }
       break;
+   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
    case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
    case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
@@ -179,6 +186,9 @@ select_best_modifier(const struct intel_device_info *devinfo,
          continue;
 
       switch (modifiers[i]) {
+      case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
+         prio = MAX2(prio, MODIFIER_PRIORITY_4_MTL_RC_CCS);
+         break;
       case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
          prio = MAX2(prio, MODIFIER_PRIORITY_4_DG2_RC_CCS_CC);
          break;
@@ -246,6 +256,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
       I915_FORMAT_MOD_4_TILED_DG2_RC_CCS,
       I915_FORMAT_MOD_4_TILED_DG2_MC_CCS,
       I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC,
+      I915_FORMAT_MOD_4_TILED_MTL_RC_CCS,
       I915_FORMAT_MOD_Y_TILED,
       I915_FORMAT_MOD_Y_TILED_CCS,
       I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
@@ -302,6 +313,7 @@ iris_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
    switch (modifier) {
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
       return 3;
+   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
    case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
@@ -1034,6 +1046,7 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
 
    /* Combine main and aux plane information. */
    switch (res->mod_info->modifier) {
+   case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
       assert(num_main_planes == 1 && num_planes == 2);
