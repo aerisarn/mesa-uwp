@@ -2013,6 +2013,28 @@ optimizations.extend([
      ('ifind_msb_rev', 'value')),
     'options->lower_find_msb_to_reverse'),
 
+   # uclz of an absolute value source almost always does the right thing.
+   # There are a couple problem values:
+   #
+   # * 0x80000000.  Since abs(0x80000000) == 0x80000000, uclz returns 0.
+   #   However, findMSB(int(0x80000000)) == 30.
+   #
+   # * 0xffffffff.  Since abs(0xffffffff) == 1, uclz returns 31.  Section 8.8
+   #   (Integer Functions) of the GLSL 4.50 spec says:
+   #
+   #    For a value of zero or negative one, -1 will be returned.
+   #
+   # * Negative powers of two.  uclz(abs(-(1<<x))) returns x, but
+   #   findMSB(-(1<<x)) should return x-1.
+   #
+   # For all negative number cases, including 0x80000000 and 0xffffffff, the
+   # correct value is obtained from uclz if instead of negating the (already
+   # negative) value the logical-not is used.  A conditional logical-not can
+   # be achieved by (x ^ (x >> 31)).
+   (('ifind_msb', 'value'),
+    ('isub', 31, ('uclz', ('ixor', 'value', ('ishr', 'value', 31)))),
+    'options->lower_ifind_msb_to_uclz'),
+
     (('ufind_msb', 'value'),
      ('bcsel', ('ige', ('ufind_msb_rev', 'value'), 0),
       ('isub', 31, ('ufind_msb_rev', 'value')),
