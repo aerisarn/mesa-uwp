@@ -5209,16 +5209,18 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_FLUSH;
       }
 
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL) &&
-          !(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS)) {
-         /* Bind the tessellation state from the pipeline when it's not dynamic and make sure to
-          * emit it if the number of patches or the LDS size changed.
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
+         if (!(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS)) {
+            /* Bind the tessellation state from the pipeline when it's not dynamic. */
+            struct radv_shader *tcs = graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+
+            cmd_buffer->state.tess_num_patches = tcs->info.num_tess_patches;
+            cmd_buffer->state.tess_lds_size = tcs->info.tcs.num_lds_blocks;
+         }
+
+         /* Always re-emit patch control points when a new pipeline with tessellation is bound
+          * because a bunch of parameters (user SGPRs, TCS vertices out, etc) can be different.
           */
-         struct radv_shader *tcs = graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
-
-         cmd_buffer->state.tess_num_patches = tcs->info.num_tess_patches;
-         cmd_buffer->state.tess_lds_size = tcs->info.tcs.num_lds_blocks;
-
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
       }
 
