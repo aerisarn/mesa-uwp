@@ -156,7 +156,7 @@ struct ac_llvm_context {
 
    unsigned float_mode;
 
-   LLVMValueRef lds;
+   struct ac_llvm_pointer lds;
 };
 
 void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *compiler,

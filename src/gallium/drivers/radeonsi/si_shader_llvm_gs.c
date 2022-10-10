@@ -290,7 +290,10 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
    } else {
       /* Declare the ESGS ring as an explicit LDS symbol. */
       si_llvm_declare_esgs_ring(ctx);
-      ctx->ac.lds = ctx->esgs_ring;
+      ctx->ac.lds = (struct ac_llvm_pointer) {
+         .value = ctx->esgs_ring,
+         .pointee_type = LLVMArrayType(ctx->ac.i32, 0),
+      };
    }
 }
 

@@ -232,9 +232,12 @@ void si_llvm_create_main_func(struct si_shader_context *ctx, bool ngg_cull_shade
        * the shader (currently none, unless LLVM decides to do its
        * own LDS-based lowering).
        */
-      ctx->ac.lds = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
-                                                "__lds_end", AC_ADDR_SPACE_LDS);
-      LLVMSetAlignment(ctx->ac.lds, 256);
+      ctx->ac.lds = (struct ac_llvm_pointer) {
+         .value = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0),
+                                                "__lds_end", AC_ADDR_SPACE_LDS),
+         .pointee_type = LLVMArrayType(ctx->ac.i32, 0)
+      };
+      LLVMSetAlignment(ctx->ac.lds.value, 256);
    }
 
    /* Unlike radv, we override these arguments in the prolog, so to the
@@ -407,13 +410,17 @@ static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
    LLVMTypeRef i8p = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS);
    LLVMValueRef var;
 
-   assert(!ctx->ac.lds);
+   assert(!ctx->ac.lds.value);
 
-   var = LLVMAddGlobalInAddressSpace(ctx->ac.module, LLVMArrayType(ctx->ac.i8, lds_size),
+   LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, lds_size);
+   var = LLVMAddGlobalInAddressSpace(ctx->ac.module, type,
                                      "compute_lds", AC_ADDR_SPACE_LDS);
    LLVMSetAlignment(var, 64 * 1024);
 
-   ctx->ac.lds = LLVMBuildBitCast(ctx->ac.builder, var, i8p, "");
+   ctx->ac.lds = (struct ac_llvm_pointer) {
+      .value = LLVMBuildBitCast(ctx->ac.builder, var, i8p, ""),
+      .pointee_type = type,
+   };
 }
 
 /**

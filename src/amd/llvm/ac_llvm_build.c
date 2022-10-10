@@ -2820,20 +2820,24 @@ void ac_init_exec_full_mask(struct ac_llvm_context *ctx)
 void ac_declare_lds_as_pointer(struct ac_llvm_context *ctx)
 {
    unsigned lds_size = ctx->gfx_level >= GFX7 ? 65536 : 32768;
-   ctx->lds = LLVMBuildIntToPtr(
-      ctx->builder, ctx->i32_0,
-      LLVMPointerType(LLVMArrayType(ctx->i32, lds_size / 4), AC_ADDR_SPACE_LDS), "lds");
+   LLVMTypeRef type = LLVMArrayType(ctx->i32, lds_size / 4);
+   ctx->lds = (struct ac_llvm_pointer) {
+      .value = LLVMBuildIntToPtr(ctx->builder, ctx->i32_0,
+                  LLVMPointerType(type, AC_ADDR_SPACE_LDS), "lds"),
+      .pointee_type = type
+   };
 }
 
 LLVMValueRef ac_lds_load(struct ac_llvm_context *ctx, LLVMValueRef dw_addr)
 {
-   return LLVMBuildLoad2(ctx->builder, ctx->i32, ac_build_gep0(ctx, ctx->lds, dw_addr), "");
+   LLVMValueRef v = ac_build_gep0_2(ctx, ctx->lds.t, ctx->lds.v, dw_addr);
+   return LLVMBuildLoad2(ctx->builder, ctx->i32, v, "");
 }
 
 void ac_lds_store(struct ac_llvm_context *ctx, LLVMValueRef dw_addr, LLVMValueRef value)
 {
    value = ac_to_integer(ctx, value);
-   ac_build_indexed_store(ctx, ctx->lds, dw_addr, value);
+   ac_build_indexed_store2(ctx, ctx->lds.t, ctx->lds.v, dw_addr, value);
 }
 
 LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx, LLVMTypeRef dst_type, LLVMValueRef src0)

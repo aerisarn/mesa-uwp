@@ -84,7 +84,7 @@ static LLVMValueRef get_memory_ptr(struct ac_nir_context *ctx, nir_src src, unsi
    LLVMValueRef ptr = get_src(ctx, src);
    ptr = LLVMBuildAdd(ctx->ac.builder, ptr, LLVMConstInt(ctx->ac.i32, c_off, 0), "");
    /* LDS is used here as a i8 pointer. */
-   return LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, ctx->ac.lds, &ptr, 1, "");
+   return LLVMBuildGEP2(ctx->ac.builder, ctx->ac.i8, ctx->ac.lds.value, &ptr, 1, "");
 }
 
 static LLVMBasicBlockRef get_block(struct ac_nir_context *nir, const struct nir_block *b)
@@ -5373,7 +5373,7 @@ static void setup_constant_data(struct ac_nir_context *ctx, struct nir_shader *s
 
 static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
 {
-   if (ctx->ac.lds)
+   if (ctx->ac.lds.value)
       return;
 
    LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, nir->info.shared_size);
@@ -5382,7 +5382,10 @@ static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
       LLVMAddGlobalInAddressSpace(ctx->ac.module, type, "compute_lds", AC_ADDR_SPACE_LDS);
    LLVMSetAlignment(lds, 64 * 1024);
 
-   ctx->ac.lds = lds;
+   ctx->ac.lds = (struct ac_llvm_pointer) {
+      .value = lds,
+      .pointee_type = type
+   };
 }
 
 static void setup_gds(struct ac_nir_context *ctx, nir_function_impl *impl)
