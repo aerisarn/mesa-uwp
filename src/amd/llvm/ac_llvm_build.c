@@ -1099,6 +1099,38 @@ LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, L
    return LLVMBuildGEP(ctx->builder, base_ptr, indices, 2, "");
 }
 
+LLVMTypeRef ac_build_gep0_type(LLVMTypeRef pointee_type, LLVMValueRef index)
+{
+   switch (LLVMGetTypeKind(pointee_type)) {
+      case LLVMPointerTypeKind:
+         return pointee_type;
+      case LLVMArrayTypeKind:
+         /* If input is a pointer to an array GEP2 will return a pointer to
+          * the array elements type.
+          */
+         return LLVMGetElementType(pointee_type);
+      case LLVMStructTypeKind:
+         /* If input is a pointer to a struct, GEP2 will return a pointer to
+          * the index-nth field, so get its type.
+          */
+         return LLVMStructGetTypeAtIndex(pointee_type, LLVMConstIntGetZExtValue(index));
+      default:
+         /* gep0 shouldn't receive any other types. */
+         assert(false);
+   }
+   return NULL;
+}
+
+LLVMValueRef ac_build_gep0_2(struct ac_llvm_context *ctx, LLVMTypeRef pointee_type, LLVMValueRef value, LLVMValueRef index)
+{
+   LLVMValueRef indices[2] = {
+      ctx->i32_0,
+      index,
+   };
+
+   return LLVMBuildGEP2(ctx->builder, pointee_type, value, indices, 2, "");
+}
+
 LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef ptr, LLVMValueRef index)
 {
    return LLVMBuildGEP2(ctx->builder, type, ptr, &index, 1, "");
@@ -1108,6 +1140,12 @@ void ac_build_indexed_store(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, 
                             LLVMValueRef value)
 {
    LLVMBuildStore(ctx->builder, value, ac_build_gep0(ctx, base_ptr, index));
+}
+
+void ac_build_indexed_store2(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index,
+                             LLVMValueRef value)
+{
+   LLVMBuildStore(ctx->builder, value, ac_build_gep0_2(ctx, type, base_ptr, index));
 }
 
 /**
@@ -1159,15 +1197,36 @@ static LLVMValueRef ac_build_load_custom(struct ac_llvm_context *ctx, LLVMValueR
    return result;
 }
 
-LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMValueRef base_ptr, LLVMValueRef index)
+static LLVMValueRef ac_build_load_custom2(struct ac_llvm_context *ctx, LLVMTypeRef type,
+                                          LLVMValueRef base_ptr, LLVMValueRef index,
+                                          bool uniform, bool invariant, bool no_unsigned_wraparound)
 {
-   return ac_build_load_custom(ctx, base_ptr, index, false, false, false);
+   LLVMValueRef pointer, result;
+
+   if (no_unsigned_wraparound &&
+       LLVMGetPointerAddressSpace(LLVMTypeOf(base_ptr)) == AC_ADDR_SPACE_CONST_32BIT)
+      pointer = LLVMBuildInBoundsGEP2(ctx->builder, type, base_ptr, &index, 1, "");
+   else
+      pointer = LLVMBuildGEP2(ctx->builder, type, base_ptr, &index, 1, "");
+
+   if (uniform)
+      LLVMSetMetadata(pointer, ctx->uniform_md_kind, ctx->empty_md);
+   result = LLVMBuildLoad2(ctx->builder, type, pointer, "");
+   if (invariant)
+      LLVMSetMetadata(result, ctx->invariant_load_md_kind, ctx->empty_md);
+   LLVMSetAlignment(result, 4);
+   return result;
+}
+
+LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index)
+{
+   return ac_build_load_custom2(ctx, type, base_ptr, index, false, false, false);
 }
 
 LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
                                      LLVMValueRef index)
 {
-   return ac_build_load_custom(ctx, base_ptr, index, false, true, false);
+   return ac_build_load_custom2(ctx, type, base_ptr, index, false, true, false);
 }
 
 /* This assumes that there is no unsigned integer wraparound during the address
@@ -1178,11 +1237,22 @@ LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, LLVMValueRef bas
    return ac_build_load_custom(ctx, base_ptr, index, true, true, true);
 }
 
+LLVMValueRef ac_build_load_to_sgpr2(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
+                                    LLVMValueRef index)
+{
+   return ac_build_load_custom2(ctx, type, base_ptr, index, true, true, true);
+}
+
 /* See ac_build_load_custom() documentation. */
 LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx,
                                                    LLVMValueRef base_ptr, LLVMValueRef index)
 {
    return ac_build_load_custom(ctx, base_ptr, index, true, true, false);
+}
+LLVMValueRef ac_build_load_to_sgpr_uint_wraparound2(struct ac_llvm_context *ctx, LLVMTypeRef type,
+                                                   LLVMValueRef base_ptr, LLVMValueRef index)
+{
+   return ac_build_load_custom2(ctx, type, base_ptr, index, true, true, false);
 }
 
 static unsigned get_load_cache_policy(struct ac_llvm_context *ctx, unsigned cache_policy)
