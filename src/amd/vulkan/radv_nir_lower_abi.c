@@ -175,7 +175,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_vtx_offset[0]);
       break;
    case nir_intrinsic_load_shader_query_enabled_amd:
-      replacement = nir_ieq_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ngg_query_state), 1);
+      replacement = nir_ine_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ngg_query_state),
+                                radv_ngg_query_none);
       break;
    case nir_intrinsic_load_cull_any_enabled_amd:
       replacement = nggc_bool_setting(

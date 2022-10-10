@@ -57,7 +57,9 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
        * increment the counters via GDS.
        */
       state->active_pipeline_gds_queries = cmd_buffer->state.active_pipeline_gds_queries;
+      state->active_prims_gen_gds_queries = cmd_buffer->state.active_prims_gen_gds_queries;
       cmd_buffer->state.active_pipeline_gds_queries = 0;
+      cmd_buffer->state.active_prims_gen_gds_queries = 0;
    }
 }
 
@@ -82,6 +84,7 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
 
       /* Restore the number of active GDS queries to resume counting. */
       cmd_buffer->state.active_pipeline_gds_queries = state->active_pipeline_gds_queries;
+      cmd_buffer->state.active_prims_gen_gds_queries = state->active_prims_gen_gds_queries;
    }
 }
 

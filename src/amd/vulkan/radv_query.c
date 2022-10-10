@@ -1857,7 +1857,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
 
-         cmd_buffer->state.active_pipeline_gds_queries++;
+         cmd_buffer->state.active_prims_gen_gds_queries++;
       }
       break;
    }
@@ -1952,7 +1952,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
          gfx10_copy_gds_query(cmd_buffer, 0, va + 40); /* NGG GS */
          gfx10_copy_gds_query(cmd_buffer, 4, va + 56); /* NGG VS/TES */
 
-         cmd_buffer->state.active_pipeline_gds_queries--;
+         cmd_buffer->state.active_prims_gen_gds_queries--;
       }
       break;
    }

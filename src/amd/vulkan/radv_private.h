@@ -1212,6 +1212,12 @@ enum radv_nggc_settings {
    radv_nggc_small_primitives = 1 << 3,
 };
 
+enum radv_ngg_query_state {
+   radv_ngg_query_none = 0,
+   radv_ngg_query_pipeline_stat = 1 << 0,
+   radv_ngg_query_prim_gen = 1 << 1,
+};
+
 struct radv_vertex_binding {
    VkDeviceSize offset;
    VkDeviceSize size;
@@ -1530,6 +1536,7 @@ struct radv_cmd_state {
    unsigned active_pipeline_queries;
    unsigned active_pipeline_gds_queries;
    unsigned active_prims_gen_queries;
+   unsigned active_prims_gen_gds_queries;
    uint32_t trace_id;
    uint32_t last_ia_multi_vgt_param;
    uint32_t last_ge_cntl;
