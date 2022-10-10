@@ -156,9 +156,9 @@ valid_prim_mode_custom(struct gl_context *ctx, GLenum mode,
                        GLbitfield valid_prim_mask)
 {
 #if DEBUG
-   unsigned mask = ctx->ValidPrimMask;
-   unsigned mask_indexed = ctx->ValidPrimMaskIndexed;
-   bool drawpix_valid = ctx->DrawPixValid;
+   ASSERTED unsigned mask = ctx->ValidPrimMask;
+   ASSERTED unsigned mask_indexed = ctx->ValidPrimMaskIndexed;
+   ASSERTED bool drawpix_valid = ctx->DrawPixValid;
    _mesa_update_valid_to_render_state(ctx);
    assert(mask == ctx->ValidPrimMask &&
           mask_indexed == ctx->ValidPrimMaskIndexed &&
