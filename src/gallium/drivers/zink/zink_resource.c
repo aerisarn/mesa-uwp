@@ -421,6 +421,17 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
       }
       if (double_check_ici(screen, ici, usage, mod))
          return usage;
+      if (util_format_is_depth_or_stencil(templ->format)) {
+         if (!(templ->bind & PIPE_BIND_DEPTH_STENCIL)) {
+            usage &= ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+            if (double_check_ici(screen, ici, usage, mod))
+               return usage;
+         }
+      } else if (!(templ->bind & PIPE_BIND_RENDER_TARGET)) {
+         usage &= ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+         if (double_check_ici(screen, ici, usage, mod))
+            return usage;
+      }
    }
    *mod = DRM_FORMAT_MOD_INVALID;
    return 0;
