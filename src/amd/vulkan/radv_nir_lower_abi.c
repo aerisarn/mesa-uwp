@@ -57,6 +57,13 @@ nggc_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
    return nir_test_mask(b, settings, mask);
 }
 
+static nir_ssa_def *
+ngg_query_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
+{
+   nir_ssa_def *settings = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_query_state);
+   return nir_test_mask(b, settings, mask);
+}
+
 static bool
 lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
 {
@@ -174,9 +181,11 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       /* NGG passthrough mode: the HW already packs the primitive export value to a single register. */
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_vtx_offset[0]);
       break;
-   case nir_intrinsic_load_shader_query_enabled_amd:
-      replacement = nir_ine_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ngg_query_state),
-                                radv_ngg_query_none);
+   case nir_intrinsic_load_pipeline_stat_query_enabled_amd:
+      replacement = ngg_query_bool_setting(b, radv_ngg_query_pipeline_stat, s);
+      break;
+   case nir_intrinsic_load_prim_gen_query_enabled_amd:
+      replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_gen, s);
       break;
    case nir_intrinsic_load_cull_any_enabled_amd:
       replacement = nggc_bool_setting(

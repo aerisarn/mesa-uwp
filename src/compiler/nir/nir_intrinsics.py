@@ -1358,8 +1358,10 @@ system_value("workgroup_num_input_vertices_amd", 1)
 system_value("workgroup_num_input_primitives_amd", 1)
 # For NGG passthrough mode only. Pre-packed argument for export_primitive_amd.
 system_value("packed_passthrough_primitive_amd", 1)
-# Whether NGG GS should execute shader query.
-system_value("shader_query_enabled_amd", dest_comp=1, bit_sizes=[1])
+# Whether NGG should execute shader query for pipeline statistics.
+system_value("pipeline_stat_query_enabled_amd", dest_comp=1, bit_sizes=[1])
+# Whether NGG should execute shader query for primitive generated.
+system_value("prim_gen_query_enabled_amd", dest_comp=1, bit_sizes=[1])
 # Whether the shader should cull front facing triangles.
 intrinsic("load_cull_front_face_enabled_amd", dest_comp=1, bit_sizes=[1], flags=[CAN_ELIMINATE])
 # Whether the shader should cull back facing triangles.

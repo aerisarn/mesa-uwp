@@ -452,7 +452,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
          arg = emit_ngg_nogs_prim_exp_arg(b, st);
 
       if (st->has_prim_query) {
-         nir_if *if_shader_query = nir_push_if(b, nir_load_shader_query_enabled_amd(b));
+         nir_if *if_shader_query = nir_push_if(b, nir_load_prim_gen_query_enabled_amd(b));
          {
             /* Number of active GS threads. Each has 1 output primitive. */
             nir_ssa_def *num_gs_threads = nir_bit_count(b, nir_ballot(b, 1, st->wave_size, nir_imm_bool(b, true)));
@@ -2085,7 +2085,10 @@ ngg_gs_clear_primflags(nir_builder *b, nir_ssa_def *num_vertices, unsigned strea
 static void
 ngg_gs_shader_query(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_state *s)
 {
-   nir_if *if_shader_query = nir_push_if(b, nir_load_shader_query_enabled_amd(b));
+   nir_ssa_def *pipeline_query_enabled = nir_load_pipeline_stat_query_enabled_amd(b);
+   nir_ssa_def *prim_gen_query_enabled = nir_load_prim_gen_query_enabled_amd(b);
+   nir_ssa_def *shader_query_enabled = nir_ior(b, pipeline_query_enabled, prim_gen_query_enabled);
+   nir_if *if_shader_query = nir_push_if(b, shader_query_enabled);
    nir_ssa_def *num_prims_in_wave = NULL;
 
    /* Calculate the "real" number of emitted primitives from the emitted GS vertices and primitives.
