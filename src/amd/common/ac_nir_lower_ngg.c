@@ -1312,7 +1312,8 @@ ngg_nogs_get_culling_pervertex_lds_size(gl_shader_stage stage,
    if (max_exported_args)
       *max_exported_args = max_args;
 
-   return lds_es_arg_0 + max_args * 4u;
+   /* one odd dword to reduce LDS bank conflict */
+   return (lds_es_arg_0 + max_args * 4u) | 4u;
 }
 
 static void
