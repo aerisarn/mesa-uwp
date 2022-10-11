@@ -1279,6 +1279,11 @@ ac_setup_rings(struct radv_shader_context *ctx)
         (ctx->stage == MESA_SHADER_GEOMETRY))) {
       ctx->attr_ring = ac_build_load_to_sgpr(&ctx->ac, ring_offsets,
                                              LLVMConstInt(ctx->ac.i32, RING_PS_ATTR, false));
+
+      LLVMValueRef tmp = LLVMBuildExtractElement(ctx->ac.builder, ctx->attr_ring, ctx->ac.i32_1, "");
+      uint32_t stride = S_008F04_STRIDE(16 * ctx->shader_info->outinfo.param_exports);
+      tmp = LLVMBuildOr(ctx->ac.builder, tmp, LLVMConstInt(ctx->ac.i32, stride, false), "");
+      ctx->attr_ring = LLVMBuildInsertElement(ctx->ac.builder, ctx->attr_ring, tmp, ctx->ac.i32_1, "");
    }
 }
 

@@ -143,6 +143,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       }
 
       replacement = load_ring(b, RING_PS_ATTR, s);
+
+      nir_ssa_def *dword1 = nir_channel(b, replacement, 1);
+      dword1 = nir_ior_imm(b, dword1, S_008F04_STRIDE(16 * s->info->outinfo.param_exports));
+      replacement = nir_vector_insert_imm(b, replacement, dword1, 1);
       break;
 
    case nir_intrinsic_load_ring_attr_offset_amd: {
