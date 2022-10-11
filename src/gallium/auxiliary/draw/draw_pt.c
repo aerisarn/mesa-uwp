@@ -154,6 +154,8 @@ draw_pt_arrays(struct draw_context *draw,
          draw->pt.user.eltBias = 0;
       }
 
+      draw->start_index = draw_info[i].start;
+
       if (count >= first)
          frontend->run(frontend, draw_info[i].start, count);
 
@@ -603,7 +605,6 @@ draw_vbo(struct draw_context *draw,
    }
 
    draw->pt.max_index = index_limit - 1;
-   draw->start_index = use_draws[0].start;
 
    /*
     * TODO: We could use draw->pt.max_index to further narrow
