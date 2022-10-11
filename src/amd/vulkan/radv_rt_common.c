@@ -427,6 +427,9 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
                                const struct radv_ray_traversal_args *args, nir_ssa_def *result,
                                nir_ssa_def *bvh_node)
 {
+   if (!args->triangle_cb)
+      return;
+
    struct radv_triangle_intersection intersection;
    intersection.t = nir_channel(b, result, 0);
    nir_ssa_def *div = nir_channel(b, result, 1);
@@ -496,6 +499,9 @@ static void
 insert_traversal_aabb_case(struct radv_device *device, nir_builder *b,
                            const struct radv_ray_traversal_args *args, nir_ssa_def *bvh_node)
 {
+   if (!args->aabb_cb)
+      return;
+
    struct radv_leaf_intersection intersection;
    intersection.node_addr = build_node_to_addr(device, b, bvh_node);
    nir_ssa_def *triangle_info =

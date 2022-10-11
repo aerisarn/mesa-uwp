@@ -1422,8 +1422,12 @@ build_traversal_shader(struct radv_device *device,
          .stack_entries = MAX_STACK_ENTRY_COUNT,
          .stack_store_cb = store_stack_entry,
          .stack_load_cb = load_stack_entry,
-         .aabb_cb = handle_candidate_aabb,
-         .triangle_cb = handle_candidate_triangle,
+         .aabb_cb = (pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR)
+                       ? NULL
+                       : handle_candidate_aabb,
+         .triangle_cb = (pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR)
+                           ? NULL
+                           : handle_candidate_triangle,
          .data = &data,
       };
 

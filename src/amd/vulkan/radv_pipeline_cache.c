@@ -202,6 +202,12 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
 
    if (!radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
       _mesa_sha1_update(&ctx, &pCreateInfo->maxPipelineRayRecursionDepth, 4);
+
+   const uint32_t pipeline_flags =
+      pCreateInfo->flags & (VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR |
+                            VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR);
+   _mesa_sha1_update(&ctx, &pipeline_flags, 4);
+
    _mesa_sha1_update(&ctx, &flags, 4);
    _mesa_sha1_final(&ctx, hash);
 }
