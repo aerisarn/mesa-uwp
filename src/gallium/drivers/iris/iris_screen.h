@@ -165,9 +165,6 @@ struct iris_screen {
     */
    int winsys_fd;
 
-   /** PCI ID for our GPU device */
-   int pci_id;
-
    struct iris_vtable vtbl;
 
    /** Global program_string_id counter (see get_program_string_id()) */

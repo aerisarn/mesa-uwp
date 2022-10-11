@@ -358,7 +358,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VENDOR_ID:
       return 0x8086;
    case PIPE_CAP_DEVICE_ID:
-      return screen->pci_id;
+      return screen->devinfo.pci_device_id;
    case PIPE_CAP_VIDEO_MEMORY:
       return iris_get_video_memory(screen);
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
@@ -787,7 +787,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    if (!intel_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
-   screen->pci_id = screen->devinfo.pci_device_id;
 
    p_atomic_set(&screen->refcount, 1);
 
