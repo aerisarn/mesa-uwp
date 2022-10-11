@@ -232,15 +232,8 @@ struct iris_bufmgr {
    int next_screen_id;
 
    struct intel_device_info devinfo;
-   bool has_llc:1;
-   bool has_local_mem:1;
-   bool has_mmap_offset:1;
-   bool has_caching_uapi:1;
-   bool has_tiling_uapi:1;
-   bool has_userptr_probe:1;
    bool bo_reuse:1;
    bool use_global_vm:1;
-   bool all_vram_mappable:1;
 
    struct intel_aux_map_context *aux_map_ctx;
 
@@ -1003,7 +996,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
                            I915_GEM_CREATE_EXT_MEMORY_REGIONS,
                            &ext_regions.base);
 
-         if (!bufmgr->all_vram_mappable &&
+         if (!intel_vram_all_mappable(&bufmgr->devinfo) &&
              bo->real.heap == IRIS_HEAP_DEVICE_LOCAL_PREFERRED) {
             create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
          }
@@ -1097,13 +1090,13 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    uint64_t bo_size =
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
-   bool is_coherent = bufmgr->has_llc ||
+   bool is_coherent = bufmgr->devinfo.has_llc ||
                       (bufmgr->vram.size > 0 && !local) ||
                       (flags & BO_ALLOC_COHERENT);
    bool is_scanout = (flags & BO_ALLOC_SCANOUT) != 0;
 
    enum iris_mmap_mode mmap_mode;
-   if (!bufmgr->all_vram_mappable && heap == IRIS_HEAP_DEVICE_LOCAL)
+   if (!intel_vram_all_mappable(&bufmgr->devinfo) && heap == IRIS_HEAP_DEVICE_LOCAL)
       mmap_mode = IRIS_MMAP_NONE;
    else if (!local && is_coherent && !is_scanout)
       mmap_mode = IRIS_MMAP_WB;
@@ -1161,7 +1154,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
     * For discrete, we instead use SMEM and avoid WB maps for coherency.
     */
    if ((flags & BO_ALLOC_COHERENT) &&
-       !bufmgr->has_llc && bufmgr->has_caching_uapi) {
+       !bufmgr->devinfo.has_llc && bufmgr->devinfo.has_caching_uapi) {
       struct drm_i915_gem_caching arg = {
          .handle = bo->gem_handle,
          .caching = 1,
@@ -1200,13 +1193,13 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    struct drm_i915_gem_userptr arg = {
       .user_ptr = (uintptr_t)ptr,
       .user_size = size,
-      .flags = bufmgr->has_userptr_probe ? I915_USERPTR_PROBE : 0,
+      .flags = bufmgr->devinfo.has_userptr_probe ? I915_USERPTR_PROBE : 0,
    };
    if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_USERPTR, &arg))
       goto err_free;
    bo->gem_handle = arg.handle;
 
-   if (!bufmgr->has_userptr_probe) {
+   if (!bufmgr->devinfo.has_userptr_probe) {
       /* Check the buffer for validity before we try and use it in a batch */
       struct drm_i915_gem_set_domain sd = {
          .handle = bo->gem_handle,
@@ -1597,7 +1590,7 @@ iris_bo_gem_mmap_offset(struct util_debug_callback *dbg, struct iris_bo *bo)
       .handle = bo->gem_handle,
    };
 
-   if (bufmgr->has_local_mem) {
+   if (bufmgr->devinfo.has_local_mem) {
       /* On discrete memory platforms, we cannot control the mmap caching mode
        * at mmap time.  Instead, it's fixed when the object is created (this
        * is a limitation of TTM).
@@ -1664,8 +1657,9 @@ iris_bo_map(struct util_debug_callback *dbg,
 
       if (!bo->real.map) {
          DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
-         map = bufmgr->has_mmap_offset ? iris_bo_gem_mmap_offset(dbg, bo)
-                                       : iris_bo_gem_mmap_legacy(dbg, bo);
+         map = bufmgr->devinfo.has_mmap_offset ?
+               iris_bo_gem_mmap_offset(dbg, bo) :
+               iris_bo_gem_mmap_legacy(dbg, bo);
          if (!map) {
             return NULL;
          }
@@ -1837,7 +1831,7 @@ iris_gem_get_tiling(struct iris_bo *bo, uint32_t *tiling)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (!bufmgr->has_tiling_uapi) {
+   if (!bufmgr->devinfo.has_tiling_uapi) {
       *tiling = I915_TILING_NONE;
       return 0;
    }
@@ -1865,7 +1859,7 @@ iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf)
    /* If we can't do map_gtt, the set/get_tiling API isn't useful. And it's
     * actually not supported by the kernel in those cases.
     */
-   if (!bufmgr->has_tiling_uapi)
+   if (!bufmgr->devinfo.has_tiling_uapi)
       return 0;
 
    /* GEM_SET_TILING is slightly broken and overwrites the input on the
@@ -2408,15 +2402,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    bufmgr->devinfo = *devinfo;
    devinfo = &bufmgr->devinfo;
-   bufmgr->has_llc = devinfo->has_llc;
-   bufmgr->has_local_mem = devinfo->has_local_mem;
-   bufmgr->has_caching_uapi = devinfo->has_caching_uapi;
-   bufmgr->has_tiling_uapi = devinfo->has_tiling_uapi;
    bufmgr->bo_reuse = bo_reuse;
-   bufmgr->has_mmap_offset = devinfo->has_mmap_offset;
-   bufmgr->has_userptr_probe = devinfo->has_userptr_probe;
    iris_bufmgr_get_meminfo(bufmgr, devinfo);
-   bufmgr->all_vram_mappable = intel_vram_all_mappable(devinfo);
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
