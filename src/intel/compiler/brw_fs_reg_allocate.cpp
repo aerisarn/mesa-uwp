@@ -1267,9 +1267,10 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
           * exceeding the maximum number of (fake) MRF registers reserved for
           * spills.
           */
-         const unsigned width = 8 * MIN2(
-            DIV_ROUND_UP(inst->dst.component_size(inst->exec_size), REG_SIZE),
-            spill_max_size(fs));
+         const unsigned width = 8 * reg_unit(devinfo) *
+            DIV_ROUND_UP(MIN2(inst->dst.component_size(inst->exec_size),
+                              spill_max_size(fs) * REG_SIZE),
+                         reg_unit(devinfo) * REG_SIZE);
 
          /* Spills should only write data initialized by the instruction for
           * whichever channels are enabled in the execution mask.  If that's
