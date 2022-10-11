@@ -167,8 +167,6 @@ zink_context_destroy(struct pipe_context *pctx)
 
    zink_descriptors_deinit(ctx);
 
-   zink_descriptor_layouts_deinit(ctx);
-
    if (!(ctx->flags & ZINK_CONTEXT_COPY_ONLY))
       p_atomic_dec(&screen->base.num_contexts);
 
@@ -4782,9 +4780,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       VkBufferViewCreateInfo bvci = create_bvci(ctx, zink_resource(ctx->dummy_vertex_buffer), PIPE_FORMAT_R8G8B8A8_UNORM, 0, sizeof(data));
       ctx->dummy_bufferview = get_buffer_view(ctx, zink_resource(ctx->dummy_vertex_buffer), &bvci);
       if (!ctx->dummy_bufferview)
-         goto fail;
-
-      if (!zink_descriptor_layouts_init(ctx))
          goto fail;
 
       if (!zink_descriptors_init(ctx))

@@ -113,21 +113,13 @@ zink_descriptor_type_to_size_idx_comp(enum zink_descriptor_type type)
    unreachable("unknown type");
 }
 bool
-zink_descriptor_layouts_init(struct zink_context *ctx);
+zink_descriptor_layouts_init(struct zink_screen *screen);
 
 void
-zink_descriptor_layouts_deinit(struct zink_context *ctx);
+zink_descriptor_layouts_deinit(struct zink_screen *screen);
 
 bool
 zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayout dsl, VkDescriptorPool pool, VkDescriptorSet *sets, unsigned num_sets);
-struct zink_descriptor_layout *
-zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
-                      VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
-                      struct zink_descriptor_layout_key **layout_key);
-struct zink_descriptor_pool_key *
-zink_descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor_type type,
-                                  struct zink_descriptor_layout_key *layout_key,
-                                  VkDescriptorPoolSize *sizes, unsigned num_type_sizes);
 void
 zink_descriptor_util_init_fbfetch(struct zink_context *ctx);
 bool

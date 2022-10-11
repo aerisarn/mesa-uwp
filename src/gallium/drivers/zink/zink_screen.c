@@ -1353,6 +1353,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    zink_bo_deinit(screen);
    util_live_shader_cache_deinit(&screen->shaders);
 
+   zink_descriptor_layouts_deinit(screen);
+
    if (screen->sem)
       VKSCR(DestroySemaphore)(screen->dev, screen->sem, NULL);
 
@@ -2593,6 +2595,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->image_barrier = zink_resource_image_barrier;
       screen->buffer_barrier = zink_resource_buffer_barrier;
    }
+
+   if (!zink_descriptor_layouts_init(screen))
+      goto fail;
+
 
    screen->copy_context = zink_context(screen->base.context_create(&screen->base, NULL, ZINK_CONTEXT_COPY_ONLY));
    if (!screen->copy_context) {
