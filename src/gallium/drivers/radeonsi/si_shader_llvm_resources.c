@@ -104,10 +104,10 @@ static LLVMValueRef load_ubo(struct ac_shader_abi *abi, LLVMValueRef index)
    index =
       LLVMBuildAdd(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS, 0), "");
 
-   return ac_build_load_to_sgpr2(&ctx->ac,
-                                 ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->const_and_shader_buffers),
-                                 ptr,
-                                 index);
+   return ac_build_load_to_sgpr(&ctx->ac,
+                                ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->const_and_shader_buffers),
+                                ptr,
+                                index);
 }
 
 static LLVMValueRef load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, bool write, bool non_uniform)
@@ -124,9 +124,9 @@ static LLVMValueRef load_ssbo(struct ac_shader_abi *abi, LLVMValueRef index, boo
    index = LLVMBuildSub(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, SI_NUM_SHADER_BUFFERS - 1, 0),
                         index, "");
 
-   return ac_build_load_to_sgpr2(&ctx->ac,
-                                 ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->const_and_shader_buffers),
-                                 rsrc_ptr, index);
+   return ac_build_load_to_sgpr(&ctx->ac,
+                                ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->const_and_shader_buffers),
+                                rsrc_ptr, index);
 }
 
 /**
@@ -197,9 +197,9 @@ static LLVMValueRef si_load_image_desc(struct si_shader_context *ctx, LLVMTypeRe
    }
 
    if (bindless)
-      rsrc = ac_build_load_to_sgpr_uint_wraparound2(&ctx->ac, type, list, index);
+      rsrc = ac_build_load_to_sgpr_uint_wraparound(&ctx->ac, type, list, index);
    else
-      rsrc = ac_build_load_to_sgpr2(&ctx->ac, type, list, index);
+      rsrc = ac_build_load_to_sgpr(&ctx->ac, type, list, index);
 
    if (desc_type == AC_DESC_IMAGE)
       rsrc = fixup_image_desc(ctx, rsrc, uses_store);
@@ -248,7 +248,7 @@ static LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx, LLVMType
       unreachable("Plane descriptor requested in radeonsi.");
    }
 
-   return ac_build_load_to_sgpr2(&ctx->ac, list_type, list, index);
+   return ac_build_load_to_sgpr(&ctx->ac, list_type, list, index);
 }
 
 static LLVMValueRef si_nir_load_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set,

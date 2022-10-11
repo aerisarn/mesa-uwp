@@ -767,7 +767,7 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       LLVMValueRef slot = LLVMConstInt(ctx->ac.i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
       LLVMValueRef buf = ac_get_arg(&ctx->ac, ctx->internal_bindings);
       LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
-      buf = ac_build_load_to_sgpr2(&ctx->ac, type, buf, slot);
+      buf = ac_build_load_to_sgpr(&ctx->ac, type, buf, slot);
       int offset = op == nir_intrinsic_load_tess_level_inner_default ? 4 : 0;
       LLVMValueRef val[4];
 
@@ -816,7 +816,7 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
 
    case nir_intrinsic_load_clip_half_line_width_amd: {
       LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
-      return ac_build_load_to_sgpr2(&ctx->ac, ctx->ac.v2f32, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
+      return ac_build_load_to_sgpr(&ctx->ac, ctx->ac.v2f32, ptr, LLVMConstInt(ctx->ac.i32, 4, 0));
    }
 
    case nir_intrinsic_load_viewport_xy_scale_and_offset: {
@@ -824,7 +824,7 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
       LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->small_prim_cull_info);
       LLVMValueRef terms =
-         ac_build_load_to_sgpr2(&ctx->ac, type, ptr, prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
+         ac_build_load_to_sgpr(&ctx->ac, type, ptr, prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
       return LLVMBuildBitCast(ctx->ac.builder, terms, ctx->ac.v4f32, "");
    }
 
@@ -881,7 +881,7 @@ static LLVMValueRef si_llvm_load_user_clip_plane(struct ac_shader_abi *abi, unsi
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
-   LLVMValueRef const_resource = ac_build_load_to_sgpr2(&ctx->ac, type, ptr, constbuf_index);
+   LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, type, ptr, constbuf_index);
    LLVMValueRef addr = LLVMConstInt(ctx->ac.i32, ucp_id * 16, 0);
    return ac_build_buffer_load(&ctx->ac, const_resource, 4, NULL, addr, NULL,
                                ctx->ac.f32, 0, true, true);
@@ -893,7 +893,7 @@ static LLVMValueRef si_llvm_load_streamout_buffer(struct ac_shader_abi *abi, uns
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
 
-   return ac_build_load_to_sgpr2(
+   return ac_build_load_to_sgpr(
       &ctx->ac, type, buf_ptr, LLVMConstInt(ctx->ac.i32, SI_VS_STREAMOUT_BUF0 + buffer, false));
 }
 
@@ -933,7 +933,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          LLVMValueRef buf = ac_get_arg(&ctx->ac, ctx->internal_bindings);
          LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
          ctx->instance_divisor_constbuf =
-            ac_build_load_to_sgpr2(
+            ac_build_load_to_sgpr(
                &ctx->ac, type, buf, LLVMConstInt(ctx->ac.i32, SI_VS_CONST_INSTANCE_DIVISORS, 0));
       }
       break;

@@ -4115,7 +4115,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_scratch: {
       LLVMValueRef offset = get_src(ctx, instr->src[0]);
-      LLVMValueRef ptr = ac_build_gep0_2(&ctx->ac, ctx->scratch.t, ctx->scratch.v, offset);
+      LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->scratch.t, ctx->scratch.v, offset);
       LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
       LLVMTypeRef vec_type = instr->dest.ssa.num_components == 1
                                 ? comp_type
@@ -4125,7 +4125,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_store_scratch: {
       LLVMValueRef offset = get_src(ctx, instr->src[1]);
-      LLVMValueRef ptr = ac_build_gep0_2(&ctx->ac, ctx->scratch.t, ctx->scratch.v, offset);
+      LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->scratch.t, ctx->scratch.v, offset);
       LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->src[0].ssa->bit_size);
       LLVMValueRef src = get_src(ctx, instr->src[0]);
       unsigned wrmask = nir_intrinsic_write_mask(instr);
@@ -4154,7 +4154,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, offset, size, "");
       offset = LLVMBuildSelect(ctx->ac.builder, cond, offset, size, "");
 
-      LLVMValueRef ptr = ac_build_gep0_2(&ctx->ac, ctx->constant_data.t, ctx->constant_data.v, offset);
+      LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->constant_data.t, ctx->constant_data.v, offset);
       LLVMTypeRef comp_type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
       LLVMTypeRef vec_type = instr->dest.ssa.num_components == 1
                                 ? comp_type
