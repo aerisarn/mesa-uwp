@@ -1708,6 +1708,8 @@ bool anv_descriptor_requires_bindless(const struct anv_physical_device *pdevice,
 struct anv_descriptor_set_layout {
    struct vk_object_base base;
 
+   VkDescriptorSetLayoutCreateFlags flags;
+
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
 

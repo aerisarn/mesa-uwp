@@ -416,6 +416,7 @@ VkResult anv_CreateDescriptorSetLayout(
 
    set_layout->ref_cnt = 1;
    set_layout->binding_count = num_bindings;
+   set_layout->flags = pCreateInfo->flags;
 
    for (uint32_t b = 0; b < num_bindings; b++) {
       /* Initialize all binding_layout entries to -1 */
@@ -717,6 +718,7 @@ static void
 sha1_update_descriptor_set_layout(struct mesa_sha1 *ctx,
                                   const struct anv_descriptor_set_layout *layout)
 {
+   SHA1_UPDATE_VALUE(ctx, layout->flags);
    SHA1_UPDATE_VALUE(ctx, layout->binding_count);
    SHA1_UPDATE_VALUE(ctx, layout->descriptor_count);
    SHA1_UPDATE_VALUE(ctx, layout->shader_stages);
