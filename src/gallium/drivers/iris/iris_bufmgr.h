@@ -601,5 +601,6 @@ uint32_t iris_upload_border_color(struct iris_border_color_pool *pool,
 
 uint64_t iris_bufmgr_vram_size(struct iris_bufmgr *bufmgr);
 uint64_t iris_bufmgr_sram_size(struct iris_bufmgr *bufmgr);
+const struct intel_device_info *iris_bufmgr_get_device_info(struct iris_bufmgr *bufmgr);
 
 #endif /* IRIS_BUFMGR_H */

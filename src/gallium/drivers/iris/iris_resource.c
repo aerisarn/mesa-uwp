@@ -163,7 +163,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
 }
 
 static uint64_t
-select_best_modifier(struct intel_device_info *devinfo,
+select_best_modifier(const struct intel_device_info *devinfo,
                      const struct pipe_resource *templ,
                      const uint64_t *modifiers,
                      int count)
@@ -234,7 +234,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                             int *count)
 {
    struct iris_screen *screen = (void *) pscreen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    uint64_t all_modifiers[] = {
       DRM_FORMAT_MOD_LINEAR,
@@ -278,7 +278,7 @@ iris_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
                                   bool *external_only)
 {
    struct iris_screen *screen = (void *) pscreen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    if (modifier_is_supported(devinfo, pfmt, 0, modifier)) {
       if (external_only)
@@ -316,7 +316,7 @@ iris_image_view_get_format(struct iris_context *ice,
                            const struct pipe_image_view *img)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
    enum isl_format isl_fmt =
@@ -471,7 +471,7 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
                        PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
       flags |= BO_ALLOC_SMEM;
 
-   if (screen->devinfo.verx10 >= 125 && isl_aux_usage_has_ccs(aux_usage)) {
+   if (screen->devinfo->verx10 >= 125 && isl_aux_usage_has_ccs(aux_usage)) {
       assert((flags & BO_ALLOC_SMEM) == 0);
       flags |= BO_ALLOC_LMEM;
    }
@@ -583,7 +583,7 @@ iris_get_aux_clear_color_state_size(struct iris_screen *screen,
     * sampler via render surface state objects.
     */
    if (isl_surf_usage_is_depth(res->surf.usage) &&
-       !iris_sample_with_depth_aux(&screen->devinfo, res))
+       !iris_sample_with_depth_aux(screen->devinfo, res))
       return 0;
 
    return screen->isl_dev.ss.clear_color_state_size;
@@ -601,7 +601,7 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
       const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
          res->aux.extra_aux.offset : res->aux.offset;
       const enum isl_format format =
-         iris_format_for_usage(&screen->devinfo, pfmt, res->surf.usage).fmt;
+         iris_format_for_usage(screen->devinfo, pfmt, res->surf.usage).fmt;
       const uint64_t format_bits =
          intel_aux_map_format_bits(res->surf.tiling, format, plane);
       intel_aux_map_add_mapping(aux_map_ctx, res->bo->address + res->offset,
@@ -674,7 +674,7 @@ iris_resource_configure_main(const struct iris_screen *screen,
    } else if (templ->usage == PIPE_USAGE_STAGING ||
               templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR)) {
       tiling_flags = ISL_TILING_LINEAR_BIT;
-   } else if (!screen->devinfo.has_tiling_uapi &&
+   } else if (!screen->devinfo->has_tiling_uapi &&
               (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED))) {
       tiling_flags = ISL_TILING_LINEAR_BIT;
    } else if (templ->bind & PIPE_BIND_SCANOUT) {
@@ -719,7 +719,7 @@ iris_resource_configure_main(const struct iris_screen *screen,
    }
 
    const enum isl_format format =
-      iris_format_for_usage(&screen->devinfo, templ->format, usage).fmt;
+      iris_format_for_usage(screen->devinfo, templ->format, usage).fmt;
 
    const struct isl_surf_init_info init_info = {
       .dim = target_to_isl_surf_dim(templ->target),
@@ -787,7 +787,7 @@ static bool
 iris_resource_configure_aux(struct iris_screen *screen,
                             struct iris_resource *res, bool imported)
 {
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    const bool has_mcs =
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
@@ -1153,7 +1153,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                     int modifiers_count)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
 
    if (!res)

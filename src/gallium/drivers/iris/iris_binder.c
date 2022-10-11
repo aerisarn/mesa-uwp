@@ -205,7 +205,7 @@ void
 iris_init_binder(struct iris_context *ice)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    memset(&ice->state.binder, 0, sizeof(struct iris_binder));
 

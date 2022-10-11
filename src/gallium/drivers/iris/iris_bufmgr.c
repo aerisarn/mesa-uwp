@@ -231,6 +231,7 @@ struct iris_bufmgr {
 
    int next_screen_id;
 
+   struct intel_device_info devinfo;
    bool has_llc:1;
    bool has_local_mem:1;
    bool has_mmap_offset:1;
@@ -2405,6 +2406,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    list_inithead(&bufmgr->zombie_list);
 
+   bufmgr->devinfo = *devinfo;
+   devinfo = &bufmgr->devinfo;
    bufmgr->has_llc = devinfo->has_llc;
    bufmgr->has_local_mem = devinfo->has_local_mem;
    bufmgr->has_caching_uapi = devinfo->has_caching_uapi;
@@ -2598,4 +2601,10 @@ uint64_t
 iris_bufmgr_sram_size(struct iris_bufmgr *bufmgr)
 {
    return bufmgr->sys.size;
+}
+
+const struct intel_device_info *
+iris_bufmgr_get_device_info(struct iris_bufmgr *bufmgr)
+{
+   return &bufmgr->devinfo;
 }

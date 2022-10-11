@@ -198,7 +198,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
    const nir_shader *nir = ish->nir;
@@ -276,7 +276,7 @@ iris_postdraw_update_image_resolve_tracking(struct iris_context *ice,
                                             gl_shader_stage stage)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   ASSERTED struct intel_device_info *devinfo = &screen->devinfo;
+   ASSERTED const struct intel_device_info *devinfo = screen->devinfo;
 
    assert(devinfo->ver >= 12);
 
@@ -320,7 +320,7 @@ void
 iris_postdraw_update_resolve_tracking(struct iris_context *ice)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
    // XXX: front buffer drawing?
@@ -626,7 +626,7 @@ iris_hiz_exec(struct iris_context *ice,
               unsigned int num_layers, enum isl_aux_op op,
               bool update_clear_depth)
 {
-   ASSERTED struct intel_device_info *devinfo = &batch->screen->devinfo;
+   ASSERTED const struct intel_device_info *devinfo = batch->screen->devinfo;
 
    assert(iris_resource_level_has_hiz(devinfo, res, level));
    assert(op != ISL_AUX_OP_NONE);
@@ -916,7 +916,7 @@ iris_resource_set_aux_state(struct iris_context *ice,
                             enum isl_aux_state aux_state)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   ASSERTED struct intel_device_info *devinfo = &screen->devinfo;
+   ASSERTED const struct intel_device_info *devinfo = screen->devinfo;
 
    num_layers = miptree_layer_range_length(res, level, start_layer, num_layers);
 
@@ -957,7 +957,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
                                 unsigned num_levels)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
@@ -1015,7 +1015,7 @@ iris_image_view_aux_usage(struct iris_context *ice,
       return ISL_AUX_USAGE_NONE;
 
    const struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_resource *res = (void *) pview->resource;
 
    const unsigned level = res->base.b.target != PIPE_BUFFER ?
@@ -1086,7 +1086,7 @@ iris_resource_prepare_texture(struct iris_context *ice,
                               uint32_t start_layer, uint32_t num_layers)
 {
    const struct iris_screen *screen = (void *) ice->ctx.screen;
-   const struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    enum isl_aux_usage aux_usage =
       iris_resource_texture_aux_usage(ice, res, view_format,
@@ -1139,7 +1139,7 @@ iris_resource_render_aux_usage(struct iris_context *ice,
                                bool draw_aux_disabled)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct intel_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = screen->devinfo;
 
    if (draw_aux_disabled)
       return ISL_AUX_USAGE_NONE;
