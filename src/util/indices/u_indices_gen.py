@@ -84,26 +84,6 @@ def prolog():
 
 #include "c99_compat.h"
 
-static unsigned out_size_idx( unsigned index_size )
-{
-   switch (index_size) {
-   case 4: return OUT_UINT;
-   case 2: return OUT_USHORT;
-   default: assert(0); return OUT_USHORT;
-   }
-}
-
-static unsigned in_size_idx( unsigned index_size )
-{
-   switch (index_size) {
-   case 4: return IN_UINT;
-   case 2: return IN_USHORT;
-   case 1: return IN_UBYTE;
-   default: assert(0); return IN_UBYTE;
-   }
-}
-
-
 static u_translate_func translate[IN_COUNT][OUT_COUNT][PV_COUNT][PV_COUNT][PR_COUNT][PRIM_COUNT];
 static u_generate_func  generate[OUT_COUNT][PV_COUNT][PV_COUNT][PRIM_COUNT];
 

@@ -69,27 +69,6 @@ def prolog():
 #include "pipe/p_defines.h"
 #include "util/u_memory.h"
 
-
-static unsigned out_size_idx( unsigned index_size )
-{
-   switch (index_size) {
-   case 4: return OUT_UINT;
-   case 2: return OUT_USHORT;
-   default: assert(0); return OUT_USHORT;
-   }
-}
-
-static unsigned in_size_idx( unsigned index_size )
-{
-   switch (index_size) {
-   case 4: return IN_UINT;
-   case 2: return IN_USHORT;
-   case 1: return IN_UBYTE;
-   default: assert(0); return IN_UBYTE;
-   }
-}
-
-
 static u_generate_func generate_line[OUT_COUNT][PRIM_COUNT];
 static u_translate_func translate_line[IN_COUNT][OUT_COUNT][PRIM_COUNT];
 
