@@ -651,6 +651,7 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool_multi *mp
                  enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   assert(mpool->pool_key == pg->dd.pool_key[type]);
    if (!mpool->pool) {
       if (util_dynarray_contains(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*))
          mpool->pool = util_dynarray_pop(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*);
