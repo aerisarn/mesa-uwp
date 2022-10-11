@@ -111,8 +111,6 @@ struct tu_physical_device
    uint32_t submitqueue_priority_count;
 
    struct tu_memory_heap heap;
-   mtx_t                 vma_mutex;
-   struct util_vma_heap  vma;
 
    struct vk_sync_type syncobj_type;
    struct vk_sync_timeline_type timeline_type;
@@ -286,6 +284,9 @@ struct tu_device
    uint32_t vsc_prim_strm_pitch;
    BITSET_DECLARE(custom_border_color, TU_BORDER_COLOR_COUNT);
    mtx_t mutex;
+
+   mtx_t vma_mutex;
+   struct util_vma_heap vma;
 
    /* bo list for submits: */
    struct drm_msm_gem_submit_bo *bo_list;

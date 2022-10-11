@@ -281,13 +281,13 @@ tu_allocate_userspace_iova(struct tu_device *dev,
                            enum tu_bo_alloc_flags flags,
                            uint64_t *iova)
 {
-   mtx_lock(&dev->physical_device->vma_mutex);
+   mtx_lock(&dev->vma_mutex);
 
    *iova = 0;
 
    if (flags & TU_BO_ALLOC_REPLAYABLE) {
       if (client_iova) {
-         if (util_vma_heap_alloc_addr(&dev->physical_device->vma, client_iova,
+         if (util_vma_heap_alloc_addr(&dev->vma, client_iova,
                                       size)) {
             *iova = client_iova;
          } else {
@@ -298,16 +298,16 @@ tu_allocate_userspace_iova(struct tu_device *dev,
           * for them not to clash. The easiest way to do this is to allocate
           * them from the other end of the address space.
           */
-         dev->physical_device->vma.alloc_high = true;
+         dev->vma.alloc_high = true;
          *iova =
-            util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+            util_vma_heap_alloc(&dev->vma, size, 0x1000);
       }
    } else {
-      dev->physical_device->vma.alloc_high = false;
-      *iova = util_vma_heap_alloc(&dev->physical_device->vma, size, 0x1000);
+      dev->vma.alloc_high = false;
+      *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
    }
 
-   mtx_unlock(&dev->physical_device->vma_mutex);
+   mtx_unlock(&dev->vma_mutex);
 
    if (!*iova)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
@@ -619,9 +619,9 @@ msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    mtx_unlock(&dev->bo_mutex);
 
    if (dev->physical_device->has_set_iova) {
-      mtx_lock(&dev->physical_device->vma_mutex);
-      util_vma_heap_free(&dev->physical_device->vma, bo->iova, bo->size);
-      mtx_unlock(&dev->physical_device->vma_mutex);
+      mtx_lock(&dev->vma_mutex);
+      util_vma_heap_free(&dev->vma, bo->iova, bo->size);
+      mtx_unlock(&dev->vma_mutex);
    }
 
    /* Our BO structs are stored in a sparse array in the physical device,

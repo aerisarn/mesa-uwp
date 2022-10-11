@@ -351,12 +351,6 @@ tu_physical_device_init(struct tu_physical_device *device,
       device->memory.type_count++;
    }
 
-   if (device->has_set_iova) {
-      mtx_init(&device->vma_mutex, mtx_plain);
-      util_vma_heap_init(&device->vma, device->va_start,
-                         ROUND_DOWN_TO(device->va_size, 4096));
-   }
-
    fd_get_driver_uuid(device->driver_uuid);
    fd_get_device_uuid(device->device_uuid, &device->dev_id);
 
@@ -374,7 +368,7 @@ tu_physical_device_init(struct tu_physical_device *device,
                                     NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
-      goto fail_free_vma;
+      goto fail_free_name;
 
    device->vk.supported_sync_types = device->sync_types;
 
@@ -383,7 +377,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
       vk_physical_device_finish(&device->vk);
-      goto fail_free_vma;
+      goto fail_free_name;
    }
 #endif
 
@@ -398,9 +392,6 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    return VK_SUCCESS;
 
-fail_free_vma:
-   if (device->has_set_iova)
-      util_vma_heap_finish(&device->vma);
 fail_free_name:
    vk_free(&instance->vk.alloc, (void *)device->name);
    return result;
@@ -417,11 +408,7 @@ tu_physical_device_finish(struct tu_physical_device *device)
    if (device->master_fd != -1)
       close(device->master_fd);
 
-   if (device->has_set_iova)
-      util_vma_heap_finish(&device->vma);
-
    disk_cache_destroy(device->vk.disk_cache);
-
    vk_free(&device->instance->vk.alloc, (void *)device->name);
 
    vk_physical_device_finish(&device->vk);
@@ -2223,6 +2210,12 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    u_rwlock_init(&device->dma_bo_lock);
    pthread_mutex_init(&device->submit_mutex, NULL);
 
+   if (physical_device->has_set_iova) {
+      mtx_init(&device->vma_mutex, mtx_plain);
+      util_vma_heap_init(&device->vma, physical_device->va_start,
+                         ROUND_DOWN_TO(physical_device->va_size, 4096));
+   }
+
    if (TU_DEBUG(BOS))
       device->bo_sizes = _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
 
@@ -2464,6 +2457,8 @@ fail_global_bo_map:
 fail_global_bo:
    ir3_compiler_destroy(device->compiler);
    util_sparse_array_finish(&device->bo_map);
+   if (physical_device->has_set_iova)
+      util_vma_heap_finish(&device->vma);
 
 fail_queues:
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
@@ -2539,6 +2534,9 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    tu_bo_suballocator_finish(&device->autotune_suballoc);
 
    tu_drm_device_finish(device);
+
+   if (device->physical_device->has_set_iova)
+      util_vma_heap_finish(&device->vma);
 
    util_sparse_array_finish(&device->bo_map);
    u_rwlock_destroy(&device->dma_bo_lock);
