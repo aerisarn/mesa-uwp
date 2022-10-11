@@ -134,6 +134,9 @@ preferred_slm_allocation_size(const struct intel_device_info *devinfo)
    if (intel_needs_workaround(devinfo, 14017245111))
       return SLM_ENCODES_96K;
 
+   if (devinfo->platform == INTEL_PLATFORM_LNL && devinfo->revision == 0)
+      return SLM_ENCODES_128K;
+
    return 0;
 }
 
