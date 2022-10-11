@@ -73,16 +73,6 @@ static_assert(GL_QUADS == PIPE_PRIM_QUADS, "enum mismatch");
 static_assert(GL_TRIANGLE_STRIP_ADJACENCY == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY, "enum mismatch");
 static_assert(GL_PATCHES == PIPE_PRIM_PATCHES, "enum mismatch");
 
-/**
- * Translate OpenGL primtive type (GL_POINTS, GL_TRIANGLE_STRIP, etc) to
- * the corresponding Gallium type.
- */
-static unsigned
-translate_prim(const struct gl_context *ctx, unsigned prim)
-{
-   return prim;
-}
-
 static inline void
 prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
              enum st_pipeline pipeline)
@@ -282,7 +272,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];
    }
 
-   info.mode = translate_prim(ctx, mode);
+   info.mode = mode;
    indirect.buffer = indirect_data->buffer;
    indirect.offset = indirect_offset;
 
@@ -338,7 +328,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
    info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
-   info.mode = translate_prim(ctx, mode);
+   info.mode = mode;
    info.instance_count = num_instances;
 
    /* Transform feedback drawing is always non-indexed. */
