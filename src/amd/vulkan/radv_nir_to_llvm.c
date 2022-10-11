@@ -202,6 +202,7 @@ visit_emit_vertex_with_counter(struct ac_shader_abi *abi, unsigned stream, LLVMV
       unsigned output_usage_mask = ctx->shader_info->gs.output_usage_mask[i];
       uint8_t output_stream = ctx->shader_info->gs.output_streams[i];
       LLVMValueRef *out_ptr = &addrs[i * 4];
+      bool *is_16bit_ptr = &abi->is_16bit[i * 4];
       int length = util_last_bit(output_usage_mask);
 
       if (!(ctx->output_mask & (1ull << i)) || output_stream != stream)
@@ -211,7 +212,8 @@ visit_emit_vertex_with_counter(struct ac_shader_abi *abi, unsigned stream, LLVMV
          if (!(output_usage_mask & (1 << j)))
             continue;
 
-         LLVMValueRef out_val = LLVMBuildLoad(ctx->ac.builder, out_ptr[j], "");
+         LLVMTypeRef type = is_16bit_ptr[j] ? ctx->ac.f16 : ctx->ac.f32;
+         LLVMValueRef out_val = LLVMBuildLoad2(ctx->ac.builder, type, out_ptr[j], "");
          LLVMValueRef voffset =
             LLVMConstInt(ctx->ac.i32, offset * ctx->shader->info.gs.vertices_out, false);
 
@@ -258,7 +260,7 @@ radv_load_rsrc(struct radv_shader_context *ctx, LLVMValueRef ptr, LLVMTypeRef ty
       ptr = LLVMBuildIntToPtr(ctx->ac.builder, ptr, ptr_type, "");
       LLVMSetMetadata(ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
-      result = LLVMBuildLoad(ctx->ac.builder, ptr, "");
+      result = LLVMBuildLoad2(ctx->ac.builder, type, ptr, "");
       LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
 
       return result;
@@ -711,8 +713,10 @@ radv_export_param(struct radv_shader_context *ctx, unsigned index, LLVMValueRef 
 static LLVMValueRef
 radv_load_output(struct radv_shader_context *ctx, unsigned index, unsigned chan)
 {
-   LLVMValueRef output = ctx->abi.outputs[ac_llvm_reg_index_soa(index, chan)];
-   return LLVMBuildLoad(ctx->ac.builder, output, "");
+   int idx = ac_llvm_reg_index_soa(index, chan);
+   LLVMValueRef output = ctx->abi.outputs[idx];
+   LLVMTypeRef type = ctx->abi.is_16bit[idx] ? ctx->ac.f16 : ctx->ac.f32;
+   return LLVMBuildLoad2(ctx->ac.builder, type, output, "");
 }
 
 static void
