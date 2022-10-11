@@ -740,9 +740,16 @@ int AluInstr::register_priority() const
    int priority = 0;
    if (!has_alu_flag(alu_no_schedule_bias)) {
 
-      if (m_dest && m_dest->is_ssa() && has_alu_flag(alu_write)) {
-         if (m_dest->pin() != pin_group && m_dest->pin() != pin_chgr)
-            priority--;
+      if (m_dest) {
+         if (m_dest->is_ssa() && has_alu_flag(alu_write)) {
+            if (m_dest->pin() != pin_group &&
+                m_dest->pin() != pin_chgr)
+               priority--;
+         } else {
+            // Arrays and registers are pre-allocated, hence scheduling
+            // assignments early is unlikely to increase register pressure
+            priority++;
+         }
       }
 
       for (const auto s : m_src) {
@@ -756,6 +763,8 @@ int AluInstr::register_priority() const
             if (pending == 1)
                ++priority;
          }
+         if (s->as_uniform())
+            ++priority;
       }
    }
    return priority;

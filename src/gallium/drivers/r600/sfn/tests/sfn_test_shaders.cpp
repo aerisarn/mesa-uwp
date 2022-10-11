@@ -1581,10 +1581,10 @@ ALU_GROUP_BEGIN
   ALU MAX4 __.y@chan : S16.y@chgr {}
   ALU MAX4 S17.z@chan : S16.z@chgr {W}
   ALU MAX4 __.w@chan : S16.w@chgr {}
-  ALU OR_INT S31.x@chan : S27.x@chan S28.y@chan {WL}
+  ALU SETNE S21.x@chgr : KC0[7].x KC0[3].x {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-  ALU SETNE S21.x@chgr : KC0[7].x KC0[3].x {W}
+  ALU OR_INT S31.x@chan : S27.x@chan S28.y@chan {W}
   ALU SETNE S21.y@chgr : KC0[7].y KC0[3].y {W}
   ALU SETE_DX10 S18.z@chan : S17.z@chan I[1.0] {WL}
 ALU_GROUP_END
@@ -1677,9 +1677,9 @@ ALU_GROUP_BEGIN
   ALU SETNE_DX10 S5.y : KC0[2].x KC0[0].x {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-  ALU OR_INT S6.x : S5.x S5.y {W}
+  ALU SETNE_DX10 S9.x : KC0[3].y KC0[1].y {W}
   ALU SETNE_DX10 S9.y : KC0[3].x KC0[1].x {W}
-  ALU SETNE_DX10 S9.x : KC0[3].y KC0[1].y {WL}
+  ALU OR_INT S6.x : S5.x S5.y {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
   ALU OR_INT S10.x : S9.x S9.y {WL}
