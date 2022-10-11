@@ -73,6 +73,7 @@ struct tu_physical_device
 
    struct wsi_device wsi_device;
 
+   char fd_path[20];
    int local_fd;
    bool has_local;
    int64_t local_major;
@@ -105,9 +106,6 @@ struct tu_physical_device
 
    int msm_major_version;
    int msm_minor_version;
-
-   /* Address space and global fault count for this local_fd with DRM backend */
-   uint64_t fault_count;
 
    /* with 0 being the highest priority */
    uint32_t submitqueue_priority_count;
@@ -344,6 +342,9 @@ struct tu_device
 #endif
 
    uint32_t submit_count;
+
+   /* Address space and global fault count for this local_fd with DRM backend */
+   uint64_t fault_count;
 
    struct u_trace_context trace_context;
 

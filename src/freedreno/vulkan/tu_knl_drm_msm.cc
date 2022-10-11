@@ -51,9 +51,7 @@ struct tu_u_trace_syncobj
 };
 
 static int
-tu_drm_get_param(const struct tu_physical_device *dev,
-                 uint32_t param,
-                 uint64_t *value)
+tu_drm_get_param(int fd, uint32_t param, uint64_t *value)
 {
    /* Technically this requires a pipe, but the kernel only supports one pipe
     * anyway at the time of writing and most of these are clearly pipe
@@ -63,8 +61,7 @@ tu_drm_get_param(const struct tu_physical_device *dev,
       .param = param,
    };
 
-   int ret = drmCommandWriteRead(dev->local_fd, DRM_MSM_GET_PARAM, &req,
-                                 sizeof(req));
+   int ret = drmCommandWriteRead(fd, DRM_MSM_GET_PARAM, &req, sizeof(req));
    if (ret)
       return ret;
 
@@ -77,7 +74,7 @@ static int
 tu_drm_get_gpu_id(const struct tu_physical_device *dev, uint32_t *id)
 {
    uint64_t value;
-   int ret = tu_drm_get_param(dev, MSM_PARAM_GPU_ID, &value);
+   int ret = tu_drm_get_param(dev->local_fd, MSM_PARAM_GPU_ID, &value);
    if (ret)
       return ret;
 
@@ -89,7 +86,7 @@ static int
 tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size)
 {
    uint64_t value;
-   int ret = tu_drm_get_param(dev, MSM_PARAM_GMEM_SIZE, &value);
+   int ret = tu_drm_get_param(dev->local_fd, MSM_PARAM_GMEM_SIZE, &value);
    if (ret)
       return ret;
 
@@ -100,7 +97,7 @@ tu_drm_get_gmem_size(const struct tu_physical_device *dev, uint32_t *size)
 static int
 tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base)
 {
-   return tu_drm_get_param(dev, MSM_PARAM_GMEM_BASE, base);
+   return tu_drm_get_param(dev->local_fd, MSM_PARAM_GMEM_BASE, base);
 }
 
 static int
@@ -108,13 +105,13 @@ tu_drm_get_va_prop(const struct tu_physical_device *dev,
                    uint64_t *va_start, uint64_t *va_size)
 {
    uint64_t value;
-   int ret = tu_drm_get_param(dev, MSM_PARAM_VA_START, &value);
+   int ret = tu_drm_get_param(dev->local_fd, MSM_PARAM_VA_START, &value);
    if (ret)
       return ret;
 
    *va_start = value;
 
-   ret = tu_drm_get_param(dev, MSM_PARAM_VA_SIZE, &value);
+   ret = tu_drm_get_param(dev->local_fd, MSM_PARAM_VA_SIZE, &value);
    if (ret)
       return ret;
 
@@ -127,7 +124,7 @@ static uint32_t
 tu_drm_get_priorities(const struct tu_physical_device *dev)
 {
    uint64_t val = 1;
-   tu_drm_get_param(dev, MSM_PARAM_PRIORITIES, &val);
+   tu_drm_get_param(dev->local_fd, MSM_PARAM_PRIORITIES, &val);
    assert(val >= 1);
 
    return val;
@@ -152,30 +149,57 @@ tu_drm_is_memory_type_supported(int fd, uint32_t flags)
    return true;
 }
 
+static VkResult
+msm_device_init(struct tu_device *dev)
+{
+   int fd = open(dev->physical_device->fd_path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      return vk_startup_errorf(
+            dev->physical_device->instance, VK_ERROR_INITIALIZATION_FAILED,
+            "failed to open device %s", dev->physical_device->fd_path);
+   }
+
+   int ret = tu_drm_get_param(fd, MSM_PARAM_FAULTS, &dev->fault_count);
+   if (ret != 0) {
+      close(fd);
+      return vk_startup_errorf(dev->physical_device->instance,
+                               VK_ERROR_INITIALIZATION_FAILED,
+                               "Failed to get initial fault count: %d", ret);
+   }
+
+   dev->fd = fd;
+
+   return VK_SUCCESS;
+}
+
+static void
+msm_device_finish(struct tu_device *dev)
+{
+   close(dev->fd);
+}
+
 static int
 msm_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
-   return tu_drm_get_param(dev->physical_device, MSM_PARAM_TIMESTAMP, ts);
+   return tu_drm_get_param(dev->fd, MSM_PARAM_TIMESTAMP, ts);
 }
 
 static int
 msm_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
 {
-   int ret = tu_drm_get_param(dev->physical_device, MSM_PARAM_SUSPENDS, suspend_count);
+   int ret = tu_drm_get_param(dev->fd, MSM_PARAM_SUSPENDS, suspend_count);
    return ret;
 }
 
 static VkResult
 msm_device_check_status(struct tu_device *device)
 {
-   struct tu_physical_device *physical_device = device->physical_device;
-
-   uint64_t last_fault_count = physical_device->fault_count;
-   int ret = tu_drm_get_param(physical_device, MSM_PARAM_FAULTS, &physical_device->fault_count);
+   uint64_t last_fault_count = device->fault_count;
+   int ret = tu_drm_get_param(device->fd, MSM_PARAM_FAULTS, &device->fault_count);
    if (ret != 0)
       return vk_device_set_lost(&device->vk, "error getting GPU fault count: %d", ret);
 
-   if (last_fault_count != physical_device->fault_count)
+   if (last_fault_count != device->fault_count)
       return vk_device_set_lost(&device->vk, "GPU faulted or hung");
 
    return VK_SUCCESS;
@@ -1298,6 +1322,8 @@ msm_queue_submit(struct tu_queue *queue, struct vk_queue_submit *submit)
 static const struct tu_knl msm_knl_funcs = {
       .name = "msm",
 
+      .device_init = msm_device_init,
+      .device_finish = msm_device_finish,
       .device_get_gpu_timestamp = msm_device_get_gpu_timestamp,
       .device_get_suspend_count = msm_device_get_suspend_count,
       .device_check_status = msm_device_check_status,
@@ -1332,7 +1358,6 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
                     struct tu_physical_device **out)
 {
    VkResult result = VK_SUCCESS;
-   int ret;
 
    /* Version 1.6 added SYNCOBJ support. */
    const int min_version_major = 1;
@@ -1369,7 +1394,7 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
       goto fail;
    }
 
-   if (tu_drm_get_param(device, MSM_PARAM_CHIP_ID, &device->dev_id.chip_id)) {
+   if (tu_drm_get_param(fd, MSM_PARAM_CHIP_ID, &device->dev_id.chip_id)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "could not get CHIP ID");
       goto fail;
@@ -1412,14 +1437,6 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
       device->level1_dcache_size = l1_dcache;
    }
 #endif
-
-
-   ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
-   if (ret != 0) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                 "Failed to get initial fault count: %d", ret);
-      goto fail;
-   }
 
    device->submitqueue_priority_count = tu_drm_get_priorities(device);
 

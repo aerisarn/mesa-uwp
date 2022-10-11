@@ -2207,7 +2207,13 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
-   device->fd = physical_device->local_fd;
+
+   result = tu_drm_device_init(device);
+   if (result != VK_SUCCESS) {
+      vk_free(&device->vk.alloc, device);
+      return result;
+   }
+
    device->vk.command_buffer_ops = &tu_cmd_buffer_ops;
    device->vk.check_status = tu_device_check_status;
 
@@ -2531,6 +2537,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    tu_bo_suballocator_finish(&device->pipeline_suballoc);
    tu_bo_suballocator_finish(&device->autotune_suballoc);
+
+   tu_drm_device_finish(device);
 
    util_sparse_array_finish(&device->bo_map);
    u_rwlock_destroy(&device->dma_bo_lock);

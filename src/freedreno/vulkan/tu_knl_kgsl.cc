@@ -1150,6 +1150,19 @@ kgsl_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *synco
    return VK_SUCCESS;
 }
 
+static VkResult
+kgsl_device_init(struct tu_device *dev)
+{
+   dev->fd = dev->physical_device->local_fd;
+   return VK_SUCCESS;
+}
+
+static void
+kgsl_device_finish(struct tu_device *dev)
+{
+   /* No-op */
+}
+
 static int
 kgsl_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
@@ -1193,6 +1206,8 @@ kgsl_device_check_status(struct tu_device *device)
 static const struct tu_knl kgsl_knl_funcs = {
       .name = "kgsl",
 
+      .device_init = kgsl_device_init,
+      .device_finish = kgsl_device_finish,
       .device_get_gpu_timestamp = kgsl_device_get_gpu_timestamp,
       .device_get_suspend_count = kgsl_device_get_suspend_count,
       .device_check_status = kgsl_device_check_status,
