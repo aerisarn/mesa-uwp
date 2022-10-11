@@ -34,7 +34,7 @@
 
 struct cache_entry {
    union {
-      unsigned char sha1[20];
+      unsigned char sha1[SHA1_DIGEST_LENGTH];
       uint32_t sha1_dw[5];
    };
    uint32_t binary_sizes[MESA_VULKAN_SHADER_STAGES];
@@ -345,8 +345,8 @@ radv_create_shaders_from_pipeline_cache(
          return false;
       }
 
-      uint8_t disk_sha1[20];
-      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, 20, disk_sha1);
+      uint8_t disk_sha1[SHA1_DIGEST_LENGTH];
+      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, SHA1_DIGEST_LENGTH, disk_sha1);
 
       entry =
          (struct cache_entry *)disk_cache_get(device->physical_device->vk.disk_cache, disk_sha1, NULL);
@@ -508,7 +508,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    }
 
    memset(entry, 0, sizeof(*entry));
-   memcpy(entry->sha1, sha1, 20);
+   memcpy(entry->sha1, sha1, SHA1_DIGEST_LENGTH);
 
    char *p = entry->code;
 
@@ -542,8 +542,8 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
     * Make sure to exclude meta shaders because they are stored in a different cache file.
     */
    if (device->physical_device->vk.disk_cache && cache != &device->meta_state.cache) {
-      uint8_t disk_sha1[20];
-      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, 20, disk_sha1);
+      uint8_t disk_sha1[SHA1_DIGEST_LENGTH];
+      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, SHA1_DIGEST_LENGTH, disk_sha1);
 
       disk_cache_put(device->physical_device->vk.disk_cache, disk_sha1, entry, entry_size(entry),
                      NULL);
