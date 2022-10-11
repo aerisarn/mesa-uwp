@@ -67,6 +67,11 @@
 #include "draw/draw_context.h"
 #include "cso_cache/cso_context.h"
 
+/* GL prims should match Gallium prims, spot-check a few */
+static_assert(GL_POINTS == PIPE_PRIM_POINTS, "enum mismatch");
+static_assert(GL_QUADS == PIPE_PRIM_QUADS, "enum mismatch");
+static_assert(GL_TRIANGLE_STRIP_ADJACENCY == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY, "enum mismatch");
+static_assert(GL_PATCHES == PIPE_PRIM_PATCHES, "enum mismatch");
 
 /**
  * Translate OpenGL primtive type (GL_POINTS, GL_TRIANGLE_STRIP, etc) to
@@ -75,12 +80,6 @@
 static unsigned
 translate_prim(const struct gl_context *ctx, unsigned prim)
 {
-   /* GL prims should match Gallium prims, spot-check a few */
-   STATIC_ASSERT(GL_POINTS == PIPE_PRIM_POINTS);
-   STATIC_ASSERT(GL_QUADS == PIPE_PRIM_QUADS);
-   STATIC_ASSERT(GL_TRIANGLE_STRIP_ADJACENCY == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY);
-   STATIC_ASSERT(GL_PATCHES == PIPE_PRIM_PATCHES);
-
    return prim;
 }
 
