@@ -1093,6 +1093,7 @@ static const struct intel_device_info intel_device_info_dg2_g12 = {
    XEHP_FEATURES(0, 1, 0),                                      \
    .num_subslices = dual_subslices(1),                          \
    .has_local_mem = false,                                      \
+   .has_aux_map = true,                                         \
    .apply_hwconfig = true,                                      \
    .has_64bit_float = true,                                     \
    .has_64bit_float_via_math_pipe = true,                       \
