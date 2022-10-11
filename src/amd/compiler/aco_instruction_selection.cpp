@@ -9176,8 +9176,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->arg_temps[ctx->args->ac.tes_u.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
       ctx->arg_temps[ctx->args->ac.tes_v.arg_index] = get_ssa_temp(ctx, instr->src[1].ssa);
       ctx->arg_temps[ctx->args->ac.tes_rel_patch_id.arg_index] =
-         get_ssa_temp(ctx, instr->src[2].ssa);
-      ctx->arg_temps[ctx->args->ac.tes_patch_id.arg_index] = get_ssa_temp(ctx, instr->src[3].ssa);
+         get_ssa_temp(ctx, instr->src[3].ssa);
+      ctx->arg_temps[ctx->args->ac.tes_patch_id.arg_index] = get_ssa_temp(ctx, instr->src[2].ssa);
       break;
    }
    case nir_intrinsic_load_force_vrs_rates_amd: {

@@ -4312,8 +4312,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_overwrite_tes_arguments_amd:
       ctx->abi->tes_u_replaced = ac_to_float(&ctx->ac, get_src(ctx, instr->src[0]));
       ctx->abi->tes_v_replaced = ac_to_float(&ctx->ac, get_src(ctx, instr->src[1]));
-      ctx->abi->tes_rel_patch_id_replaced = get_src(ctx, instr->src[2]);
-      ctx->abi->tes_patch_id_replaced = get_src(ctx, instr->src[3]);
+      ctx->abi->tes_rel_patch_id_replaced = get_src(ctx, instr->src[3]);
+      ctx->abi->tes_patch_id_replaced = get_src(ctx, instr->src[2]);
       break;
    case nir_intrinsic_export_primitive_amd: {
       struct ac_ngg_prim prim = {0};
