@@ -302,11 +302,6 @@ struct radv_physical_device {
    /* Whether to emulate ETC2 image support on HW without support. */
    bool emulate_etc2;
 
-   /* This is the drivers on-disk cache used as a fallback as opposed to
-    * the pipeline cache defined by apps.
-    */
-   struct disk_cache *disk_cache;
-
    VkPhysicalDeviceMemoryProperties memory_properties;
    enum radeon_bo_domain memory_domains[VK_MAX_MEMORY_TYPES];
    enum radeon_bo_flag memory_flags[VK_MAX_MEMORY_TYPES];

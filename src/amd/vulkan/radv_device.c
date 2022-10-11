@@ -837,7 +837,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
     */
    char buf[VK_UUID_SIZE * 2 + 1];
    disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
-   device->disk_cache = disk_cache_create(device->name, buf, 0);
+   device->vk.disk_cache = disk_cache_create(device->name, buf, 0);
 #endif
 
    if (!radv_is_conformant(device))
@@ -949,7 +949,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
 fail_perfcounters:
    ac_destroy_perfcounters(&device->ac_perfcounters);
-   disk_cache_destroy(device->disk_cache);
+   disk_cache_destroy(device->vk.disk_cache);
 #ifdef ENABLE_SHADER_CACHE
 fail_wsi:
 #endif
@@ -974,7 +974,7 @@ radv_physical_device_destroy(struct vk_physical_device *vk_device)
    radv_finish_wsi(device);
    ac_destroy_perfcounters(&device->ac_perfcounters);
    device->ws->destroy(device->ws);
-   disk_cache_destroy(device->disk_cache);
+   disk_cache_destroy(device->vk.disk_cache);
    if (device->local_fd != -1)
       close(device->local_fd);
    if (device->master_fd != -1)

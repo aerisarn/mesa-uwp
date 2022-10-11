@@ -340,16 +340,16 @@ radv_create_shaders_from_pipeline_cache(
       /* Don't cache when we want debug info, since this isn't
        * present in the cache.
        */
-      if (radv_is_cache_disabled(device) || !device->physical_device->disk_cache) {
+      if (radv_is_cache_disabled(device) || !device->physical_device->vk.disk_cache) {
          radv_pipeline_cache_unlock(cache);
          return false;
       }
 
       uint8_t disk_sha1[20];
-      disk_cache_compute_key(device->physical_device->disk_cache, sha1, 20, disk_sha1);
+      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, 20, disk_sha1);
 
       entry =
-         (struct cache_entry *)disk_cache_get(device->physical_device->disk_cache, disk_sha1, NULL);
+         (struct cache_entry *)disk_cache_get(device->physical_device->vk.disk_cache, disk_sha1, NULL);
       if (!entry) {
          radv_pipeline_cache_unlock(cache);
          return false;
@@ -541,11 +541,11 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
     *
     * Make sure to exclude meta shaders because they are stored in a different cache file.
     */
-   if (device->physical_device->disk_cache && cache != &device->meta_state.cache) {
+   if (device->physical_device->vk.disk_cache && cache != &device->meta_state.cache) {
       uint8_t disk_sha1[20];
-      disk_cache_compute_key(device->physical_device->disk_cache, sha1, 20, disk_sha1);
+      disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, 20, disk_sha1);
 
-      disk_cache_put(device->physical_device->disk_cache, disk_sha1, entry, entry_size(entry),
+      disk_cache_put(device->physical_device->vk.disk_cache, disk_sha1, entry, entry_size(entry),
                      NULL);
    }
 
