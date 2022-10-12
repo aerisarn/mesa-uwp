@@ -441,6 +441,21 @@ vn_queue_submit(struct vn_instance *instance,
    return VK_SUCCESS;
 }
 
+static void
+vn_queue_wait_idle_before_present(struct vn_queue *queue)
+{
+   struct vn_instance *instance = queue->device->instance;
+   VkQueue queue_h = vn_queue_to_handle(queue);
+
+   if (VN_DEBUG(WSI)) {
+      static uint32_t ratelimit = 0;
+      if (ratelimit++ < 10)
+         vn_log(instance, "forcing vkQueueWaitIdle before presenting");
+   }
+
+   vn_QueueWaitIdle(queue_h);
+}
+
 VkResult
 vn_QueueSubmit(VkQueue queue_h,
                uint32_t submitCount,
@@ -501,16 +516,7 @@ vn_QueueSubmit(VkQueue queue_h,
                                               .bo_count = 1,
                                            });
       } else {
-         if (VN_DEBUG(WSI)) {
-            static uint32_t ratelimit;
-            if (ratelimit < 10) {
-               vn_log(dev->instance,
-                      "forcing vkQueueWaitIdle before presenting");
-               ratelimit++;
-            }
-         }
-
-         vn_QueueWaitIdle(submit.queue);
+         vn_queue_wait_idle_before_present(queue);
       }
    }
 
