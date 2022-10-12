@@ -189,8 +189,7 @@ def main() -> None:
             tmp = filename.with_suffix(f'{filename.suffix}.tmp')
             et.indent(xml, space='  ')
             xml.write(tmp, encoding="utf-8", xml_declaration=True)
-            filename.unlink()
-            tmp.rename(filename)
+            tmp.replace(filename)
 
         if not args.quiet:
             print('done.')
