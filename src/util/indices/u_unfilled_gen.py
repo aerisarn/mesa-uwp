@@ -24,6 +24,8 @@ copyright = '''
  */
 '''
 
+import itertools
+
 GENERATE, UBYTE, USHORT, UINT = 'generate', 'ubyte', 'ushort', 'uint'
 FIRST, LAST = 'first', 'last'
 
@@ -193,16 +195,15 @@ def tristripadj(intype, outtype):
 
 
 def emit_funcs():
-    for intype in INTYPES:
-        for outtype in OUTTYPES:
-            tris(intype, outtype)
-            tristrip(intype, outtype)
-            trifan(intype, outtype)
-            quads(intype, outtype)
-            quadstrip(intype, outtype)
-            polygon(intype, outtype)
-            trisadj(intype, outtype)
-            tristripadj(intype, outtype)
+    for intype, outtype in itertools.product(INTYPES, OUTTYPES):
+        tris(intype, outtype)
+        tristrip(intype, outtype)
+        trifan(intype, outtype)
+        quads(intype, outtype)
+        quadstrip(intype, outtype)
+        polygon(intype, outtype)
+        trisadj(intype, outtype)
+        tristripadj(intype, outtype)
 
 def init(intype, outtype, prim):
     if intype == GENERATE:
@@ -219,10 +220,8 @@ def init(intype, outtype, prim):
 
 
 def emit_all_inits():
-    for intype in INTYPES:
-        for outtype in OUTTYPES:
-            for prim in PRIMS:
-                init(intype, outtype, prim)
+    for intype, outtype, prim in itertools.product(INTYPES, OUTTYPES, PRIMS):
+        init(intype, outtype, prim)
 
 def emit_init():
     print('void u_unfilled_init( void )')
