@@ -735,9 +735,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
    vk12_props->conformanceVersion = (VkConformanceVersion){
       .major = 1,
-      .minor = 2,
-      .subminor = 7,
-      .patch = 1,
+      .minor = 3,
+      .subminor = 0,
+      .patch = 0,
    };
 
    vn_physical_device_init_uuids(physical_dev);
