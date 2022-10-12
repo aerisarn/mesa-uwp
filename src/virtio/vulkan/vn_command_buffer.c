@@ -41,25 +41,29 @@ vn_image_memory_barrier_has_present_src(
    return false;
 }
 
+static void *
+vn_cmd_get_tmp_data(struct vn_command_buffer *cmd, size_t size)
+{
+   /* avoid shrinking in case of non efficient reallocation implementation */
+   if (size > cmd->builder.tmp.size) {
+      void *data =
+         vk_realloc(&cmd->allocator, cmd->builder.tmp.data, size,
+                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!data)
+         return NULL;
+
+      cmd->builder.tmp.data = data;
+      cmd->builder.tmp.size = size;
+   }
+
+   return cmd->builder.tmp.data;
+}
+
 static VkImageMemoryBarrier *
 vn_cmd_get_image_memory_barriers(struct vn_command_buffer *cmd,
                                  uint32_t count)
 {
-   /* avoid shrinking in case of non efficient reallocation implementation */
-   if (count > cmd->builder.image_barrier_count) {
-      size_t size = sizeof(VkImageMemoryBarrier) * count;
-      VkImageMemoryBarrier *img_barriers =
-         vk_realloc(&cmd->allocator, cmd->builder.image_barriers, size,
-                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (!img_barriers)
-         return NULL;
-
-      /* update upon successful reallocation */
-      cmd->builder.image_barrier_count = count;
-      cmd->builder.image_barriers = img_barriers;
-   }
-
-   return cmd->builder.image_barriers;
+   return vn_cmd_get_tmp_data(cmd, count * sizeof(VkImageMemoryBarrier));
 }
 
 /* About VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, the spec says
@@ -605,8 +609,8 @@ vn_FreeCommandBuffers(VkDevice device,
       if (!cmd)
          continue;
 
-      if (cmd->builder.image_barriers)
-         vk_free(alloc, cmd->builder.image_barriers);
+      if (cmd->builder.tmp.data)
+         vk_free(alloc, cmd->builder.tmp.data);
 
       vn_cs_encoder_fini(&cmd->cs);
       list_del(&cmd->head);
