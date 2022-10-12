@@ -591,6 +591,18 @@ multi_pool_destroy(struct zink_screen *screen, struct zink_descriptor_pool_multi
    ralloc_free(mpool);
 }
 
+static bool
+clear_multi_pool_overflow(struct zink_screen *screen, struct util_dynarray *overflowed_pools)
+{
+   bool found = false;
+   while (util_dynarray_num_elements(overflowed_pools, struct zink_descriptor_pool*)) {
+      struct zink_descriptor_pool *pool = util_dynarray_pop(overflowed_pools, struct zink_descriptor_pool*);
+      pool_destroy(screen, pool);
+      found = true;
+   }
+   return found;
+}
+
 static VkDescriptorPool
 create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescriptorPoolSize *sizes, unsigned flags)
 {
@@ -910,15 +922,6 @@ zink_context_invalidate_descriptor_state(struct zink_context *ctx, gl_shader_sta
       if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
          type -= ZINK_DESCRIPTOR_COMPACT;
       ctx->dd.state_changed[shader == MESA_SHADER_COMPUTE] |= BITFIELD_BIT(type);
-   }
-}
-
-static void
-clear_multi_pool_overflow(struct zink_screen *screen, struct util_dynarray *overflowed_pools)
-{
-   while (util_dynarray_num_elements(overflowed_pools, struct zink_descriptor_pool*)) {
-      struct zink_descriptor_pool *pool = util_dynarray_pop(overflowed_pools, struct zink_descriptor_pool*);
-      pool_destroy(screen, pool);
    }
 }
 
