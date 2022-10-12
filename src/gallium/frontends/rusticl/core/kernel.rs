@@ -623,6 +623,11 @@ fn convert_spirv_to_nir(
         } else {
             let mut nir = p.to_nir(name, d);
 
+            /* this is a hack until we support fp16 properly and check for denorms inside
+             * vstore/vload_half
+             */
+            nir.preserve_fp16_denorms();
+
             lower_and_optimize_nir_pre_inputs(d, &mut nir, &d.lib_clc);
             let mut args = KernelArg::from_spirv_nir(&args, &mut nir);
             let internal_args = lower_and_optimize_nir_late(d, &mut nir, &mut args);

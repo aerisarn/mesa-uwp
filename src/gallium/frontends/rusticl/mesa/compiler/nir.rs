@@ -254,6 +254,13 @@ impl NirShader {
         }
     }
 
+    pub fn preserve_fp16_denorms(&mut self) {
+        unsafe {
+            self.nir.as_mut().info.float_controls_execution_mode |=
+                float_controls::FLOAT_CONTROLS_DENORM_PRESERVE_FP16 as u16;
+        }
+    }
+
     pub fn add_var(
         &self,
         mode: nir_variable_mode,
