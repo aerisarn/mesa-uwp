@@ -407,19 +407,16 @@ vn_queue_submission_prepare_bind_sparse(
 }
 
 static const VkCommandBuffer
-vn_get_fence_feedback_cmd(struct vn_queue_submission *submit)
+vn_get_fence_feedback_cmd(struct vn_queue *queue, struct vn_fence *fence)
 {
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
-   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
-
-   assert(submit->has_feedback_fence);
+   assert(fence->feedback.slot);
 
    for (uint32_t i = 0; i < queue->device->queue_family_count; i++) {
       if (queue->device->queue_families[i] == queue->family)
          return fence->feedback.commands[i];
    }
 
-   unreachable("invalid vn_queue_submission");
+   unreachable("bad feedback fence");
 }
 
 static VkResult
@@ -451,6 +448,7 @@ vn_QueueSubmit(VkQueue queue_h,
                VkFence fence_h)
 {
    VN_TRACE_FUNC();
+   struct vn_fence *fence = vn_fence_from_handle(fence_h);
    struct vn_queue *queue = vn_queue_from_handle(queue_h);
    struct vn_device *dev = queue->device;
    struct vn_queue_submission submit;
@@ -480,7 +478,8 @@ vn_QueueSubmit(VkQueue queue_h,
     * before adding timeline semaphore feedback.
     */
    if (submit.has_feedback_fence) {
-      const VkCommandBuffer cmd_handle = vn_get_fence_feedback_cmd(&submit);
+      const VkCommandBuffer cmd_handle =
+         vn_get_fence_feedback_cmd(queue, fence);
       const VkSubmitInfo info = {
          .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
          .commandBufferCount = 1,
