@@ -420,10 +420,6 @@ void radv_pipeline_cache_insert_shaders(
    struct radv_pipeline *pipeline, struct radv_shader_binary *const *binaries,
    const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
 
-VkResult radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
-                             struct radv_shader_binary **binaries,
-                             struct radv_shader_binary *gs_copy_binary);
-
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
    RADV_BLIT_DS_LAYOUT_TILE_DISABLE,
@@ -2071,14 +2067,6 @@ struct radv_pipeline_shader_stack_size {
    uint32_t non_recursive_size;
 };
 
-struct radv_pipeline_slab {
-   uint32_t ref_count;
-
-   union radv_shader_arena_block *alloc;
-};
-
-void radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab);
-
 enum radv_depth_clamp_mode {
    RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,       /* Clamp to the viewport min/max depth bounds */
    RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1,    /* Clamp between 0.0f and 1.0f */
@@ -2090,9 +2078,6 @@ struct radv_pipeline {
    enum radv_pipeline_type type;
 
    struct radv_device *device;
-
-   struct radv_pipeline_slab *slab;
-   struct radeon_winsys_bo *slab_bo;
 
    bool is_internal;
    bool need_indirect_descriptor_sets;

@@ -1898,22 +1898,16 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (pipeline->base.slab_bo)
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
-
-   /* With graphics pipeline library, binaries are uploaded from a library and they hold a pointer
-    * to the slab BO.
-    */
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
       struct radv_shader *shader = pipeline->base.shaders[s];
 
-      if (!shader || !shader->bo)
+      if (!shader)
          continue;
 
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, shader->bo);
    }
 
-   if (pipeline->base.gs_copy_shader && pipeline->base.gs_copy_shader->bo) {
+   if (pipeline->base.gs_copy_shader) {
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.gs_copy_shader->bo);
    }
 
@@ -6109,7 +6103,8 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer,
    cmd_buffer->compute_scratch_waves_wanted =
       MAX2(cmd_buffer->compute_scratch_waves_wanted, pipeline->base.max_waves);
 
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
+                      pipeline->base.shaders[MESA_SHADER_COMPUTE]->bo);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, &pipeline->base);

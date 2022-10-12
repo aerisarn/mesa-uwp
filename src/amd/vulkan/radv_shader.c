@@ -2032,10 +2032,21 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shad
 }
 #endif
 
-bool
+static bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
-                          struct radv_shader *shader, void *dest_ptr)
+                          struct radv_shader *shader)
 {
+   void *dest_ptr;
+
+   shader->alloc = radv_alloc_shader_memory(device, shader->code_size, shader);
+   if (!shader->alloc)
+      return false;
+
+   shader->bo = shader->alloc->arena->bo;
+   shader->va = radv_buffer_get_va(shader->bo) + shader->alloc->offset;
+
+   dest_ptr = shader->alloc->arena->ptr + shader->alloc->offset;
+
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
       return false;
@@ -2185,6 +2196,10 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
          memcpy(shader->statistics, bin->data, bin->stats_size);
       }
    }
+
+   if (!radv_shader_binary_upload(device, binary, shader))
+      return NULL;
+
    return shader;
 }
 
@@ -2655,6 +2670,8 @@ void
 radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 {
    assert(shader->ref_count == 0);
+
+   radv_free_shader_memory(device, shader->alloc);
 
    free(shader->spirv);
    free(shader->nir_string);

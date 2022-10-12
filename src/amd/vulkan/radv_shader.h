@@ -485,7 +485,8 @@ union radv_shader_arena_block {
 struct radv_shader {
    uint32_t ref_count;
 
-   struct radeon_winsys_bo *bo; /* Not NULL if imported from a lib */
+   struct radeon_winsys_bo *bo;
+   union radv_shader_arena_block *alloc;
    uint64_t va;
 
    struct ac_shader_config config;
@@ -574,9 +575,6 @@ struct radv_shader *radv_shader_nir_to_asm(
    struct radv_device *device, struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
    int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info, bool keep_statistic_info,
    struct radv_shader_binary **binary_out);
-
-bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
-                               struct radv_shader *shader, void *dest_ptr);
 
 void radv_shader_part_binary_upload(const struct radv_shader_part_binary *binary, void *dest_ptr);
 
