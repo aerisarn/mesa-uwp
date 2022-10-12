@@ -959,6 +959,8 @@ struct zink_resource_object {
 
    VkBuffer storage_buffer;
    simple_mtx_t view_lock;
+   uint32_t view_prune_count; //how many views to prune
+   uint32_t view_prune_timeline; //when to prune
    struct util_dynarray views;
 
    union {

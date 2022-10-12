@@ -14,6 +14,8 @@
 #endif
 #include "wsi_common.h"
 
+#define MAX_VIEW_COUNT 500
+
 void
 debug_describe_zink_batch_state(char *buf, const struct zink_batch_state *ptr)
 {
@@ -35,6 +37,20 @@ reset_obj(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_r
       } else {
          while (util_dynarray_contains(&obj->views, VkImageView))
             VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&obj->views, VkImageView), NULL);
+      }
+      obj->view_prune_count = 0;
+      obj->view_prune_timeline = 0;
+      simple_mtx_unlock(&obj->view_lock);
+   } else if (util_dynarray_num_elements(&obj->views, VkBufferView) > MAX_VIEW_COUNT && !zink_bo_has_unflushed_usage(obj->bo)) {
+      /* avoid ballooning from too many views on always-used resources: */
+      simple_mtx_lock(&obj->view_lock);
+      /* ensure no existing view pruning is queued, double check elements in case pruning just finished */
+      if (!obj->view_prune_timeline && util_dynarray_num_elements(&obj->views, VkBufferView) > MAX_VIEW_COUNT) {
+         /* prune all existing views */
+         obj->view_prune_count = util_dynarray_num_elements(&obj->views, VkBufferView);
+         /* prune them when the views will definitely not be in use */
+         obj->view_prune_timeline = MAX2(obj->bo->reads ? obj->bo->reads->usage : 0,
+                                         obj->bo->writes ? obj->bo->writes->usage : 0);
       }
       simple_mtx_unlock(&obj->view_lock);
    }
@@ -133,6 +149,31 @@ unref_resources(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    while (util_dynarray_contains(&bs->unref_resources, struct zink_resource_object*)) {
       struct zink_resource_object *obj = util_dynarray_pop(&bs->unref_resources, struct zink_resource_object*);
+      if (obj->view_prune_timeline && zink_screen_check_last_finished(screen, obj->view_prune_timeline)) {
+         simple_mtx_lock(&obj->view_lock);
+         /* check again under lock in case multi-context use is in the same place */
+         if (obj->view_prune_timeline && zink_screen_check_last_finished(screen, obj->view_prune_timeline)) {
+            /* prune `view_prune_count` views */
+            if (obj->is_buffer) {
+               VkBufferView *views = obj->views.data;
+               for (unsigned i = 0; i < obj->view_prune_count; i++)
+                  VKSCR(DestroyBufferView)(screen->dev, views[i], NULL);
+            } else {
+               VkImageView *views = obj->views.data;
+               for (unsigned i = 0; i < obj->view_prune_count; i++)
+                  VKSCR(DestroyImageView)(screen->dev, views[i], NULL);
+            }
+            size_t offset = obj->view_prune_count * sizeof(VkBufferView);
+            uint8_t *data = obj->views.data;
+            /* shift the view array to the start */
+            memcpy(data, data + offset, obj->views.size - offset);
+            /* adjust the array size */
+            obj->views.size -= offset;
+            obj->view_prune_count = 0;
+            obj->view_prune_timeline = 0;
+         }
+         simple_mtx_unlock(&obj->view_lock);
+      }
       zink_resource_object_reference(screen, &obj, NULL);
    }
    while (util_dynarray_contains(&bs->unref_semaphores, VkSemaphore))
