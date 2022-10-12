@@ -24,6 +24,8 @@ copyright = '''
  */
 '''
 
+import itertools
+
 GENERATE, UBYTE, USHORT, UINT = 'generate', 'ubyte', 'ushort', 'uint'
 FIRST, LAST = 'first', 'last'
 PRDISABLE, PRENABLE = 'prdisable', 'prenable'
@@ -190,9 +192,8 @@ def postamble():
 def prim_restart(in_verts, out_verts, out_prims, close_func = None):
     print('restart:')
     print('      if (i + ' + str(in_verts) + ' > in_nr) {')
-    for i in range(out_prims):
-        for j in range(out_verts):
-            print('         (out+j+' + str(out_verts * i) + ')[' + str(j) + '] = restart_index;')
+    for i, j in itertools.product(range(out_prims), range(out_verts)):
+        print('         (out+j+' + str(out_verts * i) + ')[' + str(j) + '] = restart_index;')
     print('         continue;')
     print('      }')
     for i in range(in_verts):
@@ -366,27 +367,24 @@ def tristripadj(intype, outtype, inpv, outpv, pr):
 
 
 def emit_funcs():
-    for intype in INTYPES:
-        for outtype in OUTTYPES:
-            for inpv in (FIRST, LAST):
-                for outpv in (FIRST, LAST):
-                    for pr in (PRDISABLE, PRENABLE):
-                        if pr == PRENABLE and intype == GENERATE:
-                            continue
-                        points(intype, outtype, inpv, outpv, pr)
-                        lines(intype, outtype, inpv, outpv, pr)
-                        linestrip(intype, outtype, inpv, outpv, pr)
-                        lineloop(intype, outtype, inpv, outpv, pr)
-                        tris(intype, outtype, inpv, outpv, pr)
-                        tristrip(intype, outtype, inpv, outpv, pr)
-                        trifan(intype, outtype, inpv, outpv, pr)
-                        quads(intype, outtype, inpv, outpv, pr)
-                        quadstrip(intype, outtype, inpv, outpv, pr)
-                        polygon(intype, outtype, inpv, outpv, pr)
-                        linesadj(intype, outtype, inpv, outpv, pr)
-                        linestripadj(intype, outtype, inpv, outpv, pr)
-                        trisadj(intype, outtype, inpv, outpv, pr)
-                        tristripadj(intype, outtype, inpv, outpv, pr)
+    for intype, outtype, inpv, outpv, pr in itertools.product(
+            INTYPES, OUTTYPES, [FIRST, LAST], [FIRST, LAST], [PRDISABLE, PRENABLE]):
+        if pr == PRENABLE and intype == GENERATE:
+            continue
+        points(intype, outtype, inpv, outpv, pr)
+        lines(intype, outtype, inpv, outpv, pr)
+        linestrip(intype, outtype, inpv, outpv, pr)
+        lineloop(intype, outtype, inpv, outpv, pr)
+        tris(intype, outtype, inpv, outpv, pr)
+        tristrip(intype, outtype, inpv, outpv, pr)
+        trifan(intype, outtype, inpv, outpv, pr)
+        quads(intype, outtype, inpv, outpv, pr)
+        quadstrip(intype, outtype, inpv, outpv, pr)
+        polygon(intype, outtype, inpv, outpv, pr)
+        linesadj(intype, outtype, inpv, outpv, pr)
+        linestripadj(intype, outtype, inpv, outpv, pr)
+        trisadj(intype, outtype, inpv, outpv, pr)
+        tristripadj(intype, outtype, inpv, outpv, pr)
 
 def init(intype, outtype, inpv, outpv, pr, prim):
     if intype == GENERATE:
@@ -408,13 +406,9 @@ def init(intype, outtype, inpv, outpv, pr, prim):
 
 
 def emit_all_inits():
-    for intype in INTYPES:
-        for outtype in OUTTYPES:
-            for inpv in PVS:
-                for outpv in PVS:
-                    for pr in PRS:
-                        for prim in PRIMS:
-                            init(intype, outtype, inpv, outpv, pr, prim)
+    for intype, outtype, inpv, outpv, pr, prim in itertools.product(
+            INTYPES, OUTTYPES, PVS, PVS, PRS, PRIMS):
+        init(intype, outtype, inpv, outpv, pr, prim)
 
 def emit_init():
     print('void u_index_init( void )')
