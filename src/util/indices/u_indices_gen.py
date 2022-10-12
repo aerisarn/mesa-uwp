@@ -100,48 +100,26 @@ def vert( intype, outtype, v0 ):
     else:
         return '(' + outtype + ')in[' + v0 + ']'
 
-def point(f: 'T.TextIO', intype, outtype, ptr, v0 ):
-    f.write('      (' + ptr + ')[0] = ' + vert( intype, outtype, v0 ) + ';\n')
-
-def line(f: 'T.TextIO', intype, outtype, ptr, v0, v1 ):
-    f.write('      (' + ptr + ')[0] = ' + vert( intype, outtype, v0 ) + ';\n')
-    f.write('      (' + ptr + ')[1] = ' + vert( intype, outtype, v1 ) + ';\n')
-
-def tri(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2 ):
-    f.write('      (' + ptr + ')[0] = ' + vert( intype, outtype, v0 ) + ';\n')
-    f.write('      (' + ptr + ')[1] = ' + vert( intype, outtype, v1 ) + ';\n')
-    f.write('      (' + ptr + ')[2] = ' + vert( intype, outtype, v2 ) + ';\n')
-
-def lineadj(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3 ):
-    f.write('      (' + ptr + ')[0] = ' + vert( intype, outtype, v0 ) + ';\n')
-    f.write('      (' + ptr + ')[1] = ' + vert( intype, outtype, v1 ) + ';\n')
-    f.write('      (' + ptr + ')[2] = ' + vert( intype, outtype, v2 ) + ';\n')
-    f.write('      (' + ptr + ')[3] = ' + vert( intype, outtype, v3 ) + ';\n')
-
-def triadj(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3, v4, v5 ):
-    f.write('      (' + ptr + ')[0] = ' + vert( intype, outtype, v0 ) + ';\n')
-    f.write('      (' + ptr + ')[1] = ' + vert( intype, outtype, v1 ) + ';\n')
-    f.write('      (' + ptr + ')[2] = ' + vert( intype, outtype, v2 ) + ';\n')
-    f.write('      (' + ptr + ')[3] = ' + vert( intype, outtype, v3 ) + ';\n')
-    f.write('      (' + ptr + ')[4] = ' + vert( intype, outtype, v4 ) + ';\n')
-    f.write('      (' + ptr + ')[5] = ' + vert( intype, outtype, v5 ) + ';\n')
+def shape(f: 'T.TextIO', intype, outtype, ptr, *vertices):
+    for i, v in enumerate(vertices):
+        f.write(f'      ({ptr})[{i}] = {vert(intype, outtype, v)};\n')
 
 def do_point(f: 'T.TextIO', intype, outtype, ptr, v0 ):
-    point(f, intype, outtype, ptr, v0 )
+    shape(f, intype, outtype, ptr, v0 )
 
 def do_line(f: 'T.TextIO', intype, outtype, ptr, v0, v1, inpv, outpv ):
     if inpv == outpv:
-        line(f, intype, outtype, ptr, v0, v1 )
+        shape(f, intype, outtype, ptr, v0, v1 )
     else:
-        line(f, intype, outtype, ptr, v1, v0 )
+        shape(f, intype, outtype, ptr, v1, v0 )
 
 def do_tri(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, inpv, outpv ):
     if inpv == outpv:
-        tri(f, intype, outtype, ptr, v0, v1, v2 )
+        shape(f, intype, outtype, ptr, v0, v1, v2 )
     elif inpv == FIRST:
-        tri(f, intype, outtype, ptr, v1, v2, v0 )
+        shape(f, intype, outtype, ptr, v1, v2, v0 )
     else:
-        tri(f, intype, outtype, ptr, v2, v0, v1 )
+        shape(f, intype, outtype, ptr, v2, v0, v1 )
 
 def do_quad(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3, inpv, outpv ):
     if inpv == LAST:
@@ -153,15 +131,15 @@ def do_quad(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3, inpv, outpv ):
 
 def do_lineadj(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3, inpv, outpv ):
     if inpv == outpv:
-        lineadj(f, intype, outtype, ptr, v0, v1, v2, v3 )
+        shape(f, intype, outtype, ptr, v0, v1, v2, v3 )
     else:
-        lineadj(f, intype, outtype, ptr, v3, v2, v1, v0 )
+        shape(f, intype, outtype, ptr, v3, v2, v1, v0 )
 
 def do_triadj(f: 'T.TextIO', intype, outtype, ptr, v0, v1, v2, v3, v4, v5, inpv, outpv ):
     if inpv == outpv:
-        triadj(f, intype, outtype, ptr, v0, v1, v2, v3, v4, v5 )
+        shape(f, intype, outtype, ptr, v0, v1, v2, v3, v4, v5 )
     else:
-        triadj(f, intype, outtype, ptr, v4, v5, v0, v1, v2, v3 )
+        shape(f, intype, outtype, ptr, v4, v5, v0, v1, v2, v3 )
 
 def name(intype, outtype, inpv, outpv, pr, prim):
     if intype == GENERATE:
