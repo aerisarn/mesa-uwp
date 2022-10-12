@@ -658,7 +658,6 @@ struct zink_shader {
    struct util_live_shader base;
    uint32_t hash;
    struct nir_shader *nir;
-   enum pipe_prim_type reduced_prim; // PIPE_PRIM_MAX for vs
 
    struct zink_shader_info sinfo;
 
@@ -748,7 +747,7 @@ struct zink_gfx_pipeline_state {
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    struct zink_vertex_elements_hw_state *element_state;
    bool sample_locations_enabled;
-   uint8_t has_points; //either gs outputs points or prim type is points
+   enum pipe_prim_type shader_rast_prim, rast_prim; /* reduced type or max for unknown */
    union {
       struct {
          struct zink_shader_key key[5];

@@ -2731,48 +2731,6 @@ handle_bindless_var(nir_shader *nir, nir_variable *var, const struct glsl_type *
    var->data.mode = nir_var_shader_temp;
 }
 
-static enum pipe_prim_type
-prim_to_pipe(enum shader_prim primitive_type)
-{
-   switch (primitive_type) {
-   case SHADER_PRIM_POINTS:
-      return PIPE_PRIM_POINTS;
-   case SHADER_PRIM_LINES:
-   case SHADER_PRIM_LINE_LOOP:
-   case SHADER_PRIM_LINE_STRIP:
-   case SHADER_PRIM_LINES_ADJACENCY:
-   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
-      return PIPE_PRIM_LINES;
-   default:
-      return PIPE_PRIM_TRIANGLES;
-   }
-}
-
-static enum pipe_prim_type
-tess_prim_to_pipe(enum tess_primitive_mode prim_mode)
-{
-   switch (prim_mode) {
-   case TESS_PRIMITIVE_ISOLINES:
-      return PIPE_PRIM_LINES;
-   default:
-      return PIPE_PRIM_TRIANGLES;
-   }
-}
-
-static enum pipe_prim_type
-get_shader_base_prim_type(struct nir_shader *nir)
-{
-   switch (nir->info.stage) {
-   case MESA_SHADER_GEOMETRY:
-      return prim_to_pipe(nir->info.gs.output_primitive);
-   case MESA_SHADER_TESS_EVAL:
-      return nir->info.tess.point_mode ? PIPE_PRIM_POINTS : tess_prim_to_pipe(nir->info.tess._primitive_mode);
-   default:
-      break;
-   }
-   return PIPE_PRIM_MAX;
-}
-
 static bool
 convert_1d_shadow_tex(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -3127,7 +3085,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
 
    ret->hash = _mesa_hash_pointer(ret);
-   ret->reduced_prim = get_shader_base_prim_type(nir);
 
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
