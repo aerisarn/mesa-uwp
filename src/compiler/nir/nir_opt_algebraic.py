@@ -2035,11 +2035,11 @@ optimizations.extend([
     ('isub', 31, ('uclz', ('ixor', 'value', ('ishr', 'value', 31)))),
     'options->lower_ifind_msb_to_uclz'),
 
-    (('ufind_msb', 'value'),
-     ('bcsel', ('ige', ('ufind_msb_rev', 'value'), 0),
-      ('isub', 31, ('ufind_msb_rev', 'value')),
-      ('ufind_msb_rev', 'value')),
-     'options->lower_find_msb_to_reverse'),
+   (('ufind_msb', 'value@32'),
+    ('bcsel', ('ige', ('ufind_msb_rev', 'value'), 0),
+     ('isub', 31, ('ufind_msb_rev', 'value')),
+     ('ufind_msb_rev', 'value')),
+    'options->lower_find_msb_to_reverse'),
 
    (('uclz', a), ('umin', 32, ('ufind_msb_rev', a)), 'options->lower_uclz'),
 
