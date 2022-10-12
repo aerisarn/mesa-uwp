@@ -255,8 +255,7 @@ u_unfilled_gen_c = custom_target(
   'u_unfilled_gen.c',
   input : 'indices/u_unfilled_gen.py',
   output : 'u_unfilled_gen.c',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
+  command : [prog_python, '@INPUT@', '@OUTPUT@'],
 )
 
 libmesa_util_sse41 = static_library(
