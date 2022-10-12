@@ -62,20 +62,6 @@ create_vs_pushconst(nir_shader *nir)
    vs_pushconst->data.location = INT_MAX; //doesn't really matter
 }
 
-static void
-create_cs_pushconst(nir_shader *nir)
-{
-   nir_variable *cs_pushconst;
-   /* create compatible layout for the ntv push constant loader */
-   struct glsl_struct_field *fields = rzalloc_size(nir, 1 * sizeof(struct glsl_struct_field));
-   fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
-   fields[0].name = ralloc_asprintf(nir, "work_dim");
-   fields[0].offset = 0;
-   cs_pushconst = nir_variable_create(nir, nir_var_mem_push_const,
-                                                 glsl_struct_type(fields, 1, "struct", false), "cs_pushconst");
-   cs_pushconst->data.location = INT_MAX; //doesn't really matter
-}
-
 static bool
 reads_work_dim(nir_shader *shader)
 {
@@ -3155,8 +3141,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    else if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
             nir->info.stage == MESA_SHADER_TESS_EVAL)
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-   else if (nir->info.stage == MESA_SHADER_KERNEL)
-      create_cs_pushconst(nir);
 
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
