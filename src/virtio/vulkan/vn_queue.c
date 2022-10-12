@@ -445,17 +445,18 @@ vn_queue_submit(struct vn_instance *instance,
 }
 
 VkResult
-vn_QueueSubmit(VkQueue queue,
+vn_QueueSubmit(VkQueue queue_h,
                uint32_t submitCount,
                const VkSubmitInfo *pSubmits,
-               VkFence fence)
+               VkFence fence_h)
 {
    VN_TRACE_FUNC();
-   struct vn_device *dev = vn_queue_from_handle(queue)->device;
+   struct vn_queue *queue = vn_queue_from_handle(queue_h);
+   struct vn_device *dev = queue->device;
    struct vn_queue_submission submit;
 
    VkResult result = vn_queue_submission_prepare_submit(
-      &submit, queue, submitCount, pSubmits, fence);
+      &submit, queue_h, submitCount, pSubmits, fence_h);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
