@@ -386,6 +386,21 @@ validate_alu_instr(nir_alu_instr *instr, validate_state *state)
                                 src_bit_size == 64);
       }
 
+      /* In nir_opcodes.py, these are defined to take general uint or int
+       * sources.  However, they're really only defined for 32-bit or 64-bit
+       * sources.  This seems to be the only place to enforce this
+       * restriction.
+       */
+      switch (instr->op) {
+      case nir_op_ufind_msb:
+      case nir_op_ufind_msb_rev:
+         validate_assert(state, src_bit_size == 32 || src_bit_size == 64);
+         break;
+
+      default:
+         break;
+      }
+
       validate_alu_src(instr, i, state);
    }
 
