@@ -989,6 +989,29 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
    }
 }
 
+static void
+consolidate_pool_alloc(struct zink_screen *screen, struct zink_descriptor_pool_multi *mpool)
+{
+   unsigned sizes[] = {
+      util_dynarray_num_elements(&mpool->overflowed_pools[0], struct zink_descriptor_pool*),
+      util_dynarray_num_elements(&mpool->overflowed_pools[1], struct zink_descriptor_pool*),
+   };
+   if (!sizes[0] && !sizes[1])
+      return;
+   /* set idx to whichever overflow is smaller */
+   mpool->overflow_idx = sizes[0] > sizes[1];
+   if (!mpool->overflowed_pools[mpool->overflow_idx].size)
+      return;
+   if (util_dynarray_resize(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*, sizes[0] + sizes[1])) {
+      /* attempt to consolidate all the overflow into one array to maximize reuse */
+      uint8_t *src = mpool->overflowed_pools[mpool->overflow_idx].data;
+      uint8_t *dst = mpool->overflowed_pools[!mpool->overflow_idx].data;
+      memcpy(dst, src, mpool->overflowed_pools[mpool->overflow_idx].size);
+      mpool->overflowed_pools[!mpool->overflow_idx].size += mpool->overflowed_pools[mpool->overflow_idx].size;
+      mpool->overflowed_pools[mpool->overflow_idx].size = 0;
+   }
+}
+
 void
 zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state *bs)
 {
@@ -998,8 +1021,8 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
          struct zink_descriptor_pool_multi *mpool = mpools[j];
          if (!mpool)
             continue;
-         if (mpool->pool->set_idx)
-            mpool->overflow_idx = !mpool->overflow_idx;
+         consolidate_pool_alloc(screen, mpool);
+
          if (mpool->pool_key->use_count)
             mpool->pool->set_idx = 0;
          else {
@@ -1013,8 +1036,8 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
       if (bs->dd.push_pool[i].reinit_overflow) {
          /* these don't match current fbfetch usage and can never be used again */
          clear_multi_pool_overflow(screen, &bs->dd.push_pool[i].overflowed_pools[bs->dd.push_pool[i].overflow_idx]);
-      } else if (bs->dd.push_pool[i].pool && bs->dd.push_pool[i].pool->set_idx) {
-         bs->dd.push_pool[i].overflow_idx = !bs->dd.push_pool[i].overflow_idx;
+      } else if (bs->dd.push_pool[i].pool) {
+         consolidate_pool_alloc(screen, &bs->dd.push_pool[i]);
       }
       if (bs->dd.push_pool[i].pool)
          bs->dd.push_pool[i].pool->set_idx = 0;
