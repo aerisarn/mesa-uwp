@@ -994,8 +994,7 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       struct zink_descriptor_pool_multi **mpools = bs->dd.pools[i].data;
-      unsigned count = util_dynarray_num_elements(&bs->dd.pools[i], struct zink_descriptor_pool_multi *);
-      for (unsigned j = 0; j < count; j++) {
+      for (unsigned j = 0; j < bs->dd.pool_size[i]; j++) {
          struct zink_descriptor_pool_multi *mpool = mpools[j];
          if (!mpool)
             continue;
