@@ -1845,6 +1845,4 @@ void st_init_extensions(struct pipe_screen *screen,
        screen->get_param(screen, PIPE_CAP_DOUBLES) &&
        !(nir_options->lower_doubles_options & nir_lower_fp64_full_software))
       extensions->NV_copy_depth_to_color = TRUE;
-
-   extensions->ARB_point_sprite = GL_TRUE;
 }
