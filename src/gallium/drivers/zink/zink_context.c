@@ -2862,7 +2862,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
    if (disable_color_writes && ctx->clears_enabled)
       zink_batch_rp(ctx);
    ctx->disable_color_writes = disable_color_writes;
-   if (zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
+   if (!zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
       /* use dummy color buffers instead of the more sane option */
       zink_batch_no_rp(ctx);
       ctx->rp_changed = true;
