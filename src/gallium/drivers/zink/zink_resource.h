@@ -75,6 +75,9 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
 bool
 zink_resource_object_init_mutable(struct zink_context *ctx, struct zink_resource *res);
 
+VkDeviceAddress
+zink_resource_get_address(struct zink_screen *screen, struct zink_resource *res);
+
 static inline bool
 zink_resource_has_binds(const struct zink_resource *res)
 {

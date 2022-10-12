@@ -2209,6 +2209,21 @@ zink_resource_object_init_mutable(struct zink_context *ctx, struct zink_resource
    return resource_object_add_bind(ctx, res, ZINK_BIND_MUTABLE);
 }
 
+VkDeviceAddress
+zink_resource_get_address(struct zink_screen *screen, struct zink_resource *res)
+{
+   assert(res->obj->is_buffer);
+   if (!res->obj->bda) {
+      VkBufferDeviceAddressInfo info = {
+         VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+         NULL,
+         res->obj->buffer
+      };
+      res->obj->bda = VKSCR(GetBufferDeviceAddress)(screen->dev, &info);
+   }
+   return res->obj->bda;
+}
+
 void
 zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst)
 {

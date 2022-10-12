@@ -965,6 +965,7 @@ struct zink_resource_object {
       VkBuffer buffer;
       VkImage image;
    };
+   VkDeviceAddress bda;
 
    VkSampleLocationsInfoEXT zs_evaluate;
    bool needs_zs_evaluate;

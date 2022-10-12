@@ -76,6 +76,7 @@ EXTENSIONS = [
     Extension("VK_KHR_external_memory_win32"),
     Extension("VK_KHR_external_semaphore_win32"),
     Extension("VK_EXT_external_memory_dma_buf"),
+    Extension("VK_KHR_buffer_device_address", alias="bda", features=True),
     Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_KHR_swapchain_mutable_format"),
     Extension("VK_EXT_provoking_vertex",

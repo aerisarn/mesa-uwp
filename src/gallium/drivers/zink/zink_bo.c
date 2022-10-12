@@ -259,9 +259,18 @@ bo_create_internal(struct zink_screen *screen,
 
    alignment = get_optimal_alignment(screen, size, alignment);
 
+   VkMemoryAllocateFlagsInfo ai;
+   ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+   ai.pNext = pNext;
+   ai.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+   ai.deviceMask = 0;
+
    VkMemoryAllocateInfo mai;
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-   mai.pNext = pNext;
+   if (screen->info.have_KHR_buffer_device_address)
+      mai.pNext = &ai;
+   else
+      mai.pNext = pNext;
    mai.allocationSize = size;
    mai.memoryTypeIndex = screen->heap_map[heap];
    if (screen->info.mem_props.memoryTypes[mai.memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
