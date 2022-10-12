@@ -41,6 +41,24 @@ vn_image_memory_barrier_has_present_src(
    return false;
 }
 
+static bool
+vn_dependency_info_has_present_src(uint32_t dep_count,
+                                   const VkDependencyInfo *dep_infos)
+{
+   for (uint32_t i = 0; i < dep_count; i++) {
+      for (uint32_t j = 0; j < dep_infos[i].imageMemoryBarrierCount; j++) {
+         const VkImageMemoryBarrier2 *b =
+            &dep_infos[i].pImageMemoryBarriers[j];
+         if (b->oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR ||
+             b->newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
 static void *
 vn_cmd_get_tmp_data(struct vn_command_buffer *cmd, size_t size)
 {
@@ -207,6 +225,79 @@ vn_cmd_fix_image_memory_barrier(const struct vn_command_buffer *cmd,
    }
 }
 
+/** See vn_cmd_fix_image_memory_barrier(). */
+static void
+vn_cmd_fix_image_memory_barrier2(const struct vn_command_buffer *cmd,
+                                 VkImageMemoryBarrier2 *b)
+{
+   if (VN_PRESENT_SRC_INTERNAL_LAYOUT == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+      return;
+
+   if (b->oldLayout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+       b->newLayout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+      return;
+
+   const struct vn_image *img = vn_image_from_handle(b->image);
+   assert(img->wsi.is_wsi);
+
+   if (img->wsi.is_prime_blit_src || b->oldLayout == b->newLayout) {
+      if (b->oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+         b->oldLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
+      if (b->newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+         b->newLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
+      return;
+   }
+
+   if (b->oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+      b->oldLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
+
+      /* no availability operation needed */
+      b->srcStageMask = 0;
+      b->srcAccessMask = 0;
+
+      if (img->sharing_mode == VK_SHARING_MODE_CONCURRENT) {
+         b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+         b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      } else if (b->dstQueueFamilyIndex == b->srcQueueFamilyIndex ||
+                 b->dstQueueFamilyIndex == cmd->queue_family_index) {
+         b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+         b->dstQueueFamilyIndex = cmd->queue_family_index;
+      } else {
+         /* The barrier also defines a queue family ownership transfer, and
+          * this is the one that gets submitted to the source queue family to
+          * release the ownership.  Skip both the transfer and the transition.
+          */
+         b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         b->newLayout = b->oldLayout;
+      }
+   } else {
+      b->newLayout = VN_PRESENT_SRC_INTERNAL_LAYOUT;
+
+      /* no visibility operation needed */
+      b->dstStageMask = 0;
+      b->dstAccessMask = 0;
+
+      if (img->sharing_mode == VK_SHARING_MODE_CONCURRENT) {
+         b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+      } else if (b->srcQueueFamilyIndex == b->dstQueueFamilyIndex ||
+                 b->srcQueueFamilyIndex == cmd->queue_family_index) {
+         b->srcQueueFamilyIndex = cmd->queue_family_index;
+         b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
+      } else {
+         /* The barrier also defines a queue family ownership transfer, and
+          * this is the one that gets submitted to the destination queue
+          * family to acquire the ownership.  Skip both the transfer and the
+          * transition.
+          */
+         b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+         b->oldLayout = b->newLayout;
+      }
+   }
+}
+
 static const VkImageMemoryBarrier *
 vn_cmd_wait_events_fix_image_memory_barriers(
    struct vn_command_buffer *cmd,
@@ -286,6 +377,49 @@ vn_cmd_pipeline_barrier_fix_image_memory_barriers(
    }
 
    return img_barriers;
+}
+
+static const VkDependencyInfo *
+vn_cmd_fix_dependency_infos(struct vn_command_buffer *cmd,
+                            uint32_t dep_count,
+                            const VkDependencyInfo *dep_infos)
+{
+   if (cmd->builder.render_pass ||
+       !vn_dependency_info_has_present_src(dep_count, dep_infos))
+      return dep_infos;
+
+   uint32_t total_barrier_count = 0;
+   for (uint32_t i = 0; i < dep_count; i++)
+      total_barrier_count += dep_infos[i].imageMemoryBarrierCount;
+
+   size_t tmp_size = dep_count * sizeof(VkDependencyInfo) +
+                     total_barrier_count * sizeof(VkImageMemoryBarrier2);
+   void *tmp = vn_cmd_get_tmp_data(cmd, tmp_size);
+   if (!tmp) {
+      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
+      return dep_infos;
+   }
+
+   VkDependencyInfo *new_dep_infos = tmp;
+   tmp += dep_count * sizeof(VkDependencyInfo);
+   memcpy(new_dep_infos, dep_infos, dep_count * sizeof(VkDependencyInfo));
+
+   for (uint32_t i = 0; i < dep_count; i++) {
+      uint32_t barrier_count = dep_infos[i].imageMemoryBarrierCount;
+
+      VkImageMemoryBarrier2 *new_barriers = tmp;
+      tmp += barrier_count * sizeof(VkImageMemoryBarrier2);
+
+      memcpy(new_barriers, dep_infos[i].pImageMemoryBarriers,
+             barrier_count * sizeof(VkImageMemoryBarrier2));
+      new_dep_infos[i].pImageMemoryBarriers = new_barriers;
+
+      for (uint32_t j = 0; j < barrier_count; j++) {
+         vn_cmd_fix_image_memory_barrier2(cmd, &new_barriers[j]);
+      }
+   }
+
+   return new_dep_infos;
 }
 
 static void
@@ -1312,6 +1446,43 @@ vn_CmdSetEvent(VkCommandBuffer commandBuffer,
                                 VK_EVENT_SET);
 }
 
+static VkPipelineStageFlags2
+vn_dependency_info_collect_src_stage_mask(const VkDependencyInfo *dep_info)
+{
+   VkPipelineStageFlags2 mask = 0;
+
+   for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++)
+      mask |= dep_info->pMemoryBarriers[i].srcStageMask;
+
+   for (uint32_t i = 0; i < dep_info->bufferMemoryBarrierCount; i++)
+      mask |= dep_info->pBufferMemoryBarriers[i].srcStageMask;
+
+   for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++)
+      mask |= dep_info->pImageMemoryBarriers[i].srcStageMask;
+
+   return mask;
+}
+
+void
+vn_CmdSetEvent2(VkCommandBuffer commandBuffer,
+                VkEvent event,
+                const VkDependencyInfo *pDependencyInfo)
+
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+
+   pDependencyInfo = vn_cmd_fix_dependency_infos(cmd, 1, pDependencyInfo);
+
+   VN_CMD_ENQUEUE(vkCmdSetEvent2, commandBuffer, event, pDependencyInfo);
+
+   VkPipelineStageFlags2 src_stage_mask =
+      vn_dependency_info_collect_src_stage_mask(pDependencyInfo);
+
+   vn_feedback_event_cmd_record2(commandBuffer, event, src_stage_mask,
+                                 VK_EVENT_SET);
+}
+
 void
 vn_CmdResetEvent(VkCommandBuffer commandBuffer,
                  VkEvent event,
@@ -1321,6 +1492,16 @@ vn_CmdResetEvent(VkCommandBuffer commandBuffer,
 
    vn_feedback_event_cmd_record(commandBuffer, event, stageMask,
                                 VK_EVENT_RESET);
+}
+
+void
+vn_CmdResetEvent2(VkCommandBuffer commandBuffer,
+                  VkEvent event,
+                  VkPipelineStageFlags2 stageMask)
+{
+   VN_CMD_ENQUEUE(vkCmdResetEvent2, commandBuffer, event, stageMask);
+   vn_feedback_event_cmd_record2(commandBuffer, event, stageMask,
+                                 VK_EVENT_RESET);
 }
 
 void
@@ -1358,6 +1539,22 @@ vn_CmdWaitEvents(VkCommandBuffer commandBuffer,
 }
 
 void
+vn_CmdWaitEvents2(VkCommandBuffer commandBuffer,
+                  uint32_t eventCount,
+                  const VkEvent *pEvents,
+                  const VkDependencyInfo *pDependencyInfos)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+
+   pDependencyInfos =
+      vn_cmd_fix_dependency_infos(cmd, eventCount, pDependencyInfos);
+
+   VN_CMD_ENQUEUE(vkCmdWaitEvents2, commandBuffer, eventCount, pEvents,
+                  pDependencyInfos);
+}
+
+void
 vn_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                       VkPipelineStageFlags srcStageMask,
                       VkPipelineStageFlags dstStageMask,
@@ -1380,6 +1577,18 @@ vn_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                   pMemoryBarriers, bufferMemoryBarrierCount,
                   pBufferMemoryBarriers, imageMemoryBarrierCount,
                   pImageMemoryBarriers);
+}
+
+void
+vn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
+                       const VkDependencyInfo *pDependencyInfo)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+
+   pDependencyInfo = vn_cmd_fix_dependency_infos(cmd, 1, pDependencyInfo);
+
+   VN_CMD_ENQUEUE(vkCmdPipelineBarrier2, commandBuffer, pDependencyInfo);
 }
 
 void
@@ -1417,6 +1626,16 @@ vn_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdWriteTimestamp, commandBuffer, pipelineStage,
                   queryPool, query);
+}
+
+void
+vn_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
+                      VkPipelineStageFlagBits2 stage,
+                      VkQueryPool queryPool,
+                      uint32_t query)
+{
+   VN_CMD_ENQUEUE(vkCmdWriteTimestamp2, commandBuffer, stage, queryPool,
+                  query);
 }
 
 void

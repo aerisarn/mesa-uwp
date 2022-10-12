@@ -116,6 +116,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
          shader_integer_dot_product;
       VkPhysicalDeviceShaderTerminateInvocationFeatures
          shader_terminate_invocation;
+      VkPhysicalDeviceSynchronization2Features synchronization2;
       VkPhysicalDeviceSubgroupSizeControlFeatures subgroup_size_control;
       VkPhysicalDeviceTextureCompressionASTCHDRFeatures
          texture_compression_astc_hdr;
@@ -172,6 +173,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_INTEGER_DOT_PRODUCT_FEATURES, local_feats.shader_integer_dot_product, KHR_shader_integer_dot_product);
       VN_ADD_EXT_TO_PNEXT_OF(features2, SHADER_TERMINATE_INVOCATION_FEATURES, local_feats.shader_terminate_invocation, KHR_shader_terminate_invocation);
       VN_ADD_EXT_TO_PNEXT_OF(features2, SUBGROUP_SIZE_CONTROL_FEATURES, local_feats.subgroup_size_control, EXT_subgroup_size_control);
+      VN_ADD_EXT_TO_PNEXT_OF(features2, SYNCHRONIZATION_2_FEATURES, local_feats.synchronization2, KHR_synchronization2);
       VN_ADD_EXT_TO_PNEXT_OF(features2, TEXTURE_COMPRESSION_ASTC_HDR_FEATURES, local_feats.texture_compression_astc_hdr, EXT_texture_compression_astc_hdr);
       VN_ADD_EXT_TO_PNEXT_OF(features2, ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES, local_feats.zero_initialize_workgroup_memory, KHR_zero_initialize_workgroup_memory);
    }
@@ -371,8 +373,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
          VN_SET_CORE_FIELD(vk13_feats, subgroupSizeControl, local_feats.subgroup_size_control);
          VN_SET_CORE_FIELD(vk13_feats, computeFullSubgroups, local_feats.subgroup_size_control);
       }
-      /* TODO(VK_KHR_synchronization2): Support extension */
-      VN_SET_CORE_VALUE(vk13_feats, synchronization2, false);
+      if (exts->KHR_synchronization2) {
+         VN_SET_CORE_FIELD(vk13_feats, synchronization2, local_feats.synchronization2);
+      }
       if (exts->EXT_texture_compression_astc_hdr) {
          VN_SET_CORE_FIELD(vk13_feats, textureCompressionASTC_HDR, local_feats.texture_compression_astc_hdr);
       }
@@ -933,6 +936,19 @@ vn_physical_device_init_external_semaphore_handles(
          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
    }
 #endif
+
+   if (!(physical_dev->renderer_sync_fd_semaphore_features &
+         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT)) {
+      /* Disable VK_KHR_synchronization2, because
+       * out implementation requires semaphore sync fd import.
+       */
+      physical_dev->base.base.supported_extensions.KHR_synchronization2 =
+         false;
+
+      /* Clamp to 1.2 because 1.3 requires VK_KHR_synchronization2. */
+      physical_dev->properties.vulkan_1_0.apiVersion = MIN2(
+         VK_API_VERSION_1_2, physical_dev->properties.vulkan_1_0.apiVersion);
+   }
 }
 
 static void
@@ -1044,6 +1060,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_terminate_invocation = true,
+      .KHR_synchronization2 = true,
       .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
