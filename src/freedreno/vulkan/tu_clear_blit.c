@@ -413,8 +413,25 @@ r2d_teardown(struct tu_cmd_buffer *cmd,
 static void
 r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
+   if (cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL_blit !=
+       cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL) {
+      /* This a non-context register, so we have to WFI before changing. */
+      tu_cs_emit_wfi(cs);
+      tu_cs_emit_write_reg(
+         cs, REG_A6XX_RB_DBG_ECO_CNTL,
+         cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL_blit);
+   }
+
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
    tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
+
+   if (cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL_blit !=
+       cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL) {
+      tu_cs_emit_wfi(cs);
+      tu_cs_emit_write_reg(
+         cs, REG_A6XX_RB_DBG_ECO_CNTL,
+         cmd->device->physical_device->info->a6xx.magic.RB_DBG_ECO_CNTL);
+   }
 }
 
 /* r3d_ = shader path operations */
@@ -3189,8 +3206,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
    /* Wait for CACHE_INVALIDATE to land */
    tu_cs_emit_wfi(cs);
 
-   tu_cs_emit_pkt7(cs, CP_BLIT, 1);
-   tu_cs_emit(cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
+   r2d_run(cmd, cs);
 
    /* CP_BLIT writes to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
     * sysmem, and we generally assume that GMEM renderpasses leave their
