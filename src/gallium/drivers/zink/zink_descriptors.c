@@ -658,6 +658,25 @@ alloc_new_pool(struct zink_screen *screen, struct zink_descriptor_pool_multi *mp
    return pool;
 }
 
+static void
+find_pool(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_descriptor_pool_multi *mpool, bool both)
+{
+   bool found = false;
+   /* worst case: iterate all the pools for the batch until something can be recycled */
+   for (unsigned type = 0; type < ZINK_DESCRIPTOR_TYPES; type++) {
+      for (unsigned i = 0; i < bs->dd.pool_size[type]; i++) {
+         struct zink_descriptor_pool_multi **mppool = util_dynarray_element(&bs->dd.pools[type], struct zink_descriptor_pool_multi *, i);
+         if (mppool && *mppool && *mppool != mpool) {
+            unsigned idx[] = {!(*mppool)->overflow_idx, (*mppool)->overflow_idx};
+            for (unsigned j = 0; j < 1 + !!both; j++)
+               found |= clear_multi_pool_overflow(screen, &(*mppool)->overflowed_pools[idx[j]]);
+         }
+      }
+   }
+   if (found)
+      mpool->pool = alloc_new_pool(screen, mpool);
+}
+
 static struct zink_descriptor_pool *
 check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool_multi *mpool, struct zink_program *pg,
                  enum zink_descriptor_type type, struct zink_batch_state *bs, bool is_compute)
@@ -669,6 +688,22 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool_multi *mp
          mpool->pool = util_dynarray_pop(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*);
       else
          mpool->pool = alloc_new_pool(screen, mpool);
+      /* OOM: force pool recycling from overflows */
+      if (!mpool->pool) {
+         find_pool(screen, bs, mpool, false);
+         if (!mpool->pool) {
+            /* bad case: iterate unused batches and recycle */
+            for (struct zink_batch_state *state = ctx->free_batch_states; state; state = state->next)
+               find_pool(screen, state, mpool, true);
+            if (!mpool->pool) {
+               /* worst case: iterate in-use batches and recycle (very safe) */
+               for (struct zink_batch_state *state = ctx->batch_states; state; state = state->next)
+                  find_pool(screen, state, mpool, false);
+            }
+         }
+      }
+      if (!mpool->pool)
+         unreachable("out of descriptor memory!");
    }
    struct zink_descriptor_pool *pool = mpool->pool;
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
