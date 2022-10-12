@@ -21,22 +21,31 @@ debug_describe_zink_batch_state(char *buf, const struct zink_batch_state *ptr)
 }
 
 static void
-reset_obj(struct zink_batch_state *bs, struct zink_resource_object *obj)
+reset_obj(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_resource_object *obj)
 {
    if (!zink_resource_object_usage_unset(obj, bs)) {
       obj->unordered_read = false;
       obj->unordered_write = false;
       obj->access = 0;
       obj->access_stage = 0;
+      simple_mtx_lock(&obj->view_lock);
+      if (obj->is_buffer) {
+         while (util_dynarray_contains(&obj->views, VkBufferView))
+            VKSCR(DestroyBufferView)(screen->dev, util_dynarray_pop(&obj->views, VkBufferView), NULL);
+      } else {
+         while (util_dynarray_contains(&obj->views, VkImageView))
+            VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&obj->views, VkImageView), NULL);
+      }
+      simple_mtx_unlock(&obj->view_lock);
    }
    util_dynarray_append(&bs->unref_resources, struct zink_resource_object*, obj);
 }
 
 static void
-reset_obj_list(struct zink_batch_state *bs, struct zink_batch_obj_list *list)
+reset_obj_list(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_batch_obj_list *list)
 {
    for (unsigned i = 0; i < list->num_buffers; i++)
-      reset_obj(bs, list->objs[i]);
+      reset_obj(screen, bs, list->objs[i]);
    list->num_buffers = 0;
 }
 
@@ -50,12 +59,12 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       mesa_loge("ZINK: vkResetCommandPool failed (%s)", vk_Result_to_str(result));
 
    /* unref all used resources */
-   reset_obj_list(bs, &bs->real_objs);
-   reset_obj_list(bs, &bs->slab_objs);
-   reset_obj_list(bs, &bs->sparse_objs);
+   reset_obj_list(screen, bs, &bs->real_objs);
+   reset_obj_list(screen, bs, &bs->slab_objs);
+   reset_obj_list(screen, bs, &bs->sparse_objs);
    while (util_dynarray_contains(&bs->swapchain_obj, struct zink_resource_object*)) {
       struct zink_resource_object *obj = util_dynarray_pop(&bs->swapchain_obj, struct zink_resource_object*);
-      reset_obj(bs, obj);
+      reset_obj(screen, bs, obj);
    }
 
    for (unsigned i = 0; i < 2; i++) {
