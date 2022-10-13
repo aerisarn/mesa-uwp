@@ -361,6 +361,8 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       cs->RA_CENTROID_TABLE[9] = 0x886688a2;
       cs->RA_CENTROID_TABLE[10] = 0x888866aa;
       cs->RA_CENTROID_TABLE[11] = 0x668888a6;
+      if (VIV_FEATURE(screen, chipMinorFeatures4, SMALL_MSAA))
+         pe_logic_op |= VIVS_PE_LOGIC_OP_UNK24(0x5);
       break;
    }
 
