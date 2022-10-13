@@ -437,6 +437,8 @@ etna_try_blt_blit(struct pipe_context *pctx,
    if (src == dst && src_lev->ts_compress_fmt < 0) {
       /* Resolve-in-place */
       struct blt_inplace_op op = {};
+      size_t tile_size = etna_screen_get_tile_size(ctx->screen, src_lev->ts_mode,
+                                                   src->base.nr_samples > 1);
 
       op.addr.bo = src->bo;
       op.addr.offset = src_lev->offset + blit_info->src.box.z * src_lev->layer_stride;
@@ -447,8 +449,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.ts_clear_value[0] = src_lev->clear_value;
       op.ts_clear_value[1] = src_lev->clear_value;
       op.ts_mode = src_lev->ts_mode;
-      op.num_tiles = DIV_ROUND_UP(src_lev->size,
-                                  etna_screen_get_tile_size(ctx->screen, src_lev->ts_mode));
+      op.num_tiles = DIV_ROUND_UP(src_lev->size, tile_size);
       op.bpp = util_format_get_blocksize(src->base.format);
 
       etna_set_state(ctx->stream, VIVS_GL_FLUSH_CACHE, 0x00000c23);

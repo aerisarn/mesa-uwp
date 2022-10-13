@@ -85,7 +85,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
 {
    struct etna_screen *screen = etna_screen(pscreen);
    struct pipe_resource *prsc = &rsc->base;
-   size_t rt_ts_size, ts_layer_stride;
+   size_t tile_size, rt_ts_size, ts_layer_stride;
    uint8_t ts_mode = TS_MODE_128B;
    int8_t ts_compress_fmt;
    unsigned layers;
@@ -108,10 +108,10 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
         rsc->levels[0].stride % 256 == 0) )
          ts_mode = TS_MODE_256B;
 
+   tile_size = etna_screen_get_tile_size(screen, ts_mode, prsc->nr_samples > 1);
    layers = prsc->target == PIPE_TEXTURE_3D ? prsc->depth0 : prsc->array_size;
    ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
-                                        etna_screen_get_tile_size(screen, ts_mode) *
-                                        8 / screen->specs.bits_per_tile),
+                                        tile_size * 8 / screen->specs.bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
    rt_ts_size = ts_layer_stride * layers;
    if (rt_ts_size == 0)
