@@ -190,13 +190,51 @@ setup_miptree(struct etna_resource *rsc, unsigned paddingX, unsigned paddingY,
    return size;
 }
 
-/* Is rs alignment needed? */
-static bool is_rs_align(struct etna_screen *screen,
-                        const struct pipe_resource *tmpl)
+/* Compute the slice/miplevel alignment (in pixels) and the texture sampler
+ * HALIGN parameter from the resource parameters and the target layout.
+ */
+static void
+etna_layout_multiple(const struct etna_screen *screen,
+                     const struct pipe_resource *templat, unsigned layout,
+                     unsigned *paddingX, unsigned *paddingY, unsigned *halign)
 {
-   return screen->specs.use_blt ? false : (
-      VIV_FEATURE(screen, chipMinorFeatures1, TEXTURE_HALIGN) ||
-      !etna_resource_sampler_only(tmpl));
+   const struct etna_specs *specs = &screen->specs;
+   /* If we have the TEXTURE_HALIGN feature, we can always align to the resolve
+    * engine's width.  If not, we must not align resources used only for
+    * textures. If this GPU uses the BLT engine, never do RS align.
+    */
+   bool rs_align = !specs->use_blt && !etna_resource_sampler_only(templat) &&
+                   VIV_FEATURE(screen, chipMinorFeatures1, TEXTURE_HALIGN);
+
+   switch (layout) {
+   case ETNA_LAYOUT_LINEAR:
+      *paddingX = rs_align ? 16 : 4;
+      *paddingY = 1;
+      *halign = rs_align ? TEXTURE_HALIGN_SIXTEEN : TEXTURE_HALIGN_FOUR;
+      break;
+   case ETNA_LAYOUT_TILED:
+      *paddingX = rs_align ? 16 : 4;
+      *paddingY = 4;
+      *halign = rs_align ? TEXTURE_HALIGN_SIXTEEN : TEXTURE_HALIGN_FOUR;
+      break;
+   case ETNA_LAYOUT_SUPER_TILED:
+      *paddingX = 64;
+      *paddingY = 64;
+      *halign = TEXTURE_HALIGN_SUPER_TILED;
+      break;
+   case ETNA_LAYOUT_MULTI_TILED:
+      *paddingX = 16;
+      *paddingY = 4 * specs->pixel_pipes;
+      *halign = TEXTURE_HALIGN_SPLIT_TILED;
+      break;
+   case ETNA_LAYOUT_MULTI_SUPERTILED:
+      *paddingX = 64;
+      *paddingY = 64 * specs->pixel_pipes;
+      *halign = TEXTURE_HALIGN_SPLIT_SUPER_TILED;
+      break;
+   default:
+      DBG("Unhandled layout %i", layout);
+   }
 }
 
 /* Create a new resource object, using the given template info */
@@ -236,12 +274,7 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    unsigned paddingX = 0, paddingY = 0;
    unsigned halign = TEXTURE_HALIGN_FOUR;
    if (!util_format_is_compressed(templat->format)) {
-      /* If we have the TEXTURE_HALIGN feature, we can always align to the
-       * resolve engine's width.  If not, we must not align resources used
-       * only for textures. If this GPU uses the BLT engine, never do RS align.
-       */
-      etna_layout_multiple(layout, screen->specs.pixel_pipes,
-                           is_rs_align (screen, templat),
+      etna_layout_multiple(screen, templat, layout,
                            &paddingX, &paddingY, &halign);
       assert(paddingX && paddingY);
    } else {
@@ -511,8 +544,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
 
    /* Determine padding of the imported resource. */
    unsigned paddingX = 0, paddingY = 0;
-   etna_layout_multiple(rsc->layout, screen->specs.pixel_pipes,
-                        is_rs_align(screen, tmpl),
+   etna_layout_multiple(screen, tmpl, rsc->layout,
                         &paddingX, &paddingY, &rsc->halign);
 
    if (!screen->specs.use_blt && rsc->layout == ETNA_LAYOUT_LINEAR)
