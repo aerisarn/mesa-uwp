@@ -632,7 +632,13 @@ etna_try_rs_blit(struct pipe_context *pctx,
    if (blit_info->src.format != blit_info->dst.format)
       return false;
 
-   uint32_t format = etna_compatible_rs_format(blit_info->dst.format);
+   /* try to find a exact format match first */
+   uint32_t format = translate_rs_format(blit_info->dst.format);
+   /* When not resolving MSAA, but only doing a layout conversion, we can get
+    * away with a fallback format of matching size.
+    */
+   if (format == ETNA_NO_MATCH && msaa_xscale == 1 && msaa_yscale == 1)
+      format = etna_compatible_rs_format(blit_info->dst.format);
    if (format == ETNA_NO_MATCH)
       return false;
 

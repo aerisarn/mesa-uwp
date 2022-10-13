@@ -271,6 +271,35 @@ translate_ts_format(enum pipe_format fmt)
    }
 }
 
+/* formats directly supported in the RS engine */
+static inline uint32_t
+translate_rs_format(enum pipe_format fmt)
+{
+   /* Note: Pipe format convention is LSB to MSB, VIVS is MSB to LSB */
+   switch (fmt) {
+   case PIPE_FORMAT_B4G4R4X4_UNORM:
+      return RS_FORMAT_X4R4G4B4;
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+      return RS_FORMAT_A4R4G4B4;
+   case PIPE_FORMAT_B5G5R5X1_UNORM:
+      return RS_FORMAT_X1R5G5B5;
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+      return RS_FORMAT_A1R5G5B5;
+   case PIPE_FORMAT_B5G6R5_UNORM:
+      return RS_FORMAT_R5G6B5;
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
+      return RS_FORMAT_X8R8G8B8;
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8A8_SRGB:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+      return RS_FORMAT_A8R8G8B8;
+   default:
+      return ETNA_NO_MATCH;
+   }
+}
+
 /* Return normalization flag for vertex element format */
 static inline uint32_t
 translate_vertex_format_normalize(enum pipe_format fmt)
