@@ -3597,9 +3597,18 @@ zink_flush(struct pipe_context *pctx,
    VkSemaphore export_sem = VK_NULL_HANDLE;
 
    /* triggering clears will force has_work */
-   if (!deferred && ctx->clears_enabled)
+   if (!deferred && ctx->clears_enabled) {
+      /* if fbfetch outputs are active, disable them when flushing clears */
+      unsigned fbfetch_outputs = ctx->fbfetch_outputs;
+      if (fbfetch_outputs) {
+         ctx->fbfetch_outputs = 0;
+         ctx->rp_changed = true;
+      }
       /* start rp to do all the clears */
       zink_batch_rp(ctx);
+      ctx->fbfetch_outputs = fbfetch_outputs;
+      ctx->rp_changed |= fbfetch_outputs > 0;
+   }
 
    if (ctx->needs_present && (flags & PIPE_FLUSH_END_OF_FRAME)) {
       if (ctx->needs_present->obj->image)
