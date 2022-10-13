@@ -789,6 +789,8 @@ struct zink_compute_pipeline_state {
 
 
 /** program types */
+
+/* create_gfx_pushconst must be kept in sync with this struct */
 struct zink_gfx_push_constant {
    unsigned draw_mode_is_indexed;
    unsigned draw_id;
@@ -796,8 +798,28 @@ struct zink_gfx_push_constant {
    float default_outer_level[4];
 };
 
+/* The order of the enums MUST match the order of the zink_gfx_push_constant
+ * members.
+ */
+enum zink_gfx_push_constant_member {
+   ZINK_GFX_PUSHCONST_DRAW_MODE_IS_INDEXED,
+   ZINK_GFX_PUSHCONST_DRAW_ID,
+   ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL,
+   ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL,
+   ZINK_GFX_PUSHCONST_MAX
+};
+
+/* create_cs_pushconst must be kept in sync with this struct */
 struct zink_cs_push_constant {
    unsigned work_dim;
+};
+
+/* The order of the enums MUST match the order of the zink_cs_push_constant
+ * members.
+ */
+enum zink_cs_push_constant_member {
+   ZINK_CS_PUSHCONST_WORK_DIM,
+   ZINK_CS_PUSHCONST_MAX
 };
 
 /* a shader module is used for directly reusing a shader module between programs,

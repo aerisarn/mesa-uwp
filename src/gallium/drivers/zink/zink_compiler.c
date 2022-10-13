@@ -45,21 +45,53 @@
 bool
 zink_lower_cubemap_to_array(nir_shader *s, uint32_t nonseamless_cube_mask);
 
+#define SIZEOF_FIELD(type, field) sizeof(((type *)0)->field)
+
 static void
-create_vs_pushconst(nir_shader *nir)
+create_gfx_pushconst(nir_shader *nir)
 {
-   nir_variable *vs_pushconst;
+#define PUSHCONST_MEMBER(member_idx, field)                                                                     \
+fields[member_idx].type =                                                                                       \
+   glsl_array_type(glsl_uint_type(), SIZEOF_FIELD(struct zink_gfx_push_constant, field) / sizeof(uint32_t), 0); \
+fields[member_idx].name = ralloc_asprintf(nir, #field);                                                         \
+fields[member_idx].offset = offsetof(struct zink_gfx_push_constant, field);
+
+   nir_variable *pushconst;
    /* create compatible layout for the ntv push constant loader */
-   struct glsl_struct_field *fields = rzalloc_array(nir, struct glsl_struct_field, 2);
-   fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
-   fields[0].name = ralloc_asprintf(nir, "draw_mode_is_indexed");
-   fields[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
-   fields[1].type = glsl_array_type(glsl_uint_type(), 1, 0);
-   fields[1].name = ralloc_asprintf(nir, "draw_id");
-   fields[1].offset = offsetof(struct zink_gfx_push_constant, draw_id);
-   vs_pushconst = nir_variable_create(nir, nir_var_mem_push_const,
-                                                 glsl_struct_type(fields, 2, "struct", false), "vs_pushconst");
-   vs_pushconst->data.location = INT_MAX; //doesn't really matter
+   struct glsl_struct_field *fields = rzalloc_array(nir, struct glsl_struct_field, ZINK_GFX_PUSHCONST_MAX);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DRAW_MODE_IS_INDEXED, draw_mode_is_indexed);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DRAW_ID, draw_id);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL, default_inner_level);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL, default_outer_level);
+
+   pushconst = nir_variable_create(nir, nir_var_mem_push_const,
+                                   glsl_struct_type(fields, ZINK_GFX_PUSHCONST_MAX, "struct", false),
+                                   "gfx_pushconst");
+   pushconst->data.location = INT_MAX; //doesn't really matter
+
+#undef PUSHCONST_MEMBER
+}
+
+static void
+create_cs_pushconst(nir_shader *nir)
+{
+#define PUSHCONST_MEMBER(member_idx, field)                                                                    \
+fields[member_idx].type =                                                                                      \
+   glsl_array_type(glsl_uint_type(), SIZEOF_FIELD(struct zink_cs_push_constant, field) / sizeof(uint32_t), 0); \
+fields[member_idx].name = ralloc_asprintf(nir, #field);                                                        \
+fields[member_idx].offset = offsetof(struct zink_cs_push_constant, field);
+
+   nir_variable *pushconst;
+   /* create compatible layout for the ntv push constant loader */
+   struct glsl_struct_field *fields = rzalloc_array(nir, struct glsl_struct_field, ZINK_CS_PUSHCONST_MAX);
+   PUSHCONST_MEMBER(ZINK_CS_PUSHCONST_WORK_DIM, work_dim);
+
+   pushconst = nir_variable_create(nir, nir_var_mem_push_const,
+                                   glsl_struct_type(fields, ZINK_CS_PUSHCONST_MAX, "struct", false),
+                                   "cs_pushconst");
+   pushconst->data.location = INT_MAX; //doesn't really matter
+
+#undef PUSHCONST_MEMBER
 }
 
 static bool
@@ -80,7 +112,7 @@ lower_work_dim_instr(nir_builder *b, nir_instr *in, void *data)
    if (instr->intrinsic == nir_intrinsic_load_work_dim) {
       b->cursor = nir_after_instr(&instr->instr);
       nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
-      load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+      load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_CS_PUSHCONST_WORK_DIM));
       nir_intrinsic_set_range(load, 3 * sizeof(uint32_t));
       load->num_components = 1;
       nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "work_dim");
@@ -237,7 +269,7 @@ lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
 
    b->cursor = nir_after_instr(&instr->instr);
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
-   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+   load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_MODE_IS_INDEXED));
    nir_intrinsic_set_range(load, 4);
    load->num_components = 1;
    nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "draw_mode_is_indexed");
@@ -278,7 +310,7 @@ lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
 
    b->cursor = nir_before_instr(&instr->instr);
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
-   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 1));
+   load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_ID));
    nir_intrinsic_set_range(load, 4);
    load->num_components = 1;
    nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "draw_id");
@@ -3105,9 +3137,12 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_indirect_derefs, indirect_derefs_modes,
               UINT32_MAX);
 
-   if (nir->info.stage == MESA_SHADER_VERTEX)
-      create_vs_pushconst(nir);
-   else if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
+   if (nir->info.stage == MESA_SHADER_KERNEL)
+      create_cs_pushconst(nir);
+   else
+      create_gfx_pushconst(nir);
+
+   if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
             nir->info.stage == MESA_SHADER_TESS_EVAL)
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
