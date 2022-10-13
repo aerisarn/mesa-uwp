@@ -1112,14 +1112,14 @@ LLVMTypeRef ac_build_gep0_type(LLVMTypeRef pointee_type, LLVMValueRef index)
    return NULL;
 }
 
-LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMTypeRef pointee_type, LLVMValueRef value, LLVMValueRef index)
+LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index)
 {
    LLVMValueRef indices[2] = {
       ctx->i32_0,
       index,
    };
 
-   return LLVMBuildGEP2(ctx->builder, pointee_type, value, indices, 2, "");
+   return LLVMBuildGEP2(ctx->builder, ptr.t, ptr.v, indices, 2, "");
 }
 
 LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef ptr, LLVMValueRef index)
@@ -1127,10 +1127,10 @@ LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMTypeRef type,
    return LLVMBuildGEP2(ctx->builder, type, ptr, &index, 1, "");
 }
 
-void ac_build_indexed_store(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index,
+void ac_build_indexed_store(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index,
                             LLVMValueRef value)
 {
-   LLVMBuildStore(ctx->builder, value, ac_build_gep0(ctx, type, base_ptr, index));
+   LLVMBuildStore(ctx->builder, value, ac_build_gep0(ctx, ptr, index));
 }
 
 /**
@@ -1182,30 +1182,29 @@ static LLVMValueRef ac_build_load_custom(struct ac_llvm_context *ctx, LLVMTypeRe
    return result;
 }
 
-LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index)
+LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index)
 {
-   return ac_build_load_custom(ctx, type, base_ptr, index, false, false, false);
+   return ac_build_load_custom(ctx, ptr.t, ptr.v, index, false, false, false);
 }
 
-LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr,
                                      LLVMValueRef index)
 {
-   return ac_build_load_custom(ctx, type, base_ptr, index, false, true, false);
+   return ac_build_load_custom(ctx, ptr.t, ptr.v, index, false, true, false);
 }
 
 /* This assumes that there is no unsigned integer wraparound during the address
  * computation, excluding all GEPs within base_ptr. */
-LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr,
                                    LLVMValueRef index)
 {
-   return ac_build_load_custom(ctx, type, base_ptr, index, true, true, true);
+   return ac_build_load_custom(ctx, ptr.t, ptr.v, index, true, true, true);
 }
 
 /* See ac_build_load_custom() documentation. */
-LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx, LLVMTypeRef type,
-                                                   LLVMValueRef base_ptr, LLVMValueRef index)
+LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index)
 {
-   return ac_build_load_custom(ctx, type, base_ptr, index, true, true, false);
+   return ac_build_load_custom(ctx, ptr.t, ptr.v, index, true, true, false);
 }
 
 static unsigned get_load_cache_policy(struct ac_llvm_context *ctx, unsigned cache_policy)
@@ -2783,14 +2782,14 @@ void ac_declare_lds_as_pointer(struct ac_llvm_context *ctx)
 
 LLVMValueRef ac_lds_load(struct ac_llvm_context *ctx, LLVMValueRef dw_addr)
 {
-   LLVMValueRef v = ac_build_gep0(ctx, ctx->lds.t, ctx->lds.v, dw_addr);
+   LLVMValueRef v = ac_build_gep0(ctx, ctx->lds, dw_addr);
    return LLVMBuildLoad2(ctx->builder, ctx->i32, v, "");
 }
 
 void ac_lds_store(struct ac_llvm_context *ctx, LLVMValueRef dw_addr, LLVMValueRef value)
 {
    value = ac_to_integer(ctx, value);
-   ac_build_indexed_store(ctx, ctx->lds.t, ctx->lds.v, dw_addr, value);
+   ac_build_indexed_store(ctx, ctx->lds, dw_addr, value);
 }
 
 LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx, LLVMTypeRef dst_type, LLVMValueRef src0)

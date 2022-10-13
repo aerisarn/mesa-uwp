@@ -34,10 +34,9 @@ LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
 static LLVMValueRef load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   LLVMValueRef desc = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMValueRef buf_index = LLVMConstInt(ctx->ac.i32, SI_PS_CONST_SAMPLE_POSITIONS, 0);
-   LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args, ctx->internal_bindings);
-   LLVMValueRef resource = ac_build_load_to_sgpr(&ctx->ac, type, desc, buf_index);
+   LLVMValueRef resource = ac_build_load_to_sgpr(
+      &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings), buf_index);
 
    /* offset = sample_id * 8  (8 = 2 floats containing samplepos.xy) */
    LLVMValueRef offset0 =
@@ -69,8 +68,9 @@ static LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
    ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    ptr =
       LLVMBuildPointerCast(ctx->ac.builder, ptr, ac_array_in_const32_addr_space(ctx->ac.v8i32), "");
-   image =
-      ac_build_load_to_sgpr(&ctx->ac, ctx->ac.v8i32, ptr, LLVMConstInt(ctx->ac.i32, SI_PS_IMAGE_COLORBUF0 / 2, 0));
+   struct ac_llvm_pointer desc = { .v = ptr, .t = ctx->ac.v8i32 };
+
+   image = ac_build_load_to_sgpr(&ctx->ac, desc, LLVMConstInt(ctx->ac.i32, SI_PS_IMAGE_COLORBUF0 / 2, 0));
 
    unsigned chan = 0;
 
@@ -90,8 +90,7 @@ static LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
        ctx->shader->key.ps.mono.fbfetch_msaa &&
        !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
 
-      fmask = ac_build_load_to_sgpr(&ctx->ac, ctx->ac.v8i32, ptr,
-                                    LLVMConstInt(ctx->ac.i32, SI_PS_IMAGE_COLORBUF0_FMASK / 2, 0));
+      fmask = ac_build_load_to_sgpr(&ctx->ac, desc, LLVMConstInt(ctx->ac.i32, SI_PS_IMAGE_COLORBUF0_FMASK / 2, 0));
 
       ac_apply_fmask_to_sample(&ctx->ac, fmask, args.coords,
                                ctx->shader->key.ps.mono.fbfetch_layered);
@@ -550,7 +549,7 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
    /* Load the buffer descriptor. */
    slot = LLVMConstInt(ctx->ac.i32, SI_PS_CONST_POLY_STIPPLE, 0);
 
-   desc = ac_build_load_to_sgpr(&ctx->ac, ctx->ac.v4i32, param_internal_bindings, slot);
+   desc = ac_build_load_to_sgpr(&ctx->ac, (struct ac_llvm_pointer) { .t = ctx->ac.v4i32, .v = param_internal_bindings }, slot);
 
    /* The stipple pattern is 32x32, each row has 32 bits. */
    offset = LLVMBuildMul(builder, address[1], LLVMConstInt(ctx->ac.i32, 4, 0), "");

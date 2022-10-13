@@ -108,13 +108,12 @@ load_descriptor_sets(struct radv_shader_context *ctx)
    uint32_t mask = ctx->shader_info->desc_set_used_mask;
 
    if (user_sgprs_locs->shader_data[AC_UD_INDIRECT_DESCRIPTOR_SETS].sgpr_idx != -1) {
-      LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args->ac, ctx->args->descriptor_sets[0]);
-      LLVMValueRef desc_sets = ac_get_arg(&ctx->ac, ctx->args->descriptor_sets[0]);
+      struct ac_llvm_pointer desc_sets = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->descriptor_sets[0]);
       while (mask) {
          int i = u_bit_scan(&mask);
 
          ctx->descriptor_sets[i] =
-            ac_build_load_to_sgpr(&ctx->ac, type, desc_sets, LLVMConstInt(ctx->ac.i32, i, false));
+            ac_build_load_to_sgpr(&ctx->ac, desc_sets, LLVMConstInt(ctx->ac.i32, i, false));
          LLVMSetAlignment(ctx->descriptor_sets[i], 4);
       }
    } else {
@@ -350,8 +349,7 @@ static void
 load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTypeRef dest_type,
               LLVMValueRef out[4])
 {
-   LLVMTypeRef t_list_type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args->ac, ctx->args->ac.vertex_buffers);
-   LLVMValueRef t_list_ptr = ac_get_arg(&ctx->ac, ctx->args->ac.vertex_buffers);
+   struct ac_llvm_pointer t_list_ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->ac.vertex_buffers);
    LLVMValueRef t_offset;
    LLVMValueRef t_list;
    LLVMValueRef input;
@@ -402,7 +400,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    desc_index = util_bitcount(ctx->shader_info->vs.vb_desc_usage_mask &
                               u_bit_consecutive(0, desc_index));
    t_offset = LLVMConstInt(ctx->ac.i32, desc_index, false);
-   t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_type, t_list_ptr, t_offset);
+   t_list = ac_build_load_to_sgpr(&ctx->ac, t_list_ptr, t_offset);
 
    /* Always split typed vertex buffer loads on GFX6 and GFX10+ to avoid any alignment issues that
     * triggers memory violations and eventually a GPU hang. This can happen if the stride (static or
@@ -800,8 +798,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
        */
       LLVMValueRef so_write_offset[4] = {0};
       LLVMValueRef so_buffers[4] = {0};
-      LLVMTypeRef type = ac_get_arg_pointee_type(&ctx->ac, &ctx->args->ac, ctx->args->streamout_buffers);
-      LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->args->streamout_buffers);
+      struct ac_llvm_pointer buf_ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->streamout_buffers);
 
       for (i = 0; i < 4; i++) {
          uint16_t stride = ctx->shader_info->so.strides[i];
@@ -811,7 +808,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 
          LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, i, false);
 
-         so_buffers[i] = ac_build_load_to_sgpr(&ctx->ac, type, buf_ptr, offset);
+         so_buffers[i] = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
 
          LLVMValueRef so_offset = ac_get_arg(&ctx->ac, ctx->args->ac.streamout_offset[i]);
 
@@ -1178,6 +1175,8 @@ radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
 static void
 ac_setup_rings(struct radv_shader_context *ctx)
 {
+   struct ac_llvm_pointer ring_offsets = { .t = ctx->ac.i8, .v = ctx->ring_offsets };
+
    if (ctx->options->gfx_level <= GFX8 &&
        (ctx->stage == MESA_SHADER_GEOMETRY ||
         (ctx->stage == MESA_SHADER_VERTEX && ctx->shader_info->vs.as_es) ||
@@ -1185,12 +1184,11 @@ ac_setup_rings(struct radv_shader_context *ctx)
       unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS : RING_ESGS_VS;
       LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, false);
 
-      ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac, ctx->ac.i8, ctx->ring_offsets, offset);
+      ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac, ring_offsets, offset);
    }
 
    if (ctx->args->is_gs_copy_shader) {
-      ctx->gsvs_ring[0] = ac_build_load_to_sgpr(&ctx->ac, ctx->ac.i8, ctx->ring_offsets,
-                                                LLVMConstInt(ctx->ac.i32, RING_GSVS_VS, false));
+      ctx->gsvs_ring[0] = ac_build_load_to_sgpr(&ctx->ac, ring_offsets, LLVMConstInt(ctx->ac.i32, RING_GSVS_VS, false));
    }
 
    if (ctx->stage == MESA_SHADER_GEOMETRY) {
@@ -1207,7 +1205,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
       unsigned num_records = ctx->ac.wave_size;
       LLVMValueRef base_ring;
 
-      base_ring = ac_build_load_to_sgpr(&ctx->ac, ctx->ac.i8, ctx->ring_offsets,
+      base_ring = ac_build_load_to_sgpr(&ctx->ac, ring_offsets,
                                         LLVMConstInt(ctx->ac.i32, RING_GSVS_GS, false));
 
       for (unsigned stream = 0; stream < 4; stream++) {
@@ -1248,9 +1246,9 @@ ac_setup_rings(struct radv_shader_context *ctx)
 
    if (ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_TESS_EVAL) {
       ctx->hs_ring_tess_offchip = ac_build_load_to_sgpr(
-         &ctx->ac, ctx->ac.i8, ctx->ring_offsets, LLVMConstInt(ctx->ac.i32, RING_HS_TESS_OFFCHIP, false));
+         &ctx->ac, ring_offsets, LLVMConstInt(ctx->ac.i32, RING_HS_TESS_OFFCHIP, false));
       ctx->hs_ring_tess_factor = ac_build_load_to_sgpr(
-         &ctx->ac, ctx->ac.i8, ctx->ring_offsets, LLVMConstInt(ctx->ac.i32, RING_HS_TESS_FACTOR, false));
+         &ctx->ac, ring_offsets, LLVMConstInt(ctx->ac.i32, RING_HS_TESS_FACTOR, false));
    }
 }
 

@@ -258,19 +258,19 @@ LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMTypeRef type,
                                   LLVMValueRef index);
 
 LLVMTypeRef ac_build_gep0_type(LLVMTypeRef pointee_type, LLVMValueRef index);
-LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef value, LLVMValueRef index);
+LLVMValueRef ac_build_gep0(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index);
 
-void ac_build_indexed_store(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index,
+void ac_build_indexed_store(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index,
                             LLVMValueRef value);
 
-LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr, LLVMValueRef index);
-LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr, LLVMValueRef index);
+LLVMValueRef ac_build_load_invariant(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr,
                                      LLVMValueRef index);
-LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, LLVMTypeRef type, LLVMValueRef base_ptr,
+LLVMValueRef ac_build_load_to_sgpr(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr,
                                    LLVMValueRef index);
 
-LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx, LLVMTypeRef type,
-                                                   LLVMValueRef base_ptr, LLVMValueRef index);
+LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx, struct ac_llvm_pointer ptr,
+                                                   LLVMValueRef index);
 
 void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
                                  LLVMValueRef vindex, LLVMValueRef voffset, LLVMValueRef soffset,
