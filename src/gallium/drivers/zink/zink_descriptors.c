@@ -1002,12 +1002,14 @@ consolidate_pool_alloc(struct zink_screen *screen, struct zink_descriptor_pool_m
    mpool->overflow_idx = sizes[0] > sizes[1];
    if (!mpool->overflowed_pools[mpool->overflow_idx].size)
       return;
+
+   unsigned old_size = mpool->overflowed_pools[!mpool->overflow_idx].size;
    if (util_dynarray_resize(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*, sizes[0] + sizes[1])) {
       /* attempt to consolidate all the overflow into one array to maximize reuse */
       uint8_t *src = mpool->overflowed_pools[mpool->overflow_idx].data;
       uint8_t *dst = mpool->overflowed_pools[!mpool->overflow_idx].data;
+      dst += old_size;
       memcpy(dst, src, mpool->overflowed_pools[mpool->overflow_idx].size);
-      mpool->overflowed_pools[!mpool->overflow_idx].size += mpool->overflowed_pools[mpool->overflow_idx].size;
       mpool->overflowed_pools[mpool->overflow_idx].size = 0;
    }
 }
