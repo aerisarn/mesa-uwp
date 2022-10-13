@@ -46,6 +46,7 @@
 #include <util/hash_table.h>
 #include <util/timespec.h>
 #include <util/u_vector.h>
+#include <util/u_dynarray.h>
 #include <util/anon_file.h>
 
 struct wsi_wayland;
@@ -54,6 +55,28 @@ struct wsi_wl_format {
    VkFormat vk_format;
    uint32_t flags;
    struct u_vector modifiers;
+};
+
+struct dmabuf_feedback_format_table {
+   unsigned int size;
+   struct {
+      uint32_t format;
+      uint32_t padding; /* unused */
+      uint64_t modifier;
+   } *data;
+};
+
+struct dmabuf_feedback_tranche {
+   dev_t target_device;
+   uint32_t flags;
+   struct u_vector formats;
+};
+
+struct dmabuf_feedback {
+   dev_t main_device;
+   struct dmabuf_feedback_format_table format_table;
+   struct util_dynarray tranches;
+   struct dmabuf_feedback_tranche pending_tranche;
 };
 
 struct wsi_wl_display {
@@ -65,6 +88,9 @@ struct wsi_wl_display {
 
    struct wl_shm *wl_shm;
    struct zwp_linux_dmabuf_v1 *wl_dmabuf;
+   struct zwp_linux_dmabuf_feedback_v1 *wl_dmabuf_feedback;
+
+   struct dmabuf_feedback_format_table format_table;
 
    struct wsi_wayland *wsi_wl;
 
@@ -504,6 +530,12 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    struct wsi_wl_display *display = data;
    uint64_t modifier;
 
+   /* Ignore this if the compositor advertised dma-buf feedback. From version 4
+    * onwards (when dma-buf feedback was introduced), the compositor should not
+    * advertise this event anymore, but let's keep this for safety. */
+   if (display->wl_dmabuf_feedback)
+      return;
+
    modifier = ((uint64_t) modifier_hi << 32) | modifier_lo;
    wsi_wl_display_add_drm_format_modifier(display, &display->formats,
                                           format, modifier);
@@ -512,6 +544,155 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
 static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
    dmabuf_handle_format,
    dmabuf_handle_modifier,
+};
+
+static void
+dmabuf_feedback_format_table_fini(struct dmabuf_feedback_format_table *format_table)
+{
+   if (format_table->data && format_table->data != MAP_FAILED)
+      munmap(format_table->data, format_table->size);
+}
+
+static void
+dmabuf_feedback_format_table_init(struct dmabuf_feedback_format_table *format_table)
+{
+   memset(format_table, 0, sizeof(*format_table));
+}
+
+static void
+dmabuf_feedback_tranche_fini(struct dmabuf_feedback_tranche *tranche)
+{
+   struct wsi_wl_format *format;
+
+   u_vector_foreach(format, &tranche->formats)
+      u_vector_finish(&format->modifiers);
+
+   u_vector_finish(&tranche->formats);
+}
+
+static int
+dmabuf_feedback_tranche_init(struct dmabuf_feedback_tranche *tranche)
+{
+   memset(tranche, 0, sizeof(*tranche));
+
+   if (!u_vector_init(&tranche->formats, 8, sizeof(struct wsi_wl_format)))
+      return -1;
+
+   return 0;
+}
+
+static void
+dmabuf_feedback_fini(struct dmabuf_feedback *dmabuf_feedback)
+{
+   dmabuf_feedback_tranche_fini(&dmabuf_feedback->pending_tranche);
+
+   util_dynarray_foreach(&dmabuf_feedback->tranches,
+                         struct dmabuf_feedback_tranche, tranche)
+      dmabuf_feedback_tranche_fini(tranche);
+   util_dynarray_fini(&dmabuf_feedback->tranches);
+
+   dmabuf_feedback_format_table_fini(&dmabuf_feedback->format_table);
+}
+
+static int
+dmabuf_feedback_init(struct dmabuf_feedback *dmabuf_feedback)
+{
+   memset(dmabuf_feedback, 0, sizeof(*dmabuf_feedback));
+
+   if (dmabuf_feedback_tranche_init(&dmabuf_feedback->pending_tranche) < 0)
+      return -1;
+
+   util_dynarray_init(&dmabuf_feedback->tranches, NULL);
+
+   dmabuf_feedback_format_table_init(&dmabuf_feedback->format_table);
+
+   return 0;
+}
+
+static void
+default_dmabuf_feedback_format_table(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *zwp_linux_dmabuf_feedback_v1,
+                                     int32_t fd, uint32_t size)
+{
+   struct wsi_wl_display *display = data;
+
+   display->format_table.size = size;
+   display->format_table.data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+   close(fd);
+}
+
+static void
+default_dmabuf_feedback_main_device(void *data,
+                                    struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                    struct wl_array *device)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_tranche_target_device(void *data,
+                                              struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                              struct wl_array *device)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_tranche_flags(void *data,
+                                      struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                      uint32_t flags)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_tranche_formats(void *data,
+                                        struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                        struct wl_array *indices)
+{
+   struct wsi_wl_display *display = data;
+   uint32_t format;
+   uint64_t modifier;
+   uint16_t *index;
+
+   /* We couldn't map the format table or the compositor didn't advertise it,
+    * so we have to ignore the feedback. */
+   if (display->format_table.data == MAP_FAILED ||
+       display->format_table.data == NULL)
+      return;
+
+   wl_array_for_each(index, indices) {
+      format = display->format_table.data[*index].format;
+      modifier = display->format_table.data[*index].modifier;
+      wsi_wl_display_add_drm_format_modifier(display, &display->formats,
+                                             format, modifier);
+   }
+}
+
+static void
+default_dmabuf_feedback_tranche_done(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_done(void *data,
+                             struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   /* ignore this event */
+}
+
+static const struct zwp_linux_dmabuf_feedback_v1_listener
+dmabuf_feedback_listener = {
+   .format_table = default_dmabuf_feedback_format_table,
+   .main_device = default_dmabuf_feedback_main_device,
+   .tranche_target_device = default_dmabuf_feedback_tranche_target_device,
+   .tranche_flags = default_dmabuf_feedback_tranche_flags,
+   .tranche_formats = default_dmabuf_feedback_tranche_formats,
+   .tranche_done = default_dmabuf_feedback_tranche_done,
+   .done = default_dmabuf_feedback_done,
 };
 
 static void
@@ -542,7 +723,8 @@ registry_handle_global(void *data, struct wl_registry *registry,
 
    if (strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0 && version >= 3) {
       display->wl_dmabuf =
-         wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, 3);
+         wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface,
+                          MIN2(version, ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION));
       zwp_linux_dmabuf_v1_add_listener(display->wl_dmabuf,
                                        &dmabuf_listener, display);
    }
@@ -626,6 +808,16 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    if (!get_format_list)
       goto out;
 
+   /* Get the default dma-buf feedback */
+   if (display->wl_dmabuf && zwp_linux_dmabuf_v1_get_version(display->wl_dmabuf) >=
+                             ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION) {
+         dmabuf_feedback_format_table_init(&display->format_table);
+         display->wl_dmabuf_feedback =
+            zwp_linux_dmabuf_v1_get_default_feedback(display->wl_dmabuf);
+         zwp_linux_dmabuf_feedback_v1_add_listener(display->wl_dmabuf_feedback,
+                                                   &dmabuf_feedback_listener, display);
+   }
+
    /* Round-trip again to get formats and modifiers */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
@@ -646,6 +838,13 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
 out:
    /* We don't need this anymore */
    wl_registry_destroy(registry);
+
+   /* Destroy default dma-buf feedback object and format table */
+   if (display->wl_dmabuf_feedback) {
+      zwp_linux_dmabuf_feedback_v1_destroy(display->wl_dmabuf_feedback);
+      display->wl_dmabuf_feedback = NULL;
+      dmabuf_feedback_format_table_fini(&display->format_table);
+   }
 
    return VK_SUCCESS;
 
