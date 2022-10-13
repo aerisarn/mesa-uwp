@@ -311,3 +311,12 @@ LDSDIR instruction writing a VGPR after it's used by a VMEM/DS instruction.
 Mitigated by:
 Waiting for the VMEM/DS instruction to finish, a VALU or export instruction, or
 `s_waitcnt_depctr 0xffe3`.
+
+### VALUTransUseHazard
+
+Triggered by:
+A VALU instrction reading a VGPR written by a transcendental VALU instruction without 6+ VALU or 2+
+transcendental instructions in-between.
+
+Mitigated by:
+A va_vdst=0 wait: `s_waitcnt_deptr 0x0fff`

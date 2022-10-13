@@ -570,3 +570,87 @@ BEGIN_TEST(insert_nops.lds_direct_vmem)
 
    finish_insert_nops_test();
 END_TEST
+
+BEGIN_TEST(insert_nops.valu_trans_use)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   //>> p_unit_test 0
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(0));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   /* Sufficient VALU mitigates the hazard. */
+   //! p_unit_test 1
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //; for i in range(4): insert_pattern('v_nop')
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   for (unsigned i = 0; i < 4; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   //! p_unit_test 2
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //; for i in range(8): insert_pattern('v_nop')
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   for (unsigned i = 0; i < 8; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   /* Sufficient transcendental VALU mitigates the hazard. */
+   //! p_unit_test 3
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //! v1: %0:v[2] = v_sqrt_f32 %0:v[3]
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(258), v1), Operand(PhysReg(259), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   //! p_unit_test 4
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //! v1: %0:v[2] = v_sqrt_f32 %0:v[3]
+   //! v1: %0:v[2] = v_sqrt_f32 %0:v[3]
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   for (unsigned i = 0; i < 2; i++)
+      bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(258), v1), Operand(PhysReg(259), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   /* Transcendental VALU should be counted towards VALU */
+   //! p_unit_test 5
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //; for i in range(5): insert_pattern('v_nop')
+   //! v1: %0:v[2] = v_sqrt_f32 %0:v[3]
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   for (unsigned i = 0; i < 5; i++)
+      bld.vop1(aco_opcode::v_nop);
+   bld.vop1(aco_opcode::v_sqrt_f32, Definition(PhysReg(258), v1), Operand(PhysReg(259), v1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   /* non-VALU does not mitigate the hazard. */
+   //! p_unit_test 6
+   //! v1: %0:v[0] = v_rcp_f32 %0:v[1]
+   //; for i in range(8): insert_pattern('s_nop')
+   //! s_waitcnt_depctr va_vdst(0)
+   //! v1: %0:v[1] = v_mov_b32 %0:v[0]
+   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6));
+   bld.vop1(aco_opcode::v_rcp_f32, Definition(PhysReg(256), v1), Operand(PhysReg(257), v1));
+   for (unsigned i = 0; i < 8; i++)
+      bld.sopp(aco_opcode::s_nop, -1, 0);
+   bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg(257), v1), Operand(PhysReg(256), v1));
+
+   finish_insert_nops_test();
+END_TEST

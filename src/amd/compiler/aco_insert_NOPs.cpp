@@ -194,6 +194,91 @@ struct NOP_ctx_gfx10 {
    }
 };
 
+template <int Max> struct VGPRCounterMap {
+public:
+   int base = 0;
+   BITSET_DECLARE(resident, 256);
+   int val[256];
+
+   /* Initializes all counters to Max. */
+   VGPRCounterMap() { BITSET_ZERO(resident); }
+
+   /* Increase all counters, clamping at Max. */
+   void inc() { base++; }
+
+   /* Set counter to 0. */
+   void set(unsigned idx)
+   {
+      val[idx] = -base;
+      BITSET_SET(resident, idx);
+   }
+
+   void set(PhysReg reg, unsigned bytes)
+   {
+      if (reg.reg() < 256)
+         return;
+
+      for (unsigned i = 0; i < DIV_ROUND_UP(bytes, 4); i++)
+         set(reg.reg() - 256 + i);
+   }
+
+   /* Reset all counters to Max. */
+   void reset()
+   {
+      base = 0;
+      BITSET_ZERO(resident);
+   }
+
+   void reset(PhysReg reg, unsigned bytes)
+   {
+      if (reg.reg() < 256)
+         return;
+
+      for (unsigned i = 0; i < DIV_ROUND_UP(bytes, 4); i++)
+         BITSET_CLEAR(resident, reg.reg() - 256 + i);
+   }
+
+   uint8_t get(unsigned idx)
+   {
+      return BITSET_TEST(resident, idx) ? MIN2(val[idx] + base, Max) : Max;
+   }
+
+   uint8_t get(PhysReg reg, unsigned offset = 0)
+   {
+      assert(reg.reg() >= 256);
+      return get(reg.reg() - 256 + offset);
+   }
+
+   void join_min(const VGPRCounterMap& other)
+   {
+      unsigned i;
+      BITSET_FOREACH_SET(i, other.resident, 256)
+      {
+         if (BITSET_TEST(resident, i))
+            val[i] = MIN2(val[i] + base, other.val[i] + other.base) - base;
+         else
+            val[i] = other.val[i] + other.base - base;
+      }
+      BITSET_OR(resident, resident, other.resident);
+   }
+
+   bool operator==(const VGPRCounterMap& other) const
+   {
+      if (!BITSET_EQUAL(resident, other.resident))
+         return false;
+
+      unsigned i;
+      BITSET_FOREACH_SET(i, other.resident, 256)
+      {
+         if (!BITSET_TEST(resident, i))
+            return false;
+         if (val[i] + base != other.val[i] + other.base)
+            return false;
+      }
+      return true;
+   }
+};
+
 struct NOP_ctx_gfx11 {
    /* VcmpxPermlaneHazard */
    bool has_Vcmpx = false;
@@ -203,12 +288,18 @@ struct NOP_ctx_gfx11 {
    std::bitset<256> vgpr_used_by_vmem_store;
    std::bitset<256> vgpr_used_by_ds;
 
+   /* VALUTransUseHazard */
+   VGPRCounterMap<15> valu_since_wr_by_trans;
+   VGPRCounterMap<2> trans_since_wr_by_trans;
+
    void join(const NOP_ctx_gfx11& other)
    {
       has_Vcmpx |= other.has_Vcmpx;
       vgpr_used_by_vmem_load |= other.vgpr_used_by_vmem_load;
       vgpr_used_by_vmem_store |= other.vgpr_used_by_vmem_store;
       vgpr_used_by_ds |= other.vgpr_used_by_ds;
+      valu_since_wr_by_trans.join_min(other.valu_since_wr_by_trans);
+      trans_since_wr_by_trans.join_min(other.trans_since_wr_by_trans);
    }
 
    bool operator==(const NOP_ctx_gfx11& other)
@@ -216,7 +307,9 @@ struct NOP_ctx_gfx11 {
       return has_Vcmpx == other.has_Vcmpx &&
              vgpr_used_by_vmem_load == other.vgpr_used_by_vmem_load &&
              vgpr_used_by_vmem_store == other.vgpr_used_by_vmem_store &&
-             vgpr_used_by_ds == other.vgpr_used_by_ds;
+             vgpr_used_by_ds == other.vgpr_used_by_ds &&
+             valu_since_wr_by_trans == other.valu_since_wr_by_trans &&
+             trans_since_wr_by_trans == other.trans_since_wr_by_trans;
    }
 };
 
@@ -1008,6 +1101,51 @@ handle_instruction_gfx11(State& state, NOP_ctx_gfx11& ctx, aco_ptr<Instruction>&
       unsigned count = handle_lds_direct_valu_hazard(state, instr);
       LDSDIR_instruction* ldsdir = &instr->ldsdir();
       ldsdir->wait_vdst = MIN2(ldsdir->wait_vdst, count);
+   }
+
+   /* VALUTransUseHazard
+    * VALU reads VGPR written by transcendental instruction without 6+ VALU or 2+ transcendental
+    * in-between.
+    */
+   unsigned va_vdst = 15;
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
+      uint8_t num_valu = 15;
+      uint8_t num_trans = 15;
+      for (Operand& op : instr->operands) {
+         if (op.physReg().reg() < 256)
+            continue;
+         for (unsigned i = 0; i < op.size(); i++) {
+            num_valu = std::min(num_valu, ctx.valu_since_wr_by_trans.get(op.physReg(), i));
+            num_trans = std::min(num_trans, ctx.trans_since_wr_by_trans.get(op.physReg(), i));
+         }
+      }
+      if (num_trans <= 1 && num_valu <= 5) {
+         bld.sopp(aco_opcode::s_waitcnt_depctr, -1, 0x0fff);
+         va_vdst = 0;
+      }
+   }
+
+   va_vdst = std::min(va_vdst, parse_vdst_wait(instr));
+   if (va_vdst == 0) {
+      ctx.valu_since_wr_by_trans.reset();
+      ctx.trans_since_wr_by_trans.reset();
+   }
+
+   if (instr->isVALU() || instr->isVINTERP_INREG()) {
+      instr_class cls = instr_info.classes[(int)instr->opcode];
+      bool is_trans = cls == instr_class::valu_transcendental32 ||
+                      cls == instr_class::valu_double_transcendental;
+
+      ctx.valu_since_wr_by_trans.inc();
+      if (is_trans)
+         ctx.trans_since_wr_by_trans.inc();
+
+      if (is_trans) {
+         for (Definition& def : instr->definitions) {
+            ctx.valu_since_wr_by_trans.set(def.physReg(), def.bytes());
+            ctx.trans_since_wr_by_trans.set(def.physReg(), def.bytes());
+         }
+      }
    }
 
    /* LdsDirectVMEMHazard
