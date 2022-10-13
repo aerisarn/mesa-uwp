@@ -130,6 +130,9 @@ struct wsi_wl_surface {
    struct wsi_wl_swapchain *chain;
    struct wl_surface *surface;
    struct wsi_wl_display *display;
+
+   struct zwp_linux_dmabuf_feedback_v1 *wl_dmabuf_feedback;
+   struct dmabuf_feedback dmabuf_feedback, pending_dmabuf_feedback;
 };
 
 struct wsi_wl_swapchain {
@@ -144,6 +147,8 @@ struct wsi_wl_swapchain {
    enum wsi_wl_buffer_type buffer_type;
    uint32_t drm_format;
    enum wl_shm_format shm_format;
+
+   bool suboptimal;
 
    uint32_t num_drm_modifiers;
    const uint64_t *drm_modifiers;
@@ -1122,7 +1127,176 @@ wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
    if (wsi_wl_surface->display)
       wsi_wl_display_destroy(wsi_wl_surface->display);
 
+   if (wsi_wl_surface->wl_dmabuf_feedback) {
+      zwp_linux_dmabuf_feedback_v1_destroy(wsi_wl_surface->wl_dmabuf_feedback);
+      dmabuf_feedback_fini(&wsi_wl_surface->dmabuf_feedback);
+      dmabuf_feedback_fini(&wsi_wl_surface->pending_dmabuf_feedback);
+   }
+
    vk_free2(&instance->alloc, pAllocator, wsi_wl_surface);
+}
+
+static struct wsi_wl_format *
+pick_format_from_surface_dmabuf_feedback(struct wsi_wl_surface *wsi_wl_surface,
+                                         VkFormat vk_format)
+{
+   struct wsi_wl_format *f = NULL;
+
+   /* If the main_device was not advertised, we don't have valid feedback */
+   if (wsi_wl_surface->dmabuf_feedback.main_device == 0)
+      return NULL;
+
+   util_dynarray_foreach(&wsi_wl_surface->dmabuf_feedback.tranches,
+                         struct dmabuf_feedback_tranche, tranche) {
+      f = find_format(&tranche->formats, vk_format);
+      if (f)
+         break;
+   }
+
+   return f;
+}
+
+static void
+surface_dmabuf_feedback_format_table(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *zwp_linux_dmabuf_feedback_v1,
+                                     int32_t fd, uint32_t size)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+
+   feedback->format_table.size = size;
+   feedback->format_table.data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+   close(fd);
+}
+
+static void
+surface_dmabuf_feedback_main_device(void *data,
+                                    struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                    struct wl_array *device)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+
+   memcpy(&feedback->main_device, device->data, sizeof(feedback->main_device));
+}
+
+static void
+surface_dmabuf_feedback_tranche_target_device(void *data,
+                                              struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                              struct wl_array *device)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+
+   memcpy(&feedback->pending_tranche.target_device, device->data,
+          sizeof(feedback->pending_tranche.target_device));
+}
+
+static void
+surface_dmabuf_feedback_tranche_flags(void *data,
+                                      struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                      uint32_t flags)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+
+   feedback->pending_tranche.flags = flags;
+}
+
+static void
+surface_dmabuf_feedback_tranche_formats(void *data,
+                                        struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                        struct wl_array *indices)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+   uint32_t format;
+   uint64_t modifier;
+   uint16_t *index;
+
+   /* Compositor may advertise or not a format table. If it does, we use it.
+    * Otherwise, we steal the most recent advertised format table. If we don't have
+    * a most recent advertised format table, compositor did something wrong. */
+   if (feedback->format_table.data == NULL) {
+      feedback->format_table = wsi_wl_surface->dmabuf_feedback.format_table;
+      dmabuf_feedback_format_table_init(&wsi_wl_surface->dmabuf_feedback.format_table);
+   }
+   if (feedback->format_table.data == MAP_FAILED ||
+       feedback->format_table.data == NULL)
+      return;
+
+   wl_array_for_each(index, indices) {
+      format = feedback->format_table.data[*index].format;
+      modifier = feedback->format_table.data[*index].modifier;
+
+      wsi_wl_display_add_drm_format_modifier(wsi_wl_surface->display,
+                        &wsi_wl_surface->pending_dmabuf_feedback.pending_tranche.formats,
+                        format, modifier);
+   }
+}
+
+static void
+surface_dmabuf_feedback_tranche_done(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+   struct dmabuf_feedback *feedback = &wsi_wl_surface->pending_dmabuf_feedback;
+
+   /* Add tranche to array of tranches. */
+   util_dynarray_append(&feedback->tranches, struct dmabuf_feedback_tranche,
+                        feedback->pending_tranche);
+
+   dmabuf_feedback_tranche_init(&feedback->pending_tranche);
+}
+
+static void
+surface_dmabuf_feedback_done(void *data,
+                             struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   struct wsi_wl_surface *wsi_wl_surface = data;
+
+   dmabuf_feedback_fini(&wsi_wl_surface->dmabuf_feedback);
+   wsi_wl_surface->dmabuf_feedback = wsi_wl_surface->pending_dmabuf_feedback;
+   dmabuf_feedback_init(&wsi_wl_surface->pending_dmabuf_feedback);
+
+   wsi_wl_surface->chain->suboptimal = true;
+}
+
+static const struct zwp_linux_dmabuf_feedback_v1_listener
+surface_dmabuf_feedback_listener = {
+   .format_table = surface_dmabuf_feedback_format_table,
+   .main_device = surface_dmabuf_feedback_main_device,
+   .tranche_target_device = surface_dmabuf_feedback_tranche_target_device,
+   .tranche_flags = surface_dmabuf_feedback_tranche_flags,
+   .tranche_formats = surface_dmabuf_feedback_tranche_formats,
+   .tranche_done = surface_dmabuf_feedback_tranche_done,
+   .done = surface_dmabuf_feedback_done,
+};
+
+static VkResult wsi_wl_surface_bind_to_dmabuf_feedback(struct wsi_wl_surface *wsi_wl_surface)
+{
+   wsi_wl_surface->wl_dmabuf_feedback =
+      zwp_linux_dmabuf_v1_get_surface_feedback(wsi_wl_surface->display->wl_dmabuf,
+                                               wsi_wl_surface->surface);
+
+   zwp_linux_dmabuf_feedback_v1_add_listener(wsi_wl_surface->wl_dmabuf_feedback,
+                                             &surface_dmabuf_feedback_listener,
+                                             wsi_wl_surface);
+
+   if (dmabuf_feedback_init(&wsi_wl_surface->dmabuf_feedback) < 0)
+      goto fail;
+   if (dmabuf_feedback_init(&wsi_wl_surface->pending_dmabuf_feedback) < 0)
+      goto fail_pending;
+
+   return VK_SUCCESS;
+
+fail_pending:
+   dmabuf_feedback_fini(&wsi_wl_surface->dmabuf_feedback);
+fail:
+   zwp_linux_dmabuf_feedback_v1_destroy(wsi_wl_surface->wl_dmabuf_feedback);
+   wsi_wl_surface->wl_dmabuf_feedback = NULL;
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
 static VkResult wsi_wl_surface_init(struct wsi_wl_surface *wsi_wl_surface,
@@ -1148,6 +1322,18 @@ static VkResult wsi_wl_surface_init(struct wsi_wl_surface *wsi_wl_surface,
    }
    wl_proxy_set_queue((struct wl_proxy *) wsi_wl_surface->surface,
                       wsi_wl_surface->display->queue);
+
+   /* Bind wsi_wl_surface to dma-buf feedback. */
+   if (wsi_wl_surface->display->wl_dmabuf &&
+       zwp_linux_dmabuf_v1_get_version(wsi_wl_surface->display->wl_dmabuf) >=
+       ZWP_LINUX_DMABUF_V1_GET_SURFACE_FEEDBACK_SINCE_VERSION) {
+      result = wsi_wl_surface_bind_to_dmabuf_feedback(wsi_wl_surface);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      wl_display_roundtrip_queue(wsi_wl_surface->display->wl_display,
+                                 wsi_wl_surface->display->queue);
+   }
 
    return VK_SUCCESS;
 
@@ -1220,7 +1406,7 @@ wsi_wl_swapchain_acquire_next_image(struct wsi_swapchain *wsi_chain,
             /* We found a non-busy image */
             *image_index = i;
             chain->images[i].busy = true;
-            return VK_SUCCESS;
+            return (chain->suboptimal ? VK_SUBOPTIMAL_KHR : VK_SUCCESS);
          }
       }
 
@@ -1563,8 +1749,16 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
        * support them.
        */
       if (wsi_wl_surface->display->wl_dmabuf && wsi_device->supports_modifiers) {
-         struct wsi_wl_format *f = find_format(&wsi_wl_surface->display->formats,
-                                               pCreateInfo->imageFormat);
+         struct wsi_wl_format *f = NULL;
+         /* Try to select modifiers for our vk_format from surface dma-buf
+          * feedback. If that doesn't work, fallback to the list of supported
+          * formats/modifiers by the display. */
+         if (wsi_wl_surface->wl_dmabuf_feedback)
+            f = pick_format_from_surface_dmabuf_feedback(wsi_wl_surface,
+                                                         pCreateInfo->imageFormat);
+         if (f == NULL)
+            f = find_format(&chain->wsi_wl_surface->display->formats,
+                            pCreateInfo->imageFormat);
          if (f != NULL) {
             num_drm_modifiers = u_vector_length(&f->modifiers);
             drm_modifiers = u_vector_tail(&f->modifiers);
