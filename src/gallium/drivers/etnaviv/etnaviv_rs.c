@@ -686,8 +686,11 @@ etna_try_rs_blit(struct pipe_context *pctx,
     * Note: the RS width/height are converted to source samples here. */
    unsigned int width = blit_info->src.box.width * msaa_xscale;
    unsigned int height = blit_info->src.box.height * msaa_yscale;
-   unsigned int w_align = ETNA_RS_WIDTH_MASK + 1;
-   unsigned int h_align = ETNA_RS_HEIGHT_MASK + 1;
+   unsigned int w_align = (ETNA_RS_WIDTH_MASK + 1) * msaa_xscale;
+   unsigned int h_align = (ETNA_RS_HEIGHT_MASK + 1) * msaa_yscale;
+
+   if (!ctx->screen->specs.single_buffer)
+      h_align *= ctx->screen->specs.pixel_pipes;
 
    if (width & (w_align - 1) && width >= src_lev->width * msaa_xscale && width >= dst_lev->width)
       width = align(width, w_align);
