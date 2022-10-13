@@ -631,7 +631,7 @@ set_pool(struct zink_batch_state *bs, struct zink_program *pg, struct zink_descr
    assert(mpool);
    const struct zink_descriptor_pool_key *pool_key = pg->dd.pool_key[type];
    size_t size = bs->dd.pools[type].capacity;
-   if (!util_dynarray_resize(&bs->dd.pools[type], struct zink_descriptor_pool*, pool_key->id + 1))
+   if (!util_dynarray_resize(&bs->dd.pools[type], struct zink_descriptor_pool_multi*, pool_key->id + 1))
       return false;
    if (size != bs->dd.pools[type].capacity) {
       uint8_t *data = bs->dd.pools[type].data;
