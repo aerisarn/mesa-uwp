@@ -233,7 +233,7 @@ etna_layout_multiple(const struct etna_screen *screen,
       *halign = TEXTURE_HALIGN_SPLIT_SUPER_TILED;
       break;
    default:
-      DBG("Unhandled layout %i", layout);
+      unreachable("Unhandled layout");
    }
 }
 
@@ -271,12 +271,11 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    }
 
    /* Determine needed padding (alignment of height/width) */
-   unsigned paddingX = 0, paddingY = 0;
+   unsigned paddingX, paddingY;
    unsigned halign = TEXTURE_HALIGN_FOUR;
    if (!util_format_is_compressed(templat->format)) {
       etna_layout_multiple(screen, templat, layout,
                            &paddingX, &paddingY, &halign);
-      assert(paddingX && paddingY);
    } else {
       /* Compressed textures are padded to their block size, but we don't have
        * to do anything special for that. */
@@ -531,7 +530,6 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
 
    rsc->seqno = 1;
    rsc->layout = modifier_to_layout(handle->modifier);
-   rsc->halign = TEXTURE_HALIGN_FOUR;
 
    if (usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH)
       rsc->explicit_flush = true;
@@ -543,7 +541,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    level->offset = handle->offset;
 
    /* Determine padding of the imported resource. */
-   unsigned paddingX = 0, paddingY = 0;
+   unsigned paddingX, paddingY;
    etna_layout_multiple(screen, tmpl, rsc->layout,
                         &paddingX, &paddingY, &rsc->halign);
 
