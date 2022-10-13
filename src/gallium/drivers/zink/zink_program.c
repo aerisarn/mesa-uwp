@@ -807,7 +807,7 @@ zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *d
       pcr[1].size = sizeof(float) * 6;
       plci.pushConstantRangeCount = 2;
    }
-   plci.pPushConstantRanges = &pcr[0];
+   plci.pPushConstantRanges = pcr;
 
    VkPipelineLayout layout;
    VkResult result = VKSCR(CreatePipelineLayout)(screen->dev, &plci, NULL, &layout);
