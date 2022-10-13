@@ -205,6 +205,7 @@ etna_layout_multiple(const struct etna_screen *screen,
     */
    bool rs_align = !specs->use_blt && !etna_resource_sampler_only(templat) &&
                    VIV_FEATURE(screen, chipMinorFeatures1, TEXTURE_HALIGN);
+   int msaa_xscale = 1, msaa_yscale = 1;
 
    /* Compressed textures are padded to their block size, but we don't have
     * to do anything special for that.
@@ -217,6 +218,8 @@ etna_layout_multiple(const struct etna_screen *screen,
       return;
    }
 
+   translate_samples_to_xyscale(templat->nr_samples, &msaa_xscale, &msaa_yscale);
+
    switch (layout) {
    case ETNA_LAYOUT_LINEAR:
       *paddingX = rs_align ? 16 : 4;
@@ -224,8 +227,8 @@ etna_layout_multiple(const struct etna_screen *screen,
       *halign = rs_align ? TEXTURE_HALIGN_SIXTEEN : TEXTURE_HALIGN_FOUR;
       break;
    case ETNA_LAYOUT_TILED:
-      *paddingX = rs_align ? 16 : 4;
-      *paddingY = 4;
+      *paddingX = rs_align ? 16 * msaa_xscale : 4;
+      *paddingY = 4 * msaa_yscale;
       *halign = rs_align ? TEXTURE_HALIGN_SIXTEEN : TEXTURE_HALIGN_FOUR;
       break;
    case ETNA_LAYOUT_SUPER_TILED:
@@ -234,8 +237,8 @@ etna_layout_multiple(const struct etna_screen *screen,
       *halign = TEXTURE_HALIGN_SUPER_TILED;
       break;
    case ETNA_LAYOUT_MULTI_TILED:
-      *paddingX = 16;
-      *paddingY = 4 * specs->pixel_pipes;
+      *paddingX = 16 * msaa_xscale;
+      *paddingY = 4 * msaa_yscale * specs->pixel_pipes;
       *halign = TEXTURE_HALIGN_SPLIT_TILED;
       break;
    case ETNA_LAYOUT_MULTI_SUPERTILED:
