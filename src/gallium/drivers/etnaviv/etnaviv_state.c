@@ -167,8 +167,12 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
       cs->PE_COLOR_FORMAT |=
          VIVS_PE_COLOR_FORMAT_COMPONENTS__MASK |
-         VIVS_PE_COLOR_FORMAT_OVERWRITE |
          COND(color_supertiled, VIVS_PE_COLOR_FORMAT_SUPER_TILED);
+
+      nr_samples_color = cbuf->base.texture->nr_samples;
+      if (nr_samples_color <= 1)
+         cs->PE_COLOR_FORMAT |= VIVS_PE_COLOR_FORMAT_OVERWRITE;
+
       if (VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE))
          cs->PE_COLOR_FORMAT |= COND(color_supertiled, VIVS_PE_COLOR_FORMAT_SUPER_TILED_NEW);
       /* VIVS_PE_COLOR_FORMAT_COMPONENTS() and
@@ -224,8 +228,6 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
                VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION_FORMAT(cbuf->level->ts_compress_fmt);
          }
       }
-
-      nr_samples_color = cbuf->base.texture->nr_samples;
 
       if (util_format_is_srgb(cbuf->base.format))
          pe_logic_op |= VIVS_PE_LOGIC_OP_SRGB;
