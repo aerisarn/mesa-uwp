@@ -2436,6 +2436,18 @@ begin_rendering(struct zink_context *ctx)
    return clear_buffers;
 }
 
+ALWAYS_INLINE static void
+update_layered_rendering_state(struct zink_context *ctx)
+{
+   unsigned framebffer_is_layered = zink_framebuffer_get_num_layers(&ctx->fb_state) > 1;
+   VKCTX(CmdPushConstants)(
+         ctx->batch.state->cmdbuf,
+         zink_screen(ctx->base.screen)->gfx_push_constant_layout,
+         VK_SHADER_STAGE_VERTEX_BIT |  VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+         offsetof(struct zink_gfx_push_constant, framebuffer_is_layered), sizeof(unsigned),
+         &framebffer_is_layered);
+}
+
 void
 zink_batch_rp(struct zink_context *ctx)
 {
@@ -2775,6 +2787,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
       reapply_color_write(ctx);
+      update_layered_rendering_state(ctx);
    }
 }
 
@@ -3034,6 +3047,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    /* this is an ideal time to oom flush since it won't split a renderpass */
    if (ctx->oom_flush)
       flush_batch(ctx, false);
+   else
+      update_layered_rendering_state(ctx);
 }
 
 static void

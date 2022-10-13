@@ -792,7 +792,7 @@ zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *d
    plci.pSetLayouts = dsl;
    plci.setLayoutCount = num_dsl;
 
-   VkPushConstantRange pcr[2] = {0};
+   VkPushConstantRange pcr[3] = {0};
    if (is_compute) {
       pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
       pcr[0].offset = 0;
@@ -802,10 +802,14 @@ zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *d
       pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
       pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
       pcr[0].size = 2 * sizeof(unsigned);
-      pcr[1].stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-      pcr[1].offset = offsetof(struct zink_gfx_push_constant, default_inner_level);
-      pcr[1].size = sizeof(float) * 6;
-      plci.pushConstantRangeCount = 2;
+      pcr[1].stageFlags =
+         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+      pcr[1].offset = offsetof(struct zink_gfx_push_constant, framebuffer_is_layered);
+      pcr[1].size = 1 * sizeof(unsigned);
+      pcr[2].stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+      pcr[2].offset = offsetof(struct zink_gfx_push_constant, default_inner_level);
+      pcr[2].size = sizeof(float) * 6;
+      plci.pushConstantRangeCount = ARRAY_SIZE(pcr);
    }
    plci.pPushConstantRanges = pcr;
 
