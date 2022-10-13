@@ -209,7 +209,7 @@ etna_layout_multiple(const struct etna_screen *screen,
    switch (layout) {
    case ETNA_LAYOUT_LINEAR:
       *paddingX = rs_align ? 16 : 4;
-      *paddingY = 1;
+      *paddingY = !specs->use_blt && templat->target != PIPE_BUFFER ? 4 : 1;
       *halign = rs_align ? TEXTURE_HALIGN_SIXTEEN : TEXTURE_HALIGN_FOUR;
       break;
    case ETNA_LAYOUT_TILED:
@@ -282,9 +282,6 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
       paddingX = 1;
       paddingY = 1;
    }
-
-   if (!screen->specs.use_blt && templat->target != PIPE_BUFFER && layout == ETNA_LAYOUT_LINEAR)
-      paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
 
    rsc = CALLOC_STRUCT(etna_resource);
    if (!rsc)
@@ -545,8 +542,6 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    etna_layout_multiple(screen, tmpl, rsc->layout,
                         &paddingX, &paddingY, &rsc->halign);
 
-   if (!screen->specs.use_blt && rsc->layout == ETNA_LAYOUT_LINEAR)
-      paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
    level->padded_width = align(level->width, paddingX);
    level->padded_height = align(level->height, paddingY);
 
