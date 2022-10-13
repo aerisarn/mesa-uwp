@@ -206,6 +206,17 @@ etna_layout_multiple(const struct etna_screen *screen,
    bool rs_align = !specs->use_blt && !etna_resource_sampler_only(templat) &&
                    VIV_FEATURE(screen, chipMinorFeatures1, TEXTURE_HALIGN);
 
+   /* Compressed textures are padded to their block size, but we don't have
+    * to do anything special for that.
+    */
+   if (unlikely(util_format_is_compressed(templat->format))) {
+      assert(layout == ETNA_LAYOUT_LINEAR);
+      *paddingX = 1;
+      *paddingY = 1;
+      *halign = TEXTURE_HALIGN_FOUR;
+      return;
+   }
+
    switch (layout) {
    case ETNA_LAYOUT_LINEAR:
       *paddingX = rs_align ? 16 : 4;
@@ -271,17 +282,8 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    }
 
    /* Determine needed padding (alignment of height/width) */
-   unsigned paddingX, paddingY;
-   unsigned halign = TEXTURE_HALIGN_FOUR;
-   if (!util_format_is_compressed(templat->format)) {
-      etna_layout_multiple(screen, templat, layout,
-                           &paddingX, &paddingY, &halign);
-   } else {
-      /* Compressed textures are padded to their block size, but we don't have
-       * to do anything special for that. */
-      paddingX = 1;
-      paddingY = 1;
-   }
+   unsigned paddingX, paddingY, halign;
+   etna_layout_multiple(screen, templat, layout, &paddingX, &paddingY, &halign);
 
    rsc = CALLOC_STRUCT(etna_resource);
    if (!rsc)
