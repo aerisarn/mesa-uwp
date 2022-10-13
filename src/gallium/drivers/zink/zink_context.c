@@ -3612,8 +3612,10 @@ zink_flush(struct pipe_context *pctx,
          ctx->fbfetch_outputs = 0;
          ctx->rp_changed = true;
       }
+      ctx->blitting = true;
       /* start rp to do all the clears */
       zink_batch_rp(ctx);
+      ctx->blitting = false;
       ctx->fbfetch_outputs = fbfetch_outputs;
       ctx->rp_changed |= fbfetch_outputs > 0;
    }

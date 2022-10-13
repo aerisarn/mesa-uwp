@@ -1665,6 +1665,7 @@ struct zink_context {
 
    bool is_device_lost;
    bool primitive_restart;
+   bool blitting : 1;
    bool vertex_state_changed : 1;
    bool blend_state_changed : 1;
    bool sample_mask_changed : 1;
