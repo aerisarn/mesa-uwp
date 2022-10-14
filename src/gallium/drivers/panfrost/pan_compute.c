@@ -79,55 +79,10 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
         free(cso);
 }
 
-static void
-panfrost_set_global_binding(struct pipe_context *pctx,
-                      unsigned first, unsigned count,
-                      struct pipe_resource **resources,
-                      uint32_t **handles)
-{
-        if (!resources)
-                return;
-
-        struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        for (unsigned i = first; i < first + count; ++i) {
-                struct panfrost_resource *rsrc = pan_resource(resources[i]);
-                panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_COMPUTE);
-
-                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
-                                0, rsrc->base.width0);
-
-                /* The handle points to uint32_t, but space is allocated for 64
-                 * bits. We need to respect the offset passed in. This interface
-                 * is so bad.
-                 */
-                mali_ptr addr = 0;
-                static_assert(sizeof(addr) == 8, "size out of sync");
-
-                memcpy(&addr, handles[i], sizeof(addr));
-                addr += rsrc->image.data.bo->ptr.gpu;
-
-                memcpy(handles[i], &addr, sizeof(addr));
-        }
-}
-
-static void
-panfrost_memory_barrier(struct pipe_context *pctx, unsigned flags)
-{
-        /* TODO: Be smart and only flush the minimum needed, maybe emitting a
-         * cache flush job if that would help */
-        panfrost_flush_all_batches(pan_context(pctx), "Memory barrier");
-}
-
 void
 panfrost_compute_context_init(struct pipe_context *pctx)
 {
         pctx->create_compute_state = panfrost_create_compute_state;
         pctx->bind_compute_state = panfrost_bind_compute_state;
         pctx->delete_compute_state = panfrost_delete_compute_state;
-
-        pctx->set_global_binding = panfrost_set_global_binding;
-
-        pctx->memory_barrier = panfrost_memory_barrier;
 }
