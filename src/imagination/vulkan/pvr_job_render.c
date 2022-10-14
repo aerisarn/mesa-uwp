@@ -587,8 +587,10 @@ static void pvr_rt_get_region_headers_stride_size(
    num_tiles_x = mtile_info->mtiles_x * mtile_info->tiles_per_mtile_x;
    num_tiles_y = mtile_info->mtiles_y * mtile_info->tiles_per_mtile_y;
 
-   rgn_headers_size =
-      (num_tiles_x / group_size) * (num_tiles_y / group_size) * rgn_header_size;
+   rgn_headers_size = (uint64_t)num_tiles_x / group_size;
+   /* Careful here. We want the division to happen first. */
+   rgn_headers_size *= num_tiles_y / group_size;
+   rgn_headers_size *= rgn_header_size;
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
       rgn_headers_size =
