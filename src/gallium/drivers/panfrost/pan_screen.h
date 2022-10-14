@@ -44,7 +44,7 @@
 struct panfrost_batch;
 struct panfrost_context;
 struct panfrost_resource;
-struct panfrost_shader_state;
+struct panfrost_compiled_shader;
 struct pan_fb_info;
 struct pan_blend_state;
 
@@ -53,7 +53,7 @@ struct pan_blend_state;
 struct panfrost_vtable {
         /* Prepares the renderer state descriptor or shader program descriptor
          * for a given compiled shader, and if desired uploads it as well */
-        void (*prepare_shader)(struct panfrost_shader_state *,
+        void (*prepare_shader)(struct panfrost_compiled_shader *,
                             struct panfrost_pool *, bool);
 
         /* Emits a thread local storage descriptor */

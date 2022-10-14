@@ -185,7 +185,7 @@ struct panfrost_context {
 
         struct panfrost_constant_buffer constant_buffer[PIPE_SHADER_TYPES];
         struct panfrost_rasterizer *rasterizer;
-        struct panfrost_shader_variants *shader[PIPE_SHADER_TYPES];
+        struct panfrost_uncompiled_shader *shader[PIPE_SHADER_TYPES];
         struct panfrost_vertex_state *vertex;
 
         struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
@@ -281,8 +281,7 @@ struct panfrost_shader_key {
         struct panfrost_fs_key fs;
 };
 
-/* A shader state corresponds to the actual, current variant of the shader */
-struct panfrost_shader_state {
+struct panfrost_compiled_shader {
         /* Respectively, shader binary and Renderer State Descriptor */
         struct panfrost_pool_ref bin, state;
 
@@ -294,7 +293,7 @@ struct panfrost_shader_state {
         struct pan_earlyzs_lut earlyzs;
 
         /* Attached transform feedback program, if one exists */
-        struct panfrost_shader_state *xfb;
+        struct panfrost_compiled_shader *xfb;
 
         /* Linked varyings, for non-separable programs */
         struct pan_linkage linkage;
@@ -308,8 +307,8 @@ struct panfrost_shader_state {
         unsigned dirty_3d, dirty_shader;
 };
 
-/* A collection of varyings (the CSO) */
-struct panfrost_shader_variants {
+/* Shader CSO */
+struct panfrost_uncompiled_shader {
         nir_shader *nir;
 
         /* Stream output information */
@@ -318,7 +317,7 @@ struct panfrost_shader_variants {
         /** Lock for the variants array */
         simple_mtx_t lock;
 
-        struct panfrost_shader_state *variants;
+        struct panfrost_compiled_shader *variants;
         unsigned variant_space;
 
         unsigned variant_count;
@@ -364,11 +363,11 @@ pan_so_target(struct pipe_stream_output_target *target)
         return (struct panfrost_streamout_target *)target;
 }
 
-static inline struct panfrost_shader_state *
+static inline struct panfrost_compiled_shader *
 panfrost_get_shader_state(struct panfrost_context *ctx,
                           enum pipe_shader_type st)
 {
-        struct panfrost_shader_variants *all = ctx->shader[st];
+        struct panfrost_uncompiled_shader *all = ctx->shader[st];
 
         if (!all)
                 return NULL;
@@ -399,7 +398,7 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
                                enum pipe_shader_type type);
 
 void
-panfrost_analyze_sysvals(struct panfrost_shader_state *ss);
+panfrost_analyze_sysvals(struct panfrost_compiled_shader *ss);
 
 mali_ptr
 panfrost_get_index_buffer(struct panfrost_batch *batch,

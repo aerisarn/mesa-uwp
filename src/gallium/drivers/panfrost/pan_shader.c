@@ -42,7 +42,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *desc_pool,
                         const nir_shader *ir,
                         struct util_debug_callback *dbg,
-                        struct panfrost_shader_state *state,
+                        struct panfrost_compiled_shader *state,
                         unsigned req_local_mem)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
@@ -56,7 +56,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 xfb->info.name = ralloc_asprintf(xfb, "%s@xfb", xfb->info.name);
                 xfb->info.internal = true;
 
-                state->xfb = calloc(1, sizeof(struct panfrost_shader_state));
+                state->xfb = calloc(1, sizeof(struct panfrost_compiled_shader));
                 panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb, 0);
 
                 /* Main shader no longer uses XFB */
@@ -138,7 +138,7 @@ panfrost_build_key(struct panfrost_context *ctx,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
         struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
-        struct panfrost_shader_variants *vs = ctx->shader[MESA_SHADER_VERTEX];
+        struct panfrost_uncompiled_shader *vs = ctx->shader[MESA_SHADER_VERTEX];
 
         key->fs.nr_cbufs = fb->nr_cbufs;
 
@@ -215,7 +215,7 @@ update_so_info(struct pipe_stream_output_info *so_info,
 static unsigned
 panfrost_new_variant_locked(
         struct panfrost_context *ctx,
-        struct panfrost_shader_variants *variants,
+        struct panfrost_uncompiled_shader *variants,
         struct panfrost_shader_key *key)
 {
         unsigned variant = variants->variant_count++;
@@ -227,7 +227,7 @@ panfrost_new_variant_locked(
                 if (variants->variant_space == 0)
                         variants->variant_space = 1;
 
-                unsigned msize = sizeof(struct panfrost_shader_state);
+                unsigned msize = sizeof(struct panfrost_compiled_shader);
                 variants->variants = realloc(variants->variants,
                                              variants->variant_space * msize);
 
@@ -237,7 +237,7 @@ panfrost_new_variant_locked(
 
         variants->variants[variant].key = *key;
 
-        struct panfrost_shader_state *shader_state = &variants->variants[variant];
+        struct panfrost_compiled_shader *shader_state = &variants->variants[variant];
 
         /* We finally have a variant, so compile it */
         panfrost_shader_compile(ctx->base.screen,
@@ -289,7 +289,7 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
 
         /* Match the appropriate variant */
         signed variant = -1;
-        struct panfrost_shader_variants *variants = ctx->shader[type];
+        struct panfrost_uncompiled_shader *variants = ctx->shader[type];
 
         simple_mtx_lock(&variants->lock);
 
@@ -338,7 +338,7 @@ panfrost_create_shader_state(
         struct pipe_context *pctx,
         const struct pipe_shader_state *cso)
 {
-        struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
+        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
         struct panfrost_device *dev = pan_device(pctx->screen);
 
         simple_mtx_init(&so->lock, mtx_plain);
@@ -361,7 +361,7 @@ panfrost_create_shader_state(
         if (unlikely(dev->debug & PAN_DBG_PRECOMPILE)) {
                 struct panfrost_context *ctx = pan_context(pctx);
 
-                struct panfrost_shader_state state = { 0 };
+                struct panfrost_compiled_shader state = { 0 };
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
@@ -376,12 +376,12 @@ panfrost_delete_shader_state(
         struct pipe_context *pctx,
         void *so)
 {
-        struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
+        struct panfrost_uncompiled_shader *cso = (struct panfrost_uncompiled_shader *) so;
 
         ralloc_free(cso->nir);
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
-                struct panfrost_shader_state *shader_state = &cso->variants[i];
+                struct panfrost_compiled_shader *shader_state = &cso->variants[i];
                 panfrost_bo_unreference(shader_state->bin.bo);
                 panfrost_bo_unreference(shader_state->state.bo);
                 panfrost_bo_unreference(shader_state->linkage.bo);
@@ -411,9 +411,9 @@ panfrost_create_compute_state(
         const struct pipe_compute_state *cso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
+        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
 
-        struct panfrost_shader_state *v = calloc(1, sizeof(*v));
+        struct panfrost_compiled_shader *v = calloc(1, sizeof(*v));
         so->variants = v;
 
         so->variant_count = 1;
@@ -438,8 +438,8 @@ panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 static void
 panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
 {
-        struct panfrost_shader_variants *so =
-                (struct panfrost_shader_variants *)cso;
+        struct panfrost_uncompiled_shader *so =
+                (struct panfrost_uncompiled_shader *)cso;
 
         free(so->variants);
         free(cso);

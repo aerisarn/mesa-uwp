@@ -88,7 +88,7 @@ bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
         assert(ctx->shader[PIPE_SHADER_VERTEX]);
-        struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
+        struct panfrost_compiled_shader *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
         return vs->info.vs.writes_point_size && ctx->active_prim == PIPE_PRIM_POINTS;
 }
@@ -208,7 +208,7 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
                                 PIPE_SHADER_FRAGMENT, "Blend shader");
         }
 
-        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+        struct panfrost_compiled_shader *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
         /* Default for Midgard */
         nir_alu_type col0_type = nir_type_float32;

@@ -873,7 +873,7 @@ panfrost_batch_adjust_stack_size(struct panfrost_batch *batch)
         struct panfrost_context *ctx = batch->ctx;
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i) {
-                struct panfrost_shader_state *ss;
+                struct panfrost_compiled_shader *ss;
 
                 ss = panfrost_get_shader_state(ctx, i);
                 if (!ss)
