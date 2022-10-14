@@ -500,10 +500,6 @@ panfrost_new_variant_locked(
                 if (variants->variant_space == 0)
                         variants->variant_space = 1;
 
-                /* Arbitrary limit to stop runaway programs from
-                 * creating an unbounded number of shader variants. */
-                assert(variants->variant_space < 1024);
-
                 unsigned msize = sizeof(struct panfrost_shader_state);
                 variants->variants = realloc(variants->variants,
                                              variants->variant_space * msize);
