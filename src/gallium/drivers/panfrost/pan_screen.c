@@ -115,7 +115,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
         case PIPE_CAP_DEPTH_CLIP_DISABLE:
         case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
-        case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_FRONTEND_NOOP:
         case PIPE_CAP_SAMPLE_SHADING:
