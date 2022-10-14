@@ -51,8 +51,9 @@ static enum etna_surface_layout modifier_to_layout(uint64_t modifier)
    case DRM_FORMAT_MOD_VIVANTE_SPLIT_SUPER_TILED:
       return ETNA_LAYOUT_MULTI_SUPERTILED;
    case DRM_FORMAT_MOD_LINEAR:
-   default:
       return ETNA_LAYOUT_LINEAR;
+   default:
+      unreachable("unhandled modifier");
    }
 }
 
@@ -523,6 +524,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    struct etna_resource *rsc;
    struct etna_resource_level *level;
    struct pipe_resource *prsc;
+   uint64_t modifier = handle->modifier;
 
    DBG("target=%d, format=%s, %ux%ux%u, array_size=%u, last_level=%u, "
        "nr_samples=%u, usage=%u, bind=%x, flags=%x",
@@ -547,8 +549,11 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    if (!rsc->bo)
       goto fail;
 
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      modifier = DRM_FORMAT_MOD_LINEAR;
+
    rsc->seqno = 1;
-   rsc->layout = modifier_to_layout(handle->modifier);
+   rsc->layout = modifier_to_layout(modifier);
 
    if (usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH)
       rsc->explicit_flush = true;
