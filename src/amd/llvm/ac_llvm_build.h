@@ -601,10 +601,13 @@ static inline LLVMValueRef ac_get_arg(struct ac_llvm_context *ctx, struct ac_arg
    return LLVMGetParam(ctx->main_function.value, arg.arg_index);
 }
 
-static inline LLVMTypeRef ac_get_arg_pointee_type(struct ac_llvm_context *ctx, const struct ac_shader_args *args, struct ac_arg arg)
+static inline struct ac_llvm_pointer
+ac_get_ptr_arg(struct ac_llvm_context *ctx, const struct ac_shader_args *args, struct ac_arg arg)
 {
-   assert(arg.used);
-   return ac_arg_type_to_pointee_type(ctx, args->args[arg.arg_index].type);
+   struct ac_llvm_pointer ptr;
+   ptr.pointee_type = ac_arg_type_to_pointee_type(ctx, args->args[arg.arg_index].type);
+   ptr.value = LLVMGetParam(ctx->main_function.value, arg.arg_index);
+   return ptr;
 }
 
 enum ac_llvm_calling_convention
