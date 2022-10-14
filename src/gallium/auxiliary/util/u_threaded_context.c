@@ -3116,11 +3116,17 @@ tc_set_context_param(struct pipe_context *_pipe,
  * draw, launch, clear, blit, copy, flush
  */
 
+struct tc_flush_deferred_call {
+   struct tc_call_base base;
+   unsigned flags;
+   struct pipe_fence_handle *fence;
+};
+
 struct tc_flush_call {
    struct tc_call_base base;
    unsigned flags;
-   struct threaded_context *tc;
    struct pipe_fence_handle *fence;
+   struct threaded_context *tc;
 };
 
 static void
@@ -3139,6 +3145,18 @@ tc_flush_queries(struct threaded_context *tc)
 }
 
 static uint16_t
+tc_call_flush_deferred(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   struct tc_flush_deferred_call *p = to_call(call, tc_flush_deferred_call);
+   struct pipe_screen *screen = pipe->screen;
+
+   pipe->flush(pipe, p->fence ? &p->fence : NULL, p->flags);
+   screen->fence_reference(screen, &p->fence, NULL);
+
+   return call_size(tc_flush_deferred_call);
+}
+
+static uint16_t
 tc_call_flush(struct pipe_context *pipe, void *call, uint64_t *last)
 {
    struct tc_flush_call *p = to_call(call, tc_flush_call);
@@ -3147,8 +3165,7 @@ tc_call_flush(struct pipe_context *pipe, void *call, uint64_t *last)
    pipe->flush(pipe, p->fence ? &p->fence : NULL, p->flags);
    screen->fence_reference(screen, &p->fence, NULL);
 
-   if (!(p->flags & PIPE_FLUSH_DEFERRED))
-      tc_flush_queries(p->tc);
+   tc_flush_queries(p->tc);
 
    return call_size(tc_flush_call);
 }
@@ -3181,8 +3198,14 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
             goto out_of_memory;
       }
 
-      struct tc_flush_call *p = tc_add_call(tc, TC_CALL_flush, tc_flush_call);
-      p->tc = tc;
+      struct tc_flush_call *p;
+      if (flags & PIPE_FLUSH_DEFERRED) {
+         /* these have identical fields */
+         p = (struct tc_flush_call *)tc_add_call(tc, TC_CALL_flush_deferred, tc_flush_deferred_call);
+      } else {
+         p = tc_add_call(tc, TC_CALL_flush, tc_flush_call);
+         p->tc = tc;
+      }
       p->fence = fence ? *fence : NULL;
       p->flags = flags | TC_FLUSH_ASYNC;
 
