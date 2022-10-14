@@ -1372,6 +1372,8 @@ bool AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
    case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(*alu, shader);
    case nir_op_slt: return emit_alu_op2(*alu, op2_setgt, shader, op2_opt_reverse);
    case nir_op_sge: return emit_alu_op2(*alu, op2_setge, shader);
+   case nir_op_seq: return emit_alu_op2(*alu, op2_sete, shader);
+   case nir_op_sne: return emit_alu_op2(*alu, op2_setne, shader);
    case nir_op_ubfe: return emit_alu_op3(*alu, op3_bfe_uint, shader);
    case nir_op_ufind_msb_rev: return emit_alu_op1(*alu, op1_ffbh_uint, shader);
    case nir_op_uge32: return emit_alu_op2_int(*alu, op2_setge_uint, shader);
