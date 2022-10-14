@@ -80,14 +80,6 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
 }
 
 static void
-panfrost_set_compute_resources(struct pipe_context *pctx,
-                         unsigned start, unsigned count,
-                         struct pipe_surface **resources)
-{
-        /* TODO */
-}
-
-static void
 panfrost_set_global_binding(struct pipe_context *pctx,
                       unsigned first, unsigned count,
                       struct pipe_resource **resources,
@@ -135,7 +127,6 @@ panfrost_compute_context_init(struct pipe_context *pctx)
         pctx->bind_compute_state = panfrost_bind_compute_state;
         pctx->delete_compute_state = panfrost_delete_compute_state;
 
-        pctx->set_compute_resources = panfrost_set_compute_resources;
         pctx->set_global_binding = panfrost_set_global_binding;
 
         pctx->memory_barrier = panfrost_memory_barrier;
