@@ -634,7 +634,7 @@ void pvr_srv_winsys_render_ctx_destroy(struct pvr_winsys_render_ctx *ctx)
    vk_free(srv_ws->base.alloc, srv_ctx);
 }
 
-static void
+static uint32_t
 pvr_srv_geometry_cmd_stream_load(struct rogue_fwif_cmd_ta *const cmd,
                                  const uint8_t *const stream,
                                  const uint32_t stream_len,
@@ -642,6 +642,10 @@ pvr_srv_geometry_cmd_stream_load(struct rogue_fwif_cmd_ta *const cmd,
 {
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_ta_regs *const regs = &cmd->regs;
+   uint32_t main_stream_len =
+      pvr_csb_unpack((const uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+
+   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
 
    regs->vdm_ctrl_stream_base = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_VDM_CTRL_STREAM_BASE);
@@ -661,16 +665,21 @@ pvr_srv_geometry_cmd_stream_load(struct rogue_fwif_cmd_ta *const cmd,
    regs->view_idx = *stream_ptr;
    stream_ptr++;
 
-   assert((const uint8_t *)stream_ptr - stream == stream_len);
+   assert((const uint8_t *)stream_ptr - stream <= stream_len);
+   assert((const uint8_t *)stream_ptr - stream == main_stream_len);
+
+   return main_stream_len;
 }
 
 static void pvr_srv_geometry_cmd_ext_stream_load(
    struct rogue_fwif_cmd_ta *const cmd,
-   const uint8_t *const ext_stream,
-   const uint32_t ext_stream_len,
+   const uint8_t *const stream,
+   const uint32_t stream_len,
+   const uint32_t ext_stream_offset,
    const struct pvr_device_info *const dev_info)
 {
-   const uint32_t *ext_stream_ptr = (const uint32_t *)ext_stream;
+   const uint32_t *ext_stream_ptr =
+      (const uint32_t *)((uint8_t *)stream + ext_stream_offset);
    struct rogue_fwif_ta_regs *const regs = &cmd->regs;
 
    struct PVRX(FW_STREAM_EXTHDR_GEOM0) header0;
@@ -684,7 +693,7 @@ static void pvr_srv_geometry_cmd_ext_stream_load(
       ext_stream_ptr += pvr_cmd_length(CR_TPU);
    }
 
-   assert((const uint8_t *)ext_stream_ptr - ext_stream == ext_stream_len);
+   assert((const uint8_t *)ext_stream_ptr - stream == stream_len);
 }
 
 static void pvr_srv_geometry_cmd_init(
@@ -694,20 +703,22 @@ static void pvr_srv_geometry_cmd_init(
    const struct pvr_device_info *const dev_info)
 {
    const struct pvr_winsys_geometry_state *state = &submit_info->geometry;
+   uint32_t ext_stream_offset;
 
    memset(cmd, 0, sizeof(*cmd));
 
    cmd->cmd_shared.cmn.frame_num = submit_info->frame_num;
 
-   pvr_srv_geometry_cmd_stream_load(cmd,
-                                    state->fw_stream,
-                                    state->fw_stream_len,
-                                    dev_info);
+   ext_stream_offset = pvr_srv_geometry_cmd_stream_load(cmd,
+                                                        state->fw_stream,
+                                                        state->fw_stream_len,
+                                                        dev_info);
 
-   if (state->fw_ext_stream_len) {
+   if (ext_stream_offset < state->fw_stream_len) {
       pvr_srv_geometry_cmd_ext_stream_load(cmd,
-                                           state->fw_ext_stream,
-                                           state->fw_ext_stream_len,
+                                           state->fw_stream,
+                                           state->fw_stream_len,
+                                           ext_stream_offset,
                                            dev_info);
    }
 
@@ -725,7 +736,7 @@ static void pvr_srv_geometry_cmd_init(
    cmd->partial_render_ta_3d_fence.value = sync_prim->value;
 }
 
-static void
+static uint32_t
 pvr_srv_fragment_cmd_stream_load(struct rogue_fwif_cmd_3d *const cmd,
                                  const uint8_t *const stream,
                                  const uint32_t stream_len,
@@ -733,6 +744,10 @@ pvr_srv_fragment_cmd_stream_load(struct rogue_fwif_cmd_3d *const cmd,
 {
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_3d_regs *const regs = &cmd->regs;
+   uint32_t main_stream_len =
+      pvr_csb_unpack((const uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+
+   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
 
    regs->isp_scissor_base = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_ISP_SCISSOR_BASE);
@@ -833,16 +848,21 @@ pvr_srv_fragment_cmd_stream_load(struct rogue_fwif_cmd_3d *const cmd,
       stream_ptr++;
    }
 
-   assert((const uint8_t *)stream_ptr - stream == stream_len);
+   assert((const uint8_t *)stream_ptr - stream <= stream_len);
+   assert((const uint8_t *)stream_ptr - stream == main_stream_len);
+
+   return main_stream_len;
 }
 
 static void pvr_srv_fragment_cmd_ext_stream_load(
    struct rogue_fwif_cmd_3d *const cmd,
-   const uint8_t *const ext_stream,
-   const uint32_t ext_stream_len,
+   const uint8_t *const stream,
+   const uint32_t stream_len,
+   const uint32_t ext_stream_offset,
    const struct pvr_device_info *const dev_info)
 {
-   const uint32_t *ext_stream_ptr = (const uint32_t *)ext_stream;
+   const uint32_t *ext_stream_ptr =
+      (const uint32_t *)((uint8_t *)stream + ext_stream_offset);
    struct rogue_fwif_3d_regs *const regs = &cmd->regs;
 
    struct PVRX(FW_STREAM_EXTHDR_FRAG0) header0;
@@ -856,7 +876,7 @@ static void pvr_srv_fragment_cmd_ext_stream_load(
       ext_stream_ptr += pvr_cmd_length(CR_TPU);
    }
 
-   assert((const uint8_t *)ext_stream_ptr - ext_stream == ext_stream_len);
+   assert((const uint8_t *)ext_stream_ptr - stream == stream_len);
 }
 
 static void pvr_srv_fragment_cmd_init(
@@ -865,20 +885,22 @@ static void pvr_srv_fragment_cmd_init(
    const struct pvr_device_info *dev_info)
 {
    const struct pvr_winsys_fragment_state *state = &submit_info->fragment;
+   uint32_t ext_stream_offset;
 
    memset(cmd, 0, sizeof(*cmd));
 
    cmd->cmd_shared.cmn.frame_num = submit_info->frame_num;
 
-   pvr_srv_fragment_cmd_stream_load(cmd,
-                                    state->fw_stream,
-                                    state->fw_stream_len,
-                                    dev_info);
+   ext_stream_offset = pvr_srv_fragment_cmd_stream_load(cmd,
+                                                        state->fw_stream,
+                                                        state->fw_stream_len,
+                                                        dev_info);
 
-   if (state->fw_ext_stream_len) {
+   if (ext_stream_offset < state->fw_stream_len) {
       pvr_srv_fragment_cmd_ext_stream_load(cmd,
-                                           state->fw_ext_stream,
-                                           state->fw_ext_stream_len,
+                                           state->fw_stream,
+                                           state->fw_stream_len,
+                                           ext_stream_offset,
                                            dev_info);
    }
 

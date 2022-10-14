@@ -5665,6 +5665,10 @@ pvr_submit_info_stream_init(struct pvr_transfer_ctx *ctx,
    const struct pvr_device_info *const dev_info = &pdevice->dev_info;
 
    uint32_t *stream_ptr = (uint32_t *)cmd->fw_stream;
+   uint32_t *stream_len_ptr = stream_ptr;
+
+   /* Leave space for stream header. */
+   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
 
    *(uint64_t *)stream_ptr = regs->pds_bgnd0_base;
    stream_ptr += pvr_cmd_length(CR_PDS_BGRND0_BASE);
@@ -5733,8 +5737,12 @@ pvr_submit_info_stream_init(struct pvr_transfer_ctx *ctx,
       stream_ptr++;
    }
 
-   cmd->fw_stream_len = (uint8_t *)stream_ptr - cmd->fw_stream;
+   cmd->fw_stream_len = (uint8_t *)stream_ptr - (uint8_t *)cmd->fw_stream;
    assert(cmd->fw_stream_len <= ARRAY_SIZE(cmd->fw_stream));
+
+   pvr_csb_pack ((uint64_t *)stream_len_ptr, FW_STREAM_HDR, value) {
+      value.length = cmd->fw_stream_len;
+   }
 }
 
 static void

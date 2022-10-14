@@ -942,6 +942,10 @@ static void pvr_geom_state_stream_init(struct pvr_render_ctx *ctx,
    const struct pvr_device_info *const dev_info = &device->pdevice->dev_info;
 
    uint32_t *stream_ptr = (uint32_t *)state->fw_stream;
+   uint32_t *stream_len_ptr = stream_ptr;
+
+   /* Leave space for stream header. */
+   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
 
    pvr_csb_pack ((uint64_t *)stream_ptr, CR_VDM_CTRL_STREAM_BASE, value) {
       value.addr = job->ctrl_stream_addr;
@@ -990,8 +994,12 @@ static void pvr_geom_state_stream_init(struct pvr_render_ctx *ctx,
    *stream_ptr = 0;
    stream_ptr++;
 
-   state->fw_stream_len = (uint8_t *)stream_ptr - state->fw_stream;
+   state->fw_stream_len = (uint8_t *)stream_ptr - (uint8_t *)state->fw_stream;
    assert(state->fw_stream_len <= ARRAY_SIZE(state->fw_stream));
+
+   pvr_csb_pack ((uint64_t *)stream_len_ptr, FW_STREAM_HDR, value) {
+      value.length = state->fw_stream_len;
+   }
 }
 
 static void
@@ -1001,7 +1009,10 @@ pvr_geom_state_stream_ext_init(struct pvr_render_ctx *ctx,
 {
    const struct pvr_device_info *dev_info = &ctx->device->pdevice->dev_info;
 
-   uint32_t *ext_stream_ptr = (uint32_t *)state->fw_ext_stream;
+   uint32_t main_stream_len =
+      pvr_csb_unpack((uint64_t *)state->fw_stream, FW_STREAM_HDR).length;
+   uint32_t *ext_stream_ptr =
+      (uint32_t *)((uint8_t *)state->fw_stream + main_stream_len);
    uint32_t *header0_ptr;
 
    header0_ptr = ext_stream_ptr;
@@ -1021,11 +1032,11 @@ pvr_geom_state_stream_ext_init(struct pvr_render_ctx *ctx,
       }
    }
 
-   state->fw_ext_stream_len = (uint8_t *)ext_stream_ptr - state->fw_ext_stream;
-   assert(state->fw_ext_stream_len <= ARRAY_SIZE(state->fw_ext_stream));
-
-   if ((*header0_ptr & PVRX(FW_STREAM_EXTHDR_DATA_MASK)) == 0)
-      state->fw_ext_stream_len = 0;
+   if ((*header0_ptr & PVRX(FW_STREAM_EXTHDR_DATA_MASK)) != 0) {
+      state->fw_stream_len =
+         (uint8_t *)ext_stream_ptr - (uint8_t *)state->fw_stream;
+      assert(state->fw_stream_len <= ARRAY_SIZE(state->fw_stream));
+   }
 }
 
 static void
@@ -1066,8 +1077,12 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
 
    enum PVRX(CR_ZLS_FORMAT_TYPE) zload_format = PVRX(CR_ZLS_FORMAT_TYPE_F32Z);
    uint32_t *stream_ptr = (uint32_t *)state->fw_stream;
+   uint32_t *stream_len_ptr = stream_ptr;
    uint32_t pixel_ctl;
    uint32_t isp_ctl;
+
+   /* Leave space for stream header. */
+   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
 
    /* FIXME: pass in the number of samples rather than isp_aa_mode? */
    pvr_setup_tiles_in_flight(dev_info,
@@ -1350,8 +1365,12 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
       stream_ptr++;
    }
 
-   state->fw_stream_len = (uint8_t *)stream_ptr - state->fw_stream;
+   state->fw_stream_len = (uint8_t *)stream_ptr - (uint8_t *)state->fw_stream;
    assert(state->fw_stream_len <= ARRAY_SIZE(state->fw_stream));
+
+   pvr_csb_pack ((uint64_t *)stream_len_ptr, FW_STREAM_HDR, value) {
+      value.length = state->fw_stream_len;
+   }
 }
 
 static void
@@ -1361,7 +1380,10 @@ pvr_frag_state_stream_ext_init(struct pvr_render_ctx *ctx,
 {
    const struct pvr_device_info *dev_info = &ctx->device->pdevice->dev_info;
 
-   uint32_t *ext_stream_ptr = (uint32_t *)state->fw_ext_stream;
+   uint32_t main_stream_len =
+      pvr_csb_unpack((uint64_t *)state->fw_stream, FW_STREAM_HDR).length;
+   uint32_t *ext_stream_ptr =
+      (uint32_t *)((uint8_t *)state->fw_stream + main_stream_len);
    uint32_t *header0_ptr;
 
    header0_ptr = ext_stream_ptr;
@@ -1381,11 +1403,11 @@ pvr_frag_state_stream_ext_init(struct pvr_render_ctx *ctx,
       }
    }
 
-   state->fw_ext_stream_len = (uint8_t *)ext_stream_ptr - state->fw_ext_stream;
-   assert(state->fw_ext_stream_len <= ARRAY_SIZE(state->fw_ext_stream));
-
-   if ((*header0_ptr & PVRX(FW_STREAM_EXTHDR_DATA_MASK)) == 0)
-      state->fw_ext_stream_len = 0;
+   if ((*header0_ptr & PVRX(FW_STREAM_EXTHDR_DATA_MASK)) != 0) {
+      state->fw_stream_len =
+         (uint8_t *)ext_stream_ptr - (uint8_t *)state->fw_stream;
+      assert(state->fw_stream_len <= ARRAY_SIZE(state->fw_stream));
+   }
 }
 
 static void

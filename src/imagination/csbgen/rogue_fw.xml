@@ -33,6 +33,10 @@ needs updating.
 
 <csbgen name="ROGUE" prefix="FW">
 
+  <struct name="STREAM_HDR" length="2">
+    <field name="length" start="0" end="31" type="uint"/>
+  </struct>
+
   <define name="STREAM_EXTHDR_DATA_MASK" value="0xFFFFFFF"/>
 
   <enum name="STREAM_EXTHDR_TYPE_COMPUTE">
