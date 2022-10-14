@@ -427,10 +427,8 @@ panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
 mali_ptr
 panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 
-/* Compute */
-
 void
-panfrost_compute_context_init(struct pipe_context *pctx);
+panfrost_shader_context_init(struct pipe_context *pctx);
 
 static inline void
 panfrost_dirty_state_all(struct panfrost_context *ctx)
