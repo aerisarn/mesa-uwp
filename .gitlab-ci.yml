@@ -54,6 +54,7 @@ include:
   - project: 'freedesktop/ci-templates'
     ref: *ci-templates-commit
     file:
+      - '/templates/alpine.yml'
       - '/templates/debian.yml'
       - '/templates/fedora.yml'
   - local: '.gitlab-ci/image-tags.yml'

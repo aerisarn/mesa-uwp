@@ -255,6 +255,24 @@ debian/arm_build:
     - debian/arm_build
 
 
+# Alpine based x86 build image
+alpine/x86_build:
+  extends:
+    - .fdo.container-build@alpine
+    - .container
+  variables:
+    FDO_DISTRIBUTION_VERSION: "3.16"
+    MESA_IMAGE_TAG: &alpine-x86_build ${ALPINE_X86_BUILD_TAG}
+
+.use-alpine/x86_build:
+  extends:
+    - .set-image
+  variables:
+    MESA_IMAGE_PATH: "alpine/x86_build"
+    MESA_IMAGE_TAG: *alpine-x86_build
+  needs:
+    - alpine/x86_build
+
 # Fedora 34 based x86 build image
 fedora/x86_build:
   extends:
