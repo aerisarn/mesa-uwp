@@ -312,10 +312,8 @@ struct panfrost_shader_state {
 struct panfrost_shader_variants {
         nir_shader *nir;
 
-        union {
-                struct pipe_stream_output_info stream_output;
-                unsigned req_input_mem;
-        };
+        /* Stream output information */
+        struct pipe_stream_output_info stream_output;
 
         /** Lock for the variants array */
         simple_mtx_t lock;

@@ -411,9 +411,7 @@ panfrost_create_compute_state(
         const struct pipe_compute_state *cso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
-        so->req_input_mem = cso->req_input_mem;
 
         struct panfrost_shader_state *v = calloc(1, sizeof(*v));
         so->variants = v;
