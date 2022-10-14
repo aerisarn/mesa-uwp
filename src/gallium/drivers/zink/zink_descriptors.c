@@ -1010,7 +1010,7 @@ consolidate_pool_alloc(struct zink_screen *screen, struct zink_descriptor_pool_m
       uint8_t *dst = mpool->overflowed_pools[!mpool->overflow_idx].data;
       dst += old_size;
       memcpy(dst, src, mpool->overflowed_pools[mpool->overflow_idx].size);
-      mpool->overflowed_pools[mpool->overflow_idx].size = 0;
+      util_dynarray_clear(&mpool->overflowed_pools[mpool->overflow_idx]);
    }
 }
 
