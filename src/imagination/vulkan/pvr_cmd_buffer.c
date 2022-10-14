@@ -5831,8 +5831,12 @@ pvr_execute_graphics_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
          if (result != VK_SUCCESS)
             return;
 
-         pvr_csb_copy(&primary_sub_cmd->gfx.control_stream,
-                      &sec_sub_cmd->gfx.control_stream);
+         result = pvr_csb_copy(&primary_sub_cmd->gfx.control_stream,
+                               &sec_sub_cmd->gfx.control_stream);
+         if (result != VK_SUCCESS) {
+            cmd_buffer->state.status = result;
+            return;
+         }
       } else {
          result = pvr_execute_deferred_cmd_buffer(cmd_buffer, sec_cmd_buffer);
          if (result != VK_SUCCESS)
