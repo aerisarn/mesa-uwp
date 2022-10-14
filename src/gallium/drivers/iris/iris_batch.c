@@ -79,8 +79,8 @@ num_fences(struct iris_batch *batch)
 /**
  * Debugging code to dump the fence list, used by INTEL_DEBUG=submit.
  */
-static void
-dump_fence_list(struct iris_batch *batch)
+void
+iris_dump_fence_list(struct iris_batch *batch)
 {
    fprintf(stderr, "Fence list (length %u):      ", num_fences(batch));
 
@@ -98,8 +98,8 @@ dump_fence_list(struct iris_batch *batch)
 /**
  * Debugging code to dump the validation list, used by INTEL_DEBUG=submit.
  */
-static void
-dump_bo_list(struct iris_batch *batch)
+void
+iris_dump_bo_list(struct iris_batch *batch)
 {
    fprintf(stderr, "BO list (length %d):\n", batch->exec_count);
 
@@ -170,8 +170,8 @@ decode_get_state_size(void *v_batch,
 /**
  * Decode the current batch.
  */
-static void
-decode_batch(struct iris_batch *batch)
+void
+iris_batch_decode_batch(struct iris_batch *batch)
 {
    void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
    intel_print_batch(&batch->decoder, map, batch->primary_batch_size,
@@ -938,15 +938,15 @@ submit_batch(struct iris_batch *batch)
     * outside the lock.
     */
    if (INTEL_DEBUG(DEBUG_BATCH))
-      decode_batch(batch);
+      iris_batch_decode_batch(batch);
 
    simple_mtx_lock(bo_deps_lock);
 
    update_batch_syncobjs(batch);
 
    if (INTEL_DEBUG(DEBUG_BATCH | DEBUG_SUBMIT)) {
-      dump_fence_list(batch);
-      dump_bo_list(batch);
+      iris_dump_fence_list(batch);
+      iris_dump_bo_list(batch);
    }
 
    /* The requirement for using I915_EXEC_NO_RELOC are:
