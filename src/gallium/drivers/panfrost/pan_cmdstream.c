@@ -2018,8 +2018,11 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         unsigned count = vs->info.attribute_count;
 
-        if (vs->xfb)
-                count = MAX2(count, vs->xfb->info.attribute_count);
+        struct panfrost_compiled_shader *xfb =
+                ctx->uncompiled[PIPE_SHADER_VERTEX]->xfb;
+
+        if (xfb)
+                count = MAX2(count, xfb->info.attribute_count);
 
 #if PAN_ARCH <= 5
         /* Midgard needs vertexid/instanceid handled specially */
@@ -3546,14 +3549,14 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
         struct panfrost_uncompiled_shader *vs_uncompiled = ctx->uncompiled[PIPE_SHADER_VERTEX];
         struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
 
-        vs->xfb->stream_output = vs->stream_output;
+        vs_uncompiled->xfb->stream_output = vs->stream_output;
 
         mali_ptr saved_rsd = batch->rsd[PIPE_SHADER_VERTEX];
         mali_ptr saved_ubo = batch->uniform_buffers[PIPE_SHADER_VERTEX];
         mali_ptr saved_push = batch->push_uniforms[PIPE_SHADER_VERTEX];
 
         ctx->uncompiled[PIPE_SHADER_VERTEX] = NULL; /* should not be read */
-        ctx->prog[PIPE_SHADER_VERTEX] = vs->xfb;
+        ctx->prog[PIPE_SHADER_VERTEX] = vs_uncompiled->xfb;
         batch->rsd[PIPE_SHADER_VERTEX] = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
 
 #if PAN_ARCH >= 9
@@ -3734,7 +3737,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
         panfrost_clean_state_3d(ctx);
 
-        if (vs->xfb) {
+        if (ctx->uncompiled[PIPE_SHADER_VERTEX]->xfb) {
 #if PAN_ARCH >= 9
                 mali_ptr attribs = 0, attrib_bufs = 0;
 #endif

@@ -294,9 +294,6 @@ struct panfrost_compiled_shader {
 
         struct pan_earlyzs_lut earlyzs;
 
-        /* Attached transform feedback program, if one exists */
-        struct panfrost_compiled_shader *xfb;
-
         /* Linked varyings, for non-separable programs */
         struct pan_linkage linkage;
 
@@ -321,6 +318,9 @@ struct panfrost_uncompiled_shader {
 
         /* Array of panfrost_compiled_shader */
         struct util_dynarray variants;
+
+        /* Compiled transform feedback program, if one is required */
+        struct panfrost_compiled_shader *xfb;
 
         /* On vertex shaders, bit mask of special desktop-only varyings to link
          * with the fragment shader. Used on Valhall to implement separable

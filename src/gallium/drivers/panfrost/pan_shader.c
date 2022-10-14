@@ -68,19 +68,6 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 
         nir_shader *s = nir_shader_clone(NULL, ir);
 
-        if (s->xfb_info && !s->info.internal) {
-                /* Create compute shader doing transform feedback */
-                nir_shader *xfb = nir_shader_clone(NULL, s);
-                xfb->info.name = ralloc_asprintf(xfb, "%s@xfb", xfb->info.name);
-                xfb->info.internal = true;
-
-                state->xfb = calloc(1, sizeof(struct panfrost_compiled_shader));
-                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb, 0, fixed_varying_mask);
-
-                /* Main shader no longer uses XFB */
-                s->info.has_transform_feedback_varyings = false;
-        }
-
         struct panfrost_compile_inputs inputs = {
                 .debug = dbg,
                 .gpu_id = dev->gpu_id,
@@ -357,15 +344,35 @@ panfrost_create_shader_state(
                         ~VARYING_BIT_POS & ~VARYING_BIT_PSIZ;
         }
 
+        /* If this shader uses transform feedback, compile the transform
+         * feedback program. This is a special shader variant.
+         */
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct util_debug_callback *dbg = &ctx->base.debug;
+
+        if (so->nir->xfb_info) {
+                nir_shader *xfb = nir_shader_clone(NULL, so->nir);
+                xfb->info.name = ralloc_asprintf(xfb, "%s@xfb", xfb->info.name);
+                xfb->info.internal = true;
+
+                so->xfb = calloc(1, sizeof(struct panfrost_compiled_shader));
+                panfrost_shader_compile(pctx->screen, &ctx->shaders,
+                                        &ctx->descs, xfb, dbg, so->xfb, 0,
+                                        so->fixed_varying_mask);
+
+                /* Since transform feedback is handled via the transform
+                 * feedback program, the original program no longer uses XFB
+                 */
+                so->nir->info.has_transform_feedback_varyings = false;
+        }
+
         /* Precompile for shader-db if we need to */
         if (unlikely(dev->debug & PAN_DBG_PRECOMPILE)) {
-                struct panfrost_context *ctx = pan_context(pctx);
-
                 struct panfrost_compiled_shader state = { 0 };
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
-                                        so->nir, &ctx->base.debug, &state, 0,
+                                        so->nir, dbg, &state, 0,
                                         so->fixed_varying_mask);
         }
 
@@ -385,13 +392,13 @@ panfrost_delete_shader_state(
                 panfrost_bo_unreference(so->bin.bo);
                 panfrost_bo_unreference(so->state.bo);
                 panfrost_bo_unreference(so->linkage.bo);
+        }
 
-                if (so->xfb) {
-                        panfrost_bo_unreference(so->xfb->bin.bo);
-                        panfrost_bo_unreference(so->xfb->state.bo);
-                        panfrost_bo_unreference(so->xfb->linkage.bo);
-                        free(so->xfb);
-                }
+        if (cso->xfb) {
+                panfrost_bo_unreference(cso->xfb->bin.bo);
+                panfrost_bo_unreference(cso->xfb->state.bo);
+                panfrost_bo_unreference(cso->xfb->linkage.bo);
+                free(cso->xfb);
         }
 
         simple_mtx_destroy(&cso->lock);
