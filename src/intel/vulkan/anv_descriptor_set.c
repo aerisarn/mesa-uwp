@@ -36,11 +36,6 @@
  * Descriptor set layouts.
  */
 
-/* RENDER_SURFACE_STATE is a bit smaller (48b) but since it is aligned to 64
- * and we can't put anything else there we use 64b.
- */
-#define ANV_SURFACE_STATE_SIZE (64)
-
 static enum anv_descriptor_data
 anv_descriptor_data_for_type(const struct anv_physical_device *device,
                              VkDescriptorType type)
@@ -1418,15 +1413,21 @@ VkResult anv_FreeDescriptorSets(
 }
 
 static uint32_t
-anv_surface_state_to_handle(struct anv_state state)
+anv_surface_state_to_handle(struct anv_physical_device *device,
+                            struct anv_state state)
 {
    /* Bits 31:12 of the bindless surface offset in the extended message
     * descriptor is bits 25:6 of the byte-based address.
     */
    assert(state.offset >= 0);
    uint32_t offset = state.offset;
-   assert((offset & 0x3f) == 0 && offset < (1 << 26));
-   return offset << 6;
+   if (device->uses_ex_bso) {
+      assert((offset & 0x3f) == 0);
+      return offset;
+   } else {
+      assert((offset & 0x3f) == 0 && offset < (1 << 26));
+      return offset << 6;
+   }
 }
 
 void
@@ -1505,7 +1506,8 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
                (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
                image_view->planes[p].general_sampler_surface_state :
                image_view->planes[p].optimal_sampler_surface_state;
-            desc_data[p].image = anv_surface_state_to_handle(sstate.state);
+            desc_data[p].image =
+               anv_surface_state_to_handle(device->physical, sstate.state);
          }
       }
 
@@ -1529,7 +1531,8 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       assert(image_view->n_planes == 1);
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
-                           image_view->planes[0].storage_surface_state.state),
+            device->physical,
+            image_view->planes[0].storage_surface_state.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1571,7 +1574,9 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
 
    if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
       struct anv_sampled_image_descriptor desc_data = {
-         .image = anv_surface_state_to_handle(buffer_view->surface_state),
+         .image = anv_surface_state_to_handle(
+            device->physical,
+            buffer_view->surface_state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1579,7 +1584,8 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    if (data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
-                           buffer_view->storage_surface_state),
+            device->physical,
+            buffer_view->storage_surface_state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }

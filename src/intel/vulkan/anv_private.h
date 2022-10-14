@@ -181,6 +181,11 @@ struct intel_perf_query_result;
 #define MAX_VIEWS_FOR_PRIMITIVE_REPLICATION 16
 #define MAX_SAMPLE_LOCATIONS 16
 
+/* RENDER_SURFACE_STATE is a bit smaller (48b) but since it is aligned to 64
+ * and we can't put anything else there we use 64b.
+ */
+#define ANV_SURFACE_STATE_SIZE (64)
+
 /* From the Skylake PRM Vol. 7 "Binding Table Surface State Model":
  *
  *    "The surface state model is used when a Binding Table Index (specified
@@ -893,6 +898,9 @@ struct anv_physical_device {
     /** True if we can create protected contexts. */
     bool                                        has_protected_contexts;
 
+    /**/
+    bool                                        uses_ex_bso;
+
     bool                                        always_flush_cache;
 
     /**
@@ -966,6 +974,14 @@ struct anv_physical_device {
                                enum anv_timestamp_capture_type, void *);
     struct intel_measure_device                 measure_device;
 };
+
+static inline uint32_t
+anv_physical_device_bindless_heap_size(const struct anv_physical_device *device)
+{
+   return device->uses_ex_bso ?
+      128 * 1024 * 1024 /* 128 MiB */ :
+      64 * 1024 * 1024 /* 64 MiB */;
+}
 
 static inline bool
 anv_physical_device_has_vram(const struct anv_physical_device *device)

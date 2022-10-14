@@ -184,8 +184,11 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
       sba.BindlessSurfaceStateBaseAddress =
-         (struct anv_address) { device->bindless_surface_state_pool.block_pool.bo, 0 };
-      sba.BindlessSurfaceStateSize = (1 << 20) - 1;
+         (struct anv_address) { .offset =
+         device->physical->va.bindless_surface_state_pool.addr,
+      };
+      sba.BindlessSurfaceStateSize =
+         anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
       sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 #if GFX_VER >= 11

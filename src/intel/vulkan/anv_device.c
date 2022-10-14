@@ -1323,6 +1323,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    device->video_decode_enabled = debug_get_bool_option("ANV_VIDEO_DECODE", false);
 
+   device->uses_ex_bso = device->info.verx10 >= 125;
+
    /* Check if we can read the GPU timestamp register from the CPU */
    uint64_t u64_ignore;
    device->has_reg_timestamp = intel_gem_read_render_timestamp(fd,
@@ -1342,6 +1344,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->compiler->constant_buffer_0_is_relative = false;
    device->compiler->supports_shader_constants = true;
    device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
+   device->compiler->extended_bindless_surface_offset = device->uses_ex_bso;
 
    isl_device_init(&device->isl_dev, &device->info);
 
@@ -1867,7 +1870,8 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
     * twice a bunch of times (or a bunch of null descriptors), we can safely
     * advertise a larger limit here.
     */
-   const unsigned max_bindless_views = 1 << 20;
+   const unsigned max_bindless_views =
+      anv_physical_device_bindless_heap_size(pdevice) / ANV_SURFACE_STATE_SIZE;
    p->maxUpdateAfterBindDescriptorsInAllPools            = max_bindless_views;
    p->shaderUniformBufferArrayNonUniformIndexingNative   = false;
    p->shaderSampledImageArrayNonUniformIndexingNative    = false;
