@@ -138,7 +138,7 @@ panfrost_build_key(struct panfrost_context *ctx,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
         struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
-        struct panfrost_uncompiled_shader *vs = ctx->shader[MESA_SHADER_VERTEX];
+        struct panfrost_uncompiled_shader *vs = ctx->uncompiled[MESA_SHADER_VERTEX];
 
         key->fs.nr_cbufs = fb->nr_cbufs;
 
@@ -262,7 +262,8 @@ panfrost_bind_shader_state(
         enum pipe_shader_type type)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        ctx->shader[type] = hwcso;
+        ctx->uncompiled[type] = hwcso;
+        ctx->prog[type] = NULL;
 
         ctx->dirty |= PAN_DIRTY_TLS_SIZE;
         ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_SHADER;
@@ -280,16 +281,16 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
                 return;
 
         /* We need linking information, defer this */
-        if (type == PIPE_SHADER_FRAGMENT && !ctx->shader[PIPE_SHADER_VERTEX])
+        if (type == PIPE_SHADER_FRAGMENT && !ctx->uncompiled[PIPE_SHADER_VERTEX])
                 return;
 
         /* Also defer, happens with GALLIUM_HUD */
-        if (!ctx->shader[type])
+        if (!ctx->uncompiled[type])
                 return;
 
         /* Match the appropriate variant */
         signed variant = -1;
-        struct panfrost_uncompiled_shader *variants = ctx->shader[type];
+        struct panfrost_uncompiled_shader *variants = ctx->uncompiled[type];
 
         simple_mtx_lock(&variants->lock);
 
@@ -309,7 +310,7 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
         if (variant == -1)
                 variant = panfrost_new_variant_locked(ctx, variants, &key);
 
-        variants->active_variant = variant;
+        ctx->prog[type] = &variants->variants[variant];
 
         /* TODO: it would be more efficient to release the lock before
          * compiling instead of after, but that can race if thread A compiles a
@@ -417,7 +418,6 @@ panfrost_create_compute_state(
         so->variants = v;
 
         so->variant_count = 1;
-        so->active_variant = 0;
 
         assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
 
@@ -432,7 +432,14 @@ static void
 panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        ctx->shader[PIPE_SHADER_COMPUTE] = cso;
+        struct panfrost_uncompiled_shader *uncompiled = cso;
+
+        ctx->uncompiled[PIPE_SHADER_COMPUTE] = uncompiled;
+
+        if (uncompiled)
+                ctx->prog[PIPE_SHADER_COMPUTE] = &uncompiled->variants[0];
+        else
+                ctx->prog[PIPE_SHADER_COMPUTE] = NULL;
 }
 
 static void

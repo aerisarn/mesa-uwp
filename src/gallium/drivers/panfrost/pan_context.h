@@ -185,8 +185,10 @@ struct panfrost_context {
 
         struct panfrost_constant_buffer constant_buffer[PIPE_SHADER_TYPES];
         struct panfrost_rasterizer *rasterizer;
-        struct panfrost_uncompiled_shader *shader[PIPE_SHADER_TYPES];
         struct panfrost_vertex_state *vertex;
+
+        struct panfrost_uncompiled_shader *uncompiled[PIPE_SHADER_TYPES];
+        struct panfrost_compiled_shader *prog[PIPE_SHADER_TYPES];
 
         struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
         uint32_t vb_mask;
@@ -327,9 +329,6 @@ struct panfrost_uncompiled_shader {
          * shaders for desktop GL.
          */
         uint32_t fixed_varying_mask;
-
-        /* The current active variant */
-        unsigned active_variant;
 };
 
 /** (Vertex buffer index, divisor) tuple that will become an Attribute Buffer
@@ -361,18 +360,6 @@ static inline struct panfrost_streamout_target *
 pan_so_target(struct pipe_stream_output_target *target)
 {
         return (struct panfrost_streamout_target *)target;
-}
-
-static inline struct panfrost_compiled_shader *
-panfrost_get_shader_state(struct panfrost_context *ctx,
-                          enum pipe_shader_type st)
-{
-        struct panfrost_uncompiled_shader *all = ctx->shader[st];
-
-        if (!all)
-                return NULL;
-
-        return &all->variants[all->active_variant];
 }
 
 struct pipe_context *
