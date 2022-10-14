@@ -5295,6 +5295,8 @@ bifrost_compile_shader_nir(nir_shader *nir,
         info->tls_size = nir->scratch_size;
         info->vs.idvs = bi_should_idvs(nir, inputs);
 
+        pan_nir_collect_varyings(nir, info);
+
         if (info->vs.idvs) {
                 bi_compile_variant(nir, inputs, binary, sysval_to_id, info, BI_IDVS_POSITION);
                 bi_compile_variant(nir, inputs, binary, sysval_to_id, info, BI_IDVS_VARYING);

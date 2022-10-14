@@ -3203,6 +3203,9 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         NIR_PASS_V(nir, midgard_nir_lower_global_load);
 
+        /* Collect varyings after lowering I/O */
+        pan_nir_collect_varyings(nir, info);
+
         /* Optimisation passes */
 
         optimise_nir(nir, ctx->quirks, inputs->is_blend, inputs->is_blit);

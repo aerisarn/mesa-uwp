@@ -510,6 +510,8 @@ bool pan_lower_helper_invocation(nir_shader *shader);
 bool pan_lower_sample_pos(nir_shader *shader);
 bool pan_lower_xfb(nir_shader *nir);
 
+void pan_nir_collect_varyings(nir_shader *s, struct pan_shader_info *info);
+
 /*
  * Helper returning the subgroup size. Generally, this is equal to the number of
  * threads in a warp. For Midgard (including warping models), this returns 1, as
