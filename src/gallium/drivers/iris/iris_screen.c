@@ -781,30 +781,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!screen)
       return NULL;
 
-   struct intel_device_info devinfo;
-   if (!intel_get_device_info_from_fd(fd, &devinfo))
-      return NULL;
-
-   p_atomic_set(&screen->refcount, 1);
-
-   if (devinfo.ver < 8 || devinfo.platform == INTEL_PLATFORM_CHV)
-      return NULL;
-
-   /* Here are the i915 features we need for Iris (in chronological order) :
-    *    - I915_PARAM_HAS_EXEC_NO_RELOC     (3.10)
-    *    - I915_PARAM_HAS_EXEC_HANDLE_LUT   (3.10)
-    *    - I915_PARAM_HAS_EXEC_BATCH_FIRST  (4.13)
-    *    - I915_PARAM_HAS_EXEC_FENCE_ARRAY  (4.14)
-    *    - I915_PARAM_HAS_CONTEXT_ISOLATION (4.16)
-    *
-    * Checking the last feature availability will include all previous ones.
-    */
-   if (!devinfo.has_context_isolation) {
-      debug_error("Kernel is too old (4.16+ required) or unusable for Iris.\n"
-                  "Check your dmesg logs for loading failures.\n");
-      return NULL;
-   }
-
    driParseConfigFiles(config->options, config->options_info, 0, "iris",
                        NULL, NULL, NULL, 0, NULL, 0);
 
@@ -820,11 +796,28 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    brw_process_intel_debug_variable();
 
-   screen->bufmgr = iris_bufmgr_get_for_fd(&devinfo, fd, bo_reuse);
+   screen->bufmgr = iris_bufmgr_get_for_fd(fd, bo_reuse);
    if (!screen->bufmgr)
       return NULL;
 
    screen->devinfo = iris_bufmgr_get_device_info(screen->bufmgr);
+   p_atomic_set(&screen->refcount, 1);
+
+   /* Here are the i915 features we need for Iris (in chronological order) :
+    *    - I915_PARAM_HAS_EXEC_NO_RELOC     (3.10)
+    *    - I915_PARAM_HAS_EXEC_HANDLE_LUT   (3.10)
+    *    - I915_PARAM_HAS_EXEC_BATCH_FIRST  (4.13)
+    *    - I915_PARAM_HAS_EXEC_FENCE_ARRAY  (4.14)
+    *    - I915_PARAM_HAS_CONTEXT_ISOLATION (4.16)
+    *
+    * Checking the last feature availability will include all previous ones.
+    */
+   if (!screen->devinfo->has_context_isolation) {
+      debug_error("Kernel is too old (4.16+ required) or unusable for Iris.\n"
+                  "Check your dmesg logs for loading failures.\n");
+      return NULL;
+   }
+
    screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
    screen->winsys_fd = os_dupfd_cloexec(fd);
 

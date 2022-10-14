@@ -2535,8 +2535,9 @@ iris_bufmgr_create_screen_id(struct iris_bufmgr *bufmgr)
  * \param fd File descriptor of the opened DRM device.
  */
 struct iris_bufmgr *
-iris_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
+iris_bufmgr_get_for_fd(int fd, bool bo_reuse)
 {
+   struct intel_device_info devinfo;
    struct stat st;
 
    if (fstat(fd, &st))
@@ -2557,7 +2558,13 @@ iris_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
       }
    }
 
-   bufmgr = iris_bufmgr_create(devinfo, fd, bo_reuse);
+   if (!intel_get_device_info_from_fd(fd, &devinfo))
+      return NULL;
+
+   if (devinfo.ver < 8 || devinfo.platform == INTEL_PLATFORM_CHV)
+      return NULL;
+
+   bufmgr = iris_bufmgr_create(&devinfo, fd, bo_reuse);
    if (bufmgr)
       list_addtail(&bufmgr->link, &global_bufmgr_list);
 
