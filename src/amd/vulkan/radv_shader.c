@@ -1426,31 +1426,39 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
 
    setup_ngg_lds_layout(nir, &ngg_stage->info, max_vtx_in);
 
+   ac_nir_lower_ngg_options options = {0};
+   options.family = device->physical_device->rad_info.family;
+   options.gfx_level = device->physical_device->rad_info.gfx_level;
+   options.max_workgroup_size = info->workgroup_size;
+   options.wave_size = info->wave_size;
+   options.can_cull = nir->info.stage != MESA_SHADER_GEOMETRY && info->has_ngg_culling;
+   options.disable_streamout = true;
+
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      bool export_prim_id = info->outinfo.export_prim_id;
-
       assert(info->is_ngg);
 
       if (info->has_ngg_culling)
          radv_optimize_nir_algebraic(nir, false);
 
-      NIR_PASS_V(nir, ac_nir_lower_ngg_nogs,
-                 device->physical_device->rad_info.family, num_vertices_per_prim,
-                 info->workgroup_size, info->wave_size, info->has_ngg_culling,
-                 info->has_ngg_early_prim_export, info->is_ngg_passthrough,
-                 false, pl_key->primitives_generated_query,
-                 true, export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1,
-                 pl_key->vs.instance_rate_inputs, 0, 0);
+      options.num_vertices_per_primitive = num_vertices_per_prim;
+      options.early_prim_export = info->has_ngg_early_prim_export;
+      options.passthrough = info->is_ngg_passthrough;
+      options.has_prim_query = pl_key->primitives_generated_query;
+      options.primitive_id_location = info->outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1;
+      options.instance_rate_inputs = pl_key->vs.instance_rate_inputs;
+
+      NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, &options);
 
       /* Increase ESGS ring size so the LLVM binary contains the correct LDS size. */
       ngg_stage->info.ngg_info.esgs_ring_size = nir->info.shared_size;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);
-      NIR_PASS_V(nir, ac_nir_lower_ngg_gs,
-                 device->physical_device->rad_info.gfx_level,
-                 info->wave_size, info->workgroup_size,
-                 info->gs.gsvs_vertex_size, true, false, true);
+
+      options.gs_out_vtx_bytes = info->gs.gsvs_vertex_size;
+      options.has_xfb_query = true;
+
+      NIR_PASS_V(nir, ac_nir_lower_ngg_gs, &options);
    } else if (nir->info.stage == MESA_SHADER_MESH) {
       bool scratch_ring = false;
       NIR_PASS_V(nir, ac_nir_lower_ngg_ms, &scratch_ring, info->wave_size, pl_key->has_multiview_view_index);
