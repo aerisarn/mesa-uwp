@@ -53,6 +53,8 @@ etna_compiler_create(const char *renderer, const struct etna_specs *specs)
       .lower_fmod = true,
       .lower_vector_cmp = true,
       .lower_fdph = true,
+      .lower_extract_byte = true,
+      .lower_extract_word = true,
       .lower_insert_byte = true,
       .lower_insert_word = true,
       .lower_fdiv = true, /* !specs->has_new_transcendentals */
@@ -67,6 +69,10 @@ etna_compiler_create(const char *renderer, const struct etna_specs *specs)
       .force_indirect_unrolling = nir_var_all,
       .max_unroll_iterations = 32,
       .vectorize_io = true,
+      .lower_pack_32_2x16_split = true,
+      .lower_pack_64_2x32_split = true,
+      .lower_unpack_32_2x16_split = true,
+      .lower_unpack_64_2x32_split = true,
    };
 
    compiler->regs = etna_ra_setup(compiler);

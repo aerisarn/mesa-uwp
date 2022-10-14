@@ -1148,6 +1148,8 @@ etna_compile_shader(struct etna_shader_variant *v)
       etna_optimize_loop(s);
 
    NIR_PASS_V(s, etna_lower_io, v);
+   NIR_PASS_V(s, nir_lower_pack);
+   etna_optimize_loop(s);
 
    if (v->shader->specs->vs_need_z_div)
       NIR_PASS_V(s, nir_lower_clip_halfz);
