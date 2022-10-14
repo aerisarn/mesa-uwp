@@ -319,10 +319,8 @@ struct panfrost_uncompiled_shader {
         /** Lock for the variants array */
         simple_mtx_t lock;
 
-        struct panfrost_compiled_shader *variants;
-        unsigned variant_space;
-
-        unsigned variant_count;
+        /* Array of panfrost_compiled_shader */
+        struct util_dynarray variants;
 
         /* On vertex shaders, bit mask of special desktop-only varyings to link
          * with the fragment shader. Used on Valhall to implement separable

@@ -36,6 +36,23 @@
 #include "nir/tgsi_to_nir.h"
 #include "nir_serialize.h"
 
+static struct panfrost_uncompiled_shader *
+panfrost_alloc_shader(void)
+{
+        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
+
+        simple_mtx_init(&so->lock, mtx_plain);
+        util_dynarray_init(&so->variants, NULL);
+
+        return so;
+}
+
+static struct panfrost_compiled_shader *
+panfrost_alloc_variant(struct panfrost_uncompiled_shader *so)
+{
+        return util_dynarray_grow(&so->variants, struct panfrost_compiled_shader, 1);
+}
+
 static void
 panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
@@ -212,47 +229,31 @@ update_so_info(struct pipe_stream_output_info *so_info,
 	return so_outputs;
 }
 
-static unsigned
+static struct panfrost_compiled_shader *
 panfrost_new_variant_locked(
         struct panfrost_context *ctx,
-        struct panfrost_uncompiled_shader *variants,
+        struct panfrost_uncompiled_shader *uncompiled,
         struct panfrost_shader_key *key)
 {
-        unsigned variant = variants->variant_count++;
+        struct panfrost_compiled_shader *prog = panfrost_alloc_variant(uncompiled);
 
-        if (variants->variant_count > variants->variant_space) {
-                unsigned old_space = variants->variant_space;
+        *prog = (struct panfrost_compiled_shader) {
+                .key = *key,
+                .stream_output = uncompiled->stream_output,
+        };
 
-                variants->variant_space *= 2;
-                if (variants->variant_space == 0)
-                        variants->variant_space = 1;
-
-                unsigned msize = sizeof(struct panfrost_compiled_shader);
-                variants->variants = realloc(variants->variants,
-                                             variants->variant_space * msize);
-
-                memset(&variants->variants[old_space], 0,
-                       (variants->variant_space - old_space) * msize);
-        }
-
-        variants->variants[variant].key = *key;
-
-        struct panfrost_compiled_shader *shader_state = &variants->variants[variant];
-
-        /* We finally have a variant, so compile it */
         panfrost_shader_compile(ctx->base.screen,
                                 &ctx->shaders, &ctx->descs,
-                                variants->nir, &ctx->base.debug, shader_state, 0);
+                                uncompiled->nir, &ctx->base.debug, prog, 0);
 
         /* Fixup the stream out information */
-        shader_state->stream_output = variants->stream_output;
-        shader_state->so_mask =
-                update_so_info(&shader_state->stream_output,
-                               shader_state->info.outputs_written);
+        prog->so_mask =
+                update_so_info(&prog->stream_output,
+                               prog->info.outputs_written);
 
-        shader_state->earlyzs = pan_earlyzs_analyze(&shader_state->info);
+        prog->earlyzs = pan_earlyzs_analyze(&prog->info);
 
-        return variant;
+        return prog;
 }
 
 static void
@@ -289,33 +290,33 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
                 return;
 
         /* Match the appropriate variant */
-        signed variant = -1;
-        struct panfrost_uncompiled_shader *variants = ctx->uncompiled[type];
+        struct panfrost_uncompiled_shader *uncompiled = ctx->uncompiled[type];
+        struct panfrost_compiled_shader *compiled = NULL;
 
-        simple_mtx_lock(&variants->lock);
+        simple_mtx_lock(&uncompiled->lock);
 
         struct panfrost_shader_key key = {
-                .fixed_varying_mask = variants->fixed_varying_mask
+                .fixed_varying_mask = uncompiled->fixed_varying_mask
         };
 
-        panfrost_build_key(ctx, &key, variants->nir);
+        panfrost_build_key(ctx, &key, uncompiled->nir);
 
-        for (unsigned i = 0; i < variants->variant_count; ++i) {
-                if (memcmp(&key, &variants->variants[i].key, sizeof(key)) == 0) {
-                        variant = i;
+        util_dynarray_foreach(&uncompiled->variants, struct panfrost_compiled_shader, so) {
+                if (memcmp(&key, &so->key, sizeof(key)) == 0) {
+                        compiled = so;
                         break;
                 }
         }
 
-        if (variant == -1)
-                variant = panfrost_new_variant_locked(ctx, variants, &key);
+        if (compiled == NULL)
+                compiled = panfrost_new_variant_locked(ctx, uncompiled, &key);
 
-        ctx->prog[type] = &variants->variants[variant];
+        ctx->prog[type] = compiled;
 
         /* TODO: it would be more efficient to release the lock before
          * compiling instead of after, but that can race if thread A compiles a
          * variant while thread B searches for that same variant */
-        simple_mtx_unlock(&variants->lock);
+        simple_mtx_unlock(&uncompiled->lock);
 }
 
 static void
@@ -339,10 +340,8 @@ panfrost_create_shader_state(
         struct pipe_context *pctx,
         const struct pipe_shader_state *cso)
 {
-        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
+        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader();
         struct panfrost_device *dev = pan_device(pctx->screen);
-
-        simple_mtx_init(&so->lock, mtx_plain);
 
         so->stream_output = cso->stream_output;
 
@@ -381,43 +380,38 @@ panfrost_delete_shader_state(
 
         ralloc_free(cso->nir);
 
-        for (unsigned i = 0; i < cso->variant_count; ++i) {
-                struct panfrost_compiled_shader *shader_state = &cso->variants[i];
-                panfrost_bo_unreference(shader_state->bin.bo);
-                panfrost_bo_unreference(shader_state->state.bo);
-                panfrost_bo_unreference(shader_state->linkage.bo);
+        util_dynarray_foreach(&cso->variants, struct panfrost_compiled_shader, so) {
+                panfrost_bo_unreference(so->bin.bo);
+                panfrost_bo_unreference(so->state.bo);
+                panfrost_bo_unreference(so->linkage.bo);
 
-                if (shader_state->xfb) {
-                        panfrost_bo_unreference(shader_state->xfb->bin.bo);
-                        panfrost_bo_unreference(shader_state->xfb->state.bo);
-                        panfrost_bo_unreference(shader_state->xfb->linkage.bo);
-                        free(shader_state->xfb);
+                if (so->xfb) {
+                        panfrost_bo_unreference(so->xfb->bin.bo);
+                        panfrost_bo_unreference(so->xfb->state.bo);
+                        panfrost_bo_unreference(so->xfb->linkage.bo);
+                        free(so->xfb);
                 }
         }
 
         simple_mtx_destroy(&cso->lock);
 
-        free(cso->variants);
+        util_dynarray_fini(&cso->variants);
         free(so);
 }
 
-/* Compute CSOs are tracked like graphics shader CSOs, but are
- * considerably simpler. We do not implement multiple
- * variants/keying. So the CSO create function just goes ahead and
- * compiles the thing. */
-
+/*
+ * Create a compute CSO. As compute kernels do not require variants, they are
+ * precompiled, creating both the uncompiled and compiled shaders now.
+ */
 static void *
 panfrost_create_compute_state(
         struct pipe_context *pctx,
         const struct pipe_compute_state *cso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
-
-        struct panfrost_compiled_shader *v = calloc(1, sizeof(*v));
-        so->variants = v;
-
-        so->variant_count = 1;
+        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader();
+        struct panfrost_compiled_shader *v = panfrost_alloc_variant(so);
+        memset(v, 0, sizeof *v);
 
         assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
 
@@ -436,10 +430,8 @@ panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 
         ctx->uncompiled[PIPE_SHADER_COMPUTE] = uncompiled;
 
-        if (uncompiled)
-                ctx->prog[PIPE_SHADER_COMPUTE] = &uncompiled->variants[0];
-        else
-                ctx->prog[PIPE_SHADER_COMPUTE] = NULL;
+        ctx->prog[PIPE_SHADER_COMPUTE] =
+                uncompiled ? util_dynarray_begin(&uncompiled->variants) : NULL;
 }
 
 static void
@@ -448,7 +440,7 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
         struct panfrost_uncompiled_shader *so =
                 (struct panfrost_uncompiled_shader *)cso;
 
-        free(so->variants);
+        util_dynarray_fini(&so->variants);
         free(cso);
 }
 

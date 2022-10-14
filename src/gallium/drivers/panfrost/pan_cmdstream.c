@@ -3545,7 +3545,6 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
 
         struct panfrost_uncompiled_shader *vs_uncompiled = ctx->uncompiled[PIPE_SHADER_VERTEX];
         struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
-        struct panfrost_uncompiled_shader v = { .variants = vs->xfb };
 
         vs->xfb->stream_output = vs->stream_output;
 
@@ -3553,7 +3552,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
         mali_ptr saved_ubo = batch->uniform_buffers[PIPE_SHADER_VERTEX];
         mali_ptr saved_push = batch->push_uniforms[PIPE_SHADER_VERTEX];
 
-        ctx->uncompiled[PIPE_SHADER_VERTEX] = &v;
+        ctx->uncompiled[PIPE_SHADER_VERTEX] = NULL; /* should not be read */
         ctx->prog[PIPE_SHADER_VERTEX] = vs->xfb;
         batch->rsd[PIPE_SHADER_VERTEX] = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
 
