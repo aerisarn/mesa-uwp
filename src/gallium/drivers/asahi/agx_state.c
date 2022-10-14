@@ -1392,7 +1392,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    }
 
    agx_usc_pack(&b, REGISTERS, cfg) {
-      cfg.register_quadwords = 0;
+      cfg.register_count = 256;
       cfg.unk_1 = (stage == PIPE_SHADER_FRAGMENT);
    }
 
@@ -1435,7 +1435,7 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
       cfg.unk_2 = 3;
    }
 
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_quadwords = 1;
+   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 8;
    agx_usc_pack(&b, NO_PRESHADER, cfg);
 
    return agx_usc_fini(&b);
@@ -1517,7 +1517,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.unk_2 = 3;
    }
 
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_quadwords = 0;
+   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 256;
    agx_usc_pack(&b, NO_PRESHADER, cfg);
 
    return agx_usc_fini(&b);
@@ -1552,7 +1552,7 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
    }
 
    agx_usc_pack(&b, SHADER, cfg) cfg.code = code;
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_quadwords = 1;
+   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 8;
    agx_usc_pack(&b, NO_PRESHADER, cfg);
 
    return agx_usc_fini(&b);
@@ -1618,8 +1618,9 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
       unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
-         cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(tex_count, 8);
-         cfg.groups_of_4_samplers = DIV_ROUND_UP(tex_count, 4);
+         cfg.uniform_register_count = 512;
+         cfg.texture_state_register_count = tex_count;
+         cfg.sampler_state_register_count = tex_count;
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
@@ -1635,7 +1636,8 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       out += AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH;
 
       agx_pack(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
-         cfg.more_than_4_textures = tex_count >= 4;
+         /* XXX: This is probably wrong */
+         cfg.unknown = tex_count >= 4;
       }
       out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
@@ -1786,11 +1788,14 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
          cfg.pipeline = agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
-         cfg.groups_of_8_immediate_textures = DIV_ROUND_UP(frag_tex_count, 8);
-         cfg.groups_of_4_samplers = DIV_ROUND_UP(frag_tex_count, 4);
-         cfg.more_than_4_textures = frag_tex_count >= 4;
+         cfg.uniform_register_count = 512;
+         cfg.texture_state_register_count = frag_tex_count;
+         cfg.sampler_state_register_count = frag_tex_count;
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
          cfg.cf_bindings = ctx->batch->varyings;
+
+         /* XXX: This is probably wrong */
+         cfg.unknown_30 = frag_tex_count >= 4;
       }
    }
 
