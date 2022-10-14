@@ -399,14 +399,6 @@ panfrost_render_condition_check(struct panfrost_context *ctx);
 void
 panfrost_update_shader_variant(struct panfrost_context *ctx,
                                enum pipe_shader_type type);
-void
-panfrost_shader_compile(struct pipe_screen *pscreen,
-                        struct panfrost_pool *shader_pool,
-                        struct panfrost_pool *desc_pool,
-                        const nir_shader *ir,
-                        struct util_debug_callback *dbg,
-                        struct panfrost_shader_state *state,
-                        unsigned req_local_mem);
 
 void
 panfrost_analyze_sysvals(struct panfrost_shader_state *ss);
