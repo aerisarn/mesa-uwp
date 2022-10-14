@@ -1095,9 +1095,15 @@ tc_render_condition(struct pipe_context *_pipe,
 
 TC_CSO_WHOLE(blend)
 TC_CSO_WHOLE(rasterizer)
-TC_CSO_WHOLE(depth_stencil_alpha)
+TC_CSO_CREATE(depth_stencil_alpha, depth_stencil_alpha)
+TC_CSO_BIND(depth_stencil_alpha,
+)
+TC_CSO_DELETE(depth_stencil_alpha)
 TC_CSO_WHOLE(compute)
-TC_CSO_SHADER(fs)
+TC_CSO_CREATE(fs, shader)
+TC_CSO_BIND(fs,
+)
+TC_CSO_DELETE(fs)
 TC_CSO_SHADER(vs)
 TC_CSO_SHADER_TRACK(gs)
 TC_CSO_SHADER_TRACK(tcs)
