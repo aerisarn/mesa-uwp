@@ -33,6 +33,35 @@ Pop-Location
 $depsInstallPath="C:\mesa-deps"
 
 Get-Date
+Write-Host "Cloning libva"
+git clone https://github.com/intel/libva.git deps/libva
+if (!$?) {
+  Write-Host "Failed to clone libva repository"
+  Exit 1
+}
+
+Push-Location -Path ".\deps\libva"
+Write-Host "Checking out libva commit 2579eb0f77897dc01a02c1e43defc63c40fd2988"
+# Checking out commit hash with libva-win32 support
+# This feature will be released with libva version 2.17
+git checkout 2579eb0f77897dc01a02c1e43defc63c40fd2988
+Pop-Location
+
+Write-Host "Building libva"
+# libva already has a build dir in their repo, use builddir instead
+$libva_build = New-Item -ItemType Directory -Path ".\deps\libva" -Name "builddir"
+Push-Location -Path $libva_build.FullName
+meson .. -Dprefix="$depsInstallPath"
+ninja -j32 install
+$buildstatus = $?
+Pop-Location
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $libva_build
+if (!$buildstatus) {
+  Write-Host "Failed to compile libva"
+  Exit 1
+}
+
+Get-Date
 # slightly convoluted syntax but avoids the CWD being under the PS filesystem meta-path
 $llvm_build = New-Item -ItemType Directory -ErrorAction SilentlyContinue -Force -Path ".\deps\llvm-project" -Name "build"
 Push-Location -Path $llvm_build.FullName
