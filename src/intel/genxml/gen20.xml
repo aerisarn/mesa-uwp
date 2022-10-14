@@ -1,6 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
 <genxml name="XE2" gen="20">
   <import name="gen125.xml" />
+  <enum name="PREF_SLM_ALLOCATION_SIZE">
+    <value name="SLM_ENCODES_0K" value="0" />
+    <value name="SLM_ENCODES_16K" value="1" />
+    <value name="SLM_ENCODES_32K" value="2" />
+    <value name="SLM_ENCODES_64K" value="3" />
+    <value name="SLM_ENCODES_96K" value="4" />
+    <value name="SLM_ENCODES_128K" value="5" />
+    <value name="SLM_ENCODES_160K" value="6" />
+    <value name="SLM_ENCODES_192K" value="7" />
+    <value name="SLM_ENCODES_224K" value="8" />
+    <value name="SLM_ENCODES_256K" value="9" />
+    <value name="SLM_ENCODES_384K" value="10" />
+  </enum>
   <struct name="INTERFACE_DESCRIPTOR_DATA" length="8">
     <field name="Kernel Start Pointer" start="6" end="31" type="offset" />
     <field name="Software Exception Enable" start="71" end="71" type="bool" />
@@ -46,7 +59,7 @@
     </field>
     <field name="Number Of Barriers" start="188" end="190" type="uint" />
     <field name="BTD Mode" start="191" end="191" type="uint" />
-    <field name="Preferred SLM Allocation Size" start="224" end="227" type="uint" />
+    <field name="Preferred SLM Allocation Size" start="224" end="227" type="PREF_SLM_ALLOCATION_SIZE" />
   </struct>
   <instruction name="COMPUTE_WALKER" bias="2" length="40">
     <field name="DWord Length" start="0" end="7" type="uint" default="38" />
