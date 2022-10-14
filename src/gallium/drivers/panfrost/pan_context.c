@@ -51,6 +51,7 @@
 #include "pan_util.h"
 #include "decode.h"
 #include "util/pan_lower_framebuffer.h"
+#include "compiler/nir/nir_serialize.h"
 
 static void
 panfrost_clear(

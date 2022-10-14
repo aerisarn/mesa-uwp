@@ -37,12 +37,26 @@
 #include "nir_serialize.h"
 
 static struct panfrost_uncompiled_shader *
-panfrost_alloc_shader(void)
+panfrost_alloc_shader(const nir_shader *nir)
 {
-        struct panfrost_uncompiled_shader *so = CALLOC_STRUCT(panfrost_uncompiled_shader);
+        struct panfrost_uncompiled_shader *so =
+                rzalloc(NULL, struct panfrost_uncompiled_shader);
 
         simple_mtx_init(&so->lock, mtx_plain);
-        util_dynarray_init(&so->variants, NULL);
+        util_dynarray_init(&so->variants, so);
+
+        so->nir = nir;
+
+        /* Serialize the NIR to a binary blob that we can hash for the disk
+         * cache. Drop unnecessary information (like variable names) so the
+         * serialized NIR is smaller, and also to let us detect more isomorphic
+         * shaders when hashing, increasing cache hits.
+         */
+        struct blob blob;
+        blob_init(&blob);
+        nir_serialize(&blob, nir, true);
+        _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
+        blob_finish(&blob);
 
         return so;
 }
@@ -54,17 +68,15 @@ panfrost_alloc_variant(struct panfrost_uncompiled_shader *so)
 }
 
 static void
-panfrost_shader_compile(struct pipe_screen *pscreen,
-                        struct panfrost_pool *shader_pool,
-                        struct panfrost_pool *desc_pool,
+panfrost_shader_compile(struct panfrost_screen *screen,
                         const nir_shader *ir,
                         struct util_debug_callback *dbg,
-                        struct panfrost_compiled_shader *state,
+                        struct panfrost_shader_key *key,
                         unsigned req_local_mem,
-                        unsigned fixed_varying_mask)
+                        unsigned fixed_varying_mask,
+                        struct panfrost_shader_binary *out)
 {
-        struct panfrost_screen *screen = pan_screen(pscreen);
-        struct panfrost_device *dev = pan_device(pscreen);
+        struct panfrost_device *dev = pan_device(&screen->base);
 
         nir_shader *s = nir_shader_clone(NULL, ir);
 
@@ -76,27 +88,27 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 
         /* Lower this early so the backends don't have to worry about it */
         if (s->info.stage == MESA_SHADER_FRAGMENT) {
-                inputs.fixed_varying_mask = state->key.fs.fixed_varying_mask;
+                inputs.fixed_varying_mask = key->fs.fixed_varying_mask;
 
                 if (s->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
                         NIR_PASS_V(s, nir_lower_fragcolor,
-                                   state->key.fs.nr_cbufs_for_fragcolor);
+                                   key->fs.nr_cbufs_for_fragcolor);
                 }
 
-                if (state->key.fs.sprite_coord_enable) {
+                if (key->fs.sprite_coord_enable) {
                         NIR_PASS_V(s, nir_lower_texcoord_replace,
-                                   state->key.fs.sprite_coord_enable,
+                                   key->fs.sprite_coord_enable,
                                    true /* point coord is sysval */,
                                    false /* Y-invert */);
                 }
 
-                if (state->key.fs.clip_plane_enable) {
+                if (key->fs.clip_plane_enable) {
                         NIR_PASS_V(s, nir_lower_clip_fs,
-                                   state->key.fs.clip_plane_enable,
+                                   key->fs.clip_plane_enable,
                                    false);
                 }
 
-                memcpy(inputs.rt_formats, state->key.fs.rt_formats, sizeof(inputs.rt_formats));
+                memcpy(inputs.rt_formats, key->fs.rt_formats, sizeof(inputs.rt_formats));
         } else if (s->info.stage == MESA_SHADER_VERTEX) {
                 inputs.fixed_varying_mask = fixed_varying_mask;
 
@@ -104,41 +116,67 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 inputs.no_idvs = s->info.has_transform_feedback_varyings;
         }
 
-        struct util_dynarray binary;
+        util_dynarray_init(&out->binary, NULL);
+        screen->vtbl.compile_shader(s, &inputs, &out->binary, &out->info);
 
-        util_dynarray_init(&binary, NULL);
-        screen->vtbl.compile_shader(s, &inputs, &binary, &state->info);
+        assert(req_local_mem >= out->info.wls_size);
+        out->info.wls_size = req_local_mem;
 
-        assert(req_local_mem >= state->info.wls_size);
-        state->info.wls_size = req_local_mem;
+        /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
+         * a NULL context
+         */
+        ralloc_free(s);
+}
 
-        if (binary.size) {
-                state->bin = panfrost_pool_take_ref(shader_pool,
-                        pan_pool_upload_aligned(&shader_pool->base,
-                                binary.data, binary.size, 128));
+static void
+panfrost_shader_get(struct pipe_screen *pscreen,
+                    struct panfrost_pool *shader_pool,
+                    struct panfrost_pool *desc_pool,
+                    struct panfrost_uncompiled_shader *uncompiled,
+                    struct util_debug_callback *dbg,
+                    struct panfrost_compiled_shader *state,
+                    unsigned req_local_mem)
+{
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        struct panfrost_device *dev = pan_device(pscreen);
+
+        struct panfrost_shader_binary res = { 0 };
+
+        /* Try to retrieve the variant from the disk cache. If that fails,
+         * compile a new variant and store in the disk cache for later reuse.
+         */
+        if (!panfrost_disk_cache_retrieve(screen->disk_cache, uncompiled, &state->key, &res)) {
+                panfrost_shader_compile(screen, uncompiled->nir, dbg, &state->key,
+                                        req_local_mem,
+                                        uncompiled->fixed_varying_mask, &res);
+
+                panfrost_disk_cache_store(screen->disk_cache, uncompiled, &state->key, &res);
         }
 
+        state->info = res.info;
+
+        if (res.binary.size) {
+                state->bin = panfrost_pool_take_ref(shader_pool,
+                        pan_pool_upload_aligned(&shader_pool->base,
+                                res.binary.data, res.binary.size, 128));
+        }
+
+        util_dynarray_fini(&res.binary);
 
         /* Don't upload RSD for fragment shaders since they need draw-time
          * merging for e.g. depth/stencil/alpha. RSDs are replaced by simpler
          * shader program descriptors on Valhall, which can be preuploaded even
          * for fragment shaders. */
-        bool upload = !(s->info.stage == MESA_SHADER_FRAGMENT && dev->arch <= 7);
+        bool upload = !(uncompiled->nir->info.stage == MESA_SHADER_FRAGMENT && dev->arch <= 7);
         screen->vtbl.prepare_shader(state, desc_pool, upload);
 
         panfrost_analyze_sysvals(state);
-
-        util_dynarray_fini(&binary);
-
-        /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
-         * a NULL context */
-        ralloc_free(s);
 }
 
 static void
 panfrost_build_key(struct panfrost_context *ctx,
                    struct panfrost_shader_key *key,
-                   nir_shader *nir)
+                   const nir_shader *nir)
 {
         /* We don't currently have vertex shader variants */
         if (nir->info.stage != MESA_SHADER_FRAGMENT)
@@ -237,10 +275,8 @@ panfrost_new_variant_locked(
                 .stream_output = uncompiled->stream_output,
         };
 
-        panfrost_shader_compile(ctx->base.screen,
-                                &ctx->shaders, &ctx->descs, uncompiled->nir,
-                                &ctx->base.debug, prog, 0,
-                                uncompiled->fixed_varying_mask);
+        panfrost_shader_get(ctx->base.screen, &ctx->shaders, &ctx->descs,
+                            uncompiled, &ctx->base.debug, prog, 0);
 
         /* Fixup the stream out information */
         prog->so_mask =
@@ -333,14 +369,19 @@ panfrost_create_shader_state(
         struct pipe_context *pctx,
         const struct pipe_shader_state *cso)
 {
-        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader();
+        nir_shader *nir = (cso->type == PIPE_SHADER_IR_TGSI) ?
+                          tgsi_to_nir(cso->tokens, pctx->screen, false) :
+                          cso->ir.nir;
+
+        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader(nir);
+
+        /* The driver gets ownership of the nir_shader for graphics. The NIR is
+         * ralloc'd. Free the NIR when we free the uncompiled shader.
+         */
+        ralloc_steal(so, nir);
 
         so->stream_output = cso->stream_output;
-
-        if (cso->type == PIPE_SHADER_IR_TGSI)
-                so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
-        else
-                so->nir = cso->ir.nir;
+        so->nir = nir;
 
         /* Fix linkage early */
         if (so->nir->info.stage == MESA_SHADER_VERTEX) {
@@ -353,7 +394,6 @@ panfrost_create_shader_state(
          * feedback program. This is a special shader variant.
          */
         struct panfrost_context *ctx = pan_context(pctx);
-        struct util_debug_callback *dbg = &ctx->base.debug;
 
         if (so->nir->xfb_info) {
                 nir_shader *xfb = nir_shader_clone(NULL, so->nir);
@@ -361,14 +401,15 @@ panfrost_create_shader_state(
                 xfb->info.internal = true;
 
                 so->xfb = calloc(1, sizeof(struct panfrost_compiled_shader));
-                panfrost_shader_compile(pctx->screen, &ctx->shaders,
-                                        &ctx->descs, xfb, dbg, so->xfb, 0,
-                                        so->fixed_varying_mask);
+                so->xfb->key.vs_is_xfb = true;
+
+                panfrost_shader_get(ctx->base.screen, &ctx->shaders, &ctx->descs,
+                                    so, &ctx->base.debug, so->xfb, 0);
 
                 /* Since transform feedback is handled via the transform
                  * feedback program, the original program no longer uses XFB
                  */
-                so->nir->info.has_transform_feedback_varyings = false;
+                nir->info.has_transform_feedback_varyings = false;
         }
 
         /* Compile the program. We don't use vertex shader keys, so there will
@@ -401,13 +442,9 @@ panfrost_create_shader_state(
 }
 
 static void
-panfrost_delete_shader_state(
-        struct pipe_context *pctx,
-        void *so)
+panfrost_delete_shader_state(struct pipe_context *pctx, void *so)
 {
         struct panfrost_uncompiled_shader *cso = (struct panfrost_uncompiled_shader *) so;
-
-        ralloc_free(cso->nir);
 
         util_dynarray_foreach(&cso->variants, struct panfrost_compiled_shader, so) {
                 panfrost_bo_unreference(so->bin.bo);
@@ -424,8 +461,7 @@ panfrost_delete_shader_state(
 
         simple_mtx_destroy(&cso->lock);
 
-        util_dynarray_fini(&cso->variants);
-        free(so);
+        ralloc_free(so);
 }
 
 /*
@@ -438,15 +474,19 @@ panfrost_create_compute_state(
         const struct pipe_compute_state *cso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader();
+        struct panfrost_uncompiled_shader *so = panfrost_alloc_shader(cso->prog);
         struct panfrost_compiled_shader *v = panfrost_alloc_variant(so);
         memset(v, 0, sizeof *v);
 
         assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
 
-        panfrost_shader_compile(pctx->screen, &ctx->shaders, &ctx->descs,
-                                cso->prog, &ctx->base.debug, v,
-                                cso->req_local_mem, 0);
+        panfrost_shader_get(pctx->screen, &ctx->shaders, &ctx->descs,
+                            so, &ctx->base.debug, v, cso->req_local_mem);
+
+        /* The NIR becomes invalid after this. For compute kernels, we never
+         * need to access it again. Don't keep a dangling pointer around.
+         */
+        so->nir = NULL;
 
         return so;
 }
@@ -463,16 +503,6 @@ panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
                 uncompiled ? util_dynarray_begin(&uncompiled->variants) : NULL;
 }
 
-static void
-panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
-{
-        struct panfrost_uncompiled_shader *so =
-                (struct panfrost_uncompiled_shader *)cso;
-
-        util_dynarray_fini(&so->variants);
-        free(cso);
-}
-
 void
 panfrost_shader_context_init(struct pipe_context *pctx)
 {
@@ -486,5 +516,5 @@ panfrost_shader_context_init(struct pipe_context *pctx)
 
         pctx->create_compute_state = panfrost_create_compute_state;
         pctx->bind_compute_state = panfrost_bind_compute_state;
-        pctx->delete_compute_state = panfrost_delete_compute_state;
+        pctx->delete_compute_state = panfrost_delete_shader_state;
 }

@@ -279,8 +279,18 @@ struct panfrost_fs_key {
 };
 
 struct panfrost_shader_key {
-        /* If we need vertex shader keys, union it in */
-        struct panfrost_fs_key fs;
+        union {
+                /* Vertex shaders do not use shader keys. However, we have a
+                 * special "transform feedback" vertex program derived from a
+                 * vertex shader. If vs_is_xfb is set on a vertex shader, this
+                 * is a transform feedback shader, else it is a regular
+                 * (unkeyed) vertex shader.
+                 */
+                bool vs_is_xfb;
+
+                /* Fragment shaders use regular shader keys */
+                struct panfrost_fs_key fs;
+        };
 };
 
 struct panfrost_compiled_shader {
@@ -308,7 +318,14 @@ struct panfrost_compiled_shader {
 
 /* Shader CSO */
 struct panfrost_uncompiled_shader {
-        nir_shader *nir;
+        /* NIR for the shader. For graphics, this will be non-NULL even for
+         * TGSI. For compute, this will be NULL after the shader is compiled,
+         * as we don't need any compute variants.
+         */
+        const nir_shader *nir;
+
+        /* A SHA1 of the serialized NIR for the disk cache. */
+        unsigned char nir_sha1[20];
 
         /* Stream output information */
         struct pipe_stream_output_info stream_output;
@@ -328,6 +345,35 @@ struct panfrost_uncompiled_shader {
          */
         uint32_t fixed_varying_mask;
 };
+
+/* The binary artefacts of compiling a shader. This differs from
+ * panfrost_compiled_shader, which adds extra metadata beyond compiling but
+ * throws away information not needed after the initial compile.
+ *
+ * This structure is serialized for the shader disk cache.
+ */
+struct panfrost_shader_binary {
+        /* Collected information about the compiled shader */
+        struct pan_shader_info info;
+
+        /* The binary itself */
+        struct util_dynarray binary;
+};
+
+void
+panfrost_disk_cache_store(struct disk_cache *cache,
+                          const struct panfrost_uncompiled_shader *uncompiled,
+                          const struct panfrost_shader_key *key,
+                          const struct panfrost_shader_binary *binary);
+
+bool
+panfrost_disk_cache_retrieve(struct disk_cache *cache,
+                             const struct panfrost_uncompiled_shader *uncompiled,
+                             const struct panfrost_shader_key *key,
+                             struct panfrost_shader_binary *binary);
+
+void
+panfrost_disk_cache_init(struct panfrost_screen *screen);
 
 /** (Vertex buffer index, divisor) tuple that will become an Attribute Buffer
  * Descriptor at draw-time on Midgard

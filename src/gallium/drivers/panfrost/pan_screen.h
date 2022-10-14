@@ -37,6 +37,7 @@
 #include "util/bitset.h"
 #include "util/set.h"
 #include "util/log.h"
+#include "util/disk_cache.h"
 
 #include "pan_device.h"
 #include "pan_mempool.h"
@@ -107,6 +108,7 @@ struct panfrost_screen {
         } indirect_draw;
 
         struct panfrost_vtable vtbl;
+        struct disk_cache *disk_cache;
 };
 
 static inline struct panfrost_screen *
