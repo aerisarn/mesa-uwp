@@ -808,6 +808,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 unsigned coord_components,
                                 unsigned grad_components)
 {
+   const brw_compiler *compiler = bld.shader->compiler;
    const intel_device_info *devinfo = bld.shader->devinfo;
    const enum brw_reg_type payload_type =
       brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_F);
@@ -1153,6 +1154,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
        * we can use the surface handle directly as the extended descriptor.
        */
       inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
+      inst->send_ex_bso = compiler->extended_bindless_surface_offset;
    } else {
       /* Immediate portion of the descriptor */
       inst->desc = brw_sampler_desc(devinfo,
@@ -1344,6 +1346,7 @@ setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
                           const fs_reg &surface, const fs_reg &surface_handle)
 {
    const ASSERTED intel_device_info *devinfo = bld.shader->devinfo;
+   const brw_compiler *compiler = bld.shader->compiler;
 
    /* We must have exactly one of surface and surface_handle */
    assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
@@ -1362,6 +1365,7 @@ setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
        * we can use the surface handle directly as the extended descriptor.
        */
       inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
+      inst->send_ex_bso = compiler->extended_bindless_surface_offset;
    } else {
       inst->desc = desc;
       const fs_builder ubld = bld.exec_all().group(1, 0);
@@ -1377,12 +1381,15 @@ setup_lsc_surface_descriptors(const fs_builder &bld, fs_inst *inst,
                               uint32_t desc, const fs_reg &surface)
 {
    const ASSERTED intel_device_info *devinfo = bld.shader->devinfo;
+   const brw_compiler *compiler = bld.shader->compiler;
 
    inst->src[0] = brw_imm_ud(0); /* desc */
 
    enum lsc_addr_surface_type surf_type = lsc_msg_desc_addr_type(devinfo, desc);
    switch (surf_type) {
    case LSC_ADDR_SURFTYPE_BSS:
+      inst->send_ex_bso = compiler->extended_bindless_surface_offset;
+      /* fall-through */
    case LSC_ADDR_SURFTYPE_SS:
       assert(surface.file != BAD_FILE);
       /* We assume that the driver provided the handle in the top 20 bits so
@@ -1415,6 +1422,7 @@ setup_lsc_surface_descriptors(const fs_builder &bld, fs_inst *inst,
 static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
+   const brw_compiler *compiler = bld.shader->compiler;
    const intel_device_info *devinfo = bld.shader->devinfo;
 
    /* Get the logical send arguments. */
@@ -1646,6 +1654,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->header_size = header_sz;
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
+   inst->send_ex_bso = surface_handle.file != BAD_FILE &&
+                       compiler->extended_bindless_surface_offset;
 
    /* Set up SFID and descriptors */
    inst->sfid = sfid;
@@ -1674,6 +1684,7 @@ lsc_bits_to_data_size(unsigned bit_size)
 static void
 lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
+   const brw_compiler *compiler = bld.shader->compiler;
    const intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->has_lsc);
 
@@ -1808,6 +1819,8 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->header_size = 0;
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
+   inst->send_ex_bso = surf_type == LSC_ADDR_SURFTYPE_BSS &&
+                       compiler->extended_bindless_surface_offset;
 
    inst->resize_sources(4);
 
@@ -1828,6 +1841,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_lsc_block_logical_send(const fs_builder &bld, fs_inst *inst)
 {
+   const brw_compiler *compiler = bld.shader->compiler;
    const intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->has_lsc);
 
@@ -1893,6 +1907,8 @@ lower_lsc_block_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->header_size = 0;
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
+   inst->send_ex_bso = surf_type == LSC_ADDR_SURFTYPE_BSS &&
+                       compiler->extended_bindless_surface_offset;
 
    inst->resize_sources(4);
 
@@ -2322,6 +2338,8 @@ lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
    inst->opcode = SHADER_OPCODE_SEND;
    inst->sfid = GFX12_SFID_UGM;
    inst->resize_sources(3);
+   inst->send_ex_bso = surf_type == LSC_ADDR_SURFTYPE_BSS &&
+                       compiler->extended_bindless_surface_offset;
 
    assert(!compiler->indirect_ubos_use_sampler);
 
@@ -3019,6 +3037,8 @@ fs_visitor::lower_uniform_pull_constant_loads()
          /* Update the original instruction. */
          inst->opcode = SHADER_OPCODE_SEND;
          inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+         inst->send_ex_bso = surface_handle.file != BAD_FILE &&
+                             compiler->extended_bindless_surface_offset;
          inst->ex_mlen = 0;
          inst->header_size = 0;
          inst->send_has_side_effects = false;

@@ -343,7 +343,8 @@ fs_generator::generate_send(fs_inst *inst,
        */
       brw_send_indirect_split_message(p, inst->sfid, dst, payload, payload2,
                                       desc, desc_imm, ex_desc, ex_desc_imm,
-                                      inst->send_ex_desc_scratch, inst->eot);
+                                      inst->send_ex_desc_scratch,
+                                      inst->send_ex_bso, inst->eot);
       if (inst->check_tdr)
          brw_inst_set_opcode(p->isa, brw_last_inst,
                              devinfo->ver >= 12 ? BRW_OPCODE_SENDC : BRW_OPCODE_SENDSC);
