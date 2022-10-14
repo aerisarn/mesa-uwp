@@ -263,6 +263,9 @@ struct panfrost_fs_key {
         /* Number of colour buffers */
         unsigned nr_cbufs;
 
+        /* On Valhall, fixed_varying_mask of the linked vertex shader */
+        uint32_t fixed_varying_mask;
+
         /* Midgard shaders that read the tilebuffer must be keyed for
          * non-blendable formats
          */
@@ -276,9 +279,6 @@ struct panfrost_fs_key {
 };
 
 struct panfrost_shader_key {
-        /* Valhall needs special handling for desktop GL varyings */
-        uint32_t fixed_varying_mask;
-
         /* If we need vertex shader keys, union it in */
         struct panfrost_fs_key fs;
 };

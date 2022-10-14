@@ -3424,7 +3424,7 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
                         unsigned v = vs->info.varyings.output_count;
                         unsigned f = fs->info.varyings.input_count;
                         unsigned slots = MAX2(v, f);
-                        slots += util_bitcount(fs->key.fixed_varying_mask);
+                        slots += util_bitcount(fs->key.fs.fixed_varying_mask);
                         unsigned size = slots * 16;
 
                         /* Assumes 16 byte slots. We could do better. */

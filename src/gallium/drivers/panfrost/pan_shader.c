@@ -60,7 +60,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         const nir_shader *ir,
                         struct util_debug_callback *dbg,
                         struct panfrost_compiled_shader *state,
-                        unsigned req_local_mem)
+                        unsigned req_local_mem,
+                        unsigned fixed_varying_mask)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_device *dev = pan_device(pscreen);
@@ -74,14 +75,22 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 xfb->info.internal = true;
 
                 state->xfb = calloc(1, sizeof(struct panfrost_compiled_shader));
-                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb, 0);
+                panfrost_shader_compile(pscreen, shader_pool, desc_pool, xfb, dbg, state->xfb, 0, fixed_varying_mask);
 
                 /* Main shader no longer uses XFB */
                 s->info.has_transform_feedback_varyings = false;
         }
 
+        struct panfrost_compile_inputs inputs = {
+                .debug = dbg,
+                .gpu_id = dev->gpu_id,
+                .fixed_sysval_ubo = -1,
+        };
+
         /* Lower this early so the backends don't have to worry about it */
         if (s->info.stage == MESA_SHADER_FRAGMENT) {
+                inputs.fixed_varying_mask = state->key.fs.fixed_varying_mask;
+
                 NIR_PASS_V(s, nir_lower_fragcolor, state->key.fs.nr_cbufs);
 
                 if (state->key.fs.sprite_coord_enable) {
@@ -96,21 +105,14 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                                    state->key.fs.clip_plane_enable,
                                    false);
                 }
+
+                memcpy(inputs.rt_formats, state->key.fs.rt_formats, sizeof(inputs.rt_formats));
+        } else if (s->info.stage == MESA_SHADER_VERTEX) {
+                inputs.fixed_varying_mask = fixed_varying_mask;
+
+                /* No IDVS for internal XFB shaders */
+                inputs.no_idvs = s->info.has_transform_feedback_varyings;
         }
-
-        /* Call out to Midgard compiler given the above NIR */
-        struct panfrost_compile_inputs inputs = {
-                .debug = dbg,
-                .gpu_id = dev->gpu_id,
-                .fixed_sysval_ubo = -1,
-                .fixed_varying_mask = state->key.fixed_varying_mask
-        };
-
-        /* No IDVS for internal XFB shaders */
-        if (s->info.stage == MESA_SHADER_VERTEX && s->info.has_transform_feedback_varyings)
-                inputs.no_idvs = true;
-
-        memcpy(inputs.rt_formats, state->key.fs.rt_formats, sizeof(inputs.rt_formats));
 
         struct util_dynarray binary;
 
@@ -186,7 +188,7 @@ panfrost_build_key(struct panfrost_context *ctx,
         /* Funny desktop GL varying lowering on Valhall */
         if (dev->arch >= 9) {
                 assert(vs != NULL && "too early");
-                key->fixed_varying_mask = vs->fixed_varying_mask;
+                key->fs.fixed_varying_mask = vs->fixed_varying_mask;
         }
 }
 
@@ -243,8 +245,9 @@ panfrost_new_variant_locked(
         };
 
         panfrost_shader_compile(ctx->base.screen,
-                                &ctx->shaders, &ctx->descs,
-                                uncompiled->nir, &ctx->base.debug, prog, 0);
+                                &ctx->shaders, &ctx->descs, uncompiled->nir,
+                                &ctx->base.debug, prog, 0,
+                                uncompiled->fixed_varying_mask);
 
         /* Fixup the stream out information */
         prog->so_mask =
@@ -295,10 +298,7 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
 
         simple_mtx_lock(&uncompiled->lock);
 
-        struct panfrost_shader_key key = {
-                .fixed_varying_mask = uncompiled->fixed_varying_mask
-        };
-
+        struct panfrost_shader_key key = { 0 };
         panfrost_build_key(ctx, &key, uncompiled->nir);
 
         util_dynarray_foreach(&uncompiled->variants, struct panfrost_compiled_shader, so) {
@@ -365,7 +365,8 @@ panfrost_create_shader_state(
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
-                                        so->nir, &ctx->base.debug, &state, 0);
+                                        so->nir, &ctx->base.debug, &state, 0,
+                                        so->fixed_varying_mask);
         }
 
         return so;
@@ -417,7 +418,7 @@ panfrost_create_compute_state(
 
         panfrost_shader_compile(pctx->screen, &ctx->shaders, &ctx->descs,
                                 cso->prog, &ctx->base.debug, v,
-                                cso->req_local_mem);
+                                cso->req_local_mem, 0);
 
         return so;
 }
