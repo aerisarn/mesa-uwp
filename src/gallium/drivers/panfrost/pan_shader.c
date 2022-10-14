@@ -78,7 +78,10 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         if (s->info.stage == MESA_SHADER_FRAGMENT) {
                 inputs.fixed_varying_mask = state->key.fs.fixed_varying_mask;
 
-                NIR_PASS_V(s, nir_lower_fragcolor, state->key.fs.nr_cbufs);
+                if (s->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
+                        NIR_PASS_V(s, nir_lower_fragcolor,
+                                   state->key.fs.nr_cbufs_for_fragcolor);
+                }
 
                 if (state->key.fs.sprite_coord_enable) {
                         NIR_PASS_V(s, nir_lower_texcoord_replace,
@@ -146,7 +149,10 @@ panfrost_build_key(struct panfrost_context *ctx,
         struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
         struct panfrost_uncompiled_shader *vs = ctx->uncompiled[MESA_SHADER_VERTEX];
 
-        key->fs.nr_cbufs = fb->nr_cbufs;
+        /* gl_FragColor lowering needs the number of colour buffers */
+        if (nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
+                key->fs.nr_cbufs_for_fragcolor = fb->nr_cbufs;
+        }
 
         /* Point sprite lowering needed on Bifrost and newer */
         if (dev->arch >= 6 && rast && ctx->active_prim == PIPE_PRIM_POINTS) {
@@ -328,7 +334,6 @@ panfrost_create_shader_state(
         const struct pipe_shader_state *cso)
 {
         struct panfrost_uncompiled_shader *so = panfrost_alloc_shader();
-        struct panfrost_device *dev = pan_device(pctx->screen);
 
         so->stream_output = cso->stream_output;
 
@@ -366,15 +371,31 @@ panfrost_create_shader_state(
                 so->nir->info.has_transform_feedback_varyings = false;
         }
 
-        /* Precompile for shader-db if we need to */
-        if (unlikely(dev->debug & PAN_DBG_PRECOMPILE)) {
-                struct panfrost_compiled_shader state = { 0 };
+        /* Compile the program. We don't use vertex shader keys, so there will
+         * be no further vertex shader variants. We do have fragment shader
+         * keys, but we can still compile with a default key that will work most
+         * of the time.
+         */
+        struct panfrost_shader_key key = { 0 };
 
-                panfrost_shader_compile(pctx->screen,
-                                        &ctx->shaders, &ctx->descs,
-                                        so->nir, dbg, &state, 0,
-                                        so->fixed_varying_mask);
+        /* gl_FragColor lowering needs the number of colour buffers on desktop
+         * GL, where it acts as an implicit broadcast to all colour buffers.
+         *
+         * However, gl_FragColor is a legacy feature, so assume that if
+         * gl_FragColor is used, there is only a single render target. The
+         * implicit broadcast is neither especially useful nor required by GLES.
+         */
+        if (so->nir->info.stage == MESA_SHADER_FRAGMENT &&
+            so->nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
+
+                key.fs.nr_cbufs_for_fragcolor = 1;
         }
+
+        /* Creating a CSO is single-threaded, so it's ok to use the
+         * locked function without explicitly taking the lock. Creating a
+         * default variant acts as a precompile.
+         */
+        panfrost_new_variant_locked(ctx, so, &key);
 
         return so;
 }

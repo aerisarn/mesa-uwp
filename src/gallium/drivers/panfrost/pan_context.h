@@ -260,8 +260,8 @@ struct pan_linkage {
  * shaders with varying emulated features baked in
  */
 struct panfrost_fs_key {
-        /* Number of colour buffers */
-        unsigned nr_cbufs;
+        /* Number of colour buffers if gl_FragColor is written */
+        unsigned nr_cbufs_for_fragcolor;
 
         /* On Valhall, fixed_varying_mask of the linked vertex shader */
         uint32_t fixed_varying_mask;
