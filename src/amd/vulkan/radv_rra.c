@@ -421,8 +421,7 @@ is_internal_node(uint32_t type)
 
 static bool
 rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *node,
-                  uint32_t root_node_offset, uint32_t size, uint32_t parent_table_size,
-                  bool is_bottom_level)
+                  uint32_t root_node_offset, uint32_t size, bool is_bottom_level)
 {
    /* The child ids are located at offset=0 for both box16 and box32 nodes. */
    uint32_t *children = node;
@@ -474,7 +473,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
 
       if (is_internal_node(type)) {
          result &= rra_validate_node(accel_struct_vas, data, data + offset, root_node_offset, size,
-                                     parent_table_size, is_bottom_level);
+                                     is_bottom_level);
       } else if (type == radv_bvh_node_instance) {
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
          uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
@@ -694,6 +693,16 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
       header->compacted_size -
       header->geometry_count * sizeof(struct radv_accel_struct_geometry_info);
 
+   /* convert root node id to offset */
+   uint32_t src_root_offset = (RADV_BVH_ROOT_NODE & ~7) << 3;
+
+   if (should_validate)
+      if (!rra_validate_node(accel_struct_vas, data + header->bvh_offset,
+                             data + header->bvh_offset + src_root_offset, src_root_offset,
+                             accel_struct->size, !is_tlas)) {
+         return VK_ERROR_VALIDATION_FAILED_EXT;
+      }
+
    struct rra_bvh_info bvh_info = {0};
    rra_gather_bvh_info(data + header->bvh_offset, RADV_BVH_ROOT_NODE, &bvh_info);
 
@@ -707,16 +716,6 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
 
    uint32_t node_parent_table_size =
       ((bvh_info.leaf_nodes_size + bvh_info.internal_nodes_size) / 64) * sizeof(uint32_t);
-
-   /* convert root node id to offset */
-   uint32_t src_root_offset = (RADV_BVH_ROOT_NODE & ~7) << 3;
-
-   if (should_validate)
-      if (!rra_validate_node(accel_struct_vas, data + header->bvh_offset,
-                             data + header->bvh_offset + src_root_offset, src_root_offset,
-                             accel_struct->size, node_parent_table_size, !is_tlas)) {
-         return VK_ERROR_VALIDATION_FAILED_EXT;
-      }
 
    uint32_t *node_parent_table = calloc(node_parent_table_size, 1);
    if (!node_parent_table) {
