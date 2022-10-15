@@ -419,6 +419,12 @@ rra_validate_header(struct radv_acceleration_structure *accel_struct,
 {
    bool result = true;
 
+   if (accel_struct->type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR &&
+       header->instance_count > 0) {
+      rra_accel_struct_validation_fail(0, "BLAS contains instances");
+      result = false;
+   }
+
    if (header->bvh_offset >= accel_struct->size) {
       rra_accel_struct_validation_fail(0, "Invalid BVH offset %u", header->bvh_offset);
       result = false;
