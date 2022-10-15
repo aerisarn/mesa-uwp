@@ -122,7 +122,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                 type = nir_alu_type_get_base_type(type);
 
                 /* Can't do type conversion since GLSL IR packs in funny ways */
-                if (PAN_ARCH >= 6 && var->data.interpolation == INTERP_MODE_FLAT)
+                if (var->data.interpolation == INTERP_MODE_FLAT)
                         type = nir_type_uint;
 
                 /* Point size is handled specially on Valhall (with malloc
