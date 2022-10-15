@@ -1151,7 +1151,7 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
                                                   device->rra_trace.accel_struct_vas,
                                                   device->rra_trace.validate_as, file);
          if (result != VK_SUCCESS)
-            goto copy_fail;
+            continue;
          ++written_accel_struct_count;
       }
    }
