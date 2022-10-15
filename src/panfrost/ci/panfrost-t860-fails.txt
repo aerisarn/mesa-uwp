@@ -45,7 +45,6 @@ dEQP-GLES31.functional.separate_shader.random.68,Fail
 dEQP-GLES31.functional.separate_shader.random.79,Fail
 dEQP-GLES31.functional.separate_shader.random.80,Fail
 dEQP-GLES31.functional.separate_shader.random.89,Fail
-dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.ivec2_lowp_compute,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.image_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_write,Crash
