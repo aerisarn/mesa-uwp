@@ -50,6 +50,7 @@ meson `
 -Dvulkan-drivers="swrast,amd,microsoft-experimental" `
 -Dgallium-drivers="swrast,d3d12,zink" `
 -Dshared-glapi=enabled `
+-Dgles1=enabled `
 -Dgles2=enabled `
 -Dgallium-opencl=icd `
 -Dgallium-rusticl=false `
