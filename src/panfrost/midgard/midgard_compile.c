@@ -3186,6 +3186,16 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
+
+        if (ctx->stage == MESA_SHADER_VERTEX) {
+                /* nir_lower[_explicit]_io is lazy and emits mul+add chains even
+                 * for offsets it could figure out are constant.  Do some
+                 * constant folding before pan_nir_lower_store_component below.
+                 */
+                NIR_PASS_V(nir, nir_opt_constant_folding);
+                NIR_PASS_V(nir, pan_nir_lower_store_component);
+        }
+
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
 

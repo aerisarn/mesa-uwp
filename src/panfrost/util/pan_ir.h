@@ -502,6 +502,7 @@ bool pan_has_dest_mod(nir_dest **dest, nir_op op);
 #define PAN_WRITEOUT_2 8
 
 bool pan_nir_lower_zs_store(nir_shader *nir);
+bool pan_nir_lower_store_component(nir_shader *shader);
 
 bool pan_nir_lower_64bit_intrin(nir_shader *shader);
 

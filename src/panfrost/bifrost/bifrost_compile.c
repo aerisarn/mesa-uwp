@@ -4686,68 +4686,6 @@ bi_opt_post_ra(bi_context *ctx)
         }
 }
 
-/* If the shader packs multiple varyings into the same location with different
- * location_frac, we'll need to lower to a single varying store that collects
- * all of the channels together.
- */
-static bool
-bifrost_nir_lower_store_component(struct nir_builder *b,
-                nir_instr *instr, void *data)
-{
-        if (instr->type != nir_instr_type_intrinsic)
-                return false;
-
-        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
-        if (intr->intrinsic != nir_intrinsic_store_output)
-                return false;
-
-        struct hash_table_u64 *slots = data;
-        unsigned component = nir_intrinsic_component(intr);
-        nir_src *slot_src = nir_get_io_offset_src(intr);
-        uint64_t slot = nir_src_as_uint(*slot_src) + nir_intrinsic_base(intr);
-
-        nir_intrinsic_instr *prev = _mesa_hash_table_u64_search(slots, slot);
-        unsigned mask = (prev ? nir_intrinsic_write_mask(prev) : 0);
-
-        nir_ssa_def *value = intr->src[0].ssa;
-        b->cursor = nir_before_instr(&intr->instr);
-
-        nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
-        nir_ssa_def *channels[4] = { undef, undef, undef, undef };
-
-        /* Copy old */
-        u_foreach_bit(i, mask) {
-                assert(prev != NULL);
-                nir_ssa_def *prev_ssa = prev->src[0].ssa;
-                channels[i] = nir_channel(b, prev_ssa, i);
-        }
-
-        /* Copy new */
-        unsigned new_mask = nir_intrinsic_write_mask(intr);
-        mask |= (new_mask << component);
-
-        u_foreach_bit(i, new_mask) {
-                assert(component + i < 4);
-                channels[component + i] = nir_channel(b, value, i);
-        }
-
-        intr->num_components = util_last_bit(mask);
-        nir_instr_rewrite_src_ssa(instr, &intr->src[0],
-                        nir_vec(b, channels, intr->num_components));
-
-        nir_intrinsic_set_component(intr, 0);
-        nir_intrinsic_set_write_mask(intr, mask);
-
-        if (prev) {
-                _mesa_hash_table_u64_remove(slots, slot);
-                nir_instr_remove(&prev->instr);
-        }
-
-        _mesa_hash_table_u64_insert(slots, slot, intr);
-        return false;
-}
-
 /* Dead code elimination for branches at the end of a block - only one branch
  * per block is legal semantically, but unreachable jumps can be generated.
  * Likewise on Bifrost we can generate jumps to the terminal block which need
@@ -4934,12 +4872,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                                         BITFIELD64_BIT(VARYING_SLOT_PSIZ), false);
                 }
 
-                struct hash_table_u64 *stores = _mesa_hash_table_u64_create(NULL);
-                NIR_PASS_V(nir, nir_shader_instructions_pass,
-                                bifrost_nir_lower_store_component,
-                                nir_metadata_block_index |
-                                nir_metadata_dominance, stores);
-                _mesa_hash_table_u64_destroy(stores);
+                NIR_PASS_V(nir, pan_nir_lower_store_component);
         }
 
         NIR_PASS_V(nir, nir_lower_ssbo);
