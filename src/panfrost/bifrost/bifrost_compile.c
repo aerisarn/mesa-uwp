@@ -4938,7 +4938,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS_V(nir, nir_lower_mediump_io,
                            nir_var_shader_in | nir_var_shader_out,
                            ~bi_fp32_varying_mask(nir), false);
-        } else {
+        } else if (nir->info.stage == MESA_SHADER_VERTEX) {
                 if (gpu_id >= 0x9000) {
                         NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                                         BITFIELD64_BIT(VARYING_SLOT_PSIZ), false);
