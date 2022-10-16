@@ -404,6 +404,9 @@ struct fd_context {
    struct pipe_poly_stipple stipple dt;
    struct pipe_viewport_state viewport[PIPE_MAX_VIEWPORTS] dt;
    struct pipe_scissor_state viewport_scissor[PIPE_MAX_VIEWPORTS] dt;
+   struct {
+      unsigned x, y;
+   } guardband dt;
    struct fd_constbuf_stateobj constbuf[PIPE_SHADER_TYPES] dt;
    struct fd_shaderbuf_stateobj shaderbuf[PIPE_SHADER_TYPES] dt;
    struct fd_shaderimg_stateobj shaderimg[PIPE_SHADER_TYPES] dt;

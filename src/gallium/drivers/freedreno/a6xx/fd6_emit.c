@@ -34,7 +34,6 @@
 #include "util/u_string.h"
 #include "util/u_viewport.h"
 
-#include "common/freedreno_guardband.h"
 #include "freedreno_query_hw.h"
 #include "freedreno_resource.h"
 #include "freedreno_state.h"
@@ -982,13 +981,8 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
          A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0, .x = scissor->maxx,
                                           .y = scissor->maxy));
 
-      unsigned guardband_x = fd_calc_guardband(vp->translate[0],
-                                               vp->scale[0], false);
-      unsigned guardband_y = fd_calc_guardband(vp->translate[1],
-                                               vp->scale[1], false);
-
-      OUT_REG(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ(.horz = guardband_x,
-                                                    .vert = guardband_y));
+      OUT_REG(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ(.horz = ctx->guardband.x,
+                                                    .vert = ctx->guardband.y));
    }
 
    /* The clamp ranges are only used when the rasterizer wants depth

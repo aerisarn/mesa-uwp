@@ -31,6 +31,8 @@
 #include "util/u_string.h"
 #include "util/u_upload_mgr.h"
 
+#include "common/freedreno_guardband.h"
+
 #include "freedreno_context.h"
 #include "freedreno_gmem.h"
 #include "freedreno_query_hw.h"
@@ -407,6 +409,29 @@ fd_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
    }
 
    fd_context_dirty(ctx, FD_DIRTY_VIEWPORT);
+
+   /* Guardband is only used on a6xx so far: */
+   if (!is_a6xx(ctx->screen))
+      return;
+
+   ctx->guardband.x = ~0;
+   ctx->guardband.y = ~0;
+
+   bool is3x = is_a3xx(ctx->screen);
+
+   for (unsigned i = 0; i < PIPE_MAX_VIEWPORTS; i++) {
+      const struct pipe_viewport_state *vp = & ctx->viewport[i];
+
+      /* skip unused viewports: */
+      if (vp->scale[0] == 0)
+         continue;
+
+      unsigned gx = fd_calc_guardband(vp->translate[0], vp->scale[0], is3x);
+      unsigned gy = fd_calc_guardband(vp->translate[1], vp->scale[1], is3x);
+
+      ctx->guardband.x = MIN2(ctx->guardband.x, gx);
+      ctx->guardband.y = MIN2(ctx->guardband.y, gy);
+   }
 }
 
 static void
