@@ -966,14 +966,15 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
    }
 
    if (dirty & FD_DIRTY_VIEWPORT) {
-      struct pipe_scissor_state *scissor = &ctx->viewport_scissor;
+      struct pipe_scissor_state *scissor = &ctx->viewport_scissor[0];
+      struct pipe_viewport_state *vp = & ctx->viewport[0];
 
-      OUT_REG(ring, A6XX_GRAS_CL_VPORT_XOFFSET(0, ctx->viewport.translate[0]),
-              A6XX_GRAS_CL_VPORT_XSCALE(0, ctx->viewport.scale[0]),
-              A6XX_GRAS_CL_VPORT_YOFFSET(0, ctx->viewport.translate[1]),
-              A6XX_GRAS_CL_VPORT_YSCALE(0, ctx->viewport.scale[1]),
-              A6XX_GRAS_CL_VPORT_ZOFFSET(0, ctx->viewport.translate[2]),
-              A6XX_GRAS_CL_VPORT_ZSCALE(0, ctx->viewport.scale[2]));
+      OUT_REG(ring, A6XX_GRAS_CL_VPORT_XOFFSET(0, vp->translate[0]),
+              A6XX_GRAS_CL_VPORT_XSCALE(0, vp->scale[0]),
+              A6XX_GRAS_CL_VPORT_YOFFSET(0, vp->translate[1]),
+              A6XX_GRAS_CL_VPORT_YSCALE(0, vp->scale[1]),
+              A6XX_GRAS_CL_VPORT_ZOFFSET(0, vp->translate[2]),
+              A6XX_GRAS_CL_VPORT_ZSCALE(0, vp->scale[2]));
 
       OUT_REG(
          ring,
@@ -982,10 +983,10 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
          A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0, .x = MAX2(scissor->maxx, 1) - 1,
                                           .y = MAX2(scissor->maxy, 1) - 1));
 
-      unsigned guardband_x = fd_calc_guardband(ctx->viewport.translate[0],
-                                               ctx->viewport.scale[0], false);
-      unsigned guardband_y = fd_calc_guardband(ctx->viewport.translate[1],
-                                               ctx->viewport.scale[1], false);
+      unsigned guardband_x = fd_calc_guardband(vp->translate[0],
+                                               vp->scale[0], false);
+      unsigned guardband_y = fd_calc_guardband(vp->translate[1],
+                                               vp->scale[1], false);
 
       OUT_REG(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ(.horz = guardband_x,
                                                     .vert = guardband_y));
@@ -996,8 +997,10 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
     */
    if ((dirty & (FD_DIRTY_VIEWPORT | FD_DIRTY_RASTERIZER)) &&
        fd_depth_clamp_enabled(ctx)) {
+      struct pipe_viewport_state *vp = & ctx->viewport[0];
       float zmin, zmax;
-      util_viewport_zmin_zmax(&ctx->viewport, ctx->rasterizer->clip_halfz,
+
+      util_viewport_zmin_zmax(vp, ctx->rasterizer->clip_halfz,
                               &zmin, &zmax);
 
       OUT_REG(ring, A6XX_GRAS_CL_Z_CLAMP_MIN(0, zmin),

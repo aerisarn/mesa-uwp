@@ -310,10 +310,12 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 
    fd_context_dirty(ctx, FD_DIRTY_FRAMEBUFFER);
 
-   ctx->disabled_scissor.minx = 0;
-   ctx->disabled_scissor.miny = 0;
-   ctx->disabled_scissor.maxx = cso->width;
-   ctx->disabled_scissor.maxy = cso->height;
+   for (unsigned i = 0; i < PIPE_MAX_VIEWPORTS; i++) {
+      ctx->disabled_scissor[i].minx = 0;
+      ctx->disabled_scissor[i].miny = 0;
+      ctx->disabled_scissor[i].maxx = cso->width;
+      ctx->disabled_scissor[i].maxy = cso->height;
+   }
 
    fd_context_dirty(ctx, FD_DIRTY_SCISSOR);
    update_draw_cost(ctx);
@@ -335,44 +337,50 @@ fd_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
 {
    struct fd_context *ctx = fd_context(pctx);
 
-   ctx->scissor = *scissor;
+   for (unsigned i = 0; i < num_scissors; i++)
+      ctx->scissor[start_slot + i] = scissor[i];
+
    fd_context_dirty(ctx, FD_DIRTY_SCISSOR);
 }
 
 static void
 fd_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
                        unsigned num_viewports,
-                       const struct pipe_viewport_state *viewport) in_dt
+                       const struct pipe_viewport_state *viewports) in_dt
 {
    struct fd_context *ctx = fd_context(pctx);
-   struct pipe_scissor_state *scissor = &ctx->viewport_scissor;
-   float minx, miny, maxx, maxy;
 
-   ctx->viewport = *viewport;
+   for (unsigned i = 0; i < num_viewports; i++) {
+      unsigned idx = start_slot + i;
+      struct pipe_scissor_state *scissor = &ctx->viewport_scissor[idx];
+      const struct pipe_viewport_state *viewport = &viewports[i];
 
-   /* see si_get_scissor_from_viewport(): */
+      ctx->viewport[idx] = *viewport;
 
-   /* Convert (-1, -1) and (1, 1) from clip space into window space. */
-   minx = -viewport->scale[0] + viewport->translate[0];
-   miny = -viewport->scale[1] + viewport->translate[1];
-   maxx = viewport->scale[0] + viewport->translate[0];
-   maxy = viewport->scale[1] + viewport->translate[1];
+      /* see si_get_scissor_from_viewport(): */
 
-   /* Handle inverted viewports. */
-   if (minx > maxx) {
-      swap(minx, maxx);
+      /* Convert (-1, -1) and (1, 1) from clip space into window space. */
+      float minx = -viewport->scale[0] + viewport->translate[0];
+      float miny = -viewport->scale[1] + viewport->translate[1];
+      float maxx = viewport->scale[0] + viewport->translate[0];
+      float maxy = viewport->scale[1] + viewport->translate[1];
+
+      /* Handle inverted viewports. */
+      if (minx > maxx) {
+         swap(minx, maxx);
+      }
+      if (miny > maxy) {
+         swap(miny, maxy);
+      }
+
+      const float max_dims = ctx->screen->gen >= 4 ? 16384.f : 4096.f;
+
+      /* Clamp, convert to integer and round up the max bounds. */
+      scissor->minx = CLAMP(minx, 0.f, max_dims);
+      scissor->miny = CLAMP(miny, 0.f, max_dims);
+      scissor->maxx = CLAMP(ceilf(maxx), 0.f, max_dims);
+      scissor->maxy = CLAMP(ceilf(maxy), 0.f, max_dims);
    }
-   if (miny > maxy) {
-      swap(miny, maxy);
-   }
-
-   const float max_dims = ctx->screen->gen >= 4 ? 16384.f : 4096.f;
-
-   /* Clamp, convert to integer and round up the max bounds. */
-   scissor->minx = CLAMP(minx, 0.f, max_dims);
-   scissor->miny = CLAMP(miny, 0.f, max_dims);
-   scissor->maxx = CLAMP(ceilf(maxx), 0.f, max_dims);
-   scissor->maxy = CLAMP(ceilf(maxy), 0.f, max_dims);
 
    fd_context_dirty(ctx, FD_DIRTY_VIEWPORT);
 }
@@ -463,9 +471,9 @@ fd_rasterizer_state_bind(struct pipe_context *pctx, void *hwcso) in_dt
    fd_context_dirty(ctx, FD_DIRTY_RASTERIZER);
 
    if (ctx->rasterizer && ctx->rasterizer->scissor) {
-      ctx->current_scissor = &ctx->scissor;
+      ctx->current_scissor = ctx->scissor;
    } else {
-      ctx->current_scissor = &ctx->disabled_scissor;
+      ctx->current_scissor = ctx->disabled_scissor;
    }
 
    /* if scissor enable bit changed we need to mark scissor
