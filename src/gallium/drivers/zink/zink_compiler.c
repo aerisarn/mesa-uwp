@@ -1447,6 +1447,115 @@ remove_bo_access(nir_shader *shader, struct zink_shader *zs)
    return nir_shader_instructions_pass(shader, remove_bo_access_instr, nir_metadata_dominance, &bo);
 }
 
+static bool
+find_var_deref(nir_shader *nir, nir_variable *var)
+{
+   nir_foreach_function(function, nir) {
+      if (!function->impl)
+         continue;
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_deref)
+               continue;
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            if (deref->deref_type == nir_deref_type_var && deref->var == var)
+               return true;
+         }
+      }
+   }
+   return false;
+}
+
+struct clamp_layer_output_state {
+   nir_variable *original;
+   nir_variable *clamped;
+};
+
+static void
+clamp_layer_output_emit(nir_builder *b, struct clamp_layer_output_state *state)
+{
+   nir_ssa_def *is_layered = nir_load_push_constant(b, 1, 32,
+                                                    nir_imm_int(b, ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED),
+                                                    .base = ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED, .range = 4);
+   nir_deref_instr *original_deref = nir_build_deref_var(b, state->original);
+   nir_deref_instr *clamped_deref = nir_build_deref_var(b, state->clamped);
+   nir_ssa_def *layer = nir_bcsel(b, nir_ieq_imm(b, is_layered, 1),
+                                  nir_load_deref(b, original_deref),
+                                  nir_imm_int(b, 0));
+   nir_store_deref(b, clamped_deref, layer, 0);
+}
+
+static bool
+clamp_layer_output_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct clamp_layer_output_state *state = data;
+   switch (instr->type) {
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_emit_vertex_with_counter)
+         return false;
+      b->cursor = nir_before_instr(instr);
+      clamp_layer_output_emit(b, state);
+      return true;
+   }
+   default: return false;
+   }
+}
+
+static bool
+clamp_layer_output(nir_shader *vs, nir_shader *fs, unsigned *next_location)
+{
+   switch (vs->info.stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_TESS_EVAL:
+      break;
+   default:
+      unreachable("invalid last vertex stage!");
+   }
+   struct clamp_layer_output_state state = {0};
+   state.original = nir_find_variable_with_location(vs, nir_var_shader_out, VARYING_SLOT_LAYER);
+   if (!state.original || !find_var_deref(vs, state.original))
+      return false;
+   state.clamped = nir_variable_create(vs, nir_var_shader_out, glsl_int_type(), "layer_clamped");
+   state.clamped->data.location = VARYING_SLOT_LAYER;
+   nir_variable *fs_var = nir_find_variable_with_location(fs, nir_var_shader_in, VARYING_SLOT_LAYER);
+   if ((state.original->data.explicit_xfb_buffer || fs_var) && *next_location < MAX_VARYING) {
+      state.original->data.location = VARYING_SLOT_VAR0; // Anything but a built-in slot
+      state.original->data.driver_location = (*next_location)++;
+      if (fs_var) {
+         fs_var->data.location = state.original->data.location;
+         fs_var->data.driver_location = state.original->data.driver_location;
+      }
+   } else {
+      if (state.original->data.explicit_xfb_buffer) {
+         /* Will xfb the clamped output but still better than nothing */
+         state.clamped->data.explicit_xfb_buffer = state.original->data.explicit_xfb_buffer;
+         state.clamped->data.xfb.buffer = state.original->data.xfb.buffer;
+         state.clamped->data.xfb.stride = state.original->data.xfb.stride;
+         state.clamped->data.offset = state.original->data.offset;
+         state.clamped->data.stream = state.original->data.stream;
+      }
+      state.original->data.mode = nir_var_shader_temp;
+      nir_fixup_deref_modes(vs);
+   }
+   if (vs->info.stage == MESA_SHADER_GEOMETRY) {
+      nir_shader_instructions_pass(vs, clamp_layer_output_instr, nir_metadata_dominance, &state);
+   } else {
+      nir_builder b;
+      nir_function_impl *impl = nir_shader_get_entrypoint(vs);
+      nir_builder_init(&b, impl);
+      assert(impl->end_block->predecessors->entries == 1);
+      b.cursor = nir_after_cf_list(&impl->body);
+      clamp_layer_output_emit(&b, &state);
+      nir_metadata_preserve(impl, nir_metadata_dominance);
+   }
+   optimize_nir(vs, NULL);
+   NIR_PASS_V(vs, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+   return true;
+}
+
 static void
 assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
@@ -1614,6 +1723,8 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
             nir_shader_instructions_pass(consumer, rewrite_read_as_0, nir_metadata_dominance, var);
          }
       }
+      if (consumer->info.stage == MESA_SHADER_FRAGMENT)
+         do_fixup |= clamp_layer_output(producer, consumer, &reserved);
    }
    if (!do_fixup)
       return;
@@ -2145,26 +2256,6 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    bool success = zink_screen_handle_vkresult(screen, ret);
    assert(success);
    return success ? mod : VK_NULL_HANDLE;
-}
-
-static bool
-find_var_deref(nir_shader *nir, nir_variable *var)
-{
-   nir_foreach_function(function, nir) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
-         nir_foreach_instr(instr, block) {
-            if (instr->type != nir_instr_type_deref)
-               continue;
-            nir_deref_instr *deref = nir_instr_as_deref(instr);
-            if (deref->deref_type == nir_deref_type_var && deref->var == var)
-               return true;
-         }
-      }
-   }
-   return false;
 }
 
 static void
