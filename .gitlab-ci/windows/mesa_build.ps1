@@ -62,7 +62,6 @@ meson `
 -Dwerror=true `
 -Dwarning_level=2 `
 -Dzlib:warning_level=1 `
--Dlibelf:warning_level=1 `
 $sourcedir && `
 meson install --skip-subprojects && `
 meson test --num-processes 32 --print-errorlogs
