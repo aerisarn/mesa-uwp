@@ -1250,17 +1250,64 @@ surface_dmabuf_feedback_tranche_done(void *data,
    dmabuf_feedback_tranche_init(&feedback->pending_tranche);
 }
 
+static bool
+sets_of_modifiers_are_the_same(uint32_t num_drm_modifiers_A, const uint64_t *modifiers_A,
+                               uint32_t num_drm_modifiers_B, const uint64_t *modifiers_B)
+{
+   uint32_t i, j;
+   bool mod_found;
+
+   if (num_drm_modifiers_A != num_drm_modifiers_B)
+      return false;
+
+   for (i = 0; i < num_drm_modifiers_A; i++) {
+      mod_found = false;
+      for (j = 0; j < num_drm_modifiers_B; j++) {
+         if (modifiers_A[i] == modifiers_B[j]) {
+            mod_found = true;
+            break;
+         }
+      }
+      if (!mod_found)
+         return false;
+   }
+
+   return true;
+}
+
 static void
 surface_dmabuf_feedback_done(void *data,
                              struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
 {
    struct wsi_wl_surface *wsi_wl_surface = data;
+   struct wsi_wl_swapchain *chain = wsi_wl_surface->chain;
+   struct wsi_wl_format *f;
 
    dmabuf_feedback_fini(&wsi_wl_surface->dmabuf_feedback);
    wsi_wl_surface->dmabuf_feedback = wsi_wl_surface->pending_dmabuf_feedback;
    dmabuf_feedback_init(&wsi_wl_surface->pending_dmabuf_feedback);
 
-   wsi_wl_surface->chain->suboptimal = true;
+   /* It's not just because we received dma-buf feedback that re-allocation is a
+    * good idea. In order to know if we should re-allocate or not, we must
+    * compare the most recent parameters that we used to allocate with the ones
+    * from the feedback we just received.
+    *
+    * The allocation parameters are: the format, its set of modifiers and the
+    * tranche flags. On WSI we are not using the tranche flags for anything, so
+    * we disconsider this. As we can't switch to another format (it is selected
+    * by the client), we just need to compare the set of modifiers.
+    *
+    * So we just look for the vk_format in the tranches (respecting their
+    * preferences), and compare its set of modifiers with the set of modifiers
+    * we've used to allocate previously. If they differ, we are using suboptimal
+    * parameters and should re-allocate.
+    */
+   f = pick_format_from_surface_dmabuf_feedback(wsi_wl_surface, chain->vk_format);
+   if (f && !sets_of_modifiers_are_the_same(u_vector_length(&f->modifiers),
+                                            u_vector_tail(&f->modifiers),
+                                            chain->num_drm_modifiers,
+                                            chain->drm_modifiers))
+      wsi_wl_surface->chain->suboptimal = true;
 }
 
 static const struct zwp_linux_dmabuf_feedback_v1_listener
