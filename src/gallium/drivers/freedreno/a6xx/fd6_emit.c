@@ -742,15 +742,6 @@ build_scissor(struct fd6_emit *emit) assert_dt
       A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = MAX2(scissor->maxx, 1) - 1,
                                      .y = MAX2(scissor->maxy, 1) - 1));
 
-   ctx->batch->max_scissor.minx =
-      MIN2(ctx->batch->max_scissor.minx, scissor->minx);
-   ctx->batch->max_scissor.miny =
-      MIN2(ctx->batch->max_scissor.miny, scissor->miny);
-   ctx->batch->max_scissor.maxx =
-      MAX2(ctx->batch->max_scissor.maxx, scissor->maxx);
-   ctx->batch->max_scissor.maxy =
-      MAX2(ctx->batch->max_scissor.maxy, scissor->maxy);
-
    return ring;
 }
 
