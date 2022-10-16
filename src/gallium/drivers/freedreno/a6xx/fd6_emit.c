@@ -480,7 +480,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
  * returns whether border_color is required:
  */
 static bool
-fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
+fd6_emit_combined_textures(struct fd6_emit *emit,
                            enum pipe_shader_type type,
                            const struct ir3_shader_variant *v) assert_dt
 {
@@ -1115,29 +1115,29 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          break;
       case FD6_GROUP_VS_TEX:
          needs_border |=
-            fd6_emit_combined_textures(ring, emit, PIPE_SHADER_VERTEX, vs);
+            fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX, vs);
          continue;
       case FD6_GROUP_HS_TEX:
          if (hs) {
-            needs_border |= fd6_emit_combined_textures(
-               ring, emit, PIPE_SHADER_TESS_CTRL, hs);
+            needs_border |=
+               fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL, hs);
          }
          continue;
       case FD6_GROUP_DS_TEX:
          if (ds) {
-            needs_border |= fd6_emit_combined_textures(
-               ring, emit, PIPE_SHADER_TESS_EVAL, ds);
+            needs_border |=
+               fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL, ds);
          }
          continue;
       case FD6_GROUP_GS_TEX:
          if (gs) {
             needs_border |=
-               fd6_emit_combined_textures(ring, emit, PIPE_SHADER_GEOMETRY, gs);
+               fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY, gs);
          }
          continue;
       case FD6_GROUP_FS_TEX:
          needs_border |=
-            fd6_emit_combined_textures(ring, emit, PIPE_SHADER_FRAGMENT, fs);
+            fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT, fs);
          continue;
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
