@@ -290,7 +290,7 @@ static int device_select_find_dri_prime_tag_default(struct device_pci_info *pci_
                    pci_infos[i].bus_info.bus,
                    pci_infos[i].bus_info.dev,
                    pci_infos[i].bus_info.func) >= 0) {
-         if (strcmp(dri_prime, tag))
+         if (strcmp(dri_prime, tag) == 0)
             default_idx = i;
       }
       free(tag);
