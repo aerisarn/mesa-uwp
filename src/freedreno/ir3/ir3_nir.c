@@ -647,12 +647,12 @@ lower_ucp_vs(struct ir3_shader_variant *so)
    if (!so->key.ucp_enables)
       return false;
 
-   gl_shader_stage last_geom_stage = MESA_SHADER_VERTEX;
+   gl_shader_stage last_geom_stage;
 
-   if (so->key.tessellation) {
-      last_geom_stage = MESA_SHADER_TESS_EVAL;
-   } else if (so->key.has_gs) {
+   if (so->key.has_gs) {
       last_geom_stage = MESA_SHADER_GEOMETRY;
+   } else if (so->key.tessellation) {
+      last_geom_stage = MESA_SHADER_TESS_EVAL;
    } else {
       last_geom_stage = MESA_SHADER_VERTEX;
    }
