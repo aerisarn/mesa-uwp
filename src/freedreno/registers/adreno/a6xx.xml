@@ -1101,12 +1101,16 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x093d" name="CP_ROQ_MRB_STAT" type="a6xx_roq_stat"/>
 	<reg32 offset="0x093e" name="CP_ROQ_VSD_STAT" type="a6xx_roq_stat"/>
 
+	<reg32 offset="0x0943" name="CP_IB1_DWORDS"/>
+	<reg32 offset="0x0944" name="CP_IB2_DWORDS"/>
+	<reg32 offset="0x0945" name="CP_SDS_DWORDS"/>
 	<reg32 offset="0x0946" name="CP_MRB_DWORDS"/>
 	<reg32 offset="0x0947" name="CP_VSD_DWORDS"/>
-	<!--
-	There are probably similar registers for RB and SDS, teasing out SDS will
-	take a slightly better test case..
-	 -->
+
+	<reg32 offset="0x0948" name="CP_ROQ_AVAIL_RB">
+		<doc>number of remaining dwords incl current dword being consumed?</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
 	<reg32 offset="0x0949" name="CP_ROQ_AVAIL_IB1">
 		<doc>number of remaining dwords incl current dword being consumed?</doc>
 		<bitfield name="REM" low="16" high="31"/>
@@ -1115,8 +1119,16 @@ to upconvert to 32b float internally?
 		<doc>number of remaining dwords incl current dword being consumed?</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
+	<reg32 offset="0x094b" name="CP_ROQ_AVAIL_SDS">
+		<doc>number of remaining dwords incl current dword being consumed?</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
 	<reg32 offset="0x094c" name="CP_ROQ_AVAIL_MRB">
 		<doc>number of dwords that have already been read but haven't been consumed by $addr</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
+	<reg32 offset="0x094d" name="CP_ROQ_AVAIL_VSD">
+		<doc>number of remaining dwords incl current dword being consumed?</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
 	<reg64 offset="0x0980" name="CP_ALWAYS_ON_COUNTER"/>
