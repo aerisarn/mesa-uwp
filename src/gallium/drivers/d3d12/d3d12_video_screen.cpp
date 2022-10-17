@@ -534,8 +534,8 @@ static d3d12_video_encode_get_hevc_codec_support ( const D3D12_VIDEO_ENCODER_COD
 
    for (auto hevc_config : hevcConfigurationSets) {
       hevcCodecCaps = hevc_config;
-      if(SUCCEEDED(pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
-         && capCodecConfigData.IsSupported)) {
+      if(SUCCEEDED(pD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData)))
+         && capCodecConfigData.IsSupported) {
             hevc_config.SupportFlags = hevcCodecCaps.SupportFlags;
             return hevc_config;
       }

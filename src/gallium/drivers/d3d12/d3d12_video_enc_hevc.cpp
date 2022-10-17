@@ -383,8 +383,8 @@ d3d12_video_encoder_convert_hevc_codec_configuration(struct d3d12_video_encoder 
    capCodecConfigData.CodecSupportLimits.pHEVCSupport = &pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_HEVCCodecCaps;
    capCodecConfigData.CodecSupportLimits.DataSize = sizeof(pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_HEVCCodecCaps);
 
-   if(FAILED(pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
-      || !capCodecConfigData.IsSupported))
+   if(FAILED(pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData)))
+      || !capCodecConfigData.IsSupported)
    {
          is_supported = false;
 
@@ -400,8 +400,8 @@ d3d12_video_encoder_convert_hevc_codec_configuration(struct d3d12_video_encoder 
                (picture->seq.max_transform_hierarchy_depth_intra == 0) ? 4 : picture->seq.max_transform_hierarchy_depth_intra;
 
             // Call the caps check again
-            if(SUCCEEDED(pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData))
-               && capCodecConfigData.IsSupported))
+            if(SUCCEEDED(pD3D12Enc->m_spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_CODEC_CONFIGURATION_SUPPORT, &capCodecConfigData, sizeof(capCodecConfigData)))
+               && capCodecConfigData.IsSupported)
             {
                // If this was the case, then update the config return variable with the overriden values too
                is_supported = true;
