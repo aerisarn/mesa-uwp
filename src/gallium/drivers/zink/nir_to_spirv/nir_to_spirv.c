@@ -996,14 +996,13 @@ get_image_type(struct ntv_context *ctx, struct nir_variable *var, bool is_sample
 }
 
 static SpvId
-emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
+emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, bool bindless)
 {
    if (var->data.bindless)
       return 0;
    const struct glsl_type *type = glsl_without_array(var->type);
 
    bool is_sampler = glsl_type_is_sampler(type);
-   SpvId image_type = get_bare_image_type(ctx, var, is_sampler);
    SpvId var_type = is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
    bool mediump = (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW);
 
@@ -4540,8 +4539,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    }
    nir_foreach_variable_with_modes(var, s, nir_var_uniform | nir_var_image) {
       const struct glsl_type *type = glsl_without_array(var->type);
-      if (glsl_type_is_sampler(type) || glsl_type_is_image(type))
-         emit_image(&ctx, var, false);
+      if (glsl_type_is_sampler(type))
+         emit_image(&ctx, var, get_bare_image_type(&ctx, var, true), false);
+      else if (glsl_type_is_image(type))
+         emit_image(&ctx, var, get_bare_image_type(&ctx, var, false), false);
    }
 
    switch (s->info.stage) {
