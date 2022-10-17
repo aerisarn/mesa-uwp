@@ -1982,7 +1982,7 @@ zero_bindless_descriptor(struct zink_context *ctx, uint32_t handle, bool is_buff
          struct zink_buffer_view *null_bufferview = ctx->dummy_bufferview;
          *bv = null_bufferview->buffer_view;
       } else {
-         struct zink_surface *null_surface = zink_csurface(ctx->dummy_surface[is_image]);
+         struct zink_surface *null_surface = zink_csurface(ctx->dummy_surface[0]);
          VkDescriptorImageInfo *ii = &ctx->di.bindless[is_image].img_infos[handle];
          ii->sampler = VK_NULL_HANDLE;
          ii->imageView = null_surface->image_view;
