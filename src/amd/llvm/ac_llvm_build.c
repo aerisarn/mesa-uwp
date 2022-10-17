@@ -2762,6 +2762,22 @@ LLVMValueRef ac_build_bitfield_reverse(struct ac_llvm_context *ctx, LLVMValueRef
    return result;
 }
 
+LLVMValueRef ac_build_sudot_4x8(struct ac_llvm_context *ctx, LLVMValueRef s0, LLVMValueRef s1,
+                                LLVMValueRef s2, bool clamp, unsigned neg_lo)
+{
+   const char *name = "llvm.amdgcn.sudot4";
+   LLVMValueRef src[6];
+
+   src[0] = LLVMConstInt(ctx->i1, !!(neg_lo & 0x1), false);
+   src[1] = s0;
+   src[2] = LLVMConstInt(ctx->i1, !!(neg_lo & 0x2), false);
+   src[3] = s1;
+   src[4] = s2;
+   src[5] = LLVMConstInt(ctx->i1, clamp, false);
+
+   return ac_build_intrinsic(ctx, name, ctx->i32, src, 6, AC_FUNC_ATTR_READNONE);
+}
+
 void ac_init_exec_full_mask(struct ac_llvm_context *ctx)
 {
    LLVMValueRef full_mask = LLVMConstInt(ctx->i64, ~0ull, 0);

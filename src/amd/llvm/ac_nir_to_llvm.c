@@ -1312,14 +1312,27 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    }
 
    case nir_op_sdot_4x8_iadd:
+   case nir_op_sdot_4x8_iadd_sat: {
+      if (ctx->ac.gfx_level >= GFX11) {
+         result = ac_build_sudot_4x8(&ctx->ac, src[0], src[1], src[2],
+                                     instr->op == nir_op_sdot_4x8_iadd_sat, 0x3);
+      } else {
+         const char *name = "llvm.amdgcn.sdot4";
+         src[3] = LLVMConstInt(ctx->ac.i1, instr->op == nir_op_sdot_4x8_iadd_sat, false);
+         result = ac_build_intrinsic(&ctx->ac, name, def_type, src, 4, AC_FUNC_ATTR_READNONE);
+      }
+      break;
+   }
+   case nir_op_sudot_4x8_iadd:
+   case nir_op_sudot_4x8_iadd_sat: {
+      result = ac_build_sudot_4x8(&ctx->ac, src[0], src[1], src[2],
+                                  instr->op == nir_op_sudot_4x8_iadd_sat, 0x1);
+      break;
+   }
    case nir_op_udot_4x8_uadd:
-   case nir_op_sdot_4x8_iadd_sat:
    case nir_op_udot_4x8_uadd_sat: {
-      const char *name = instr->op == nir_op_sdot_4x8_iadd ||
-                         instr->op == nir_op_sdot_4x8_iadd_sat
-                         ? "llvm.amdgcn.sdot4" : "llvm.amdgcn.udot4";
-      src[3] = LLVMConstInt(ctx->ac.i1, instr->op == nir_op_sdot_4x8_iadd_sat ||
-                                        instr->op == nir_op_udot_4x8_uadd_sat, false);
+      const char *name = "llvm.amdgcn.udot4";
+      src[3] = LLVMConstInt(ctx->ac.i1, instr->op == nir_op_udot_4x8_uadd_sat, false);
       result = ac_build_intrinsic(&ctx->ac, name, def_type, src, 4, AC_FUNC_ATTR_READNONE);
       break;
    }
