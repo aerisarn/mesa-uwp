@@ -475,6 +475,7 @@
     <value name="No preshader" value="0x88"/>
     <value name="Shader" value="0x0d"/>
     <value name="Uniform" value="0x1d"/>
+    <value name="Uniform high" value="0x3d"/>
     <value name="Shared" value="0x4d"/>
     <value name="Registers" value="0x8d"/>
     <value name="Sampler" value="0x9d"/>
@@ -484,7 +485,14 @@
   <struct name="USC Uniform" size="8">
     <field name="Tag" size="8" start="0:0" type="USC Control" default="Uniform"/>
     <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
-    <field name="Unk" size="4" start="0:16" type="hex" default="0x0"/>
+    <!-- Exact split is unknown. -->
+    <field name="Size (halfs)" size="7" start="0:20" type="uint"/>
+    <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
+  </struct>
+
+  <struct name="USC Uniform High" size="8">
+    <field name="Tag" size="8" start="0:0" type="USC Control" default="Uniform High"/>
+    <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
     <!-- Exact split is unknown. -->
     <field name="Size (halfs)" size="7" start="0:20" type="uint"/>
     <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
