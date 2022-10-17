@@ -1092,6 +1092,18 @@ to upconvert to 32b float internally?
 	This is used by CP to read the draw stream and skip empty draws
 	-->
 	<reg64 offset="0x0934" name="CP_VSD_BASE"/>
+
+	<bitset name="a6xx_roq_stat" inline="yes">
+		<bitfield name="RPTR" low="0" high="9"/>
+		<bitfield name="WPTR" low="16" high="25"/>
+	</bitset>
+	<reg32 offset="0x0939" name="CP_ROQ_RB_STAT" type="a6xx_roq_stat"/>
+	<reg32 offset="0x093a" name="CP_ROQ_IB1_STAT" type="a6xx_roq_stat"/>
+	<reg32 offset="0x093b" name="CP_ROQ_IB2_STAT" type="a6xx_roq_stat"/>
+	<reg32 offset="0x093c" name="CP_ROQ_SDS_STAT" type="a6xx_roq_stat"/>
+	<reg32 offset="0x093d" name="CP_ROQ_MRB_STAT" type="a6xx_roq_stat"/>
+	<reg32 offset="0x093e" name="CP_ROQ_VSD_STAT" type="a6xx_roq_stat"/>
+
 	<reg32 offset="0x0946" name="CP_MRB_DWORDS"/>
 	<reg32 offset="0x0947" name="CP_VSD_DWORDS"/>
 	<!--
