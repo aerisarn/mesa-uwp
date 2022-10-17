@@ -1418,13 +1418,13 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       idx = nir_iadd_imm(b, idx, -bo->first_ubo);
    else if (ssbo && bo->first_ssbo)
       idx = nir_iadd_imm(b, idx, -bo->first_ssbo);
-   nir_deref_instr *deref_array = nir_build_deref_array(b, deref_var, idx);
+   nir_deref_instr *deref_array = nir_build_deref_array(b, deref_var, nir_i2iN(b, idx, nir_dest_bit_size(deref_var->dest)));
    nir_deref_instr *deref_struct = nir_build_deref_struct(b, deref_array, 0);
    assert(intr->num_components <= 2);
    if (is_load) {
       nir_ssa_def *result[2];
       for (unsigned i = 0; i < intr->num_components; i++) {
-         nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
+         nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, nir_i2iN(b, offset, nir_dest_bit_size(deref_struct->dest)));
          result[i] = nir_load_deref(b, deref_arr);
          if (intr->intrinsic == nir_intrinsic_load_ssbo)
             nir_intrinsic_set_access(nir_instr_as_intrinsic(result[i]->parent_instr), nir_intrinsic_access(intr));
@@ -1433,7 +1433,7 @@ remove_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       nir_ssa_def *load = nir_vec(b, result, intr->num_components);
       nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
    } else {
-      nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, offset);
+      nir_deref_instr *deref_arr = nir_build_deref_array(b, deref_struct, nir_i2iN(b, offset, nir_dest_bit_size(deref_struct->dest)));
       nir_build_store_deref(b, &deref_arr->dest.ssa, intr->src[0].ssa, BITFIELD_MASK(intr->num_components), nir_intrinsic_access(intr));
    }
    nir_instr_remove(instr);
