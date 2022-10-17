@@ -1614,15 +1614,15 @@ void anv_GetPhysicalDeviceFeatures2(
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
          VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features = (void *)ext;
-         features->shaderBufferFloat16Atomics      = false;
+         features->shaderBufferFloat16Atomics      = pdevice->info.has_lsc;
          features->shaderBufferFloat16AtomicAdd    = false;
-         features->shaderBufferFloat16AtomicMinMax = false;
+         features->shaderBufferFloat16AtomicMinMax = pdevice->info.has_lsc;
          features->shaderBufferFloat32AtomicMinMax = true;
          features->shaderBufferFloat64AtomicMinMax =
             pdevice->info.has_64bit_float && pdevice->info.has_lsc;
-         features->shaderSharedFloat16Atomics      = false;
+         features->shaderSharedFloat16Atomics      = pdevice->info.has_lsc;
          features->shaderSharedFloat16AtomicAdd    = false;
-         features->shaderSharedFloat16AtomicMinMax = false;
+         features->shaderSharedFloat16AtomicMinMax = pdevice->info.has_lsc;
          features->shaderSharedFloat32AtomicMinMax = true;
          features->shaderSharedFloat64AtomicMinMax = false;
          features->shaderImageFloat32AtomicMinMax  = false;
