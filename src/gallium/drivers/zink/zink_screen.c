@@ -204,16 +204,68 @@ get_video_mem(struct zink_screen *screen)
    return size;
 }
 
+/**
+ * Creates the disk cache used by mesa/st frontend for caching the GLSL -> NIR
+ * path.
+ *
+ * The output that gets stored in the frontend's cache is the result of
+ * zink_shader_finalize().  So, our sha1 cache key here needs to include
+ * everything that would change the NIR we generate from a given set of GLSL
+ * source, including our driver build, the Vulkan device and driver (which could
+ * affect the pipe caps we show the frontend), and any debug flags that change
+ * codegen.
+ *
+ * This disk cache also gets used by zink itself for storing its output from NIR
+ * -> SPIRV translation.
+ */
 static bool
 disk_cache_init(struct zink_screen *screen)
 {
    if (zink_debug & ZINK_DEBUG_SHADERDB)
       return true;
-#ifdef ENABLE_SHADER_CACHE
-   static char buf[1000];
-   snprintf(buf, sizeof(buf), "zink_%x04x", screen->info.props.vendorID);
 
-   screen->disk_cache = disk_cache_create(buf, screen->info.props.deviceName, 0);
+#ifdef ENABLE_SHADER_CACHE
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   /* Hash in the zink driver build. */
+   const struct build_id_note *note =
+       build_id_find_nhdr_for_addr(disk_cache_init);
+   unsigned build_id_len = build_id_length(note);
+   assert(note && build_id_len == 20); /* sha1 */
+   _mesa_sha1_update(&ctx, build_id_data(note), build_id_len);
+
+   /* Hash in the Vulkan pipeline cache UUID to identify the combination of
+   *  vulkan device and driver (or any inserted layer that would invalidate our
+   *  cached pipelines).
+   *
+   * "Although they have identical descriptions, VkPhysicalDeviceIDProperties
+   *  ::deviceUUID may differ from
+   *  VkPhysicalDeviceProperties2::pipelineCacheUUID. The former is intended to
+   *  identify and correlate devices across API and driver boundaries, while the
+   *  latter is used to identify a compatible device and driver combination to
+   *  use when serializing and de-serializing pipeline state."
+   */
+   _mesa_sha1_update(&ctx, screen->info.props.pipelineCacheUUID, VK_UUID_SIZE);
+
+   /* Hash in our debug flags that affect NIR generation as of finalize_nir */
+   unsigned shader_debug_flags = zink_debug & ZINK_DEBUG_COMPACT;
+   _mesa_sha1_update(&ctx, &shader_debug_flags, sizeof(shader_debug_flags));
+
+   /* Some of the driconf options change shaders.  Let's just hash the whole
+    * thing to not forget any (especially as options get added).
+    */
+   _mesa_sha1_update(&ctx, &screen->driconf, sizeof(screen->driconf));
+
+   /* Finish the sha1 and format it as text. */
+   unsigned char sha1[20];
+   _mesa_sha1_final(&ctx, sha1);
+
+   char cache_id[20 * 2 + 1];
+   disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+
+   screen->disk_cache = disk_cache_create("zink", cache_id, 0);
+
    if (!screen->disk_cache)
       return true;
 
@@ -2366,6 +2418,14 @@ init_driver_workarounds(struct zink_screen *screen)
 #endif
 }
 
+static struct disk_cache *
+zink_get_disk_shader_cache(struct pipe_screen *_screen)
+{
+   struct zink_screen *screen = zink_screen(_screen);
+
+   return screen->disk_cache;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -2545,6 +2605,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;
    screen->base.finalize_nir = zink_shader_finalize;
+   screen->base.get_disk_shader_cache = zink_get_disk_shader_cache;
    screen->base.get_sparse_texture_virtual_page_size = zink_get_sparse_texture_virtual_page_size;
 
    if (screen->info.have_EXT_sample_locations) {
