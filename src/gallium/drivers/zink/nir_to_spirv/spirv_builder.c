@@ -1544,7 +1544,10 @@ spirv_builder_spec_const_uint(struct spirv_builder *b, int width)
    spirv_buffer_emit_word(&b->types_const_defs, SpvOpSpecConstant | (4 << 16));
    spirv_buffer_emit_word(&b->types_const_defs, spirv_builder_type_uint(b, width));
    spirv_buffer_emit_word(&b->types_const_defs, result);
-   spirv_buffer_emit_word(&b->types_const_defs, 0);
+   /* this is the default value for spec constants;
+    * if any users need a different default, add a param to pass for it
+    */
+   spirv_buffer_emit_word(&b->types_const_defs, 1);
    return result;
 }
 
