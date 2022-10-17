@@ -715,6 +715,9 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_ring_esgs_amd:
       return ctx->esgs_ring;
 
+   case nir_intrinsic_load_ring_gsvs_amd:
+      return ctx->gsvs_ring[nir_intrinsic_stream_id(intrin)];
+
    case nir_intrinsic_load_lds_ngg_scratch_base_amd:
       return LLVMBuildPtrToInt(ctx->ac.builder, ctx->gs_ngg_scratch.value, ctx->ac.i32, "");
 
