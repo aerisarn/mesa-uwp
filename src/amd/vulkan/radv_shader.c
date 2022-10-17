@@ -95,8 +95,11 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .has_fsub = true,
       .has_isub = true,
       .has_sdot_4x8 = device->rad_info.has_accelerated_dot_product,
+      .has_sudot_4x8 =
+         device->rad_info.has_accelerated_dot_product && device->rad_info.gfx_level >= GFX11,
       .has_udot_4x8 = device->rad_info.has_accelerated_dot_product,
-      .has_dot_2x16 = device->rad_info.has_accelerated_dot_product,
+      .has_dot_2x16 =
+         device->rad_info.has_accelerated_dot_product && device->rad_info.gfx_level < GFX11,
       .has_find_msb_rev = true,
       .use_scoped_barrier = true,
 #ifdef LLVM_AVAILABLE

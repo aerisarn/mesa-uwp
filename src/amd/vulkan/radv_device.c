@@ -2269,14 +2269,15 @@ radv_get_physical_device_properties_1_3(struct radv_physical_device *pdevice,
    p->maxInlineUniformTotalSize = UINT16_MAX;
 
    bool accel = pdevice->rad_info.has_accelerated_dot_product;
+   bool gfx11plus = pdevice->rad_info.gfx_level >= GFX11;
    p->integerDotProduct8BitUnsignedAccelerated = accel;
    p->integerDotProduct8BitSignedAccelerated = accel;
-   p->integerDotProduct8BitMixedSignednessAccelerated = false;
+   p->integerDotProduct8BitMixedSignednessAccelerated = accel && gfx11plus;
    p->integerDotProduct4x8BitPackedUnsignedAccelerated = accel;
    p->integerDotProduct4x8BitPackedSignedAccelerated = accel;
-   p->integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
-   p->integerDotProduct16BitUnsignedAccelerated = accel;
-   p->integerDotProduct16BitSignedAccelerated = accel;
+   p->integerDotProduct4x8BitPackedMixedSignednessAccelerated = accel && gfx11plus;
+   p->integerDotProduct16BitUnsignedAccelerated = accel && !gfx11plus;
+   p->integerDotProduct16BitSignedAccelerated = accel && !gfx11plus;
    p->integerDotProduct16BitMixedSignednessAccelerated = false;
    p->integerDotProduct32BitUnsignedAccelerated = false;
    p->integerDotProduct32BitSignedAccelerated = false;
@@ -2286,12 +2287,12 @@ radv_get_physical_device_properties_1_3(struct radv_physical_device *pdevice,
    p->integerDotProduct64BitMixedSignednessAccelerated = false;
    p->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = accel;
    p->integerDotProductAccumulatingSaturating8BitSignedAccelerated = accel;
-   p->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
+   p->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = accel && gfx11plus;
    p->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = accel;
    p->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = accel;
-   p->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = false;
-   p->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = accel;
-   p->integerDotProductAccumulatingSaturating16BitSignedAccelerated = accel;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated = accel && gfx11plus;
+   p->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = accel && !gfx11plus;
+   p->integerDotProductAccumulatingSaturating16BitSignedAccelerated = accel && !gfx11plus;
    p->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
    p->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
