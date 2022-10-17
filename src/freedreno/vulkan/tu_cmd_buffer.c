@@ -1724,6 +1724,8 @@ tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->trace_context);
 
    cmd_buffer->state.max_vbs_bound = 0;
+   cmd_buffer->state.last_prim_params.valid = false;
+
    cmd_buffer->vsc_initialized = false;
 
    cmd_buffer->status = TU_CMD_BUFFER_STATUS_INITIAL;
@@ -4416,12 +4418,29 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE))
       primitive_restart_enabled = cmd->state.primitive_restart_enable;
 
-   tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(
-         .primitive_restart =
-               primitive_restart_enabled && indexed,
-         .provoking_vtx_last = pipeline->rast.provoking_vertex_last,
+   bool primitive_restart = primitive_restart_enabled && indexed;
+   bool provoking_vtx_last = pipeline->rast.provoking_vertex_last;
+   bool tess_upper_left_domain_origin =
+      pipeline->tess.upper_left_domain_origin;
+
+   struct tu_primitive_params* prim_params = &cmd->state.last_prim_params;
+
+   if (!prim_params->valid ||
+       prim_params->primitive_restart != primitive_restart ||
+       prim_params->provoking_vtx_last != provoking_vtx_last ||
+       prim_params->tess_upper_left_domain_origin !=
+          tess_upper_left_domain_origin) {
+      tu_cs_emit_regs(
+         cs,
+         A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart = primitive_restart,
+                                  .provoking_vtx_last = provoking_vtx_last,
          .tess_upper_left_domain_origin =
-               pipeline->tess.upper_left_domain_origin));
+                                     tess_upper_left_domain_origin));
+      prim_params->valid = true;
+      prim_params->primitive_restart = primitive_restart;
+      prim_params->provoking_vtx_last = provoking_vtx_last;
+      prim_params->tess_upper_left_domain_origin = tess_upper_left_domain_origin;
+   }
 
    /* Early exit if there is nothing to emit, saves CPU cycles */
    if (!(cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD))
