@@ -83,25 +83,9 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
          lower_blend_equation_advanced(
             shader, ctx->Extensions.KHR_blend_equation_advanced_coherent);
 
-      lower_instructions(ir,
-                         (have_ldexp ? 0 : LDEXP_TO_ARITH) |
-                         (have_dfrexp ? 0 : DFREXP_DLDEXP_TO_ARITH) |
-                         (have_dround ? 0 : DOPS_TO_DFRAC) |
-                         (ctx->Const.ForceGLSLAbsSqrt ? SQRT_TO_ABS_SQRT : 0) |
-                         /* Assume that if ARB_gpu_shader5 is not supported
-                          * then all of the extended integer functions need
-                          * lowering.  It may be necessary to add some caps
-                          * for individual instructions.
-                          */
-                         (!ctx->Extensions.ARB_gpu_shader5
-                          ? BIT_COUNT_TO_MATH |
-                            EXTRACT_TO_SHIFTS |
-                            INSERT_TO_SHIFTS |
-                            REVERSE_TO_SHIFTS |
-                            FIND_LSB_TO_FLOAT_CAST |
-                            FIND_MSB_TO_FLOAT_CAST |
-                            IMUL_HIGH_TO_MUL
-                          : 0));
+      lower_instructions(ir, have_ldexp, have_dfrexp, have_dround,
+                         ctx->Const.ForceGLSLAbsSqrt,
+                         ctx->Extensions.ARB_gpu_shader5);
 
       do_vec_index_to_cond_assign(ir);
       lower_vector_insert(ir, true);

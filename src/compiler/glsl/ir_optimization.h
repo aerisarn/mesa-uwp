@@ -33,19 +33,6 @@
 struct gl_linked_shader;
 struct gl_shader_program;
 
-/* Operations for lower_instructions() */
-#define LDEXP_TO_ARITH     0x80
-#define DOPS_TO_DFRAC      0x800
-#define DFREXP_DLDEXP_TO_ARITH    0x1000
-#define BIT_COUNT_TO_MATH         0x02000
-#define EXTRACT_TO_SHIFTS         0x04000
-#define INSERT_TO_SHIFTS          0x08000
-#define REVERSE_TO_SHIFTS         0x10000
-#define FIND_LSB_TO_FLOAT_CAST    0x20000
-#define FIND_MSB_TO_FLOAT_CAST    0x40000
-#define IMUL_HIGH_TO_MUL          0x80000
-#define SQRT_TO_ABS_SQRT          0x200000
-
 /* Operations for lower_64bit_integer_instructions() */
 #define DIV64                     (1U << 0)
 #define MOD64                     (1U << 1)
@@ -79,7 +66,9 @@ bool do_tree_grafting(exec_list *instructions);
 bool do_vec_index_to_cond_assign(exec_list *instructions);
 bool lower_discard(exec_list *instructions);
 void lower_discard_flow(exec_list *instructions);
-bool lower_instructions(exec_list *instructions, unsigned what_to_lower);
+bool lower_instructions(exec_list *instructions, bool have_ldexp,
+                        bool have_dfrexp, bool have_dround,
+                        bool force_abs_sqrt, bool have_gpu_shader5);
 bool lower_clip_cull_distance(struct gl_shader_program *prog,
                               gl_linked_shader *shader);
 bool lower_packing_builtins(exec_list *instructions,
