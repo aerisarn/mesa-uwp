@@ -673,12 +673,22 @@ do_rect_ccw(struct lp_setup_context *setup,
 
    if (SAME_X(rv0, rv1) && SAME_X(rv2, rv3) &&
        SAME_Y(rv0, rv3) && SAME_Y(rv1, rv2)) {
+      /* We have a rectangle */
+
+      /* Check that all vertex W components are equal.  When we divide by W in
+       * lp_linear_init_interp() we assume all vertices have the same W value.
+       */
+      const float v0_w = rv0[0][3];
+      if (rv1[0][3] != v0_w ||
+          rv2[0][3] != v0_w ||
+          rv3[0][3] != v0_w) {
+         return false;
+      }
+
       const struct lp_setup_variant_key *key = &setup->setup.variant->key;
       const unsigned n = key->num_inputs;
 
-      /* We have a rectangle.  Check that the other attributes are
-       * coplanar.
-       */
+      /* Check that the other attributes are coplanar */
       for (unsigned i = 0; i < n; i++) {
          for (unsigned j = 0; j < 4; j++) {
             if (key->inputs[i].usage_mask & (1<<j)) {
