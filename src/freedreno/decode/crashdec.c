@@ -359,8 +359,8 @@ dump_cmdstream(void)
     * by name rather than hard-coding this.
     */
    if (is_a6xx()) {
-      options.ibs[1].rem += regval("CP_CSQ_IB1_STAT") >> 16;
-      options.ibs[2].rem += regval("CP_CSQ_IB2_STAT") >> 16;
+      options.ibs[1].rem += regval("CP_ROQ_AVAIL_IB1") >> 16;
+      options.ibs[2].rem += regval("CP_ROQ_AVAIL_IB2") >> 16;
    }
 
    printf("IB1: %" PRIx64 ", %u\n", options.ibs[1].base, options.ibs[1].rem);

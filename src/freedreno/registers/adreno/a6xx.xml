@@ -1098,15 +1098,15 @@ to upconvert to 32b float internally?
 	There are probably similar registers for RB and SDS, teasing out SDS will
 	take a slightly better test case..
 	 -->
-	<reg32 offset="0x0949" name="CP_CSQ_IB1_STAT">
+	<reg32 offset="0x0949" name="CP_ROQ_AVAIL_IB1">
 		<doc>number of remaining dwords incl current dword being consumed?</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
-	<reg32 offset="0x094a" name="CP_CSQ_IB2_STAT">
+	<reg32 offset="0x094a" name="CP_ROQ_AVAIL_IB2">
 		<doc>number of remaining dwords incl current dword being consumed?</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
-	<reg32 offset="0x094c" name="CP_MRQ_MRB_STAT">
+	<reg32 offset="0x094c" name="CP_ROQ_AVAIL_MRB">
 		<doc>number of dwords that have already been read but haven't been consumed by $addr</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
