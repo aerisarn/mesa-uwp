@@ -53,31 +53,6 @@ struct gl_shader_program;
 #define DIV64                     (1U << 0)
 #define MOD64                     (1U << 1)
 
-/**
- * \see class lower_packing_builtins_visitor
- */
-enum lower_packing_builtins_op {
-   LOWER_PACK_UNPACK_NONE               = 0x0000,
-
-   LOWER_PACK_SNORM_2x16                = 0x0001,
-   LOWER_UNPACK_SNORM_2x16              = 0x0002,
-
-   LOWER_PACK_UNORM_2x16                = 0x0004,
-   LOWER_UNPACK_UNORM_2x16              = 0x0008,
-
-   LOWER_PACK_HALF_2x16                 = 0x0010,
-   LOWER_UNPACK_HALF_2x16               = 0x0020,
-
-   LOWER_PACK_SNORM_4x8                 = 0x0040,
-   LOWER_UNPACK_SNORM_4x8               = 0x0080,
-
-   LOWER_PACK_UNORM_4x8                 = 0x0100,
-   LOWER_UNPACK_UNORM_4x8               = 0x0200,
-
-   LOWER_PACK_USE_BFI                   = 0x0400,
-   LOWER_PACK_USE_BFE                   = 0x0800,
-};
-
 bool do_common_optimization(exec_list *ir, bool linked,
                             const struct gl_shader_compiler_options *options,
                             bool native_integers);
@@ -110,7 +85,10 @@ void lower_discard_flow(exec_list *instructions);
 bool lower_instructions(exec_list *instructions, unsigned what_to_lower);
 bool lower_clip_cull_distance(struct gl_shader_program *prog,
                               gl_linked_shader *shader);
-bool lower_packing_builtins(exec_list *instructions, int op_mask);
+bool lower_packing_builtins(exec_list *instructions,
+                            bool has_shading_language_packing,
+                            bool has_gpu_shader5,
+                            bool has_half_float_packing);
 bool lower_vector_insert(exec_list *instructions, bool lower_nonconstant_index);
 bool lower_vector_derefs(gl_linked_shader *shader);
 void lower_named_interface_blocks(void *mem_ctx, gl_linked_shader *shader);

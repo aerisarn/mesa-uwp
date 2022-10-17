@@ -74,26 +74,9 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       if (!pscreen->get_param(pscreen, PIPE_CAP_INT64_DIVMOD))
          lower_64bit_integer_instructions(ir, DIV64 | MOD64);
 
-      if (ctx->Extensions.ARB_shading_language_packing) {
-         unsigned lower_inst = LOWER_PACK_SNORM_2x16 |
-                               LOWER_UNPACK_SNORM_2x16 |
-                               LOWER_PACK_UNORM_2x16 |
-                               LOWER_UNPACK_UNORM_2x16 |
-                               LOWER_PACK_SNORM_4x8 |
-                               LOWER_UNPACK_SNORM_4x8 |
-                               LOWER_UNPACK_UNORM_4x8 |
-                               LOWER_PACK_UNORM_4x8;
-
-         if (ctx->Extensions.ARB_gpu_shader5)
-            lower_inst |= LOWER_PACK_USE_BFI |
-                          LOWER_PACK_USE_BFE;
-         if (!ctx->st->has_half_float_packing)
-            lower_inst |= LOWER_PACK_HALF_2x16 |
-                          LOWER_UNPACK_HALF_2x16;
-
-         lower_packing_builtins(ir, lower_inst);
-      }
-
+      lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
+                             ctx->Extensions.ARB_gpu_shader5,
+                             ctx->st->has_half_float_packing);
       do_mat_op_to_vec(ir);
 
       if (stage == MESA_SHADER_FRAGMENT && pscreen->get_param(pscreen, PIPE_CAP_FBFETCH))
