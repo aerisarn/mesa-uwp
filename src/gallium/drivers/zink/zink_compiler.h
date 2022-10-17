@@ -40,6 +40,11 @@ struct spirv_shader;
 
 struct tgsi_token;
 
+static inline gl_shader_stage
+clamp_stage(nir_shader *nir)
+{
+   return nir->info.stage == MESA_SHADER_KERNEL ? MESA_SHADER_COMPUTE : nir->info.stage;
+}
 
 const void *
 zink_get_compiler_options(struct pipe_screen *screen,

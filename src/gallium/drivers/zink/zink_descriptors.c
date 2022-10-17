@@ -26,6 +26,7 @@
  */
 
 #include "zink_context.h"
+#include "zink_compiler.h"
 #include "zink_descriptors.h"
 #include "zink_program.h"
 #include "zink_render_pass.h"
@@ -308,7 +309,7 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
                     unsigned idx, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx)
 {
     int index = shader->bindings[type][idx].index;
-    gl_shader_stage stage = shader->nir->info.stage;
+    gl_shader_stage stage = clamp_stage(shader->nir);
     entry->dstArrayElement = 0;
     entry->dstBinding = shader->bindings[type][idx].binding;
     entry->descriptorCount = shader->bindings[type][idx].size;
@@ -423,7 +424,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       if (!shader)
          continue;
 
-      gl_shader_stage stage = shader->nir->info.stage;
+      gl_shader_stage stage = clamp_stage(shader->nir);
       VkShaderStageFlagBits stage_flags = mesa_to_vk_shader_stage(stage);
       /* uniform ubos handled in push */
       if (shader->has_uniforms) {

@@ -2245,7 +2245,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
       }
       nir_shader *nir = spirv_to_nir(spirv->words, spirv->num_words,
                          spec_entries, num_spec_entries,
-                         zs->nir->info.stage, "main", &spirv_options, &screen->nir_options);
+                         clamp_stage(zs->nir), "main", &spirv_options, &screen->nir_options);
       assert(nir);
       ralloc_free(nir);
       free(spec_entries);
@@ -2791,7 +2791,7 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index, bool compa
    } else {
       unsigned base = stage;
       /* clamp compute bindings for better driver efficiency */
-      if (stage == MESA_SHADER_COMPUTE)
+      if (gl_shader_stage_is_compute(stage))
          base = 0;
       switch (type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -3263,7 +3263,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       subgroup_options.ballot_bit_size = 32;
       subgroup_options.ballot_components = 4;
       subgroup_options.lower_subgroup_masks = true;
-      if (!(screen->info.subgroup.supportedStages & mesa_to_vk_shader_stage(nir->info.stage))) {
+      if (!(screen->info.subgroup.supportedStages & mesa_to_vk_shader_stage(clamp_stage(nir)))) {
          subgroup_options.subgroup_size = 1;
          subgroup_options.lower_vote_trivial = true;
       }
@@ -3325,8 +3325,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
             /* buffer 0 is a push descriptor */
             var->data.descriptor_set = !!var->data.driver_location;
-            var->data.binding = !var->data.driver_location ? nir->info.stage :
-                                zink_binding(nir->info.stage,
+            var->data.binding = !var->data.driver_location ? clamp_stage(nir) :
+                                zink_binding(clamp_stage(nir),
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              var->data.driver_location,
                                              screen->compact_descriptors);
@@ -3347,7 +3347,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             var->data.descriptor_set = screen->desc_set_id[ztype];
-            var->data.binding = zink_binding(nir->info.stage,
+            var->data.binding = zink_binding(clamp_stage(nir),
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location,
                                              screen->compact_descriptors);
@@ -3370,7 +3370,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                   ret->num_texel_buffers++;
                var->data.driver_location = var->data.binding;
                var->data.descriptor_set = screen->desc_set_id[ztype];
-               var->data.binding = zink_binding(nir->info.stage, vktype, var->data.driver_location, screen->compact_descriptors);
+               var->data.binding = zink_binding(clamp_stage(nir), vktype, var->data.driver_location, screen->compact_descriptors);
                ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
                ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
@@ -3389,7 +3389,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    if (!screen->info.feats.features.shaderInt64 || !screen->info.feats.features.shaderFloat64)
       NIR_PASS_V(nir, lower_64bit_vars, screen->info.feats.features.shaderInt64);
-   NIR_PASS_V(nir, match_tex_dests);
+   if (nir->info.stage != MESA_SHADER_KERNEL)
+      NIR_PASS_V(nir, match_tex_dests);
 
    ret->nir = nir;
    nir_foreach_shader_out_variable(var, nir)
