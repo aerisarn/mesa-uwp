@@ -991,7 +991,8 @@ emit_vop3p_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, T
 }
 
 void
-emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Temp dst, bool clamp)
+emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Temp dst, bool clamp,
+                      unsigned neg_lo = 0)
 {
    Temp src[3] = {Temp(0, v1), Temp(0, v1), Temp(0, v1)};
    bool has_sgpr = false;
@@ -1005,7 +1006,11 @@ emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
 
    Builder bld(ctx->program, ctx->block);
    bld.is_precise = instr->exact;
-   bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7).instr->vop3p().clamp = clamp;
+   VOP3P_instruction& vop3p =
+      bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7).instr->vop3p();
+   vop3p.clamp = clamp;
+   u_foreach_bit (i, neg_lo)
+      vop3p.neg_lo[i] = true;
 }
 
 void
@@ -2459,11 +2464,25 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_sdot_4x8_iadd: {
-      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, false);
+      if (ctx->options->gfx_level >= GFX11)
+         emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_iu8, dst, false, 0x3);
+      else
+         emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, false);
       break;
    }
    case nir_op_sdot_4x8_iadd_sat: {
-      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, true);
+      if (ctx->options->gfx_level >= GFX11)
+         emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_iu8, dst, true, 0x3);
+      else
+         emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, true);
+      break;
+   }
+   case nir_op_sudot_4x8_iadd: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_iu8, dst, false, 0x1);
+      break;
+   }
+   case nir_op_sudot_4x8_iadd_sat: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_iu8, dst, true, 0x1);
       break;
    }
    case nir_op_udot_4x8_uadd: {

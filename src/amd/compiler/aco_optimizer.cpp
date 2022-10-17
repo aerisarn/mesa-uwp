@@ -931,7 +931,8 @@ propagate_constants_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& i
    /* The accumulation operand of dot product instructions ignores opsel. */
    bool cannot_use_opsel =
       (instr->opcode == aco_opcode::v_dot4_i32_i8 || instr->opcode == aco_opcode::v_dot2_i32_i16 ||
-       instr->opcode == aco_opcode::v_dot4_u32_u8 || instr->opcode == aco_opcode::v_dot2_u32_u16) &&
+       instr->opcode == aco_opcode::v_dot4_i32_iu8 || instr->opcode == aco_opcode::v_dot4_u32_u8 ||
+       instr->opcode == aco_opcode::v_dot2_u32_u16) &&
       i == 2;
    if (cannot_use_opsel)
       return;
