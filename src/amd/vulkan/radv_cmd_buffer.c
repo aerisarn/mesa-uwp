@@ -2800,12 +2800,13 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       bool disable_constant_encode =
          cmd_buffer->device->physical_device->rad_info.has_dcc_constant_encode;
       enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
-      uint8_t watermark = gfx_level >= GFX10 ? 6 : 4;
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_FDCC_CONTROL,
-                                S_028424_SAMPLE_MASK_TRACKER_WATERMARK(watermark));
+                                S_028424_SAMPLE_MASK_TRACKER_WATERMARK(15));
       } else {
+        uint8_t watermark = gfx_level >= GFX10 ? 6 : 4;
+
          radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
                                 S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(gfx_level <= GFX9) |
                                 S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
