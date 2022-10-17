@@ -360,13 +360,14 @@ impl PipeContext {
     }
 
     pub fn clear_sampler_states(&self, count: u32) {
+        let mut samplers = vec![ptr::null_mut(); count as usize];
         unsafe {
             self.pipe.as_ref().bind_sampler_states.unwrap()(
                 self.pipe.as_ptr(),
                 pipe_shader_type::PIPE_SHADER_COMPUTE,
                 0,
                 count,
-                ptr::null_mut(),
+                samplers.as_mut_ptr(),
             )
         }
     }
