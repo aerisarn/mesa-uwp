@@ -21,7 +21,7 @@ variables:
   COLLABORA_FARM: "online"
   MICROSOFT_FARM: "online"
   LIMA_FARM: "online"
-  IGALIA_FARM: "offline"
+  IGALIA_FARM: "online"
   ANHOLT_FARM: "online"
 
 default:
