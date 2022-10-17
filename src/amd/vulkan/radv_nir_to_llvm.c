@@ -1013,8 +1013,9 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
 }
 
 static void
-handle_vs_outputs_post(struct radv_shader_context *ctx)
+radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
 {
+   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
    const struct radv_vs_output_info *outinfo = &ctx->shader_info->outinfo;
    const bool export_clip_dists = outinfo->export_clip_dists;
    struct radv_shader_output_values *outputs;
@@ -1181,14 +1182,6 @@ ac_llvm_finalize_module(struct radv_shader_context *ctx, LLVMPassManagerRef pass
    LLVMDisposeBuilder(ctx->ac.builder);
 
    ac_llvm_context_dispose(&ctx->ac);
-}
-
-static void
-radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-
-   handle_vs_outputs_post(ctx);
 }
 
 static void
@@ -1621,134 +1614,6 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
    ac_compile_llvm_module(ac_llvm, llvm_module, rbinary, nir[nir_count - 1]->info.stage,
                           radv_get_shader_name(info, nir[nir_count - 1]->info.stage),
                           options);
-}
-
-static void
-ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
-{
-   LLVMValueRef vtx_offset =
-      LLVMBuildMul(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->ac.vertex_id),
-                   LLVMConstInt(ctx->ac.i32, 4, false), "");
-   LLVMValueRef stream_id;
-
-   /* Fetch the vertex stream ID. */
-   if (ctx->shader_info->so.num_outputs) {
-      stream_id =
-         ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.streamout_config), 24, 2);
-   } else {
-      stream_id = ctx->ac.i32_0;
-   }
-
-   LLVMBasicBlockRef end_bb;
-   LLVMValueRef switch_inst;
-
-   end_bb = LLVMAppendBasicBlockInContext(ctx->ac.context, ctx->main_function.value, "end");
-   switch_inst = LLVMBuildSwitch(ctx->ac.builder, stream_id, end_bb, 4);
-
-   for (unsigned stream = 0; stream < 4; stream++) {
-      unsigned num_components = ctx->shader_info->gs.num_stream_output_components[stream];
-      LLVMBasicBlockRef bb;
-      unsigned offset;
-
-      if (stream > 0 && !num_components)
-         continue;
-
-      if (stream > 0 && !ctx->shader_info->so.num_outputs)
-         continue;
-
-      bb = LLVMInsertBasicBlockInContext(ctx->ac.context, end_bb, "out");
-      LLVMAddCase(switch_inst, LLVMConstInt(ctx->ac.i32, stream, 0), bb);
-      LLVMPositionBuilderAtEnd(ctx->ac.builder, bb);
-
-      offset = 0;
-      for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
-         unsigned output_usage_mask = ctx->shader_info->gs.output_usage_mask[i];
-         unsigned output_stream = ctx->shader_info->gs.output_streams[i] & 0x3;
-         int length = util_last_bit(output_usage_mask);
-
-         if (!(ctx->output_mask & (1ull << i)) || output_stream != stream)
-            continue;
-
-         for (unsigned j = 0; j < length; j++) {
-            LLVMValueRef value, soffset;
-
-            if (!(output_usage_mask & (1 << j)))
-               continue;
-
-            soffset = LLVMConstInt(ctx->ac.i32, offset * ctx->shader->info.gs.vertices_out * 16 * 4,
-                                   false);
-
-            offset++;
-
-            value = ac_build_buffer_load(&ctx->ac, ctx->gsvs_ring[0], 1, ctx->ac.i32_0, vtx_offset,
-                                         soffset, ctx->ac.f32, ac_glc | ac_slc, true, false);
-
-            LLVMTypeRef type = LLVMGetAllocatedType(ctx->abi.outputs[ac_llvm_reg_index_soa(i, j)]);
-            if (ac_get_type_size(type) == 2) {
-               value = LLVMBuildBitCast(ctx->ac.builder, value, ctx->ac.i32, "");
-               value = LLVMBuildTrunc(ctx->ac.builder, value, ctx->ac.i16, "");
-            }
-
-            LLVMBuildStore(ctx->ac.builder, ac_to_float(&ctx->ac, value),
-                           ctx->abi.outputs[ac_llvm_reg_index_soa(i, j)]);
-         }
-      }
-
-      if (ctx->shader_info->so.num_outputs)
-         radv_emit_streamout(ctx, stream);
-
-      if (stream == 0) {
-         handle_vs_outputs_post(ctx);
-      }
-
-      LLVMBuildBr(ctx->ac.builder, end_bb);
-   }
-
-   LLVMPositionBuilderAtEnd(ctx->ac.builder, end_bb);
-}
-
-static void
-radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
-                            const struct radv_nir_compiler_options *options,
-                            const struct radv_shader_info *info,
-                            struct nir_shader *geom_shader,
-                            struct radv_shader_binary **rbinary,
-                            const struct radv_shader_args *args)
-{
-   struct radv_shader_context ctx = {0};
-   ctx.args = args;
-   ctx.options = options;
-   ctx.shader_info = info;
-
-   assert(args->is_gs_copy_shader);
-
-   ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family,
-                        options->has_3d_cube_border_color_mipmap,
-                        AC_FLOAT_MODE_DEFAULT, 64, 64);
-   ctx.context = ctx.ac.context;
-
-   ctx.stage = MESA_SHADER_VERTEX;
-   ctx.shader = geom_shader;
-
-   create_function(&ctx, MESA_SHADER_VERTEX, false);
-
-   ac_setup_rings(&ctx);
-
-   nir_foreach_shader_out_variable(variable, geom_shader)
-   {
-      scan_shader_output_decl(&ctx, variable, geom_shader, MESA_SHADER_VERTEX);
-      ac_handle_shader_output_decl(&ctx.ac, &ctx.abi, geom_shader, variable, MESA_SHADER_VERTEX);
-   }
-
-   ac_gs_copy_shader_emit(&ctx);
-
-   LLVMBuildRetVoid(ctx.ac.builder);
-
-   ac_llvm_finalize_module(&ctx, ac_llvm->passmgr);
-
-   ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary, MESA_SHADER_VERTEX, "GS Copy Shader",
-                          options);
-   (*rbinary)->is_gs_copy_shader = true;
 }
 
 void

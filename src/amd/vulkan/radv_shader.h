@@ -429,7 +429,6 @@ enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
 struct radv_shader_binary {
    enum radv_shader_binary_type type;
    gl_shader_stage stage;
-   bool is_gs_copy_shader;
 
    struct ac_shader_config config;
    struct radv_shader_info info;

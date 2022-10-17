@@ -2045,8 +2045,7 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shad
    unsigned num_lds_symbols = 0;
 
    if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-       (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg) &&
-       !binary->is_gs_copy_shader) {
+       (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg)) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "esgs_ring";
       sym->size = binary->info.ngg_info.esgs_ring_size;
@@ -2295,7 +2294,6 @@ radv_dump_nir_shaders(struct nir_shader *const *shaders, int shader_count)
 static void
 radv_aco_build_shader_binary(void **bin,
                              gl_shader_stage stage,
-                             bool is_gs_copy_shader,
                              const struct ac_shader_config *config,
                              const char *llvm_ir_str,
                              unsigned llvm_ir_size,
@@ -2322,7 +2320,6 @@ radv_aco_build_shader_binary(void **bin,
    struct radv_shader_binary_legacy *legacy_binary = (struct radv_shader_binary_legacy *)calloc(size, 1);
    legacy_binary->base.type = RADV_BINARY_TYPE_LEGACY;
    legacy_binary->base.stage = stage;
-   legacy_binary->base.is_gs_copy_shader = is_gs_copy_shader;
    legacy_binary->base.total_size = size;
    legacy_binary->base.config = *config;
 

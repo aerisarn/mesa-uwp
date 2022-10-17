@@ -256,7 +256,6 @@ aco_compile_shader(const struct aco_compiler_options* options,
 
    (*build_binary)(binary,
                    shaders[shader_count - 1]->info.stage,
-                   args->is_gs_copy_shader,
                    &config,
                    llvm_ir.c_str(),
                    llvm_ir.size(),

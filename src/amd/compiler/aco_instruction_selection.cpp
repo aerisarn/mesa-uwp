@@ -12012,7 +12012,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                const struct aco_shader_info* info,
                const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false, false);
+   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
    if_context ic_merged_wave_info;
    bool ngg_gs = ctx.stage.hw == HWStage::NGG && ctx.stage.has(SWStage::GS);
 
@@ -12125,105 +12125,6 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
    append_logical_end(ctx.block);
    ctx.block->kind |= block_kind_uniform;
    Builder bld(ctx.program, ctx.block);
-   bld.sopp(aco_opcode::s_endpgm);
-
-   cleanup_cfg(program);
-}
-
-void
-select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
-                      const struct aco_compiler_options* options,
-                      const struct aco_shader_info* info,
-                      const struct radv_shader_args* args)
-{
-   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, options, info, args, true, false);
-
-   ctx.block->fp_mode = program->next_fp_mode;
-
-   add_startpgm(&ctx);
-   append_logical_start(ctx.block);
-
-   Builder bld(ctx.program, ctx.block);
-
-   Temp gsvs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4),
-                             program->private_segment_buffer, Operand::c32(RING_GSVS_VS * 16u));
-
-   Operand stream_id = Operand::zero();
-   if (program->info.so.num_outputs)
-      stream_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
-                           get_arg(&ctx, ctx.args->ac.streamout_config), Operand::c32(0x20018u));
-
-   Temp vtx_offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(2u),
-                              get_arg(&ctx, ctx.args->ac.vertex_id));
-
-   std::stack<if_context, std::vector<if_context>> if_contexts;
-
-   for (unsigned stream = 0; stream < 4; stream++) {
-      if (stream_id.isConstant() && stream != stream_id.constantValue())
-         continue;
-
-      unsigned num_components = program->info.gs.num_stream_output_components[stream];
-      if (stream > 0 && (!num_components || !program->info.so.num_outputs))
-         continue;
-
-      memset(ctx.outputs.mask, 0, sizeof(ctx.outputs.mask));
-
-      if (!stream_id.isConstant()) {
-         Temp cond =
-            bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), stream_id, Operand::c32(stream));
-         if_contexts.emplace();
-         begin_uniform_if_then(&ctx, &if_contexts.top(), cond);
-         bld.reset(ctx.block);
-      }
-
-      unsigned offset = 0;
-      for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-         if ((program->info.gs.output_streams[i] & 0x3) != stream)
-            continue;
-
-         unsigned output_usage_mask = program->info.gs.output_usage_mask[i];
-         unsigned length = util_last_bit(output_usage_mask);
-         for (unsigned j = 0; j < length; ++j) {
-            if (!(output_usage_mask & (1 << j)))
-               continue;
-
-            Temp val = bld.tmp(v1);
-            unsigned const_offset = offset * program->info.gs.vertices_out * 16 * 4;
-            load_vmem_mubuf(&ctx, val, gsvs_ring, vtx_offset, Temp(), Temp(), const_offset, 4, 1, 0, true,
-                            true, memory_sync_info());
-
-            ctx.outputs.mask[i] |= 1 << j;
-            ctx.outputs.temps[i * 4u + j] = val;
-
-            offset++;
-         }
-      }
-
-      if (program->info.so.num_outputs) {
-         emit_streamout(&ctx, stream);
-         bld.reset(ctx.block);
-      }
-
-      if (stream == 0) {
-         create_vs_exports(&ctx);
-      }
-
-      if (!stream_id.isConstant()) {
-         begin_uniform_if_else(&ctx, &if_contexts.top());
-         bld.reset(ctx.block);
-      }
-   }
-
-   while (!if_contexts.empty()) {
-      end_uniform_if(&ctx, &if_contexts.top());
-      if_contexts.pop();
-   }
-
-   program->config->float_mode = program->blocks[0].fp_mode.val;
-
-   append_logical_end(ctx.block);
-   ctx.block->kind |= block_kind_uniform;
-   bld.reset(ctx.block);
    bld.sopp(aco_opcode::s_endpgm);
 
    cleanup_cfg(program);
@@ -12645,7 +12546,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
                  const struct aco_shader_info* info,
                  const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, false, true);
+   isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, true);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
