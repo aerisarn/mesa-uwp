@@ -21,7 +21,7 @@ traces:
       checksum: c377f21f7bfaca0c04983612e7c9a7bb
   gputest/pixmark-piano-v2.trace:
     gl-virgl:
-      checksum: 495ae47d50672d095854765bdb2eedc5
+      checksum: b284da2f0666e1b5fcdecbc3ab8e4270
   gputest/triangle-v2.trace:
     gl-virgl:
       checksum: 5f694874b15bcd7a3689b387c143590b
@@ -30,7 +30,7 @@ traces:
       checksum: 32e8b627a33ad08d416dfdb804920371
   0ad/0ad-v2.trace:
     gl-virgl:
-      checksum: 78007615359981f7035f26c5b7759229
+      checksum: bf22fd7c3fc8baa7b0e9345728626d5f
   glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false-v2.trace:
     gl-virgl:
       checksum: 040232e01e394a967dc3320bb9252870
