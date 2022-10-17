@@ -754,7 +754,7 @@ lower_2f(nir_builder *b, nir_ssa_def *x, unsigned dest_bit_size,
 static nir_ssa_def *
 lower_f2(nir_builder *b, nir_ssa_def *x, bool dst_is_signed)
 {
-   assert(x->bit_size == 16 || x->bit_size == 32);
+   assert(x->bit_size == 16 || x->bit_size == 32 || x->bit_size == 64);
    nir_ssa_def *x_sign = NULL;
 
    if (dst_is_signed)
@@ -977,10 +977,6 @@ lower_int64_alu_instr(nir_builder *b, nir_alu_instr *alu)
       return lower_2f(b, src[0], nir_dest_bit_size(alu->dest.dest), false);
    case nir_op_f2i64:
    case nir_op_f2u64:
-      /* We don't support f64toi64 (yet?). */
-      if (src[0]->bit_size > 32)
-         return false;
-
       return lower_f2(b, src[0], alu->op == nir_op_f2i64);
    default:
       unreachable("Invalid ALU opcode to lower");
