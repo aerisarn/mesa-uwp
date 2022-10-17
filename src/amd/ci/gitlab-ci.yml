@@ -231,7 +231,7 @@ radeonsi-raven-va:amd64:
 
 .navi21-test-valve:
   variables:
-    FDO_CI_CONCURRENT: 16
+    FDO_CI_CONCURRENT: 32
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
     - amdgpu:codename:NAVI21
