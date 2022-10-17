@@ -1016,16 +1016,13 @@ to upconvert to 32b float internally?
 	<!-- all the threshold values seem to be in units of quad-dwords: -->
 	<reg32 offset="0x08C1" name="CP_ROQ_THRESHOLDS_1">
 		<doc>
-			b0..7 seems to contain the size of buffered by not yet processed
-			RB level cmdstream.. it's possible that it is a low threshold
-			and b8..15 is a high threshold?
-
-			b16..23 identifies where IB1 data starts (and RB data ends?)
-
+			b0..7 identifies where MRB data starts (and RB data ends)
+			b8.15 identifies where VSD data starts (and MRB data ends)
+			b16..23 identifies where IB1 data starts (and RB data ends)
 			b24..31 identifies where IB2 data starts (and IB1 data ends)
 		</doc>
-		<bitfield name="RB_LO" low="0" high="7" shr="2"/>
-		<bitfield name="RB_HI" low="8" high="15" shr="2"/>
+		<bitfield name="MRB_START" low="0" high="7" shr="2"/>
+		<bitfield name="VSD_START" low="8" high="15" shr="2"/>
 		<bitfield name="IB1_START" low="16" high="23" shr="2"/>
 		<bitfield name="IB2_START" low="24" high="31" shr="2"/>
 	</reg32>
