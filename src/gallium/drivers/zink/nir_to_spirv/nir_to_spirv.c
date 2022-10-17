@@ -59,13 +59,15 @@ struct ntv_context {
 
    SpvId ssbos[5]; //8, 16, 32, unused, 64
    nir_variable *ssbo_vars;
-   SpvId image_types[PIPE_MAX_SAMPLERS];
-   SpvId images[PIPE_MAX_SAMPLERS];
-   SpvId sampler_types[PIPE_MAX_SAMPLERS];
-   SpvId samplers[PIPE_MAX_SAMPLERS];
-   unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
-   unsigned samplers_used : PIPE_MAX_SAMPLERS;
-   unsigned samplers_used_mediump : PIPE_MAX_SAMPLERS;
+
+   SpvId image_types[PIPE_MAX_SHADER_IMAGES];
+   SpvId images[PIPE_MAX_SHADER_IMAGES];
+   SpvId sampler_types[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   SpvId samplers[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   nir_variable *sampler_var[PIPE_MAX_SHADER_SAMPLER_VIEWS]; /* driver_location -> variable */
+   unsigned last_sampler;
+   nir_variable *image_var[PIPE_MAX_SHADER_IMAGES]; /* driver_location -> variable */
+
    SpvId entry_ifaces[PIPE_MAX_SHADER_INPUTS * 4 + PIPE_MAX_SHADER_OUTPUTS * 4];
    size_t num_entry_ifaces;
 
@@ -1006,7 +1008,6 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
    bool mediump = (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW);
 
    int index = var->data.driver_location;
-   assert(!is_sampler || (!(ctx->samplers_used & (1 << index))));
    assert(!is_sampler || !ctx->sampler_types[index]);
    assert(is_sampler || !ctx->image_types[index]);
 
@@ -1014,7 +1015,6 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
       var_type = spirv_builder_type_array(&ctx->builder, var_type,
                                               emit_uint_const(ctx, 32, glsl_get_aoa_size(var->type)));
       spirv_builder_emit_array_stride(&ctx->builder, var_type, sizeof(void*));
-      ctx->sampler_array_sizes[index] = glsl_get_aoa_size(var->type);
    }
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassUniformConstant,
@@ -1041,9 +1041,6 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, bool bindless)
    if (is_sampler) {
       ctx->sampler_types[index] = image_type;
       ctx->samplers[index] = var_id;
-      ctx->samplers_used |= 1 << index;
-      if (mediump)
-         ctx->samplers_used_mediump |= 1 << index;
    } else {
       ctx->image_types[index] = image_type;
       ctx->images[index] = var_id;
@@ -3694,32 +3691,36 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
 
    unsigned texture_index = tex->texture_index;
-   if (!tex_offset) {
-      /* convert constant index back to base + offset */
-      unsigned last_sampler = util_last_bit(ctx->samplers_used);
-      for (unsigned i = 0; i < last_sampler; i++) {
-         if (!ctx->sampler_array_sizes[i]) {
-            if (i == texture_index)
-               /* this is a non-array sampler, so we don't need an access chain */
+   nir_variable *var = bindless_var ? bindless_var : ctx->sampler_var[tex->texture_index];
+   if (!tex_offset || !var) {
+      if (ctx->sampler_var[texture_index]) {
+         if (glsl_type_is_array(ctx->sampler_var[texture_index]->type))
+            tex_offset = emit_uint_const(ctx, 32, 0);
+         assert(var);
+      } else {
+         /* convert constant index back to base + offset */
+         for (int i = texture_index; i >= 0; i--) {
+            if (ctx->sampler_var[i]) {
+               assert(glsl_type_is_array(ctx->sampler_var[i]->type));
+               if (!tex_offset)
+                  tex_offset = emit_uint_const(ctx, 32, texture_index - i);
+               var = ctx->sampler_var[i];
+               texture_index = i;
                break;
-         } else if (texture_index <= i + ctx->sampler_array_sizes[i] - 1) {
-            /* this is the first member of a sampler array */
-            tex_offset = emit_uint_const(ctx, 32, texture_index - i);
-            texture_index = i;
-            break;
+            }
          }
       }
    }
+   assert(var);
    SpvId image_type = bindless ? get_bare_image_type(ctx, bindless_var, true) : ctx->sampler_types[texture_index];
    assert(image_type);
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
    assert(sampled_type);
-   assert(bindless || ctx->samplers_used & (1u << texture_index));
    SpvId sampler_id = bindless ? bindless : ctx->samplers[texture_index];
    if (tex_offset) {
-       SpvId ptr = spirv_builder_type_pointer(&ctx->builder, SpvStorageClassUniformConstant, sampled_type);
-       sampler_id = spirv_builder_emit_access_chain(&ctx->builder, ptr, sampler_id, &tex_offset, 1);
+      SpvId ptr = spirv_builder_type_pointer(&ctx->builder, SpvStorageClassUniformConstant, sampled_type);
+      sampler_id = spirv_builder_emit_access_chain(&ctx->builder, ptr, sampler_id, &tex_offset, 1);
    }
    SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
 
@@ -3852,7 +3853,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                const_offset, offset, min_lod, tex->is_sparse);
    }
 
-   if (!bindless_var && (ctx->samplers_used_mediump & (1 << tex->texture_index))) {
+   if (!bindless_var && (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW)) {
       spirv_builder_emit_decoration(&ctx->builder, result,
                                     SpvDecorationRelaxedPrecision);
    }
@@ -4529,6 +4530,14 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo)
       emit_bo(&ctx, var, ssbo_counter > 1);
 
+   nir_foreach_variable_with_modes(var, s, nir_var_image)
+      ctx.image_var[var->data.driver_location] = var;
+   nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
+      if (glsl_type_is_sampler(glsl_without_array(var->type))) {
+         ctx.sampler_var[var->data.driver_location] = var;
+         ctx.last_sampler = MAX2(ctx.last_sampler, var->data.driver_location);
+      }
+   }
    nir_foreach_variable_with_modes(var, s, nir_var_uniform | nir_var_image) {
       const struct glsl_type *type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type) || glsl_type_is_image(type))
