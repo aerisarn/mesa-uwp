@@ -685,6 +685,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       memset(blend_dws, 0, sizeof(blend_dws));
 
       struct GENX(BLEND_STATE) blend_state = {
+         .AlphaToCoverageEnable = dyn->ms.alpha_to_coverage_enable,
          .AlphaToOneEnable = dyn->ms.alpha_to_one_enable,
       };
 
