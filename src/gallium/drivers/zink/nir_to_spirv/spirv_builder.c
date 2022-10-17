@@ -217,6 +217,14 @@ spirv_builder_emit_decoration(struct spirv_builder *b, SpvId target,
 }
 
 void
+spirv_builder_emit_rounding_mode(struct spirv_builder *b, SpvId target,
+                                 SpvFPRoundingMode rounding)
+{
+   uint32_t args[] = { rounding };
+   emit_decoration(b, target, SpvDecorationFPRoundingMode, args, ARRAY_SIZE(args));
+}
+
+void
 spirv_builder_emit_input_attachment_index(struct spirv_builder *b, SpvId target, uint32_t id)
 {
    uint32_t args[] = { id };

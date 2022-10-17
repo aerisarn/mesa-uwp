@@ -2057,6 +2057,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_bit_count, SpvOpBitCount)
 #undef UNOP
 
+   case nir_op_f2f16_rtz:
+      assert(nir_op_infos[alu->op].num_inputs == 1);
+      result = emit_unop(ctx, SpvOpFConvert, dest_type, src[0]);
+      spirv_builder_emit_rounding_mode(&ctx->builder, result, SpvFPRoundingModeRTZ);
+      break;
+
    case nir_op_inot:
       if (bit_size == 1)
          result = emit_unop(ctx, SpvOpLogicalNot, dest_type, src[0]);
