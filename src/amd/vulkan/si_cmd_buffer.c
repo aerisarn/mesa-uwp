@@ -504,7 +504,13 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       }
    }
 
-   if (physical_device->rad_info.gfx_level >= GFX9) {
+   if (physical_device->rad_info.gfx_level >= GFX11) {
+      /* ACCUM fields changed their meaning. */
+      radeon_set_context_reg(cs, R_028B50_VGT_TESS_DISTRIBUTION,
+                                 S_028B50_ACCUM_ISOLINE(255) | S_028B50_ACCUM_TRI(255) |
+                                 S_028B50_ACCUM_QUAD(255) | S_028B50_DONUT_SPLIT_GFX9(24) |
+                                 S_028B50_TRAP_SPLIT(6));
+   } else if (physical_device->rad_info.gfx_level >= GFX9) {
       radeon_set_context_reg(cs, R_028B50_VGT_TESS_DISTRIBUTION,
                              S_028B50_ACCUM_ISOLINE(40) | S_028B50_ACCUM_TRI(30) |
                                 S_028B50_ACCUM_QUAD(24) | S_028B50_DONUT_SPLIT_GFX9(24) |
