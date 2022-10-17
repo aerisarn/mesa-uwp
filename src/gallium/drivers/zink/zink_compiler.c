@@ -3207,6 +3207,211 @@ split_bitfields(nir_shader *shader)
    return nir_shader_instructions_pass(shader, split_bitfields_instr, nir_metadata_dominance, NULL);
 }
 
+static void
+rewrite_cl_derefs(nir_shader *nir, nir_variable *var)
+{
+   nir_foreach_function(function, nir) {
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_deref)
+               continue;
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            nir_variable *img = nir_deref_instr_get_variable(deref);
+            if (img != var)
+               continue;
+            if (glsl_type_is_array(var->type)) {
+               if (deref->deref_type == nir_deref_type_array)
+                  deref->type = glsl_without_array(var->type);
+               else
+                  deref->type = var->type;
+            } else {
+               deref->type = var->type;
+            }
+         }
+      }
+   }
+}
+
+static void
+type_image(nir_shader *nir, nir_variable *var)
+{
+   nir_foreach_function(function, nir) {
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_image_deref_load ||
+               intr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
+               intr->intrinsic == nir_intrinsic_image_deref_store ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_add ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_imin ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_umin ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_imax ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_umax ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_and ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_or ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_xor ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_exchange ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ||
+               intr->intrinsic == nir_intrinsic_image_deref_atomic_fadd ||
+               intr->intrinsic == nir_intrinsic_image_deref_samples ||
+               intr->intrinsic == nir_intrinsic_image_deref_format ||
+               intr->intrinsic == nir_intrinsic_image_deref_order) {
+               nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+               nir_variable *img = nir_deref_instr_get_variable(deref);
+               if (img != var)
+                  continue;
+               nir_alu_type alu_type = nir_intrinsic_src_type(intr);
+               const struct glsl_type *type = glsl_without_array(var->type);
+               if (glsl_get_sampler_result_type(type) != GLSL_TYPE_VOID) {
+                  assert(glsl_get_sampler_result_type(type) == nir_get_glsl_base_type_for_nir_type(alu_type));
+                  continue;
+               }
+               const struct glsl_type *img_type = glsl_image_type(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type), nir_get_glsl_base_type_for_nir_type(alu_type));
+               if (glsl_type_is_array(var->type))
+                  img_type = glsl_array_type(img_type, glsl_array_size(var->type), glsl_get_explicit_stride(var->type));
+               var->type = img_type;
+               rewrite_cl_derefs(nir, var);
+               return;
+            }
+         }
+      }
+   }
+   nir_foreach_function(function, nir) {
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_image_deref_size)
+               continue;
+            nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+            nir_variable *img = nir_deref_instr_get_variable(deref);
+            if (img != var)
+               continue;
+            nir_alu_type alu_type = nir_type_uint32;
+            const struct glsl_type *type = glsl_without_array(var->type);
+            if (glsl_get_sampler_result_type(type) != GLSL_TYPE_VOID) {
+               continue;
+            }
+            const struct glsl_type *img_type = glsl_image_type(glsl_get_sampler_dim(type), glsl_sampler_type_is_array(type), nir_get_glsl_base_type_for_nir_type(alu_type));
+            if (glsl_type_is_array(var->type))
+               img_type = glsl_array_type(img_type, glsl_array_size(var->type), glsl_get_explicit_stride(var->type));
+            var->type = img_type;
+            rewrite_cl_derefs(nir, var);
+            return;
+         }
+      }
+   }
+   var->data.mode = nir_var_shader_temp;
+}
+
+static nir_variable *
+find_sampler_var(nir_shader *nir, unsigned texture_index)
+{
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
+      if ((glsl_type_is_texture(glsl_without_array(var->type)) || glsl_type_is_sampler(glsl_without_array(var->type))) &&
+          (var->data.binding == texture_index || (var->data.binding < texture_index && var->data.binding + size > texture_index)))
+         return var;
+   }
+   return NULL;
+}
+
+static bool
+type_sampler_vars(nir_shader *nir, unsigned *sampler_mask)
+{
+   bool progress = false;
+   nir_foreach_function(function, nir) {
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            switch (tex->op) {
+            case nir_texop_lod:
+            case nir_texop_txs:
+            case nir_texop_query_levels:
+            case nir_texop_texture_samples:
+            case nir_texop_samples_identical:
+               continue;
+            default:
+               break;
+            }
+            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
+            nir_variable *var = find_sampler_var(nir, tex->texture_index);
+            assert(var);
+            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
+               continue;
+            const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
+            unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
+            if (size > 1)
+               img_type = glsl_array_type(img_type, size, 0);
+            var->type = img_type;
+            progress = true;
+         }
+      }
+   }
+   nir_foreach_function(function, nir) {
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            switch (tex->op) {
+            case nir_texop_lod:
+            case nir_texop_txs:
+            case nir_texop_query_levels:
+            case nir_texop_texture_samples:
+            case nir_texop_samples_identical:
+               break;
+            default:
+               continue;
+            }
+            *sampler_mask |= BITFIELD_BIT(tex->sampler_index);
+            nir_variable *var = find_sampler_var(nir, tex->texture_index);
+            assert(var);
+            if (glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID)
+               continue;
+            const struct glsl_type *img_type = glsl_sampler_type(glsl_get_sampler_dim(glsl_without_array(var->type)), tex->is_shadow, tex->is_array, nir_get_glsl_base_type_for_nir_type(tex->dest_type));
+            unsigned size = glsl_type_is_array(var->type) ? glsl_array_size(var->type) : 1;
+            if (size > 1)
+               img_type = glsl_array_type(img_type, size, 0);
+            var->type = img_type;
+            progress = true;
+         }
+      }
+   }
+   return progress;
+}
+
+static bool
+delete_samplers(nir_shader *nir)
+{
+   bool progress = false;
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
+      if (glsl_type_is_sampler(glsl_without_array(var->type))) {
+         var->data.mode = nir_var_shader_temp;
+         progress = true;
+      }
+   }
+   return progress;
+}
+
+static bool
+type_images(nir_shader *nir, unsigned *sampler_mask)
+{
+   bool progress = false;
+   progress |= delete_samplers(nir);
+   progress |= type_sampler_vars(nir, sampler_mask);
+   nir_foreach_variable_with_modes(var, nir, nir_var_image) {
+      type_image(nir, var);
+      progress = true;
+   }
+   return progress;
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -3313,6 +3518,11 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    prune_io(nir);
 
    scan_nir(screen, nir, ret);
+   unsigned sampler_mask = 0;
+   if (nir->info.stage == MESA_SHADER_KERNEL) {
+      NIR_PASS_V(nir, type_images, &sampler_mask);
+      ret->sinfo.sampler_mask = sampler_mask;
+   }
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |

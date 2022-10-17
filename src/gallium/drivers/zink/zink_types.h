@@ -650,6 +650,7 @@ struct zink_shader_info {
    struct pipe_stream_output_info so_info;
    unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
    uint32_t so_propagate; //left shifted by 32
+   uint32_t sampler_mask;
    bool last_vertex;
    bool have_xfb;
    bool have_sparse;
