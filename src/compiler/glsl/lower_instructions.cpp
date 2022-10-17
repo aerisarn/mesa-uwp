@@ -31,8 +31,6 @@
  *
  * Currently supported transformations:
  * - LDEXP_TO_ARITH
- * - CARRY_TO_ARITH
- * - BORROW_TO_ARITH
  * - DOPS_TO_DFRAC
  *
  * LDEXP_TO_ARITH:
@@ -43,14 +41,6 @@
  * ---------------
  * Converts ir_binop_ldexp, ir_unop_frexp_sig, and ir_unop_frexp_exp to
  * arithmetic and bit ops for double arguments.
- *
- * CARRY_TO_ARITH:
- * ---------------
- * Converts ir_carry into (x + y) < x.
- *
- * BORROW_TO_ARITH:
- * ----------------
- * Converts ir_borrow into (x < y).
  *
  * DOPS_TO_DFRAC:
  * --------------
@@ -1259,11 +1249,8 @@ lower_instructions_visitor::find_msb_to_float_cast(ir_expression *ir)
 ir_expression *
 lower_instructions_visitor::_carry(operand a, operand b)
 {
-   if (lowering(CARRY_TO_ARITH))
-      return i2u(b2i(less(add(a, b),
-                          a.val->clone(ralloc_parent(a.val), NULL))));
-   else
-      return carry(a, b);
+   return i2u(b2i(less(add(a, b),
+                       a.val->clone(ralloc_parent(a.val), NULL))));
 }
 
 void
@@ -1449,13 +1436,11 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
       break;
 
    case ir_binop_carry:
-      if (lowering(CARRY_TO_ARITH))
-         carry_to_arith(ir);
+      carry_to_arith(ir);
       break;
 
    case ir_binop_borrow:
-      if (lowering(BORROW_TO_ARITH))
-         borrow_to_arith(ir);
+      borrow_to_arith(ir);
       break;
 
    case ir_unop_trunc:

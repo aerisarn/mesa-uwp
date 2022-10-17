@@ -35,8 +35,6 @@ struct gl_shader_program;
 
 /* Operations for lower_instructions() */
 #define LDEXP_TO_ARITH     0x80
-#define CARRY_TO_ARITH     0x100
-#define BORROW_TO_ARITH    0x200
 #define DOPS_TO_DFRAC      0x800
 #define DFREXP_DLDEXP_TO_ARITH    0x1000
 #define BIT_COUNT_TO_MATH         0x02000

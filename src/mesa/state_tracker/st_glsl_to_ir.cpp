@@ -86,8 +86,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       lower_instructions(ir,
                          (have_ldexp ? 0 : LDEXP_TO_ARITH) |
                          (have_dfrexp ? 0 : DFREXP_DLDEXP_TO_ARITH) |
-                         CARRY_TO_ARITH |
-                         BORROW_TO_ARITH |
                          (have_dround ? 0 : DOPS_TO_DFRAC) |
                          (ctx->Const.ForceGLSLAbsSqrt ? SQRT_TO_ABS_SQRT : 0) |
                          /* Assume that if ARB_gpu_shader5 is not supported
