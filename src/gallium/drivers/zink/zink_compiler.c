@@ -3052,6 +3052,7 @@ zink_get_next_stage(gl_shader_stage stage)
       return VK_SHADER_STAGE_FRAGMENT_BIT;
    case MESA_SHADER_FRAGMENT:
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL:
       return 0;
    default:
       unreachable("invalid shader stage");
@@ -5340,7 +5341,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             var->data.descriptor_set = screen->desc_set_id[ztype];
-            var->data.binding = zink_binding(nir->info.stage,
+            var->data.binding = zink_binding(clamp_stage(&nir->info),
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location,
                                              screen->compact_descriptors);
