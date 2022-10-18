@@ -64,6 +64,7 @@ struct ntv_context {
    SpvId images[PIPE_MAX_SHADER_IMAGES];
    SpvId sampler_types[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    SpvId samplers[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   SpvId cl_samplers[PIPE_MAX_SAMPLERS];
    nir_variable *sampler_var[PIPE_MAX_SHADER_SAMPLER_VIEWS]; /* driver_location -> variable */
    unsigned last_sampler;
    nir_variable *image_var[PIPE_MAX_SHADER_IMAGES]; /* driver_location -> variable */
@@ -1052,6 +1053,29 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, 
    spirv_builder_emit_descriptor_set(&ctx->builder, var_id, var->data.descriptor_set);
    spirv_builder_emit_binding(&ctx->builder, var_id, var->data.binding);
    return var_id;
+}
+
+static void
+emit_sampler(struct ntv_context *ctx, unsigned sampler_index, unsigned desc_set)
+{
+   SpvId type = spirv_builder_type_sampler(&ctx->builder);
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassUniformConstant,
+                                                   type);
+
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                         SpvStorageClassUniformConstant);
+   char buf[128];
+   snprintf(buf, sizeof(buf), "sampler_%u", sampler_index);
+   spirv_builder_emit_name(&ctx->builder, var_id, buf);
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, desc_set);
+   spirv_builder_emit_binding(&ctx->builder, var_id, sampler_index);
+   ctx->cl_samplers[sampler_index] = var_id;
+   if (ctx->spirv_1_4_interfaces) {
+      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+      ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+   }
+
 }
 
 static SpvId
@@ -4515,7 +4539,20 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          ctx.last_sampler = MAX2(ctx.last_sampler, var->data.driver_location);
       }
    }
-   nir_foreach_variable_with_modes(var, s, nir_var_uniform | nir_var_image) {
+   if (sinfo->sampler_mask) {
+      assert(s->info.stage == MESA_SHADER_KERNEL);
+      int desc_set = -1;
+      nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
+         if (glsl_type_is_sampler(glsl_without_array(var->type))) {
+            desc_set = var->data.descriptor_set;
+            break;
+         }
+      }
+      assert(desc_set != -1);
+      u_foreach_bit(sampler, sinfo->sampler_mask)
+         emit_sampler(&ctx, sampler, desc_set);
+   }
+   nir_foreach_variable_with_modes(var, s, nir_var_image | nir_var_uniform) {
       const struct glsl_type *type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type))
          emit_image(&ctx, var, get_bare_image_type(&ctx, var, true), false);
