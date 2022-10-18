@@ -28,6 +28,11 @@
 #include <stdio.h>
 #include <vulkan/vulkan.h>
 
+#if defined(HAVE_VALGRIND)
+#   include <valgrind.h>
+#   include <memcheck.h>
+#endif
+
 #include "pvr_bo.h"
 #include "pvr_debug.h"
 #include "pvr_dump.h"
@@ -443,10 +448,13 @@ void pvr_bo_cpu_unmap(struct pvr_device *device, struct pvr_bo *pvr_bo)
                            bo->size,
                            8,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (bo->vbits)
-      VALGRIND_GET_VBITS(bo->map, bo->vbits, bo->size);
-   else
+   if (bo->vbits) {
+      unsigned ret = VALGRIND_GET_VBITS(bo->map, bo->vbits, bo->size);
+      if (ret != 0 && ret != 1)
+         mesa_loge("Failed to get vbits; expect bad valgrind results.");
+   } else {
       mesa_loge("Failed to alloc vbits storage; expect bad valgrind results.");
+   }
 #endif /* defined(HAVE_VALGRIND) */
 
    device->ws->ops->buffer_unmap(bo);
@@ -485,10 +493,15 @@ void pvr_bo_free(struct pvr_device *device, struct pvr_bo *pvr_bo)
 #if defined(HAVE_VALGRIND)
 void *pvr_bo_cpu_map_unchanged(struct pvr_device *device, struct pvr_bo *pvr_bo)
 {
-   void *ret = pvr_bo_cpu_map(device, pvr_bo);
-   if (ret)
-      VALGRIND_SET_VBITS(pvr_bo->bo->map, pvr_bo->bo->vbits, pvr_bo->bo->size);
+   void *map = pvr_bo_cpu_map(device, pvr_bo);
+   if (map) {
+      unsigned ret = VALGRIND_SET_VBITS(pvr_bo->bo->map,
+                                        pvr_bo->bo->vbits,
+                                        pvr_bo->bo->size);
+      if (ret != 0 && ret != 1)
+         mesa_loge("Failed to set vbits; expect bad valgrind results.");
+   }
 
-   return ret;
+   return map;
 }
 #endif /* defined(HAVE_VALGRIND) */
