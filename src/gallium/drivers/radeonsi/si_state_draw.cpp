@@ -304,7 +304,7 @@ static bool si_update_shaders(struct si_context *sctx)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
    }
 
-   if (unlikely(sctx->screen->debug_flags & DBG(SQTT) && sctx->thread_trace)) {
+   if (GFX_VERSION >= GFX9 && unlikely(sctx->thread_trace)) {
       /* Pretend the bound shaders form a vk pipeline. Include the scratch size in
        * the hash calculation to force re-emitting the pipeline if the scratch bo
        * changes.
