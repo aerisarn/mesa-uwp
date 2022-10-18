@@ -851,6 +851,10 @@ struct pvr_cmd_buffer {
     * execute in secondary command buffer.
     */
    struct util_dynarray deferred_csb_commands;
+   /* List of struct pvr_transfer_cmd used to emulate RTA clears on non RTA
+    * capable cores.
+    */
+   struct util_dynarray deferred_clears;
 
    /* List of pvr_bo structs associated with this cmd buffer. */
    struct list_head bo_list;

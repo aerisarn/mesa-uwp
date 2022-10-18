@@ -35,9 +35,10 @@
 #include "pvr_shader_factory.h"
 #include "pvr_static_shaders.h"
 #include "pvr_types.h"
+#include "util/bitscan.h"
 #include "util/list.h"
 #include "util/macros.h"
-#include "util/bitscan.h"
+#include "util/u_math.h"
 #include "vk_alloc.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
@@ -1620,6 +1621,126 @@ static VkResult pvr_clear_color_attachment_static(
    return VK_SUCCESS;
 }
 
+/**
+ * \brief Record a deferred clear operation into the command buffer.
+ *
+ * Devices which don't have gs_rta_support require extra handling for RTA
+ * clears. We setup a list of deferred clear transfer commands which will be
+ * processed at the end of the graphics sub command to account for the missing
+ * feature.
+ */
+static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
+                                           const VkClearAttachment *attachment,
+                                           const VkClearRect *rect)
+{
+   struct pvr_render_pass_info *pass_info = &cmd_buffer->state.render_pass_info;
+   struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
+   const struct pvr_renderpass_hwsetup_render *hw_render =
+      &pass_info->pass->hw_setup->renders[sub_cmd->hw_render_idx];
+   struct pvr_transfer_cmd *transfer_cmd_list;
+   const struct pvr_image_view *image_view;
+   const struct pvr_image *image;
+   uint32_t base_layer;
+
+   const VkOffset3D offset = {
+      .x = rect->rect.offset.x,
+      .y = rect->rect.offset.y,
+      .z = 1,
+   };
+   const VkExtent3D extent = {
+      .width = rect->rect.extent.width,
+      .height = rect->rect.extent.height,
+      .depth = 1,
+   };
+
+   assert(
+      !PVR_HAS_FEATURE(&cmd_buffer->device->pdevice->dev_info, gs_rta_support));
+
+   transfer_cmd_list = util_dynarray_grow(&cmd_buffer->deferred_clears,
+                                          struct pvr_transfer_cmd,
+                                          rect->layerCount);
+   if (!transfer_cmd_list) {
+      cmd_buffer->state.status =
+         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return cmd_buffer->state.status;
+   }
+
+   /* From the Vulkan 1.3.229 spec VUID-VkClearAttachment-aspectMask-00019:
+    *
+    *    "If aspectMask includes VK_IMAGE_ASPECT_COLOR_BIT, it must not
+    *    include VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT"
+    *
+    */
+   if (attachment->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT) {
+      assert(attachment->aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
+             attachment->aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT ||
+             attachment->aspectMask ==
+                (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
+      image_view = pass_info->attachments[hw_render->ds_attach_idx];
+   } else {
+      const struct pvr_renderpass_hwsetup_subpass *hw_pass =
+         pvr_get_hw_subpass(pass_info->pass, pass_info->subpass_idx);
+      const struct pvr_render_subpass *sub_pass =
+         &pass_info->pass->subpasses[hw_pass->index];
+      const uint32_t attachment_idx =
+         sub_pass->color_attachments[attachment->colorAttachment];
+
+      assert(attachment->colorAttachment < sub_pass->color_count);
+
+      image_view = pass_info->attachments[attachment_idx];
+   }
+
+   base_layer = image_view->vk.base_array_layer + rect->baseArrayLayer;
+   image = vk_to_pvr_image(image_view->vk.image);
+
+   for (uint32_t i = 0; i < rect->layerCount; i++) {
+      struct pvr_transfer_cmd *transfer_cmd = &transfer_cmd_list[i];
+
+      /* TODO: Add an init function for when we don't want to use
+       * pvr_transfer_cmd_alloc()? And use it here.
+       */
+      *transfer_cmd = (struct pvr_transfer_cmd){
+         .flags = PVR_TRANSFER_CMD_FLAGS_FILL,
+         .source_count = 1,
+         .sources = {
+            [0] = {
+               .filter = PVR_FILTER_POINT,
+               .resolve_op = PVR_RESOLVE_BLEND,
+               .addr_mode = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE),
+            },
+         },
+         .cmd_buffer = cmd_buffer,
+      };
+
+      if (attachment->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
+         for (uint32_t i = 0; i < ARRAY_SIZE(transfer_cmd->clear_color); i++) {
+            transfer_cmd->clear_color[i].ui =
+               attachment->clearValue.color.uint32[i];
+         }
+      } else {
+         transfer_cmd->clear_color[0].f =
+            attachment->clearValue.depthStencil.depth;
+         transfer_cmd->clear_color[1].ui =
+            attachment->clearValue.depthStencil.stencil;
+      }
+
+      pvr_setup_transfer_surface(cmd_buffer->device,
+                                 &transfer_cmd->sources[0].surface,
+                                 &transfer_cmd->scissor,
+                                 image,
+                                 base_layer + i,
+                                 0,
+                                 &offset,
+                                 &extent,
+                                 0.0f,
+                                 image->vk.format,
+                                 attachment->aspectMask);
+   }
+
+   return VK_SUCCESS;
+}
+
 static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                   uint32_t attachment_count,
                                   const VkClearAttachment *attachments,
@@ -1811,7 +1932,10 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
 
          if (!PVR_HAS_FEATURE(dev_info, gs_rta_support) &&
              (clear_rect->baseArrayLayer != 0 || clear_rect->layerCount > 1)) {
-            pvr_finishme("Add deferred RTA clear.");
+            result =
+               pvr_add_deferred_rta_clear(cmd_buffer, attachment, clear_rect);
+            if (result != VK_SUCCESS)
+               return;
 
             if (clear_rect->baseArrayLayer != 0)
                continue;
