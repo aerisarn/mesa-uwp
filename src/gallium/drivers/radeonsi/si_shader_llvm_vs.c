@@ -724,44 +724,6 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       ac_build_export(&ctx->ac, &param_exports[i]);
 }
 
-void si_llvm_vs_build_end(struct si_shader_context *ctx)
-{
-   struct si_shader_info *info = &ctx->shader->selector->info;
-   struct si_shader_output_values *outputs = NULL;
-   LLVMValueRef *addrs = ctx->abi.outputs;
-   int i, j;
-
-   assert(!ctx->shader->is_gs_copy_shader);
-   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
-
-   outputs = MALLOC((info->num_outputs + 1) * sizeof(outputs[0]));
-
-   for (i = 0; i < info->num_outputs; i++) {
-      outputs[i].semantic = info->output_semantic[i];
-
-      for (j = 0; j < 4; j++) {
-         outputs[i].values[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + j], "");
-         outputs[i].vertex_streams = info->output_streams[i];
-      }
-   }
-
-   if (!ctx->screen->use_ngg_streamout && ctx->so.num_outputs)
-      si_llvm_emit_streamout(ctx, outputs, i, 0);
-
-   /* Export PrimitiveID. */
-   if (ctx->shader->key.ge.mono.u.vs_export_prim_id) {
-      outputs[i].semantic = VARYING_SLOT_PRIMITIVE_ID;
-      outputs[i].vertex_streams = 0;
-      outputs[i].values[0] = ac_to_float(&ctx->ac, si_get_primitive_id(ctx, 0));
-      for (j = 1; j < 4; j++)
-         outputs[i].values[j] = LLVMConstReal(ctx->ac.f32, 0);
-      i++;
-   }
-
-   si_llvm_build_vs_exports(ctx, outputs, i);
-   FREE(outputs);
-}
-
 /**
  * Build the vertex shader prolog function.
  *

@@ -1898,14 +1898,22 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_
 
    bool opt_offsets = si_lower_io_to_mem(shader, nir, tcs_vgpr_only_inputs);
 
-   /* Assign param export indices. */
-   if (is_last_vgt_stage)
+   if (is_last_vgt_stage) {
+      /* Assign param export indices. */
       si_assign_param_offsets(nir, shader);
 
-   /* Only lower last VGT NGG shader stage. */
-   if (sel->stage <= MESA_SHADER_GEOMETRY && key->ge.as_ngg && !key->ge.as_es) {
-      si_lower_ngg(shader, nir);
-      opt_offsets = true;
+      if (key->ge.as_ngg) {
+         /* Lower last VGT NGG shader stage. */
+         si_lower_ngg(shader, nir);
+         opt_offsets = true;
+      } else if (sel->stage == MESA_SHADER_VERTEX || sel->stage == MESA_SHADER_TESS_EVAL) {
+         /* Lower last VGT none-NGG VS/TES shader stage. */
+         int primitive_id_location =
+            shader->key.ge.mono.u.vs_export_prim_id ? sel->info.num_outputs : -1;
+
+         NIR_PASS_V(nir, ac_nir_lower_legacy_vs, primitive_id_location,
+                    key->ge.opt.remove_streamout);
+      }
    }
 
    NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
@@ -1952,6 +1960,7 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
+   bool ret = true;
    struct si_shader_selector *sel = shader->selector;
 
    struct si_shader_args args;
@@ -1959,11 +1968,6 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(shader, &args, &free_nir, 0);
-
-   struct pipe_stream_output_info so = {};
-   /* NGG streamout has been lowered to buffer store in nir. */
-   if (!sscreen->use_ngg_streamout && si_shader_uses_streamout(shader))
-      nir_gather_stream_output_info(nir, &so);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
@@ -2016,17 +2020,24 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
     * with PS and NGG VS), but monolithic shaders should be compiled
     * by LLVM due to more complicated compilation.
     */
-   if (!si_llvm_compile_shader(sscreen, compiler, shader, &args, &so, debug, nir, free_nir))
-      return false;
+   if (!si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir)) {
+      ret = false;
+      goto out;
+   }
 
    shader->config.float_mode = float_mode;
 
    /* The GS copy shader is compiled next. */
    if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+      struct pipe_stream_output_info so = {};
+      if (si_shader_uses_streamout(shader))
+         nir_gather_stream_output_info(nir, &so);
+
       shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, &so, debug);
       if (!shader->gs_copy_shader) {
          fprintf(stderr, "radeonsi: can't create GS copy shader\n");
-         return false;
+         ret = false;
+         goto out;
       }
    }
 
@@ -2111,7 +2122,12 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    si_calculate_max_simd_waves(shader);
    si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
-   return true;
+
+out:
+   if (free_nir)
+      ralloc_free(nir);
+
+   return ret;
 }
 
 /**

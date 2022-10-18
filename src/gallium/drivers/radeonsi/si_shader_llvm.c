@@ -1020,8 +1020,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->abi.disable_aniso_single_level = true;
 
    unsigned num_outputs = info->num_outputs;
-   /* need extra output to hold primitive id added by nir ngg lower */
-   if (ctx->stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg &&
+   /* need extra output to hold primitive id added by nir lower */
+   if (ctx->stage <= MESA_SHADER_GEOMETRY &&
        ctx->shader->key.ge.mono.u.vs_export_prim_id)
       num_outputs++;
 
@@ -1048,8 +1048,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          si_llvm_ls_build_end(ctx);
       else if (shader->key.ge.as_es)
          si_llvm_es_build_end(ctx);
-      else if (!shader->key.ge.as_ngg)
-         si_llvm_vs_build_end(ctx);
       break;
 
    case MESA_SHADER_TESS_CTRL:
@@ -1059,8 +1057,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    case MESA_SHADER_TESS_EVAL:
       if (ctx->shader->key.ge.as_es)
          si_llvm_es_build_end(ctx);
-      else if (!ctx->shader->key.ge.as_ngg)
-         si_llvm_vs_build_end(ctx);
       break;
 
    case MESA_SHADER_GEOMETRY:
@@ -1099,9 +1095,7 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
 
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                             struct si_shader *shader, struct si_shader_args *args,
-                            const struct pipe_stream_output_info *so,
-                            struct util_debug_callback *debug, struct nir_shader *nir,
-                            bool free_nir)
+                            struct util_debug_callback *debug, struct nir_shader *nir)
 {
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_context ctx;
@@ -1112,10 +1106,9 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
       exports_color_null = si_shader_uses_discard(shader) || sscreen->info.gfx_level < GFX10;
 
    si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size, exports_color_null, exports_mrtz);
-   ctx.so = *so;
    ctx.args = args;
 
-   if (!si_llvm_translate_nir(&ctx, shader, nir, free_nir)) {
+   if (!si_llvm_translate_nir(&ctx, shader, nir, false)) {
       si_llvm_dispose(&ctx);
       return false;
    }
@@ -1168,6 +1161,8 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          shader_ls.is_monolithic = true;
 
          si_init_shader_args(&shader_ls, ctx.args);
+
+         bool free_nir;
          nir = si_get_nir_shader(&shader_ls, ctx.args, &free_nir, sel->info.tcs_vgpr_only_inputs);
          si_update_shader_binary_info(shader, nir);
 
@@ -1240,6 +1235,8 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          shader_es.is_monolithic = true;
 
          si_init_shader_args(&shader_es, ctx.args);
+
+         bool free_nir;
          nir = si_get_nir_shader(&shader_es, ctx.args, &free_nir, 0);
          si_update_shader_binary_info(shader, nir);
 
