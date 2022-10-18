@@ -124,7 +124,7 @@ register is a register allocated constant for all fragment shader invocations in
 a given polygon. Physically, it contains the values output by the vertex shader
 for each vertex of the polygon. Coefficient registers are preloaded with values
 from varying slots. This preloading appears to occur in fixed function hardware,
-a simplifcation from PowerVR which requires a specialized program for the
+a simplification from PowerVR which requires a specialized program for the
 programmable data sequencer to do the preload.
 
 The "Bind fragment pipeline" packet points to coefficient register bindings,
