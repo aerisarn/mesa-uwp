@@ -500,11 +500,8 @@ static unsigned si_conv_pipe_prim(unsigned mode)
 }
 
 template<amd_gfx_level GFX_VERSION>
-static void si_cp_dma_prefetch_inline(struct si_context *sctx, struct pipe_resource *buf,
-                                      unsigned offset, unsigned size)
+static void si_cp_dma_prefetch_inline(struct si_context *sctx, uint64_t address, unsigned size)
 {
-   uint64_t address = si_resource(buf)->gpu_address + offset;
-
    assert(GFX_VERSION >= GFX7);
 
    if (GFX_VERSION >= GFX11)
@@ -548,24 +545,25 @@ static void si_cp_dma_prefetch_inline(struct si_context *sctx, struct pipe_resou
 void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
                         unsigned offset, unsigned size)
 {
+   uint64_t address = si_resource(buf)->gpu_address + offset;
    switch (sctx->gfx_level) {
    case GFX7:
-      si_cp_dma_prefetch_inline<GFX7>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX7>(sctx, address, size);
       break;
    case GFX8:
-      si_cp_dma_prefetch_inline<GFX8>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX8>(sctx, address, size);
       break;
    case GFX9:
-      si_cp_dma_prefetch_inline<GFX9>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX9>(sctx, address, size);
       break;
    case GFX10:
-      si_cp_dma_prefetch_inline<GFX10>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX10>(sctx, address, size);
       break;
    case GFX10_3:
-      si_cp_dma_prefetch_inline<GFX10_3>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX10_3>(sctx, address, size);
       break;
    case GFX11:
-      si_cp_dma_prefetch_inline<GFX11>(sctx, buf, offset, size);
+      si_cp_dma_prefetch_inline<GFX11>(sctx, address, size);
       break;
    default:
       break;
@@ -578,8 +576,7 @@ template<amd_gfx_level GFX_VERSION>
 static void si_prefetch_shader_async(struct si_context *sctx, struct si_shader *shader)
 {
    struct pipe_resource *bo = &shader->bo->b.b;
-
-   si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, bo, 0, bo->width0);
+   si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, shader->gpu_address, bo->width0);
 }
 
 /**
@@ -1939,9 +1936,10 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
          vb_descriptors_address = sctx->last_const_upload_buffer->gpu_address + offset;
 
          /* GFX6 doesn't support the L2 prefetch. */
-         if (GFX_VERSION >= GFX7)
-            si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, &sctx->last_const_upload_buffer->b.b,
-                                                   offset, alloc_size);
+         if (GFX_VERSION >= GFX7) {
+            uint64_t address = sctx->last_const_upload_buffer->gpu_address + offset;
+            si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, address, alloc_size);
+         }
       }
 
       unsigned count_in_user_sgprs = MIN2(count, num_vbos_in_user_sgprs);
