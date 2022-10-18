@@ -951,6 +951,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
 
    sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
    ac_rtld_close(&binary);
+   shader->gpu_address = u.rx_va;
 
    return size >= 0;
 }

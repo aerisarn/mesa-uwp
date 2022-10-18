@@ -374,6 +374,8 @@ static bool si_update_shaders(struct si_context *sctx)
 
                   pipeline->offset[i] = offset;
 
+                  shader->gpu_address = u.rx_va;
+
                   offset += align(size, 256);
 
                   struct si_pm4_state *pm4 = &shader->pm4;

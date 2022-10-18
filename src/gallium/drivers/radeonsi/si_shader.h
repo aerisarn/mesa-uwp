@@ -845,6 +845,10 @@ struct si_shader {
    struct si_shader *gs_copy_shader;
 
    struct si_resource *bo;
+   /* gpu_address should be bo->gpu_address except if SQTT is
+    * in use.
+    */
+   uint64_t gpu_address;
    struct si_resource *scratch_bo;
    union si_shader_key key;
    struct util_queue_fence ready;
