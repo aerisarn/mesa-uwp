@@ -30,7 +30,7 @@ Current status
 * Many pieces are now upstreamed in various projects.
 * Kernel Linux 4.2 contains the modesetting only drivers. Linux 4.4
   contains the 3D supported pieces.
-* Mesa main contains the virgl 3D driver.
+* Mesa main contains the VirGL 3D driver.
 * QEMU 2.4 contained the initial virtio-gpu with no acceleration
   support. QEMU 2.5 contains 3D support only with the GTK3 frontend with
   GL enabled.
