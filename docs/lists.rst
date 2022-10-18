@@ -54,9 +54,7 @@ OpenGL Forums
 
 Here are some other OpenGL-related forums you might find useful:
 
--  `OpenGL discussion
-   forums <https://www.opengl.org/discussion_boards/>`__ at
-   www.opengl.org
+-  `Khronos' OpenGL Community <https://community.khronos.org/c/opengl-general/34>`__
 -  Usenet newsgroups:
 
    -  `comp.graphics.algorithms <news:comp.graphics.algorithms>`__
