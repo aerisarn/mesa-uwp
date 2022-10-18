@@ -323,6 +323,7 @@ vkcts-navi10-valve:
     GPU_VERSION: radv-navi10-aco
 
 vkcts-navi21-valve:
+  parallel: 2
   extends:
     - .vkcts-test-valve
     - .navi21-test-valve
