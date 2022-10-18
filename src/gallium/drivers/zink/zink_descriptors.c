@@ -486,7 +486,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
          /* some sets can have multiple descriptor types: ensure the size arrays for these types are contiguous for creating the pool key */
          VkDescriptorPoolSize *sz = &sizes[idx];
          VkDescriptorPoolSize sz2[4];
-         if (screen->compact_descriptors) {
+         if (screen->compact_descriptors || (pg->is_compute && stages[0]->nir->info.stage == MESA_SHADER_KERNEL)) {
             unsigned found = 0;
             while (found < num_type_sizes[desc_type]) {
                if (sz->descriptorCount) {
