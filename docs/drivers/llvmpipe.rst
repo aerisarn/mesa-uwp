@@ -69,7 +69,7 @@ Requirements
    +-----------------+--------------------------------+-------------------------------+
 
    You can build only the x86 target by passing
-   ``-DLLVM_TARGETS_TO_BUILD=X86`` to cmake.
+   ``-DLLVM_TARGETS_TO_BUILD=X86`` to CMake.
 
 Building
 --------

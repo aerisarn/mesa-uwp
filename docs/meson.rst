@@ -268,7 +268,7 @@ should be used. It uses the same format as the native file above:
    llvm-config = '/usr/lib/llvm-config-32'
    cmake = '/usr/bin/cmake-for-my-arch'
 
-Obviously, only cmake or llvm-config is required.
+Obviously, only CMake or llvm-config is required.
 
 Then configure Meson:
 
