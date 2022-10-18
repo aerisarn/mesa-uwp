@@ -1423,7 +1423,7 @@ RadeonSI driver environment variables
    ``nodccmsaa``
       Disable DCC for MSAA
    ``nodpbb``
-      Disable DPBB.
+      Disable DPBB. Overrules the dpbb enable option.
    ``nodfsm``
       Disable DFSM.
    ``notiling``
@@ -1499,7 +1499,7 @@ RadeonSI driver environment variables
    ``nooutoforder``
       Disable out-of-order rasterization
    ``dpbb``
-      Enable DPBB.
+      Enable DPBB. Enable DPBB for gfx9 dGPU. Default enabled for gfx9 APU and >= gfx10.
    ``dfsm``
       Enable DFSM.
    ``extra_md``
