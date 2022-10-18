@@ -59,6 +59,6 @@ Here are some other OpenGL-related forums you might find useful:
    www.opengl.org
 -  Usenet newsgroups:
 
-   -  comp.graphics.algorithms
-   -  comp.graphics.api.opengl
-   -  comp.os.linux.x
+   -  `comp.graphics.algorithms <news:comp.graphics.algorithms>`__
+   -  `comp.graphics.api.opengl <news:comp.graphics.api.opengl>`__
+   -  `comp.os.linux.x <news:comp.os.linux.x>`__
