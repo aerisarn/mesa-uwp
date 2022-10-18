@@ -1,7 +1,7 @@
 Render Passes
 =============
 
-The Vulkan runtime code in Mesa provides several helpful utilities ot make
+The Vulkan runtime code in Mesa provides several helpful utilities to make
 managing render passes easier.
 
 
