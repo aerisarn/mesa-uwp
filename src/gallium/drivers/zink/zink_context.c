@@ -2543,6 +2543,9 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
          zink_init_zs_attachment(ctx, &rt);
       layout = zink_render_pass_attachment_get_barrier_info(&rt, i < ctx->fb_state.nr_cbufs, &pipeline, &access);
    }
+   if (!zink_screen(ctx->base.screen)->info.have_EXT_attachment_feedback_loop_layout &&
+       layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)
+      layout = VK_IMAGE_LAYOUT_GENERAL;
    zink_screen(ctx->base.screen)->image_barrier(ctx, res, layout, access, pipeline);
    res->obj->unordered_read = res->obj->unordered_write = false;
    if (i == ctx->fb_state.nr_cbufs && res->sampler_bind_count[0])
