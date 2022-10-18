@@ -185,7 +185,7 @@ be derived fields) specified as ``{FIELDNAME}`` and other characters
 which are just echoed through to the resulting decoded bitset.
 
 It is possible to define a line column alignment value per field to influence
-the visual output. It needs to be pecified as ``{FIELDNAME:align=xx}``.
+the visual output. It needs to be specified as ``{FIELDNAME:align=xx}``.
 
 The ``<override>`` element will be described in the next section, but it
 provides for both different decoded instruction syntax/mnemonics (when
