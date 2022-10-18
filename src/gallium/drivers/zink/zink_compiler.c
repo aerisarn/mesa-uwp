@@ -2798,10 +2798,24 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index, bool compa
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          return base * 2 + !!index;
 
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         assert(stage == MESA_SHADER_KERNEL);
+         FALLTHROUGH;
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         if (stage == MESA_SHADER_KERNEL) {
+            assert(index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
+            return index + PIPE_MAX_SAMPLERS;
+         }
+         FALLTHROUGH;
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          assert(index < PIPE_MAX_SAMPLERS);
+         assert(stage != MESA_SHADER_KERNEL);
          return (base * PIPE_MAX_SAMPLERS) + index;
+
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+         assert(index < PIPE_MAX_SAMPLERS);
+         assert(stage == MESA_SHADER_KERNEL);
+         return index;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          return base + (compact_descriptors * (ZINK_GFX_SHADER_COUNT * 2));
@@ -2809,6 +2823,8 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index, bool compa
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          assert(index < ZINK_MAX_SHADER_IMAGES);
+         if (stage == MESA_SHADER_KERNEL)
+            return index + (compact_descriptors ? (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_SAMPLER_VIEWS) : 0);
          return (base * ZINK_MAX_SHADER_IMAGES) + index + (compact_descriptors * (ZINK_GFX_SHADER_COUNT * PIPE_MAX_SAMPLERS));
 
       default:
@@ -3521,6 +3537,15 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    unsigned sampler_mask = 0;
    if (nir->info.stage == MESA_SHADER_KERNEL) {
       NIR_PASS_V(nir, type_images, &sampler_mask);
+      enum zink_descriptor_type ztype = ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW;
+      VkDescriptorType vktype = VK_DESCRIPTOR_TYPE_SAMPLER;
+      u_foreach_bit(s, sampler_mask) {
+         ret->bindings[ztype][ret->num_bindings[ztype]].index = s;
+         ret->bindings[ztype][ret->num_bindings[ztype]].binding = zink_binding(MESA_SHADER_KERNEL, vktype, s, screen->compact_descriptors);
+         ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
+         ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+         ret->num_bindings[ztype]++;
+      }
       ret->sinfo.sampler_mask = sampler_mask;
    }
 
@@ -3536,7 +3561,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             /* buffer 0 is a push descriptor */
             var->data.descriptor_set = !!var->data.driver_location;
             var->data.binding = !var->data.driver_location ? clamp_stage(nir) :
-                                zink_binding(clamp_stage(nir),
+                                zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              var->data.driver_location,
                                              screen->compact_descriptors);
@@ -3557,7 +3582,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             var->data.descriptor_set = screen->desc_set_id[ztype];
-            var->data.binding = zink_binding(clamp_stage(nir),
+            var->data.binding = zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                              var->data.driver_location,
                                              screen->compact_descriptors);
@@ -3575,12 +3600,14 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                handle_bindless_var(nir, var, type, &bindless);
             } else if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
+               if (nir->info.stage == MESA_SHADER_KERNEL && vktype == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+                  vktype = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                ztype = zink_desc_type_from_vktype(vktype);
                if (vktype == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
                   ret->num_texel_buffers++;
                var->data.driver_location = var->data.binding;
                var->data.descriptor_set = screen->desc_set_id[ztype];
-               var->data.binding = zink_binding(clamp_stage(nir), vktype, var->data.driver_location, screen->compact_descriptors);
+               var->data.binding = zink_binding(nir->info.stage, vktype, var->data.driver_location, screen->compact_descriptors);
                ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = var->data.binding;
                ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;

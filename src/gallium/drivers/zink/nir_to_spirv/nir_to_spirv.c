@@ -992,7 +992,7 @@ static SpvId
 get_image_type(struct ntv_context *ctx, struct nir_variable *var, bool is_sampler)
 {
    SpvId image_type = get_bare_image_type(ctx, var, is_sampler);
-   return is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
+   return is_sampler && ctx->stage != MESA_SHADER_KERNEL ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
 }
 
 static SpvId
@@ -1003,7 +1003,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, 
    const struct glsl_type *type = glsl_without_array(var->type);
 
    bool is_sampler = glsl_type_is_sampler(type);
-   SpvId var_type = is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
+   SpvId var_type = is_sampler && ctx->stage != MESA_SHADER_KERNEL ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
    bool mediump = (var->data.precision == GLSL_PRECISION_MEDIUM || var->data.precision == GLSL_PRECISION_LOW);
 
    int index = var->data.driver_location;
@@ -3733,7 +3733,14 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       SpvId ptr = spirv_builder_type_pointer(&ctx->builder, SpvStorageClassUniformConstant, sampled_type);
       sampler_id = spirv_builder_emit_access_chain(&ctx->builder, ptr, sampler_id, &tex_offset, 1);
    }
-   SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
+   SpvId load;
+   if (ctx->stage == MESA_SHADER_KERNEL) {
+      SpvId image_load = spirv_builder_emit_load(&ctx->builder, image_type, sampler_id);
+      SpvId sampler_load = spirv_builder_emit_load(&ctx->builder, spirv_builder_type_sampler(&ctx->builder), ctx->cl_samplers[tex->sampler_index]);
+      load = spirv_builder_emit_sampled_image(&ctx->builder, sampled_type, image_load, sampler_load);
+   } else {
+      load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
+   }
 
    if (tex->is_sparse)
       tex->dest.ssa.num_components--;
