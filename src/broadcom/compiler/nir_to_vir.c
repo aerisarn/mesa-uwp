@@ -2187,6 +2187,12 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s, bool allow_copies)
                 NIR_PASS(progress, s, nir_opt_remove_phis);
                 NIR_PASS(progress, s, nir_opt_if, false);
                 NIR_PASS(progress, s, nir_opt_undef);
+                if (c && !c->disable_gcm) {
+                        bool local_progress = false;
+                        NIR_PASS(local_progress, s, nir_opt_gcm, false);
+                        c->gcm_progress |= local_progress;
+                        progress |= local_progress;
+                }
 
                 /* Note that vectorization may undo the load/store scalarization
                  * pass we run for non 32-bit TMU general load/store by

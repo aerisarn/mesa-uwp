@@ -721,6 +721,14 @@ struct v3d_compile {
         bool disable_loop_unrolling;
         bool unrolled_any_loops;
 
+        /* Disables nir_opt_gcm to reduce register pressure. */
+        bool disable_gcm;
+
+        /* If calling nir_opt_gcm made any progress. Used to skip new rebuilds
+         * if possible
+         */
+        bool gcm_progress;
+
         /* Disables scheduling of general TMU loads (and unfiltered image load).
          */
         bool disable_general_tmu_sched;

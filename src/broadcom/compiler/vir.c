@@ -546,6 +546,7 @@ struct v3d_compiler_strategy {
         uint32_t max_threads;
         uint32_t min_threads;
         bool disable_general_tmu_sched;
+        bool disable_gcm;
         bool disable_loop_unrolling;
         bool disable_ubo_load_sorting;
         bool disable_tmu_pipelining;
@@ -582,6 +583,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->disable_general_tmu_sched = strategy->disable_general_tmu_sched;
         c->disable_tmu_pipelining = strategy->disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = strategy->disable_ubo_load_sorting;
+        c->disable_gcm = strategy->disable_gcm;
         c->disable_loop_unrolling = V3D_DBG(NO_LOOP_UNROLL)
                 ? true : strategy->disable_loop_unrolling;
 
@@ -1723,17 +1725,19 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
  * because v3d_nir_to_vir will cap this to the actual minimum.
  */
 static const struct v3d_compiler_strategy strategies[] = {
-  /*0*/  { "default",                        4, 4, false, false, false, false,  0 },
-  /*1*/  { "disable general TMU sched",      4, 4, true,  false, false, false,  0 },
-  /*2*/  { "disable loop unrolling",         4, 4, true,  true,  false, false,  0 },
-  /*3*/  { "disable UBO load sorting",       4, 4, true,  true,  true,  false,  0 },
-  /*4*/  { "disable TMU pipelining",         4, 4, true,  true,  true,  true,   0 },
-  /*5*/  { "lower thread count",             2, 1, false, false, false, false, -1 },
-  /*6*/  { "disable general TMU sched (2t)", 2, 1, true,  false, false, false, -1 },
-  /*7*/  { "disable loop unrolling (2t)",    2, 1, true,  true,  false, false, -1 },
-  /*8*/  { "disable UBO load sorting (2t)",  2, 1, true,  true,  true,  false, -1 },
-  /*9*/  { "disable TMU pipelining (2t)",    2, 1, true,  true,  true,  true,  -1 },
-  /*10*/ { "fallback scheduler",             2, 1, true,  true,  true,  true,  -1 }
+        /*0*/  { "default",                        4, 4, false, false, false, false, false,  0 },
+        /*1*/  { "disable general TMU sched",      4, 4, true,  false, false, false, false,  0 },
+        /*2*/  { "disable gcm",                    4, 4, true,  true,  false, false, false,  0 },
+        /*3*/  { "disable loop unrolling",         4, 4, true,  true,  true,  false, false,  0 },
+        /*4*/  { "disable UBO load sorting",       4, 4, true,  true,  true,  true,  false,  0 },
+        /*5*/  { "disable TMU pipelining",         4, 4, true,  true,  true,  true,  true,   0 },
+        /*6*/  { "lower thread count",             2, 1, false, false, false, false, false, -1 },
+        /*7*/  { "disable general TMU sched (2t)", 2, 1, true,  false, false, false, false, -1 },
+        /*8*/  { "disable gcm (2t)",               2, 1, true,  true,  false, false, false, -1 },
+        /*9*/  { "disable loop unrolling (2t)",    2, 1, true,  true,  true,  false, false, -1 },
+        /*10*/ { "disable UBO load sorting (2t)",  2, 1, true,  true,  true,  true,  false, -1 },
+        /*11*/ { "disable TMU pipelining (2t)",    2, 1, true,  true,  true,  true,  true,  -1 },
+        /*12*/ { "fallback scheduler",             2, 1, true,  true,  true,  true,  true,  -1 }
 };
 
 /**
@@ -1762,22 +1766,26 @@ skip_compile_strategy(struct v3d_compile *c, uint32_t idx)
    switch (idx) {
    /* General TMU sched.: skip if we didn't emit any TMU loads */
    case 1:
-   case 6:
-           return !c->has_general_tmu_load;
-   /* Loop unrolling: skip if we didn't unroll any loops */
-   case 2:
    case 7:
+           return !c->has_general_tmu_load;
+   /* Global code motion: skip if nir_opt_gcm didn't make any progress */
+   case 2:
+   case 8:
+           return !c->gcm_progress;
+   /* Loop unrolling: skip if we didn't unroll any loops */
+   case 3:
+   case 9:
            return !c->unrolled_any_loops;
    /* UBO load sorting: skip if we didn't sort any loads */
-   case 3:
-   case 8:
+   case 4:
+   case 10:
            return !c->sorted_any_ubo_loads;
    /* TMU pipelining: skip if we didn't pipeline any TMU ops */
-   case 4:
-   case 9:
+   case 5:
+   case 11:
            return !c->pipelined_any_tmu;
    /* Lower thread count: skip if we already tried less that 4 threads */
-   case 5:
+   case 6:
           return c->threads < 4;
    default:
            return false;
