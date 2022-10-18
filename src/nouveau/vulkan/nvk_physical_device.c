@@ -116,6 +116,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .maxVertexInputBindingStride = 2048,
          .maxVertexInputBindings = 32,
          .maxVertexOutputComponents = 128,
+         .maxGeometryShaderInvocations = 32,
+         .maxGeometryInputComponents = 128,
+         .maxGeometryOutputComponents = 128,
+         .maxGeometryOutputVertices = 1024,
+         .maxGeometryTotalOutputComponents = 1024,
          .maxDrawIndexedIndexValue = UINT32_MAX,
          .maxDrawIndirectCount = UINT32_MAX,
          .timestampComputeAndGraphics = true,
@@ -334,7 +339,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .fullDrawIndexUint32 = true,
       .imageCubeArray = true,
       .independentBlend = true,
-      /* TODO: geometryShader */
+      .geometryShader = true,
       /* TODO: tessellationShader */
       .sampleRateShading = true,
       .dualSrcBlend = true,
@@ -357,7 +362,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .pipelineStatisticsQuery = true,
       .vertexPipelineStoresAndAtomics = true,
       .fragmentStoresAndAtomics = true,
-      /* TODO: shaderTessellationAndGeometryPointSize */
+      .shaderTessellationAndGeometryPointSize = true,
       .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
       /* TODO: shaderStorageImageMultisample */
@@ -381,7 +386,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
 
       /* Vulkan 1.1 */
       .multiview = true,
-      .multiviewGeometryShader = false,
+      .multiviewGeometryShader = true,
       .multiviewTessellationShader = false,
       .shaderDrawParameters = true,
 
