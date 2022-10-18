@@ -64,7 +64,7 @@ has been granted access to these traces.
 
 A traces YAML file also includes a ``download-url`` pointing to a MinIO
 instance where to download the traces from. While the first job should always work with
-publicly accessible traces, the second job could point to an url with restricted access.
+publicly accessible traces, the second job could point to an URL with restricted access.
 
 Restricted traces are those that have been made available to Mesa developers without a
 license to redistribute at will, and thus should not be exposed to the public. Failing to
