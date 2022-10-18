@@ -993,7 +993,8 @@ compact_vertices_after_culling(nir_builder *b,
    nir_pop_if(b, if_gs_accepted);
 
    nir_store_var(b, es_accepted_var, es_survived, 0x1u);
-   nir_store_var(b, gs_accepted_var, nir_bcsel(b, fully_culled, nir_imm_false(b), nir_has_input_primitive_amd(b)), 0x1u);
+   nir_store_var(b, gs_accepted_var,
+                 nir_iand(b, nir_inot(b, fully_culled), nir_has_input_primitive_amd(b)), 0x1u);
 }
 
 static void
