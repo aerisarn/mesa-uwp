@@ -828,7 +828,7 @@ resources might be created and handled quite differently.
 * ``PIPE_BIND_STREAM_OUTPUT``: A stream output buffer.
 * ``PIPE_BIND_CUSTOM``:
 * ``PIPE_BIND_SCANOUT``: A front color buffer or scanout buffer.
-* ``PIPE_BIND_SHARED``: A sharable buffer that can be given to another
+* ``PIPE_BIND_SHARED``: A shareable buffer that can be given to another
   process.
 * ``PIPE_BIND_GLOBAL``: A buffer that can be mapped into the global
   address space of a compute program.
