@@ -66,10 +66,10 @@ struct pvr_winsys_heap {
    struct pvr_winsys *ws;
 
    pvr_dev_addr_t base_addr;
-   pvr_dev_addr_t reserved_addr;
+   pvr_dev_addr_t static_data_carveout_addr;
 
    uint64_t size;
-   uint64_t reserved_size;
+   uint64_t static_data_carveout_size;
 
    uint32_t page_size;
    uint32_t log2_page_size;
