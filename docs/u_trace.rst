@@ -13,7 +13,7 @@ u_trace is useful when one needs to quickly identify performance bottleneck,
 or to build a tool to analyze the raw performance data.
 
 Drivers which support u_trace:
-   - Intel drivers: Anv, Iris
+   - Intel drivers: ANV, Iris
    - Adreno drivers: Freedreno, Turnip
 
 Usage
