@@ -147,7 +147,6 @@ each directory.
          -  **vdpau** - VDPAU frontend
          -  **wgl** - Windows WGL frontend
          -  **xa** - XA frontend
-         -  **xvmc** - XvMC frontend
 
       -  **winsys** - The device drivers are platform-independent, the
          winsys connects them to various platforms. There is usually one winsys

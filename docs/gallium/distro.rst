@@ -119,11 +119,6 @@ Xorg DDX
 Tracker for Xorg X11 servers. Provides device-dependent
 modesetting and acceleration as a DDX driver.
 
-XvMC
-^^^^
-
-Tracker for X-Video Motion Compensation.
-
 Auxiliary
 ---------
 
