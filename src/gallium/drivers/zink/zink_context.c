@@ -599,8 +599,6 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
       if (res->obj->is_buffer) {
          struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
          ctx->di.tbos[shader][slot] = bv->buffer_view;
-         ctx->di.sampler_surfaces[shader][slot].bufferview = bv;
-         ctx->di.sampler_surfaces[shader][slot].is_buffer = true;
       } else {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
          ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(ctx, res, type, shader == MESA_SHADER_COMPUTE);
@@ -617,8 +615,6 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
                ctx->di.textures[shader][slot].sampler = sampler;
             }
          }
-         ctx->di.sampler_surfaces[shader][slot].surface = surface;
-         ctx->di.sampler_surfaces[shader][slot].is_buffer = false;
       }
    } else {
       if (likely(have_null_descriptors)) {
@@ -632,7 +628,6 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
          ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
          ctx->di.tbos[shader][slot] = null_bufferview->buffer_view;
       }
-      memset(&ctx->di.sampler_surfaces[shader][slot], 0, sizeof(ctx->di.sampler_surfaces[shader][slot]));
    }
    return res;
 }
@@ -648,14 +643,10 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
       if (res->obj->is_buffer) {
          struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
          ctx->di.texel_images[shader][slot] = bv->buffer_view;
-         ctx->di.image_surfaces[shader][slot].bufferview = bv;
-         ctx->di.image_surfaces[shader][slot].is_buffer = true;
       } else {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
          ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
          ctx->di.images[shader][slot].imageView = surface->image_view;
-         ctx->di.image_surfaces[shader][slot].surface = surface;
-         ctx->di.image_surfaces[shader][slot].is_buffer = false;
       }
    } else {
       if (likely(have_null_descriptors)) {
@@ -668,7 +659,6 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
          ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
          ctx->di.texel_images[shader][slot] = null_bufferview->buffer_view;
       }
-      memset(&ctx->di.image_surfaces[shader][slot], 0, sizeof(ctx->di.image_surfaces[shader][slot]));
    }
    return res;
 }
@@ -737,9 +727,8 @@ zink_bind_sampler_states_nonseamless(struct pipe_context *pctx,
          ctx->di.emulate_nonseamless[shader] |= bit;
       if (state->emulate_nonseamless != (old_mask & bit) && (ctx->di.cubes[shader] & bit)) {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
-         if (surface && ctx->di.image_surfaces[shader][start_slot + i].surface != surface) {
+         if (surface && ctx->di.images[shader][start_slot + i].imageView != surface->image_view) {
             ctx->di.images[shader][start_slot + i].imageView = surface->image_view;
-            ctx->di.image_surfaces[shader][start_slot + i].surface = surface;
             update_descriptor_state_sampler(ctx, shader, start_slot + i, zink_resource(surface->base.texture));
             zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i, 1);
          }
