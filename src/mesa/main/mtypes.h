@@ -1759,8 +1759,8 @@ struct gl_array_attrib
     * The VERT_BIT_* bits effectively enabled from the current _DrawVAO.
     * This is always a subset of _mesa_get_vao_vp_inputs(_DrawVAO)
     * but may omit those arrays that shall not be referenced by the current
-    * gl_vertex_program_state::_VPMode. For example the generic attributes are
-    * maked out form the _DrawVAO's enabled arrays when a fixed function
+    * gl_vertex_program_state::_VPMode. For example, the generic attributes are
+    * masked out from the _DrawVAO's enabled arrays when a fixed function
     * array draw is executed.
     */
    GLbitfield _DrawVAOEnabledAttribs;
