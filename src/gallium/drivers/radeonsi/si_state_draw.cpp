@@ -580,17 +580,10 @@ static void si_prefetch_shader_async(struct si_context *sctx, struct si_shader *
    si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, bo, 0, bo->width0);
 }
 
-enum si_L2_prefetch_mode {
-   PREFETCH_BEFORE_DRAW = 1,
-   PREFETCH_AFTER_DRAW,
-   PREFETCH_ALL,
-};
-
 /**
  * Prefetch shaders.
  */
-template<amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-         si_L2_prefetch_mode mode>
+template<amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
 static void si_prefetch_shaders(struct si_context *sctx)
 {
    unsigned mask = sctx->prefetch_L2_mask;
@@ -601,100 +594,40 @@ static void si_prefetch_shaders(struct si_context *sctx)
 
    /* Prefetch shaders and VBO descriptors to TC L2. */
    if (GFX_VERSION >= GFX11) {
-      if (HAS_TESS) {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_HS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
+      if (HAS_TESS && mask & SI_PREFETCH_HS)
+         si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
 
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
-
-         if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-      } else if (mode != PREFETCH_AFTER_DRAW) {
-         if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-
-         if (mode == PREFETCH_BEFORE_DRAW)
-            return;
-      }
+      if (mask & SI_PREFETCH_GS)
+         si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
    } else if (GFX_VERSION >= GFX9) {
       if (HAS_TESS) {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_HS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
-
-         if ((HAS_GS || NGG) && mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-         if (!NGG && mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
-      } else if (HAS_GS || NGG) {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_GS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
-
-         if (!NGG && mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
-      } else {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_VS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
+         if (mask & SI_PREFETCH_HS)
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
       }
+      if ((HAS_GS || NGG) && mask & SI_PREFETCH_GS)
+         si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
+      if (!NGG && mask & SI_PREFETCH_VS)
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
    } else {
       /* GFX6-GFX8 */
       /* Choose the right spot for the VBO prefetch. */
       if (HAS_TESS) {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_LS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.ls);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
-
+         if (mask & SI_PREFETCH_LS)
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.ls);
          if (mask & SI_PREFETCH_HS)
             si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
          if (mask & SI_PREFETCH_ES)
             si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.es);
          if (mask & SI_PREFETCH_GS)
             si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-         if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
       } else if (HAS_GS) {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_ES)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.es);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
-
+         if (mask & SI_PREFETCH_ES)
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.es);
          if (mask & SI_PREFETCH_GS)
             si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
-         if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
-      } else {
-         if (mode != PREFETCH_AFTER_DRAW) {
-            if (mask & SI_PREFETCH_VS)
-               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
-
-            if (mode == PREFETCH_BEFORE_DRAW)
-               return;
-         }
       }
+      if (mask & SI_PREFETCH_VS)
+         si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
    }
 
    if (mask & SI_PREFETCH_PS)
@@ -2548,7 +2481,7 @@ static void si_draw(struct pipe_context *ctx,
    /* Start prefetches after the draw has been started. Both will run
     * in parallel, but starting the draw first is more important.
     */
-   si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG, PREFETCH_ALL>(sctx);
+   si_prefetch_shaders<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx);
 
    /* Clear the context roll flag after the draw call.
     * Only used by the gfx9 scissor bug.
