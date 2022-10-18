@@ -358,6 +358,7 @@ wgl_display_release(_EGLDisplay *disp)
    if (!p_atomic_dec_zero(&wgl_dpy->ref_count))
       return;
 
+   _eglCleanupDisplay(disp);
    wgl_display_destroy(disp);
 }
 
@@ -370,6 +371,9 @@ wgl_display_release(_EGLDisplay *disp)
 static EGLBoolean
 wgl_terminate(_EGLDisplay *disp)
 {
+   /* Release all non-current Context/Surfaces. */
+   _eglReleaseDisplayResources(disp);
+
    wgl_display_release(disp);
 
    return EGL_TRUE;
