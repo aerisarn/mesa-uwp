@@ -43,7 +43,7 @@ Hardware varyings
 
 At an API level, vertex shader outputs need to be interpolated to become
 fragment shader inputs. This process is logically pipelined in AGX, with a value
-travelling from a vertex shader to remapping hardware to coefficient register
+traveling from a vertex shader to remapping hardware to coefficient register
 setup to the fragment shader to the iterator hardware. Each stage is described
 below.
 
