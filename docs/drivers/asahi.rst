@@ -25,7 +25,7 @@ and dump work submitted to the GPU using agxdecode.
 
 This library allows debugging Mesa, particularly around the undocumented macOS
 user-kernel interface. Logs from Mesa may compared to Metal to check that the
-UABI is being used correcrly.
+UABI is being used correctly.
 
 Furthermore, it allows reverse-engineering the hardware, as glue to get at the
 "interesting" GPU memory.
