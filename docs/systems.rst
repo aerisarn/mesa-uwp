@@ -35,7 +35,7 @@ Layered driver include:
 -  :doc:`VirGL <drivers/virgl>` - project for accelerated graphics for
    QEMU guests
 -  :doc:`Zink <drivers/zink>` - driver providing OpenGL on top of
-   Khoronos' Vulkan API.
+   Khronos' Vulkan API.
 
 Software drivers include:
 
