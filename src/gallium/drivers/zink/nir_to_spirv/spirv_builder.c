@@ -1330,10 +1330,23 @@ spirv_builder_type_image(struct spirv_builder *b, SpvId sampled_type,
 }
 
 SpvId
+spirv_builder_emit_sampled_image(struct spirv_builder *b, SpvId result_type, SpvId image, SpvId sampler)
+{
+   return spirv_builder_emit_binop(b, SpvOpSampledImage, result_type, image, sampler);
+}
+
+SpvId
 spirv_builder_type_sampled_image(struct spirv_builder *b, SpvId image_type)
 {
    uint32_t args[] = { image_type };
    return get_type_def(b, SpvOpTypeSampledImage, args, ARRAY_SIZE(args));
+}
+
+SpvId
+spirv_builder_type_sampler(struct spirv_builder *b)
+{
+   uint32_t args[1] = {0};
+   return get_type_def(b, SpvOpTypeSampler, args, 0);
 }
 
 SpvId
