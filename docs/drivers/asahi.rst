@@ -253,7 +253,7 @@ one cache line (128 bytes), ensure no cache line contains multiple mip levels.
 
 There is a wrinkle: the dimensions of large mip levels in tiles are determined
 by the dimensions of level 0. For power-of-two images, the two calculations are
-equivalent. However, they differ subtlely for non-power-of-two images. To
+equivalent. However, they differ subtly for non-power-of-two images. To
 determine the number of tiles to allocate for level :math:`l`, the number of
 tiles for level 0 should be right-shifted by :math:`2l`. That appears to divide
 by :math:`2^l` in both width and height, matching the definition of mipmapping,
