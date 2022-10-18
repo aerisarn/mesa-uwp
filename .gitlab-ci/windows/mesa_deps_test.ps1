@@ -152,4 +152,15 @@ Copy-Item 'C:\agility\build\native\bin\x64\*.dll' -Destination $agility_dest
 Remove-Item -Recurse 'C:\agility'
 
 Get-Date
+Write-Host "Downloading Updated WARP"
+Invoke-WebRequest -Uri https://www.nuget.org/api/v2/package/Microsoft.Direct3D.WARP/1.0.2 -OutFile 'warp.zip'
+Expand-Archive -Path 'warp.zip' -DestinationPath 'C:\warp'
+Remove-Item 'warp.zip'
+
+# Copy WARP next to piglit and Vulkan CTS
+Copy-Item 'C:\warp\build\native\amd64\d3d10warp.dll' -Destination $piglit_bin
+Copy-Item 'C:\warp\build\native\amd64\d3d10warp.dll' -Destination $vk_cts_bin
+Remove-Item -Recurse 'C:\warp'
+
+Get-Date
 Write-Host "Complete"
