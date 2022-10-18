@@ -6156,6 +6156,8 @@ visit_bvh64_intersect_ray_amd(isel_context* ctx, nir_intrinsic_instr* instr)
    mimg->dmask = 0xf;
    mimg->unrm = true;
    mimg->r128 = true;
+
+   emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
 }
 
 static std::vector<Temp>
