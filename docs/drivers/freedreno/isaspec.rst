@@ -38,7 +38,7 @@ Bitsets
 -------
 
 The fundamental concept of matching a bit-pattern to an instruction
-decoding/encoding is the concept of a hierarchial tree of bitsets.
+decoding/encoding is the concept of a hierarchical tree of bitsets.
 This is intended to match how the hw decodes instructions, where certain
 bits describe the instruction (and sub-encoding, and so on), and other
 bits describe various operands to the instruction.
