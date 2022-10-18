@@ -35,7 +35,7 @@ u_trace is controlled by environment variables:
    ``json``
       json format, suitable for parsing. Application should appropriately
       finish its rendering in order for trace's json to be valid.
-      For Vulkan api it is expected to destroy the device, for GL it is
+      For Vulkan API it is expected to destroy the device, for GL it is
       expected to destroy the context.
 
 :envvar:`GPU_TRACE_INSTRUMENT`

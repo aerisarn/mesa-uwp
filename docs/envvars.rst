@@ -466,10 +466,10 @@ Vulkan mesa device select layer environment variables
    when set to "list" prints the list of devices.
    when set to "vid:did" number from pci device. That pci device is
    selected as default. The default device is returned as the first
-   device in vkEnumeratePhysicalDevices api.
+   device in vkEnumeratePhysicalDevices API.
 :envvar:`MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE`
    when set to 1, the device identified as default will be the only
-   one returned in vkEnumeratePhysicalDevices api.
+   one returned in vkEnumeratePhysicalDevices API.
 
 
 EGL environment variables
