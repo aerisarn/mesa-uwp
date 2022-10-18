@@ -282,30 +282,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       P_IMMD(p, NV9097, SET_PIPELINE_REGISTER_COUNT(idx), shader->num_gprs);
 
       switch (stage) {
-      case MESA_SHADER_VERTEX: {
-         uint8_t clip_cull = shader->vs.clip_enable | shader->vs.cull_enable;
-         P_IMMD(p, NV9097, SET_USER_CLIP_ENABLE, {
-            .plane0 = (clip_cull >> 0) & 1,
-            .plane1 = (clip_cull >> 1) & 1,
-            .plane2 = (clip_cull >> 2) & 1,
-            .plane3 = (clip_cull >> 3) & 1,
-            .plane4 = (clip_cull >> 4) & 1,
-            .plane5 = (clip_cull >> 5) & 1,
-            .plane6 = (clip_cull >> 6) & 1,
-            .plane7 = (clip_cull >> 7) & 1,
-         });
-         P_IMMD(p, NV9097, SET_USER_CLIP_OP, {
-            .plane0 = (shader->vs.cull_enable >> 0) & 1,
-            .plane1 = (shader->vs.cull_enable >> 1) & 1,
-            .plane2 = (shader->vs.cull_enable >> 2) & 1,
-            .plane3 = (shader->vs.cull_enable >> 3) & 1,
-            .plane4 = (shader->vs.cull_enable >> 4) & 1,
-            .plane5 = (shader->vs.cull_enable >> 5) & 1,
-            .plane6 = (shader->vs.cull_enable >> 6) & 1,
-            .plane7 = (shader->vs.cull_enable >> 7) & 1,
-         });
+      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_GEOMETRY:
          break;
-      }
 
       case MESA_SHADER_FRAGMENT:
          P_IMMD(p, NV9097, SET_SUBTILING_PERF_KNOB_A, {
@@ -340,6 +319,31 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       default:
          unreachable("Unsupported shader stage");
       }
+   }
+
+   const uint8_t clip_cull = last_geom->vs.clip_enable |
+                             last_geom->vs.cull_enable;
+   if (clip_cull) {
+      P_IMMD(p, NV9097, SET_USER_CLIP_ENABLE, {
+         .plane0 = (clip_cull >> 0) & 1,
+         .plane1 = (clip_cull >> 1) & 1,
+         .plane2 = (clip_cull >> 2) & 1,
+         .plane3 = (clip_cull >> 3) & 1,
+         .plane4 = (clip_cull >> 4) & 1,
+         .plane5 = (clip_cull >> 5) & 1,
+         .plane6 = (clip_cull >> 6) & 1,
+         .plane7 = (clip_cull >> 7) & 1,
+      });
+      P_IMMD(p, NV9097, SET_USER_CLIP_OP, {
+         .plane0 = (last_geom->vs.cull_enable >> 0) & 1,
+         .plane1 = (last_geom->vs.cull_enable >> 1) & 1,
+         .plane2 = (last_geom->vs.cull_enable >> 2) & 1,
+         .plane3 = (last_geom->vs.cull_enable >> 3) & 1,
+         .plane4 = (last_geom->vs.cull_enable >> 4) & 1,
+         .plane5 = (last_geom->vs.cull_enable >> 5) & 1,
+         .plane6 = (last_geom->vs.cull_enable >> 6) & 1,
+         .plane7 = (last_geom->vs.cull_enable >> 7) & 1,
+      });
    }
 
    /* TODO: prog_selects_layer */
