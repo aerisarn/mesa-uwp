@@ -620,7 +620,6 @@
   <struct name="VDM State Vertex Outputs" size="4">
     <field name="Output count 1" size="8" start="0" type="uint" default="0"/>
     <field name="Output count 2" size="8" start="8" type="uint" default="0"/>
-    <field name="Padding 2" size="16" start="16" type="hex" default="0x0"/>
   </struct>
 
   <struct name="VDM State Vertex Unknown" size="4">
