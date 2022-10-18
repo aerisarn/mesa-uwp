@@ -441,12 +441,24 @@ emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
    }
 }
 
+static nir_ssa_def *
+has_input_vertex(nir_builder *b)
+{
+   return nir_is_subgroup_invocation_lt_amd(b, nir_load_merged_wave_info_amd(b));
+}
+
+static nir_ssa_def *
+has_input_primitive(nir_builder *b)
+{
+   return nir_is_subgroup_invocation_lt_amd(b,
+                                            nir_ushr_imm(b, nir_load_merged_wave_info_amd(b), 8));
+}
+
 static void
 emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def *arg)
 {
-   nir_ssa_def *gs_thread = st->gs_accepted_var
-                            ? nir_load_var(b, st->gs_accepted_var)
-                            : nir_has_input_primitive_amd(b);
+   nir_ssa_def *gs_thread =
+      st->gs_accepted_var ? nir_load_var(b, st->gs_accepted_var) : has_input_primitive(b);
 
    nir_if *if_gs_thread = nir_push_if(b, gs_thread);
    {
@@ -506,8 +518,8 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
 static void
 emit_ngg_nogs_prim_id_store_shared(nir_builder *b, lower_ngg_nogs_state *st)
 {
-   nir_ssa_def *gs_thread = st->gs_accepted_var ?
-      nir_load_var(b, st->gs_accepted_var) : nir_has_input_primitive_amd(b);
+   nir_ssa_def *gs_thread =
+      st->gs_accepted_var ? nir_load_var(b, st->gs_accepted_var) : has_input_primitive(b);
 
    nir_if *if_gs_thread = nir_push_if(b, gs_thread);
    {
@@ -986,8 +998,8 @@ compact_vertices_after_culling(nir_builder *b,
    nir_pop_if(b, if_gs_accepted);
 
    nir_store_var(b, es_accepted_var, es_survived, 0x1u);
-   nir_store_var(b, gs_accepted_var,
-                 nir_iand(b, nir_inot(b, fully_culled), nir_has_input_primitive_amd(b)), 0x1u);
+   nir_store_var(b, gs_accepted_var, nir_iand(b, nir_inot(b, fully_culled), has_input_primitive(b)),
+                 0x1u);
 }
 
 static void
@@ -1359,7 +1371,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
    b->cursor = nir_before_cf_list(&impl->body);
 
-   nir_ssa_def *es_thread = nir_has_input_vertex_amd(b);
+   nir_ssa_def *es_thread = has_input_vertex(b);
    nir_if *if_es_thread = nir_push_if(b, es_thread);
    {
       /* Initialize the position output variable to zeroes, in case not all VS/TES invocations store the output.
@@ -1392,7 +1404,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_pop_if(b, if_es_thread);
 
    nir_store_var(b, es_accepted_var, es_thread, 0x1u);
-   nir_store_var(b, gs_accepted_var, nir_has_input_primitive_amd(b), 0x1u);
+   nir_ssa_def *gs_thread = has_input_primitive(b);
+   nir_store_var(b, gs_accepted_var, gs_thread, 0x1u);
 
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
@@ -1414,7 +1427,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_ssa_def *es_vertex_lds_addr = pervertex_lds_addr(b, invocation_index, pervertex_lds_bytes);
 
       /* ES invocations store their vertex data to LDS for GS threads to read. */
-      if_es_thread = nir_push_if(b, nir_has_input_vertex_amd(b));
+      if_es_thread = nir_push_if(b, es_thread);
       if_es_thread->control = nir_selection_control_divergent_always_taken;
       {
          /* Store position components that are relevant to culling in LDS */
@@ -1440,7 +1453,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_store_var(b, prim_exp_arg_var, nir_imm_int(b, 1u << 31), 0x1u);
 
       /* GS invocations load the vertex data and perform the culling. */
-      nir_if *if_gs_thread = nir_push_if(b, nir_has_input_primitive_amd(b));
+      nir_if *if_gs_thread = nir_push_if(b, gs_thread);
       {
          /* Load vertex indices from input VGPRs */
          nir_ssa_def *vtx_idx[3] = {0};
@@ -1492,7 +1505,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_store_var(b, es_accepted_var, nir_imm_bool(b, false), 0x1u);
 
       /* ES invocations load their accepted flag from LDS. */
-      if_es_thread = nir_push_if(b, nir_has_input_vertex_amd(b));
+      if_es_thread = nir_push_if(b, es_thread);
       if_es_thread->control = nir_selection_control_divergent_always_taken;
       {
          nir_ssa_def *accepted = nir_load_shared(b, 1, 8u, es_vertex_lds_addr, .base = lds_es_vertex_accepted, .align_mul = 4u);
@@ -2021,7 +2034,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
 
    nir_intrinsic_instr *export_vertex_instr;
    nir_ssa_def *es_thread =
-      options->can_cull ? nir_load_var(b, es_accepted_var) : nir_has_input_vertex_amd(b);
+      options->can_cull ? nir_load_var(b, es_accepted_var) : has_input_vertex(b);
 
    nir_if *if_es_thread = nir_push_if(b, es_thread);
    {
@@ -2972,7 +2985,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    state.lds_addr_gs_scratch = nir_load_lds_ngg_scratch_base_amd(b);
 
    /* Wrap the GS control flow. */
-   nir_if *if_gs_thread = nir_push_if(b, nir_has_input_primitive_amd(b));
+   nir_if *if_gs_thread = nir_push_if(b, has_input_primitive(b));
 
    nir_cf_reinsert(&extracted, b->cursor);
    b->cursor = nir_after_cf_list(&if_gs_thread->then_list);

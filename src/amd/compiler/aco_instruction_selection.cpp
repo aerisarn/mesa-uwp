@@ -8250,6 +8250,7 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 }
 
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
+Temp lanecount_to_mask(isel_context* ctx, Temp count);
 void ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt);
 static void create_primitive_exports(isel_context *ctx, Temp prim_ch1);
 static void create_vs_exports(isel_context* ctx);
@@ -9140,11 +9141,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
    }
-   case nir_intrinsic_has_input_vertex_amd:
-   case nir_intrinsic_has_input_primitive_amd: {
-      assert(ctx->stage.hw == HWStage::NGG);
-      unsigned i = instr->intrinsic == nir_intrinsic_has_input_vertex_amd ? 0 : 1;
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), merged_wave_info_to_mask(ctx, i));
+   case nir_intrinsic_is_subgroup_invocation_lt_amd: {
+      Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), lanecount_to_mask(ctx, src));
       break;
    }
    case nir_intrinsic_export_vertex_amd: {
@@ -11777,7 +11776,7 @@ cleanup_cfg(Program* program)
 }
 
 Temp
-lanecount_to_mask(isel_context* ctx, Temp count, bool allow64 = true)
+lanecount_to_mask(isel_context* ctx, Temp count)
 {
    assert(count.regClass() == s1);
 
@@ -11786,10 +11785,6 @@ lanecount_to_mask(isel_context* ctx, Temp count, bool allow64 = true)
    Temp cond;
 
    if (ctx->program->wave_size == 64) {
-      /* If we know that all 64 threads can't be active at a time, we just use the mask as-is */
-      if (!allow64)
-         return mask;
-
       /* Special case for 64 active invocations, because 64 doesn't work with s_bfm */
       Temp active_64 = bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), count,
                                 Operand::c32(6u /* log2(64) */));

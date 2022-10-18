@@ -208,6 +208,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_prim_xfb_query_enabled_amd:
       replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_xfb, s);
       break;
+   case nir_intrinsic_load_merged_wave_info_amd:
+      replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.merged_wave_info);
+      break;
    case nir_intrinsic_load_cull_any_enabled_amd:
       replacement = nggc_bool_setting(
          b, radv_nggc_front_face | radv_nggc_back_face | radv_nggc_small_primitives, s);
