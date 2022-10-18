@@ -178,7 +178,7 @@ outside of that bitset control the encoding/decoding, such as in the
    	<field name="ABSNEG" low="14" high="15" type="#absneg"/>
    </bitset>
 
-At some level in the bitset inheritance hiearchy, there is expected to be a
+At some level in the bitset inheritance hierarchy, there is expected to be a
 ``<display>`` element specifying a template string used during bitset
 decoding.  The display template consists of references to fields (which may
 be derived fields) specified as ``{FIELDNAME}`` and other characters
