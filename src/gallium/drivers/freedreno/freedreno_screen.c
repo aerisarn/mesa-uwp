@@ -410,7 +410,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    /* Geometry shaders.. */
    case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
-      return 512;
+      return 256;
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
       return 2048;
    case PIPE_CAP_MAX_GS_INVOCATIONS:

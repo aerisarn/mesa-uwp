@@ -283,7 +283,6 @@ spec@glsl-1.30@execution@texelfetch fs sampler3d 98x1x9-98x129x9,Fail
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array-2,Crash
 spec@glsl-1.50@execution@compatibility@vs-gs-texcoord-array,Crash
 
-spec@glsl-1.50@execution@geometry@end-primitive 0,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop ffs,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop other,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_lines_adjacency ffs,Fail
