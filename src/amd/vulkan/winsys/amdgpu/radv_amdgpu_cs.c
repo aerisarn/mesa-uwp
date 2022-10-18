@@ -1531,7 +1531,7 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
    }
    ctx->ws = ws;
 
-   assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * sizeof(uint64_t) <= 4096);
+   assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * 4 * sizeof(uint64_t) <= 4096);
    result = ws->base.buffer_create(&ws->base, 4096, 8, RADEON_DOMAIN_GTT,
                                    RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
                                    RADV_BO_PRIORITY_CS, 0, &ctx->fence_bo);
@@ -1757,7 +1757,13 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
 
       struct amdgpu_cs_fence_info fence_info;
       fence_info.handle = radv_amdgpu_winsys_bo(ctx->fence_bo)->bo;
-      fence_info.offset = (request->ip_type * MAX_RINGS_PER_TYPE + request->ring) * sizeof(uint64_t);
+      /* Need to reserve 4 QWORD for user fence:
+       *   QWORD[0]: completed fence
+       *   QWORD[1]: preempted fence
+       *   QWORD[2]: reset fence
+       *   QWORD[3]: preempted then reset
+       */
+      fence_info.offset = (request->ip_type * MAX_RINGS_PER_TYPE + request->ring) * 4;
       amdgpu_cs_chunk_fence_info_to_data(&fence_info, &chunk_data[i]);
    }
 
