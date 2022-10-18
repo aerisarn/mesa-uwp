@@ -2839,12 +2839,18 @@ combine_s_bitcmp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!lshl_instr || lshl_instr->opcode != s_lshl ||
              !lshl_instr->operands[0].constantEquals(1) ||
              (lshl_instr->operands[1].isLiteral() && and_instr->operands[!and_idx].isLiteral()))
+            lshl_instr = nullptr;
+
+         uint64_t constant;
+         if (!lshl_instr &&
+             (!is_operand_constant(ctx, and_instr->operands[and_idx], b64 ? 64 : 32, &constant) ||
+              !util_is_power_of_two_or_zero64(constant) || constant == 0))
             continue;
 
          bool test1 = false;
          if (instr->operands[!cmp_idx].constantEquals(0)) {
             test1 = lg;
-         } else if (instr->operands[!cmp_idx].isTemp() &&
+         } else if (lshl_instr && instr->operands[!cmp_idx].isTemp() &&
                     instr->operands[!cmp_idx].tempId() == lshl_instr->definitions[0].tempId()) {
             test1 = !lg;
             ctx.uses[lshl_instr->definitions[0].tempId()]--;
@@ -2862,9 +2868,13 @@ combine_s_bitcmp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             instr->opcode = aco_opcode::s_bitcmp0_b32;
 
          instr->operands[0] = copy_operand(ctx, and_instr->operands[!and_idx]);
-         instr->operands[1] = copy_operand(ctx, lshl_instr->operands[1]);
          decrease_uses(ctx, and_instr);
-         decrease_op_uses_if_dead(ctx, lshl_instr);
+         if (lshl_instr) {
+            instr->operands[1] = copy_operand(ctx, lshl_instr->operands[1]);
+            decrease_op_uses_if_dead(ctx, lshl_instr);
+         } else {
+            instr->operands[1] = Operand::c32(ffsll(constant) - 1);
+         }
          return true;
       }
    }
