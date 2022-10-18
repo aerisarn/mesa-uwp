@@ -4628,6 +4628,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_context *ctx = rzalloc(NULL, struct zink_context);
    bool is_copy_only = (flags & ZINK_CONTEXT_COPY_ONLY) > 0;
+   bool is_compute_only = (flags & PIPE_CONTEXT_COMPUTE_ONLY) > 0;
    if (!ctx)
       goto fail;
 
@@ -4771,6 +4772,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          PIPE_BIND_STREAM_OUTPUT, PIPE_USAGE_IMMUTABLE, sizeof(data));
       if (!ctx->dummy_xfb_buffer)
          goto fail;
+   }
+   if (!is_copy_only) {
       for (unsigned i = 0; i < ARRAY_SIZE(ctx->dummy_surface); i++) {
          if (!(screen->info.props.limits.framebufferDepthSampleCounts & BITFIELD_BIT(i)))
             continue;
@@ -4785,7 +4788,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
       if (!zink_descriptors_init(ctx))
          goto fail;
+   }
 
+   if (!is_copy_only && !is_compute_only) {
       ctx->base.create_texture_handle = zink_create_texture_handle;
       ctx->base.delete_texture_handle = zink_delete_texture_handle;
       ctx->base.make_texture_handle_resident = zink_make_texture_handle_resident;
@@ -4812,10 +4817,18 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->batch.state)
       goto fail;
 
-   if (!is_copy_only) {
+   if (!is_copy_only && !is_compute_only) {
       pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_vertex_buffer, 0, sizeof(data), data);
       pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_xfb_buffer, 0, sizeof(data), data);
+      reapply_color_write(ctx);
 
+      /* set on startup just to avoid validation errors if a draw comes through without
+      * a tess shader later
+      */
+      if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, 1);
+   }
+   if (!is_copy_only) {
       for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
          /* need to update these based on screen config for null descriptors */
          for (unsigned j = 0; j < 32; j++) {
@@ -4828,18 +4841,11 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (!screen->info.rb2_feats.nullDescriptor)
          ctx->di.fbfetch.imageView = zink_csurface(ctx->dummy_surface[0])->image_view;
 
-      reapply_color_write(ctx);
       p_atomic_inc(&screen->base.num_contexts);
    }
 
    zink_select_draw_vbo(ctx);
    zink_select_launch_grid(ctx);
-
-   /* set on startup just to avoid validation errors if a draw comes through without
-    * a tess shader later
-    */
-   if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
-      VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, 1);
 
    if (!is_copy_only && zink_debug & ZINK_DEBUG_SHADERDB) {
       if (!screen->info.have_EXT_vertex_input_dynamic_state) {
