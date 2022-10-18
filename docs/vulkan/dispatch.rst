@@ -1,7 +1,7 @@
 Dispatch
 =============
 
-This chapter attemtps to document the Vulkan dispatch infrastructure in the
+This chapter attempts to document the Vulkan dispatch infrastructure in the
 Mesa Vulkan runtime.  There are a lot of moving pieces here but the end
 result has proven quite effective for implementing all the various Vulkan
 API requirements.
