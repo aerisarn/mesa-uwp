@@ -3224,7 +3224,7 @@ where F is 0xffffffff when the fragment belongs to a front-facing polygon and
 TGSI_SEMANTIC_EDGEFLAG
 """"""""""""""""""""""
 
-For vertex shaders, this sematic label indicates that an input or
+For vertex shaders, this semantic label indicates that an input or
 output is a boolean edge flag.  The register layout is [F, x, x, x]
 where F is 0.0 or 1.0 and x = don't care.  Normally, the vertex shader
 simply copies the edge flag input to the edgeflag output.
