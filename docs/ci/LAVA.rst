@@ -51,7 +51,7 @@ to restrict the jobs it takes or it will grab random jobs from tasks
 across ``gitlab.freedesktop.org``, and your runner isn't ready for
 that.
 
-The Docker image will need access to the lava instance.  If it's on a
+The Docker image will need access to the LAVA instance.  If it's on a
 public network it should be fine.  If you're running the LAVA instance
 on localhost, you'll need to set ``network_mode="host"`` in
 ``/etc/gitlab-runner/config.toml`` so it can access localhost.  Create a
