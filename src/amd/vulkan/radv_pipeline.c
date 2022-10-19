@@ -4718,7 +4718,6 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
 
 static void
 radv_pipeline_init_binning_state(struct radv_graphics_pipeline *pipeline,
-                                 const struct radv_blend_state *blend,
                                  const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_device *device = pipeline->base.device;
@@ -6216,7 +6215,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_vertex_input_state(pipeline, &state);
 
-   radv_pipeline_init_binning_state(pipeline, &blend, &state);
+   radv_pipeline_init_binning_state(pipeline, &state);
    radv_pipeline_init_shader_stages_state(pipeline);
    radv_pipeline_init_scratch(device, &pipeline->base);
 
