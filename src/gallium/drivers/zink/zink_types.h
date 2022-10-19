@@ -354,7 +354,6 @@ struct zink_program_descriptor_data {
    bool fbfetch;
    uint8_t push_usage;
    uint8_t binding_usage;
-   uint8_t real_binding_usage;
    struct zink_descriptor_pool_key *pool_key[ZINK_DESCRIPTOR_TYPES]; //push set doesn't need one
    struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_TYPES + 1];
    VkDescriptorUpdateTemplate templates[ZINK_DESCRIPTOR_TYPES + 1];
