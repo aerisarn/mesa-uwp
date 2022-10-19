@@ -1151,31 +1151,18 @@ static void
 radv_update_binning_state(struct radv_cmd_buffer *cmd_buffer,
                           struct radv_graphics_pipeline *pipeline)
 {
-   const struct radv_graphics_pipeline *old_pipeline = cmd_buffer->state.emitted_graphics_pipeline;
-
    if (pipeline->base.device->physical_device->rad_info.gfx_level < GFX9)
       return;
 
-   if (old_pipeline &&
-       old_pipeline->binning.pa_sc_binner_cntl_0 ==
-          pipeline->binning.pa_sc_binner_cntl_0)
+   if (pipeline->binning.pa_sc_binner_cntl_0 == cmd_buffer->state.last_pa_sc_binner_cntl_0)
       return;
 
-   bool binning_flush = false;
-   if (cmd_buffer->device->physical_device->rad_info.family == CHIP_VEGA12 ||
-       cmd_buffer->device->physical_device->rad_info.family == CHIP_VEGA20 ||
-       cmd_buffer->device->physical_device->rad_info.family == CHIP_RAVEN2 ||
-       cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
-      binning_flush = !old_pipeline ||
-                      G_028C44_BINNING_MODE(old_pipeline->binning.pa_sc_binner_cntl_0) !=
-                         G_028C44_BINNING_MODE(pipeline->binning.pa_sc_binner_cntl_0);
-   }
-
    radeon_set_context_reg(cmd_buffer->cs, R_028C44_PA_SC_BINNER_CNTL_0,
-                          pipeline->binning.pa_sc_binner_cntl_0 |
-                             S_028C44_FLUSH_ON_BINNING_TRANSITION(!!binning_flush));
+                          pipeline->binning.pa_sc_binner_cntl_0);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
+
+   cmd_buffer->state.last_pa_sc_binner_cntl_0 = pipeline->binning.pa_sc_binner_cntl_0;
 }
 
 static void
@@ -4841,6 +4828,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.mesh_shading = false;
    cmd_buffer->state.last_vrs_rates = -1;
    cmd_buffer->state.last_vrs_rates_sgpr_idx = -1;
+   cmd_buffer->state.last_pa_sc_binner_cntl_0 = -1;
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
@@ -6266,6 +6254,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
       primary->state.last_vrs_rates = secondary->state.last_vrs_rates;
       primary->state.last_vrs_rates_sgpr_idx = secondary->state.last_vrs_rates_sgpr_idx;
+
+      primary->state.last_pa_sc_binner_cntl_0 = secondary->state.last_pa_sc_binner_cntl_0;
    }
 
    /* After executing commands from secondary buffers we have to dirty

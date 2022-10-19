@@ -4709,10 +4709,14 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
          S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_NEW_SC) | S_028C44_BIN_SIZE_X(0) |
          S_028C44_BIN_SIZE_Y(0) | S_028C44_BIN_SIZE_X_EXTEND(2) |       /* 128 */
          S_028C44_BIN_SIZE_Y_EXTEND(min_bytes_per_pixel <= 4 ? 2 : 1) | /* 128 or 64 */
-         S_028C44_DISABLE_START_OF_PRIM(1);
+         S_028C44_DISABLE_START_OF_PRIM(1) |
+         S_028C44_FLUSH_ON_BINNING_TRANSITION(1);
    } else {
       pa_sc_binner_cntl_0 = S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
-                            S_028C44_DISABLE_START_OF_PRIM(1);
+                            S_028C44_DISABLE_START_OF_PRIM(1) |
+                            S_028C44_FLUSH_ON_BINNING_TRANSITION(pdevice->rad_info.family == CHIP_VEGA12 ||
+                                                                 pdevice->rad_info.family == CHIP_VEGA20 ||
+                                                                 pdevice->rad_info.family >= CHIP_RAVEN2);
    }
 
    pipeline->binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
@@ -4746,7 +4750,11 @@ radv_pipeline_init_binning_state(struct radv_graphics_pipeline *pipeline,
          S_028C44_CONTEXT_STATES_PER_BIN(settings->context_states_per_bin - 1) |
          S_028C44_PERSISTENT_STATES_PER_BIN(settings->persistent_states_per_bin - 1) |
          S_028C44_DISABLE_START_OF_PRIM(1) |
-         S_028C44_FPOVS_PER_BATCH(settings->fpovs_per_batch) | S_028C44_OPTIMAL_BIN_SELECTION(1);
+         S_028C44_FPOVS_PER_BATCH(settings->fpovs_per_batch) | S_028C44_OPTIMAL_BIN_SELECTION(1) |
+         S_028C44_FLUSH_ON_BINNING_TRANSITION(device->physical_device->rad_info.family == CHIP_VEGA12 ||
+                                              device->physical_device->rad_info.family == CHIP_VEGA20 ||
+                                              device->physical_device->rad_info.family >= CHIP_RAVEN2);
+
 
       pipeline->binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
    } else

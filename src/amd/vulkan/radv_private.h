@@ -1615,6 +1615,9 @@ struct radv_cmd_state {
    /* Tessellation info when patch control points is dynamic. */
    unsigned tess_num_patches;
    unsigned tess_lds_size;
+
+   /* Binning state */
+   unsigned last_pa_sc_binner_cntl_0;
 };
 
 struct radv_cmd_buffer_upload {
