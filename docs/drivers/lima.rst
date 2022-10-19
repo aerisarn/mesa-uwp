@@ -75,7 +75,7 @@ accepts the following comma-separated list of flags:
   ``gp``
     print GP shader compiler result of each stage
   ``noblit``
-    use generic u_blitter instead of lima-specific
+    use generic u_blitter instead of Lima-specific
   ``nobocache``
     disable BO cache
   ``nogrowheap``
