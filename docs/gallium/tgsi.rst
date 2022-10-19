@@ -1651,13 +1651,17 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 
 .. opcode:: CAL - Subroutine Call
 
-  push(pc)
-  pc = target
+  Pseudocode::
+
+    push(pc)
+    pc = target
 
 
 .. opcode:: RET - Subroutine Call Return
 
-  pc = pop()
+  Pseudocode::
+
+    pc = pop()
 
 
 .. opcode:: CONT - Continue
