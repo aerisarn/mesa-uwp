@@ -95,7 +95,7 @@ Environment variables
    out llvmpipe can be fastest by using 128 bit vectors,
    yet use AVX instructions.
 ``GALLIUM_OVERRIDE_CPU_CAPS``
-   Override cpu capabilities for llvmpipe and softpipe, possible values for x86:
+   Override CPU capabilities for llvmpipe and softpipe, possible values for x86:
    `nosse`
    `sse`
    `sse2`
