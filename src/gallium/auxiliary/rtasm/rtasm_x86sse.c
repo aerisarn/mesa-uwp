@@ -174,7 +174,7 @@ static void do_realloc( struct x86_function *p )
  */
 static unsigned char *reserve( struct x86_function *p, int bytes )
 {
-   if (p->csr + bytes - p->store > (int) p->size)
+   if (p->csr - p->store + bytes > (int) p->size)
       do_realloc(p);
 
    {
