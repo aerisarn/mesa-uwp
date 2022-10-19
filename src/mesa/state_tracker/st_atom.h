@@ -69,8 +69,7 @@ st_setup_arrays(struct st_context *st,
                 const struct gl_vertex_program *vp,
                 const struct st_common_variant *vp_variant,
                 struct cso_velems_state *velements,
-                struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers,
-                bool *has_user_vertex_buffers);
+                struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers);
 
 void
 st_setup_current_user(struct st_context *st,
