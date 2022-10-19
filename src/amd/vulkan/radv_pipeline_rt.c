@@ -217,13 +217,9 @@ struct rt_variables {
    nir_variable *direction;
    nir_variable *tmax;
 
-   /* from the BTAS instance currently being visited */
-   nir_variable *custom_instance_and_mask;
-
    /* Properties of the primitive currently being visited. */
    nir_variable *primitive_id;
    nir_variable *geometry_id_and_flags;
-   nir_variable *instance_id;
    nir_variable *instance_addr;
    nir_variable *hit_kind;
    nir_variable *opaque;
@@ -282,14 +278,10 @@ create_rt_variables(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR 
    vars.direction = nir_variable_create(shader, nir_var_shader_temp, vec3_type, "ray_direction");
    vars.tmax = nir_variable_create(shader, nir_var_shader_temp, glsl_float_type(), "ray_tmax");
 
-   vars.custom_instance_and_mask = nir_variable_create(
-      shader, nir_var_shader_temp, glsl_uint_type(), "custom_instance_and_mask");
    vars.primitive_id =
       nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "primitive_id");
    vars.geometry_id_and_flags =
       nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "geometry_id_and_flags");
-   vars.instance_id =
-      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "instance_id");
    vars.instance_addr =
       nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "instance_addr");
    vars.hit_kind = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "hit_kind");
@@ -329,10 +321,8 @@ map_rt_variables(struct hash_table *var_remap, struct rt_variables *src,
    _mesa_hash_table_insert(var_remap, src->direction, dst->direction);
    _mesa_hash_table_insert(var_remap, src->tmax, dst->tmax);
 
-   _mesa_hash_table_insert(var_remap, src->custom_instance_and_mask, dst->custom_instance_and_mask);
    _mesa_hash_table_insert(var_remap, src->primitive_id, dst->primitive_id);
    _mesa_hash_table_insert(var_remap, src->geometry_id_and_flags, dst->geometry_id_and_flags);
-   _mesa_hash_table_insert(var_remap, src->instance_id, dst->instance_id);
    _mesa_hash_table_insert(var_remap, src->instance_addr, dst->instance_addr);
    _mesa_hash_table_insert(var_remap, src->hit_kind, dst->hit_kind);
    _mesa_hash_table_insert(var_remap, src->opaque, dst->opaque);
@@ -363,14 +353,10 @@ create_inner_vars(nir_builder *b, const struct rt_variables *vars)
       b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_geometry_id_and_flags");
    inner_vars.tmax =
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_float_type(), "inner_tmax");
-   inner_vars.instance_id =
-      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_instance_id");
    inner_vars.instance_addr = nir_variable_create(b->shader, nir_var_shader_temp,
                                                   glsl_uint64_t_type(), "inner_instance_addr");
    inner_vars.hit_kind =
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_hit_kind");
-   inner_vars.custom_instance_and_mask = nir_variable_create(
-      b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_custom_instance_and_mask");
 
    return inner_vars;
 }
@@ -573,8 +559,12 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_ray_instance_custom_index: {
-               ret = nir_load_var(&b_shader, vars->custom_instance_and_mask);
-               ret = nir_iand_imm(&b_shader, ret, 0xFFFFFF);
+               nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
+               nir_ssa_def *custom_instance_and_mask = nir_build_load_global(
+                  &b_shader, 1, 32,
+                  nir_iadd_imm(&b_shader, instance_node_addr,
+                               offsetof(struct radv_bvh_instance_node, custom_instance_and_mask)));
+               ret = nir_iand_imm(&b_shader, custom_instance_and_mask, 0xFFFFFF);
                break;
             }
             case nir_intrinsic_load_primitive_id: {
@@ -587,7 +577,11 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_instance_id: {
-               ret = nir_load_var(&b_shader, vars->instance_id);
+               nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
+               ret = nir_build_load_global(
+                  &b_shader, 1, 32,
+                  nir_iadd_imm(&b_shader, instance_node_addr,
+                               offsetof(struct radv_bvh_instance_node, instance_id)));
                break;
             }
             case nir_intrinsic_load_ray_flags: {
@@ -1027,8 +1021,6 @@ struct rt_traversal_vars {
    nir_variable *dir;
    nir_variable *inv_dir;
    nir_variable *sbt_offset_and_flags;
-   nir_variable *instance_id;
-   nir_variable *custom_instance_and_mask;
    nir_variable *instance_addr;
    nir_variable *hit;
    nir_variable *bvh_base;
@@ -1053,10 +1045,6 @@ init_traversal_vars(nir_builder *b)
       nir_variable_create(b->shader, nir_var_shader_temp, vec3_type, "traversal_inv_dir");
    ret.sbt_offset_and_flags = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(),
                                                   "traversal_sbt_offset_and_flags");
-   ret.instance_id = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(),
-                                         "traversal_instance_id");
-   ret.custom_instance_and_mask = nir_variable_create(
-      b->shader, nir_var_shader_temp, glsl_uint_type(), "traversal_custom_instance_and_mask");
    ret.instance_addr =
       nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint64_t_type(), "instance_addr");
    ret.hit = nir_variable_create(b->shader, nir_var_shader_temp, glsl_bool_type(), "traversal_hit");
@@ -1149,12 +1137,9 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
       nir_store_var(b, inner_vars.geometry_id_and_flags, intersection->base.geometry_id_and_flags,
                     1);
       nir_store_var(b, inner_vars.tmax, intersection->t, 0x1);
-      nir_store_var(b, inner_vars.instance_id, nir_load_var(b, data->trav_vars->instance_id), 0x1);
       nir_store_var(b, inner_vars.instance_addr, nir_load_var(b, data->trav_vars->instance_addr),
                     0x1);
       nir_store_var(b, inner_vars.hit_kind, hit_kind, 0x1);
-      nir_store_var(b, inner_vars.custom_instance_and_mask,
-                    nir_load_var(b, data->trav_vars->custom_instance_and_mask), 0x1);
 
       load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, 4);
 
@@ -1171,12 +1156,9 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
    nir_store_var(b, data->vars->primitive_id, intersection->base.primitive_id, 1);
    nir_store_var(b, data->vars->geometry_id_and_flags, intersection->base.geometry_id_and_flags, 1);
    nir_store_var(b, data->vars->tmax, intersection->t, 0x1);
-   nir_store_var(b, data->vars->instance_id, nir_load_var(b, data->trav_vars->instance_id), 0x1);
    nir_store_var(b, data->vars->instance_addr, nir_load_var(b, data->trav_vars->instance_addr),
                  0x1);
    nir_store_var(b, data->vars->hit_kind, hit_kind, 0x1);
-   nir_store_var(b, data->vars->custom_instance_and_mask,
-                 nir_load_var(b, data->trav_vars->custom_instance_and_mask), 0x1);
 
    nir_store_var(b, data->vars->idx, sbt_idx, 1);
    nir_store_var(b, data->trav_vars->hit, nir_imm_true(b), 1);
@@ -1213,10 +1195,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
    nir_store_var(b, inner_vars.primitive_id, intersection->primitive_id, 1);
    nir_store_var(b, inner_vars.geometry_id_and_flags, intersection->geometry_id_and_flags, 1);
    nir_store_var(b, inner_vars.tmax, nir_load_var(b, data->vars->tmax), 0x1);
-   nir_store_var(b, inner_vars.instance_id, nir_load_var(b, data->trav_vars->instance_id), 0x1);
    nir_store_var(b, inner_vars.instance_addr, nir_load_var(b, data->trav_vars->instance_addr), 0x1);
-   nir_store_var(b, inner_vars.custom_instance_and_mask,
-                 nir_load_var(b, data->trav_vars->custom_instance_and_mask), 0x1);
    nir_store_var(b, inner_vars.opaque, intersection->opaque, 1);
 
    load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, 4);
@@ -1301,11 +1280,8 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
       nir_store_var(b, data->vars->primitive_id, intersection->primitive_id, 1);
       nir_store_var(b, data->vars->geometry_id_and_flags, intersection->geometry_id_and_flags, 1);
       nir_store_var(b, data->vars->tmax, nir_load_var(b, inner_vars.tmax), 0x1);
-      nir_store_var(b, data->vars->instance_id, nir_load_var(b, data->trav_vars->instance_id), 0x1);
       nir_store_var(b, data->vars->instance_addr, nir_load_var(b, data->trav_vars->instance_addr),
                     0x1);
-      nir_store_var(b, data->vars->custom_instance_and_mask,
-                    nir_load_var(b, data->trav_vars->custom_instance_and_mask), 0x1);
 
       nir_store_var(b, data->vars->idx, sbt_idx, 1);
       nir_store_var(b, data->trav_vars->hit, nir_imm_true(b), 1);
@@ -1397,9 +1373,7 @@ build_traversal_shader(struct radv_device *device,
          .previous_node = nir_build_deref_var(&b, trav_vars.previous_node),
          .instance_top_node = nir_build_deref_var(&b, trav_vars.instance_top_node),
          .instance_bottom_node = nir_build_deref_var(&b, trav_vars.instance_bottom_node),
-         .instance_id = nir_build_deref_var(&b, trav_vars.instance_id),
          .instance_addr = nir_build_deref_var(&b, trav_vars.instance_addr),
-         .custom_instance_and_mask = nir_build_deref_var(&b, trav_vars.custom_instance_and_mask),
          .sbt_offset_and_flags = nir_build_deref_var(&b, trav_vars.sbt_offset_and_flags),
       };
 
