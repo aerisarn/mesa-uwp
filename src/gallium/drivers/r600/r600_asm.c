@@ -2383,7 +2383,15 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 					omod_str[alu->omod], alu->dst.clamp ? "_sat":"");
 
 			o += print_indent(o,60);
-			o += print_dst(alu);
+			if (bc->isa->hw_class == ISA_CC_CAYMAN && alu->op == ALU_OP1_MOVA_INT) {
+				switch (alu->dst.sel) {
+				case 0: fprintf(stderr, "AR"); break;
+				case 2: fprintf(stderr, "CF_IDX0"); break;
+				case 3: fprintf(stderr, "CF_IDX1"); break;
+				}
+			} else {
+				o += print_dst(alu);
+			}
 			for (int i = 0; i < aop->src_count; ++i) {
 				o += fprintf(stderr, i == 0 ? ",  ": ", ");
 				o += print_src(alu, i);
