@@ -415,7 +415,7 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
          feats = UINT32_MAX;
       VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind, &need_extended);
       if (need_extended) {
-         ici->flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+         ici->flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
          feats = UINT32_MAX;
          usage = get_image_usage_for_feats(screen, feats, templ, bind, &need_extended);
       }
@@ -556,7 +556,7 @@ retry:
                *success = false;
                return DRM_FORMAT_MOD_INVALID;
             }
-            ici->flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            ici->flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
             tried[0] = false;
             tried[1] = false;
             first = true;
