@@ -166,7 +166,7 @@ How complete is Lima? Is reverse engineering complete?
 
 At the time of writing, with local runs of the
 `OpenGL ES Conformance Tests <https://github.com/KhronosGroup/VK-GL-CTS/>`__
-(deqp) for OpenGL ES 2.0, Lima reports **97%** pass rate.
+(dEQP) for OpenGL ES 2.0, Lima reports **97%** pass rate.
 This coverage is on par with coverage provided by the ARM Mali driver.
 Some tests that pass with Lima fail on Mali and vice versa. Some of
 these issues are related to precision limitations which likely don’t

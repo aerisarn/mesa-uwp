@@ -144,7 +144,7 @@ If a test farm is short the HW to provide these guarantees, consider dropping
 tests to reduce runtime.  dEQP job logs print the slowest tests at the end of
 the run, and piglit logs the runtime of tests in the results.json.bz2 in the
 artifacts.  Or, you can add the following to your job to only run some fraction
-(in this case, 1/10th) of the deqp tests.
+(in this case, 1/10th) of the dEQP tests.
 
 .. code-block:: yaml
 
