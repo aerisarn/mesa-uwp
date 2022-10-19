@@ -2946,6 +2946,7 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
    uint64_t modifier;
    bool has_modifier = false;
    unsigned error;
+   EGLint egl_error;
 
    /**
     * The spec says:
@@ -3033,7 +3034,10 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
             &error,
             NULL);
    }
-   dri2_create_image_khr_texture_error(error);
+
+   egl_error = egl_error_from_dri_image_error(error);
+   if (egl_error != EGL_SUCCESS)
+      _eglError(egl_error, "createImageFromDmaBufs failed");
 
    if (!dri_image)
       return EGL_NO_IMAGE_KHR;
