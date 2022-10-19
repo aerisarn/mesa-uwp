@@ -102,7 +102,7 @@ This instruction replicates its result.
 
 .. opcode:: RSQ - Reciprocal Square Root
 
-This instruction replicates its result. The results are undefined for src <= 0.
+This instruction replicates its result. The results are undefined for *src* <= 0.
 
 .. math::
 
@@ -111,7 +111,7 @@ This instruction replicates its result. The results are undefined for src <= 0.
 
 .. opcode:: SQRT - Square Root
 
-This instruction replicates its result. The results are undefined for src < 0.
+This instruction replicates its result. The results are undefined for *src* < 0.
 
 .. math::
 
@@ -356,7 +356,7 @@ This instruction replicates its result.
 
 .. opcode:: LDEXP - Multiply Number by Integral Power of 2
 
-src1 is an integer.
+*src1* is an integer.
 
 .. math::
 
@@ -514,18 +514,18 @@ This instruction replicates its result.
 
 .. opcode:: TEX - Texture Lookup
 
-  for array textures src0.y contains the slice for 1D,
-  and src0.z contain the slice for 2D.
+  for array textures *src0.y* contains the slice for 1D,
+  and *src0.z* contain the slice for 2D.
 
   for shadow textures with no arrays (and not cube map),
-  src0.z contains the reference value.
+  *src0.z* contains the reference value.
 
-  for shadow textures with arrays, src0.z contains
-  the reference value for 1D arrays, and src0.w contains
+  for shadow textures with arrays, *src0.z* contains
+  the reference value for 1D arrays, and *src0.w* contains
   the reference value for 2D arrays and cube maps.
 
   for cube map array shadow textures, the reference value
-  cannot be passed in src0.w, and TEX2 must be used instead.
+  cannot be passed in *src0.w*, and TEX2 must be used instead.
 
 .. math::
 
@@ -708,10 +708,10 @@ This instruction replicates its result.
 .. opcode:: TXB - Texture Lookup With Bias
 
   for cube map array textures and shadow cube maps, the bias value
-  cannot be passed in src0.w, and TXB2 must be used instead.
+  cannot be passed in *src0.w*, and TXB2 must be used instead.
 
   if the target is a shadow texture, the reference value is always
-  in src.z (this prevents shadow 3d and shadow 2d arrays from
+  in *src.z* (this prevents shadow 3d and shadow 2d arrays from
   using this instruction, but this is not needed).
 
 .. math::
@@ -739,7 +739,7 @@ This instruction replicates its result.
   this encoding too, but this is not legal.
 
   if the target is a shadow cube map array, the reference value is in
-  src1.y.
+  *src1.y*.
 
 .. math::
 
@@ -800,10 +800,10 @@ This instruction replicates its result.
 .. opcode:: TXL - Texture Lookup With explicit LOD
 
   for cube map array textures, the explicit LOD value
-  cannot be passed in src0.w, and TXL2 must be used instead.
+  cannot be passed in *src0.w*, and TXL2 must be used instead.
 
   if the target is a shadow texture, the reference value is always
-  in src.z (this prevents shadow 3d / 2d array / cube targets from
+  in *src.z* (this prevents shadow 3d / 2d array / cube targets from
   using this instruction, but this is not needed).
 
 .. math::
@@ -831,7 +831,7 @@ This instruction replicates its result.
   this encoding too, but this is not legal.
 
   if the target is a shadow cube map array, the reference value is in
-  src1.y.
+  *src1.y*.
 
 .. math::
 
@@ -901,7 +901,7 @@ XXX doesn't look like most of the opcodes really belong here.
 
   As per NV_gpu_shader4, extract a single texel from a specified texture
   image or PIPE_BUFFER resource. The source sampler may not be a CUBE or
-  SHADOW.  src 0 is a
+  SHADOW.  *src0* is a
   four-component signed integer vector used to identify the single texel
   accessed. 3 components + level.  If the texture is multisampled, then
   the fourth component indicates the sample, not the mipmap level.
@@ -1707,18 +1707,18 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 
   Start an IF ... ELSE .. ENDIF block.  Condition evaluates to true if
 
-    src0.x != 0.0
+    *src0.x* != 0.0
 
-  where src0.x is interpreted as a floating point register.
+  where *src0.x* is interpreted as a floating point register.
 
 
 .. opcode:: UIF - Bitwise If
 
   Start an UIF ... ELSE .. ENDIF block. Condition evaluates to true if
 
-    src0.x != 0
+    *src0.x* != 0
 
-  where src0.x is interpreted as an integer register.
+  where *src0.x* is interpreted as an integer register.
 
 
 .. opcode:: ELSE - Else
@@ -1738,7 +1738,7 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
    ends when a BRK is hit, but just like in C falling through to other cases
    without a break is allowed. Similarly, DEFAULT label is allowed anywhere not
    just as last statement, and fallthrough is allowed into/from it.
-   CASE src arguments are evaluated at bit level against the SWITCH src argument.
+   CASE *src* arguments are evaluated at bit level against the SWITCH *src* argument.
 
    Example::
 
@@ -1757,7 +1757,7 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 
 .. opcode:: CASE - Switch case
 
-   This represents a switch case label. The src arg must be an integer immediate.
+   This represents a switch case label. The *src* arg must be an integer immediate.
 
 
 .. opcode:: DEFAULT - Switch default
@@ -1781,17 +1781,17 @@ interpolateAt* functions. The first argument of each of these must come from
 
 .. opcode:: INTERP_CENTROID - Interpolate at the centroid
 
-   Interpolates the varying specified by src0 at the centroid
+   Interpolates the varying specified by *src0* at the centroid
 
 .. opcode:: INTERP_SAMPLE - Interpolate at the specified sample
 
-   Interpolates the varying specified by src0 at the sample id specified by
-   src1.x (interpreted as an integer)
+   Interpolates the varying specified by *src0* at the sample id
+   specified by *src1.x* (interpreted as an integer)
 
 .. opcode:: INTERP_OFFSET - Interpolate at the specified offset
 
-   Interpolates the varying specified by src0 at the offset src1.xy from the
-   pixel center (interpreted as floats)
+   Interpolates the varying specified by *src0* at the offset *src1.xy*
+   from the pixel center (interpreted as floats)
 
 
 .. _doubleopcodes:
