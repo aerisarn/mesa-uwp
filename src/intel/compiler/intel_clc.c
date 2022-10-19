@@ -258,7 +258,7 @@ static void
 print_usage(char *exec_name, FILE *f)
 {
    fprintf(f,
-"Usage: %s [options] [clang args | input file]\n"
+"Usage: %s [options] -- [clang args | input file]\n"
 "Options:\n"
 "  -h  --help              Print this help.\n"
 "  -e, --entrypoint <name> Specify the entry-point name.\n"
