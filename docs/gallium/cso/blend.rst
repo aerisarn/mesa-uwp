@@ -100,7 +100,7 @@ alpha_to_one
    alpha_to_coverage, this step happens regardless of whether multisample
    is enabled or the destination buffer is multisampled.
 max_rt
-   The index of the max render target (irrespecitive of whether independent
+   The index of the max render target (irrespective of whether independent
    blend is enabled), i.e. the number of MRTs minus one.  This is provided
    so that the driver can avoid the overhead of programming unused MRTs.
 
