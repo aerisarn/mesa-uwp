@@ -4619,11 +4619,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       }
    }
 
-   if (*res_ptr) {
-      /* descriptors given through nir_tex_src_{texture,sampler}_handle */
-      return;
-   }
-
    enum ac_descriptor_type main_descriptor =
       instr->sampler_dim == GLSL_SAMPLER_DIM_BUF ? AC_DESC_BUFFER : AC_DESC_IMAGE;
 
@@ -4642,7 +4637,7 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       main_descriptor = AC_DESC_FMASK;
    }
 
-   if (texture_dynamic_handle) {
+   if (texture_dynamic_handle || sampler_dynamic_handle) {
       /* descriptor handles given through nir_tex_src_{texture,sampler}_handle */
       if (instr->texture_non_uniform)
          texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, divergent);
@@ -4650,12 +4645,18 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       if (instr->sampler_non_uniform)
          sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, divergent);
 
-      *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
-                                             main_descriptor, false, false, true);
+      if (texture_dynamic_handle)
+         *res_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, texture_dynamic_handle,
+                                                main_descriptor, false, false, true);
 
-      if (samp_ptr)
+      if (samp_ptr && sampler_dynamic_handle)
          *samp_ptr = ctx->abi->load_sampler_desc(ctx->abi, 0, 0, 0, sampler_dynamic_handle,
                                                  AC_DESC_SAMPLER, false, false, true);
+      return;
+   }
+
+   if (*res_ptr) {
+      /* descriptors given through nir_tex_src_{texture,sampler}_handle */
       return;
    }
 
