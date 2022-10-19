@@ -163,14 +163,6 @@ job_destroy_gpu_csd_resources(struct v3dv_job *job)
       v3dv_bo_free(job->device, job->csd.shared_memory);
 }
 
-static void
-job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
-{
-   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
-   assert(job->cmd_buffer);
-   vk_free(&job->cmd_buffer->device->vk.alloc, job->cpu.event_wait.events);
-}
-
 void
 v3dv_job_destroy(struct v3dv_job *job)
 {
@@ -190,9 +182,6 @@ v3dv_job_destroy(struct v3dv_job *job)
          break;
       case V3DV_JOB_TYPE_GPU_CSD:
          job_destroy_gpu_csd_resources(job);
-         break;
-      case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
-         job_destroy_cpu_wait_events_resources(job);
          break;
       default:
          break;
@@ -3757,6 +3746,74 @@ v3dv_cmd_buffer_add_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
+static void
+cmd_buffer_emit_set_event(struct v3dv_cmd_buffer *cmd_buffer,
+                          struct v3dv_event *event,
+                          uint8_t value)
+{
+   assert(value == 0 || value == 1);
+
+   struct v3dv_device *device = cmd_buffer->device;
+   VkCommandBuffer commandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
+
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
+
+   v3dv_CmdBindPipeline(commandBuffer,
+                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                        device->events.set_event_pipeline);
+
+   v3dv_CmdBindDescriptorSets(commandBuffer,
+                              VK_PIPELINE_BIND_POINT_COMPUTE,
+                              device->events.pipeline_layout,
+                              0, 1, &device->events.descriptor_set, 0, NULL);
+
+   assert(event->index < device->events.desc_count);
+   uint32_t offset = event->index;
+   v3dv_CmdPushConstants(commandBuffer,
+                         device->events.pipeline_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT,
+                         0, 4, &offset);
+
+   v3dv_CmdPushConstants(commandBuffer,
+                         device->events.pipeline_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT,
+                         4, 1, &value);
+
+   v3dv_CmdDispatch(commandBuffer, 1, 1, 1);
+
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, 0, false);
+}
+
+static void
+cmd_buffer_emit_wait_event(struct v3dv_cmd_buffer *cmd_buffer,
+                           struct v3dv_event *event)
+{
+   struct v3dv_device *device = cmd_buffer->device;
+   VkCommandBuffer commandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
+
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
+
+   v3dv_CmdBindPipeline(commandBuffer,
+                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                        device->events.wait_event_pipeline);
+
+   v3dv_CmdBindDescriptorSets(commandBuffer,
+                              VK_PIPELINE_BIND_POINT_COMPUTE,
+                              device->events.pipeline_layout,
+                              0, 1, &device->events.descriptor_set, 0, NULL);
+
+   assert(event->index < device->events.desc_count);
+   uint32_t offset = event->index;
+   v3dv_CmdPushConstants(commandBuffer,
+                         device->events.pipeline_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT,
+                         0, 4, &offset);
+
+   v3dv_CmdDispatch(commandBuffer, 1, 1, 1);
+
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, 0, false);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetEvent2(VkCommandBuffer commandBuffer,
                   VkEvent _event,
@@ -3771,16 +3828,8 @@ v3dv_CmdSetEvent2(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->state.pass == NULL);
    assert(cmd_buffer->state.job == NULL);
 
-   struct v3dv_job *job =
-      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
-                                     V3DV_JOB_TYPE_CPU_SET_EVENT,
-                                     cmd_buffer, -1);
-   v3dv_return_if_oom(cmd_buffer, NULL);
-
-   job->cpu.event_set.event = event;
-   job->cpu.event_set.state = 1;
-
-   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   v3dv_CmdPipelineBarrier2(commandBuffer, pDependencyInfo);
+   cmd_buffer_emit_set_event(cmd_buffer, event, 1);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3797,16 +3846,7 @@ v3dv_CmdResetEvent2(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->state.pass == NULL);
    assert(cmd_buffer->state.job == NULL);
 
-   struct v3dv_job *job =
-      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
-                                     V3DV_JOB_TYPE_CPU_SET_EVENT,
-                                     cmd_buffer, -1);
-   v3dv_return_if_oom(cmd_buffer, NULL);
-
-   job->cpu.event_set.event = event;
-   job->cpu.event_set.state = 0;
-
-   list_addtail(&job->list_link, &cmd_buffer->jobs);
+   cmd_buffer_emit_set_event(cmd_buffer, event, 0);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3816,43 +3856,10 @@ v3dv_CmdWaitEvents2(VkCommandBuffer commandBuffer,
                     const VkDependencyInfo *pDependencyInfos)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-
-   assert(eventCount > 0);
-
-   struct v3dv_job *job =
-      v3dv_cmd_buffer_create_cpu_job(cmd_buffer->device,
-                                     V3DV_JOB_TYPE_CPU_WAIT_EVENTS,
-                                     cmd_buffer, -1);
-   v3dv_return_if_oom(cmd_buffer, NULL);
-
-   const uint32_t event_list_size = sizeof(struct v3dv_event *) * eventCount;
-
-   job->cpu.event_wait.events =
-      vk_alloc(&cmd_buffer->device->vk.alloc, event_list_size, 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!job->cpu.event_wait.events) {
-      v3dv_flag_oom(cmd_buffer, NULL);
-      return;
+   for (uint32_t i = 0; i < eventCount; i++) {
+      struct v3dv_event *event = v3dv_event_from_handle(pEvents[i]);;
+      cmd_buffer_emit_wait_event(cmd_buffer, event);
    }
-   job->cpu.event_wait.event_count = eventCount;
-
-   for (uint32_t i = 0; i < eventCount; i++)
-      job->cpu.event_wait.events[i] = v3dv_event_from_handle(pEvents[i]);
-
-   /* vkCmdWaitEvents can be recorded inside a render pass, so we might have
-    * an active job.
-    *
-    * If we are inside a render pass, because we vkCmd(Re)SetEvent can't happen
-    * inside a render pass, it is safe to move the wait job so it happens right
-    * before the current job we are currently recording for the subpass, if any
-    * (it would actually be safe to move it all the way back to right before
-    * the start of the render pass).
-    *
-    * If we are outside a render pass then we should not have any on-going job
-    * and we are free to just add the wait job without restrictions.
-    */
-   assert(cmd_buffer->state.pass || !cmd_buffer->state.job);
-   list_addtail(&job->list_link, &cmd_buffer->jobs);
 }
 
 VKAPI_ATTR void VKAPI_CALL
