@@ -2192,6 +2192,33 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const unsigned stage = pipeline->last_vgt_api_stage;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX];
+   unsigned provoking_vtx = 0;
+   uint32_t base_reg;
+
+   if (loc->sgpr_idx == -1)
+      return;
+
+   if (d->provoking_vertex_mode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
+      if (stage == MESA_SHADER_VERTEX) {
+         provoking_vtx = si_conv_prim_to_gs_out(d->primitive_topology);
+      } else {
+         assert(stage == MESA_SHADER_GEOMETRY);
+         struct radv_shader *gs = pipeline->base.shaders[stage];
+         provoking_vtx = gs->info.gs.vertices_in - 1;
+      }
+   }
+
+   base_reg = pipeline->base.user_data_0[stage];
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, provoking_vtx);
+}
+
+static void
 radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
@@ -3943,6 +3970,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE | RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE |
                  RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE))
       radv_emit_culling(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE)
+      radv_emit_provoking_vertex_mode(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)
       radv_emit_primitive_topology(cmd_buffer);
@@ -5895,6 +5925,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
           * because a bunch of parameters (user SGPRs, TCS vertices out, etc) can be different.
           */
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
+      }
+
+      /* Re-emit the provoking vertex mode state because the SGPR idx can be different. */
+      if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX].sgpr_idx != -1) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
       }
 
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
