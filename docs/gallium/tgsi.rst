@@ -1663,7 +1663,7 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 .. opcode:: CONT - Continue
 
   Unconditionally moves the point of execution to the instruction after the
-  last bgnloop. The instruction must appear within a bgnloop/endloop.
+  last BGNLOOP. The instruction must appear within a BGNLOOP/ENDLOOP.
 
 .. note::
 
@@ -1673,17 +1673,17 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 
 .. opcode:: BGNLOOP - Begin a Loop
 
-  Start a loop. Must have a matching endloop.
+  Start a loop. Must have a matching ENDLOOP.
 
 
 .. opcode:: BGNSUB - Begin Subroutine
 
-  Starts definition of a subroutine. Must have a matching endsub.
+  Starts definition of a subroutine. Must have a matching ENDSUB.
 
 
 .. opcode:: ENDLOOP - End a Loop
 
-  End a loop started with bgnloop.
+  End a loop started with BGNLOOP.
 
 
 .. opcode:: ENDSUB - End Subroutine
@@ -1699,8 +1699,8 @@ Some require glsl version 1.30 (UIF/SWITCH/CASE/DEFAULT/ENDSWITCH).
 .. opcode:: BRK - Break
 
   Unconditionally moves the point of execution to the instruction after the
-  next endloop or endswitch. The instruction must appear within a loop/endloop
-  or switch/endswitch.
+  next ENDLOOP or ENDSWITCH. The instruction must appear within a
+  BGNLOOP/ENDLOOP or SWITCH/ENDSWITCH.
 
 
 .. opcode:: IF - Float If
