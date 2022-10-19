@@ -2139,7 +2139,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
                       a->opcode != ac_image_atomic_cmpswap && a->opcode != ac_image_get_lod &&
                       a->opcode != ac_image_get_resinfo));
    assert(!a->a16 || ctx->gfx_level >= GFX9);
-   assert(a->g16 == a->a16 || ctx->gfx_level >= GFX10);
+   assert(!a->derivs[0] || a->g16 == a->a16 || ctx->gfx_level >= GFX10);
 
    assert(!a->offset ||
           ac_get_elem_bits(ctx, LLVMTypeOf(a->offset)) == 32);
