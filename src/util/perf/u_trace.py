@@ -236,6 +236,7 @@ void ${trace.tp_perfetto}(
 %    endif
 void __trace_${trace_name}(
        struct u_trace *ut
+     , enum u_trace_type enabled_traces
 %    if need_cs_param:
      , void *cs
 %    endif
@@ -252,11 +253,13 @@ static ALWAYS_INLINE void trace_${trace_name}(
    , ${arg.type} ${arg.var}
 %    endfor
 ) {
-   if (!unlikely(u_trace_instrument() &&
+   enum u_trace_type enabled_traces = p_atomic_read_relaxed(&ut->utctx->enabled_traces);
+   if (!unlikely(enabled_traces != 0 &&
                  ${trace.enabled_expr(trace_toggle_name)}))
       return;
    __trace_${trace_name}(
         ut
+      , enabled_traces
 %    if need_cs_param:
       , cs
 %    endif
@@ -416,6 +419,7 @@ static const struct u_tracepoint __tp_${trace_name} = {
 };
 void __trace_${trace_name}(
      struct u_trace *ut
+   , enum u_trace_type enabled_traces
  % if need_cs_param:
    , void *cs
  % endif
@@ -423,11 +427,11 @@ void __trace_${trace_name}(
    , ${arg.type} ${arg.var}
  % endfor
 ) {
-   struct trace_${trace_name} *__entry =
-      (struct trace_${trace_name} *)u_trace_append(ut, ${cs_param_value + ","} &__tp_${trace_name});
- % if len(trace.tp_struct) == 0:
-   (void)__entry;
- % endif
+   struct trace_${trace_name} entry;
+   UNUSED struct trace_${trace_name} *__entry =
+      enabled_traces & U_TRACE_TYPE_REQUIRE_QUEUING ?
+      (struct trace_${trace_name} *)u_trace_append(ut, ${cs_param_value + ","} &__tp_${trace_name}) :
+      &entry;
  % for arg in trace.tp_struct:
    __entry->${arg.name} = ${arg.var};
  % endfor

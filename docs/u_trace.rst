@@ -21,26 +21,25 @@ Usage
 
 u_trace is controlled by environment variables:
 
-:envvar:`GPU_TRACE`
-   if set to ``1`` enables tracing and outputs the data into ``stdout``
+:envvar:`GPU_TRACES`
+   controls whether u_trace is enabled and trace output
+
+   ``print``
+      prints in a human readable text format. It should be noted that this
+      is mutually exclusive with ``print_json`` and both cannot be enabled
+      at the same time.
+   ``print_json``
+      prints in JSON format, suitable for parsing. Application should
+      appropriately finish its rendering in order for trace's json to be
+      valid. For the Vulkan API, it is expected to destroy the device,
+      for GL it's expected to destroy the context.
+   ``perfetto``
+      enables perfetto instrumentation prior to connecting, perfetto
+      traces can be collected without setting this but it may miss some
+      events prior to the tracing session being started.
 
 :envvar:`GPU_TRACEFILE`
    specifies a file where to write the output instead of ``stdout``
-
-:envvar:`GPU_TRACE_FORMAT`
-   controls a format of the output
-
-   ``txt``
-      human readable text format
-   ``json``
-      json format, suitable for parsing. Application should appropriately
-      finish its rendering in order for trace's json to be valid.
-      For Vulkan API it is expected to destroy the device, for GL it is
-      expected to destroy the context.
-
-:envvar:`GPU_TRACE_INSTRUMENT`
-   Meaningful only for Perfetto tracing. If set to ``1`` enables
-   instrumentation of GPU commands before the tracing is enabled.
 
 :envvar:`*_GPU_TRACEPOINT`
    tracepoints can be enabled or disabled using driver specific environment

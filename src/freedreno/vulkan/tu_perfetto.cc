@@ -24,6 +24,8 @@ tu_device_get_suspend_count(struct tu_device *dev,
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
 
+struct u_trace_context *
+tu_device_get_u_trace(struct tu_device *device);
 }
 
 /**
@@ -410,7 +412,7 @@ void
 tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id)
 {
    /* sync_timestamp isn't free */
-   if (!ut_perfetto_enabled)
+   if (!u_trace_perfetto_active(tu_device_get_u_trace(dev)))
       return;
 
    sync_timestamp(dev);

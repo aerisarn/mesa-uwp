@@ -10,7 +10,7 @@
 static int
 test_thread(void *_state)
 {
-   struct u_trace_context ctx = { 0 };
+   struct u_trace_context ctx = {};
    u_trace_context_init(&ctx, NULL, NULL, NULL, NULL, NULL, NULL);
    u_trace_context_fini(&ctx);
 

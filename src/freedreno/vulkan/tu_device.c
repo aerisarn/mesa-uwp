@@ -1670,6 +1670,12 @@ tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts)
    return ts * (1000000000 / 19200000);
 }
 
+struct u_trace_context *
+tu_device_get_u_trace(struct tu_device *device)
+{
+   return &device->trace_context;
+}
+
 static void*
 tu_trace_create_ts_buffer(struct u_trace_context *utctx, uint32_t size)
 {

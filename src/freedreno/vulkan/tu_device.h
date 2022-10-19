@@ -445,6 +445,9 @@ tu_device_lookup_bo(struct tu_device *device, uint32_t handle)
    return (struct tu_bo *) util_sparse_array_get(&device->bo_map, handle);
 }
 
+struct u_trace_context *
+tu_device_get_u_trace(struct tu_device *device);
+
 /* Get a scratch bo for use inside a command buffer. This will always return
  * the same bo given the same size or similar sizes, so only one scratch bo
  * can be used at the same time. It's meant for short-lived things where we
