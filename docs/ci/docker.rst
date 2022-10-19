@@ -67,7 +67,7 @@ anyone on the internet run code on your device.  Docker containers may
 provide some limited protection, but how much you trust that and what
 you do to mitigate hostile access is up to you.
 
-* DUTs must expose the dri device nodes to the containers.
+* DUTs must expose the DRI device nodes to the containers.
 
 Obviously, to get access to the HW, we need to pass the render node
 through.  This is done by adding ``devices = ["/dev/dri"]`` to the
