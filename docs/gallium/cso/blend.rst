@@ -113,11 +113,11 @@ blend_enable
    functions and source/destination factors. Otherwise, the incoming fragment
    color gets passed unmodified (but colormask still applies).
 rgb_func
-   The blend function to use for rgb channels. One of PIPE_BLEND.
+   The blend function to use for RGB channels. One of PIPE_BLEND.
 rgb_src_factor
-   The blend source factor to use for rgb channels. One of PIPE_BLENDFACTOR.
+   The blend source factor to use for RGB channels. One of PIPE_BLENDFACTOR.
 rgb_dst_factor
-   The blend destination factor to use for rgb channels. One of PIPE_BLENDFACTOR.
+   The blend destination factor to use for RGB channels. One of PIPE_BLENDFACTOR.
 alpha_func
    The blend function to use for the alpha channel. One of PIPE_BLEND.
 alpha_src_factor
