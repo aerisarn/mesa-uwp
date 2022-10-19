@@ -181,9 +181,9 @@ Building the Code
       sudo ninja -C builddir install
         
 
--  Build Mesa and the vmwgfx_dri.so driver, the vmwgfx_drv.so xorg
+-  Build Mesa and the vmwgfx_dri.so driver, the vmwgfx_drv.so X.Org
    driver, the X acceleration library libxatracker. The vmwgfx_dri.so is
-   used by the OpenGL libraries during direct rendering, and by the Xorg
+   used by the OpenGL libraries during direct rendering, and by the X.Org
    server during accelerated indirect GL rendering. The libxatracker
    library is used exclusively by the X server to do render, copy and
    video acceleration:
