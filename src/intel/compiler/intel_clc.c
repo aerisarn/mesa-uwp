@@ -264,7 +264,7 @@ print_usage(char *exec_name, FILE *f)
 "  -e, --entrypoint <name> Specify the entry-point name.\n"
 "  -p, --platform <name>   Specify the target platform name.\n"
 "      --prefix <prefix>   Prefix for variable names in generated C code.\n"
-"  -g, --out <filename>    Specify the output filename.\n"
+"  -o, --out <filename>    Specify the output filename.\n"
 "  -s, --spv <filename>    Specify the output filename for spirv.\n"
 "  -v, --verbose           Print more information during compilation.\n"
    , exec_name);
