@@ -102,7 +102,7 @@ set PLB max block (used for development purposes)
 
 .. envvar:: LIMA_PPIR_FORCE_SPILLING <int> (None)
 
-force spilling of variables in ppir (used for development purposes)
+force spilling of variables in PPIR (used for development purposes)
 
 .. envvar:: LIMA_PLB_PP_STREAM_CACHE_SIZE <int> (None)
 
