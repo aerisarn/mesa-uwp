@@ -2900,6 +2900,22 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    key.dynamic_color_write_mask = !!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK);
 
+   if (device->physical_device->use_ngg) {
+      VkShaderStageFlags ngg_stage;
+
+      if (pipeline->active_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
+         ngg_stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+      } else if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+         ngg_stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+      } else {
+         ngg_stage = VK_SHADER_STAGE_VERTEX_BIT;
+      }
+
+      key.dynamic_provoking_vtx_mode =
+         !!(pipeline->dynamic_states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) &&
+         (ngg_stage == VK_SHADER_STAGE_VERTEX_BIT || ngg_stage == VK_SHADER_STAGE_GEOMETRY_BIT);
+   }
+
    return key;
 }
 
