@@ -3553,7 +3553,7 @@ Declaration Interpolate
 
 This token is only valid for fragment shader INPUT declarations.
 
-The Interpolate field specifes the way input is being interpolated by
+The Interpolate field specifies the way input is being interpolated by
 the rasterizer and is one of TGSI_INTERPOLATE_*.
 
 The Location field specifies the location inside the pixel that the
