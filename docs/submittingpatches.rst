@@ -182,8 +182,8 @@ Patches are submitted to the Mesa project via a
 Add labels to your MR to help reviewers find it. For example:
 
 -  Mesa changes affecting all drivers: mesa
--  Hardware vendor specific code: amd, intel, nvidia, ...
--  Driver specific code: anvil, freedreno, i965, iris, radeonsi, radv,
+-  Hardware vendor specific code: AMD common, intel, ...
+-  Driver specific code: ANV, freedreno, i965, iris, radeonsi, RADV,
    vc4, ...
 -  Other tag examples: gallium, util
 
