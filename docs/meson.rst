@@ -364,7 +364,7 @@ passed as --option=foo to ``meson``, but -Doption=foo to
 ``meson configure``. Mesa defined options are always passed as
 -Doption=foo.
 
-For those coming from autotools be aware of the following:
+For those coming from Autotools be aware of the following:
 
 ``--buildtype/-Dbuildtype``
    This option will set the compiler debug/optimization levels to aid
