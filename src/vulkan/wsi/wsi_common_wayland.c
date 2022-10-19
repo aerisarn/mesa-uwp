@@ -86,6 +86,47 @@ struct wsi_wayland {
    VkPhysicalDevice physical_device;
 };
 
+struct wsi_wl_image {
+   struct wsi_image                             base;
+   struct wl_buffer *                           buffer;
+   bool                                         busy;
+   int                                          shm_fd;
+   void *                                       shm_ptr;
+   unsigned                                     shm_size;
+};
+
+enum wsi_wl_buffer_type {
+   WSI_WL_BUFFER_NATIVE,
+   WSI_WL_BUFFER_GPU_SHM,
+   WSI_WL_BUFFER_SHM_MEMCPY,
+};
+
+struct wsi_wl_swapchain {
+   struct wsi_swapchain                         base;
+
+   struct wsi_wl_display                        *display;
+
+   struct wl_surface *                          surface;
+
+   struct wl_callback *                         frame;
+
+   VkExtent2D                                   extent;
+   VkFormat                                     vk_format;
+   enum wsi_wl_buffer_type                      buffer_type;
+   uint32_t                                     drm_format;
+   enum wl_shm_format                           shm_format;
+
+   uint32_t                                     num_drm_modifiers;
+   const uint64_t *                             drm_modifiers;
+
+   VkPresentModeKHR                             present_mode;
+   bool                                         fifo_ready;
+
+   struct wsi_wl_image                          images[0];
+};
+VK_DEFINE_NONDISP_HANDLE_CASTS(wsi_wl_swapchain, base.base, VkSwapchainKHR,
+                               VK_OBJECT_TYPE_SWAPCHAIN_KHR)
+
 enum wsi_wl_fmt_flag {
    WSI_WL_FMT_ALPHA = 1 << 0,
    WSI_WL_FMT_OPAQUE = 1 << 1,
@@ -904,47 +945,6 @@ wsi_CreateWaylandSurfaceKHR(VkInstance _instance,
 
    return VK_SUCCESS;
 }
-
-struct wsi_wl_image {
-   struct wsi_image                             base;
-   struct wl_buffer *                           buffer;
-   bool                                         busy;
-   int                                          shm_fd;
-   void *                                       shm_ptr;
-   unsigned                                     shm_size;
-};
-
-enum wsi_wl_buffer_type {
-   WSI_WL_BUFFER_NATIVE,
-   WSI_WL_BUFFER_GPU_SHM,
-   WSI_WL_BUFFER_SHM_MEMCPY,
-};
-
-struct wsi_wl_swapchain {
-   struct wsi_swapchain                         base;
-
-   struct wsi_wl_display                        *display;
-
-   struct wl_surface *                          surface;
-
-   struct wl_callback *                         frame;
-
-   VkExtent2D                                   extent;
-   VkFormat                                     vk_format;
-   enum wsi_wl_buffer_type                      buffer_type;
-   uint32_t                                     drm_format;
-   enum wl_shm_format                           shm_format;
-
-   uint32_t                                     num_drm_modifiers;
-   const uint64_t *                             drm_modifiers;
-
-   VkPresentModeKHR                             present_mode;
-   bool                                         fifo_ready;
-
-   struct wsi_wl_image                          images[0];
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(wsi_wl_swapchain, base.base, VkSwapchainKHR,
-                               VK_OBJECT_TYPE_SWAPCHAIN_KHR)
 
 static struct wsi_image *
 wsi_wl_swapchain_get_wsi_image(struct wsi_swapchain *wsi_chain,
