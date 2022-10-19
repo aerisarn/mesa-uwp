@@ -957,7 +957,7 @@ XXX doesn't look like most of the opcodes really belong here.
   addressing modes of the sampler and the top level of any mip pyramid are
   used. Set W to zero.  It behaves like the TEX instruction, but a filtered
   sample is not generated. The four samples that contribute to filtering are
-  placed into xyzw in clockwise order, starting with the (u,v) texture
+  placed into XYZW in clockwise order, starting with the (u,v) texture
   coordinate delta at the following locations (-, +), (+, +), (+, -), (-, -),
   where the magnitude of the deltas are half a texel.
 
@@ -2460,7 +2460,7 @@ after lookup.
   sampler and the top level of any mip pyramid are used. Set W to zero.  It
   behaves like the SAMPLE instruction, but a filtered sample is not
   generated. The four samples that contribute to filtering are placed into
-  xyzw in counter-clockwise order, starting with the (u,v) texture coordinate
+  XYZW in counter-clockwise order, starting with the (u,v) texture coordinate
   delta at the following locations (-, +), (+, +), (+, -), (-, -), where the
   magnitude of the deltas are half a texel.
 
