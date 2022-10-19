@@ -2465,9 +2465,12 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    nir_shader **resume_shaders = NULL;
    uint32_t num_resume_shaders = 0;
    if (nir->info.stage != MESA_SHADER_COMPUTE) {
-      NIR_PASS(_, nir, nir_lower_shader_calls,
-               nir_address_format_64bit_global,
-               BRW_BTD_STACK_ALIGN,
+      const nir_lower_shader_calls_options opts = {
+         .address_format = nir_address_format_64bit_global,
+         .stack_alignment = BRW_BTD_STACK_ALIGN,
+      };
+
+      NIR_PASS(_, nir, nir_lower_shader_calls, &opts,
                &resume_shaders, &num_resume_shaders, mem_ctx);
       NIR_PASS(_, nir, brw_nir_lower_shader_calls, &stage->key.bs);
       NIR_PASS_V(nir, brw_nir_lower_rt_intrinsics, devinfo);

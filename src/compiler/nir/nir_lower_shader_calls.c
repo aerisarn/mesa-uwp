@@ -1424,8 +1424,7 @@ nir_opt_remove_respills(nir_shader *shader)
  */
 bool
 nir_lower_shader_calls(nir_shader *shader,
-                       nir_address_format address_format,
-                       unsigned stack_alignment,
+                       const nir_lower_shader_calls_options *options,
                        nir_shader ***resume_shaders_out,
                        uint32_t *num_resume_shaders_out,
                        void *mem_ctx)
@@ -1461,7 +1460,7 @@ nir_lower_shader_calls(nir_shader *shader,
    }
 
    NIR_PASS_V(shader, spill_ssa_defs_and_lower_shader_calls,
-              num_calls, stack_alignment);
+              num_calls, options->stack_alignment);
 
    NIR_PASS_V(shader, nir_opt_remove_phis);
 
@@ -1494,9 +1493,12 @@ nir_lower_shader_calls(nir_shader *shader,
    for (unsigned i = 0; i < num_calls; i++)
       NIR_PASS_V(resume_shaders[i], nir_opt_remove_respills);
 
-   NIR_PASS_V(shader, nir_lower_stack_to_scratch, address_format);
-   for (unsigned i = 0; i < num_calls; i++)
-      NIR_PASS_V(resume_shaders[i], nir_lower_stack_to_scratch, address_format);
+   NIR_PASS_V(shader, nir_lower_stack_to_scratch,
+              options->address_format);
+   for (unsigned i = 0; i < num_calls; i++) {
+      NIR_PASS_V(resume_shaders[i], nir_lower_stack_to_scratch,
+                 options->address_format);
+   }
 
    *resume_shaders_out = resume_shaders;
    *num_resume_shaders_out = num_calls;

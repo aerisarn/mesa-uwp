@@ -4834,10 +4834,17 @@ bool nir_lower_explicit_io(nir_shader *shader,
                            nir_variable_mode modes,
                            nir_address_format);
 
+typedef struct nir_lower_shader_calls_options {
+   /* Address format used for load/store operations on the call stack. */
+   nir_address_format address_format;
+
+   /* Stack alignment */
+   unsigned stack_alignment;
+} nir_lower_shader_calls_options;
+
 bool
 nir_lower_shader_calls(nir_shader *shader,
-                       nir_address_format address_format,
-                       unsigned stack_alignment,
+                       const nir_lower_shader_calls_options *options,
                        nir_shader ***resume_shaders_out,
                        uint32_t *num_resume_shaders_out,
                        void *mem_ctx);
