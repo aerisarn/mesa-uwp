@@ -770,7 +770,6 @@ st_link_nir(struct gl_context *ctx,
 
       nir_opt_access_options opt_access_options;
       opt_access_options.is_vulkan = false;
-      opt_access_options.infer_non_readable = true;
       NIR_PASS_V(nir, nir_opt_access, &opt_access_options);
    }
 

@@ -1052,7 +1052,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
 
    const nir_opt_access_options opt_access_options = {
       .is_vulkan = true,
-      .infer_non_readable = true,
    };
    NIR_PASS(_, nir, nir_opt_access, &opt_access_options);
 
