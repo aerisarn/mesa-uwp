@@ -1977,10 +1977,6 @@ struct radv_ia_multi_vgt_param_helpers {
    bool partial_vs_wave;
 };
 
-struct radv_binning_state {
-   uint32_t pa_sc_binner_cntl_0;
-};
-
 #define SI_GS_PER_ES 128
 
 enum radv_pipeline_type {
@@ -2065,7 +2061,6 @@ struct radv_graphics_pipeline {
 
    uint64_t dynamic_states;
    struct radv_multisample_state ms;
-   struct radv_binning_state binning;
    struct radv_vrs_state vrs;
    uint32_t spi_baryc_cntl;
    unsigned esgs_ring_size;
