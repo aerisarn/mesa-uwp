@@ -58,27 +58,27 @@ struct wsi_wl_format {
 
 struct wsi_wl_display {
    /* The real wl_display */
-   struct wl_display *                          wl_display;
+   struct wl_display *wl_display;
    /* Actually a proxy wrapper around the event queue */
-   struct wl_display *                          wl_display_wrapper;
-   struct wl_event_queue *                      queue;
+   struct wl_display *wl_display_wrapper;
+   struct wl_event_queue *queue;
 
-   struct wl_shm *                              wl_shm;
-   struct zwp_linux_dmabuf_v1 *                 wl_dmabuf;
+   struct wl_shm *wl_shm;
+   struct zwp_linux_dmabuf_v1 *wl_dmabuf;
 
    struct wsi_wayland *wsi_wl;
 
    /* Formats populated by zwp_linux_dmabuf_v1 or wl_shm interfaces */
-   struct u_vector                              formats;
+   struct u_vector formats;
 
    /* Only used for displays created by wsi_wl_display_create */
-   uint32_t                                     refcount;
+   uint32_t refcount;
 
    bool sw;
 };
 
 struct wsi_wayland {
-   struct wsi_interface                     base;
+   struct wsi_interface base;
 
    struct wsi_device *wsi;
 
@@ -87,12 +87,12 @@ struct wsi_wayland {
 };
 
 struct wsi_wl_image {
-   struct wsi_image                             base;
-   struct wl_buffer *                           buffer;
-   bool                                         busy;
-   int                                          shm_fd;
-   void *                                       shm_ptr;
-   unsigned                                     shm_size;
+   struct wsi_image base;
+   struct wl_buffer *buffer;
+   bool busy;
+   int shm_fd;
+   void *shm_ptr;
+   unsigned shm_size;
 };
 
 enum wsi_wl_buffer_type {
@@ -102,27 +102,27 @@ enum wsi_wl_buffer_type {
 };
 
 struct wsi_wl_swapchain {
-   struct wsi_swapchain                         base;
+   struct wsi_swapchain base;
 
-   struct wsi_wl_display                        *display;
+   struct wsi_wl_display *display;
 
-   struct wl_surface *                          surface;
+   struct wl_surface *surface;
 
-   struct wl_callback *                         frame;
+   struct wl_callback *frame;
 
-   VkExtent2D                                   extent;
-   VkFormat                                     vk_format;
-   enum wsi_wl_buffer_type                      buffer_type;
-   uint32_t                                     drm_format;
-   enum wl_shm_format                           shm_format;
+   VkExtent2D extent;
+   VkFormat vk_format;
+   enum wsi_wl_buffer_type buffer_type;
+   uint32_t drm_format;
+   enum wl_shm_format shm_format;
 
-   uint32_t                                     num_drm_modifiers;
-   const uint64_t *                             drm_modifiers;
+   uint32_t num_drm_modifiers;
+   const uint64_t *drm_modifiers;
 
-   VkPresentModeKHR                             present_mode;
-   bool                                         fifo_ready;
+   VkPresentModeKHR present_mode;
+   bool fifo_ready;
 
-   struct wsi_wl_image                          images[0];
+   struct wsi_wl_image images[0];
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(wsi_wl_swapchain, base.base, VkSwapchainKHR,
                                VK_OBJECT_TYPE_SWAPCHAIN_KHR)
