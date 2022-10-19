@@ -62,25 +62,17 @@ Members
 These members affect all render targets.
 
 dither
-%%%%%%
+   Whether dithering is enabled.
 
-Whether dithering is enabled.
-
-.. note::
-   Dithering is completely implementation-dependent. It may be ignored by
-   drivers for any reason, and some render targets may always or never be
-   dithered depending on their format or usage flags.
+   .. note::
+      Dithering is completely implementation-dependent. It may be ignored by
+      drivers for any reason, and some render targets may always or never be
+      dithered depending on their format or usage flags.
 
 logicop_enable
-%%%%%%%%%%%%%%
-
-Whether the blender should perform a logicop instead of blending.
-
+   Whether the blender should perform a logicop instead of blending.
 logicop_func
-%%%%%%%%%%%%
-
-The logicop to use. One of ``PIPE_LOGICOP``.
-
+   The logicop to use. One of ``PIPE_LOGICOP``.
 independent_blend_enable
    If enabled, blend state is different for each render target, and
    for each render target set in the respective member of the rt array.
