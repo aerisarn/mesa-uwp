@@ -12,6 +12,8 @@ On macOS, the experimental Asahi driver may built with options:
 
 To use, set the ``DYLD_LIBRARY_PATH`` environment variable:
 
+.. code-block:: console
+
    DYLD_LIBRARY_PATH=/Users/nobody/mesa/build/src/gallium/targets/libgl-xlib/ glmark2 --reuse-context
 
 Only X11 apps are supported. XQuartz must be setup separately.
