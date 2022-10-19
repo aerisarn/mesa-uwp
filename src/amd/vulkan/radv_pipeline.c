@@ -4686,8 +4686,7 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
                                           const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   uint32_t pa_sc_binner_cntl_0 = S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
-                                  S_028C44_DISABLE_START_OF_PRIM(1);
+   uint32_t pa_sc_binner_cntl_0;
 
    if (pdevice->rad_info.gfx_level >= GFX10) {
       unsigned min_bytes_per_pixel = 0;
@@ -4711,6 +4710,9 @@ radv_pipeline_init_disabled_binning_state(struct radv_graphics_pipeline *pipelin
          S_028C44_BIN_SIZE_Y(0) | S_028C44_BIN_SIZE_X_EXTEND(2) |       /* 128 */
          S_028C44_BIN_SIZE_Y_EXTEND(min_bytes_per_pixel <= 4 ? 2 : 1) | /* 128 or 64 */
          S_028C44_DISABLE_START_OF_PRIM(1);
+   } else {
+      pa_sc_binner_cntl_0 = S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
+                            S_028C44_DISABLE_START_OF_PRIM(1);
    }
 
    pipeline->binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
