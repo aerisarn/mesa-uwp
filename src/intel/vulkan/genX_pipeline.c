@@ -1410,7 +1410,11 @@ emit_3dstate_te(struct anv_graphics_pipeline *pipeline)
                te.TessellationDistributionMode = TEDMODE_OFF;
          }
 
+#if GFX_VER >= 20
+         te.TessellationDistributionLevel = TEDLEVEL_REGION;
+#else
          te.TessellationDistributionLevel = TEDLEVEL_PATCH;
+#endif
          /* 64_TRIANGLES */
          te.SmallPatchThreshold = 3;
          /* 1K_TRIANGLES */
