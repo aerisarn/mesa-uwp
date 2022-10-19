@@ -964,7 +964,7 @@ XXX doesn't look like most of the opcodes really belong here.
   PIPE_CAP_TEXTURE_SM5 enhances this instruction to support shadow per-sample
   depth compares, single component selection, and a non-constant offset. It
   doesn't allow support for the GL independent offset to get i0,j0. This would
-  require another CAP is hw can do it natively. For now we lower that before
+  require another CAP is HW can do it natively. For now we lower that before
   TGSI.
 
   PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE changes the encoding so that component
@@ -2699,7 +2699,7 @@ location is guaranteed to be performed strictly before or after the
 entire execution of the atomic operation. The resource may be a BUFFER,
 IMAGE, HWATOMIC, or MEMORY.  In the case of an image, the offset works
 the same as for ``LOAD`` and ``STORE``, specified above. For atomic
-counters, the offset is an immediate index to the base hw atomic
+counters, the offset is an immediate index to the base HW atomic
 counter for this operation.
 These atomic operations may only be used with 32-bit integer image formats.
 

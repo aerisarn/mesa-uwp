@@ -124,20 +124,20 @@ The integer capabilities:
 * ``PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION``: Whether quads adhere to
   the flatshade_first setting in ``pipe_rasterizer_state``.
 * ``PIPE_CAP_USER_VERTEX_BUFFERS``: Whether the driver supports user vertex
-  buffers.  If not, gallium frontends must upload all data which is not in hw
+  buffers.  If not, gallium frontends must upload all data which is not in HW
   resources.  If user-space buffers are supported, the driver must also still
   accept HW resource buffers.
-* ``PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY``: This CAP describes a hw
+* ``PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY``: This CAP describes a HW
   limitation.  If true, pipe_vertex_buffer::buffer_offset must always be aligned
   to 4.  If false, there are no restrictions on the offset.
-* ``PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY``: This CAP describes a hw
+* ``PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY``: This CAP describes a HW
   limitation.  If true, pipe_vertex_buffer::stride must always be aligned to 4.
   If false, there are no restrictions on the stride.
 * ``PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY``: This CAP describes
-  a hw limitation.  If true, pipe_vertex_element::src_offset must always be
+  a HW limitation.  If true, pipe_vertex_element::src_offset must always be
   aligned to 4.  If false, there are no restrictions on src_offset.
 * ``PIPE_CAP_VERTEX_ATTRIB_ELEMENT_ALIGNED_ONLY``: This CAP describes
-  a hw limitation.  If true, the sum of
+  a HW limitation.  If true, the sum of
   ``pipe_vertex_element::src_offset + pipe_vertex_buffer::buffer_offset + pipe_vertex_buffer::stride``
   must always be aligned to the component size for the vertex attributes
   which access that buffer.  If false, there are no restrictions on these values.
@@ -165,7 +165,7 @@ The integer capabilities:
   supports R, RG, RGB and RGBA formats for PIPE_BUFFER sampler views.
   When this is the case it should be assumed that the swizzle parameters
   in the sampler view have no effect.
-* ``PIPE_CAP_TGSI_TEXCOORD``: This CAP describes a hw limitation.
+* ``PIPE_CAP_TGSI_TEXCOORD``: This CAP describes a HW limitation.
   If true, the hardware cannot replace arbitrary shader inputs with sprite
   coordinates and hence the inputs that are desired to be replaceable must
   be declared with TGSI_SEMANTIC_TEXCOORD instead of TGSI_SEMANTIC_GENERIC.

@@ -32,7 +32,7 @@ External Structure
     generated.
 
 ``ir3_shader_variant``
-    The actual hw shader generated based on input TGSI and shader key.
+    The actual HW shader generated based on input TGSI and shader key.
 
 ``ir3_compiler``
     Compiler frontend which generates ir3 and runs the various backend
