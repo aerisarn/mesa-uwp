@@ -266,6 +266,7 @@ print_usage(char *exec_name, FILE *f)
 "      --prefix <prefix>   Prefix for variable names in generated C code.\n"
 "  -g, --out <filename>    Specify the output filename.\n"
 "  -s, --spv <filename>    Specify the output filename for spirv.\n"
+"  -v, --verbose           Print more information during compilation.\n"
    , exec_name);
 }
 
@@ -299,7 +300,7 @@ int main(int argc, char **argv)
       {"in",         required_argument,   0, 'i'},
       {"out",        required_argument,   0, 'o'},
       {"spv",        required_argument,   0, 's'},
-      {"info",       no_argument,         0, 'i'},
+      {"verbose",    no_argument,         0, 'v'},
       {0, 0, 0, 0}
    };
 
@@ -318,7 +319,7 @@ int main(int argc, char **argv)
    util_dynarray_init(&spirv_ptr_objs, mem_ctx);
 
    int ch;
-   while ((ch = getopt_long(argc, argv, "he:p:s:o:i", long_options, NULL)) != -1)
+   while ((ch = getopt_long(argc, argv, "he:p:s:o:v", long_options, NULL)) != -1)
    {
       switch (ch)
       {
@@ -337,7 +338,7 @@ int main(int argc, char **argv)
       case 's':
          spv_outfile = optarg;
          break;
-      case 'i':
+      case 'v':
          print_info = true;
          break;
       case OPT_PREFIX:
