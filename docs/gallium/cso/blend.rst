@@ -37,7 +37,7 @@ and performing one of the following operations per-channel:
 ================== =========================
 Operation          Equation
 ================== =========================
-``CLEAR``          0
+``CLEAR``          :math:`0`
 ``NOR``            :math:`\lnot(s \lor d)`
 ``AND_INVERTED``   :math:`\lnot s \land d`
 ``COPY_INVERTED``  :math:`\lnot s`
@@ -52,7 +52,7 @@ Operation          Equation
 ``COPY``           :math:`s`
 ``OR_REVERSE``     :math:`s \lor \lnot d`
 ``OR``             :math:`s \lor d`
-``SET``            1
+``SET``            :math:`1`
 ================== =========================
 
 .. note::
