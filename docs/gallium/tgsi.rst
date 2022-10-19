@@ -1198,7 +1198,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: UMOD - Unsigned Integer Remainder
 
-   If second arg is zero, 0xffffffff is returned.
+   If *src1* is zero, 0xffffffff is returned.
 
 .. math::
 
