@@ -204,8 +204,8 @@ Compiler Specification
 
 Meson supports the standard CC and CXX environment variables for
 changing the default compiler. Note that Meson does not allow changing
-the compilers in a configured builddir so you will need to create a new
-build dir for a different compiler.
+the compilers in a configured build directory so you will need to create
+a new build dir for a different compiler.
 
 This is an example of specifying the Clang compilers and cleaning the
 build directory before reconfiguring with an extra C option:
