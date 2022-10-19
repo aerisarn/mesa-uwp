@@ -5031,7 +5031,11 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
          te.TessellationDistributionMode = TEDMODE_RR_FREE;
       }
 
+   #if GFX_VER >= 20
+      te.TessellationDistributionLevel = TEDLEVEL_REGION;
+   #else
       te.TessellationDistributionLevel = TEDLEVEL_PATCH;
+   #endif
       /* 64_TRIANGLES */
       te.SmallPatchThreshold = 3;
       /* 1K_TRIANGLES */
