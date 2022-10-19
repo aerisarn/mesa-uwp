@@ -84,7 +84,7 @@ added to the OPA policy for the MinIO repository as per
 https://gitlab.freedesktop.org/freedesktop/helm-gitlab-config/-/commit/a3cd632743019f68ac8a829267deb262d9670958 .
 
 So the jobs are created in personal repositories, the name of the user's account needs
-to be added to the rules attribute of the Gitlab CI job that accesses the restricted
+to be added to the rules attribute of the GitLab CI job that accesses the restricted
 accounts.
 
 .. toctree::
@@ -252,7 +252,7 @@ directory.  You can hack on mesa and iterate testing the build with:
 Conformance Tests
 -----------------
 
-Some conformance tests require a special treatment to be maintained on Gitlab CI.
+Some conformance tests require a special treatment to be maintained on GitLab CI.
 This section lists their documentation pages.
 
 .. toctree::
@@ -261,11 +261,11 @@ This section lists their documentation pages.
   skqp
 
 
-Updating Gitlab CI Linux Kernel
+Updating GitLab CI Linux Kernel
 -------------------------------
 
-Gitlab CI usually runs a bleeding-edge kernel. The following documentation has
-instructions on how to uprev Linux Kernel in the Gitlab Ci ecosystem.
+GitLab CI usually runs a bleeding-edge kernel. The following documentation has
+instructions on how to uprev Linux Kernel in the GitLab CI ecosystem.
 
 .. toctree::
   :maxdepth: 1
