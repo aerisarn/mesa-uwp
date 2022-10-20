@@ -169,8 +169,6 @@ stw_init(const struct stw_winsys *stw_winsys)
 
 error1:
    FREE(stw_dev->smapi);
-   if (stw_dev->stapi)
-      stw_dev->stapi->destroy(stw_dev->stapi);
 
    stw_dev = NULL;
    return FALSE;
@@ -256,7 +254,6 @@ stw_cleanup(void)
       stw_dev->smapi->destroy(stw_dev->smapi);
 
    FREE(stw_dev->smapi);
-   stw_dev->stapi->destroy(stw_dev->stapi);
 
    stw_dev->screen->destroy(stw_dev->screen);
 

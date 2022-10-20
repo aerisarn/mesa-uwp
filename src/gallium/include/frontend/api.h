@@ -513,11 +513,6 @@ struct st_api
    const char *name;
 
    /**
-    * Destroy the API.
-    */
-   void (*destroy)(struct st_api *stapi);
-
-   /**
     * Query supported OpenGL versions. (if applicable)
     * The format is (major*10+minor).
     */

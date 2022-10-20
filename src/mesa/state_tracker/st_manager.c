@@ -1281,12 +1281,6 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
 }
 
 
-static void
-st_api_destroy(struct st_api *stapi)
-{
-}
-
-
 /**
  * Flush the front buffer if the current context renders to the front buffer.
  */
@@ -1458,7 +1452,6 @@ st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
 
 static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
-   .destroy = st_api_destroy,
    .query_versions = st_api_query_versions,
    .create_context = st_api_create_context,
    .make_current = st_api_make_current,

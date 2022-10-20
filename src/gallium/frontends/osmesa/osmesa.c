@@ -142,10 +142,6 @@ destroy_st_manager(void)
          stmgr->screen->destroy(stmgr->screen);
       FREE(stmgr);
    }
-
-   if (stapi && stapi->destroy) {
-      stapi->destroy(stapi);
-   }
 }
 
 static void

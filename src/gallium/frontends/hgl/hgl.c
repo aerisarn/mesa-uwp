@@ -359,7 +359,5 @@ hgl_destroy_display(struct hgl_display *display)
 	if (display->manager->destroy)
 		display->manager->destroy(display->manager);
 	FREE(display->manager);
-	if (display->api->destroy)
-		display->api->destroy(display->api);
 	FREE(display);
 }

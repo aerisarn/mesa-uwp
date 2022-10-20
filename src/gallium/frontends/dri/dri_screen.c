@@ -774,9 +774,6 @@ dri_destroy_screen_helper(struct dri_screen * screen)
    if (screen->base.destroy)
       screen->base.destroy(&screen->base);
 
-   if (screen->st_api && screen->st_api->destroy)
-      screen->st_api->destroy(screen->st_api);
-
    if (screen->base.screen)
       screen->base.screen->destroy(screen->base.screen);
 
