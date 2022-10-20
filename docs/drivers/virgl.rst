@@ -45,7 +45,7 @@ Run a desktop and most 3D games I've thrown at it.
 Scope
 -----
 
-The project is currently investigating the desktop virtualisation use case
+The project is currently investigating the desktop virtualization use case
 only. This use case is where the viewer, host and guest are all running on
 the same machine (i.e. workstation or laptop). Some areas are in scope for
 future investigation but not being looked at, at this time.
