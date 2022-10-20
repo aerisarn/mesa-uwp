@@ -583,9 +583,7 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
    allocate_user_sgprs(gfx_level, info, args, stage, has_previous_stage, previous_stage,
                        needs_view_index, has_ngg_query, has_ngg_provoking_vtx, key, &user_sgpr_info);
 
-   if (args->explicit_scratch_args) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets);
-   }
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets);
    if (stage == MESA_SHADER_TASK) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->task_ring_offsets);
    }

@@ -3069,8 +3069,7 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
 
    NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &info,
-              &gs_copy_args, pipeline_key, radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX),
-              device->physical_device->rad_info.address32_hi);
+              &gs_copy_args, pipeline_key, device->physical_device->rad_info.address32_hi);
 
    return radv_create_gs_copy_shader(device, nir, &info, &gs_copy_args, gs_copy_binary,
                                      keep_executable_info, keep_statistic_info,
@@ -3332,7 +3331,6 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,
-              radv_use_llvm_for_stage(device, stage->stage),
               device->physical_device->rad_info.address32_hi);
    radv_optimize_nir_algebraic(
       stage->nir, io_to_mem || lowered_ngg || stage->stage == MESA_SHADER_COMPUTE ||
