@@ -1237,8 +1237,8 @@ struct zink_screen {
    void (*buffer_barrier)(struct zink_context *ctx, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
    void (*image_barrier)(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
-   bool compact_descriptors;
-   uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS];
+   bool compact_descriptors; /**< toggled if descriptor set ids are compacted */
+   uint8_t desc_set_id[ZINK_MAX_DESCRIPTOR_SETS]; /**< converts enum zink_descriptor_type -> the actual set id */
 
    struct {
       bool dual_color_blend_by_location;

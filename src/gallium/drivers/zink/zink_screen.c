@@ -2433,6 +2433,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_verify_device_extensions(screen);
 
+   /* descriptor set indexing is determined by 'compact' descriptor mode:
+    * by default, 6 sets are used to provide more granular updating
+    * in compact mode, a maximum of 4 sets are used, with like-types combined
+    */
    if ((zink_debug & ZINK_DEBUG_COMPACT) ||
        screen->info.props.limits.maxBoundDescriptorSets < ZINK_MAX_DESCRIPTOR_SETS) {
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UNIFORMS] = 0;
