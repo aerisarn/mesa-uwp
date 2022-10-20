@@ -142,7 +142,7 @@ Regression/functionality testing
 -  *no regressions should be observed for Piglit/dEQP/CTS/Vulkan on
    Intel platforms*
 -  *no regressions should be observed for Piglit using the swrast,
-   softpipe and llvmpipe drivers*
+   softpipe and LLVMpipe drivers*
 
 .. _stagingbranch:
 
