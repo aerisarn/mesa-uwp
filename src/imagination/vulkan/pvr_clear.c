@@ -62,9 +62,9 @@ static void pvr_device_setup_graphics_static_clear_ppp_templates(
       templates[static PVR_STATIC_CLEAR_VARIANT_COUNT])
 {
    for (uint32_t i = 0; i < PVR_STATIC_CLEAR_VARIANT_COUNT; i++) {
-      const bool has_depth = !!(i & PVR_STATIC_CLEAR_DEPTH_BIT);
-      const bool has_stencil = !!(i & PVR_STATIC_CLEAR_STENCIL_BIT);
-      const bool has_color = !!(i & PVR_STATIC_CLEAR_COLOR_BIT);
+      const bool has_color = !!(i & VK_IMAGE_ASPECT_COLOR_BIT);
+      const bool has_depth = !!(i & VK_IMAGE_ASPECT_DEPTH_BIT);
+      const bool has_stencil = !!(i & VK_IMAGE_ASPECT_STENCIL_BIT);
 
       struct pvr_static_clear_ppp_template *const template = &templates[i];
 

@@ -2421,7 +2421,7 @@ static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
 {
    const struct pvr_device *device = cmd_buffer->device;
    struct pvr_static_clear_ppp_template template =
-      device->static_clear_state.ppp_templates[PVR_STATIC_CLEAR_COLOR_BIT];
+      device->static_clear_state.ppp_templates[VK_IMAGE_ASPECT_COLOR_BIT];
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
    struct pvr_pds_upload shareds_update_program;
    struct pvr_bo *pvr_bo;
@@ -6034,7 +6034,7 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
     * in parallel so writing the template in place could cause problems.
     */
    struct pvr_static_clear_ppp_template clear =
-      device->static_clear_state.ppp_templates[PVR_STATIC_CLEAR_COLOR_BIT];
+      device->static_clear_state.ppp_templates[VK_IMAGE_ASPECT_COLOR_BIT];
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT] = { 0 };
    struct pvr_csb *csb = &sub_cmd->control_stream;
    struct pvr_bo *ppp_bo;

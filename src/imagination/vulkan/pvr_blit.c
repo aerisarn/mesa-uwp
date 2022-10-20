@@ -229,34 +229,6 @@ pvr_clear_needs_rt_id_output(struct pvr_device_info *dev_info,
    return false;
 }
 
-static inline uint32_t
-pvr_clear_template_idx_from_aspect(VkImageAspectFlags aspect)
-{
-   switch (aspect) {
-   case VK_IMAGE_ASPECT_COLOR_BIT:
-      /* From the Vulkan 1.3.229 spec VUID-VkClearAttachment-aspectMask-00019:
-       *
-       *    "If aspectMask includes VK_IMAGE_ASPECT_COLOR_BIT, it must not
-       *    include VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT"
-       *
-       */
-      return PVR_STATIC_CLEAR_COLOR_BIT;
-
-   case VK_IMAGE_ASPECT_DEPTH_BIT:
-      return PVR_STATIC_CLEAR_DEPTH_BIT;
-
-   case VK_IMAGE_ASPECT_STENCIL_BIT:
-      return PVR_STATIC_CLEAR_STENCIL_BIT;
-
-   case VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT:
-      return PVR_STATIC_CLEAR_DEPTH_BIT | PVR_STATIC_CLEAR_STENCIL_BIT;
-
-   default:
-      unreachable("Invalid aspect mask for clear.");
-      return 0;
-   }
-}
-
 static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
    struct pvr_cmd_buffer *cmd_buffer,
    const struct pvr_shader_factory_info *shader_info,
@@ -470,6 +442,7 @@ static VkResult pvr_clear_color_attachment_static(
       texturedatabase.addr = PVR_DEV_ADDR(pds_texture_program_addr);
    }
 
+   assert(template_idx < PVR_STATIC_CLEAR_VARIANT_COUNT);
    template =
       cmd_buffer->device->static_clear_state.ppp_templates[template_idx];
 
@@ -478,7 +451,7 @@ static VkResult pvr_clear_color_attachment_static(
    template.config.ispctl.upass =
       cmd_buffer->state.render_pass_info.isp_userpass;
 
-   if (template_idx & PVR_STATIC_CLEAR_STENCIL_BIT)
+   if (template_idx & VK_IMAGE_ASPECT_STENCIL_BIT)
       template.config.ispa.sref = stencil;
 
    if (vs_has_rt_id_output) {
@@ -582,7 +555,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                                     mrt_resource,
                                                     format,
                                                     packed_clear_color,
-                                                    PVR_STATIC_CLEAR_COLOR_BIT,
+                                                    VK_IMAGE_ASPECT_COLOR_BIT,
                                                     0,
                                                     vs_has_rt_id_output);
          if (result != VK_SUCCESS)
@@ -592,15 +565,11 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          const VkClearColorValue clear_color = {
             .float32 = { [0] = attachment->clearValue.depthStencil.depth, },
          };
+         const uint32_t template_idx = attachment->aspectMask |
+                                       VK_IMAGE_ASPECT_COLOR_BIT;
          const uint32_t stencil = attachment->clearValue.depthStencil.stencil;
          uint32_t packed_clear_color[PVR_CLEAR_COLOR_ARRAY_SIZE];
          const struct usc_mrt_resource *mrt_resource;
-         uint32_t template_idx;
-
-         template_idx =
-            pvr_clear_template_idx_from_aspect(attachment->aspectMask);
-
-         template_idx |= PVR_STATIC_CLEAR_COLOR_BIT;
 
          assert(hw_pass->z_replicate > 0);
          mrt_resource = &hw_pass->setup.mrt_resources[hw_pass->z_replicate];
@@ -619,12 +588,11 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          if (result != VK_SUCCESS)
             return;
       } else {
+         const uint32_t template_idx = attachment->aspectMask;
          struct pvr_static_clear_ppp_template template;
-         uint32_t template_idx;
          struct pvr_bo *pvr_bo;
 
-         template_idx =
-            pvr_clear_template_idx_from_aspect(attachment->aspectMask);
+         assert(template_idx < PVR_STATIC_CLEAR_VARIANT_COUNT);
          template =
             cmd_buffer->device->static_clear_state.ppp_templates[template_idx];
 

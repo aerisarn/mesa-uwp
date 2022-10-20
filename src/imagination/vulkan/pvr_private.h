@@ -342,6 +342,7 @@ struct pvr_device {
       struct pvr_bo *usc_multi_layer_vertex_shader_bo;
 
       struct pvr_static_clear_ppp_base ppp_base;
+      /* Indexable using VkImageAspectFlags. */
       struct pvr_static_clear_ppp_template
          ppp_templates[PVR_STATIC_CLEAR_VARIANT_COUNT];
 

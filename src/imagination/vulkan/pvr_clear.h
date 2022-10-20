@@ -75,13 +75,7 @@ static_assert(PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE + 1 ==
                  PVR_STATIC_CLEAR_PDS_STATE_COUNT,
               "pvr_static_clear_ppp_pds_state_type might require fixing.");
 
-enum pvr_static_clear_variant_bits {
-   PVR_STATIC_CLEAR_DEPTH_BIT = BITFIELD_BIT(0),
-   PVR_STATIC_CLEAR_STENCIL_BIT = BITFIELD_BIT(1),
-   PVR_STATIC_CLEAR_COLOR_BIT = BITFIELD_BIT(2),
-};
-
-#define PVR_STATIC_CLEAR_VARIANT_COUNT (PVR_STATIC_CLEAR_COLOR_BIT << 1U)
+#define PVR_STATIC_CLEAR_VARIANT_COUNT (VK_IMAGE_ASPECT_STENCIL_BIT << 1U)
 
 struct pvr_bo;
 struct pvr_cmd_buffer;
