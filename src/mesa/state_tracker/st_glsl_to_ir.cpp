@@ -105,7 +105,6 @@ extern "C" {
 
 /**
  * Link a shader.
- * Called via ctx->Driver.LinkShader()
  */
 GLboolean
 st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
