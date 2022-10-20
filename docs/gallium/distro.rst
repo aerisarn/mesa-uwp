@@ -53,7 +53,7 @@ AMD radeonsi
 
 Driver for the AMD Southern Islands family of GPUs.
 
-freedreno
+Freedreno
 ^^^^^^^^^
 
 Driver for Qualcomm Adreno a2xx, a3xx, and a4xx series of GPUs.

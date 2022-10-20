@@ -110,7 +110,7 @@ CPU Tracing
 Mesa's CPU tracepoints (``MESA_TRACE_*``) use Perfetto track events when
 Perfetto is enabled.  They use ``mesa.default`` and ``mesa.slow`` categories.
 
-Currently, only EGL and freedreno have CPU tracepoints.
+Currently, only EGL and Freedreno have CPU tracepoints.
 
 Vulkan data sources
 ~~~~~~~~~~~~~~~~~~~

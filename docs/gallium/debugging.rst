@@ -88,7 +88,7 @@ Number of threads that the llvmpipe driver should use.
 
 .. envvar:: FD_MESA_DEBUG <flags> (0x0)
 
-Debug :ref:`flags` for the freedreno driver.
+Debug :ref:`flags` for the Freedreno driver.
 
 
 .. _flags:
