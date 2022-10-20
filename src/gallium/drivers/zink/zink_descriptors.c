@@ -807,9 +807,9 @@ get_descriptor_set(struct zink_descriptor_pool *pool)
 
 static bool
 populate_sets(struct zink_context *ctx, struct zink_batch_state *bs,
-              struct zink_program *pg, uint8_t *changed_sets, VkDescriptorSet *sets)
+              struct zink_program *pg, uint8_t changed_sets, VkDescriptorSet *sets)
 {
-   u_foreach_bit(type, *changed_sets) {
+   u_foreach_bit(type, changed_sets) {
       if (pg->dd.pool_key[type]) {
          struct zink_descriptor_pool *pool = get_descriptor_pool(ctx, pg, type, bs, pg->is_compute);
          sets[type] = get_descriptor_set(pool);
@@ -831,7 +831,7 @@ zink_descriptors_update_masked(struct zink_context *ctx, bool is_compute, uint8_
    if (!pg->dd.binding_usage || (!changed_sets && !bind_sets))
       return;
 
-   if (!populate_sets(ctx, bs, pg, &changed_sets, desc_sets)) {
+   if (!populate_sets(ctx, bs, pg, changed_sets, desc_sets)) {
       debug_printf("ZINK: couldn't get descriptor sets!\n");
       return;
    }
