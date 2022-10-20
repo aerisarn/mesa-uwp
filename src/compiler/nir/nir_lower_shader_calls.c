@@ -1884,9 +1884,11 @@ nir_lower_shader_calls(nir_shader *shader,
    }
 
    NIR_PASS_V(shader, nir_lower_stack_to_scratch, options->address_format);
+   nir_opt_cse(shader);
    for (unsigned i = 0; i < num_calls; i++) {
       NIR_PASS_V(resume_shaders[i], nir_lower_stack_to_scratch,
                  options->address_format);
+      nir_opt_cse(resume_shaders[i]);
    }
 
    *resume_shaders_out = resume_shaders;
