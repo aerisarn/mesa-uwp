@@ -131,15 +131,19 @@ enum zink_blit_flags {
 };
 
 /* descriptor types; also the ordering of the sets
- * ...except that ZINK_DESCRIPTOR_BASE_TYPES is actually set 0, which is the uniform data (UBO0) for all stages
+ * ...except that ZINK_DESCRIPTOR_BASE_TYPES is actually ZINK_DESCRIPTOR_TYPE_UNIFORMS,
+ * and all base type values are thus +1 to get the set id (using screen->desc_set_id[idx])
  */
 enum zink_descriptor_type {
    ZINK_DESCRIPTOR_TYPE_UBO,
    ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW,
    ZINK_DESCRIPTOR_TYPE_SSBO,
    ZINK_DESCRIPTOR_TYPE_IMAGE,
-   ZINK_DESCRIPTOR_BASE_TYPES,
+   ZINK_DESCRIPTOR_BASE_TYPES, /**< the count/iterator for basic descriptor types */
    ZINK_DESCRIPTOR_BINDLESS,
+   ZINK_DESCRIPTOR_ALL_TYPES,
+   ZINK_DESCRIPTOR_TYPE_UNIFORMS = ZINK_DESCRIPTOR_BASE_TYPES, /**< this is aliased for convenience */
+   ZINK_DESCRIPTOR_NON_BINDLESS_TYPES = ZINK_DESCRIPTOR_BASE_TYPES + 1, /**< for struct sizing */
 };
 
 enum zink_descriptor_mode {
@@ -387,9 +391,9 @@ struct zink_program_descriptor_data {
    /* all the pool keys for the program */
    struct zink_descriptor_pool_key *pool_key[ZINK_DESCRIPTOR_BASE_TYPES]; //push set doesn't need one
    /* all the layouts for the program */
-   struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_BASE_TYPES + 1];
+   struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES];
    /* all the templates for the program */
-   VkDescriptorUpdateTemplate templates[ZINK_DESCRIPTOR_BASE_TYPES + 1];
+   VkDescriptorUpdateTemplate templates[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES];
 };
 
 struct zink_descriptor_pool {
@@ -432,7 +436,7 @@ struct zink_batch_descriptor_data {
    /* the current set layout */
    VkDescriptorSetLayout dsl[2][ZINK_DESCRIPTOR_BASE_TYPES]; //gfx, compute
    /* the current set for a given type; used for rebinding if pipeline compat id changes and current set must be rebound */
-   VkDescriptorSet sets[2][ZINK_DESCRIPTOR_BASE_TYPES + 1]; //gfx, compute
+   VkDescriptorSet sets[2][ZINK_DESCRIPTOR_NON_BINDLESS_TYPES]; //gfx, compute
    /* mask of push descriptor usage */
    unsigned push_usage[2]; //gfx, compute
 };
@@ -824,7 +828,7 @@ struct zink_program {
 
    uint32_t compat_id;
    VkPipelineLayout layout;
-   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_BASE_TYPES + 2]; // one for each type + push + bindless
+   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_ALL_TYPES]; // one for each type + push + bindless
    unsigned num_dsl;
 
    bool removed;
