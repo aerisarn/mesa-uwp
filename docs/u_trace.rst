@@ -21,7 +21,7 @@ Usage
 
 u_trace is controlled by environment variables:
 
-:envvar:`GPU_TRACES`
+:envvar:`MESA_GPU_TRACES`
    controls whether u_trace is enabled and trace output
 
    ``print``
@@ -38,7 +38,7 @@ u_trace is controlled by environment variables:
       traces can be collected without setting this but it may miss some
       events prior to the tracing session being started.
 
-:envvar:`GPU_TRACEFILE`
+:envvar:`MESA_GPU_TRACEFILE`
    specifies a file where to write the output instead of ``stdout``
 
 :envvar:`*_GPU_TRACEPOINT`
