@@ -1088,7 +1088,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
       iris_bo_wait_rendering(batch->bo); /* if execbuf failed; this is a nop */
    }
 
-   if (u_trace_context_actively_tracing(&ice->ds.trace_context))
+   if (u_trace_should_process(&ice->ds.trace_context))
       iris_utrace_flush(batch, submission_id);
 
    /* Start a new batch buffer. */

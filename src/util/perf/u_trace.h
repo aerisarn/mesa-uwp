@@ -318,8 +318,11 @@ u_trace_enabled(struct u_trace_context *utctx) {
    return p_atomic_read_relaxed(&utctx->enabled_traces) != 0;
 }
 
+/**
+ * Return whether chunks should be processed or not.
+ */
 static ALWAYS_INLINE bool
-u_trace_context_actively_tracing(struct u_trace_context *utctx) {
+u_trace_should_process(struct u_trace_context *utctx) {
    return p_atomic_read_relaxed(&utctx->enabled_traces) & U_TRACE_TYPE_REQUIRE_PROCESSING;
 }
 
