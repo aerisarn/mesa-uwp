@@ -116,7 +116,7 @@ Begin by saving your current directory location:
         
 
 -  VMware Linux guest kernel module. Note that this repo contains the
-   complete DRM and TTM code. The vmware-specific driver is really only
+   complete DRM and TTM code. The VMware-specific driver is really only
    the files prefixed with vmwgfx.
 
    ::
