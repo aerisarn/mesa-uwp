@@ -870,7 +870,7 @@ RADV driver environment variables
    ``liveinfo``
       print liveness and register demand information before scheduling
 
-radeonsi driver environment variables
+RadeonSI driver environment variables
 -------------------------------------
 
 :envvar:`radeonsi_no_infinite_interp`

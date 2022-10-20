@@ -7,7 +7,7 @@ but only on the 21.3.x branch, and only for critical fixes.
 
 These drivers include:
 
--  radeon
+-  Radeon
 -  r200
 -  i915
 -  i965

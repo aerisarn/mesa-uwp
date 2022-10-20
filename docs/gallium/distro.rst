@@ -48,7 +48,7 @@ ATI/AMD r600
 
 Driver for the ATI/AMD r600, r700, Evergreen and Northern Islands families of GPUs.
 
-AMD radeonsi
+AMD RadeonSI
 ^^^^^^^^^^^^
 
 Driver for the AMD Southern Islands family of GPUs.
