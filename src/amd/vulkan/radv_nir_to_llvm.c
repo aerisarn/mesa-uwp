@@ -668,7 +668,6 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
             packed = packf(&ctx->ac, pack_args);
             args->out[chan] = ac_to_float(&ctx->ac, packed);
          }
-         args->compr = 1; /* COMPR flag */
       }
 
       /* Pack i16/u16. */
@@ -681,8 +680,16 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
             packed = packi(&ctx->ac, pack_args, is_int8 ? 8 : is_int10 ? 10 : 16, chan == 1);
             args->out[chan] = ac_to_float(&ctx->ac, packed);
          }
-         args->compr = 1; /* COMPR flag */
       }
+
+      if (packf || packi) {
+         if (ctx->options->gfx_level >= GFX11) {
+            args->enabled_channels = 0x3;
+         } else {
+            args->compr = 1; /* COMPR flag */
+         }
+      }
+
       return;
    }
 
