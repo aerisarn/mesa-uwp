@@ -683,7 +683,7 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = gdata;
    VkPipeline pipeline;
    if (pc_entry->gkey)
-      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->ikey->pipeline, pc_entry->gkey->pipeline, pc_entry->okey->pipeline, false);
+      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->ikey->pipeline, pc_entry->gkey->pipeline, pc_entry->okey->pipeline, true);
    else
       pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
    if (pipeline) {
