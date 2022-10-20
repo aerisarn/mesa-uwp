@@ -37,7 +37,6 @@
 
 /* For util_set_thread_affinity to size the mask. */
 #define UTIL_MAX_CPUS               1024  /* this should be enough */
-#define UTIL_MAX_L3_CACHES          UTIL_MAX_CPUS
 
 /* Some highly performance-sensitive thread-local variables like the current GL
  * context are declared with the initial-exec model on Linux.  glibc allocates a
