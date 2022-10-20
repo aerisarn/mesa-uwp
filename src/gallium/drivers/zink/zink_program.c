@@ -1135,7 +1135,7 @@ unsigned
 zink_program_num_bindings(const struct zink_program *pg, bool is_compute)
 {
    unsigned num_bindings = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++)
       num_bindings += zink_program_num_bindings_typed(pg, i, is_compute);
    return num_bindings;
 }

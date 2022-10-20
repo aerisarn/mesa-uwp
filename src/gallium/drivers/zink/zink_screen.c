@@ -2435,7 +2435,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    if ((zink_debug & ZINK_DEBUG_COMPACT) ||
        screen->info.props.limits.maxBoundDescriptorSets < ZINK_MAX_DESCRIPTOR_SETS) {
-      screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
+      screen->desc_set_id[ZINK_DESCRIPTOR_BASE_TYPES] = 0;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 1;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
@@ -2443,7 +2443,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 3;
       screen->compact_descriptors = true;
    } else {
-      screen->desc_set_id[ZINK_DESCRIPTOR_TYPES] = 0;
+      screen->desc_set_id[ZINK_DESCRIPTOR_BASE_TYPES] = 0;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_UBO] = 1;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = 2;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;

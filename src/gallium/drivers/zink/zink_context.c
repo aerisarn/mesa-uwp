@@ -2659,7 +2659,7 @@ update_resource_refs_for_stage(struct zink_context *ctx, gl_shader_stage stage)
       [ZINK_DESCRIPTOR_TYPE_SSBO] = ctx->di.num_ssbos[stage],
       [ZINK_DESCRIPTOR_TYPE_IMAGE] = ctx->di.num_images[stage]
    };
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++) {
       for (unsigned j = 0; j < max_slot[i]; j++) {
          if (ctx->di.descriptor_res[i][stage][j]) {
             struct zink_resource *res = ctx->di.descriptor_res[i][stage][j];
