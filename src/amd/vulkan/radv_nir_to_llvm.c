@@ -66,6 +66,7 @@ struct radv_shader_context {
    LLVMValueRef gsvs_ring[4];
    LLVMValueRef hs_ring_tess_offchip;
    LLVMValueRef hs_ring_tess_factor;
+   LLVMValueRef attr_ring;
 
    uint64_t output_mask;
 };
@@ -1257,6 +1258,14 @@ ac_setup_rings(struct radv_shader_context *ctx)
       ctx->hs_ring_tess_factor = ac_build_load_to_sgpr(
          &ctx->ac, ring_offsets, LLVMConstInt(ctx->ac.i32, RING_HS_TESS_FACTOR, false));
    }
+
+   if (ctx->options->gfx_level >= GFX11 &&
+       ((ctx->stage == MESA_SHADER_VERTEX && !ctx->shader_info->vs.as_es && !ctx->shader_info->vs.as_ls) ||
+        (ctx->stage == MESA_SHADER_TESS_EVAL && !ctx->shader_info->tes.as_es) ||
+        (ctx->stage == MESA_SHADER_GEOMETRY))) {
+      ctx->attr_ring = ac_build_load_to_sgpr(&ctx->ac, ring_offsets,
+                                             LLVMConstInt(ctx->ac.i32, RING_PS_ATTR, false));
+   }
 }
 
 /* Fixup the HW not emitting the TCS regs if there are no HS threads. */
@@ -1321,6 +1330,8 @@ static LLVMValueRef radv_intrinsic_load(struct ac_shader_abi *abi, nir_intrinsic
       return ctx->hs_ring_tess_offchip;
    case nir_intrinsic_load_ring_esgs_amd:
       return ctx->esgs_ring;
+   case nir_intrinsic_load_ring_attr_amd:
+      return ctx->attr_ring;
    default:
       return NULL;
    }
