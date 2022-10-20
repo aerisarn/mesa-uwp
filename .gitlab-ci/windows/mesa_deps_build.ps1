@@ -54,27 +54,6 @@ if (!$buildstatus) {
   Exit 1
 }
 
-Get-Date
-Write-Host "Cloning LLVM release/12.x"
-git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project deps/llvm-project
-if (!$?) {
-  Write-Host "Failed to clone LLVM repository"
-  Exit 1
-}
-
-# ideally we want to use a tag here insted of a sha,
-# but as of today, SPIRV-LLVM-Translator doesn't have
-# a tag matching LLVM 12.0.0
-Get-Date
-Write-Host "Cloning SPIRV-LLVM-Translator"
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
-if (!$?) {
-  Write-Host "Failed to clone SPIRV-LLVM-Translator repository"
-  Exit 1
-}
-Push-Location deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
-git checkout 5b641633b3bcc3251a52260eee11db13a79d7258
-Pop-Location
 
 Get-Date
 Write-Host "Cloning libva"
@@ -104,6 +83,28 @@ if (!$buildstatus) {
   Write-Host "Failed to compile libva"
   Exit 1
 }
+
+Get-Date
+Write-Host "Cloning LLVM release/12.x"
+git clone -b release/12.x --depth=1 https://github.com/llvm/llvm-project deps/llvm-project
+if (!$?) {
+  Write-Host "Failed to clone LLVM repository"
+  Exit 1
+}
+
+# ideally we want to use a tag here insted of a sha,
+# but as of today, SPIRV-LLVM-Translator doesn't have
+# a tag matching LLVM 12.0.0
+Get-Date
+Write-Host "Cloning SPIRV-LLVM-Translator"
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
+if (!$?) {
+  Write-Host "Failed to clone SPIRV-LLVM-Translator repository"
+  Exit 1
+}
+Push-Location deps/llvm-project/llvm/projects/SPIRV-LLVM-Translator
+git checkout 5b641633b3bcc3251a52260eee11db13a79d7258
+Pop-Location
 
 Get-Date
 # slightly convoluted syntax but avoids the CWD being under the PS filesystem meta-path
