@@ -18,7 +18,7 @@ variables:
    KERNEL_ROOTFS_TAG: "2022-10-20-bindgen-zlib-cve"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
-   WINDOWS_X64_VS_TAG: "2022-08-17-bump"
+   WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
    WINDOWS_X64_BUILD_TAG: "2022-10-18-wrap-nodownload-va"
