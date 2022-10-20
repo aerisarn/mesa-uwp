@@ -924,6 +924,23 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       pos_args[0].out[3] = ctx->ac.f32_1; /* W */
    }
 
+   /* Add clip distance outputs manually if they're missing. */
+   uint8_t clip_cull_mask = outinfo->clip_dist_mask | outinfo->cull_dist_mask;
+   for (i = 2; i < 4; i++) {
+      uint8_t mask = 0xf << (i * 4 - 8);
+      if ((clip_cull_mask & mask) && !pos_args[i].out[0]) {
+         pos_args[i].enabled_channels = 0x0;
+         pos_args[i].valid_mask = 0;
+         pos_args[i].done = 0;
+         pos_args[i].target = V_008DFC_SQ_EXP_POS + i;
+         pos_args[i].compr = 0;
+         pos_args[i].out[0] = ctx->ac.f32_0;
+         pos_args[i].out[1] = ctx->ac.f32_0;
+         pos_args[i].out[2] = ctx->ac.f32_0;
+         pos_args[i].out[3] = ctx->ac.f32_0;
+      }
+   }
+
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_layer ||
        outinfo->writes_viewport_index || outinfo->writes_primitive_shading_rate) {
       pos_args[1].enabled_channels = ((outinfo->writes_pointsize == true ? 1 : 0) |
