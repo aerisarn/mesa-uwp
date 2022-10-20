@@ -2106,13 +2106,47 @@ cp_run_cl(uint32_t *dwords, uint32_t sizedwords, int level)
 }
 
 static void
-cp_nop(uint32_t *dwords, uint32_t sizedwords, int level)
+print_nop_tail_string(uint32_t *dwords, uint32_t sizedwords)
 {
    const char *buf = (void *)dwords;
-   int i;
+   for (int i = 0; i < 4 * sizedwords; i++) {
+      if (buf[i] == '\0')
+         break;
+      if (isascii(buf[i]))
+         printf("%c", buf[i]);
+   }
+}
 
+static void
+cp_nop(uint32_t *dwords, uint32_t sizedwords, int level)
+{
    if (quiet(3))
       return;
+
+   /* NOP is used to encode special debug strings by Turnip.
+    * See tu_cs_emit_debug_magic_strv(...)
+    */
+   static int scope_level = 0;
+   uint32_t identifier = dwords[0];
+   bool is_special = false;
+   if (identifier == CP_NOP_MESG) {
+      printf("### ");
+      is_special = true;
+   } else if (identifier == CP_NOP_BEGN) {
+      printf(">>> #%d: ", ++scope_level);
+      is_special = true;
+   } else if (identifier == CP_NOP_END) {
+      printf("<<< #%d: ", scope_level--);
+      is_special = true;
+   }
+
+   if (is_special) {
+      if (sizedwords > 1) {
+         print_nop_tail_string(dwords + 1, sizedwords - 1);
+         printf("\n");
+      }
+      return;
+   }
 
    // blob doesn't use CP_NOP for string_marker but it does
    // use it for things that end up looking like, but aren't
@@ -2120,12 +2154,7 @@ cp_nop(uint32_t *dwords, uint32_t sizedwords, int level)
    if (!options->decode_markers)
       return;
 
-   for (i = 0; i < 4 * sizedwords; i++) {
-      if (buf[i] == '\0')
-         break;
-      if (isascii(buf[i]))
-         printf("%c", buf[i]);
-   }
+   print_nop_tail_string(dwords, sizedwords);
    printf("\n");
 }
 
