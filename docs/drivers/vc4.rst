@@ -76,7 +76,7 @@ the problem.  Traces attached to bug reports should ideally be small.
 For GPU hangs, if you can get a short apitrace that produces the
 problem, that's still the best.  If the problem takes a long time to
 reproduce or you can't capture it in a trace, describing how to
-reproduce and including a gpu hang dump would be the most
+reproduce and including a GPU hang dump would be the most
 useful. Install `vc4-gpu-tools
 <https://github.com/anholt/vc4-gpu-tools/>` and use
 ``vc4_dump_hang_state my-app.hang``. Sometimes the hang file will

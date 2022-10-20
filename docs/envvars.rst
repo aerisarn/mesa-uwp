@@ -282,7 +282,7 @@ Intel driver environment variables
       emit messages binding tables
    ``capture-all``
       flag all buffers to be captured by the kernel driver when
-      generating an error stage after a gpu hang
+      generating an error stage after a GPU hang
    ``clip``
       emit messages about the clip unit (for old gens, includes the CLIP
       program)
