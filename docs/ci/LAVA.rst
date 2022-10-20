@@ -39,7 +39,7 @@ Instantiate your boards by creating them in the UI or at the command
 line attached to that device type, then populate their dictionary
 (using an "extends" line probably referencing the board's template in
 ``/etc/lava-dispatcher/device-types``).  Now, go find a relevant
-healthcheck job for your board as a test job definition, or cobble
+health check job for your board as a test job definition, or cobble
 something together from a board that boots using the same boot_method
 and some public images, and figure out how to get your boards booting.
 
