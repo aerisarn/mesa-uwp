@@ -30,16 +30,16 @@ if (!$buildstatus) {
 }
 
 Write-Host "Cloning zlib"
-git clone -b v1.2.11 --depth=1 https://github.com/madler/zlib deps/zlib
+git clone -b v1.2.13 --depth=1 https://github.com/madler/zlib deps/zlib
 if (!$?) {
   Write-Host "Failed to clone zlib repository"
   Exit 1
 }
 Write-Host "Downloading zlib meson build files"
-Invoke-WebRequest -Uri "https://github.com/mesonbuild/zlib/releases/download/1.2.11-5/zlib.zip" -OutFile deps/zlib.zip
+Invoke-WebRequest -Uri "https://wrapdb.mesonbuild.com/v2/zlib_1.2.13-1/get_patch" -OutFile deps/zlib.zip
 Expand-Archive -Path deps/zlib.zip -Destination deps/zlib
 # Wrap archive puts build files in a version subdir
-Move-Item deps/zlib/zlib-1.2.11/* deps/zlib
+Move-Item deps/zlib/zlib-1.2.13/* deps/zlib
 $zlib_build = New-Item -ItemType Directory -Path ".\deps\zlib" -Name "build"
 Push-Location -Path $zlib_build.FullName
 meson .. --backend=ninja -Dprefix="$depsInstallPath" --default-library=static --buildtype=release -Db_vscrt=mt && `
