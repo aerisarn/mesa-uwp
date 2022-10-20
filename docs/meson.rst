@@ -404,7 +404,7 @@ This file can live at any location, but you can use the bare filename
 Below are a few example of cross files, but keep in mind that you will
 likely have to alter them for your system.
 
-Those running on ArchLinux can use the AUR-maintained packages for some
+Those running on Arch Linux can use the AUR-maintained packages for some
 of those, as they'll have the right values for your system:
 
 -  `meson-cross-x86-linux-gnu <https://aur.archlinux.org/packages/meson-cross-x86-linux-gnu>`__

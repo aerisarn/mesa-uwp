@@ -12,4 +12,4 @@ There are some general directions:
 -  Fedora - Corp: erp and che
 -  Fedora - Copr: erp and che
 -  OpenSuse/SLES - OBS: X11:XOrg and pontostroy:X11
--  Gentoo/Archlinux - officially provided/supported
+-  Gentoo/Arch Linux - officially provided/supported
