@@ -35,9 +35,6 @@
 #include "c11/threads.h"
 #include "detect_os.h"
 
-/* For util_set_thread_affinity to size the mask. */
-#define UTIL_MAX_CPUS               1024  /* this should be enough */
-
 /* Some highly performance-sensitive thread-local variables like the current GL
  * context are declared with the initial-exec model on Linux.  glibc allocates a
  * fixed number of extra slots for initial-exec TLS variables at startup, and
