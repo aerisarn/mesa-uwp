@@ -147,17 +147,15 @@ struct agx_varyings_fs {
    } bindings[AGX_MAX_CF_BINDINGS];
 };
 
-struct agx_varyings {
-   union {
-      struct agx_varyings_vs vs;
-      struct agx_varyings_fs fs;
-   };
+union agx_varyings {
+   struct agx_varyings_vs vs;
+   struct agx_varyings_fs fs;
 };
 
 struct agx_shader_info {
    unsigned push_ranges;
    struct agx_push push[AGX_MAX_PUSH_RANGES];
-   struct agx_varyings varyings;
+   union agx_varyings varyings;
 
    /* Does the shader read the tilebuffer? */
    bool reads_tib;
