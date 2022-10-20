@@ -47,7 +47,7 @@ default:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: 34f4ade99434043f88e164933f570301fd18b125
+    ref: ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
     file:
       - '/templates/ci-fairy.yml'
   - project: 'freedesktop/ci-templates'
