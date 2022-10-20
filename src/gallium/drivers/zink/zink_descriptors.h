@@ -163,8 +163,6 @@ void
 zink_descriptors_deinit(struct zink_context *ctx);
 
 void
-zink_descriptor_set_update(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set);
-void
 zink_descriptors_update_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets);
 #ifdef __cplusplus
 }

@@ -822,13 +822,6 @@ populate_sets(struct zink_context *ctx, struct zink_batch_state *bs,
 }
 
 void
-zink_descriptor_set_update(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, set, pg->dd.templates[type + 1], ctx);
-}
-
-void
 zink_descriptors_update_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
