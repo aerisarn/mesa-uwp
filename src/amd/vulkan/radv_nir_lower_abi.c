@@ -45,7 +45,7 @@ load_ring(nir_builder *b, unsigned ring, lower_abi_state *s)
    struct ac_arg arg =
       b->shader->info.stage == MESA_SHADER_TASK ?
       s->args->task_ring_offsets :
-      s->args->ring_offsets;
+      s->args->ac.ring_offsets;
 
    nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, arg);
    ring_offsets = nir_pack_64_2x32_split(b, nir_channel(b, ring_offsets, 0), nir_channel(b, ring_offsets, 1));
@@ -361,7 +361,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_sample_positions_amd: {
       uint32_t sample_pos_offset = (RING_PS_SAMPLE_POSITIONS * 16) - 8;
 
-      nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, s->args->ring_offsets);
+      nir_ssa_def *ring_offsets = ac_nir_load_arg(b, &s->args->ac, s->args->ac.ring_offsets);
       nir_ssa_def *addr = nir_pack_64_2x32(b, ring_offsets);
       nir_ssa_def *sample_id = nir_umin(b, intrin->src[0].ssa, nir_imm_int(b, 7));
       nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3); /* 2 floats containing samplepos.xy */

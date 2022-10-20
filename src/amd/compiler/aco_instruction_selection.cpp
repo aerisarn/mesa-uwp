@@ -11319,7 +11319,7 @@ add_startpgm(struct isel_context* ctx)
    /* Stash these in the program so that they can be accessed later when
     * handling spilling.
     */
-   ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
+   ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ac.ring_offsets);
    if (ctx->program->gfx_level <= GFX10_3) {
       ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
 
