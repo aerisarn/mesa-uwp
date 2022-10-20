@@ -365,6 +365,7 @@ static const struct debug_named_value config_control[] = {
 #ifdef HAVE_PERFETTO
    { "perfetto", U_TRACE_TYPE_PERFETTO_ENV, "Enable perfetto" },
 #endif
+   { "markers", U_TRACE_TYPE_MARKERS, "Enable marker trace"},
    DEBUG_NAMED_VALUE_END
 };
 

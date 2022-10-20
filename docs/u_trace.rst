@@ -37,6 +37,9 @@ u_trace is controlled by environment variables:
       enables perfetto instrumentation prior to connecting, perfetto
       traces can be collected without setting this but it may miss some
       events prior to the tracing session being started.
+   ``markers``
+      enables marker instrumentation, will print utrace markers into
+      the CS which can then be viewed by dumping the CS from the driver.
 
 :envvar:`MESA_GPU_TRACEFILE`
    specifies a file where to write the output instead of ``stdout``

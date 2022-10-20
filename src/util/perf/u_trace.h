@@ -137,6 +137,7 @@ enum u_trace_type {
    U_TRACE_TYPE_JSON = 1u << 1,
    U_TRACE_TYPE_PERFETTO_ACTIVE = 1u << 2,
    U_TRACE_TYPE_PERFETTO_ENV = 1u << 3,
+   U_TRACE_TYPE_MARKERS = 1u << 4,
 
    U_TRACE_TYPE_PRINT_JSON = U_TRACE_TYPE_PRINT | U_TRACE_TYPE_JSON,
    U_TRACE_TYPE_PERFETTO = U_TRACE_TYPE_PERFETTO_ACTIVE | U_TRACE_TYPE_PERFETTO_ENV,
@@ -324,6 +325,15 @@ u_trace_enabled(struct u_trace_context *utctx) {
 static ALWAYS_INLINE bool
 u_trace_should_process(struct u_trace_context *utctx) {
    return p_atomic_read_relaxed(&utctx->enabled_traces) & U_TRACE_TYPE_REQUIRE_PROCESSING;
+}
+
+/**
+ * Return whether to emit markers into the command stream even if the queue
+ * isn't active.
+ */
+static ALWAYS_INLINE bool
+u_trace_markers_enabled(struct u_trace_context *utctx) {
+   return p_atomic_read_relaxed(&utctx->enabled_traces) & U_TRACE_TYPE_MARKERS;
 }
 
 #ifdef __cplusplus
