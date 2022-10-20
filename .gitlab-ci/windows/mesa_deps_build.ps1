@@ -10,6 +10,7 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "deps" | Out-Null
 
 $depsInstallPath="C:\mesa-deps"
 
+Get-Date
 Write-Host "Cloning DirectX-Headers"
 git clone -b v1.606.4 --depth=1 https://github.com/microsoft/DirectX-Headers deps/DirectX-Headers
 if (!$?) {
@@ -29,6 +30,7 @@ if (!$buildstatus) {
   Exit 1
 }
 
+Get-Date
 Write-Host "Cloning zlib"
 git clone -b v1.2.13 --depth=1 https://github.com/madler/zlib deps/zlib
 if (!$?) {
