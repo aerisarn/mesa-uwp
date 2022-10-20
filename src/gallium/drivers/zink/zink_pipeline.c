@@ -321,7 +321,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       }
 
       if (hw_rast_state->line_stipple_enable) {
-         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
+         if (!screen->info.have_EXT_extended_dynamic_state3)
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
          rast_line_state.stippledLineEnable = VK_TRUE;
       }
 
