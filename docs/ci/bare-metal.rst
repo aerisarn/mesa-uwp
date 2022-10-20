@@ -37,10 +37,10 @@ rather than initramfs.
 See `src/freedreno/ci/gitlab-ci.yml` for an example of fastboot on DB410c and
 DB820c (freedreno-a306 and freedreno-a530).
 
-Requirements (servo)
+Requirements (Servo)
 --------------------
 
-For servo-connected boards, we can use the EC connection for power
+For Servo-connected boards, we can use the EC connection for power
 control to reboot the board.  However, loading a kernel is not as easy
 as fastboot, so we assume your bootloader can do TFTP, and that your
 gitlab-runner mounts the runner's tftp directory specific to the board
@@ -74,8 +74,8 @@ call "servo"::
   dhcp-option=tag:cheza1,option:root-path,/srv/nfs/cheza1
   dhcp-option=tag:cheza2,option:root-path,/srv/nfs/cheza2
 
-See `src/freedreno/ci/gitlab-ci.yml` for an example of servo on cheza.  Note
-that other servo boards in CI are managed using LAVA.
+See `src/freedreno/ci/gitlab-ci.yml` for an example of Servo on cheza.  Note
+that other Servo boards in CI are managed using LAVA.
 
 Requirements (POE)
 ------------------
@@ -152,7 +152,7 @@ something like this to register a fastboot board:
        --docker-privileged \
        --non-interactive
 
-For a servo board, you'll need to also volume mount the board's NFS
+For a Servo board, you'll need to also volume mount the board's NFS
 root dir at /nfs and TFTP kernel directory at /tftp.
 
 The registration token has to come from a freedesktop.org GitLab admin
@@ -166,7 +166,7 @@ into that pool.
 We need privileged mode and the /dev bind mount in order to get at the
 serial console and fastboot USB devices (--device arguments don't
 apply to devices that show up after container start, which is the case
-with fastboot, and the servo serial devices are actually links to
+with fastboot, and the Servo serial devices are actually links to
 /dev/pts).  We use host network mode so that we can spin up a nginx
 server to collect XML results for fastboot.
 
