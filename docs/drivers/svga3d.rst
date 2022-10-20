@@ -38,10 +38,10 @@ SVGA_VGPU10=0. You will then have OpenGL 2.1 support. This may be useful
 to work around application bugs (such as incorrect use of the OpenGL 3.x
 core profile).
 
-Most modern Linux distros include the SVGA3D driver so end users
-shouldn't be concerned with this information. But if your distro lacks
-the driver or you want to update to the latest code these instructions
-explain what to do.
+Most modern Linux distributions include the SVGA3D driver so end users
+shouldn't be concerned with this information. But if your distributions
+lacks the driver or you want to update to the latest code these
+instructions explain what to do.
 
 For more information about the X components see these wiki pages at
 x.org:
@@ -93,7 +93,7 @@ Prerequisites
       sudo yum install makedepend flex bison
         
 
-Depending on your Linux distro, other packages may be needed. Meson
+Depending on your Linux distribution, other packages may be needed. Meson
 should tell you what's missing.
 
 Getting the Latest Source Code
@@ -124,9 +124,9 @@ Begin by saving your current directory location:
       git clone git://anongit.freedesktop.org/git/mesa/vmwgfx
         
 
--  libdrm, a user-space library that interfaces with DRM. Most distros
-   ship with this but it's safest to install a newer version. To get the
-   latest code from Git:
+-  libdrm, a user-space library that interfaces with DRM. Most
+   distributions ship with this but it's safest to install a newer
+   version. To get the latest code from Git:
 
    ::
 
@@ -250,7 +250,7 @@ Building the Code
 
    .. note::
 
-      some distros put DRM kernel drivers in different directories.
+      some distributions put DRM kernel drivers in different directories.
       For example, sometimes vmwgfx.ko might be found in
       ``/lib/modules/{version}/extra/vmwgfx.ko`` or in
       ``/lib/modules/{version}/kernel/drivers/gpu/drm/vmwgfx/vmwgfx.ko``.
