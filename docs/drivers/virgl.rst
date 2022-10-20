@@ -83,4 +83,4 @@ mailing list: virglrenderer-devel@lists.freedesktop.org
 
 https://lists.freedesktop.org/mailman/listinfo/virglrenderer-devel
 
-irc: `#virgil3d on OFTC <irc://irc.oftc.net/virgil3d>`__.
+IRC: `#virgil3d on OFTC <irc://irc.oftc.net/virgil3d>`__.
