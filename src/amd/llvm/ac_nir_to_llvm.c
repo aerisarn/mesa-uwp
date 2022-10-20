@@ -5091,7 +5091,7 @@ static void visit_ssa_undef(struct ac_nir_context *ctx, const nir_ssa_undef_inst
    } else {
       LLVMValueRef zero = LLVMConstInt(type, 0, false);
       if (num_components > 1) {
-         zero = ac_build_gather_values_extended(&ctx->ac, &zero, 4, 0, false);
+         zero = ac_build_gather_values_extended(&ctx->ac, &zero, num_components, 0, false);
       }
       ctx->ssa_defs[instr->def.index] = zero;
    }
