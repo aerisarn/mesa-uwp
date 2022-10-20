@@ -70,6 +70,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
       DRI_CONF_ANV_ASSUME_FULL_SUBGROUPS(false)
       DRI_CONF_ANV_SAMPLE_MASK_OUT_OPENGL_BEHAVIOUR(false)
+      DRI_CONF_ANV_FP64_WORKAROUND_ENABLED(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -1095,6 +1096,8 @@ anv_init_dri_options(struct anv_instance *instance)
             driQueryOptionb(&instance->dri_options, "anv_sample_mask_out_opengl_behaviour");
     instance->lower_depth_range_rate =
             driQueryOptionf(&instance->dri_options, "lower_depth_range_rate");
+    instance->fp64_workaround_enabled =
+            driQueryOptionb(&instance->dri_options, "fp64_workaround_enabled");
 }
 
 VkResult anv_CreateInstance(

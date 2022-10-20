@@ -603,4 +603,8 @@
    DRI_CONF_OPT_B(anv_sample_mask_out_opengl_behaviour, def, \
                   "Ignore sample mask out when having single sampled target")
 
+#define DRI_CONF_ANV_FP64_WORKAROUND_ENABLED(def) \
+   DRI_CONF_OPT_B(fp64_workaround_enabled, def, \
+                  "Use softpf64 when the shader uses float64, but the device doesn't support that type")
+
 #endif

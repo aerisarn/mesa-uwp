@@ -1080,6 +1080,7 @@ struct anv_instance {
     bool                                        assume_full_subgroups;
     bool                                        limit_trig_input_range;
     bool                                        sample_mask_out_opengl_behaviour;
+    bool                                        fp64_workaround_enabled;
     float                                       lower_depth_range_rate;
 };
 
