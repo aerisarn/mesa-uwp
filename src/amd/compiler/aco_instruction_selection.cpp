@@ -10873,6 +10873,9 @@ create_vs_exports(isel_context* ctx)
    if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
       export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
 
+   if (ctx->program->gfx_level >= GFX11)
+      return;
+
    if (ctx->export_clip_dists) {
       if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
          export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, false, &next_pos);

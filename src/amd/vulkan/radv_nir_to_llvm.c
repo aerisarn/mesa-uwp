@@ -986,6 +986,9 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       ac_build_export(&ctx->ac, &pos_args[i]);
    }
 
+   if (ctx->options->gfx_level >= GFX11)
+      return;
+
    /* Build parameter exports */
    radv_build_param_exports(ctx, outputs, noutput, outinfo, export_clip_dists);
 }
