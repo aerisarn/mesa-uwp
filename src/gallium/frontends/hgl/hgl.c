@@ -273,14 +273,6 @@ hgl_destroy_st_framebuffer(struct hgl_buffer *buffer)
 }
 
 
-struct st_api*
-hgl_create_st_api()
-{
-	CALLED();
-	return st_gl_api_create();
-}
-
-
 struct st_visual*
 hgl_create_st_visual(ulong options)
 {
