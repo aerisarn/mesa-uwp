@@ -324,6 +324,11 @@ PUBLIC int open(const char *path, int flags, ...)
    mode_t mode = va_arg(ap, mode_t);
    va_end(ap);
 
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
+
    if (strcmp(path, render_node_path) != 0)
       return real_open(path, flags, mode);
 
@@ -363,6 +368,11 @@ PUBLIC int __xstat(int ver, const char *path, struct stat *st)
    if (render_node_minor == -1)
       return real___xstat(ver, path, st);
 
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
+
    /* Fool libdrm's probe of whether the /sys dir for this char dev is
     * there.
     */
@@ -396,6 +406,11 @@ PUBLIC int __xstat64(int ver, const char *path, struct stat64 *st)
     */
    if (render_node_minor == -1)
       return real___xstat64(ver, path, st);
+
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
 
    /* Fool libdrm's probe of whether the /sys dir for this char dev is
     * there.
@@ -465,6 +480,11 @@ PUBLIC int stat(const char* path, struct stat* stat_buf)
    if (render_node_minor == -1)
       return real_stat(path, stat_buf);
 
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
+
    /* Fool libdrm's probe of whether the /sys dir for this char dev is
     * there.
     */
@@ -497,6 +517,11 @@ PUBLIC int stat64(const char* path, struct stat64* stat_buf)
     */
    if (render_node_minor == -1)
       return real_stat64(path, stat_buf);
+
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
 
    /* Fool libdrm's probe of whether the /sys dir for this char dev is
     * there.
@@ -653,6 +678,11 @@ PUBLIC ssize_t
 readlink(const char *path, char *buf, size_t size)
 {
    init_shim();
+
+   if (hide_drm_device_path(path)) {
+      errno = ENOENT;
+      return -1;
+   }
 
    if (strcmp(path, subsystem_path) != 0)
       return real_readlink(path, buf, size);
