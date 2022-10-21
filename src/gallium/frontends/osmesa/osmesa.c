@@ -837,8 +837,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 GLAPI OSMesaContext GLAPIENTRY
 OSMesaGetCurrentContext(void)
 {
-   struct st_api *stapi = get_st_api();
-   struct st_context_iface *st = stapi->get_current(stapi);
+   struct st_context_iface *st = st_api_get_current();
    return st ? (OSMesaContext) st->st_manager_private : NULL;
 }
 

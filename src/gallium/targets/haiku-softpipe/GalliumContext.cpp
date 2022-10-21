@@ -173,7 +173,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	struct st_context_iface* shared = NULL;
 
 	if (fOptions & BGL_SHARE_CONTEXT) {
-		shared = fDisplay->api->get_current(fDisplay->api);
+		shared = st_api_get_current();
 		TRACE("shared context: %p\n", shared);
 	}
 

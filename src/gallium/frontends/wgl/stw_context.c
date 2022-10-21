@@ -54,7 +54,7 @@ stw_current_context(void)
 {
    struct st_context_iface *st;
 
-   st = (stw_dev) ? stw_dev->stapi->get_current(stw_dev->stapi) : NULL;
+   st = (stw_dev) ? st_api_get_current() : NULL;
 
    return (struct stw_context *) ((st) ? st->st_manager_private : NULL);
 }

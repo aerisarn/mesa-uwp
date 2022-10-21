@@ -542,12 +542,13 @@ struct st_api
                         struct st_context_iface *stctxi,
                         struct st_framebuffer_iface *stdrawi,
                         struct st_framebuffer_iface *streadi);
-
-   /**
-    * Get the currently bound context in the calling thread.
-    */
-   struct st_context_iface *(*get_current)(struct st_api *stapi);
 };
+
+/**
+ * Get the currently bound context in the calling thread.
+ */
+struct st_context_iface *
+st_api_get_current(void);
 
 /**
  * Notify the st manager the framebuffer interface object

@@ -269,7 +269,7 @@ dri_unbind_context(__DRIcontext * cPriv)
    struct st_context_iface *st = ctx->st;
    struct st_api *stapi = screen->st_api;
 
-   if (st == stapi->get_current(stapi)) {
+   if (st == st_api_get_current()) {
       if (st->thread_finish)
          st->thread_finish(st);
 
@@ -328,11 +328,7 @@ dri_make_current(__DRIcontext * cPriv,
 struct dri_context *
 dri_get_current(__DRIscreen *sPriv)
 {
-   struct dri_screen *screen = dri_screen(sPriv);
-   struct st_api *stapi = screen->st_api;
-   struct st_context_iface *st;
-
-   st = stapi->get_current(stapi);
+   struct st_context_iface *st = st_api_get_current();
 
    return (struct dri_context *) st ? st->st_manager_private : NULL;
 }

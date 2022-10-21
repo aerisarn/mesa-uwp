@@ -1327,7 +1327,7 @@ GLboolean XMesaUnbindContext( XMesaContext c )
 
 XMesaContext XMesaGetCurrentContext( void )
 {
-   struct st_context_iface *st = stapi->get_current(stapi);
+   struct st_context_iface *st = st_api_get_current();
    return (XMesaContext) (st) ? st->st_manager_private : NULL;
 }
 
@@ -1470,7 +1470,7 @@ PUBLIC void
 XMesaBindTexImage(Display *dpy, XMesaBuffer drawable, int buffer,
                   const int *attrib_list)
 {
-   struct st_context_iface *st = stapi->get_current(stapi);
+   struct st_context_iface *st = st_api_get_current();
    struct st_framebuffer_iface* stfbi = drawable->stfb;
    struct pipe_resource *res;
    int x, y, w, h;

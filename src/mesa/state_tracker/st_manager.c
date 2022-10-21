@@ -1153,8 +1153,8 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
 }
 
 
-static struct st_context_iface *
-st_api_get_current(struct st_api *stapi)
+struct st_context_iface *
+st_api_get_current(void)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct st_context *st = ctx ? ctx->st : NULL;
@@ -1454,7 +1454,6 @@ static const struct st_api st_gl_api = {
    .query_versions = st_api_query_versions,
    .create_context = st_api_create_context,
    .make_current = st_api_make_current,
-   .get_current = st_api_get_current,
 };
 
 
