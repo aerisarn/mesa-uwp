@@ -507,14 +507,6 @@ ir3_setup_used_key(struct ir3_shader *shader)
          key->rasterflat = true;
       }
 
-      if (info->inputs_read & VARYING_BIT_LAYER) {
-         key->layer_zero = true;
-      }
-
-      if (info->inputs_read & VARYING_BIT_VIEWPORT) {
-         key->view_zero = true;
-      }
-
       /* Only used for deciding on behavior of
        * nir_intrinsic_load_barycentric_sample and the centroid demotion
        * on older HW.
