@@ -120,15 +120,17 @@ agx_pack_memory_base(agx_index index, bool *flag)
    assert(index.size == AGX_SIZE_64);
    assert((index.value & 1) == 0);
 
+   /* Can't seem to access high uniforms from memory instructions */
+   assert(index.value < 0x100);
+
    if (index.type == AGX_INDEX_UNIFORM) {
-      assert(index.value < 0x200);
       *flag = 1;
-      return index.value;
    } else {
-      assert(index.value < 0x100);
+      assert(index.type == AGX_INDEX_REGISTER);
       *flag = 0;
-      return index.value;
    }
+
+   return index.value;
 }
 
 static unsigned
