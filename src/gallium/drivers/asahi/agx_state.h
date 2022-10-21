@@ -369,6 +369,12 @@ agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
       batch->bo_list.word_count *= 2;
    }
 
+   /* The batch holds a single reference to each BO in the batch, released when
+    * the batch finishes execution.
+    */
+   if (!BITSET_TEST(batch->bo_list.set, bo->handle))
+      agx_bo_reference(bo);
+
    BITSET_SET(batch->bo_list.set, bo->handle);
 }
 

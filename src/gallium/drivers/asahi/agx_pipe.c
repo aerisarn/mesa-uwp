@@ -567,6 +567,10 @@ agx_flush(struct pipe_context *pctx,
       agxdecode_next_frame();
    }
 
+   AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
+      agx_bo_unreference(agx_lookup_bo(dev, handle));
+   }
+
    memset(batch->bo_list.set, 0, batch->bo_list.word_count * sizeof(BITSET_WORD));
    agx_pool_cleanup(&ctx->batch->pool);
    agx_pool_cleanup(&ctx->batch->pipeline_pool);
