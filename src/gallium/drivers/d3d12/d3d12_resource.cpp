@@ -1041,7 +1041,7 @@ fill_buffer_location(struct d3d12_context *ctx,
    buf_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
    buf_loc.pResource = d3d12_resource_underlying(staging_res, &offset);
    buf_loc.PlacedFootprint = footprint;
-   buf_loc.PlacedFootprint.Offset += offset;
+   buf_loc.PlacedFootprint.Offset = offset;
    buf_loc.PlacedFootprint.Offset += trans->base.b.offset;
 
    if (util_format_has_depth(util_format_description(res->base.b.format)) &&
