@@ -1019,7 +1019,7 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
    bool no_error = false;
    unsigned ctx_flags = PIPE_CONTEXT_PREFER_THREADED;
 
-   if (!(stapi->profile_mask & (1 << attribs->profile)))
+   if (!(ST_PROFILE_ALL_MASK & (1 << attribs->profile)))
       return NULL;
 
    switch (attribs->profile) {
@@ -1458,11 +1458,6 @@ st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
 
 static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
-   .profile_mask = ST_PROFILE_DEFAULT_MASK |
-                   ST_PROFILE_OPENGL_CORE_MASK |
-                   ST_PROFILE_OPENGL_ES1_MASK |
-                   ST_PROFILE_OPENGL_ES2_MASK |
-                   0,
    .feature_mask = ST_API_FEATURE_MS_VISUALS_MASK,
    .destroy = st_api_destroy,
    .query_versions = st_api_query_versions,

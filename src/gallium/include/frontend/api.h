@@ -53,6 +53,10 @@ enum st_profile_type
 #define ST_PROFILE_OPENGL_CORE_MASK  (1 << ST_PROFILE_OPENGL_CORE)
 #define ST_PROFILE_OPENGL_ES1_MASK   (1 << ST_PROFILE_OPENGL_ES1)
 #define ST_PROFILE_OPENGL_ES2_MASK   (1 << ST_PROFILE_OPENGL_ES2)
+#define ST_PROFILE_ALL_MASK          (ST_PROFILE_DEFAULT_MASK | \
+                                      ST_PROFILE_OPENGL_CORE_MASK | \
+                                      ST_PROFILE_OPENGL_ES1_MASK | \
+                                      ST_PROFILE_OPENGL_ES2_MASK)
 
 /**
  * Optional API features.
@@ -518,11 +522,6 @@ struct st_api
     * The name of the rendering API.  This is informative.
     */
    const char *name;
-
-   /**
-    * The supported profiles.  Tested with ST_PROFILE_*_MASK.
-    */
-   unsigned profile_mask;
 
    /**
     * The supported optional features.  Tested with ST_FEATURE_*_MASK.
