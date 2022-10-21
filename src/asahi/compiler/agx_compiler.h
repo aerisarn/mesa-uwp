@@ -292,7 +292,7 @@ typedef struct {
    uint8_t nr_srcs;
 
    union {
-      uint32_t imm;
+      uint64_t imm;
       uint32_t writeout;
       uint32_t truth_table;
       uint32_t component;
@@ -755,6 +755,7 @@ void agx_optimizer(agx_context *ctx);
 void agx_lower_pseudo(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
+void agx_lower_64bit_postra(agx_context *ctx);
 void agx_pack_binary(agx_context *ctx, struct util_dynarray *emission);
 
 #ifndef NDEBUG
