@@ -2358,6 +2358,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* Add the scratch offset to input SGPRs. */
    if (sel->screen->info.gfx_level < GFX11 &&
+       (sel->screen->info.family < CHIP_GFX940 || sel->screen->info.has_graphics) &&
        shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
       shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
