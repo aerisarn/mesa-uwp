@@ -747,9 +747,8 @@ unlock:
  * The framebuffer interface object is no longer valid.
  * Remove the object from the framebuffer interface hash table.
  */
-static void
-st_api_destroy_drawable(struct st_api *stapi,
-                        struct st_framebuffer_iface *stfbi)
+void
+st_api_destroy_drawable(struct st_framebuffer_iface *stfbi)
 {
    if (!stfbi)
       return;
@@ -1456,7 +1455,6 @@ static const struct st_api st_gl_api = {
    .create_context = st_api_create_context,
    .make_current = st_api_make_current,
    .get_current = st_api_get_current,
-   .destroy_drawable = st_api_destroy_drawable,
 };
 
 

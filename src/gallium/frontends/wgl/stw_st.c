@@ -533,7 +533,7 @@ stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb)
    /* Notify the st manager that the framebuffer interface is no
     * longer valid.
     */
-   stw_dev->stapi->destroy_drawable(stw_dev->stapi, &stwfb->base);
+   st_api_destroy_drawable(&stwfb->base);
 
    FREE(stwfb);
 }

@@ -517,7 +517,7 @@ osmesa_destroy_buffer(struct osmesa_buffer *osbuffer)
     * Notify the state manager that the associated framebuffer interface
     * is no longer valid.
     */
-   stapi->destroy_drawable(stapi, osbuffer->stfb);
+   st_api_destroy_drawable(osbuffer->stfb);
 
    FREE(osbuffer->stfb);
    FREE(osbuffer);

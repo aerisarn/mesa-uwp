@@ -607,7 +607,7 @@ xmesa_free_buffer(XMesaBuffer buffer)
          /* Notify the st manager that the associated framebuffer interface
           * object is no longer valid.
           */
-         stapi->destroy_drawable(stapi, buffer->stfb);
+         st_api_destroy_drawable(buffer->stfb);
 
          /* XXX we should move the buffer to a delete-pending list and destroy
           * the buffer until it is no longer current.
