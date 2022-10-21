@@ -1122,7 +1122,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 }
 
 static void emit_interp_state(struct fd_ringbuffer *ring,
-                              struct ir3_shader_variant *fs, bool rasterflat,
+                              const struct fd6_program_state *state,
+                              bool rasterflat,
                               bool sprite_coord_mode,
                               uint32_t sprite_coord_enable);
 
@@ -1131,7 +1132,7 @@ create_interp_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
 {
    struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 18 * 4);
 
-   emit_interp_state(ring, state->fs, false, false, 0);
+   emit_interp_state(ring, state, false, false, 0);
 
    return ring;
 }
@@ -1152,7 +1153,7 @@ fd6_program_interp_state(struct fd6_emit *emit)
       struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
          emit->ctx->batch->submit, 18 * 4, FD_RINGBUFFER_STREAMING);
 
-      emit_interp_state(ring, state->fs, emit->rasterflat,
+      emit_interp_state(ring, state, emit->rasterflat,
                         emit->sprite_coord_mode, emit->sprite_coord_enable);
 
       return ring;
@@ -1160,10 +1161,18 @@ fd6_program_interp_state(struct fd6_emit *emit)
 }
 
 static void
-emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
+emit_interp_state(struct fd_ringbuffer *ring, const struct fd6_program_state *state,
                   bool rasterflat, bool sprite_coord_mode,
                   uint32_t sprite_coord_enable)
 {
+   enum {
+      INTERP_SMOOTH = 0,
+      INTERP_FLAT = 1,
+      INTERP_ZERO = 2,
+      INTERP_ONE = 3,
+   };
+
+   const struct ir3_shader_variant *fs = state->fs;
    uint32_t vinterp[8], vpsrepl[8];
 
    memset(vinterp, 0, sizeof(vinterp));
@@ -1178,17 +1187,6 @@ emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
       unsigned compmask = fs->inputs[j].compmask;
 
       uint32_t inloc = fs->inputs[j].inloc;
-
-      if (fs->inputs[j].flat || (fs->inputs[j].rasterflat && rasterflat)) {
-         uint32_t loc = inloc;
-
-         for (int i = 0; i < 4; i++) {
-            if (compmask & (1 << i)) {
-               vinterp[loc / 16] |= 1 << ((loc % 16) * 2);
-               loc++;
-            }
-         }
-      }
 
       bool coord_mode = sprite_coord_mode;
       if (ir3_point_sprite(fs, j, sprite_coord_enable, &coord_mode)) {
@@ -1209,13 +1207,35 @@ emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
          }
          if (compmask & 0x4) {
             /* .z <- 0.0f */
-            vinterp[loc / 16] |= 0b10 << ((loc % 16) * 2);
+            vinterp[loc / 16] |= INTERP_ZERO << ((loc % 16) * 2);
             loc++;
          }
          if (compmask & 0x8) {
             /* .w <- 1.0f */
-            vinterp[loc / 16] |= 0b11 << ((loc % 16) * 2);
+            vinterp[loc / 16] |= INTERP_ONE << ((loc % 16) * 2);
             loc++;
+         }
+      } else if (fs->inputs[j].slot == VARYING_SLOT_LAYER) {
+         const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
+         uint32_t loc = inloc;
+
+         /* If the last geometry shader doesn't statically write these, they're
+          * implicitly zero and the FS is supposed to read zero.
+          */
+         if (ir3_find_output(last_shader, fs->inputs[j].slot) < 0 &&
+               (compmask & 0x1)) {
+            vinterp[loc / 16] |= INTERP_ZERO << ((loc % 16) * 2);
+         } else {
+            vinterp[loc / 16] |= INTERP_FLAT << ((loc % 16) * 2);
+         }
+      } else if (fs->inputs[j].flat || (fs->inputs[j].rasterflat && rasterflat)) {
+         uint32_t loc = inloc;
+
+         for (int i = 0; i < 4; i++) {
+            if (compmask & (1 << i)) {
+               vinterp[loc / 16] |= INTERP_FLAT << ((loc % 16) * 2);
+               loc++;
+            }
          }
       }
    }
