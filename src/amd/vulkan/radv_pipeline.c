@@ -5022,7 +5022,7 @@ radv_pipeline_emit_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs
       ge_cntl = S_03096C_PRIMS_PER_SUBGRP(ngg_state->max_gsprims) |
                 S_03096C_VERTS_PER_SUBGRP(ngg_state->hw_max_esverts) |
                 S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
-                S_03096C_PRIM_GRP_SIZE_GFX11(256);
+                S_03096C_PRIM_GRP_SIZE_GFX11(252);
    } else {
       ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(ngg_state->max_gsprims) |
                 S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
