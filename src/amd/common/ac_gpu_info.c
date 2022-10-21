@@ -1063,8 +1063,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
     * instruction encoding which accumulates with the destination.
     */
    info->has_accelerated_dot_product =
-      info->family == CHIP_ARCTURUS || info->family == CHIP_ALDEBARAN ||
-      info->family == CHIP_VEGA20 || info->family >= CHIP_NAVI12;
+      info->family == CHIP_VEGA20 ||
+      (info->family >= CHIP_ARCTURUS && info->family != CHIP_NAVI10);
 
    /* TODO: Figure out how to use LOAD_CONTEXT_REG on GFX6-GFX7. */
    info->has_load_ctx_reg_pkt =
