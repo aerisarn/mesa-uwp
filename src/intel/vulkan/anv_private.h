@@ -896,7 +896,7 @@ struct anv_memory_heap {
 };
 
 struct anv_memregion {
-   struct drm_i915_gem_memory_class_instance region;
+   const struct intel_memory_class_instance *region;
    uint64_t size;
    uint64_t available;
 };
@@ -1349,7 +1349,7 @@ uint32_t anv_gem_create(struct anv_device *device, uint64_t size);
 void anv_gem_close(struct anv_device *device, uint32_t gem_handle);
 uint32_t anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
                                 uint32_t flags, uint32_t num_regions,
-                                struct drm_i915_gem_memory_class_instance *regions);
+                                const struct intel_memory_class_instance **regions);
 uint32_t anv_gem_userptr(struct anv_device *device, void *mem, size_t size);
 int anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns);
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,

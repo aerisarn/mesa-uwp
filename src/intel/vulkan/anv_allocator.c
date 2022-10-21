@@ -1457,7 +1457,7 @@ anv_device_alloc_bo(struct anv_device *device,
     * one of them.
     */
    if (anv_physical_device_has_vram(device->physical)) {
-      struct drm_i915_gem_memory_class_instance regions[2];
+      const struct intel_memory_class_instance *regions[2];
       uint32_t nregions = 0;
 
       /* This always try to put the object in local memory. Here

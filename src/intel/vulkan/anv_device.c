@@ -406,22 +406,16 @@ anv_init_meminfo(struct anv_physical_device *device, int fd)
 {
    const struct intel_device_info *devinfo = &device->info;
 
-   device->sys.region.memory_class = devinfo->mem.sram.mem.klass;
-   device->sys.region.memory_instance = devinfo->mem.sram.mem.instance;
+   device->sys.region = &devinfo->mem.sram.mem;
    device->sys.size =
       anv_compute_sys_heap_size(device, devinfo->mem.sram.mappable.size);
    device->sys.available = devinfo->mem.sram.mappable.free;
 
-   device->vram_mappable.region.memory_class = devinfo->mem.vram.mem.klass;
-   device->vram_mappable.region.memory_instance =
-      devinfo->mem.vram.mem.instance;
+   device->vram_mappable.region = &devinfo->mem.vram.mem;
    device->vram_mappable.size = devinfo->mem.vram.mappable.size;
    device->vram_mappable.available = devinfo->mem.vram.mappable.free;
 
-   device->vram_non_mappable.region.memory_class =
-      devinfo->mem.vram.mem.klass;
-   device->vram_non_mappable.region.memory_instance =
-      devinfo->mem.vram.mem.instance;
+   device->vram_non_mappable.region = &devinfo->mem.vram.mem;
    device->vram_non_mappable.size = devinfo->mem.vram.unmappable.size;
    device->vram_non_mappable.available = devinfo->mem.vram.unmappable.free;
 
