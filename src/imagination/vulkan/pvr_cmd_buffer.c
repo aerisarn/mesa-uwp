@@ -4870,9 +4870,13 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_pds_drawindirect_program pds_prog = { 0 };
    uint32_t word0;
 
-   /* Draw indirect always has index offset and instance count. */
+   /* Draw indirect always has index offset and instance count... */
    list_hdr->index_offset_present = true;
    list_hdr->index_instance_count_present = true;
+
+   /* ...and requires a zeroed index_base_addr. */
+   list_hdr->index_base_addrmsb = PVR_DEV_ADDR_INVALID;
+   assert(!list_hdr->index_addr_present);
 
    pvr_cmd_pack(VDMCTRL_INDEX_LIST0)(&word0, list_hdr);
 
@@ -5036,8 +5040,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
 static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
                                     struct pvr_sub_cmd_gfx *const sub_cmd,
                                     VkPrimitiveTopology topology,
-                                    uint32_t first_vertex,
-                                    uint32_t vertex_count,
+                                    uint32_t index_offset,
                                     uint32_t first_index,
                                     uint32_t index_count,
                                     uint32_t instance_count,
@@ -5067,12 +5070,10 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
    if (instance_count > 1)
       list_hdr.index_instance_count_present = true;
 
-   if (first_vertex != 0)
+   if (index_offset)
       list_hdr.index_offset_present = true;
 
    if (state->draw_state.draw_indexed) {
-      struct pvr_buffer *buffer = state->index_buffer_binding.buffer;
-
       switch (state->index_buffer_binding.type) {
       case VK_INDEX_TYPE_UINT32:
          list_hdr.index_size = PVRX(VDMCTRL_INDEX_SIZE_B32);
@@ -5089,16 +5090,11 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
       }
 
       index_buffer_addr = PVR_DEV_ADDR_OFFSET(
-         buffer->dev_addr,
+         state->index_buffer_binding.buffer->dev_addr,
          state->index_buffer_binding.offset + first_index * index_stride);
 
       list_hdr.index_addr_present = true;
-
-      /* For indirect draw calls, index buffer address is not embedded into VDM
-       * control stream.
-       */
-      if (!state->draw_state.draw_indirect)
-         list_hdr.index_base_addrmsb = index_buffer_addr;
+      list_hdr.index_base_addrmsb = index_buffer_addr;
    }
 
    list_hdr.degen_cull_enable =
@@ -5132,7 +5128,7 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
 
    if (list_hdr.index_count_present) {
       pvr_csb_emit (csb, VDMCTRL_INDEX_LIST2, list2) {
-         list2.index_count = vertex_count | index_count;
+         list2.index_count = index_count;
       }
    }
 
@@ -5144,7 +5140,7 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
 
    if (list_hdr.index_offset_present) {
       pvr_csb_emit (csb, VDMCTRL_INDEX_LIST4, list4) {
-         list4.index_offset = first_vertex;
+         list4.index_offset = index_offset;
       }
    }
 }
@@ -5179,9 +5175,8 @@ void pvr_CmdDraw(VkCommandBuffer commandBuffer,
                            &state->current_sub_cmd->gfx,
                            dynamic_state->ia.primitive_topology,
                            firstVertex,
+                           0U,
                            vertexCount,
-                           0U,
-                           0U,
                            instanceCount,
                            NULL,
                            0U,
@@ -5221,7 +5216,6 @@ void pvr_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                            &state->current_sub_cmd->gfx,
                            dynamic_state->ia.primitive_topology,
                            vertexOffset,
-                           0,
                            firstIndex,
                            indexCount,
                            instanceCount,
@@ -5261,11 +5255,10 @@ void pvr_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    pvr_emit_vdm_index_list(cmd_buffer,
                            &state->current_sub_cmd->gfx,
                            dynamic_state->ia.primitive_topology,
-                           0,
-                           0,
-                           0,
-                           0,
-                           0,
+                           0U,
+                           0U,
+                           0U,
+                           0U,
                            buffer,
                            offset,
                            drawCount,
@@ -5301,11 +5294,10 @@ void pvr_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    pvr_emit_vdm_index_list(cmd_buffer,
                            &state->current_sub_cmd->gfx,
                            dynamic_state->ia.primitive_topology,
-                           0,
-                           0,
-                           0,
-                           0,
-                           0,
+                           0U,
+                           0U,
+                           0U,
+                           0U,
                            buffer,
                            offset,
                            drawCount,
