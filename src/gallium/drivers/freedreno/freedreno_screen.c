@@ -292,14 +292,15 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * splitting high bits of index into 2nd dimension..
        */
       if (is_a3xx(screen))
-         return 8192;
+         return A3XX_MAX_TEXEL_BUFFER_ELEMENTS_UINT;
 
       /* Note that the Vulkan blob on a540 and 640 report a
        * maxTexelBufferElements of just 65536 (the GLES3.2 and Vulkan
        * minimum).
        */
       if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen))
-         return 1 << 27;
+         return A4XX_MAX_TEXEL_BUFFER_ELEMENTS_UINT;
+
       return 0;
 
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
