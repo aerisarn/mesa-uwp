@@ -101,7 +101,7 @@ enum {
    MESA_GLINTEROP_ACCESS_WRITE_ONLY
 };
 
-#define MESA_GLINTEROP_DEVICE_INFO_VERSION 1
+#define MESA_GLINTEROP_DEVICE_INFO_VERSION 2
 
 /**
  * Device information returned by Mesa.
@@ -127,6 +127,18 @@ struct mesa_glinterop_device_info {
    uint32_t device_id;
 
    /* Structure version 1 ends here. */
+
+   /* Size of memory pointed to by out_driver_data. */
+   uint32_t driver_data_size;
+
+   /* If the caller wants to query driver-specific data about the OpenGL
+   * object, this should point to the memory where that data will be stored.
+   * This is expected to be a temporary staging memory. The pointer is not
+   * allowed to be saved for later use by Mesa.
+   */
+   void *driver_data;
+
+   /* Structure version 2 ends here. */
 };
 
 #define MESA_GLINTEROP_EXPORT_IN_VERSION 1
