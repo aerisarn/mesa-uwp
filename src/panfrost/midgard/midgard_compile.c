@@ -2164,12 +2164,15 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_special(ctx, instr, 97);
                 break;
 
-        /* Midgard doesn't seem to want special handling */
+        /* Midgard doesn't seem to want special handling, though we do need to
+         * take care when scheduling to avoid incorrect reordering.
+         */
         case nir_intrinsic_memory_barrier:
         case nir_intrinsic_memory_barrier_buffer:
         case nir_intrinsic_memory_barrier_image:
         case nir_intrinsic_memory_barrier_shared:
         case nir_intrinsic_group_memory_barrier:
+                schedule_barrier(ctx);
                 break;
 
         case nir_intrinsic_control_barrier:
