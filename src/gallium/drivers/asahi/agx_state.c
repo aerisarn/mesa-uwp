@@ -1262,6 +1262,7 @@ static struct agx_usc_builder
 agx_alloc_usc_control(struct agx_pool *pool,
                       unsigned num_reg_bindings)
 {
+   STATIC_ASSERT(AGX_USC_UNIFORM_HIGH_LENGTH == AGX_USC_UNIFORM_LENGTH);
    STATIC_ASSERT(AGX_USC_TEXTURE_LENGTH == AGX_USC_UNIFORM_LENGTH);
    STATIC_ASSERT(AGX_USC_SAMPLER_LENGTH == AGX_USC_UNIFORM_LENGTH);
 
@@ -1300,6 +1301,27 @@ agx_usc_builder_validate(struct agx_usc_builder *b, size_t size)
    for (bool it = agx_usc_builder_validate((b), AGX_USC_##struct_name##_LENGTH); \
         it; it = false, (b)->head += AGX_USC_##struct_name##_LENGTH) \
       agx_pack((b)->head, USC_##struct_name, template)
+
+static void
+agx_usc_uniform(struct agx_usc_builder *b, unsigned start_halfs,
+                unsigned size_halfs, uint64_t buffer)
+{
+   assert((start_halfs + size_halfs) < (1 << 9) && "uniform file overflow");
+
+   if (start_halfs & BITFIELD_BIT(8)) {
+      agx_usc_pack(b, UNIFORM_HIGH, cfg) {
+         cfg.start_halfs = start_halfs & BITFIELD_MASK(8);
+         cfg.size_halfs = size_halfs;
+         cfg.buffer = buffer;
+      }
+   } else {
+      agx_usc_pack(b, UNIFORM, cfg) {
+         cfg.start_halfs = start_halfs;
+         cfg.size_halfs = size_halfs;
+         cfg.buffer = buffer;
+      }
+   }
+}
 
 static uint32_t
 agx_usc_fini(struct agx_usc_builder *b)
@@ -1365,13 +1387,8 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
     * AGX_PUSH_TEXTURE_BASE sysval correctly.
     */
    for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
-      struct agx_push push = cs->info.push[i];
-
-      agx_usc_pack(&b, UNIFORM, cfg) {
-         cfg.start_halfs = push.base;
-         cfg.size_halfs = push.length;
-         cfg.buffer = agx_push_location(ctx, push, stage);
-      }
+      agx_usc_uniform(&b, cs->info.push[i].base, cs->info.push[i].length,
+                      agx_push_location(ctx, cs->info.push[i], stage));
    }
 
    agx_usc_pack(&b, SHARED, cfg) {
