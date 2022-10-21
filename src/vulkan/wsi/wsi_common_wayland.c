@@ -1775,14 +1775,13 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    /* We are taking ownership of the wsi_wl_surface, so remove ownership from
-    * oldSwapchain.
-    *
-    * If the surface is currently owned by a swapchain that is not
-    * oldSwapchain we should return VK_ERROR_NATIVE_WINDOW_IN_USE_KHR. There's
-    * an open issue tracking that:
-    *
-    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/7467
+    * oldSwapchain. If the surface is currently owned by a swapchain that is
+    * not oldSwapchain we return an error.
     */
+   if (wsi_wl_surface->chain &&
+       wsi_swapchain_to_handle(&wsi_wl_surface->chain->base) != pCreateInfo->oldSwapchain) {
+      return VK_ERROR_NATIVE_WINDOW_IN_USE_KHR;
+   }
    if (pCreateInfo->oldSwapchain) {
       VK_FROM_HANDLE(wsi_wl_swapchain, old_chain, pCreateInfo->oldSwapchain);
       old_chain->wsi_wl_surface = NULL;
