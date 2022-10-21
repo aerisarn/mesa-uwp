@@ -2016,9 +2016,14 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         unsigned nr_bufs = ((so->nr_bufs + nr_images) * bufs_per_attrib) +
                            (PAN_ARCH >= 6 ? 1 : 0);
 
+        unsigned count = vs->info.attribute_count;
+
+        if (vs->xfb)
+                count = MAX2(count, vs->xfb->info.attribute_count);
+
 #if PAN_ARCH <= 5
         /* Midgard needs vertexid/instanceid handled specially */
-        bool special_vbufs = vs->info.attribute_count >= PAN_VERTEX_ID;
+        bool special_vbufs = count >= PAN_VERTEX_ID;
 
         if (special_vbufs)
                 nr_bufs += 2;
@@ -2033,8 +2038,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 pan_pool_alloc_desc_array(&batch->pool.base, nr_bufs,
                                           ATTRIBUTE_BUFFER);
         struct panfrost_ptr T =
-                pan_pool_alloc_desc_array(&batch->pool.base,
-                                          vs->info.attribute_count,
+                pan_pool_alloc_desc_array(&batch->pool.base, count,
                                           ATTRIBUTE);
 
         struct mali_attribute_buffer_packed *bufs =
@@ -2257,66 +2261,12 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
         return ptr;
 }
 
-#if PAN_ARCH <= 5
-static void
-panfrost_emit_streamout(struct panfrost_batch *batch,
-                        struct mali_attribute_buffer_packed *slot,
-                        unsigned stride, unsigned count,
-                        struct pipe_stream_output_target *target)
-{
-        unsigned max_size = target->buffer_size;
-        unsigned expected_size = stride * count;
-
-        /* Grab the BO and bind it to the batch */
-        struct panfrost_resource *rsrc = pan_resource(target->buffer);
-        struct panfrost_bo *bo = rsrc->image.data.bo;
-
-        panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
-        panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_FRAGMENT);
-
-        unsigned offset = panfrost_xfb_offset(stride, target);
-
-        pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
-                cfg.pointer = bo->ptr.gpu + (offset & ~63);
-                cfg.stride = stride;
-                cfg.size = MIN2(max_size, expected_size) + (offset & 63);
-
-                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
-                                offset, cfg.size);
-        }
-}
-
-/* Helpers for manipulating stream out information so we can pack varyings
- * accordingly. Compute the src_offset for a given captured varying */
-
-static struct pipe_stream_output *
-pan_get_so(struct pipe_stream_output_info *info, gl_varying_slot loc)
-{
-        for (unsigned i = 0; i < info->num_outputs; ++i) {
-                if (info->output[i].register_index == loc)
-                        return &info->output[i];
-        }
-
-        unreachable("Varying not captured");
-}
-#endif
-
 /* Given a varying, figure out which index it corresponds to */
 
 static inline unsigned
 pan_varying_index(unsigned present, enum pan_special_varying v)
 {
         return util_bitcount(present & BITFIELD_MASK(v));
-}
-
-/* Get the base offset for XFB buffers, which by convention come after
- * everything else. Wrapper function for semantic reasons; by construction this
- * is just popcount. */
-
-static inline unsigned
-pan_xfb_base(unsigned present)
-{
-        return util_bitcount(present);
 }
 
 /* Determines which varying buffers are required */
@@ -2474,10 +2424,6 @@ panfrost_emit_varying(const struct panfrost_device *dev,
                       enum pipe_format pipe_format,
                       unsigned present,
                       uint16_t point_sprite_mask,
-                      struct pipe_stream_output_info *xfb,
-                      uint64_t xfb_loc_mask,
-                      unsigned max_xfb,
-                      unsigned *xfb_offsets,
                       signed offset,
                       enum pan_special_varying pos_varying)
 {
@@ -2489,21 +2435,8 @@ panfrost_emit_varying(const struct panfrost_device *dev,
         gl_varying_slot loc = varying.location;
         mali_pixel_format format = dev->formats[pipe_format].hw;
 
-#if PAN_ARCH <= 5
-        struct pipe_stream_output *o = (xfb_loc_mask & BITFIELD64_BIT(loc)) ?
-                pan_get_so(xfb, loc) : NULL;
-#else
-        struct pipe_stream_output *o = NULL;
-#endif
-
         if (util_varying_is_point_coord(loc, point_sprite_mask)) {
                 pan_emit_vary_special(dev, out, present, PAN_VARY_PNTCOORD);
-        } else if (o && o->output_buffer < max_xfb) {
-                unsigned fixup_offset = xfb_offsets[o->output_buffer] & 63;
-
-                pan_emit_vary(dev, out,
-                                pan_xfb_base(present) + o->output_buffer,
-                                format, (o->dst_offset * 4) + fixup_offset);
         } else if (loc == VARYING_SLOT_POS) {
                 pan_emit_vary_special(dev, out, present, pos_varying);
         } else if (loc == VARYING_SLOT_PSIZ) {
@@ -2526,12 +2459,10 @@ panfrost_emit_varying_descs(
                 struct panfrost_pool *pool,
                 struct panfrost_shader_state *producer,
                 struct panfrost_shader_state *consumer,
-                struct panfrost_streamout *xfb,
                 uint16_t point_coord_mask,
                 struct pan_linkage *out)
 {
         struct panfrost_device *dev = pool->base.dev;
-        struct pipe_stream_output_info *xfb_info = &producer->stream_output;
         unsigned producer_count = producer->info.varyings.output_count;
         unsigned consumer_count = consumer->info.varyings.input_count;
 
@@ -2565,16 +2496,6 @@ panfrost_emit_varying_descs(
         out->stride = pan_assign_varyings(dev, &producer->info,
                         &consumer->info, offsets);
 
-        unsigned xfb_offsets[PIPE_MAX_SO_BUFFERS] = {0};
-
-        for (unsigned i = 0; i < xfb->num_targets; ++i) {
-                if (!xfb->targets[i])
-                        continue;
-
-                xfb_offsets[i] = panfrost_xfb_offset(xfb_info->stride[i] * 4,
-                                                     xfb->targets[i]);
-        }
-
         for (unsigned i = 0; i < producer_count; ++i) {
                 signed j = pan_find_vary(consumer->info.varyings.input,
                                 consumer->info.varyings.input_count,
@@ -2586,9 +2507,7 @@ panfrost_emit_varying_descs(
 
                 panfrost_emit_varying(dev, descs + i,
                                 producer->info.varyings.output[i], format,
-                                out->present, 0, &producer->stream_output,
-                                producer->so_mask, xfb->num_targets,
-                                xfb_offsets, offsets[i], PAN_VARY_POSITION);
+                                out->present, 0, offsets[i], PAN_VARY_POSITION);
         }
 
         for (unsigned i = 0; i < consumer_count; ++i) {
@@ -2602,9 +2521,7 @@ panfrost_emit_varying_descs(
                                 consumer->info.varyings.input[i],
                                 consumer->info.varyings.input[i].format,
                                 out->present, point_coord_mask,
-                                &producer->stream_output, producer->so_mask,
-                                xfb->num_targets, xfb_offsets, offset,
-                                PAN_VARY_FRAGCOORD);
+                                offset, PAN_VARY_FRAGCOORD);
         }
 }
 
@@ -2657,7 +2574,6 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         /* In good conditions, we only need to link varyings once */
         bool prelink =
                 (point_coord_mask == 0) &&
-                (PAN_ARCH >= 6 || ctx->streamout.num_targets == 0) &&
                 !vs->info.separable &&
                 !fs->info.separable;
 
@@ -2670,43 +2586,24 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                 struct panfrost_pool *pool =
                         prelink ? &ctx->descs : &batch->pool;
 
-                panfrost_emit_varying_descs(pool, vs, fs, &ctx->streamout, point_coord_mask, linkage);
+                panfrost_emit_varying_descs(pool, vs, fs, point_coord_mask, linkage);
         }
 
         unsigned present = linkage->present, stride = linkage->stride;
-        unsigned xfb_base = pan_xfb_base(present);
+        unsigned count = util_bitcount(present);
         struct panfrost_ptr T =
                 pan_pool_alloc_desc_array(&batch->pool.base,
-                                          xfb_base +
-                                          ctx->streamout.num_targets + 1,
+                                          count + 1,
                                           ATTRIBUTE_BUFFER);
         struct mali_attribute_buffer_packed *varyings =
                 (struct mali_attribute_buffer_packed *) T.cpu;
 
         if (buffer_count)
-                *buffer_count = xfb_base + ctx->streamout.num_targets;
+                *buffer_count = count;
 
 #if PAN_ARCH >= 6
         /* Suppress prefetch on Bifrost */
-        memset(varyings + xfb_base + ctx->streamout.num_targets, 0, sizeof(*varyings));
-#else
-        /* Emit the stream out buffers. We need enough room for all the
-         * vertices we emit across all instances */
-
-        struct pipe_stream_output_info *so = &vs->stream_output;
-
-        unsigned out_count = ctx->instance_count *
-                u_stream_outputs_for_vertices(ctx->active_prim, ctx->vertex_count);
-
-        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
-                if (!ctx->streamout.targets[i])
-                        continue;
-
-                panfrost_emit_streamout(batch, &varyings[xfb_base + i],
-                                        so->stride[i] * 4,
-                                        out_count,
-                                        ctx->streamout.targets[i]);
-        }
+        memset(varyings + count, 0, sizeof(*varyings));
 #endif
 
         if (stride) {
@@ -3692,7 +3589,7 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
 
         panfrost_pack_work_groups_compute(&invocation,
                         1, count, info->instance_count,
-                        1, 1, 1, false, false);
+                        1, 1, 1, PAN_ARCH <= 5, false);
 
         batch->uniform_buffers[PIPE_SHADER_VERTEX] =
                 panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, NULL,
@@ -3701,9 +3598,12 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
         panfrost_draw_emit_vertex(batch, info, &invocation, 0, 0,
                                   attribs, attrib_bufs, t.cpu);
 #endif
-        panfrost_add_job(&batch->pool.base, &batch->scoreboard,
-                        MALI_JOB_TYPE_COMPUTE, true, false,
-                        0, 0, &t, false);
+        enum mali_job_type job_type = MALI_JOB_TYPE_COMPUTE;
+#if PAN_ARCH <= 5
+        job_type = MALI_JOB_TYPE_VERTEX;
+#endif
+        panfrost_add_job(&batch->pool.base, &batch->scoreboard, job_type,
+                         true, false, 0, 0, &t, false);
 
         ctx->shader[PIPE_SHADER_VERTEX] = saved_vs;
         batch->rsd[PIPE_SHADER_VERTEX] = saved_rsd;
@@ -3837,14 +3737,12 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
         panfrost_clean_state_3d(ctx);
 
-#if PAN_ARCH >= 6
         if (vs->xfb) {
 #if PAN_ARCH >= 9
                 mali_ptr attribs = 0, attrib_bufs = 0;
 #endif
                 panfrost_launch_xfb(batch, info, attribs, attrib_bufs, draw->count);
         }
-#endif
 
         /* Increment transform feedback offsets */
         panfrost_update_streamout_offsets(ctx);

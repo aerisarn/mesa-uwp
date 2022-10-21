@@ -4962,7 +4962,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
                            nir_var_shader_in | nir_var_shader_out);
                 NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
-                NIR_PASS_V(nir, bifrost_nir_lower_xfb);
+                NIR_PASS_V(nir, pan_lower_xfb);
         }
 
         bi_optimize_nir(nir, gpu_id, is_blend);
