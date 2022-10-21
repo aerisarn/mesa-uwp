@@ -3701,6 +3701,8 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_VERTEX_INPUT) |
             BIT(TU_DYNAMIC_STATE_VB_STRIDE);
          break;
+      case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
+         break;
       case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:
          pipeline->dynamic_state_mask |=
             BIT(TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS);

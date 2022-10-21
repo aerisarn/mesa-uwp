@@ -3070,7 +3070,6 @@ tu_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
                         uint32_t lineStippleFactor,
                         uint16_t lineStipplePattern)
 {
-   tu_stub();
 }
 
 VKAPI_ATTR void VKAPI_CALL
