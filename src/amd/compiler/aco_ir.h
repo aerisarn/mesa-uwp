@@ -1778,7 +1778,7 @@ struct Pseudo_reduction_instruction : public Instruction {
 static_assert(sizeof(Pseudo_reduction_instruction) == sizeof(Instruction) + 4,
               "Unexpected padding");
 
-extern thread_local aco::monotonic_buffer_resource instruction_buffer;
+extern thread_local aco::monotonic_buffer_resource* instruction_buffer;
 
 struct instr_deleter_functor {
    /* Don't yet free any instructions. They will be de-allocated
@@ -1796,7 +1796,7 @@ create_instruction(aco_opcode opcode, Format format, uint32_t num_operands,
 {
    std::size_t size =
       sizeof(T) + num_operands * sizeof(Operand) + num_definitions * sizeof(Definition);
-   void* data = instruction_buffer.allocate(size, alignof(uint32_t));
+   void* data = instruction_buffer->allocate(size, alignof(uint32_t));
    memset(data, 0, size);
    T* inst = (T*)data;
 
@@ -2155,6 +2155,7 @@ enum class CompilationProgress {
 
 class Program final {
 public:
+   aco::monotonic_buffer_resource m{65536};
    std::vector<Block> blocks;
    std::vector<RegClass> temp_rc = {s1};
    RegisterDemand max_reg_demand = RegisterDemand();
