@@ -1040,6 +1040,17 @@ iris_heap_to_string[IRIS_HEAP_MAX] = {
    [IRIS_HEAP_DEVICE_LOCAL_PREFERRED] = "local-preferred",
 };
 
+static int iris_bo_set_caching(struct iris_bo *bo, bool cached)
+{
+   switch (iris_bufmgr_get_device_info(bo->bufmgr)->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return iris_i915_bo_set_caching(bo, cached);
+   default:
+      unreachable("missing");
+      return 0;
+   }
+}
+
 struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
               const char *name,
@@ -1133,11 +1144,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
     */
    if ((flags & BO_ALLOC_COHERENT) &&
        !bufmgr->devinfo.has_llc && bufmgr->devinfo.has_caching_uapi) {
-      struct drm_i915_gem_caching arg = {
-         .handle = bo->gem_handle,
-         .caching = 1,
-      };
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) != 0)
+      if (iris_bo_set_caching(bo, true) != 0)
          goto err_free;
 
       bo->real.reusable = false;
