@@ -1116,10 +1116,10 @@ get_num_bindings(struct zink_shader *zs, enum zink_descriptor_type type)
 }
 
 unsigned
-zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute)
+zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type)
 {
    unsigned num_bindings = 0;
-   if (is_compute) {
+   if (pg->is_compute) {
       struct zink_compute_program *comp = (void*)pg;
       return get_num_bindings(comp->shader, type);
    }
@@ -1132,11 +1132,11 @@ zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descrip
 }
 
 unsigned
-zink_program_num_bindings(const struct zink_program *pg, bool is_compute)
+zink_program_num_bindings(const struct zink_program *pg)
 {
    unsigned num_bindings = 0;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++)
-      num_bindings += zink_program_num_bindings_typed(pg, i, is_compute);
+      num_bindings += zink_program_num_bindings_typed(pg, i);
    return num_bindings;
 }
 

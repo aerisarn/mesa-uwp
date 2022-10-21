@@ -105,10 +105,10 @@ void *
 zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader);
 
 unsigned
-zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute);
+zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type);
 
 unsigned
-zink_program_num_bindings(const struct zink_program *pg, bool is_compute);
+zink_program_num_bindings(const struct zink_program *pg);
 
 bool
 zink_program_descriptor_is_buffer(struct zink_context *ctx, gl_shader_stage stage, enum zink_descriptor_type type, unsigned i);
