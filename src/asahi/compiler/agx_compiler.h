@@ -411,6 +411,7 @@ typedef struct {
    unsigned loop_count;
    unsigned spills;
    unsigned fills;
+   unsigned max_reg;
 } agx_context;
 
 static inline void

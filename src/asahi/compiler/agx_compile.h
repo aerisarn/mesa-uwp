@@ -175,6 +175,11 @@ struct agx_shader_info {
 
    /* Is colour output omitted? */
    bool no_colour_output;
+
+   /* Number of 16-bit registers used by the main shader and preamble
+    * respectively.
+    */
+   unsigned nr_gprs, nr_preamble_gprs;
 };
 
 #define AGX_MAX_RTS (8)

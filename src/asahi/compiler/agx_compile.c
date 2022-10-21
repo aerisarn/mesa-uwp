@@ -1535,20 +1535,11 @@ agx_set_st_vary_final(agx_context *ctx)
 static int
 agx_dump_stats(agx_context *ctx, unsigned size, char **out)
 {
-   unsigned nr_ins = 0, max_reg = 0;
+   unsigned nr_ins = 0;
 
-   agx_foreach_instr_global(ctx, I) {
-      /* Count instructions */
+   /* Count instructions */
+   agx_foreach_instr_global(ctx, I)
       nr_ins++;
-
-      /* Count registers */
-      agx_foreach_dest(I, d) {
-         if (I->dest[d].type == AGX_INDEX_REGISTER) {
-            max_reg = MAX2(max_reg,
-                           I->dest[d].value + agx_write_registers(I, d) - 1);
-         }
-      }
-   }
 
    /* TODO: Pipe through occupancy */
    unsigned nr_threads = 1;
@@ -1557,7 +1548,7 @@ agx_dump_stats(agx_context *ctx, unsigned size, char **out)
            "%s shader: %u inst, %u bytes, %u halfregs, %u threads, "
            "%u loops, %u:%u spills:fills",
            gl_shader_stage_name(ctx->stage),
-           nr_ins, size, max_reg, nr_threads, ctx->loop_count,
+           nr_ins, size, ctx->max_reg, nr_threads, ctx->loop_count,
            ctx->spills, ctx->fills);
 }
 
@@ -1844,6 +1835,13 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    assert((offset % AGX_CODE_ALIGN) == 0);
 
    agx_pack_binary(ctx, binary);
+
+   unsigned nr_gprs = ctx->max_reg + 1;
+
+   if (impl->function->is_preamble)
+      out->nr_preamble_gprs = nr_gprs;
+   else
+      out->nr_gprs = nr_gprs;
 
    /* Don't dump statistics for preambles, since they're not worth optimizing */
    if (!impl->function->is_preamble) {

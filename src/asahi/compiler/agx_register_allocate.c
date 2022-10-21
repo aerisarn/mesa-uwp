@@ -350,6 +350,11 @@ agx_ra(agx_context *ctx)
       });
    }
 
+   for (unsigned i = 0; i < ctx->alloc; ++i) {
+      if (ncomps[i])
+         ctx->max_reg = MAX2(ctx->max_reg, ssa_to_reg[i] + ncomps[i] - 1);
+   }
+
    agx_foreach_instr_global(ctx, ins) {
       agx_foreach_src(ins, s) {
          if (ins->src[s].type == AGX_INDEX_NORMAL) {
