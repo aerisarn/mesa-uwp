@@ -92,11 +92,16 @@ REAL_FUNCTION_POINTER(fstat);
 REAL_FUNCTION_POINTER(fstat64);
 #endif
 
+static char render_node_dir[] = "/dev/dri/";
 /* Full path of /dev/dri/renderD* */
 static char *render_node_path;
 /* renderD* */
 static char *render_node_dirent_name;
+/* /sys/dev/char/major: */
+static int drm_device_path_len;
+static char *drm_device_path;
 /* /sys/dev/char/major:minor/device */
+static int device_path_len;
 static char *device_path;
 /* /sys/dev/char/major:minor/device/subsystem */
 static char *subsystem_path;
@@ -245,9 +250,13 @@ init_shim(void)
               render_node_path);
    }
 
-   nfasprintf(&device_path,
-              "/sys/dev/char/%d:%d/device",
-              DRM_MAJOR, render_node_minor);
+   drm_device_path_len =
+      nfasprintf(&drm_device_path, "/sys/dev/char/%d:", DRM_MAJOR);
+
+   device_path_len =
+      nfasprintf(&device_path,
+                 "/sys/dev/char/%d:%d/device",
+                 DRM_MAJOR, render_node_minor);
 
    nfasprintf(&subsystem_path,
               "/sys/dev/char/%d:%d/device/subsystem",
@@ -256,6 +265,32 @@ init_shim(void)
    drm_shim_device_init();
 
    atexit(destroy_shim);
+}
+
+static bool hide_drm_device_path(const char *path)
+{
+   if (render_node_minor == -1)
+      return false;
+
+   /* If the path looks like our fake render node device, then don't hide it.
+    */
+   if (strncmp(path, device_path, device_path_len) == 0 ||
+       strcmp(path, render_node_path) == 0)
+      return false;
+
+   /* String starts with /sys/dev/char/226: but is not the fake render node.
+    * We want to hide all other drm devices for the shim.
+    */
+   if (strncmp(path, drm_device_path, drm_device_path_len) == 0)
+      return true;
+
+   /* String starts with /dev/dri/ but is not the fake render node. We want to
+    * hide all other drm devices for the shim.
+    */
+   if (strncmp(path, render_node_dir, sizeof(render_node_dir) - 1) == 0)
+      return true;
+
+   return false;
 }
 
 /* Override libdrm's reading of various sysfs files for device enumeration. */
