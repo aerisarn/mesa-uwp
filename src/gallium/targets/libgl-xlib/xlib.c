@@ -35,7 +35,6 @@
 #include "sw/xlib/xlib_sw_winsys.h"
 #include "xm_public.h"
 
-#include "state_tracker/st_gl_api.h"
 #include "target-helpers/inline_sw_helper.h"
 #include "target-helpers/inline_debug_helper.h"
 
@@ -78,7 +77,6 @@ fail:
 static struct xm_driver xlib_driver = 
 {
    .create_pipe_screen = swrast_xlib_create_screen,
-   .create_st_api = st_gl_api_create,
 };
 
 

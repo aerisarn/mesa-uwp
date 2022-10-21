@@ -22,7 +22,6 @@
 //#include "state_tracker/st_cb_fbo.h"
 //#include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_context.h"
-#include "state_tracker/st_gl_api.h"
 #include "frontend/sw_winsys.h"
 #include "sw/hgl/hgl_sw_winsys.h"
 #include "util/u_atomic.h"

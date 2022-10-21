@@ -82,7 +82,6 @@
  * global.
  */
 static struct xm_driver driver;
-static struct st_api *stapi;
 
 /* Default strict invalidate to false.  This means we will not call
  * XGetGeometry after every swapbuffers, which allows swapbuffers to
@@ -109,7 +108,6 @@ boolean xmesa_strict_invalidate = FALSE;
 void xmesa_set_driver( const struct xm_driver *templ )
 {
    driver = *templ;
-   stapi = driver.create_st_api();
 
    xmesa_strict_invalidate =
       debug_get_bool_option("XMESA_STRICT_INVALIDATE", FALSE);

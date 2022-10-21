@@ -37,7 +37,6 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_format.h"
 #include "pipe-loader/pipe_loader.h"
-#include "state_tracker/st_gl_api.h" /* for st_gl_api_create */
 #include "frontend/drm_driver.h"
 
 #include "util/u_debug.h"
@@ -836,10 +835,6 @@ dri_init_screen_helper(struct dri_screen *screen,
 
    if (screen->validate_egl_image)
       screen->base.validate_egl_image = dri_validate_egl_image;
-
-   screen->st_api = st_gl_api_create();
-   if (!screen->st_api)
-      return NULL;
 
    if(pscreen->get_param(pscreen, PIPE_CAP_NPOT_TEXTURES))
       screen->target = PIPE_TEXTURE_2D;

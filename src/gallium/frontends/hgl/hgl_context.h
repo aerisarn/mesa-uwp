@@ -52,7 +52,6 @@ struct hgl_display
 {
 	mtx_t mutex;
 
-	struct st_api* api;
 	struct st_manager* manager;
 };
 

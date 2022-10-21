@@ -52,8 +52,6 @@
 #include "st_sampler_view.h"
 #include "st_util.h"
 
-#include "state_tracker/st_gl_api.h"
-
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "util/format/u_format.h"
@@ -1448,17 +1446,6 @@ st_api_query_versions(struct st_manager *sm,
    *gl_es2_version = get_version(sm->screen, options, API_OPENGLES2);
 }
 
-
-static const struct st_api st_gl_api = {
-   .name = "Mesa " PACKAGE_VERSION,
-};
-
-
-struct st_api *
-st_gl_api_create(void)
-{
-   return (struct st_api *) &st_gl_api;
-}
 
 void
 st_manager_invalidate_drawables(struct gl_context *ctx)

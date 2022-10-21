@@ -501,17 +501,10 @@ struct st_manager
 };
 
 /**
- * Represent the OpenGL rendering API.
+ * The following st_api_* functions represent the OpenGL rendering API.
  *
  * Implemented by the gallium frontend and used by the frontend manager.
  */
-struct st_api
-{
-   /**
-    * The name of the rendering API.  This is informative.
-    */
-   const char *name;
-};
 
 /**
  * Query supported OpenGL versions. (if applicable)

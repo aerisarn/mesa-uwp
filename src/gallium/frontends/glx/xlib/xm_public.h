@@ -32,13 +32,11 @@
 #include <X11/Xlib.h>
 
 struct pipe_screen;
-struct st_api;
 
 /* This is the driver interface required by the glx/xlib frontends.
  */
 struct xm_driver {
    struct pipe_screen *(*create_pipe_screen)( Display *display );
-   struct st_api *(*create_st_api)( void );
 };
 
 extern void

@@ -16,7 +16,6 @@
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
-#include "state_tracker/st_gl_api.h" /* for st_gl_api_create */
 
 #include "GLView.h"
 
@@ -342,7 +341,6 @@ hgl_create_display(struct pipe_screen* screen)
 
 	display = CALLOC_STRUCT(hgl_display);
 	assert(display);
-	display->api = st_gl_api_create();
 	display->manager = CALLOC_STRUCT(st_manager);
 	assert(display->manager);
 	display->manager->screen = screen;

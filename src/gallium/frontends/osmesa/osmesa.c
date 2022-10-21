@@ -70,7 +70,6 @@
 #include "postprocess/postprocess.h"
 
 #include "frontend/api.h"
-#include "state_tracker/st_gl_api.h"
 
 
 
@@ -132,7 +131,6 @@ osmesa_st_get_param(struct st_manager *smapi, enum st_manager_param param)
 }
 
 static struct st_manager *stmgr = NULL;
-static struct st_api *stapi = NULL;
 
 static void
 destroy_st_manager(void)
@@ -156,8 +154,6 @@ create_st_manager(void)
       stmgr->get_param = osmesa_st_get_param;
       stmgr->get_egl_image = NULL;
    }
-
-   stapi = st_gl_api_create();
 }
 
 /**

@@ -50,7 +50,6 @@ dri_create_context(gl_api api, const struct gl_config * visual,
 {
    __DRIscreen *sPriv = cPriv->driScreenPriv;
    struct dri_screen *screen = dri_screen(sPriv);
-   struct st_api *stapi = screen->st_api;
    struct dri_context *ctx = NULL;
    struct st_context_iface *st_share = NULL;
    struct st_context_attribs attribs;
@@ -195,7 +194,6 @@ dri_create_context(gl_api api, const struct gl_config * visual,
       goto fail;
    }
    ctx->st->st_manager_private = (void *) ctx;
-   ctx->stapi = stapi;
 
    if (ctx->st->cso_context) {
       ctx->pp = pp_init(ctx->st->pipe, screen->pp_enabled, ctx->st->cso_context,
