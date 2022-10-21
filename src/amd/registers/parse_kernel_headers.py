@@ -564,6 +564,29 @@ missing_enums_gfx81plus = {
   },
 }
 
+missing_enums_gfx9 = {
+  **missing_enums_gfx81plus,
+  "DB_DFSM_CONTROL__PUNCHOUT_MODE": DB_DFSM_CONTROL__PUNCHOUT_MODE,
+  "IMG_DATA_FORMAT_STENCIL": IMG_DATA_FORMAT_STENCIL,
+  "SQ_IMG_RSRC_WORD4__BC_SWIZZLE": SQ_IMG_RSRC_WORD4__BC_SWIZZLE,
+  "BinSizeExtend": {
+    "entries": [
+      {"name": "BIN_SIZE_32_PIXELS", "value": 0},
+      {"name": "BIN_SIZE_64_PIXELS", "value": 1},
+      {"name": "BIN_SIZE_128_PIXELS", "value": 2},
+      {"name": "BIN_SIZE_256_PIXELS", "value": 3},
+      {"name": "BIN_SIZE_512_PIXELS", "value": 4}
+    ]
+  },
+  "ScUncertaintyRegionMode": {
+    "entries": [
+      {"name": "SC_HALF_LSB", "value": 0},
+      {"name": "SC_LSB_ONE_SIDED", "value": 1},
+      {"name": "SC_LSB_TWO_SIDED", "value": 2}
+    ]
+  },
+}
+
 missing_enums_gfx103plus = {
   **missing_enums_gfx81plus,
   "ColorFormat": ColorFormat,
@@ -624,10 +647,7 @@ enums_missing = {
     **missing_enums_gfx81plus,
   },
   'gfx9': {
-    **missing_enums_gfx81plus,
-    "DB_DFSM_CONTROL__PUNCHOUT_MODE": DB_DFSM_CONTROL__PUNCHOUT_MODE,
-    "IMG_DATA_FORMAT_STENCIL": IMG_DATA_FORMAT_STENCIL,
-    "SQ_IMG_RSRC_WORD4__BC_SWIZZLE": SQ_IMG_RSRC_WORD4__BC_SWIZZLE,
+    **missing_enums_gfx9,
   },
   'gfx10': {
     **missing_enums_gfx81plus,
