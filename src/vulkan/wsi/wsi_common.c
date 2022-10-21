@@ -26,6 +26,7 @@
 #include "util/u_debug.h"
 #include "util/macros.h"
 #include "util/os_file.h"
+#include "util/os_time.h"
 #include "util/xmlconfig.h"
 #include "vk_device.h"
 #include "vk_fence.h"
@@ -324,6 +325,32 @@ configure_image(const struct wsi_swapchain *chain,
       unreachable("Invalid image type");
    }
 }
+
+#if defined(HAVE_PTHREAD) && !defined(_WIN32)
+bool
+wsi_init_pthread_cond_monotonic(pthread_cond_t *cond)
+{
+   pthread_condattr_t condattr;
+   bool ret = false;
+
+   if (pthread_condattr_init(&condattr) != 0)
+      goto fail_attr_init;
+
+   if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0)
+      goto fail_attr_set;
+
+   if (pthread_cond_init(cond, &condattr) != 0)
+      goto fail_cond_init;
+
+   ret = true;
+
+fail_cond_init:
+fail_attr_set:
+   pthread_condattr_destroy(&condattr);
+fail_attr_init:
+   return ret;
+}
+#endif
 
 VkResult
 wsi_swapchain_init(const struct wsi_device *wsi,

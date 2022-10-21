@@ -336,4 +336,9 @@ wsi_display_setup_syncobj_fd(struct wsi_device *wsi_device,
 VK_DEFINE_NONDISP_HANDLE_CASTS(wsi_swapchain, base, VkSwapchainKHR,
                                VK_OBJECT_TYPE_SWAPCHAIN_KHR)
 
+#if defined(HAVE_PTHREAD) && !defined(_WIN32)
+bool
+wsi_init_pthread_cond_monotonic(pthread_cond_t *cond);
+#endif
+
 #endif /* WSI_COMMON_PRIVATE_H */
