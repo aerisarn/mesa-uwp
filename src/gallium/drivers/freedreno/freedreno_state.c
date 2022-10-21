@@ -313,8 +313,8 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
    for (unsigned i = 0; i < PIPE_MAX_VIEWPORTS; i++) {
       ctx->disabled_scissor[i].minx = 0;
       ctx->disabled_scissor[i].miny = 0;
-      ctx->disabled_scissor[i].maxx = cso->width;
-      ctx->disabled_scissor[i].maxy = cso->height;
+      ctx->disabled_scissor[i].maxx = cso->width - 1;
+      ctx->disabled_scissor[i].maxy = cso->height - 1;
    }
 
    fd_context_dirty(ctx, FD_DIRTY_SCISSOR);
@@ -337,10 +337,34 @@ fd_set_scissor_states(struct pipe_context *pctx, unsigned start_slot,
 {
    struct fd_context *ctx = fd_context(pctx);
 
-   for (unsigned i = 0; i < num_scissors; i++)
-      ctx->scissor[start_slot + i] = scissor[i];
+   for (unsigned i = 0; i < num_scissors; i++) {
+      unsigned idx = start_slot + i;
+
+      if ((scissor[i].minx == scissor[i].maxx) ||
+          (scissor[i].miny == scissor[i].maxy)) {
+         ctx->scissor[idx].minx = ctx->scissor[idx].miny = 1;
+         ctx->scissor[idx].maxx = ctx->scissor[idx].maxy = 0;
+      } else {
+         ctx->scissor[idx].minx = scissor[i].minx;
+         ctx->scissor[idx].miny = scissor[i].miny;
+         ctx->scissor[idx].maxx = MAX2(scissor[i].maxx, 1) - 1;
+         ctx->scissor[idx].maxy = MAX2(scissor[i].maxy, 1) - 1;
+      }
+   }
 
    fd_context_dirty(ctx, FD_DIRTY_SCISSOR);
+}
+
+static void
+init_scissor_states(struct pipe_context *pctx)
+   in_dt
+{
+   struct fd_context *ctx = fd_context(pctx);
+
+   for (unsigned idx = 0; idx < ARRAY_SIZE(ctx->scissor); idx++) {
+      ctx->scissor[idx].minx = ctx->scissor[idx].miny = 1;
+      ctx->scissor[idx].maxx = ctx->scissor[idx].maxy = 0;
+   }
 }
 
 static void
@@ -378,8 +402,8 @@ fd_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
       /* Clamp, convert to integer and round up the max bounds. */
       scissor->minx = CLAMP(minx, 0.f, max_dims);
       scissor->miny = CLAMP(miny, 0.f, max_dims);
-      scissor->maxx = CLAMP(ceilf(maxx), 0.f, max_dims);
-      scissor->maxy = CLAMP(ceilf(maxy), 0.f, max_dims);
+      scissor->maxx = MAX2(CLAMP(ceilf(maxx), 0.f, max_dims), 1) - 1;
+      scissor->maxy = MAX2(CLAMP(ceilf(maxy), 0.f, max_dims), 1) - 1;
    }
 
    fd_context_dirty(ctx, FD_DIRTY_VIEWPORT);
@@ -760,4 +784,6 @@ fd_state_init(struct pipe_context *pctx)
       pctx->set_compute_resources = fd_set_compute_resources;
       pctx->set_global_binding = fd_set_global_binding;
    }
+
+   init_scissor_states(pctx);
 }

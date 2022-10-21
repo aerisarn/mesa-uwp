@@ -682,15 +682,15 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
          minx = MAX2(minx, (int)floorf(vp->translate[0] - fabsf(vp->scale[0])));
          miny = MAX2(miny, (int)floorf(vp->translate[1] - fabsf(vp->scale[1])));
-         maxx = MIN2(maxx, (int)ceilf(vp->translate[0] + fabsf(vp->scale[0])));
-         maxy = MIN2(maxy, (int)ceilf(vp->translate[1] + fabsf(vp->scale[1])));
+         maxx = MIN2(maxx + 1, (int)ceilf(vp->translate[0] + fabsf(vp->scale[0]))) - 1;
+         maxy = MIN2(maxy + 1, (int)ceilf(vp->translate[1] + fabsf(vp->scale[1]))) - 1;
       }
 
       OUT_PKT0(ring, REG_A3XX_GRAS_SC_WINDOW_SCISSOR_TL, 2);
       OUT_RING(ring, A3XX_GRAS_SC_WINDOW_SCISSOR_TL_X(minx) |
                         A3XX_GRAS_SC_WINDOW_SCISSOR_TL_Y(miny));
-      OUT_RING(ring, A3XX_GRAS_SC_WINDOW_SCISSOR_BR_X(maxx - 1) |
-                        A3XX_GRAS_SC_WINDOW_SCISSOR_BR_Y(maxy - 1));
+      OUT_RING(ring, A3XX_GRAS_SC_WINDOW_SCISSOR_BR_X(maxx) |
+                        A3XX_GRAS_SC_WINDOW_SCISSOR_BR_Y(maxy));
 
       ctx->batch->max_scissor.minx = MIN2(ctx->batch->max_scissor.minx, minx);
       ctx->batch->max_scissor.miny = MIN2(ctx->batch->max_scissor.miny, miny);

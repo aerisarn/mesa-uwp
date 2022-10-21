@@ -351,6 +351,9 @@ struct fd_context {
    /* points to either scissor or disabled_scissor depending on rast state: */
    struct pipe_scissor_state *current_scissor dt;
 
+   /* Note that all the scissor state that is traced is inclusive, ie the
+    * maxiumum maxx is one less than the width.
+    */
    struct pipe_scissor_state scissor[PIPE_MAX_VIEWPORTS] dt;
 
    /* we don't have a disable/enable bit for scissor, so instead we keep

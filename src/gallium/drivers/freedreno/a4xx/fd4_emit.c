@@ -784,8 +784,8 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
       struct pipe_scissor_state *scissor = fd_context_get_scissor(ctx);
 
       OUT_PKT0(ring, REG_A4XX_GRAS_SC_WINDOW_SCISSOR_BR, 2);
-      OUT_RING(ring, A4XX_GRAS_SC_WINDOW_SCISSOR_BR_X(scissor->maxx - 1) |
-                        A4XX_GRAS_SC_WINDOW_SCISSOR_BR_Y(scissor->maxy - 1));
+      OUT_RING(ring, A4XX_GRAS_SC_WINDOW_SCISSOR_BR_X(scissor->maxx) |
+                        A4XX_GRAS_SC_WINDOW_SCISSOR_BR_Y(scissor->maxy));
       OUT_RING(ring, A4XX_GRAS_SC_WINDOW_SCISSOR_TL_X(scissor->minx) |
                         A4XX_GRAS_SC_WINDOW_SCISSOR_TL_Y(scissor->miny));
 

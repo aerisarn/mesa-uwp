@@ -307,7 +307,6 @@ spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 # "Failure with Polygon Stipple set to fail mode."
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 
-spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
 
 # crash in tgsi exec doing st_freedback_draw_vbo().

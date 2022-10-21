@@ -619,15 +619,15 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_PKT4(ring, REG_A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0, 2);
       OUT_RING(ring, A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->minx) |
                         A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->miny));
-      OUT_RING(ring, A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->maxx - 1) |
-                        A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->maxy - 1));
+      OUT_RING(ring, A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_X(scissor->maxx) |
+                        A5XX_GRAS_SC_SCREEN_SCISSOR_TL_0_Y(scissor->maxy));
 
       OUT_PKT4(ring, REG_A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0, 2);
       OUT_RING(ring, A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(scissor->minx) |
                         A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(scissor->miny));
       OUT_RING(ring,
-               A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(scissor->maxx - 1) |
-                  A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(scissor->maxy - 1));
+               A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(scissor->maxx) |
+                  A5XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(scissor->maxy));
 
       ctx->batch->max_scissor.minx =
          MIN2(ctx->batch->max_scissor.minx, scissor->minx);

@@ -739,8 +739,7 @@ build_scissor(struct fd6_emit *emit) assert_dt
    OUT_REG(
       ring,
       A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0, .x = scissor->minx, .y = scissor->miny),
-      A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = MAX2(scissor->maxx, 1) - 1,
-                                     .y = MAX2(scissor->maxy, 1) - 1));
+      A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = scissor->maxx, .y = scissor->maxy));
 
    return ring;
 }
@@ -980,8 +979,8 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
          ring,
          A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0, .x = scissor->minx,
                                           .y = scissor->miny),
-         A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0, .x = MAX2(scissor->maxx, 1) - 1,
-                                          .y = MAX2(scissor->maxy, 1) - 1));
+         A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0, .x = scissor->maxx,
+                                          .y = scissor->maxy));
 
       unsigned guardband_x = fd_calc_guardband(vp->translate[0],
                                                vp->scale[0], false);
