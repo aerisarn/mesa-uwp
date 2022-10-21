@@ -1004,8 +1004,8 @@ st_manager_destroy(struct st_manager *smapi)
 }
 
 
-static struct st_context_iface *
-st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
+struct st_context_iface *
+st_api_create_context(struct st_manager *smapi,
                       const struct st_context_attribs *attribs,
                       enum st_context_error *error,
                       struct st_context_iface *shared_stctxi)
@@ -1452,7 +1452,6 @@ st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
 static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
    .query_versions = st_api_query_versions,
-   .create_context = st_api_create_context,
 };
 
 

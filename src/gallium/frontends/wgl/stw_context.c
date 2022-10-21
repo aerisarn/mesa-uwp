@@ -241,7 +241,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
 
    attribs.options = stw_dev->st_options;
 
-   ctx->st = stw_dev->stapi->create_context(stw_dev->stapi,
+   ctx->st = st_api_create_context(
          smapi, &attribs, &ctx_err, shareCtx ? shareCtx->st : NULL);
    if (ctx->st == NULL)
       goto no_st_ctx;

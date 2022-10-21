@@ -522,16 +522,16 @@ struct st_api
                           int *gl_compat_version,
                           int *gl_es1_version,
                           int *gl_es2_version);
-
-   /**
-    * Create a rendering context.
-    */
-   struct st_context_iface *(*create_context)(struct st_api *stapi,
-                                              struct st_manager *smapi,
-                                              const struct st_context_attribs *attribs,
-                                              enum st_context_error *error,
-                                              struct st_context_iface *stsharei);
 };
+
+/**
+ * Create a rendering context.
+ */
+struct st_context_iface *
+st_api_create_context(struct st_manager *smapi,
+                      const struct st_context_attribs *attribs,
+                      enum st_context_error *error,
+                      struct st_context_iface *stsharei);
 
 /**
  * Bind the context to the calling thread with draw and read as drawables.

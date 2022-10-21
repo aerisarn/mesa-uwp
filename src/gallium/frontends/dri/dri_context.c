@@ -166,7 +166,7 @@ dri_create_context(gl_api api, const struct gl_config * visual,
 
    attribs.options = screen->options;
    dri_fill_st_visual(&attribs.visual, screen, visual);
-   ctx->st = stapi->create_context(stapi, &screen->base, &attribs, &ctx_err,
+   ctx->st = st_api_create_context(&screen->base, &attribs, &ctx_err,
 				   st_share);
    if (ctx->st == NULL) {
       switch (ctx_err) {

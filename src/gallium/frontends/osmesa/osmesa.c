@@ -173,16 +173,6 @@ get_st_manager(void)
    return stmgr;
 }
 
-/**
- * Create/return singleton st_api object.
- */
-static struct st_api *
-get_st_api(void)
-{
-   get_st_manager();
-   return stapi;
-}
-
 /* Reads the color or depth buffer from the backing context to either the user storage
  * (color buffer) or our temporary (z/s)
  */
@@ -583,7 +573,6 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
    struct st_context_iface *st_shared;
    enum st_context_error st_error = 0;
    struct st_context_attribs attribs;
-   struct st_api *stapi = get_st_api();
    GLenum format = GL_RGBA;
    int depthBits = 0, stencilBits = 0, accumBits = 0;
    int profile = OSMESA_COMPAT_PROFILE, version_major = 1, version_minor = 0;
@@ -694,7 +683,7 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
                          osmesa->depth_stencil_format,
                          osmesa->accum_format);
 
-   osmesa->stctx = stapi->create_context(stapi, get_st_manager(),
+   osmesa->stctx = st_api_create_context(get_st_manager(),
                                          &attribs, &st_error, st_shared);
    if (!osmesa->stctx) {
       FREE(osmesa);

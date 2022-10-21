@@ -179,7 +179,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 
 	// Create context using state tracker api call
 	enum st_context_error result;
-	context->st = fDisplay->api->create_context(fDisplay->api, fDisplay->manager,
+	context->st = st_api_create_context(fDisplay->manager,
 		&attribs, &result, shared);
 
 	if (!context->st) {
