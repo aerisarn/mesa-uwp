@@ -209,36 +209,36 @@ static void send_cmd_bitstream_direct(struct radeon_decoder *dec, struct pb_buff
    uint64_t addr;
 
    // jpeg soft reset
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DEC_SOFT_RST, COND0, TYPE0, 1);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_dec_soft_rst, COND0, TYPE0, 1);
 
    // ensuring the Reset is asserted in SCLK domain
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_COND_RD_TIMER, COND0, TYPE0, 0x01400200);
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_REF_DATA, COND0, TYPE0, (0x1 << 0x10));
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DEC_SOFT_RST, COND3, TYPE3, (0x1 << 0x10));
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_cond_rd_timer, COND0, TYPE0, 0x01400200);
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, (0x1 << 0x10));
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_dec_soft_rst, COND3, TYPE3, (0x1 << 0x10));
 
    // wait mem
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DEC_SOFT_RST, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_dec_soft_rst, COND0, TYPE0, 0);
 
    // ensuring the Reset is de-asserted in SCLK domain
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_REF_DATA, COND0, TYPE0, (0 << 0x10));
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DEC_SOFT_RST, COND3, TYPE3, (0x1 << 0x10));
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, (0 << 0x10));
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_dec_soft_rst, COND3, TYPE3, (0x1 << 0x10));
 
    dec->ws->cs_add_buffer(&dec->jcs[dec->cb_idx], buf, usage | RADEON_USAGE_SYNCHRONIZED, domain);
    addr = dec->ws->buffer_get_virtual_address(buf);
    addr = addr + off;
 
    // set UVD_LMI_JPEG_READ_64BIT_BAR_LOW/HIGH based on bitstream buffer address
-   set_reg_jpeg(dec, vcnipUVD_LMI_JPEG_READ_64BIT_BAR_HIGH, COND0, TYPE0, (addr >> 32));
-   set_reg_jpeg(dec, vcnipUVD_LMI_JPEG_READ_64BIT_BAR_LOW, COND0, TYPE0, addr);
+   set_reg_jpeg(dec, dec->jpg_reg.lmi_jpeg_read_64bit_bar_high, COND0, TYPE0, (addr >> 32));
+   set_reg_jpeg(dec, dec->jpg_reg.lmi_jpeg_read_64bit_bar_low, COND0, TYPE0, addr);
 
    // set jpeg_rb_base
-   set_reg_jpeg(dec, vcnipUVD_JPEG_RB_BASE, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_rb_base, COND0, TYPE0, 0);
 
    // set jpeg_rb_base
-   set_reg_jpeg(dec, vcnipUVD_JPEG_RB_SIZE, COND0, TYPE0, 0xFFFFFFF0);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_rb_size, COND0, TYPE0, 0xFFFFFFF0);
 
    // set jpeg_rb_wptr
-   set_reg_jpeg(dec, vcnipUVD_JPEG_RB_WPTR, COND0, TYPE0, (dec->jpg.bsd_size >> 2));
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_rb_wptr, COND0, TYPE0, (dec->jpg.bsd_size >> 2));
 }
 
 /* send a target buffer command */
@@ -247,54 +247,60 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
 {
    uint64_t addr;
 
-   set_reg_jpeg(dec, vcnipUVD_JPEG_PITCH, COND0, TYPE0, (dec->jpg.dt_pitch >> 4));
-   set_reg_jpeg(dec, vcnipUVD_JPEG_UV_PITCH, COND0, TYPE0, ((dec->jpg.dt_uv_pitch * 2) >> 4));
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_pitch, COND0, TYPE0, (dec->jpg.dt_pitch >> 4));
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_uv_pitch, COND0, TYPE0, ((dec->jpg.dt_uv_pitch * 2) >> 4));
 
-   set_reg_jpeg(dec, vcnipJPEG_DEC_ADDR_MODE, COND0, TYPE0, 0);
-   set_reg_jpeg(dec, vcnipJPEG_DEC_Y_GFX10_TILING_SURFACE, COND0, TYPE0, 0);
-   set_reg_jpeg(dec, vcnipJPEG_DEC_UV_GFX10_TILING_SURFACE, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.dec_addr_mode, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.dec_y_gfx10_tiling_surface, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.dec_uv_gfx10_tiling_surface, COND0, TYPE0, 0);
 
    dec->ws->cs_add_buffer(&dec->jcs[dec->cb_idx], buf, usage | RADEON_USAGE_SYNCHRONIZED, domain);
    addr = dec->ws->buffer_get_virtual_address(buf);
    addr = addr + off;
 
    // set UVD_LMI_JPEG_WRITE_64BIT_BAR_LOW/HIGH based on target buffer address
-   set_reg_jpeg(dec, vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_HIGH, COND0, TYPE0, (addr >> 32));
-   set_reg_jpeg(dec, vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_LOW, COND0, TYPE0, addr);
+   set_reg_jpeg(dec, dec->jpg_reg.lmi_jpeg_write_64bit_bar_high, COND0, TYPE0, (addr >> 32));
+   set_reg_jpeg(dec, dec->jpg_reg.lmi_jpeg_write_64bit_bar_low, COND0, TYPE0, addr);
 
    // set output buffer data address
-   set_reg_jpeg(dec, vcnipUVD_JPEG_INDEX, COND0, TYPE0, 0);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DATA, COND0, TYPE0, dec->jpg.dt_luma_top_offset);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_INDEX, COND0, TYPE0, 1);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_DATA, COND0, TYPE0, dec->jpg.dt_chroma_top_offset);
-   if (dec->jpg.dt_chromav_top_offset) {
-      set_reg_jpeg(dec, vcnipUVD_JPEG_INDEX, COND0, TYPE0, 2);
-      set_reg_jpeg(dec, vcnipUVD_JPEG_DATA, COND0, TYPE0, dec->jpg.dt_chromav_top_offset);
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V2) {
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_index, COND0, TYPE0, 0);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_data, COND0, TYPE0, dec->jpg.dt_luma_top_offset);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_index, COND0, TYPE0, 1);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_data, COND0, TYPE0, dec->jpg.dt_chroma_top_offset);
+      if (dec->jpg.dt_chromav_top_offset) {
+         set_reg_jpeg(dec, dec->jpg_reg.jpeg_index, COND0, TYPE0, 2);
+         set_reg_jpeg(dec, dec->jpg_reg.jpeg_data, COND0, TYPE0, dec->jpg.dt_chromav_top_offset);
+      }
+   } else {
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_luma_base0_0, COND0, TYPE0, dec->jpg.dt_luma_top_offset);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_chroma_base0_0, COND0, TYPE0, dec->jpg.dt_chroma_top_offset);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_chromav_base0_0, COND0, TYPE0, dec->jpg.dt_chromav_top_offset);
    }
-   set_reg_jpeg(dec, vcnipUVD_JPEG_TIER_CNTL2, COND0, 0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_tier_cntl2, COND0, 0, 0);
 
    // set output buffer read pointer
-   set_reg_jpeg(dec, vcnipUVD_JPEG_OUTBUF_RPTR, COND0, TYPE0, 0);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_OUTBUF_CNTL, COND0, TYPE0,
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_outbuf_rptr, COND0, TYPE0, 0);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_outbuf_cntl, COND0, TYPE0,
                 ((0x00001587 & (~0x00000180L)) | (0x1 << 0x7) | (0x1 << 0x6)));
 
    // enable error interrupts
-   set_reg_jpeg(dec, vcnipUVD_JPEG_INT_EN, COND0, TYPE0, 0xFFFFFFFE);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_int_en, COND0, TYPE0, 0xFFFFFFFE);
 
    // start engine command
-   set_reg_jpeg(dec, vcnipUVD_JPEG_CNTL, COND0, TYPE0, 0x6);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, 0x6);
 
    // wait for job completion, wait for job JBSI fetch done
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_REF_DATA, COND0, TYPE0, (dec->jpg.bsd_size >> 2));
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_COND_RD_TIMER, COND0, TYPE0, 0x01400200);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_RB_RPTR, COND3, TYPE3, 0xFFFFFFFF);
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, (dec->jpg.bsd_size >> 2));
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_cond_rd_timer, COND0, TYPE0, 0x01400200);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_rb_rptr, COND3, TYPE3, 0xFFFFFFFF);
 
    // wait for job jpeg outbuf idle
-   set_reg_jpeg(dec, vcnipUVD_JRBC_IB_REF_DATA, COND0, TYPE0, 0xFFFFFFFF);
-   set_reg_jpeg(dec, vcnipUVD_JPEG_OUTBUF_WPTR, COND3, TYPE3, 0x00000001);
+   set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0xFFFFFFFF);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_outbuf_wptr, COND3, TYPE3, 0x00000001);
 
    // stop engine
-   set_reg_jpeg(dec, vcnipUVD_JPEG_CNTL, COND0, TYPE0, 0x4);
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, 0x4);
 }
 
 /**
@@ -314,11 +320,11 @@ void send_cmd_jpeg(struct radeon_decoder *dec, struct pipe_video_buffer *target,
 
    dt = radeon_jpeg_get_decode_param(dec, target, picture);
 
-   if (dec->jpg.direct_reg == true) {
-      send_cmd_bitstream_direct(dec, bs_buf->res->buf, 0, RADEON_USAGE_READ, RADEON_DOMAIN_GTT);
-      send_cmd_target_direct(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM);
-   } else {
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V1) {
       send_cmd_bitstream(dec, bs_buf->res->buf, 0, RADEON_USAGE_READ, RADEON_DOMAIN_GTT);
       send_cmd_target(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM);
+   } else {
+      send_cmd_bitstream_direct(dec, bs_buf->res->buf, 0, RADEON_USAGE_READ, RADEON_DOMAIN_GTT);
+      send_cmd_target_direct(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM);
    }
 }

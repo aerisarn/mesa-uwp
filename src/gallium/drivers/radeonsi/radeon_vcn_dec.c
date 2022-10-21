@@ -3183,7 +3183,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->reg.data1 = RDECODE_VCN1_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN1_GPCOM_VCPU_CMD;
       dec->reg.cntl = RDECODE_VCN1_ENGINE_CNTL;
-      dec->jpg.direct_reg = false;
+      dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V1;
       break;
    case CHIP_NAVI10:
    case CHIP_NAVI12:
@@ -3193,7 +3193,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN2_GPCOM_VCPU_CMD;
       dec->reg.cntl = RDECODE_VCN2_ENGINE_CNTL;
-      dec->jpg.direct_reg = true;
+      dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V2;
       break;
    case CHIP_MI100:
    case CHIP_MI200:
@@ -3208,14 +3208,14 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
       dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
-      dec->jpg.direct_reg = true;
+      dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V2;
       break;
    case CHIP_GFX1100:
    case CHIP_GFX1101:
    case CHIP_GFX1102:
    case CHIP_GFX1103_R1:
    case CHIP_GFX1103_R2:
-      dec->jpg.direct_reg = true;
+      dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V2;
       dec->addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX11;
       dec->av1_version = RDECODE_AV1_VER_1;
       break;
@@ -3231,6 +3231,51 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       r = flush(dec, 0, NULL);
       if (r)
          goto error;
+   } else if (dec->jpg_reg.version != RDECODE_JPEG_REG_VER_V1) {
+      dec->jpg_reg.jrbc_ib_cond_rd_timer = vcnipUVD_JRBC_IB_COND_RD_TIMER;
+      dec->jpg_reg.jrbc_ib_ref_data = vcnipUVD_JRBC_IB_REF_DATA;
+      dec->jpg_reg.jpeg_rb_base = vcnipUVD_JPEG_RB_BASE;
+      dec->jpg_reg.jpeg_rb_size = vcnipUVD_JPEG_RB_SIZE;
+      dec->jpg_reg.jpeg_rb_wptr = vcnipUVD_JPEG_RB_WPTR;
+      dec->jpg_reg.jpeg_int_en = vcnipUVD_JPEG_INT_EN;
+      dec->jpg_reg.jpeg_cntl = vcnipUVD_JPEG_CNTL;
+      dec->jpg_reg.jpeg_rb_rptr = vcnipUVD_JPEG_RB_RPTR;
+      if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V2) {
+         dec->jpg_reg.jpeg_dec_soft_rst = vcnipUVD_JPEG_DEC_SOFT_RST;
+         dec->jpg_reg.lmi_jpeg_read_64bit_bar_high = vcnipUVD_LMI_JPEG_READ_64BIT_BAR_HIGH;
+         dec->jpg_reg.lmi_jpeg_read_64bit_bar_low = vcnipUVD_LMI_JPEG_READ_64BIT_BAR_LOW;
+         dec->jpg_reg.jpeg_pitch = vcnipUVD_JPEG_PITCH;
+         dec->jpg_reg.jpeg_uv_pitch = vcnipUVD_JPEG_UV_PITCH;
+         dec->jpg_reg.dec_addr_mode = vcnipJPEG_DEC_ADDR_MODE;
+         dec->jpg_reg.dec_y_gfx10_tiling_surface = vcnipJPEG_DEC_Y_GFX10_TILING_SURFACE;
+         dec->jpg_reg.dec_uv_gfx10_tiling_surface = vcnipJPEG_DEC_UV_GFX10_TILING_SURFACE;
+         dec->jpg_reg.lmi_jpeg_write_64bit_bar_high = vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_HIGH;
+         dec->jpg_reg.lmi_jpeg_write_64bit_bar_low = vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_LOW;
+         dec->jpg_reg.jpeg_tier_cntl2 = vcnipUVD_JPEG_TIER_CNTL2;
+         dec->jpg_reg.jpeg_outbuf_cntl = vcnipUVD_JPEG_OUTBUF_CNTL;
+         dec->jpg_reg.jpeg_outbuf_rptr = vcnipUVD_JPEG_OUTBUF_RPTR;
+         dec->jpg_reg.jpeg_outbuf_wptr = vcnipUVD_JPEG_OUTBUF_WPTR;
+         dec->jpg_reg.jpeg_index = vcnipUVD_JPEG_INDEX;
+         dec->jpg_reg.jpeg_data = vcnipUVD_JPEG_DATA;
+      } else {
+         dec->jpg_reg.jpeg_dec_soft_rst = vcnipUVD_JPEG_DEC_SOFT_RST_1;
+         dec->jpg_reg.lmi_jpeg_read_64bit_bar_high = vcnipUVD_LMI_JPEG_READ_64BIT_BAR_HIGH_1;
+         dec->jpg_reg.lmi_jpeg_read_64bit_bar_low = vcnipUVD_LMI_JPEG_READ_64BIT_BAR_LOW_1;
+         dec->jpg_reg.jpeg_pitch = vcnipUVD_JPEG_PITCH_1;
+         dec->jpg_reg.jpeg_uv_pitch = vcnipUVD_JPEG_UV_PITCH_1;
+         dec->jpg_reg.dec_addr_mode = vcnipJPEG_DEC_ADDR_MODE_1;
+         dec->jpg_reg.dec_y_gfx10_tiling_surface = vcnipJPEG_DEC_Y_GFX10_TILING_SURFACE_1;
+         dec->jpg_reg.dec_uv_gfx10_tiling_surface = vcnipJPEG_DEC_UV_GFX10_TILING_SURFACE_1;
+         dec->jpg_reg.lmi_jpeg_write_64bit_bar_high = vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_HIGH_1;
+         dec->jpg_reg.lmi_jpeg_write_64bit_bar_low = vcnipUVD_LMI_JPEG_WRITE_64BIT_BAR_LOW_1;
+         dec->jpg_reg.jpeg_tier_cntl2 = vcnipUVD_JPEG_TIER_CNTL2_1;
+         dec->jpg_reg.jpeg_outbuf_cntl = vcnipUVD_JPEG_OUTBUF_CNTL_1;
+         dec->jpg_reg.jpeg_outbuf_rptr = vcnipUVD_JPEG_OUTBUF_RPTR_1;
+         dec->jpg_reg.jpeg_outbuf_wptr = vcnipUVD_JPEG_OUTBUF_WPTR_1;
+         dec->jpg_reg.jpeg_luma_base0_0 = vcnipUVD_JPEG_LUMA_BASE0_0;
+         dec->jpg_reg.jpeg_chroma_base0_0 = vcnipUVD_JPEG_CHROMA_BASE0_0;
+         dec->jpg_reg.jpeg_chromav_base0_0 = vcnipUVD_JPEG_CHROMAV_BASE0_0;
+      }
    }
 
    next_buffer(dec);

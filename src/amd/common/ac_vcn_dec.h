@@ -1195,7 +1195,6 @@ struct jpeg_params {
    unsigned dt_luma_top_offset;
    unsigned dt_chroma_top_offset;
    unsigned dt_chromav_top_offset;
-   bool direct_reg;
 };
 
 #define RDECODE_VCN1_GPCOM_VCPU_CMD   0x2070c
