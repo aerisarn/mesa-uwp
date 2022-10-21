@@ -511,18 +511,19 @@ struct st_api
     * The name of the rendering API.  This is informative.
     */
    const char *name;
-
-   /**
-    * Query supported OpenGL versions. (if applicable)
-    * The format is (major*10+minor).
-    */
-   void (*query_versions)(struct st_api *stapi, struct st_manager *sm,
-                          struct st_config_options *options,
-                          int *gl_core_version,
-                          int *gl_compat_version,
-                          int *gl_es1_version,
-                          int *gl_es2_version);
 };
+
+/**
+ * Query supported OpenGL versions. (if applicable)
+ * The format is (major*10+minor).
+ */
+void
+st_api_query_versions(struct st_manager *sm,
+                      struct st_config_options *options,
+                      int *gl_core_version,
+                      int *gl_compat_version,
+                      int *gl_es1_version,
+                      int *gl_es2_version);
 
 /**
  * Create a rendering context.

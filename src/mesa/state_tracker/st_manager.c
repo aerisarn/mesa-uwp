@@ -1434,8 +1434,8 @@ get_version(struct pipe_screen *screen,
 }
 
 
-static void
-st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
+void
+st_api_query_versions(struct st_manager *sm,
                       struct st_config_options *options,
                       int *gl_core_version,
                       int *gl_compat_version,
@@ -1451,7 +1451,6 @@ st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
 
 static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
-   .query_versions = st_api_query_versions,
 };
 
 

@@ -848,12 +848,12 @@ dri_init_screen_helper(struct dri_screen *screen,
 
    dri_postprocessing_init(screen);
 
-   screen->st_api->query_versions(screen->st_api, &screen->base,
-                                  &screen->options,
-                                  &screen->sPriv->max_gl_core_version,
-                                  &screen->sPriv->max_gl_compat_version,
-                                  &screen->sPriv->max_gl_es1_version,
-                                  &screen->sPriv->max_gl_es2_version);
+   st_api_query_versions(&screen->base,
+                         &screen->options,
+                         &screen->sPriv->max_gl_core_version,
+                         &screen->sPriv->max_gl_compat_version,
+                         &screen->sPriv->max_gl_es1_version,
+                         &screen->sPriv->max_gl_es2_version);
 
    return dri_fill_in_modes(screen);
 }
