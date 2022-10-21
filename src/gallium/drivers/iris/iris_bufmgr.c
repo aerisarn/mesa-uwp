@@ -66,6 +66,7 @@
 #include "iris_context.h"
 #include "string.h"
 #include "iris_kmd_backend.h"
+#include "i915/iris_bufmgr.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -527,21 +528,31 @@ iris_bo_busy(struct iris_bo *bo)
    return busy;
 }
 
-int
-iris_bo_madvise(struct iris_bo *bo, int state)
+/**
+ * Specify the volatility of the buffer.
+ * \param bo Buffer to create a name for
+ * \param state The purgeable status
+ *
+ * Use IRIS_MADVICE_DONT_NEED to mark the buffer as purgeable, and it will be
+ * reclaimed under memory pressure. If you subsequently require the buffer,
+ * then you must pass IRIS_MADVICE_WILL_NEED to mark the buffer as required.
+ *
+ * Returns true if the buffer was retained, or false if it was discarded
+ * whilst marked as IRIS_MADVICE_DONT_NEED.
+ */
+static bool
+iris_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
 {
    /* We can't madvise suballocated BOs. */
    assert(iris_bo_is_real(bo));
 
-   struct drm_i915_gem_madvise madv = {
-      .handle = bo->gem_handle,
-      .madv = state,
-      .retained = 1,
-   };
-
-   intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_MADVISE, &madv);
-
-   return madv.retained;
+   switch (iris_bufmgr_get_device_info(bo->bufmgr)->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return iris_i915_bo_madvise(bo, state);
+   default:
+      unreachable("missing");
+      return false;
+   }
 }
 
 static struct iris_bo *
@@ -905,7 +916,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
       list_del(&cur->head);
 
       /* Tell the kernel we need this BO.  If it still exists, we're done! */
-      if (iris_bo_madvise(cur, I915_MADV_WILLNEED)) {
+      if (iris_bo_madvise(cur, IRIS_MADVICE_WILL_NEED)) {
          bo = cur;
          break;
       }
@@ -1439,7 +1450,7 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
    if (bo->real.reusable)
       bucket = bucket_for_size(bufmgr, bo->size, bo->real.heap);
    /* Put the buffer into our internal cache for reuse if we can. */
-   if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
+   if (bucket && iris_bo_madvise(bo, IRIS_MADVICE_DONT_NEED)) {
       bo->real.free_time = time;
       bo->name = NULL;
 

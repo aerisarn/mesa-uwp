@@ -26,7 +26,7 @@
 
 #include "drm-uapi/i915_drm.h"
 
-#include "iris_bufmgr.h"
+#include "iris/iris_bufmgr.h"
 
 static uint32_t
 i915_gem_create(struct iris_bufmgr *bufmgr,
