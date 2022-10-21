@@ -622,9 +622,11 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                         cfg.preload.fragment.sample_mask_id = true;
                 }
 
-                /* Flip gl_PointCoord (and point sprites) depending on API
-                 * setting on framebuffer orientation. We do not use
-                 * lower_wpos_pntc on Bifrost.
+                /* Bifrost does not have native point sprites. Point sprites are
+                 * lowered in the driver to gl_PointCoord reads. This field
+                 * actually controls the orientation of gl_PointCoord. Both
+                 * orientations are controlled with sprite_coord_mode in
+                 * Gallium.
                  */
                 cfg.properties.point_sprite_coord_origin_max_y =
                         (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
@@ -2645,6 +2647,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         uint16_t point_coord_mask = 0;
 
 #if PAN_ARCH <= 5
+        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+
         /* Point sprites are lowered on Bifrost and newer */
         if (point_coord_replace)
                 point_coord_mask = ctx->rasterizer->base.sprite_coord_enable;
@@ -2729,7 +2733,10 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
 #if PAN_ARCH <= 5
         pan_emit_special_input(varyings, present,
-                        PAN_VARY_PNTCOORD, MALI_ATTRIBUTE_SPECIAL_POINT_COORD);
+                        PAN_VARY_PNTCOORD,
+                        (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT) ?
+                        MALI_ATTRIBUTE_SPECIAL_POINT_COORD_MAX_Y :
+                        MALI_ATTRIBUTE_SPECIAL_POINT_COORD_MIN_Y);
         pan_emit_special_input(varyings, present, PAN_VARY_FACE,
                         MALI_ATTRIBUTE_SPECIAL_FRONT_FACING);
         pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD,
