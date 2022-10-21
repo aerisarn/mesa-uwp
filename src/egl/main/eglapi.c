@@ -2968,3 +2968,25 @@ MesaGLInteropEGLExportObject(EGLDisplay dpy, EGLContext context,
    _eglUnlockDisplay(disp);
    return ret;
 }
+
+PUBLIC int
+MesaGLInteropEGLFlushObjects(EGLDisplay dpy, EGLContext context,
+                             unsigned count, struct mesa_glinterop_export_in *objects,
+                             GLsync *sync)
+{
+   _EGLDisplay *disp;
+   _EGLContext *ctx;
+   int ret;
+
+   ret = _eglLockDisplayInterop(dpy, context, &disp, &ctx);
+   if (ret != MESA_GLINTEROP_SUCCESS)
+      return ret;
+
+   if (disp->Driver->GLInteropFlushObjects)
+      ret = disp->Driver->GLInteropFlushObjects(disp, ctx, count, objects, sync);
+   else
+      ret = MESA_GLINTEROP_UNSUPPORTED;
+
+   _eglUnlockDisplay(disp);
+   return ret;
+}
