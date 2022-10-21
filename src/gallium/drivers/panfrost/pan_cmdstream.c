@@ -4851,10 +4851,11 @@ batch_get_polygon_list(struct panfrost_batch *batch)
                                                              has_draws);
                 size = util_next_power_of_two(size);
 
-                /* Create the BO as invisible if we can. In the non-hierarchical tiler case,
-                 * we need to write the polygon list manually because there's not WRITE_VALUE
-                 * job in the chain (maybe we should add one...). */
-                bool init_polygon_list = !has_draws && dev->model->quirks.no_hierarchical_tiling;
+                /* Create the BO as invisible if we can. If there are no draws,
+                 * we need to write the polygon list manually because there's
+                 * no WRITE_VALUE job in the chain
+                 */
+                bool init_polygon_list = !has_draws;
                 batch->tiler_ctx.midgard.polygon_list =
                         panfrost_batch_create_bo(batch, size,
                                                  init_polygon_list ? 0 : PAN_BO_INVISIBLE,
@@ -4863,7 +4864,7 @@ batch_get_polygon_list(struct panfrost_batch *batch)
                 panfrost_batch_add_bo(batch, batch->tiler_ctx.midgard.polygon_list,
                                 PIPE_SHADER_FRAGMENT);
 
-                if (init_polygon_list) {
+                if (init_polygon_list && dev->model->quirks.no_hierarchical_tiling) {
                         assert(batch->tiler_ctx.midgard.polygon_list->ptr.cpu);
                         uint32_t *polygon_list_body =
                                 batch->tiler_ctx.midgard.polygon_list->ptr.cpu +
@@ -4871,6 +4872,11 @@ batch_get_polygon_list(struct panfrost_batch *batch)
 
                         /* Magic for Mali T720 */
                         polygon_list_body[0] = 0xa0000000;
+                } else if (init_polygon_list) {
+                        assert(batch->tiler_ctx.midgard.polygon_list->ptr.cpu);
+                        uint32_t *header =
+                                batch->tiler_ctx.midgard.polygon_list->ptr.cpu;
+                        memset(header, 0, size);
                 }
 
                 batch->tiler_ctx.midgard.disable = !has_draws;
