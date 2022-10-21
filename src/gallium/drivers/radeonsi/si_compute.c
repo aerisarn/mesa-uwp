@@ -762,8 +762,11 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
 
    unsigned dispatch_initiator = S_00B800_COMPUTE_SHADER_EN(1) | S_00B800_FORCE_START_AT_000(1) |
                                  /* If the KMD allows it (there is a KMD hw register for it),
-                                  * allow launching waves out-of-order. (same as Vulkan) */
-                                 S_00B800_ORDER_MODE(sctx->gfx_level >= GFX7) |
+                                  * allow launching waves out-of-order. (same as Vulkan)
+                                  * Not available in gfx940.
+                                  */
+                                 S_00B800_ORDER_MODE(sctx->gfx_level >= GFX7 &&
+                                                     (sctx->family < CHIP_GFX940 || sctx->screen->info.has_graphics)) |
                                  S_00B800_CS_W32_EN(sctx->cs_shader_state.program->shader.wave_size == 32);
 
    const uint *last_block = info->last_block;

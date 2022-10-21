@@ -40,9 +40,11 @@
 
 #define AMDGPU_MI100_RANGE       0x32, 0x3C
 #define AMDGPU_MI200_RANGE       0x3C, 0xFF
+#define AMDGPU_GFX940_RANGE      0x46, 0xFF
 
 #define ASICREV_IS_MI100(r)      ASICREV_IS(r, MI100)
 #define ASICREV_IS_MI200(r)      ASICREV_IS(r, MI200)
+#define ASICREV_IS_GFX940(r)     ASICREV_IS(r, GFX940)
 
 #ifdef _WIN32
 #define DRM_CAP_ADDFB2_MODIFIERS 0x10
@@ -824,6 +826,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       identify_chip(VEGA20);
       identify_chip(MI100);
       identify_chip(MI200);
+      identify_chip(GFX940);
       break;
    case FAMILY_RV:
       identify_chip(RAVEN);

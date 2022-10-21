@@ -5653,6 +5653,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       }
    }
 
+   if (!sscreen->info.has_graphics && sscreen->info.family >= CHIP_GFX940) {
+      si_pm4_set_reg(pm4, R_00B89C_COMPUTE_TG_CHUNK_SIZE, 0);
+      si_pm4_set_reg(pm4, R_00B8B4_COMPUTE_PGM_RSRC3, 0);
+   }
+
    if (sctx->gfx_level >= GFX9 && sctx->gfx_level < GFX11)
       si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, sctx->gfx_level >= GFX10 ? 0x20 : 0);
 

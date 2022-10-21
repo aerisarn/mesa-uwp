@@ -36,6 +36,12 @@ gfx_levels = {
         'asic_reg/gc/gc_9_2_1_sh_mask.h',
         'vega10_enum.h',
     ],
+    'gfx940': [
+        [0x00002000, 0x0000A000, 0, 0, 0], # IP_BASE GC_BASE
+        'asic_reg/gc/gc_9_4_3_offset.h',
+        'asic_reg/gc/gc_9_4_3_sh_mask.h',
+        'vega10_enum.h',
+    ],
     'gfx10': [
         [0x00001260, 0x0000A000, 0x02402C00, 0, 0], # IP_BASE GC_BASE
         'asic_reg/gc/gc_10_1_0_offset.h',
@@ -73,7 +79,8 @@ def register_filter(gfx_level, name, offset, already_added):
     umd_ranges = [0xB]
 
     # Gfx context, uconfig, and perf counter registers
-    umd_ranges += [0x28, 0x30, 0x31, 0x34, 0x35, 0x36, 0x37]
+    if gfx_level != 'gfx940':
+        umd_ranges += [0x28, 0x30, 0x31, 0x34, 0x35, 0x36, 0x37]
 
     # Add all registers in the 0x8000 range for gfx6
     if gfx_level == 'gfx6':
@@ -665,6 +672,9 @@ enums_missing = {
     **missing_enums_gfx81plus,
   },
   'gfx9': {
+    **missing_enums_gfx9,
+  },
+  'gfx940': {
     **missing_enums_gfx9,
   },
   'gfx10': {
