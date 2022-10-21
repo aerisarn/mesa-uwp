@@ -625,7 +625,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .AMD_shader_fragment_mask = device->rad_info.gfx_level < GFX11,
       .AMD_shader_image_load_store_lod = true,
       .AMD_shader_trinary_minmax = true,
-      .AMD_texture_gather_bias_lod = true,
+      .AMD_texture_gather_bias_lod = device->rad_info.gfx_level < GFX11,
 #ifdef ANDROID
       .ANDROID_external_memory_android_hardware_buffer = RADV_SUPPORT_ANDROID_HARDWARE_BUFFER,
       .ANDROID_native_buffer = true,
