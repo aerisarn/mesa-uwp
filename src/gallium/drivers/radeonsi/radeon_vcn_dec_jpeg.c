@@ -246,6 +246,7 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
                                    unsigned usage, enum radeon_bo_domain domain)
 {
    uint64_t addr;
+   uint32_t val;
 
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_pitch, COND0, TYPE0, (dec->jpg.dt_pitch >> 4));
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_uv_pitch, COND0, TYPE0, ((dec->jpg.dt_uv_pitch * 2) >> 4));
@@ -276,6 +277,12 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
       set_reg_jpeg(dec, dec->jpg_reg.jpeg_luma_base0_0, COND0, TYPE0, dec->jpg.dt_luma_top_offset);
       set_reg_jpeg(dec, dec->jpg_reg.jpeg_chroma_base0_0, COND0, TYPE0, dec->jpg.dt_chroma_top_offset);
       set_reg_jpeg(dec, dec->jpg_reg.jpeg_chromav_base0_0, COND0, TYPE0, dec->jpg.dt_chromav_top_offset);
+      if (dec->jpg.crop_width && dec->jpg.crop_height) {
+         set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_START, COND0, TYPE0,
+                      ((dec->jpg.crop_y << 16) | dec->jpg.crop_x));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_STRIDE, COND0, TYPE0,
+                      ((dec->jpg.crop_height << 16) | dec->jpg.crop_width));
+      }
    }
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_tier_cntl2, COND0, 0, 0);
 
@@ -288,7 +295,12 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_int_en, COND0, TYPE0, 0xFFFFFFFE);
 
    // start engine command
-   set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, 0x6);
+   val = 0x6;
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3) {
+      if (dec->jpg.crop_width && dec->jpg.crop_height)
+         val = val | (0x3 << 24);
+   }
+   set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, val);
 
    // wait for job completion, wait for job JBSI fetch done
    set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, (dec->jpg.bsd_size >> 2));
@@ -298,6 +310,14 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
    // wait for job jpeg outbuf idle
    set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0xFFFFFFFF);
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_outbuf_wptr, COND3, TYPE3, 0x00000001);
+
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3) {
+      val = 0;
+      if (dec->jpg.crop_width && dec->jpg.crop_height)
+         val = val | (0x1 << 19);
+      set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0);
+      set_reg_jpeg(dec, vcnipUVD_JPEG_INT_STAT, COND3, TYPE3, val);
+   }
 
    // stop engine
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, 0x4);

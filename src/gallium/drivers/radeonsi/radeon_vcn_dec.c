@@ -2958,12 +2958,21 @@ static void radeon_dec_jpeg_end_frame(struct pipe_video_codec *decoder, struct p
                                  struct pipe_picture_desc *picture)
 {
    struct radeon_decoder *dec = (struct radeon_decoder *)decoder;
+   struct pipe_mjpeg_picture_desc *pic = (struct pipe_mjpeg_picture_desc *)picture;
 
    assert(decoder);
 
    if (!dec->bs_ptr)
       return;
 
+   dec->jpg.crop_x = ROUND_DOWN_TO(pic->picture_parameter.crop_x, VL_MACROBLOCK_WIDTH);
+   dec->jpg.crop_y = ROUND_DOWN_TO(pic->picture_parameter.crop_y, VL_MACROBLOCK_HEIGHT);
+   dec->jpg.crop_width = align(pic->picture_parameter.crop_width, VL_MACROBLOCK_WIDTH);
+   dec->jpg.crop_height = align(pic->picture_parameter.crop_height, VL_MACROBLOCK_HEIGHT);
+   if (dec->jpg.crop_x + dec->jpg.crop_width > pic->picture_parameter.picture_width)
+      dec->jpg.crop_width = 0;
+   if (dec->jpg.crop_y + dec->jpg.crop_height > pic->picture_parameter.picture_height)
+      dec->jpg.crop_height = 0;
    dec->send_cmd(dec, target, picture);
    dec->ws->cs_flush(&dec->jcs[dec->cb_idx], PIPE_FLUSH_ASYNC, NULL);
    next_buffer(dec);

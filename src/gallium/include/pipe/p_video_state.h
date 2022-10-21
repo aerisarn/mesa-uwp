@@ -793,6 +793,10 @@ struct pipe_mjpeg_picture_desc
       } components[255];
 
       uint8_t num_components;
+      uint16_t crop_x;
+      uint16_t crop_y;
+      uint16_t crop_width;
+      uint16_t crop_height;
    } picture_parameter;
 
    struct
