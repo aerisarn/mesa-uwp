@@ -2387,7 +2387,7 @@ static const struct {
 } pan_varying_formats[PAN_VARY_MAX] = {
         [PAN_VARY_POSITION]     = { 4, MALI_SNAP_4 },
         [PAN_VARY_PSIZ]         = { 1, MALI_R16F },
-        [PAN_VARY_PNTCOORD]     = { 1, MALI_R16F },
+        [PAN_VARY_PNTCOORD]     = { 4, MALI_RGBA32F },
         [PAN_VARY_FACE]         = { 1, MALI_R32I },
         [PAN_VARY_FRAGCOORD]    = { 4, MALI_RGBA32F },
 };
