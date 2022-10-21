@@ -1906,7 +1906,7 @@ v3dv_pipeline_layout_unref(struct v3dv_device *device,
 
 
 struct v3dv_descriptor_map {
-   /* TODO: avoid fixed size array/justify the size */
+   /* FIXME: avoid fixed size array/justify the size */
    unsigned num_desc; /* Number of descriptors  */
    int set[DESCRIPTOR_MAP_SIZE];
    int binding[DESCRIPTOR_MAP_SIZE];

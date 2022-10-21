@@ -998,7 +998,7 @@ enumerate_devices(struct vk_instance *vk_instance)
    struct v3dv_instance *instance =
       container_of(vk_instance, struct v3dv_instance, vk);
 
-   /* TODO: Check for more devices? */
+   /* FIXME: Check for more devices? */
    drmDevicePtr devices[8];
    int max_devices;
 
