@@ -1978,10 +1978,19 @@ dri2_interop_export_object(__DRIcontext *_ctx,
    return st_interop_export_object(dri_context(_ctx)->st, in, out);
 }
 
+static int
+dri2_interop_flush_objects(__DRIcontext *_ctx,
+                           unsigned count, struct mesa_glinterop_export_in *objects,
+                           GLsync *sync)
+{
+   return st_interop_flush_objects(dri_context(_ctx)->st, count, objects, sync);
+}
+
 static const __DRI2interopExtension dri2InteropExtension = {
-   .base = { __DRI2_INTEROP, 1 },
+   .base = { __DRI2_INTEROP, 2 },
    .query_device_info = dri2_interop_query_device_info,
-   .export_object = dri2_interop_export_object
+   .export_object = dri2_interop_export_object,
+   .flush_objects = dri2_interop_flush_objects
 };
 
 /**
