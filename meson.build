@@ -939,7 +939,7 @@ endif
 
 gl_pkgconfig_c_flags = []
 if with_platform_x11
-  if with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  if with_glx == 'xlib'
     pre_args += '-DUSE_XSHM'
   else
     pre_args += '-DGLX_INDIRECT_RENDERING'
@@ -2104,7 +2104,7 @@ endif
 
 with_dri3_modifiers = false
 if with_platform_x11
-  if with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  if with_glx == 'xlib'
     dep_x11 = dependency('x11')
     dep_xext = dependency('xext')
     dep_xcb = dependency('xcb')
@@ -2141,7 +2141,7 @@ if with_platform_x11
       dep_xshmfence = dependency('xshmfence', version : '>= 1.1')
     endif
   endif
-  if with_glx == 'dri' or with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  if with_glx == 'dri' or with_glx == 'xlib'
     dep_glproto = dependency('glproto', version : '>= 1.4.14')
   endif
   if with_glx == 'dri'
@@ -2223,7 +2223,7 @@ add_project_arguments(cpp_args, language : ['cpp'])
 
 gl_priv_reqs = []
 
-if with_glx == 'xlib' or with_glx == 'gallium-xlib'
+if with_glx == 'xlib'
   gl_priv_reqs += ['x11', 'xext', 'xcb']
 elif with_glx == 'dri'
   gl_priv_reqs += [
