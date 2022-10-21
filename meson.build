@@ -2141,7 +2141,7 @@ if with_platform_x11
       dep_xshmfence = dependency('xshmfence', version : '>= 1.1')
     endif
   endif
-  if with_glx == 'dri' or with_glx == 'gallium-xlib'
+  if with_glx == 'dri' or with_glx == 'xlib' or with_glx == 'gallium-xlib'
     dep_glproto = dependency('glproto', version : '>= 1.4.14')
   endif
   if with_glx == 'dri'
