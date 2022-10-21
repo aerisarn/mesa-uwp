@@ -1171,9 +1171,11 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
 
    si_init_renderer_string(sscreen);
 
-   /* fma32 is too slow for gpu < gfx9, so force it only when gpu >= gfx9 */
-   bool force_fma32 =
-      sscreen->info.gfx_level >= GFX9 && sscreen->options.force_use_fma32;
+   bool use_fma32 =
+      sscreen->info.gfx_level >= GFX10_3 ||
+      (sscreen->info.family >= CHIP_GFX940 && !sscreen->info.has_graphics) ||
+      /* fma32 is too slow for gpu < gfx9, so apply the option only for gpu >= gfx9 */
+      (sscreen->info.gfx_level >= GFX9 && sscreen->options.force_use_fma32);
 
    const struct nir_shader_compiler_options nir_options = {
       .vertex_id_zero_based = true,
@@ -1203,10 +1205,10 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        * gfx10 and older prefer MAD for F32 because of the legacy instruction.
        */
       .lower_ffma16 = sscreen->info.gfx_level < GFX9,
-      .lower_ffma32 = sscreen->info.gfx_level < GFX10_3 && !force_fma32,
+      .lower_ffma32 = !use_fma32,
       .lower_ffma64 = false,
       .fuse_ffma16 = sscreen->info.gfx_level >= GFX9,
-      .fuse_ffma32 = sscreen->info.gfx_level >= GFX10_3 || force_fma32,
+      .fuse_ffma32 = use_fma32,
       .fuse_ffma64 = true,
       .lower_fmod = true,
       .lower_pack_snorm_4x8 = true,
