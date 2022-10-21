@@ -49,8 +49,13 @@ st_interop_query_device_info(struct st_context_iface *st,
    out->vendor_id = screen->get_param(screen, PIPE_CAP_VENDOR_ID);
    out->device_id = screen->get_param(screen, PIPE_CAP_DEVICE_ID);
 
-   /* Instruct the caller that we support up-to version one of the interface */
-   out->version = 1;
+   if (out->version > 1 && screen->interop_query_device_info)
+      out->driver_data_size = screen->interop_query_device_info(screen,
+                                                                out->driver_data_size,
+                                                                out->driver_data);
+
+   /* Instruct the caller that we support up-to version two of the interface */
+   out->version = MIN2(out->version, 2);
 
    return MESA_GLINTEROP_SUCCESS;
 }
@@ -242,6 +247,7 @@ st_interop_export_object(struct st_context_iface *st,
    struct winsys_handle whandle;
    unsigned usage;
    boolean success;
+   bool need_export_dmabuf = true;
 
    /* There is no version 0, thus we do not support it */
    if (in->version == 0 || out->version == 0)
@@ -273,22 +279,35 @@ st_interop_export_object(struct st_context_iface *st,
       usage = 0;
    }
 
-   memset(&whandle, 0, sizeof(whandle));
-   whandle.type = WINSYS_HANDLE_TYPE_FD;
+   out->out_driver_data_written = 0;
+   if (screen->interop_export_object) {
+      out->out_driver_data_written = screen->interop_export_object(screen,
+                                                                   res,
+                                                                   in->out_driver_data_size,
+                                                                   in->out_driver_data,
+                                                                   &need_export_dmabuf);
+   }
 
-   success = screen->resource_get_handle(screen, st->pipe, res, &whandle,
-                                         usage);
-   simple_mtx_unlock(&ctx->Shared->Mutex);
+   if (need_export_dmabuf) {
+      memset(&whandle, 0, sizeof(whandle));
+      whandle.type = WINSYS_HANDLE_TYPE_FD;
 
-   if (!success)
-      return MESA_GLINTEROP_OUT_OF_HOST_MEMORY;
+      success = screen->resource_get_handle(screen, st->pipe, res, &whandle,
+                                            usage);
+
+      if (!success) {
+         simple_mtx_unlock(&ctx->Shared->Mutex);
+         return MESA_GLINTEROP_OUT_OF_HOST_MEMORY;
+      }
 
 #ifndef _WIN32
-   out->dmabuf_fd = whandle.handle;
+      out->dmabuf_fd = whandle.handle;
 #else
-   out->win32_handle = whandle.handle;
+      out->win32_handle = whandle.handle;
 #endif
-   out->out_driver_data_written = 0;
+   }
+
+   simple_mtx_unlock(&ctx->Shared->Mutex);
 
    if (res->target == PIPE_BUFFER)
       out->buf_offset += whandle.offset;
