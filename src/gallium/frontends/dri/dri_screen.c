@@ -439,7 +439,6 @@ dri_fill_in_modes(struct dri_screen *screen)
    uint8_t depth_bits_array[5];
    uint8_t stencil_bits_array[5];
    unsigned depth_buffer_factor;
-   unsigned msaa_samples_max;
    unsigned i;
    struct pipe_screen *p_screen = screen->base.screen;
    bool pf_z16, pf_x8z24, pf_z24x8, pf_s8z24, pf_z24s8, pf_z32;
@@ -466,9 +465,6 @@ dri_fill_in_modes(struct dri_screen *screen)
    allow_rgba_ordering = dri_loader_get_cap(screen, DRI_LOADER_CAP_RGBA_ORDERING);
    allow_rgb10 = driQueryOptionb(&screen->dev->option_cache, "allow_rgb10_configs");
    allow_fp16 = dri_loader_get_cap(screen, DRI_LOADER_CAP_FP16);
-
-   msaa_samples_max = (screen->st_api->feature_mask & ST_API_FEATURE_MS_VISUALS_MASK)
-      ? MSAA_VISUAL_MAX_SAMPLES : 1;
 
    pf_x8z24 = p_screen->is_format_supported(p_screen, PIPE_FORMAT_Z24X8_UNORM,
 					    PIPE_TEXTURE_2D, 0, 0,
@@ -545,7 +541,7 @@ dri_fill_in_modes(struct dri_screen *screen)
                                          PIPE_BIND_DISPLAY_TARGET))
          continue;
 
-      for (i = 1; i <= msaa_samples_max; i++) {
+      for (i = 1; i <= MSAA_VISUAL_MAX_SAMPLES; i++) {
          int samples = i > 1 ? i : 0;
 
          if (p_screen->is_format_supported(p_screen, pipe_formats[format],

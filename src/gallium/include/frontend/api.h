@@ -59,17 +59,6 @@ enum st_profile_type
                                       ST_PROFILE_OPENGL_ES2_MASK)
 
 /**
- * Optional API features.
- */
-enum st_api_feature
-{
-   ST_API_FEATURE_MS_VISUALS  /**< support for multisample visuals */
-};
-
-/* for feature_mask in st_api */
-#define ST_API_FEATURE_MS_VISUALS_MASK (1 << ST_API_FEATURE_MS_VISUALS)
-
-/**
  * New context flags for GL 3.0 and beyond.
  *
  * Profile information (core vs. compatibilty for OpenGL 3.2+) is communicated
@@ -522,11 +511,6 @@ struct st_api
     * The name of the rendering API.  This is informative.
     */
    const char *name;
-
-   /**
-    * The supported optional features.  Tested with ST_FEATURE_*_MASK.
-    */
-   unsigned feature_mask;
 
    /**
     * Destroy the API.

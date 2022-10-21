@@ -1458,7 +1458,6 @@ st_api_query_versions(struct st_api *stapi, struct st_manager *sm,
 
 static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
-   .feature_mask = ST_API_FEATURE_MS_VISUALS_MASK,
    .destroy = st_api_destroy,
    .query_versions = st_api_query_versions,
    .create_context = st_api_create_context,
