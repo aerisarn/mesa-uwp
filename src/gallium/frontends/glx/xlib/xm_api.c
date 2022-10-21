@@ -914,7 +914,7 @@ void XMesaDestroyVisual( XMesaVisual v )
 const char *
 xmesa_get_name(void)
 {
-   return stapi->name;
+   return "Mesa " PACKAGE_VERSION;
 }
 
 
