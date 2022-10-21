@@ -290,6 +290,14 @@ st_framebuffer_validate(struct gl_framebuffer *stfb,
    }
 }
 
+/**
+ * Return true if the visual has the specified buffers.
+ */
+static inline bool
+st_visual_have_buffers(const struct st_visual *visual, unsigned mask)
+{
+   return ((visual->buffer_mask & mask) == mask);
+}
 
 /**
  * Update the attachments to validate by looping the existing renderbuffers.
