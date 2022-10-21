@@ -755,11 +755,10 @@ GLAPI GLboolean GLAPIENTRY
 OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
                   GLsizei width, GLsizei height)
 {
-   struct st_api *stapi = get_st_api();
    enum pipe_format color_format;
 
    if (!osmesa && !buffer) {
-      stapi->make_current(stapi, NULL, NULL, NULL);
+      st_api_make_current(NULL, NULL, NULL);
       return GL_TRUE;
    }
 
@@ -798,7 +797,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 
    osmesa->type = type;
 
-   stapi->make_current(stapi, osmesa->stctx, osbuffer->stfb, osbuffer->stfb);
+   st_api_make_current(osmesa->stctx, osbuffer->stfb, osbuffer->stfb);
 
    /* XXX: We should probably load the current color value into the buffer here
     * to match classic swrast behavior (context's fb starts with the contents of

@@ -1298,7 +1298,7 @@ GLboolean XMesaMakeCurrent2( XMesaContext c, XMesaBuffer drawBuffer,
       c->xm_buffer = drawBuffer;
       c->xm_read_buffer = readBuffer;
 
-      stapi->make_current(stapi, c->st,
+      st_api_make_current(c->st,
                           drawBuffer ? drawBuffer->stfb : NULL,
                           readBuffer ? readBuffer->stfb : NULL);
 
@@ -1308,7 +1308,7 @@ GLboolean XMesaMakeCurrent2( XMesaContext c, XMesaBuffer drawBuffer,
    }
    else {
       /* Detach */
-      stapi->make_current(stapi, NULL, NULL, NULL);
+      st_api_make_current(NULL, NULL, NULL);
 
    }
    return GL_TRUE;

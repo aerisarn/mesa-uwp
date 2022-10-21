@@ -531,18 +531,18 @@ struct st_api
                                               const struct st_context_attribs *attribs,
                                               enum st_context_error *error,
                                               struct st_context_iface *stsharei);
-
-   /**
-    * Bind the context to the calling thread with draw and read as drawables.
-    *
-    * The framebuffers might be NULL, or might have different visuals than the
-    * context does.
-    */
-   bool (*make_current)(struct st_api *stapi,
-                        struct st_context_iface *stctxi,
-                        struct st_framebuffer_iface *stdrawi,
-                        struct st_framebuffer_iface *streadi);
 };
+
+/**
+ * Bind the context to the calling thread with draw and read as drawables.
+ *
+ * The framebuffers might be NULL, or might have different visuals than the
+ * context does.
+ */
+bool
+st_api_make_current(struct st_context_iface *stctxi,
+                    struct st_framebuffer_iface *stdrawi,
+                    struct st_framebuffer_iface *streadi);
 
 /**
  * Get the currently bound context in the calling thread.

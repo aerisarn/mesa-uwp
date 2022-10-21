@@ -1207,8 +1207,8 @@ st_framebuffer_reuse_or_create(struct st_context *st,
 }
 
 
-static bool
-st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
+bool
+st_api_make_current(struct st_context_iface *stctxi,
                     struct st_framebuffer_iface *stdrawi,
                     struct st_framebuffer_iface *streadi)
 {
@@ -1453,7 +1453,6 @@ static const struct st_api st_gl_api = {
    .name = "Mesa " PACKAGE_VERSION,
    .query_versions = st_api_query_versions,
    .create_context = st_api_create_context,
-   .make_current = st_api_make_current,
 };
 
 

@@ -264,10 +264,8 @@ GLboolean
 dri_unbind_context(__DRIcontext * cPriv)
 {
    /* dri_util.c ensures cPriv is not null */
-   struct dri_screen *screen = dri_screen(cPriv->driScreenPriv);
    struct dri_context *ctx = dri_context(cPriv);
    struct st_context_iface *st = ctx->st;
-   struct st_api *stapi = screen->st_api;
 
    if (st == st_api_get_current()) {
       if (st->thread_finish)
@@ -277,7 +275,7 @@ dri_unbind_context(__DRIcontext * cPriv)
       if (ctx->hud)
          hud_record_only(ctx->hud, st->pipe);
 
-      stapi->make_current(stapi, NULL, NULL, NULL);
+      st_api_make_current(NULL, NULL, NULL);
    }
    ctx->dPriv = NULL;
    ctx->rPriv = NULL;
@@ -302,7 +300,7 @@ dri_make_current(__DRIcontext * cPriv,
       ctx->st->thread_finish(ctx->st);
 
    if (!draw && !read)
-      return ctx->stapi->make_current(ctx->stapi, ctx->st, NULL, NULL);
+      return st_api_make_current(ctx->st, NULL, NULL);
    else if (!draw || !read)
       return GL_FALSE;
 
@@ -315,7 +313,7 @@ dri_make_current(__DRIcontext * cPriv,
       read->texture_stamp = driReadPriv->lastStamp - 1;
    }
 
-   ctx->stapi->make_current(ctx->stapi, ctx->st, &draw->base, &read->base);
+   st_api_make_current(ctx->st, &draw->base, &read->base);
 
    /* This is ok to call here. If they are already init, it's a no-op. */
    if (ctx->pp && draw->textures[ST_ATTACHMENT_BACK_LEFT])

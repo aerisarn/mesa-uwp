@@ -301,7 +301,7 @@ GalliumContext::SetCurrentContext(bool set, context_id contextID)
 	}
 
 	if (!set) {
-		fDisplay->api->make_current(fDisplay->api, NULL, NULL, NULL);
+		st_api_make_current(NULL, NULL, NULL);
 		Unlock();
 		return B_OK;
 	}
@@ -315,7 +315,7 @@ GalliumContext::SetCurrentContext(bool set, context_id contextID)
 	}
 
 	// We need to lock and unlock framebuffers before accessing them
-	fDisplay->api->make_current(fDisplay->api, context->st, context->buffer->stfbi,
+	st_api_make_current(context->st, context->buffer->stfbi,
 		context->buffer->stfbi);
 	Unlock();
 
