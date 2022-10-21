@@ -145,7 +145,6 @@ enum zink_descriptor_type {
 enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_AUTO,
    ZINK_DESCRIPTOR_MODE_LAZY,
-   ZINK_DESCRIPTOR_MODE_COMPACT,
 };
 
 /* indexing for descriptor template management */
