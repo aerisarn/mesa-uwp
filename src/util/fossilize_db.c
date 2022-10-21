@@ -259,7 +259,6 @@ load_foz_dbs(struct foz_db *foz_db, FILE *db_idx, uint8_t file_idx,
 
 fail:
    flock(fileno(foz_db->file[file_idx]), LOCK_UN);
-   foz_destroy(foz_db);
    return false;
 }
 
@@ -333,7 +332,10 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
 
       if (!load_foz_dbs(foz_db, db_idx, file_idx, true)) {
          fclose(db_idx);
-         goto fail;
+         fclose(foz_db->file[file_idx]);
+         foz_db->file[file_idx] = NULL;
+
+         continue; /* Ignore invalid user provided foz db */
       }
 
       fclose(db_idx);
