@@ -582,6 +582,8 @@ uint32_t iris_upload_border_color(struct iris_border_color_pool *pool,
 uint64_t iris_bufmgr_vram_size(struct iris_bufmgr *bufmgr);
 uint64_t iris_bufmgr_sram_size(struct iris_bufmgr *bufmgr);
 const struct intel_device_info *iris_bufmgr_get_device_info(struct iris_bufmgr *bufmgr);
+const struct iris_kmd_backend *
+iris_bufmgr_get_kernel_driver_backend(struct iris_bufmgr *bufmgr);
 
 enum iris_madvice {
    IRIS_MADVICE_WILL_NEED = 0,

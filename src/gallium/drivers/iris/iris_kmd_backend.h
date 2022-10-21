@@ -28,6 +28,7 @@
 #include "dev/intel_device_info.h"
 #include "dev/intel_kmd.h"
 
+struct iris_batch;
 struct iris_bo;
 struct iris_bufmgr;
 enum iris_heap;
@@ -41,6 +42,7 @@ struct iris_kmd_backend {
    bool (*bo_madvise)(struct iris_bo *bo, enum iris_madvice state);
    int (*bo_set_caching)(struct iris_bo *bo, bool cached);
    void *(*gem_mmap)(struct iris_bufmgr *bufmgr, struct iris_bo *bo);
+   enum pipe_reset_status (*batch_check_for_reset)(struct iris_batch *batch);
 };
 
 const struct iris_kmd_backend *

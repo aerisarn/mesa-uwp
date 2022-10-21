@@ -2483,3 +2483,9 @@ iris_bufmgr_get_device_info(struct iris_bufmgr *bufmgr)
 {
    return &bufmgr->devinfo;
 }
+
+const struct iris_kmd_backend *
+iris_bufmgr_get_kernel_driver_backend(struct iris_bufmgr *bufmgr)
+{
+   return bufmgr->kmd_backend;
+}

@@ -30,6 +30,7 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "iris/iris_bufmgr.h"
+#include "iris_batch.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
@@ -213,6 +214,32 @@ i915_gem_mmap(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
       return i915_gem_mmap_legacy(bufmgr, bo);
 }
 
+static enum pipe_reset_status
+i915_batch_check_for_reset(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   enum pipe_reset_status status = PIPE_NO_RESET;
+   struct drm_i915_reset_stats stats = { .ctx_id = batch->ctx_id };
+
+   if (intel_ioctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
+      DBG("DRM_IOCTL_I915_GET_RESET_STATS failed: %s\n", strerror(errno));
+
+   if (stats.batch_active != 0) {
+      /* A reset was observed while a batch from this hardware context was
+       * executing.  Assume that this context was at fault.
+       */
+      status = PIPE_GUILTY_CONTEXT_RESET;
+   } else if (stats.batch_pending != 0) {
+      /* A reset was observed while a batch from this context was in progress,
+       * but the batch was not executing.  In this case, assume that the
+       * context was not at fault.
+       */
+      status = PIPE_INNOCENT_CONTEXT_RESET;
+   }
+
+   return status;
+}
+
 const struct iris_kmd_backend *i915_get_backend(void)
 {
    static const struct iris_kmd_backend i915_backend = {
@@ -220,6 +247,7 @@ const struct iris_kmd_backend *i915_get_backend(void)
       .bo_madvise = i915_bo_madvise,
       .bo_set_caching = i915_bo_set_caching,
       .gem_mmap = i915_gem_mmap,
+      .batch_check_for_reset = i915_batch_check_for_reset,
    };
    return &i915_backend;
 }

@@ -41,6 +41,7 @@
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 #include "iris_fence.h"
+#include "iris_kmd_backend.h"
 #include "iris_utrace.h"
 
 #include "drm-uapi/i915_drm.h"
@@ -775,25 +776,12 @@ enum pipe_reset_status
 iris_batch_check_for_reset(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
-   enum pipe_reset_status status = PIPE_NO_RESET;
-   struct drm_i915_reset_stats stats = { .ctx_id = batch->ctx_id };
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+   const struct iris_kmd_backend *backend;
+   enum pipe_reset_status status;
 
-   if (intel_ioctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
-      DBG("DRM_IOCTL_I915_GET_RESET_STATS failed: %s\n", strerror(errno));
-
-   if (stats.batch_active != 0) {
-      /* A reset was observed while a batch from this hardware context was
-       * executing.  Assume that this context was at fault.
-       */
-      status = PIPE_GUILTY_CONTEXT_RESET;
-   } else if (stats.batch_pending != 0) {
-      /* A reset was observed while a batch from this context was in progress,
-       * but the batch was not executing.  In this case, assume that the
-       * context was not at fault.
-       */
-      status = PIPE_INNOCENT_CONTEXT_RESET;
-   }
-
+   backend = iris_bufmgr_get_kernel_driver_backend(bufmgr);
+   status = backend->batch_check_for_reset(batch);
    if (status != PIPE_NO_RESET) {
       /* Our context is likely banned, or at least in an unknown state.
        * Throw it away and start with a fresh context.  Ideally this may
