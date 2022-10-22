@@ -1313,7 +1313,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return is_deqp ? 1 : 0;
 
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-      return 256;
+      return 2048;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
