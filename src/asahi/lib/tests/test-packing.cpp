@@ -45,16 +45,13 @@ const struct {
    { INFINITY, 0x380, true },
 };
 
-class LODClamp : public testing::Test {
-};
-
-TEST_F(LODClamp, Encode)
+TEST(LODClamp, Encode)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(lod_cases); ++i)
       ASSERT_EQ(__gen_pack_lod(lod_cases[i].f, 0, 9), lod_cases[i].encoded);
 }
 
-TEST_F(LODClamp, Decode)
+TEST(LODClamp, Decode)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(lod_cases); ++i) {
       if (lod_cases[i].inexact)
