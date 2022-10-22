@@ -363,6 +363,9 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
                      instr->src[1].ssa->divergent || instr->src[2].ssa->divergent || instr->src[3].ssa->divergent;
       break;
 
+   case nir_intrinsic_optimization_barrier_vgpr_amd:
+      is_divergent = instr->src[0].ssa->divergent;
+      break;
 
    /* Intrinsics with divergence depending on sources */
    case nir_intrinsic_ballot_bitfield_extract:

@@ -1304,6 +1304,13 @@ store("tf_r600", [])
 
 # AMD GCN/RDNA specific intrinsics
 
+# This barrier is a hint that prevents moving the instruction that computes
+# src after this barrier. It's a constraint for the instruction scheduler.
+# Otherwise it's identical to a move instruction.
+# On AMD, it also forces the src value to be stored in a VGPR.
+intrinsic("optimization_barrier_vgpr_amd", dest_comp=0, src_comp=[0],
+          flags=[CAN_ELIMINATE])
+
 # src[] = { descriptor, vector byte offset, scalar byte offset, index offset }
 # The index offset is multiplied by the stride in the descriptor. The vertex/scalar byte offsets
 # are in bytes.
