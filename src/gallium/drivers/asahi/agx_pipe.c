@@ -1626,7 +1626,9 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
           target == PIPE_TEXTURE_3D || target == PIPE_TEXTURE_CUBE ||
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
-   if (sample_count > 1)
+   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
+
+   if (sample_count > 1 && !(sample_count == 4 && is_deqp))
       return false;
 
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
