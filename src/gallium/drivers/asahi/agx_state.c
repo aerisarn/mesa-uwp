@@ -107,6 +107,68 @@ agx_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
 }
 
 static void
+agx_set_shader_images(
+        struct pipe_context *pctx,
+        enum pipe_shader_type shader,
+        unsigned start_slot, unsigned count, unsigned unbind_num_trailing_slots,
+        const struct pipe_image_view *iviews)
+{
+   struct agx_context *ctx = agx_context(pctx);
+   ctx->stage[shader].dirty = ~0;
+
+   /* Unbind start_slot...start_slot+count */
+   if (!iviews) {
+      for (int i = start_slot; i < start_slot + count + unbind_num_trailing_slots; i++) {
+         pipe_resource_reference(&ctx->stage[shader].images[i].resource, NULL);
+      }
+
+      ctx->stage[shader].image_mask &= ~(((1ull << count) - 1) << start_slot);
+      return;
+   }
+
+   /* Bind start_slot...start_slot+count */
+   for (int i = 0; i < count; i++) {
+      const struct pipe_image_view *image = &iviews[i];
+
+      if (image->resource)
+         ctx->stage[shader].image_mask |= BITFIELD_BIT(start_slot + i);
+      else
+         ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + i);
+
+      if (!image->resource) {
+         util_copy_image_view(&ctx->stage[shader].images[start_slot+i], NULL);
+         continue;
+      }
+
+      /* FIXME: Decompress here once we have texture compression */
+      util_copy_image_view(&ctx->stage[shader].images[start_slot+i], image);
+   }
+
+   /* Unbind start_slot+count...start_slot+count+unbind_num_trailing_slots */
+   for (int i = 0; i < unbind_num_trailing_slots; i++) {
+      ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + count + i);
+      util_copy_image_view(&ctx->stage[shader].images[start_slot+count+i], NULL);
+   }
+}
+
+static void
+agx_set_shader_buffers(
+        struct pipe_context *pctx,
+        enum pipe_shader_type shader,
+        unsigned start, unsigned count,
+        const struct pipe_shader_buffer *buffers,
+        unsigned writable_bitmask)
+{
+   struct agx_context *ctx = agx_context(pctx);
+
+   util_set_shader_buffers_mask(ctx->stage[shader].ssbo,
+                                &ctx->stage[shader].ssbo_mask,
+                                buffers, start, count);
+
+   ctx->stage[shader].dirty = ~0;
+}
+
+static void
 agx_set_blend_color(struct pipe_context *pctx,
                     const struct pipe_blend_color *state)
 {
@@ -2517,6 +2579,8 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->set_blend_color = agx_set_blend_color;
    ctx->set_clip_state = agx_set_clip_state;
    ctx->set_constant_buffer = agx_set_constant_buffer;
+   ctx->set_shader_buffers = agx_set_shader_buffers;
+   ctx->set_shader_images = agx_set_shader_images;
    ctx->set_sampler_views = agx_set_sampler_views;
    ctx->set_framebuffer_state = agx_set_framebuffer_state;
    ctx->set_polygon_stipple = agx_set_polygon_stipple;

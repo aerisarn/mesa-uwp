@@ -1443,6 +1443,12 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
        !(shader == PIPE_SHADER_COMPUTE && is_deqp))
       return 0;
 
+
+   /* Don't allow side effects with vertex processing. The APIs don't require it
+    * and it may be problematic on our hardware.
+    */
+   bool allow_side_effects = (shader != PIPE_SHADER_VERTEX);
+
    /* this is probably not totally correct.. but it's a start: */
    switch (param) {
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
@@ -1507,10 +1513,14 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return PIPE_SHADER_IR_NIR;
 
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
+      return (1 << PIPE_SHADER_IR_NIR);
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+      return (is_deqp && allow_side_effects) ? 16 : 0;
+
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
+      return (is_deqp && allow_side_effects) ? PIPE_MAX_SHADER_IMAGES : 0;
+
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
       return 0;
