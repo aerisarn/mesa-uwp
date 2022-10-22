@@ -124,7 +124,6 @@ spec@arb_shader_image_load_store@qualifiers@r8/strict layout qualifiers/permissi
 
 spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
 spec@arb_shader_storage_buffer_object@linker@instance-matching-shader-storage-blocks-member-array-size-mismatch,Fail
-spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 
 # Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
 # "Failed to link:
@@ -132,16 +131,11 @@ spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@invocation-counting-even,Fail
 spec@arb_tessellation_shader@execution@invocation-counting-odd,Fail
 
-# "ir3_nir_lower_tess.c:585: lower_tess_ctrl_block: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed."
-spec@arb_tessellation_shader@execution@patch-partial-write,Crash
-
 # Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
 # "Failed to link:
 #  error: Too many tessellation control shader atomic counters"
 spec@arb_tessellation_shader@execution@tcs-output-unmatched,Fail
 spec@arb_tessellation_shader@execution@tcs-primitiveid,Fail
-
-spec@arb_tessellation_shader@execution@tes-no-tcs-primitiveid-instanced,Fail
 
 # Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
 # "Failed to link:
@@ -149,30 +143,13 @@ spec@arb_tessellation_shader@execution@tes-no-tcs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@tes-primitiveid,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/7518
-spec@arb_tessellation_shader@execution@tess-instance-id,Fail
-spec@arb_tessellation_shader@execution@compatibility@tes-clip-vertex-different-from-position,Fail
-spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads-dlist,Fail
 spec@arb_tessellation_shader@execution@tes-read-texture,Fail
-spec@arb_tessellation_shader@execution@tess_with_geometry,Fail
-spec@arb_tessellation_shader@execution@trivial-tess-gs,Fail
-spec@arb_tessellation_shader@execution@trivial-tess-gs_no-gs-inputs,Fail
-spec@arb_tessellation_shader@execution@trivial-tess-gs_no-tes-inputs,Fail
 
 # ir3_nir_lower_tess.c:251: lower_block_to_explicit_output: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed.
 spec@arb_tessellation_shader@execution@tcs-input-read-mat,Crash
 
-# "ir3_nir_lower_tess.c:585: lower_tess_ctrl_block: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed."
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-index-wr,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-swiz-index-wr,Crash
-spec@arb_tessellation_shader@execution@vertex-partial-write,Crash
-
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7516
+# Some 64b not getting lowered to 32b:
 spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-dvec4-index-wr-before-tcs,Crash
-
-spec@arb_tessellation_shader@execution@vs-tes-max-in-out-components,Fail
-spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,Fail
-spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-tris,Fail
-spec@arb_tessellation_shader@execution@vs-tes-vertex,Fail
 
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
 
