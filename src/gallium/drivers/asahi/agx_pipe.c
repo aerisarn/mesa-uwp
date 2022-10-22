@@ -1233,6 +1233,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
    case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+   case PIPE_CAP_SHADER_PACK_HALF_FLOAT:
       return 1;
 
    /* We could support ARB_clip_control by toggling the clip control bit for
@@ -1289,6 +1290,12 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SAMPLE_SHADING:
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
+   case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
+   case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
+   case PIPE_CAP_IMAGE_LOAD_FORMATTED:
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_COMPUTE:
+   case PIPE_CAP_INT64:
       return is_deqp;
 
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
@@ -1351,6 +1358,15 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_ENDIANNESS:
       return PIPE_ENDIAN_LITTLE;
+
+   case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
+      return is_deqp ? 4 : 0;
+   case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
+      return is_deqp ? -8 : 0;
+   case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
+      return is_deqp ? 7 : 0;
+   case PIPE_CAP_DRAW_INDIRECT:
+      return is_deqp;
 
    case PIPE_CAP_VIDEO_MEMORY: {
       uint64_t system_memory;
@@ -1442,7 +1458,6 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
    if (shader != PIPE_SHADER_VERTEX && shader != PIPE_SHADER_FRAGMENT &&
        !(shader == PIPE_SHADER_COMPUTE && is_deqp))
       return 0;
-
 
    /* Don't allow side effects with vertex processing. The APIs don't require it
     * and it may be problematic on our hardware.
