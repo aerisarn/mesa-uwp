@@ -48,7 +48,17 @@ fd_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices) in_dt
 {
    struct fd_context *ctx = fd_context(pctx);
 
+   if (ctx->patch_vertices == patch_vertices)
+      return;
+
    ctx->patch_vertices = patch_vertices;
+
+   /* If we have tessellation this dirties the TCS state.  Check for TES
+    * stage as TCS could be NULL (passthrough)
+    */
+   if (ctx->prog.ds || ctx->prog.hs) {
+      fd_context_dirty_shader(ctx, PIPE_SHADER_TESS_CTRL, FD_DIRTY_SHADER_PROG);
+   }
 }
 
 static void
