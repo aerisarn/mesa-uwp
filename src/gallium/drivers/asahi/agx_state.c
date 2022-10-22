@@ -1409,7 +1409,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    }
 
    agx_usc_pack(&b, REGISTERS, cfg) {
-      cfg.register_count = 256;
+      cfg.register_count = cs->info.nr_gprs;
       cfg.unk_1 = (stage == PIPE_SHADER_FRAGMENT);
    }
 
@@ -1642,6 +1642,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
          cfg.uniform_register_count = ctx->vs->info.push_count;
+         cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = tex_count;
          cfg.sampler_state_register_count = tex_count;
       }
@@ -1812,6 +1813,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
          cfg.pipeline = agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
          cfg.uniform_register_count = ctx->fs->info.push_count;
+         cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;
          cfg.sampler_state_register_count = frag_tex_count;
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
