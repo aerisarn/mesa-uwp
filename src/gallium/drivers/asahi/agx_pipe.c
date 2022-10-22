@@ -1437,8 +1437,10 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
                      enum pipe_shader_cap param)
 {
    bool is_no16 = agx_device(pscreen)->debug & AGX_DBG_NO16;
+   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
 
-   if (shader != PIPE_SHADER_VERTEX && shader != PIPE_SHADER_FRAGMENT)
+   if (shader != PIPE_SHADER_VERTEX && shader != PIPE_SHADER_FRAGMENT &&
+       !(shader == PIPE_SHADER_COMPUTE && is_deqp))
       return 0;
 
    /* this is probably not totally correct.. but it's a start: */
@@ -1525,6 +1527,66 @@ static int
 agx_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
                       enum pipe_compute_cap param, void *ret)
 {
+   if (!(agx_device(pscreen)->debug & AGX_DBG_DEQP))
+      return 0;
+
+#define RET(x)                                                                 \
+   do {                                                                        \
+      if (ret)                                                                 \
+         memcpy(ret, x, sizeof(x));                                            \
+      return sizeof(x);                                                        \
+   } while (0)
+
+   switch (param) {
+   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+      RET((uint32_t[]){64});
+
+   case PIPE_COMPUTE_CAP_IR_TARGET:
+      if (ret)
+         sprintf(ret, "agx");
+      return strlen("agx") * sizeof(char);
+
+   case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      RET((uint64_t[]){3});
+
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      RET(((uint64_t[]){65535, 65535, 65535}));
+
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      RET(((uint64_t[]){256, 256, 256}));
+
+   case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
+      RET((uint64_t[]){256});
+
+   case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+      RET((uint64_t[]){1024 * 1024 * 512 /* Maybe get memory */});
+
+   case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+      RET((uint64_t[]){32768});
+
+   case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+      RET((uint64_t[]){4096});
+
+   case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
+      RET((uint64_t[]){1024 * 1024 * 512 /* Maybe get memory */});
+
+   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
+      RET((uint32_t[]){800 /* MHz -- TODO */});
+
+   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
+      RET((uint32_t[]){4 /* TODO */});
+
+   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
+      RET((uint32_t[]){1});
+
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+      RET((uint32_t[]){32});
+
+   case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
+      RET((uint64_t[]){1024}); // TODO
+   }
+
    return 0;
 }
 

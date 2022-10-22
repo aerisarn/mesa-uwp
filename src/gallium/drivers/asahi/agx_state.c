@@ -1168,6 +1168,17 @@ asahi_fs_shader_key_equal(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct asahi_fs_shader_key)) == 0;
 }
 
+/* No compute variants */
+static uint32_t asahi_cs_shader_key_hash(const void *key)
+{
+   return 0;
+}
+
+static bool asahi_cs_shader_key_equal(const void *a, const void *b)
+{
+   return true;
+}
+
 static unsigned
 agx_find_linked_slot(struct agx_varyings_vs *vs, struct agx_varyings_fs *fs,
                      gl_varying_slot slot, unsigned offset)
@@ -1397,14 +1408,11 @@ agx_create_shader_state(struct pipe_context *pctx,
 
    so->base = *cso;
 
-   if (cso->type == PIPE_SHADER_IR_NIR) {
-      so->nir = cso->ir.nir;
-   } else {
-      assert(cso->type == PIPE_SHADER_IR_TGSI);
-      so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
-   }
+   nir_shader *nir = cso->type == PIPE_SHADER_IR_NIR
+                        ? cso->ir.nir
+                        : tgsi_to_nir(cso->tokens, pctx->screen, false);
 
-   if (so->nir->info.stage == MESA_SHADER_VERTEX) {
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
       so->variants = _mesa_hash_table_create(NULL, asahi_vs_shader_key_hash,
                                              asahi_vs_shader_key_equal);
    } else {
@@ -1412,11 +1420,15 @@ agx_create_shader_state(struct pipe_context *pctx,
                                              asahi_fs_shader_key_equal);
    }
 
+   so->type = pipe_shader_type_from_mesa(nir->info.stage);
+
    struct blob blob;
    blob_init(&blob);
-   nir_serialize(&blob, so->nir, true);
+   nir_serialize(&blob, nir, true);
    _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
    blob_finish(&blob);
+
+   so->nir = nir;
 
    /* For shader-db, precompile a shader with a default key. This could be
     * improved but hopefully this is acceptable for now.
@@ -1448,6 +1460,40 @@ agx_create_shader_state(struct pipe_context *pctx,
       agx_compile_variant(dev, so, &pctx->debug, &key);
    }
 
+   return so;
+}
+
+static void *
+agx_create_compute_state(struct pipe_context *pctx,
+                         const struct pipe_compute_state *cso)
+{
+   struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
+
+   if (!so)
+      return NULL;
+
+   so->variants = _mesa_hash_table_create(NULL, asahi_cs_shader_key_hash,
+                                          asahi_cs_shader_key_equal);
+
+   union asahi_shader_key key = { 0 };
+
+   assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
+   nir_shader *nir = nir_shader_clone(NULL, cso->prog);
+
+   so->type = pipe_shader_type_from_mesa(nir->info.stage);
+
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
+   blob_finish(&blob);
+
+   so->nir = nir;
+   agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
+
+   /* We're done with the NIR, throw it away */
+   so->nir = NULL;
+   ralloc_free(nir);
    return so;
 }
 
@@ -1542,13 +1588,12 @@ agx_bind_shader_state(struct pipe_context *pctx, void *cso)
    struct agx_context *ctx = agx_context(pctx);
    struct agx_uncompiled_shader *so = cso;
 
-   enum pipe_shader_type type = pipe_shader_type_from_mesa(so->nir->info.stage);
-   ctx->stage[type].shader = so;
-
-   if (type == PIPE_SHADER_VERTEX)
+   if (so->type == PIPE_SHADER_VERTEX)
       ctx->dirty |= AGX_DIRTY_VS_PROG;
-   else
+   else if (so->type == PIPE_SHADER_FRAGMENT)
       ctx->dirty |= AGX_DIRTY_FS_PROG;
+
+   ctx->stage[so->type].shader = so;
 }
 
 static void
@@ -2445,6 +2490,7 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->create_surface = agx_create_surface;
    ctx->create_vertex_elements_state = agx_create_vertex_elements;
    ctx->create_vs_state = agx_create_shader_state;
+   ctx->create_compute_state = agx_create_compute_state;
    ctx->bind_blend_state = agx_bind_blend_state;
    ctx->bind_depth_stencil_alpha_state = agx_bind_zsa_state;
    ctx->bind_sampler_states = agx_bind_sampler_states;
@@ -2452,9 +2498,11 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->bind_rasterizer_state = agx_bind_rasterizer_state;
    ctx->bind_vertex_elements_state = agx_bind_vertex_elements_state;
    ctx->bind_vs_state = agx_bind_shader_state;
+   ctx->bind_compute_state = agx_bind_shader_state;
    ctx->delete_blend_state = agx_delete_state;
    ctx->delete_depth_stencil_alpha_state = agx_delete_state;
    ctx->delete_fs_state = agx_delete_shader_state;
+   ctx->delete_compute_state = agx_delete_shader_state;
    ctx->delete_rasterizer_state = agx_delete_state;
    ctx->delete_sampler_state = agx_delete_sampler_state;
    ctx->delete_vertex_elements_state = agx_delete_state;

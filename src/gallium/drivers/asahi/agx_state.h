@@ -116,7 +116,8 @@ struct agx_compiled_shader {
 
 struct agx_uncompiled_shader {
    struct pipe_shader_state base;
-   struct nir_shader *nir;
+   enum pipe_shader_type type;
+   const struct nir_shader *nir;
    uint8_t nir_sha1[20];
    struct hash_table *variants;
 
