@@ -1646,7 +1646,7 @@ agx_lower_aligned_offsets(struct nir_builder *b,
 }
 
 static void
-agx_optimize_nir(nir_shader *nir)
+agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
    bool progress;
 
@@ -1687,6 +1687,7 @@ agx_optimize_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
    } while (progress);
 
+   NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
    NIR_PASS_V(nir, nir_opt_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
    NIR_PASS_V(nir, nir_copy_prop);
@@ -1935,7 +1936,7 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, agx_lower_resinfo);
    NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
-   agx_optimize_nir(nir);
+   agx_optimize_nir(nir, &out->push_count);
 
    /* Implement conditional discard with real control flow like Metal */
    NIR_PASS_V(nir, nir_lower_discard_if, (nir_lower_discard_if_to_cf |
