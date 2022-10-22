@@ -441,17 +441,46 @@ agx_translate_texture_dimension(enum pipe_texture_target dim)
 
 static struct pipe_sampler_view *
 agx_create_sampler_view(struct pipe_context *pctx,
-                        struct pipe_resource *texture,
+                        struct pipe_resource *orig_texture,
                         const struct pipe_sampler_view *state)
 {
-   struct agx_resource *rsrc = agx_resource(texture);
+   struct agx_resource *rsrc = agx_resource(orig_texture);
    struct agx_sampler_view *so = CALLOC_STRUCT(agx_sampler_view);
 
    if (!so)
       return NULL;
 
+   struct pipe_resource *texture = orig_texture;
+   enum pipe_format format = state->format;
+
+   /* Use stencil attachment, separate stencil always used on G13 */
+   if (rsrc->separate_stencil) {
+      rsrc = rsrc->separate_stencil;
+      texture = &rsrc->base;
+      format = texture->format;
+   }
+
+   /* Save off the BO that we actually use, with the stencil fixed up */
+   so->bo = rsrc->bo;
+
    const struct util_format_description *desc =
-      util_format_description(state->format);
+      util_format_description(format);
+
+   assert(agx_is_valid_pixel_format(format));
+
+   uint8_t format_swizzle[4] = {
+      desc->swizzle[0], desc->swizzle[1], desc->swizzle[2], desc->swizzle[3],
+   };
+
+   if (util_format_has_stencil(desc)) {
+      assert(!util_format_has_depth(desc) && "separate stencil always used");
+
+      /* Broadcast stencil */
+      format_swizzle[0] = 0;
+      format_swizzle[1] = 0;
+      format_swizzle[2] = 0;
+      format_swizzle[3] = 0;
+   }
 
    /* We only have a single swizzle for the user swizzle and the format fixup,
     * so compose them now. */
@@ -461,7 +490,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       state->swizzle_b, state->swizzle_a
    };
 
-   util_format_compose_swizzles(desc->swizzle, view_swizzle, out_swizzle);
+   util_format_compose_swizzles(format_swizzle, view_swizzle, out_swizzle);
 
    assert(state->u.tex.first_layer == 0);
 
@@ -473,8 +502,8 @@ agx_create_sampler_view(struct pipe_context *pctx,
    agx_pack(&so->desc, TEXTURE, cfg) {
       cfg.dimension = agx_translate_texture_dimension(state->target);
       cfg.layout = agx_translate_layout(rsrc->layout.tiling);
-      cfg.channels = agx_pixel_format[state->format].channels;
-      cfg.type = agx_pixel_format[state->format].type;
+      cfg.channels = agx_pixel_format[format].channels;
+      cfg.type = agx_pixel_format[format].type;
       cfg.swizzle_r = agx_channel_from_pipe(out_swizzle[0]);
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
@@ -507,10 +536,9 @@ agx_create_sampler_view(struct pipe_context *pctx,
       }
    }
 
-   /* Initialize base object */
    so->base = *state;
    so->base.texture = NULL;
-   pipe_resource_reference(&so->base.texture, texture);
+   pipe_resource_reference(&so->base.texture, orig_texture);
    pipe_reference_init(&so->base.reference, 1);
    so->base.context = pctx;
    return &so->base;

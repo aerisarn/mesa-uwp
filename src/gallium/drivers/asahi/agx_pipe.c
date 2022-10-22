@@ -1322,9 +1322,18 @@ agx_is_format_supported(struct pipe_screen* pscreen,
       return false;
 
    if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) {
-      struct agx_pixel_format_entry ent = agx_pixel_format[format];
+      enum pipe_format tex_format = format;
 
-      if (!agx_is_valid_pixel_format(format))
+      /* Mimic the fixup done in create_sampler_view and u_transfer_helper so we
+       * advertise GL_OES_texture_stencil8. Alternatively, we could make mesa/st
+       * less stupid?
+       */
+      if (tex_format == PIPE_FORMAT_X24S8_UINT)
+         tex_format = PIPE_FORMAT_S8_UINT;
+
+      struct agx_pixel_format_entry ent = agx_pixel_format[tex_format];
+
+      if (!agx_is_valid_pixel_format(tex_format))
          return false;
 
       if ((usage & PIPE_BIND_RENDER_TARGET) && !ent.renderable)
