@@ -251,7 +251,9 @@ struct fd_context {
    struct list_head acc_active_queries dt;
    /*@}*/
 
-   uint8_t patch_vertices;
+   float default_outer_level[4] dt;
+   float default_inner_level[2] dt;
+   uint8_t patch_vertices dt;
 
    /* Whether we need to recheck the active_queries list next
     * fd_batch_update_queries().
