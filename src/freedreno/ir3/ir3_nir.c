@@ -679,6 +679,8 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
          progress = true;
          break;
       case MESA_SHADER_TESS_CTRL:
+         NIR_PASS_V(s, nir_lower_io_to_scalar,
+                     nir_var_shader_in | nir_var_shader_out);
          NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, so, so->key.tessellation);
          NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so);
          progress = true;
@@ -939,6 +941,14 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
             case nir_intrinsic_load_draw_id:
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_DRAWID + 1);
+               break;
+            case nir_intrinsic_load_tess_level_outer_default:
+               layout->num_driver_params = MAX2(layout->num_driver_params,
+                                                IR3_DP_HS_DEFAULT_OUTER_LEVEL_W + 1);
+               break;
+            case nir_intrinsic_load_tess_level_inner_default:
+               layout->num_driver_params = MAX2(layout->num_driver_params,
+                                                IR3_DP_HS_DEFAULT_INNER_LEVEL_Y + 1);
                break;
             default:
                break;
