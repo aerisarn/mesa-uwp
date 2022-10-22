@@ -1641,7 +1641,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
 
       unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
-         cfg.uniform_register_count = 512;
+         cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.texture_state_register_count = tex_count;
          cfg.sampler_state_register_count = tex_count;
       }
@@ -1811,7 +1811,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
          cfg.pipeline = agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
-         cfg.uniform_register_count = 512;
+         cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.texture_state_register_count = frag_tex_count;
          cfg.sampler_state_register_count = frag_tex_count;
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
