@@ -89,17 +89,3 @@ static void _init( void )
     */
    xmesa_set_driver( &xlib_driver );
 }
-
-
-/***********************************************************************
- *
- * Butt-ugly hack to convince the linker not to throw away public GL
- * symbols (they are all referenced from getprocaddress, I guess).
- */
-extern void (*linker_foo(const unsigned char *procName))();
-extern void (*glXGetProcAddress(const unsigned char *procName))();
-
-extern void (*linker_foo(const unsigned char *procName))()
-{
-   return glXGetProcAddress(procName);
-}
