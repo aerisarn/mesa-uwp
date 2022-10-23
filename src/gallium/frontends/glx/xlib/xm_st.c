@@ -371,7 +371,7 @@ xmesa_swap_st_framebuffer(struct st_framebuffer_iface *stfbi)
       }
 
       if (xmesa_strict_invalidate)
-	 xmesa_check_buffer_size(xstfb->buffer);
+         xmesa_check_buffer_size(xstfb->buffer);
    }
 }
 
