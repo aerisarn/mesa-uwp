@@ -692,7 +692,11 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_NIR) |
              COND(has_compute(screen) && (shader == PIPE_SHADER_COMPUTE),
                   (1 << PIPE_SHADER_IR_NIR_SERIALIZED)) |
-             (1 << PIPE_SHADER_IR_TGSI);
+             /* tgsi_to_nir doesn't support all stages: */
+             COND((shader == PIPE_SHADER_VERTEX) ||
+                  (shader == PIPE_SHADER_FRAGMENT) ||
+                  (shader == PIPE_SHADER_COMPUTE),
+                  (1 << PIPE_SHADER_IR_TGSI));
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen)) {
