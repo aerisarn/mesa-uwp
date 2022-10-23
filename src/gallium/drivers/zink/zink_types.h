@@ -63,7 +63,7 @@
 
 
 /* the descriptor binding id for fbfetch/input attachment */
-#define ZINK_FBFETCH_BINDING 6 //COMPUTE+1
+#define ZINK_FBFETCH_BINDING 5
 #define ZINK_GFX_SHADER_COUNT 5
 
 /* number of descriptors to allocate in a pool */
