@@ -103,14 +103,17 @@ static struct xm_driver driver;
  * invalidation.  Xcb almost looks as if it could provide this, but
  * the API doesn't seem to quite be there.
  */
-boolean xmesa_strict_invalidate = FALSE;
+DEBUG_GET_ONCE_BOOL_OPTION(xmesa_strict_invalidate, "XMESA_STRICT_INVALIDATE", false)
+
+bool
+xmesa_strict_invalidate(void)
+{
+   return debug_get_option_xmesa_strict_invalidate();
+}
 
 void xmesa_set_driver( const struct xm_driver *templ )
 {
    driver = *templ;
-
-   xmesa_strict_invalidate =
-      debug_get_bool_option("XMESA_STRICT_INVALIDATE", FALSE);
 }
 
 
@@ -120,7 +123,7 @@ xmesa_get_param(struct st_manager *smapi,
 {
    switch(param) {
    case ST_MANAGER_BROKEN_INVALIDATE:
-      return !xmesa_strict_invalidate;
+      return !xmesa_strict_invalidate();
    default:
       return 0;
    }
