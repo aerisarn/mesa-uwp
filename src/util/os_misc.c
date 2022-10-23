@@ -125,17 +125,7 @@ os_log_message(const char *message)
 
 #if DETECT_OS_ANDROID
 #  include <ctype.h>
-#  include "hash_table.h"
-#  include "ralloc.h"
-#  include "simple_mtx.h"
-
-static struct hash_table *options_tbl;
-
-static void
-options_tbl_fini(void)
-{
-   _mesa_hash_table_destroy(options_tbl, NULL);
-}
+#  include "c11/threads.h"
 
 /**
  * Get an option value from android's property system, as a fallback to
@@ -153,28 +143,11 @@ options_tbl_fini(void)
  *  - MESA_EXTENSION_OVERRIDE -> mesa.extension.override
  *  - GALLIUM_HUD -> mesa.gallium.hud
  *
- * Note that we use a hashtable for two purposes:
- *  1) Avoid re-translating the option name on subsequent lookups
- *  2) Avoid leaking memory.  Because property_get() returns the
- *     property value into a user allocated buffer, we cannot return
- *     that directly to the caller, so we need to strdup().  With the
- *     hashtable, subsquent lookups can return the existing string.
  */
-static const char *
+static char *
 os_get_android_option(const char *name)
 {
-   if (!options_tbl) {
-      options_tbl = _mesa_hash_table_create(NULL, _mesa_hash_string,
-            _mesa_key_string_equal);
-      atexit(options_tbl_fini);
-   }
-
-   struct hash_entry *entry = _mesa_hash_table_search(options_tbl, name);
-   if (entry) {
-      return entry->data;
-   }
-
-   char value[PROPERTY_VALUE_MAX];
+   static thread_local char os_android_option_value[PROPERTY_VALUE_MAX];
    char key[PROPERTY_KEY_MAX];
    char *p = key, *end = key + PROPERTY_KEY_MAX;
    /* add "mesa." prefix if necessary: */
@@ -189,15 +162,11 @@ os_get_android_option(const char *name)
       }
    }
 
-   const char *opt = NULL;
-   int len = property_get(key, value, NULL);
+   int len = property_get(key, os_android_option_value, NULL);
    if (len > 1) {
-      opt = ralloc_strdup(options_tbl, value);
+      return os_android_option_value;
    }
-
-   _mesa_hash_table_insert(options_tbl, name, (void *)opt);
-
-   return opt;
+   return NULL;
 }
 #endif
 

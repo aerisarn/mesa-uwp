@@ -84,6 +84,8 @@ os_log_message(const char *message);
 
 /*
  * Get an option. Should return NULL if specified option is not set.
+ * It has the same disadvantage as getenv, see
+ * https://wiki.sei.cmu.edu/confluence/display/c/ENV34-C.+Do+not+store+pointers+returned+by+certain+functions
  */
 const char *
 os_get_option(const char *name);
