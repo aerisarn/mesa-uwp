@@ -135,7 +135,7 @@ fd_screen_get_timestamp(struct pipe_screen *pscreen)
       assert(screen->max_freq > 0);
       return n * 1000000000 / screen->max_freq;
    } else {
-      int64_t cpu_time = os_time_get() * 1000;
+      int64_t cpu_time = os_time_get_nano();
       return cpu_time + screen->cpu_gpu_time_delta;
    }
 }
