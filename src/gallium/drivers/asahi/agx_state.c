@@ -1656,6 +1656,19 @@ agx_point_object_type(struct agx_rasterizer *rast)
           AGX_OBJECT_TYPE_POINT_SPRITE_UV10;
 }
 
+static enum agx_pass_type
+agx_pass_type_for_shader(struct agx_shader_info *info)
+{
+   if (info->reads_tib && info->writes_sample_mask)
+      return AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH;
+   else if (info->reads_tib)
+      return AGX_PASS_TYPE_TRANSLUCENT;
+   else if (info->writes_sample_mask)
+      return AGX_PASS_TYPE_PUNCH_THROUGH;
+   else
+      return AGX_PASS_TYPE_OPAQUE;
+}
+
 #define MAX_PPP_UPDATES 2
 
 static uint8_t *
@@ -1785,8 +1798,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
          cfg.lines_or_points = (is_lines || is_points);
          cfg.no_colour_output = ctx->fs->info.no_colour_output;
-         cfg.reads_tilebuffer = ctx->fs->info.reads_tib;
-         cfg.sample_mask_from_shader = ctx->fs->info.writes_sample_mask;
+         cfg.pass_type = agx_pass_type_for_shader(&ctx->fs->info);
       }
    }
 

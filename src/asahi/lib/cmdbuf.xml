@@ -381,13 +381,21 @@
     <field name="Unk fill lines" size="1" start="26" type="hex" default="0x0"/> <!-- set when drawing LINES -->
   </struct>
 
+  <enum name="Pass type">
+    <value name="Opaque" value="0"/>
+    <value name="Translucent" value="1"/>
+    <value name="Punch through" value="2"/>
+    <value name="Translucent punch through" value="3"/>
+    <!-- See PASSTYPE in rogue_ppp.xml if more values are observed on AGX...
+         Translucent punch through seems notably different though? -->
+  </enum>
+
   <struct name="Fragment control 2" size="4">
     <field name="Unk 1" size="1" start="9" type="bool" default="true"/>
     <!-- Or discards? -->
     <field name="No colour output" size="1" start="21" type="bool"/>
     <field name="Lines or points" size="1" start="26" type="bool"/>
-    <field name="Reads tilebuffer" size="1" start="29" type="bool"/>
-    <field name="Sample mask from shader" size="1" start="30" type="bool"/>
+    <field name="Pass type" size="3" start="29" type="Pass type"/>
   </struct>
 
   <struct name="Fragment occlusion query" size="4">
