@@ -183,6 +183,11 @@
     <value name="2D Array Multisampled" value="8"/>
   </enum>
 
+  <enum name="Sample Count">
+    <value name="2" value="0"/>
+    <value name="4" value="1"/>
+  </enum>
+
   <struct name="Render Target" size="24">
     <!-- 2D or 2D Multisampled, no layering -->
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
@@ -198,12 +203,8 @@
     <field name="Unk 52" size="1" start="52" type="bool"/>
     <field name="Rotate 90" size="1" start="53" type="bool" default="false"/>
     <field name="Flip vertical" size="1" start="54" type="bool" default="false"/>
-    <!-- not 1c0, tried setting . setting 0x20/0x10/0x8 breaks render. not
-    0x4/0x2. 0x1 distorts in a funny way, renders upside-down with jitter
-    around the edges (like it's doing a 2x2 tiling or something).
-
-    When enabling mipmapping, Metal sets 0x8 and sets stride to 0x100009 -->
-    <field name="Unk 55" size="9" start="55" type="hex" default="0x00"/>
+    <field name="Samples" size="1" start="56" type="Sample Count"/>
+    <field name="Unk mipmapped" size="1" start="58" type="bool"/>
     <field name="Buffer" size="36" start="64" type="address" modifier="shr(4)"/>
     <!-- N.b. sRGB is not specified here -->
     <field name="Level" size="4" start="100" type="uint"/>
@@ -218,11 +219,6 @@
     <!-- If layout is compressed -->
     <field name="Acceleration buffer" size="64" start="128" type="address"/>
   </struct>
-
-  <enum name="Sample Count">
-    <value name="2" value="0"/>
-    <value name="4" value="1"/>
-  </enum>
 
   <struct name="Texture" size="24">
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>

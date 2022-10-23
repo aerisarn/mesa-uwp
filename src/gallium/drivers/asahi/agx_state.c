@@ -830,9 +830,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.height = state->height;
          cfg.level = surf->u.tex.level;
          cfg.buffer = agx_map_texture_gpu(tex, layer);
-
-         if (tex->mipmapped)
-            cfg.unk_55 = 0x8;
+         cfg.unk_mipmapped = tex->mipmapped;
 
          if (tex->layout.tiling == AIL_TILING_LINEAR) {
             cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
