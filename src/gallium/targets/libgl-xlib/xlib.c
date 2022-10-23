@@ -33,7 +33,6 @@
 #include "pipe/p_compiler.h"
 #include "util/u_debug.h"
 #include "sw/xlib/xlib_sw_winsys.h"
-#include "xm_public.h"
 
 #include "target-helpers/inline_sw_helper.h"
 #include "target-helpers/inline_debug_helper.h"
@@ -44,8 +43,11 @@
  * one of the software rasterizers (llvmpipe, softpipe) and the
  * xlib winsys.
  */
-static struct pipe_screen *
-swrast_xlib_create_screen( Display *display )
+struct pipe_screen *
+xlib_create_screen( Display *display );
+
+struct pipe_screen *
+xlib_create_screen( Display *display )
 {
    struct sw_winsys *winsys;
    struct pipe_screen *screen = NULL;
@@ -74,18 +76,3 @@ fail:
    return NULL;
 }
 
-static struct xm_driver xlib_driver = 
-{
-   .create_pipe_screen = swrast_xlib_create_screen,
-};
-
-
-/* Build the rendering stack.
- */
-static void _init( void ) __attribute__((constructor));
-static void _init( void )
-{
-   /* Initialize the xlib libgl code, pass in the winsys:
-    */
-   xmesa_set_driver( &xlib_driver );
-}
