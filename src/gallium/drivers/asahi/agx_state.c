@@ -786,15 +786,19 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    ctx->batch->width = state->width;
    ctx->batch->height = state->height;
    ctx->batch->nr_cbufs = state->nr_cbufs;
-   ctx->batch->cbufs[0] = state->cbufs[0];
    ctx->batch->zsbuf = state->zsbuf;
    ctx->dirty = ~0;
 
    if (state->zsbuf)
       agx_batch_writes(ctx->batch, agx_resource(state->zsbuf->texture));
 
+   /* Clear out stale pointers */
+   memset(ctx->batch->cbufs, 0, sizeof(ctx->batch->cbufs));
+
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
+      ctx->batch->cbufs[i] = surf;
+
       struct agx_resource *tex = agx_resource(surf->texture);
       const struct util_format_description *desc =
          util_format_description(surf->format);
