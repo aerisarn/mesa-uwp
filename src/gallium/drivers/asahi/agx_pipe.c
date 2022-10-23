@@ -747,20 +747,24 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
                                   agx_pool_upload(&batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
    }
 
-   /* Pipelines must 64 aligned */
    for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
-      struct agx_resource *rt = agx_resource(batch->cbufs[i]->texture);
-      BITSET_SET(rt->data_valid, 0);
+      struct pipe_surface *surf = batch->cbufs[i];
+
+      if (surf && surf->texture) {
+         struct agx_resource *rt = agx_resource(surf->texture);
+         BITSET_SET(rt->data_valid, surf->u.tex.level);
+      }
    }
 
    struct agx_resource *zbuf = batch->zsbuf ?
       agx_resource(batch->zsbuf->texture) : NULL;
 
    if (zbuf) {
-      BITSET_SET(zbuf->data_valid, 0);
+      unsigned level = ctx->batch->zsbuf->u.tex.level;
+      BITSET_SET(zbuf->data_valid, level);
 
       if (zbuf->separate_stencil)
-         BITSET_SET(zbuf->separate_stencil->data_valid, 0);
+         BITSET_SET(zbuf->separate_stencil->data_valid, level);
    }
 
    /* BO list for a given batch consists of:
