@@ -540,6 +540,7 @@
   <struct name="USC Shader" size="6">
     <field name="Tag" size="8" start="0" type="USC Control" default="Shader"/>
     <field name="Loads varyings" size="1" start="8" type="bool"/>
+    <!-- Seen set for pixel rate fragment shaders? -->
     <field name="Unk 1" size="1" start="9" type="bool" default="0"/>
     <field name="Unk 2" size="6" start="10" type="uint" default="3"/>
     <field name="Code" size="32" start="16" type="address"/>
@@ -856,6 +857,7 @@
     <field name="Stencil acceleration buffer 1" start="198:7" size="33" type="address" modifier="shr(7)"/>
     <field name="Stencil buffer 2" start="202:7" size="33" type="address" modifier="shr(7)"/>
     <field name="Stencil acceleration buffer 2" start="208:7" size="33" type="address" modifier="shr(7)"/>
+    <!-- Proportional to tile width * tile height * sample count -->
     <field name="Unk 212" start="212:0" size="32" default="0x4" type="hex"/>
     <field name="Unk 214" start="214:0" size="16" default="0xc000" type="hex"/>
     <field name="Z16 Unorm attachment 1" start="214:18" size="1" type="bool"/>
