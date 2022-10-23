@@ -29,9 +29,6 @@ KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guar
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/5582
 KHR-GLES31.core.texture_cube_map_array.color_depth_attachments,Fail
 
-# glsl parser bug will go away when we expose gl44 and/or GL_ARB_enhanced_layouts
-KHR-GL33.CommonBugs.CommonBug_ParenthesisInLayoutQualifierIntegerValue,Fail
-
 # rendering errors in ~4x4 blocks around the bottom side of the diagonal for the quad
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.colorburn,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.colordodge,Fail
@@ -172,6 +169,10 @@ spec@arb_texture_rectangle@1-1-linear-texture,Fail
 spec@arb_timer_query@timestamp-get,Fail
 
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
+
+# fails unrelated to GL_ARB_enhanced_layouts
+spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
+spec@arb_enhanced_layouts@gs-stream-location-aliasing,Fail
 
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
