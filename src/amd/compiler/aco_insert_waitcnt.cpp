@@ -716,6 +716,14 @@ gen(Instruction* instr, wait_ctx& ctx)
          update_counters(ctx, event_sendmsg);
       break;
    }
+   case Format::SOP1: {
+      if (instr->opcode == aco_opcode::s_sendmsg_rtn_b32 ||
+          instr->opcode == aco_opcode::s_sendmsg_rtn_b64) {
+         update_counters(ctx, event_sendmsg);
+         insert_wait_entry(ctx, instr->definitions[0], event_sendmsg);
+      }
+      break;
+   }
    default: break;
    }
 }
