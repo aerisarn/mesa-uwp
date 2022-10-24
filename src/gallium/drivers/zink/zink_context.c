@@ -1839,11 +1839,10 @@ zink_set_sampler_views(struct pipe_context *pctx,
                zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
                b->buffer_view = buffer_view;
                update = true;
-            }
+            } else if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
+                  update = true;
             zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_SHADER_READ_BIT,
                                          res->gfx_barrier);
-            if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
-               update = true;
             zink_batch_resource_usage_set(&ctx->batch, res, false, true);
          } else if (!res->obj->is_buffer) {
              if (res->base.b.format != b->image_view->base.format)
