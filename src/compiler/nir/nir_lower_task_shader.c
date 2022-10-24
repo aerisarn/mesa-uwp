@@ -38,6 +38,7 @@ typedef struct {
    bool payload_in_shared;
    /* Shared memory address where task_payload will be located. */
    uint32_t payload_shared_addr;
+   uint32_t payload_offset_in_bytes;
 } lower_task_state;
 
 static bool
@@ -216,7 +217,12 @@ emit_shared_to_payload_copy(nir_builder *b,
                          .memory_modes = nir_var_mem_shared);
 
    for (unsigned i = 0; i < copies_per_invocation; ++i) {
-      unsigned const_off = bytes_per_copy * invocations * i;
+      /* Payload_size is a size of user-accessible payload, but on some
+       * hardware (e.g. Intel) payload has a private header, which we have
+       * to offset (payload_offset_in_bytes).
+       */
+      unsigned const_off =
+            bytes_per_copy * invocations * i + s->payload_offset_in_bytes;
 
       /* Read from shared memory. */
       nir_ssa_def *copy =
@@ -430,6 +436,7 @@ nir_lower_task_shader(nir_shader *shader,
    lower_task_state state = {
       .payload_shared_addr = ALIGN(shader->info.shared_size, 16),
       .payload_in_shared = payload_in_shared,
+      .payload_offset_in_bytes = options.payload_offset_in_bytes,
    };
 
    if (payload_in_shared)
