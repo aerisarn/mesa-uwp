@@ -381,7 +381,7 @@ sparse_backing_alloc(struct zink_screen *screen, struct zink_bo *bo,
       size = MAX2(size, ZINK_SPARSE_BUFFER_PAGE_SIZE);
 
       buf = zink_bo_create(screen, size, ZINK_SPARSE_BUFFER_PAGE_SIZE,
-                           ZINK_HEAP_DEVICE_LOCAL, 0, screen->heap_map[ZINK_HEAP_DEVICE_LOCAL], NULL);
+                           ZINK_HEAP_DEVICE_LOCAL, 0, screen->heap_map[ZINK_HEAP_DEVICE_LOCAL][0], NULL);
       if (!buf) {
          FREE(best_backing->chunks);
          FREE(best_backing);

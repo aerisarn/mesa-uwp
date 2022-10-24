@@ -943,8 +943,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    mai.pNext = NULL;
    mai.allocationSize = reqs.size;
    enum zink_heap heap = zink_heap_from_domain_flags(flags, aflags);
-   mai.memoryTypeIndex = screen->heap_map[heap];
-   if (unlikely(!(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex)))) {
+   mai.memoryTypeIndex = zink_heap_idx_from_bits(screen, heap, reqs.memoryTypeBits);
+   if (mai.memoryTypeIndex == UINT32_MAX) {
       /* not valid based on reqs; demote to more compatible type */
       switch (heap) {
       case ZINK_HEAP_DEVICE_LOCAL_VISIBLE:
@@ -956,9 +956,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       default:
          break;
       }
-      mai.memoryTypeIndex = screen->heap_map[heap];
-      assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));
+      mai.memoryTypeIndex = zink_heap_idx_from_bits(screen, heap, reqs.memoryTypeBits);
+      assert(mai.memoryTypeIndex != UINT32_MAX);
    }
+   assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));
 
    VkMemoryDedicatedAllocateInfo ded_alloc_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,

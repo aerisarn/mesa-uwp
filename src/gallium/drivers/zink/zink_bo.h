@@ -93,6 +93,17 @@ zink_heap_from_domain_flags(VkMemoryPropertyFlags domains, enum zink_alloc_flag 
    return ZINK_HEAP_HOST_VISIBLE_COHERENT;
 }
 
+static inline unsigned
+zink_heap_idx_from_bits(struct zink_screen *screen, enum zink_heap heap, uint32_t bits)
+{
+   for (unsigned i = 0; i < screen->heap_count[heap]; i++) {
+      if (bits & BITFIELD_BIT(screen->heap_map[heap][i])) {
+         return screen->heap_map[heap][i];
+      }
+   }
+   return UINT32_MAX;
+}
+
 bool
 zink_bo_init(struct zink_screen *screen);
 
