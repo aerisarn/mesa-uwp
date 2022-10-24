@@ -432,21 +432,6 @@ vma_free(struct iris_bufmgr *bufmgr,
    util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
 }
 
-static bool
-iris_bo_busy_gem(struct iris_bo *bo)
-{
-   assert(iris_bo_is_real(bo));
-
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-   struct drm_i915_gem_busy busy = { .handle = bo->gem_handle };
-
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_BUSY, &busy);
-   if (ret == 0) {
-      return busy.busy;
-   }
-   return false;
-}
-
 /* A timeout of 0 just checks for busyness. */
 static int
 iris_bo_wait_syncobj(struct iris_bo *bo, int64_t timeout_ns)
@@ -518,10 +503,18 @@ bool
 iris_bo_busy(struct iris_bo *bo)
 {
    bool busy;
-   if (iris_bo_is_external(bo))
-      busy = iris_bo_busy_gem(bo);
-   else
-      busy = iris_bo_busy_syncobj(bo);
+
+   switch (iris_bufmgr_get_device_info(bo->bufmgr)->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      if (iris_bo_is_external(bo))
+         busy = iris_i915_bo_busy_gem(bo);
+      else
+         busy = iris_bo_busy_syncobj(bo);
+      break;
+   default:
+      unreachable("missing");
+      busy = true;
+   }
 
    bo->idle = !busy;
 

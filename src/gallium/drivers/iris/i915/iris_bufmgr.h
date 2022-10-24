@@ -26,3 +26,4 @@
 
 struct iris_bo;
 
+bool iris_i915_bo_busy_gem(struct iris_bo *bo);

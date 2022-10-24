@@ -27,3 +27,15 @@
 
 #include "drm-uapi/i915_drm.h"
 
+bool iris_i915_bo_busy_gem(struct iris_bo *bo)
+{
+   assert(iris_bo_is_real(bo));
+
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   struct drm_i915_gem_busy busy = { .handle = bo->gem_handle };
+
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_BUSY, &busy))
+      return false;
+
+   return busy.busy;
+}
