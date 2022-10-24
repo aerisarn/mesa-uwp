@@ -4718,6 +4718,10 @@ genX(CmdDrawMeshTasksNV)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh", taskCount);
+
    /* TODO(mesh): Check if this is not emitting more packets than we need. */
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4747,6 +4751,10 @@ genX(CmdDrawMeshTasksEXT)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh", x * y * z);
 
    /* TODO(mesh): Check if this is not emitting more packets than we need. */
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
@@ -4856,6 +4864,10 @@ genX(CmdDrawMeshTasksIndirectNV)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh indirect", drawCount);
+
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    if (cmd_state->conditional_render_enabled)
@@ -4895,6 +4907,10 @@ genX(CmdDrawMeshTasksIndirectEXT)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh indirect", drawCount);
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4937,6 +4953,10 @@ genX(CmdDrawMeshTasksIndirectCountNV)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh indirect count", 0);
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4982,6 +5002,10 @@ genX(CmdDrawMeshTasksIndirectCountEXT)(
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
+
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw mesh indirect count", 0);
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
