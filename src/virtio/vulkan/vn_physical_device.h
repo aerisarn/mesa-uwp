@@ -43,6 +43,8 @@ struct vn_physical_device_features {
    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type;
    VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
       primitive_topology_list_restart;
+   VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT
+      primitives_generated_query;
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2FeaturesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;

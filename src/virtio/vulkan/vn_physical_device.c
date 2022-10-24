@@ -197,6 +197,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_PNEXT_EXT(feats2, MULTI_DRAW_FEATURES_EXT, feats->multi_draw, exts->EXT_multi_draw);
    VN_ADD_PNEXT_EXT(feats2, MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT, feats->mutable_descriptor_type, exts->EXT_mutable_descriptor_type || exts->VALVE_mutable_descriptor_type);
    VN_ADD_PNEXT_EXT(feats2, PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, feats->primitive_topology_list_restart, exts->EXT_primitive_topology_list_restart);
+   VN_ADD_PNEXT_EXT(feats2, PRIMITIVES_GENERATED_QUERY_FEATURES_EXT, feats->primitives_generated_query, exts->EXT_primitives_generated_query);
    VN_ADD_PNEXT_EXT(feats2, PROVOKING_VERTEX_FEATURES_EXT, feats->provoking_vertex, exts->EXT_provoking_vertex);
    VN_ADD_PNEXT_EXT(feats2, ROBUSTNESS_2_FEATURES_EXT, feats->robustness_2, exts->EXT_robustness2);
    VN_ADD_PNEXT_EXT(feats2, TRANSFORM_FEEDBACK_FEATURES_EXT, feats->transform_feedback, exts->EXT_transform_feedback);
@@ -1084,6 +1085,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_multi_draw = true,
       .EXT_mutable_descriptor_type = true,
       .EXT_primitive_topology_list_restart = true,
+      .EXT_primitives_generated_query = true,
       /* TODO(VK_EXT_private_data): Support natively.
        *
        * We support this extension with a hybrid native/passthrough model
@@ -1718,6 +1720,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(MULTI_DRAW_FEATURES_EXT, multi_draw);
       CASE(MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT, mutable_descriptor_type);
       CASE(PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT, primitive_topology_list_restart);
+      CASE(PRIMITIVES_GENERATED_QUERY_FEATURES_EXT, primitives_generated_query);
       CASE(PROVOKING_VERTEX_FEATURES_EXT, provoking_vertex);
       CASE(ROBUSTNESS_2_FEATURES_EXT, robustness_2);
       CASE(TRANSFORM_FEEDBACK_FEATURES_EXT, transform_feedback);
