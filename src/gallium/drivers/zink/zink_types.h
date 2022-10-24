@@ -1632,23 +1632,26 @@ struct zink_context {
 
    struct {
       /* descriptor info */
-      VkDescriptorBufferInfo ubos[MESA_SHADER_STAGES][PIPE_MAX_CONSTANT_BUFFERS];
       uint32_t push_valid;
       uint8_t num_ubos[MESA_SHADER_STAGES];
 
-      VkDescriptorBufferInfo ssbos[MESA_SHADER_STAGES][PIPE_MAX_SHADER_BUFFERS];
       uint8_t num_ssbos[MESA_SHADER_STAGES];
 
       VkDescriptorImageInfo textures[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
-      VkBufferView tbos[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
       uint32_t emulate_nonseamless[MESA_SHADER_STAGES];
       uint32_t cubes[MESA_SHADER_STAGES];
       uint8_t num_samplers[MESA_SHADER_STAGES];
       uint8_t num_sampler_views[MESA_SHADER_STAGES];
 
       VkDescriptorImageInfo images[MESA_SHADER_STAGES][ZINK_MAX_SHADER_IMAGES];
-      VkBufferView texel_images[MESA_SHADER_STAGES][ZINK_MAX_SHADER_IMAGES];
       uint8_t num_images[MESA_SHADER_STAGES];
+
+      struct {
+         VkDescriptorBufferInfo ubos[MESA_SHADER_STAGES][PIPE_MAX_CONSTANT_BUFFERS];
+         VkDescriptorBufferInfo ssbos[MESA_SHADER_STAGES][PIPE_MAX_SHADER_BUFFERS];
+         VkBufferView tbos[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+         VkBufferView texel_images[MESA_SHADER_STAGES][ZINK_MAX_SHADER_IMAGES];
+      } t;
 
       VkDescriptorImageInfo fbfetch;
 

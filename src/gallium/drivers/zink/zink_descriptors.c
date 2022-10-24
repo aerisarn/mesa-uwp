@@ -321,7 +321,7 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
     switch (shader->bindings[type][idx].type) {
     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-       entry->offset = offsetof(struct zink_context, di.ubos[stage][index]);
+       entry->offset = offsetof(struct zink_context, di.t.ubos[stage][index]);
        entry->stride = sizeof(VkDescriptorBufferInfo);
        break;
     case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -331,11 +331,11 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
        entry->stride = sizeof(VkDescriptorImageInfo);
        break;
     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-       entry->offset = offsetof(struct zink_context, di.tbos[stage][index]);
+       entry->offset = offsetof(struct zink_context, di.t.tbos[stage][index]);
        entry->stride = sizeof(VkBufferView);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-       entry->offset = offsetof(struct zink_context, di.ssbos[stage][index]);
+       entry->offset = offsetof(struct zink_context, di.t.ssbos[stage][index]);
        entry->stride = sizeof(VkDescriptorBufferInfo);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -343,7 +343,7 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
        entry->stride = sizeof(VkDescriptorImageInfo);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-       entry->offset = offsetof(struct zink_context, di.texel_images[stage][index]);
+       entry->offset = offsetof(struct zink_context, di.t.texel_images[stage][index]);
        entry->stride = sizeof(VkBufferView);
        break;
     default:
@@ -1108,7 +1108,7 @@ init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
    entry->dstBinding = i;
    entry->descriptorCount = 1;
    entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-   entry->offset = offsetof(struct zink_context, di.ubos[i][0]);
+   entry->offset = offsetof(struct zink_context, di.t.ubos[i][0]);
    entry->stride = sizeof(VkDescriptorBufferInfo);
 }
 

@@ -562,15 +562,15 @@ update_descriptor_state_ubo(struct zink_context *ctx, gl_shader_stage shader, un
    bool have_null_descriptors = screen->info.rb2_feats.nullDescriptor;
    const enum zink_descriptor_type type = ZINK_DESCRIPTOR_TYPE_UBO;
    ctx->di.descriptor_res[type][shader][slot] = res;
-   ctx->di.ubos[shader][slot].offset = ctx->ubos[shader][slot].buffer_offset;
+   ctx->di.t.ubos[shader][slot].offset = ctx->ubos[shader][slot].buffer_offset;
    if (res) {
-      ctx->di.ubos[shader][slot].buffer = res->obj->buffer;
-      ctx->di.ubos[shader][slot].range = ctx->ubos[shader][slot].buffer_size;
-      assert(ctx->di.ubos[shader][slot].range <= screen->info.props.limits.maxUniformBufferRange);
+      ctx->di.t.ubos[shader][slot].buffer = res->obj->buffer;
+      ctx->di.t.ubos[shader][slot].range = ctx->ubos[shader][slot].buffer_size;
+      assert(ctx->di.t.ubos[shader][slot].range <= screen->info.props.limits.maxUniformBufferRange);
    } else {
       VkBuffer null_buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
-      ctx->di.ubos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
-      ctx->di.ubos[shader][slot].range = VK_WHOLE_SIZE;
+      ctx->di.t.ubos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
+      ctx->di.t.ubos[shader][slot].range = VK_WHOLE_SIZE;
    }
    if (!slot) {
       if (res)
@@ -588,14 +588,14 @@ update_descriptor_state_ssbo(struct zink_context *ctx, gl_shader_stage shader, u
    bool have_null_descriptors = screen->info.rb2_feats.nullDescriptor;
    const enum zink_descriptor_type type = ZINK_DESCRIPTOR_TYPE_SSBO;
    ctx->di.descriptor_res[type][shader][slot] = res;
-   ctx->di.ssbos[shader][slot].offset = ctx->ssbos[shader][slot].buffer_offset;
+   ctx->di.t.ssbos[shader][slot].offset = ctx->ssbos[shader][slot].buffer_offset;
    if (res) {
-      ctx->di.ssbos[shader][slot].buffer = res->obj->buffer;
-      ctx->di.ssbos[shader][slot].range = ctx->ssbos[shader][slot].buffer_size;
+      ctx->di.t.ssbos[shader][slot].buffer = res->obj->buffer;
+      ctx->di.t.ssbos[shader][slot].range = ctx->ssbos[shader][slot].buffer_size;
    } else {
       VkBuffer null_buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
-      ctx->di.ssbos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
-      ctx->di.ssbos[shader][slot].range = VK_WHOLE_SIZE;
+      ctx->di.t.ssbos[shader][slot].buffer = have_null_descriptors ? VK_NULL_HANDLE : null_buffer;
+      ctx->di.t.ssbos[shader][slot].range = VK_WHOLE_SIZE;
    }
    return res;
 }
@@ -610,7 +610,7 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
    if (res) {
       if (res->obj->is_buffer) {
          struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
-         ctx->di.tbos[shader][slot] = bv->buffer_view;
+         ctx->di.t.tbos[shader][slot] = bv->buffer_view;
       } else {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
          ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(ctx, res, type, shader == MESA_SHADER_COMPUTE);
@@ -632,13 +632,13 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
       if (likely(have_null_descriptors)) {
          ctx->di.textures[shader][slot].imageView = VK_NULL_HANDLE;
          ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-         ctx->di.tbos[shader][slot] = VK_NULL_HANDLE;
+         ctx->di.t.tbos[shader][slot] = VK_NULL_HANDLE;
       } else {
          struct zink_surface *null_surface = zink_get_dummy_surface(ctx, 0);
          struct zink_buffer_view *null_bufferview = ctx->dummy_bufferview;
          ctx->di.textures[shader][slot].imageView = null_surface->image_view;
          ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-         ctx->di.tbos[shader][slot] = null_bufferview->buffer_view;
+         ctx->di.t.tbos[shader][slot] = null_bufferview->buffer_view;
       }
    }
    return res;
@@ -654,7 +654,7 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
    if (res) {
       if (res->obj->is_buffer) {
          struct zink_buffer_view *bv = get_bufferview_for_binding(ctx, shader, type, slot);
-         ctx->di.texel_images[shader][slot] = bv->buffer_view;
+         ctx->di.t.texel_images[shader][slot] = bv->buffer_view;
       } else {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
          ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -663,13 +663,13 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
    } else {
       if (likely(have_null_descriptors)) {
          memset(&ctx->di.images[shader][slot], 0, sizeof(ctx->di.images[shader][slot]));
-         ctx->di.texel_images[shader][slot] = VK_NULL_HANDLE;
+         ctx->di.t.texel_images[shader][slot] = VK_NULL_HANDLE;
       } else {
          struct zink_surface *null_surface = zink_get_dummy_surface(ctx, 0);
          struct zink_buffer_view *null_bufferview = ctx->dummy_bufferview;
          ctx->di.images[shader][slot].imageView = null_surface->image_view;
          ctx->di.images[shader][slot].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-         ctx->di.texel_images[shader][slot] = null_bufferview->buffer_view;
+         ctx->di.t.texel_images[shader][slot] = null_bufferview->buffer_view;
       }
    }
    return res;
@@ -4913,10 +4913,16 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!is_copy_only) {
       for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
          /* need to update these based on screen config for null descriptors */
-         for (unsigned j = 0; j < 32; j++) {
+         for (unsigned j = 0; j < ARRAY_SIZE(ctx->di.t.ubos[i]); j++) {
             update_descriptor_state_ubo(ctx, i, j, NULL);
+         }
+         for (unsigned j = 0; j < ARRAY_SIZE(ctx->di.textures[i]); j++) {
             update_descriptor_state_sampler(ctx, i, j, NULL);
+         }
+         for (unsigned j = 0; j < ARRAY_SIZE(ctx->di.t.ssbos[i]); j++) {
             update_descriptor_state_ssbo(ctx, i, j, NULL);
+         }
+         for (unsigned j = 0; j < ARRAY_SIZE(ctx->di.images[i]); j++) {
             update_descriptor_state_image(ctx, i, j, NULL);
          }
       }
