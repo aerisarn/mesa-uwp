@@ -3137,10 +3137,11 @@ radv_use_llvm_for_stage(struct radv_device *device, UNUSED gl_shader_stage stage
 }
 
 static inline bool
-radv_has_shader_buffer_float_minmax(const struct radv_physical_device *pdevice)
+radv_has_shader_buffer_float_minmax(const struct radv_physical_device *pdevice, unsigned bitsize)
 {
    return (pdevice->rad_info.gfx_level <= GFX7 && !pdevice->use_llvm) ||
-          pdevice->rad_info.gfx_level >= GFX10;
+          pdevice->rad_info.gfx_level == GFX10 || pdevice->rad_info.gfx_level == GFX10_3 ||
+          (pdevice->rad_info.gfx_level == GFX11 && bitsize == 32);
 }
 
 /* radv_perfcounter.c */

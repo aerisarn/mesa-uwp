@@ -1684,15 +1684,16 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
          VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features =
             (VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *)ext;
-         bool has_shader_buffer_float_minmax = radv_has_shader_buffer_float_minmax(pdevice);
          bool has_shader_image_float_minmax =
             pdevice->rad_info.gfx_level != GFX8 && pdevice->rad_info.gfx_level != GFX9 &&
             pdevice->rad_info.gfx_level != GFX11;
          features->shaderBufferFloat16Atomics = false;
          features->shaderBufferFloat16AtomicAdd = false;
          features->shaderBufferFloat16AtomicMinMax = false;
-         features->shaderBufferFloat32AtomicMinMax = has_shader_buffer_float_minmax;
-         features->shaderBufferFloat64AtomicMinMax = has_shader_buffer_float_minmax;
+         features->shaderBufferFloat32AtomicMinMax =
+            radv_has_shader_buffer_float_minmax(pdevice, 32);
+         features->shaderBufferFloat64AtomicMinMax =
+            radv_has_shader_buffer_float_minmax(pdevice, 64);
          features->shaderSharedFloat16Atomics = false;
          features->shaderSharedFloat16AtomicAdd = false;
          features->shaderSharedFloat16AtomicMinMax = false;
