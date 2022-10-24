@@ -259,6 +259,21 @@ st_texture_image_insert_transfer(struct gl_texture_image *stImage,
    stImage->transfer[index].transfer = transfer;
 }
 
+/* See st_texture.h for more information. */
+GLuint
+st_texture_image_resource_level(struct gl_texture_image *stImage)
+{
+   /* An image for a non-finalized texture object only has a single level. */
+   if (stImage->pt != stImage->TexObject->pt)
+      return 0;
+
+   /* An immutable texture object may have views with an LOD offset. */
+   if (stImage->TexObject->Immutable)
+      return stImage->Level + stImage->TexObject->Attrib.MinLevel;
+
+   return stImage->Level;
+}
+
 /**
  * Map a texture image and return the address for a particular 2D face/slice/
  * layer.  The stImage indicates the cube face and mipmap level.  The slice
