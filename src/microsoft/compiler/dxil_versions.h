@@ -21,34 +21,35 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef DXIL_VALIDATOR_H
-#define DXIL_VALIDATOR_H
-
-#include "dxil_versions.h"
-
-#include <stddef.h>
-
-struct dxil_validator;
+#ifndef DXIL_VERSIONS_H
+#define DXIL_VERSIONS_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct dxil_validator *
-dxil_create_validator(const void *ctx);
+enum dxil_shader_model {
+   SHADER_MODEL_6_0 = 0x60000,
+   SHADER_MODEL_6_1,
+   SHADER_MODEL_6_2,
+   SHADER_MODEL_6_3,
+   SHADER_MODEL_6_4,
+   SHADER_MODEL_6_5,
+   SHADER_MODEL_6_6,
+   SHADER_MODEL_6_7,
+};
 
-void
-dxil_destroy_validator(struct dxil_validator *val);
-
-bool
-dxil_validate_module(struct dxil_validator *val, void *data,
-                     size_t size, char **error);
-
-char *
-dxil_disasm_module(struct dxil_validator *val, void *data, size_t size);
-
-enum dxil_validator_version
-dxil_get_validator_version(struct dxil_validator *val);
+enum dxil_validator_version {
+   NO_DXIL_VALIDATION,
+   DXIL_VALIDATOR_1_0 = 0x10000,
+   DXIL_VALIDATOR_1_1,
+   DXIL_VALIDATOR_1_2,
+   DXIL_VALIDATOR_1_3,
+   DXIL_VALIDATOR_1_4,
+   DXIL_VALIDATOR_1_5,
+   DXIL_VALIDATOR_1_6,
+   DXIL_VALIDATOR_1_7,
+};
 
 #ifdef __cplusplus
 }

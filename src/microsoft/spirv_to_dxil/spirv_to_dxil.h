@@ -24,6 +24,8 @@
 #ifndef SPIRV_TO_DXIL_H
 #define SPIRV_TO_DXIL_H
 
+#include "dxil_versions.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
