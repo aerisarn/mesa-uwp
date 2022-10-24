@@ -932,15 +932,6 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    }
 
    uint8_t changed_sets = pg->dd.binding_usage & ctx->dd.state_changed[is_compute];
-   bool need_push = pg->dd.push_usage &&
-                    (ctx->dd.push_state_changed[is_compute] || batch_changed);
-   VkDescriptorSet push_set = VK_NULL_HANDLE;
-   if (need_push && !have_KHR_push_descriptor) {
-      struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, &bs->dd.push_pool[pg->is_compute], bs, pg->is_compute);
-      push_set = get_descriptor_set(pool);
-      if (!push_set)
-         mesa_loge("ZINK: failed to get push descriptor set! prepare to crash!");
-   }
    /*
     * when binding a pipeline, the pipeline can correctly access any previously bound
     * descriptor sets which were bound with compatible pipeline layouts
@@ -954,13 +945,17 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                                                         pg->layout, 0, ctx);
       } else {
          if (ctx->dd.push_state_changed[is_compute]) {
+            struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, &bs->dd.push_pool[pg->is_compute], bs, pg->is_compute);
+            VkDescriptorSet push_set = get_descriptor_set(pool);
+            if (!push_set)
+               mesa_loge("ZINK: failed to get push descriptor set! prepare to crash!");
             VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, push_set, pg->dd.templates[0], ctx);
             bs->dd.sets[is_compute][0] = push_set;
          }
-         assert(push_set || bs->dd.sets[is_compute][0]);
+         assert(bs->dd.sets[is_compute][0]);
          VKCTX(CmdBindDescriptorSets)(bs->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 pg->layout, 0, 1, push_set ? &push_set : &bs->dd.sets[is_compute][0],
+                                 pg->layout, 0, 1, &bs->dd.sets[is_compute][0],
                                  0, NULL);
       }
    }
