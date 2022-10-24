@@ -64,8 +64,8 @@ each directory.
       -  **vbo** - Vertex Buffer Object code. All drawing with
          glBegin/glEnd, glDrawArrays, display lists, etc. goes through
          this module. The results is a well-defined set of vertex arrays
-         which are passed to the device driver (or tnl module) for
-         rendering.
+         which are passed to the device driver (or transform and lighting
+         module) for rendering.
       -  **x86** - Assembly code/optimizations for 32-bit x86 systems
          (not used with Gallium)
       -  **x86-64** - Assembly code/optimizations for 64-bit x86 systems
