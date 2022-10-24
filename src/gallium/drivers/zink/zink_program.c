@@ -784,22 +784,20 @@ zink_update_compute_program(struct zink_context *ctx)
 }
 
 VkPipelineLayout
-zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg, uint32_t *compat)
+zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *dsl, unsigned num_dsl, bool is_compute)
 {
    VkPipelineLayoutCreateInfo plci = {0};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-   plci.pSetLayouts = pg->dsl;
-   plci.setLayoutCount = pg->num_dsl;
+   plci.pSetLayouts = dsl;
+   plci.setLayoutCount = num_dsl;
 
    VkPushConstantRange pcr[2] = {0};
-   if (pg->is_compute) {
-      if (((struct zink_compute_program*)pg)->shader->nir->info.stage == MESA_SHADER_KERNEL) {
-         pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-         pcr[0].offset = 0;
-         pcr[0].size = sizeof(struct zink_cs_push_constant);
-         plci.pushConstantRangeCount = 1;
-      }
+   if (is_compute) {
+      pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+      pcr[0].offset = 0;
+      pcr[0].size = sizeof(struct zink_cs_push_constant);
+      plci.pushConstantRangeCount = 1;
    } else {
       pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
       pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
@@ -817,8 +815,6 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
       mesa_loge("vkCreatePipelineLayout failed (%s)", vk_Result_to_str(result));
       return VK_NULL_HANDLE;
    }
-
-   *compat = _mesa_hash_data(pg->dsl, pg->num_dsl * sizeof(pg->dsl[0]));
 
    return layout;
 }
