@@ -2916,6 +2916,18 @@ NVC0LoweringPass::handleLDST(Instruction *i)
 void
 NVC0LoweringPass::readTessCoord(LValue *dst, int c)
 {
+   // GLSL requires domain qualifier to be defined in TES while SPIRV allows
+   // domain to be defined in TES and/or TCS
+   uint8_t domain = prog->driver_out->prop.tp.domain;
+   const bool tese_defined_domain =
+      domain == MESA_PRIM_LINES ||
+      domain == MESA_PRIM_TRIANGLES ||
+      domain == MESA_PRIM_QUADS;
+
+   if (!tese_defined_domain) {
+      domain = prog->driver->prop.tese.prespecified_domain;
+   }
+
    Value *laneid = bld.getSSA();
    Value *x, *y;
 
@@ -2930,7 +2942,8 @@ NVC0LoweringPass::readTessCoord(LValue *dst, int c)
       y = dst;
    } else {
       assert(c == 2);
-      if (prog->driver_out->prop.tp.domain != MESA_PRIM_TRIANGLES) {
+      if (domain != MESA_PRIM_TRIANGLES) {
+         // optimize out tesscoord.z
          bld.mkMov(dst, bld.loadImm(NULL, 0));
          return;
       }
@@ -2943,6 +2956,7 @@ NVC0LoweringPass::readTessCoord(LValue *dst, int c)
       bld.mkFetch(y, TYPE_F32, FILE_SHADER_OUTPUT, 0x2f4, NULL, laneid);
 
    if (c == 2) {
+      // compute tesscoord.z from x, y
       bld.mkOp2(OP_ADD, TYPE_F32, dst, x, y);
       bld.mkOp2(OP_SUB, TYPE_F32, dst, bld.loadImm(NULL, 1.0f), dst);
    }

@@ -103,6 +103,9 @@ struct nv50_ir_prog_info
          uint32_t gridInfoBase;  /* base address for NTID,NCTAID */
          uint16_t numThreads[3]; /* max number of threads */
       } cp;
+      struct {
+         uint8_t prespecified_domain; /* MESA_PRIM_{QUADS,TRIANGLES,LINES}, POINTS if unspecified */
+      } tese;
    } prop;
 
    struct {
