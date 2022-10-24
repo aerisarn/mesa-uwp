@@ -335,6 +335,11 @@ disk_cache_wait_for_idle(struct disk_cache *cache)
 void
 disk_cache_remove(struct disk_cache *cache, const cache_key key)
 {
+   if (cache->type == DISK_CACHE_DATABASE) {
+      mesa_cache_db_entry_remove(&cache->cache_db, key);
+      return;
+   }
+
    char *filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL) {
       return;

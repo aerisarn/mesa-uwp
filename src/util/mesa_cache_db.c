@@ -434,7 +434,8 @@ static uint32_t blob_file_size(uint32_t blob_size)
 }
 
 static bool
-mesa_db_compact(struct mesa_cache_db *db, int64_t blob_size)
+mesa_db_compact(struct mesa_cache_db *db, int64_t blob_size,
+                struct mesa_index_db_hash_entry *remove_entry)
 {
    uint32_t num_entries, buffer_size = sizeof(struct mesa_index_db_file_entry);
    struct mesa_db_file_header cache_header, index_header;
@@ -446,7 +447,7 @@ mesa_db_compact(struct mesa_cache_db *db, int64_t blob_size)
    unsigned int i = 0;
 
    /* reload index to sync the last access times */
-   if (!mesa_db_reload(db))
+   if (!remove_entry && !mesa_db_reload(db))
       return false;
 
    num_entries = _mesa_hash_table_num_entries(db->index_db->table);
@@ -469,7 +470,7 @@ mesa_db_compact(struct mesa_cache_db *db, int64_t blob_size)
 
    hash_table_foreach(db->index_db->table, entry) {
       entries[i] = entry->data;
-      entries[i]->evicted = false;
+      entries[i]->evicted = (entries[i] == remove_entry);
       buffer_size = MAX2(buffer_size, blob_file_size(entries[i]->size));
       i++;
    }
@@ -759,7 +760,8 @@ mesa_cache_db_entry_write(struct mesa_cache_db *db,
       goto fail_fatal;
 
    if (!mesa_cache_db_has_space_locked(db, blob_size)) {
-      if (!mesa_db_compact(db, MAX2(blob_size, mesa_cache_db_eviction_size(db))))
+      if (!mesa_db_compact(db, MAX2(blob_size, mesa_cache_db_eviction_size(db)),
+                           NULL))
          goto fail_fatal;
    } else {
       if (!mesa_db_update_index(db))
@@ -817,6 +819,53 @@ fail:
 
    if (hash_entry)
       ralloc_free(hash_entry);
+
+   return false;
+}
+
+bool
+mesa_cache_db_entry_remove(struct mesa_cache_db *db,
+                           const uint8_t *cache_key_160bit)
+{
+   uint64_t hash = to_mesa_cache_db_hash(cache_key_160bit);
+   struct mesa_cache_db_file_entry cache_entry;
+   struct mesa_index_db_hash_entry *hash_entry;
+
+   if (!mesa_db_lock(db))
+      return NULL;
+
+   if (!db->alive)
+      goto fail;
+
+   if (mesa_db_uuid_changed(db) && !mesa_db_reload(db))
+      goto fail_fatal;
+
+   if (!mesa_db_update_index(db))
+      goto fail_fatal;
+
+   hash_entry = _mesa_hash_table_u64_search(db->index_db, hash);
+   if (!hash_entry)
+      goto fail;
+
+   if (!mesa_db_seek(db->cache.file, hash_entry->cache_db_file_offset) ||
+       !mesa_db_read(db->cache.file, &cache_entry) ||
+       !mesa_db_cache_entry_valid(&cache_entry))
+      goto fail_fatal;
+
+   if (memcmp(cache_entry.key, cache_key_160bit, sizeof(cache_entry.key)))
+      goto fail;
+
+   if (!mesa_db_compact(db, 0, hash_entry))
+      goto fail_fatal;
+
+   mesa_db_unlock(db);
+
+   return true;
+
+fail_fatal:
+   mesa_db_zap(db);
+fail:
+   mesa_db_unlock(db);
 
    return false;
 }

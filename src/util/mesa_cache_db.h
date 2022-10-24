@@ -62,6 +62,10 @@ bool
 mesa_cache_db_entry_write(struct mesa_cache_db *db,
                           const uint8_t *cache_key_160bit,
                           const void *blob, size_t blob_size);
+
+bool
+mesa_cache_db_entry_remove(struct mesa_cache_db *db,
+                           const uint8_t *cache_key_160bit);
 #else
 static inline bool
 mesa_cache_db_open(struct mesa_cache_db *db, const char *cache_path)
@@ -98,6 +102,13 @@ static inline bool
 mesa_cache_db_entry_write(struct mesa_cache_db *db,
                           const uint8_t *cache_key_160bit,
                           const void *blob, size_t blob_size)
+{
+   return false;
+}
+
+bool
+mesa_cache_db_entry_remove(struct mesa_cache_db *db,
+                           const uint8_t *cache_key_160bit)
 {
    return false;
 }
