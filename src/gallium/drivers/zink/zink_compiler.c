@@ -3207,12 +3207,16 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             VkDescriptorType vktype = !var->data.driver_location ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             int binding = var->data.binding;
 
-            ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
-            ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
-            ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
-            ret->bindings[ztype][ret->num_bindings[ztype]].size = glsl_get_length(var->type);
-            assert(ret->bindings[ztype][ret->num_bindings[ztype]].size);
-            ret->num_bindings[ztype]++;
+            if (!var->data.driver_location) {
+               ret->has_uniforms = true;
+            } else {
+               ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.driver_location;
+               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+               ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
+               ret->bindings[ztype][ret->num_bindings[ztype]].size = glsl_get_length(var->type);
+               assert(ret->bindings[ztype][ret->num_bindings[ztype]].size);
+               ret->num_bindings[ztype]++;
+            }
          } else if (var->data.mode == nir_var_mem_ssbo) {
             ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             var->data.descriptor_set = screen->desc_set_id[ztype];

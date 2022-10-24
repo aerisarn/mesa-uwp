@@ -425,17 +425,14 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 
       gl_shader_stage stage = shader->nir->info.stage;
       VkShaderStageFlagBits stage_flags = mesa_to_vk_shader_stage(stage);
+      /* uniform ubos handled in push */
+      if (shader->has_uniforms) {
+         pg->dd.push_usage |= BITFIELD64_BIT(stage);
+         push_count++;
+      }
       for (int j = 0; j < ZINK_DESCRIPTOR_BASE_TYPES; j++) {
          unsigned desc_type = screen->desc_set_id[j] - 1;
          for (int k = 0; k < shader->num_bindings[j]; k++) {
-            /* dynamic ubos handled in push */
-            if (shader->bindings[j][k].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-               pg->dd.push_usage |= BITFIELD64_BIT(stage);
-
-               push_count++;
-               continue;
-            }
-
             assert(num_bindings[desc_type] < ARRAY_SIZE(bindings[desc_type]));
             VkDescriptorSetLayoutBinding *binding = &bindings[desc_type][num_bindings[desc_type]];
             binding->binding = shader->bindings[j][k].binding;

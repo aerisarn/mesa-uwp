@@ -1103,6 +1103,8 @@ static unsigned
 get_num_bindings(struct zink_shader *zs, enum zink_descriptor_type type)
 {
    switch (type) {
+   case ZINK_DESCRIPTOR_TYPE_UNIFORMS:
+      return !!zs->has_uniforms;
    case ZINK_DESCRIPTOR_TYPE_UBO:
    case ZINK_DESCRIPTOR_TYPE_SSBO:
       return zs->num_bindings[type];
