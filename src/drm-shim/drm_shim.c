@@ -110,16 +110,23 @@ static struct file_override file_overrides[10];
 static int file_overrides_count;
 extern bool drm_shim_driver_prefers_first_render_node;
 
-#define nfasprintf(...)                         \
-   {                                            \
-      UNUSED int __ret = asprintf(__VA_ARGS__); \
-      assert(__ret >= 0);                       \
-   }
-#define nfvasprintf(...)                         \
-   {                                             \
-      UNUSED int __ret = vasprintf(__VA_ARGS__); \
-      assert(__ret >= 0);                        \
-   }
+static int
+nfvasprintf(char **restrict strp, const char *restrict fmt, va_list ap)
+{
+   int ret = vasprintf(strp, fmt, ap);
+   assert(ret >= 0);
+   return ret;
+}
+
+static int
+nfasprintf(char **restrict strp, const char *restrict fmt, ...)
+{
+   va_list ap;
+   va_start(ap, fmt);
+   int ret = nfvasprintf(strp, fmt, ap);
+   va_end(ap);
+   return ret;
+}
 
 /* Pick the minor and filename for our shimmed render node.  This can be
  * either a new one that didn't exist on the system, or if the driver wants,
