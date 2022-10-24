@@ -912,7 +912,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    if (batch_changed) {
       /* update all sets and bind null sets */
       ctx->dd.state_changed[is_compute] = pg->dd.binding_usage & BITFIELD_MASK(ZINK_DESCRIPTOR_TYPE_UNIFORMS);
-      ctx->dd.push_state_changed[is_compute] = !!pg->dd.push_usage;
+      ctx->dd.push_state_changed[is_compute] = !!pg->dd.push_usage || ctx->dd.has_fbfetch != bs->dd.has_fbfetch;
    }
 
    if (pg != bs->dd.pg[is_compute]) {
