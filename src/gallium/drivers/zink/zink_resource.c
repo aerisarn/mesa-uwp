@@ -1898,15 +1898,22 @@ zink_buffer_map(struct pipe_context *pctx,
          goto success;
       usage |= PIPE_MAP_UNSYNCHRONIZED;
    } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED) &&
-              (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) && res->base.b.usage != PIPE_USAGE_STAGING) || !res->obj->host_visible)) {
-      assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
-      if (!res->obj->host_visible || !(usage & PIPE_MAP_ONCE)) {
+              (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) &&
+               ((res->obj->bo->base.placement & VK_STAGING_RAM) != VK_STAGING_RAM)) ||
+              !res->obj->host_visible)) {
+      assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC)));
+      if (!res->obj->host_visible || res->base.b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY) {
 overwrite:
          trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
          if (!trans->staging_res)
             goto fail;
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
+         if (usage & PIPE_MAP_THREAD_SAFE) {
+            /* this map can't access the passed context: use the copy context */
+            zink_screen_lock_context(screen);
+            ctx = screen->copy_context;
+         }
          zink_copy_buffer(ctx, staging_res, res, trans->offset, box->x, box->width);
          res = staging_res;
          usage &= ~PIPE_MAP_UNSYNCHRONIZED;
@@ -1975,10 +1982,15 @@ overwrite:
       res->obj->persistent_maps++;
 
 success:
+   /* ensure the copy context gets unlocked */
+   if (ctx == screen->copy_context)
+      zink_screen_unlock_context(screen);
    *transfer = &trans->base.b;
    return ptr;
 
 fail:
+   if (ctx == screen->copy_context)
+      zink_screen_unlock_context(screen);
    destroy_transfer(ctx, trans);
    return NULL;
 }
