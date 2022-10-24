@@ -389,15 +389,6 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       }
    }
 
-   /* Vulkan 1.3: The extensions for the below structs were promoted, but some
-    * struct members were omitted from VkPhysicalDeviceVulkan13Features.
-    */
-   VN_ADD_PNEXT_EXT(feats2, 4444_FORMATS_FEATURES_EXT, feats->_4444_formats, exts->EXT_4444_formats);
-   VN_ADD_PNEXT_EXT(feats2, EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, feats->extended_dynamic_state_2, exts->EXT_extended_dynamic_state2);
-   VN_ADD_PNEXT_EXT(feats2, EXTENDED_DYNAMIC_STATE_FEATURES_EXT, feats->extended_dynamic_state, exts->EXT_extended_dynamic_state);
-   VN_ADD_PNEXT_EXT(feats2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, exts->EXT_texel_buffer_alignment);
-   VN_ADD_PNEXT_EXT(feats2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, exts->EXT_ycbcr_2plane_444_formats);
-
    /* clang-format on */
 }
 
