@@ -14,6 +14,7 @@
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-panfrost.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
+# 2 machines, but shared with KernelCI (2022-10-24)
 .lava-rk3288-veyron-jaq:
   variables:
     BOOT_METHOD: depthcharge
@@ -39,14 +40,17 @@ panfrost-t720-gles2:arm64:
     FDO_CI_CONCURRENT: 6
     RUNNER_TAG: mesa-ci-x86-64-lava-sun50i-h6-pine-h64
 
-.panfrost-t760-gles2:armhf:
+# We only have two machines, which we share with KernelCI.
+# Keep the second t760 job manual.
+panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
     - .panfrost-midgard-rules
     - .panfrost-test
     - .lava-rk3288-veyron-jaq
+    - .test-manual-mr
 
-.panfrost-t760-traces:armhf:
+panfrost-t760-traces:armhf:
   extends:
     - .lava-piglit-traces:armhf
     - .panfrost-midgard-rules
