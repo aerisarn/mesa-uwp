@@ -9020,6 +9020,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          /* "((size - 1) << 11) | register" (SHADER_CYCLES is encoded as register 29) */
          Temp clock = bld.sopk(aco_opcode::s_getreg_b32, bld.def(s1), ((20 - 1) << 11) | 29);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), clock, Operand::zero());
+      } else if (nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE &&
+                 ctx->options->gfx_level >= GFX11) {
+         bld.sop1(aco_opcode::s_sendmsg_rtn_b64, Definition(dst),
+                  Operand::c32(sendmsg_rtn_get_realtime));
       } else {
          aco_opcode opcode = nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE
                                 ? aco_opcode::s_memrealtime
