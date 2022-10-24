@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <sys/types.h>
 
 #include "drm-uapi/drm_fourcc.h"
 
