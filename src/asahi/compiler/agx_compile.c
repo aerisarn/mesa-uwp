@@ -1020,6 +1020,19 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_convert_to(b, dst, agx_immediate(mode), s0, AGX_ROUND_RTE);
    }
 
+   /* Split a 64-bit word into 32-bit parts. Do not use null destinations to
+    * let us CSE (and coalesce) the splits when both x and y are split.
+    */
+   case nir_op_unpack_64_2x32_split_x:
+   case nir_op_unpack_64_2x32_split_y:
+   {
+      agx_instr *split = agx_split(b, 2, s0);
+      unsigned comp = instr->op == nir_op_unpack_64_2x32_split_y ? 1 : 0;
+      split->dest[comp] = dst;
+      split->dest[1 - comp] = agx_temp(b->shader, dst.size);
+      return split;
+   }
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
