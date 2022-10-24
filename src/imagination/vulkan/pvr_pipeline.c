@@ -1849,9 +1849,6 @@ pvr_graphics_pipeline_init(struct pvr_device *device,
 
    pvr_pipeline_init(device, PVR_PIPELINE_TYPE_GRAPHICS, &gfx_pipeline->base);
 
-   pvr_finishme("ignoring pCreateInfo flags.");
-   pvr_finishme("ignoring pipeline cache.");
-
    gfx_pipeline->raster_state.discard_enable = raster_discard_enabled;
    gfx_pipeline->raster_state.cull_mode =
       pCreateInfo->pRasterizationState->cullMode;

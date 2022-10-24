@@ -425,7 +425,6 @@ struct rogue_fwif_2d_regs {
    uint64_t deprecated_1;
    uint64_t deprecated_2;
    uint64_t deprecated_3;
-   /* FIXME: HIGH: FIX_HW_BRN_57193 changes the structure's layout. */
    uint64_t brn57193_tla_cmd_stream;
 };
 
