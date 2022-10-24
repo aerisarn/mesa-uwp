@@ -1690,16 +1690,6 @@ iris_bo_map(struct util_debug_callback *dbg,
    return map;
 }
 
-/** Waits for all GPU rendering with the object to have completed. */
-void
-iris_bo_wait_rendering(struct iris_bo *bo)
-{
-   /* We require a kernel recent enough for WAIT_IOCTL support.
-    * See intel_init_bufmgr()
-    */
-   iris_bo_wait(bo, -1);
-}
-
 static int
 iris_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
 {
@@ -1745,7 +1735,7 @@ iris_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
  * Note that some kernels have broken the infinite wait for negative values
  * promise, upgrade to latest stable kernels if this is the case.
  */
-int
+static inline int
 iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
 {
    int ret;
@@ -1758,6 +1748,16 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
    bo->idle = ret == 0;
 
    return ret;
+}
+
+/** Waits for all GPU rendering with the object to have completed. */
+void
+iris_bo_wait_rendering(struct iris_bo *bo)
+{
+   /* We require a kernel recent enough for WAIT_IOCTL support.
+    * See intel_init_bufmgr()
+    */
+   iris_bo_wait(bo, -1);
 }
 
 static void
