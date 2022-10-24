@@ -2417,11 +2417,19 @@ unbreak_bos(nir_shader *shader, struct zink_shader *zs, bool needs_size)
 }
 
 static uint32_t
-get_src_mask(unsigned total, nir_src src)
+get_src_mask_ssbo(unsigned total, nir_src src)
 {
    if (nir_src_is_const(src))
       return BITFIELD_BIT(nir_src_as_uint(src));
    return BITFIELD_MASK(total);
+}
+
+static uint32_t
+get_src_mask_ubo(unsigned total, nir_src src)
+{
+   if (nir_src_is_const(src))
+      return BITFIELD_BIT(nir_src_as_uint(src));
+   return BITFIELD_MASK(total) & ~BITFIELD_BIT(0);
 }
 
 static bool
@@ -2437,11 +2445,11 @@ analyze_io(struct zink_shader *zs, nir_shader *shader)
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
          case nir_intrinsic_store_ssbo:
-            zs->ssbos_used |= get_src_mask(shader->info.num_ssbos, intrin->src[1]);
+            zs->ssbos_used |= get_src_mask_ssbo(shader->info.num_ssbos, intrin->src[1]);
             break;
  
          case nir_intrinsic_get_ssbo_size: {
-            zs->ssbos_used |= get_src_mask(shader->info.num_ssbos, intrin->src[0]);
+            zs->ssbos_used |= get_src_mask_ssbo(shader->info.num_ssbos, intrin->src[0]);
             ret = true;
             break;
          }
@@ -2460,11 +2468,11 @@ analyze_io(struct zink_shader *zs, nir_shader *shader)
          case nir_intrinsic_ssbo_atomic_fmax:
          case nir_intrinsic_ssbo_atomic_fcomp_swap:
          case nir_intrinsic_load_ssbo:
-            zs->ssbos_used |= get_src_mask(shader->info.num_ssbos, intrin->src[0]);
+            zs->ssbos_used |= get_src_mask_ssbo(shader->info.num_ssbos, intrin->src[0]);
             break;
          case nir_intrinsic_load_ubo:
          case nir_intrinsic_load_ubo_vec4:
-            zs->ubos_used |= get_src_mask(shader->info.num_ubos, intrin->src[0]);
+            zs->ubos_used |= get_src_mask_ubo(shader->info.num_ubos, intrin->src[0]);
             break;
          default:
             break;
