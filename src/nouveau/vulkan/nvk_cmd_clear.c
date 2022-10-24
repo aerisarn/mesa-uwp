@@ -316,7 +316,6 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
 
       unsigned bpp = util_format_get_blocksize(p_format);
       vk_format = vk_packed_int_format_for_size(bpp);
-      p_format = vk_format_to_pipe_format(vk_format);
    }
 
    clear_image(cmd, image, imageLayout, vk_format,
