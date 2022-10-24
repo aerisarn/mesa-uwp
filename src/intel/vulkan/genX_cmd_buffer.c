@@ -4722,6 +4722,8 @@ genX(CmdDrawMeshTasksNV)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh", taskCount);
 
+   trace_intel_begin_draw_mesh(&cmd_buffer->trace);
+
    /* TODO(mesh): Check if this is not emitting more packets than we need. */
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4738,6 +4740,8 @@ genX(CmdDrawMeshTasksNV)(
       m.ThreadGroupCountX = taskCount;
       m.StartingThreadGroupIDX = firstTask;
    }
+
+   trace_intel_end_draw_mesh(&cmd_buffer->trace, taskCount, 1, 1);
 }
 
 void
@@ -4756,6 +4760,8 @@ genX(CmdDrawMeshTasksEXT)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh", x * y * z);
 
+   trace_intel_begin_draw_mesh(&cmd_buffer->trace);
+
    /* TODO(mesh): Check if this is not emitting more packets than we need. */
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4768,6 +4774,8 @@ genX(CmdDrawMeshTasksEXT)(
       m.ThreadGroupCountY = y;
       m.ThreadGroupCountZ = z;
    }
+
+   trace_intel_end_draw_mesh(&cmd_buffer->trace, x, y, z);
 }
 
 #define GFX125_3DMESH_TG_COUNT 0x26F0
@@ -4868,6 +4876,8 @@ genX(CmdDrawMeshTasksIndirectNV)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh indirect", drawCount);
 
+   trace_intel_begin_draw_mesh_indirect(&cmd_buffer->trace);
+
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    if (cmd_state->conditional_render_enabled)
@@ -4888,6 +4898,8 @@ genX(CmdDrawMeshTasksIndirectNV)(
 
       offset += stride;
    }
+
+   trace_intel_end_draw_mesh_indirect(&cmd_buffer->trace, drawCount);
 }
 
 void
@@ -4912,6 +4924,8 @@ genX(CmdDrawMeshTasksIndirectEXT)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh indirect", drawCount);
 
+   trace_intel_begin_draw_mesh_indirect(&cmd_buffer->trace);
+
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    if (cmd_state->conditional_render_enabled)
@@ -4932,6 +4946,8 @@ genX(CmdDrawMeshTasksIndirectEXT)(
 
       offset += stride;
    }
+
+   trace_intel_end_draw_mesh_indirect(&cmd_buffer->trace, drawCount);
 }
 
 void
@@ -4958,6 +4974,8 @@ genX(CmdDrawMeshTasksIndirectCountNV)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh indirect count", 0);
 
+   trace_intel_begin_draw_mesh_indirect_count(&cmd_buffer->trace);
+
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    bool uses_drawid = (task_prog_data && task_prog_data->uses_drawid) ||
@@ -4981,6 +4999,8 @@ genX(CmdDrawMeshTasksIndirectCountNV)(
 
       offset += stride;
    }
+
+   trace_intel_end_draw_mesh_indirect_count(&cmd_buffer->trace, maxDrawCount);
 }
 
 void
@@ -5007,6 +5027,8 @@ genX(CmdDrawMeshTasksIndirectCountEXT)(
                         INTEL_SNAPSHOT_DRAW,
                         "draw mesh indirect count", 0);
 
+   trace_intel_begin_draw_mesh_indirect_count(&cmd_buffer->trace);
+
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    bool uses_drawid = (task_prog_data && task_prog_data->uses_drawid) ||
@@ -5030,6 +5052,8 @@ genX(CmdDrawMeshTasksIndirectCountEXT)(
 
       offset += stride;
    }
+
+   trace_intel_end_draw_mesh_indirect_count(&cmd_buffer->trace, maxDrawCount);
 }
 
 #endif /* GFX_VERx10 >= 125 */
