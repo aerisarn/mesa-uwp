@@ -704,6 +704,27 @@ radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkB
    }
 }
 
+static bool
+radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att)
+{
+   VkBlendOp eqRGB = att->color_blend_op;
+   VkBlendFactor srcRGB = att->src_color_blend_factor;
+   VkBlendFactor dstRGB = att->dst_color_blend_factor;
+   VkBlendOp eqA = att->alpha_blend_op;
+   VkBlendFactor srcA = att->src_alpha_blend_factor;
+   VkBlendFactor dstA = att->dst_alpha_blend_factor;
+   bool eqRGB_minmax = eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX;
+   bool eqA_minmax = eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX;
+
+   assert(att->blend_enable);
+
+   if (!eqRGB_minmax && (is_dual_src(srcRGB) || is_dual_src(dstRGB)))
+      return true;
+   if (!eqA_minmax && (is_dual_src(srcA) || is_dual_src(dstA)))
+      return true;
+   return false;
+}
+
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                const struct vk_graphics_pipeline_state *state,
@@ -755,9 +776,9 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             continue;
          }
 
-         if (is_dual_src(srcRGB) || is_dual_src(dstRGB) || is_dual_src(srcA) || is_dual_src(dstA))
-            if (i == 0)
-               blend.mrt0_is_dual_src = true;
+         if (i == 0 && radv_can_enable_dual_src(&state->cb->attachments[i])) {
+            blend.mrt0_is_dual_src = true;
+         }
 
          if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
             srcRGB = VK_BLEND_FACTOR_ONE;
