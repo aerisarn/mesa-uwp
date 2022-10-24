@@ -207,7 +207,8 @@ Core Mesa environment variables
    cache implementation instead of the default multi-file cache
    implementation. This implementation reduces the overall disk usage by
    the shader cache and also allows for loading of precompiled cache
-   DBs via :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS`. This
+   DBs via :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS` or
+   :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST`. This
    implementation does not support cache size limits via
    :envvar:`MESA_SHADER_CACHE_MAX_SIZE`. If
    :envvar:`MESA_SHADER_CACHE_DIR` is not set, the cache will be stored
@@ -223,7 +224,8 @@ Core Mesa environment variables
    relative to the cache directory and do not include suffixes,
    referencing both the cache DB and its index file. E.g.
    MESA_DISK_CACHE_SINGLE_FILE=filename1 refers to filename1.foz and
-   filename1_idx.foz. A limit of 8 DBs can be loaded.
+   filename1_idx.foz. A limit of 8 DBs can be loaded and this limit is
+   shared with :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST.`
 
 .. envvar:: MESA_DISK_CACHE_DATABASE
 
@@ -236,6 +238,20 @@ Core Mesa environment variables
    in ``$XDG_CACHE_HOME/mesa_shader_cache_db`` (if that variable is set)
    or else within ``.cache/mesa_shader_cache_db`` within the user's home
    directory.
+
+.. envvar:: MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST
+
+   if set with :envvar:`MESA_DISK_CACHE_SINGLE_FILE` enabled, references
+   a text file that contains a new-line separated list of read only
+   Fossilize DB shader caches to load. The list file is modifiable at
+   runtime to allow for loading read only caches after initialization
+   unlike :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS`. This variable
+   takes an absolute path to the list file. The list file must exist at
+   initialization for updating to occur. Cache files in the list take
+   relative paths to the current cache directory like
+   :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS`. A limit of 8 DBs can be
+   loaded and this limit is shared with
+   :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS`.
 
 .. envvar:: MESA_DISK_CACHE_COMBINE_RW_WITH_RO_FOZ
 
