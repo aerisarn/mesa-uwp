@@ -193,7 +193,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
       sba.BindlessSurfaceStateBaseAddress =
-         (struct anv_address) { device->surface_state_pool.block_pool.bo, 0 };
+         (struct anv_address) { device->bindless_surface_state_pool.block_pool.bo, 0 };
       sba.BindlessSurfaceStateSize = (1 << 20) - 1;
       sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
@@ -945,7 +945,7 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
    assert(image->vk.aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
    struct anv_address ss_clear_addr = {
-      .bo = cmd_buffer->device->surface_state_pool.block_pool.bo,
+      .bo = cmd_buffer->device->internal_surface_state_pool.block_pool.bo,
       .offset = surface_state.offset +
                 cmd_buffer->device->isl_dev.ss.clear_value_offset,
    };
@@ -1673,7 +1673,7 @@ genX(CmdExecuteCommands)(
           * we allocated for them in BeginCommandBuffer.
           */
          struct anv_bo *ss_bo =
-            primary->device->surface_state_pool.block_pool.bo;
+            primary->device->internal_surface_state_pool.block_pool.bo;
          struct anv_state src_state = primary->state.gfx.att_states;
          struct anv_state dst_state = secondary->state.gfx.att_states;
          assert(src_state.alloc_size == dst_state.alloc_size);
@@ -2435,7 +2435,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
                   desc->image_view->planes[binding->plane].general_sampler_surface_state :
                   desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
-               surface_state = sstate.state;
+               surface_state =
+                  anv_bindless_state_for_binding_table(sstate.state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
@@ -2449,7 +2450,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   binding->lowered_storage_surface
                   ? desc->image_view->planes[binding->plane].lowered_storage_surface_state
                   : desc->image_view->planes[binding->plane].storage_surface_state;
-               surface_state = sstate.state;
+               surface_state =
+                  anv_bindless_state_for_binding_table(sstate.state);
                assert(surface_state.alloc_size);
                if (surface_state.offset == 0) {
                   mesa_loge("Bound a image to a descriptor where the "
@@ -2483,7 +2485,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             if (desc->buffer_view) {
-               surface_state = desc->buffer_view->surface_state;
+               surface_state = anv_bindless_state_for_binding_table(
+                  desc->buffer_view->surface_state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
@@ -2509,8 +2512,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                struct anv_address address =
                   anv_address_add(desc->buffer->address, offset);
 
-               surface_state =
-                  anv_state_stream_alloc(&cmd_buffer->surface_state_stream, 64, 64);
+               surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
                enum isl_format format =
                   anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                                      desc->type);
@@ -2531,9 +2533,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (desc->buffer_view) {
-               surface_state = binding->lowered_storage_surface
+               surface_state = anv_bindless_state_for_binding_table(
+                  binding->lowered_storage_surface
                   ? desc->buffer_view->lowered_storage_surface_state
-                  : desc->buffer_view->storage_surface_state;
+                  : desc->buffer_view->storage_surface_state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = cmd_buffer->device->null_surface_state;
@@ -2544,6 +2547,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             assert(!"Invalid descriptor type");
             continue;
          }
+
          assert(surface_state.map);
          bt_map[s] = surface_state.offset + state_offset;
          break;
@@ -2681,7 +2685,6 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                           struct anv_cmd_pipeline_state *state,
                           struct anv_pipeline *pipeline)
 {
-   const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
    struct anv_descriptor_set *set = &state->push_descriptor->set;
    struct anv_descriptor_set_layout *layout = set->layout;
 
@@ -2691,9 +2694,7 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          struct anv_descriptor *desc = &set->descriptors[desc_idx];
          struct anv_buffer_view *bview = desc->set_buffer_view;
 
-         bview->surface_state =
-            anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
-                                   isl_dev->ss.size, isl_dev->ss.align);
+         bview->surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
          anv_descriptor_write_surface_state(cmd_buffer->device, desc,
                                             bview->surface_state);
       }
@@ -2704,9 +2705,7 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-      set->desc_surface_state =
-         anv_state_stream_alloc(&cmd_buffer->surface_state_stream,
-                                isl_dev->ss.size, isl_dev->ss.align);
+      set->desc_surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
       anv_fill_buffer_surface_state(cmd_buffer->device,
                                     set->desc_surface_state,
                                     format, ISL_SWIZZLE_IDENTITY,
