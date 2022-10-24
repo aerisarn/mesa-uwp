@@ -1643,24 +1643,6 @@ iris_bo_map(struct util_debug_callback *dbg,
    return map;
 }
 
-static int
-iris_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
-{
-   assert(iris_bo_is_real(bo));
-
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
-   struct drm_i915_gem_wait wait = {
-      .bo_handle = bo->gem_handle,
-      .timeout_ns = timeout_ns,
-   };
-
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
-   if (ret != 0)
-      return -errno;
-
-   return 0;
-}
-
 /**
  * Waits on a BO for the given amount of time.
  *
@@ -1693,10 +1675,17 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
 {
    int ret;
 
-   if (iris_bo_is_external(bo))
-      ret = iris_bo_wait_gem(bo, timeout_ns);
-   else
-      ret = iris_bo_wait_syncobj(bo, timeout_ns);
+   switch (iris_bufmgr_get_device_info(bo->bufmgr)->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      if (iris_bo_is_external(bo))
+         ret = iris_i915_bo_wait_gem(bo, timeout_ns);
+      else
+         ret = iris_bo_wait_syncobj(bo, timeout_ns);
+      break;
+   default:
+      unreachable("missing");
+      ret = -1;
+   }
 
    bo->idle = ret == 0;
 

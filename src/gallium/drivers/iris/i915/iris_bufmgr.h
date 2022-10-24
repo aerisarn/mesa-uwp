@@ -23,7 +23,9 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct iris_bo;
 
 bool iris_i915_bo_busy_gem(struct iris_bo *bo);
+int iris_i915_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns);

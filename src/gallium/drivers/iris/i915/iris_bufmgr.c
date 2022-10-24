@@ -39,3 +39,19 @@ bool iris_i915_bo_busy_gem(struct iris_bo *bo)
 
    return busy.busy;
 }
+
+int iris_i915_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
+{
+   assert(iris_bo_is_real(bo));
+
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   struct drm_i915_gem_wait wait = {
+      .bo_handle = bo->gem_handle,
+      .timeout_ns = timeout_ns,
+   };
+
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_WAIT, &wait))
+      return -errno;
+
+   return 0;
+}
