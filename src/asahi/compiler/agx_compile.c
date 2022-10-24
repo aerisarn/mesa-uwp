@@ -871,6 +871,9 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    UNOP(mov, mov);
    UNOP(u2u16, mov);
    UNOP(u2u32, mov);
+   UNOP(bitfield_reverse, bitrev);
+   UNOP(bit_count, popcount);
+   UNOP(ufind_msb, ffs);
    UNOP(inot, not);
    BINOP(iand, and);
    BINOP(ior, or);

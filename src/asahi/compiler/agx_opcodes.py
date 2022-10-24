@@ -148,6 +148,13 @@ def funop(name, opcode):
       0x3F | L | (((1 << 14) - 1) << 28), 6, _),
       srcs = 1, is_float = True)
 
+def iunop(name, opcode):
+    assert(opcode < 4)
+    op(name, (0x3E | (opcode << 26),
+              0x7F | L | (((1 << 14) - 1) << 26),
+              6, _),
+       srcs = 1)
+
 # Listing of opcodes
 funop("floor",     0b000000)
 funop("srsqrt",    0b000001)
@@ -162,6 +169,10 @@ funop("sin_pt_2",  0b001110)
 funop("ceil",      0b010000)
 funop("trunc",     0b100000)
 funop("roundeven", 0b110000)
+
+iunop("bitrev",    0b01)
+iunop("popcount",  0b10)
+iunop("ffs",       0b11)
 
 op("fadd",
       encoding_16 = (0x26 | L, 0x3F | L, 6, _),
