@@ -134,6 +134,7 @@ struct wsi_swapchain {
    VkFence* fences;
    VkSemaphore* buffer_blit_semaphores;
    VkPresentModeKHR present_mode;
+   VkSemaphore present_id_timeline;
 
    int signal_dma_buf_from_semaphore;
    VkSemaphore dma_buf_semaphore;
@@ -255,6 +256,10 @@ wsi_image_init(struct wsi_image *image);
 void
 wsi_destroy_image(const struct wsi_swapchain *chain,
                   struct wsi_image *image);
+
+VkResult
+wsi_swapchain_wait_for_present_semaphore(const struct wsi_swapchain *chain,
+                                         uint64_t present_id, uint64_t timeout);
 
 #ifdef HAVE_LIBDRM
 VkResult
