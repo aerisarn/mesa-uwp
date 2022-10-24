@@ -121,6 +121,7 @@ cache_exists(struct disk_cache *cache)
    disk_cache_put(cache, key, data, sizeof(data), NULL);
    disk_cache_wait_for_idle(cache);
    void *result = disk_cache_get(cache, key, NULL);
+   disk_cache_remove(cache, key);
 
    free(result);
    return result != NULL;
