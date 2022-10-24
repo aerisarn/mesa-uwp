@@ -703,6 +703,14 @@ d3d12_deinit_screen(struct d3d12_screen *screen)
       screen->cache_bufmgr->destroy(screen->cache_bufmgr);
       screen->cache_bufmgr = nullptr;
    }
+   if (screen->slab_cache_bufmgr) {
+      screen->slab_cache_bufmgr->destroy(screen->slab_cache_bufmgr);
+      screen->slab_cache_bufmgr = nullptr;
+   }
+   if (screen->readback_slab_cache_bufmgr) {
+      screen->readback_slab_cache_bufmgr->destroy(screen->readback_slab_cache_bufmgr);
+      screen->readback_slab_cache_bufmgr = nullptr;
+   }
    if (screen->bufmgr) {
       screen->bufmgr->destroy(screen->bufmgr);
       screen->bufmgr = nullptr;
@@ -1418,15 +1426,23 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    if (!screen->cache_bufmgr)
       return false;
 
-   screen->slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16,
+   screen->slab_cache_bufmgr = pb_cache_manager_create(screen->bufmgr, 0xfffff, 2, 0, 512 * 1024 * 1024);
+   if (!screen->slab_cache_bufmgr)
+      return false;
+
+   screen->slab_bufmgr = pb_slab_range_manager_create(screen->slab_cache_bufmgr, 16,
                                                       D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                       D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                       &desc);
    if (!screen->slab_bufmgr)
       return false;
+   
+   screen->readback_slab_cache_bufmgr = pb_cache_manager_create(screen->bufmgr, 0xfffff, 2, 0, 512 * 1024 * 1024);
+   if (!screen->readback_slab_cache_bufmgr)
+      return false;
 
    desc.usage = (pb_usage_flags)(PB_USAGE_CPU_READ_WRITE | PB_USAGE_GPU_WRITE);
-   screen->readback_slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16,
+   screen->readback_slab_bufmgr = pb_slab_range_manager_create(screen->readback_slab_cache_bufmgr, 16,
                                                                D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                                D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                                &desc);
