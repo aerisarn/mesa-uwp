@@ -723,6 +723,19 @@ fail:
    return NULL;
 }
 
+static bool
+mesa_cache_db_has_space_locked(struct mesa_cache_db *db, size_t blob_size)
+{
+   return ftell(db->cache.file) + blob_file_size(blob_size) -
+          sizeof(struct mesa_db_file_header) <= db->max_cache_size;
+}
+
+static size_t
+mesa_cache_db_eviction_size(struct mesa_cache_db *db)
+{
+   return db->max_cache_size / 2 - sizeof(struct mesa_db_file_header);
+}
+
 bool
 mesa_cache_db_entry_write(struct mesa_cache_db *db,
                           const uint8_t *cache_key_160bit,
@@ -745,8 +758,8 @@ mesa_cache_db_entry_write(struct mesa_cache_db *db,
    if (!mesa_db_seek_end(db->cache.file))
       goto fail_fatal;
 
-   if (ftell(db->cache.file) + blob_file_size(blob_size) > db->max_cache_size) {
-      if (!mesa_db_compact(db, MAX2(blob_size, db->max_cache_size / 2)))
+   if (!mesa_cache_db_has_space_locked(db, blob_size)) {
+      if (!mesa_db_compact(db, MAX2(blob_size, mesa_cache_db_eviction_size(db))))
          goto fail_fatal;
    } else {
       if (!mesa_db_update_index(db))
