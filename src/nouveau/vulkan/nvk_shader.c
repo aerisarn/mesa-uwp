@@ -271,18 +271,36 @@ count_location_slots(const struct glsl_type *type, bool bindless)
 static void
 assign_io_locations(nir_shader *nir)
 {
-   if (nir->info.stage != MESA_SHADER_VERTEX)
-      nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
-                               count_location_slots);
-   else {
+   if (nir->info.stage != MESA_SHADER_VERTEX) {
+      unsigned location = 0;
+      nir_foreach_variable_with_modes(var, nir, nir_var_shader_in) {
+         var->data.driver_location = location;
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            location += glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         } else {
+            location += glsl_count_attribute_slots(var->type, false);
+         }
+      }
+      nir->num_inputs = location;
+   } else {
       nir_foreach_shader_in_variable(var, nir) {
          assert(var->data.location >= VERT_ATTRIB_GENERIC0);
          var->data.driver_location = var->data.location - VERT_ATTRIB_GENERIC0;
       }
    }
 
-   nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
-                            count_location_slots);
+   {
+      unsigned location = 0;
+      nir_foreach_variable_with_modes(var, nir, nir_var_shader_out) {
+         var->data.driver_location = location;
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            location += glsl_count_attribute_slots(glsl_get_array_element(var->type), false);
+         } else {
+            location += glsl_count_attribute_slots(var->type, false);
+         }
+      }
+      nir->num_outputs = location;
+   }
 }
 
 void
