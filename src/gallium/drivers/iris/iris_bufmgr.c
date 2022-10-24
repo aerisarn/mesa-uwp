@@ -1755,10 +1755,7 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
    else
       ret = iris_bo_wait_syncobj(bo, timeout_ns);
 
-   if (ret != 0)
-      return -errno;
-
-   bo->idle = true;
+   bo->idle = ret == 0;
 
    return ret;
 }
