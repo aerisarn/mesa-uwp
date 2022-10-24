@@ -164,6 +164,8 @@ files_mesa_util = files(
   'xxhash.h',
   'mesa_cache_db.c',
   'mesa_cache_db.h',
+  'mesa_cache_db_multipart.c',
+  'mesa_cache_db_multipart.h',
 )
 
 files_drirc = files('00-mesa-defaults.conf')

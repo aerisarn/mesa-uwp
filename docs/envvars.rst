@@ -251,6 +251,17 @@ Core Mesa environment variables
    or else within ``.cache/mesa_shader_cache_db`` within the user's home
    directory.
 
+.. envvar:: MESA_DISK_CACHE_DATABASE_NUM_PARTS
+
+   specifies number of mesa-db cache parts, default is 50.
+
+.. envvar:: MESA_DISK_CACHE_DATABASE_EVICTION_SCORE_2X_PERIOD
+
+   Mesa-DB cache eviction algorithm calculates weighted score for the
+   cache items. The weight is doubled based on the last access time of
+   cache entry. By default period of weight doubling is set to one month.
+   Period value is given in seconds.
+
 .. envvar:: MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST
 
    if set with :envvar:`MESA_DISK_CACHE_SINGLE_FILE` enabled, references

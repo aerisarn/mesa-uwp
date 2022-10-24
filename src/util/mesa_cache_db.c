@@ -25,6 +25,7 @@
 #include "mesa_cache_db.h"
 #include "os_time.h"
 #include "ralloc.h"
+#include "u_debug.h"
 #include "u_qsort.h"
 
 #define MESA_CACHE_DB_VERSION          1
@@ -398,6 +399,19 @@ mesa_db_close_file(struct mesa_cache_db_file *db_file)
    free(db_file->path);
 }
 
+static bool
+mesa_db_remove_file(struct mesa_cache_db_file *db_file,
+                  const char *cache_path,
+                  const char *filename)
+{
+   if (asprintf(&db_file->path, "%s/%s", cache_path, filename) == -1)
+      return false;
+
+   unlink(db_file->path);
+
+   return true;
+}
+
 static int
 entry_sort_lru(const void *_a, const void *_b, void *arg)
 {
@@ -623,6 +637,22 @@ close_cache:
    mesa_db_close_file(&db->cache);
 
    return false;
+}
+
+bool
+mesa_db_wipe_path(const char *cache_path)
+{
+   struct mesa_cache_db db = {0};
+   bool success = true;
+
+   if (!mesa_db_remove_file(&db.cache, cache_path, "mesa_cache.db") ||
+       !mesa_db_remove_file(&db.index, cache_path, "mesa_cache.idx"))
+      success = false;
+
+   free(db.cache.path);
+   free(db.index.path);
+
+   return success;
 }
 
 void
@@ -868,6 +898,102 @@ fail:
    mesa_db_unlock(db);
 
    return false;
+}
+
+bool
+mesa_cache_db_has_space(struct mesa_cache_db *db, size_t blob_size)
+{
+   bool has_space;
+
+   if (!mesa_db_lock(db))
+      return false;
+
+   if (!mesa_db_seek_end(db->cache.file))
+      goto fail_fatal;
+
+   has_space = mesa_cache_db_has_space_locked(db, blob_size);
+
+   mesa_db_unlock(db);
+
+   return has_space;
+
+fail_fatal:
+   mesa_db_zap(db);
+   mesa_db_unlock(db);
+
+   return false;
+}
+
+static uint64_t
+mesa_cache_db_eviction_2x_score_period(void)
+{
+   const uint64_t nsec_per_sec = 1000000000ull;
+   static uint64_t period = 0;
+
+   if (period)
+      return period;
+
+   period = debug_get_num_option("MESA_DISK_CACHE_DATABASE_EVICTION_SCORE_2X_PERIOD",
+                                 30 * 24 * 60 * 60) * nsec_per_sec;
+
+   return period;
+}
+
+double
+mesa_cache_db_eviction_score(struct mesa_cache_db *db)
+{
+   int64_t eviction_size = mesa_cache_db_eviction_size(db);
+   struct mesa_index_db_hash_entry **entries;
+   unsigned num_entries, i = 0;
+   double eviction_score = 0;
+
+   if (!mesa_db_lock(db))
+      return 0;
+
+   if (!db->alive)
+      goto fail;
+
+   if (!mesa_db_reload(db))
+      goto fail_fatal;
+
+   num_entries = _mesa_hash_table_num_entries(db->index_db->table);
+   entries = calloc(num_entries, sizeof(*entries));
+   if (!entries)
+      goto fail;
+
+   hash_table_foreach(db->index_db->table, entry)
+      entries[i++] = entry->data;
+
+   util_qsort_r(entries, num_entries, sizeof(*entries),
+                entry_sort_lru, db);
+
+   for (i = 0; eviction_size > 0 && i < num_entries; i++) {
+      uint64_t entry_age = os_time_get_nano() - entries[i]->last_access_time;
+      unsigned entry_size = blob_file_size(entries[i]->size);
+
+      /* Eviction score is a sum of weighted cache entry sizes,
+       * where weight doubles for each month of entry's age.
+       */
+      uint64_t period = mesa_cache_db_eviction_2x_score_period();
+      double entry_scale = 1 + (double)entry_age / period;
+      double entry_score = entry_size * entry_scale;
+
+      eviction_score += entry_score;
+      eviction_size -= entry_size;
+   }
+
+   free(entries);
+
+   mesa_db_unlock(db);
+
+   return eviction_score;
+
+fail_fatal:
+   mesa_db_zap(db);
+fail:
+   mesa_db_unlock(db);
+
+   return 0;
 }
 
 #endif /* DETECT_OS_WINDOWS */
