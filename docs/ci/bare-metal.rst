@@ -31,7 +31,7 @@ DRM functionality, or to fix kernel bugs.
 The boards must have networking, so that we can extract the dEQP XML results to
 artifacts on GitLab, and so that we can download traces (too large for an
 initramfs) for trace replay testing.  Given that we need networking already, and
-our dEQP/Piglit/etc. payload is large, we use nfs from the x86 runner system
+our dEQP/Piglit/etc. payload is large, we use NFS from the x86 runner system
 rather than initramfs.
 
 See `src/freedreno/ci/gitlab-ci.yml` for an example of fastboot on DB410c and
@@ -127,7 +127,7 @@ google, that was easier than figuring it out from finding the switch's MIB
 database.  You can query the POE status from the switch serial using the `show
 power inline` command.
 
-Other than that, find the dnsmasq/tftp/nfs setup for your boards "servo" above.
+Other than that, find the dnsmasq/tftp/NFS setup for your boards "servo" above.
 
 See `src/broadcom/ci/gitlab-ci.yml` and `src/nouveau/ci/gitlab-ci.yml` for an
 examples of POE for Raspberry Pi 3/4, and Jetson Nano.
