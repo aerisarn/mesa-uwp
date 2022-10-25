@@ -9412,7 +9412,8 @@ get_const_vec(nir_ssa_def* vec, nir_const_value* cv[4])
 void
 visit_tex(isel_context* ctx, nir_tex_instr* instr)
 {
-   assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
+   assert((instr->op != nir_texop_txf_ms || ctx->program->gfx_level >= GFX11) &&
+          instr->op != nir_texop_samples_identical);
 
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
@@ -9826,7 +9827,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    args.insert(args.end(), coords.begin(), coords.end());
 
    if (instr->op == nir_texop_txf || instr->op == nir_texop_fragment_fetch_amd ||
-       instr->op == nir_texop_fragment_mask_fetch_amd) {
+       instr->op == nir_texop_fragment_mask_fetch_amd || instr->op == nir_texop_txf_ms) {
       aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
                             instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS
                          ? aco_opcode::image_load

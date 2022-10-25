@@ -981,12 +981,12 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       NIR_PASS(_, nir, radv_nir_lower_ray_queries, device);
    }
 
-   static const nir_lower_tex_options tex_options = {
+   nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
       .lower_txf_offset = true,
       .lower_tg4_offsets = true,
       .lower_txs_cube_array = true,
-      .lower_to_fragment_fetch_amd = true,
+      .lower_to_fragment_fetch_amd = device->physical_device->rad_info.gfx_level < GFX11,
       .lower_lod_zero_width = true,
       .lower_invalid_implicit_lod = true,
       .lower_array_layer_round_even = true,
