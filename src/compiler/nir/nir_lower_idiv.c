@@ -91,16 +91,6 @@ emit_idiv(nir_builder *bld, nir_ssa_def *numer, nir_ssa_def *denom, nir_op op)
 }
 
 static nir_ssa_def *
-convert_instr_precise(nir_builder *bld, nir_op op,
-      nir_ssa_def *numer, nir_ssa_def *denom)
-{
-   if (op == nir_op_udiv || op == nir_op_umod)
-      return emit_udiv(bld, numer, denom, op == nir_op_umod);
-   else
-      return emit_idiv(bld, numer, denom, op);
-}
-
-static nir_ssa_def *
 convert_instr_small(nir_builder *b, nir_op op,
       nir_ssa_def *numer, nir_ssa_def *denom,
       const nir_lower_idiv_options *options)
@@ -153,8 +143,10 @@ lower_idiv(nir_builder *b, nir_instr *instr, void *_data)
 
    if (numer->bit_size < 32)
       return convert_instr_small(b, alu->op, numer, denom, options);
+   else if (alu->op == nir_op_udiv || alu->op == nir_op_umod)
+      return emit_udiv(b, numer, denom, alu->op == nir_op_umod);
    else
-      return convert_instr_precise(b, alu->op, numer, denom);
+      return emit_idiv(b, numer, denom, alu->op);
 }
 
 static bool
