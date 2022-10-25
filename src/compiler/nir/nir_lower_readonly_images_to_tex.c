@@ -69,7 +69,7 @@ struct readonly_image_lower_options {
 };
 
 static bool
-is_readonly_image_op(const nir_instr *instr, const void *context)
+lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
 {
    struct readonly_image_lower_options *options = (struct readonly_image_lower_options *)context;
    if (instr->type != nir_instr_type_intrinsic)
@@ -95,17 +95,9 @@ is_readonly_image_op(const nir_instr *instr, const void *context)
          access = var->data.access;
    } else
       access = nir_intrinsic_access(intrin);
-   if (access & ACCESS_NON_WRITEABLE)
-      return true;
+   if (!(access & ACCESS_NON_WRITEABLE))
+      return false;
 
-   return false;
-}
-
-static nir_ssa_def *
-lower_readonly_image_op(nir_builder *b, nir_instr *instr, void *context)
-{
-   struct readonly_image_lower_options *options = (struct readonly_image_lower_options *)context;
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    unsigned num_srcs;
    nir_texop texop;
    switch (intrin->intrinsic) {
@@ -121,7 +113,7 @@ lower_readonly_image_op(nir_builder *b, nir_instr *instr, void *context)
       unreachable("Filtered above");
    }
 
-   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   b->cursor = nir_before_instr(&intrin->instr);
 
    nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
    tex->op = texop;
@@ -190,7 +182,10 @@ lower_readonly_image_op(nir_builder *b, nir_instr *instr, void *context)
       res = nir_trim_vector(b, res, num_components);
    }
 
-   return res;
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
+   nir_instr_remove(&intrin->instr);
+
+   return true;
 }
 
 /** Lowers image ops to texture ops for read-only images
@@ -209,8 +204,8 @@ nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable)
    assert(shader->info.stage != MESA_SHADER_KERNEL || !per_variable);
 
    struct readonly_image_lower_options options = { per_variable };
-   return nir_shader_lower_instructions(shader,
-                                        is_readonly_image_op,
-                                        lower_readonly_image_op,
-                                        &options);
+   return nir_shader_instructions_pass(shader, lower_readonly_image_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       &options);
 }
