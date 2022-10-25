@@ -350,7 +350,7 @@ Sending backports for the stable branch
 By default merge conflicts are resolved by the stable-release manager.
 The release maintainer should resolve trivial conflicts, but for complex
 conflicts they should ask the original author to provide a backport or
-de-nominate the patch.
+denominate the patch.
 
 For patches that either need to be nominated after they've landed in
 main, or that are known ahead of time to not not apply cleanly to a
