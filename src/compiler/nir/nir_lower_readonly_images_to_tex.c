@@ -72,8 +72,10 @@ static bool
 lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
 {
    struct readonly_image_lower_options *options = (struct readonly_image_lower_options *)context;
+
    if (instr->type != nir_instr_type_intrinsic)
       return false;
+
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    if (intrin->intrinsic != nir_intrinsic_image_deref_load &&
        intrin->intrinsic != nir_intrinsic_image_deref_size)
@@ -93,8 +95,9 @@ lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
    if (options->per_variable) {
       if (var)
          access = var->data.access;
-   } else
+   } else {
       access = nir_intrinsic_access(intrin);
+   }
    if (!(access & ACCESS_NON_WRITEABLE))
       return false;
 
@@ -110,7 +113,7 @@ lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
       num_srcs = 2;
       break;
    default:
-      unreachable("Filtered above");
+      unreachable("Unsupported intrinsic");
    }
 
    b->cursor = nir_before_instr(&intrin->instr);
@@ -129,7 +132,7 @@ lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
 
    tex->src[0].src_type = nir_tex_src_texture_deref;
    tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
-         
+
    if (options->per_variable) {
       assert(nir_deref_instr_get_variable(deref));
       replace_image_type_with_sampler(deref);
