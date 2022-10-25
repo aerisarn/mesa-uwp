@@ -38,15 +38,15 @@ VMware SVGA
 
 Driver for VMware virtualized guest operating system graphics processing.
 
-ATI r300
+ATI R300
 ^^^^^^^^
 
-Driver for the ATI/AMD r300, r400, and r500 families of GPUs.
+Driver for the ATI/AMD R300, R400, and R500 families of GPUs.
 
-ATI/AMD r600
+ATI/AMD R600
 ^^^^^^^^^^^^
 
-Driver for the ATI/AMD r600, r700, Evergreen and Northern Islands families of GPUs.
+Driver for the ATI/AMD R600, R700, Evergreen and Northern Islands families of GPUs.
 
 AMD RadeonSI
 ^^^^^^^^^^^^
