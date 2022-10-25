@@ -441,12 +441,17 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    nir_src *offset = nir_get_io_offset_src(instr);
    assert(nir_src_is_const(*offset) && "no indirects");
 
+   assert(nir_ssa_def_components_read(&instr->dest.ssa) ==
+          nir_component_mask(components) &&
+          "iter does not handle write-after-write hazards");
+
    /* For perspective interpolation, we need W */
    agx_index J = !perspective ? agx_zero() :
                   agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
 
    agx_index I = agx_get_cf(b->shader, true, perspective,
-                           sem.location + nir_src_as_uint(*offset), 0,
+                           sem.location + nir_src_as_uint(*offset),
+                           nir_intrinsic_component(instr),
                            components);
 
    agx_iter_to(b, dest, I, J, components, perspective);
@@ -1687,6 +1692,11 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
    NIR_PASS_V(nir, nir_opt_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
+
+   /* Must run after uses are fixed but before a last round of copyprop + DCE */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, agx_nir_lower_load_mask);
+
    NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_opt_cse);
