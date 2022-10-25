@@ -344,6 +344,7 @@ struct st_context
 
    struct {
       struct gl_program **progs;
+      struct pipe_resource *bc1_endpoint_buf;
    } texcompress_compute;
 
    /** for drawing with st_util_vertex */

@@ -26,6 +26,7 @@
 #include "main/shaderapi.h"
 #include "main/shaderobj.h"
 
+#include "state_tracker/st_bc1_tables.h"
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_texcompress_compute.h"
 
@@ -76,12 +77,50 @@ get_compute_program(struct st_context *st,
           shProg->_LinkedShaders[MESA_SHADER_COMPUTE]->Program;
 }
 
+static struct pipe_resource *
+create_bc1_endpoint_ssbo(struct pipe_context *pipe)
+{
+   struct pipe_resource *buffer =
+      pipe_buffer_create(pipe->screen, PIPE_BIND_SHADER_BUFFER,
+                         PIPE_USAGE_IMMUTABLE, sizeof(float) *
+                         (sizeof(stb__OMatch5) + sizeof(stb__OMatch6)));
+
+   if (!buffer)
+      return NULL;
+
+   struct pipe_transfer *transfer;
+   float (*buffer_map)[2] = pipe_buffer_map(pipe, buffer,
+                                            PIPE_MAP_WRITE |
+                                            PIPE_MAP_DISCARD_WHOLE_RESOURCE,
+                                            &transfer);
+   if (!buffer_map) {
+      pipe_resource_reference(&buffer, NULL);
+      return NULL;
+   }
+
+   for (int i = 0; i < 256; i++) {
+      for (int j = 0; j < 2; j++) {
+         buffer_map[i][j] = (float) stb__OMatch5[i][j];
+         buffer_map[i + 256][j] = (float) stb__OMatch6[i][j];
+      }
+   }
+
+   pipe_buffer_unmap(pipe, transfer);
+
+   return buffer;
+}
+
 bool
 st_init_texcompress_compute(struct st_context *st)
 {
    st->texcompress_compute.progs =
       calloc(COMPUTE_PROGRAM_COUNT, sizeof(struct gl_program *));
    if (!st->texcompress_compute.progs)
+      return false;
+
+   st->texcompress_compute.bc1_endpoint_buf =
+      create_bc1_endpoint_ssbo(st->pipe);
+   if (!st->texcompress_compute.bc1_endpoint_buf)
       return false;
 
    return true;
@@ -95,4 +134,7 @@ st_destroy_texcompress_compute(struct st_context *st)
     * _mesa_free_context_data -> ... -> free_shader_program_data_cb).
     */
    free(st->texcompress_compute.progs);
+
+   /* Destroy the SSBO used by the BC1 shader program. */
+   pipe_resource_reference(&st->texcompress_compute.bc1_endpoint_buf, NULL);
 }

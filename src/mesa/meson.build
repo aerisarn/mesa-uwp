@@ -304,6 +304,7 @@ files_libmesa = files(
   'state_tracker/st_atom_tess.c',
   'state_tracker/st_atom_texture.c',
   'state_tracker/st_atom_viewport.c',
+  'state_tracker/st_bc1_tables.h',
   'state_tracker/st_cb_bitmap.c',
   'state_tracker/st_cb_bitmap.h',
   'state_tracker/st_cb_clear.c',
