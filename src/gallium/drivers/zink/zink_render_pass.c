@@ -675,7 +675,7 @@ zink_begin_render_pass(struct zink_context *ctx)
    setup_framebuffer(ctx);
    if (ctx->batch.in_rp)
       return 0;
-   /* TODO: need replicate EXT */
+   /* TODO: use VK_EXT_multisampled_render_to_single_sampled */
    if (ctx->framebuffer->rp->state.msaa_expand_mask) {
       uint32_t rp_state = ctx->gfx_pipeline_state.rp_state;
       struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
@@ -719,6 +719,7 @@ zink_end_render_pass(struct zink_context *ctx)
 {
    if (ctx->batch.in_rp) {
       VKCTX(CmdEndRenderPass)(ctx->batch.state->cmdbuf);
+      /* TODO: use VK_EXT_multisampled_render_to_single_sampled */
       for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)ctx->fb_state.cbufs[i];
          if (csurf)

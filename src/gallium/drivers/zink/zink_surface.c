@@ -283,6 +283,7 @@ zink_create_surface(struct pipe_context *pctx,
 
    struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)wrap_surface(pctx, psurf);
 
+   /* TODO: use VK_EXT_multisampled_render_to_single_sampled and skip this entirely */
    if (templ->nr_samples) {
       /* transient fb attachment: not cached */
       struct pipe_resource rtempl = *pres;

@@ -1325,9 +1325,9 @@ struct zink_surface {
 struct zink_ctx_surface {
    struct pipe_surface base;
    struct zink_surface *surf;
-   struct zink_ctx_surface *transient; //zink_ctx_surface
-   /* TODO: need replicate EXT */
-   bool transient_init;
+   /* TODO: use VK_EXT_multisampled_render_to_single_sampled */
+   struct zink_ctx_surface *transient; //for use with EXT_multisample_render_to_texture
+   bool transient_init; //whether the transient surface has data
 };
 
 /* use this cast for framebuffer surfaces */
