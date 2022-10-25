@@ -116,6 +116,8 @@ bool reg_written(uint32_t regbase);
 uint32_t reg_lastval(uint32_t regbase);
 uint32_t reg_val(uint32_t regbase);
 void reg_set(uint32_t regbase, uint32_t val);
+uint32_t * parse_cp_indirect(uint32_t *dwords, uint32_t sizedwords,
+                             uint64_t *ibaddr, uint32_t *ibsize);
 void reset_regs(void);
 void cffdec_init(const struct cffdec_options *options);
 void dump_register_val(struct regacc *r, int level);

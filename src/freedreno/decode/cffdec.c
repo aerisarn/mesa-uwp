@@ -2232,6 +2232,29 @@ cp_nop(uint32_t *dwords, uint32_t sizedwords, int level)
    printf("\n");
 }
 
+uint32_t *
+parse_cp_indirect(uint32_t *dwords, uint32_t sizedwords,
+                  uint64_t *ibaddr, uint32_t *ibsize)
+{
+   if (is_64b()) {
+      assert(sizedwords == 3);
+
+      /* a5xx+.. high 32b of gpu addr, then size: */
+      *ibaddr = dwords[0];
+      *ibaddr |= ((uint64_t)dwords[1]) << 32;
+      *ibsize = dwords[2];
+
+      return dwords + 3;
+   } else {
+      assert(sizedwords == 2);
+
+      *ibaddr = dwords[0];
+      *ibsize = dwords[1];
+
+      return dwords + 2;
+   }
+}
+
 static void
 cp_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
 {
@@ -2240,15 +2263,7 @@ cp_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
    uint32_t ibsize;
    uint32_t *ptr = NULL;
 
-   if (is_64b()) {
-      /* a5xx+.. high 32b of gpu addr, then size: */
-      ibaddr = dwords[0];
-      ibaddr |= ((uint64_t)dwords[1]) << 32;
-      ibsize = dwords[2];
-   } else {
-      ibaddr = dwords[0];
-      ibsize = dwords[1];
-   }
+   dwords = parse_cp_indirect(dwords, sizedwords, &ibaddr, &ibsize);
 
    if (!quiet(3)) {
       if (is_64b()) {
@@ -2279,7 +2294,7 @@ cp_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
        * executed but never returns.  Account for this by checking if
        * the IB returned:
        */
-      highlight_gpuaddr(gpuaddr(&dwords[is_64b() ? 3 : 2]));
+      highlight_gpuaddr(gpuaddr(dwords));
 
       ib++;
       ibs[ib].base = ibaddr;
