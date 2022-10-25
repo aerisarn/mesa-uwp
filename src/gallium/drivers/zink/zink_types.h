@@ -1310,7 +1310,6 @@ struct zink_surface {
    VkImageViewCreateInfo ivci;
    VkImageViewUsageCreateInfo usage_info;
    struct zink_surface_info info;
-   uint32_t info_hash;
    bool is_swapchain;
    VkImageView image_view;
    void *dt;

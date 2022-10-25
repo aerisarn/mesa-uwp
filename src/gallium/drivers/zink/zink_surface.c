@@ -121,7 +121,6 @@ init_surface_info(struct zink_surface *surface, struct zink_resource *res, VkIma
       if (zink_kopper_has_srgb(cdt))
          surface->info.format[1] = ivci->format == cdt->formats[0] ? cdt->formats[1] : cdt->formats[0];
    }
-   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
 }
 
 static struct zink_surface *
@@ -389,7 +388,6 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    /* update for imageless fb */
    surface->info.flags = res->obj->vkflags;
    surface->info.usage = res->obj->vkusage;
-   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
    simple_mtx_unlock(&res->surface_mtx);
    return true;
 }
