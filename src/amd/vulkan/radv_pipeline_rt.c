@@ -712,6 +712,11 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_execute_miss_amd: {
                nir_store_var(&b_shader, vars->tmax, intr->src[0].ssa, 0x1);
+               nir_ssa_def *undef = nir_ssa_undef(&b_shader, 1, 32);
+               nir_store_var(&b_shader, vars->primitive_id, undef, 0x1);
+               nir_store_var(&b_shader, vars->instance_addr, nir_ssa_undef(&b_shader, 1, 64), 0x1);
+               nir_store_var(&b_shader, vars->geometry_id_and_flags, undef, 0x1);
+               nir_store_var(&b_shader, vars->hit_kind, undef, 0x1);
                nir_ssa_def *miss_index = nir_load_var(&b_shader, vars->miss_index);
                load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, 0);
                break;
