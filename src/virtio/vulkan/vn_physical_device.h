@@ -35,6 +35,7 @@ struct vn_physical_device_features {
    /* EXT */
    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
+   VkPhysicalDeviceDepthClipControlFeaturesEXT depth_clip_control;
    VkPhysicalDeviceDepthClipEnableFeaturesEXT depth_clip_enable;
    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod;
    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8;
