@@ -28,7 +28,7 @@ The boards need to be able to have a kernel/initramfs supplied by the
 gitlab-runner system, since Mesa often needs to update the kernel either for new
 DRM functionality, or to fix kernel bugs.
 
-The boards must have networking, so that we can extract the dEQP .xml results to
+The boards must have networking, so that we can extract the dEQP XML results to
 artifacts on GitLab, and so that we can download traces (too large for an
 initramfs) for trace replay testing.  Given that we need networking already, and
 our dEQP/Piglit/etc. payload is large, we use nfs from the x86 runner system
