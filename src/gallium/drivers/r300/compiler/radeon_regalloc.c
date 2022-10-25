@@ -169,7 +169,7 @@ int rc_find_class(
 		if (classes[i].WritemaskCount > max_writemask_count) {
 			continue;
 		}
-		for (j = 0; j < 3; j++) {
+		for (j = 0; j < classes[i].WritemaskCount; j++) {
 			if (classes[i].Writemasks[j] == writemask) {
 				return i;
 			}
