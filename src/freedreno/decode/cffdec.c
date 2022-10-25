@@ -2808,12 +2808,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          dump_registers(val, dwords+2, 1, level+2);
          if (!quiet(3))
             dump_hex(dwords, count, level+1);
-      } else if (pkt_is_type2(dwords[0])) {
-         printl(3, "t2");
-         printf("%sNOP\n", levels[level+1]);
-         count = 1;
-         if (!quiet(3))
-            dump_hex(dwords, count, level+1);
 #endif
       } else if (pkt_is_type3(dwords[0])) {
          count = type3_pkt_size(dwords[0]) + 1;
