@@ -239,6 +239,8 @@ TYPE(radv_ir_triangle_node, 4);
 TYPE(radv_ir_aabb_node, 4);
 TYPE(radv_ir_instance_node, 8);
 
+TYPE(radv_global_sync_data, 4);
+
 uint32_t
 id_to_offset(uint32_t id)
 {
@@ -360,5 +362,128 @@ aabb_surface_area(radv_aabb aabb)
    vec3 diagonal = aabb.max - aabb.min;
    return 2 * diagonal.x * diagonal.y + 2 * diagonal.y * diagonal.z + 2 * diagonal.x * diagonal.z;
 }
+
+/** Compute ceiling of integer quotient of A divided by B.
+    From macros.h */
+#define DIV_ROUND_UP(A, B) (((A) + (B)-1) / (B))
+
+#ifdef USE_GLOBAL_SYNC
+
+/* There might be more invocations available than tasks to do.
+ * In that case, the fetched task index is greater than the
+ * counter offset for the next phase. To avoid out-of-bounds
+ * accessing, phases will be skipped until the task index is
+ * is in-bounds again. */
+uint32_t num_tasks_to_skip = 0;
+uint32_t phase_index = 0;
+bool should_skip = false;
+shared uint32_t global_task_index;
+
+shared uint32_t shared_phase_index;
+
+uint32_t
+task_count(REF(radv_ir_header) header)
+{
+   uint32_t phase_index = DEREF(header).sync_data.phase_index;
+   return DEREF(header).sync_data.task_counts[phase_index & 1];
+}
+
+/* Sets the task count for the next phase. */
+void
+set_next_task_count(REF(radv_ir_header) header, uint32_t new_count)
+{
+   uint32_t phase_index = DEREF(header).sync_data.phase_index;
+   DEREF(header).sync_data.task_counts[(phase_index + 1) & 1] = new_count;
+}
+
+/*
+ * This function has two main objectives:
+ * Firstly, it partitions pending work among free invocations.
+ * Secondly, it guarantees global synchronization between different phases.
+ *
+ * After every call to fetch_task, a new task index is returned.
+ * fetch_task will also set num_tasks_to_skip. Use should_execute_phase
+ * to determine if the current phase should be executed or skipped.
+ *
+ * Since tasks are assigned per-workgroup, there is a possibility of the task index being
+ * greater than the total task count.
+ */
+uint32_t
+fetch_task(REF(radv_ir_header) header, bool did_work)
+{
+   /* Perform a memory + control barrier for all buffer writes for the entire workgroup.
+    * This guarantees that once the workgroup leaves the PHASE loop, all invocations have finished
+    * and their results are written to memory. */
+   controlBarrier(gl_ScopeWorkgroup, gl_ScopeDevice, gl_StorageSemanticsBuffer,
+                  gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
+   if (gl_LocalInvocationIndex == 0) {
+      if (did_work)
+         atomicAdd(DEREF(header).sync_data.task_done_counter, 1);
+      global_task_index = atomicAdd(DEREF(header).sync_data.task_started_counter, 1);
+
+      do {
+         /* Perform a memory barrier to refresh the current phase's end counter, in case
+          * another workgroup changed it. */
+         memoryBarrier(
+            gl_ScopeDevice, gl_StorageSemanticsBuffer,
+            gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
+
+         /* The first invocation of the first workgroup in a new phase is responsible to initiate the
+          * switch to a new phase. It is only possible to switch to a new phase if all tasks of the
+          * previous phase have been completed. Switching to a new phase and incrementing the phase
+          * end counter in turn notifies all invocations for that phase that it is safe to execute.
+          */
+         if (global_task_index == DEREF(header).sync_data.current_phase_end_counter &&
+             DEREF(header).sync_data.task_done_counter ==
+                DEREF(header).sync_data.current_phase_end_counter) {
+            atomicAdd(DEREF(header).sync_data.phase_index, 1);
+            DEREF(header).sync_data.current_phase_start_counter =
+               DEREF(header).sync_data.current_phase_end_counter;
+            atomicAdd(DEREF(header).sync_data.current_phase_end_counter,
+                      DIV_ROUND_UP(task_count(header), gl_WorkGroupSize.x));
+            /* Ensure the changes to the phase index and start/end counter are visible for other
+             * workgroup waiting in the loop. */
+            memoryBarrier(
+               gl_ScopeDevice, gl_StorageSemanticsBuffer,
+               gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
+            break;
+         }
+
+         /* If other invocations have finished all nodes, break out; there is no work to do */
+         if (task_count(header) == 1) {
+            break;
+         }
+      } while (global_task_index >= DEREF(header).sync_data.current_phase_end_counter);
+
+      shared_phase_index = DEREF(header).sync_data.phase_index;
+   }
+
+   barrier();
+   if (task_count(header) == 1)
+      return TASK_INDEX_INVALID;
+
+   num_tasks_to_skip = shared_phase_index - phase_index;
+
+   uint32_t local_task_index =
+      global_task_index - DEREF(header).sync_data.current_phase_start_counter;
+   return local_task_index * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
+}
+
+bool
+should_execute_phase()
+{
+   if (num_tasks_to_skip > 0) {
+      /* Skip to next phase. */
+      ++phase_index;
+      --num_tasks_to_skip;
+      return false;
+   }
+   return true;
+}
+
+#define PHASE(header)                                                                              \
+   for (; task_index != TASK_INDEX_INVALID && should_execute_phase();                              \
+        task_index = fetch_task(header, true))
+#endif
 
 #endif

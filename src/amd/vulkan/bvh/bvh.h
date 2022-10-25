@@ -40,6 +40,7 @@
 #else
 #include <vulkan/vulkan.h>
 typedef struct radv_ir_node radv_ir_node;
+typedef struct radv_global_sync_data radv_global_sync_data;
 
 typedef uint16_t float16_t;
 
@@ -132,6 +133,15 @@ struct radv_ir_instance_node {
    uint32_t instance_id;
 };
 
+struct radv_global_sync_data {
+   uint32_t task_counts[2];
+   uint32_t task_started_counter;
+   uint32_t task_done_counter;
+   uint32_t current_phase_start_counter;
+   uint32_t current_phase_end_counter;
+   uint32_t phase_index;
+};
+
 struct radv_ir_header {
    int32_t min_bounds[3];
    int32_t max_bounds[3];
@@ -142,6 +152,7 @@ struct radv_ir_header {
    uint32_t ir_internal_node_count;
    uint32_t dispatch_size_y;
    uint32_t dispatch_size_z;
+   radv_global_sync_data sync_data;
 };
 
 struct radv_bvh_triangle_node {
@@ -192,5 +203,9 @@ struct radv_bvh_box32_node {
 
 #define RADV_BVH_ROOT_NODE radv_bvh_node_box32
 #define RADV_BVH_INVALID_NODE 0xffffffffu
+
+/* If the task index is set to this value, there is no
+ * more work to do. */
+#define TASK_INDEX_INVALID 0xFFFFFFFF
 
 #endif
