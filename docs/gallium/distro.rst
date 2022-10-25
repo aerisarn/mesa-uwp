@@ -56,7 +56,7 @@ Driver for the AMD Southern Islands family of GPUs.
 Freedreno
 ^^^^^^^^^
 
-Driver for Qualcomm Adreno a2xx, a3xx, and a4xx series of GPUs.
+Driver for Qualcomm Adreno 2xx, 3xx, and 4xx series of GPUs.
 
 .. _softpipe:
 
