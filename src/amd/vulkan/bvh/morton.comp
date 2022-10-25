@@ -78,12 +78,12 @@ main(void)
       vec3 center = (bounds.min + bounds.max) * 0.5;
 
       AABB bvh_bounds;
-      bvh_bounds.min.x = load_minmax_float_emulated(VOID_REF(args.bounds));
-      bvh_bounds.min.y = load_minmax_float_emulated(OFFSET(args.bounds, 4));
-      bvh_bounds.min.z = load_minmax_float_emulated(OFFSET(args.bounds, 8));
-      bvh_bounds.max.x = load_minmax_float_emulated(OFFSET(args.bounds, 12));
-      bvh_bounds.max.y = load_minmax_float_emulated(OFFSET(args.bounds, 16));
-      bvh_bounds.max.z = load_minmax_float_emulated(OFFSET(args.bounds, 20));
+      bvh_bounds.min.x = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 0)));
+      bvh_bounds.min.y = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 1)));
+      bvh_bounds.min.z = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 2)));
+      bvh_bounds.max.x = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 3)));
+      bvh_bounds.max.y = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 4)));
+      bvh_bounds.max.z = from_emulated_float(DEREF(INDEX(int32_t, args.bounds, 5)));
 
       vec3 normalized_center = (center - bvh_bounds.min) / (bvh_bounds.max - bvh_bounds.min);
 

@@ -203,24 +203,16 @@ align(uint32_t value, uint32_t alignment)
    return (value + alignment - 1) & ~(alignment - 1);
 }
 
-void
-min_float_emulated(REF(int32_t) addr, float f)
+int32_t
+to_emulated_float(float f)
 {
    int32_t bits = floatBitsToInt(f);
-   atomicMin(DEREF(addr), f < 0 ? -2147483648 - bits : bits);
-}
-
-void
-max_float_emulated(REF(int32_t) addr, float f)
-{
-   int32_t bits = floatBitsToInt(f);
-   atomicMax(DEREF(addr), f < 0 ? -2147483648 - bits : bits);
+   return f < 0 ? -2147483648 - bits : bits;
 }
 
 float
-load_minmax_float_emulated(VOID_REF addr)
+from_emulated_float(int32_t bits)
 {
-   int32_t bits = DEREF(REF(int32_t)(addr));
    return intBitsToFloat(bits < 0 ? -2147483648 - bits : bits);
 }
 
