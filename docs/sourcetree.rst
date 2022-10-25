@@ -87,8 +87,6 @@ each directory.
          -  **nouveau** - Driver for NVIDIA GPUs.
          -  **panfrost** - Driver for ARM Mali Txxx (Midgard) and
             Gxx (Bifrost) GPUs.
-         -  **radeon** - Shared module for the r600 and RadeonSI
-            drivers.
          -  **r300** - Driver for ATI R300 - R500.
          -  **r600** - Driver for ATI/AMD R600 - Northern Island (Terascale).
          -  **radeonsi** - Driver for AMD Southern Island and newer (GCN, RDNA).
