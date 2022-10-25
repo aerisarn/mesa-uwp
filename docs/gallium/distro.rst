@@ -18,20 +18,20 @@ LLVM Softpipe
 A version of :ref:`softpipe` that uses the Low-Level Virtual Machine to
 dynamically generate optimized rasterizing pipelines.
 
-nVidia nv30
+NVIDIA NV30
 ^^^^^^^^^^^
 
-Driver for the nVidia nv30 and nv40 families of GPUs.
+Driver for the NVIDIA NV30 and NV40 families of GPUs.
 
-nVidia nv50
+NVIDIA NV50
 ^^^^^^^^^^^
 
-Driver for the nVidia nv50 family of GPUs.
+Driver for the NVIDIA NV50 family of GPUs.
 
-nVidia nvc0
+NVIDIA NVC0
 ^^^^^^^^^^^
 
-Driver for the nVidia nvc0 / fermi family of GPUs.
+Driver for the NVIDIA NVC0 / Fermi family of GPUs.
 
 VMware SVGA
 ^^^^^^^^^^^
