@@ -271,10 +271,6 @@ setup_vs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_vs || ctx->stage == vertex_ngg) {
       setup_vs_output_info(ctx, nir);
-
-      /* TODO: NGG streamout */
-      if (ctx->stage.hw == HWStage::NGG)
-         assert(!ctx->program->info.so.num_outputs);
    }
 
    if (ctx->stage == vertex_ngg) {
@@ -312,10 +308,6 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
       setup_vs_output_info(ctx, nir);
-
-      /* TODO: NGG streamout */
-      if (ctx->stage.hw == HWStage::NGG)
-         assert(!ctx->program->info.so.num_outputs);
    }
 
    if (ctx->stage == tess_eval_ngg) {
