@@ -179,11 +179,8 @@ lower_readonly_image_instr(nir_builder *b, nir_instr *instr, void *context)
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_ssa_def *res = &tex->dest.ssa;
-   if (res->num_components != intrin->dest.ssa.num_components) {
-      unsigned num_components = intrin->dest.ssa.num_components;
-      res = nir_trim_vector(b, res, num_components);
-   }
+   nir_ssa_def *res = nir_trim_vector(b, &tex->dest.ssa,
+                                      intrin->dest.ssa.num_components);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
    nir_instr_remove(&intrin->instr);
