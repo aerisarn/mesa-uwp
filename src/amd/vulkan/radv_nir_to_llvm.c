@@ -1001,7 +1001,8 @@ handle_vs_outputs_post(struct radv_shader_context *ctx)
    struct radv_shader_output_values *outputs;
    unsigned noutput = 0;
 
-   if (ctx->shader_info->so.num_outputs && !ctx->args->is_gs_copy_shader && ctx->stage != MESA_SHADER_GEOMETRY) {
+   if (ctx->shader_info->so.num_outputs && !ctx->args->is_gs_copy_shader &&
+       ctx->stage != MESA_SHADER_GEOMETRY && !ctx->shader_info->is_ngg) {
       /* The GS copy shader emission already emits streamout. */
       radv_emit_streamout(ctx, 0);
    }
