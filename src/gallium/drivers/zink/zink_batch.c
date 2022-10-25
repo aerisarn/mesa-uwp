@@ -149,10 +149,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    util_dynarray_init(&bs->wait_semaphores, NULL);
    bs->swapchain = NULL;
 
-   /* swapchain views are managed independent of the owner resource */
-   while (util_dynarray_contains(&bs->dead_swapchains, VkImageView))
-      VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&bs->dead_swapchains, VkImageView), NULL);
-
    /* only reset submitted here so that tc fence desync can pick up the 'completed' flag
     * before the state is reused
     */
@@ -275,7 +271,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->acquires);
    util_dynarray_fini(&bs->unref_semaphores);
    util_dynarray_fini(&bs->acquire_flags);
-   util_dynarray_fini(&bs->dead_swapchains);
    zink_batch_descriptor_deinit(screen, bs);
    ralloc_free(bs);
 }
@@ -333,7 +328,6 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->acquires, NULL);
    util_dynarray_init(&bs->unref_semaphores, NULL);
    util_dynarray_init(&bs->acquire_flags, NULL);
-   util_dynarray_init(&bs->dead_swapchains, NULL);
    util_dynarray_init(&bs->bindless_releases[0], NULL);
    util_dynarray_init(&bs->bindless_releases[1], NULL);
    util_dynarray_init(&bs->swapchain_obj, NULL);

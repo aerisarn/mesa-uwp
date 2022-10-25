@@ -502,7 +502,6 @@ struct zink_batch_state {
    struct zink_resource *swapchain;
    struct util_dynarray acquires;
    struct util_dynarray acquire_flags;
-   struct util_dynarray dead_swapchains;
    struct util_dynarray unref_semaphores;
 
    struct util_queue_fence flush_completed;
@@ -1317,8 +1316,6 @@ struct zink_surface {
    void *dt;
    VkImageView *swapchain;
    unsigned swapchain_size;
-   VkImageView *old_swapchain;
-   unsigned old_swapchain_size;
    VkImageView simage_view;//old iview after storage replacement/rebind
    void *obj; //backing resource object
    uint32_t hash;

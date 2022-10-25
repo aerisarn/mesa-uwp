@@ -327,8 +327,6 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
    if (surface->simage_view)
       util_dynarray_append(&res->obj->views, VkImageView, surface->simage_view);
    if (surface->is_swapchain) {
-      for (unsigned i = 0; i < surface->old_swapchain_size; i++)
-         util_dynarray_append(&res->obj->views, VkImageView, surface->old_swapchain[i]);
       for (unsigned i = 0; i < surface->swapchain_size; i++)
          util_dynarray_append(&res->obj->views, VkImageView, surface->swapchain[i]);
       free(surface->swapchain);
@@ -440,12 +438,12 @@ zink_surface_swapchain_update(struct zink_context *ctx, struct zink_surface *sur
    if (!cdt)
       return; //dead swapchain
    if (res->obj->dt != surface->dt) {
-      /* new swapchain: clear out previous old_swapchain and move current swapchain there */
-      for (unsigned i = 0; i < surface->old_swapchain_size; i++)
-         util_dynarray_append(&ctx->batch.state->dead_swapchains, VkImageView, surface->old_swapchain[i]);
-      free(surface->old_swapchain);
-      surface->old_swapchain = surface->swapchain;
-      surface->old_swapchain_size = surface->swapchain_size;
+      /* new swapchain: clear out previous swapchain imageviews/array and setup a new one */
+      simple_mtx_lock(&res->obj->view_lock);
+      for (unsigned i = 0; i < surface->swapchain_size; i++)
+         util_dynarray_append(&res->obj->views, VkImageView, surface->swapchain[i]);
+      simple_mtx_unlock(&res->obj->view_lock);
+      free(surface->swapchain);
       surface->swapchain_size = cdt->swapchain->num_images;
       surface->swapchain = calloc(surface->swapchain_size, sizeof(VkImageView));
       surface->base.width = res->base.b.width0;
