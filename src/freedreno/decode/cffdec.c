@@ -2776,7 +2776,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
       //			goto skip;
 
       if (pkt_is_type0(dwords[0])) {
-         printl(3, "t0");
          count = type0_pkt_size(dwords[0]) + 1;
          val = type0_pkt_offset(dwords[0]);
          assert(val < regcnt());
@@ -2787,7 +2786,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             dump_hex(dwords, count, level + 1);
       } else if (pkt_is_type4(dwords[0])) {
          /* basically the same(ish) as type0 prior to a5xx */
-         printl(3, "t4");
          count = type4_pkt_size(dwords[0]) + 1;
          val = type4_pkt_offset(dwords[0]);
          assert(val < regcnt());
@@ -2798,7 +2796,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             dump_hex(dwords, count, level + 1);
 #if 0
       } else if (pkt_is_type1(dwords[0])) {
-         printl(3, "t1");
          count = 3;
          val = dwords[0] & 0xfff;
          printl(3, "%swrite %s\n", levels[level+1], regname(val, 1));
@@ -2815,7 +2812,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          const struct type3_op *op = get_type3_op(val);
          if (op->options.load_all_groups)
             load_all_groups(level + 1);
-         printl(3, "t3");
          const char *name = pktname(val);
          if (!quiet(2)) {
             printf("\t%sopcode: %s%s%s (%02x) (%d dwords)%s\n", levels[level],
@@ -2833,7 +2829,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          const struct type3_op *op = get_type3_op(val);
          if (op->options.load_all_groups)
             load_all_groups(level + 1);
-         printl(3, "t7");
          const char *name = pktname(val);
          if (!quiet(2)) {
             printf("\t%sopcode: %s%s%s (%02x) (%d dwords)\n", levels[level],
@@ -2853,7 +2848,6 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          if (!quiet(2))
             dump_hex(dwords, count, level + 1);
       } else if (pkt_is_type2(dwords[0])) {
-         printl(3, "t2");
          printl(3, "%snop\n", levels[level + 1]);
       } else {
          /* for 5xx+ we can do a passable job of looking for start of next valid
