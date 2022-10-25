@@ -310,7 +310,7 @@ broad discretion in rejecting patches that have been nominated.
 -  It must not introduce a regression - be that build or runtime wise.
 
    .. note::
-      If the regression is due to faulty piglit/dEQP/CTS/other test
+      If the regression is due to faulty Piglit/dEQP/CTS/other test
       the latter must be fixed first. A reference to the offending test(s)
       and respective fix(es) should be provided in the nominated patch.
 

@@ -31,7 +31,7 @@ DRM functionality, or to fix kernel bugs.
 The boards must have networking, so that we can extract the dEQP .xml results to
 artifacts on GitLab, and so that we can download traces (too large for an
 initramfs) for trace replay testing.  Given that we need networking already, and
-our dEQP/piglit/etc. payload is large, we use nfs from the x86 runner system
+our dEQP/Piglit/etc. payload is large, we use nfs from the x86 runner system
 rather than initramfs.
 
 See `src/freedreno/ci/gitlab-ci.yml` for an example of fastboot on DB410c and
@@ -48,7 +48,7 @@ at /tftp in the container.
 
 Since we're going the TFTP route, we also use NFS root.  This avoids
 packing the rootfs and sending it to the board as a ramdisk, which
-means we can support larger rootfses (for piglit testing), at the cost
+means we can support larger rootfses (for Piglit testing), at the cost
 of needing more storage on the runner.
 
 Telling the board about where its TFTP and NFS should come from is
