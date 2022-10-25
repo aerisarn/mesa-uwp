@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2009 Nicolai Haehnle.
+ * Copyright 2011 Tom Stellard <tstellar@gmail.com>
  * Copyright 2012 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,6 +27,12 @@
 
 #ifndef RADEON_REGALLOC_H
 #define RADEON_REGALLOC_H
+
+#include "util/register_allocate.h"
+#include "util/u_memory.h"
+#include "util/ralloc.h"
+
+#include "radeon_variable.h"
 
 struct ra_regs;
 
@@ -56,6 +64,66 @@ struct rc_regalloc_state {
 	struct ra_class *classes[RC_REG_CLASS_COUNT];
 	const struct rc_class *class_list;
 };
+
+struct register_info {
+	struct live_intervals Live[4];
+
+	unsigned int Used:1;
+	unsigned int Allocated:1;
+	unsigned int File:3;
+	unsigned int Index:RC_REGISTER_INDEX_BITS;
+	unsigned int Writemask;
+};
+
+struct regalloc_state {
+	struct radeon_compiler * C;
+
+	struct register_info * Input;
+	unsigned int NumInputs;
+
+	struct register_info * Temporary;
+	unsigned int NumTemporaries;
+
+	unsigned int Simple;
+	int LoopEnd;
+};
+
+struct rc_class {
+	enum rc_reg_class ID;
+
+	unsigned int WritemaskCount;
+
+	/** List of writemasks that belong to this class */
+	unsigned int Writemasks[3];
+};
+
+int rc_find_class(
+	const struct rc_class * classes,
+	unsigned int writemask,
+	unsigned int max_writemask_count);
+
+unsigned int rc_overlap_live_intervals_array(
+	struct live_intervals * a,
+	struct live_intervals * b);
+
+static inline unsigned int reg_get_index(int reg)
+{
+	return reg / RC_MASK_XYZW;
+};
+
+static inline unsigned int reg_get_writemask(int reg)
+{
+	return (reg % RC_MASK_XYZW) + 1;
+};
+
+static inline int get_reg_id(unsigned int index, unsigned int writemask)
+{
+       assert(writemask);
+       if (writemask == 0) {
+               return 0;
+       }
+       return (index * RC_MASK_XYZW) + (writemask - 1);
+}
 
 void rc_init_regalloc_state(struct rc_regalloc_state *s);
 void rc_destroy_regalloc_state(struct rc_regalloc_state *s);
