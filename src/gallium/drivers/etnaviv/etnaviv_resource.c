@@ -601,6 +601,10 @@ static void etna_resource_finish_ts_import(struct etna_screen *screen,
    uint64_t ts_modifier = rsc->modifier & VIVANTE_MOD_TS_MASK;
    uint8_t ts_mode = 0;
 
+   if (ts_rsc->bo == rsc->bo)
+      fprintf(stderr, "etnaviv: application bug: importing shared TS resource "
+              "with TS BO matching color BO, expect rendering corruption!\n");
+
    if (ts_modifier == VIVANTE_MOD_TS_256_4)
       ts_mode = TS_MODE_256B;
 
