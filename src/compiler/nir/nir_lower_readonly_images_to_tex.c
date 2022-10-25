@@ -194,14 +194,15 @@ lower_readonly_image_op(nir_builder *b, nir_instr *instr, void *context)
 }
 
 /** Lowers image ops to texture ops for read-only images
-  * 
-  * If per_variable is set:
-  * - Variable access is used to indicate read-only instead of intrinsic access
-  * - Variable/deref types will be changed from image types to sampler types
-  * 
-  * per_variable should not be set for OpenCL, because all image types will be void-returning,
-  * and there is no corresponding valid sampler type, and it will collide with the "bare" sampler type.
-  */
+ *
+ * If per_variable is set:
+ * - Variable access is used to indicate read-only instead of intrinsic access
+ * - Variable/deref types will be changed from image types to sampler types
+ *
+ * per_variable should not be set for OpenCL, because all image types will be
+ * void-returning, and there is no corresponding valid sampler type, and it
+ * will collide with the "bare" sampler type.
+ */
 bool
 nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable)
 {
