@@ -3356,7 +3356,6 @@ Converter::run()
     *      nir_opt_idiv_const effectively before this.
     */
    nir_lower_idiv_options idiv_options = {
-      .imprecise_32bit_lowering = false,
       .allow_fp16 = true,
    };
    NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);

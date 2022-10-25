@@ -3875,7 +3875,6 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 
    NIR_PASS(_, stage->nir, nir_lower_idiv,
             &(nir_lower_idiv_options){
-               .imprecise_32bit_lowering = false,
                .allow_fp16 = gfx_level >= GFX9,
             });
 
