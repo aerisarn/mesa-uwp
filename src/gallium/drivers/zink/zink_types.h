@@ -1316,7 +1316,6 @@ struct zink_surface {
    void *dt;
    VkImageView *swapchain;
    unsigned swapchain_size;
-   VkImageView simage_view;//old iview after storage replacement/rebind
    void *obj; //backing resource object
    uint32_t hash;
 };

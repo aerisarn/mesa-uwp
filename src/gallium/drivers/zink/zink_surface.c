@@ -324,8 +324,6 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
       simple_mtx_unlock(&res->surface_mtx);
    }
    simple_mtx_lock(&res->obj->view_lock);
-   if (surface->simage_view)
-      util_dynarray_append(&res->obj->views, VkImageView, surface->simage_view);
    if (surface->is_swapchain) {
       for (unsigned i = 0; i < surface->swapchain_size; i++)
          util_dynarray_append(&res->obj->views, VkImageView, surface->swapchain[i]);
@@ -383,7 +381,9 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    surface->ivci = ivci;
    entry = _mesa_hash_table_insert_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci, surface);
    assert(entry);
-   surface->simage_view = surface->image_view;
+   simple_mtx_lock(&res->obj->view_lock);
+   util_dynarray_append(&res->obj->views, VkImageView, surface->image_view);
+   simple_mtx_unlock(&res->obj->view_lock);
    surface->image_view = image_view;
    surface->obj = zink_resource(surface->base.texture)->obj;
    /* update for imageless fb */
