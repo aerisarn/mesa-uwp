@@ -2775,19 +2775,7 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
       //		if ((dwords[0] >> 16) == 0xffff)
       //			goto skip;
 
-      if (pkt_is_type0(dwords[0])) {
-         count = type0_pkt_size(dwords[0]) + 1;
-         val = type0_pkt_offset(dwords[0]);
-         assert(val < regcnt());
-         printl(3, "%swrite %s%s (%04x)\n", levels[level + 1], regname(val, 1),
-                (dwords[0] & 0x8000) ? " (same register)" : "", val);
-         dump_registers(val, dwords + 1, count - 1, level + 2);
-         if (!quiet(3))
-            dump_hex(dwords, count, level + 1);
-      } else if (pkt_is_type4(dwords[0])) {
-         /* basically the same(ish) as type0 prior to a5xx */
-         count = type4_pkt_size(dwords[0]) + 1;
-         val = type4_pkt_offset(dwords[0]);
+      if (pkt_is_regwrite(dwords[0], &val, &count)) {
          assert(val < regcnt());
          printl(3, "%swrite %s (%04x)\n", levels[level + 1], regname(val, 1),
                 val);
@@ -2806,26 +2794,7 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          if (!quiet(3))
             dump_hex(dwords, count, level+1);
 #endif
-      } else if (pkt_is_type3(dwords[0])) {
-         count = type3_pkt_size(dwords[0]) + 1;
-         val = cp_type3_opcode(dwords[0]);
-         const struct type3_op *op = get_type3_op(val);
-         if (op->options.load_all_groups)
-            load_all_groups(level + 1);
-         const char *name = pktname(val);
-         if (!quiet(2)) {
-            printf("\t%sopcode: %s%s%s (%02x) (%d dwords)%s\n", levels[level],
-                   rnn->vc->colors->bctarg, name, rnn->vc->colors->reset, val,
-                   count, (dwords[0] & 0x1) ? " (predicated)" : "");
-         }
-         if (name)
-            dump_domain(dwords + 1, count - 1, level + 2, name);
-         op->fxn(dwords + 1, count - 1, level + 1);
-         if (!quiet(2))
-            dump_hex(dwords, count, level + 1);
-      } else if (pkt_is_type7(dwords[0])) {
-         count = type7_pkt_size(dwords[0]) + 1;
-         val = cp_type7_opcode(dwords[0]);
+      } else if (pkt_is_opcode(dwords[0], &val, &count)) {
          const struct type3_op *op = get_type3_op(val);
          if (op->options.load_all_groups)
             load_all_groups(level + 1);
