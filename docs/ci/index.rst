@@ -15,7 +15,7 @@ The CI runs a number of tests, from trivial build-testing to complex GPU renderi
 
 - Build testing for a number of build systems, configurations and platforms
 - Sanity checks (``meson test``)
-- Some drivers (softpipe, LLVMpipe, Freedreno and panfrost) are also tested
+- Some drivers (Softpipe, LLVMpipe, Freedreno and panfrost) are also tested
   using `VK-GL-CTS <https://github.com/KhronosGroup/VK-GL-CTS>`__
 - Replay of application traces
 

@@ -14,7 +14,7 @@ information about the API functions.
 The OSMesa interface may be used with the gallium software renderers:
 
 #. LLVMpipe - this is the high-performance Gallium LLVM driver
-#. softpipe - this is the reference Gallium software driver
+#. Softpipe - this is the reference Gallium software driver
 
 There are several examples of OSMesa in the mesa/demos repository.
 
