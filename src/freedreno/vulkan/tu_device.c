@@ -171,6 +171,17 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_shader_non_semantic_info = true,
       .KHR_synchronization2 = true,
       .KHR_dynamic_rendering = true,
+      /* Hide these behind dri configs for now since we cannot implement it reliably on
+       * all surfaces yet. There is no surface capability query for present wait/id,
+       * but the feature is useful enough to hide behind an opt-in mechanism for now.
+       * If the instance only enables surface extensions that unconditionally support present wait,
+       * we can also expose the extension that way. */
+      .KHR_present_id =
+         driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
+         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
+      .KHR_present_wait =
+         driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
+         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -412,6 +423,7 @@ tu_get_debug_option_name(int id)
 static const driOptionDescription tu_dri_options[] = {
    DRI_CONF_SECTION_PERFORMANCE
       DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
+      DRI_CONF_VK_KHR_PRESENT_WAIT(false)
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT(false)
       DRI_CONF_VK_X11_ENSURE_MIN_IMAGE_COUNT(false)
       DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
@@ -952,6 +964,18 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT *features =
             (VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT *)ext;
          features->graphicsPipelineLibrary = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR: {
+         VkPhysicalDevicePresentIdFeaturesKHR *features =
+            (VkPhysicalDevicePresentIdFeaturesKHR *) ext;
+         features->presentId = pdevice->vk.supported_extensions.KHR_present_id;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR: {
+         VkPhysicalDevicePresentWaitFeaturesKHR *features =
+            (VkPhysicalDevicePresentWaitFeaturesKHR *) ext;
+         features->presentWait = pdevice->vk.supported_extensions.KHR_present_wait;
          break;
       }
 
