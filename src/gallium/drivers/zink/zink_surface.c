@@ -353,7 +353,7 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    struct zink_surface *surface = zink_surface(*psurface);
    struct zink_resource *res = zink_resource((*psurface)->texture);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (surface->simage_view)
+   if (surface->obj == res->obj)
       return false;
    assert(!res->obj->dt);
    VkImageViewCreateInfo ivci = surface->ivci;
