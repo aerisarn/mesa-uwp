@@ -450,19 +450,21 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_resolve_fragment;
 
-   result = radv_device_init_meta_fmask_expand_state(device);
-   if (result != VK_SUCCESS)
-      goto fail_fmask_expand;
+   if (device->physical_device->rad_info.gfx_level < GFX11) {
+      result = radv_device_init_meta_fmask_expand_state(device);
+      if (result != VK_SUCCESS)
+         goto fail_fmask_expand;
+
+      result = radv_device_init_meta_fmask_copy_state(device);
+      if (result != VK_SUCCESS)
+         goto fail_fmask_copy;
+   }
 
    if (radv_enable_rt(device->physical_device, false)) {
       result = radv_device_init_accel_struct_build_state(device);
       if (result != VK_SUCCESS)
          goto fail_accel_struct_build;
    }
-
-   result = radv_device_init_meta_fmask_copy_state(device);
-   if (result != VK_SUCCESS)
-      goto fail_fmask_copy;
 
    result = radv_device_init_meta_etc_decode_state(device, on_demand);
    if (result != VK_SUCCESS)
@@ -482,10 +484,10 @@ fail_dgc:
    radv_device_finish_dgc_prepare_state(device);
 fail_etc_decode:
    radv_device_finish_meta_etc_decode_state(device);
-fail_fmask_copy:
-   radv_device_finish_meta_fmask_copy_state(device);
 fail_accel_struct_build:
    radv_device_finish_accel_struct_build_state(device);
+fail_fmask_copy:
+   radv_device_finish_meta_fmask_copy_state(device);
 fail_fmask_expand:
    radv_device_finish_meta_fmask_expand_state(device);
 fail_resolve_fragment:
