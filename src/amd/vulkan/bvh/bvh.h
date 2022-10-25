@@ -47,7 +47,20 @@ typedef struct {
    float values[3][4];
 } mat3x4;
 
+typedef struct {
+   float x;
+   float y;
+   float z;
+} vec3;
+
+typedef struct radv_aabb radv_aabb;
+
 #endif
+
+struct radv_aabb {
+   vec3 min;
+   vec3 max;
+};
 
 struct radv_accel_struct_serialization_header {
    uint8_t driver_uuid[VK_UUID_SIZE];
@@ -69,7 +82,7 @@ struct radv_accel_struct_geometry_info {
 struct radv_accel_struct_header {
    uint32_t bvh_offset;
    uint32_t reserved;
-   float aabb[2][3];
+   radv_aabb aabb;
 
    /* Everything after this gets updated/copied from the CPU. */
    uint64_t compacted_size;
@@ -83,7 +96,7 @@ struct radv_accel_struct_header {
 };
 
 struct radv_ir_node {
-   float aabb[2][3];
+   radv_aabb aabb;
 };
 
 #define FINAL_TREE_PRESENT 0
@@ -136,7 +149,7 @@ struct radv_bvh_triangle_node {
 };
 
 struct radv_bvh_aabb_node {
-   float aabb[2][3];
+   radv_aabb aabb;
    uint32_t primitive_id;
    /* flags in upper 4 bits */
    uint32_t geometry_id_and_flags;
@@ -167,7 +180,7 @@ struct radv_bvh_box16_node {
 
 struct radv_bvh_box32_node {
    uint32_t children[4];
-   float coords[4][2][3];
+   radv_aabb coords[4];
    uint32_t reserved[4];
 };
 

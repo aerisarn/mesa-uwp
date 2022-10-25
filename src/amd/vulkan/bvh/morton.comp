@@ -74,10 +74,10 @@ main(void)
 
    uint32_t key;
    if (id != RADV_BVH_INVALID_NODE) {
-      AABB bounds = load_aabb(REF(radv_ir_node)OFFSET(args.bvh, ir_id_to_offset(id)));
+      radv_aabb bounds = DEREF(REF(radv_ir_node)OFFSET(args.bvh, ir_id_to_offset(id))).aabb;
       vec3 center = (bounds.min + bounds.max) * 0.5;
 
-      AABB bvh_bounds;
+      radv_aabb bvh_bounds;
       bvh_bounds.min.x = from_emulated_float(DEREF(args.header).min_bounds[0]);
       bvh_bounds.min.y = from_emulated_float(DEREF(args.header).min_bounds[1]);
       bvh_bounds.min.z = from_emulated_float(DEREF(args.header).min_bounds[2]);

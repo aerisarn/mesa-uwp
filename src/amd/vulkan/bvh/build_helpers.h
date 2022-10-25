@@ -216,11 +216,7 @@ from_emulated_float(int32_t bits)
    return intBitsToFloat(bits < 0 ? -2147483648 - bits : bits);
 }
 
-struct AABB {
-   vec3 min;
-   vec3 max;
-};
-TYPE(AABB, 4);
+TYPE(radv_aabb, 4);
 
 struct key_id_pair {
    uint32_t id;
@@ -296,29 +292,29 @@ ir_type_to_bvh_type(uint32_t type)
    return RADV_BVH_INVALID_NODE;
 }
 
-AABB
+radv_aabb
 calculate_instance_node_bounds(uint64_t base_ptr, mat3x4 otw_matrix)
 {
-   AABB aabb;
+   radv_aabb aabb;
    radv_accel_struct_header header = DEREF(REF(radv_accel_struct_header)(base_ptr));
 
    for (uint32_t comp = 0; comp < 3; ++comp) {
       aabb.min[comp] = otw_matrix[comp][3];
       aabb.max[comp] = otw_matrix[comp][3];
       for (uint32_t col = 0; col < 3; ++col) {
-         aabb.min[comp] += min(otw_matrix[comp][col] * header.aabb[0][col],
-                               otw_matrix[comp][col] * header.aabb[1][col]);
-         aabb.max[comp] += max(otw_matrix[comp][col] * header.aabb[0][col],
-                               otw_matrix[comp][col] * header.aabb[1][col]);
+         aabb.min[comp] += min(otw_matrix[comp][col] * header.aabb.min[col],
+                               otw_matrix[comp][col] * header.aabb.max[col]);
+         aabb.max[comp] += max(otw_matrix[comp][col] * header.aabb.min[col],
+                               otw_matrix[comp][col] * header.aabb.max[col]);
       }
    }
    return aabb;
 }
 
-AABB
+radv_aabb
 calculate_node_bounds(VOID_REF bvh, uint32_t id)
 {
-   AABB aabb;
+   radv_aabb aabb;
 
    VOID_REF node = OFFSET(bvh, id_to_offset(id));
    switch (id_to_type(id)) {
@@ -338,13 +334,8 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
       aabb.min = vec3(INFINITY);
       aabb.max = vec3(-INFINITY);
       for (uint32_t i = 0; i < 4; i++) {
-         aabb.min.x = min(aabb.min.x, internal.coords[i][0][0]);
-         aabb.min.y = min(aabb.min.y, internal.coords[i][0][1]);
-         aabb.min.z = min(aabb.min.z, internal.coords[i][0][2]);
-
-         aabb.max.x = max(aabb.max.x, internal.coords[i][1][0]);
-         aabb.max.y = max(aabb.max.y, internal.coords[i][1][1]);
-         aabb.max.z = max(aabb.max.z, internal.coords[i][1][2]);
+         aabb.min = min(aabb.min, internal.coords[i].min);
+         aabb.max = max(aabb.max, internal.coords[i].max);
       }
       break;
    }
@@ -355,15 +346,7 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
       break;
    }
    case radv_bvh_node_aabb: {
-      radv_bvh_aabb_node custom = DEREF(REF(radv_bvh_aabb_node)(node));
-
-      aabb.min.x = custom.aabb[0][0];
-      aabb.min.y = custom.aabb[0][1];
-      aabb.min.z = custom.aabb[0][2];
-
-      aabb.max.x = custom.aabb[1][0];
-      aabb.max.y = custom.aabb[1][1];
-      aabb.max.z = custom.aabb[1][2];
+      aabb = DEREF(REF(radv_bvh_aabb_node)(node)).aabb;
       break;
    }
    }
@@ -371,20 +354,8 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
    return aabb;
 }
 
-AABB
-load_aabb(REF(radv_ir_node) node) {
-   AABB bounds;
-   bounds.min.x = DEREF(node).aabb[0][0];
-   bounds.min.y = DEREF(node).aabb[0][1];
-   bounds.min.z = DEREF(node).aabb[0][2];
-   bounds.max.x = DEREF(node).aabb[1][0];
-   bounds.max.y = DEREF(node).aabb[1][1];
-   bounds.max.z = DEREF(node).aabb[1][2];
-   return bounds;
-}
-
 float
-aabb_surface_area(AABB aabb)
+aabb_surface_area(radv_aabb aabb)
 {
    vec3 diagonal = aabb.max - aabb.min;
    return 2 * diagonal.x * diagonal.y + 2 * diagonal.y * diagonal.z + 2 * diagonal.x * diagonal.z;
