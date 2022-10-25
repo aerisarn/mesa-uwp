@@ -441,7 +441,7 @@ fn lower_and_optimize_nir(
         progress
     } {}
     nir.inline(lib_clc);
-    nir.remove_non_entrypoints();
+    nir.cleanup_functions();
     // that should free up tons of memory
     nir.sweep_mem();
 

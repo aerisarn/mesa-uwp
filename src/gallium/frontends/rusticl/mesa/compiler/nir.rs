@@ -279,6 +279,10 @@ impl NirShader {
         unsafe { nir_remove_non_entrypoints(self.nir.as_ptr()) };
     }
 
+    pub fn cleanup_functions(&mut self) {
+        unsafe { nir_cleanup_functions(self.nir.as_ptr()) };
+    }
+
     pub fn variables(&mut self) -> ExecListIter<nir_variable> {
         ExecListIter::new(
             &mut unsafe { self.nir.as_mut() }.variables,
