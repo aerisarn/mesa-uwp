@@ -1680,7 +1680,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
       pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
 
       if (!fs->fs.early_fragment_tests &&
-          (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
+          (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
          pipeline->lrz.force_late_z = true;
       }
 
