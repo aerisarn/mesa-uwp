@@ -1162,14 +1162,65 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
    return VK_SUCCESS;
 }
 
-
-static uint64_t wsi_get_absolute_timeout(uint64_t timeout)
+static VkResult
+x11_poll_for_special_event(struct x11_swapchain *chain, uint64_t abs_timeout, xcb_generic_event_t **out_event)
 {
-   uint64_t current_time = os_time_get_nano();
+   /* Start out with 1 ms intervals since that's what poll() supports. */
+   uint64_t poll_busywait_ns = 1000 * 1000;
+   xcb_generic_event_t *event;
+   uint64_t rel_timeout;
+   struct pollfd pfds;
 
-   timeout = MIN2(UINT64_MAX - current_time, timeout);
+   assert(abs_timeout != UINT64_MAX);
 
-   return current_time + timeout;
+   /* abs_timeout is assumed to be in timebase of os_time_get_absolute_timeout(). */
+
+   /* See comments in x11_manage_fifo_queues about problems with xcb_poll followed by poll().
+    * This path is suboptimal for scenarios where we're doing:
+    * - IMMEDIATE / MAILBOX (no acquire queue) and
+    * - Timeout that is neither 0 nor UINT64_MAX (very rare).
+    * The only real solution is a busy-poll scheme to ensure we don't sleep for too long.
+    * In a forward progress scenario, the XCB FD will be written at least once per frame,
+    * so we expect frequent wake-ups either way.
+    * This is a best-effort pragmatic solution until we have a proper solution in XCB.
+    */
+
+   rel_timeout = abs_timeout;
+   *out_event = NULL;
+   event = NULL;
+
+   while (1) {
+      event = xcb_poll_for_special_event(chain->conn, chain->special_event);
+
+      if (event || rel_timeout == 0)
+         break;
+
+      /* If a non-special event happens, the fd will still
+       * poll. So recalculate the timeout now just in case.
+       */
+      uint64_t current_time = os_time_get_nano();
+      if (abs_timeout > current_time)
+         rel_timeout = MIN2(poll_busywait_ns, abs_timeout - current_time);
+      else
+         rel_timeout = 0;
+
+      if (rel_timeout) {
+         pfds.fd = xcb_get_file_descriptor(chain->conn);
+         pfds.events = POLLIN;
+         int ret = poll(&pfds, 1, MAX2(rel_timeout / 1000 / 1000, 1u));
+         if (ret == -1)
+            return VK_ERROR_OUT_OF_DATE_KHR;
+
+         /* Gradually increase the poll duration if it takes a very long time to receive a poll event,
+          * since at that point, stutter isn't really the main concern anymore.
+          * We generally expect a special event to be received once every refresh duration. */
+         poll_busywait_ns += poll_busywait_ns / 2;
+         poll_busywait_ns = MIN2(10ull * 1000ull * 1000ull, poll_busywait_ns);
+      }
+   }
+
+   *out_event = event;
+   return event ? VK_SUCCESS : VK_TIMEOUT;
 }
 
 /**
@@ -1181,8 +1232,13 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
                                 uint32_t *image_index, uint64_t timeout)
 {
    xcb_generic_event_t *event;
-   struct pollfd pfds;
+
    uint64_t atimeout;
+   if (timeout == 0 || timeout == UINT64_MAX)
+      atimeout = timeout;
+   else
+      atimeout = os_time_get_absolute_timeout(timeout);
+
    while (1) {
       for (uint32_t i = 0; i < chain->base.image_count; i++) {
          if (!chain->images[i].busy) {
@@ -1202,31 +1258,12 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
          if (!event)
             return x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
       } else {
-         event = xcb_poll_for_special_event(chain->conn, chain->special_event);
-         if (!event) {
-            int ret;
-            if (timeout == 0)
-               return x11_swapchain_result(chain, VK_NOT_READY);
-
-            atimeout = wsi_get_absolute_timeout(timeout);
-
-            pfds.fd = xcb_get_file_descriptor(chain->conn);
-            pfds.events = POLLIN;
-            ret = poll(&pfds, 1, timeout / 1000 / 1000);
-            if (ret == 0)
-               return x11_swapchain_result(chain, VK_TIMEOUT);
-            if (ret == -1)
-               return x11_swapchain_result(chain, VK_ERROR_OUT_OF_DATE_KHR);
-
-            /* If a non-special event happens, the fd will still
-             * poll. So recalculate the timeout now just in case.
-             */
-            uint64_t current_time = os_time_get_nano();
-            if (atimeout > current_time)
-               timeout = atimeout - current_time;
-            else
-               timeout = 0;
-            continue;
+         VkResult result = x11_poll_for_special_event(chain, atimeout, &event);
+         if (result == VK_TIMEOUT) {
+            /* AcquireNextImageKHR reserves a special return value for 0 timeouts. */
+            return x11_swapchain_result(chain, timeout == 0 ? VK_NOT_READY : VK_TIMEOUT);
+         } else if (result != VK_SUCCESS) {
+            return x11_swapchain_result(chain, result);
          }
       }
 
@@ -2185,42 +2222,15 @@ static VkResult x11_wait_for_present_polled(
             goto fail;
          }
       } else {
-         event = xcb_poll_for_special_event(chain->conn, chain->special_event);
-         if (!event) {
-            if (timeout == 0) {
-               result = x11_swapchain_result(chain, VK_TIMEOUT);
-               goto fail;
-            }
-
-            uint64_t current_time = os_time_get_nano();
-            if (abs_timeout_monotonic > current_time)
-               timeout = abs_timeout_monotonic - current_time;
-            else
-               timeout = 0;
-
-            struct pollfd pfds;
-            pfds.fd = xcb_get_file_descriptor(chain->conn);
-            pfds.events = POLLIN;
-            ret = poll(&pfds, 1, timeout / 1000 / 1000);
-
-            if (ret == 0) {
-               result = x11_swapchain_result(chain, VK_TIMEOUT);
-               goto fail;
-            }
-
-            if (ret == -1) {
-               result = x11_swapchain_result(chain, VK_ERROR_OUT_OF_DATE_KHR);
-               goto fail;
-            }
-         }
+         result = x11_poll_for_special_event(chain, abs_timeout_monotonic, &event);
+         if (result != VK_SUCCESS)
+            goto fail;
       }
 
-      if (event) {
-         result = x11_handle_dri3_present_event(chain, (void *)event);
-         /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
-         result = x11_swapchain_result(chain, result);
-         free(event);
-      }
+      result = x11_handle_dri3_present_event(chain, (void *)event);
+      /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
+      result = x11_swapchain_result(chain, result);
+      free(event);
    }
 
 fail:
