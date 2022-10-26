@@ -395,6 +395,13 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	{1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	};
 
+	const unsigned q_values_vp[RC_REG_CLASS_VP_COUNT][RC_REG_CLASS_VP_COUNT] = {
+	{1, 2, 3, 4},
+	{3, 5, 6, 6},
+	{3, 4, 4, 4},
+	{1, 1, 1, 1}
+	};
+
 	/* Allocate the main ra data structure */
 	s->regs = ra_alloc_reg_set(NULL, R500_PFS_NUM_TEMP_REGS * RC_MASK_XYZW,
                                    true);
