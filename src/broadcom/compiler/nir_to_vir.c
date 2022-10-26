@@ -595,9 +595,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                  */
                 base_offset = vir_uniform_ui(c, 0);
         } else {
+                uint32_t idx = is_store ? 1 : 0;
                 base_offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
-                                          nir_src_as_uint(instr->src[is_store ?
-                                                                      1 : 0]));
+                                          nir_src_comp_as_uint(instr->src[idx], 0));
         }
 
         /* We are ready to emit TMU register writes now, but before we actually
