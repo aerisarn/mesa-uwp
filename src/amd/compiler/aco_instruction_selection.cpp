@@ -5319,14 +5319,17 @@ emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Tem
 
    Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
 
+   Temp res;
    if (dst.regClass() == v2b) {
       Temp p10 =
          bld.vinterp_inreg(aco_opcode::v_interp_p10_f16_f32_inreg, bld.def(v1), p, coord1, p);
-      bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, Definition(dst), p, coord2, p10);
+      res = bld.vinterp_inreg(aco_opcode::v_interp_p2_f16_f32_inreg, bld.def(v1), p, coord2, p10);
    } else {
       Temp p10 = bld.vinterp_inreg(aco_opcode::v_interp_p10_f32_inreg, bld.def(v1), p, coord1, p);
-      bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, Definition(dst), p, coord2, p10);
+      res = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), p, coord2, p10);
    }
+   /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
+   emit_wqm(bld, res, dst, true);
 }
 
 void
@@ -5385,7 +5388,10 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
       //TODO: this doesn't work in quad-divergent control flow and ignores vertex_id
       Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
       uint16_t dpp_ctrl = dpp_quad_perm(0, 0, 0, 0);
-      bld.vop1_dpp(aco_opcode::v_mov_b32, Definition(dst), p, dpp_ctrl);
+      Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
+
+      /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
+      emit_wqm(bld, res, dst, true);
    } else {
       bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
                  bld.m0(prim_mask), idx, component);
