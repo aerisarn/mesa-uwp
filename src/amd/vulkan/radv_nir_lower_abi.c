@@ -387,6 +387,42 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_lds_ngg_scratch_base_amd:
       replacement = nir_imm_int(b, s->info->ngg_info.scratch_lds_base);
       break;
+   case nir_intrinsic_load_num_vertices_per_primitive_amd: {
+      unsigned num_vertices;
+
+      if (stage == MESA_SHADER_VERTEX) {
+         num_vertices = radv_get_num_vertices_per_prim(s->pl_key);
+      } else if (stage == MESA_SHADER_TESS_EVAL) {
+         if (s->info->tes.point_mode) {
+            num_vertices = 1;
+         } else if (s->info->tes._primitive_mode == TESS_PRIMITIVE_ISOLINES) {
+            num_vertices = 2;
+         } else {
+            num_vertices = 3;
+         }
+      } else {
+         assert(stage == MESA_SHADER_GEOMETRY);
+         switch (s->info->gs.output_prim) {
+         case SHADER_PRIM_POINTS:
+            num_vertices = 1;
+            break;
+         case SHADER_PRIM_LINE_STRIP:
+            num_vertices = 2;
+            break;
+         case SHADER_PRIM_TRIANGLE_STRIP:
+            num_vertices = 3;
+            break;
+         default:
+            unreachable("invalid GS output primitive");
+            break;
+         }
+      }
+      replacement = nir_imm_int(b, num_vertices);
+      break;
+   }
+   case nir_intrinsic_load_ordered_id_amd:
+      replacement = nir_ubfe_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info), 0, 12);
+      break;
    default:
       progress = false;
       break;
