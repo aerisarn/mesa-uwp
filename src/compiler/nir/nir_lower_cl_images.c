@@ -114,11 +114,15 @@ nir_lower_cl_images(nir_shader *shader)
 
    ASSERTED int last_loc = -1;
    int num_rd_images = 0, num_wr_images = 0;
-   nir_foreach_image_variable(var, shader) {
+   nir_foreach_variable_with_modes(var, shader, nir_var_image | nir_var_uniform) {
+      if (!glsl_type_is_image(var->type) && !glsl_type_is_texture(var->type))
+         continue;
+
       /* Assume they come in order */
       assert(var->data.location > last_loc);
       last_loc = var->data.location;
 
+      assert(glsl_type_is_image(var->type) || var->data.access & ACCESS_NON_WRITEABLE);
       if (var->data.access & ACCESS_NON_WRITEABLE)
          var->data.driver_location = num_rd_images++;
       else
@@ -165,6 +169,7 @@ nir_lower_cl_images(nir_shader *shader)
                break;
 
             if (!glsl_type_is_image(deref->type) &&
+                !glsl_type_is_texture(deref->type) &&
                 !glsl_type_is_sampler(deref->type))
                break;
 
