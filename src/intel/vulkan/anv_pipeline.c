@@ -2468,6 +2468,7 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
       const nir_lower_shader_calls_options opts = {
          .address_format = nir_address_format_64bit_global,
          .stack_alignment = BRW_BTD_STACK_ALIGN,
+         .localized_loads = true,
       };
 
       NIR_PASS(_, nir, nir_lower_shader_calls, &opts,
