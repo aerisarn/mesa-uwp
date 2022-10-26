@@ -793,12 +793,7 @@ zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *d
    plci.setLayoutCount = num_dsl;
 
    VkPushConstantRange pcr[3] = {0};
-   if (is_compute) {
-      pcr[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-      pcr[0].offset = 0;
-      pcr[0].size = sizeof(struct zink_cs_push_constant);
-      plci.pushConstantRangeCount = 1;
-   } else {
+   if (!is_compute) {
       pcr[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
       pcr[0].offset = offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed);
       pcr[0].size = 2 * sizeof(unsigned);

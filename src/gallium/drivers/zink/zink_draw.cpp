@@ -979,11 +979,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd.bindless)
       zink_descriptors_update_bindless(ctx);
 
-   if (BITSET_TEST(ctx->curr_compute->shader->nir->info.system_values_read, SYSTEM_VALUE_WORK_DIM))
-      VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_compute->base.layout, VK_SHADER_STAGE_COMPUTE_BIT,
-                         offsetof(struct zink_cs_push_constant, work_dim), sizeof(uint32_t),
-                         &info->work_dim);
-
    batch->work_count++;
    zink_batch_no_rp(ctx);
    if (info->indirect) {

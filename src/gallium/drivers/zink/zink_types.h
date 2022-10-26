@@ -814,11 +814,6 @@ enum zink_gfx_push_constant_member {
    ZINK_GFX_PUSHCONST_MAX
 };
 
-/* create_cs_pushconst must be kept in sync with this struct */
-struct zink_cs_push_constant {
-   unsigned work_dim;
-};
-
 /* The order of the enums MUST match the order of the zink_cs_push_constant
  * members.
  */
