@@ -1882,6 +1882,8 @@ radv_get_viewport_xform(const VkViewport *viewport, float scale[3], float transl
  */
 void radv_unaligned_dispatch(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t y,
                              uint32_t z);
+void radv_indirect_unaligned_dispatch(struct radv_cmd_buffer *cmd_buffer,
+                                      struct radeon_winsys_bo *bo, uint64_t va);
 
 void radv_indirect_dispatch(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *bo,
                             uint64_t va);

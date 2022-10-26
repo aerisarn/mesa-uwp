@@ -8886,6 +8886,19 @@ radv_unaligned_dispatch(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t
 }
 
 void
+radv_indirect_unaligned_dispatch(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *bo,
+                                 uint64_t va)
+{
+   struct radv_dispatch_info info = {0};
+
+   info.indirect = bo;
+   info.va = va;
+   info.unaligned = 1;
+
+   radv_compute_dispatch(cmd_buffer, &info);
+}
+
+void
 radv_indirect_dispatch(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *bo, uint64_t va)
 {
    struct radv_dispatch_info info = {0};
