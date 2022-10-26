@@ -284,6 +284,10 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
          is_divergent = !(options & nir_divergence_single_patch_per_tes_subgroup);
       else if (stage == MESA_SHADER_GEOMETRY || stage == MESA_SHADER_VERTEX)
          is_divergent = true;
+      else if (stage == MESA_SHADER_ANY_HIT ||
+               stage == MESA_SHADER_CLOSEST_HIT ||
+               stage == MESA_SHADER_INTERSECTION)
+         is_divergent = true;
       else
          unreachable("Invalid stage for load_primitive_id");
       break;
@@ -645,6 +649,20 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_scratch_base_ptr:
    case nir_intrinsic_ordered_xfb_counter_add_amd:
    case nir_intrinsic_load_stack:
+   case nir_intrinsic_load_ray_launch_id:
+   case nir_intrinsic_load_ray_instance_custom_index:
+   case nir_intrinsic_load_ray_geometry_index:
+   case nir_intrinsic_load_ray_world_direction:
+   case nir_intrinsic_load_ray_world_origin:
+   case nir_intrinsic_load_ray_object_origin:
+   case nir_intrinsic_load_ray_object_direction:
+   case nir_intrinsic_load_ray_t_min:
+   case nir_intrinsic_load_ray_t_max:
+   case nir_intrinsic_load_ray_object_to_world:
+   case nir_intrinsic_load_ray_world_to_object:
+   case nir_intrinsic_load_ray_hit_kind:
+   case nir_intrinsic_load_ray_flags:
+   case nir_intrinsic_load_cull_mask:
       is_divergent = true;
       break;
 
