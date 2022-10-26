@@ -922,29 +922,31 @@ create_physical_device(struct v3dv_instance *instance,
     */
    device->drm_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
 
-#ifndef ANDROID
-   /* Sync file export is incompatible with the current model of execution
-    * where some jobs may run on the CPU.  There are CTS tests which do the
-    * following:
+#if using_v3d_simulator
+   /* There are CTS tests which do the following:
     *
     *  1. Create a command buffer with a vkCmdWaitEvents()
     *  2. Submit the command buffer
     *  3. vkGetSemaphoreFdKHR() to try to get a sync_file
     *  4. vkSetEvent()
     *
-    * This deadlocks because we have to wait for the syncobj to get a real
-    * fence in vkGetSemaphoreFdKHR() which only happens after all the work
-    * from the command buffer is complete which only happens after
-    * vkSetEvent().  No amount of CPU threading in userspace will ever fix
-    * this.  Sadly, this is pretty explicitly allowed by the Vulkan spec:
+    * This deadlocks in the simulator because we have to wait for the syncobj
+    * to get a real fence in vkGetSemaphoreFdKHR(). This will never happen
+    * though because the simulator, unlike real hardware, executes ioctls
+    * synchronously in the same thread, which means that it will try to
+    * execute the wait for event immediately and never get to emit the
+    * signaling job that comes after the compute job that implements the wait
+    * in the command buffer, which would be responsible for creating the fence
+    * for the signaling semaphore.
     *
-    *    VUID-vkCmdWaitEvents-pEvents-01163
+    * This behavior was seemingly allowed in previous Vulkan versions, however,
+    * this was fixed in Vulkan the 1.3.228 spec. From commit 355367640f2e:
     *
-    *    "If pEvents includes one or more events that will be signaled by
-    *    vkSetEvent after commandBuffer has been submitted to a queue, then
-    *    vkCmdWaitEvents must not be called inside a render pass instance"
+    *    "Clarify that vkCmdWaitEvents must not execute before a vkSetEvent it
+    *     waits on (internal issue 2971)"
     *
-    * Disable sync file support for now.
+    * Either way, we disable sync file support in the simulator for now, until
+    * the CTS is fixed.
     */
    device->drm_syncobj_type.import_sync_file = NULL;
    device->drm_syncobj_type.export_sync_file = NULL;
