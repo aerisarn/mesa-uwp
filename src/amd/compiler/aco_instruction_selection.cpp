@@ -72,6 +72,8 @@ struct if_context {
    bool divergent_old;
    bool exec_potentially_empty_discard_old;
    bool exec_potentially_empty_break_old;
+   bool had_divergent_discard_old;
+   bool had_divergent_discard_then;
    uint16_t exec_potentially_empty_break_depth_old;
 
    unsigned BB_if_idx;
@@ -5306,6 +5308,13 @@ visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
+bool
+in_exec_divergent_or_in_loop(isel_context* ctx)
+{
+   return ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent ||
+          ctx->cf_info.had_divergent_discard;
+}
+
 void
 emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Temp src, Temp dst,
                         Temp prim_mask)
@@ -5315,7 +5324,16 @@ emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Tem
 
    Builder bld(ctx->program, ctx->block);
 
-   //TODO: this doesn't work in quad-divergent control flow
+   if (in_exec_divergent_or_in_loop(ctx)) {
+      Operand prim_mask_op = bld.m0(prim_mask);
+      prim_mask_op.setLateKill(true); /* we don't want the bld.lm definition to use m0 */
+      Operand coord2_op(coord2);
+      coord2_op.setLateKill(true); /* we re-use the destination reg in the middle */
+      bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm),
+                 Operand(v1.as_linear()), Operand::c32(idx), Operand::c32(component), coord1,
+                 coord2_op, prim_mask_op);
+      return;
+   }
 
    Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
 
@@ -5385,13 +5403,22 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
 {
    Builder bld(ctx->program, ctx->block);
    if (ctx->options->gfx_level >= GFX11) {
-      //TODO: this doesn't work in quad-divergent control flow and ignores vertex_id
-      Temp p = bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
+      // TODO: this ignores vertex_id
       uint16_t dpp_ctrl = dpp_quad_perm(0, 0, 0, 0);
-      Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
+      if (in_exec_divergent_or_in_loop(ctx)) {
+         Operand prim_mask_op = bld.m0(prim_mask);
+         prim_mask_op.setLateKill(true); /* we don't want the bld.lm definition to use m0 */
+         bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm),
+                    Operand(v1.as_linear()), Operand::c32(idx), Operand::c32(component),
+                    Operand::c32(dpp_ctrl), prim_mask_op);
+      } else {
+         Temp p =
+            bld.ldsdir(aco_opcode::lds_param_load, bld.def(v1), bld.m0(prim_mask), idx, component);
+         Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
 
-      /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
-      emit_wqm(bld, res, dst, true);
+         /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
+         emit_wqm(bld, res, dst, true);
+      }
    } else {
       bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
                  bld.m0(prim_mask), idx, component);
@@ -5825,7 +5852,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
             unsigned chan_component = (component + i) % 4;
             unsigned chan_idx = idx + (component + i) / 4;
             vec->operands[i] = Operand(bld.tmp(instr->dest.ssa.bit_size == 16 ? v2b : v1));
-            emit_interp_mov_instr(ctx, chan_idx, chan_component, vertex_id, vec->operands[i].getTemp(), prim_mask);
+            emit_interp_mov_instr(ctx, chan_idx, chan_component, vertex_id,
+                                  vec->operands[i].getTemp(), prim_mask);
          }
          vec->definitions[0] = Definition(dst);
          bld.insert(std::move(vec));
@@ -8980,6 +9008,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
+
       ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
@@ -8992,6 +9021,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
+
       ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
@@ -9007,12 +9037,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          assert(src.regClass() == bld.lm);
          cond =
             bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+
+         ctx->cf_info.had_divergent_discard |= nir_src_is_divergent(instr->src[0]);
       }
 
       bld.pseudo(aco_opcode::p_discard_if, cond);
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
+      ctx->cf_info.had_divergent_discard |= in_exec_divergent_or_in_loop(ctx);
       ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
@@ -10554,6 +10587,7 @@ begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond,
    ic->exec_potentially_empty_break_old = ctx->cf_info.exec_potentially_empty_break;
    ic->exec_potentially_empty_break_depth_old = ctx->cf_info.exec_potentially_empty_break_depth;
    ic->divergent_old = ctx->cf_info.parent_if.is_divergent;
+   ic->had_divergent_discard_old = ctx->cf_info.had_divergent_discard;
    ctx->cf_info.parent_if.is_divergent = true;
 
    /* divergent branches use cbranch_execz */
@@ -10621,6 +10655,9 @@ begin_divergent_if_else(isel_context* ctx, if_context* ic,
    ctx->cf_info.exec_potentially_empty_break = false;
    ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
 
+   ic->had_divergent_discard_then = ctx->cf_info.had_divergent_discard;
+   ctx->cf_info.had_divergent_discard = ic->had_divergent_discard_old;
+
    /** emit logical else block */
    ctx->program->next_divergent_if_logical_depth++;
    Block* BB_else_logical = ctx->program->create_and_insert_block();
@@ -10683,6 +10720,7 @@ end_divergent_if(isel_context* ctx, if_context* ic)
       ctx->cf_info.exec_potentially_empty_break = false;
       ctx->cf_info.exec_potentially_empty_break_depth = UINT16_MAX;
    }
+   ctx->cf_info.had_divergent_discard |= ic->had_divergent_discard_then;
 }
 
 static void
@@ -10708,6 +10746,8 @@ begin_uniform_if_then(isel_context* ctx, if_context* ic, Temp cond)
 
    ctx->cf_info.has_branch = false;
    ctx->cf_info.parent_loop.has_divergent_branch = false;
+
+   ic->had_divergent_discard_old = ctx->cf_info.had_divergent_discard;
 
    /** emit then block */
    ctx->program->next_uniform_if_depth++;
@@ -10742,6 +10782,9 @@ begin_uniform_if_else(isel_context* ctx, if_context* ic)
    ctx->cf_info.has_branch = false;
    ctx->cf_info.parent_loop.has_divergent_branch = false;
 
+   ic->had_divergent_discard_then = ctx->cf_info.had_divergent_discard;
+   ctx->cf_info.had_divergent_discard = ic->had_divergent_discard_old;
+
    /** emit else block */
    Block* BB_else = ctx->program->create_and_insert_block();
    add_edge(ic->BB_if_idx, BB_else);
@@ -10770,6 +10813,7 @@ end_uniform_if(isel_context* ctx, if_context* ic)
 
    ctx->cf_info.has_branch &= ic->uniform_has_then_branch;
    ctx->cf_info.parent_loop.has_divergent_branch &= ic->then_branch_divergent;
+   ctx->cf_info.had_divergent_discard |= ic->had_divergent_discard_then;
 
    /** emit endif merge block */
    ctx->program->next_uniform_if_depth--;
