@@ -1197,6 +1197,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
       xcb_flush(chain->conn);
 
       if (timeout == UINT64_MAX) {
+         /* See comments in x11_manage_fifo_queues about problem scenarios with this call. */
          event = xcb_wait_for_special_event(chain->conn, chain->special_event);
          if (!event)
             return x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
@@ -1684,6 +1685,22 @@ x11_manage_fifo_queues(void *state)
                  * VUID-vkAcquireNextImageKHR-swapchain-01802 */
                 x11_driver_owned_images(chain) < forward_progress_guaranteed_acquired_images) {
 
+            /* Calls to xcb_wait_for_special_event are broken by design due to a XCB flaw.
+             * This call may hang indefinitely if the X window is destroyed before the swapchain.
+             * An X window destruction does not trigger a special event here, unfortunately.
+             *
+             * A workaround was attempted in
+             * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/13564#note_1121977, but
+             * was reverted due to its high CPU usage.
+             * No pragmatic solution exists that solves CPU usage and stutter problems.
+             *
+             * A xcb_poll call followed by poll() is a race condition if other threads read from the XCB connection FD
+             * between the xcb poll and fd poll(), even if it's completely unrelated to this event queue.
+             * poll() may end up waiting indefinitely even if the XCB event has been moved from the FD
+             * to chain->special_event queue.
+             * The proper fix is a wait_for_special_event_with_timeout, but it does not exist.
+             * See https://gitlab.freedesktop.org/xorg/lib/libxcb/-/merge_requests/9.
+             * For now, keep this approach. Applications are generally well-behaved. */
             xcb_generic_event_t *event =
                xcb_wait_for_special_event(chain->conn, chain->special_event);
             if (!event) {
@@ -2161,6 +2178,7 @@ static VkResult x11_wait_for_present_polled(
       xcb_flush(chain->conn);
 
       if (timeout == UINT64_MAX) {
+         /* See comments in x11_manage_fifo_queues about problem scenarios with this call. */
          event = xcb_wait_for_special_event(chain->conn, chain->special_event);
          if (!event) {
             result = x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
