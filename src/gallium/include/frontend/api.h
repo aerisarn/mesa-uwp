@@ -72,6 +72,7 @@ enum st_profile_type
 #define ST_CONTEXT_FLAG_RELEASE_NONE	    (1 << 5)
 #define ST_CONTEXT_FLAG_HIGH_PRIORITY       (1 << 6)
 #define ST_CONTEXT_FLAG_LOW_PRIORITY        (1 << 7)
+#define ST_CONTEXT_FLAG_PROTECTED           (1 << 8)
 
 /**
  * Reasons that context creation might fail.

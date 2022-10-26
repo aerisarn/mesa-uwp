@@ -69,6 +69,9 @@ dri_create_context(gl_api api, const struct gl_config * visual,
       allowed_attribs |= __DRIVER_CONTEXT_ATTRIB_RESET_STRATEGY;
    }
 
+   if (screen->has_protected_context)
+      allowed_attribs |= __DRIVER_CONTEXT_ATTRIB_PROTECTED;
+
    if (ctx_config->flags & ~allowed_flags) {
       *error = __DRI_CTX_ERROR_UNKNOWN_FLAG;
       goto fail;
@@ -136,6 +139,9 @@ dri_create_context(gl_api api, const struct gl_config * visual,
    if ((ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_RELEASE_BEHAVIOR)
        && (ctx_config->release_behavior == __DRI_CTX_RELEASE_BEHAVIOR_NONE))
       attribs.flags |= ST_CONTEXT_FLAG_RELEASE_NONE;
+
+   if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_PROTECTED)
+      attribs.flags |= ST_CONTEXT_FLAG_PROTECTED;
 
    struct dri_context *share_ctx = NULL;
    if (sharedContextPrivate) {

@@ -1068,6 +1068,9 @@ st_api_create_context(struct st_manager *smapi,
    if (attribs->flags & ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED)
       ctx_flags |= PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET;
 
+   if (attribs->flags & ST_CONTEXT_FLAG_PROTECTED)
+      ctx_flags |= PIPE_CONTEXT_PROTECTED;
+
    pipe = smapi->screen->context_create(smapi->screen, NULL, ctx_flags);
    if (!pipe) {
       *error = ST_CONTEXT_ERROR_NO_MEMORY;

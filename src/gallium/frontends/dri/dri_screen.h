@@ -72,6 +72,7 @@ struct dri_screen
    boolean sd_depth_bits_last;
    boolean auto_fake_front;
    boolean has_reset_status_query;
+   boolean has_protected_context;
    enum pipe_texture_target target;
 
    boolean swrast_no_present;
