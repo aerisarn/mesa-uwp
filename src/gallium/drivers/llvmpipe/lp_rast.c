@@ -808,7 +808,7 @@ dispatch_blit[] = {
 
 
 
-/* Triangle and general case rasterization: Use the SOA llvm shdaers,
+/* Triangle and general case rasterization: Use the SOA llvm shaders,
  * an active swizzled tile for each color buf, etc.  Don't blit/clear
  * directly to destination surface as we know there are swizzled
  * operations coming.
