@@ -33,6 +33,37 @@
 
 #define DBG(...) do { if (VERBOSE) fprintf(stderr, __VA_ARGS__); } while(0)
 
+const struct rc_class rc_class_list_vp [] = {
+	{RC_REG_CLASS_VP_SINGLE, 4,
+		{RC_MASK_X,
+		 RC_MASK_Y,
+		 RC_MASK_Z,
+		 RC_MASK_W,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE}},
+	{RC_REG_CLASS_VP_DOUBLE, 6,
+		{RC_MASK_X | RC_MASK_Y,
+		 RC_MASK_X | RC_MASK_Z,
+		 RC_MASK_X | RC_MASK_W,
+		 RC_MASK_Y | RC_MASK_Z,
+		 RC_MASK_Y | RC_MASK_W,
+		 RC_MASK_Z | RC_MASK_W}},
+	{RC_REG_CLASS_VP_TRIPLE, 4,
+		{RC_MASK_X | RC_MASK_Y | RC_MASK_Z,
+		 RC_MASK_X | RC_MASK_Y | RC_MASK_W,
+		 RC_MASK_X | RC_MASK_Z | RC_MASK_W,
+		 RC_MASK_Y | RC_MASK_Z | RC_MASK_W,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE}},
+	{RC_REG_CLASS_VP_QUADRUPLE, 1,
+		{RC_MASK_X | RC_MASK_Y | RC_MASK_Z | RC_MASK_W,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE,
+		 RC_MASK_NONE}}
+};
+
 const struct rc_class rc_class_list_fp [] = {
 	{RC_REG_CLASS_FP_SINGLE, 3,
 		{RC_MASK_X,

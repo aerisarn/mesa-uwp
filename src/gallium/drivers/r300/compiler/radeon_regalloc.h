@@ -59,6 +59,14 @@ enum rc_reg_class {
 	RC_REG_CLASS_FP_COUNT
 };
 
+enum rc_reg_class_vp {
+	RC_REG_CLASS_VP_SINGLE,
+	RC_REG_CLASS_VP_DOUBLE,
+	RC_REG_CLASS_VP_TRIPLE,
+	RC_REG_CLASS_VP_QUADRUPLE,
+	RC_REG_CLASS_VP_COUNT
+};
+
 struct rc_regalloc_state {
 	struct ra_regs *regs;
 	struct ra_class *classes[RC_REG_CLASS_FP_COUNT];
