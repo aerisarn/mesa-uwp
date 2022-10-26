@@ -7233,6 +7233,8 @@ iris_upload_compute_walker(struct iris_context *ice,
    if (grid->indirect)
       iris_load_indirect_location(ice, batch, grid);
 
+   iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
+
    iris_emit_cmd(batch, GENX(COMPUTE_WALKER), cw) {
       cw.IndirectParameterEnable        = grid->indirect;
       cw.SIMDSize                       = dispatch.simd_size / 16;
