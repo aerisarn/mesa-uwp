@@ -345,9 +345,9 @@ void rc_build_interference_graph(
 	}
 }
 
-void rc_init_regalloc_state(struct rc_regalloc_state *s)
+void rc_init_regalloc_state(struct rc_regalloc_state *s, enum rc_program_type prog)
 {
-	unsigned i, j, index;
+	unsigned i, j, index, class_count, max_temps;
 	unsigned **ra_q_values;
 
 	/* Pre-computed q values.  This array describes the maximum number of
@@ -373,7 +373,7 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	 * so no value in q_values[2][0..RC_REG_CLASS_FP_COUNT] will be greater
 	 * than 1.
 	 */
-	const unsigned q_values[RC_REG_CLASS_FP_COUNT][RC_REG_CLASS_FP_COUNT] = {
+	const unsigned q_values_fp[RC_REG_CLASS_FP_COUNT][RC_REG_CLASS_FP_COUNT] = {
 	{1, 2, 3, 0, 1, 2, 3, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2},
 	{2, 3, 3, 0, 2, 3, 3, 2, 2, 2, 3, 3, 3, 2, 2, 2, 3, 3, 3},
 	{1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -402,19 +402,27 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	{1, 1, 1, 1}
 	};
 
+	if (prog == RC_FRAGMENT_PROGRAM) {
+		s->class_list = rc_class_list_fp;
+		class_count = RC_REG_CLASS_FP_COUNT;
+		max_temps = R500_PFS_NUM_TEMP_REGS;
+	} else {
+		s->class_list = rc_class_list_vp;
+		class_count = RC_REG_CLASS_VP_COUNT;
+		max_temps = R300_VS_MAX_TEMPS;
+	}
+
 	/* Allocate the main ra data structure */
-	s->regs = ra_alloc_reg_set(NULL, R500_PFS_NUM_TEMP_REGS * RC_MASK_XYZW,
+	s->regs = ra_alloc_reg_set(NULL, max_temps * RC_MASK_XYZW,
                                    true);
 
-	s->class_list = rc_class_list_fp;
-
 	/* Create the register classes */
-	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
-		const struct rc_class *class = &rc_class_list_fp[i];
+	for (i = 0; i < class_count; i++) {
+		const struct rc_class *class = &s->class_list[i];
 		s->classes[class->ID] = ra_alloc_reg_class(s->regs);
 
 		/* Assign registers to the classes */
-		for (index = 0; index < R500_PFS_NUM_TEMP_REGS; index++) {
+		for (index = 0; index < max_temps; index++) {
 			for (j = 0; j < class->WritemaskCount; j++) {
 				int reg_id = get_reg_id(index,
 						class->Writemasks[j]);
@@ -428,21 +436,24 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	 * different than the ID assigned to that class by ra.
 	 * This why we need to manually construct this list.
 	 */
-	ra_q_values = MALLOC(RC_REG_CLASS_FP_COUNT * sizeof(unsigned *));
+	ra_q_values = MALLOC(class_count * sizeof(unsigned *));
 
-	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
-		ra_q_values[i] = MALLOC(RC_REG_CLASS_FP_COUNT * sizeof(unsigned));
-		for (j = 0; j < RC_REG_CLASS_FP_COUNT; j++) {
-			ra_q_values[i][j] = q_values[i][j];
+	for (i = 0; i < class_count; i++) {
+		ra_q_values[i] = MALLOC(class_count * sizeof(unsigned));
+		for (j = 0; j < class_count; j++) {
+			if (prog == RC_FRAGMENT_PROGRAM)
+				ra_q_values[i][j] = q_values_fp[i][j];
+			else
+				ra_q_values[i][j] = q_values_vp[i][j];
 		}
 	}
 
 	/* Add register conflicts */
-	add_register_conflicts(s->regs, R500_PFS_NUM_TEMP_REGS);
+	add_register_conflicts(s->regs, max_temps);
 
 	ra_set_finalize(s->regs, ra_q_values);
 
-	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
+	for (i = 0; i < class_count; i++) {
 		FREE(ra_q_values[i]);
 	}
 	FREE(ra_q_values);

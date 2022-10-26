@@ -137,7 +137,7 @@ void rc_build_interference_graph(
 	struct ra_graph * graph,
 	struct rc_list * variables);
 
-void rc_init_regalloc_state(struct rc_regalloc_state *s);
+void rc_init_regalloc_state(struct rc_regalloc_state *s, enum rc_program_type prog);
 void rc_destroy_regalloc_state(struct rc_regalloc_state *s);
 
 #endif /* RADEON_REGALLOC_H */
