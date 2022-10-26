@@ -34,6 +34,9 @@ struct ra_ctx {
    BITSET_WORD *visited;
    BITSET_WORD *used_regs;
 
+   /* For affinities */
+   agx_instr **src_to_collect;
+
    /* Maximum number of registers that RA is allowed to use */
    unsigned bound;
 };
@@ -139,6 +142,88 @@ assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
    BITSET_SET_RANGE(rctx->used_regs, reg, end);
 }
 
+static unsigned
+affinity_base_of_collect(struct ra_ctx *rctx, agx_instr *collect, unsigned src)
+{
+   unsigned src_reg = rctx->ssa_to_reg[collect->src[src].value];
+   unsigned src_offset = src * agx_size_align_16(collect->src[src].size);
+
+   if (src_reg >= src_offset)
+      return src_reg - src_offset;
+   else
+      return ~0;
+}
+
+static unsigned
+pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
+{
+   agx_index idx = I->dest[d];
+   assert(idx.type == AGX_INDEX_NORMAL);
+
+   unsigned count = agx_write_registers(I, d);
+   unsigned align = agx_size_align_16(idx.size);
+
+   /* Try to allocate collects compatibly with their sources */
+   if (I->op == AGX_OPCODE_COLLECT) {
+      agx_foreach_ssa_src(I, s) {
+         assert(BITSET_TEST(rctx->visited, I->src[s].value) &&
+                "registers assigned in an order compatible with dominance "
+                "and this is not a phi node, so we have assigned a register");
+
+         unsigned base = affinity_base_of_collect(rctx, I, s);
+         if (base >= rctx->bound || (base + count) > rctx->bound)
+            continue;
+
+         if (!BITSET_TEST_RANGE(rctx->used_regs, base, base + count - 1))
+            return base;
+      }
+   }
+
+   /* Try to allocate sources of collects contiguously */
+   if (rctx->src_to_collect[idx.value] != NULL) {
+      agx_instr *collect = rctx->src_to_collect[idx.value];
+
+      assert(count == align && "collect sources are scalar");
+
+      /* Find our offset in the collect. If our source is repeated in the
+       * collect, this may not be unique. We arbitrarily choose the first.
+       */
+      unsigned our_source = ~0;
+      agx_foreach_ssa_src(collect, s) {
+         if (agx_is_equiv(collect->src[s], idx)) {
+            our_source = s;
+            break;
+         }
+      }
+
+      assert(our_source < collect->nr_srcs && "source must be in the collect");
+
+      /* See if we can allocate compatibly with any source of the collect */
+      agx_foreach_ssa_src(collect, s) {
+         if (!BITSET_TEST(rctx->visited, collect->src[s].value))
+            continue;
+
+         /* Determine where the collect should start relative to the source */
+         unsigned base = affinity_base_of_collect(rctx, collect, s);
+         if (base >= rctx->bound)
+            continue;
+
+         unsigned our_reg = base + (our_source * align);
+
+         /* Don't allocate past the end of the register file */
+         if ((our_reg + align) > rctx->bound)
+            continue;
+
+         /* If those registers are free, then choose them */
+         if (!BITSET_TEST_RANGE(rctx->used_regs, our_reg, our_reg + align - 1))
+            return our_reg;
+      }
+   }
+
+   /* Default to any contiguous sequence of registers */
+   return find_regs(rctx->used_regs, count, align, rctx->bound);
+}
+
 /** Assign registers to SSA values in a block. */
 
 static void
@@ -201,11 +286,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
        * because of the SSA form.
        */
       agx_foreach_ssa_dest(I, d) {
-         unsigned count = agx_write_registers(I, d);
-         unsigned align = agx_size_align_16(I->dest[d].size);
-
-         assign_regs(rctx, I->dest[d],
-                     find_regs(used_regs, count, align, rctx->bound));
+         assign_regs(rctx, I->dest[d], pick_regs(rctx, I, d));
       }
    }
 
@@ -297,9 +378,17 @@ agx_ra(agx_context *ctx)
    agx_compute_liveness(ctx);
    uint8_t *ssa_to_reg = calloc(ctx->alloc, sizeof(uint8_t));
    uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
+   agx_instr **src_to_collect = calloc(ctx->alloc, sizeof(agx_instr *));
    BITSET_WORD *visited = calloc(BITSET_WORDS(ctx->alloc), sizeof(BITSET_WORD));
 
    agx_foreach_instr_global(ctx, I) {
+      /* Record collects so we can coalesce when assigning */
+      if (I->op == AGX_OPCODE_COLLECT) {
+         agx_foreach_ssa_src(I, s) {
+            src_to_collect[I->src[s].value] = I;
+         }
+      }
+
       agx_foreach_ssa_dest(I, d) {
          unsigned v = I->dest[d].value;
          assert(ncomps[v] == 0 && "broken SSA");
@@ -315,6 +404,7 @@ agx_ra(agx_context *ctx)
          .shader = ctx,
          .block = block,
          .ssa_to_reg = ssa_to_reg,
+         .src_to_collect = src_to_collect,
          .ncomps = ncomps,
          .visited = visited,
          .bound = AGX_NUM_REGS
@@ -436,6 +526,7 @@ agx_ra(agx_context *ctx)
       }
    }
 
+   free(src_to_collect);
    free(ssa_to_reg);
    free(ncomps);
    free(visited);
