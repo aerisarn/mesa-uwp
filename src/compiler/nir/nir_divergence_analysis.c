@@ -411,7 +411,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_deref_load_param_intel:
    case nir_intrinsic_image_load_raw_intel:
    case nir_intrinsic_get_ubo_size:
-   case nir_intrinsic_load_ssbo_address: {
+   case nir_intrinsic_load_ssbo_address:
+   case nir_intrinsic_load_desc_set_address_intel: {
       unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;
       for (unsigned i = 0; i < num_srcs; i++) {
          if (instr->src[i].ssa->divergent) {
