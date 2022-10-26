@@ -2329,6 +2329,17 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
+   /* these drivers cannot handle OOB gl_Layer values, and therefore need clamping in shader.
+    * TODO: Vulkan extension that details whether vulkan driver can handle OOB layer values
+    */
+   switch (screen->info.driver_props.driverID) {
+   case VK_DRIVER_ID_IMAGINATION_PROPRIETARY:
+      screen->driver_workarounds.needs_sanitised_layer = true;
+      break;
+   default:
+      screen->driver_workarounds.needs_sanitised_layer = false;
+      break;
+   }
 }
 
 static struct zink_screen *

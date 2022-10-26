@@ -53,7 +53,7 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 void
 zink_screen_init_compiler(struct zink_screen *screen);
 void
-zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer);
+zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_shader *consumer);
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, const struct zink_shader_key *key);
 VkShaderModule

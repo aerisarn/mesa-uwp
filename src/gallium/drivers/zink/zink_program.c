@@ -838,7 +838,9 @@ create_program(struct zink_context *ctx, bool is_compute)
 }
 
 static void
-assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
+assign_io(struct zink_screen *screen,
+          struct zink_gfx_program *prog,
+          struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
 {
    struct zink_shader *shaders[MESA_SHADER_STAGES];
 
@@ -856,7 +858,7 @@ assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_GFX_SHA
             prog->nir[producer->info.stage] = nir_shader_clone(prog, producer);
          if (!prog->nir[j])
             prog->nir[j] = nir_shader_clone(prog, consumer->nir);
-         zink_compiler_assign_io(prog->nir[producer->info.stage], prog->nir[j]);
+         zink_compiler_assign_io(screen, prog->nir[producer->info.stage], prog->nir[j]);
          i = j;
          break;
       }
@@ -893,7 +895,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
    prog->stages_remaining = prog->stages_present;
 
-   assign_io(prog, prog->shaders);
+   assign_io(screen, prog, prog->shaders);
 
    if (stages[MESA_SHADER_GEOMETRY])
       prog->last_vertex_stage = stages[MESA_SHADER_GEOMETRY];

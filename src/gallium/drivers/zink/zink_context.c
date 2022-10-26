@@ -2439,6 +2439,8 @@ begin_rendering(struct zink_context *ctx)
 ALWAYS_INLINE static void
 update_layered_rendering_state(struct zink_context *ctx)
 {
+   if (!zink_screen(ctx->base.screen)->driver_workarounds.needs_sanitised_layer)
+      return;
    unsigned framebffer_is_layered = zink_framebuffer_get_num_layers(&ctx->fb_state) > 1;
    VKCTX(CmdPushConstants)(
          ctx->batch.state->cmdbuf,

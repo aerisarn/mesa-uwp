@@ -1283,6 +1283,7 @@ struct zink_screen {
       bool implicit_sync;
       bool always_feedback_loop;
       bool always_feedback_loop_zs;
+      bool needs_sanitised_layer;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
    } driver_workarounds;

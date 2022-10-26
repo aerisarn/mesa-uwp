@@ -1687,7 +1687,7 @@ rewrite_read_as_0(nir_builder *b, nir_instr *instr, void *data)
 }
 
 void
-zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
+zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_shader *consumer)
 {
    unsigned reserved = 0;
    unsigned char slot_map[VARYING_SLOT_MAX];
@@ -1723,7 +1723,7 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
             nir_shader_instructions_pass(consumer, rewrite_read_as_0, nir_metadata_dominance, var);
          }
       }
-      if (consumer->info.stage == MESA_SHADER_FRAGMENT)
+      if (consumer->info.stage == MESA_SHADER_FRAGMENT && screen->driver_workarounds.needs_sanitised_layer)
          do_fixup |= clamp_layer_output(producer, consumer, &reserved);
    }
    if (!do_fixup)
