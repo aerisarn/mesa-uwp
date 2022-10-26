@@ -780,6 +780,25 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 }
 
 static void
+emit_shader_temp(struct ntv_context *ctx, struct nir_variable *var)
+{
+   SpvId var_type = get_glsl_type(ctx, var->type);
+
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassPrivate,
+                                                   var_type);
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                         SpvStorageClassPrivate);
+   if (var->name)
+      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+
+   _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
+
+   assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+   ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
+}
+
+static void
 emit_temp(struct ntv_context *ctx, struct nir_variable *var)
 {
    SpvId var_type = get_glsl_type(ctx, var->type);
@@ -4729,6 +4748,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
 
       ctx.regs[reg->index] = var;
    }
+
+   nir_foreach_variable_with_modes(var, s, nir_var_shader_temp)
+      emit_shader_temp(&ctx, var);
 
    nir_foreach_function_temp_variable(var, entry)
       emit_temp(&ctx, var);
