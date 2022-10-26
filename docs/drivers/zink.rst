@@ -261,6 +261,8 @@ changing the descriptor manager may improve performance:
    Automatically detect best mode. This is the default.
 ``lazy``
    Attempt to use the least amount of CPU by binding descriptors opportunistically.
+``db``
+   Use EXT_descriptor_buffer when possible.
 
 Debugging
 ---------

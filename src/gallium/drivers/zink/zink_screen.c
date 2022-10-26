@@ -93,6 +93,7 @@ static const struct debug_named_value
 zink_descriptor_options[] = {
    { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
    { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
+   { "db", ZINK_DESCRIPTOR_MODE_DB, "Use descriptor buffers" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2714,6 +2715,51 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       /* determine if vis vram is roughly equal to total vram */
       if (biggest_vis_vram > biggest_vram * 0.9)
          screen->resizable_bar = true;
+   }
+
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
+      if (!screen->info.have_EXT_descriptor_buffer) {
+         mesa_loge("Cannot use db descriptor mode without EXT_descriptor_buffer");
+         goto fail;
+      }
+      if (!screen->resizable_bar) {
+         mesa_loge("Cannot use db descriptor mode without resizable bar");
+         goto fail;
+      }
+      if (!screen->info.have_EXT_non_seamless_cube_map) {
+         mesa_loge("Cannot use db descriptor mode without EXT_non_seamless_cube_map");
+         goto fail;
+      }
+      if (!screen->info.rb2_feats.nullDescriptor) {
+         mesa_loge("Cannot use db descriptor mode without robustness2.nullDescriptor");
+         goto fail;
+      }
+      if (screen->compact_descriptors) {
+         /* TODO: bindless */
+         if (screen->info.db_props.maxDescriptorBufferBindings < 3) {
+            mesa_loge("Cannot use db descriptor mode with compact descriptors with maxDescriptorBufferBindings < 3");
+            goto fail;
+         }
+      } else {
+         if (screen->info.db_props.maxDescriptorBufferBindings < 5) {
+            mesa_loge("Cannot use db descriptor mode with maxDescriptorBufferBindings < 5");
+            goto fail;
+         }
+      }
+      const uint32_t sampler_size = MAX2(screen->info.db_props.combinedImageSamplerDescriptorSize, screen->info.db_props.robustUniformTexelBufferDescriptorSize);
+      const uint32_t image_size = MAX2(screen->info.db_props.storageImageDescriptorSize, screen->info.db_props.robustStorageTexelBufferDescriptorSize);
+      if (screen->compact_descriptors) {
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_UBO] = screen->info.db_props.robustUniformBufferDescriptorSize +
+                                                     screen->info.db_props.robustStorageBufferDescriptorSize;
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = sampler_size + image_size;
+      } else {
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_UBO] = screen->info.db_props.robustUniformBufferDescriptorSize;
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW] = sampler_size;
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_SSBO] = screen->info.db_props.robustStorageBufferDescriptorSize;
+         screen->db_size[ZINK_DESCRIPTOR_TYPE_IMAGE] = image_size;
+      }
+      screen->db_size[ZINK_DESCRIPTOR_TYPE_UNIFORMS] = screen->info.db_props.robustUniformBufferDescriptorSize;
+      screen->info.have_KHR_push_descriptor = false;
    }
 
    simple_mtx_init(&screen->dt_lock, mtx_plain);
