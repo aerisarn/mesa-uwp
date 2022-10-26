@@ -525,7 +525,7 @@ fn lower_and_optimize_nir_late(
         }
     }
 
-    nir.pass1(nir_lower_readonly_images_to_tex, false);
+    nir.pass1(nir_lower_readonly_images_to_tex, true);
     nir.pass0(nir_lower_cl_images);
 
     nir.reset_scratch_size();
@@ -583,30 +583,30 @@ fn lower_and_optimize_nir_late(
     compute_options.set_has_base_global_invocation_id(true);
     nir.pass1(nir_lower_compute_system_values, &compute_options);
     nir.pass1(nir_shader_gather_info, nir.entrypoint());
-
-    if nir.num_images() > 0 {
+    if nir.num_images() > 0 || nir.num_textures() > 0 {
+        let count = nir.num_images() + nir.num_textures();
         res.push(InternalKernelArg {
             kind: InternalKernelArgType::FormatArray,
             offset: 0,
-            size: 2 * nir.num_images() as usize,
+            size: 2 * count as usize,
         });
 
         res.push(InternalKernelArg {
             kind: InternalKernelArgType::OrderArray,
             offset: 0,
-            size: 2 * nir.num_images() as usize,
+            size: 2 * count as usize,
         });
 
         lower_state.format_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
-            unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
+            unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
             args.len() + res.len() - 2,
             "image_formats",
         );
 
         lower_state.order_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
-            unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
+            unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
             args.len() + res.len() - 1,
             "image_orders",
         );

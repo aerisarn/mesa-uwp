@@ -40,7 +40,7 @@ rusticl_lower_intrinsics_instr(
 
         val = intrins->src[0].ssa;
         // we put write images after read images
-        if (nir_intrinsic_access(intrins) & ACCESS_NON_WRITEABLE) {
+        if (glsl_type_is_image(var->type)) {
             val = nir_iadd_imm(b, val, b->shader->info.num_textures);
         }
 
