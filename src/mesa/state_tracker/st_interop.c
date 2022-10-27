@@ -29,6 +29,7 @@
 
 #include "bufferobj.h"
 #include "texobj.h"
+#include "syncobj.h"
 
 int
 st_interop_query_device_info(struct st_context_iface *st,
@@ -295,6 +296,58 @@ st_interop_export_object(struct st_context_iface *st,
    /* Instruct the caller that we support up-to version one of the interface */
    in->version = 1;
    out->version = 1;
+
+   return MESA_GLINTEROP_SUCCESS;
+}
+
+static int
+flush_object(struct gl_context *ctx,
+                        struct mesa_glinterop_export_in *in)
+{
+   struct pipe_resource *res = NULL;
+   /* There is no version 0, thus we do not support it */
+   if (in->version == 0)
+      return MESA_GLINTEROP_INVALID_VERSION;
+
+   int ret = lookup_object(ctx, in, NULL, &res);
+   if (ret != MESA_GLINTEROP_SUCCESS)
+      return ret;
+
+   ctx->pipe->flush_resource(ctx->pipe, res);
+
+   /* Instruct the caller that we support up-to version one of the interface */
+   in->version = 1;
+
+   return MESA_GLINTEROP_SUCCESS;
+}
+
+int
+st_interop_flush_objects(struct st_context_iface *st,
+                         unsigned count, struct mesa_glinterop_export_in *objects,
+                         GLsync *sync)
+{
+   struct gl_context *ctx = ((struct st_context *)st)->ctx;
+
+   /* Wait for glthread to finish to get up-to-date GL object lookups. */
+   if (st->thread_finish)
+      st->thread_finish(st);
+
+   simple_mtx_lock(&ctx->Shared->Mutex);
+
+   for (unsigned i = 0; i < count; ++i) {
+      int ret = flush_object(ctx, &objects[i]);
+
+      if (ret != MESA_GLINTEROP_SUCCESS) {
+         simple_mtx_unlock(&ctx->Shared->Mutex);
+         return ret;
+      }
+   }
+
+   simple_mtx_unlock(&ctx->Shared->Mutex);
+
+   if (count > 0 && sync) {
+      *sync = _mesa_fence_sync(ctx, GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+   }
 
    return MESA_GLINTEROP_SUCCESS;
 }
