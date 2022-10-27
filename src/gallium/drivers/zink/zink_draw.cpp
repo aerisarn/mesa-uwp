@@ -181,7 +181,7 @@ zink_bind_vertex_state(struct zink_batch *batch, struct zink_context *ctx,
 ALWAYS_INLINE static void
 update_drawid(struct zink_context *ctx, unsigned draw_id)
 {
-   VKCTX(CmdPushConstants)(ctx->batch.state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
+   VKCTX(CmdPushConstants)(ctx->batch.state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_ALL_GRAPHICS,
                       offsetof(struct zink_gfx_push_constant, draw_id), sizeof(unsigned),
                       &draw_id);
 }
@@ -766,12 +766,12 @@ zink_draw(struct pipe_context *pctx,
 
    if (reads_basevertex) {
       unsigned draw_mode_is_indexed = index_size > 0;
-      VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
+      VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_ALL_GRAPHICS,
                          offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed), sizeof(unsigned),
                          &draw_mode_is_indexed);
    }
    if (ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL] && ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL]->is_generated) {
-      VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+      VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_ALL_GRAPHICS,
                          offsetof(struct zink_gfx_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
    }

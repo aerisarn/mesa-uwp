@@ -2445,7 +2445,7 @@ update_layered_rendering_state(struct zink_context *ctx)
    VKCTX(CmdPushConstants)(
          ctx->batch.state->cmdbuf,
          zink_screen(ctx->base.screen)->gfx_push_constant_layout,
-         VK_SHADER_STAGE_VERTEX_BIT |  VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+         VK_SHADER_STAGE_ALL_GRAPHICS,
          offsetof(struct zink_gfx_push_constant, framebuffer_is_layered), sizeof(unsigned),
          &framebffer_is_layered);
 }
