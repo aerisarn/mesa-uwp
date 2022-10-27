@@ -54,22 +54,12 @@ st_interop_query_device_info(struct st_context_iface *st,
    return MESA_GLINTEROP_SUCCESS;
 }
 
-int
-st_interop_export_object(struct st_context_iface *st,
-                         struct mesa_glinterop_export_in *in,
-                         struct mesa_glinterop_export_out *out)
+static int
+lookup_object(struct gl_context *ctx,
+              struct mesa_glinterop_export_in *in,
+              struct mesa_glinterop_export_out *out, struct pipe_resource **res)
 {
-   struct pipe_screen *screen = st->pipe->screen;
-   struct gl_context *ctx = ((struct st_context *)st)->ctx;
-   struct pipe_resource *res = NULL;
-   struct winsys_handle whandle;
-   unsigned target, usage;
-   boolean success;
-
-   /* There is no version 0, thus we do not support it */
-   if (in->version == 0 || out->version == 0)
-      return MESA_GLINTEROP_INVALID_VERSION;
-
+   unsigned target = in->target;
    /* Validate the target. */
    switch (in->target) {
    case GL_TEXTURE_BUFFER:
@@ -86,7 +76,6 @@ st_interop_export_object(struct st_context_iface *st,
    case GL_TEXTURE_EXTERNAL_OES:
    case GL_RENDERBUFFER:
    case GL_ARRAY_BUFFER:
-      target = in->target;
       break;
    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -105,13 +94,6 @@ st_interop_export_object(struct st_context_iface *st,
        in->miplevel != 0)
       return MESA_GLINTEROP_INVALID_MIP_LEVEL;
 
-   /* Wait for glthread to finish to get up-to-date GL object lookups. */
-   if (st->thread_finish)
-      st->thread_finish(st);
-
-   /* Validate the OpenGL object and get pipe_resource. */
-   simple_mtx_lock(&ctx->Shared->Mutex);
-
    if (target == GL_ARRAY_BUFFER) {
       /* Buffer objects.
       *
@@ -125,22 +107,20 @@ st_interop_export_object(struct st_context_iface *st,
       *   a GL buffer object but does not have an existing data store or
       *   the size of the buffer is 0."
       */
-      if (!buf || buf->Size == 0) {
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+      if (!buf || buf->Size == 0)
          return MESA_GLINTEROP_INVALID_OBJECT;
-      }
 
-      res = buf->buffer;
-      if (!res) {
-         /* this shouldn't happen */
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+      *res = buf->buffer;
+      /* this shouldn't happen */
+      if (!*res)
          return MESA_GLINTEROP_INVALID_OBJECT;
+
+      if (out) {
+         out->buf_offset = 0;
+         out->buf_size = buf->Size;
+
+         buf->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
       }
-
-      out->buf_offset = 0;
-      out->buf_size = buf->Size;
-
-      buf->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
    } else if (target == GL_RENDERBUFFER) {
       /* Renderbuffers.
       *
@@ -153,35 +133,31 @@ st_interop_export_object(struct st_context_iface *st,
       *   "CL_INVALID_GL_OBJECT if renderbuffer is not a GL renderbuffer
       *    object or if the width or height of renderbuffer is zero."
       */
-      if (!rb || rb->Width == 0 || rb->Height == 0) {
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+      if (!rb || rb->Width == 0 || rb->Height == 0)
          return MESA_GLINTEROP_INVALID_OBJECT;
-      }
 
       /* From OpenCL 2.0 SDK, clCreateFromGLRenderbuffer:
       *   "CL_INVALID_OPERATION if renderbuffer is a multi-sample GL
       *    renderbuffer object."
       */
-      if (rb->NumSamples > 1) {
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+      if (rb->NumSamples > 1)
          return MESA_GLINTEROP_INVALID_OPERATION;
-      }
 
       /* From OpenCL 2.0 SDK, clCreateFromGLRenderbuffer:
       *   "CL_OUT_OF_RESOURCES if there is a failure to allocate resources
       *    required by the OpenCL implementation on the device."
       */
-      res = rb->texture;
-      if (!res) {
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+      *res = rb->texture;
+      if (!*res)
          return MESA_GLINTEROP_OUT_OF_RESOURCES;
-      }
 
-      out->internal_format = rb->InternalFormat;
-      out->view_minlevel = 0;
-      out->view_numlevels = 1;
-      out->view_minlayer = 0;
-      out->view_numlayers = 1;
+      if (out) {
+         out->internal_format = rb->InternalFormat;
+         out->view_minlevel = 0;
+         out->view_numlevels = 1;
+         out->view_minlayer = 0;
+         out->view_numlayers = 1;
+      }
    } else {
       /* Texture objects.
       *
@@ -202,28 +178,26 @@ st_interop_export_object(struct st_context_iface *st,
       if (!obj ||
           obj->Target != target ||
           !obj->_BaseComplete ||
-          (in->miplevel > 0 && !obj->_MipmapComplete)) {
-         simple_mtx_unlock(&ctx->Shared->Mutex);
+          (in->miplevel > 0 && !obj->_MipmapComplete))
          return MESA_GLINTEROP_INVALID_OBJECT;
-      }
 
       if (target == GL_TEXTURE_BUFFER) {
          struct gl_buffer_object *stBuf =
             obj->BufferObject;
 
-         if (!stBuf || !stBuf->buffer) {
-            /* this shouldn't happen */
-            simple_mtx_unlock(&ctx->Shared->Mutex);
+         /* this shouldn't happen */
+         if (!stBuf || !stBuf->buffer)
             return MESA_GLINTEROP_INVALID_OBJECT;
+         *res = stBuf->buffer;
+
+         if (out) {
+            out->internal_format = obj->BufferObjectFormat;
+            out->buf_offset = obj->BufferOffset;
+            out->buf_size = obj->BufferSize == -1 ? obj->BufferObject->Size :
+               obj->BufferSize;
+
+            obj->BufferObject->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
          }
-         res = stBuf->buffer;
-
-         out->internal_format = obj->BufferObjectFormat;
-         out->buf_offset = obj->BufferOffset;
-         out->buf_size = obj->BufferSize == -1 ? obj->BufferObject->Size :
-            obj->BufferSize;
-
-         obj->BufferObject->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
       } else {
          /* From OpenCL 2.0 SDK, clCreateFromGLTexture:
          *   "CL_INVALID_MIP_LEVEL if miplevel is less than the value of
@@ -233,29 +207,56 @@ st_interop_export_object(struct st_context_iface *st,
          *    section 3.8.10 (Texture Completeness) of the OpenGL 2.1
          *    specification and section 3.7.10 of the OpenGL ES 2.0."
          */
-         if (in->miplevel < obj->Attrib.BaseLevel || in->miplevel > obj->_MaxLevel) {
-            simple_mtx_unlock(&ctx->Shared->Mutex);
+         if (in->miplevel < obj->Attrib.BaseLevel || in->miplevel > obj->_MaxLevel)
             return MESA_GLINTEROP_INVALID_MIP_LEVEL;
-         }
 
-         if (!st_finalize_texture(ctx, st->pipe, obj, 0)) {
-            simple_mtx_unlock(&ctx->Shared->Mutex);
+         if (!st_finalize_texture(ctx, ctx->st->pipe, obj, 0))
             return MESA_GLINTEROP_OUT_OF_RESOURCES;
-         }
 
-         res = st_get_texobj_resource(obj);
-         if (!res) {
-            /* Incomplete texture buffer object? This shouldn't really occur. */
-            simple_mtx_unlock(&ctx->Shared->Mutex);
+         *res = st_get_texobj_resource(obj);
+         /* Incomplete texture buffer object? This shouldn't really occur. */
+         if (!*res)
             return MESA_GLINTEROP_INVALID_OBJECT;
-         }
 
-         out->internal_format = obj->Image[0][0]->InternalFormat;
-         out->view_minlevel = obj->Attrib.MinLevel;
-         out->view_numlevels = obj->Attrib.NumLevels;
-         out->view_minlayer = obj->Attrib.MinLayer;
-         out->view_numlayers = obj->Attrib.NumLayers;
+         if (out) {
+            out->internal_format = obj->Image[0][0]->InternalFormat;
+            out->view_minlevel = obj->Attrib.MinLevel;
+            out->view_numlevels = obj->Attrib.NumLevels;
+            out->view_minlayer = obj->Attrib.MinLayer;
+            out->view_numlayers = obj->Attrib.NumLayers;
+         }
       }
+   }
+   return MESA_GLINTEROP_SUCCESS;
+}
+
+int
+st_interop_export_object(struct st_context_iface *st,
+                         struct mesa_glinterop_export_in *in,
+                         struct mesa_glinterop_export_out *out)
+{
+   struct pipe_screen *screen = st->pipe->screen;
+   struct gl_context *ctx = ((struct st_context *)st)->ctx;
+   struct pipe_resource *res = NULL;
+   struct winsys_handle whandle;
+   unsigned usage;
+   boolean success;
+
+   /* There is no version 0, thus we do not support it */
+   if (in->version == 0 || out->version == 0)
+      return MESA_GLINTEROP_INVALID_VERSION;
+
+   /* Wait for glthread to finish to get up-to-date GL object lookups. */
+   if (st->thread_finish)
+      st->thread_finish(st);
+
+   /* Validate the OpenGL object and get pipe_resource. */
+   simple_mtx_lock(&ctx->Shared->Mutex);
+
+   int ret = lookup_object(ctx, in, out, &res);
+   if (ret != MESA_GLINTEROP_SUCCESS) {
+      simple_mtx_unlock(&ctx->Shared->Mutex);
+      return ret;
    }
 
    /* Get the handle. */
