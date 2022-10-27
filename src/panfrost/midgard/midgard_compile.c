@@ -303,6 +303,15 @@ mdg_should_scalarize(const nir_instr *instr, const void *_unused)
    case nir_op_imul_high:
    case nir_op_pack_half_2x16:
    case nir_op_unpack_half_2x16:
+
+   /* The LUT unit is scalar */
+   case nir_op_fsqrt:
+   case nir_op_frcp:
+   case nir_op_frsq:
+   case nir_op_fsin_mdg:
+   case nir_op_fcos_mdg:
+   case nir_op_fexp2:
+   case nir_op_flog2:
       return true;
    default:
       return false;
@@ -1125,52 +1134,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       ins.is_pack = true;
    }
 
-   if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
-      /* To avoid duplicating the lookup tables (probably), true LUT
-       * instructions can only operate as if they were scalars. Lower
-       * them here by changing the component. */
-
-      unsigned orig_mask = ins.mask;
-
-      unsigned swizzle_back[MIR_VEC_COMPONENTS];
-      memcpy(&swizzle_back, ins.swizzle[0], sizeof(swizzle_back));
-
-      midgard_instruction ins_split[MIR_VEC_COMPONENTS];
-      unsigned ins_count = 0;
-
-      for (int i = 0; i < nr_components; ++i) {
-         /* Mask the associated component, dropping the
-          * instruction if needed */
-
-         ins.mask = 1 << i;
-         ins.mask &= orig_mask;
-
-         for (unsigned j = 0; j < ins_count; ++j) {
-            if (swizzle_back[i] == ins_split[j].swizzle[0][0]) {
-               ins_split[j].mask |= ins.mask;
-               ins.mask = 0;
-               break;
-            }
-         }
-
-         if (!ins.mask)
-            continue;
-
-         for (unsigned j = 0; j < MIR_VEC_COMPONENTS; ++j)
-            ins.swizzle[0][j] =
-               swizzle_back[i]; /* Pull from the correct component */
-
-         ins_split[ins_count] = ins;
-
-         ++ins_count;
-      }
-
-      for (unsigned i = 0; i < ins_count; ++i) {
-         emit_mir_instruction(ctx, ins_split[i]);
-      }
-   } else {
-      emit_mir_instruction(ctx, ins);
-   }
+   emit_mir_instruction(ctx, ins);
 }
 
 #undef ALU_CASE
