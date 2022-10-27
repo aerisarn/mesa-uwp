@@ -90,6 +90,11 @@ static const struct {
       true,
       INTEL_DS_QUEUE_STAGE_DRAW,
    },
+   {
+      "draw_mesh",
+      true,
+      INTEL_DS_QUEUE_STAGE_DRAW_MESH,
+   },
 };
 
 struct IntelRenderpassIncrementalState {
