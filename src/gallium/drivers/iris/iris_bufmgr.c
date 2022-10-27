@@ -2231,9 +2231,9 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
       }
 
       ctx_id = create.ctx_id;
+      iris_hw_context_set_unrecoverable(bufmgr, ctx_id);
    }
 
-   iris_hw_context_set_unrecoverable(bufmgr, ctx_id);
    iris_hw_context_set_vm_id(bufmgr, ctx_id);
 
    return ctx_id;
