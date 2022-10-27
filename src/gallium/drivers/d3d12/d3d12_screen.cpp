@@ -335,6 +335,11 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       /* This is asking about varyings, not total registers, so remove the 2 tess factor registers. */
       return D3D12_HS_OUTPUT_PATCH_CONSTANT_REGISTER_COUNT - 2;
 
+   case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
+      /* Picking a value in line with other drivers. Without this, we can end up easily hitting OOM
+       * if an app just creates, initializes, and destroys resources without explicitly flushing. */
+      return 64 * 1024 * 1024;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
