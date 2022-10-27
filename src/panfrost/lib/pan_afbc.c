@@ -74,6 +74,13 @@
 enum pipe_format
 panfrost_afbc_format(unsigned arch, enum pipe_format format)
 {
+        /* sRGB does not change the pixel format itself, only the
+         * interpretation. The interpretation is handled by conversion hardware
+         * independent to the compression hardware, so we can compress sRGB
+         * formats by using the corresponding linear format.
+         */
+        format = util_format_linear(format);
+
         /* Don't allow swizzled formats on v7 */
         switch (format) {
         case PIPE_FORMAT_B8G8R8A8_UNORM:
