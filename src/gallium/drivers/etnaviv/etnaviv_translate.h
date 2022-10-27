@@ -35,6 +35,7 @@
 #include "hw/common_3d.xml.h"
 #include "hw/state.xml.h"
 #include "hw/state_3d.xml.h"
+#include "hw/state_blt.xml.h"
 
 #include "util/format/u_format.h"
 #include "util/u_math.h"
@@ -295,6 +296,38 @@ translate_rs_format(enum pipe_format fmt)
    case PIPE_FORMAT_B8G8R8A8_SRGB:
    case PIPE_FORMAT_R8G8B8A8_UNORM:
       return RS_FORMAT_A8R8G8B8;
+   default:
+      return ETNA_NO_MATCH;
+   }
+}
+
+/* formats directly supported in the BLT engine */
+static inline uint32_t
+translate_blt_format(enum pipe_format fmt)
+{
+   /* Note: Pipe format convention is LSB to MSB, VIVS is MSB to LSB */
+   switch (fmt) {
+   case PIPE_FORMAT_B4G4R4X4_UNORM:
+      return BLT_FORMAT_X4R4G4B4;
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+      return BLT_FORMAT_A4R4G4B4;
+   case PIPE_FORMAT_B5G5R5X1_UNORM:
+      return BLT_FORMAT_X1R5G5B5;
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+      return BLT_FORMAT_A1R5G5B5;
+   case PIPE_FORMAT_B5G6R5_UNORM:
+      return BLT_FORMAT_R5G6B5;
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
+      return BLT_FORMAT_X8R8G8B8;
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8A8_SRGB:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+      return BLT_FORMAT_A8R8G8B8;
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_R10G10B10X2_UNORM:
+      return BLT_FORMAT_A2R10G10B10;
    default:
       return ETNA_NO_MATCH;
    }
