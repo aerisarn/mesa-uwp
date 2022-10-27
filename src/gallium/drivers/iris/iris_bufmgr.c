@@ -2216,36 +2216,12 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
    uint32_t ctx_id;
 
    if (protected) {
-      struct drm_i915_gem_context_create_ext_setparam recoverable_param = {
-         .param = {
-            .param = I915_CONTEXT_PARAM_RECOVERABLE,
-            .value = false,
-         },
-      };
-      struct drm_i915_gem_context_create_ext_setparam protected_param = {
-         .param = {
-            .param = I915_CONTEXT_PARAM_PROTECTED_CONTENT,
-            .value = true,
-         },
-      };
-      struct drm_i915_gem_context_create_ext create = {
-         .flags = I915_CONTEXT_CREATE_FLAGS_USE_EXTENSIONS,
-      };
-
-      intel_gem_add_ext(&create.extensions,
-                        I915_CONTEXT_CREATE_EXT_SETPARAM,
-                        &recoverable_param.base);
-      intel_gem_add_ext(&create.extensions,
-                        I915_CONTEXT_CREATE_EXT_SETPARAM,
-                        &protected_param.base);
-
-      int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create);
-      if (ret == -1) {
+      if (!intel_gem_create_context_ext(bufmgr->fd,
+                                        INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG,
+                                        &ctx_id)) {
          DBG("DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT failed: %s\n", strerror(errno));
          return 0;
       }
-
-      ctx_id = create.ctx_id;
    } else {
       struct drm_i915_gem_context_create create = { };
       int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);

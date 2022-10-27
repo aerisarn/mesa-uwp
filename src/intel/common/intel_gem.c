@@ -155,18 +155,19 @@ bool intel_gem_read_render_timestamp(int fd, uint64_t *value)
 }
 
 bool
-intel_gem_supports_protected_context(int fd)
+intel_gem_create_context_ext(int fd, enum intel_gem_create_context_flags flags,
+                             uint32_t *ctx_id)
 {
    struct drm_i915_gem_context_create_ext_setparam recoverable_param = {
       .param = {
          .param = I915_CONTEXT_PARAM_RECOVERABLE,
-         .value = false,
+         .value = flags & INTEL_GEM_CREATE_CONTEXT_EXT_RECOVERABLE_FLAG,
       },
    };
    struct drm_i915_gem_context_create_ext_setparam protected_param = {
       .param = {
          .param = I915_CONTEXT_PARAM_PROTECTED_CONTENT,
-         .value = true,
+         .value = flags & INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG,
       },
    };
    struct drm_i915_gem_context_create_ext create = {
@@ -180,14 +181,27 @@ intel_gem_supports_protected_context(int fd)
                      I915_CONTEXT_CREATE_EXT_SETPARAM,
                      &protected_param.base);
 
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create);
-   if (ret == -1)
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT, &create))
       return false;
 
+   *ctx_id = create.ctx_id;
+   return true;
+}
+
+bool
+intel_gem_supports_protected_context(int fd)
+{
+   uint32_t ctx_id;
+   bool ret = intel_gem_create_context_ext(fd,
+                                           INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG,
+                                           &ctx_id);
+   if (!ret)
+      return ret;
+
    struct drm_i915_gem_context_destroy destroy = {
-      .ctx_id = create.ctx_id,
+      .ctx_id = ctx_id,
    };
    intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &destroy);
 
-   return ret == 0;
+   return ret;
 }

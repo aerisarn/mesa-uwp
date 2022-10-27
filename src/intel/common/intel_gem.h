@@ -39,6 +39,7 @@ extern "C" {
 #include <sys/ioctl.h>
 
 #include "intel_engine.h"
+#include "util/macros.h"
 
 static inline uint64_t
 intel_canonical_address(uint64_t v)
@@ -168,6 +169,12 @@ bool intel_gem_read_render_timestamp(int fd, uint64_t *value);
 }
 #endif
 
+enum intel_gem_create_context_flags {
+   INTEL_GEM_CREATE_CONTEXT_EXT_RECOVERABLE_FLAG = BITFIELD_BIT(0),
+   INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG   = BITFIELD_BIT(1),
+};
+bool intel_gem_create_context_ext(int fd, enum intel_gem_create_context_flags flags,
+                                  uint32_t *ctx_id);
 bool intel_gem_supports_protected_context(int fd);
 
 static inline void
