@@ -146,6 +146,7 @@ main()
 
             if (valid_grandchild_count > 0)
                children[collapsed_child_index] = grandchildren[0];
+
             if (in_final_tree == FINAL_TREE_PRESENT)
                DEREF(child_node).in_final_tree = FINAL_TREE_NOT_PRESENT;
          } else

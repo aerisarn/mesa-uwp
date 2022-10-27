@@ -33,6 +33,9 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_KHR_shader_subgroup_vote : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_ballot : require
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
@@ -299,6 +302,10 @@ main(void)
    }
 
    DEREF(id_ptr).id = is_active ? pack_ir_node_id(dst_offset, node_type) : RADV_BVH_INVALID_NODE;
+
+   uvec4 ballot = subgroupBallot(is_active);
+   if (subgroupElect())
+      atomicAdd(DEREF(args.header).active_leaf_count, subgroupBallotBitCount(ballot));
 
    atomicMin(DEREF(args.header).min_bounds[0], to_emulated_float(bounds.min.x));
    atomicMin(DEREF(args.header).min_bounds[1], to_emulated_float(bounds.min.y));
