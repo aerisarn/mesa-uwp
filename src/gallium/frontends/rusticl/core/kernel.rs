@@ -486,7 +486,13 @@ fn lower_and_optimize_nir_late(
         );
     }
 
+    // run before gather info
+    nir.pass0(nir_lower_system_values);
+    let mut compute_options = nir_lower_compute_system_values_options::default();
+    compute_options.set_has_base_global_invocation_id(true);
+    nir.pass1(nir_lower_compute_system_values, &compute_options);
     nir.pass1(nir_shader_gather_info, nir.entrypoint());
+
     if nir.num_images() > 0 {
         res.push(InternalKernelArg {
             kind: InternalKernelArgType::FormatArray,
@@ -539,10 +545,6 @@ fn lower_and_optimize_nir_late(
         nir_variable_mode::nir_var_mem_global | nir_variable_mode::nir_var_mem_constant,
         global_address_format,
     );
-    nir.pass0(nir_lower_system_values);
-    let mut compute_options = nir_lower_compute_system_values_options::default();
-    compute_options.set_has_base_global_invocation_id(true);
-    nir.pass1(nir_lower_compute_system_values, &compute_options);
 
     nir.pass1(rusticl_lower_intrinsics, &mut lower_state);
     nir.pass2(
