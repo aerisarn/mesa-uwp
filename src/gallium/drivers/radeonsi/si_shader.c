@@ -1836,6 +1836,10 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
 
    bool opt_offsets = si_lower_io_to_mem(shader, nir, tcs_vgpr_only_inputs);
 
+   /* Assign param export indices. */
+   if (is_last_vgt_stage)
+      si_assign_param_offsets(nir, shader);
+
    if (progress2 || opt_offsets)
       si_nir_opts(sel->screen, nir, false);
 
@@ -1881,14 +1885,6 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    struct si_shader_selector *sel = shader->selector;
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(shader, &free_nir, 0);
-
-   /* Assign param export indices. */
-   if ((sel->stage == MESA_SHADER_VERTEX ||
-        sel->stage == MESA_SHADER_TESS_EVAL ||
-        (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)) &&
-       !shader->key.ge.as_ls && !shader->key.ge.as_es) {
-      si_assign_param_offsets(nir, shader);
-   }
 
    struct pipe_stream_output_info so = {};
    if (si_shader_uses_streamout(shader))
