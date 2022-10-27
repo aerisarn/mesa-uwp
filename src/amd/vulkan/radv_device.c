@@ -611,7 +611,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_shader_viewport_index_layer = true,
       .EXT_subgroup_size_control = true,
       .EXT_texel_buffer_alignment = true,
-      .EXT_transform_feedback = device->rad_info.gfx_level < GFX11,
+      .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = !device->use_llvm &&
                                         !radv_NV_device_generated_commands_enabled(device),
@@ -872,7 +872,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
                              !(device->instance->debug_flags & RADV_DEBUG_NO_NGGC);
 
    device->use_ngg_streamout = device->use_ngg &&
-                               (device->instance->perftest_flags & RADV_PERFTEST_NGG_STREAMOUT);
+                               (device->rad_info.gfx_level >= GFX11 ||
+                                (device->instance->perftest_flags & RADV_PERFTEST_NGG_STREAMOUT));
 
    /* Determine the number of threads per wave for all stages. */
    device->cs_wave_size = 64;
@@ -1477,8 +1478,8 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
          VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
             (VkPhysicalDeviceTransformFeedbackFeaturesEXT *)ext;
-         features->transformFeedback = pdevice->rad_info.gfx_level < GFX11;
-         features->geometryStreams = pdevice->rad_info.gfx_level < GFX11;
+         features->transformFeedback = true;
+         features->geometryStreams = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
