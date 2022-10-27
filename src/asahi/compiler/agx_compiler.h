@@ -779,12 +779,8 @@ struct agx_copy {
    /* Base register destination of the copy */
    unsigned dest;
 
-   /* Base register source (or uniform base) of the copy */
-   unsigned src;
-   bool is_uniform;
-
-   /* Size of the copy */
-   enum agx_size size;
+   /* Source of the copy */
+   agx_index src;
 
    /* Whether the copy has been handled. Callers must leave to false. */
    bool done;
