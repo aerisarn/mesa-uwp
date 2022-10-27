@@ -1729,6 +1729,9 @@ struct v3dv_descriptor_pool_entry
 struct v3dv_descriptor_pool {
    struct vk_object_base base;
 
+   /* A list with all descriptor sets allocated from the pool. */
+   struct list_head set_list;
+
    /* If this descriptor pool has been allocated for the driver for internal
     * use, typically to implement meta operations.
     */
@@ -1757,6 +1760,9 @@ struct v3dv_descriptor_pool {
 
 struct v3dv_descriptor_set {
    struct vk_object_base base;
+
+   /* List link into the list of all sets allocated from the pool */
+   struct list_head pool_link;
 
    struct v3dv_descriptor_pool *pool;
 
