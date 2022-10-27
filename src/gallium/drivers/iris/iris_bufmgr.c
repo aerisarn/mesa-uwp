@@ -2231,7 +2231,9 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
             .value = true,
          },
       };
-      struct drm_i915_gem_context_create_ext create = { 0 };
+      struct drm_i915_gem_context_create_ext create = {
+         .flags = I915_CONTEXT_CREATE_FLAGS_USE_EXTENSIONS,
+      };
 
       intel_gem_add_ext(&create.extensions,
                         I915_CONTEXT_CREATE_EXT_SETPARAM,
