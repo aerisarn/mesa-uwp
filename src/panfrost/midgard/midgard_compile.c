@@ -52,7 +52,6 @@
 #include "disassemble.h"
 
 static const struct debug_named_value midgard_debug_options[] = {
-   {"msgs", MIDGARD_DBG_MSGS, "Print debug messages"},
    {"shaders", MIDGARD_DBG_SHADERS, "Dump shaders in NIR and MIR"},
    {"shaderdb", MIDGARD_DBG_SHADERDB, "Prints shader-db statistics"},
    {"inorder", MIDGARD_DBG_INORDER, "Disables out-of-order scheduling"},
@@ -65,11 +64,6 @@ DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG",
 
 int midgard_debug = 0;
 
-#define DBG(fmt, ...)                                                          \
-   do {                                                                        \
-      if (midgard_debug & MIDGARD_DBG_MSGS)                                    \
-         fprintf(stderr, "%s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__);    \
-   } while (0)
 static midgard_block *
 create_empty_block(compiler_context *ctx)
 {
@@ -1841,8 +1835,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       } else if (ctx->stage == MESA_SHADER_VERTEX) {
          emit_attr_read(ctx, reg, offset, nr_comp, t);
       } else {
-         DBG("Unknown load\n");
-         assert(0);
+         unreachable("Unknown load");
       }
 
       break;
@@ -2031,8 +2024,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
          emit_mir_instruction(ctx, st);
       } else {
-         DBG("Unknown store\n");
-         assert(0);
+         unreachable("Unknown store");
       }
 
       break;
@@ -2188,9 +2180,7 @@ midgard_tex_format(enum glsl_sampler_dim dim)
       return 0;
 
    default:
-      DBG("Unknown sampler dim type\n");
-      assert(0);
-      return 0;
+      unreachable("Unknown sampler dim type");
    }
 }
 
@@ -2551,8 +2541,7 @@ emit_instr(compiler_context *ctx, struct nir_instr *instr)
       break;
 
    default:
-      DBG("Unhandled instruction type\n");
-      break;
+      unreachable("Unhandled instruction type");
    }
 }
 
