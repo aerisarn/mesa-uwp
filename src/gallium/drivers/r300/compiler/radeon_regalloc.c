@@ -33,134 +33,134 @@
 
 #define DBG(...) do { if (VERBOSE) fprintf(stderr, __VA_ARGS__); } while(0)
 
-const struct rc_class rc_class_list [] = {
-	{RC_REG_CLASS_SINGLE, 3,
+const struct rc_class rc_class_list_fp [] = {
+	{RC_REG_CLASS_FP_SINGLE, 3,
 		{RC_MASK_X,
 		 RC_MASK_Y,
 		 RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_DOUBLE, 3,
+	{RC_REG_CLASS_FP_DOUBLE, 3,
 		{RC_MASK_X | RC_MASK_Y,
 		 RC_MASK_X | RC_MASK_Z,
 		 RC_MASK_Y | RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_TRIPLE, 1,
+	{RC_REG_CLASS_FP_TRIPLE, 1,
 		{RC_MASK_X | RC_MASK_Y | RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_ALPHA, 1,
+	{RC_REG_CLASS_FP_ALPHA, 1,
 		{RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_SINGLE_PLUS_ALPHA, 3,
+	{RC_REG_CLASS_FP_SINGLE_PLUS_ALPHA, 3,
 		{RC_MASK_X | RC_MASK_W,
 		 RC_MASK_Y | RC_MASK_W,
 		 RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_DOUBLE_PLUS_ALPHA, 3,
+	{RC_REG_CLASS_FP_DOUBLE_PLUS_ALPHA, 3,
 		{RC_MASK_X | RC_MASK_Y | RC_MASK_W,
 		 RC_MASK_X | RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_Y | RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_TRIPLE_PLUS_ALPHA, 1,
+	{RC_REG_CLASS_FP_TRIPLE_PLUS_ALPHA, 1,
 		{RC_MASK_X | RC_MASK_Y | RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_X, 1,
+	{RC_REG_CLASS_FP_X, 1,
 		{RC_MASK_X,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_Y, 1,
+	{RC_REG_CLASS_FP_Y, 1,
 		{RC_MASK_Y,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_Z, 1,
+	{RC_REG_CLASS_FP_Z, 1,
 		{RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_XY, 1,
+	{RC_REG_CLASS_FP_XY, 1,
 		{RC_MASK_X | RC_MASK_Y,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_YZ, 1,
+	{RC_REG_CLASS_FP_YZ, 1,
 		{RC_MASK_Y | RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_XZ, 1,
+	{RC_REG_CLASS_FP_XZ, 1,
 		{RC_MASK_X | RC_MASK_Z,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_XW, 1,
+	{RC_REG_CLASS_FP_XW, 1,
 		{RC_MASK_X | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_YW, 1,
+	{RC_REG_CLASS_FP_YW, 1,
 		{RC_MASK_Y | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_ZW, 1,
+	{RC_REG_CLASS_FP_ZW, 1,
 		{RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_XYW, 1,
+	{RC_REG_CLASS_FP_XYW, 1,
 		{RC_MASK_X | RC_MASK_Y | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_YZW, 1,
+	{RC_REG_CLASS_FP_YZW, 1,
 		{RC_MASK_Y | RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE}},
-	{RC_REG_CLASS_XZW, 1,
+	{RC_REG_CLASS_FP_XZW, 1,
 		{RC_MASK_X | RC_MASK_Z | RC_MASK_W,
 		 RC_MASK_NONE,
 		 RC_MASK_NONE,
@@ -222,7 +222,7 @@ int rc_find_class(
 	unsigned int max_writemask_count)
 {
 	unsigned int i;
-	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
+	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
 		unsigned int j;
 		if (classes[i].WritemaskCount > max_writemask_count) {
 			continue;
@@ -325,24 +325,24 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	 *
 	 * For example:
 	 * q_values[0][2] is 3, because a register from class 2
-	 * (RC_REG_CLASS_TRIPLE) may conflict with at most 3 registers from
-	 * class 0 (RC_REG_CLASS_SINGLE) e.g. T0.xyz conflicts with T0.x, T0.y,
+	 * (RC_REG_CLASS_FP_TRIPLE) may conflict with at most 3 registers from
+	 * class 0 (RC_REG_CLASS_FP_SINGLE) e.g. T0.xyz conflicts with T0.x, T0.y,
 	 * and T0.z.
 	 *
 	 * q_values[2][0] is 1, because a register from class 0
-	 * (RC_REG_CLASS_SINGLE) may conflict with at most 1 register from
-	 * class 2 (RC_REG_CLASS_TRIPLE) e.g. T0.x conflicts with T0.xyz
+	 * (RC_REG_CLASS_FP_SINGLE) may conflict with at most 1 register from
+	 * class 2 (RC_REG_CLASS_FP_TRIPLE) e.g. T0.x conflicts with T0.xyz
 	 *
 	 * The q values for each register class [row] will never be greater
 	 * than the maximum number of writemask combinations for that class.
 	 *
 	 * For example:
 	 *
-	 * Class 2 (RC_REG_CLASS_TRIPLE) only has 1 writemask combination,
-	 * so no value in q_values[2][0..RC_REG_CLASS_COUNT] will be greater
+	 * Class 2 (RC_REG_CLASS_FP_TRIPLE) only has 1 writemask combination,
+	 * so no value in q_values[2][0..RC_REG_CLASS_FP_COUNT] will be greater
 	 * than 1.
 	 */
-	const unsigned q_values[RC_REG_CLASS_COUNT][RC_REG_CLASS_COUNT] = {
+	const unsigned q_values[RC_REG_CLASS_FP_COUNT][RC_REG_CLASS_FP_COUNT] = {
 	{1, 2, 3, 0, 1, 2, 3, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2},
 	{2, 3, 3, 0, 2, 3, 3, 2, 2, 2, 3, 3, 3, 2, 2, 2, 3, 3, 3},
 	{1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -368,11 +368,11 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	s->regs = ra_alloc_reg_set(NULL, R500_PFS_NUM_TEMP_REGS * RC_MASK_XYZW,
                                    true);
 
-	s->class_list = rc_class_list;
+	s->class_list = rc_class_list_fp;
 
 	/* Create the register classes */
-	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
-		const struct rc_class *class = &rc_class_list[i];
+	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
+		const struct rc_class *class = &rc_class_list_fp[i];
 		s->classes[class->ID] = ra_alloc_reg_class(s->regs);
 
 		/* Assign registers to the classes */
@@ -386,15 +386,15 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	}
 
 	/* Set the q values.  The q_values array is indexed based on
-	 * the rc_reg_class ID (RC_REG_CLASS_*) which might be
+	 * the rc_reg_class ID (RC_REG_CLASS_FP_*) which might be
 	 * different than the ID assigned to that class by ra.
 	 * This why we need to manually construct this list.
 	 */
-	ra_q_values = MALLOC(RC_REG_CLASS_COUNT * sizeof(unsigned *));
+	ra_q_values = MALLOC(RC_REG_CLASS_FP_COUNT * sizeof(unsigned *));
 
-	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
-		ra_q_values[i] = MALLOC(RC_REG_CLASS_COUNT * sizeof(unsigned));
-		for (j = 0; j < RC_REG_CLASS_COUNT; j++) {
+	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
+		ra_q_values[i] = MALLOC(RC_REG_CLASS_FP_COUNT * sizeof(unsigned));
+		for (j = 0; j < RC_REG_CLASS_FP_COUNT; j++) {
 			ra_q_values[i][j] = q_values[i][j];
 		}
 	}
@@ -404,7 +404,7 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 
 	ra_set_finalize(s->regs, ra_q_values);
 
-	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
+	for (i = 0; i < RC_REG_CLASS_FP_COUNT; i++) {
 		FREE(ra_q_values[i]);
 	}
 	FREE(ra_q_values);
