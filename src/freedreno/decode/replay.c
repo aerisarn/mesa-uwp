@@ -31,6 +31,7 @@
 #include "cffdec.h"
 #include "io.h"
 #include "redump.h"
+#include "rdutil.h"
 
 /**
  * Replay command stream obtained from:
@@ -115,15 +116,6 @@ main(int argc, char **argv)
       print_usage(argv[0]);
 
    return ret;
-}
-
-static void
-parse_addr(uint32_t *buf, int sz, unsigned int *len, uint64_t *gpuaddr)
-{
-   *gpuaddr = buf[0];
-   *len = buf[1];
-   if (sz > 8)
-      *gpuaddr |= ((uint64_t)(buf[2])) << 32;
 }
 
 struct buffer {
@@ -431,13 +423,11 @@ upload_buffer(struct device *dev, uint64_t iova, unsigned int size,
 static int
 handle_file(const char *filename)
 {
-   enum rd_sect_type type = RD_NONE;
-   void *buf = NULL;
    struct io *io;
    int submit = 0;
-   int sz, ret = 0;
    bool skip = false;
    bool need_submit = false;
+   struct rd_parsed_section ps = {0};
 
    printf("Reading %s...\n", filename);
 
@@ -458,36 +448,8 @@ handle_file(const char *filename)
       uint64_t gpuaddr;
    } gpuaddr = {0};
 
-   while (true) {
-      uint32_t arr[2];
-
-      ret = io_readn(io, arr, 8);
-      if (ret <= 0)
-         goto end;
-
-      while ((arr[0] == 0xffffffff) && (arr[1] == 0xffffffff)) {
-         ret = io_readn(io, arr, 8);
-         if (ret <= 0)
-            goto end;
-      }
-
-      type = arr[0];
-      sz = arr[1];
-
-      if (sz < 0) {
-         ret = -1;
-         goto end;
-      }
-
-      free(buf);
-
-      buf = malloc(sz + 1);
-      ((char *)buf)[sz] = '\0';
-      ret = io_readn(io, buf, sz);
-      if (ret < 0)
-         goto end;
-
-      switch (type) {
+   while (parse_rd_section(io, &ps)) {
+      switch (ps.type) {
       case RD_TEST:
       case RD_VERT_SHADER:
       case RD_FRAG_SHADER:
@@ -496,12 +458,12 @@ handle_file(const char *filename)
       case RD_CMD:
          skip = false;
          if (exename) {
-            skip |= (strstr(buf, exename) != buf);
+            skip |= (strstr(ps.buf, exename) != ps.buf);
          } else {
-            skip |= (strstr(buf, "fdperf") == buf);
-            skip |= (strstr(buf, "chrome") == buf);
-            skip |= (strstr(buf, "surfaceflinger") == buf);
-            skip |= ((char *)buf)[0] == 'X';
+            skip |= (strstr(ps.buf, "fdperf") == ps.buf);
+            skip |= (strstr(ps.buf, "chrome") == ps.buf);
+            skip |= (strstr(ps.buf, "surfaceflinger") == ps.buf);
+            skip |= ((char *)ps.buf)[0] == 'X';
          }
          break;
 
@@ -511,17 +473,16 @@ handle_file(const char *filename)
             device_submit_cmdstreams(dev);
          }
 
-         parse_addr(buf, sz, &gpuaddr.len, &gpuaddr.gpuaddr);
+         parse_addr(ps.buf, ps.sz, &gpuaddr.len, &gpuaddr.gpuaddr);
          /* no-op */
          break;
       case RD_BUFFER_CONTENTS:
-         upload_buffer(dev, gpuaddr.gpuaddr, gpuaddr.len, buf);
-         buf = NULL;
+         upload_buffer(dev, gpuaddr.gpuaddr, gpuaddr.len, ps.buf);
          break;
       case RD_CMDSTREAM_ADDR: {
          unsigned int sizedwords;
          uint64_t gpuaddr;
-         parse_addr(buf, sz, &sizedwords, &gpuaddr);
+         parse_addr(ps.buf, ps.sz, &sizedwords, &gpuaddr);
          printf("cmdstream %d: %d dwords\n", submit, sizedwords);
 
          if (!skip) {
@@ -535,17 +496,13 @@ handle_file(const char *filename)
          break;
       }
       case RD_GPU_ID: {
-         uint32_t gpu_id = *((unsigned int *)buf);
-         if (!gpu_id)
-            break;
-         printf("gpuid: %d\n", gpu_id);
+         uint32_t gpu_id = parse_gpu_id(ps.buf);
+         if (gpu_id)
+            printf("gpuid: %d\n", gpu_id);
          break;
       }
       case RD_CHIP_ID: {
-         uint64_t chip_id = *((uint64_t *)buf);
-         uint32_t gpu_id = 100 * ((chip_id >> 24) & 0xff) +
-                           10 * ((chip_id >> 16) & 0xff) +
-                           ((chip_id >> 8) & 0xff);
+         uint32_t gpu_id = parse_chip_id(ps.buf);
          printf("gpuid: %d\n", gpu_id);
          break;
       }
@@ -554,7 +511,6 @@ handle_file(const char *filename)
       }
    }
 
-end:
    if (need_submit)
       device_submit_cmdstreams(dev);
 
@@ -563,7 +519,7 @@ end:
    io_close(io);
    fflush(stdout);
 
-   if (ret < 0) {
+   if (ps.ret < 0) {
       printf("corrupt file\n");
    }
    return 0;
