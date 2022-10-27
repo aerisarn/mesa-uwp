@@ -216,6 +216,10 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    struct etna_context *ctx = etna_context(pctx);
    struct etna_surface *surf = etna_surface(dst);
    uint64_t new_clear_value = etna_clear_blit_pack_rgba(surf->base.format, color);
+   int msaa_xscale = 1, msaa_yscale = 1;
+
+   translate_samples_to_xyscale(surf->base.texture->nr_samples,
+                                &msaa_xscale, &msaa_yscale);
 
    struct etna_resource *res = etna_resource(surf->base.texture);
    struct blt_clear_op clr = {};
@@ -243,8 +247,8 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    clr.clear_bits[1] = 0xffffffff;
    clr.rect_x = 0; /* What about scissors? */
    clr.rect_y = 0;
-   clr.rect_w = surf->surf.width;
-   clr.rect_h = surf->surf.height;
+   clr.rect_w = surf->surf.width * msaa_xscale;
+   clr.rect_h = surf->surf.height * msaa_yscale;
 
    emit_blt_clearimage(ctx->stream, &clr);
 
@@ -269,6 +273,10 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    struct etna_surface *surf = etna_surface(dst);
    uint32_t new_clear_value = translate_clear_depth_stencil(surf->base.format, depth, stencil);
    uint32_t new_clear_bits = 0, clear_bits_depth, clear_bits_stencil;
+   int msaa_xscale = 1, msaa_yscale = 1;
+
+   translate_samples_to_xyscale(surf->base.texture->nr_samples,
+                                &msaa_xscale, &msaa_yscale);
 
    /* Get the channels to clear */
    switch (surf->base.format) {
@@ -322,8 +330,8 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    clr.clear_bits[1] = new_clear_bits;
    clr.rect_x = 0; /* What about scissors? */
    clr.rect_y = 0;
-   clr.rect_w = surf->surf.width;
-   clr.rect_h = surf->surf.height;
+   clr.rect_w = surf->surf.width * msaa_xscale;
+   clr.rect_h = surf->surf.height * msaa_yscale;
 
    emit_blt_clearimage(ctx->stream, &clr);
 
@@ -495,19 +503,25 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.rect_w = blit_info->dst.box.width;
       op.rect_h = blit_info->dst.box.height;
 
+      assert(op.dest_x < dst_lev->padded_width);
+      assert(op.dest_y < dst_lev->padded_height);
+      assert((op.dest_x + op.rect_w) <= dst_lev->padded_width);
+      assert((op.dest_y + op.rect_h) <= dst_lev->padded_height);
+
       if (blit_info->src.box.height < 0) { /* flipped? fix up base y */
          op.flip_y = 1;
          op.src_y += blit_info->src.box.height;
       }
 
+      op.src_x *= msaa_xscale;
+      op.src_y *= msaa_yscale;
+      op.rect_w *= msaa_xscale;
+      op.rect_h *= msaa_yscale;
+
       assert(op.src_x < src_lev->padded_width);
       assert(op.src_y < src_lev->padded_height);
       assert((op.src_x + op.rect_w) <= src_lev->padded_width);
       assert((op.src_y + op.rect_h) <= src_lev->padded_height);
-      assert(op.dest_x < dst_lev->padded_width);
-      assert(op.dest_y < dst_lev->padded_height);
-      assert((op.dest_x + op.rect_w) <= dst_lev->padded_width);
-      assert((op.dest_y + op.rect_h) <= dst_lev->padded_height);
 
       etna_set_state(ctx->stream, VIVS_GL_FLUSH_CACHE, 0x00000c23);
       etna_set_state(ctx->stream, VIVS_TS_FLUSH_CACHE, 0x00000001);
