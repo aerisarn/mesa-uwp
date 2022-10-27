@@ -1767,8 +1767,8 @@ ngg_build_streamout_buffer_info(nir_builder *b,
 
 static void
 ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
-                           unsigned stream, int *slot_to_register,
-                           nir_ssa_def *so_buffer[4], nir_ssa_def *buffer_offsets[4],
+                           unsigned stream, nir_ssa_def *so_buffer[4],
+                           nir_ssa_def *buffer_offsets[4],
                            nir_ssa_def *vtx_buffer_idx, nir_ssa_def *vtx_lds_addr)
 {
    nir_ssa_def *vtx_buffer_offsets[4];
@@ -1785,7 +1785,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
       if (!out->component_mask || info->buffer_to_stream[out->buffer] != stream)
          continue;
 
-      unsigned base = slot_to_register[out->location];
+      unsigned base = util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(out->location));
       unsigned offset = (base * 4 + out->component_offset) * 4;
       unsigned count = util_bitcount(out->component_mask);
       /* component_mask is constructed like this, see nir_gather_xfb_info_from_intrinsics() */
@@ -1806,8 +1806,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
 static void
 ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
 {
-   int slot_to_register[NUM_TOTAL_VARYING_SLOTS];
-   nir_xfb_info *info = nir_gather_xfb_info_from_intrinsics(b->shader, slot_to_register);
+   nir_xfb_info *info = nir_gather_xfb_info_from_intrinsics(b->shader, NULL);
    if (unlikely(!info)) {
       s->streamout_enabled = false;
       return;
@@ -1842,8 +1841,7 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
          {
             nir_ssa_def *vtx_lds_idx = nir_load_var(b, s->gs_vtx_indices_vars[i]);
             nir_ssa_def *vtx_lds_addr = pervertex_lds_addr(b, vtx_lds_idx, vtx_lds_stride);
-            ngg_build_streamout_vertex(b, info, 0, slot_to_register,
-                                       so_buffer, buffer_offsets,
+            ngg_build_streamout_vertex(b, info, 0, so_buffer, buffer_offsets,
                                        nir_iadd_imm(b, vtx_buffer_idx, i),
                                        vtx_lds_addr);
          }
@@ -2820,14 +2818,6 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
                                    st->lds_addr_gs_scratch, tid_in_tg, gen_prim,
                                    prim_stride, so_buffer, buffer_offsets, emit_prim);
 
-   /* GS use packed location for vertex LDS storage. */
-   int slot_to_register[NUM_TOTAL_VARYING_SLOTS];
-   for (int i = 0; i < info->output_count; i++) {
-      unsigned location = info->outputs[i].location;
-      slot_to_register[location] =
-         util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(location));
-   }
-
    for (unsigned stream = 0; stream < 4; stream++) {
       if (!(info->streams_written & BITFIELD_BIT(stream)))
          continue;
@@ -2847,8 +2837,8 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
 
          /* Write all vertices of this primitive to streamout buffer. */
          for (unsigned i = 0; i < st->num_vertices_per_primitive; i++) {
-            ngg_build_streamout_vertex(b, info, stream, slot_to_register,
-                                       so_buffer, buffer_offsets,
+            ngg_build_streamout_vertex(b, info, stream, so_buffer,
+                                       buffer_offsets,
                                        nir_iadd_imm(b, vtx_buffer_idx, i),
                                        exported_vtx_lds_addr[i]);
          }
