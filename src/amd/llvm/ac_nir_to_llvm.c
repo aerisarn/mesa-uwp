@@ -3644,6 +3644,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_streamout_buffer_amd:
       result = ctx->abi->load_streamout_buffer(ctx->abi, nir_intrinsic_base(instr));
       break;
+   case nir_intrinsic_load_merged_wave_info_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->merged_wave_info);
+      break;
+   case nir_intrinsic_load_ring_attr_offset_amd: {
+      LLVMValueRef offset = ac_get_arg(&ctx->ac, ctx->args->gs_attr_offset);
+      offset = ac_unpack_param(&ctx->ac, offset, 0, 15);
+      result = LLVMBuildShl(ctx->ac.builder, offset, LLVMConstInt(ctx->ac.i32, 9, false), "");
+      break;
+   }
    case nir_intrinsic_load_ordered_id_amd:
       result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 0, 12);
       break;
