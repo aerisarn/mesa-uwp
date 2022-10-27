@@ -1238,6 +1238,80 @@ lower_fbfetch(nir_shader *shader, nir_variable **fbfetch, bool ms)
    return nir_shader_instructions_pass(shader, lower_fbfetch_instr, nir_metadata_dominance, (void*)ms);
 }
 
+/*
+ * Add a check for out of bounds LOD for every texel fetch op
+ * It boils down to:
+ * - if (lod < query_levels(tex))
+ * -    res = txf(tex)
+ * - else
+ * -    res = (0, 0, 0, 1)
+ */
+static bool
+lower_txf_lod_robustness_instr(nir_builder *b, nir_instr *in, void *data)
+{
+   if (in->type != nir_instr_type_tex)
+      return false;
+   nir_tex_instr *txf = nir_instr_as_tex(in);
+   if (txf->op != nir_texop_txf)
+      return false;
+
+   b->cursor = nir_before_instr(in);
+   int lod_idx = nir_tex_instr_src_index(txf, nir_tex_src_lod);
+   assert(lod_idx >= 0);
+   nir_src lod_src = txf->src[lod_idx].src;
+   if (nir_src_is_const(lod_src) && nir_src_as_const_value(lod_src)->u32 == 0)
+      return false;
+
+   assert(lod_src.is_ssa);
+   nir_ssa_def *lod = lod_src.ssa;
+
+   int offset_idx = nir_tex_instr_src_index(txf, nir_tex_src_texture_offset);
+   int handle_idx = nir_tex_instr_src_index(txf, nir_tex_src_texture_handle);
+   nir_tex_instr *levels = nir_tex_instr_create(b->shader,
+                                                !!(offset_idx >= 0) + !!(handle_idx >= 0));
+   levels->op = nir_texop_query_levels;
+   levels->texture_index = txf->texture_index;
+   levels->dest_type = nir_type_int | lod->bit_size;
+   if (offset_idx >= 0) {
+      levels->src[0].src_type = nir_tex_src_texture_offset;
+      nir_src_copy(&levels->src[0].src, &txf->src[offset_idx].src, &levels->instr);
+   }
+   if (handle_idx >= 0) {
+      levels->src[!!(offset_idx >= 0)].src_type = nir_tex_src_texture_handle;
+      nir_src_copy(&levels->src[!!(offset_idx >= 0)].src, &txf->src[handle_idx].src, &levels->instr);
+   }
+   nir_ssa_dest_init(&levels->instr, &levels->dest,
+                     nir_tex_instr_dest_size(levels), 32, NULL);
+   nir_builder_instr_insert(b, &levels->instr);
+
+   nir_if *lod_oob_if = nir_push_if(b, nir_ilt(b, lod, &levels->dest.ssa));
+   nir_tex_instr *new_txf = nir_instr_as_tex(nir_instr_clone(b->shader, in));
+   nir_builder_instr_insert(b, &new_txf->instr);
+
+   nir_if *lod_oob_else = nir_push_else(b, lod_oob_if);
+   nir_const_value oob_values[4] = {0};
+   unsigned bit_size = nir_alu_type_get_type_size(txf->dest_type);
+   oob_values[3] = (txf->dest_type & nir_type_float) ?
+                   nir_const_value_for_float(1.0, bit_size) : nir_const_value_for_uint(1, bit_size);
+   nir_ssa_def *oob_val = nir_build_imm(b, nir_tex_instr_dest_size(txf), bit_size, oob_values);
+
+   nir_pop_if(b, lod_oob_else);
+   nir_ssa_def *robust_txf = nir_if_phi(b, &new_txf->dest.ssa, oob_val);
+
+   nir_ssa_def_rewrite_uses(&txf->dest.ssa, robust_txf);
+   nir_instr_remove_v(in);
+   return true;
+}
+
+/* This pass is used to workaround the lack of out of bounds LOD robustness
+ * for texel fetch ops in VK_EXT_image_robustness.
+ */
+static bool
+lower_txf_lod_robustness(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, lower_txf_lod_robustness_instr, nir_metadata_none, NULL);
+}
+
 /* check for a genuine gl_PointSize output vs one from nir_lower_point_size_mov */
 static bool
 check_psiz(struct nir_shader *s)
