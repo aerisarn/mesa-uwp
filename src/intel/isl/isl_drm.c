@@ -162,6 +162,13 @@ isl_drm_modifier_info_list[] = {
       .supports_clear_color = true,
    },
    {
+      .modifier = I915_FORMAT_MOD_4_TILED_MTL_MC_CCS,
+      .name = "I915_FORMAT_MOD_4_TILED_MTL_MC_CCS",
+      .tiling = ISL_TILING_4,
+      .aux_usage = ISL_AUX_USAGE_MC,
+      .supports_clear_color = false,
+   },
+   {
       .modifier = DRM_FORMAT_MOD_INVALID,
    },
 };
