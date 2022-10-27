@@ -138,7 +138,7 @@ enum class instr_class : uint8_t {
 enum storage_class : uint8_t {
    storage_none = 0x0,   /* no synchronization and can be reordered around aliasing stores */
    storage_buffer = 0x1, /* SSBOs and global memory */
-   storage_atomic_counter = 0x2, /* not used for Vulkan */
+   storage_gds = 0x2,
    storage_image = 0x4,
    storage_shared = 0x8,       /* or TCS output */
    storage_vmem_output = 0x10, /* GS or TCS output stores using VMEM */

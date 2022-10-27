@@ -215,8 +215,8 @@ print_storage(storage_class storage, FILE* output)
    int printed = 0;
    if (storage & storage_buffer)
       printed += fprintf(output, "%sbuffer", printed ? "," : "");
-   if (storage & storage_atomic_counter)
-      printed += fprintf(output, "%satomic_counter", printed ? "," : "");
+   if (storage & storage_gds)
+      printed += fprintf(output, "%sgds", printed ? "," : "");
    if (storage & storage_image)
       printed += fprintf(output, "%simage", printed ? "," : "");
    if (storage & storage_shared)
