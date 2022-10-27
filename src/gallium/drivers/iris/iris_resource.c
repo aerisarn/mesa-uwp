@@ -121,6 +121,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
          return false;
       break;
    case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
+   case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
    case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS_CC:
       if (!intel_device_info_is_mtl(devinfo))
          return false;
@@ -132,6 +133,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
 
    /* Check remaining requirements. */
    switch (modifier) {
+   case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
    case I915_FORMAT_MOD_4_TILED_DG2_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
       if (INTEL_DEBUG(DEBUG_NO_CCS))
@@ -265,6 +267,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
       I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC,
       I915_FORMAT_MOD_4_TILED_MTL_RC_CCS,
       I915_FORMAT_MOD_4_TILED_MTL_RC_CCS_CC,
+      I915_FORMAT_MOD_4_TILED_MTL_MC_CCS,
       I915_FORMAT_MOD_Y_TILED,
       I915_FORMAT_MOD_Y_TILED_CCS,
       I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
@@ -323,6 +326,7 @@ iris_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
       return 3;
    case I915_FORMAT_MOD_4_TILED_MTL_RC_CCS:
+   case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
    case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS_CC:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
@@ -1105,6 +1109,7 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       r[0]->aux.clear_color_offset = r[1]->aux.clear_color_offset;
       r[0]->aux.clear_color_unknown = true;
       break;
+   case I915_FORMAT_MOD_4_TILED_MTL_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
       if (num_main_planes == 1 && num_planes == 2) {
          import_aux_info(r[0], r[1]);
