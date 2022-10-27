@@ -24,6 +24,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_screen.h"
 #include "util/u_debug.h"
+#include "util/os_time.h"
 
 /**
  * Helper to use from a pipe_screen->get_param() implementation to return
@@ -516,4 +517,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    default:
       unreachable("bad PIPE_CAP_*");
    }
+}
+
+uint64_t u_default_get_timestamp(UNUSED struct pipe_screen *screen)
+{
+   return os_time_get_nano();
 }

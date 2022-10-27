@@ -922,13 +922,6 @@ llvmpipe_fence_finish(struct pipe_screen *screen,
 }
 
 
-static uint64_t
-llvmpipe_get_timestamp(struct pipe_screen *_screen)
-{
-   return os_time_get_nano();
-}
-
-
 static void
 update_cache_sha1_cpu(struct mesa_sha1 *ctx)
 {
@@ -1091,7 +1084,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->base.fence_reference = llvmpipe_fence_reference;
    screen->base.fence_finish = llvmpipe_fence_finish;
 
-   screen->base.get_timestamp = llvmpipe_get_timestamp;
+   screen->base.get_timestamp = u_default_get_timestamp;
 
    screen->base.get_driver_uuid = llvmpipe_get_driver_uuid;
    screen->base.get_device_uuid = llvmpipe_get_device_uuid;

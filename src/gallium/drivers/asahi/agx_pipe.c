@@ -1091,12 +1091,6 @@ agx_is_format_supported(struct pipe_screen* pscreen,
    return true;
 }
 
-static uint64_t
-agx_get_timestamp(struct pipe_screen *pscreen)
-{
-   return 0;
-}
-
 static void
 agx_destroy_screen(struct pipe_screen *screen)
 {
@@ -1208,7 +1202,7 @@ agx_screen_create(struct sw_winsys *winsys)
    screen->resource_from_handle = agx_resource_from_handle;
    screen->resource_get_handle = agx_resource_get_handle;
    screen->flush_frontbuffer = agx_flush_frontbuffer;
-   screen->get_timestamp = agx_get_timestamp;
+   screen->get_timestamp = u_default_get_timestamp;
    screen->fence_reference = agx_fence_reference;
    screen->fence_finish = agx_fence_finish;
    screen->get_compiler_options = agx_get_compiler_options;
