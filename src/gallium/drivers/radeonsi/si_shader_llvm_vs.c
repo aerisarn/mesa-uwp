@@ -743,32 +743,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
                     LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
                                   ac_get_thread_id(&ctx->ac), num_export_threads, ""), 0);
 
-      /* Get the attribute ring address and descriptor. */
-      LLVMValueRef attr_address;
-      if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
-         struct ac_llvm_pointer ring_ptr = ac_get_ptr_arg(&ctx->ac, &ctx->args, ctx->internal_bindings);
-         ring_ptr.pointee_type = ctx->ac.i32;
-         attr_address = ac_build_load_to_sgpr(&ctx->ac, ring_ptr,
-                                              LLVMConstInt(ctx->ac.i32, SI_GS_ATTRIBUTE_RING * 4, 0));
-      } else {
-         attr_address = ac_get_arg(&ctx->ac, ctx->gs_attr_address);
-      }
-
-      unsigned stride = 16 * shader->info.nr_param_exports;
-      LLVMValueRef attr_desc[4] = {
-         attr_address,
-         LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi) |
-                                   S_008F04_STRIDE(stride) |
-                                   S_008F04_SWIZZLE_ENABLE_GFX11(3) /* 16B */, 0),
-         LLVMConstInt(ctx->ac.i32, 0xffffffff, 0),
-         LLVMConstInt(ctx->ac.i32, S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-                                   S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                                   S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-                                   S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-                                   S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_32_32_32_FLOAT) |
-                                   S_008F0C_INDEX_STRIDE(2) /* 32 elements */, 0),
-      };
-      LLVMValueRef attr_rsrc = ac_build_gather_values(&ctx->ac, attr_desc, 4);
+      LLVMValueRef attr_rsrc = si_llvm_build_attr_ring_desc(ctx);
       LLVMValueRef attr_offset = LLVMBuildShl(ctx->ac.builder,
                                               si_unpack_param(ctx, ctx->args.gs_attr_offset, 0, 15),
                                               LLVMConstInt(ctx->ac.i32, 9, 0), ""); /* 512B increments */
