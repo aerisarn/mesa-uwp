@@ -5291,8 +5291,6 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
          list4.index_offset = first_vertex;
       }
    }
-
-   /* TODO: See if we need list_words[5-9]. */
 }
 
 void pvr_CmdDraw(VkCommandBuffer commandBuffer,
