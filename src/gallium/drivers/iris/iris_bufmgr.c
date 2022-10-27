@@ -165,7 +165,7 @@ struct bo_export {
 };
 
 struct iris_memregion {
-   struct drm_i915_gem_memory_class_instance region;
+   struct intel_memory_class_instance *region;
    uint64_t size;
 };
 
@@ -985,14 +985,18 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
          switch (bo->real.heap) {
          case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
             /* For vram allocations, still use system memory as a fallback. */
-            regions[ext_regions.num_regions++] = bufmgr->vram.region;
-            regions[ext_regions.num_regions++] = bufmgr->sys.region;
+            regions[ext_regions.num_regions].memory_class = bufmgr->vram.region->klass;
+            regions[ext_regions.num_regions++].memory_instance = bufmgr->vram.region->instance;
+            regions[ext_regions.num_regions].memory_class = bufmgr->sys.region->klass;
+            regions[ext_regions.num_regions++].memory_instance = bufmgr->sys.region->instance;
             break;
          case IRIS_HEAP_DEVICE_LOCAL:
-            regions[ext_regions.num_regions++] = bufmgr->vram.region;
+            regions[ext_regions.num_regions].memory_class = bufmgr->vram.region->klass;
+            regions[ext_regions.num_regions++].memory_instance = bufmgr->vram.region->instance;
             break;
          case IRIS_HEAP_SYSTEM_MEMORY:
-            regions[ext_regions.num_regions++] = bufmgr->sys.region;
+            regions[ext_regions.num_regions].memory_class = bufmgr->sys.region->klass;
+            regions[ext_regions.num_regions++].memory_instance = bufmgr->sys.region->instance;
             break;
          case IRIS_HEAP_MAX:
             unreachable("invalid heap for BO");
@@ -2346,12 +2350,10 @@ static bool
 iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
                         struct intel_device_info *devinfo)
 {
-   bufmgr->sys.region.memory_class = devinfo->mem.sram.mem.klass;
-   bufmgr->sys.region.memory_instance = devinfo->mem.sram.mem.instance;
+   bufmgr->sys.region = &devinfo->mem.sram.mem;
    bufmgr->sys.size = devinfo->mem.sram.mappable.size;
 
-   bufmgr->vram.region.memory_class = devinfo->mem.vram.mem.klass;
-   bufmgr->vram.region.memory_instance = devinfo->mem.vram.mem.instance;
+   bufmgr->vram.region = &devinfo->mem.vram.mem;
    bufmgr->vram.size = devinfo->mem.vram.mappable.size;
 
    return true;
