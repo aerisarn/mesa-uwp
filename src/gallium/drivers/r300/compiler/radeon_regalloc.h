@@ -94,7 +94,7 @@ struct rc_class {
 	unsigned int WritemaskCount;
 
 	/** List of writemasks that belong to this class */
-	unsigned int Writemasks[3];
+	unsigned int Writemasks[6];
 };
 
 int rc_find_class(
