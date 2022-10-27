@@ -181,6 +181,134 @@ static enum pvr_transfer_pbe_pixel_src pvr_pbe_src_format_raw(VkFormat format)
    return PVR_TRANSFER_PBE_PIXEL_SRC_RAW128;
 }
 
+static VkResult pvr_pbe_src_format_pick_depth(
+   const VkFormat src_format,
+   const VkFormat dst_format,
+   enum pvr_transfer_pbe_pixel_src *const src_format_out)
+{
+   if (dst_format != VK_FORMAT_D24_UNORM_S8_UINT)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+   switch (src_format) {
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D24S8_D24S8;
+      break;
+
+   case VK_FORMAT_D32_SFLOAT:
+      *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D32_D24S8;
+      break;
+
+   default:
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult pvr_pbe_src_format_pick_stencil(
+   const VkFormat src_format,
+   const VkFormat dst_format,
+   enum pvr_transfer_pbe_pixel_src *const src_format_out)
+{
+   if (src_format != VK_FORMAT_D24_UNORM_S8_UINT ||
+       dst_format != VK_FORMAT_D24_UNORM_S8_UINT) {
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   }
+
+   *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D24S8;
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+pvr_pbe_src_format_ds(const struct pvr_transfer_cmd_surface *src,
+                      const enum pvr_filter filter,
+                      const VkFormat dst_format,
+                      const uint32_t flags,
+                      const bool down_scale,
+                      enum pvr_transfer_pbe_pixel_src *src_format_out)
+{
+   const VkFormat src_format = src->vk_format;
+
+   const bool src_depth = vk_format_has_depth(src_format);
+   const bool dst_depth = vk_format_has_depth(dst_format);
+   const bool src_stencil = vk_format_has_stencil(src_format);
+   const bool dst_stencil = vk_format_has_stencil(dst_format);
+
+   if (flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) {
+      /* Merging, so destination should always have both. */
+      if (!dst_depth || !dst_stencil)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+      if (flags & PVR_TRANSFER_CMD_FLAGS_PICKD) {
+         return pvr_pbe_src_format_pick_depth(src_format,
+                                              dst_format,
+                                              src_format_out);
+      } else {
+         return pvr_pbe_src_format_pick_stencil(src_format,
+                                                dst_format,
+                                                src_format_out);
+      }
+   }
+
+   /* We can't invent channels out of nowhere. */
+   if ((dst_depth && !src_depth) || (dst_stencil && !src_stencil))
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+   switch (dst_format) {
+   case VK_FORMAT_D16_UNORM:
+      if (src_format == VK_FORMAT_D24_UNORM_S8_UINT)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+      if (!down_scale)
+         *src_format_out = pvr_pbe_src_format_raw(dst_format);
+      else
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_U16NORM;
+
+      break;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      switch (src_format) {
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         if (filter == PVR_FILTER_LINEAR)
+            *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_D24S8;
+         else
+            *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_RAW32;
+
+         break;
+
+      /* D16_UNORM results in a 0.0->1.0 float from the TPU, the same as D32 */
+      case VK_FORMAT_D16_UNORM:
+      case VK_FORMAT_D32_SFLOAT:
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_CONV_D32_D24S8;
+         break;
+
+      default:
+         if (filter == PVR_FILTER_LINEAR)
+            *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_D32S8;
+         else
+            *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_RAW64;
+      }
+
+      break;
+
+   case VK_FORMAT_D32_SFLOAT:
+      if (src_format == VK_FORMAT_D24_UNORM_S8_UINT)
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_CONV_D24_D32;
+      else
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_F32;
+
+      break;
+
+   default:
+      if (src_format == VK_FORMAT_D24_UNORM_S8_UINT)
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_SWAP_LMSB;
+      else
+         *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_RAW32;
+   }
+
+   return VK_SUCCESS;
+}
+
 /**
  * How the PBE expects the output buffer for an RGBA space conversion.
  */
@@ -391,28 +519,38 @@ static VkResult pvr_pbe_src_format(struct pvr_transfer_cmd *transfer_cmd,
                                    struct pvr_tq_shader_properties *prop)
 {
    struct pvr_tq_layer_properties *layer = &prop->layer_props;
+   const enum pvr_filter filter =
+      transfer_cmd->src_present ? transfer_cmd->filter : PVR_FILTER_POINT;
+   const uint32_t flags = transfer_cmd->flags;
    VkFormat dst_format = transfer_cmd->dst.vk_format;
+   const struct pvr_transfer_cmd_surface *src;
    VkFormat src_format;
    bool down_scale;
 
    if (transfer_cmd->src_present) {
-      src_format = transfer_cmd->src.vk_format;
+      src = &transfer_cmd->src;
       down_scale = transfer_cmd->resolve_op == PVR_RESOLVE_BLEND &&
                    transfer_cmd->src.sample_count > 1U &&
                    transfer_cmd->dst.sample_count <= 1U;
    } else {
-      src_format = dst_format;
+      src = &transfer_cmd->dst;
       down_scale = false;
    }
+
+   src_format = src->vk_format;
 
    /* This has to come before the rest as S8 for instance is integer and
     * signedness check fails on D24S8.
     */
-   if (!down_scale &&
-       (vk_format_is_depth_or_stencil(src_format) ||
-        vk_format_is_depth_or_stencil(dst_format) ||
-        pvr_get_blit_flags(transfer_cmd) & PVR_TRANSFER_CMD_FLAGS_DSMERGE)) {
-      pvr_finishme("Complete pvr_pbe_src_format().");
+   if (vk_format_is_depth_or_stencil(src_format) ||
+       vk_format_is_depth_or_stencil(dst_format) ||
+       flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) {
+      return pvr_pbe_src_format_ds(src,
+                                   filter,
+                                   dst_format,
+                                   flags,
+                                   down_scale,
+                                   &layer->pbe_format);
    }
 
    return pvr_pbe_src_format_normal(src_format,
@@ -2687,6 +2825,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 static VkResult
 pvr_pbe_src_format_f2d(uint32_t merge_flags,
                        struct pvr_transfer_cmd_surface *src,
+                       enum pvr_filter filter,
                        VkFormat dst_format,
                        bool down_scale,
                        bool dont_force_pbe,
@@ -2700,7 +2839,12 @@ pvr_pbe_src_format_f2d(uint32_t merge_flags,
    if (vk_format_is_depth_or_stencil(src_format) ||
        vk_format_is_depth_or_stencil(dst_format) ||
        merge_flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) {
-      pvr_finishme("Complete pvr_pbe_src_format_f2d().");
+      return pvr_pbe_src_format_ds(src,
+                                   filter,
+                                   dst_format,
+                                   merge_flags,
+                                   down_scale,
+                                   pixel_format_out);
    }
 
    return pvr_pbe_src_format_normal(src_format,
@@ -3711,12 +3855,16 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
          num_mappings -= MIN2(max_mappings_per_pb, num_mappings);
          num_prim_blks++;
       }
-   } else if ((flags & PVR_TRANSFER_CMD_FLAGS_FILL) != 0U) {
-      num_prim_blks = 1U;
-      prim_blk_size +=
-         pvr_isp_primitive_block_size(dev_info,
-                                      NULL,
-                                      MIN2(max_mappings_per_pb, 1U));
+   } else {
+      if ((flags & PVR_TRANSFER_CMD_FLAGS_FILL) != 0U) {
+         num_prim_blks = 1U;
+         prim_blk_size +=
+            pvr_isp_primitive_block_size(dev_info,
+                                         NULL,
+                                         MIN2(max_mappings_per_pb, 1U));
+
+         /* Fill blits can also have a source; fallthrough to handle. */
+      }
 
       if (transfer_cmd->src_present) {
          uint32_t num_mappings = transfer_cmd->mapping_count;
@@ -3731,8 +3879,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
             num_prim_blks++;
          }
       }
-   } else {
-      pvr_finishme("Unimplemented path.");
    }
 
    num_region_arrays =
@@ -3842,6 +3988,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
          result = pvr_pbe_src_format_f2d(flags,
                                          src,
+                                         transfer_cmd->filter,
                                          transfer_cmd->dst.vk_format,
                                          down_scale,
                                          state->dont_force_pbe,
@@ -3853,7 +4000,32 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
          if (state->custom_mapping.byte_unwind_src > 0U &&
              state->custom_mapping.passes[0U].byte_unwind) {
-            pvr_finishme("Unimplemented path.");
+            switch (vk_format_get_blocksize(transfer_cmd->dst.vk_format)) {
+            case 16:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK16;
+               break;
+            case 32:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK32;
+               break;
+            case 48:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK48;
+               break;
+            case 64:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK64;
+               break;
+            case 96:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK96;
+               break;
+            case 128:
+               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK128;
+               break;
+            default:
+               unreachable("pixel width not valid");
+               break;
+            }
+
+            layer->byte_unwind = state->custom_mapping.byte_unwind_src;
+            read_bgnd = true;
          }
 
          layer->pbe_format = pbe_src_format;
