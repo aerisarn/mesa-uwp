@@ -54,6 +54,7 @@ enum rc_reg_class {
 struct rc_regalloc_state {
 	struct ra_regs *regs;
 	struct ra_class *classes[RC_REG_CLASS_COUNT];
+	const struct rc_class *class_list;
 };
 
 void rc_init_regalloc_state(struct rc_regalloc_state *s);

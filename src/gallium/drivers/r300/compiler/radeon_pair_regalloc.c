@@ -535,7 +535,7 @@ static void do_advanced_regalloc(struct regalloc_state * s)
 		/* Compute the live intervals */
 		rc_variable_compute_live_intervals(var_ptr->Item);
 
-		class_index = variable_get_class(var_ptr->Item,	rc_class_list);
+		class_index = variable_get_class(var_ptr->Item, ra_state->class_list);
 		node_classes[node_index] = ra_state->classes[class_index];
 	}
 
@@ -696,9 +696,11 @@ void rc_init_regalloc_state(struct rc_regalloc_state *s)
 	s->regs = ra_alloc_reg_set(NULL, R500_PFS_NUM_TEMP_REGS * RC_MASK_XYZW,
                                    true);
 
+	s->class_list = rc_class_list;
+
 	/* Create the register classes */
 	for (i = 0; i < RC_REG_CLASS_COUNT; i++) {
-		const struct rc_class *class = &rc_class_list[i];
+		const struct rc_class *class = &s->class_list[i];
 		s->classes[class->ID] = ra_alloc_reg_class(s->regs);
 
 		/* Assign registers to the classes */
