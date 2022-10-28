@@ -1726,6 +1726,15 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
    if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.point_smoothing)
       NIR_PASS(progress, nir, nir_lower_point_smooth);
 
+   bool is_last_vgt_stage =
+      (sel->stage == MESA_SHADER_VERTEX ||
+       sel->stage == MESA_SHADER_TESS_EVAL ||
+       (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)) &&
+      !shader->key.ge.as_ls && !shader->key.ge.as_es;
+
+   if (is_last_vgt_stage)
+      NIR_PASS(progress, nir, si_nir_clamp_vertex_color);
+
    if (progress)
       si_nir_opts(sel->screen, nir, true);
 

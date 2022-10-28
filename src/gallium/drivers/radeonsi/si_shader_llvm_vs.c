@@ -501,71 +501,6 @@ static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, const LLV
 }
 
 /**
- * Vertex color clamping.
- *
- * This uses a state constant loaded in a user data SGPR and
- * an IF statement is added that clamps all colors if the constant
- * is true.
- */
-static void si_vertex_color_clamping(struct si_shader_context *ctx,
-                                     struct si_shader_output_values *outputs, unsigned noutput)
-{
-   LLVMValueRef addr[SI_MAX_VS_OUTPUTS][4];
-   bool has_colors = false;
-
-   /* Store original colors to alloca variables. */
-   for (unsigned i = 0; i < noutput; i++) {
-      if (outputs[i].semantic != VARYING_SLOT_COL0 &&
-          outputs[i].semantic != VARYING_SLOT_COL1 &&
-          outputs[i].semantic != VARYING_SLOT_BFC0 &&
-          outputs[i].semantic != VARYING_SLOT_BFC1)
-         continue;
-
-      for (unsigned j = 0; j < 4; j++)
-         addr[i][j] = ac_build_alloca_init(&ctx->ac, outputs[i].values[j], "");
-
-      has_colors = true;
-   }
-
-   if (!has_colors)
-      return;
-
-   /* The state is in the first bit of the user SGPR. */
-   LLVMValueRef cond = GET_FIELD(ctx, VS_STATE_CLAMP_VERTEX_COLOR);
-   cond = LLVMBuildTrunc(ctx->ac.builder, cond, ctx->ac.i1, "");
-
-   ac_build_ifcc(&ctx->ac, cond, 6502);
-
-   /* Store clamped colors to alloca variables within the conditional block. */
-   for (unsigned i = 0; i < noutput; i++) {
-      if (outputs[i].semantic != VARYING_SLOT_COL0 &&
-          outputs[i].semantic != VARYING_SLOT_COL1 &&
-          outputs[i].semantic != VARYING_SLOT_BFC0 &&
-          outputs[i].semantic != VARYING_SLOT_BFC1)
-         continue;
-
-      for (unsigned j = 0; j < 4; j++) {
-         LLVMBuildStore(ctx->ac.builder, ac_build_clamp(&ctx->ac, outputs[i].values[j]),
-                        addr[i][j]);
-      }
-   }
-   ac_build_endif(&ctx->ac, 6502);
-
-   /* Load clamped colors */
-   for (unsigned i = 0; i < noutput; i++) {
-      if (outputs[i].semantic != VARYING_SLOT_COL0 &&
-          outputs[i].semantic != VARYING_SLOT_COL1 &&
-          outputs[i].semantic != VARYING_SLOT_BFC0 &&
-          outputs[i].semantic != VARYING_SLOT_BFC1)
-         continue;
-
-      for (unsigned j = 0; j < 4; j++) {
-         outputs[i].values[j] = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addr[i][j], "");
-      }
-   }
-}
-
-/**
  * Generate export instructions for hardware VS shader stage or NGG GS stage
  * (position and parameter data only).
  *
@@ -583,8 +518,6 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx, LLVMValueRef num_ex
                              ~shader->key.ge.opt.kill_clip_distances) |
                             shader->selector->info.culldist_mask;
    int i;
-
-   si_vertex_color_clamping(ctx, outputs, noutput);
 
    /* Build position exports. */
    for (i = 0; i < noutput; i++) {
