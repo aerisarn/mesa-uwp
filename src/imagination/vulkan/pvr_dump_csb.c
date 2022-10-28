@@ -2306,8 +2306,7 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
    switch (type) {
    case BUFFER_TYPE_NONE:
       pvr_dump_field(base_ctx, "<content>", "<not decoded>");
-      pvr_dump_indent(&sub_ctx.base.base);
-      ret = pvr_dump_buffer_hex(&sub_ctx.base, 0);
+      ret = true;
       break;
 
    case BUFFER_TYPE_PPP:
@@ -2317,8 +2316,18 @@ static bool print_sub_buffer(struct pvr_dump_ctx *const ctx,
 
    default:
       pvr_dump_field(base_ctx, "<content>", "<unsupported format>");
-      goto end_pop_ctx;
+      ret = false;
    }
+
+   pvr_dump_field_u32_units(&sub_ctx.base.base,
+                            "<raw>",
+                            sub_ctx.base.capacity,
+                            "bytes");
+
+   pvr_dump_indent(&sub_ctx.base.base);
+   pvr_dump_buffer_restart(&sub_ctx.base);
+   pvr_dump_buffer_hex(&sub_ctx.base, 0);
+   pvr_dump_dedent(&sub_ctx.base.base);
 
 end_pop_ctx:
    pvr_dump_bo_ctx_pop(&sub_ctx);
