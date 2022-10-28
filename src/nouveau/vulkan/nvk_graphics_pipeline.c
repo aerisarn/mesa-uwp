@@ -31,11 +31,11 @@ static void
 emit_pipeline_rs_state(struct nv_push *p,
                        const struct vk_rasterization_state *rs)
 {
-   /* TODO: Depth clip/clamp? */
+   /* TODO: Depth clip? */
    P_IMMD(p, NV9097, SET_VIEWPORT_CLIP_CONTROL, {
       .min_z_zero_max_z_one      = MIN_Z_ZERO_MAX_Z_ONE_TRUE,
-      .pixel_min_z               = PIXEL_MIN_Z_CLAMP,
-      .pixel_max_z               = PIXEL_MAX_Z_CLIP,
+      .pixel_min_z               = rs->depth_clamp_enable ? PIXEL_MIN_Z_CLAMP : PIXEL_MIN_Z_CLIP,
+      .pixel_max_z               = rs->depth_clamp_enable ? PIXEL_MAX_Z_CLAMP : PIXEL_MAX_Z_CLIP,
       .geometry_guardband        = GEOMETRY_GUARDBAND_SCALE_256,
       .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
       .geometry_clip             = GEOMETRY_CLIP_WZERO_CLIP,
