@@ -879,6 +879,11 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
       return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
    }
 
+   case nir_intrinsic_load_clamp_vertex_color_amd: {
+      LLVMValueRef enabled = GET_FIELD(ctx, VS_STATE_CLAMP_VERTEX_COLOR);
+      return LLVMBuildTrunc(ctx->ac.builder, enabled, ctx->ac.i1, "");
+   }
+
    default:
       return NULL;
    }
