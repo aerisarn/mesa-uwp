@@ -79,6 +79,7 @@ zink_debug_options[] = {
    { "noreorder", ZINK_DEBUG_NOREORDER, "Do not reorder command streams" },
    { "gpl", ZINK_DEBUG_GPL, "Force using Graphics Pipeline Library for all shaders" },
    { "shaderdb", ZINK_DEBUG_SHADERDB, "Do stuff to make shader-db work" },
+   { "rp", ZINK_DEBUG_RP, "Enable renderpass tracking/optimizations" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2340,6 +2341,29 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.needs_sanitised_layer = false;
       break;
    }
+
+   /* once more testing has been done, use the #if 0 block */
+   if (zink_debug & ZINK_DEBUG_RP)
+      screen->driver_workarounds.track_renderpasses = true;
+#if 0
+   /* these drivers benefit from renderpass optimization */
+   switch (screen->info.driver_props.driverID) {
+   //* llvmpipe is broken: #7489
+   // case VK_DRIVER_ID_MESA_LLVMPIPE:
+   case VK_DRIVER_ID_MESA_TURNIP:
+   case VK_DRIVER_ID_MESA_PANVK:
+   case VK_DRIVER_ID_MESA_VENUS:
+   case VK_DRIVER_ID_MESA_V3DV:
+   case VK_DRIVER_ID_IMAGINATION_PROPRIETARY:
+   case VK_DRIVER_ID_QUALCOMM_PROPRIETARY:
+   case VK_DRIVER_ID_BROADCOM_PROPRIETARY:
+   case VK_DRIVER_ID_ARM_PROPRIETARY:
+      screen->driver_workarounds.track_renderpasses = true;
+      break;
+   default:
+      break;
+   }
+#endif
 }
 
 static struct zink_screen *
