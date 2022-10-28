@@ -856,7 +856,7 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
    if (profile == PIPE_VIDEO_PROFILE_JPEG_BASELINE) {
       if (sscreen->info.family >= CHIP_NAVI21)
          return (format == PIPE_FORMAT_NV12 || format == PIPE_FORMAT_Y8_400_UNORM ||
-                 format == PIPE_FORMAT_Y8_U8_V8_444_UNORM);
+                 format == PIPE_FORMAT_Y8_U8_V8_444_UNORM || format == PIPE_FORMAT_YUYV);
       else
          return (format == PIPE_FORMAT_NV12);
 
