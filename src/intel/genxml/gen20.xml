@@ -44,6 +44,7 @@
     </field>
     <field name="Binding Table Pointer" start="133" end="148" type="offset" />
     <field name="Number of Threads in GPGPU Thread Group" start="160" end="169" type="uint" />
+    <field name="Thread group forward progress guarantee" start="173" end="173" type="bool" />
     <field name="Shared Local Memory Size" start="176" end="180" type="uint" />
     <field name="Rounding Mode" start="182" end="183" type="uint">
       <value name="RTNE" value="0" />
