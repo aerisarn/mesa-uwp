@@ -1170,23 +1170,29 @@ optimizations.extend([
    (('fany_nequal2', a, b), ('fmax', ('sne', 'a.x', 'b.x'), ('sne', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
    (('fany_nequal3', a, b), ('fsat', ('fdot3', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
    (('fany_nequal4', a, b), ('fsat', ('fdot4', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
+])
 
-   (('ball_iequal2', a, b), ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
-   (('ball_iequal3', a, b), ('iand', ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), ('ieq', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
-   (('ball_iequal4', a, b), ('iand', ('iand', ('ieq', 'a.x', 'b.x'), ('ieq', 'a.y', 'b.y')), ('iand', ('ieq', 'a.z', 'b.z'), ('ieq', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+def vector_cmp(reduce_op, cmp_op, comps):
+   if len(comps) == 1:
+      return (cmp_op, 'a.' + comps[0], 'b.' + comps[0])
+   else:
+      mid = len(comps) // 2
+      return (reduce_op, vector_cmp(reduce_op, cmp_op, comps[:mid]),
+                         vector_cmp(reduce_op, cmp_op, comps[mid:]))
 
-   (('bany_inequal2', a, b), ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
-   (('bany_inequal3', a, b), ('ior', ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), ('ine', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
-   (('bany_inequal4', a, b), ('ior', ('ior', ('ine', 'a.x', 'b.x'), ('ine', 'a.y', 'b.y')), ('ior', ('ine', 'a.z', 'b.z'), ('ine', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
+for op in [
+   ('ball_iequal', 'ieq', 'iand'),
+   ('ball_fequal', 'feq', 'iand'),
+   ('bany_inequal', 'ine', 'ior'),
+   ('bany_fnequal', 'fneu', 'ior'),
+]:
+   optimizations.extend([
+      ((op[0] + '2', a, b), vector_cmp(op[2], op[1], 'xy'), 'options->lower_vector_cmp'),
+      ((op[0] + '3', a, b), vector_cmp(op[2], op[1], 'xyz'), 'options->lower_vector_cmp'),
+      ((op[0] + '4', a, b), vector_cmp(op[2], op[1], 'xyzw'), 'options->lower_vector_cmp'),
+   ])
 
-   (('ball_fequal2', a, b), ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
-   (('ball_fequal3', a, b), ('iand', ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), ('feq', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
-   (('ball_fequal4', a, b), ('iand', ('iand', ('feq', 'a.x', 'b.x'), ('feq', 'a.y', 'b.y')), ('iand', ('feq', 'a.z', 'b.z'), ('feq', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
-
-   (('bany_fnequal2', a, b), ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
-   (('bany_fnequal3', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('fneu', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
-   (('bany_fnequal4', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('ior', ('fneu', 'a.z', 'b.z'), ('fneu', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
-
+optimizations.extend([
    (('feq', ('seq', a, b), 1.0), ('feq', a, b)),
    (('feq', ('sne', a, b), 1.0), ('fneu', a, b)),
    (('feq', ('slt', a, b), 1.0), ('flt', a, b)),
