@@ -284,8 +284,16 @@ void *si_create_passthrough_tcs(struct si_context *sctx)
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR,
                                            PIPE_SHADER_TESS_CTRL);
 
-   nir_shader *tcs = nir_create_passthrough_tcs(options, sctx->shader.vs.cso->nir,
-                                                sctx->patch_vertices);
+   unsigned locations[PIPE_MAX_SHADER_OUTPUTS];
+
+   struct si_shader_info *info = &sctx->shader.vs.cso->info;
+   for (unsigned i = 0; i < info->num_outputs; i++) {
+      locations[i] = info->output_semantic[i];
+   }
+
+   nir_shader *tcs =
+         nir_create_passthrough_tcs_impl(options, locations, info->num_outputs,
+                                         sctx->patch_vertices);
 
    return create_shader_state(sctx, tcs);
 }
