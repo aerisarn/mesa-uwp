@@ -1519,6 +1519,46 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    return progress;
 }
 
+static bool clamp_vertex_color_instr(nir_builder *b, nir_instr *instr, void *state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   unsigned location = nir_intrinsic_io_semantics(intrin).location;
+   if (location != VARYING_SLOT_COL0 && location != VARYING_SLOT_COL1 &&
+       location != VARYING_SLOT_BFC0 && location != VARYING_SLOT_BFC1)
+      return false;
+
+   /* no indirect output */
+   assert(nir_src_is_const(intrin->src[1]) && !nir_src_as_uint(intrin->src[1]));
+   /* only scalar output */
+   assert(intrin->src[0].ssa->num_components == 1);
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_ssa_def *color = intrin->src[0].ssa;
+   nir_ssa_def *clamp = nir_load_clamp_vertex_color_amd(b);
+   nir_ssa_def *new_color = nir_bcsel(b, clamp, nir_fsat(b, color), color);
+   nir_instr_rewrite_src_ssa(instr, &intrin->src[0], new_color);
+
+   return true;
+}
+
+static bool si_nir_clamp_vertex_color(nir_shader *nir)
+{
+   uint64_t mask = VARYING_BIT_COL0 | VARYING_BIT_COL1 | VARYING_BIT_BFC0 | VARYING_BIT_BFC1;
+   if (!(nir->info.outputs_written & mask))
+      return false;
+
+   return nir_shader_instructions_pass(nir, clamp_vertex_color_instr,
+                                       nir_metadata_dominance | nir_metadata_block_index,
+                                       NULL);
+}
+
 static unsigned si_map_io_driver_location(unsigned semantic)
 {
    if ((semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX) ||
