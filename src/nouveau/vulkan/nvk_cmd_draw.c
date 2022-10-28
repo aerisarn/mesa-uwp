@@ -285,20 +285,6 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 //   P_MTHD(cmd->push, NVC0_3D, MACRO_TEP_SELECT;
 //   P_INLINE_DATA(cmd->push, 0x30);
 
-   P_IMMD(p, NV9097, SET_POINT_SPRITE_SELECT, {
-      .rmode      = RMODE_ZERO,
-      .origin     = ORIGIN_BOTTOM,
-      .texture0   = TEXTURE0_PASSTHROUGH,
-      .texture1   = TEXTURE1_PASSTHROUGH,
-      .texture2   = TEXTURE2_PASSTHROUGH,
-      .texture3   = TEXTURE3_PASSTHROUGH,
-      .texture4   = TEXTURE4_PASSTHROUGH,
-      .texture5   = TEXTURE5_PASSTHROUGH,
-      .texture6   = TEXTURE6_PASSTHROUGH,
-      .texture7   = TEXTURE7_PASSTHROUGH,
-      .texture8   = TEXTURE8_PASSTHROUGH,
-      .texture9   = TEXTURE9_PASSTHROUGH,
-   });
    P_IMMD(p, NV9097, SET_POINT_CENTER_MODE, V_OGL);
    P_IMMD(p, NV9097, SET_EDGE_FLAG, V_TRUE);
    P_IMMD(p, NV9097, SET_SAMPLER_BINDING, V_INDEPENDENTLY);
