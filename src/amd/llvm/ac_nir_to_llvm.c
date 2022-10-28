@@ -4767,10 +4767,16 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
    /* Don't use the waterfall loop when returning a descriptor. */
    tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler, &fmask_ptr,
-                  instr->op != nir_texop_descriptor_amd);
+                  instr->op != nir_texop_descriptor_amd &&
+                  instr->op != nir_texop_sampler_descriptor_amd);
 
    if (instr->op == nir_texop_descriptor_amd) {
       result = args.resource;
+      goto write_result;
+   }
+
+   if (instr->op == nir_texop_sampler_descriptor_amd) {
+      result = args.sampler;
       goto write_result;
    }
 

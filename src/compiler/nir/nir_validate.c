@@ -900,6 +900,7 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
                                 glsl_type_is_sampler(deref->type));
          switch (instr->op) {
          case nir_texop_descriptor_amd:
+         case nir_texop_sampler_descriptor_amd:
             break;
          case nir_texop_lod:
             validate_assert(state, nir_alu_type_get_base_type(instr->dest_type) == nir_type_float);
