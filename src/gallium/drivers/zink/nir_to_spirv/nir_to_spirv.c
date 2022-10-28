@@ -3703,7 +3703,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    unsigned texture_index = tex->texture_index;
    nir_variable *var = bindless_var ? bindless_var : ctx->sampler_var[tex->texture_index];
-   if (!tex_offset || !var) {
+   if (!bindless_var && (!tex_offset || !var)) {
       if (ctx->sampler_var[texture_index]) {
          if (glsl_type_is_array(ctx->sampler_var[texture_index]->type))
             tex_offset = emit_uint_const(ctx, 32, 0);
