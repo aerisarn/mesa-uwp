@@ -1682,6 +1682,12 @@ struct v3dv_event {
    uint32_t index;
 };
 
+bool
+v3dv_event_allocate_resources(struct v3dv_device *device);
+
+void
+v3dv_event_free_resources(struct v3dv_device *device);
+
 struct v3dv_shader_variant {
    enum broadcom_shader_stage stage;
 
