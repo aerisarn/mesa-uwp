@@ -37,6 +37,7 @@
 #include <dirent.h>
 #include <inttypes.h>
 
+#include "util/compress.h"
 #include "util/crc32.h"
 #include "util/u_debug.h"
 #include "util/rand_xor.h"
@@ -386,13 +387,84 @@ done:
    }
 }
 
+struct blob_cache_entry {
+   uint32_t uncompressed_size;
+   uint8_t compressed_data[];
+};
+
+static void
+blob_put_compressed(struct disk_cache *cache, const cache_key key,
+         const void *data, size_t size)
+{
+   size_t max_buf = util_compress_max_compressed_len(size);
+   struct blob_cache_entry *entry = malloc(max_buf + sizeof(*entry));
+   if (!entry)
+      goto out;
+
+   entry->uncompressed_size = size;
+
+   size_t compressed_size =
+         util_compress_deflate(data, size, entry->compressed_data, max_buf);
+   if (!compressed_size)
+      goto out;
+
+   unsigned entry_size = compressed_size + sizeof(*entry);
+   cache->blob_put_cb(key, CACHE_KEY_SIZE, entry, entry_size);
+
+out:
+   free(entry);
+}
+
+static void *
+blob_get_compressed(struct disk_cache *cache, const cache_key key,
+                    size_t *size)
+{
+   /* This is what Android EGL defines as the maxValueSize in egl_cache_t
+    * class implementation.
+    */
+   const signed long max_blob_size = 64 * 1024;
+   struct blob_cache_entry *entry = malloc(max_blob_size);
+   if (!entry)
+      return NULL;
+
+   signed long entry_size =
+      cache->blob_get_cb(key, CACHE_KEY_SIZE, entry, max_blob_size);
+
+   if (!entry_size) {
+      free(entry);
+      return NULL;
+   }
+
+   void *data = malloc(entry->uncompressed_size);
+   if (!data) {
+      free(entry);
+      return NULL;
+   }
+
+   unsigned compressed_size = entry_size - sizeof(*entry);
+   bool ret = util_compress_inflate(entry->compressed_data, compressed_size,
+                                    data, entry->uncompressed_size);
+   if (!ret) {
+      free(data);
+      free(entry);
+      return NULL;
+   }
+
+   if (size)
+      *size = entry->uncompressed_size;
+
+   free(entry);
+
+   return data;
+}
+
 void
 disk_cache_put(struct disk_cache *cache, const cache_key key,
                const void *data, size_t size,
                struct cache_item_metadata *cache_item_metadata)
 {
    if (cache->blob_put_cb) {
-      cache->blob_put_cb(key, CACHE_KEY_SIZE, data, size);
+      blob_put_compressed(cache, key, data, size);
       return;
    }
 
@@ -415,7 +487,7 @@ disk_cache_put_nocopy(struct disk_cache *cache, const cache_key key,
                       struct cache_item_metadata *cache_item_metadata)
 {
    if (cache->blob_put_cb) {
-      cache->blob_put_cb(key, CACHE_KEY_SIZE, data, size);
+      blob_put_compressed(cache, key, data, size);
       free(data);
       return;
    }
@@ -441,27 +513,8 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
    if (size)
       *size = 0;
 
-   if (cache->blob_get_cb) {
-      /* This is what Android EGL defines as the maxValueSize in egl_cache_t
-       * class implementation.
-       */
-      const signed long max_blob_size = 64 * 1024;
-      void *blob = malloc(max_blob_size);
-      if (!blob)
-         return NULL;
-
-      signed long bytes =
-         cache->blob_get_cb(key, CACHE_KEY_SIZE, blob, max_blob_size);
-
-      if (!bytes) {
-         free(blob);
-         return NULL;
-      }
-
-      if (size)
-         *size = bytes;
-      return blob;
-   }
+   if (cache->blob_get_cb)
+       return blob_get_compressed(cache, key, size);
 
    if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
       return disk_cache_load_item_foz(cache, key, size);
