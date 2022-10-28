@@ -814,14 +814,6 @@ enum zink_gfx_push_constant_member {
    ZINK_GFX_PUSHCONST_MAX
 };
 
-/* The order of the enums MUST match the order of the zink_cs_push_constant
- * members.
- */
-enum zink_cs_push_constant_member {
-   ZINK_CS_PUSHCONST_WORK_DIM,
-   ZINK_CS_PUSHCONST_MAX
-};
-
 /* a shader module is used for directly reusing a shader module between programs,
  * e.g., in the case where we're swapping out only one shader,
  * allowing us to skip going through shader keys
