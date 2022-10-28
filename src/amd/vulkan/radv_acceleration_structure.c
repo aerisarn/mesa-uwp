@@ -725,7 +725,10 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
       radv_CmdPushConstants(
          commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.convert_internal_p_layout,
          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(args), &args);
-      radv_unaligned_dispatch(cmd_buffer, bvh_states[i].internal_node_count, 1, 1);
+      radv_indirect_unaligned_dispatch(cmd_buffer, NULL,
+                                       pInfos[i].scratchData.deviceAddress +
+                                          bvh_states[i].scratch.header_offset +
+                                          offsetof(struct radv_ir_header, ir_internal_node_count));
    }
    /* This is the final access to the leaf nodes, no need to flush */
 }
@@ -760,9 +763,13 @@ radv_CmdBuildAccelerationStructuresKHR(
       get_build_layout(cmd_buffer->device, leaf_node_count, pInfos + i, &bvh_states[i].accel_struct,
                        &bvh_states[i].scratch);
 
+      /* The internal node count is updated in lbvh_build_internal for LBVH
+       * and from the PLOC shader for PLOC. */
       struct radv_ir_header header = {
          .min_bounds = {0x7fffffff, 0x7fffffff, 0x7fffffff},
          .max_bounds = {0x80000000, 0x80000000, 0x80000000},
+         .dispatch_size_y = 1,
+         .dispatch_size_z = 1,
       };
 
       radv_update_buffer_cp(
