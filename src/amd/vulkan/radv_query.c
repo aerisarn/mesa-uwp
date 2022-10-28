@@ -1116,6 +1116,8 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
       pool->stride = 8;
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+      pool->stride = 32;
+      break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
       pool->stride = 32;
       if (pool->uses_gds) {
@@ -1819,7 +1821,19 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       break;
    }
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      emit_sample_streamout(cmd_buffer, va, index);
+      if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+         /* generated prim counter */
+         gfx10_copy_gds_query(cmd_buffer,  4 + index * 4, va);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
+
+         /* written prim counter */
+         gfx10_copy_gds_query(cmd_buffer, 20 + index * 4, va + 8);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
+
+         cmd_buffer->state.active_prims_xfb_gds_queries++;
+      } else {
+         emit_sample_streamout(cmd_buffer, va, index);
+      }
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (!cmd_buffer->state.active_prims_gen_queries) {
@@ -1918,7 +1932,19 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       break;
    }
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      emit_sample_streamout(cmd_buffer, va + 16, index);
+      if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+         /* generated prim counter */
+         gfx10_copy_gds_query(cmd_buffer,  4 + index * 4, va + 16);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
+
+         /* written prim counter */
+         gfx10_copy_gds_query(cmd_buffer, 20 + index * 4, va + 24);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 28, 0x80000000);
+
+         cmd_buffer->state.active_prims_xfb_gds_queries--;
+      } else {
+         emit_sample_streamout(cmd_buffer, va + 16, index);
+      }
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (cmd_buffer->state.active_prims_gen_queries == 1) {

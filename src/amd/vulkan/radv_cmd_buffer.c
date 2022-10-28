@@ -4180,6 +4180,10 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.active_prims_gen_gds_queries)
       ngg_query_state |= radv_ngg_query_prim_gen;
 
+   if (cmd_buffer->state.active_prims_xfb_gds_queries) {
+      ngg_query_state |= radv_ngg_query_prim_xfb | radv_ngg_query_prim_gen;
+   }
+
    base_reg = pipeline->base.user_data_0[stage];
    assert(loc->sgpr_idx != -1);
 

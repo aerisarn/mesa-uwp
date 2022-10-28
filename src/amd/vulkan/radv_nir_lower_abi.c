@@ -201,6 +201,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_prim_gen_query_enabled_amd:
       replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_gen, s);
       break;
+   case nir_intrinsic_load_prim_xfb_query_enabled_amd:
+      replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_xfb, s);
+      break;
    case nir_intrinsic_load_cull_any_enabled_amd:
       replacement = nggc_bool_setting(
          b, radv_nggc_front_face | radv_nggc_back_face | radv_nggc_small_primitives, s);
@@ -338,8 +341,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    }
 
    /* GDS counters:
-    *   offset 0         - pipeline statistics counter for all streams
-    *   offset 4|8|12|16 - generated primitive counter for stream 0|1|2|3
+    *   offset  0           - pipeline statistics counter for all streams
+    *   offset  4| 8|12|16  - generated primitive counter for stream 0|1|2|3
+    *   offset 20|24|28|32  - written primitive counter for stream 0|1|2|3
     */
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
       nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, 0), nir_imm_int(b, 0x100));
@@ -350,7 +354,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
                              nir_imm_int(b, 0x100));
       break;
    case nir_intrinsic_atomic_add_xfb_prim_count_amd:
-      /* No-op for RADV. */
+      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa,
+                             nir_imm_int(b, 20 + nir_intrinsic_stream_id(intrin) * 4),
+                             nir_imm_int(b, 0x100));
       break;
 
    case nir_intrinsic_load_streamout_config_amd:

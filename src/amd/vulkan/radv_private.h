@@ -1218,6 +1218,7 @@ enum radv_ngg_query_state {
    radv_ngg_query_none = 0,
    radv_ngg_query_pipeline_stat = 1 << 0,
    radv_ngg_query_prim_gen = 1 << 1,
+   radv_ngg_query_prim_xfb = 1 << 2,
 };
 
 struct radv_vertex_binding {
@@ -1539,6 +1540,7 @@ struct radv_cmd_state {
    unsigned active_pipeline_gds_queries;
    unsigned active_prims_gen_queries;
    unsigned active_prims_gen_gds_queries;
+   unsigned active_prims_xfb_gds_queries;
    uint32_t trace_id;
    uint32_t last_ia_multi_vgt_param;
    uint32_t last_ge_cntl;
@@ -1791,6 +1793,9 @@ void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples
 unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
 VkResult radv_device_init_vrs_state(struct radv_device *device);
+
+void radv_emit_write_data_imm(struct radeon_cmdbuf *cs, unsigned engine_sel, uint64_t va,
+                              uint32_t imm);
 
 void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
                                    const struct radv_image_view *iview,
