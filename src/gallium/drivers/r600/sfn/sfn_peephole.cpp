@@ -103,7 +103,7 @@ PeepholeVisitor::visit(AluInstr *instr)
    case op2_killne_int:
       if (value_is_const_uint(instr->src(1), 0)) {
          auto src0 = instr->psrc(0)->as_register();
-         if (src0 && src0->is_ssa()) {
+         if (src0 && src0->has_flag(Register::ssa)) {
             auto parent = *src0->parents().begin();
             ReplacePredicate visitor(instr);
             parent->accept(visitor);
@@ -143,7 +143,7 @@ PeepholeVisitor::visit(IfInstr *instr)
    auto& src1 = pred->src(1);
    if (value_is_const_uint(src1, 0)) {
       auto src0 = pred->src(0).as_register();
-      if (src0 && src0->is_ssa() && !src0->parents().empty()) {
+      if (src0 && src0->has_flag(Register::ssa) && !src0->parents().empty()) {
          assert(src0->parents().size() == 1);
          auto parent = *src0->parents().begin();
 
@@ -256,7 +256,7 @@ ReplacePredicate::visit(AluInstr *alu)
        *   R = SOME_OP
        *   IF (COND(R, X))
        */
-      if (reg && !reg->is_ssa())
+      if (reg && !reg->has_flag(Register::ssa))
          return;
    }
 

@@ -334,7 +334,7 @@ Shader::allocate_registers_from_string(std::istream& is, Pin pin)
          auto regs = value_factory().dest_vec4_from_string(reg_str, swz, pin);
          for (int i = 0; i < 4; ++i) {
             if (swz[i] < 4 && pin == pin_fully) {
-               regs[i]->pin_live_range(true, false);
+               regs[i]->set_flag(Register::pin_start);
             }
          }
       }

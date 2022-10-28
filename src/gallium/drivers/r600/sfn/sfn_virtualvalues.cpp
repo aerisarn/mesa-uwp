@@ -241,7 +241,7 @@ Register::del_use(Instr *instr)
    sfn_log << SfnLog::opt << "Del use of " << *this << " in " << *instr << "\n";
    if (m_uses.find(instr) != m_uses.end()) {
       m_uses.erase(instr);
-      if (is_ssa())
+      if (m_flags.test(ssa))
          for (auto& p : m_parents)
             p->dec_use();
    }
@@ -273,25 +273,22 @@ Register::accept(ConstRegisterVisitor& visitor) const
 }
 
 void
-Register::pin_live_range(bool start, bool end)
-{
-   m_pin_start = start;
-   m_pin_end = end;
-}
-
-void
-Register::set_is_ssa(bool value)
-{
-   m_is_ssa = value;
-}
-
-void
 Register::print(std::ostream& os) const
 {
-   os << (m_is_ssa ? "S" : "R") << sel() << "." << chanchar[chan()];
+   os << (m_flags.test(ssa) ? "S" : "R") << sel() << "." << chanchar[chan()];
 
    if (pin() != pin_none)
       os << "@" << pin();
+   if (m_flags.any()) {
+      os << "{";
+      if (m_flags.test(ssa))
+         os << "s";
+      if (m_flags.test(pin_start))
+         os << "b";
+      if (m_flags.test(pin_end))
+         os << "e";
+      os << "}";
+   }
 }
 
 Register::Pointer
@@ -375,9 +372,10 @@ Register::from_string(const std::string& s)
    }
 
    auto reg = new Register(sel, chan, p);
-   reg->set_is_ssa(s[0] == 'S');
+   if (s[0] == 'S')
+      reg->set_flag(ssa);
    if (p == pin_fully || p == pin_array)
-      reg->pin_live_range(true);
+      reg->set_flag(pin_start);
    return reg;
 }
 
@@ -394,7 +392,8 @@ RegisterVec4::RegisterVec4(int sel, bool is_ssa, const Swizzle& swz, Pin pin):
 {
    for (int i = 0; i < 4; ++i) {
       m_values[i] = new Element(*this, new Register(m_sel, swz[i], pin));
-      m_values[i]->value()->set_is_ssa(is_ssa);
+      if (is_ssa)
+         m_values[i]->value()->set_flag(Register::ssa);
    }
 }
 
@@ -505,7 +504,7 @@ RegisterVec4::ready(int block_id, int index) const
 void
 RegisterVec4::print(std::ostream& os) const
 {
-   os << (m_values[0]->value()->is_ssa() ? 'S' : 'R') << sel() << ".";
+   os << (m_values[0]->value()->has_flag(Register::ssa) ? 'S' : 'R') << sel() << ".";
    for (int i = 0; i < 4; ++i)
       os << VirtualValue::chanchar[m_values[i]->value()->chan()];
 }
@@ -846,7 +845,7 @@ LocalArray::LocalArray(int base_sel, int nchannels, int size, int frac):
           * array elements, and it seems that the one can not just use
           * registers that are not written to in an array for other purpouses
           */
-         m_values[m_size * c + i]->pin_live_range(true);
+         m_values[m_size * c + i]->set_flag(Register::pin_start);
       }
    }
 }
@@ -1144,7 +1143,10 @@ void
 ValueComparer::visit(const Register& other)
 {
    (void)other;
-   m_result = !!m_register;
+   if (m_register) {
+      m_result = other.flags() == m_register->flags();
+   } else
+      m_result = false;
 };
 
 void

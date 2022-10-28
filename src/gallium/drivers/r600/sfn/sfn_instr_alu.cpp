@@ -317,7 +317,7 @@ AluInstr::can_propagate_src() const
 
    assert(m_dest);
 
-   if (!m_dest->is_ssa()) {
+   if (!m_dest->has_flag(Register::ssa)) {
       return false;
    }
 
@@ -349,7 +349,7 @@ AluInstr::can_propagate_dest() const
       return false;
    }
 
-   if (!src_reg->is_ssa())
+   if (!src_reg->has_flag(Register::ssa))
       return false;
 
    if (src_reg->pin() == pin_chan)
@@ -771,7 +771,7 @@ AluInstr::register_priority() const
    if (!has_alu_flag(alu_no_schedule_bias)) {
 
       if (m_dest) {
-         if (m_dest->is_ssa() && has_alu_flag(alu_write)) {
+         if (m_dest->has_flag(Register::ssa) && has_alu_flag(alu_write)) {
             if (m_dest->pin() != pin_group && m_dest->pin() != pin_chgr)
                priority--;
          } else {
@@ -783,7 +783,7 @@ AluInstr::register_priority() const
 
       for (const auto s : m_src) {
          auto r = s->as_register();
-         if (r && r->is_ssa()) {
+         if (r && r->has_flag(Register::ssa)) {
             int pending = 0;
             for (auto b : r->uses()) {
                if (!b->is_scheduled())
@@ -1094,7 +1094,7 @@ AluInstr::do_ready() const
       }
    }
 
-   if (m_dest && !m_dest->is_ssa()) {
+   if (m_dest && !m_dest->has_flag(Register::ssa)) {
       if (m_dest->pin() == pin_array) {
          auto av = static_cast<const LocalArrayValue *>(m_dest);
          auto addr = av->addr();

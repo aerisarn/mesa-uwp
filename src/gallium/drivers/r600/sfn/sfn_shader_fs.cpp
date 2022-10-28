@@ -224,8 +224,6 @@ FragmentShader::do_allocate_reserved_registers()
    if (m_sv_values.test(es_pos)) {
       set_input_gpr(m_pos_driver_loc, next_register);
       m_pos_input = value_factory().allocate_pinned_vec4(next_register++, false);
-      for (int i = 0; i < 4; ++i)
-         m_pos_input[i]->pin_live_range(true);
    }
 
    int face_reg_index = -1;
@@ -233,14 +231,12 @@ FragmentShader::do_allocate_reserved_registers()
       set_input_gpr(m_face_driver_loc, next_register);
       face_reg_index = next_register++;
       m_face_input = value_factory().allocate_pinned_register(face_reg_index, 0);
-      m_face_input->pin_live_range(true);
    }
 
    if (m_sv_values.test(es_sample_mask_in)) {
       if (face_reg_index < 0)
          face_reg_index = next_register++;
       m_sample_mask_reg = value_factory().allocate_pinned_register(face_reg_index, 2);
-      m_sample_mask_reg->pin_live_range(true);
       sfn_log << SfnLog::io << "Set sample mask in register to " << *m_sample_mask_reg
               << "\n";
       m_nsys_inputs = 1;
@@ -252,7 +248,6 @@ FragmentShader::do_allocate_reserved_registers()
    if (m_sv_values.test(es_sample_id) || m_sv_values.test(es_sample_mask_in)) {
       int sample_id_reg = next_register++;
       m_sample_id_reg = value_factory().allocate_pinned_register(sample_id_reg, 3);
-      m_sample_id_reg->pin_live_range(true);
       sfn_log << SfnLog::io << "Set sample id register to " << *m_sample_id_reg << "\n";
       m_nsys_inputs++;
       ShaderInput input(ninputs(), TGSI_SEMANTIC_SAMPLEID);
@@ -649,9 +644,6 @@ FragmentShaderR600::allocate_interpolators_or_inputs()
                             vf.allocate_pinned_register(pos, 3),
                             pin_fully);
          inp.set_gpr(pos++);
-         for (int i = 0; i < 4; ++i) {
-            input[i]->pin_live_range(true);
-         }
 
          sfn_log << SfnLog::io << "Reseve input register at pos " << index << " as "
                  << input << " with register " << inp.gpr() << "\n";
@@ -760,10 +752,7 @@ FragmentShaderEG::allocate_interpolators_or_inputs()
          unsigned chan = 2 * (num_baryc % 2);
 
          m_interpolator[i].i = value_factory().allocate_pinned_register(sel, chan + 1);
-         m_interpolator[i].i->pin_live_range(true, false);
-
          m_interpolator[i].j = value_factory().allocate_pinned_register(sel, chan);
-         m_interpolator[i].j->pin_live_range(true, false);
 
          m_interpolator[i].ij_index = num_baryc++;
       }
