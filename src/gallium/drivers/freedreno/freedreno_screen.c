@@ -392,6 +392,9 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
+   case PIPE_CAP_VS_LAYER_VIEWPORT:
+      return is_a6xx(screen);
+
    case PIPE_CAP_MAX_VIEWPORTS:
       return 1;
 
