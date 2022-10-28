@@ -1041,8 +1041,14 @@ static bool
 si_export_mrt_color(struct radv_shader_context *ctx, LLVMValueRef *color, unsigned target,
                     unsigned index, struct ac_export_args *args)
 {
-   /* Export */
-   si_llvm_init_export_args(ctx, color, 0xf, V_008DFC_SQ_EXP_MRT + target, index, args);
+   unsigned mrt_target = V_008DFC_SQ_EXP_MRT + target;
+
+   if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.mrt0_is_dual_src &&
+       (target == 0 || target == 1)) {
+      mrt_target += 21;
+   }
+
+   si_llvm_init_export_args(ctx, color, 0xf, mrt_target, index, args);
    if (!args->enabled_channels)
       return false; /* unnecessary NULL export */
 
@@ -1105,6 +1111,10 @@ handle_fs_outputs_post(struct radv_shader_context *ctx)
 
       color_args[last].valid_mask = 1; /* whether the EXEC mask is valid */
       color_args[last].done = 1;       /* DONE bit */
+
+      if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.mrt0_is_dual_src) {
+         ac_build_dual_src_blend_swizzle(&ctx->ac, &color_args[0], &color_args[1]);
+      }
    }
 
    /* Export PS outputs. */
