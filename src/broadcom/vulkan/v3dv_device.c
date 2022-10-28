@@ -3191,8 +3191,10 @@ device_allocate_event_resources(struct v3dv_device *device)
    bind_buffer_memory(&bind_info);
 
    /* Pipelines */
-   if (!device_create_event_pipelines(device))
+   if (!device_create_event_pipelines(device)) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
+   }
 
    /* Descriptor pool & set to access the buffer */
    VkDescriptorPoolSize pool_size = {
