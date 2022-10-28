@@ -91,8 +91,9 @@ main()
    uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_box32);
 
    for (;;) {
-      controlBarrier(gl_ScopeWorkgroup, gl_ScopeDevice, gl_StorageSemanticsBuffer,
-                     gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
+      /* Make changes to the current node's in_final_tree value visible. */
+      memoryBarrier(gl_ScopeDevice, gl_StorageSemanticsBuffer,
+                    gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
 
       uint32_t in_final_tree = node_id == RADV_BVH_ROOT_NODE ? FINAL_TREE_PRESENT : DEREF(src_node).in_final_tree;
       if (in_final_tree == FINAL_TREE_UNKNOWN)
@@ -187,6 +188,10 @@ main()
                DEREF(dst_node).coords[i].max[comp] = NAN;
             }
       }
+
+      /* Make changes to the children's in_final_tree value available to the other invocations. */
+      memoryBarrier(gl_ScopeDevice, gl_StorageSemanticsBuffer,
+                    gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
 
       DEREF(dst_node).children = children;
       break;
