@@ -3871,13 +3871,6 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    /* lower ALU operations */
    NIR_PASS(_, stage->nir, nir_lower_int64);
 
-   NIR_PASS(_, stage->nir, nir_opt_idiv_const, 8);
-
-   NIR_PASS(_, stage->nir, nir_lower_idiv,
-            &(nir_lower_idiv_options){
-               .allow_fp16 = gfx_level >= GFX9,
-            });
-
    nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
    if (stage->stage != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
       sink_opts |= nir_move_load_input;
@@ -3891,6 +3884,13 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    bool lowered_ngg = pipeline_has_ngg && stage->stage == last_vgt_api_stage;
    if (lowered_ngg)
       radv_lower_ngg(device, stage, pipeline_key);
+
+   NIR_PASS(_, stage->nir, nir_opt_idiv_const, 8);
+
+   NIR_PASS(_, stage->nir, nir_lower_idiv,
+            &(nir_lower_idiv_options){
+               .allow_fp16 = gfx_level >= GFX9,
+            });
 
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,
