@@ -31,6 +31,7 @@
 #include "sfn_instr.h"
 #include "sfn_valuefactory.h"
 #include "util/macros.h"
+#include "util/u_math.h"
 
 #include <iomanip>
 #include <iostream>
@@ -1204,5 +1205,63 @@ ValueComparer::visit(const InlineConstant& other)
    (void)other;
    m_result = !!m_inline_constant;
 };
+
+class CheckConstValue : public ConstRegisterVisitor {
+public:
+   CheckConstValue(uint32_t _test_value):
+       test_value(_test_value)
+   {
+   }
+   CheckConstValue(float _test_value):
+       test_value(fui(_test_value))
+   {
+   }
+
+   void visit(const Register& value) override { (void)value; }
+   void visit(const LocalArray& value) override { (void)value; }
+   void visit(const LocalArrayValue& value) override { (void)value; }
+   void visit(const UniformValue& value) override { (void)value; }
+
+   void visit(const LiteralConstant& value) override
+   {
+      result = value.value() == test_value;
+   }
+   void visit(const InlineConstant& value) override
+   {
+      switch (test_value) {
+      case 0:
+         result = value.sel() == ALU_SRC_0;
+         break;
+      case 1:
+         result = value.sel() == ALU_SRC_1_INT;
+         break;
+      case 0x3f800000 /* 1.0f */:
+         result = value.sel() == ALU_SRC_1;
+         break;
+      case 0x3f000000 /* 0.5f */:
+         result = value.sel() == ALU_SRC_0_5;
+         break;
+      }
+   }
+
+   uint32_t test_value;
+   bool result{false};
+};
+
+bool
+value_is_const_uint(const VirtualValue& val, uint32_t value)
+{
+   CheckConstValue test(value);
+   val.accept(test);
+   return test.result;
+}
+
+bool
+value_is_const_float(const VirtualValue& val, float value)
+{
+   CheckConstValue test(value);
+   val.accept(test);
+   return test.result;
+}
 
 } // namespace r600

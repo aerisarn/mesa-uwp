@@ -494,6 +494,11 @@ sfn_value_equal(const T *lhs, const T *rhs)
    return true;
 }
 
+bool
+value_is_const_uint(const VirtualValue& val, uint32_t value);
+bool
+value_is_const_float(const VirtualValue& val, float value);
+
 class RegisterVisitor {
 public:
    virtual void visit(Register& value) = 0;

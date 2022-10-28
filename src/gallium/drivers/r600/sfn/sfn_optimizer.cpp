@@ -717,23 +717,10 @@ ReplaceConstSource::visit(AluInstr *alu)
 
    int override_chan = -1;
 
-   auto ic = src->as_inline_const();
-   if (ic) {
-      if (ic->sel() == ALU_SRC_0)
-         override_chan = 4;
-
-      if (ic->sel() == ALU_SRC_1)
-         override_chan = 5;
-   }
-
-   auto literal = src->as_literal();
-   if (literal) {
-
-      if (literal->value() == 0)
-         override_chan = 4;
-
-      if (literal->value() == 0x3F800000)
-         override_chan = 5;
+   if (value_is_const_uint(*src, 0)) {
+      override_chan = 4;
+   } else if (value_is_const_float(*src, 1.0f)) {
+      override_chan = 5;
    }
 
    if (override_chan >= 0) {
