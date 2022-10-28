@@ -1062,9 +1062,6 @@ parse_insert(Instruction* instr)
 bool
 can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info& info)
 {
-   if (idx >= 2)
-      return false;
-
    Temp tmp = info.instr->operands[0].getTemp();
    SubdwordSel sel = parse_extract(info.instr);
 
@@ -1074,7 +1071,7 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
       return true;
    } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
       return true;
-   } else if (can_use_SDWA(ctx.program->gfx_level, instr, true) &&
+   } else if (idx < 2 && can_use_SDWA(ctx.program->gfx_level, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->gfx_level >= GFX9)) {
       if (instr->isSDWA() && instr->sdwa().sel[idx] != SubdwordSel::dword)
          return false;
