@@ -94,6 +94,7 @@ amd_common_files = files(
   'ac_nir_cull.c',
   'ac_nir_lower_esgs_io_to_mem.c',
   'ac_nir_lower_global_access.c',
+  'ac_nir_lower_image_opcodes_cdna.c',
   'ac_nir_lower_resinfo.c',
   'ac_nir_lower_subdword_loads.c',
   'ac_nir_lower_taskmesh_io_to_mem.c',

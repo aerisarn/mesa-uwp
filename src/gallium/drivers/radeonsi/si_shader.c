@@ -1937,6 +1937,10 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.point_smoothing)
       NIR_PASS(progress, nir, nir_lower_point_smooth);
 
+   /* This must be before si_nir_lower_resource. */
+   if (!sel->screen->info.has_image_opcodes)
+      NIR_PASS(progress, nir, ac_nir_lower_image_opcodes);
+
    NIR_PASS(progress, nir, si_nir_lower_resource, shader, args);
 
    bool is_last_vgt_stage =
