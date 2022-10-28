@@ -1342,9 +1342,8 @@ struct pvr_render_pass_attachment {
    uint32_t sample_count;
    VkImageLayout initial_layout;
 
-   /*  Derived and other state. */
-   /* True if the attachment format includes a stencil component. */
-   bool has_stencil;
+   /* Derived and other state. */
+   VkImageAspectFlags aspects;
 
    /* Can this surface be resolved by the PBE. */
    bool is_pbe_downscalable;
