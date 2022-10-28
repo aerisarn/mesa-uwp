@@ -2113,6 +2113,10 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail;
    }
 
+   result = v3dv_query_allocate_resources(device);
+   if (result != VK_SUCCESS)
+      goto fail;
+
    *pDevice = v3dv_device_to_handle(device);
 
    return VK_SUCCESS;
@@ -2123,6 +2127,8 @@ fail:
    queue_finish(&device->queue);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
+   v3dv_event_free_resources(device);
+   v3dv_query_free_resources(device);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 
@@ -2140,6 +2146,8 @@ v3dv_DestroyDevice(VkDevice _device,
 
    v3dv_event_free_resources(device);
    mtx_destroy(&device->events.lock);
+
+   v3dv_query_free_resources(device);
 
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);

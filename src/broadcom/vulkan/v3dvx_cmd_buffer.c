@@ -1598,17 +1598,17 @@ cmd_buffer_copy_secondary_end_query_state(struct v3dv_cmd_buffer *primary,
    const uint32_t total_state_count =
       p_state->query.end.used_count + s_state->query.end.used_count;
    v3dv_cmd_buffer_ensure_array_state(primary,
-                                      sizeof(struct v3dv_end_query_cpu_job_info),
+                                      sizeof(struct v3dv_end_query_info),
                                       total_state_count,
                                       &p_state->query.end.alloc_count,
                                       (void **) &p_state->query.end.states);
    v3dv_return_if_oom(primary, NULL);
 
    for (uint32_t i = 0; i < s_state->query.end.used_count; i++) {
-      const struct v3dv_end_query_cpu_job_info *s_qstate =
+      const struct v3dv_end_query_info *s_qstate =
          &secondary->state.query.end.states[i];
 
-      struct v3dv_end_query_cpu_job_info *p_qstate =
+      struct v3dv_end_query_info *p_qstate =
          &p_state->query.end.states[p_state->query.end.used_count++];
 
       p_qstate->pool = s_qstate->pool;

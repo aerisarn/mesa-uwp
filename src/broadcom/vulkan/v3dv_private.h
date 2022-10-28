@@ -556,6 +556,31 @@ struct v3dv_device {
       VkPipeline wait_event_pipeline;
    } events;
 
+   /* Query handling resources.
+    *
+    * Our implementation of occlusion queries uses a BO per pool to keep track
+    * of the per-query availability state and dispatches compute shaders to
+    * handle GPU query functions that read and write that state. This struct
+    * holds Vulkan resources that can be shared across all query pools to
+    * implement this. This framework may be extended in the future to handle
+    * more query types.
+    */
+   struct {
+      VkDescriptorSetLayout buf_descriptor_set_layout;
+
+      /* Set query availability */
+      VkPipelineLayout avail_pipeline_layout;
+      VkPipeline avail_pipeline;
+
+      /* Reset query availability and clear occlusion counters */
+      VkPipelineLayout reset_occlusion_pipeline_layout;
+      VkPipeline reset_occlusion_pipeline;
+
+      /* Copy query results */
+      VkPipelineLayout copy_pipeline_layout;
+      VkPipeline copy_pipeline;
+   } queries;
+
    struct v3dv_pipeline_cache default_pipeline_cache;
 
    /* GL_SHADER_STATE_RECORD needs to specify default attribute values. The
@@ -1026,7 +1051,7 @@ struct v3dv_reset_query_cpu_job_info {
    uint32_t count;
 };
 
-struct v3dv_end_query_cpu_job_info {
+struct v3dv_end_query_info {
    struct v3dv_query_pool *pool;
    uint32_t query;
 
@@ -1218,7 +1243,7 @@ struct v3dv_job {
    /* Job specs for CPU jobs */
    union {
       struct v3dv_reset_query_cpu_job_info          query_reset;
-      struct v3dv_end_query_cpu_job_info            query_end;
+      struct v3dv_end_query_info                    query_end;
       struct v3dv_copy_query_results_cpu_job_info   query_copy_results;
       struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
       struct v3dv_csd_indirect_cpu_job_info         csd_indirect;
@@ -1449,7 +1474,7 @@ struct v3dv_cmd_buffer_state {
       struct {
          uint32_t used_count;
          uint32_t alloc_count;
-         struct v3dv_end_query_cpu_job_info *states;
+         struct v3dv_end_query_info *states;
       } end;
 
       struct {
@@ -1498,13 +1523,19 @@ struct v3dv_descriptor {
 };
 
 struct v3dv_query {
+   /* Used by queries where we implement result copying in the CPU so we can
+    * tell if the relevant jobs have been submitted for execution. Currently
+    * these are all but occlusion queries.
+    */
    bool maybe_available;
+
    union {
-      /* Used by GPU queries (occlusion) */
+      /* Used by occlusion queries */
       struct {
-         struct v3dv_bo *bo;
+         /* Offset of this query in the occlusion query counter BO */
          uint32_t offset;
-      };
+      } occlusion;
+
       /* Used by CPU queries (timestamp) */
       uint64_t value;
 
@@ -1516,7 +1547,36 @@ struct v3dv_query {
 struct v3dv_query_pool {
    struct vk_object_base base;
 
-   struct v3dv_bo *bo; /* Only used with GPU queries (occlusion) */
+   /* Availability state for each query in the pool. Only used with occlusion
+    * queries for now, but could be used by other query types in the future.
+    */
+   struct v3dv_bo *avail_bo;
+
+   /* Per-pool Vulkan resources required to implement GPU-side query
+    * functions (only occlusion queries for now).
+    */
+   struct {
+      /* Buffer to access query availability state */
+      VkBuffer avail_buf;
+      VkDeviceMemory avail_mem;
+
+      /* Buffer to access occlusion query results */
+      VkBuffer res_buf;
+      VkDeviceMemory res_mem;
+
+      VkDescriptorPool descriptor_pool;
+
+      /* Two descriptor sets: one for accessing the availability buffer and
+       * another for the buffer with the occlusion query results.
+       */
+      VkDescriptorSet descriptor_sets[2];
+   } meta;
+
+   /* Only used with occlusion queries */
+   struct {
+      /* BO with the occlusion counters */
+      struct v3dv_bo *bo;
+   } occlusion;
 
    /* Only used with performance queries */
    struct {
@@ -1537,18 +1597,29 @@ struct v3dv_query_pool {
    struct v3dv_query *queries;
 };
 
-VkResult v3dv_get_query_pool_results(struct v3dv_device *device,
-                                     struct v3dv_query_pool *pool,
-                                     uint32_t first,
-                                     uint32_t count,
-                                     void *data,
-                                     VkDeviceSize stride,
-                                     VkQueryResultFlags flags);
+VkResult
+v3dv_query_allocate_resources(struct v3dv_device *decice);
 
-void v3dv_reset_query_pools(struct v3dv_device *device,
-                            struct v3dv_query_pool *query_pool,
-                            uint32_t first,
-                            uint32_t last);
+void
+v3dv_query_free_resources(struct v3dv_device *decice);
+
+VkResult v3dv_get_query_pool_results_cpu(struct v3dv_device *device,
+                                         struct v3dv_query_pool *pool,
+                                         uint32_t first,
+                                         uint32_t count,
+                                         void *data,
+                                         VkDeviceSize stride,
+                                         VkQueryResultFlags flags);
+
+void v3dv_reset_query_pool_cpu(struct v3dv_device *device,
+                               struct v3dv_query_pool *query_pool,
+                               uint32_t first,
+                               uint32_t last);
+
+void v3dv_cmd_buffer_emit_set_query_availability(struct v3dv_cmd_buffer *cmd_buffer,
+                                                 struct v3dv_query_pool *pool,
+                                                 uint32_t query, uint32_t count,
+                                                 uint8_t availability);
 
 typedef void (*v3dv_cmd_buffer_private_obj_destroy_cb)(VkDevice device,
                                                        uint64_t pobj,
@@ -1597,6 +1668,10 @@ struct v3dv_cmd_buffer {
          /* The current descriptor pool for texel buffer copy sources */
          VkDescriptorPool dspool;
       } texel_buffer_copy;
+      struct {
+         /* The current descriptor pool for the copy query results output buffer */
+         VkDescriptorPool dspool;
+      } query;
    } meta;
 
    /* List of jobs in the command buffer. For primary command buffers it
@@ -1624,11 +1699,6 @@ void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
 void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
                                     uint32_t dirty_dynamic_state,
                                     bool needs_subpass_resume);
-
-void v3dv_cmd_buffer_reset_queries(struct v3dv_cmd_buffer *cmd_buffer,
-                                   struct v3dv_query_pool *pool,
-                                   uint32_t first,
-                                   uint32_t count);
 
 void v3dv_cmd_buffer_begin_query(struct v3dv_cmd_buffer *cmd_buffer,
                                  struct v3dv_query_pool *pool,
