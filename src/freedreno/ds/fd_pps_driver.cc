@@ -630,13 +630,11 @@ FreedrenoDriver::Countable::collect()
 
    d->state[id].last_value = d->state[id].value;
 
-   uint32_t *reg_lo = (uint32_t *)d->io + counter->counter_reg_lo;
-   uint32_t *reg_hi = (uint32_t *)d->io + counter->counter_reg_hi;
+   /* this is true on a5xx and later */
+   assert(counter->counter_reg_lo + 1 == counter->counter_reg_hi);
+   uint64_t *reg = (uint64_t *)((uint32_t *)d->io + counter->counter_reg_lo);
 
-   uint32_t lo = *reg_lo;
-   uint32_t hi = *reg_hi;
-
-   d->state[id].value = lo | ((uint64_t)hi << 32);
+   d->state[id].value = *reg;
 }
 
 /* Resolve the countable and assign next counter from it's group: */
