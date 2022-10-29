@@ -27,6 +27,7 @@
  */
 
 #include "radeon_regalloc.h"
+#include "radeon_list.h"
 
 #define VERBOSE 0
 
@@ -220,6 +221,37 @@ static void add_register_conflicts(
 						get_reg_id(index, a_mask),
 						get_reg_id(index, b_mask));
 				}
+			}
+		}
+	}
+}
+
+void rc_build_interference_graph(
+	struct ra_graph * graph,
+	struct rc_list * variables)
+{
+	unsigned node_index;
+	struct rc_list * var_ptr;
+
+	/* Build the interference graph */
+	for (var_ptr = variables, node_index = 0; var_ptr;
+					var_ptr = var_ptr->Next, node_index++) {
+		struct rc_list * a, * b;
+		unsigned int b_index;
+
+		for (a = var_ptr, b = var_ptr->Next, b_index = node_index + 1;
+						b; b = b->Next, b_index++) {
+			struct rc_variable * var_a = a->Item;
+			while (var_a) {
+				struct rc_variable * var_b = b->Item;
+				while (var_b) {
+					if (rc_overlap_live_intervals_array(var_a->Live, var_b->Live)) {
+						ra_add_node_interference(graph,
+							node_index, b_index);
+					}
+					var_b = var_b->Friend;
+				}
+				var_a = var_a->Friend;
 			}
 		}
 	}

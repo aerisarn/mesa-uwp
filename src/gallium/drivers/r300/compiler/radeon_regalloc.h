@@ -125,6 +125,10 @@ static inline int get_reg_id(unsigned int index, unsigned int writemask)
        return (index * RC_MASK_XYZW) + (writemask - 1);
 }
 
+void rc_build_interference_graph(
+	struct ra_graph * graph,
+	struct rc_list * variables);
+
 void rc_init_regalloc_state(struct rc_regalloc_state *s);
 void rc_destroy_regalloc_state(struct rc_regalloc_state *s);
 
