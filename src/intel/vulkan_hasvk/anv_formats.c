@@ -1125,6 +1125,12 @@ anv_get_image_format_properties(
        !(image_usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
        isl_format_supports_multisampling(devinfo, format->planes[0].isl_format)) {
       sampleCounts = isl_device_get_sample_counts(&physical_device->isl_dev);
+      /* Gfx7 doesn't support 8xMSAA with depth/stencil images when their width
+       * is greater than 8192 pixels. */
+      if (devinfo->ver == 7 &&
+         (format_feature_flags & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+         maxExtent.width = 8192;
+      }
    }
 
    if (view_usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {

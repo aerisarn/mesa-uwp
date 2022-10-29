@@ -1616,7 +1616,9 @@ void anv_GetPhysicalDeviceProperties(
 
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D                      = (1 << 14),
-      .maxImageDimension2D                      = (1 << 14),
+      /* Gfx7 doesn't support 8xMSAA with depth/stencil images when their width
+       * is greater than 8192 pixels. */
+      .maxImageDimension2D                      = devinfo->ver == 7 ? (1 << 13) : (1 << 14),
       .maxImageDimension3D                      = (1 << 11),
       .maxImageDimensionCube                    = (1 << 14),
       .maxImageArrayLayers                      = (1 << 11),
@@ -1720,7 +1722,8 @@ void anv_GetPhysicalDeviceProperties(
       .framebufferNoAttachmentsSampleCounts     = sample_counts,
       .maxColorAttachments                      = MAX_RTS,
       .sampledImageColorSampleCounts            = sample_counts,
-      .sampledImageIntegerSampleCounts          = sample_counts,
+      /* Multisampling with SINT formats is not supported on gfx7 */
+      .sampledImageIntegerSampleCounts          = devinfo->ver == 7 ? VK_SAMPLE_COUNT_1_BIT : sample_counts,
       .sampledImageDepthSampleCounts            = sample_counts,
       .sampledImageStencilSampleCounts          = sample_counts,
       .storageImageSampleCounts                 = VK_SAMPLE_COUNT_1_BIT,
@@ -1941,7 +1944,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
 
    p->framebufferIntegerColorSampleCounts =
-      isl_device_get_sample_counts(&pdevice->isl_dev);
+      pdevice->info.ver == 7 ? VK_SAMPLE_COUNT_1_BIT : isl_device_get_sample_counts(&pdevice->isl_dev);
 }
 
 static void
