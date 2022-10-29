@@ -265,7 +265,6 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->opts.PSSpecifiedStencilRefSupported;
 
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
-   case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
    case PIPE_CAP_VS_INSTANCEID:
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
