@@ -784,7 +784,7 @@ convert_color(enum pipe_format format, union pipe_color_union *pcolor)
 
 void
 fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                  struct pipe_surface *psurf, uint32_t width, uint32_t height,
+                  struct pipe_surface *psurf, const struct pipe_box *box2d,
                   union pipe_color_union *color, uint32_t unknown_8c01)
 {
    if (DEBUG_BLIT) {
@@ -795,9 +795,10 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    uint32_t nr_samples = fd_resource_nr_samples(psurf->texture);
    OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
-   OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(0) | A6XX_GRAS_2D_DST_TL_Y(0));
-   OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(width * nr_samples - 1) |
-                     A6XX_GRAS_2D_DST_BR_Y(height - 1));
+   OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(box2d->x * nr_samples) |
+                     A6XX_GRAS_2D_DST_TL_Y(box2d->y));
+   OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X((box2d->x + box2d->width) * nr_samples - 1) |
+                     A6XX_GRAS_2D_DST_BR_Y(box2d->y + box2d->height - 1));
 
    union pipe_color_union clear_color = convert_color(psurf->format, color);
 
