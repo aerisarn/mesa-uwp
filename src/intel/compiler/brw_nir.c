@@ -951,7 +951,10 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    brw_nir_optimize(nir, compiler, is_scalar, true);
 
    OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
-   OPT(nir_lower_int64);
+   if (OPT(nir_lower_int64)) {
+      OPT(nir_opt_algebraic);
+      OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
+   }
 
    OPT(nir_lower_bit_size, lower_bit_size_callback, (void *)compiler);
 
