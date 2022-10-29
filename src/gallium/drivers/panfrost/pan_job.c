@@ -827,16 +827,15 @@ out:
 void
 panfrost_flush_all_batches(struct panfrost_context *ctx, const char *reason)
 {
+   if (reason)
+      perf_debug_ctx(ctx, "Flushing everything due to: %s", reason);
+
    struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
    panfrost_batch_submit(ctx, batch);
 
    for (unsigned i = 0; i < PAN_MAX_BATCHES; i++) {
-      if (ctx->batches.slots[i].seqnum) {
-         if (reason)
-            perf_debug_ctx(ctx, "Flushing everything due to: %s", reason);
-
+      if (ctx->batches.slots[i].seqnum)
          panfrost_batch_submit(ctx, &ctx->batches.slots[i]);
-      }
    }
 }
 
