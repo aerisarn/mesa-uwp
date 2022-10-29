@@ -476,6 +476,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       if (is_ir3(screen))
          return 1;
       return 0;
+   case PIPE_CAP_SHADER_GROUP_VOTE:
+      return is_a6xx(screen);
    case PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL:
       return 1;
    case PIPE_CAP_FS_POINT_IS_SYSVAL:
