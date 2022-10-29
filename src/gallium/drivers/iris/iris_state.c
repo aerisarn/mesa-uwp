@@ -5132,6 +5132,11 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
    if (res->aux.bo)
       iris_use_pinned_bo(batch, res->aux.bo, write, IRIS_DOMAIN_NONE);
 
+   if (res->aux.clear_color_bo) {
+      iris_use_pinned_bo(batch, res->aux.clear_color_bo, false,
+                         IRIS_DOMAIN_NONE);
+   }
+
    enum isl_aux_usage aux_usage =
       iris_image_view_aux_usage(ice, &iv->base, info);
 
