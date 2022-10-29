@@ -68,7 +68,10 @@ pub struct KernelArg {
     spirv: spirv::SPIRVKernelArg,
     pub kind: KernelArgType,
     pub size: usize,
+    /// The offset into the input buffer
     pub offset: usize,
+    /// The actual binding slot
+    pub binding: u32,
     pub dead: bool,
 }
 
@@ -127,6 +130,7 @@ impl KernelArg {
                 // we'll update it later in the 2nd pass
                 kind: kind,
                 offset: 0,
+                binding: 0,
                 dead: true,
             });
         }
@@ -143,6 +147,7 @@ impl KernelArg {
         ) {
             if let Some(arg) = args.get_mut(var.data.location as usize) {
                 arg.offset = var.data.driver_location as usize;
+                arg.binding = var.data.binding;
                 arg.dead = false;
             } else {
                 internal_args
@@ -159,6 +164,7 @@ impl KernelArg {
         bin.append(&mut self.spirv.serialize());
         bin.extend_from_slice(&self.size.to_ne_bytes());
         bin.extend_from_slice(&self.offset.to_ne_bytes());
+        bin.extend_from_slice(&self.binding.to_ne_bytes());
         bin.extend_from_slice(&(self.dead as u8).to_ne_bytes());
         bin.extend_from_slice(&(self.kind as u8).to_ne_bytes());
 
@@ -169,6 +175,7 @@ impl KernelArg {
         let spirv = spirv::SPIRVKernelArg::deserialize(bin)?;
         let size = read_ne_usize(bin);
         let offset = read_ne_usize(bin);
+        let binding = read_ne_u32(bin);
         let dead = read_ne_u8(bin) == 1;
 
         let kind = match read_ne_u8(bin) {
@@ -188,6 +195,7 @@ impl KernelArg {
             kind: kind,
             size: size,
             offset: offset,
+            binding: binding,
             dead: dead,
         })
     }
@@ -941,10 +949,11 @@ impl Kernel {
                             (&mut tex_formats, &mut tex_orders)
                         };
 
-                        assert!(arg.offset >= formats.len());
+                        let binding = arg.binding as usize;
+                        assert!(binding >= formats.len());
 
-                        formats.resize(arg.offset, 0);
-                        orders.resize(arg.offset, 0);
+                        formats.resize(binding, 0);
+                        orders.resize(binding, 0);
 
                         formats.push(mem.image_format.image_channel_data_type as u16);
                         orders.push(mem.image_format.image_channel_order as u16);
