@@ -161,7 +161,7 @@ nvk_CmdSetEvent2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_event, event, _event);
 
-   VkPipelineStageFlags2 stages;
+   VkPipelineStageFlags2 stages = 0;
    for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
       stages |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
    for (uint32_t i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++)
