@@ -43,6 +43,7 @@
 #include "util/rand_xor.h"
 #include "util/u_atomic.h"
 #include "util/mesa-sha1.h"
+#include "util/perf/cpu_trace.h"
 #include "util/ralloc.h"
 #include "util/compiler.h"
 
@@ -396,6 +397,8 @@ static void
 blob_put_compressed(struct disk_cache *cache, const cache_key key,
          const void *data, size_t size)
 {
+   MESA_TRACE_FUNC();
+
    size_t max_buf = util_compress_max_compressed_len(size);
    struct blob_cache_entry *entry = malloc(max_buf + sizeof(*entry));
    if (!entry)
@@ -403,13 +406,17 @@ blob_put_compressed(struct disk_cache *cache, const cache_key key,
 
    entry->uncompressed_size = size;
 
+   MESA_TRACE_BEGIN("deflate");
    size_t compressed_size =
          util_compress_deflate(data, size, entry->compressed_data, max_buf);
+   MESA_TRACE_END();
    if (!compressed_size)
       goto out;
 
    unsigned entry_size = compressed_size + sizeof(*entry);
+   MESA_TRACE_BEGIN("blob_put");
    cache->blob_put_cb(key, CACHE_KEY_SIZE, entry, entry_size);
+   MESA_TRACE_END();
 
 out:
    free(entry);
@@ -419,6 +426,8 @@ static void *
 blob_get_compressed(struct disk_cache *cache, const cache_key key,
                     size_t *size)
 {
+   MESA_TRACE_FUNC();
+
    /* This is what Android EGL defines as the maxValueSize in egl_cache_t
     * class implementation.
     */
@@ -427,8 +436,10 @@ blob_get_compressed(struct disk_cache *cache, const cache_key key,
    if (!entry)
       return NULL;
 
+   MESA_TRACE_BEGIN("blob_get");
    signed long entry_size =
       cache->blob_get_cb(key, CACHE_KEY_SIZE, entry, max_blob_size);
+   MESA_TRACE_END();
 
    if (!entry_size) {
       free(entry);
@@ -442,8 +453,10 @@ blob_get_compressed(struct disk_cache *cache, const cache_key key,
    }
 
    unsigned compressed_size = entry_size - sizeof(*entry);
+   MESA_TRACE_BEGIN("inflate");
    bool ret = util_compress_inflate(entry->compressed_data, compressed_size,
                                     data, entry->uncompressed_size);
+   MESA_TRACE_END();
    if (!ret) {
       free(data);
       free(entry);
