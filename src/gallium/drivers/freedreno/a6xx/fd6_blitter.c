@@ -31,6 +31,7 @@
 #include "util/half_float.h"
 #include "util/u_dump.h"
 #include "util/u_log.h"
+#include "util/u_surface.h"
 
 #include "freedreno_blitter.h"
 #include "freedreno_fence.h"
@@ -229,6 +230,16 @@ can_do_blit(const struct pipe_blit_info *info)
    }
 
    fail_if(info->alpha_blend);
+
+   return true;
+}
+
+static bool
+can_do_clear(const struct pipe_resource *prsc, unsigned level,
+             const struct pipe_box *box)
+{
+   return ok_format(prsc->format) &&
+          ok_dims(prsc, box, level);
 
    return true;
 }
@@ -829,6 +840,101 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
    }
 }
 
+static void
+fd6_clear_texture(struct pipe_context *pctx, struct pipe_resource *prsc,
+                  unsigned level, const struct pipe_box *box, const void *data)
+   assert_dt
+{
+   struct fd_context *ctx = fd_context(pctx);
+   struct fd_resource *rsc = fd_resource(prsc);
+
+   if (DEBUG_BLIT) {
+      fprintf(stderr, "surface texture:\ndst resource: ");
+      util_dump_resource(stderr, prsc);
+      fprintf(stderr, "\n");
+   }
+
+   if (!can_do_clear(prsc, level, box))
+      goto fallback;
+
+   union pipe_color_union color;
+
+   if (util_format_is_depth_or_stencil(prsc->format)) {
+      const struct util_format_description *desc =
+             util_format_description(prsc->format);
+      float depth = 0.0f;
+      uint8_t stencil = 0;
+
+      if (util_format_has_depth(desc))
+         util_format_unpack_z_float(prsc->format, &depth, data, 1);
+
+      if (util_format_has_stencil(desc))
+         util_format_unpack_s_8uint(prsc->format, &stencil, data, 1);
+
+      if (rsc->stencil)
+         fd6_clear_texture(pctx, &rsc->stencil->b.b, level, box, &stencil);
+
+      color.f[0] = depth;
+      color.ui[1] = stencil;
+   } else {
+      util_format_unpack_rgba(prsc->format, color.ui, data, 1);
+   }
+
+   struct fd_batch *batch = fd_bc_alloc_batch(ctx, true);
+
+   fd_screen_lock(ctx->screen);
+   fd_batch_resource_write(batch, rsc);
+   fd_screen_unlock(ctx->screen);
+
+   ASSERTED bool ret = fd_batch_lock_submit(batch);
+   assert(ret);
+
+   /* Marking the batch as needing flush must come after the batch
+    * dependency tracking (resource_read()/resource_write()), as that
+    * can trigger a flush
+    */
+   fd_batch_needs_flush(batch);
+
+   fd_batch_update_queries(batch);
+
+   emit_setup(batch);
+
+   struct pipe_surface surf = {
+         .format = prsc->format,
+         .texture = prsc,
+         .u = {
+               .tex = {
+                     .level = level,
+                     .first_layer = box->z,
+                     .last_layer = box->depth + box->z - 1,
+               },
+         },
+   };
+
+   fd6_clear_surface(ctx, batch->draw, &surf, box, &color, 0);
+
+   fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_COLOR_TS, true);
+   fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);
+   fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
+   fd_wfi(batch, batch->draw);
+   fd6_cache_inv(batch, batch->draw);
+
+   fd_batch_unlock_submit(batch);
+
+   fd_batch_flush(batch);
+   fd_batch_reference(&batch, NULL);
+
+   /* Acc query state will have been dirtied by our fd_batch_update_queries, so
+    * the ctx->batch may need to turn its queries back on.
+    */
+   ctx->update_active_queries = true;
+
+   return;
+
+fallback:
+   util_clear_texture(pctx, prsc, level, box, data);
+}
+
 void
 fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
                  uint32_t base, struct pipe_surface *psurf, uint32_t unknown_8c01)
@@ -1190,6 +1296,7 @@ fd6_blitter_init(struct pipe_context *pctx) disable_thread_safety_analysis
    if (FD_DBG(NOBLIT))
       return;
 
+   pctx->clear_texture = fd6_clear_texture;
    ctx->blit = fd6_blit;
 }
 
