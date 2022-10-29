@@ -166,8 +166,10 @@ panfrost_get_batch(struct panfrost_context *ctx,
    assert(batch);
 
    /* The selected slot is used, we need to flush the batch */
-   if (batch->seqnum)
+   if (batch->seqnum) {
+      perf_debug_ctx(ctx, "Flushing batch due to seqnum overflow");
       panfrost_batch_submit(ctx, batch);
+   }
 
    panfrost_batch_init(ctx, key, batch);
 
