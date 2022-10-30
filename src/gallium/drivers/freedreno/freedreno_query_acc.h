@@ -54,6 +54,24 @@
 
 struct fd_acc_query;
 
+/**
+ * Base class for all query samples, on the GPU 'avail' is written to
+ * one when the query result is available.
+ */
+struct PACKED fd_acc_query_sample {
+   uint32_t avail;
+   uint32_t pad;
+};
+
+
+/**
+ * Helper to assert sample struct field has required alignment (ie. to
+ * catch issues at compile time if struct fd_acc_query_sample header
+ * ever changed, and to make the hw requirements more obvious)
+ */
+#define ASSERT_ALIGNED(type, field, nbytes) \
+   STATIC_ASSERT((offsetof(type, field) % nbytes) == 0)
+
 struct fd_acc_sample_provider {
    unsigned query_type;
 
@@ -65,7 +83,7 @@ struct fd_acc_sample_provider {
    void (*resume)(struct fd_acc_query *aq, struct fd_batch *batch) dt;
    void (*pause)(struct fd_acc_query *aq, struct fd_batch *batch) dt;
 
-   void (*result)(struct fd_acc_query *aq, void *buf,
+   void (*result)(struct fd_acc_query *aq, struct fd_acc_query_sample *s,
                   union pipe_query_result *result);
 };
 

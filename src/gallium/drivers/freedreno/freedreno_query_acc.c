@@ -133,6 +133,26 @@ fd_acc_end_query(struct fd_context *ctx, struct fd_query *q) assert_dt
 
    /* remove from active list: */
    list_delinit(&aq->node);
+
+   /* mark the result available: */
+   struct fd_batch *batch = fd_context_batch_locked(ctx);
+   struct fd_ringbuffer *ring = batch->draw;
+   struct fd_resource *rsc = fd_resource(aq->prsc);
+
+   if (ctx->screen->gen < 5) {
+      OUT_PKT3(ring, CP_MEM_WRITE, 3);
+      OUT_RELOC(ring, rsc->bo, 0, 0, 0);
+      OUT_RING(ring, 1);     /* low 32b */
+      OUT_RING(ring, 0);     /* high 32b */
+   } else {
+      OUT_PKT7(ring, CP_MEM_WRITE, 4);
+      OUT_RELOC(ring, rsc->bo, 0, 0, 0);
+      OUT_RING(ring, 1);     /* low 32b */
+      OUT_RING(ring, 0);     /* high 32b */
+   }
+
+   fd_batch_unlock_submit(batch);
+   fd_batch_reference(&batch, NULL);
 }
 
 static bool
