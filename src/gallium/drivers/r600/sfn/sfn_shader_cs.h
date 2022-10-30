@@ -54,11 +54,13 @@ private:
    bool read_prop(std::istream& is) override;
    void do_print_properties(std::ostream& os) const override;
 
-   bool emit_load_num_workgroups(nir_intrinsic_instr *instr);
+   bool emit_load_from_info_buffer(nir_intrinsic_instr *instr, int offset);
    bool emit_load_3vec(nir_intrinsic_instr *instr, const std::array<PRegister, 3>& src);
 
    std::array<PRegister, 3> m_workgroup_id{nullptr};
    std::array<PRegister, 3> m_local_invocation_id{nullptr};
+
+   PRegister m_zero_register{0};
 };
 
 } // namespace r600

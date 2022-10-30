@@ -67,8 +67,10 @@ ComputeShader::process_stage_intrinsic(nir_intrinsic_instr *instr)
       return emit_load_3vec(instr, m_local_invocation_id);
    case nir_intrinsic_load_workgroup_id:
       return emit_load_3vec(instr, m_workgroup_id);
+   case nir_intrinsic_load_workgroup_size:
+      return emit_load_from_info_buffer(instr, 0);
    case nir_intrinsic_load_num_workgroups:
-      return emit_load_num_workgroups(instr);
+      return emit_load_from_info_buffer(instr, 16);
    default:
       return false;
    }
@@ -92,18 +94,22 @@ ComputeShader::do_print_properties(UNUSED std::ostream& os) const
 }
 
 bool
-ComputeShader::emit_load_num_workgroups(nir_intrinsic_instr *instr)
+ComputeShader::emit_load_from_info_buffer(nir_intrinsic_instr *instr, int offset)
 {
-   auto zero = value_factory().temp_register();
+   if (!m_zero_register) {
+      m_zero_register = value_factory().temp_register();
+      emit_instruction(new AluInstr(op1_mov,
+                                    m_zero_register,
+                                    value_factory().inline_const(ALU_SRC_0, 0),
+                                    AluInstr::last_write));
+   }
 
-   emit_instruction(new AluInstr(
-      op1_mov, zero, value_factory().inline_const(ALU_SRC_0, 0), AluInstr::last_write));
    auto dest = value_factory().dest_vec4(instr->dest, pin_group);
 
    auto ir = new LoadFromBuffer(dest,
                                 {0, 1, 2, 7},
-                                zero,
-                                16,
+                                m_zero_register,
+                                offset,
                                 R600_BUFFER_INFO_CONST_BUFFER,
                                 nullptr,
                                 fmt_32_32_32_32);
