@@ -4446,6 +4446,8 @@ radv_emit_compute_scratch(struct radv_device *device, struct radeon_cmdbuf *cs,
       radeon_set_sh_reg_seq(cs, R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO, 2);
       radeon_emit(cs, scratch_va >> 8);
       radeon_emit(cs, scratch_va >> 40);
+
+      waves /= info->num_se;
    }
 
    radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
