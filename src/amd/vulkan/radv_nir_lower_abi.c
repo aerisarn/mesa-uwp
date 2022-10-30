@@ -137,8 +137,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
 
    case nir_intrinsic_load_ring_attr_amd:
-      if (s->use_llvm)
+      if (s->use_llvm) {
+         progress = false;
          break;
+      }
 
       replacement = load_ring(b, RING_PS_ATTR, s);
       break;
