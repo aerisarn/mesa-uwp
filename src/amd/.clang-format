@@ -83,6 +83,9 @@ ForEachMacros:
   - u_foreach_bit64
   - PHASE
 
+TypenameMacros:
+  - REF
+
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex:           '<[[:alnum:].]+>'
