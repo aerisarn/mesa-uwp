@@ -4435,7 +4435,7 @@ radv_emit_compute_scratch(struct radv_device *device, struct radeon_cmdbuf *cs,
    scratch_va = radv_buffer_get_va(compute_scratch_bo);
    rsrc1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
 
-   if (device->physical_device->rad_info.gfx_level >= GFX11)
+   if (info->gfx_level >= GFX11)
       rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
    else
       rsrc1 |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
