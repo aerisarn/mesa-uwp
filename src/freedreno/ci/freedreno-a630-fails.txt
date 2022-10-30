@@ -1,9 +1,6 @@
 # Shader compilation error log: 0:6(1): error: invalid stream specified 1 is larger than MAX_VERTEX_STREAMS - 1
 KHR-GL43.transform_feedback.draw_xfb_stream_instanced_test,Fail
 
-# glGetError() returned GL_INVALID_ENUM at gl4cMapBufferAlignmentTests.cpp:279
-KHR-GL43.map_buffer_alignment.functional,Fail
-
 KHR-GL43.gpu_shader_fp64.fp64.max_uniform_components,Fail
 KHR-GL43.gpu_shader_fp64.builtin.mod_dvec2,Fail
 KHR-GL43.gpu_shader_fp64.builtin.mod_dvec3,Fail
@@ -367,6 +364,23 @@ spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24_stencil8,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
+
+# timestamp/time-elapsed qbo tests fail due to lack of way to convert
+# from ticks to ns on the CP (ie. we'd need to spin up a compute shader
+# or something equally drastic)
+spec@arb_query_buffer_object@qbo,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-ASYNC_CPU_READ_AFTER-GL_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIMESTAMP-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-ASYNC_CPU_READ_AFTER-GL_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT64_ARB,Fail
 
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3759
 # deqp-vk: ../src/freedreno/vulkan/tu_pipeline.c:3894: tu_pipeline_builder_init_graphics: Assertion `subpass->color_count == 0 || !create_info->pColorBlendState || subpass->color_count == create_info->pColorBlendState->attachmentCount' failed

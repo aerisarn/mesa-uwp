@@ -135,6 +135,16 @@ occlusion_counter_result(struct fd_acc_query *aq,
 }
 
 static void
+occlusion_counter_result_resource(struct fd_acc_query *aq, struct fd_ringbuffer *ring,
+                                  enum pipe_query_value_type result_type,
+                                  int index, struct fd_resource *dst,
+                                  unsigned offset)
+{
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_query_sample, result));
+}
+
+static void
 occlusion_predicate_result(struct fd_acc_query *aq,
                            struct fd_acc_query_sample *s,
                            union pipe_query_result *result)
@@ -143,12 +153,39 @@ occlusion_predicate_result(struct fd_acc_query *aq,
    result->b = !!sp->result;
 }
 
+static void
+occlusion_predicate_result_resource(struct fd_acc_query *aq, struct fd_ringbuffer *ring,
+                                    enum pipe_query_value_type result_type,
+                                    int index, struct fd_resource *dst,
+                                    unsigned offset)
+{
+   /* This is a bit annoying but we need to turn the result into a one or
+    * zero.. to do this use a CP_COND_WRITE to overwrite the result with
+    * a one if it is non-zero.  This doesn't change the results if the
+    * query is also read on the CPU (ie. occlusion_predicate_result()).
+    */
+   OUT_PKT7(ring, CP_COND_WRITE5, 9);
+   OUT_RING(ring, CP_COND_WRITE5_0_FUNCTION(WRITE_NE) |
+                  CP_COND_WRITE5_0_POLL_MEMORY |
+                  CP_COND_WRITE5_0_WRITE_MEMORY);
+   OUT_RELOC(ring, query_sample(aq, result)); /* POLL_ADDR_LO/HI */
+   OUT_RING(ring, CP_COND_WRITE5_3_REF(0));
+   OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
+   OUT_RELOC(ring, query_sample(aq, result)); /* WRITE_ADDR_LO/HI */
+   OUT_RING(ring, 1);
+   OUT_RING(ring, 0);
+
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_query_sample, result));
+}
+
 static const struct fd_acc_sample_provider occlusion_counter = {
    .query_type = PIPE_QUERY_OCCLUSION_COUNTER,
    .size = sizeof(struct fd6_query_sample),
    .resume = occlusion_resume,
    .pause = occlusion_pause,
    .result = occlusion_counter_result,
+   .result_resource = occlusion_counter_result_resource,
 };
 
 static const struct fd_acc_sample_provider occlusion_predicate = {
@@ -157,6 +194,7 @@ static const struct fd_acc_sample_provider occlusion_predicate = {
    .resume = occlusion_resume,
    .pause = occlusion_pause,
    .result = occlusion_predicate_result,
+   .result_resource = occlusion_predicate_result_resource,
 };
 
 static const struct fd_acc_sample_provider occlusion_predicate_conservative = {
@@ -165,6 +203,7 @@ static const struct fd_acc_sample_provider occlusion_predicate_conservative = {
    .resume = occlusion_resume,
    .pause = occlusion_pause,
    .result = occlusion_predicate_result,
+   .result_resource = occlusion_predicate_result_resource,
 };
 
 /*
@@ -245,12 +284,34 @@ time_elapsed_accumulate_result(struct fd_acc_query *aq,
 }
 
 static void
+time_elapsed_result_resource(struct fd_acc_query *aq, struct fd_ringbuffer *ring,
+                             enum pipe_query_value_type result_type,
+                             int index, struct fd_resource *dst,
+                             unsigned offset)
+{
+   // TODO ticks_to_ns conversion would require spinning up a compute shader?
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_query_sample, result));
+}
+
+static void
 timestamp_accumulate_result(struct fd_acc_query *aq,
                             struct fd_acc_query_sample *s,
                             union pipe_query_result *result)
 {
    struct fd6_query_sample *sp = fd6_query_sample(s);
    result->u64 = ticks_to_ns(sp->start);
+}
+
+static void
+timestamp_result_resource(struct fd_acc_query *aq, struct fd_ringbuffer *ring,
+                          enum pipe_query_value_type result_type,
+                          int index, struct fd_resource *dst,
+                          unsigned offset)
+{
+   // TODO ticks_to_ns conversion would require spinning up a compute shader?
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_query_sample, start));
 }
 
 static const struct fd_acc_sample_provider time_elapsed = {
@@ -260,6 +321,7 @@ static const struct fd_acc_sample_provider time_elapsed = {
    .resume = timestamp_resume,
    .pause = time_elapsed_pause,
    .result = time_elapsed_accumulate_result,
+   .result_resource = time_elapsed_result_resource,
 };
 
 /* NOTE: timestamp query isn't going to give terribly sensible results
@@ -276,6 +338,7 @@ static const struct fd_acc_sample_provider timestamp = {
    .resume = timestamp_resume,
    .pause = timestamp_pause,
    .result = timestamp_accumulate_result,
+   .result_resource = timestamp_result_resource,
 };
 
 struct PACKED fd6_primitives_sample {
@@ -406,12 +469,24 @@ primitives_generated_result(struct fd_acc_query *aq,
    result->u64 = ps->result.generated;
 }
 
+static void
+primitives_generated_result_resource(struct fd_acc_query *aq,
+                                     struct fd_ringbuffer *ring,
+                                     enum pipe_query_value_type result_type,
+                                     int index, struct fd_resource *dst,
+                                     unsigned offset)
+{
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_primitives_sample, result.generated));
+}
+
 static const struct fd_acc_sample_provider primitives_generated = {
    .query_type = PIPE_QUERY_PRIMITIVES_GENERATED,
    .size = sizeof(struct fd6_primitives_sample),
    .resume = primitives_generated_resume,
    .pause = primitives_generated_pause,
    .result = primitives_generated_result,
+   .result_resource = primitives_generated_result_resource,
 };
 
 static void
@@ -468,12 +543,24 @@ primitives_emitted_result(struct fd_acc_query *aq,
    result->u64 = ps->result.emitted;
 }
 
+static void
+primitives_emitted_result_resource(struct fd_acc_query *aq,
+                                   struct fd_ringbuffer *ring,
+                                   enum pipe_query_value_type result_type,
+                                   int index, struct fd_resource *dst,
+                                   unsigned offset)
+{
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_primitives_sample, result.emitted));
+}
+
 static const struct fd_acc_sample_provider primitives_emitted = {
    .query_type = PIPE_QUERY_PRIMITIVES_EMITTED,
    .size = sizeof(struct fd6_primitives_sample),
    .resume = primitives_emitted_resume,
    .pause = primitives_emitted_pause,
    .result = primitives_emitted_result,
+   .result_resource = primitives_emitted_result_resource,
 };
 
 /*
