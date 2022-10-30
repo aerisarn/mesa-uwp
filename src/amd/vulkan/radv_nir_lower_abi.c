@@ -125,8 +125,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = load_ring(b, stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS : RING_ESGS_VS, s);
       break;
    case nir_intrinsic_load_ring_gsvs_amd:
-      if (s->use_llvm)
+      if (s->use_llvm) {
+         progress = false;
          break;
+      }
 
       replacement = load_ring(b, RING_GSVS_VS, s);
       break;
