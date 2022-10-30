@@ -1196,7 +1196,7 @@ radv_llvm_visit_export_vertex(struct ac_shader_abi *abi)
 static void
 ac_setup_rings(struct radv_shader_context *ctx)
 {
-   struct ac_llvm_pointer ring_offsets = { .t = ctx->ac.i8, .v = ctx->ring_offsets };
+   struct ac_llvm_pointer ring_offsets = { .t = ctx->ac.v4i32, .v = ctx->ring_offsets };
 
    if (ctx->options->gfx_level <= GFX8 &&
        (ctx->stage == MESA_SHADER_GEOMETRY ||
