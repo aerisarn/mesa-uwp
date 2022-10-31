@@ -1120,8 +1120,10 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
       pool->stride = 32;
-      if (pool->uses_gds) {
-         /* When the query pool needs GDS, allocate 2x32-bit values for begin/end. */
+      if (pool->uses_gds && device->physical_device->rad_info.gfx_level < GFX11) {
+         /* When the hardware can use both the legacy and the NGG paths in the same begin/end pair,
+          * allocate 2x32-bit values for the GDS counters.
+          */
          pool->stride += 4 * 2;
       }
       break;
@@ -1384,7 +1386,7 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
 
          primitive_storage_needed = src64[2] - src64[0];
 
-         if (pool->uses_gds) {
+         if (pool->uses_gds && device->physical_device->rad_info.gfx_level < GFX11) {
             uint32_t const *src32 = (uint32_t const *)src;
 
             /* Accumulate the result that was copied from GDS in case NGG shader has been used. */
@@ -1616,7 +1618,7 @@ radv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
       radv_query_shader(cmd_buffer, &cmd_buffer->device->meta_state.query.pg_query_pipeline,
                         pool->bo, dst_buffer->bo, firstQuery * pool->stride,
                         dst_buffer->offset + dstOffset, pool->stride, stride, dst_size, queryCount,
-                        flags, 0, 0, pool->uses_gds);
+                        flags, 0, 0, pool->uses_gds && cmd_buffer->device->physical_device->rad_info.gfx_level < GFX11);
       break;
    default:
       unreachable("trying to get results of unhandled query type");
@@ -1838,28 +1840,39 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       }
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
-      if (!cmd_buffer->state.active_prims_gen_queries) {
-         bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
-
-         cmd_buffer->state.active_prims_gen_queries++;
-
-         if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
-            radv_emit_streamout_enable(cmd_buffer);
-         }
-      } else {
-         cmd_buffer->state.active_prims_gen_queries++;
-      }
-
-      emit_sample_streamout(cmd_buffer, va, index);
-
-      if (pool->uses_gds) {
-         /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 32);
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         /* On GFX11+, primitives generated query always use GDS. */
+         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
 
          cmd_buffer->state.active_prims_gen_gds_queries++;
+      } else {
+         if (!cmd_buffer->state.active_prims_gen_queries) {
+            bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
+
+            cmd_buffer->state.active_prims_gen_queries++;
+
+            if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
+               radv_emit_streamout_enable(cmd_buffer);
+            }
+         } else {
+            cmd_buffer->state.active_prims_gen_queries++;
+         }
+
+         emit_sample_streamout(cmd_buffer, va, index);
+
+         if (pool->uses_gds) {
+            /* generated prim counter */
+            gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 32);
+
+            /* Record that the command buffer needs GDS. */
+            cmd_buffer->gds_needed = true;
+
+            cmd_buffer->state.active_prims_gen_gds_queries++;
+         }
       }
       break;
    }
@@ -1949,25 +1962,33 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       }
       break;
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
-      if (cmd_buffer->state.active_prims_gen_queries == 1) {
-         bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
-
-         cmd_buffer->state.active_prims_gen_queries--;
-
-         if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
-            radv_emit_streamout_enable(cmd_buffer);
-         }
-      } else {
-         cmd_buffer->state.active_prims_gen_queries--;
-      }
-
-      emit_sample_streamout(cmd_buffer, va + 16, index);
-
-      if (pool->uses_gds) {
-         /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 36);
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         /* On GFX11+, primitives generated query always use GDS. */
+         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 16);
+         radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
+      } else {
+         if (cmd_buffer->state.active_prims_gen_queries == 1) {
+            bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
+
+            cmd_buffer->state.active_prims_gen_queries--;
+
+            if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
+               radv_emit_streamout_enable(cmd_buffer);
+            }
+         } else {
+            cmd_buffer->state.active_prims_gen_queries--;
+         }
+
+         emit_sample_streamout(cmd_buffer, va + 16, index);
+
+         if (pool->uses_gds) {
+            /* generated prim counter */
+            gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 36);
+
+            cmd_buffer->state.active_prims_gen_gds_queries--;
+         }
       }
       break;
    }
