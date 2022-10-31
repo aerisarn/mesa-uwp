@@ -464,6 +464,30 @@ add_gpus([
         )
     ))
 
+add_gpus([
+        GPUId(690),
+    ], A6xxGPUInfo(
+        a6xx_gen4,
+        num_ccu = 8,
+        tile_align_w = 64,
+        tile_align_h = 32,
+        magic_regs = dict(
+            PC_POWER_CNTL = 7,
+            TPL1_DBG_ECO_CNTL = 0x01008000,
+            GRAS_DBG_ECO_CNTL = 0x0,
+            SP_CHICKEN_BITS = 0x00001400,
+            UCHE_CLIENT_PF = 0x00000084,
+            PC_MODE_CNTL = 0x1f,
+            SP_DBG_ECO_CNTL = 0x00000000,
+            RB_DBG_ECO_CNTL = 0x00100000,
+            RB_DBG_ECO_CNTL_blit = 0x00100000,  # ???
+            HLSQ_DBG_ECO_CNTL = 0x0,
+            RB_UNKNOWN_8E01 = 0x0,
+            VPC_DBG_ECO_CNTL = 0x02000000,
+            UCHE_UNKNOWN_0E12 = 0x00000001
+        )
+    ))
+
 template = """\
 /* Copyright (C) 2021 Google, Inc.
  *
