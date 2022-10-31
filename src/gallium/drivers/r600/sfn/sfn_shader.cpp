@@ -28,6 +28,7 @@
 
 #include "gallium/drivers/r600/r600_shader.h"
 #include "nir.h"
+#include "nir_intrinsics.h"
 #include "sfn_debug.h"
 #include "sfn_instr.h"
 #include "sfn_instr_alugroup.h"
@@ -1282,6 +1283,7 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
 {
    auto bufid = nir_src_as_const_value(instr->src[0]);
    auto buf_offset = nir_src_as_const_value(instr->src[1]);
+   auto base_id = nir_intrinsic_base(instr);
 
    if (!buf_offset) {
       /* TODO: if bufid is constant then this can also be solved by using the
@@ -1299,11 +1301,11 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       LoadFromBuffer *ir;
       if (bufid) {
          ir = new LoadFromBuffer(
-            dest, dest_swz, addr, 0, 1 + bufid->u32, nullptr, fmt_32_32_32_32_float);
+            dest, dest_swz, addr, 0, bufid->u32, nullptr, fmt_32_32_32_32_float);
       } else {
          auto buffer_id = emit_load_to_register(value_factory().src(instr->src[0], 0));
          ir = new LoadFromBuffer(
-            dest, dest_swz, addr, 0, 1, buffer_id, fmt_32_32_32_32_float);
+            dest, dest_swz, addr, 0, base_id, buffer_id, fmt_32_32_32_32_float);
       }
       emit_instruction(ir);
       return true;
@@ -1323,7 +1325,7 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
                  << " const[" << i << "]: " << instr->const_index[i] << "\n";
 
          auto uniform =
-            value_factory().uniform(512 + buf_offset->u32, i + buf_cmp, bufid->u32 + 1);
+            value_factory().uniform(512 + buf_offset->u32, i + buf_cmp, bufid->u32);
          ir = new AluInstr(op1_mov,
                            value_factory().dest(instr->dest, i, pin),
                            uniform,
@@ -1340,7 +1342,8 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
 
       for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
          int cmp = buf_cmp + i;
-         auto u = new UniformValue(512 + buf_offset->u32, cmp, kc_id);
+         auto u =
+            new UniformValue(512 + buf_offset->u32, cmp, kc_id, nir_intrinsic_base(instr));
          auto dest = value_factory().dest(instr->dest, i, pin_none);
          ir = new AluInstr(op1_mov, dest, u, AluInstr::write);
          emit_instruction(ir);

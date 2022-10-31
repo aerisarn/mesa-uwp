@@ -379,7 +379,7 @@ public:
    using Pointer = R600_POINTER_TYPE(UniformValue);
 
    UniformValue(int sel, int chan, int kcache_bank = 0);
-   UniformValue(int sel, int chan, PVirtualValue buf_addr);
+   UniformValue(int sel, int chan, PVirtualValue buf_addr, int kcache_bank);
 
    void accept(RegisterVisitor& vistor) override;
    void accept(ConstRegisterVisitor& vistor) const override;

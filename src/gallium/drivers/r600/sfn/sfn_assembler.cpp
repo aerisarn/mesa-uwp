@@ -307,7 +307,6 @@ AssamblerVisitor::emit_alu_op(const AluInstr& ai)
 
       if (buffer_offset && kcache_index_mode == bim_none) {
          kcache_index_mode = bim_zero;
-         alu.src[i].kc_bank = 1;
          alu.src[i].kc_rel = 1;
       }
 

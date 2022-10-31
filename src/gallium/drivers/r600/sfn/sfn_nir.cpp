@@ -28,7 +28,9 @@
 
 #include "../r600_pipe.h"
 #include "../r600_shader.h"
+#include "nir.h"
 #include "nir_builder.h"
+#include "nir_intrinsics.h"
 #include "sfn_assembler.h"
 #include "sfn_debug.h"
 #include "sfn_instr_tex.h"
@@ -226,8 +228,7 @@ private:
       auto intr = nir_instr_as_intrinsic(instr);
       nir_ssa_def *output[8] = {nullptr};
 
-      // for UBO loads we correct the buffer ID by adding 1
-      auto buf_id = nir_imm_int(b, R600_BUFFER_INFO_CONST_BUFFER - 1);
+      auto buf_id = nir_imm_int(b, R600_BUFFER_INFO_CONST_BUFFER);
 
       assert(intr->src[0].is_ssa);
       auto clip_vtx = intr->src[0].ssa;
@@ -268,6 +269,67 @@ private:
    int m_clipplane1;
    int m_clipvtx;
    pipe_stream_output_info& m_so_info;
+};
+
+/* lower_uniforms_to_ubo adds a 1 to the UBO buffer ID.
+ * If the buffer ID is a non-constant value we end up
+ * with "iadd bufid, 1", bot on r600 we can put that constant
+ * "1" as constant cache ID into the CF instruction and don't need
+ * to execute that extra ADD op, so eliminate the addition here
+ * again and move the buffer base ID into the base value of
+ * the intrinsic that is not used otherwise */
+class OptIndirectUBOLoads : public NirLowerInstruction {
+private:
+   bool filter(const nir_instr *instr) const override
+   {
+      if (instr->type != nir_instr_type_intrinsic)
+         return false;
+
+      auto intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_load_ubo_vec4)
+         return false;
+
+      if (nir_src_as_const_value(intr->src[0]) != nullptr)
+         return false;
+
+      return nir_intrinsic_base(intr) == 0;
+   }
+
+   nir_ssa_def *lower(nir_instr *instr) override
+   {
+      auto intr = nir_instr_as_intrinsic(instr);
+      assert(intr->intrinsic == nir_intrinsic_load_ubo_vec4);
+      assert(intr->src[0].is_ssa);
+
+      auto parent = intr->src[0].ssa->parent_instr;
+
+      if (parent->type != nir_instr_type_alu)
+         return nullptr;
+
+      auto alu = nir_instr_as_alu(parent);
+
+      if (alu->op != nir_op_iadd)
+         return nullptr;
+
+      int new_base = 0;
+      nir_src *new_bufid = nullptr;
+      auto src0 = nir_src_as_const_value(alu->src[0].src);
+      if (src0) {
+         new_bufid = &alu->src[1].src;
+         new_base = src0->i32;
+      } else if (auto src1 = nir_src_as_const_value(alu->src[1].src)) {
+         new_bufid = &alu->src[0].src;
+         new_base = src1->i32;
+      } else {
+         return nullptr;
+      }
+
+      assert(new_bufid->is_ssa);
+
+      nir_intrinsic_set_base(intr, new_base);
+      nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(new_bufid->ssa));
+      return &intr->dest.ssa;
+   }
 };
 
 } // namespace r600
@@ -558,6 +620,12 @@ r600_lower_fs_pos_input(nir_shader *shader)
                                         nullptr);
 };
 
+bool
+r600_opt_indirect_fbo_loads(nir_shader *shader)
+{
+   return r600::OptIndirectUBOLoads().run(shader);
+}
+
 static bool
 optimize_once(nir_shader *shader)
 {
@@ -788,6 +856,7 @@ r600_shader_from_nir(struct r600_context *rctx,
    }
 
    NIR_PASS_V(sh, nir_lower_ubo_vec4);
+   NIR_PASS_V(sh, r600_opt_indirect_fbo_loads);
 
    if (lower_64bit)
       NIR_PASS_V(sh, r600::r600_nir_64_to_vec2);

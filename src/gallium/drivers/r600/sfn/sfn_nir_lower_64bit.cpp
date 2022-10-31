@@ -665,7 +665,7 @@ LowerSplit64BitVar::split_double_load_ubo(nir_intrinsic_instr *intr)
    nir_intrinsic_set_range(load2, nir_intrinsic_range(intr));
    nir_intrinsic_set_access(load2, nir_intrinsic_access(intr));
    nir_intrinsic_set_align_mul(load2, nir_intrinsic_align_mul(intr));
-   nir_intrinsic_set_align_offset(load2, nir_intrinsic_align_offset(intr) + 16);
+   nir_intrinsic_set_align_offset(load2, nir_intrinsic_align_offset(intr));
 
    load2->num_components = second_components;
 

@@ -100,7 +100,7 @@ TEST_F(ValueTest, uniform_value)
    auto addr = new Register(1024, 0, pin_none);
    ASSERT_TRUE(addr);
 
-   UniformValue reg_with_buffer_addr(513, 0, addr);
+   UniformValue reg_with_buffer_addr(513, 0, addr, 0);
 
    EXPECT_EQ(reg_with_buffer_addr.sel(), 513);
    EXPECT_EQ(reg_with_buffer_addr.chan(), 0);

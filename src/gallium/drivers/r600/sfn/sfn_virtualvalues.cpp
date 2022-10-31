@@ -731,9 +731,9 @@ UniformValue::UniformValue(int sel, int chan, int kcache_bank):
 {
 }
 
-UniformValue::UniformValue(int sel, int chan, PVirtualValue buf_addr):
+UniformValue::UniformValue(int sel, int chan, PVirtualValue buf_addr, int kcache_bank):
     VirtualValue(sel, chan, pin_none),
-    m_kcache_bank(0),
+    m_kcache_bank(kcache_bank),
     m_buf_addr(buf_addr)
 {
 }
