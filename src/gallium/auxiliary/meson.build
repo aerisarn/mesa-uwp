@@ -234,8 +234,6 @@ files_libgallium = files(
   'util/u_index_modify.c',
   'util/u_index_modify.h',
   'util/u_inlines.h',
-  'util/u_linear.c',
-  'util/u_linear.h',
   'util/u_live_shader_cache.c',
   'util/u_live_shader_cache.h',
   'util/u_log.c',
