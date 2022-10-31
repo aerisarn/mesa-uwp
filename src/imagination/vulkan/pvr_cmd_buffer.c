@@ -570,6 +570,9 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    assert(load_op->is_hw_object);
    assert(hw_render->color_init_count == 1);
 
+   assert(vk_format_get_blocksize(attachment->vk_format) <=
+          sizeof(hw_clear_value));
+
    /* FIXME: add support for VK_ATTACHMENT_LOAD_OP_LOAD. */
    assert(color_init->op == VK_ATTACHMENT_LOAD_OP_CLEAR);
 
@@ -577,9 +580,6 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    pvr_get_hw_clear_color(attachment->vk_format,
                           clear_value->color,
                           hw_clear_value);
-
-   if (vk_format_get_blocksize(attachment->vk_format) > 4)
-      pvr_finishme("Handle clear color greater than 32 bits.");
 
    result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                           &hw_clear_value[0],
