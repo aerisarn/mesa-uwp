@@ -1122,7 +1122,7 @@ fs_visitor::vgrf(const glsl_type *const type)
                  brw_type_for_base_type(type));
 }
 
-fs_reg::fs_reg(enum brw_reg_file file, int nr)
+fs_reg::fs_reg(enum brw_reg_file file, unsigned nr)
 {
    init();
    this->file = file;
@@ -1131,7 +1131,7 @@ fs_reg::fs_reg(enum brw_reg_file file, int nr)
    this->stride = (file == UNIFORM ? 0 : 1);
 }
 
-fs_reg::fs_reg(enum brw_reg_file file, int nr, enum brw_reg_type type)
+fs_reg::fs_reg(enum brw_reg_file file, unsigned nr, enum brw_reg_type type)
 {
    init();
    this->file = file;
