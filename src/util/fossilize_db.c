@@ -262,50 +262,16 @@ fail:
    return false;
 }
 
-/* Here we open mesa cache foz dbs files. If the files exist we load the index
- * db into a hash table. The index db contains the offsets needed to later
- * read cache entries from the foz db containing the actual cache entries.
- */
-bool
-foz_prepare(struct foz_db *foz_db, char *cache_path)
+static void
+load_foz_dbs_ro(struct foz_db *foz_db, char *foz_dbs_ro, char *cache_path)
 {
+   uint8_t file_idx = 1;
    char *filename = NULL;
    char *idx_filename = NULL;
 
-   simple_mtx_init(&foz_db->mtx, mtx_plain);
-   simple_mtx_init(&foz_db->flock_mtx, mtx_plain);
-   foz_db->mem_ctx = ralloc_context(NULL);
-   foz_db->index_db = _mesa_hash_table_u64_create(NULL);
-
-   /* Open the default foz dbs for read/write. If the files didn't already exist
-    * create them.
-    */
-   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
-      if (!create_foz_db_filenames(cache_path, "foz_cache",
-                                   &filename, &idx_filename))
-         goto fail;
-
-      foz_db->file[0] = fopen(filename, "a+b");
-      foz_db->db_idx = fopen(idx_filename, "a+b");
-
-      free(filename);
-      free(idx_filename);
-
-      if (!check_files_opened_successfully(foz_db->file[0], foz_db->db_idx))
-         goto fail;
-
-      if (!load_foz_dbs(foz_db, foz_db->db_idx, 0, false))
-         goto fail;
-   }
-
-   uint8_t file_idx = 1;
-   char *foz_dbs = getenv("MESA_DISK_CACHE_READ_ONLY_FOZ_DBS");
-   if (!foz_dbs)
-      return true;
-
-   for (unsigned n; n = strcspn(foz_dbs, ","), *foz_dbs;
-        foz_dbs += MAX2(1, n)) {
-      char *foz_db_filename = strndup(foz_dbs, n);
+   for (unsigned n; n = strcspn(foz_dbs_ro, ","), *foz_dbs_ro;
+        foz_dbs_ro += MAX2(1, n)) {
+      char *foz_db_filename = strndup(foz_dbs_ro, n);
 
       filename = NULL;
       idx_filename = NULL;
@@ -344,6 +310,47 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
       if (file_idx >= FOZ_MAX_DBS)
          break;
    }
+}
+
+/* Here we open mesa cache foz dbs files. If the files exist we load the index
+ * db into a hash table. The index db contains the offsets needed to later
+ * read cache entries from the foz db containing the actual cache entries.
+ */
+bool
+foz_prepare(struct foz_db *foz_db, char *cache_path)
+{
+   char *filename = NULL;
+   char *idx_filename = NULL;
+
+   simple_mtx_init(&foz_db->mtx, mtx_plain);
+   simple_mtx_init(&foz_db->flock_mtx, mtx_plain);
+   foz_db->mem_ctx = ralloc_context(NULL);
+   foz_db->index_db = _mesa_hash_table_u64_create(NULL);
+
+   /* Open the default foz dbs for read/write. If the files didn't already exist
+    * create them.
+    */
+   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+      if (!create_foz_db_filenames(cache_path, "foz_cache",
+                                   &filename, &idx_filename))
+         goto fail;
+
+      foz_db->file[0] = fopen(filename, "a+b");
+      foz_db->db_idx = fopen(idx_filename, "a+b");
+
+      free(filename);
+      free(idx_filename);
+
+      if (!check_files_opened_successfully(foz_db->file[0], foz_db->db_idx))
+         goto fail;
+
+      if (!load_foz_dbs(foz_db, foz_db->db_idx, 0, false))
+         goto fail;
+   }
+
+   char *foz_dbs_ro = getenv("MESA_DISK_CACHE_READ_ONLY_FOZ_DBS");
+   if (foz_dbs_ro)
+      load_foz_dbs_ro(foz_db, foz_dbs_ro, cache_path);
 
    return true;
 
