@@ -219,33 +219,6 @@
 /* Likewise, each tile per level has 512 bytes of body */
 #define FULL_BYTES_PER_TILE 0x200
 
-/* If the width-x-height framebuffer is divided into tile_size-x-tile_size
- * tiles, how many tiles are there? Rounding up in each direction. For the
- * special case of tile_size=16, this aligns with the usual Midgard count.
- * tile_size must be a power-of-two. Not really repeat code from AFBC/checksum,
- * because those care about the stride (not just the overall count) and only at
- * a a fixed-tile size (not any of a number of power-of-twos) */
-
-static unsigned
-pan_tile_count(unsigned width, unsigned height, unsigned tile_width,
-               unsigned tile_height)
-{
-   unsigned aligned_width = ALIGN_POT(width, tile_width);
-   unsigned aligned_height = ALIGN_POT(height, tile_height);
-
-   unsigned tile_count_x = aligned_width / tile_width;
-   unsigned tile_count_y = aligned_height / tile_height;
-
-   return tile_count_x * tile_count_y;
-}
-
-/* For `masked_count` of the smallest tile sizes masked out, computes how the
- * size of the polygon list header. We iterate the tile sizes (16x16 through
- * 2048x2048). For each tile size, we figure out how many tiles there are at
- * this hierarchy level and therefore many bytes this level is, leaving us with
- * a byte count for each level. We then just sum up the byte counts across the
- * levels to find a byte count for all levels. */
-
 static unsigned
 panfrost_hierarchy_size(unsigned width, unsigned height, unsigned mask,
                         unsigned bytes_per_tile)
@@ -253,19 +226,15 @@ panfrost_hierarchy_size(unsigned width, unsigned height, unsigned mask,
    unsigned size = PROLOGUE_SIZE;
 
    /* Iterate hierarchy levels */
+   u_foreach_bit(level, mask) {
+      assert(level <= (MAX_TILE_SHIFT - MIN_TILE_SHIFT) &&
+             "invalid hierarchy mask");
 
-   for (unsigned b = 0; b < (MAX_TILE_SHIFT - MIN_TILE_SHIFT); ++b) {
-      /* Check if this level is enabled */
-      if (!(mask & (1 << b)))
-         continue;
+      /* Levels are power-of-two sizes */
+      unsigned tile_size = MIN_TILE_SIZE << level;
 
-      /* Shift from a level to a tile size */
-      unsigned tile_size = (1 << b) * MIN_TILE_SIZE;
-
-      unsigned tile_count = pan_tile_count(width, height, tile_size, tile_size);
-      unsigned level_count = bytes_per_tile * tile_count;
-
-      size += level_count;
+      size += DIV_ROUND_UP(width, tile_size) * DIV_ROUND_UP(height, tile_size) *
+              bytes_per_tile;
    }
 
    /* This size will be used as an offset, so ensure it's aligned */
@@ -286,12 +255,12 @@ panfrost_flat_size(unsigned width, unsigned height, unsigned dim,
                    unsigned bytes_per_tile)
 {
    /* First, extract the tile dimensions */
-
    unsigned tw = (1 << (dim & 0b111)) * 8;
    unsigned th = (1 << ((dim & (0b111 << 6)) >> 6)) * 8;
 
-   /* tile_count is ceil(W/w) * ceil(H/h) */
-   unsigned raw = pan_tile_count(width, height, tw, th) * bytes_per_tile;
+   /* Calculate the raw size */
+   unsigned raw =
+      DIV_ROUND_UP(width, tw) * DIV_ROUND_UP(height, th) * bytes_per_tile;
 
    /* Round down and add offset */
    return 0x200 + ((raw / 0x200) * 0x200);
