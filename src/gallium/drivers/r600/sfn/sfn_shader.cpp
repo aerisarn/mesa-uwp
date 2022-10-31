@@ -821,8 +821,6 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
       return store_output(intr);
    case nir_intrinsic_load_input:
       return load_input(intr);
-   case nir_intrinsic_load_uniform:
-      return load_uniform(intr);
    case nir_intrinsic_load_ubo_vec4:
       return load_ubo(intr);
    case nir_intrinsic_store_scratch:
@@ -1171,58 +1169,6 @@ Shader::emit_instruction(PInst instr)
    sfn_log << SfnLog::instr << "   " << *instr << "\n";
    instr->accept(m_chain_instr);
    m_current_block->push_back(instr);
-}
-
-bool
-Shader::load_uniform(nir_intrinsic_instr *intr)
-{
-   auto literal = nir_src_as_const_value(intr->src[0]);
-
-   if (literal) {
-      AluInstr *ir = nullptr;
-      auto pin = intr->dest.is_ssa && nir_dest_num_components(intr->dest) == 1 ? pin_free
-                                                                               : pin_none;
-      for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
-
-         sfn_log << SfnLog::io << "uniform " << intr->dest.ssa.index << " const[" << i
-                 << "]: " << intr->const_index[i] << "\n";
-
-         auto uniform = value_factory().uniform(intr, i);
-         ir = new AluInstr(op1_mov,
-                           value_factory().dest(intr->dest, i, pin),
-                           uniform,
-                           {alu_write});
-         emit_instruction(ir);
-      }
-      if (ir)
-         ir->set_alu_flag(alu_last_instr);
-      return true;
-   } else {
-      auto addr = value_factory().src(intr->src[0], 0);
-      return load_uniform_indirect(intr, addr, 16 * nir_intrinsic_base(intr), 0);
-   }
-}
-
-bool
-Shader::load_uniform_indirect(nir_intrinsic_instr *intr,
-                              PVirtualValue addr,
-                              int offset,
-                              int buffer_id)
-{
-   auto addr_reg = addr->as_register();
-   if (!addr) {
-      auto tmp = value_factory().temp_register();
-      emit_instruction(new AluInstr(op1_mov, tmp, addr, AluInstr::last_write));
-      addr = tmp;
-   }
-
-   RegisterVec4 dest = value_factory().dest_vec4(intr->dest, pin_group);
-
-   auto ir = new LoadFromBuffer(
-      dest, {0, 1, 2, 3}, addr_reg, offset, buffer_id, nullptr, fmt_32_32_32_32_float);
-   emit_instruction(ir);
-   m_flags.set(sh_indirect_const_file);
-   return true;
 }
 
 bool

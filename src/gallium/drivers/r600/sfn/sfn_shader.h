@@ -164,7 +164,6 @@ public:
    virtual bool load_input(nir_intrinsic_instr *intr) = 0;
    virtual bool store_output(nir_intrinsic_instr *intr) = 0;
 
-   bool load_uniform(nir_intrinsic_instr *intr);
    bool load_ubo(nir_intrinsic_instr *intr);
 
    ValueFactory& value_factory();
@@ -283,11 +282,6 @@ private:
    bool allocate_arrays_from_string(std::istream& is);
 
    bool read_chipclass(std::istream& is);
-
-   bool load_uniform_indirect(nir_intrinsic_instr *intr,
-                              PVirtualValue addr,
-                              int offset,
-                              int buffer_id);
 
    bool scan_shader(const nir_function *impl);
    bool scan_uniforms(nir_variable *uniform);
