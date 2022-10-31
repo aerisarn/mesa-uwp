@@ -367,9 +367,11 @@ v3dv_event_free_resources(struct v3dv_device *device)
       device->events.desc = NULL;
    }
 
-   vk_object_free(&device->vk, NULL,
-                  v3dv_device_memory_from_handle(device->events.mem));
-   device->events.mem = VK_NULL_HANDLE;
+   if (device->events.mem) {
+      vk_object_free(&device->vk, NULL,
+                     v3dv_device_memory_from_handle(device->events.mem));
+      device->events.mem = VK_NULL_HANDLE;
+   }
 
    v3dv_DestroyBuffer(v3dv_device_to_handle(device),
                       device->events.buffer, NULL);
