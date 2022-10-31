@@ -403,7 +403,7 @@ FreedrenoDriver::configure_counters(bool reset, bool wait)
       (enum fd_ringbuffer_flags)(FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE);
    struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(submit, 0x1000, flags);
 
-   for (auto countable : countables)
+   for (const auto &countable : countables)
       countable.configure(ring, reset);
 
    struct fd_submit_fence fence = {};
@@ -428,7 +428,7 @@ FreedrenoDriver::collect_countables()
 {
    last_dump_ts = perfetto::base::GetBootTimeNs().count();
 
-   for (auto countable : countables)
+   for (const auto &countable : countables)
       countable.collect();
 }
 
@@ -476,7 +476,7 @@ FreedrenoDriver::init_perfcnt()
 
    state.resize(next_countable_id);
 
-   for (auto countable : countables)
+   for (const auto &countable : countables)
       countable.resolve();
 
    info = fd_dev_info(dev_id);
@@ -593,7 +593,7 @@ FreedrenoDriver::Countable::Countable(FreedrenoDriver *d, std::string name)
 
 /* Emit register writes on ring to configure counter/countable muxing: */
 void
-FreedrenoDriver::Countable::configure(struct fd_ringbuffer *ring, bool reset)
+FreedrenoDriver::Countable::configure(struct fd_ringbuffer *ring, bool reset) const
 {
    const struct fd_perfcntr_countable *countable = d->state[id].countable;
    const struct fd_perfcntr_counter   *counter   = d->state[id].counter;
@@ -624,7 +624,7 @@ FreedrenoDriver::Countable::configure(struct fd_ringbuffer *ring, bool reset)
 
 /* Collect current counter value and calculate delta since last sample: */
 void
-FreedrenoDriver::Countable::collect()
+FreedrenoDriver::Countable::collect() const
 {
    const struct fd_perfcntr_counter *counter = d->state[id].counter;
 
@@ -639,7 +639,7 @@ FreedrenoDriver::Countable::collect()
 
 /* Resolve the countable and assign next counter from it's group: */
 void
-FreedrenoDriver::Countable::resolve()
+FreedrenoDriver::Countable::resolve() const
 {
    for (unsigned i = 0; i < d->num_perfcntrs; i++) {
       const struct fd_perfcntr_group *g = &d->perfcntrs[i];
