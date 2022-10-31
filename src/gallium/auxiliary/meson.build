@@ -213,7 +213,6 @@ files_libgallium = files(
   'util/u_debug_flush.h',
   'util/u_debug_image.c',
   'util/u_debug_image.h',
-  'util/u_dirty_surfaces.h',
   'util/u_draw.c',
   'util/u_draw.h',
   'util/u_draw_quad.c',
