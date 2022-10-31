@@ -71,8 +71,6 @@ occlusion_resume(struct fd_acc_query *aq, struct fd_batch *batch)
    OUT_RELOC(ring, query_sample(aq, start));
 
    fd6_event_write(batch, ring, ZPASS_DONE, false);
-
-   fd6_context(batch->ctx)->samples_passed_queries++;
 }
 
 static void
@@ -115,8 +113,6 @@ occlusion_pause(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    OUT_RELOC(epilogue, query_sample(aq, result)); /* srcA */
    OUT_RELOC(epilogue, query_sample(aq, stop));   /* srcB */
    OUT_RELOC(epilogue, query_sample(aq, start));  /* srcC */
-
-   fd6_context(batch->ctx)->samples_passed_queries--;
 }
 
 static void
