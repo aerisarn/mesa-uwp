@@ -626,9 +626,9 @@ build_pg_query_shader(struct radv_device *device)
     *	if (avail & 0x80000000) {
     *		result = src_data[2] - src_data[0];
     *	        if (use_gds) {
-    *			uint64_t ngg_gds_result = 0;
-    *			ngg_gds_result += src_data[5] - src_data[4];
-    *			result += ngg_gds_result;
+    *			uint32_t ngg_gds_result = 0;
+    *			ngg_gds_result += src_data[9] - src_data[8];
+    *			result += (uint64_t)ngg_gds_result;
     *	        }
     *		available = true;
     *	}
@@ -702,13 +702,13 @@ build_pg_query_shader(struct radv_device *device)
    nir_push_if(&b, nir_i2b(&b, uses_gds));
    {
       nir_ssa_def *gds_start =
-         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 32)), .align_mul = 8);
+         nir_load_ssbo(&b, 1, 32, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 32)), .align_mul = 4);
       nir_ssa_def *gds_end =
-         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 40)), .align_mul = 8);
+         nir_load_ssbo(&b, 1, 32, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 36)), .align_mul = 4);
 
       nir_ssa_def *ngg_gds_result = nir_isub(&b, gds_end, gds_start);
 
-      nir_store_var(&b, result, nir_iadd(&b, nir_load_var(&b, result), ngg_gds_result), 0x1);
+      nir_store_var(&b, result, nir_iadd(&b, nir_load_var(&b, result), nir_u2u64(&b, ngg_gds_result)), 0x1);
    }
    nir_pop_if(&b, NULL);
 
@@ -1121,8 +1121,8 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
       pool->stride = 32;
       if (pool->uses_gds) {
-         /* When the query pool needs GDS, allocate 2x64-bit values for begin/end. */
-         pool->stride += 8 * 2;
+         /* When the query pool needs GDS, allocate 2x32-bit values for begin/end. */
+         pool->stride += 4 * 2;
       }
       break;
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
@@ -1385,8 +1385,10 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
          primitive_storage_needed = src64[2] - src64[0];
 
          if (pool->uses_gds) {
+            uint32_t const *src32 = (uint32_t const *)src;
+
             /* Accumulate the result that was copied from GDS in case NGG shader has been used. */
-            primitive_storage_needed += src64[5] - src64[4];
+            primitive_storage_needed += src32[9] - src32[8];
          }
 
          if (flags & VK_QUERY_RESULT_64_BIT) {
@@ -1963,7 +1965,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
 
       if (pool->uses_gds) {
          /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 40);
+         gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 36);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
       }
