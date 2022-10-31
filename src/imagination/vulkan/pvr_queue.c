@@ -687,6 +687,74 @@ err_destroy_completions:
    return result;
 }
 
+static VkResult pvr_process_event_cmd_set_or_reset(
+   struct pvr_device *device,
+   struct pvr_sub_cmd_event *sub_cmd,
+   struct vk_sync *per_cmd_buffer_syncobjs[static PVR_JOB_TYPE_MAX])
+{
+   /* Not PVR_JOB_TYPE_MAX since that also includes
+    * PVR_JOB_TYPE_OCCLUSION_QUERY so no stage in the src mask.
+    */
+   struct vk_sync *src_syncobjs[PVR_NUM_SYNC_PIPELINE_STAGES];
+   struct vk_sync *new_event_syncobj;
+   uint32_t src_syncobj_count = 0;
+   uint32_t wait_for_stage_mask;
+   VkResult result;
+
+   assert(sub_cmd->type == PVR_EVENT_TYPE_SET ||
+          sub_cmd->type == PVR_EVENT_TYPE_RESET);
+
+   if (sub_cmd->type == PVR_EVENT_TYPE_SET)
+      wait_for_stage_mask = sub_cmd->set.wait_for_stage_mask;
+   else
+      wait_for_stage_mask = sub_cmd->reset.wait_for_stage_mask;
+
+   assert(!(wait_for_stage_mask & ~PVR_PIPELINE_STAGE_ALL_BITS));
+
+   u_foreach_bit (stage, wait_for_stage_mask) {
+      if (!per_cmd_buffer_syncobjs[stage])
+         continue;
+
+      src_syncobjs[src_syncobj_count++] = per_cmd_buffer_syncobjs[stage];
+   }
+
+   assert(src_syncobj_count <= ARRAY_SIZE(src_syncobjs));
+
+   result = vk_sync_create(&device->vk,
+                           &device->pdevice->ws->syncobj_type,
+                           0U,
+                           0UL,
+                           &new_event_syncobj);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = device->ws->ops->null_job_submit(device->ws,
+                                             src_syncobjs,
+                                             src_syncobj_count,
+                                             new_event_syncobj);
+   if (result != VK_SUCCESS) {
+      vk_sync_destroy(&device->vk, new_event_syncobj);
+
+      return result;
+   }
+
+   if (sub_cmd->type == PVR_EVENT_TYPE_SET) {
+      if (sub_cmd->set.event->sync)
+         vk_sync_destroy(&device->vk, sub_cmd->set.event->sync);
+
+      sub_cmd->set.event->sync = new_event_syncobj;
+      sub_cmd->set.event->state = PVR_EVENT_STATE_SET_BY_DEVICE;
+   } else {
+      if (sub_cmd->reset.event->sync)
+         vk_sync_destroy(&device->vk, sub_cmd->reset.event->sync);
+
+      sub_cmd->reset.event->sync = new_event_syncobj;
+      sub_cmd->reset.event->state = PVR_EVENT_STATE_RESET_BY_DEVICE;
+   }
+
+   return VK_SUCCESS;
+}
+
 static VkResult pvr_process_event_cmd(
    struct pvr_device *device,
    struct pvr_sub_cmd_event *sub_cmd,
@@ -699,6 +767,10 @@ static VkResult pvr_process_event_cmd(
    switch (sub_cmd->type) {
    case PVR_EVENT_TYPE_SET:
    case PVR_EVENT_TYPE_RESET:
+      return pvr_process_event_cmd_set_or_reset(device,
+                                                sub_cmd,
+                                                per_cmd_buffer_syncobjs);
+
    case PVR_EVENT_TYPE_WAIT:
       pvr_finishme("Add support for event sub command type: %d", sub_cmd->type);
       return VK_SUCCESS;
