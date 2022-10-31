@@ -220,6 +220,20 @@ static void normal_rewrite_writemask_cb(
 {
 	unsigned int * conversion_swizzle = (unsigned int *)userdata;
 	src->Swizzle = rc_adjust_channels(src->Swizzle, *conversion_swizzle);
+
+	/* Per-channel negates are possible in vertex shaders,
+	 * so we need to rewrite it properly as well. */
+	unsigned int new_negate = 0;
+	for (unsigned int i = 0; i < 4; i++) {
+		unsigned int new_chan = get_swz(*conversion_swizzle, i);
+
+		if (new_chan == RC_SWIZZLE_UNUSED)
+			continue;
+
+		if ((1 << i) & src->Negate)
+			new_negate |= 1 << new_chan;
+	}
+	src->Negate = new_negate;
 }
 
 /**
