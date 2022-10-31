@@ -77,7 +77,7 @@ nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
    bo->offset = req.info.offset;
    bo->handle = req.info.handle;
    bo->map_handle = req.info.map_handle;
-   bo->fd = dev->fd;
+   bo->dev = dev;
    bo->flags = flags;
    bo->refcnt = 1;
 
@@ -90,7 +90,7 @@ nouveau_ws_bo_destroy(struct nouveau_ws_bo *bo)
    if (--bo->refcnt)
       return;
 
-   drmCloseBufferHandle(bo->fd, bo->handle);
+   drmCloseBufferHandle(bo->dev->fd, bo->handle);
    FREE(bo);
 }
 
@@ -104,7 +104,7 @@ nouveau_ws_bo_map(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
    if (flags & NOUVEAU_WS_BO_WR)
       prot |= PROT_WRITE;
 
-   void *res = mmap64(NULL, bo->size, prot, MAP_SHARED, bo->fd, bo->map_handle);
+   void *res = mmap64(NULL, bo->size, prot, MAP_SHARED, bo->dev->fd, bo->map_handle);
    if (res == MAP_FAILED)
       return NULL;
 
@@ -120,11 +120,11 @@ nouveau_ws_bo_wait(struct nouveau_ws_bo *bo, enum nouveau_ws_bo_map_flags flags)
    if (flags & NOUVEAU_WS_BO_WR)
       req.flags |= NOUVEAU_GEM_CPU_PREP_WRITE;
 
-   return !drmCommandWrite(bo->fd, DRM_NOUVEAU_GEM_CPU_PREP, &req, sizeof(req));
+   return !drmCommandWrite(bo->dev->fd, DRM_NOUVEAU_GEM_CPU_PREP, &req, sizeof(req));
 }
 
 int
 nouveau_ws_bo_dma_buf(struct nouveau_ws_bo *bo, int *fd)
 {
-   return drmPrimeHandleToFD(bo->fd, bo->handle, DRM_CLOEXEC, fd);
+   return drmPrimeHandleToFD(bo->dev->fd, bo->handle, DRM_CLOEXEC, fd);
 }
