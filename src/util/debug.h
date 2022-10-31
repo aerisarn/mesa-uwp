@@ -27,24 +27,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "u_debug.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct debug_control {
-    const char * string;
-    uint64_t     flag;
-};
-
-uint64_t
-parse_debug_string(const char *debug,
-                   const struct debug_control *control);
-uint64_t
-parse_enable_string(const char *debug,
-                    uint64_t default_value,
-                    const struct debug_control *control);
-bool
-comma_separated_list_contains(const char *list, const char *s);
 bool
 env_var_as_boolean(const char *var_name, bool default_value);
 unsigned
