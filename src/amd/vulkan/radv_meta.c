@@ -51,14 +51,14 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
       radv_set_db_count_control(cmd_buffer, false);
    }
 
-   /* Primitives generated queries. */
+   /* Primitives generated queries (legacy). */
    if (cmd_buffer->state.active_prims_gen_queries) {
       cmd_buffer->state.suspend_streamout = true;
       radv_emit_streamout_enable(cmd_buffer);
+   }
 
-      /* Save the number of active GDS queries and reset it to make sure internal operations won't
-       * increment the counters via GDS.
-       */
+   /* Primitives generated queries (NGG). */
+   if (cmd_buffer->state.active_prims_gen_gds_queries) {
       state->active_prims_gen_gds_queries = cmd_buffer->state.active_prims_gen_gds_queries;
       cmd_buffer->state.active_prims_gen_gds_queries = 0;
    }
@@ -80,12 +80,14 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
       radv_set_db_count_control(cmd_buffer, true);
    }
 
-   /* Primitives generated queries. */
+   /* Primitives generated queries (legacy). */
    if (cmd_buffer->state.active_prims_gen_queries) {
       cmd_buffer->state.suspend_streamout = false;
       radv_emit_streamout_enable(cmd_buffer);
+   }
 
-      /* Restore the number of active GDS queries to resume counting. */
+   /* Primitives generated queries (NGG). */
+   if (state->active_prims_gen_gds_queries) {
       cmd_buffer->state.active_prims_gen_gds_queries = state->active_prims_gen_gds_queries;
    }
 }
@@ -103,6 +105,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
    assert(flags & (RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_COMPUTE_PIPELINE));
 
    state->flags = flags;
+   state->active_prims_gen_gds_queries = 0;
 
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
       assert(!(state->flags & RADV_META_SAVE_COMPUTE_PIPELINE));
