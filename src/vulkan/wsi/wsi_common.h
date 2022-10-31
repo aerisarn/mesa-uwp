@@ -87,6 +87,7 @@ struct wsi_memory_signal_submit_info {
 };
 
 struct wsi_interface;
+struct vk_instance;
 
 struct driOptionCache;
 
@@ -311,6 +312,9 @@ wsi_common_bind_swapchain_image(const struct wsi_device *wsi,
                                 VkImage vk_image,
                                 VkSwapchainKHR _swapchain,
                                 uint32_t image_idx);
+
+bool
+wsi_common_vk_instance_supports_present_wait(const struct vk_instance *instance);
 
 #ifdef __cplusplus
 }

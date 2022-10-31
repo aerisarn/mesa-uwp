@@ -1376,6 +1376,20 @@ wsi_GetDeviceGroupSurfacePresentModesKHR(VkDevice device,
    return VK_SUCCESS;
 }
 
+bool
+wsi_common_vk_instance_supports_present_wait(const struct vk_instance *instance)
+{
+   /* We can only expose KHR_present_wait and KHR_present_id
+    * if we are guaranteed support on all potential VkSurfaceKHR objects. */
+   if (instance->enabled_extensions.KHR_wayland_surface ||
+         instance->enabled_extensions.KHR_win32_surface ||
+         instance->enabled_extensions.KHR_android_surface) {
+      return false;
+   }
+
+   return true;
+}
+
 VkResult
 wsi_common_create_swapchain_image(const struct wsi_device *wsi,
                                   const VkImageCreateInfo *pCreateInfo,
