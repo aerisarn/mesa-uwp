@@ -140,6 +140,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_alloc;
 
    dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
+   dev->pdev = pdev;
 
    int ret = nouveau_ws_context_create(pdev->dev, &dev->ctx);
    if (ret) {
@@ -213,8 +214,6 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_mutex;
    }
    pthread_condattr_destroy(&condattr);
-
-   dev->pdev = pdev;
 
    void *zero_map;
    dev->zero_page = nouveau_ws_bo_new_mapped(dev->pdev->dev, 0x1000, 0,
