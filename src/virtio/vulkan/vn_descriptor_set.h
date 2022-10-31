@@ -51,6 +51,7 @@ struct vn_descriptor_set_layout {
 
    uint32_t last_binding;
    bool has_variable_descriptor_count;
+   bool is_push_descriptor;
 
    /* bindings must be the last field in the layout */
    struct vn_descriptor_set_layout_binding bindings[];
@@ -120,6 +121,10 @@ struct vn_descriptor_update_template_entry {
 struct vn_descriptor_update_template {
    struct vn_object_base base;
 
+   bool is_push_descriptor;
+   VkPipelineBindPoint pipeline_bind_point;
+   struct vn_pipeline_layout *pipeline_layout;
+
    mtx_t mutex;
    struct vn_update_descriptor_sets *update;
 
@@ -130,7 +135,13 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_update_template,
                                VkDescriptorUpdateTemplate,
                                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
 
- void
+struct vn_update_descriptor_sets *
+vn_update_descriptor_set_with_template_locked(
+   struct vn_descriptor_update_template *templ,
+   struct vn_descriptor_set *set,
+   const void *data);
+
+void
 vn_descriptor_set_layout_destroy(struct vn_device *dev,
                                  struct vn_descriptor_set_layout *layout);
 
