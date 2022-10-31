@@ -1851,7 +1851,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       emit_sample_streamout(cmd_buffer, va, index);
 
       if (pool->uses_gds) {
-         /* xfb counter for this stream */
+         /* generated prim counter */
          gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 32);
 
          /* Record that the command buffer needs GDS. */
@@ -1962,7 +1962,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       emit_sample_streamout(cmd_buffer, va + 16, index);
 
       if (pool->uses_gds) {
-         /* xfb counter for this stream */
+         /* generated prim counter */
          gfx10_copy_gds_query(cmd_buffer, 4 + index * 4, va + 40);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
