@@ -201,7 +201,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
       P_NV90B5_OFFSET_IN_LOWER(p, src_addr & 0xffffffff);
       P_NV90B5_OFFSET_OUT_UPPER(p, dst_addr >> 32);
-      P_NV90B5_OFFSET_OUT_LOWER(p, dst_addr & 0xfffffff);
+      P_NV90B5_OFFSET_OUT_LOWER(p, dst_addr & 0xffffffff);
       P_NV90B5_PITCH_IN(p, copy->src.row_stride);
       P_NV90B5_PITCH_OUT(p, copy->dst.row_stride);
       P_NV90B5_LINE_LENGTH_IN(p, copy->extent_el.width * src_bw);
