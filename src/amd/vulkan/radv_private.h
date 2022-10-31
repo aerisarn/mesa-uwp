@@ -299,6 +299,9 @@ struct radv_physical_device {
    uint8_t ge_wave_size;
    uint8_t rt_wave_size;
 
+   /* Maximum compute shared memory size. */
+   uint32_t max_shared_size;
+
    /* Whether to use the LLVM compiler backend */
    bool use_llvm;
 

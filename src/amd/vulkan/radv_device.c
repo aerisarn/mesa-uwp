@@ -904,6 +904,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
          device->rt_wave_size = 32;
    }
 
+   device->max_shared_size = device->rad_info.gfx_level >= GFX7 ? 65536 : 32768;
+
    radv_physical_device_init_mem_types(device);
 
    radv_physical_device_get_supported_extensions(device, &device->vk.supported_extensions);
@@ -2016,7 +2018,7 @@ radv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxFragmentOutputAttachments = 8,
       .maxFragmentDualSrcAttachments = 1,
       .maxFragmentCombinedOutputResources = max_descriptor_set_size,
-      .maxComputeSharedMemorySize = pdevice->rad_info.gfx_level >= GFX7 ? 65536 : 32768,
+      .maxComputeSharedMemorySize = pdevice->max_shared_size,
       .maxComputeWorkGroupCount = {65535, 65535, 65535},
       .maxComputeWorkGroupInvocations = 1024,
       .maxComputeWorkGroupSize = {1024, 1024, 1024},
