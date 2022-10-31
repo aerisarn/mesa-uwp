@@ -196,9 +196,6 @@ void rc_for_all_reads_src(
 
 	for(unsigned int src = 0; src < opcode->NumSrcRegs; ++src) {
 
-		if (inst->U.I.SrcReg[src].File == RC_FILE_NONE)
-			continue;
-
 		if (inst->U.I.SrcReg[src].File == RC_FILE_PRESUB) {
 			unsigned int i;
 			unsigned int srcp_regs = rc_presubtract_src_reg_count(
