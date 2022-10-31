@@ -854,7 +854,8 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
 
    /* JPEG supports YUV400 and YUV444 */
    if (profile == PIPE_VIDEO_PROFILE_JPEG_BASELINE) {
-      if (sscreen->info.family >= CHIP_NAVI21)
+      if (sscreen->info.family >= CHIP_NAVI21 || sscreen->info.family == CHIP_ARCTURUS ||
+          sscreen->info.family == CHIP_ALDEBARAN)
          return (format == PIPE_FORMAT_NV12 || format == PIPE_FORMAT_Y8_400_UNORM ||
                  format == PIPE_FORMAT_Y8_U8_V8_444_UNORM || format == PIPE_FORMAT_YUYV);
       else
