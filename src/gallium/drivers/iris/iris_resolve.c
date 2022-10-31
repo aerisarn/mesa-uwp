@@ -37,10 +37,9 @@
 #include "compiler/nir/nir.h"
 
 /**
- * Disable auxiliary buffers if a renderbuffer is also bound as a texture
- * or shader image.  This causes a self-dependency, where both rendering
- * and sampling may concurrently read or write the CCS buffer, causing
- * incorrect pixels.
+ * Disable auxiliary buffers if a renderbuffer is also bound as a texture.
+ * This causes a self-dependency, where both rendering and sampling may
+ * concurrently read or write the CCS buffer, causing incorrect pixels.
  */
 static bool
 disable_rb_aux_buffer(struct iris_context *ice,
@@ -121,9 +120,7 @@ static void
 resolve_image_views(struct iris_context *ice,
                     struct iris_batch *batch,
                     struct iris_shader_state *shs,
-                    const struct shader_info *info,
-                    bool *draw_aux_buffer_disabled,
-                    bool consider_framebuffer)
+                    const struct shader_info *info)
 {
    if (info == NULL)
       return;
@@ -138,12 +135,6 @@ resolve_image_views(struct iris_context *ice,
       struct iris_resource *res = (void *) pview->resource;
 
       if (res->base.b.target != PIPE_BUFFER) {
-         if (consider_framebuffer) {
-            disable_rb_aux_buffer(ice, draw_aux_buffer_disabled,
-                                  res, pview->u.tex.level, 1,
-                                  "as a shader image");
-         }
-
          unsigned num_layers =
             pview->u.tex.last_layer - pview->u.tex.first_layer + 1;
 
@@ -182,8 +173,7 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
    if (ice->state.stage_dirty & stage_dirty) {
       resolve_sampler_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                             consider_framebuffer);
-      resolve_image_views(ice, batch, shs, info, draw_aux_buffer_disabled,
-                          consider_framebuffer);
+      resolve_image_views(ice, batch, shs, info);
    }
 }
 
