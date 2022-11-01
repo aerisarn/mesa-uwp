@@ -86,7 +86,7 @@ def create_include_guard(lines: T.List[str], filename: str) -> T.List[str]:
 
     # remove '#pragma once'
     for idx, l in enumerate(lines):
-        if l.find('#pragma once') != -1:
+        if '#pragma once' in l:
             lines.pop(idx)
             break
 
@@ -95,7 +95,7 @@ def create_include_guard(lines: T.List[str], filename: str) -> T.List[str]:
 
 def convert_to_static_variable(lines: T.List[str], varname: str) -> T.List[str]:
     for idx, l in enumerate(lines):
-        if l.find(varname) != -1:
+        if varname in l:
             lines[idx] = "static " + lines[idx]
             return lines
     raise RuntimeError(f'Did not find {varname}, this is unexpected')
@@ -103,7 +103,7 @@ def convert_to_static_variable(lines: T.List[str], varname: str) -> T.List[str]:
 
 def override_version(lines: T.List[str], glsl_version: str) -> T.List[str]:
     for idx, l in enumerate(lines):
-        if l.find('#version ') != -1:
+        if '#version ' in l:
             lines[idx] = "#version {}\n".format(glsl_version)
             return lines
     raise RuntimeError('Did not find #version directive, this is unexpected')
