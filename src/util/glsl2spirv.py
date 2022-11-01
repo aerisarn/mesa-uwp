@@ -136,7 +136,7 @@ def process_file(args):
             cmd_list += ["--variable-name", args.vn]
 
         if args.extra is not None:
-            cmd_list.append(args.extra-flags)
+            cmd_list.append(args.extra)
 
         if args.create_entry is not None:
             cmd_list += ["--entry-point", args.create_entry]
