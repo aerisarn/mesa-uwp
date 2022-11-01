@@ -79,6 +79,34 @@ static nir_ssa_def *get_num_vert_per_prim(nir_builder *b, struct si_shader *shad
    return nir_imm_int(b, num_vertices);
 }
 
+static nir_ssa_def *build_attr_ring_desc(nir_builder *b, struct si_shader *shader,
+                                         struct si_shader_args *args)
+{
+   struct si_shader_selector *sel = shader->selector;
+
+   nir_ssa_def *attr_address =
+      sel->stage == MESA_SHADER_VERTEX && sel->info.base.vs.blit_sgprs_amd ?
+      load_internal_binding(b, args, SI_GS_ATTRIBUTE_RING) :
+      ac_nir_load_arg(b, &args->ac, args->gs_attr_address);
+
+   unsigned stride = 16 * shader->info.nr_param_exports;
+   nir_ssa_def *comp[] = {
+      attr_address,
+      nir_imm_int(b, S_008F04_BASE_ADDRESS_HI(sel->screen->info.address32_hi) |
+                  S_008F04_STRIDE(stride) |
+                  S_008F04_SWIZZLE_ENABLE_GFX11(3) /* 16B */),
+      nir_imm_int(b, 0xffffffff),
+      nir_imm_int(b, S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+                  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+                  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+                  S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_32_32_32_FLOAT) |
+                  S_008F0C_INDEX_STRIDE(2) /* 32 elements */),
+   };
+
+   return nir_vec(b, comp, 4);
+}
+
 static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_state *s)
 {
    if (instr->type != nir_instr_type_intrinsic)
@@ -251,6 +279,14 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
 
       nir_ssa_def *prim_count = intrin->src[0].ssa;
       nir_buffer_atomic_add_amd(b, 32, buf, prim_count, .base = offset);
+      break;
+   }
+   case nir_intrinsic_load_ring_attr_amd:
+      replacement = build_attr_ring_desc(b, shader, args);
+      break;
+   case nir_intrinsic_load_ring_attr_offset_amd: {
+      nir_ssa_def *offset = ac_nir_unpack_arg(b, &args->ac, args->ac.gs_attr_offset, 0, 15);
+      replacement = nir_ishl_imm(b, offset, 9);
       break;
    }
    default:

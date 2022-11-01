@@ -700,39 +700,6 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
       LLVMBuildRet(builder, ret);
 }
 
-static LLVMValueRef si_llvm_build_attr_ring_desc(struct si_shader_context *ctx)
-{
-   struct si_shader *shader = ctx->shader;
-
-   LLVMValueRef attr_address;
-   if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
-      struct ac_llvm_pointer ring_ptr =
-         ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings);
-      ring_ptr.pointee_type = ctx->ac.i32;
-      attr_address = ac_build_load_to_sgpr(&ctx->ac, ring_ptr,
-                                           LLVMConstInt(ctx->ac.i32, SI_GS_ATTRIBUTE_RING * 4, 0));
-   } else {
-      attr_address = ac_get_arg(&ctx->ac, ctx->args->gs_attr_address);
-   }
-
-   unsigned stride = 16 * shader->info.nr_param_exports;
-   LLVMValueRef attr_desc[4] = {
-      attr_address,
-      LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->screen->info.address32_hi) |
-                   S_008F04_STRIDE(stride) |
-                   S_008F04_SWIZZLE_ENABLE_GFX11(3) /* 16B */, 0),
-      LLVMConstInt(ctx->ac.i32, 0xffffffff, 0),
-      LLVMConstInt(ctx->ac.i32, S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-                   S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-                   S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-                   S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-                   S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_32_32_32_FLOAT) |
-                   S_008F0C_INDEX_STRIDE(2) /* 32 elements */, 0),
-   };
-
-   return ac_build_gather_values(&ctx->ac, attr_desc, 4);
-}
-
 static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrinsic_op op)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -746,9 +713,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
 
    case nir_intrinsic_load_ring_esgs_amd:
       return ctx->esgs_ring;
-
-   case nir_intrinsic_load_ring_attr_amd:
-      return si_llvm_build_attr_ring_desc(ctx);
 
    case nir_intrinsic_load_lds_ngg_scratch_base_amd:
       return LLVMBuildBitCast(ctx->ac.builder, ctx->gs_ngg_scratch.value, ctx->ac.i32, "");
