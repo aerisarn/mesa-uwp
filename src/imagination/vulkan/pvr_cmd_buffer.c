@@ -111,8 +111,7 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
          break;
 
       default:
-         pvr_finishme("Unsupported sub-command type %d", sub_cmd->type);
-         break;
+         unreachable("Unsupported sub-command type");
       }
    }
 
@@ -277,9 +276,7 @@ static void pvr_cmd_buffer_update_barriers(struct pvr_cmd_buffer *cmd_buffer,
       break;
 
    default:
-      barriers = 0;
-      pvr_finishme("Unsupported sub-command type %d", type);
-      break;
+      unreachable("Unsupported sub-command type");
    }
 
    for (uint32_t i = 0; i < ARRAY_SIZE(state->barriers_needed); i++)
@@ -1563,8 +1560,7 @@ static VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       break;
 
    default:
-      pvr_finishme("Unsupported sub-command type %d", sub_cmd->type);
-      break;
+      unreachable("Unsupported sub-command type");
    }
 
    state->current_sub_cmd = NULL;
@@ -1717,8 +1713,7 @@ static VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       break;
 
    default:
-      pvr_finishme("Unsupported sub-command type %d", type);
-      break;
+      unreachable("Unsupported sub-command type");
    }
 
    list_addtail(&sub_cmd->link, &cmd_buffer->sub_cmds);
@@ -5780,8 +5775,7 @@ static VkResult pvr_execute_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       break;
 
    default:
-      mesa_loge("Unsupported sub-command type %d", primary_sub_cmd->type);
-      break;
+      unreachable("Unsupported sub-command type");
    }
 
    return VK_SUCCESS;
