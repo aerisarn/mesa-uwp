@@ -874,6 +874,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
                                (device->rad_info.gfx_level >= GFX11 ||
                                 (device->instance->perftest_flags & RADV_PERFTEST_NGG_STREAMOUT));
 
+   device->emulate_ngg_gs_query_pipeline_stat =
+      device->use_ngg && device->rad_info.gfx_level < GFX11;
+
    /* Determine the number of threads per wave for all stages. */
    device->cs_wave_size = 64;
    device->ps_wave_size = 64;
