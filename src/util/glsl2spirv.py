@@ -40,7 +40,8 @@ def get_args():
 
     parser.add_argument('--glsl-version',
                         dest="glsl_ver",
-                        help="{100 | 110 | 120 | 130 | 140 | 150 | 300es | 310es | 320es | 330 | 400 | 410 | 420 | 430 | 440 | 450 | 460} set GLSL version, overrides #version in shader sources. Default is 460.")
+                        choices=['100', '110', '120', '130', '140', '150', '300es', '310es', '330', '400', '410', '420', '430', '440', '450', '460'],
+                        help="Override GLSL #version declaration in source.")
 
     parser.add_argument("-Olib",
                         action='store_true',
@@ -56,7 +57,8 @@ def get_args():
 
     parser.add_argument("--stage",
                         default="vert",
-                        help="Uses specified stage rather than parsing the file extension choices for <stage> are vert, tesc, tese, geom, frag, or comp.")
+                        choices=['vert', 'tesc', 'tese', 'geom', 'frag', 'comp'],
+                        help="Uses specified stage rather than parsing the file extension")
     args = parser.parse_args()
     return args
 
