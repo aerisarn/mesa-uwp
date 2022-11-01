@@ -681,23 +681,9 @@ zink_draw(struct pipe_context *pctx,
    }
 
    if (BATCH_CHANGED || rast_state_changed || rast_prim_changed) {
-      bool depth_bias = false;
-      switch (ctx->gfx_pipeline_state.rast_prim) {
-      case PIPE_PRIM_POINTS:
-         depth_bias = rast_state->offset_point;
-         break;
-
-      case PIPE_PRIM_LINES:
-         depth_bias = rast_state->offset_line;
-         break;
-
-      case PIPE_PRIM_TRIANGLES:
-         depth_bias = rast_state->offset_tri;
-         break;
-
-      default:
-         unreachable("unexpected reduced prim");
-      }
+      bool depth_bias =
+         ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES &&
+         rast_state->offset_fill;
 
       VKCTX(CmdSetLineWidth)(batch->state->cmdbuf, rast_state->line_width);
       if (depth_bias) {

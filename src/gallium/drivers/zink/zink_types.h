@@ -293,7 +293,7 @@ struct zink_rasterizer_hw_state {
 
 struct zink_rasterizer_state {
    struct pipe_rasterizer_state base;
-   bool offset_point, offset_line, offset_tri;
+   bool offset_fill;
    float offset_units, offset_clamp, offset_scale;
    float line_width;
    VkFrontFace front_face;
