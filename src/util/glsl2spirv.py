@@ -1,4 +1,3 @@
-# encoding=utf-8
 # Copyright © 2022 Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,7 +23,6 @@
 
 import argparse
 import subprocess
-import io
 import os
 
 class ShaderCompileError(RuntimeError):
@@ -109,7 +107,7 @@ def postprocess_file(args):
 
 
 def preprocess_file(args, origin_file):
-    with io.open(origin_file.name + ".copy", "w") as copy_file:
+    with open(origin_file.name + ".copy", "w") as copy_file:
         lines = origin_file.readlines()
 
         if args.create_entry is not None:
@@ -124,7 +122,7 @@ def preprocess_file(args, origin_file):
 
 
 def process_file(args):
-    with io.open(args.input, "r") as infile:
+    with open(args.input, "r") as infile:
         copy_file = preprocess_file(args, infile)
 
         cmd_list = ["glslangValidator"]
