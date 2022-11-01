@@ -1697,7 +1697,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
       assert(info->buffers[buffer].stride);
 
       prim_stride_ret[buffer] =
-         nir_imul_imm(b, num_vert_per_prim, info->buffers[buffer].stride * 4);
+         nir_imul_imm(b, num_vert_per_prim, info->buffers[buffer].stride);
       so_buffer_ret[buffer] = nir_load_streamout_buffer_amd(b, .base = buffer);
    }
 
@@ -1817,7 +1817,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
       if (!(info->buffers_written & BITFIELD_BIT(buffer)))
          continue;
 
-      nir_ssa_def *offset = nir_imul_imm(b, vtx_buffer_idx, info->buffers[buffer].stride * 4);
+      nir_ssa_def *offset = nir_imul_imm(b, vtx_buffer_idx, info->buffers[buffer].stride);
       vtx_buffer_offsets[buffer] = nir_iadd(b, buffer_offsets[buffer], offset);
    }
 
@@ -1829,7 +1829,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
       unsigned base = util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(out->location));
       unsigned offset = (base * 4 + out->component_offset) * 4;
       unsigned count = util_bitcount(out->component_mask);
-      /* component_mask is constructed like this, see nir_gather_xfb_info_from_intrinsics() */
+
       assert(u_bit_consecutive(out->component_offset, count) == out->component_mask);
 
       nir_ssa_def *out_data =
@@ -1847,11 +1847,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
 static void
 ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
 {
-   nir_xfb_info *info = nir_gather_xfb_info_from_intrinsics(b->shader, NULL);
-   if (unlikely(!info)) {
-      s->streamout_enabled = false;
-      return;
-   }
+   nir_xfb_info *info = b->shader->xfb_info;
 
    nir_ssa_def *lds_scratch_base = nir_load_lds_ngg_scratch_base_amd(b);
 
@@ -1904,8 +1900,6 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
     *       can't observe test fail without this barrier.
     */
    nir_memory_barrier_buffer(b);
-
-   free(info);
 }
 
 static unsigned
@@ -2231,7 +2225,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       ngg_nogs_build_streamout(b, &state);
    }
 
-   /* streamout may be disabled by ngg_nogs_build_streamout() */
    if (state.streamout_enabled || has_user_edgeflags) {
       ngg_nogs_store_all_outputs_to_lds(shader, &state);
       b->cursor = nir_after_cf_list(&impl->body);
@@ -2983,9 +2976,7 @@ ngg_gs_cull_primitive(nir_builder *b, nir_ssa_def *tid_in_tg, nir_ssa_def *max_v
 static void
 ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
 {
-   nir_xfb_info *info = nir_gather_xfb_info_from_intrinsics(b->shader, NULL);
-   if (unlikely(!info))
-      return;
+   nir_xfb_info *info = b->shader->xfb_info;
 
    nir_ssa_def *tid_in_tg = nir_load_local_invocation_index(b);
    nir_ssa_def *max_vtxcnt = nir_load_workgroup_num_input_vertices_amd(b);
