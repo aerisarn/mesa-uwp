@@ -115,14 +115,14 @@ def postprocess_file(args: Arguments) -> None:
     with open(args.output, "r") as r:
         lines = r.readlines()
 
-        # glslangValidator creates a variable without the static modifier.
-        lines = convert_to_static_variable(lines, args.vn)
+    # glslangValidator creates a variable without the static modifier.
+    lines = convert_to_static_variable(lines, args.vn)
 
-        # '#pragma once' is unstandardised.
-        lines = create_include_guard(lines, os.path.basename(r.name))
+    # '#pragma once' is unstandardised.
+    lines = create_include_guard(lines, os.path.basename(r.name))
 
-        with open(args.output, "w") as w:
-            w.writelines(lines)
+    with open(args.output, "w") as w:
+        w.writelines(lines)
 
 
 def preprocess_file(args: Arguments, origin_file: T.TextIO) -> str:
@@ -137,50 +137,50 @@ def preprocess_file(args: Arguments, origin_file: T.TextIO) -> str:
 
         copy_file.writelines(lines)
 
-        return copy_file.name
+    return copy_file.name
 
 
 def process_file(args: Arguments) -> None:
     with open(args.input, "r") as infile:
         copy_file = preprocess_file(args, infile)
 
-        cmd_list = ["glslangValidator"]
+    cmd_list = ["glslangValidator"]
 
-        if args.Olib:
-            cmd_list += ["--keep-uncalled"]
+    if args.Olib:
+        cmd_list += ["--keep-uncalled"]
 
-        if args.vn is not None:
-            cmd_list += ["--variable-name", args.vn]
+    if args.vn is not None:
+        cmd_list += ["--variable-name", args.vn]
 
-        if args.extra is not None:
-            cmd_list.append(args.extra)
+    if args.extra is not None:
+        cmd_list.append(args.extra)
 
-        if args.create_entry is not None:
-            cmd_list += ["--entry-point", args.create_entry]
+    if args.create_entry is not None:
+        cmd_list += ["--entry-point", args.create_entry]
 
-        cmd_list.append("-V")
-        cmd_list += ["-o", args.output]
-        cmd_list += ["-S", args.stage]
+    cmd_list.append("-V")
+    cmd_list += ["-o", args.output]
+    cmd_list += ["-S", args.stage]
 
-        cmd_list.append(copy_file)
+    cmd_list.append(copy_file)
 
-        with subprocess.Popen(" ".join(cmd_list),
-                              shell = True,
-                              stdout = subprocess.PIPE,
-                              stderr = subprocess.PIPE,
-                              stdin = subprocess.PIPE) as proc:
+    with subprocess.Popen(" ".join(cmd_list),
+                          shell = True,
+                          stdout = subprocess.PIPE,
+                          stderr = subprocess.PIPE,
+                          stdin = subprocess.PIPE) as proc:
 
-            out, err = proc.communicate(timeout=30)
+        out, err = proc.communicate(timeout=30)
 
-            if proc.returncode != 0:
-                message = out.decode('utf-8') + '\n' + err.decode('utf-8')
-                raise ShaderCompileError(message.strip())
+    if proc.returncode != 0:
+        message = out.decode('utf-8') + '\n' + err.decode('utf-8')
+        raise ShaderCompileError(message.strip())
 
-            if args.vn is not None:
-                postprocess_file(args)
+    if args.vn is not None:
+        postprocess_file(args)
 
-        if args.create_entry is not None:
-            os.remove(copy_file)
+    if args.create_entry is not None:
+        os.remove(copy_file)
 
 
 def main() -> None:
