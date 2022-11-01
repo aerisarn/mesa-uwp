@@ -86,6 +86,7 @@ def convert_to_static_variable(lines, varname):
         if l.find(varname) != -1:
             lines[idx] = "static " + lines[idx]
             return lines
+    raise RuntimeError(f'Did not find {varname}, this is unexpected')
 
 
 def override_version(lines, glsl_version):
@@ -93,6 +94,7 @@ def override_version(lines, glsl_version):
         if l.find('#version ') != -1:
             lines[idx] = "#version {}\n".format(glsl_version)
             return lines
+    raise RuntimeError('Did not find #version directive, this is unexpected')
 
 
 def postprocess_file(args):
