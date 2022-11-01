@@ -2212,13 +2212,12 @@ iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
 static void
 iris_bufmgr_init_global_vm(struct iris_bufmgr *bufmgr)
 {
-   uint64_t value;
-   if (!intel_gem_get_context_param(bufmgr->fd, 0, I915_CONTEXT_PARAM_VM, &value)) {
-      bufmgr->use_global_vm = false;
-      bufmgr->global_vm_id = 0;
-   } else {
-      bufmgr->use_global_vm = true;
-      bufmgr->global_vm_id = value;
+   switch (bufmgr->devinfo.kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      bufmgr->use_global_vm = iris_i915_init_global_vm(bufmgr, &bufmgr->global_vm_id);
+      break;
+   default:
+      unreachable("missing");
    }
 }
 
@@ -2256,8 +2255,6 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    simple_mtx_init(&bufmgr->lock, mtx_plain);
    simple_mtx_init(&bufmgr->bo_deps_lock, mtx_plain);
 
-   iris_bufmgr_init_global_vm(bufmgr);
-
    list_inithead(&bufmgr->zombie_list);
 
    bufmgr->devinfo = *devinfo;
@@ -2273,6 +2270,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    bufmgr->devinfo.has_compute_engine = intel_engines_count(engine_info,
                                                             INTEL_ENGINE_CLASS_COMPUTE);
    free(engine_info);
+
+   iris_bufmgr_init_global_vm(bufmgr);
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
