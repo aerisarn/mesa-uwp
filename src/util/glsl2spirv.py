@@ -129,7 +129,7 @@ def process_file(args):
 
         cmd_list = ["glslangValidator"]
 
-        if args.Olib is not None:
+        if args.Olib:
             cmd_list += ["--keep-uncalled"]
 
         if args.vn is not None:
