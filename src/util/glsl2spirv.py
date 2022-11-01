@@ -145,22 +145,23 @@ def process_file(args: Arguments) -> None:
     cmd_list = ["glslangValidator"]
 
     if args.Olib:
-        cmd_list += ["--keep-uncalled"]
+        cmd_list.append("--keep-uncalled")
 
     if args.vn is not None:
-        cmd_list += ["--variable-name", args.vn]
+        cmd_list.extend(["--variable-name", args.vn])
 
     if args.extra is not None:
         cmd_list.append(args.extra)
 
     if args.create_entry is not None:
-        cmd_list += ["--entry-point", args.create_entry]
+        cmd_list.extend(["--entry-point", args.create_entry])
 
-    cmd_list.append("-V")
-    cmd_list += ["-o", args.output]
-    cmd_list += ["-S", args.stage]
-
-    cmd_list.append(copy_file)
+    cmd_list.extend([
+        '-V',
+        '-o', args.output,
+        '-S', args.stage,
+        copy_file,
+    ])
 
     ret = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
     if ret.returncode != 0:
