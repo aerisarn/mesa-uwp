@@ -1437,14 +1437,17 @@ fd6_emit_tile(struct fd_batch *batch, const struct fd_tile *tile)
       emit_conditional_ib(batch, tile, batch->draw);
    }
 
-   if (batch->epilogue)
-      fd6_emit_ib(batch->gmem, batch->epilogue);
+   if (batch->tile_epilogue)
+      fd6_emit_ib(batch->gmem, batch->tile_epilogue);
 }
 
 static void
 fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 {
    struct fd_ringbuffer *ring = batch->gmem;
+
+   if (batch->epilogue)
+      fd6_emit_ib(batch->gmem, batch->epilogue);
 
    if (use_hw_binning(batch)) {
       OUT_PKT7(ring, CP_SET_MARKER, 1);
@@ -1632,6 +1635,9 @@ fd6_emit_sysmem_fini(struct fd_batch *batch) assert_dt
    struct fd_ringbuffer *ring = batch->gmem;
 
    emit_common_fini(batch);
+
+   if (batch->tile_epilogue)
+      fd6_emit_ib(batch->gmem, batch->tile_epilogue);
 
    if (batch->epilogue)
       fd6_emit_ib(batch->gmem, batch->epilogue);

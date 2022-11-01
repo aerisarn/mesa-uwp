@@ -106,7 +106,7 @@ occlusion_pause(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    /* To avoid stalling in the draw buffer, emit code the code to compute the
     * counter delta in the epilogue ring.
     */
-   struct fd_ringbuffer *epilogue = fd_batch_get_epilogue(batch);
+   struct fd_ringbuffer *epilogue = fd_batch_get_tile_epilogue(batch);
 
    OUT_PKT7(epilogue, CP_WAIT_REG_MEM, 6);
    OUT_RING(epilogue, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_NE) |
