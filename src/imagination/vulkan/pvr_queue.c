@@ -755,6 +755,128 @@ static VkResult pvr_process_event_cmd_set_or_reset(
    return VK_SUCCESS;
 }
 
+/**
+ * \brief Process an event sub command of wait type.
+ *
+ * This sets up barrier syncobjs to create a dependency from the event syncobjs
+ * onto the next job submissions.
+ *
+ * The barriers are setup by taking into consideration each event's dst stage
+ * mask so this is in line with vkCmdWaitEvents2().
+ *
+ * \param[in] device                       Device to create the syncobjs on.
+ * \param[in] sub_cmd                      Sub command to process.
+ * \param[in,out] barriers                 Current barriers as input. Barriers
+ *                                         for the next jobs as output.
+ * \parma[in,out] per_cmd_buffer_syncobjs  Completion syncobjs for the command
+ *                                         buffer being processed.
+ */
+static VkResult pvr_process_event_cmd_wait(
+   struct pvr_device *device,
+   struct pvr_sub_cmd_event *sub_cmd,
+   struct vk_sync *barriers[static PVR_JOB_TYPE_MAX],
+   struct vk_sync *per_cmd_buffer_syncobjs[static PVR_JOB_TYPE_MAX])
+{
+   /* +1 if there's a previous barrier which we need to merge. */
+   struct vk_sync *new_barriers[PVR_JOB_TYPE_MAX];
+   struct vk_sync *completions[PVR_JOB_TYPE_MAX];
+   uint32_t dst_mask = 0;
+
+   STACK_ARRAY(struct vk_sync *, src_syncobjs, sub_cmd->wait.count + 1);
+   if (!src_syncobjs)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   for (uint32_t i = 0; i < sub_cmd->wait.count; i++)
+      dst_mask |= sub_cmd->wait.wait_at_stage_masks[i];
+
+   u_foreach_bit (stage, dst_mask) {
+      uint32_t src_syncobj_count = 0;
+      struct vk_sync *completion;
+      struct vk_sync *barrier;
+      VkResult result;
+
+      if (barriers[stage])
+         src_syncobjs[src_syncobj_count++] = barriers[stage];
+
+      for (uint32_t i = 0; i < sub_cmd->wait.count; i++) {
+         if (sub_cmd->wait.wait_at_stage_masks[i] & stage)
+            src_syncobjs[src_syncobj_count++] = sub_cmd->wait.events[i]->sync;
+      }
+
+      /* Create completion. */
+
+      result = vk_sync_create(&device->vk,
+                              &device->pdevice->ws->syncobj_type,
+                              0U,
+                              0UL,
+                              &completion);
+      if (result != VK_SUCCESS) {
+         STACK_ARRAY_FINISH(src_syncobjs);
+         return result;
+      }
+
+      result = device->ws->ops->null_job_submit(device->ws,
+                                                src_syncobjs,
+                                                src_syncobj_count,
+                                                completion);
+      if (result != VK_SUCCESS) {
+         vk_sync_destroy(&device->vk, completion);
+         STACK_ARRAY_FINISH(src_syncobjs);
+         return result;
+      }
+
+      completions[stage] = completion;
+
+      /* Create barrier. */
+
+      /* We can't reuse the completion as a barrier since a barrier can be
+       * passed into multiple job submissions based on the dst mask while the
+       * completion gets replaced on each job submission so we'd end up in a
+       * case where the completion is replaced but other job submissions (of
+       * different type, i.e. different stages in the dst mask) get fed the
+       * freed barrier resulting in a use after free.
+       */
+
+      result = vk_sync_create(&device->vk,
+                              &device->pdevice->ws->syncobj_type,
+                              0U,
+                              0UL,
+                              &barrier);
+      if (result != VK_SUCCESS) {
+         vk_sync_destroy(&device->vk, completion);
+         STACK_ARRAY_FINISH(src_syncobjs);
+         return result;
+      }
+
+      result =
+         device->ws->ops->null_job_submit(device->ws, &completion, 1, barrier);
+      if (result != VK_SUCCESS) {
+         vk_sync_destroy(&device->vk, barrier);
+         vk_sync_destroy(&device->vk, completion);
+         STACK_ARRAY_FINISH(src_syncobjs);
+         return result;
+      }
+
+      new_barriers[stage] = barrier;
+   }
+
+   u_foreach_bit (stage, dst_mask) {
+      if (per_cmd_buffer_syncobjs[stage])
+         vk_sync_destroy(&device->vk, per_cmd_buffer_syncobjs[stage]);
+
+      per_cmd_buffer_syncobjs[stage] = completions[stage];
+
+      if (barriers[stage])
+         vk_sync_destroy(&device->vk, barriers[stage]);
+
+      barriers[stage] = new_barriers[stage];
+   }
+
+   STACK_ARRAY_FINISH(src_syncobjs);
+
+   return VK_SUCCESS;
+}
+
 static VkResult pvr_process_event_cmd(
    struct pvr_device *device,
    struct pvr_sub_cmd_event *sub_cmd,
@@ -772,8 +894,10 @@ static VkResult pvr_process_event_cmd(
                                                 per_cmd_buffer_syncobjs);
 
    case PVR_EVENT_TYPE_WAIT:
-      pvr_finishme("Add support for event sub command type: %d", sub_cmd->type);
-      return VK_SUCCESS;
+      return pvr_process_event_cmd_wait(device,
+                                        sub_cmd,
+                                        barriers,
+                                        per_cmd_buffer_syncobjs);
 
    case PVR_EVENT_TYPE_BARRIER:
       return pvr_process_event_cmd_barrier(device,
