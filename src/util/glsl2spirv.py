@@ -33,6 +33,7 @@ if T.TYPE_CHECKING:
     class Arguments(T.Protocol):
         input: str
         output: str
+        glslang: str
         create_entry: T.Optional[str]
         glsl_ver: T.Optional[str]
         Olib: bool
@@ -45,6 +46,7 @@ def get_args() -> Arguments:
     parser = argparse.ArgumentParser()
     parser.add_argument('input', help="Name of input file.")
     parser.add_argument('output', help="Name of output file.")
+    parser.add_argument('glslang', help="path to glslangValidator")
 
     parser.add_argument("--create-entry",
                         dest="create_entry",
@@ -142,7 +144,7 @@ def process_file(args: Arguments) -> None:
     with open(args.input, "r") as infile:
         copy_file = preprocess_file(args, infile)
 
-    cmd_list = ["glslangValidator"]
+    cmd_list = [args.glslang]
 
     if args.Olib:
         cmd_list.append("--keep-uncalled")
