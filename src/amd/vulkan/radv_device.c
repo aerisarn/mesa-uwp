@@ -871,7 +871,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
                               (device->instance->perftest_flags & RADV_PERFTEST_NGGC)) &&
                              !(device->instance->debug_flags & RADV_DEBUG_NO_NGGC);
 
-   device->use_ngg_streamout = false;
+   device->use_ngg_streamout = device->use_ngg &&
+                               (device->instance->perftest_flags & RADV_PERFTEST_NGG_STREAMOUT);
 
    /* Determine the number of threads per wave for all stages. */
    device->cs_wave_size = 64;
@@ -1062,6 +1063,7 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
                                                              {"gpl", RADV_PERFTEST_GPL},
                                                              {"ext_ms", RADV_PERFTEST_EXT_MS},
+                                                             {"ngg_streamout", RADV_PERFTEST_NGG_STREAMOUT},
                                                              {NULL, 0}};
 
 const char *
