@@ -2,7 +2,7 @@ gpu_id: 420
 cmd: X/23360: fence=1029603
 cmd: glxgears/23375: fence=1029604
 ############################################################
-cmdstream: 414 dwords
+cmdstream[1]: 414 dwords
 t0		write RBBM_PERFCTR_CTL (0170)
 			RBBM_PERFCTR_CTL: 0x1
 108ce000:		0000: 00000170 00000001

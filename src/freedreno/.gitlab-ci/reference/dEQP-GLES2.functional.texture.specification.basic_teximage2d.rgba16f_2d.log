@@ -1,7 +1,7 @@
 gpu_id: 201
 cmd: deqp-gles2/185: fence=1250
 ############################################################
-cmdstream: 124 dwords
+cmdstream[0]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -375,7 +375,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1251
 ############################################################
-cmdstream: 124 dwords
+cmdstream[1]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046
@@ -749,7 +749,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1252
 ############################################################
-cmdstream: 124 dwords
+cmdstream[2]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -1123,7 +1123,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1253
 ############################################################
-cmdstream: 124 dwords
+cmdstream[3]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046
@@ -1497,7 +1497,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1254
 ############################################################
-cmdstream: 124 dwords
+cmdstream[4]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -1871,7 +1871,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1255
 ############################################################
-cmdstream: 124 dwords
+cmdstream[5]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046
@@ -2245,7 +2245,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1256
 ############################################################
-cmdstream: 124 dwords
+cmdstream[6]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -2619,7 +2619,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1257
 ############################################################
-cmdstream: 124 dwords
+cmdstream[7]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046
@@ -2993,7 +2993,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1258
 ############################################################
-cmdstream: 124 dwords
+cmdstream[8]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -3367,7 +3367,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1259
 ############################################################
-cmdstream: 340 dwords
+cmdstream[9]: 340 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0110a000:		0000: 00000f01 1c004046
@@ -4559,7 +4559,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1260
 ############################################################
-cmdstream: 124 dwords
+cmdstream[10]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 NEEDS WFI: RB_BC_CONTROL (f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
@@ -4945,7 +4945,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1261
 ############################################################
-cmdstream: 124 dwords
+cmdstream[11]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0110c000:		0000: 00000f01 1c004046
@@ -5321,7 +5321,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1262
 ############################################################
-cmdstream: 124 dwords
+cmdstream[12]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -5695,7 +5695,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1263
 ############################################################
-cmdstream: 124 dwords
+cmdstream[13]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0110a000:		0000: 00000f01 1c004046
@@ -6071,7 +6071,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1264
 ############################################################
-cmdstream: 124 dwords
+cmdstream[14]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046
@@ -6445,7 +6445,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1265
 ############################################################
-cmdstream: 124 dwords
+cmdstream[15]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0110c000:		0000: 00000f01 1c004046
@@ -6821,7 +6821,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1266
 ############################################################
-cmdstream: 124 dwords
+cmdstream[16]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122d000:		0000: 00000f01 1c004046
@@ -7195,7 +7195,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1267
 ############################################################
-cmdstream: 124 dwords
+cmdstream[17]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0110a000:		0000: 00000f01 1c004046
@@ -7571,7 +7571,7 @@ t2		nop
 vertices: 0
 cmd: deqp-gles2/185: fence=1268
 ############################################################
-cmdstream: 124 dwords
+cmdstream[18]: 124 dwords
 t0		write RB_BC_CONTROL (0f01)
 			RB_BC_CONTROL: { ACCUM_TIMEOUT_SELECT = 3 | DISABLE_LZ_NULL_ZCMD_DROP | AZ_THROTTLE_COUNT = 0 | ENABLE_CRC_UPDATE | ACCUM_ALLOC_MASK = 0 | ACCUM_DATA_FIFO_LIMIT = 8 | MEM_EXPORT_TIMEOUT_SELECT = 3 }
 0122f000:		0000: 00000f01 1c004046

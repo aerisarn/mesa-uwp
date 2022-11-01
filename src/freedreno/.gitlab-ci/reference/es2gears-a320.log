@@ -1,7 +1,7 @@
 gpu_id: 330
 cmd: es2gears/628: fence=276
 ############################################################
-cmdstream: 488 dwords
+cmdstream[0]: 488 dwords
 t3		opcode: CP_INVALIDATE_STATE (3b) (2 dwords)
 11848658:		0000: c0003b00 00007fff
 t0		write SP_VS_PVT_MEM_PARAM_REG (22d6)

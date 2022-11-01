@@ -318,7 +318,7 @@ handle_file(const char *filename, int start, int end, int draw)
             uint64_t gpuaddr;
             parse_addr(ps.buf, ps.sz, &sizedwords, &gpuaddr);
             printl(2, "############################################################\n");
-            printl(2, "cmdstream: %d dwords\n", sizedwords);
+            printl(2, "cmdstream[%d]: %d dwords\n", submit, sizedwords);
             if (!skip) {
                script_start_submit();
                dump_commands(hostptr(gpuaddr), sizedwords, 0);
