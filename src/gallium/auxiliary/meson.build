@@ -467,7 +467,7 @@ files_libgallium += custom_target(
   output: 'u_tracepoints.c',
   command: [
     prog_python, '@INPUT@',
-    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
+    '-p', join_paths(dir_source_root, 'src/util/perf/'),
     '-C', '@OUTPUT@',
   ],
   depend_files: u_trace_py,
@@ -479,7 +479,7 @@ files_u_tracepoints = custom_target(
   output: 'u_tracepoints.h',
   command: [
     prog_python, '@INPUT@',
-    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
+    '-p', join_paths(dir_source_root, 'src/util/perf/'),
     '-H', '@OUTPUT@',
   ],
   depend_files: u_trace_py,

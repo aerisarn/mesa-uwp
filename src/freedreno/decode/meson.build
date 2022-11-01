@@ -146,7 +146,7 @@ if dep_lua.found() and dep_libarchive.found()
         diff,
         args: ['-u', files('../.gitlab-ci/reference/' + name + '.log'), log],
         suite: 'freedreno',
-        workdir: meson.source_root()
+        workdir: dir_source_root
       )
 
     endforeach
@@ -186,7 +186,7 @@ if with_tests
     diff,
     args: ['-u', files('../.gitlab-ci/reference/crash.log'), crashdec_output],
     suite: 'freedreno',
-    workdir: meson.source_root()
+    workdir: dir_source_root
   )
 endif
 
