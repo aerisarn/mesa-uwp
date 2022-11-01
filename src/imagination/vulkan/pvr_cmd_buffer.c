@@ -2905,13 +2905,6 @@ static VkResult pvr_setup_descriptor_mappings(
       const struct pvr_const_map_entry *const entry_header =
          (struct pvr_const_map_entry *)entries;
 
-      /* TODO: See if instead of reusing the blend constant buffer type entry,
-       * we can setup a new buffer type specifically for num_workgroups or other
-       * built-in variables. The mappings are setup at pipeline creation when
-       * creating the descriptor program.
-       */
-      pvr_finishme("Handle blend constant reuse for compute.");
-
       switch (entry_header->type) {
       case PVR_PDS_CONST_MAP_ENTRY_TYPE_LITERAL32: {
          const struct pvr_const_map_entry_literal32 *const literal =
@@ -3057,6 +3050,11 @@ static VkResult pvr_setup_descriptor_mappings(
          }
 
          case PVR_BUFFER_TYPE_BLEND_CONSTS:
+            /* TODO: See if instead of reusing the blend constant buffer type
+             * entry, we can setup a new buffer type specifically for
+             * num_workgroups or other built-in variables. The mappings are
+             * setup at pipeline creation when creating the descriptor program.
+             */
             if (stage == PVR_STAGE_ALLOCATION_COMPUTE) {
                assert(num_worgroups_buff_addr->addr);
 
