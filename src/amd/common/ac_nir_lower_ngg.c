@@ -2791,12 +2791,12 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
 
             nir_ssa_def *val = nir_channel(b, load, i);
 
-            /* Convert to the expected bit size of the output variable. */
-            unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
-            if (bit_size != 32)
-               val = nir_u2u(b, val, bit_size);
-
             if (s->options->gfx_level < GFX11 || is_pos) {
+               /* Convert to the expected bit size of the output variable. */
+               unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
+               if (bit_size != 32)
+                  val = nir_u2u(b, val, bit_size);
+
                nir_store_output(b, val, nir_imm_int(b, 0), .base = info->base,
                                 .io_semantics = io_sem, .component = start + i, .write_mask = 1);
             }
