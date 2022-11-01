@@ -436,7 +436,8 @@ nir_ssa_def *
 nir_type_convert(nir_builder *b,
                  nir_ssa_def *src,
                  nir_alu_type src_type,
-                 nir_alu_type dest_type)
+                 nir_alu_type dest_type,
+                 nir_rounding_mode rnd)
 {
    assert(nir_alu_type_get_type_size(src_type) == 0 ||
           nir_alu_type_get_type_size(src_type) == src->bit_size);
@@ -444,7 +445,7 @@ nir_type_convert(nir_builder *b,
    src_type = (nir_alu_type) (src_type | src->bit_size);
 
    nir_op opcode =
-      nir_type_conversion_op(src_type, dest_type, nir_rounding_mode_undef);
+      nir_type_conversion_op(src_type, dest_type, rnd);
    if (opcode == nir_op_mov)
       return src;
 
