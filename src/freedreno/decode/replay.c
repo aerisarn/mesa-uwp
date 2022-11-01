@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -27,6 +28,7 @@
 #include "util/os_time.h"
 #include "util/rb_tree.h"
 #include "util/u_vector.h"
+#include "util/vma.h"
 #include "buffers.h"
 #include "cffdec.h"
 #include "io.h"
@@ -50,6 +52,10 @@
  * - TODO: Misrendering, would require marking framebuffer images
  *   at each renderpass in order to fetch and decode them.
  *
+ * It possible to override a single cmdstream using external cmdstream
+ * generator. Example usage to override 13th cmdstream:
+ *  ./replay --override=13 --generator=~/cmdstream_gen
+ *
  * Code from Freedreno/Turnip is not re-used here since the relevant
  * pieces may introduce additional allocations which cannot be allowed
  * during the replay.
@@ -57,7 +63,8 @@
 
 static const char *exename = NULL;
 
-static int handle_file(const char *filename);
+static int handle_file(const char *filename, uint32_t submit_to_override,
+                       const char *cmdstreamgen);
 
 static void
 print_usage(const char *name)
@@ -66,8 +73,10 @@ print_usage(const char *name)
    fprintf(stderr, "Usage:\n\n"
            "\t%s [OPTSIONS]... FILE...\n\n"
            "Options:\n"
-           "\t-e, --exe=NAME   - only use cmdstream from named process\n"
-           "\t-h, --help       - show this message\n"
+           "\t-e, --exe=NAME         - only use cmdstream from named process\n"
+           "\t-o  --override=submit  - № of the submit to override\n"
+           "\t-g  --generator=path   - executable which generate cmdstream for override\n"
+           "\t-h, --help             - show this message\n"
            , name);
    /* clang-format on */
    exit(2);
@@ -75,10 +84,9 @@ print_usage(const char *name)
 
 /* clang-format off */
 static const struct option opts[] = {
-      /* Long opts that simply set a flag (no corresponding short alias: */
-
-      /* Long opts with short alias: */
       { "exe",       required_argument, 0, 'e' },
+      { "override",  required_argument, 0, 'o' },
+      { "generator", required_argument, 0, 'g' },
       { "help",      no_argument,       0, 'h' },
 };
 /* clang-format on */
@@ -89,13 +97,22 @@ main(int argc, char **argv)
    int ret = -1;
    int c;
 
-   while ((c = getopt_long(argc, argv, "e:h", opts, NULL)) != -1) {
+   uint32_t submit_to_override = -1;
+   const char *cmdstreamgen = NULL;
+
+   while ((c = getopt_long(argc, argv, "e:o:g:h", opts, NULL)) != -1) {
       switch (c) {
       case 0:
          /* option that set a flag, nothing to do */
          break;
       case 'e':
          exename = optarg;
+         break;
+      case 'o':
+         submit_to_override = strtoul(optarg, NULL, 0);
+         break;
+      case 'g':
+         cmdstreamgen = optarg;
          break;
       case 'h':
       default:
@@ -104,7 +121,7 @@ main(int argc, char **argv)
    }
 
    while (optind < argc) {
-      ret = handle_file(argv[optind]);
+      ret = handle_file(argv[optind], submit_to_override, cmdstreamgen);
       if (ret) {
          fprintf(stderr, "error reading: %s\n", argv[optind]);
          fprintf(stderr, "continuing..\n");
@@ -139,11 +156,12 @@ struct device {
    int fd;
 
    struct rb_tree buffers;
+   struct util_vma_heap vma;
+
    struct u_vector cmdstreams;
 };
 
-void
-buffer_mem_free(struct device *dev, struct buffer *buf);
+void buffer_mem_free(struct device *dev, struct buffer *buf);
 
 static int
 rb_buffer_insert_cmp(const struct rb_node *n1, const struct rb_node *n2)
@@ -180,19 +198,28 @@ device_create()
       errx(1, "Cannot open MSM fd!");
    }
 
+   uint64_t va_start, va_size;
+
    struct drm_msm_param req = {
       .pipe = MSM_PIPE_3D0,
       .param = MSM_PARAM_VA_START,
    };
 
-   int ret = drmCommandWriteRead(dev->fd, DRM_MSM_GET_PARAM, &req,
-                                 sizeof(req));
+   int ret = drmCommandWriteRead(dev->fd, DRM_MSM_GET_PARAM, &req, sizeof(req));
+   va_start = req.value;
+
+   if (!ret) {
+      req.param = MSM_PARAM_VA_SIZE;
+      ret = drmCommandWriteRead(dev->fd, DRM_MSM_GET_PARAM, &req, sizeof(req));
+      va_size = req.value;
+   }
 
    if (ret) {
       err(1, "MSM_INFO_SET_IOVA is unsupported");
    }
 
    rb_tree_init(&dev->buffers);
+   util_vma_heap_init(&dev->vma, va_start, ROUND_DOWN_TO(va_size, 4096));
    u_vector_init(&dev->cmdstreams, 8, sizeof(struct cmdstream));
 
    return dev;
@@ -336,6 +363,8 @@ device_submit_cmdstreams(struct device *dev)
 static void
 buffer_mem_alloc(struct device *dev, struct buffer *buf)
 {
+   util_vma_heap_alloc_addr(&dev->vma, buf->iova, buf->size);
+
    {
       struct drm_msm_gem_new req = {.size = buf->size, .flags = MSM_BO_WC};
 
@@ -394,6 +423,8 @@ buffer_mem_free(struct device *dev, struct buffer *buf)
       .handle = buf->gem_handle,
    };
    drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
+
+   util_vma_heap_free(&dev->vma, buf->iova, buf->size);
 }
 
 static void
@@ -421,7 +452,82 @@ upload_buffer(struct device *dev, uint64_t iova, unsigned int size,
 }
 
 static int
-handle_file(const char *filename)
+override_cmdstream(struct device *dev, struct cmdstream *cs,
+                   const char *cmdstreamgen)
+{
+   static const char *tmpfilename = "/tmp/cmdstream_override.rd";
+
+   /* Find a free space for the new cmdstreams and resources we will use
+    * when overriding existing cmdstream.
+    */
+   /* TODO: should the size be configurable? */
+   uint64_t hole_size = 32 * 1024 * 1024;
+   uint64_t hole_iova = util_vma_heap_alloc(&dev->vma, hole_size, 4096);
+   util_vma_heap_free(&dev->vma, hole_iova, hole_size);
+
+   char cmd[2048];
+   snprintf(cmd, sizeof(cmd),
+            "%s --vastart=%" PRIu64 " --vasize=%" PRIu64 " %s", cmdstreamgen,
+            hole_iova, hole_size, tmpfilename);
+
+   printf("generating cmdstream '%s'\n", cmd);
+
+   int ret = system(cmd);
+   if (ret) {
+      fprintf(stderr, "Error executing %s\n", cmd);
+      return -1;
+   }
+
+   struct io *io;
+   struct rd_parsed_section ps = {0};
+
+   io = io_open(tmpfilename);
+   if (!io) {
+      fprintf(stderr, "could not open: %s\n", tmpfilename);
+      return -1;
+   }
+
+   struct {
+      unsigned int len;
+      uint64_t gpuaddr;
+   } gpuaddr = {0};
+
+   while (parse_rd_section(io, &ps)) {
+      switch (ps.type) {
+      case RD_GPUADDR:
+         parse_addr(ps.buf, ps.sz, &gpuaddr.len, &gpuaddr.gpuaddr);
+         /* no-op */
+         break;
+      case RD_BUFFER_CONTENTS:
+         upload_buffer(dev, gpuaddr.gpuaddr, gpuaddr.len, ps.buf);
+         ps.buf = NULL;
+         break;
+      case RD_CMDSTREAM_ADDR: {
+         unsigned int sizedwords;
+         uint64_t gpuaddr;
+         parse_addr(ps.buf, ps.sz, &sizedwords, &gpuaddr);
+         printf("override cmdstream: %d dwords\n", sizedwords);
+
+         cs->iova = gpuaddr;
+         cs->size = sizedwords * sizeof(uint32_t);
+         break;
+      }
+      default:
+         break;
+      }
+   }
+
+   io_close(io);
+   if (ps.ret < 0) {
+      fprintf(stderr, "corrupt file %s\n", tmpfilename);
+   }
+
+   return ps.ret;
+}
+
+static int
+handle_file(const char *filename, uint32_t submit_to_override,
+            const char *cmdstreamgen)
 {
    struct io *io;
    int submit = 0;
@@ -486,9 +592,16 @@ handle_file(const char *filename)
          printf("cmdstream %d: %d dwords\n", submit, sizedwords);
 
          if (!skip) {
-            struct cmdstream *cmd = u_vector_add(&dev->cmdstreams);
-            cmd->iova = gpuaddr;
-            cmd->size = sizedwords * sizeof(uint32_t);
+            struct cmdstream *cs = u_vector_add(&dev->cmdstreams);
+
+            if (submit == submit_to_override) {
+               if (override_cmdstream(dev, cs, cmdstreamgen) < 0)
+                  break;
+            } else {
+               cs->iova = gpuaddr;
+               cs->size = sizedwords * sizeof(uint32_t);
+            }
+
             need_submit = true;
          }
 
