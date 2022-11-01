@@ -80,9 +80,9 @@ def create_include_guard(lines: T.List[str], filename: str) -> T.List[str]:
     filename = filename.replace('.', '_')
     upper_name = filename.upper()
 
-    guard_head = ["#ifndef {}\n".format(upper_name),
-                  "#define {}\n".format(upper_name)]
-    guard_tail = ["\n#endif // {}\n".format(upper_name)]
+    guard_head = [f"#ifndef {upper_name}\n",
+                  f"#define {upper_name}\n"]
+    guard_tail = [f"\n#endif // {upper_name}\n"]
 
     # remove '#pragma once'
     for idx, l in enumerate(lines):
@@ -96,7 +96,7 @@ def create_include_guard(lines: T.List[str], filename: str) -> T.List[str]:
 def convert_to_static_variable(lines: T.List[str], varname: str) -> T.List[str]:
     for idx, l in enumerate(lines):
         if varname in l:
-            lines[idx] = "static " + lines[idx]
+            lines[idx] = f"static {l}"
             return lines
     raise RuntimeError(f'Did not find {varname}, this is unexpected')
 
@@ -104,7 +104,7 @@ def convert_to_static_variable(lines: T.List[str], varname: str) -> T.List[str]:
 def override_version(lines: T.List[str], glsl_version: str) -> T.List[str]:
     for idx, l in enumerate(lines):
         if '#version ' in l:
-            lines[idx] = "#version {}\n".format(glsl_version)
+            lines[idx] = f"#version {glsl_version}\n"
             return lines
     raise RuntimeError('Did not find #version directive, this is unexpected')
 
@@ -128,7 +128,7 @@ def preprocess_file(args: Arguments, origin_file: T.TextIO) -> str:
         lines = origin_file.readlines()
 
         if args.create_entry is not None:
-            lines.append("\nvoid {}()".format(args.create_entry) + "{}\n")
+            lines.append(f"\nvoid {args.create_entry}() {{}}\n")
 
         if args.glsl_ver is not None:
             override_version(lines, args.glsl_ver)
