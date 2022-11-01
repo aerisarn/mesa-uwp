@@ -24,6 +24,7 @@
 from __future__ import annotations
 import argparse
 import subprocess
+import sys
 import os
 import typing as T
 
@@ -39,9 +40,6 @@ if T.TYPE_CHECKING:
         vn: str
         stage: str
 
-class ShaderCompileError(RuntimeError):
-    def __init__(self, *args):
-        super(ShaderCompileError, self).__init__(*args)
 
 def get_args() -> Arguments:
     parser = argparse.ArgumentParser()
@@ -164,17 +162,11 @@ def process_file(args: Arguments) -> None:
 
     cmd_list.append(copy_file)
 
-    with subprocess.Popen(" ".join(cmd_list),
-                          shell = True,
-                          stdout = subprocess.PIPE,
-                          stderr = subprocess.PIPE,
-                          stdin = subprocess.PIPE) as proc:
-
-        out, err = proc.communicate(timeout=30)
-
-    if proc.returncode != 0:
-        message = out.decode('utf-8') + '\n' + err.decode('utf-8')
-        raise ShaderCompileError(message.strip())
+    ret = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+    if ret.returncode != 0:
+        print(ret.stdout)
+        print(ret.stderr, file=sys.stderr)
+        sys.exit(1)
 
     if args.vn is not None:
         postprocess_file(args)
