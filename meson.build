@@ -1145,6 +1145,7 @@ else
     '-Werror=incompatible-pointer-types',
     '-Werror=int-conversion',
     '-Wimplicit-fallthrough',
+    '-Wmisleading-indentation',
     '-Wno-missing-field-initializers',
     '-Wno-format-truncation',
     '-fno-math-errno',
@@ -1158,6 +1159,7 @@ else
   _trial_cpp = [
     '-Werror=return-type',
     '-Werror=empty-body',
+    '-Wmisleading-indentation',
     '-Wno-non-virtual-dtor',
     '-Wno-missing-field-initializers',
     '-Wno-format-truncation',
