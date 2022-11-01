@@ -686,7 +686,7 @@ if vdpau_drivers_path == ''
 endif
 
 if with_vulkan_overlay_layer or with_aco_tests or with_amd_vk
-  prog_glslang = find_program('glslangValidator')
+  prog_glslang = find_program('glslangValidator', native : true)
   if run_command(prog_glslang, [ '--quiet', '--version' ], check : false).returncode() == 0
     glslang_quiet = ['--quiet']
   else
