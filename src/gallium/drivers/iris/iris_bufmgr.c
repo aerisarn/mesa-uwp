@@ -931,6 +931,12 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
        */
       if (memzone != iris_memzone_for_address(cur->address) ||
           cur->address % alignment != 0) {
+         if (!bufmgr->kmd_backend->gem_vm_unbind(cur)) {
+            DBG("Unable to unbind vm of buf %u\n", cur->gem_handle);
+            bo_free(cur);
+            continue;
+         }
+
          vma_free(bufmgr, cur->address, cur->size);
          cur->address = 0ull;
       }
@@ -1101,6 +1107,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 
       if (bo->address == 0ull)
          goto err_free;
+
+      if (!bufmgr->kmd_backend->gem_vm_bind(bo))
+         goto err_vm_alloc;
    }
 
    bo->name = name;
@@ -1136,6 +1145,8 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 
    return bo;
 
+err_vm_alloc:
+   vma_free(bufmgr, bo->address, bo->size);
 err_free:
    simple_mtx_lock(&bufmgr->lock);
    bo_free(bo);
@@ -1266,6 +1277,9 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    if (bo->address == 0ull)
       goto err_free;
 
+   if (!bufmgr->kmd_backend->gem_vm_bind(bo))
+      goto err_vm_alloc;
+
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
    _mesa_hash_table_insert(bufmgr->name_table, &bo->real.global_name, bo);
 
@@ -1275,6 +1289,8 @@ out:
    simple_mtx_unlock(&bufmgr->lock);
    return bo;
 
+err_vm_alloc:
+   vma_free(bufmgr, bo->address, bo->size);
 err_free:
    bo_free(bo);
    simple_mtx_unlock(&bufmgr->lock);
@@ -1312,6 +1328,12 @@ bo_close(struct iris_bo *bo)
       assert(list_is_empty(&bo->real.exports));
    }
 
+   /* Unbind and return the VMA for reuse */
+   if (bufmgr->kmd_backend->gem_vm_unbind(bo))
+      vma_free(bo->bufmgr, bo->address, bo->size);
+   else
+      DBG("Unable to unbind vm of buf %u\n", bo->gem_handle);
+
    /* Close this object */
    struct drm_gem_close close = { .handle = bo->gem_handle };
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
@@ -1324,9 +1346,6 @@ bo_close(struct iris_bo *bo)
       intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->address,
                                 bo->size);
    }
-
-   /* Return the VMA for reuse */
-   vma_free(bo->bufmgr, bo->address, bo->size);
 
    for (int d = 0; d < bo->deps_size; d++) {
       for (int b = 0; b < IRIS_BATCH_COUNT; b++) {
@@ -1824,12 +1843,17 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    if (bo->address == 0ull)
       goto err_free;
 
+   if (!bufmgr->kmd_backend->gem_vm_bind(bo))
+      goto err_vm_alloc;
+
    _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
 out:
    simple_mtx_unlock(&bufmgr->lock);
    return bo;
 
+err_vm_alloc:
+   vma_free(bufmgr, bo->address, bo->size);
 err_free:
    bo_free(bo);
    simple_mtx_unlock(&bufmgr->lock);
@@ -2065,6 +2089,9 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    if (bo->address == 0ull)
       goto err_free;
 
+   if (!bufmgr->kmd_backend->gem_vm_bind(bo))
+      goto err_vm_alloc;
+
    simple_mtx_unlock(&bufmgr->lock);
 
    bo->name = "aux-map";
@@ -2081,6 +2108,8 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    buf->map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
    return buf;
 
+err_vm_alloc:
+   vma_free(bufmgr, bo->address, bo->size);
 err_free:
    free(buf);
    bo_free(bo);
