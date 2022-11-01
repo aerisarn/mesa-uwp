@@ -53,6 +53,7 @@ def get_args():
 
     parser.add_argument("--vn",
                         dest="vn",
+                        required=True,
                         help="Variable name. Creates a C header file that contains a uint32_t array.")
 
     parser.add_argument("--stage",
