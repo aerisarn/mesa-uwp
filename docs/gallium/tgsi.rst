@@ -1183,7 +1183,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: UDIV - Unsigned Integer Division
 
-   For division by zero, 0xffffffff is returned.
+   For division by zero, ``0xffffffff`` is returned.
 
 .. math::
 
@@ -1198,7 +1198,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: UMOD - Unsigned Integer Remainder
 
-   If *src1* is zero, 0xffffffff is returned.
+   If *src1* is zero, ``0xffffffff`` is returned.
 
 .. math::
 
@@ -1317,7 +1317,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: SHL - Shift Left
 
-   The shift count is masked with 0x1f before the shift is applied.
+   The shift count is masked with ``0x1f`` before the shift is applied.
 
 .. math::
 
@@ -1332,7 +1332,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: ISHR - Arithmetic Shift Right (of Signed Integer)
 
-   The shift count is masked with 0x1f before the shift is applied.
+   The shift count is masked with ``0x1f`` before the shift is applied.
 
 .. math::
 
@@ -1347,7 +1347,7 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
 .. opcode:: USHR - Logical Shift Right
 
-   The shift count is masked with 0x1f before the shift is applied.
+   The shift count is masked with ``0x1f`` before the shift is applied.
 
 .. math::
 
@@ -2183,7 +2183,7 @@ two-component vectors with 64-bits in each component.
 
 .. opcode:: U64SHL - Shift Left 64-bit Unsigned Integer
 
-   The shift count is masked with 0x3f before the shift is applied.
+   The shift count is masked with ``0x3f`` before the shift is applied.
 
 .. math::
 
@@ -2193,7 +2193,7 @@ two-component vectors with 64-bits in each component.
 
 .. opcode:: I64SHR - Arithmetic Shift Right (of 64-bit Signed Integer)
 
-   The shift count is masked with 0x3f before the shift is applied.
+   The shift count is masked with ``0x3f`` before the shift is applied.
 
 .. math::
 
@@ -2203,7 +2203,7 @@ two-component vectors with 64-bits in each component.
 
 .. opcode:: U64SHR - Logical Shift Right (of 64-bit Unsigned Integer)
 
-   The shift count is masked with 0x3f before the shift is applied.
+   The shift count is masked with ``0x3f`` before the shift is applied.
 
 .. math::
 
@@ -3221,8 +3221,8 @@ where F will be positive when the fragment belongs to a front-facing polygon,
 and negative when the fragment belongs to a back-facing polygon.
 
 If it is a system value, it will be an integer vector in the form (F, 0, 0, 1),
-where F is 0xffffffff when the fragment belongs to a front-facing polygon and
-0 when the fragment belongs to a back-facing polygon.
+where F is ``0xffffffff`` when the fragment belongs to a front-facing polygon
+and ``0`` when the fragment belongs to a back-facing polygon.
 
 
 TGSI_SEMANTIC_EDGEFLAG
