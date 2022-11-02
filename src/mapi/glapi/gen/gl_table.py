@@ -105,7 +105,6 @@ class PrintRemapTable(gl_XML.gl_print_base):
 
 #include "main/glheader.h"
 """)
-        print('#include "main/glheader.h"')
         return
 
 
