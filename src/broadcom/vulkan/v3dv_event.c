@@ -231,8 +231,11 @@ v3dv_event_allocate_resources(struct v3dv_device *device)
 
    /* BO with event states. Make sure we always align to a page size (4096)
     * to ensure we use all the memory the kernel will allocate for the BO.
+    *
+    * CTS has tests that require over 8192 active events (yes, really) so
+    * let's make sure we allow for that.
     */
-   const uint32_t bo_size = 4096;
+   const uint32_t bo_size = 3 * 4096;
    struct v3dv_bo *bo = v3dv_bo_alloc(device, bo_size, "events", true);
    if (!bo) {
       result = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
