@@ -480,10 +480,9 @@ nir_convert_with_rounding(nir_builder *b,
    } else {
       trivial_convert = false;
    }
-   if (trivial_convert) {
-      nir_op op = nir_type_conversion_op(src_type, dest_type, round);
-      return nir_build_alu(b, op, src, NULL, NULL, NULL);
-   }
+
+   if (trivial_convert)
+      return nir_type_convert(b, src, src_type, dest_type, round);
 
    nir_ssa_def *dest = src;
 
