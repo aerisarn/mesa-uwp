@@ -2404,11 +2404,12 @@ pan_assign_varyings(const struct panfrost_device *dev,
         for (unsigned i = 0; i < producer_count; ++i) {
                 signed loc = pan_find_vary(consumer_vars, consumer_count,
                                 producer_vars[i].location);
+                enum pipe_format format = loc >= 0 ?
+                                          consumer_vars[loc].format :
+                                          PIPE_FORMAT_NONE;
 
-                if (loc >= 0) {
+                if (format != PIPE_FORMAT_NONE) {
                         offsets[i] = stride;
-
-                        enum pipe_format format = consumer_vars[loc].format;
                         stride += util_format_get_blocksize(format);
                 } else {
                         offsets[i] = -1;
