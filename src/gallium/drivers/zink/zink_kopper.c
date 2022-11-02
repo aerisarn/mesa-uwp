@@ -85,19 +85,25 @@ kopper_CreateSurface(struct zink_screen *screen, struct kopper_displaytarget *cd
    VkStructureType type = cdt->info.bos.sType;
    switch (type) {
 #ifdef VK_USE_PLATFORM_XCB_KHR
-   case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
-      error = VKSCR(CreateXcbSurfaceKHR)(screen->instance, &cdt->info.xcb, NULL, &surface);
+   case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR: {
+      VkXcbSurfaceCreateInfoKHR *xcb = (VkXcbSurfaceCreateInfoKHR *)&cdt->info.bos;
+      error = VKSCR(CreateXcbSurfaceKHR)(screen->instance, xcb, NULL, &surface);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-   case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
-      error = VKSCR(CreateWaylandSurfaceKHR)(screen->instance, &cdt->info.wl, NULL, &surface);
+   case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR: {
+      VkWaylandSurfaceCreateInfoKHR *wlsci = (VkWaylandSurfaceCreateInfoKHR *)&cdt->info.bos;
+      error = VKSCR(CreateWaylandSurfaceKHR)(screen->instance, wlsci, NULL, &surface);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-   case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
-      error = VKSCR(CreateWin32SurfaceKHR)(screen->instance, &cdt->info.win32, NULL, &surface);
+   case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR: {
+      VkWin32SurfaceCreateInfoKHR *win32 = (VkWin32SurfaceCreateInfoKHR *)&cdt->info.bos;
+      error = VKSCR(CreateWin32SurfaceKHR)(screen->instance, win32, NULL, &surface);
       break;
+   }
 #endif
    default:
       unreachable("unsupported!");
@@ -176,19 +182,25 @@ find_dt_entry(struct zink_screen *screen, const struct kopper_displaytarget *cdt
    struct hash_entry *he = NULL;
    switch (cdt->type) {
 #ifdef VK_USE_PLATFORM_XCB_KHR
-   case KOPPER_X11:
-      he = _mesa_hash_table_search_pre_hashed(&screen->dts, cdt->info.xcb.window, (void*)(uintptr_t)cdt->info.xcb.window);
+   case KOPPER_X11: {
+      VkXcbSurfaceCreateInfoKHR *xcb = (VkXcbSurfaceCreateInfoKHR *)&cdt->info.bos;
+      he = _mesa_hash_table_search_pre_hashed(&screen->dts, xcb->window, (void*)(uintptr_t)xcb->window);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-   case KOPPER_WAYLAND:
-      he = _mesa_hash_table_search(&screen->dts, cdt->info.wl.surface);
+   case KOPPER_WAYLAND: {
+      VkWaylandSurfaceCreateInfoKHR *wlsci = (VkWaylandSurfaceCreateInfoKHR *)&cdt->info.bos;
+      he = _mesa_hash_table_search(&screen->dts, wlsci->surface);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-   case KOPPER_WIN32:
-      he = _mesa_hash_table_search(&screen->dts, cdt->info.win32.hwnd);
+   case KOPPER_WIN32: {
+      VkWin32SurfaceCreateInfoKHR *win32 = (VkWin32SurfaceCreateInfoKHR *)&cdt->info.bos;
+      he = _mesa_hash_table_search(&screen->dts, win32->hwnd);
       break;
+   }
 #endif
    default:
       unreachable("unsupported!");
@@ -425,19 +437,25 @@ zink_kopper_displaytarget_create(struct zink_screen *screen, unsigned tex_usage,
    simple_mtx_lock(&screen->dt_lock);
    switch (cdt->type) {
 #ifdef VK_USE_PLATFORM_XCB_KHR
-   case KOPPER_X11:
-      _mesa_hash_table_insert_pre_hashed(&screen->dts, cdt->info.xcb.window, (void*)(uintptr_t)cdt->info.xcb.window, cdt);
+   case KOPPER_X11: {
+      VkXcbSurfaceCreateInfoKHR *xcb = (VkXcbSurfaceCreateInfoKHR *)&cdt->info.bos;
+      _mesa_hash_table_insert_pre_hashed(&screen->dts, xcb->window, (void*)(uintptr_t)xcb->window, cdt);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-   case KOPPER_WAYLAND:
-      _mesa_hash_table_insert(&screen->dts, cdt->info.wl.surface, cdt);
+   case KOPPER_WAYLAND: {
+      VkWaylandSurfaceCreateInfoKHR *wlsci = (VkWaylandSurfaceCreateInfoKHR *)&cdt->info.bos;
+      _mesa_hash_table_insert(&screen->dts, wlsci->surface, cdt);
       break;
+   }
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-   case KOPPER_WIN32:
-      _mesa_hash_table_insert(&screen->dts, cdt->info.win32.hwnd, cdt);
+   case KOPPER_WIN32: {
+      VkWin32SurfaceCreateInfoKHR *win32 = (VkWin32SurfaceCreateInfoKHR *)&cdt->info.bos;
+      _mesa_hash_table_insert(&screen->dts, win32->hwnd, cdt);
       break;
+   }
 #endif
    default:
       unreachable("unsupported!");

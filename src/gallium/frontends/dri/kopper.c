@@ -421,8 +421,9 @@ kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
    __DRIscreen                          *cur_screen;
    struct kopper_loader_info *info = &cdraw->info;
    assert(info->bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR);
-   xcb_connection_t *conn = info->xcb.connection;
-   pixmap = info->xcb.window;
+   VkXcbSurfaceCreateInfoKHR *xcb = (VkXcbSurfaceCreateInfoKHR *)&info->bos;
+   xcb_connection_t *conn = xcb->connection;
+   pixmap = xcb->window;
 
    if (cdraw->image)
       return cdraw->image->texture;
