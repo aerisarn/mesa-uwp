@@ -1477,7 +1477,7 @@ iris_create_blend_state(struct pipe_context *ctx,
       bs.AlphaToCoverageEnable = state->alpha_to_coverage;
       bs.IndependentAlphaBlendEnable = indep_alpha_blend;
       bs.AlphaToOneEnable = state->alpha_to_one;
-      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage;
+      bs.AlphaToCoverageDitherEnable = state->alpha_to_coverage_dither;
       bs.ColorDitherEnable = state->dither;
       /* bl.AlphaTestEnable and bs.AlphaTestFunction are filled in later. */
    }
