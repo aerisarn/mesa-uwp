@@ -36,11 +36,7 @@
 #endif
 
 #if defined(__WIN32__) && !defined(__CYGWIN__)
-#  if (defined(_MSC_VER) || defined(__MINGW32__)) && defined(BUILD_GL32) /* tag specify we're building mesa as a DLL */
-#    define GLAPI __declspec(dllexport)
-#  else
-#    define GLAPI extern
-#  endif
+#  define GLAPI extern
 #  if defined(__MINGW32__) && defined(GL_NO_STDCALL) || defined(UNDER_CE)  /* The generated DLLs by MingW with STDCALL are not compatible with the ones done by Microsoft's compilers */
 #    define GLAPIENTRY
 #  else
