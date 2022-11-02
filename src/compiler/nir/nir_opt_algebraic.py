@@ -2079,6 +2079,32 @@ optimizations.extend([
    (('imul24', a, 0), (0)),
 ])
 
+for bit_size in [8, 16, 32, 64]:
+   cond = '!options->lower_uadd_sat'
+   if bit_size == 64:
+      cond += ' && !(options->lower_int64_options & nir_lower_iadd64)'
+   add = 'iadd@' + str(bit_size)
+
+   optimizations += [
+      (('bcsel', ('ult', ('iadd', a, b), a), -1, (add, a, b)), ('uadd_sat', a, b), cond),
+      (('bcsel', ('uge', ('iadd', a, b), a), (add, a, b), -1), ('uadd_sat', a, b), cond),
+      (('bcsel', ('ieq', ('uadd_carry', a, b), 0), (add, a, b), -1), ('uadd_sat', a, b), cond),
+      (('bcsel', ('ine', ('uadd_carry', a, b), 0), -1, (add, a, b)), ('uadd_sat', a, b), cond),
+   ]
+
+for bit_size in [8, 16, 32, 64]:
+   cond = '!options->lower_usub_sat'
+   if bit_size == 64:
+      cond += ' && !(options->lower_int64_options & nir_lower_usub_sat64)'
+   add = 'iadd@' + str(bit_size)
+
+   optimizations += [
+      (('bcsel', ('ult', a, b), 0, (add, a, ('ineg', b))), ('usub_sat', a, b), cond),
+      (('bcsel', ('uge', a, b), (add, a, ('ineg', b)), 0), ('usub_sat', a, b), cond),
+      (('bcsel', ('ieq', ('usub_borrow', a, b), 0), (add, a, ('ineg', b)), 0), ('usub_sat', a, b), cond),
+      (('bcsel', ('ine', ('usub_borrow', a, b), 0), 0, (add, a, ('ineg', b))), ('usub_sat', a, b), cond),
+   ]
+
 # bit_size dependent lowerings
 for bit_size in [8, 16, 32, 64]:
    # convenience constants
