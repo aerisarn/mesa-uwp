@@ -30,7 +30,7 @@
  * \author Brian Paul
  */
 
-#include "glheader.h"
+#include "util/glheader.h"
 #include "condrender.h"
 #include "enums.h"
 #include "mtypes.h"

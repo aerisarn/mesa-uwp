@@ -31,7 +31,7 @@
 #ifndef DD_INCLUDED
 #define DD_INCLUDED
 
-#include "glheader.h"
+#include "util/glheader.h"
 #include "formats.h"
 #include "menums.h"
 #include "compiler/shader_enums.h"

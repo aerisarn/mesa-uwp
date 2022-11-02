@@ -52,7 +52,7 @@
 #include "GL/gl.h"
 #include "compiler/shader_enums.h"
 #include "main/config.h"
-#include "glheader.h"
+#include "util/glheader.h"
 
 #ifdef __cplusplus
 extern "C" {
