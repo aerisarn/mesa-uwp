@@ -187,9 +187,6 @@ debug_disable_win32_error_dialogs(void);
 #endif /* !DEBUG */
 
 
-long
-debug_get_num_option(const char *name, long dfault);
-
 void
 debug_get_version_option(const char *name, unsigned *major, unsigned *minor);
 
@@ -310,8 +307,8 @@ struct debug_named_value
  *    ...
  * @endcode
  */
-#define DEBUG_NAMED_VALUE(__symbol) {#__symbol, (unsigned long)__symbol, NULL}
-#define DEBUG_NAMED_VALUE_WITH_DESCRIPTION(__symbol, __desc) {#__symbol, (unsigned long)__symbol, __desc}
+#define DEBUG_NAMED_VALUE(__symbol) {#__symbol, (uint64_t)__symbol, NULL}
+#define DEBUG_NAMED_VALUE_WITH_DESCRIPTION(__symbol, __desc) {#__symbol, (uint64_t)__symbol, __desc}
 #define DEBUG_NAMED_VALUE_END {NULL, 0, NULL}
 
 
@@ -320,14 +317,14 @@ struct debug_named_value
  */
 const char *
 debug_dump_enum(const struct debug_named_value *names,
-                unsigned long value);
+                uint64_t value);
 
 /**
  * Convert binary flags value to a string.
  */
 const char *
 debug_dump_flags(const struct debug_named_value *names,
-                 unsigned long value);
+                 uint64_t value);
 
 
 struct debug_control {
@@ -361,8 +358,8 @@ debug_get_option(const char *name, const char *dfault);
 bool
 debug_get_bool_option(const char *name, bool dfault);
 
-long
-debug_get_num_option(const char *name, long dfault);
+int64_t
+debug_get_num_option(const char *name, int64_t dfault);
 
 uint64_t
 debug_get_flags_option(const char *name,
@@ -406,11 +403,11 @@ debug_get_option_ ## sufix (void) \
 }
 
 #define DEBUG_GET_ONCE_NUM_OPTION(sufix, name, dfault) \
-static long \
+static int64_t \
 debug_get_option_ ## sufix (void) \
 { \
    static bool initialized = false; \
-   static long value; \
+   static int64_t value; \
    if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_num_option(name, dfault); \
       p_atomic_set(&initialized, true); \
@@ -419,11 +416,11 @@ debug_get_option_ ## sufix (void) \
 }
 
 #define DEBUG_GET_ONCE_FLAGS_OPTION(sufix, name, flags, dfault) \
-static unsigned long \
+static uint64_t \
 debug_get_option_ ## sufix (void) \
 { \
    static bool initialized = false; \
-   static unsigned long value; \
+   static uint64_t value; \
    if (unlikely(!p_atomic_read_relaxed(&initialized))) { \
       value = debug_get_flags_option(name, flags, dfault); \
       p_atomic_set(&initialized, true); \

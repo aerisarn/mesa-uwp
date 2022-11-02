@@ -184,10 +184,10 @@ debug_get_bool_option(const char *name, bool dfault)
 }
 
 
-long
-debug_get_num_option(const char *name, long dfault)
+int64_t
+debug_get_num_option(const char *name, int64_t dfault)
 {
-   long result;
+   int64_t result;
    const char *str;
 
    str = os_get_option(name);
@@ -196,7 +196,7 @@ debug_get_num_option(const char *name, long dfault)
    } else {
       char *endptr;
 
-      result = strtol(str, &endptr, 0);
+      result = strtoll(str, &endptr, 0);
       if (str == endptr) {
          /* Restore the default value when no digits were found. */
          result = dfault;
@@ -204,7 +204,7 @@ debug_get_num_option(const char *name, long dfault)
    }
 
    if (debug_get_option_should_print())
-      debug_printf("%s: %s = %li\n", __func__, name, result);
+      debug_printf("%s: %s = %"PRId64"\n", __func__, name, result);
 
    return result;
 }
@@ -326,7 +326,7 @@ debug_get_flags_option(const char *name,
 
 const char *
 debug_dump_enum(const struct debug_named_value *names,
-                unsigned long value)
+                uint64_t value)
 {
    static char rest[64];
 
@@ -336,13 +336,13 @@ debug_dump_enum(const struct debug_named_value *names,
       ++names;
    }
 
-   snprintf(rest, sizeof(rest), "0x%08lx", value);
+   snprintf(rest, sizeof(rest), "0x%08"PRIx64, value);
    return rest;
 }
 
 
 const char *
-debug_dump_flags(const struct debug_named_value *names, unsigned long value)
+debug_dump_flags(const struct debug_named_value *names, uint64_t value)
 {
    static char output[4096];
    static char rest[256];
@@ -369,7 +369,7 @@ debug_dump_flags(const struct debug_named_value *names, unsigned long value)
       else
          first = 0;
 
-      snprintf(rest, sizeof(rest), "0x%08lx", value);
+      snprintf(rest, sizeof(rest), "0x%08"PRIx64, value);
       strncat(output, rest, sizeof(output) - strlen(output) - 1);
       output[sizeof(output) - 1] = '\0';
    }
