@@ -100,24 +100,6 @@ debug_disable_win32_error_dialogs(void)
 }
 #endif /* _WIN32 */
 
-
-#ifdef DEBUG
-void
-debug_print_blob(const char *name, const void *blob, unsigned size)
-{
-   const unsigned *ublob = (const unsigned *)blob;
-   unsigned i;
-
-   debug_printf("%s (%d dwords%s)\n", name, size/4,
-                size%4 ? "... plus a few bytes" : "");
-
-   for (i = 0; i < size/4; i++) {
-      debug_printf("%d:\t%08x\n", i, ublob[i]);
-   }
-}
-#endif
-
-
 static bool
 debug_get_option_should_print(void)
 {

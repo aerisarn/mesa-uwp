@@ -165,18 +165,6 @@ debug_printf(const char *format, ...)
 #define debug_vprintf(_format, _ap) ((void)0)
 #endif
 
-
-#ifdef DEBUG
-/**
- * Dump a blob in hex to the same place that debug_printf sends its
- * messages.
- */
-void debug_print_blob( const char *name, const void *blob, unsigned size );
-#else
-#define debug_print_blob(_name, _blob, _size) ((void)0)
-#endif
-
-
 #ifdef _WIN32
 /**
  * Disable Win32 interactive error message boxes.
