@@ -47,7 +47,7 @@ Additional driver information:
 
 -  `DRI hardware drivers <https://dri.freedesktop.org/>`__ for the X
    Window System
--  :doc:`Xlib / swrast driver <xlibdriver>` for the X Window System
+-  :doc:`Xlib driver <xlibdriver>` for the X Window System
    and Unix-like operating systems
 
 Deprecated Systems and Drivers
