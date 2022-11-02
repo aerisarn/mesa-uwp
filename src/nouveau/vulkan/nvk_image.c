@@ -355,8 +355,9 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
    uint32_t memory_types = (1 << device->pdev->mem_type_cnt) - 1;
 
    // TODO hope for the best?
+
    pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
-   pMemoryRequirements->memoryRequirements.alignment = 0x1000;
+   pMemoryRequirements->memoryRequirements.alignment = image->nil.align_B;
    pMemoryRequirements->memoryRequirements.size = image->nil.size_B;
 
    vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {
