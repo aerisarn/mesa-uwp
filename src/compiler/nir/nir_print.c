@@ -1730,10 +1730,12 @@ primitive_name(unsigned primitive)
 }
 
 static void
-print_bitset(FILE *fp, const unsigned *words, int size) {
+print_bitset(FILE *fp, const char *name, const unsigned *words, int size) {
+   fprintf(fp, "%s: ", name);
    for (int i = 0; i < size; ++i) {
       fprintf(fp, i ? "'%08x" : "0x%08x", words[i]);
    }
+   fprintf(fp, "\n");
 }
 
 static void
@@ -1767,9 +1769,7 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
    fprintf(fp, "inputs_read: 0x%016" PRIx64 "\noutputs_written: 0x%016" PRIx64 "\noutputs_read: 0x%016" PRIx64 "\n",
            info->inputs_read, info->outputs_written, info->outputs_read);
 
-   fprintf(fp, "system_values_read: ");
-   print_bitset(fp, info->system_values_read, ARRAY_SIZE(info->system_values_read));
-   fprintf(fp, "\n");
+   print_bitset(fp, "system_values_read", info->system_values_read, ARRAY_SIZE(info->system_values_read));
 
    fprintf(fp, "per_primitive_inputs: 0x%016" PRIx64 "\n"
                "per_primitive_outputs: 0x%016" PRIx64 "\n"
@@ -1788,6 +1788,31 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
            info->outputs_read_16bit,
            info->inputs_read_indirectly_16bit,
            info->outputs_accessed_indirectly_16bit);
+
+   fprintf(fp, "patch_inputs_read: %u\n"
+           "patch_outputs_written: %u\n"
+           "patch_outputs_read: %u\n",
+           info->patch_inputs_read,
+           info->patch_outputs_written,
+           info->patch_outputs_read);
+
+   fprintf(fp, "inputs_read_indirectly: %" PRIx64 "\n"
+           "outputs_accessed_indirectly: %" PRIx64 "\n"
+           "patch_inputs_read_indirectly: %" PRIx64 "\n"
+           "patch_outputs_acessed_indirectly: %" PRIx64 "\n",
+           info->inputs_read_indirectly,
+           info->outputs_accessed_indirectly,
+           info->patch_inputs_read_indirectly,
+           info->patch_outputs_accessed_indirectly);
+
+   print_bitset(fp, "textures_used", info->textures_used, ARRAY_SIZE(info->textures_used));
+   print_bitset(fp, "textures_used_by_txf", info->textures_used_by_txf, ARRAY_SIZE(info->textures_used_by_txf));
+   print_bitset(fp, "samplers_used", info->samplers_used, ARRAY_SIZE(info->samplers_used));
+   print_bitset(fp, "images_used", info->images_used, ARRAY_SIZE(info->images_used));
+   print_bitset(fp, "image_buffers", info->image_buffers, ARRAY_SIZE(info->image_buffers));
+   print_bitset(fp, "msaa_images", info->msaa_images, ARRAY_SIZE(info->msaa_images));
+
+   fprintf(fp, "float_controls_execution_mode: 0x%04x\n", info->float_controls_execution_mode);
 
    if (info->stage == MESA_SHADER_MESH || info->stage == MESA_SHADER_TASK) {
       fprintf(fp, "task_payload-size: %u\n", info->task_payload_size);
