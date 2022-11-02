@@ -124,7 +124,7 @@ like this:
 
 .. code-block:: console
 
-   meson builddir/ -Dprefix="$MESA_INSTALLDIR" -Ddri-drivers= \
+   meson builddir/ -Dprefix="$MESA_INSTALLDIR" \
       -Dgallium-drivers=swrast -Dvulkan-drivers=swrast
    ninja -C builddir/ install
 
