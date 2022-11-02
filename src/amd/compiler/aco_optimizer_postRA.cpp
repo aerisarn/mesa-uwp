@@ -573,6 +573,25 @@ num_encoded_alu_operands(const aco_ptr<Instruction>& instr)
 void
 try_reassign_split_vector(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
+   /* Any unused split_vector definition can always use the same register
+    * as the operand. This avoids creating unnecessary copies.
+    */
+   if (instr->opcode == aco_opcode::p_split_vector) {
+      Operand& op = instr->operands[0];
+      if (!op.isTemp() || op.isKill())
+         return;
+
+      PhysReg reg = op.physReg();
+      for (Definition& def : instr->definitions) {
+         if (def.getTemp().type() == op.getTemp().type() && def.isKill())
+            def.setFixed(reg);
+
+         reg = reg.advance(def.bytes());
+      }
+
+      return;
+   }
+
    /* We are looking for the following pattern:
     *
     * sA, sB = p_split_vector s[X:Y]
