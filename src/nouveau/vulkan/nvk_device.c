@@ -139,6 +139,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
+   vk_device_set_drm_fd(&dev->vk, pdev->dev->fd);
    dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
    dev->pdev = pdev;
 
