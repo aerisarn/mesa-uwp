@@ -785,7 +785,8 @@ zink_draw(struct pipe_context *pctx,
                          offsetof(struct zink_gfx_push_constant, draw_mode_is_indexed), sizeof(unsigned),
                          &draw_mode_is_indexed);
    }
-   if (ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL] && ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL]->is_generated) {
+   if (ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL] &&
+       ctx->curr_program->shaders[MESA_SHADER_TESS_CTRL]->tcs.is_generated) {
       VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_ALL_GRAPHICS,
                          offsetof(struct zink_gfx_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
