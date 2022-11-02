@@ -2348,7 +2348,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */
-   if (zs->is_generated)
+   if (zs->nir->info.stage == MESA_SHADER_TESS_CTRL && zs->is_generated)
       zs->spirv = spirv;
    else
       ralloc_free(spirv);
