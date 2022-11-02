@@ -96,19 +96,19 @@ Environment variables
    yet use AVX instructions.
 ``GALLIUM_OVERRIDE_CPU_CAPS``
    Override CPU capabilities for LLVMpipe and Softpipe, possible values for x86:
-   `nosse`
-   `sse`
-   `sse2`
-   `sse3`
-   `ssse3`
-   `sse4.1`
-   `avx`
+   ``nosse``
+   ``sse``
+   ``sse2``
+   ``sse3``
+   ``ssse3``
+   ``sse4.1``
+   ``avx``
 ``GALLIUM_NOSSE``
-   Deprecated in favor of `GALLIUM_OVERRIDE_CPU_CAPS`,
-   use `GALLIUM_OVERRIDE_CPU_CAPS=nosse` instead.
+   Deprecated in favor of ``GALLIUM_OVERRIDE_CPU_CAPS``,
+   use ``GALLIUM_OVERRIDE_CPU_CAPS=nosse`` instead.
 ``LP_FORCE_SSE2``
-   Deprecated in favor of `GALLIUM_OVERRIDE_CPU_CAPS`
-   use `GALLIUM_OVERRIDE_CPU_CAPS=sse2` instead.
+   Deprecated in favor of ``GALLIUM_OVERRIDE_CPU_CAPS``
+   use ``GALLIUM_OVERRIDE_CPU_CAPS=sse2`` instead.
 
 Linux
 ~~~~~

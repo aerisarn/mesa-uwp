@@ -165,12 +165,12 @@ Meta Instructions
 
 **collect**
     Groups registers which need to be assigned to consecutive scalar
-    registers, for example `sam` (texture fetch) src instructions (see
+    registers, for example ``sam`` (texture fetch) src instructions (see
     `register groups`_) or array element dereference
     (see `relative addressing`_).
 
 **split**
-    The counterpart to **collect**, when an instruction such as `sam`
+    The counterpart to **collect**, when an instruction such as ``sam``
     writes multiple components, splits the result into individual
     scalar components to be consumed by other instructions.
 

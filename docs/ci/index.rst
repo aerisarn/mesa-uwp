@@ -59,7 +59,7 @@ The CI replays application traces with various drivers in two different jobs. Th
 job replays traces listed in ``src/<driver>/ci/traces-<driver>.yml`` files and if any
 of those traces fail the pipeline fails as well. The second job replays traces listed in
 ``src/<driver>/ci/restricted-traces-<driver>.yml`` and it is allowed to fail. This second
-job is only created when the pipeline is triggered by `marge-bot` or any other user that
+job is only created when the pipeline is triggered by ``marge-bot`` or any other user that
 has been granted access to these traces.
 
 A traces YAML file also includes a ``download-url`` pointing to a MinIO
@@ -199,7 +199,7 @@ apt cache, and other such common pitfalls of building Docker images).
 When running a container job, the templates will look for an existing
 build of that image in the container registry under
 ``MESA_IMAGE_TAG``.  If it's found it will be reused, and if
-not, the associated `.gitlab-ci/containers/<jobname>.sh`` will be run
+not, the associated ``.gitlab-ci/containers/<jobname>.sh`` will be run
 to build it.  So, when developing any change to container build
 scripts, you need to update the associated ``MESA_IMAGE_TAG`` to
 a new unique string.  We recommend using the current date plus some

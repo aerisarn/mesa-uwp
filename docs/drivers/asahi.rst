@@ -150,15 +150,15 @@ within the compiler.
 Fragment shader
 ```````````````
 
-In the fragment shader, coefficient registers, identified by the prefix `cf`
+In the fragment shader, coefficient registers, identified by the prefix ``cf``
 followed by a decimal index, act as opaque handles to varyings. For flat
 shading, coefficient registers may be loaded into general registers with the
-`ldcf` instruction. For smooth shading, the coefficient register corresponding
+``ldcf`` instruction. For smooth shading, the coefficient register corresponding
 to the desired varying is passed as an argument to the "iterate" instruction
-`iter` in order to "iterate" (interpolate) a varying. As perspective correct
+``iter`` in order to "iterate" (interpolate) a varying. As perspective correct
 interpolation also requires the W component of the fragment coordinate, the
 coefficient register for W is passed as a second argument. As an example, if
-there's a single varying to interpolate, an instruction like `iter r0, cf1, cf0`
+there's a single varying to interpolate, an instruction like ``iter r0, cf1, cf0``
 is used.
 
 Iterator

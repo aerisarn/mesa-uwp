@@ -299,7 +299,7 @@ development.
 
 Developers with NDA access with Broadcom or Raspberry Pi can
 potentially get access to "simpenrose", the C software simulator of
-the GPU.  The Mesa driver includes a backend (`vc4_simulator.c`) to
+the GPU.  The Mesa driver includes a backend (``vc4_simulator.c``) to
 use simpenrose from an x86 system with the i915 graphics driver with
 all of the VC4 rendering commands emulated on simpenrose and memcpyed
 to the real GPU.
