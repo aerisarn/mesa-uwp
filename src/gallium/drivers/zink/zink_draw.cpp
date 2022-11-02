@@ -680,12 +680,16 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
+   if ((BATCH_CHANGED || rast_state_changed || rast_prim_changed) &&
+       ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES) {
+      VKCTX(CmdSetLineWidth)(batch->state->cmdbuf, rast_state->line_width);
+   }
+
    if (BATCH_CHANGED || rast_state_changed || rast_prim_changed) {
       bool depth_bias =
          ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES &&
          rast_state->offset_fill;
 
-      VKCTX(CmdSetLineWidth)(batch->state->cmdbuf, rast_state->line_width);
       if (depth_bias) {
          if (rast_state->base.offset_units_unscaled) {
             VKCTX(CmdSetDepthBias)(batch->state->cmdbuf, rast_state->offset_units * ctx->depth_bias_scale_factor, rast_state->offset_clamp, rast_state->offset_scale);
