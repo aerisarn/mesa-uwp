@@ -1730,14 +1730,19 @@ primitive_name(unsigned primitive)
 }
 
 static void
-print_shader_info(const struct shader_info *info, FILE *fp) {
+print_bitset(FILE *fp, const unsigned *words, int size) {
+   for (int i = 0; i < size; ++i) {
+      fprintf(fp, i ? "'%08x" : "0x%08x", words[i]);
+   }
+}
 
+static void
+print_shader_info(const struct shader_info *info, FILE *fp) {
    fprintf(fp, "shader: %s\n", gl_shader_stage_name(info->stage));
 
    fprintf(fp, "source_sha1: {");
    _mesa_sha1_print(fp, info->source_sha1);
    fprintf(fp, "}\n");
-
 
    if (info->name)
       fprintf(fp, "name: %s\n", info->name);
@@ -1753,8 +1758,56 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
               info->workgroup_size_variable ? " (variable)" : "");
       fprintf(fp, "shared-size: %u\n", info->shared_size);
    }
+
+   fprintf(fp, "stage: %d\nnext_stage: %d\n", info->stage, info->next_stage);
+
+   fprintf(fp, "num_textures: %u\nnum_ubos: %u\nnum_abos: %u\nnum_ssbos: %u\nnum_images: %u\n",
+           info->num_textures, info->num_ubos, info->num_abos, info->num_ssbos, info->num_images);
+
+   fprintf(fp, "inputs_read: 0x%016" PRIx64 "\noutputs_written: 0x%016" PRIx64 "\noutputs_read: 0x%016" PRIx64 "\n",
+           info->inputs_read, info->outputs_written, info->outputs_read);
+
+   fprintf(fp, "system_values_read: ");
+   print_bitset(fp, info->system_values_read, ARRAY_SIZE(info->system_values_read));
+   fprintf(fp, "\n");
+
+   fprintf(fp, "per_primitive_inputs: 0x%016" PRIx64 "\n"
+               "per_primitive_outputs: 0x%016" PRIx64 "\n"
+               "per_view_outputs: 0x%016" PRIx64 "\n",
+           info->per_primitive_inputs,
+           info->per_primitive_outputs,
+           info->per_view_outputs);
+
+   fprintf(fp, "inputs_read_16bit: 0x%04x\n"
+               "outputs_written_16bit: 0x%04x\n"
+               "outputs_read_16bit: 0x%04x\n"
+               "inputs_read_indirectly_16bit: 0x%04x\n"
+               "outputs_accessed_indirectly_16bit: 0x%04x\n",
+           info->inputs_read_16bit,
+           info->outputs_written_16bit,
+           info->outputs_read_16bit,
+           info->inputs_read_indirectly_16bit,
+           info->outputs_accessed_indirectly_16bit);
+
    if (info->stage == MESA_SHADER_MESH || info->stage == MESA_SHADER_TASK) {
       fprintf(fp, "task_payload-size: %u\n", info->task_payload_size);
+   }
+
+   fprintf(fp, "shared: %u\n", info->shared_size);
+   fprintf(fp, "ray queries: %u\n", info->ray_queries);
+
+   if (info->stage == MESA_SHADER_GEOMETRY) {
+      fprintf(fp, "invocations: %u\n", info->gs.invocations);
+      fprintf(fp, "vertices in: %u\n", info->gs.vertices_in);
+      fprintf(fp, "vertices out: %u\n", info->gs.vertices_out);
+      fprintf(fp, "input primitive: %s\n", primitive_name(info->gs.input_primitive));
+      fprintf(fp, "output primitive: %s\n", primitive_name(info->gs.output_primitive));
+      fprintf(fp, "active_stream_mask: 0x%x\n", info->gs.active_stream_mask);
+      fprintf(fp, "uses_end_primitive: %u\n", info->gs.uses_end_primitive);
+   } else if (info->stage == MESA_SHADER_MESH) {
+      fprintf(fp, "output primitive: %s\n", primitive_name(info->mesh.primitive_type));
+      fprintf(fp, "max primitives out: %u\n", info->mesh.max_primitives_out);
+      fprintf(fp, "max vertices out: %u\n", info->mesh.max_vertices_out);
    }
 }
 
@@ -1771,28 +1824,10 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    fprintf(fp, "inputs: %u\n", shader->num_inputs);
    fprintf(fp, "outputs: %u\n", shader->num_outputs);
    fprintf(fp, "uniforms: %u\n", shader->num_uniforms);
-   if (shader->info.num_ubos)
-      fprintf(fp, "ubos: %u\n", shader->info.num_ubos);
-   fprintf(fp, "shared: %u\n", shader->info.shared_size);
-   fprintf(fp, "ray queries: %u\n", shader->info.ray_queries);
    if (shader->scratch_size)
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
    if (shader->constant_data_size)
       fprintf(fp, "constants: %u\n", shader->constant_data_size);
-
-   if (shader->info.stage == MESA_SHADER_GEOMETRY) {
-      fprintf(fp, "invocations: %u\n", shader->info.gs.invocations);
-      fprintf(fp, "vertices in: %u\n", shader->info.gs.vertices_in);
-      fprintf(fp, "vertices out: %u\n", shader->info.gs.vertices_out);
-      fprintf(fp, "input primitive: %s\n", primitive_name(shader->info.gs.input_primitive));
-      fprintf(fp, "output primitive: %s\n", primitive_name(shader->info.gs.output_primitive));
-      fprintf(fp, "active_stream_mask: 0x%x\n", shader->info.gs.active_stream_mask);
-      fprintf(fp, "uses_end_primitive: %u\n", shader->info.gs.uses_end_primitive);
-   } else if (shader->info.stage == MESA_SHADER_MESH) {
-      fprintf(fp, "output primitive: %s\n", primitive_name(shader->info.mesh.primitive_type));
-      fprintf(fp, "max primitives out: %u\n", shader->info.mesh.max_primitives_out);
-      fprintf(fp, "max vertices out: %u\n", shader->info.mesh.max_vertices_out);
-   }
 
    nir_foreach_variable_in_shader(var, shader)
       print_var_decl(var, &state);
