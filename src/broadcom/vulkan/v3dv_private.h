@@ -1682,7 +1682,7 @@ struct v3dv_event {
    uint32_t index;
 };
 
-bool
+VkResult
 v3dv_event_allocate_resources(struct v3dv_device *device);
 
 void

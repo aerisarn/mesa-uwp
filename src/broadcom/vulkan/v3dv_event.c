@@ -223,7 +223,7 @@ destroy_event_pipelines(struct v3dv_device *device)
    device->events.descriptor_set_layout = VK_NULL_HANDLE;
 }
 
-bool
+VkResult
 v3dv_event_allocate_resources(struct v3dv_device *device)
 {
    VkResult result = VK_SUCCESS;
