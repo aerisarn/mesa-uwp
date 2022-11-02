@@ -1595,10 +1595,6 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
     * case the optimization doesn't happen.
     */
 
-   /* TODO: The programs we use are hard coded for now, but these should be
-    * selected dynamically.
-    */
-
    result = pvr_pds_coeff_program_create_and_upload(
       device,
       allocator,
@@ -1649,7 +1645,6 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    /* assert(pvr_pds_descriptor_program_variables.temp_buff_total_size == 0); */
    /* TODO: Implement spilling with the above. */
 
-   /* TODO: Call pvr_pds_program_program_create_and_upload in a loop. */
    /* FIXME: For now we pass in the same explicit_const_usage since it contains
     * all invalid entries. Fix this by hooking it up to the compiler.
     */
