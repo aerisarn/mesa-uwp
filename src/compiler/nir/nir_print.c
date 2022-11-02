@@ -1729,6 +1729,34 @@ primitive_name(unsigned primitive)
    }
 }
 
+static void
+print_shader_info(const struct shader_info *info, FILE *fp) {
+
+   fprintf(fp, "shader: %s\n", gl_shader_stage_name(info->stage));
+
+   fprintf(fp, "source_sha1: {");
+   _mesa_sha1_print(fp, info->source_sha1);
+   fprintf(fp, "}\n");
+
+
+   if (info->name)
+      fprintf(fp, "name: %s\n", info->name);
+
+   if (info->label)
+      fprintf(fp, "label: %s\n", info->label);
+
+   if (gl_shader_stage_uses_workgroup(info->stage)) {
+      fprintf(fp, "workgroup-size: %u, %u, %u%s\n",
+              info->workgroup_size[0],
+              info->workgroup_size[1],
+              info->workgroup_size[2],
+              info->workgroup_size_variable ? " (variable)" : "");
+      fprintf(fp, "shared-size: %u\n", info->shared_size);
+   }
+   if (info->stage == MESA_SHADER_MESH || info->stage == MESA_SHADER_TASK) {
+      fprintf(fp, "task_payload-size: %u\n", info->task_payload_size);
+   }
+}
 
 void
 nir_print_shader_annotated(nir_shader *shader, FILE *fp,
@@ -1736,33 +1764,9 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
 {
    print_state state;
    init_print_state(&state, shader, fp);
-
    state.annotations = annotations;
 
-   fprintf(fp, "shader: %s\n", gl_shader_stage_name(shader->info.stage));
-
-   fprintf(fp, "source_sha1: {");
-   _mesa_sha1_print(fp, shader->info.source_sha1);
-   fprintf(fp, "}\n");
-
-   if (shader->info.name)
-      fprintf(fp, "name: %s\n", shader->info.name);
-
-   if (shader->info.label)
-      fprintf(fp, "label: %s\n", shader->info.label);
-
-   if (gl_shader_stage_uses_workgroup(shader->info.stage)) {
-      fprintf(fp, "workgroup-size: %u, %u, %u%s\n",
-              shader->info.workgroup_size[0],
-              shader->info.workgroup_size[1],
-              shader->info.workgroup_size[2],
-              shader->info.workgroup_size_variable ? " (variable)" : "");
-      fprintf(fp, "shared-size: %u\n", shader->info.shared_size);
-   }
-   if (shader->info.stage == MESA_SHADER_MESH ||
-       shader->info.stage == MESA_SHADER_TASK) {
-      fprintf(fp, "task_payload-size: %u\n", shader->info.task_payload_size);
-   }
+   print_shader_info(&shader->info, fp);
 
    fprintf(fp, "inputs: %u\n", shader->num_inputs);
    fprintf(fp, "outputs: %u\n", shader->num_outputs);
