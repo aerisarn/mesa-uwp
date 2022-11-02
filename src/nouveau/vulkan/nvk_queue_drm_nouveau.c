@@ -118,8 +118,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
                                     uint32_t push_dw_count,
                                     struct nouveau_ws_bo *push_bo,
                                     uint32_t extra_bo_count,
-                                    struct nouveau_ws_bo **extra_bos,
-                                    bool sync)
+                                    struct nouveau_ws_bo **extra_bos)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
 
@@ -130,7 +129,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    for (uint32_t i = 0; i < extra_bo_count; i++)
       push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
-   return push_submit(&pb, queue, sync);
+   return push_submit(&pb, queue, true);
 }
 
 static void

@@ -131,8 +131,7 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
          struct nouveau_ws_bo *push_bos[] = { new_bo, old_bo, };
          result = nvk_queue_submit_simple(&dev->queue,
                                           nv_push_dw_count(&push), push_dw,
-                                          ARRAY_SIZE(push_bos), push_bos,
-                                          true /* sync */);
+                                          ARRAY_SIZE(push_bos), push_bos);
          if (result != VK_SUCCESS) {
             nouveau_ws_bo_unmap(new_bo, new_bo_map);
             nouveau_ws_bo_destroy(new_bo);

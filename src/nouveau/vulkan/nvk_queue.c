@@ -365,8 +365,7 @@ VkResult
 nvk_queue_submit_simple(struct nvk_queue *queue,
                         uint32_t dw_count, const uint32_t *dw,
                         uint32_t extra_bo_count,
-                        struct nouveau_ws_bo **extra_bos,
-                        bool sync)
+                        struct nouveau_ws_bo **extra_bos)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
    struct nouveau_ws_bo *push_bo;
@@ -384,12 +383,10 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
 
    memcpy(push_map, dw, dw_count * 4);
 
-   const bool debug_sync = dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
-
    result = nvk_queue_submit_simple_drm_nouveau(queue, dw_count, push_bo,
-                                                extra_bo_count, extra_bos,
-                                                sync || debug_sync);
+                                                extra_bo_count, extra_bos);
 
+   const bool debug_sync = dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
    if ((debug_sync && result != VK_SUCCESS) ||
        (dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
       struct nv_push push = {

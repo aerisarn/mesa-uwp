@@ -63,18 +63,17 @@ void nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue);
 
 VkResult nvk_queue_init_context_draw_state(struct nvk_queue *queue);
 
+/* this always syncs, so only use when that doesn't matter */
 VkResult nvk_queue_submit_simple(struct nvk_queue *queue,
                                  uint32_t dw_count, const uint32_t *dw,
                                  uint32_t extra_bo_count,
-                                 struct nouveau_ws_bo **extra_bos,
-                                 bool sync);
+                                 struct nouveau_ws_bo **extra_bos);
 
 VkResult nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
                                              uint32_t push_dw_count,
                                              struct nouveau_ws_bo *push_bo,
                                              uint32_t extra_bo_count,
-                                             struct nouveau_ws_bo **extra_bos,
-                                             bool sync);
+                                             struct nouveau_ws_bo **extra_bos);
 
 VkResult nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
                                       struct vk_queue_submit *submit,

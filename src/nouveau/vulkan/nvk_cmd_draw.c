@@ -427,7 +427,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       P_IMMD(p, NVB0C0, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
 
    return nvk_queue_submit_simple(queue, nv_push_dw_count(&push), push_data,
-                                  0, NULL, false /* sync */);
+                                  0, NULL);
 }
 
 void
