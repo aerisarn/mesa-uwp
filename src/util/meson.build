@@ -130,7 +130,6 @@ files_mesa_util = files(
   'u_dl.h',
   'u_dynarray.h',
   'u_endian.h',
-  'u_fifo.h',
   'u_hash_table.c',
   'u_hash_table.h',
   'u_pointer.h',

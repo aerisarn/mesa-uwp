@@ -282,7 +282,6 @@
 #include <util/u_drm.h>
 #include <util/u_dynarray.h>
 #include <util/u_endian.h>
-#include <util/u_fifo.h>
 #include <util/u_hash_table.h>
 #include <util/u_idalloc.h>
 #include <util/u_math.h>
