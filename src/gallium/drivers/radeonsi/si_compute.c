@@ -418,7 +418,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       }
 
       /* Set the pointer to border colors. */
-      /* Aldebaran doesn't support border colors. */
+      /* MI200 doesn't support border colors. */
       if (sctx->border_color_buffer) {
          uint64_t bc_va = sctx->border_color_buffer->gpu_address;
 
@@ -437,7 +437,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
                              sctx->gfx_level >= GFX10 ? 0x20 : 0);
    }
 
-   if (!info->has_graphics && info->family >= CHIP_ARCTURUS) {
+   if (!info->has_graphics && info->family >= CHIP_MI100) {
       radeon_set_sh_reg_seq(R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4, 4);
       radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
       radeon_emit(S_00B858_SH0_CU_EN(info->spi_cu_en) | S_00B858_SH1_CU_EN(info->spi_cu_en));
