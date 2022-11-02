@@ -14,3 +14,8 @@ VK_EXT_extended_dynamic_state3 on lavapipe
 VK_EXT_extended_dynamic_state3 on RADV
 VK_EXT_pipeline_robustness on v3dv
 Mali T620 on panfrost
+support for R8G8B8, B8G8R8, R16G16B16 and 64-bit vertex buffer formats on RADV
+initial GFX11/RDNA3 support on RADV
+various ray tracing optimizations on RADV
+extendedDynamicState2PatchControlPoints on RADV (VK_EXT_extended_dynamic_state2 feature)
+Radeon Raytracing Analyzer integration (using RADV_RRA_* environment variables)
