@@ -305,9 +305,9 @@ debug_get_flags_option(const char *name,
    else {
       result = 0;
       while (flags->name) {
-	 if (str_has_option(str, flags->name))
-	    result |= flags->value;
-	 ++flags;
+         if (str_has_option(str, flags->name))
+            result |= flags->value;
+         ++flags;
       }
    }
 
@@ -332,7 +332,7 @@ debug_dump_enum(const struct debug_named_value *names,
 
    while (names->name) {
       if (names->value == value)
-	 return names->name;
+         return names->name;
       ++names;
    }
 
@@ -352,22 +352,22 @@ debug_dump_flags(const struct debug_named_value *names, unsigned long value)
 
    while (names->name) {
       if ((names->value & value) == names->value) {
-	 if (!first)
-	    strncat(output, "|", sizeof(output) - strlen(output) - 1);
-	 else
-	    first = 0;
-	 strncat(output, names->name, sizeof(output) - strlen(output) - 1);
-	 output[sizeof(output) - 1] = '\0';
-	 value &= ~names->value;
+         if (!first)
+            strncat(output, "|", sizeof(output) - strlen(output) - 1);
+         else
+            first = 0;
+         strncat(output, names->name, sizeof(output) - strlen(output) - 1);
+         output[sizeof(output) - 1] = '\0';
+         value &= ~names->value;
       }
       ++names;
    }
 
    if (value) {
       if (!first)
-	 strncat(output, "|", sizeof(output) - strlen(output) - 1);
+         strncat(output, "|", sizeof(output) - strlen(output) - 1);
       else
-	 first = 0;
+         first = 0;
 
       snprintf(rest, sizeof(rest), "0x%08lx", value);
       strncat(output, rest, sizeof(output) - strlen(output) - 1);
