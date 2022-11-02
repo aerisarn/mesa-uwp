@@ -80,7 +80,7 @@ To build everything on Linux invoke meson as:
 
    mkdir build
    cd build
-   meson -D glx=gallium-xlib -D gallium-drivers=swrast
+   meson -D glx=xlib -D gallium-drivers=swrast
    ninja
 
 
