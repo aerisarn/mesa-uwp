@@ -2981,15 +2981,21 @@ static VkResult pvr_setup_descriptor_mappings(
             const struct pvr_const_map_entry_literal32 *literal;
             uint32_t zero_literal_value;
 
+            /* The code segment contains a DOUT instructions so in the data
+             * section we have to write a DOUTD_SRC0 and DOUTD_SRC1.
+             * We'll write 0 for DOUTD_SRC0 since we don't have a buffer to DMA.
+             * We're expecting a LITERAL32 entry containing the value for
+             * DOUTD_SRC1 next so let's make sure we get it and write it
+             * with BSIZE to 0 disabling the DMA operation.
+             * We don't want the LITERAL32 to be processed as normal otherwise
+             * we'd be DMAing from an address of 0.
+             */
+
             entries += sizeof(*desc_set_entry);
             literal = (struct pvr_const_map_entry_literal32 *)entries;
 
-            /* TODO: Is there any guarantee that a literal will follow the
-             * descriptor set entry?
-             */
             assert(literal->type == PVR_PDS_CONST_MAP_ENTRY_TYPE_LITERAL32);
 
-            /* We zero out the DMA size so the DMA isn't performed. */
             zero_literal_value =
                literal->literal_value &
                PVR_ROGUE_PDSINST_DOUT_FIELDS_DOUTD_SRC1_BSIZE_CLRMSK;
