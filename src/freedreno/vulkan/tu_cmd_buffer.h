@@ -609,18 +609,23 @@ extern const struct vk_command_buffer_ops tu_cmd_buffer_ops;
 
 static inline uint32_t
 tu_attachment_gmem_offset(struct tu_cmd_buffer *cmd,
-                          const struct tu_render_pass_attachment *att)
+                          const struct tu_render_pass_attachment *att,
+                          uint32_t layer)
 {
    assert(cmd->state.gmem_layout < TU_GMEM_LAYOUT_COUNT);
-   return att->gmem_offset[cmd->state.gmem_layout];
+   return att->gmem_offset[cmd->state.gmem_layout] +
+      layer * cmd->state.tiling->tile0.width * cmd->state.tiling->tile0.height *
+      att->cpp;
 }
 
 static inline uint32_t
 tu_attachment_gmem_offset_stencil(struct tu_cmd_buffer *cmd,
-                                  const struct tu_render_pass_attachment *att)
+                                  const struct tu_render_pass_attachment *att,
+                                  uint32_t layer)
 {
    assert(cmd->state.gmem_layout < TU_GMEM_LAYOUT_COUNT);
-   return att->gmem_offset_stencil[cmd->state.gmem_layout];
+   return att->gmem_offset_stencil[cmd->state.gmem_layout] +
+      layer * cmd->state.tiling->tile0.width * cmd->state.tiling->tile0.height;
 }
 
 void tu_render_pass_state_merge(struct tu_render_pass_state *dst,

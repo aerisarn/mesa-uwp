@@ -283,7 +283,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
       tu_cs_image_depth_ref(cs, iview, 0);
    else
       tu_cs_image_ref(cs, &iview->view, 0);
-   tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, attachment));
+   tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, attachment, 0));
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
@@ -298,10 +298,10 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
       tu_cs_emit(cs, A6XX_RB_STENCIL_INFO(.separate_stencil = true).value);
       if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
          tu_cs_image_stencil_ref(cs, iview, 0);
-         tu_cs_emit(cs, tu_attachment_gmem_offset_stencil(cmd, attachment));
+         tu_cs_emit(cs, tu_attachment_gmem_offset_stencil(cmd, attachment, 0));
       } else {
          tu_cs_image_ref(cs, &iview->view, 0);
-         tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, attachment));
+         tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, attachment, 0));
       }
    } else {
       tu_cs_emit_regs(cs,
@@ -347,7 +347,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
       tu_cs_emit(cs, iview->view.RB_MRT_BUF_INFO);
       tu_cs_image_ref(cs, &iview->view, 0);
-      tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, &cmd->state.pass->attachments[a]));
+      tu_cs_emit(cs, tu_attachment_gmem_offset(cmd, &cmd->state.pass->attachments[a], 0));
 
       tu_cs_emit_regs(cs,
                       A6XX_SP_FS_MRT_REG(i, .dword = iview->view.SP_FS_MRT_REG));
@@ -685,7 +685,8 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
       return true;
 
    /* can't fit attachments into gmem */
-   if (!cmd->state.pass->gmem_pixels[cmd->state.gmem_layout])
+   if (!cmd->state.pass->gmem_pixels[cmd->state.gmem_layout] ||
+       !cmd->state.tiling->possible)
       return true;
 
    if (cmd->state.framebuffer->layers > 1)
@@ -863,6 +864,7 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const struct tu_render_pass *pass = cmd->state.pass;
    const struct tu_subpass *subpass = &pass->subpasses[pass->subpass_count-1];
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
@@ -870,8 +872,11 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu6_emit_blit_scissor(cmd, cs, true);
 
    for (uint32_t a = 0; a < pass->attachment_count; ++a) {
-      if (pass->attachments[a].gmem)
-         tu_store_gmem_attachment(cmd, cs, a, a, cmd->state.tiling->binning_possible);
+      if (pass->attachments[a].gmem) {
+         tu_store_gmem_attachment(cmd, cs, a, a,
+                                  fb->layers, subpass->multiview_mask,
+                                  cmd->state.tiling->binning_possible);
+      }
    }
 
    if (subpass->resolve_attachments) {
@@ -879,7 +884,8 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          uint32_t a = subpass->resolve_attachments[i].attachment;
          if (a != VK_ATTACHMENT_UNUSED) {
             uint32_t gmem_a = tu_subpass_get_attachment_to_resolve(subpass, i);
-            tu_store_gmem_attachment(cmd, cs, a, gmem_a, false);
+            tu_store_gmem_attachment(cmd, cs, a, gmem_a, fb->layers,
+                                     subpass->multiview_mask, false);
          }
       }
    }
@@ -1195,7 +1201,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       const struct tu_render_pass_attachment *att =
          &cmd->state.pass->attachments[a];
       uint32_t *dst = &texture.map[A6XX_TEX_CONST_DWORDS * i];
-      uint32_t gmem_offset = tu_attachment_gmem_offset(cmd, att);
+      uint32_t gmem_offset = tu_attachment_gmem_offset(cmd, att, 0);
       uint32_t cpp = att->cpp;
 
       memcpy(dst, iview->view.descriptor, A6XX_TEX_CONST_DWORDS * 4);
@@ -1265,6 +1271,9 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       dst[2] =
          A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
          A6XX_TEX_CONST_2_PITCH(tiling->tile0.width * cpp);
+      /* Note: it seems the HW implicitly calculates the array pitch with the
+       * GMEM tiling, so we don't need to specify the pitch ourselves.
+       */
       dst[3] = 0;
       dst[4] = cmd->device->physical_device->gmem_base + gmem_offset;
       dst[5] = A6XX_TEX_CONST_5_DEPTH(1);
@@ -4378,6 +4387,7 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    }
 
    const struct tu_render_pass *pass = cmd->state.pass;
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    struct tu_cs *cs = &cmd->draw_cs;
    const struct tu_subpass *last_subpass = cmd->state.subpass;
 
@@ -4405,7 +4415,8 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
 
          uint32_t gmem_a = tu_subpass_get_attachment_to_resolve(subpass, i);
 
-         tu_store_gmem_attachment(cmd, cs, a, gmem_a, false);
+         tu_store_gmem_attachment(cmd, cs, a, gmem_a, fb->layers,
+                                  subpass->multiview_mask, false);
 
          if (!pass->attachments[a].gmem)
             continue;

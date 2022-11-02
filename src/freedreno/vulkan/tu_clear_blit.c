@@ -2710,6 +2710,9 @@ static void
 tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                               struct tu_cs *cs,
                               uint32_t attachment,
+                              uint32_t base_layer,
+                              uint32_t layers,
+                              uint32_t layer_mask,
                               VkImageAspectFlags mask,
                               const VkClearValue *value)
 {
@@ -2722,14 +2725,21 @@ tu_emit_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                    A6XX_RB_BLIT_GMEM_MSAA_CNTL(tu_msaa_samples(att->samples)));
 
    enum pipe_format format = tu_vk_format_to_pipe_format(att->format);
-   if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-      if (mask & VK_IMAGE_ASPECT_DEPTH_BIT)
-         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_Z32_FLOAT, 0xf, tu_attachment_gmem_offset(cmd, att), value);
-      if (mask & VK_IMAGE_ASPECT_STENCIL_BIT)
-         clear_gmem_attachment(cmd, cs, PIPE_FORMAT_S8_UINT, 0xf, tu_attachment_gmem_offset_stencil(cmd, att), value);
-   } else {
-      clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask),
-                            tu_attachment_gmem_offset(cmd, att), value);
+   for_each_layer(i, layer_mask, layers) {
+      uint32_t layer = i + base_layer;
+      if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         if (mask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+            clear_gmem_attachment(cmd, cs, PIPE_FORMAT_Z32_FLOAT, 0xf,
+                                  tu_attachment_gmem_offset(cmd, att, layer), value);
+         }
+         if (mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+            clear_gmem_attachment(cmd, cs, PIPE_FORMAT_S8_UINT, 0xf,
+                                  tu_attachment_gmem_offset_stencil(cmd, att, layer), value);
+         }
+      } else {
+         clear_gmem_attachment(cmd, cs, format, aspect_write_mask(format, mask),
+                               tu_attachment_gmem_offset(cmd, att, layer), value);
+      }
    }
 
    trace_end_gmem_clear(&cmd->trace, cs, att->format, att->samples);
@@ -2768,7 +2778,10 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
 
-         tu_emit_clear_gmem_attachment(cmd, cs, a, attachments[j].aspectMask,
+         tu_emit_clear_gmem_attachment(cmd, cs, a, rects[i].baseArrayLayer,
+                                       rects[i].layerCount,
+                                       subpass->multiview_mask,
+                                       attachments[j].aspectMask,
                                        &attachments[j].clearValue);
       }
    }
@@ -2946,7 +2959,9 @@ tu_clear_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (!attachment->clear_mask)
       return;
 
-   tu_emit_clear_gmem_attachment(cmd, cs, a, attachment->clear_mask, value);
+   tu_emit_clear_gmem_attachment(cmd, cs, a, 0, cmd->state.framebuffer->layers,
+                                 attachment->clear_views,
+                                 attachment->clear_mask, value);
 }
 
 static void
@@ -2966,37 +2981,39 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
       .sample_0 = vk_format_is_int(attachment->format) ||
          vk_format_is_depth_or_stencil(attachment->format)));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 4);
-   if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-      if (!separate_stencil) {
-         tu_cs_emit(cs, tu_image_view_depth(iview, RB_BLIT_DST_INFO));
-         tu_cs_emit_qw(cs, iview->depth_base_addr);
-         tu_cs_emit(cs, iview->depth_PITCH);
+   for_each_layer(i, attachment->clear_views, cmd->state.framebuffer->layers) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 4);
+      if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         if (!separate_stencil) {
+            tu_cs_emit(cs, tu_image_view_depth(iview, RB_BLIT_DST_INFO));
+            tu_cs_emit_qw(cs, iview->depth_base_addr + iview->depth_layer_size * i);
+            tu_cs_emit(cs, iview->depth_PITCH);
+
+            tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
+            tu_cs_image_flag_ref(cs, &iview->view, i);
+         } else {
+            tu_cs_emit(cs, tu_image_view_stencil(iview, RB_BLIT_DST_INFO) & ~A6XX_RB_BLIT_DST_INFO_FLAGS);
+            tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * i);
+            tu_cs_emit(cs, iview->stencil_PITCH);
+         }
+      } else {
+         tu_cs_emit(cs, iview->view.RB_BLIT_DST_INFO);
+         tu_cs_image_ref_2d(cs, &iview->view, i, false);
 
          tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
-         tu_cs_image_flag_ref(cs, &iview->view, 0);
-      } else {
-         tu_cs_emit(cs, tu_image_view_stencil(iview, RB_BLIT_DST_INFO) & ~A6XX_RB_BLIT_DST_INFO_FLAGS);
-         tu_cs_emit_qw(cs, iview->stencil_base_addr);
-         tu_cs_emit(cs, iview->stencil_PITCH);
+         tu_cs_image_flag_ref(cs, &iview->view, i);
       }
-   } else {
-      tu_cs_emit(cs, iview->view.RB_BLIT_DST_INFO);
-      tu_cs_image_ref_2d(cs, &iview->view, 0, false);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
-      tu_cs_image_flag_ref(cs, &iview->view, 0);
-   }
-
-   if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && separate_stencil) {
+      if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && separate_stencil) {
+            tu_cs_emit_regs(cs,
+                           A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset_stencil(cmd, attachment, i)));
+      } else {
          tu_cs_emit_regs(cs,
-                        A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset_stencil(cmd, attachment)));
-   } else {
-      tu_cs_emit_regs(cs,
-                     A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset(cmd, attachment)));
-   }
+                        A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset(cmd, attachment, i)));
+      }
 
-   tu6_emit_event_write(cmd, cs, BLIT);
+      tu6_emit_event_write(cmd, cs, BLIT);
+   }
 }
 
 static bool
@@ -3132,6 +3149,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
               bool separate_stencil,
               enum pipe_format src_format,
               enum pipe_format dst_format,
+              uint32_t layer,
               uint32_t gmem_offset,
               uint32_t cpp)
 {
@@ -3140,12 +3158,12 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
 
    if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (!separate_stencil) {
-         r2d_dst_depth(cs, iview, 0);
+         r2d_dst_depth(cs, iview, layer);
       } else {
-         r2d_dst_stencil(cs, iview, 0);
+         r2d_dst_stencil(cs, iview, layer);
       }
    } else {
-      r2d_dst(cs, &iview->view, 0, src_format);
+      r2d_dst(cs, &iview->view, layer, src_format);
    }
 
    enum a6xx_format fmt = tu6_format_texture(src_format, TILE6_2).fmt;
@@ -3192,6 +3210,7 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
               enum pipe_format src_format,
               enum pipe_format dst_format,
               const VkRect2D *render_area,
+              uint32_t layer,
               uint32_t gmem_offset,
               uint32_t cpp)
 {
@@ -3213,12 +3232,12 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
 
    if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (!separate_stencil) {
-         r3d_dst_depth(cs, iview, 0);
+         r3d_dst_depth(cs, iview, layer);
       } else {
-         r3d_dst_stencil(cs, iview, 0);
+         r3d_dst_stencil(cs, iview, layer);
       }
    } else {
-      r3d_dst(cs, &iview->view, 0, src_format);
+      r3d_dst(cs, &iview->view, layer, src_format);
    }
 
    r3d_src_gmem(cmd, cs, iview, src_format, dst_format, gmem_offset, cpp);
@@ -3312,6 +3331,8 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
                          uint32_t a,
                          uint32_t gmem_a,
+                         uint32_t layers,
+                         uint32_t layer_mask,
                          bool cond_exec_allowed)
 {
    const VkRect2D *render_area = &cmd->state.render_area;
@@ -3389,25 +3410,29 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       if (store_common || store_separate_stencil)
          tu_disable_draw_states(cmd, cs);
 
-      if (store_common) {
-         store_3d_blit(cmd, cs, iview, dst->samples, false, src_format,
-                       dst_format, render_area, tu_attachment_gmem_offset(cmd, src), src->cpp);
-      }
-      if (store_separate_stencil) {
-         store_3d_blit(cmd, cs, iview, dst->samples, true, PIPE_FORMAT_S8_UINT,
-                       PIPE_FORMAT_S8_UINT, render_area,
-                       tu_attachment_gmem_offset_stencil(cmd, src), src->samples);
+      for_each_layer(i, layer_mask, layers) {
+         if (store_common) {
+            store_3d_blit(cmd, cs, iview, dst->samples, false, src_format,
+                          dst_format, render_area, i, tu_attachment_gmem_offset(cmd, src, i), src->cpp);
+         }
+         if (store_separate_stencil) {
+            store_3d_blit(cmd, cs, iview, dst->samples, true, PIPE_FORMAT_S8_UINT,
+                          PIPE_FORMAT_S8_UINT, render_area, i,
+                          tu_attachment_gmem_offset_stencil(cmd, src, i), src->samples);
+         }
       }
    } else {
       r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
 
-      if (store_common) {
-         store_cp_blit(cmd, cs, iview, src->samples, false, src_format,
-                       dst_format, tu_attachment_gmem_offset(cmd, src), src->cpp);
-      }
-      if (store_separate_stencil) {
-         store_cp_blit(cmd, cs, iview, src->samples, true, PIPE_FORMAT_S8_UINT,
-                       PIPE_FORMAT_S8_UINT, tu_attachment_gmem_offset_stencil(cmd, src), src->samples);
+      for_each_layer(i, layer_mask, layers) {
+         if (store_common) {
+            store_cp_blit(cmd, cs, iview, src->samples, false, src_format,
+                          dst_format, i, tu_attachment_gmem_offset(cmd, src, i), src->cpp);
+         }
+         if (store_separate_stencil) {
+            store_cp_blit(cmd, cs, iview, src->samples, true, PIPE_FORMAT_S8_UINT,
+                          PIPE_FORMAT_S8_UINT, i, tu_attachment_gmem_offset_stencil(cmd, src, i), src->samples);
+         }
       }
    }
 

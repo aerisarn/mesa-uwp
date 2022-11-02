@@ -380,6 +380,9 @@ struct tu_tiling_config {
    /* number of VSC pipes */
    VkExtent2D pipe_count;
 
+   /* Whether using GMEM is even possible with this configuration */
+   bool possible;
+
    /* Whether binning should be used for gmem rendering using this framebuffer. */
    bool binning;
 
