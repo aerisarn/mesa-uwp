@@ -130,6 +130,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
                             &sel->active_samplers_and_images);
 
    program->shader.is_monolithic = true;
+   program->shader.wave_size = si_determine_wave_size(sscreen, &program->shader);
 
    /* Variable block sizes need 10 bits (1 + log2(SI_MAX_VARIABLE_THREADS_PER_BLOCK)) per dim.
     * We pack them into a single user SGPR.
@@ -242,7 +243,6 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       si_sampler_and_image_descriptors_idx(PIPE_SHADER_COMPUTE);
    sel->info.base.shared_size = cso->static_shared_mem;
    program->shader.selector = &program->sel;
-   program->shader.wave_size = si_determine_wave_size(sscreen, &program->shader);
    program->ir_type = cso->ir_type;
    program->input_size = cso->req_input_mem;
 
@@ -272,6 +272,9 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
          return NULL;
       }
       memcpy((void *)program->shader.binary.elf_buffer, header->blob, header->num_bytes);
+
+      /* This is only for clover without NIR. */
+      program->shader.wave_size = sscreen->info.gfx_level >= GFX10 ? 32 : 64;
 
       const amd_kernel_code_t *code_object = si_compute_get_code_object(program, 0);
       code_object_to_config(code_object, &program->shader.config);
