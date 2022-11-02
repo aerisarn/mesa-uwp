@@ -3134,6 +3134,8 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       case nir_op_bitfield_select:
       case nir_op_imul_high:
       case nir_op_umul_high:
+      case nir_op_uadd_carry:
+      case nir_op_usub_borrow:
          return 32;
       case nir_op_iabs:
       case nir_op_imax:
