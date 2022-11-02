@@ -49,14 +49,7 @@ class PrintGlTable(gl_XML.gl_print_base):
                 f.return_type, f.name, arg_string, f.offset))
 
     def printRealHeader(self):
-        print('#ifndef GLAPIENTRYP')
-        print('# ifndef GLAPIENTRY')
-        print('#  define GLAPIENTRY')
-        print('# endif')
-        print('')
-        print('# define GLAPIENTRYP GLAPIENTRY *')
-        print('#endif')
-        print('')
+        print('#include "util/glheader.h"')
         print('')
         print('#ifdef __cplusplus')
         print('extern "C" {')
