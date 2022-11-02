@@ -91,6 +91,7 @@ todo_include_todos = False
 # python keywords highlit in literal blocks.
 highlight_language = 'none'
 
+default_role = 'c:expr'
 
 # -- Options for HTML output ----------------------------------------------
 
