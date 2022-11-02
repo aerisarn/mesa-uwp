@@ -243,13 +243,34 @@ static void send_cmd_bitstream_direct(struct radeon_decoder *dec, struct pb_buff
 
 /* send a target buffer command */
 static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer *buf, uint32_t off,
-                                   unsigned usage, enum radeon_bo_domain domain)
+                                   unsigned usage, enum radeon_bo_domain domain,
+                                   enum pipe_format buffer_format)
 {
    uint64_t addr;
    uint32_t val;
+   bool format_convert = false;
+   uint32_t fc_sps_info_val = 0;
 
-   set_reg_jpeg(dec, dec->jpg_reg.jpeg_pitch, COND0, TYPE0, (dec->jpg.dt_pitch >> 4));
-   set_reg_jpeg(dec, dec->jpg_reg.jpeg_uv_pitch, COND0, TYPE0, ((dec->jpg.dt_uv_pitch * 2) >> 4));
+   switch (buffer_format) {
+         case PIPE_FORMAT_R8G8B8A8_UNORM:
+            format_convert = true;
+            fc_sps_info_val = 1 | (1 << 4) | (0xff << 8);
+            break;
+         case PIPE_FORMAT_A8R8G8B8_UNORM:
+            format_convert = true;
+            fc_sps_info_val = 1 | (1 << 4) | (1 << 5) | (0xff << 8);
+            break;
+         default:
+            break;
+   }
+
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3 && format_convert) {
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_pitch, COND0, TYPE0, dec->jpg.dt_pitch);
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_uv_pitch, COND0, TYPE0, (dec->jpg.dt_uv_pitch * 2));
+   } else {
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_pitch, COND0, TYPE0, (dec->jpg.dt_pitch >> 4));
+      set_reg_jpeg(dec, dec->jpg_reg.jpeg_uv_pitch, COND0, TYPE0, ((dec->jpg.dt_uv_pitch * 2) >> 4));
+   }
 
    set_reg_jpeg(dec, dec->jpg_reg.dec_addr_mode, COND0, TYPE0, 0);
    set_reg_jpeg(dec, dec->jpg_reg.dec_y_gfx10_tiling_surface, COND0, TYPE0, 0);
@@ -283,6 +304,24 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
          set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_STRIDE, COND0, TYPE0,
                       ((dec->jpg.crop_height << 16) | dec->jpg.crop_width));
       }
+      if (format_convert) {
+         /* set fc timeout control */
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_TMEOUT_CNT, COND0, TYPE0,(4244373504));
+         /* set alpha position and packed format */
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_SPS_INFO, COND0, TYPE0, fc_sps_info_val);
+         /* coefs */
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_R_COEF, COND0, TYPE0, 256 | (0 << 10) | (403 << 20));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_G_COEF, COND0, TYPE0, 256 | (976 << 10) | (904 << 20));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_B_COEF, COND0, TYPE0, 256 | (475 << 10) | (0 << 20));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_VUP_COEF_CNTL0, COND0, TYPE0, 128 | (384 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_VUP_COEF_CNTL1, COND0, TYPE0, 384 | (128 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_VUP_COEF_CNTL2, COND0, TYPE0, 128 | (384 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_VUP_COEF_CNTL3, COND0, TYPE0, 384 | (128 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL0, COND0, TYPE0, 128 | (384 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL1, COND0, TYPE0, 384 | (128 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL2, COND0, TYPE0, 128 | (384 << 16));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL3, COND0, TYPE0, 384 | (128 << 16));
+      }
    }
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_tier_cntl2, COND0, 0, 0);
 
@@ -299,6 +338,8 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
    if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3) {
       if (dec->jpg.crop_width && dec->jpg.crop_height)
          val = val | (0x3 << 24);
+      if (format_convert)
+         val = val |  (1 << 16) | (1 << 18);
    }
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_cntl, COND0, TYPE0, val);
 
@@ -315,6 +356,8 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
       val = 0;
       if (dec->jpg.crop_width && dec->jpg.crop_height)
          val = val | (0x1 << 19);
+      if (format_convert)
+         val = val | (0x7 << 16);
       set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0);
       set_reg_jpeg(dec, vcnipUVD_JPEG_INT_STAT, COND3, TYPE3, val);
    }
@@ -345,6 +388,6 @@ void send_cmd_jpeg(struct radeon_decoder *dec, struct pipe_video_buffer *target,
       send_cmd_target(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM);
    } else {
       send_cmd_bitstream_direct(dec, bs_buf->res->buf, 0, RADEON_USAGE_READ, RADEON_DOMAIN_GTT);
-      send_cmd_target_direct(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM);
+      send_cmd_target_direct(dec, dt, 0, RADEON_USAGE_WRITE, RADEON_DOMAIN_VRAM, target->buffer_format);
    }
 }
