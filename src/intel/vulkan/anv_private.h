@@ -60,6 +60,7 @@
 #include "util/hash_table.h"
 #include "util/list.h"
 #include "util/perf/u_trace.h"
+#include "util/set.h"
 #include "util/sparse_array.h"
 #include "util/u_atomic.h"
 #include "util/u_vector.h"
@@ -1201,6 +1202,13 @@ struct anv_device {
      */
     struct anv_bo *                             workaround_bo;
     struct anv_address                          workaround_address;
+
+    /**
+     * Workarounds for game bugs.
+     */
+    struct {
+       struct set *                             doom64_images;
+    } workarounds;
 
     struct anv_bo *                             trivial_batch_bo;
     struct anv_state                            null_surface_state;

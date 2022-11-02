@@ -3302,6 +3302,12 @@ VkResult anv_CreateDevice(
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &hitman3_device_entrypoints, true);
       override_initial_entrypoints = false;
    }
+   if (physical_device->info.ver < 12 &&
+       physical_device->instance->vk.app_info.app_name &&
+       !strcmp(physical_device->instance->vk.app_info.app_name, "DOOM 64")) {
+      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &doom64_device_entrypoints, true);
+      override_initial_entrypoints = false;
+   }
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
       anv_genX(&physical_device->info, device_entrypoints),
       override_initial_entrypoints);
@@ -3544,6 +3550,8 @@ VkResult anv_CreateDevice(
                                        device->workaround_bo->size,
                                        "Anv") + 8, 8),
    };
+
+   device->workarounds.doom64_images = NULL;
 
    device->rt_uuid_addr = anv_address_add(device->workaround_address, 8);
    memcpy(device->rt_uuid_addr.bo->map + device->rt_uuid_addr.offset,
