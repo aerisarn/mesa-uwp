@@ -982,20 +982,14 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
    int num_components = 0;
    int old_bit_size = phi->dest.ssa.bit_size;
 
-   nir_op upcast_op = nir_type_conversion_op(nir_type_uint | old_bit_size,
-                                             nir_type_uint | new_bit_size,
-                                             nir_rounding_mode_undef);
-   nir_op downcast_op = nir_type_conversion_op(nir_type_uint | new_bit_size,
-                                               nir_type_uint | old_bit_size,
-                                               nir_rounding_mode_undef);
-
    nir_foreach_phi_src(src, phi) {
       assert(num_components == 0 || num_components == src->src.ssa->num_components);
       num_components = src->src.ssa->num_components;
 
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
 
-      nir_ssa_def *cast = nir_build_alu(b, upcast_op, src->src.ssa, NULL, NULL, NULL);
+      nir_ssa_def *cast = nir_u2uN(b, src->src.ssa, new_bit_size);
+
       nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
    }
 
@@ -1006,7 +1000,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
    nir_builder_instr_insert(b, &lowered->instr);
 
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
-   nir_ssa_def *result = nir_build_alu(b, downcast_op, &lowered->dest.ssa, NULL, NULL, NULL);
+   nir_ssa_def *result = nir_u2uN(b, &lowered->dest.ssa, old_bit_size);
 
    nir_ssa_def_rewrite_uses(&phi->dest.ssa, result);
    nir_instr_remove(&phi->instr);
