@@ -1681,6 +1681,32 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
    }
 }
 
+static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
+{
+   /* Initialize this first. */
+   shader->info.nr_param_exports = 0;
+   shader->info.vs_output_param_mask = 0;
+
+   STATIC_ASSERT(sizeof(shader->info.vs_output_param_offset[0]) == 1);
+   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
+          sizeof(shader->info.vs_output_param_offset));
+
+   /* A slot remapping table for duplicated outputs, so that 1 vertex shader output can be
+    * mapped to multiple fragment shader inputs.
+    */
+   int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS];
+   memset(slot_remap, -1, NUM_TOTAL_VARYING_SLOTS);
+
+   /* This sets DEFAULT_VAL for constant outputs in vs_output_param_offset. */
+   /* TODO: This doesn't affect GS. */
+   NIR_PASS_V(nir, ac_nir_optimize_outputs, false, slot_remap,
+              shader->info.vs_output_param_offset);
+
+   /* Assign the non-constant outputs. */
+   /* TODO: Use this for the GS copy shader too. */
+   si_nir_assign_param_offsets(nir, shader, slot_remap);
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
                                      uint64_t tcs_vgpr_only_inputs)
 {
@@ -1861,28 +1887,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
         sel->stage == MESA_SHADER_TESS_EVAL ||
         (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)) &&
        !shader->key.ge.as_ls && !shader->key.ge.as_es) {
-      /* Initialize this first. */
-      shader->info.nr_param_exports = 0;
-      shader->info.vs_output_param_mask = 0;
-
-      STATIC_ASSERT(sizeof(shader->info.vs_output_param_offset[0]) == 1);
-      memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
-             sizeof(shader->info.vs_output_param_offset));
-
-      /* A slot remapping table for duplicated outputs, so that 1 vertex shader output can be
-       * mapped to multiple fragment shader inputs.
-       */
-      int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS];
-      memset(slot_remap, -1, NUM_TOTAL_VARYING_SLOTS);
-
-      /* This sets DEFAULT_VAL for constant outputs in vs_output_param_offset. */
-      /* TODO: This doesn't affect GS. */
-      NIR_PASS_V(nir, ac_nir_optimize_outputs, false, slot_remap,
-                 shader->info.vs_output_param_offset);
-
-      /* Assign the non-constant outputs. */
-      /* TODO: Use this for the GS copy shader too. */
-      si_nir_assign_param_offsets(nir, shader, slot_remap);
+      si_assign_param_offsets(nir, shader);
    }
 
    struct pipe_stream_output_info so = {};
