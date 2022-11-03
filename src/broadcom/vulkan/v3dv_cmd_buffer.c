@@ -3147,9 +3147,9 @@ handle_barrier(VkPipelineStageFlags2 srcStageMask, VkAccessFlags2 srcAccessMask,
    }
 }
 
-static void
-pipeline_barrier(struct v3dv_cmd_buffer *cmd_buffer,
-                 const VkDependencyInfoKHR *info)
+void
+v3dv_cmd_buffer_emit_pipeline_barrier(struct v3dv_cmd_buffer *cmd_buffer,
+                                      const VkDependencyInfoKHR *info)
 {
    uint32_t imageBarrierCount = info->imageMemoryBarrierCount;
    const VkImageMemoryBarrier2 *pImageBarriers = info->pImageMemoryBarriers;
@@ -3214,7 +3214,7 @@ v3dv_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                          const VkDependencyInfoKHR *pDependencyInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   pipeline_barrier(cmd_buffer, pDependencyInfo);
+   v3dv_cmd_buffer_emit_pipeline_barrier(cmd_buffer, pDependencyInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL
