@@ -48,19 +48,17 @@ struct Idx {
    uint32_t instr;
 };
 
-/** Indicates that a register range was not yet written in the shader. */
+/** Indicates that a register was not yet written in the shader. */
 Idx not_written_yet{UINT32_MAX, 0};
 
 /** Indicates that an operand is constant or undefined, not written by any instruction. */
 Idx const_or_undef{UINT32_MAX, 2};
 
-/**
- * Indicates that a register range was overwritten but we can't track the instruction that wrote it.
- * Possible reasons for this:
- * - Some registers in the range were overwritten by different instructions.
- * - The register was used as a subdword definition which we don't support here.
- */
+/** Indicates that a register was overwritten by different instructions in previous blocks. */
 Idx overwritten_untrackable{UINT32_MAX, 3};
+
+/** Indicates that a register was written by subdword operations. */
+Idx overwritten_subdword{UINT32_MAX, 4};
 
 struct pr_opt_ctx {
    using Idx_array = std::array<Idx, max_reg_cnt>;
@@ -152,7 +150,7 @@ save_reg_writes(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       Idx idx{ctx.current_block->index, ctx.current_instr_idx};
 
       if (def.regClass().is_subdword())
-         idx = overwritten_untrackable;
+         idx = overwritten_subdword;
 
       assert((r + dw_size) <= max_reg_cnt);
       assert(def.size() == dw_size || def.regClass().is_subdword());
@@ -209,9 +207,9 @@ is_overwritten_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& since
 
    for (unsigned r = begin_reg; r < end_reg; ++r) {
       Idx& i = ctx.instr_idx_by_regs[current_block_idx][r];
-      if (i == overwritten_untrackable)
+      if (i == overwritten_untrackable && current_block_idx > since_idx.block)
          return true;
-      else if (i == not_written_yet)
+      else if (i == overwritten_untrackable || i == not_written_yet)
          continue;
 
       assert(i.found());
