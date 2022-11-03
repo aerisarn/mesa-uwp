@@ -137,9 +137,6 @@
 #include <mesa/main/viewport.h>
 #include <mesa/math/m_eval.h>
 #include <mesa/math/m_matrix.h>
-#include <mesa/math/m_vector.h>
-#include <mesa/math/m_vector_asm.h>
-#include <mesa/math/m_xform.h>
 #include <mesa/program/arbprogparse.h>
 #include <mesa/program/link_program.h>
 #include <mesa/program/program.h>

@@ -39,8 +39,6 @@
 #include "main/errors.h"
 #include "util/glheader.h"
 #include "main/macros.h"
-#define MATH_ASM_PTR_SIZE sizeof(void *)
-#include "math/m_vector_asm.h"
 
 #include "m_matrix.h"
 

@@ -258,8 +258,6 @@ files_libmesa = files(
   'math/m_eval.h',
   'math/m_matrix.c',
   'math/m_matrix.h',
-  'math/m_vector.c',
-  'math/m_vector.h',
   'program/arbprogparse.c',
   'program/arbprogparse.h',
   'program/link_program.cpp',
