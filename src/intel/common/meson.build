@@ -30,6 +30,7 @@ files_libintel_common = files(
   'intel_engine.h',
   'intel_gem.c',
   'intel_gem.h',
+  'intel_genX_state.h',
   'intel_guardband.h',
   'intel_l3_config.c',
   'intel_l3_config.h',
