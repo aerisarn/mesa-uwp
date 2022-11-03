@@ -146,9 +146,6 @@ _math_matrix_push_copy(GLmatrix *to, GLmatrix *from);
 extern void
 _math_matrix_analyse( GLmatrix *mat );
 
-extern void
-_math_matrix_print( const GLmatrix *m );
-
 extern GLboolean
 _math_matrix_is_length_preserving( const GLmatrix *m );
 

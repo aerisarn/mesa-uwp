@@ -115,22 +115,6 @@
 #define TEST_MAT_FLAGS(mat, a)  \
     ((MAT_FLAGS_GEOMETRY & (~(a)) & ((mat)->flags) ) == 0)
 
-
-
-/**
- * Names of the corresponding GLmatrixtype values.
- */
-static const char *types[] = {
-   "MATRIX_GENERAL",
-   "MATRIX_IDENTITY",
-   "MATRIX_3D_NO_ROT",
-   "MATRIX_PERSPECTIVE",
-   "MATRIX_2D",
-   "MATRIX_2D_NO_ROT",
-   "MATRIX_3D"
-};
-
-
 /**
  * Identity matrix.
  */
@@ -270,48 +254,6 @@ _math_matrix_mul_floats( GLmatrix *dest, const GLfloat *m )
 }
 
 /*@}*/
-
-
-/**********************************************************************/
-/** \name Matrix output */
-/*@{*/
-
-/**
- * Print a matrix array.
- *
- * \param m matrix array.
- *
- * Called by _math_matrix_print() to print a matrix or its inverse.
- */
-static void print_matrix_floats( const GLfloat m[16] )
-{
-   int i;
-   for (i=0;i<4;i++) {
-      _mesa_debug(NULL,"\t%f %f %f %f\n", m[i], m[4+i], m[8+i], m[12+i] );
-   }
-}
-
-/**
- * Dumps the contents of a GLmatrix structure.
- *
- * \param m pointer to the GLmatrix structure.
- */
-void
-_math_matrix_print( const GLmatrix *m )
-{
-   GLfloat prod[16];
-
-   _mesa_debug(NULL, "Matrix type: %s, flags: %x\n", types[m->type], m->flags);
-   print_matrix_floats(m->m);
-   _mesa_debug(NULL, "Inverse: \n");
-   print_matrix_floats(m->inv);
-   matmul4(prod, m->m, m->inv);
-   _mesa_debug(NULL, "Mat * Inverse:\n");
-   print_matrix_floats(prod);
-}
-
-/*@}*/
-
 
 /**
  * References an element of 4x4 matrix.
