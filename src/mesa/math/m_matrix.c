@@ -1270,24 +1270,6 @@ _math_matrix_is_length_preserving( const GLmatrix *m )
    return TEST_MAT_FLAGS( m, MAT_FLAGS_LENGTH_PRESERVING);
 }
 
-
-/**
- * Test if the given matrix does any rotation.
- * (or perhaps if the upper-left 3x3 is non-identity)
- */
-GLboolean
-_math_matrix_has_rotation( const GLmatrix *m )
-{
-   if (m->flags & (MAT_FLAG_GENERAL |
-                   MAT_FLAG_ROTATION |
-                   MAT_FLAG_GENERAL_3D |
-                   MAT_FLAG_PERSPECTIVE))
-      return GL_TRUE;
-   else
-      return GL_FALSE;
-}
-
-
 GLboolean
 _math_matrix_is_general_scale( const GLmatrix *m )
 {

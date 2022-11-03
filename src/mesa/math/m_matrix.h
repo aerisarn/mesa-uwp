@@ -147,9 +147,6 @@ extern GLboolean
 _math_matrix_is_length_preserving( const GLmatrix *m );
 
 extern GLboolean
-_math_matrix_has_rotation( const GLmatrix *m );
-
-extern GLboolean
 _math_matrix_is_general_scale( const GLmatrix *m );
 
 extern GLboolean
