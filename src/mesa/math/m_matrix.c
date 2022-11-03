@@ -589,34 +589,6 @@ static GLboolean invert_matrix_2d_no_rot( GLmatrix *mat )
    return GL_TRUE;
 }
 
-#if 0
-/* broken */
-static GLboolean invert_matrix_perspective( GLmatrix *mat )
-{
-   const GLfloat *in = mat->m;
-   GLfloat *out = mat->inv;
-
-   if (MAT(in,2,3) == 0)
-      return GL_FALSE;
-
-   memcpy( out, Identity, sizeof(Identity) );
-
-   MAT(out,0,0) = 1.0F / MAT(in,0,0);
-   MAT(out,1,1) = 1.0F / MAT(in,1,1);
-
-   MAT(out,0,3) = MAT(in,0,2);
-   MAT(out,1,3) = MAT(in,1,2);
-
-   MAT(out,2,2) = 0;
-   MAT(out,2,3) = -1;
-
-   MAT(out,3,2) = 1.0F / MAT(in,2,3);
-   MAT(out,3,3) = MAT(in,2,2) * MAT(out,3,2);
-
-   return GL_TRUE;
-}
-#endif
-
 /**
  * Matrix inversion function pointer type.
  */
@@ -629,14 +601,7 @@ static inv_mat_func inv_mat_tab[7] = {
    invert_matrix_general,
    invert_matrix_identity,
    invert_matrix_3d_no_rot,
-#if 0
-   /* Don't use this function for now - it fails when the projection matrix
-    * is premultiplied by a translation (ala Chromium's tilesort SPU).
-    */
-   invert_matrix_perspective,
-#else
    invert_matrix_general,
-#endif
    invert_matrix_3d,		/* lazy! */
    invert_matrix_2d_no_rot,
    invert_matrix_3d
