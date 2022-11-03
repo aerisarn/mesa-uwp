@@ -611,7 +611,7 @@ The integer capabilities:
 * ``PIPE_CAP_GLSL_ZERO_INIT``: Choose a default zero initialization some GLSL variables. If ``1``, then all GLSL shader variables and gl_FragColor are initialized to zero. If ``2``, then shader out variables are not initialized but function out variables are.
 * ``PIPE_CAP_BLEND_EQUATION_ADVANCED``: Driver supports blend equation advanced without necessarily supporting FBFETCH.
 * ``PIPE_CAP_NIR_ATOMICS_AS_DEREF``: Whether NIR atomics instructions should reference atomics as NIR derefs instead of by indices.
-* ``PIPE_CAP_NO_CLIP_ON_COPY_TEX``: Driver doesn't want x/y/width/height clipped based on src size when doing a copy texture operation (eg: may want out-of-bounds reads that produce 0 instead of leaving the texture content undefined)
+* ``PIPE_CAP_NO_CLIP_ON_COPY_TEX``: Driver doesn't want x/y/width/height clipped based on src size when doing a copy texture operation (e.g.: may want out-of-bounds reads that produce 0 instead of leaving the texture content undefined)
 * ``PIPE_CAP_MAX_TEXTURE_MB``: Maximum texture size in MB (default is 1024)
 * ``PIPE_CAP_DEVICE_PROTECTED_SURFACE``: Whether the device support protected / encrypted content.
 * ``PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0``: The state tracker is encouraged to upload constants into a real buffer and bind it into constant buffer 0 instead of binding a user pointer. This may enable a faster codepath in a gallium frontend for drivers that really prefer a real buffer.
