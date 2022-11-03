@@ -111,6 +111,13 @@ mme_free_reg(struct mme_builder *b, struct mme_value val)
 }
 
 static inline void
+mme_free_reg64(struct mme_builder *b, struct mme_value64 val)
+{
+   mme_reg_alloc_free(&b->reg_alloc, val.lo);
+   mme_reg_alloc_free(&b->reg_alloc, val.hi);
+}
+
+static inline void
 mme_alu_to(struct mme_builder *b,
            struct mme_value dst,
            enum mme_alu_op op,

@@ -22,6 +22,7 @@
 #include "clc0c0.h"
 #include "clc1c0.h"
 #include "clc3c0.h"
+#include "clc597.h"
 #include "clc5c0.h"
 
 
@@ -29,7 +30,7 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                VkPhysicalDeviceFeatures2 *pFeatures)
 {
-   // VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
@@ -103,6 +104,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
+      .drawIndirectCount = pdev->info.cls_eng3d >= TURING_A,
    };
 
    VkPhysicalDeviceVulkan13Features core_1_3 = {
@@ -483,6 +485,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
       .KHR_device_group = true,
+      .KHR_draw_indirect_count = pdev->info.cls_eng3d >= TURING_A,
       .KHR_driver_properties = true,
       .KHR_dynamic_rendering = true,
       .KHR_format_feature_flags2 = true,

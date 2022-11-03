@@ -1973,3 +1973,155 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
       }
    }
 }
+
+void
+nvk_mme_draw_indirect_count(struct mme_builder *b)
+{
+   if (b->devinfo->cls_eng3d < TURING_A)
+      return;
+
+   struct mme_value begin = mme_load(b);
+   struct mme_value64 draw_addr = mme_load_addr64(b);
+   struct mme_value64 draw_count_addr = mme_load_addr64(b);
+   struct mme_value draw_max = mme_load(b);
+   struct mme_value stride = mme_load(b);
+
+   mme_tu104_read_fifoed(b, draw_count_addr, mme_imm(1));
+   mme_free_reg64(b, draw_count_addr);
+   struct mme_value draw_count_buf = mme_load(b);
+
+   mme_if(b, ule, draw_count_buf, draw_max) {
+      mme_mov_to(b, draw_max, draw_count_buf);
+   }
+   mme_free_reg(b, draw_count_buf);
+
+   struct mme_value draw = mme_mov(b, mme_zero());
+   mme_while(b, ult, draw, draw_max) {
+      mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
+
+      nvk_mme_build_draw(b, begin, draw);
+
+      mme_add_to(b, draw, draw, mme_imm(1));
+      mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
+                         VkBuffer _buffer,
+                         VkDeviceSize offset,
+                         VkBuffer countBuffer,
+                         VkDeviceSize countBufferOffset,
+                         uint32_t maxDrawCount,
+                         uint32_t stride)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   VK_FROM_HANDLE(nvk_buffer, count_buffer, countBuffer);
+
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   /* TODO: Indirect count draw pre-Turing */
+   assert(nvk_cmd_buffer_3d_cls(cmd) >= TURING_A);
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT_COUNT));
+   P_INLINE_DATA(p, begin);
+   uint64_t draw_addr = nvk_buffer_address(buffer, offset);
+   P_INLINE_DATA(p, draw_addr >> 32);
+   P_INLINE_DATA(p, draw_addr);
+   uint64_t draw_count_addr = nvk_buffer_address(count_buffer,
+                                                 countBufferOffset);
+   P_INLINE_DATA(p, draw_count_addr >> 32);
+   P_INLINE_DATA(p, draw_count_addr);
+   P_INLINE_DATA(p, maxDrawCount);
+   P_INLINE_DATA(p, stride);
+}
+
+void
+nvk_mme_draw_indexed_indirect_count(struct mme_builder *b)
+{
+   if (b->devinfo->cls_eng3d < TURING_A)
+      return;
+
+   struct mme_value begin = mme_load(b);
+   struct mme_value64 draw_addr = mme_load_addr64(b);
+   struct mme_value64 draw_count_addr = mme_load_addr64(b);
+   struct mme_value draw_max = mme_load(b);
+   struct mme_value stride = mme_load(b);
+
+   mme_tu104_read_fifoed(b, draw_count_addr, mme_imm(1));
+   mme_free_reg64(b, draw_count_addr);
+   struct mme_value draw_count_buf = mme_load(b);
+
+   mme_if(b, ule, draw_count_buf, draw_max) {
+      mme_mov_to(b, draw_max, draw_count_buf);
+   }
+   mme_free_reg(b, draw_count_buf);
+
+   struct mme_value draw = mme_mov(b, mme_zero());
+   mme_while(b, ult, draw, draw_max) {
+      mme_tu104_read_fifoed(b, draw_addr, mme_imm(5));
+
+      nvk_mme_build_draw_indexed(b, begin, draw);
+
+      mme_add_to(b, draw, draw, mme_imm(1));
+      mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
+                                VkBuffer _buffer,
+                                VkDeviceSize offset,
+                                VkBuffer countBuffer,
+                                VkDeviceSize countBufferOffset,
+                                uint32_t maxDrawCount,
+                                uint32_t stride)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   VK_FROM_HANDLE(nvk_buffer, count_buffer, countBuffer);
+
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   /* TODO: Indexed indirect count draw pre-Turing */
+   assert(nvk_cmd_buffer_3d_cls(cmd) >= TURING_A);
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT_COUNT));
+   P_INLINE_DATA(p, begin);
+   uint64_t draw_addr = nvk_buffer_address(buffer, offset);
+   P_INLINE_DATA(p, draw_addr >> 32);
+   P_INLINE_DATA(p, draw_addr);
+   uint64_t draw_count_addr = nvk_buffer_address(count_buffer,
+                                                 countBufferOffset);
+   P_INLINE_DATA(p, draw_count_addr >> 32);
+   P_INLINE_DATA(p, draw_count_addr);
+   P_INLINE_DATA(p, maxDrawCount);
+   P_INLINE_DATA(p, stride);
+}
