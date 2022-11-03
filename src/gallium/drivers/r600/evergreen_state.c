@@ -2405,6 +2405,41 @@ static void evergreen_emit_cs_sampler_views(struct r600_context *rctx, struct r6
 	                             EG_FETCH_CONSTANTS_OFFSET_CS + R600_MAX_CONST_BUFFERS, RADEON_CP_PACKET3_COMPUTE_MODE);
 }
 
+static void cayman_convert_border_color(union pipe_color_union *in,
+                                        union pipe_color_union *out,
+                                        struct pipe_sampler_view *view)
+{
+   enum  pipe_format format = view->format;
+   const struct util_format_description *d = util_format_description(format);
+
+   if ((!util_format_is_alpha(format) &&
+        !util_format_is_luminance(format) &&
+        !util_format_is_luminance_alpha(format) &&
+        !util_format_is_intensity(format) &&
+        //!util_format_is_depth_or_stencil(format) &&
+        (format != PIPE_FORMAT_RGTC1_SNORM) &&
+        (format != PIPE_FORMAT_RGTC1_UNORM) &&
+        (format != PIPE_FORMAT_RGTC2_SNORM) &&
+        (format != PIPE_FORMAT_RGTC2_UNORM) &&
+        !(d->channel[0].size < 8) &&
+        (d->nr_channels > 2)) ||
+       (util_format_is_srgb(format) ||
+        util_format_is_s3tc(format))
+       ) {
+
+      for (int i = 0; i < 4; ++i) {
+         switch (i) {
+         case 0: out->f[0] = in->f[view->swizzle_r];break;
+         case 1: out->f[1] = in->f[view->swizzle_g];break;
+         case 2: out->f[2] = in->f[view->swizzle_b];break;
+         case 3: out->f[3] = in->f[view->swizzle_a];break;
+         }
+      }
+   } else {
+      memcpy(out->f, in->f, 4 * sizeof(float));
+   }
+}
+
 static void evergreen_convert_border_color(union pipe_color_union *in,
                                            union pipe_color_union *out,
                                            enum pipe_format format)
@@ -2456,11 +2491,16 @@ static void evergreen_emit_sampler_states(struct r600_context *rctx,
 
 		if (rstate->border_color_use) {
 			struct r600_pipe_sampler_view	*rview = texinfo->views.views[i];
-			if (rview) {
-				evergreen_convert_border_color(&rstate->border_color,
-				                               &border_color, rview->base.format);
-			} else {
-				border_color_ptr = &rstate->border_color;
+         if (rview) {
+            if (rctx->b.gfx_level < CAYMAN) {
+               evergreen_convert_border_color(&rstate->border_color,
+                                              &border_color, rview->base.format);
+            } else {
+               cayman_convert_border_color(&rstate->border_color,
+                                           &border_color, &rview->base);
+            }
+         } else {
+            border_color_ptr = &rstate->border_color;
 			}
 		}
 
