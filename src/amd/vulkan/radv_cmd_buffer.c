@@ -417,6 +417,8 @@ radv_create_cmd_buffer(struct vk_command_pool *pool,
 
    list_inithead(&cmd_buffer->upload.list);
 
+   cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
+
    return VK_SUCCESS;
 }
 
@@ -473,41 +475,6 @@ radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
       cmd_buffer->descriptors[i].dirty = 0;
       cmd_buffer->descriptors[i].valid = 0;
       cmd_buffer->descriptors[i].push_dirty = false;
-   }
-
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
-      uint32_t pred_value = 0;
-      uint32_t pred_offset;
-      if (!radv_cmd_buffer_upload_data(cmd_buffer, 4, &pred_value, &pred_offset))
-         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      cmd_buffer->mec_inv_pred_emitted = false;
-      cmd_buffer->mec_inv_pred_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
-   }
-
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9 &&
-       cmd_buffer->qf == RADV_QUEUE_GENERAL) {
-      unsigned num_db = cmd_buffer->device->physical_device->rad_info.max_render_backends;
-      unsigned fence_offset, eop_bug_offset;
-      void *fence_ptr;
-
-      radv_cmd_buffer_upload_alloc(cmd_buffer, 8, &fence_offset, &fence_ptr);
-      memset(fence_ptr, 0, 8);
-
-      cmd_buffer->gfx9_fence_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-      cmd_buffer->gfx9_fence_va += fence_offset;
-
-      radv_emit_clear_data(cmd_buffer, V_370_PFP, cmd_buffer->gfx9_fence_va, 8);
-
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9) {
-         /* Allocate a buffer for the EOP bug on GFX9. */
-         radv_cmd_buffer_upload_alloc(cmd_buffer, 16 * num_db, &eop_bug_offset, &fence_ptr);
-         memset(fence_ptr, 0, 16 * num_db);
-         cmd_buffer->gfx9_eop_bug_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-         cmd_buffer->gfx9_eop_bug_va += eop_bug_offset;
-
-         radv_emit_clear_data(cmd_buffer, V_370_PFP, cmd_buffer->gfx9_eop_bug_va, 16 * num_db);
-      }
    }
 
    radv_cmd_buffer_reset_rendering(cmd_buffer);
@@ -4875,6 +4842,41 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.last_vrs_rates = -1;
    cmd_buffer->state.last_vrs_rates_sgpr_idx = -1;
    cmd_buffer->usage_flags = pBeginInfo->flags;
+
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
+      uint32_t pred_value = 0;
+      uint32_t pred_offset;
+      if (!radv_cmd_buffer_upload_data(cmd_buffer, 4, &pred_value, &pred_offset))
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      cmd_buffer->mec_inv_pred_emitted = false;
+      cmd_buffer->mec_inv_pred_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
+   }
+
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9 &&
+       cmd_buffer->qf == RADV_QUEUE_GENERAL) {
+      unsigned num_db = cmd_buffer->device->physical_device->rad_info.max_render_backends;
+      unsigned fence_offset, eop_bug_offset;
+      void *fence_ptr;
+
+      radv_cmd_buffer_upload_alloc(cmd_buffer, 8, &fence_offset, &fence_ptr);
+      memset(fence_ptr, 0, 8);
+
+      cmd_buffer->gfx9_fence_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+      cmd_buffer->gfx9_fence_va += fence_offset;
+
+      radv_emit_clear_data(cmd_buffer, V_370_PFP, cmd_buffer->gfx9_fence_va, 8);
+
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9) {
+         /* Allocate a buffer for the EOP bug on GFX9. */
+         radv_cmd_buffer_upload_alloc(cmd_buffer, 16 * num_db, &eop_bug_offset, &fence_ptr);
+         memset(fence_ptr, 0, 16 * num_db);
+         cmd_buffer->gfx9_eop_bug_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+         cmd_buffer->gfx9_eop_bug_va += eop_bug_offset;
+
+         radv_emit_clear_data(cmd_buffer, V_370_PFP, cmd_buffer->gfx9_eop_bug_va, 16 * num_db);
+      }
+   }
 
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
