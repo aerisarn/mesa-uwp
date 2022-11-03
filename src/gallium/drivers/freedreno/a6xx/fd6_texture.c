@@ -294,6 +294,13 @@ fd6_sampler_state_create(struct pipe_context *pctx,
    if (needs_border)
       so->texsamp2 = A6XX_TEX_SAMP_2_BCOLOR(get_bcolor_offset(ctx, cso));
 
+   /* We don't know if the format is going to be YUV.  Setting CHROMA_LINEAR
+    * unconditionally seems fine.
+    */
+   if (cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR &&
+       cso->min_img_filter == PIPE_TEX_FILTER_LINEAR)
+      so->texsamp2 |= A6XX_TEX_SAMP_2_CHROMA_LINEAR;
+
    return so;
 }
 
