@@ -1271,13 +1271,6 @@ _math_matrix_is_length_preserving( const GLmatrix *m )
 }
 
 GLboolean
-_math_matrix_is_general_scale( const GLmatrix *m )
-{
-   return (m->flags & MAT_FLAG_GENERAL_SCALE) ? GL_TRUE : GL_FALSE;
-}
-
-
-GLboolean
 _math_matrix_is_dirty( const GLmatrix *m )
 {
    return (m->flags & MAT_DIRTY) ? GL_TRUE : GL_FALSE;
