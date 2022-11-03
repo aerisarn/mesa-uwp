@@ -2442,23 +2442,54 @@ static void cayman_convert_border_color(union pipe_color_union *in,
 
 static void evergreen_convert_border_color(union pipe_color_union *in,
                                            union pipe_color_union *out,
-                                           enum pipe_format format)
+                                           struct pipe_sampler_view *view)
 {
-	if (util_format_is_pure_integer(format) &&
-		 !util_format_is_depth_or_stencil(format)) {
-		const struct util_format_description *d = util_format_description(format);
+   enum  pipe_format format = view->format;
+   const struct util_format_description *d = util_format_description(format);
 
-		for (int i = 0; i < d->nr_channels; ++i) {
-			int cs = d->channel[i].size;
-			if (d->channel[i].type == UTIL_FORMAT_TYPE_SIGNED)
-				out->f[i] = (double)(in->i[i]) / ((1ul << (cs - 1)) - 1 );
-			else if (d->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED)
-				out->f[i] = (double)(in->ui[i]) / ((1ul << cs) - 1 );
-			else
-				out->f[i] = 0;
-		}
+   int swizzle[4] = { view->swizzle_r, view->swizzle_g, view->swizzle_b,
+                      view->swizzle_a };
 
-	} else {
+   bool is_lai = util_format_is_alpha(format) ||
+                 util_format_is_luminance(format) ||
+                 util_format_is_luminance_alpha(format) ||
+                 util_format_is_intensity(format) ||
+                 d->channel[0].size < 8;
+
+   if (is_lai) {
+         for (int i = 0; i < 4; ++i) {
+            swizzle[i] = i;
+         }
+   }
+
+   if (!util_format_is_depth_or_stencil(format)) {
+
+      for (int i = 0; i < 4; ++i) {
+
+         if (swizzle[i] == 4) {
+            out->f[i] = 0.0f;
+            continue;
+         }
+
+         if (swizzle[i] == 5) {
+            out->f[i] = 1.0f;
+            continue;
+         }
+
+         if (util_format_is_pure_integer(format)) {
+            int cs = d->channel[d->swizzle[i]].size;
+            if (d->channel[d->swizzle[i]].type == UTIL_FORMAT_TYPE_SIGNED)
+               out->f[i] = ((double)(in->i[swizzle[i]])) / ((1ul << (cs - 1)) - 1 );
+            else if (d->channel[d->swizzle[i]].type == UTIL_FORMAT_TYPE_UNSIGNED)
+               out->f[i] = ((double)(in->ui[swizzle[i]])) / ((1ul << cs) - 1 );
+            else
+               out->f[i] = 0;
+         } else {
+            out->f[i] = in->f[swizzle[i]];
+         }
+      }
+
+   } else {
 		switch (format) {
 		case PIPE_FORMAT_X24S8_UINT:
 		case PIPE_FORMAT_X32_S8X24_UINT:
@@ -2494,7 +2525,7 @@ static void evergreen_emit_sampler_states(struct r600_context *rctx,
          if (rview) {
             if (rctx->b.gfx_level < CAYMAN) {
                evergreen_convert_border_color(&rstate->border_color,
-                                              &border_color, rview->base.format);
+                                              &border_color, &rview->base);
             } else {
                cayman_convert_border_color(&rstate->border_color,
                                            &border_color, &rview->base);
