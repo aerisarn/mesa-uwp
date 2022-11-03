@@ -58,8 +58,6 @@ typedef struct __DRIkopperLoaderExtensionRec    __DRIkopperLoaderExtension;
 #define __DRI_KOPPER "DRI_Kopper"
 #define __DRI_KOPPER_VERSION 1
 
-struct kopper_surface;
-
 struct __DRIkopperExtensionRec {
     __DRIextension base;
 
