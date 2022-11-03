@@ -1629,11 +1629,12 @@ struct nir_shader *si_deserialize_shader(struct si_shader_selector *sel)
    return nir_deserialize(NULL, options, &blob_reader);
 }
 
-static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_info *info,
-                                        int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
-                                        uint8_t *num_param_exports, uint64_t *output_param_mask,
-                                        uint8_t vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS])
+static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shader,
+                                        int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS])
 {
+   struct si_shader_selector *sel = shader->selector;
+   struct si_shader_binary_info *info = &shader->info;
+
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
@@ -1656,14 +1657,14 @@ static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_
          /* Assign the param index if it's unassigned. */
          if (nir_slot_is_varying(sem.location) && !sem.no_varying &&
              (sem.gs_streams & 0x3) == 0 &&
-             vs_output_param_offset[sem.location] == AC_EXP_PARAM_DEFAULT_VAL_0000) {
+             info->vs_output_param_offset[sem.location] == AC_EXP_PARAM_DEFAULT_VAL_0000) {
             /* The semantic and the base should be the same as in si_shader_info. */
-            assert(sem.location == info->output_semantic[nir_intrinsic_base(intr)]);
+            assert(sem.location == sel->info.output_semantic[nir_intrinsic_base(intr)]);
             /* It must not be remapped (duplicated). */
             assert(slot_remap[sem.location] == -1);
 
-            vs_output_param_offset[sem.location] = (*num_param_exports)++;
-            *output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
+            info->vs_output_param_offset[sem.location] = info->nr_param_exports++;
+            info->vs_output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
          }
       }
    }
@@ -1671,7 +1672,12 @@ static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_
    /* Duplicated outputs are redirected here. */
    for (unsigned i = 0; i < NUM_TOTAL_VARYING_SLOTS; i++) {
       if (slot_remap[i] >= 0)
-         vs_output_param_offset[i] = vs_output_param_offset[slot_remap[i]];
+         info->vs_output_param_offset[i] = info->vs_output_param_offset[slot_remap[i]];
+   }
+
+   if (shader->key.ge.mono.u.vs_export_prim_id) {
+      info->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = info->nr_param_exports++;
+      info->vs_output_param_mask |= BITFIELD64_BIT(sel->info.num_outputs);
    }
 }
 
@@ -1876,14 +1882,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
       /* Assign the non-constant outputs. */
       /* TODO: Use this for the GS copy shader too. */
-      si_nir_assign_param_offsets(nir, &sel->info, slot_remap, &shader->info.nr_param_exports,
-                                  &shader->info.vs_output_param_mask,
-                                  shader->info.vs_output_param_offset);
-
-      if (shader->key.ge.mono.u.vs_export_prim_id) {
-         shader->info.vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = shader->info.nr_param_exports++;
-         shader->info.vs_output_param_mask |= BITFIELD64_BIT(sel->info.num_outputs);
-      }
+      si_nir_assign_param_offsets(nir, shader, slot_remap);
    }
 
    struct pipe_stream_output_info so = {};
