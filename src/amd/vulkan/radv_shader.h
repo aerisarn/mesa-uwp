@@ -247,6 +247,8 @@ struct radv_shader_info {
    bool is_ngg_passthrough;
    bool has_ngg_culling;
    bool has_ngg_early_prim_export;
+   bool has_ngg_prim_query;
+   bool has_ngg_xfb_query;
    uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
    uint32_t esgs_itemsize; /* Only for VS or TES as ES */
@@ -284,6 +286,7 @@ struct radv_shader_info {
       unsigned invocations;
       unsigned es_type; /* GFX9: VS or TES */
       uint8_t num_linked_inputs;
+      bool has_ngg_pipeline_stat_query;
    } gs;
    struct {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
