@@ -133,15 +133,31 @@ ir_save_lvalue_visitor::visit_enter(ir_dereference_array *deref)
 }
 
 static bool
-should_replace_variable(ir_variable *sig_param, ir_rvalue *param) {
+should_replace_variable(ir_variable *sig_param, ir_rvalue *param,
+                        bool is_builtin) {
+
+   if (sig_param->data.mode != ir_var_function_in &&
+       sig_param->data.mode != ir_var_const_in)
+      return false;
+
+   /* SSBO and shared vars might be passed to a built-in such as an atomic
+    * memory function, where copying these to a temp before passing to the
+    * atomic function is not valid so we must replace these instead. Also,
+    * shader inputs for interpolateAt funtions also need to be replaced.
+    *
+    * Our builtins should always use temps and not the inputs themselves to
+    * store temporay values so just checking is_builtin rather than string
+    * comparing the function name for e.g atomic* should always be safe.
+    */
+   if (is_builtin)
+      return true;
+
    /* For opaque types, we want the inlined variable references
     * referencing the passed in variable, since that will have
     * the location information, which an assignment of an opaque
     * variable wouldn't.
     */
-   return sig_param->type->contains_opaque() &&
-          param->is_dereference() &&
-          sig_param->data.mode == ir_var_function_in;
+   return sig_param->type->contains_opaque();
 }
 
 void
@@ -168,7 +184,8 @@ ir_call::generate_inline(ir_instruction *next_ir)
       ir_rvalue *param = (ir_rvalue *) actual_node;
 
       /* Generate a new variable for the parameter. */
-      if (should_replace_variable(sig_param, param)) {
+      if (should_replace_variable(sig_param, param,
+                                  this->callee->is_builtin())) {
          /* Actual replacement happens below */
 	 parameters[i] = NULL;
       } else {
@@ -251,7 +268,8 @@ ir_call::generate_inline(ir_instruction *next_ir)
       ir_rvalue *const param = (ir_rvalue *) actual_node;
       ir_variable *sig_param = (ir_variable *) formal_node;
 
-      if (should_replace_variable(sig_param, param)) {
+      if (should_replace_variable(sig_param, param,
+                                  this->callee->is_builtin())) {
          do_variable_replacement(&new_instructions, sig_param, param);
       }
    }
