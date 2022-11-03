@@ -39,6 +39,7 @@ incs_gbm = [
 if with_dri2
   files_gbm += files('backends/dri/gbm_dri.c', 'backends/dri/gbm_driint.h')
   deps_gbm += dep_libdrm # TODO: pthread-stubs
+  deps_gbm += idep_vulkan_wsi_defines
 endif
 if with_platform_wayland
   deps_gbm += dep_wayland_server

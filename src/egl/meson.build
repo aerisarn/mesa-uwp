@@ -95,6 +95,7 @@ if with_dri2
   )
   files_egl += sha1_h
   deps_for_egl += idep_xmlconfig
+  deps_for_egl += idep_vulkan_wsi_defines
   link_for_egl += libloader
   incs_for_egl += inc_loader
   incs_for_egl += inc_gallium
@@ -106,9 +107,6 @@ if with_dri2
     'drivers/dri2/platform_device.c',
     'drivers/dri2/platform_surfaceless.c',
   )
-
-  c_args_for_egl += vk_wsi_args
-  cpp_args_for_egl += vk_wsi_args
 
   if with_platform_x11
     files_egl += files('drivers/dri2/platform_x11.c')

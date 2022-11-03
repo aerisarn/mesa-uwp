@@ -71,7 +71,10 @@ if host_machine.system() == 'darwin'
   vulkan_wsi_list += '-DVK_USE_PLATFORM_METAL_EXT'
 endif
 
-vk_wsi_args = vulkan_wsi_list
+idep_vulkan_wsi_defines = declare_dependency(
+  compile_args : vulkan_wsi_list,
+)
+vulkan_wsi_deps += idep_vulkan_wsi_defines
 
 subdir('util')
 subdir('runtime')
