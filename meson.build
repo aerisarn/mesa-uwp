@@ -376,30 +376,6 @@ with_xlib_lease = get_option('xlib-lease') \
   .require(with_platform_x11 and system_has_kms_drm, error_message : 'xlib-lease requires X11 and KMS/DRM support') \
   .allowed()
 
-vk_wsi_args = []
-
-if with_platform_wayland
-  vk_wsi_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
-endif
-if with_platform_x11
-  vk_wsi_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
-endif
-if with_platform_windows
-  vk_wsi_args += '-DVK_USE_PLATFORM_WIN32_KHR'
-endif
-if with_platform_android
-  vk_wsi_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
-endif
-if with_xlib_lease
-  vk_wsi_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
-endif
-if system_has_kms_drm and not with_platform_android
-  vk_wsi_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
-endif
-if host_machine.system() == 'darwin'
-  vk_wsi_args += ['-DVK_USE_PLATFORM_MACOS_MVK', '-DVK_USE_PLATFORM_METAL_EXT']
-endif
-
 with_egl = get_option('egl') \
   .require(host_machine.system() != 'darwin', error_message : 'EGL not supported on MacOS') \
   .require(with_platform_windows or with_platform_haiku or with_dri or with_platform_android, error_message : 'EGL requires DRI, Haiku, Windows or Android') \
