@@ -345,6 +345,7 @@ if with_tests
     'tests/half_float_test.cpp',
     'tests/int_min_max.cpp',
     'tests/mesa-sha1_test.cpp',
+    'tests/perf/u_trace_test.cpp',
     'tests/rb_tree_test.cpp',
     'tests/register_allocate_test.cpp',
     'tests/roundeven_test.cpp',
