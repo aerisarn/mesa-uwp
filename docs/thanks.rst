@@ -25,7 +25,7 @@ somewhat dated, unfortunately.
 -  **Bogdan Sikorski** wrote the GLU NURBS and polygon tessellator in
    Mesa.
 -  **Charlie Wallace** wrote the MS-DOS driver.
--  **CJ Beyer** was the `www.mesa3d.org <https://www.mesa3d.org>`
+-  **CJ Beyer** was the `www.mesa3d.org <https://www.mesa3d.org>`__
    webmaster.
 -  **Darren Abbott** provided the OS/2 driver.
 -  **David Bucciarelli** wrote and maintained the 3Dfx Glide driver.
