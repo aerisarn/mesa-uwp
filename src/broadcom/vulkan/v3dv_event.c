@@ -591,8 +591,54 @@ v3dv_CmdSetEvent2(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->state.pass == NULL);
    assert(cmd_buffer->state.job == NULL);
 
-   v3dv_CmdPipelineBarrier2(commandBuffer, pDependencyInfo);
+   /* We need to add the compute stage to the dstStageMask of all dependencies,
+    * so let's go ahead and patch the dependency info we receive.
+    */
+   uint32_t memory_barrier_count = pDependencyInfo->memoryBarrierCount;
+   VkMemoryBarrier2 *memory_barriers = memory_barrier_count ?
+         malloc(memory_barrier_count * sizeof(memory_barriers[0])): NULL;
+   for (int i = 0; i < memory_barrier_count; i++) {
+      memory_barriers[i] = pDependencyInfo->pMemoryBarriers[i];
+      memory_barriers[i].dstStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   uint32_t buffer_barrier_count = pDependencyInfo->bufferMemoryBarrierCount;
+   VkBufferMemoryBarrier2 *buffer_barriers = buffer_barrier_count ?
+         malloc(buffer_barrier_count * sizeof(buffer_barriers[0])): NULL;
+   for (int i = 0; i < buffer_barrier_count; i++) {
+      buffer_barriers[i] = pDependencyInfo->pBufferMemoryBarriers[i];
+      buffer_barriers[i].dstStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   uint32_t image_barrier_count = pDependencyInfo->imageMemoryBarrierCount;
+   VkImageMemoryBarrier2 *image_barriers = image_barrier_count ?
+         malloc(image_barrier_count * sizeof(image_barriers[0])): NULL;
+   for (int i = 0; i < image_barrier_count; i++) {
+      image_barriers[i] = pDependencyInfo->pImageMemoryBarriers[i];
+      image_barriers[i].dstStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   VkDependencyInfo info = {
+      .sType = pDependencyInfo->sType,
+      .dependencyFlags = pDependencyInfo->dependencyFlags,
+      .memoryBarrierCount = memory_barrier_count,
+      .pMemoryBarriers = memory_barriers,
+      .bufferMemoryBarrierCount = buffer_barrier_count,
+      .pBufferMemoryBarriers = buffer_barriers,
+      .imageMemoryBarrierCount = image_barrier_count,
+      .pImageMemoryBarriers = image_barriers,
+   };
+
+   v3dv_cmd_buffer_emit_pipeline_barrier(cmd_buffer, &info);
+
    cmd_buffer_emit_set_event(cmd_buffer, event, 1);
+
+   if (memory_barriers)
+      free(memory_barriers);
+   if (buffer_barriers)
+      free(buffer_barriers);
+   if (image_barriers)
+      free(image_barriers);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -609,6 +655,18 @@ v3dv_CmdResetEvent2(VkCommandBuffer commandBuffer,
    assert(cmd_buffer->state.pass == NULL);
    assert(cmd_buffer->state.job == NULL);
 
+   VkMemoryBarrier2 barrier = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+      .srcStageMask = stageMask,
+      .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+   };
+   VkDependencyInfo info = {
+      .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+      .memoryBarrierCount = 1,
+      .pMemoryBarriers = &barrier,
+   };
+   v3dv_cmd_buffer_emit_pipeline_barrier(cmd_buffer, &info);
+
    cmd_buffer_emit_set_event(cmd_buffer, event, 0);
 }
 
@@ -616,11 +674,58 @@ VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdWaitEvents2(VkCommandBuffer commandBuffer,
                     uint32_t eventCount,
                     const VkEvent *pEvents,
-                    const VkDependencyInfo *pDependencyInfos)
+                    const VkDependencyInfo *pDependencyInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    for (uint32_t i = 0; i < eventCount; i++) {
       struct v3dv_event *event = v3dv_event_from_handle(pEvents[i]);;
       cmd_buffer_emit_wait_event(cmd_buffer, event);
    }
+
+   /* We need to add the compute stage to the srcStageMask of all dependencies,
+    * so let's go ahead and patch the dependency info we receive.
+    */
+   uint32_t memory_barrier_count = pDependencyInfo->memoryBarrierCount;
+   VkMemoryBarrier2 *memory_barriers = memory_barrier_count ?
+         malloc(memory_barrier_count * sizeof(memory_barriers[0])): NULL;
+   for (int i = 0; i < memory_barrier_count; i++) {
+      memory_barriers[i] = pDependencyInfo->pMemoryBarriers[i];
+      memory_barriers[i].srcStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   uint32_t buffer_barrier_count = pDependencyInfo->bufferMemoryBarrierCount;
+   VkBufferMemoryBarrier2 *buffer_barriers = buffer_barrier_count ?
+         malloc(buffer_barrier_count * sizeof(buffer_barriers[0])): NULL;
+   for (int i = 0; i < buffer_barrier_count; i++) {
+      buffer_barriers[i] = pDependencyInfo->pBufferMemoryBarriers[i];
+      buffer_barriers[i].srcStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   uint32_t image_barrier_count = pDependencyInfo->imageMemoryBarrierCount;
+   VkImageMemoryBarrier2 *image_barriers = image_barrier_count ?
+         malloc(image_barrier_count * sizeof(image_barriers[0])): NULL;
+   for (int i = 0; i < image_barrier_count; i++) {
+      image_barriers[i] = pDependencyInfo->pImageMemoryBarriers[i];
+      image_barriers[i].srcStageMask |= VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+   }
+
+   VkDependencyInfo info = {
+      .sType = pDependencyInfo->sType,
+      .dependencyFlags = pDependencyInfo->dependencyFlags,
+      .memoryBarrierCount = memory_barrier_count,
+      .pMemoryBarriers = memory_barriers,
+      .bufferMemoryBarrierCount = buffer_barrier_count,
+      .pBufferMemoryBarriers = buffer_barriers,
+      .imageMemoryBarrierCount = image_barrier_count,
+      .pImageMemoryBarriers = image_barriers,
+   };
+
+   v3dv_cmd_buffer_emit_pipeline_barrier(cmd_buffer, &info);
+
+   if (memory_barriers)
+      free(memory_barriers);
+   if (buffer_barriers)
+      free(buffer_barriers);
+   if (image_barriers)
+      free(image_barriers);
 }
