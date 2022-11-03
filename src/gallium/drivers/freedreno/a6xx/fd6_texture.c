@@ -429,6 +429,12 @@ fd6_sampler_view_update(struct fd_context *ctx,
          .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,
                             FDL_CHROMA_LOCATION_COSITED_EVEN},
       };
+
+      if (rsc->b.b.format == PIPE_FORMAT_R8_G8B8_420_UNORM) {
+         args.chroma_offsets[0] = FDL_CHROMA_LOCATION_MIDPOINT;
+         args.chroma_offsets[1] = FDL_CHROMA_LOCATION_MIDPOINT;
+      }
+
       struct fd_resource *plane1 = fd_resource(rsc->b.b.next);
       struct fd_resource *plane2 =
          plane1 ? fd_resource(plane1->b.b.next) : NULL;
