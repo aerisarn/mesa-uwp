@@ -135,8 +135,6 @@
 #include <mesa/main/varray.h>
 #include <mesa/main/version.h>
 #include <mesa/main/viewport.h>
-#include <mesa/math/m_debug.h>
-#include <mesa/math/m_debug_util.h>
 #include <mesa/math/m_eval.h>
 #include <mesa/math/m_matrix.h>
 #include <mesa/math/m_vector.h>
