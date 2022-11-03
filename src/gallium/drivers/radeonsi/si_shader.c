@@ -1629,6 +1629,52 @@ struct nir_shader *si_deserialize_shader(struct si_shader_selector *sel)
    return nir_deserialize(NULL, options, &blob_reader);
 }
 
+static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_info *info,
+                                        int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
+                                        uint8_t *num_param_exports, uint64_t *output_param_mask,
+                                        uint8_t vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS])
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   assert(impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_output)
+            continue;
+
+         /* No indirect indexing allowed. */
+         ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
+         assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
+
+         assert(intr->num_components == 1); /* only scalar stores expected */
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+         /* Assign the param index if it's unassigned. */
+         if (nir_slot_is_varying(sem.location) && !sem.no_varying &&
+             (sem.gs_streams & 0x3) == 0 &&
+             vs_output_param_offset[sem.location] == AC_EXP_PARAM_DEFAULT_VAL_0000) {
+            /* The semantic and the base should be the same as in si_shader_info. */
+            assert(sem.location == info->output_semantic[nir_intrinsic_base(intr)]);
+            /* It must not be remapped (duplicated). */
+            assert(slot_remap[sem.location] == -1);
+
+            vs_output_param_offset[sem.location] = (*num_param_exports)++;
+            *output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
+         }
+      }
+   }
+
+   /* Duplicated outputs are redirected here. */
+   for (unsigned i = 0; i < NUM_TOTAL_VARYING_SLOTS; i++) {
+      if (slot_remap[i] >= 0)
+         vs_output_param_offset[i] = vs_output_param_offset[slot_remap[i]];
+   }
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
                                      uint64_t tcs_vgpr_only_inputs)
 {
@@ -1795,52 +1841,6 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
 
    shader->info.uses_vmem_load_other |= info.uses_vmem_load_other;
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
-}
-
-static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_info *info,
-                                        int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
-                                        uint8_t *num_param_exports, uint64_t *output_param_mask,
-                                        uint8_t vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS])
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   assert(impl);
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-         if (intr->intrinsic != nir_intrinsic_store_output)
-            continue;
-
-         /* No indirect indexing allowed. */
-         ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
-         assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
-
-         assert(intr->num_components == 1); /* only scalar stores expected */
-         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-
-         /* Assign the param index if it's unassigned. */
-         if (nir_slot_is_varying(sem.location) && !sem.no_varying &&
-             (sem.gs_streams & 0x3) == 0 &&
-             vs_output_param_offset[sem.location] == AC_EXP_PARAM_DEFAULT_VAL_0000) {
-            /* The semantic and the base should be the same as in si_shader_info. */
-            assert(sem.location == info->output_semantic[nir_intrinsic_base(intr)]);
-            /* It must not be remapped (duplicated). */
-            assert(slot_remap[sem.location] == -1);
-
-            vs_output_param_offset[sem.location] = (*num_param_exports)++;
-            *output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
-         }
-      }
-   }
-
-   /* Duplicated outputs are redirected here. */
-   for (unsigned i = 0; i < NUM_TOTAL_VARYING_SLOTS; i++) {
-      if (slot_remap[i] >= 0)
-         vs_output_param_offset[i] = vs_output_param_offset[slot_remap[i]];
-   }
 }
 
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
