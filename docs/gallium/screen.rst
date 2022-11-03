@@ -686,13 +686,15 @@ support different features.
   to any shader stage using ``set_constant_buffer``. If 0 or 1, the pipe will
   only permit binding one constant buffer per shader.
 
-If a value greater than 0 is returned, the driver can have multiple
-constant buffers bound to shader stages. The CONST register file is
-accessed with two-dimensional indices, like in the example below.
+  If a value greater than 0 is returned, the driver can have multiple
+  constant buffers bound to shader stages. The CONST register file is
+  accessed with two-dimensional indices, like in the example below.
 
-DCL CONST[0][0..7]       # declare first 8 vectors of constbuf 0
-DCL CONST[3][0]          # declare first vector of constbuf 3
-MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
+  ::
+
+    DCL CONST[0][0..7]       # declare first 8 vectors of constbuf 0
+    DCL CONST[3][0]          # declare first vector of constbuf 3
+    MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 
 * ``PIPE_SHADER_CAP_MAX_TEMPS``: The maximum number of temporary registers.
 * ``PIPE_SHADER_CAP_CONT_SUPPORTED``: Whether continue is supported.
