@@ -683,12 +683,10 @@ struct zink_shader {
 
    union {
       struct {
-         struct zink_shader *generated; // a generated shader that this shader "owns"
-      } tes;
-
-      struct {
+         struct zink_shader *generated_tcs; // a generated shader that this shader "owns"; only valid in the tes stage
+         struct zink_shader *generated_gs; // a generated shader that this shader "owns"
          bool is_generated; // if this is a driver-created shader (e.g., tcs)
-      } tcs;
+      } non_fs;
 
       struct {
          nir_variable *fbfetch; //for fs output
