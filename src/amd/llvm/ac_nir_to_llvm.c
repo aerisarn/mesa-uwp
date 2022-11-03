@@ -543,6 +543,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_vec5:
    case nir_op_vec8:
    case nir_op_vec16:
+   case nir_op_unpack_32_4x8:
    case nir_op_unpack_32_2x16:
    case nir_op_unpack_64_2x32:
    case nir_op_unpack_64_4x16:
@@ -1223,6 +1224,9 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_unpack_32_4x8:
+      result = LLVMBuildBitCast(ctx->ac.builder, src[0], ctx->ac.v4i8, "");
+      break;
    case nir_op_unpack_32_2x16: {
       result = LLVMBuildBitCast(ctx->ac.builder, src[0],
             ctx->ac.v2i16, "");
