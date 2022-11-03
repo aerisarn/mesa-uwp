@@ -22,6 +22,10 @@
 
 #include "a6xx.xml.h"
 
+#include "ir3/ir3_assembler.h"
+#include "ir3/ir3_compiler.h"
+#include "ir3/ir3_shader.h"
+
 #include "util/list.h"
 #include "util/vma.h"
 
@@ -35,13 +39,26 @@ struct cmdstream {
    uint64_t iova;
 };
 
+static uint64_t
+cs_get_cur_iova(struct cmdstream *cs)
+{
+   return cs->iova + cs->cur * sizeof(uint32_t);
+}
+
 struct replay_context {
+   void *mem_ctx;
+
    struct util_vma_heap vma;
 
    struct cmdstream *submit_cs;
    struct cmdstream *state_cs;
+   struct cmdstream *shader_cs;
 
    struct list_head cs_list;
+
+   struct ir3_compiler *compiler;
+
+   struct hash_table_u64 *compiled_shaders;
 
    const char *output_name;
 };
@@ -58,6 +75,18 @@ pkt_qw(struct cmdstream *cs, uint64_t payload)
 {
    pkt(cs, payload);
    pkt(cs, payload >> 32);
+}
+
+static uint64_t
+pkt_blob(struct cmdstream *cs, void *payload, uint32_t size, uint32_t alignment)
+{
+   cs->cur = align(cs->cur, alignment / sizeof(uint32_t));
+   uint64_t start_iova = cs_get_cur_iova(cs);
+
+   memcpy(cs->mem + cs->cur, payload, size);
+   cs->cur += size;
+
+   return start_iova;
 }
 
 static void
@@ -92,12 +121,6 @@ cs_alloc(struct replay_context *ctx, uint32_t size)
    list_addtail(&cs->link, &ctx->cs_list);
 
    return cs;
-}
-
-static uint64_t
-cs_get_cur_iova(struct cmdstream *cs)
-{
-   return cs->iova + cs->cur * sizeof(uint32_t);
 }
 
 static void
@@ -159,7 +182,8 @@ static const struct option opts[] = {
 /* clang-format on */
 
 static void
-replay_context_init(struct replay_context *ctx, int argc, char **argv)
+replay_context_init(struct replay_context *ctx, struct fd_dev_id *dev_id,
+                    int argc, char **argv)
 {
    uint64_t va_start = 0;
    uint64_t va_size = 0;
@@ -189,12 +213,18 @@ replay_context_init(struct replay_context *ctx, int argc, char **argv)
       exit(1);
    }
 
+   ctx->mem_ctx = ralloc_context(NULL);
    list_inithead(&ctx->cs_list);
 
    util_vma_heap_init(&ctx->vma, va_start, ROUND_DOWN_TO(va_size, 4096));
 
    ctx->submit_cs = cs_alloc(ctx, 1024 * 1024);
    ctx->state_cs = cs_alloc(ctx, 2 * 1024 * 1024);
+   ctx->shader_cs = cs_alloc(ctx, 8 * 1024 * 1024);
+
+   ctx->compiler =
+      ir3_compiler_create(NULL, dev_id, &(struct ir3_compiler_options){});
+   ctx->compiled_shaders = _mesa_hash_table_u64_create(ctx->mem_ctx);
 }
 
 static void
@@ -217,6 +247,33 @@ replay_context_finish(struct replay_context *ctx)
    rd_write_cs_submit(out, ctx->submit_cs);
 
    fclose(out);
+}
+
+static void
+upload_shader(struct replay_context *ctx, uint64_t id, const char *source)
+{
+   FILE *in = fmemopen((void *)source, strlen(source), "r");
+
+   struct ir3_kernel_info info = {};
+   struct ir3_shader *shader = ir3_parse_asm(ctx->compiler, &info, in);
+   assert(shader);
+
+   fclose(in);
+
+   uint64_t *shader_iova = ralloc(ctx->mem_ctx, uint64_t);
+   *shader_iova = pkt_blob(ctx->shader_cs, shader->variants->bin,
+                           shader->variants->info.size, 128);
+   ralloc_free(shader);
+
+   _mesa_hash_table_u64_insert(ctx->compiled_shaders, id, shader_iova);
+}
+
+static void
+emit_shader_iova(struct replay_context *ctx, struct cmdstream *cs, uint64_t id)
+{
+   uint64_t *shader_iova =
+      _mesa_hash_table_u64_search(ctx->compiled_shaders, id);
+   pkt_qw(cs, *shader_iova);
 }
 
 #define begin_draw_state()                                                     \

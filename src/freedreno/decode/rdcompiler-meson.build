@@ -30,4 +30,7 @@ generate_rd = executable(
   link_with: [
     mesa_proj.get_variable('libfreedreno_cffdec'),
   ],
+  dependencies : [
+    mesa_proj.get_variable('idep_nir'),
+  ],
 )
