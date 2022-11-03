@@ -53,82 +53,82 @@ zink_kopper_set_present_mode_for_interval(struct kopper_displaytarget *cdt, int 
 static void
 init_dt_type(struct kopper_displaytarget *cdt)
 {
-    VkStructureType type = cdt->info.bos.sType;
-    switch (type) {
+   VkStructureType type = cdt->info.bos.sType;
+   switch (type) {
 #ifdef VK_USE_PLATFORM_XCB_KHR
-    case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
-       cdt->type = KOPPER_X11;
-       break;
+   case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
+      cdt->type = KOPPER_X11;
+      break;
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
-       cdt->type = KOPPER_WAYLAND;
-       break;
+   case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
+      cdt->type = KOPPER_WAYLAND;
+      break;
 #endif
 #ifdef VK_USE_PLATFORM_WIN32_KHR
-    case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
-       cdt->type = KOPPER_WIN32;
-       break;
+   case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
+      cdt->type = KOPPER_WIN32;
+      break;
 #endif
-    default:
-       unreachable("unsupported!");
-    }
+   default:
+      unreachable("unsupported!");
+   }
 }
 
 static VkSurfaceKHR
 kopper_CreateSurface(struct zink_screen *screen, struct kopper_displaytarget *cdt)
 {
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkResult error = VK_SUCCESS;
+   VkSurfaceKHR surface = VK_NULL_HANDLE;
+   VkResult error = VK_SUCCESS;
 
-    init_dt_type(cdt);
-    VkStructureType type = cdt->info.bos.sType;
-    switch (type) {
+   init_dt_type(cdt);
+   VkStructureType type = cdt->info.bos.sType;
+   switch (type) {
 #ifdef VK_USE_PLATFORM_XCB_KHR
-    case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
-       error = VKSCR(CreateXcbSurfaceKHR)(screen->instance, &cdt->info.xcb, NULL, &surface);
-       break;
+   case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
+      error = VKSCR(CreateXcbSurfaceKHR)(screen->instance, &cdt->info.xcb, NULL, &surface);
+      break;
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
-       error = VKSCR(CreateWaylandSurfaceKHR)(screen->instance, &cdt->info.wl, NULL, &surface);
-       break;
+   case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
+      error = VKSCR(CreateWaylandSurfaceKHR)(screen->instance, &cdt->info.wl, NULL, &surface);
+      break;
 #endif
- #ifdef VK_USE_PLATFORM_WIN32_KHR
-    case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
-       error = VKSCR(CreateWin32SurfaceKHR)(screen->instance, &cdt->info.win32, NULL, &surface);
-       break;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+   case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
+      error = VKSCR(CreateWin32SurfaceKHR)(screen->instance, &cdt->info.win32, NULL, &surface);
+      break;
 #endif
-    default:
-       unreachable("unsupported!");
-    }
-    if (error != VK_SUCCESS) {
-       return VK_NULL_HANDLE;
-    }
+   default:
+      unreachable("unsupported!");
+   }
+   if (error != VK_SUCCESS) {
+      return VK_NULL_HANDLE;
+   }
 
-    VkBool32 supported;
-    error = VKSCR(GetPhysicalDeviceSurfaceSupportKHR)(screen->pdev, screen->gfx_queue, surface, &supported);
-    if (!zink_screen_handle_vkresult(screen, error) || !supported)
-       goto fail;
+   VkBool32 supported;
+   error = VKSCR(GetPhysicalDeviceSurfaceSupportKHR)(screen->pdev, screen->gfx_queue, surface, &supported);
+   if (!zink_screen_handle_vkresult(screen, error) || !supported)
+      goto fail;
 
-    unsigned count = 10;
-    VkPresentModeKHR modes[10];
-    error = VKSCR(GetPhysicalDeviceSurfacePresentModesKHR)(screen->pdev, surface, &count, modes);
-    if (!zink_screen_handle_vkresult(screen, error))
-       goto fail;
+   unsigned count = 10;
+   VkPresentModeKHR modes[10];
+   error = VKSCR(GetPhysicalDeviceSurfacePresentModesKHR)(screen->pdev, surface, &count, modes);
+   if (!zink_screen_handle_vkresult(screen, error))
+      goto fail;
 
-    for (unsigned i = 0; i < count; i++) {
-       /* VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR and VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR
-        * are not handled
-        */
-       assert(modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR);
-       if (modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-          cdt->present_modes |= BITFIELD_BIT(modes[i]);
-    }
+   for (unsigned i = 0; i < count; i++) {
+      /* VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR and VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR
+      * are not handled
+      */
+      assert(modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+      if (modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+         cdt->present_modes |= BITFIELD_BIT(modes[i]);
+   }
 
-    zink_kopper_set_present_mode_for_interval(cdt, cdt->info.initial_swap_interval);
+   zink_kopper_set_present_mode_for_interval(cdt, cdt->info.initial_swap_interval);
 
-    return surface;
+   return surface;
 fail:
    VKSCR(DestroySurfaceKHR)(screen->instance, surface, NULL);
    return VK_NULL_HANDLE;
