@@ -392,6 +392,19 @@ static nir_ssa_def *apply_blit_output_modifiers(nir_builder *b, nir_ssa_def *col
    if (options->dst_is_srgb)
       color = convert_linear_to_srgb(b, color);
 
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_ssa_def *one = options->use_integer_one ? nir_imm_int(b, 1) : nir_imm_float(b, 1);
+
+   /* Set channels not present in src to 0 or 1. This will eliminate code loading and resolving
+    * those channels.
+    */
+   for (unsigned chan = options->last_src_channel + 1; chan <= options->last_dst_channel; chan++)
+      color = nir_vector_insert_imm(b, color, chan == 3 ? one : zero, chan);
+
+   /* Discard channels not present in dst. The hardware fills unstored channels with 0. */
+   if (options->last_dst_channel < 3)
+      color = nir_trim_vector(b, color, options->last_dst_channel + 1);
+
    /* Convert to FP16 with rtz to match the pixel shader. Not necessary, but it helps verify
     * the behavior of the whole shader by comparing it to the gfx blit.
     */
