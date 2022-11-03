@@ -4903,6 +4903,47 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
    return true;
 }
 
+static void pvr_pbe_extend_rect(uint32_t texel_extend, VkRect2D *rect)
+{
+   rect->offset.x *= texel_extend;
+   rect->extent.width *= texel_extend;
+}
+
+static void pvr_pbe_rect_intersect(VkRect2D *rect_a, VkRect2D *rect_b)
+{
+   rect_a->extent.width = MIN2(rect_a->offset.x + rect_a->extent.width,
+                               rect_b->offset.x + rect_b->extent.width) -
+                          MAX2(rect_a->offset.x, rect_b->offset.x);
+   rect_a->offset.x = MAX2(rect_a->offset.x, rect_b->offset.x);
+   rect_a->extent.height = MIN2(rect_a->offset.y + rect_a->extent.height,
+                                rect_b->offset.y + rect_b->extent.height) -
+                           MAX2(rect_a->offset.y, rect_b->offset.y);
+   rect_a->offset.y = MAX2(rect_a->offset.y, rect_b->offset.y);
+}
+
+static VkFormat pvr_texel_extend_src_format(VkFormat vk_format)
+{
+   uint32_t bpp = vk_format_get_blocksizebits(vk_format);
+   VkFormat ext_format;
+
+   switch (bpp) {
+   case 16:
+      ext_format = VK_FORMAT_R8G8_UINT;
+      break;
+   case 32:
+      ext_format = VK_FORMAT_R8G8B8A8_UINT;
+      break;
+   case 48:
+      ext_format = VK_FORMAT_R16G16B16_UINT;
+      break;
+   default:
+      ext_format = VK_FORMAT_R8_UINT;
+      break;
+   }
+
+   return ext_format;
+}
+
 static void
 pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
                    uint32_t pass_idx,
@@ -4912,9 +4953,40 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
    uint32_t bpp;
 
    if (custom_mapping->texel_extend_src > 1U) {
-      pvr_finishme("Complete pvr_modify_command().");
+      struct pvr_rect_mapping *mapping = &transfer_cmd->mappings[0];
+
+      pvr_pbe_extend_rect(custom_mapping->texel_extend_src, &mapping->dst_rect);
+      pvr_pbe_extend_rect(custom_mapping->texel_extend_src, &mapping->src_rect);
+
+      transfer_cmd->dst.vk_format = VK_FORMAT_R8_UINT;
+      transfer_cmd->dst.width *= custom_mapping->texel_extend_src;
+      transfer_cmd->dst.stride *= custom_mapping->texel_extend_src;
+      transfer_cmd->src.vk_format = VK_FORMAT_R8_UINT;
+      transfer_cmd->src.width *= custom_mapping->texel_extend_src;
+      transfer_cmd->src.stride *= custom_mapping->texel_extend_src;
    } else if (custom_mapping->texel_extend_dst > 1U) {
-      pvr_finishme("Complete pvr_modify_command().");
+      VkRect2D max_clip = {
+         .offset = { 0, 0 },
+         .extent = { custom_mapping->max_clip_size,
+                     custom_mapping->max_clip_size },
+      };
+
+      pvr_pbe_extend_rect(custom_mapping->texel_extend_dst,
+                          &transfer_cmd->scissor);
+
+      pvr_pbe_rect_intersect(&transfer_cmd->scissor, &max_clip);
+
+      if (transfer_cmd->src_present) {
+         transfer_cmd->src.width *= custom_mapping->texel_extend_dst;
+         transfer_cmd->src.stride *= custom_mapping->texel_extend_dst;
+
+         transfer_cmd->src.vk_format =
+            pvr_texel_extend_src_format(transfer_cmd->src.vk_format);
+      }
+
+      transfer_cmd->dst.vk_format = VK_FORMAT_R8_UINT;
+      transfer_cmd->dst.width *= custom_mapping->texel_extend_dst;
+      transfer_cmd->dst.stride *= custom_mapping->texel_extend_dst;
    }
 
    if (custom_mapping->double_stride) {
