@@ -94,7 +94,7 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
          lowered_dst = nir_iclamp(bld, lowered_dst,
                                   nir_imm_intN_t(bld, int_min, bit_size),
                                   nir_imm_intN_t(bld, int_max, bit_size));
-      } else if (op == nir_op_uadd_sat || op == nir_op_usub_sat) {
+      } else if (op == nir_op_uadd_sat) {
          const uint64_t uint_max = u_uintN_max(dst_bit_size);
 
          lowered_dst = nir_umin(bld, lowered_dst,
