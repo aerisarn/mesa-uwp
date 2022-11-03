@@ -135,7 +135,7 @@ stw_st_fill_private_loader_data(struct stw_st_framebuffer *stwfb, struct kopper_
    out->win32.hwnd = stwfb->fb->hWnd;
    out->has_alpha = true;
 }
-#endif 
+#endif
 /**
  * Remove outdated textures and create the requested ones.
  */
