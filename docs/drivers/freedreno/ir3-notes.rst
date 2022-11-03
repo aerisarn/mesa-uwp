@@ -15,7 +15,7 @@ Here, the second instruction needs the output of the first group of scalar instr
 So the current compiler instead, in the frontend, generates a directed-acyclic-graph of instructions and basic blocks, which go through various additional passes to eventually schedule and do register assignment.
 
 For additional documentation about the hardware, see wiki: `a3xx ISA
-<https://github.com/freedreno/freedreno/wiki/A3xx-shader-instruction-set-architecture>`_.
+<https://github.com/freedreno/freedreno/wiki/A3xx-shader-instruction-set-architecture>`__.
 
 External Structure
 ------------------

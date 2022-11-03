@@ -191,7 +191,7 @@ Docker caching
 The CI system uses Docker images extensively to cache
 infrequently-updated build content like the CTS.  The `freedesktop.org
 CI templates
-<https://gitlab.freedesktop.org/freedesktop/ci-templates/>`_ help us
+<https://gitlab.freedesktop.org/freedesktop/ci-templates/>`__ help us
 manage the building of the images to reduce how frequently rebuilds
 happen, and trim down the images (stripping out manpages, cleaning the
 apt cache, and other such common pitfalls of building Docker images).
@@ -211,7 +211,7 @@ When developing a given change to your Docker image, you would have to
 bump the tag on each ``git commit --amend`` to your development
 branch, which can get tedious.  Instead, you can navigate to the
 `container registry
-<https://gitlab.freedesktop.org/mesa/mesa/container_registry>`_ for
+<https://gitlab.freedesktop.org/mesa/mesa/container_registry>`__ for
 your repository and delete the tag to force a rebuild.  When your code
 is eventually merged to main, a full image rebuild will occur again
 (forks inherit images from the main repo, but MRs don't propagate

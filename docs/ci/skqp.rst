@@ -1,9 +1,9 @@
 SkQP
 ====
 
-`SkQP <https://skia.org/docs/dev/testing/skqp/>`_ stands for SKIA Quality
+`SkQP <https://skia.org/docs/dev/testing/skqp/>`__ stands for SKIA Quality
 Program conformance tests.  Basically, it has sets of rendering tests and unit
-tests to ensure that `SKIA <https://skia.org/>`_ is meeting its design specifications on a specific
+tests to ensure that `SKIA <https://skia.org/>`__ is meeting its design specifications on a specific
 device.
 
 The rendering tests have support for GL, GLES and Vulkan backends and test some

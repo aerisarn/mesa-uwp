@@ -41,7 +41,7 @@ to iterate over the table.
 
 These tables are are generated automatically using a bit of python code that
 parses the vk.xml from the `Vulkan-Docs repo
-<https://github.com/KhronosGroup/Vulkan-docs/>`_, enumerates the
+<https://github.com/KhronosGroup/Vulkan-docs/>`__, enumerates the
 extensions, sorts them by instance vs. device and generates the table.
 Generating it from XML means that we never have to manually maintain any of
 these data structures; they get automatically updated when someone imports

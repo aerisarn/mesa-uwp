@@ -42,5 +42,5 @@ Documentation
 On `docs.mesa3d.org <https://docs.mesa3d.org/>`__, we currently only
 publish the documentation from our main branch. But you can view the
 documentation for the Amber branch `here
-<https://gitlab.freedesktop.org/mesa/mesa/-/tree/amber/docs>`_.
+<https://gitlab.freedesktop.org/mesa/mesa/-/tree/amber/docs>`__.
 

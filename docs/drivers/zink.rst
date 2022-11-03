@@ -290,7 +290,7 @@ Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Another useful tool for debugging is the `Vulkan Validation Layers
-<https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/master/README.md>`_.
+<https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/master/README.md>`__.
 
 The validation layers effectively insert extra checking between Zink and the
 Vulkan driver, pointing out incorrect usage of the Vulkan API. The layers can
