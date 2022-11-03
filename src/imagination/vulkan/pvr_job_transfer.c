@@ -53,6 +53,7 @@
 #define PVR_TRANSFER_MAX_PASSES 10U
 #define PVR_TRANSFER_MAX_CLIP_RECTS 4U
 #define PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT 16U
+#define PVR_TRANSFER_MAX_CUSTOM_RECTS 3U
 
 /* Number of triangles sent to the TSP per raster. */
 #define PVR_TRANSFER_NUM_LAYERS 1U
@@ -835,7 +836,29 @@ pvr_pbe_setup_modify_defaults(const struct pvr_transfer_cmd_surface *dst,
                               struct pvr_pbe_surf_params *surf_params,
                               struct pvr_pbe_render_params *render_params)
 {
-   pvr_finishme("Implement pvr_pbe_setup_modify_defaults().");
+   struct pvr_transfer_pass *pass;
+   VkRect2D *clip_rect;
+
+   render_params->mrt_index = rt_idx;
+
+   assert(rt_idx > 0 && rt_idx <= PVR_TRANSFER_MAX_RENDER_TARGETS);
+
+   if (state->custom_mapping.pass_count == 0)
+      return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
+
+   pass = &state->custom_mapping.passes[state->pass_idx];
+
+   assert(rt_idx < PVR_TRANSFER_MAX_CUSTOM_RECTS);
+
+   clip_rect = &pass->clip_rects[rt_idx];
+
+   render_params->min_x_clip = (uint32_t)clip_rect->offset.x;
+   render_params->max_x_clip =
+      (uint32_t)clip_rect->offset.x + clip_rect->extent.width;
+   render_params->min_y_clip = (uint32_t)clip_rect->offset.y;
+   render_params->max_y_clip =
+      (uint32_t)clip_rect->offset.y + clip_rect->extent.height;
+
    return VK_SUCCESS;
 }
 
