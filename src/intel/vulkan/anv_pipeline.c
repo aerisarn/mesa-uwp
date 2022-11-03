@@ -2622,11 +2622,11 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 }
 
 static bool
-anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
-                                 struct vk_pipeline_cache *cache,
-                                 const VkRayTracingPipelineCreateInfoKHR *info,
-                                 struct anv_pipeline_stage *stages,
-                                 uint32_t *stack_max)
+anv_ray_tracing_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
+                                             struct vk_pipeline_cache *cache,
+                                             const VkRayTracingPipelineCreateInfoKHR *info,
+                                             struct anv_pipeline_stage *stages,
+                                             uint32_t *stack_max)
 {
    uint32_t shaders = 0, cache_hits = 0;
    for (uint32_t i = 0; i < info->stageCount; i++) {
@@ -2690,7 +2690,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    uint32_t stack_max[MESA_VULKAN_SHADER_STAGES] = {};
 
    if (!skip_cache_lookup &&
-       anv_pipeline_load_cached_shaders(pipeline, cache, info, stages, stack_max)) {
+       anv_ray_tracing_pipeline_load_cached_shaders(pipeline, cache, info,
+                                                    stages, stack_max)) {
       pipeline_feedback.flags |=
          VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
       goto done;
