@@ -3783,7 +3783,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (can_apply_sgprs(ctx, instr))
          apply_sgprs(ctx, instr);
       combine_mad_mix(ctx, instr);
-      while (apply_omod_clamp(ctx, instr) | combine_output_conversion(ctx, instr))
+      while (apply_omod_clamp(ctx, instr) || combine_output_conversion(ctx, instr))
          ;
       apply_insert(ctx, instr);
    }
