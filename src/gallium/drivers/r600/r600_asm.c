@@ -2582,7 +2582,7 @@ void r600_bytecode_disasm(struct r600_bytecode *bc)
 		}
 
 		LIST_FOR_EACH_ENTRY(gds, &cf->gds, list) {
-			int o = 0;
+			UNUSED int o = 0;
 			o += fprintf(stderr, " %04d %08X %08X %08X   ", id, bc->bytecode[id],
 					bc->bytecode[id + 1], bc->bytecode[id + 2]);
 

@@ -489,10 +489,6 @@ TexInstr::emit_set_offsets(
    for (int i = 0; i < src_components; ++i)
       swizzle[i] = i;
 
-   int noffsets = tex->coord_components;
-   if (tex->is_array)
-      --noffsets;
-
    auto ofs = shader.value_factory().src_vec4(*src.offset, pin_group, swizzle);
    RegisterVec4 empty_dst(0, false, {0, 0, 0, 0}, pin_group);
 
