@@ -668,10 +668,10 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
    info->bin.smemSize = shader->cp.smem_size;
    info->dbgFlags = debug_get_num_option("NV50_PROG_DEBUG", 0);
    info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
-   info->io.auxCBSlot = 15;
+   info->io.auxCBSlot = 1;
    info->io.uboInfoBase = 0;
+   info->io.drawInfoBase = 0;
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
-      info->io.auxCBSlot = 1;
       info->prop.cp.gridInfoBase = 0;
    } else {
       info->assignSlots = nvc0_program_assign_varying_slots;

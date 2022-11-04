@@ -33,7 +33,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
 
-   uint32_t push_data[768];
+   uint32_t push_data[1024];
    struct nv_push push;
    nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
    struct nv_push *p = &push;
@@ -1433,6 +1433,14 @@ nvk_build_mme_draw(struct mme_builder *b, struct mme_value begin)
    struct mme_value first_vertex = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
+   // load base instance in root descriptor
+   const uint32_t base_instance_offset =
+      nvk_root_descriptor_offset(draw.base_instance);
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(base_instance_offset));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, first_instance);
+
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
    mme_emit(b, mme_zero());
 
@@ -1510,6 +1518,14 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    struct mme_value first_index = mme_load(b);
    struct mme_value vertex_offset = mme_load(b);
    struct mme_value first_instance = mme_load(b);
+
+   // load base instance in root descriptor
+   const uint32_t base_instance_offset =
+      nvk_root_descriptor_offset(draw.base_instance);
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(base_instance_offset));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, first_instance);
 
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
    mme_emit(b, vertex_offset);
