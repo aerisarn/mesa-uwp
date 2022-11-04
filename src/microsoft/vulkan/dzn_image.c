@@ -948,10 +948,12 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
          iview->srv_desc.Texture1DArray.MipLevels = iview->vk.level_count;
          iview->srv_desc.Texture1DArray.FirstArraySlice = iview->vk.base_array_layer;
          iview->srv_desc.Texture1DArray.ArraySize = iview->vk.layer_count;
+         iview->srv_desc.Texture1DArray.ResourceMinLODClamp = 0.0f;
       } else {
          iview->srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
          iview->srv_desc.Texture1D.MostDetailedMip = iview->vk.base_mip_level;
          iview->srv_desc.Texture1D.MipLevels = iview->vk.level_count;
+         iview->srv_desc.Texture1D.ResourceMinLODClamp = 0.0f;
       }
       break;
 
@@ -968,6 +970,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
          iview->srv_desc.Texture2DArray.FirstArraySlice = iview->vk.base_array_layer;
          iview->srv_desc.Texture2DArray.ArraySize = iview->vk.layer_count;
          iview->srv_desc.Texture2DArray.PlaneSlice = plane_slice;
+         iview->srv_desc.Texture2DArray.ResourceMinLODClamp = 0.0f;
       } else if (!use_array && ms) {
          iview->srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
       } else {
@@ -975,6 +978,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
          iview->srv_desc.Texture2D.MostDetailedMip = iview->vk.base_mip_level;
          iview->srv_desc.Texture2D.MipLevels = iview->vk.level_count;
          iview->srv_desc.Texture2D.PlaneSlice = plane_slice;
+         iview->srv_desc.Texture2D.ResourceMinLODClamp = 0.0f;
       }
       break;
 
@@ -986,10 +990,12 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
          iview->srv_desc.TextureCubeArray.MipLevels = iview->vk.level_count;
          iview->srv_desc.TextureCubeArray.First2DArrayFace = iview->vk.base_array_layer;
          iview->srv_desc.TextureCubeArray.NumCubes = iview->vk.layer_count / 6;
+         iview->srv_desc.TextureCubeArray.ResourceMinLODClamp = 0.0f;
       } else {
          iview->srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
          iview->srv_desc.TextureCube.MostDetailedMip = iview->vk.base_mip_level;
          iview->srv_desc.TextureCube.MipLevels = iview->vk.level_count;
+         iview->srv_desc.TextureCube.ResourceMinLODClamp = 0.0f;
       }
       break;
 
@@ -997,6 +1003,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
       iview->srv_desc.ViewDimension =  D3D12_SRV_DIMENSION_TEXTURE3D;
       iview->srv_desc.Texture3D.MostDetailedMip = iview->vk.base_mip_level;
       iview->srv_desc.Texture3D.MipLevels = iview->vk.level_count;
+      iview->srv_desc.Texture3D.ResourceMinLODClamp = 0.0f;
       break;
 
    default: unreachable("Invalid view type");
