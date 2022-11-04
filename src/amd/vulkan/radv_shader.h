@@ -763,4 +763,8 @@ bool radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *devi
 bool radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_stage,
                               const struct radv_pipeline_key *key);
 
+nir_shader *create_rt_shader(struct radv_device *device,
+                             const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                             struct radv_pipeline_shader_stack_size *stack_sizes);
+
 #endif
