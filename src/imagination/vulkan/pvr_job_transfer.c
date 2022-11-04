@@ -4583,13 +4583,99 @@ static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
    return false;
 }
 
+static void pvr_split_rect(uint32_t stride,
+                           uint32_t height,
+                           uint32_t texel_unwind,
+                           VkRect2D *rect_a,
+                           VkRect2D *rect_b)
+{
+   rect_a->offset.x = 0;
+   rect_a->extent.width = stride - texel_unwind;
+   rect_a->offset.y = 0;
+   rect_a->extent.height = height;
+
+   rect_b->offset.x = (int32_t)stride - texel_unwind;
+   rect_b->extent.width = texel_unwind;
+   rect_b->offset.y = 0;
+   rect_b->extent.height = height;
+}
+
+static bool pvr_rect_width_covered_by(const VkRect2D *rect_a,
+                                      const VkRect2D *rect_b)
+{
+   return (rect_b->offset.x <= rect_a->offset.x &&
+           (rect_b->offset.x + rect_b->extent.width) >=
+              (rect_a->offset.x + rect_a->extent.width));
+}
+
 static void pvr_unwind_rects(uint32_t width,
                              uint32_t height,
                              uint32_t texel_unwind,
                              bool input,
                              struct pvr_transfer_pass *pass)
 {
-   pvr_finishme("Implement pvr_unwind_rects().");
+   uint32_t num_mappings = pass->mapping_count;
+   struct pvr_rect_mapping *mappings = pass->mappings;
+   VkRect2D rect_a, rect_b;
+   uint32_t new_mappings = 0;
+   uint32_t i;
+
+   if (texel_unwind == 0)
+      return;
+
+   pvr_split_rect(width, height, texel_unwind, &rect_a, &rect_b);
+
+   for (i = 0; i < num_mappings; i++) {
+      VkRect2D *rect = input ? &mappings[i].src_rect : &mappings[i].dst_rect;
+
+      if (height == 1) {
+         rect->offset.x += texel_unwind;
+      } else if (width == 1) {
+         rect->offset.y += texel_unwind;
+      } else if (pvr_rect_width_covered_by(rect, &rect_a)) {
+         rect->offset.x += texel_unwind;
+      } else if (pvr_rect_width_covered_by(rect, &rect_b)) {
+         rect->offset.x = texel_unwind - width + rect->offset.x;
+         rect->offset.y++;
+      } else {
+         /* Mapping requires split. */
+         uint32_t new_mapping = num_mappings + new_mappings;
+         VkRect2D *new_rect = input ? &mappings[new_mapping].src_rect
+                                    : &mappings[new_mapping].dst_rect;
+         uint32_t split_point = width - texel_unwind;
+
+         assert(new_mapping < ARRAY_SIZE(pass->mappings));
+
+         mappings[new_mapping] = mappings[i];
+
+         new_rect->extent.width =
+            (new_rect->extent.width + new_rect->offset.x) - split_point;
+         new_rect->offset.x = split_point;
+
+         if (input) {
+            mappings[i].dst_rect.extent.width -= new_rect->extent.width;
+            mappings[new_mapping].dst_rect.offset.x =
+               mappings[i].dst_rect.offset.x +
+               mappings[i].dst_rect.extent.width;
+         } else {
+            mappings[i].src_rect.extent.width -= new_rect->extent.width;
+            mappings[new_mapping].src_rect.offset.x =
+               mappings[i].src_rect.offset.x +
+               mappings[i].src_rect.extent.width;
+         }
+
+         rect->offset.x += texel_unwind;
+         rect->extent.width = width - rect->offset.x;
+
+         new_rect->offset.x =
+            (int32_t)texel_unwind - (int32_t)width + new_rect->offset.x;
+         new_rect->offset.y++;
+
+         new_mappings++;
+      }
+   }
+
+   pass->mapping_count += new_mappings;
 }
 
 /**
