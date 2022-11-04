@@ -158,4 +158,20 @@ pkt_is_opcode(uint32_t dword, uint32_t *opcode, uint32_t *size)
    return false;
 }
 
+/**
+ * For a5xx+ we can detect valid packet headers vs random other noise, and
+ * can use this to "re-sync" to the start of the next valid packet.  So that
+ * the same cmdstream corruption that confused the GPU doesn't confuse us!
+ */
+static inline uint32_t
+find_next_packet(uint32_t *dwords, uint32_t sizedwords)
+{
+   for (uint32_t c = 0; c < sizedwords; c++) {
+      if (pkt_is_type7(dwords[c]) || pkt_is_type4(dwords[c]))
+         return c;
+   }
+   return sizedwords;
+}
+
+
 #endif /* __CFFDEC_H__ */

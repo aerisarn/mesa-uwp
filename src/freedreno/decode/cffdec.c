@@ -2899,18 +2899,12 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
          printl(3, "%snop\n", levels[level + 1]);
          count = 1;
       } else {
+         printf("bad type! %08x\n", dwords[0]);
          /* for 5xx+ we can do a passable job of looking for start of next valid
           * packet: */
          if (options->gpu_id >= 500) {
-            while (dwords_left > 0) {
-               if (pkt_is_type7(dwords[0]) || pkt_is_type4(dwords[0]))
-                  break;
-               printf("bad type! %08x\n", dwords[0]);
-               dwords++;
-               dwords_left--;
-            }
+            count = find_next_packet(dwords, dwords_left);
          } else {
-            printf("bad type! %08x\n", dwords[0]);
             return;
          }
       }

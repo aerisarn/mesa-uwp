@@ -1703,6 +1703,8 @@ got cmdszdw=27
 bad type! deadd00d
 			opcode: CP_NOP (10) (1 dwords)
 ESTIMATED CRASH LOCATION!
+000000010000001c:			0000: 70108000
+			opcode: CP_NOP (10) (1 dwords)
 0000000100000020:			0000: 70108000
 			opcode: CP_NOP (10) (1 dwords)
 0000000100000024:			0000: 70108000
