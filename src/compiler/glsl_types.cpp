@@ -974,9 +974,9 @@ glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_MS:
          return (array ? texture2DMSArray_type : texture2DMS_type);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return subpassInput_type;
+         return textureSubpassInput_type;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return subpassInputMS_type;
+         return textureSubpassInputMS_type;
       case GLSL_SAMPLER_DIM_EXTERNAL:
          if (array)
             return error_type;
@@ -1006,9 +1006,9 @@ glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_MS:
          return (array ? itexture2DMSArray_type : itexture2DMS_type);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return isubpassInput_type;
+         return itextureSubpassInput_type;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return isubpassInputMS_type;
+         return itextureSubpassInputMS_type;
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return error_type;
       }
@@ -1035,9 +1035,9 @@ glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_MS:
          return (array ? utexture2DMSArray_type : utexture2DMS_type);
       case GLSL_SAMPLER_DIM_SUBPASS:
-         return usubpassInput_type;
+         return utextureSubpassInput_type;
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
-         return usubpassInputMS_type;
+         return utextureSubpassInputMS_type;
       case GLSL_SAMPLER_DIM_EXTERNAL:
          return error_type;
       }
