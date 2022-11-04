@@ -220,7 +220,8 @@ dzn_image_create(struct dzn_device *device,
                                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
          image->desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-   }
+   } else if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
    /* Images with TRANSFER_DST can be cleared or passed as a blit/resolve
     * destination. Both operations require the RT or DS cap flags.
@@ -238,9 +239,6 @@ dzn_image_create(struct dzn_device *device,
          image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
       }
    }
-
-   if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)
-      image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
    *out = dzn_image_to_handle(image);
    return VK_SUCCESS;
