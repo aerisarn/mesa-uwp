@@ -59,6 +59,7 @@ nvk_CreateGraphicsPipelines(VkDevice _device,
          continue;
 
       result = r;
+      pPipelines[i] = VK_NULL_HANDLE;
       if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
          break;
    }
@@ -89,6 +90,7 @@ nvk_CreateComputePipelines(VkDevice _device,
          continue;
 
       result = r;
+      pPipelines[i] = VK_NULL_HANDLE;
       if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
          break;
    }
