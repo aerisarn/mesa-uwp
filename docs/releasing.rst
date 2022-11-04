@@ -217,7 +217,12 @@ the branches:
 You are now on the :ref:`staging branch <stagingbranch>`, where you
 will be doing your release maintainer work. This branch can be rebased
 and altered in way necessary, with the caveat that anything pushed to
-the ``X.Y`` branch must not be altered anymore.
+the ``X.Y`` branch must not be altered anymore. A convenient command
+to perform an interactive rebase over everything since the last release is:
+
+.. code-block:: console
+
+   git rebase -i mesa-$(cat VERSION)
 
 Now go to
 `GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
