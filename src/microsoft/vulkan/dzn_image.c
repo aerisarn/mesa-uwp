@@ -904,7 +904,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
       (iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
        iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ?
       6 : 1;
-   bool use_array = (iview->vk.base_array_layer / layers_per_elem) > 0 ||
+   bool use_array = iview->vk.base_array_layer > 0 ||
                     (iview->vk.layer_count / layers_per_elem) > 1;
 
    iview->srv_desc = (D3D12_SHADER_RESOURCE_VIEW_DESC) {
