@@ -175,26 +175,39 @@ to stabilization and bugfixing.
    testing is done and there are little to-no issues. Ideally all of those
    should be tackled already.
 
-To setup the branchpoint:
+Setup the branchpoint:
 
 .. code-block:: console
-
-   git fetch origin # make sure we have the latest commits
-   git checkout main # make sure we're on main
-   git reset origin # make sure we're at the latest commit
-
-   VERSION=X.Y
-
-   git tag -s $VERSION-branchpoint -m "Mesa $VERSION branchpoint"
 
    # Make sure main can carry on at the new version
    $EDITOR VERSION # bump the version number, keeping in mind the wrap around at the end of the year
    git commit -asm 'VERSION: bump to X.(Y+1)'
    truncate -s0 docs/relnotes/new_features.txt
    git commit -asm 'docs: reset new_features.txt'
-   git push origin main
+   git push YOUR_FORK
 
-   # Create the tag and branches on the server
+Make a merge request with what you just pushed, and assign it straight
+to ``@Marge-bot``. Keep an eye on it, as you'll need to wait for it to
+be merged.
+
+Once it has been merged, note the last commit *before* your "VERSION:
+bump to X.Y" as this is the branchpoint. This is ``$LAST_COMMIT`` in the
+command below:
+
+.. code-block:: console
+
+   VERSION=X.Y
+
+   git tag -s $VERSION-branchpoint -m "Mesa $VERSION branchpoint" $LAST_COMMIT
+
+   # Double-check that you tagged the correct commit
+   git show $VERSION-branchpoint
+
+Now that we have an official branchpoint, let's push the tag and create
+the branches:
+
+.. code-block:: console
+
    git push origin $VERSION-branchpoint
    git checkout $VERSION-branchpoint
    git push origin HEAD:refs/heads/$VERSION
