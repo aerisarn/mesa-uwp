@@ -213,6 +213,17 @@ if with_tests
     suite: 'freedreno',
     workdir: dir_source_root
   )
+  crashdec_prefetch_output = custom_target('crashdec_prefetch.txt',
+    output: 'crashdec_prefetch.txt',
+    command: [crashdec, '-sf', files('../.gitlab-ci/traces/crash_prefetch.devcore')],
+    capture: true
+  )
+  test('crashdec with prefetch',
+    diff,
+    args: ['-u', files('../.gitlab-ci/reference/crash_prefetch.log'), crashdec_prefetch_output],
+    suite: 'freedreno',
+    workdir: meson.source_root()
+  )
 endif
 
 if dep_libarchive.found()
