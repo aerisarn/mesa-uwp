@@ -78,6 +78,7 @@ struct cffdec_options {
    struct {
       uint64_t base;
       uint32_t rem;
+      bool crash_found : 1;
    } ibs[4];
 };
 

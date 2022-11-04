@@ -96,7 +96,8 @@ static struct {
     * IB level isn't considered triggered unless the lower #'d IB
     * level is.
     */
-   bool triggered;
+   bool triggered : 1;
+   bool base_seen : 1;
 } ibs[4];
 static int ib;
 
@@ -171,7 +172,11 @@ highlight_gpuaddr(uint64_t gpuaddr)
    if (!options->ibs[ib].base)
       return false;
 
-   if ((ib > 0) && options->ibs[ib - 1].base && !ibs[ib - 1].triggered)
+   if ((ib > 0) && options->ibs[ib - 1].base &&
+       !(ibs[ib - 1].triggered || ibs[ib - 1].base_seen))
+      return false;
+
+   if (ibs[ib].base_seen)
       return false;
 
    if (ibs[ib].triggered)
@@ -184,6 +189,11 @@ highlight_gpuaddr(uint64_t gpuaddr)
    uint64_t end = ibs[ib].base + 4 * ibs[ib].size;
 
    bool triggered = (start <= gpuaddr) && (gpuaddr <= end);
+
+   if (triggered && (ib < 2) && options->ibs[ib + 1].crash_found) {
+      ibs[ib].base_seen = true;
+      return false;
+   }
 
    ibs[ib].triggered |= triggered;
 

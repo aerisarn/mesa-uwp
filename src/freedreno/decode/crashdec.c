@@ -388,6 +388,7 @@ dump_cmdstream(void)
       unsigned ringszdw = ringbuffers[id].size >> 2; /* in dwords */
 
       if (verbose) {
+         handle_prefetch(ringbuffers[id].buf, ringszdw);
          dump_commands(ringbuffers[id].buf, ringszdw, 0);
          return;
       }
@@ -420,6 +421,7 @@ dump_cmdstream(void)
          buf[idx] = ringbuffers[id].buf[p];
       }
 
+      handle_prefetch(buf, cmdszdw);
       dump_commands(buf, cmdszdw, 0);
       free(buf);
    }

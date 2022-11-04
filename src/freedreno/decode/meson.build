@@ -185,6 +185,7 @@ crashdec = executable(
     'crashdec.h',
     'crashdec-hfi.c',
     'crashdec-mempool.c',
+    'crashdec-prefetch.c',
   ],
   include_directories: [
     inc_freedreno,
