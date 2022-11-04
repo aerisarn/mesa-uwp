@@ -456,10 +456,8 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
        * communicates the results back via the ELF binary. Mirror what LLVM does by re-mapping the
        * VGPR arguments here.
        */
-      unsigned arg_count = 0;
       for (unsigned i = 0, vgpr_arg = 0, vgpr_reg = 0; i < args->ac.arg_count; i++) {
          if (args->ac.args[i].file != AC_ARG_VGPR) {
-            arg_count++;
             continue;
          }
 
@@ -468,7 +466,6 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
          } else {
             args->ac.args[i].offset = vgpr_reg;
             vgpr_reg += args->ac.args[i].size;
-            arg_count++;
          }
          vgpr_arg++;
       }
