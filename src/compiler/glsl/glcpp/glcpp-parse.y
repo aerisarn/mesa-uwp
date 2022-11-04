@@ -785,6 +785,8 @@ junk:
          glcpp_warning(&@1, parser, "extra tokens at end of directive");
       else
          glcpp_error(&@1, parser, "extra tokens at end of directive");
+
+      (void)yynerrs;
    }
 ;
 
