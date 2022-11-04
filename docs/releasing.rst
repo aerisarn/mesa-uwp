@@ -183,7 +183,9 @@ To setup the branchpoint:
    git checkout main # make sure we're on main
    git reset origin # make sure we're at the latest commit
 
-   git tag -s X.Y-branchpoint -m "Mesa X.Y branchpoint"
+   VERSION=X.Y
+
+   git tag -s $VERSION-branchpoint -m "Mesa $VERSION branchpoint"
 
    # Make sure main can carry on at the new version
    $EDITOR VERSION # bump the version number, keeping in mind the wrap around at the end of the year
@@ -193,9 +195,9 @@ To setup the branchpoint:
    git push origin main
 
    # Create the tag and branches on the server
-   git push origin X.Y-branchpoint
-   git push origin X.Y-branchpoint:refs/heads/X.Y
-   git push origin X.Y-branchpoint:refs/heads/staging/X.Y
+   git push origin $VERSION-branchpoint
+   git push origin $VERSION-branchpoint:refs/heads/$VERSION
+   git push origin $VERSION-branchpoint:refs/heads/staging/$VERSION
 
 Now go to
 `GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
