@@ -17,7 +17,7 @@ somewhat dated, unfortunately.
    Mesa.
 -  The `Mesa <https://www.mesa3d.org>`__ website and Git repository are
    hosted by `freedesktop.org <https://freedesktop.org/>`__.
--  `alt.software <http://web.archive.org/web/20131110021426/http://www.altsoftware.com/>`__
+-  `alt.software <https://web.archive.org/web/20131110021426/http://www.altsoftware.com/>`__
    contributed the Direct3D driver.
 -  **Bernd Barsuhn** wrote the evaluator code for (splines, patches) in
    Mesa.

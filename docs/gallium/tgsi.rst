@@ -3850,6 +3850,6 @@ well.
 | S                  | (s, s, s, s) | unknown            | unknown      |
 +--------------------+--------------+--------------------+--------------+
 
-.. [#envmap-bumpmap] http://www.opengl.org/registry/specs/ATI/envmap_bumpmap.txt
+.. [#envmap-bumpmap] https://www.opengl.org/registry/specs/ATI/envmap_bumpmap.txt
 .. [#depth-tex-mode] the default is (z, z, z, 1) but may also be (0, 0, 0, z)
    or (z, z, z, z) depending on the value of GL_DEPTH_TEXTURE_MODE.
