@@ -985,6 +985,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    case CHIP_FIJI:
    case CHIP_POLARIS12:
    case CHIP_VEGAM:
+   case CHIP_GFX1036:
       info->l2_cache_size = info->num_tcc_blocks * 128 * 1024;
       break;
    default:
@@ -995,7 +996,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       break;
    }
 
-   info->l1_cache_size = 16384;
+   if (info->gfx_level >= GFX11)
+      info->l1_cache_size = 32768;
+   else
+      info->l1_cache_size = 16384;
 
    info->mc_arb_ramcfg = amdinfo.mc_arb_ramcfg;
    info->gb_addr_config = amdinfo.gb_addr_cfg;
@@ -1330,7 +1334,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->max_scratch_waves = MAX2(32 * info->min_good_cu_per_sa * info->max_sa_per_se * info->num_se,
                                   max_waves_per_tg);
    info->num_rb = util_bitcount(info->enabled_rb_mask);
-   info->max_gflops = info->num_cu * 128 * info->max_gpu_freq_mhz / 1000;
+   info->max_gflops = (info->gfx_level >= GFX11 ? 256 : 128) * info->num_cu * info->max_gpu_freq_mhz / 1000;
    info->memory_bandwidth_gbps = DIV_ROUND_UP(info->memory_freq_mhz_effective * info->memory_bus_width / 8, 1000);
 
    if (info->gfx_level >= GFX10_3 && info->has_dedicated_vram) {
@@ -1407,7 +1411,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
 
    if (info->gfx_level >= GFX10) {
       fprintf(f, "    l0_cache_size = %i KB\n", DIV_ROUND_UP(info->l1_cache_size, 1024));
-      fprintf(f, "    l1_cache_size = %i KB\n", 128);
+      fprintf(f, "    l1_cache_size = %i KB\n", info->gfx_level >= GFX11 ? 256 : 128);
    } else {
       fprintf(f, "    l1_cache_size = %i KB\n", DIV_ROUND_UP(info->l1_cache_size, 1024));
    }
