@@ -76,11 +76,18 @@ zink_nir_algebraic_c = custom_target(
 zink_c_args = []
 inc_zink_vk = []
 
-# MoltenVK options
-if with_moltenvk_dir != ''
-  inc_zink_vk  = [inc_zink_vk, include_directories( join_paths(with_moltenvk_dir, 'include') )]
+if host_machine.system() == 'darwin'
+
+  # MoltenVK options
+  if with_moltenvk_dir != ''
+    inc_zink_vk += include_directories(join_paths(with_moltenvk_dir, 'include'))
+  else
+    error('moltenvk-dir is required but not set.')
+  endif
+
   zink_c_args += ['-x','objective-c'] # Put compiler into objective-C mode to allow for MacOS types, like IOSurface and CAMetalLayer
   zink_c_args += ['-iframework' , 'Foundation']
+
 endif
 
 libzink = static_library(
