@@ -2061,6 +2061,7 @@ ALIAS_statement: ALIAS IDENTIFIER '=' USED_IDENTIFIER
       } else {
          _mesa_symbol_table_add_symbol(state->st, $2, target);
       }
+      (void)yynerrs;
    }
    ;
 
