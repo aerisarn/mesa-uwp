@@ -2954,7 +2954,8 @@ static VkResult pvr_setup_descriptor_mappings(
 static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
                                       struct pvr_sub_cmd_compute *const sub_cmd)
 {
-   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
+   const struct pvr_device *device = cmd_buffer->device;
+   const struct pvr_physical_device *pdevice = device->pdevice;
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
@@ -2982,8 +2983,8 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
 
    /* Sometimes we don't have a secondary program if there were no constants to
     * write, but we still need to run a PDS program to accomplish the
-    * allocation of the local/common store shared registers so we repurpose the
-    * deallocation PDS program.
+    * allocation of the local/common store shared registers. Use the
+    * pre-uploaded empty PDS program in this instance.
     */
    if (pipeline->state.descriptor.pds_info.code_size_in_dwords) {
       uint32_t pds_data_size_in_dwords =
@@ -2998,10 +2999,13 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
       assert(pipeline->state.descriptor.pds_code.code_size);
       info.pds_code_offset = pipeline->state.descriptor.pds_code.code_offset;
    } else {
-      /* FIXME: There should be a deallocation pds program already uploaded
-       * that we use at this point.
-       */
-      assert(!"Unimplemented");
+      const struct pvr_pds_upload *program = &device->pds_compute_empty_program;
+
+      info.pds_data_offset = program->data_offset;
+      info.pds_data_size =
+         DIV_ROUND_UP(program->data_size << 2U,
+                      PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
+      info.pds_code_offset = program->code_offset;
    }
 
    /* We don't need to pad the workgroup size. */
