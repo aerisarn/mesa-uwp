@@ -196,8 +196,9 @@ To setup the branchpoint:
 
    # Create the tag and branches on the server
    git push origin $VERSION-branchpoint
-   git push origin $VERSION-branchpoint:refs/heads/$VERSION
-   git push origin $VERSION-branchpoint:refs/heads/staging/$VERSION
+   git checkout $VERSION-branchpoint
+   git push origin HEAD:refs/heads/$VERSION
+   git push origin HEAD:refs/heads/staging/$VERSION
 
 Now go to
 `GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
