@@ -810,29 +810,17 @@ static void pvr_pds_compute_program_setup(
    pvr_dev_addr_t usc_shader_dev_addr,
    struct pvr_pds_compute_shader_program *const program)
 {
-   *program = (struct pvr_pds_compute_shader_program){
-      /* clang-format off */
-      .local_input_regs = {
-         local_input_regs[0],
-         local_input_regs[1],
-         local_input_regs[2]
-      },
-      .work_group_input_regs = {
-         work_group_input_regs[0],
-         work_group_input_regs[1],
-         work_group_input_regs[2]
-      },
-      .global_input_regs = {
-         [0 ... (PVR_WORKGROUP_DIMENSIONS - 1)] =
-            PVR_PDS_COMPUTE_INPUT_REG_UNUSED
-      },
-      /* clang-format on */
-      .barrier_coefficient = barrier_coefficient,
-      .flattened_work_groups = true,
-      .clear_pds_barrier = false,
-      .add_base_workgroup = add_base_workgroup,
-      .kick_usc = true,
-   };
+   pvr_pds_compute_shader_program_init(program);
+   program->local_input_regs[0] = local_input_regs[0];
+   program->local_input_regs[1] = local_input_regs[1];
+   program->local_input_regs[2] = local_input_regs[2];
+   program->work_group_input_regs[0] = work_group_input_regs[0];
+   program->work_group_input_regs[1] = work_group_input_regs[1];
+   program->work_group_input_regs[2] = work_group_input_regs[2];
+   program->barrier_coefficient = barrier_coefficient;
+   program->add_base_workgroup = add_base_workgroup;
+   program->flattened_work_groups = true;
+   program->kick_usc = true;
 
    STATIC_ASSERT(ARRAY_SIZE(program->local_input_regs) ==
                  PVR_WORKGROUP_DIMENSIONS);

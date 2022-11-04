@@ -1183,22 +1183,9 @@ VkResult pvr_pds_compute_shader_create_and_upload(
 
 static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
 {
-   struct pvr_pds_compute_shader_program program = { 0U };
+   struct pvr_pds_compute_shader_program program;
 
-   STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) ==
-                 ARRAY_SIZE(program.work_group_input_regs));
-   STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) ==
-                 ARRAY_SIZE(program.global_input_regs));
-
-   /* Initialize PDS structure. */
-   for (uint32_t i = 0U; i < ARRAY_SIZE(program.local_input_regs); i++) {
-      program.local_input_regs[i] = PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
-      program.work_group_input_regs[i] = PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
-      program.global_input_regs[i] = PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
-   }
-
-   program.barrier_coefficient = PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
-
+   pvr_pds_compute_shader_program_init(&program);
    /* Fence kernel. */
    program.fence = true;
    program.clear_pds_barrier = true;
