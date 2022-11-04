@@ -212,6 +212,12 @@ the branches:
    git checkout $VERSION-branchpoint
    git push origin HEAD:refs/heads/$VERSION
    git push origin HEAD:refs/heads/staging/$VERSION
+   git checkout staging/$VERSION
+
+You are now on the :ref:`staging branch <stagingbranch>`, where you
+will be doing your release maintainer work. This branch can be rebased
+and altered in way necessary, with the caveat that anything pushed to
+the ``X.Y`` branch must not be altered anymore.
 
 Now go to
 `GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
