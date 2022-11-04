@@ -493,7 +493,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
 static bool
 job_should_enable_double_buffer(struct v3dv_job *job)
 {
-   /* Inocmpatibility with double-buffer */
+   /* Incompatibility with double-buffer */
    if (!job->can_use_double_buffer)
       return false;
 
@@ -1686,7 +1686,7 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
     *
     * Secondary command buffers don't start subpasses (and may not even have
     * framebuffer state), so we only care about this in primaries. The only
-    * exception could be a secondary runnning inside a subpass that needs to
+    * exception could be a secondary running inside a subpass that needs to
     * record a meta operation (with its own render pass) that relies on
     * attachment load clears, but we don't have any instances of that right
     * now.
@@ -2580,7 +2580,7 @@ cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
  *    in rasterization."
  *
  * We need to enable MSAA in the TILE_BINNING_MODE_CFG packet, which we
- * emit when we start a new frame at the begining of a subpass. At that point,
+ * emit when we start a new frame at the beginning of a subpass. At that point,
  * if the framebuffer doesn't have any attachments we won't enable MSAA and
  * the job won't be valid in the scenario described by the spec.
  *
@@ -3351,7 +3351,7 @@ v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
                        float minDepthBounds,
                        float maxDepthBounds)
 {
-   /* We do not support depth bounds testing so we just ingore this. We are
+   /* We do not support depth bounds testing so we just ignore this. We are
     * already asserting that pipelines don't enable the feature anyway.
     */
 }
@@ -3622,7 +3622,7 @@ v3dv_cmd_buffer_schedule_end_query(struct v3dv_cmd_buffer *cmd_buffer,
        *
        * In our case, only the first query is used but this means we still need
        * to flag the other queries as available so we don't emit errors when
-       * the applications attempt to retrive values from them.
+       * the applications attempt to retrieve values from them.
        */
       struct v3dv_render_pass *pass = cmd_buffer->state.pass;
       if (!pass->multiview_enabled) {

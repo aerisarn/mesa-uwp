@@ -387,7 +387,7 @@ check_needs_clear(const struct v3dv_cmd_buffer_state *state,
    if (state->job->is_subpass_continue)
       return false;
 
-   /* If the render area is not aligned to tile boudaries we can't use the
+   /* If the render area is not aligned to tile boundaries we can't use the
     * TLB for a clear.
     */
    if (!state->tile_aligned_render_area)
@@ -787,7 +787,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
    const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
    struct v3dv_cl *rcl = &job->rcl;
 
-   /* Comon config must be the first TILE_RENDERING_MODE_CFG and
+   /* Common config must be the first TILE_RENDERING_MODE_CFG and
     * Z_STENCIL_CLEAR_VALUES must be last. The ones in between are optional
     * updates to the previous HW state.
     */

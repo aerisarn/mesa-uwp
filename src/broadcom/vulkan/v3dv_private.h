@@ -177,10 +177,10 @@ struct v3dv_physical_device {
     * Specifically, when self-importing (i.e. importing a BO into the same
     * device that created it), the kernel will give us the same BO handle
     * for both BOs and we must only free it once when  both references are
-    * freed. Otherwise, if we are not self-importing, we get two differnt BO
+    * freed. Otherwise, if we are not self-importing, we get two different BO
     * handles, and we want to free each one individually.
     *
-    * The BOs in this map all have a refcnt with the referece counter and
+    * The BOs in this map all have a refcnt with the reference counter and
     * only self-imported BOs will ever have a refcnt > 1.
     */
    struct util_sparse_array bo_map;
@@ -558,7 +558,7 @@ struct v3dv_device {
 
    struct v3dv_pipeline_cache default_pipeline_cache;
 
-   /* GL_SHADER_STATE_RECORD needs to speficy default attribute values. The
+   /* GL_SHADER_STATE_RECORD needs to specify default attribute values. The
     * following covers the most common case, that is all attributes format
     * being float being float, allowing us to reuse the same BO for all
     * pipelines matching this requirement. Pipelines that need integer
@@ -1568,7 +1568,7 @@ struct v3dv_cmd_buffer {
 
    /* Used at submit time to link command buffers in the submission that have
     * spawned wait threads, so we can then wait on all of them to complete
-    * before we process any signal sempahores or fences.
+    * before we process any signal semaphores or fences.
     */
    struct list_head list_link;
 
@@ -1827,7 +1827,7 @@ struct v3dv_descriptor_set_binding_layout {
    /* Number of array elements in this binding */
    uint32_t array_size;
 
-   /* Index into the flattend descriptor set */
+   /* Index into the flattened descriptor set */
    uint32_t descriptor_index;
 
    uint32_t dynamic_offset_count;
@@ -2472,7 +2472,7 @@ u64_compare(const void *key1, const void *key2)
    return memcmp(key1, key2, sizeof(uint64_t)) == 0;
 }
 
-/* Helper to call hw ver speficic functions */
+/* Helper to call hw ver specific functions */
 #define v3dv_X(device, thing) ({                      \
    __typeof(&v3d42_##thing) v3d_X_thing;              \
    switch (device->devinfo.ver) {                     \
