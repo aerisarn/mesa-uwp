@@ -259,11 +259,11 @@ u_unfilled_gen_c = custom_target(
 )
 
 libmesa_util_sse41 = static_library(
-		'mesa_util_sse41',
-		files('streaming-load-memcpy.c'),
-		c_args : [c_msvc_compat_args, sse41_args],
-		include_directories : [inc_include, inc_src, inc_mesa],
-		gnu_symbol_visibility : 'hidden',
+  'mesa_util_sse41',
+  files('streaming-load-memcpy.c'),
+  c_args : [c_msvc_compat_args, sse41_args],
+  include_directories : [inc_include, inc_src, inc_mesa],
+  gnu_symbol_visibility : 'hidden',
 )
 
 _libmesa_util = static_library(
