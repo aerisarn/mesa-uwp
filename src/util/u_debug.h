@@ -355,6 +355,9 @@ comma_separated_list_contains(const char *list, const char *s);
 const char *
 debug_get_option(const char *name, const char *dfault);
 
+const char *
+debug_get_option_cached(const char *name, const char *dfault);
+
 bool
 debug_get_bool_option(const char *name, bool dfault);
 

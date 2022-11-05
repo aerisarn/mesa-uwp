@@ -26,9 +26,12 @@
  **************************************************************************/
 
 
+#include "hash_table.h"
+#include "macros.h"
 #include "os_misc.h"
 #include "os_file.h"
-#include "macros.h"
+#include "ralloc.h"
+#include "simple_mtx.h"
 
 #include <stdarg.h>
 
@@ -179,6 +182,49 @@ os_get_option(const char *name)
       opt = os_get_android_option(name);
    }
 #endif
+   return opt;
+}
+
+static struct hash_table *options_tbl;
+static simple_mtx_t options_tbl_mtx = SIMPLE_MTX_INITIALIZER;
+
+/**
+ * NOTE: The strings that allocated with ralloc_strdup(options_tbl, ...)
+ * are freed by _mesa_hash_table_destroy automatically
+ */
+static void
+options_tbl_fini(void)
+{
+   _mesa_hash_table_destroy(options_tbl, NULL);
+}
+
+const char *
+os_get_option_cached(const char *name)
+{
+   char *opt = NULL;
+   simple_mtx_lock(&options_tbl_mtx);
+   if (!options_tbl) {
+      options_tbl = _mesa_hash_table_create(NULL, _mesa_hash_string,
+            _mesa_key_string_equal);
+      if (options_tbl == NULL) {
+         goto exit_mutex;
+      }
+      atexit(options_tbl_fini);
+   }
+   struct hash_entry *entry = _mesa_hash_table_search(options_tbl, name);
+   if (entry) {
+      opt = entry->data;
+      goto exit_mutex;
+   }
+
+   char *name_dup = ralloc_strdup(options_tbl, name);
+   if (name_dup == NULL) {
+      goto exit_mutex;
+   }
+   opt = ralloc_strdup(options_tbl, os_get_option(name));
+   _mesa_hash_table_insert(options_tbl, name_dup, (void *)opt);
+exit_mutex:
+   simple_mtx_unlock(&options_tbl_mtx);
    return opt;
 }
 

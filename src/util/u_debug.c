@@ -166,6 +166,23 @@ debug_get_option(const char *name, const char *dfault)
 }
 
 
+const char *
+debug_get_option_cached(const char *name, const char *dfault)
+{
+   const char *result;
+
+   result = os_get_option_cached(name);
+   if (!result)
+      result = dfault;
+
+   if (debug_get_option_should_print())
+      debug_printf("%s: %s = %s\n", __FUNCTION__, name,
+                   result ? result : "(null)");
+
+   return result;
+}
+
+
 /**
  * Reads an environment variable and interprets its value as a boolean.
  * Recognizes 0/n/no/f/false case insensitive as false.

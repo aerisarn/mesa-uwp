@@ -90,6 +90,16 @@ os_log_message(const char *message);
 const char *
 os_get_option(const char *name);
 
+/*
+ * Get an option. Should return NULL if specified option is not set.
+ * It's will save the option into hash table for the first time, and
+ * for latter calling, it's will return the value comes from hash table
+ * directly, and the returned value will always be valid before program exit
+ * The disadvantage is that setenv, unsetenv, putenv won't take effect
+ * after this function is called
+ */
+const char *
+os_get_option_cached(const char *name);
 
 /*
  * Get the total amount of physical memory available on the system.
