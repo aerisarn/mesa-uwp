@@ -602,6 +602,14 @@ impl Mem {
         self.is_parent_buffer() && self.mem_type == CL_MEM_OBJECT_IMAGE2D
     }
 
+    // this is kinda bogus, because that won't work with system SVM, but the spec wants us to
+    // implement this.
+    pub fn is_svm(&self) -> bool {
+        let mem = self.get_parent();
+        self.context.find_svm_alloc(mem.host_ptr.cast()).is_some()
+            && bit_check(mem.flags, CL_MEM_USE_HOST_PTR)
+    }
+
     fn get_res(&self) -> CLResult<&HashMap<Arc<Device>, Arc<PipeResource>>> {
         self.get_parent().res.as_ref().ok_or(CL_OUT_OF_HOST_MEMORY)
     }

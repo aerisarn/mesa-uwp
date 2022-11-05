@@ -181,7 +181,18 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 (CL_FP_ROUND_TO_NEAREST | CL_FP_INF_NAN) as cl_device_fp_config,
             ),
             CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS => cl_prop::<bool>(false),
-            CL_DEVICE_SVM_CAPABILITIES => cl_prop::<cl_device_svm_capabilities>(0),
+            CL_DEVICE_SVM_CAPABILITIES | CL_DEVICE_SVM_CAPABILITIES_ARM => {
+                cl_prop::<cl_device_svm_capabilities>(
+                    if dev.svm_supported() {
+                        CL_DEVICE_SVM_COARSE_GRAIN_BUFFER
+                            | CL_DEVICE_SVM_FINE_GRAIN_BUFFER
+                            | CL_DEVICE_SVM_FINE_GRAIN_SYSTEM
+                    } else {
+                        0
+                    }
+                    .into(),
+                )
+            }
             CL_DEVICE_TYPE => cl_prop::<cl_device_type>(dev.device_type(false)),
             CL_DEVICE_VENDOR => cl_prop(dev.screen().device_vendor()),
             CL_DEVICE_VENDOR_ID => cl_prop::<cl_uint>(dev.vendor_id()),

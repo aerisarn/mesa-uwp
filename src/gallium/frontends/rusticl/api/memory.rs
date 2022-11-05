@@ -4,6 +4,7 @@ use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
+use crate::core::context::Context;
 use crate::core::device::*;
 use crate::core::format::*;
 use crate::core::memory::*;
@@ -13,7 +14,10 @@ use mesa_rust_util::properties::Properties;
 use mesa_rust_util::ptr::*;
 use rusticl_opencl_gen::*;
 
+use std::alloc;
+use std::alloc::Layout;
 use std::cmp::Ordering;
+use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
@@ -56,7 +60,7 @@ fn validate_mem_flags(flags: cl_mem_flags, images: bool) -> CLResult<()> {
     Ok(())
 }
 
-fn validate_map_flags(m: &Mem, map_flags: cl_mem_flags) -> CLResult<()> {
+fn validate_map_flags_common(map_flags: cl_mem_flags) -> CLResult<()> {
     // CL_INVALID_VALUE ... if values specified in map_flags are not valid.
     let valid_flags =
         cl_bitfield::from(CL_MAP_READ | CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION);
@@ -68,6 +72,12 @@ fn validate_map_flags(m: &Mem, map_flags: cl_mem_flags) -> CLResult<()> {
     {
         return Err(CL_INVALID_VALUE);
     }
+
+    Ok(())
+}
+
+fn validate_map_flags(m: &Mem, map_flags: cl_mem_flags) -> CLResult<()> {
+    validate_map_flags_common(map_flags)?;
 
     // CL_INVALID_OPERATION if buffer has been created with CL_MEM_HOST_WRITE_ONLY or
     // CL_MEM_HOST_NO_ACCESS and CL_MAP_READ is set in map_flags
@@ -223,7 +233,9 @@ impl CLInfo<cl_mem_info> for cl_mem {
             CL_MEM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
             CL_MEM_SIZE => cl_prop::<usize>(mem.size),
             CL_MEM_TYPE => cl_prop::<cl_mem_object_type>(mem.mem_type),
-            CL_MEM_USES_SVM_POINTER => cl_prop::<cl_bool>(CL_FALSE),
+            CL_MEM_USES_SVM_POINTER | CL_MEM_USES_SVM_POINTER_ARM => {
+                cl_prop::<cl_bool>(mem.is_svm().into())
+            }
             _ => return Err(CL_INVALID_VALUE),
         })
     }
@@ -2171,4 +2183,600 @@ impl CLInfo<cl_pipe_info> for cl_mem {
         // CL_INVALID_MEM_OBJECT if pipe is a not a valid pipe object.
         Err(CL_INVALID_MEM_OBJECT)
     }
+}
+
+pub fn svm_alloc(
+    context: cl_context,
+    flags: cl_svm_mem_flags,
+    size: usize,
+    mut alignment: cl_uint,
+) -> CLResult<*mut c_void> {
+    // clSVMAlloc will fail if
+
+    // context is not a valid context
+    let c = context.get_ref()?;
+
+    // or no devices in context support SVM.
+    if !c.has_svm_devs() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // flags does not contain CL_MEM_SVM_FINE_GRAIN_BUFFER but does contain CL_MEM_SVM_ATOMICS.
+    if !bit_check(flags, CL_MEM_SVM_FINE_GRAIN_BUFFER) && bit_check(flags, CL_MEM_SVM_ATOMICS) {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // size is 0 or > CL_DEVICE_MAX_MEM_ALLOC_SIZE value for any device in context.
+    if size == 0 || checked_compare(size, Ordering::Greater, c.max_mem_alloc()) {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    if alignment == 0 {
+        alignment = mem::size_of::<[u64; 16]>() as cl_uint;
+    }
+
+    // alignment is not a power of two
+    if !alignment.is_power_of_two() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let layout;
+    let ptr;
+
+    // SAFETY: we already verify the parameters to from_size_align above and layout is of non zero
+    // size
+    unsafe {
+        layout = Layout::from_size_align_unchecked(size, alignment as usize);
+        ptr = alloc::alloc(layout);
+    }
+
+    if ptr.is_null() {
+        return Err(CL_OUT_OF_HOST_MEMORY);
+    }
+
+    c.add_svm_ptr(ptr.cast(), layout);
+    Ok(ptr.cast())
+
+    // Values specified in flags do not follow rules described for supported values in the SVM Memory Flags table.
+    // CL_MEM_SVM_FINE_GRAIN_BUFFER or CL_MEM_SVM_ATOMICS is specified in flags and these are not supported by at least one device in context.
+    // The values specified in flags are not valid, i.e. don’t match those defined in the SVM Memory Flags table.
+    // the OpenCL implementation cannot support the specified alignment for at least one device in context.
+    // There was a failure to allocate resources.
+}
+
+fn svm_free_impl(c: &Context, svm_pointer: *mut c_void) {
+    if let Some(layout) = c.remove_svm_ptr(svm_pointer) {
+        // SAFETY: we make sure that svm_pointer is a valid allocation and reuse the same layout
+        // from the allocation
+        unsafe {
+            alloc::dealloc(svm_pointer.cast(), layout);
+        }
+    }
+}
+
+pub fn svm_free(context: cl_context, svm_pointer: *mut c_void) -> CLResult<()> {
+    let c = context.get_ref()?;
+    svm_free_impl(c, svm_pointer);
+    Ok(())
+}
+
+fn enqueue_svm_free_impl(
+    command_queue: cl_command_queue,
+    num_svm_pointers: cl_uint,
+    svm_pointers: *mut *mut c_void,
+    pfn_free_func: Option<SVMFreeCb>,
+    user_data: *mut c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+    cmd_type: cl_command_type,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_VALUE if num_svm_pointers is 0 and svm_pointers is non-NULL, or if svm_pointers is
+    // NULL and num_svm_pointers is not 0.
+    if num_svm_pointers == 0 && !svm_pointers.is_null()
+        || num_svm_pointers != 0 && svm_pointers.is_null()
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    create_and_queue(
+        q,
+        cmd_type,
+        evs,
+        event,
+        false,
+        Box::new(move |q, _| {
+            if let Some(cb) = pfn_free_func {
+                // SAFETY: it's undefined behavior if the application screws up
+                unsafe {
+                    cb(command_queue, num_svm_pointers, svm_pointers, user_data);
+                }
+            } else {
+                // SAFETY: num_svm_pointers specifies the amount of elements in svm_pointers
+                let svm_pointers =
+                    unsafe { slice::from_raw_parts(svm_pointers, num_svm_pointers as usize) };
+                for &ptr in svm_pointers {
+                    svm_free_impl(&q.context, ptr);
+                }
+            }
+
+            Ok(())
+        }),
+    )
+}
+
+pub fn enqueue_svm_free(
+    command_queue: cl_command_queue,
+    num_svm_pointers: cl_uint,
+    svm_pointers: *mut *mut c_void,
+    pfn_free_func: Option<SVMFreeCb>,
+    user_data: *mut c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_free_impl(
+        command_queue,
+        num_svm_pointers,
+        svm_pointers,
+        pfn_free_func,
+        user_data,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_FREE,
+    )
+}
+
+pub fn enqueue_svm_free_arm(
+    command_queue: cl_command_queue,
+    num_svm_pointers: cl_uint,
+    svm_pointers: *mut *mut c_void,
+    pfn_free_func: Option<SVMFreeCb>,
+    user_data: *mut c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_free_impl(
+        command_queue,
+        num_svm_pointers,
+        svm_pointers,
+        pfn_free_func,
+        user_data,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_FREE_ARM,
+    )
+}
+
+fn enqueue_svm_memcpy_impl(
+    command_queue: cl_command_queue,
+    blocking_copy: cl_bool,
+    dst_ptr: *mut c_void,
+    src_ptr: *const c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+    cmd_type: cl_command_type,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let block = check_cl_bool(blocking_copy).ok_or(CL_INVALID_VALUE)?;
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if dst_ptr or src_ptr is NULL.
+    if dst_ptr.is_null() || src_ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_MEM_COPY_OVERLAP if the values specified for dst_ptr, src_ptr and size result in an
+    // overlapping copy.
+    let dst_ptr_addr = dst_ptr as usize;
+    let src_ptr_addr = src_ptr as usize;
+    if (src_ptr_addr <= dst_ptr_addr && dst_ptr_addr < src_ptr_addr + size)
+        || (dst_ptr_addr <= src_ptr_addr && src_ptr_addr < dst_ptr_addr + size)
+    {
+        return Err(CL_MEM_COPY_OVERLAP);
+    }
+
+    create_and_queue(
+        q,
+        cmd_type,
+        evs,
+        event,
+        block,
+        Box::new(move |_, _| {
+            // SAFETY: We check for overlapping copies already and alignment doesn't matter for void
+            // pointers. And we also trust applications to provide properly allocated memory regions
+            // and if not it's all undefined anyway.
+            unsafe {
+                ptr::copy_nonoverlapping(src_ptr, dst_ptr, size);
+            }
+            Ok(())
+        }),
+    )
+}
+
+pub fn enqueue_svm_memcpy(
+    command_queue: cl_command_queue,
+    blocking_copy: cl_bool,
+    dst_ptr: *mut c_void,
+    src_ptr: *const c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_memcpy_impl(
+        command_queue,
+        blocking_copy,
+        dst_ptr,
+        src_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MEMCPY,
+    )
+}
+
+pub fn enqueue_svm_memcpy_arm(
+    command_queue: cl_command_queue,
+    blocking_copy: cl_bool,
+    dst_ptr: *mut c_void,
+    src_ptr: *const c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_memcpy_impl(
+        command_queue,
+        blocking_copy,
+        dst_ptr,
+        src_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MEMCPY_ARM,
+    )
+}
+
+fn enqueue_svm_mem_fill_impl(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    pattern: *const ::std::os::raw::c_void,
+    pattern_size: usize,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+    cmd_type: cl_command_type,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let svm_ptr_addr = svm_ptr as usize;
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if svm_ptr is NULL.
+    if svm_ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if svm_ptr is not aligned to pattern_size bytes.
+    if svm_ptr_addr & (pattern_size - 1) != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if pattern is NULL or if pattern_size is 0 or if pattern_size is not one of
+    // {1, 2, 4, 8, 16, 32, 64, 128}.
+    if pattern.is_null()
+        || pattern_size == 0
+        || !pattern_size.is_power_of_two()
+        || pattern_size > 128
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if size is not a multiple of pattern_size.
+    if size % pattern_size != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    create_and_queue(
+        q,
+        cmd_type,
+        evs,
+        event,
+        false,
+        Box::new(move |_, _| {
+            let mut offset = 0;
+            while offset < size {
+                // SAFETY: pointer are either valid or undefined behavior
+                unsafe {
+                    ptr::copy(pattern, svm_ptr.add(offset), pattern_size);
+                }
+                offset += pattern_size;
+            }
+
+            Ok(())
+        }),
+    )
+}
+
+pub fn enqueue_svm_mem_fill(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    pattern: *const ::std::os::raw::c_void,
+    pattern_size: usize,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_mem_fill_impl(
+        command_queue,
+        svm_ptr,
+        pattern,
+        pattern_size,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MEMFILL,
+    )
+}
+
+pub fn enqueue_svm_mem_fill_arm(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    pattern: *const ::std::os::raw::c_void,
+    pattern_size: usize,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_mem_fill_impl(
+        command_queue,
+        svm_ptr,
+        pattern,
+        pattern_size,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MEMFILL_ARM,
+    )
+}
+
+fn enqueue_svm_map_impl(
+    command_queue: cl_command_queue,
+    blocking_map: cl_bool,
+    flags: cl_map_flags,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+    cmd_type: cl_command_type,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let block = check_cl_bool(blocking_map).ok_or(CL_INVALID_VALUE)?;
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if svm_ptr is NULL.
+    if svm_ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if size is 0 ...
+    if size == 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // ... or if values specified in map_flags are not valid.
+    validate_map_flags_common(flags)?;
+
+    create_and_queue(q, cmd_type, evs, event, block, Box::new(|_, _| Ok(())))
+}
+
+pub fn enqueue_svm_map(
+    command_queue: cl_command_queue,
+    blocking_map: cl_bool,
+    flags: cl_map_flags,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_map_impl(
+        command_queue,
+        blocking_map,
+        flags,
+        svm_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MAP,
+    )
+}
+
+pub fn enqueue_svm_map_arm(
+    command_queue: cl_command_queue,
+    blocking_map: cl_bool,
+    flags: cl_map_flags,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_map_impl(
+        command_queue,
+        blocking_map,
+        flags,
+        svm_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_MAP_ARM,
+    )
+}
+
+fn enqueue_svm_unmap_impl(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+    cmd_type: cl_command_type,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if svm_ptr is NULL.
+    if svm_ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    create_and_queue(q, cmd_type, evs, event, false, Box::new(|_, _| Ok(())))
+}
+
+pub fn enqueue_svm_unmap(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_unmap_impl(
+        command_queue,
+        svm_ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_UNMAP,
+    )
+}
+
+pub fn enqueue_svm_unmap_arm(
+    command_queue: cl_command_queue,
+    svm_ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    enqueue_svm_unmap_impl(
+        command_queue,
+        svm_ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+        CL_COMMAND_SVM_UNMAP_ARM,
+    )
+}
+
+pub fn enqueue_svm_migrate_mem(
+    command_queue: cl_command_queue,
+    num_svm_pointers: cl_uint,
+    svm_pointers: *mut *const ::std::os::raw::c_void,
+    sizes: *const usize,
+    flags: cl_mem_migration_flags,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_OPERATION if the device associated with command queue does not support SVM.
+    if !q.device.svm_supported() {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if num_svm_pointers is zero or svm_pointers is NULL.
+    if num_svm_pointers == 0 || svm_pointers.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let num_svm_pointers = num_svm_pointers as usize;
+    // SAFETY: Just hoping the application is alright.
+    let mut svm_pointers =
+        unsafe { slice::from_raw_parts(svm_pointers, num_svm_pointers) }.to_owned();
+    // if sizes is NULL, every allocation containing the pointers need to be migrated
+    let mut sizes = if sizes.is_null() {
+        vec![0; num_svm_pointers]
+    } else {
+        unsafe { slice::from_raw_parts(sizes, num_svm_pointers) }.to_owned()
+    };
+
+    // CL_INVALID_VALUE if sizes[i] is non-zero range [svm_pointers[i], svm_pointers[i]+sizes[i]) is
+    // not contained within an existing clSVMAlloc allocation.
+    for (ptr, size) in svm_pointers.iter_mut().zip(&mut sizes) {
+        if let Some((alloc, layout)) = q.context.find_svm_alloc(ptr.cast()) {
+            let ptr_addr = *ptr as usize;
+            let alloc_addr = alloc as usize;
+
+            // if the offset + size is bigger than the allocation we are out of bounds
+            if (ptr_addr - alloc_addr) + *size <= layout.size() {
+                // if the size is 0, the entire allocation should be migrated
+                if *size == 0 {
+                    *ptr = alloc.cast();
+                    *size = layout.size();
+                }
+                continue;
+            }
+        }
+
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let to_device = !bit_check(flags, CL_MIGRATE_MEM_OBJECT_HOST);
+    let content_undefined = bit_check(flags, CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED);
+
+    create_and_queue(
+        q,
+        CL_COMMAND_SVM_MIGRATE_MEM,
+        evs,
+        event,
+        false,
+        Box::new(move |_, ctx| {
+            ctx.svm_migrate(&svm_pointers, &sizes, to_device, content_undefined);
+            Ok(())
+        }),
+    )
 }
