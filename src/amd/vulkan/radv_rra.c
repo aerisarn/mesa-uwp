@@ -479,28 +479,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
       uint32_t type = children[i] & 7;
       uint32_t offset = (children[i] & (~7u)) << 3;
 
-      bool is_node_type_valid = true;
-      bool node_type_matches_as_type = true;
-
-      switch (type) {
-      case radv_bvh_node_box16:
-      case radv_bvh_node_box32:
-         break;
-      case radv_bvh_node_instance:
-         node_type_matches_as_type = !is_bottom_level;
-         break;
-      case radv_bvh_node_triangle:
-      case radv_bvh_node_aabb:
-         node_type_matches_as_type = is_bottom_level;
-         break;
-      default:
-         is_node_type_valid = false;
-      }
-
-      if (!is_node_type_valid)
-         rra_validation_fail(&ctx, "Invalid node type %u (child index %u)", type, i);
-
-      if (!node_type_matches_as_type)
+      if (is_bottom_level == (type == radv_bvh_node_instance))
          rra_validation_fail(&ctx,
                              is_bottom_level ? "%s node in BLAS (child index %u)"
                                              : "%s node in TLAS (child index %u)",
