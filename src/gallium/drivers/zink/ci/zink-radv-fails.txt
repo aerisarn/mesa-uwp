@@ -483,3 +483,6 @@ spec@nv_shader_atomic_int64@execution@ssbo-atomicmax-int,Crash
 spec@nv_shader_atomic_int64@execution@ssbo-atomicmax-uint,Crash
 spec@nv_shader_atomic_int64@execution@ssbo-atomicmin-int,Crash
 spec@nv_shader_atomic_int64@execution@ssbo-atomicmin-uint,Crash
+
+# Introduced with the uprev of piglit (70ce1dcacc92 - "ci: Update piglit with s3 support")
+spec@egl 1.4@egl-ext_egl_image_storage,Fail
