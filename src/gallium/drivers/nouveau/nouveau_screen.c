@@ -313,7 +313,7 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
    bool enable_svm = debug_get_bool_option("NOUVEAU_SVM", false);
    screen->has_svm = false;
    /* we only care about HMM with OpenCL enabled */
-   if (dev->chipset > 0x130 && screen->force_enable_cl && enable_svm) {
+   if (dev->chipset > 0x130 && enable_svm) {
       /* Before being able to enable SVM we need to carve out some memory for
        * driver bo allocations. Let's just base the size on the available VRAM.
        *
