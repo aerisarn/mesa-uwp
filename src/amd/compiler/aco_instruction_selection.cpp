@@ -3524,8 +3524,11 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_unpack_64_2x32:
    case nir_op_unpack_32_2x16:
    case nir_op_unpack_64_4x16:
+   case nir_op_unpack_32_4x8:
       bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0]));
-      emit_split_vector(ctx, dst, instr->op == nir_op_unpack_64_4x16 ? 4 : 2);
+      emit_split_vector(ctx, dst,
+                        instr->op == nir_op_unpack_32_4x8 ||
+                        instr->op == nir_op_unpack_64_4x16 ? 4 : 2);
       break;
    case nir_op_pack_64_2x32_split: {
       Temp src0 = get_alu_src(ctx, instr->src[0]);
