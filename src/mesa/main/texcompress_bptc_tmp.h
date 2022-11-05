@@ -28,9 +28,10 @@
 #ifndef TEXCOMPRESS_BPTC_TMP_H
 #define TEXCOMPRESS_BPTC_TMP_H
 
+#include "util/bitscan.h"
 #include "util/format_srgb.h"
 #include "util/half_float.h"
-#include "macros.h"
+#include "util/u_math.h"
 
 #define BLOCK_SIZE 4
 #define N_PARTITIONS 64
