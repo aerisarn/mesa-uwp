@@ -46,7 +46,7 @@ void
 _debug_vprintf(const char *format, va_list ap)
 {
    static char buf[4096] = {'\0'};
-#if DETECT_OS_WINDOWS || defined(EMBEDDED_DEVICE)
+#if DETECT_OS_WINDOWS
    /* We buffer until we find a newline. */
    size_t len = strlen(buf);
    int ret = vsnprintf(buf + len, sizeof(buf) - len, format, ap);
