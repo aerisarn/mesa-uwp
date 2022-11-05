@@ -57,9 +57,6 @@ vc4-rpi3-piglit-quick_gl:armhf:
     HWCI_KERNEL_MODULES: v3d,vc4
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - debian/arm_test
-    - debian-armhf
   tags:
     - igalia-rpi4
 
@@ -100,9 +97,6 @@ v3d-rpi4-piglit:armhf:
     HWCI_KERNEL_MODULES: v3d,vc4
   script:
     - ./install/bare-metal/poe-powered.sh
-  needs:
-    - debian/arm_test
-    - debian-armhf
   tags:
     - igalia-rpi4
 
