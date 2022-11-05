@@ -401,7 +401,7 @@ rra_parent_table_index_from_offset(uint32_t offset, uint32_t parent_table_size)
 }
 
 static void PRINTFLIKE(2, 3)
-rra_accel_struct_validation_fail(uint32_t offset, const char *reason, ...)
+rra_validation_fail(uint32_t offset, const char *reason, ...)
 {
    fprintf(stderr, "radv: AS validation failed at offset 0x%x with reason: ", offset);
 
@@ -421,17 +421,17 @@ rra_validate_header(struct radv_acceleration_structure *accel_struct,
 
    if (accel_struct->type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR &&
        header->instance_count > 0) {
-      rra_accel_struct_validation_fail(0, "BLAS contains instances");
+      rra_validation_fail(0, "BLAS contains instances");
       result = false;
    }
 
    if (header->bvh_offset >= accel_struct->size) {
-      rra_accel_struct_validation_fail(0, "Invalid BVH offset %u", header->bvh_offset);
+      rra_validation_fail(0, "Invalid BVH offset %u", header->bvh_offset);
       result = false;
    }
 
    if (header->instance_count * sizeof(struct radv_bvh_instance_node) >= accel_struct->size) {
-      rra_accel_struct_validation_fail(0, "Too many instances");
+      rra_validation_fail(0, "Too many instances");
       result = false;
    }
 
@@ -488,21 +488,20 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
          is_node_type_valid = false;
       }
       if (!is_node_type_valid) {
-         rra_accel_struct_validation_fail(cur_offset, "Invalid node type %u (child index %u)", type,
-                                          i);
+         rra_validation_fail(cur_offset, "Invalid node type %u (child index %u)", type, i);
          result = false;
       }
       if (!node_type_matches_as_type) {
-         rra_accel_struct_validation_fail(offset,
-                                          is_bottom_level ? "%s node in BLAS (child index %u)"
-                                                          : "%s node in TLAS (child index %u)",
-                                          node_type_names[type], i);
+         rra_validation_fail(offset,
+                             is_bottom_level ? "%s node in BLAS (child index %u)"
+                                             : "%s node in TLAS (child index %u)",
+                             node_type_names[type], i);
 
          result = false;
       }
 
       if (offset > size) {
-         rra_accel_struct_validation_fail(cur_offset, "Invalid child offset (child index %u)", i);
+         rra_validation_fail(cur_offset, "Invalid child offset (child index %u)", i);
          result = false;
          continue;
       }
@@ -514,9 +513,8 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
          uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
          if (!_mesa_hash_table_u64_search(accel_struct_vas, blas_va)) {
-            rra_accel_struct_validation_fail(offset,
-                                             "Invalid instance node pointer 0x%llx (offset: 0x%x)",
-                                             (unsigned long long)src->bvh_ptr, src->bvh_offset);
+            rra_validation_fail(offset, "Invalid instance node pointer 0x%llx (offset: 0x%x)",
+                                (unsigned long long)src->bvh_ptr, src->bvh_offset);
             result = false;
          }
       }
