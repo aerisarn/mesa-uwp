@@ -321,6 +321,10 @@ else
 endif
 
 with_vulkan_beta = get_option('vulkan-beta')
+if host_machine.system() == 'darwin'
+  #macOS seems to need beta extensions to build for now:
+  with_vulkan_beta = true
+endif
 if with_vulkan_beta
   pre_args += '-DVK_ENABLE_BETA_EXTENSIONS'
 endif
@@ -451,9 +455,6 @@ if host_machine.system() == 'darwin'
   cpp_args += '-DVK_USE_PLATFORM_MACOS_MVK'
   c_args += '-DVK_USE_PLATFORM_METAL_EXT'
   cpp_args += '-DVK_USE_PLATFORM_METAL_EXT'
-  #macOS seems to need beta extensions to build for now:
-  c_args += '-DVK_ENABLE_BETA_EXTENSIONS'
-  cpp_args += '-DVK_ENABLE_BETA_EXTENSIONS'
 endif
 
 _egl = get_option('egl')
