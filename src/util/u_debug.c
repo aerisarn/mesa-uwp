@@ -100,10 +100,9 @@ debug_disable_win32_error_dialogs(void)
 }
 #endif /* _WIN32 */
 
-static bool
-debug_get_bool_option_direct(const char *name, bool dfault)
+bool
+debug_parse_bool_option(const char *str, bool dfault)
 {
-   const char *str = os_get_option(name);
    bool result;
 
    if (str == NULL)
@@ -140,7 +139,8 @@ debug_get_option_should_print(void)
    static bool value = false;
 
    if (unlikely(!p_atomic_read_relaxed(&initialized))) {
-      value = debug_get_bool_option_direct("GALLIUM_PRINT_OPTIONS", false);
+      bool parsed_value = debug_parse_bool_option(os_get_option("GALLIUM_PRINT_OPTIONS"), false);
+      p_atomic_set(&value, parsed_value);
       p_atomic_set(&initialized, true);
    }
 
@@ -192,7 +192,7 @@ debug_get_option_cached(const char *name, const char *dfault)
 bool
 debug_get_bool_option(const char *name, bool dfault)
 {
-   bool result = debug_get_bool_option_direct(name, dfault);
+   bool result = debug_parse_bool_option(os_get_option(name), dfault);
    if (debug_get_option_should_print())
       debug_printf("%s: %s = %s\n", __func__, name,
                    result ? "TRUE" : "FALSE");
@@ -202,12 +202,9 @@ debug_get_bool_option(const char *name, bool dfault)
 
 
 int64_t
-debug_get_num_option(const char *name, int64_t dfault)
+debug_parse_num_option(const char *str, int64_t dfault)
 {
    int64_t result;
-   const char *str;
-
-   str = os_get_option(name);
    if (!str) {
       result = dfault;
    } else {
@@ -219,6 +216,13 @@ debug_get_num_option(const char *name, int64_t dfault)
          result = dfault;
       }
    }
+   return result;
+}
+
+int64_t
+debug_get_num_option(const char *name, int64_t dfault)
+{
+   int64_t result = debug_parse_num_option(os_get_option(name), dfault);
 
    if (debug_get_option_should_print())
       debug_printf("%s: %s = %"PRId64"\n", __func__, name, result);
@@ -297,16 +301,15 @@ str_has_option(const char *str, const char *name)
 
 
 uint64_t
-debug_get_flags_option(const char *name,
-                       const struct debug_named_value *flags,
-                       uint64_t dfault)
+debug_parse_flags_option(const char *name,
+                         const char *str,
+                         const struct debug_named_value *flags,
+                         uint64_t dfault)
 {
    uint64_t result;
-   const char *str;
    const struct debug_named_value *orig = flags;
    unsigned namealign = 0;
 
-   str = os_get_option(name);
    if (!str)
       result = dfault;
    else if (!strcmp(str, "help")) {
@@ -327,6 +330,17 @@ debug_get_flags_option(const char *name,
          ++flags;
       }
    }
+
+   return result;
+}
+
+uint64_t
+debug_get_flags_option(const char *name,
+                       const struct debug_named_value *flags,
+                       uint64_t dfault)
+{
+   const char *str = os_get_option(name);
+   uint64_t result = debug_parse_flags_option(name, str, flags, dfault);
 
    if (debug_get_option_should_print()) {
       if (str) {
