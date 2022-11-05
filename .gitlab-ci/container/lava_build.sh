@@ -200,6 +200,8 @@ if [[ ${DEBIAN_ARCH} = "amd64" ]]; then
     . .gitlab-ci/container/build-crosvm.sh
     mv /usr/local/bin/crosvm /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/
     mv /usr/local/lib/$GCC_ARCH/libvirglrenderer.* /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/
+    mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/local/libexec/
+    mv /usr/local/libexec/virgl* /lava-files/rootfs-${DEBIAN_ARCH}/usr/local/libexec/
 fi
 
 ############### Build libdrm
