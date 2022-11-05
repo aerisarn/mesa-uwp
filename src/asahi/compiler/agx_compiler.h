@@ -82,6 +82,7 @@ agx_size_align_16(enum agx_size size)
    unreachable("Invalid size");
 }
 
+/* Keep synced with hash_index */
 typedef struct {
    /* Sufficient for as many SSA values as we need. Immediates and uniforms fit in 16-bits */
    unsigned value : 22;
@@ -269,6 +270,7 @@ enum agx_lod_mode {
 /* Forward declare for branch target */
 struct agx_block;
 
+/* Keep synced with hash_instr */
 typedef struct {
    /* Must be first */
    struct list_head link;
@@ -768,6 +770,7 @@ void agx_print_block(agx_block *block, FILE *fp);
 void agx_print_shader(agx_context *ctx, FILE *fp);
 void agx_optimizer(agx_context *ctx);
 void agx_lower_pseudo(agx_context *ctx);
+void agx_opt_cse(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
 void agx_lower_64bit_postra(agx_context *ctx);
