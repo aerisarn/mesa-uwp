@@ -1101,17 +1101,6 @@ agx_lod_mode_for_nir(nir_texop op)
 static void
 agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
-   switch (instr->op) {
-   case nir_texop_tex:
-   case nir_texop_txf:
-   case nir_texop_txl:
-   case nir_texop_txb:
-   case nir_texop_txd:
-      break;
-   default:
-      unreachable("Unhandled texture op");
-   }
-
    agx_index coords = agx_null(),
              texture = agx_immediate(instr->texture_index),
              sampler = agx_immediate(instr->sampler_index),
