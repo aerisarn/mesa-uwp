@@ -27,8 +27,8 @@
 #include "util/format/u_format_s3tc.h"
 #include "util/format_srgb.h"
 #include "util/u_math.h"
-#include "../../mesa/main/texcompress_s3tc_tmp.h"
 
+#include "util/format/texcompress_s3tc_tmp.h"
 
 util_format_dxtn_fetch_t util_format_dxt1_rgb_fetch = (util_format_dxtn_fetch_t)fetch_2d_texel_rgb_dxt1;
 util_format_dxtn_fetch_t util_format_dxt1_rgba_fetch = (util_format_dxtn_fetch_t)fetch_2d_texel_rgba_dxt1;

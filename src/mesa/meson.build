@@ -213,7 +213,6 @@ files_libmesa = files(
   'main/texcompress_cpal.h',
   'main/texcompress_etc.c',
   'main/texcompress_etc.h',
-  'main/texcompress_etc_tmp.h',
   'main/texcompress_fxt1.c',
   'main/texcompress_fxt1.h',
   'main/texcompress_rgtc.c',
