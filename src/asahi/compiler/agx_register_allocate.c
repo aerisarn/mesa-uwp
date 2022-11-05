@@ -295,21 +295,6 @@ agx_ra_assign_local(struct ra_ctx *rctx)
 }
 
 /*
- * Resolve an agx_index of type NORMAL or REGISTER to a physical register, once
- * registers have been allocated for all SSA values.
- */
-static unsigned
-agx_index_to_reg(uint8_t *ssa_to_reg, agx_index idx)
-{
-   if (idx.type == AGX_INDEX_NORMAL) {
-      return ssa_to_reg[idx.value];
-   } else {
-      assert(idx.type == AGX_INDEX_REGISTER);
-      return idx.value;
-   }
-}
-
-/*
  * Lower phis to parallel copies at the logical end of a given block. If a block
  * needs parallel copies inserted, a successor of the block has a phi node. To
  * have a (nontrivial) phi node, a block must have multiple predecessors. So the
@@ -432,7 +417,8 @@ agx_ra(agx_context *ctx)
       agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
 
       if (ins->op == AGX_OPCODE_COLLECT) {
-         unsigned base = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
+         assert(ins->dest[0].type == AGX_INDEX_REGISTER);
+         unsigned base = ins->dest[0].value;
          unsigned width = agx_size_align_16(ins->dest[0].size);
 
          struct agx_copy *copies = alloca(sizeof(copies[0]) * ins->nr_srcs);
@@ -453,7 +439,8 @@ agx_ra(agx_context *ctx)
          agx_remove_instruction(ins);
          continue;
       } else if (ins->op == AGX_OPCODE_SPLIT) {
-         unsigned base = agx_index_to_reg(ssa_to_reg, ins->src[0]);
+         assert(ins->src[0].type == AGX_INDEX_REGISTER);
+         unsigned base = ins->src[0].value;
          unsigned width = agx_size_align_16(agx_split_width(ins));
 
          struct agx_copy copies[4];
@@ -467,7 +454,7 @@ agx_ra(agx_context *ctx)
                continue;
 
             copies[n++] = (struct agx_copy) {
-               .dest = agx_index_to_reg(ssa_to_reg, ins->dest[i]),
+               .dest = ins->dest[i].value,
                .src = agx_register(base + (i * width), ins->dest[i].size)
             };
          }
