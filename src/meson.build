@@ -67,7 +67,9 @@ endif
 subdir('android_stub')
 subdir('c11/impl')
 subdir('util')
-subdir('mapi')
+if with_gallium
+  subdir('mapi')
+endif
 # TODO: opengl
 subdir('compiler')
 if with_tools.contains('drm-shim')
