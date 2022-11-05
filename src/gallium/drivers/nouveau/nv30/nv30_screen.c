@@ -510,11 +510,13 @@ nv30_screen_get_compiler_options(struct pipe_screen *pscreen,
 }
 
 static void
-nv30_screen_fence_emit(struct pipe_context *pcontext, uint32_t *sequence)
+nv30_screen_fence_emit(struct pipe_context *pcontext, uint32_t *sequence,
+                       struct nouveau_bo *wait)
 {
    struct nv30_context *nv30 = nv30_context(pcontext);
    struct nv30_screen *screen = nv30->screen;
    struct nouveau_pushbuf *push = nv30->base.pushbuf;
+   struct nouveau_pushbuf_refn ref = { wait, NOUVEAU_BO_GART | NOUVEAU_BO_RDWR };
 
    *sequence = ++screen->base.fence.sequence;
 
@@ -523,6 +525,8 @@ nv30_screen_fence_emit(struct pipe_context *pcontext, uint32_t *sequence)
               (2 /* size */ << 18) | (7 /* subchan */ << 13));
    PUSH_DATA (push, 0);
    PUSH_DATA (push, *sequence);
+
+   nouveau_pushbuf_refn(push, &ref, 1);
 }
 
 static uint32_t

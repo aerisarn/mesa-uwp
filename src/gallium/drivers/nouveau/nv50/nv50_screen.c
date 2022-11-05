@@ -512,11 +512,13 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
 }
 
 static void
-nv50_screen_fence_emit(struct pipe_context *pcontext, u32 *sequence)
+nv50_screen_fence_emit(struct pipe_context *pcontext, u32 *sequence,
+                       struct nouveau_bo *wait)
 {
    struct nv50_context *nv50 = nv50_context(pcontext);
    struct nv50_screen *screen = nv50->screen;
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
+   struct nouveau_pushbuf_refn ref = { wait, NOUVEAU_BO_GART | NOUVEAU_BO_RDWR };
 
    /* we need to do it after possible flush in MARK_RING */
    *sequence = ++screen->base.fence.sequence;
@@ -532,6 +534,8 @@ nv50_screen_fence_emit(struct pipe_context *pcontext, u32 *sequence)
                     NV50_3D_QUERY_GET_TYPE_QUERY |
                     NV50_3D_QUERY_GET_QUERY_SELECT_ZERO |
                     NV50_3D_QUERY_GET_SHORT);
+
+   nouveau_pushbuf_refn(push, &ref, 1);
 }
 
 static u32
