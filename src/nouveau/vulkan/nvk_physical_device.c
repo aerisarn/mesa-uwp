@@ -84,6 +84,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan11Features core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
       /* Vulkan 1.1 features */
+      .shaderDrawParameters = true,
    };
 
    VkPhysicalDeviceVulkan12Features core_1_2 = {
@@ -494,6 +495,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_separate_depth_stencil_layouts = true,
+      .KHR_shader_draw_parameters = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_storage_buffer_storage_class = true,
 #ifdef NVK_USE_WSI_PLATFORM

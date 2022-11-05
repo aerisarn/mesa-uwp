@@ -1509,12 +1509,24 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
 }
 
 static void
-nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
+nvk_mme_build_draw(struct mme_builder *b,
+                   struct mme_value begin,
+                   struct mme_value draw_idx)
 {
    /* These are in VkDrawIndirectCommand order */
    struct mme_value vertex_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_vertex = mme_load(b);
+   struct mme_value first_instance = mme_load(b);
+
+   // load draw params in root descriptor
+   const uint32_t draw_params_offset = nvk_root_descriptor_offset(draw);
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(draw_params_offset));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, first_vertex);
+   mme_emit(b, first_instance);
+   mme_emit(b, draw_idx);
 
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
    mme_emit(b, mme_zero());
@@ -1522,16 +1534,6 @@ nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
    mme_emit(b, mme_zero());
 
    {
-      struct mme_value first_instance = mme_load(b);
-
-      /* Store base instance in the root descriptor table */
-      const uint32_t base_instance_offset =
-         nvk_root_descriptor_offset(draw.base_instance);
-      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-      mme_emit(b, mme_imm(base_instance_offset));
-      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-      mme_emit(b, first_instance);
-
       mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
       mme_emit(b, first_instance);
 
@@ -1572,7 +1574,7 @@ nvk_mme_draw(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
-   nvk_mme_build_draw(b, begin);
+   nvk_mme_build_draw(b, begin, mme_zero());
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1607,16 +1609,26 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
 
 static void
 nvk_mme_build_draw_indexed(struct mme_builder *b,
-                           struct mme_value begin)
+                           struct mme_value begin,
+                           struct mme_value draw_idx)
 {
    /* These are in VkDrawIndexedIndirectCommand order */
    struct mme_value index_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_index = mme_load(b);
+   struct mme_value vertex_offset = mme_load(b);
+   struct mme_value first_instance = mme_load(b);
+
+   // load draw params in root descriptor
+   const uint32_t draw_params_offset = nvk_root_descriptor_offset(draw);
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(draw_params_offset));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, vertex_offset);
+   mme_emit(b, first_instance);
+   mme_emit(b, draw_idx);
 
    {
-      struct mme_value vertex_offset = mme_load(b);
-
       mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
       mme_emit(b, vertex_offset);
       mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
@@ -1626,16 +1638,6 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    }
 
    {
-      struct mme_value first_instance = mme_load(b);
-
-      /* Store base instance in the root descriptor table */
-      const uint32_t base_instance_offset =
-         nvk_root_descriptor_offset(draw.base_instance);
-      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-      mme_emit(b, mme_imm(base_instance_offset));
-      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-      mme_emit(b, first_instance);
-
       mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
       mme_emit(b, first_instance);
 
@@ -1676,7 +1678,7 @@ nvk_mme_draw_indexed(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
-   nvk_mme_build_draw_indexed(b, begin);
+   nvk_mme_build_draw_indexed(b, begin, mme_zero());
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1744,7 +1746,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
       mme_while(b, ult, draw, draw_count) {
          mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
 
-         nvk_mme_build_draw(b, begin);
+         nvk_mme_build_draw(b, begin, draw);
 
          mme_add_to(b, draw, draw, mme_imm(1));
          mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -1756,15 +1758,21 @@ nvk_mme_draw_indirect(struct mme_builder *b)
       nvk_mme_spill(b, 0, pad_dw);
       mme_free_reg(b, pad_dw);
 
-      mme_while(b, ine, draw_count, mme_zero()) {
-         nvk_mme_build_draw(b, begin);
+      struct mme_value draw = mme_mov(b, mme_zero());
+      mme_while(b, ine, draw, draw_count) {
+         nvk_mme_spill(b, 1, draw_count);
+         mme_free_reg(b, draw_count);
+
+         nvk_mme_build_draw(b, begin, draw);
+         mme_add_to(b, draw, draw, mme_imm(1));
 
          pad_dw = nvk_mme_fill(b, 0);
          mme_loop(b, pad_dw) {
             mme_free_reg(b, mme_load(b));
          }
+         mme_free_reg(b, pad_dw);
 
-         mme_sub_to(b, draw_count, draw_count, mme_imm(1));
+         draw_count = nvk_mme_fill(b, 1);
       }
    }
 }
@@ -1859,7 +1867,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
       mme_while(b, ult, draw, draw_count) {
          mme_tu104_read_fifoed(b, draw_addr, mme_imm(5));
 
-         nvk_mme_build_draw_indexed(b, begin);
+         nvk_mme_build_draw_indexed(b, begin, draw);
 
          mme_add_to(b, draw, draw, mme_imm(1));
          mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -1871,15 +1879,21 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
       nvk_mme_spill(b, 0, pad_dw);
       mme_free_reg(b, pad_dw);
 
-      mme_while(b, ine, draw_count, mme_zero()) {
-         nvk_mme_build_draw_indexed(b, begin);
+      struct mme_value draw = mme_mov(b, mme_zero());
+      mme_while(b, ine, draw, draw_count) {
+         nvk_mme_spill(b, 1, draw_count);
+         mme_free_reg(b, draw_count);
+
+         nvk_mme_build_draw_indexed(b, begin, draw);
+         mme_add_to(b, draw, draw, mme_imm(1));
 
          pad_dw = nvk_mme_fill(b, 0);
          mme_loop(b, pad_dw) {
             mme_free_reg(b, mme_load(b));
          }
+         mme_free_reg(b, pad_dw);
 
-         mme_sub_to(b, draw_count, draw_count, mme_imm(1));
+         draw_count = nvk_mme_fill(b, 1);
       }
    }
 }
