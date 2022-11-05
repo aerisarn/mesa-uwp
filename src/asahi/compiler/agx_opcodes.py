@@ -29,7 +29,7 @@ VARIABLE = ~0
 
 class Opcode(object):
    def __init__(self, name, dests, srcs, imms, is_float, can_eliminate,
-           encoding_16, encoding_32):
+                can_reorder, encoding_16, encoding_32):
       self.name = name
       self.dests = dests if dests != VARIABLE else 0
       self.srcs = srcs if srcs != VARIABLE else 0
@@ -38,6 +38,7 @@ class Opcode(object):
       self.imms = imms
       self.is_float = is_float
       self.can_eliminate = can_eliminate
+      self.can_reorder = can_reorder
       self.encoding_16 = encoding_16
       self.encoding_32 = encoding_32
 
@@ -63,11 +64,11 @@ class Encoding(object):
          assert(length_long == length_short + (4 if length_short > 8 else 2))
 
 def op(name, encoding_32, dests = 1, srcs = 0, imms = [], is_float = False,
-        can_eliminate = True, encoding_16 = None):
+        can_eliminate = True, can_reorder = True, encoding_16 = None):
    encoding_16 = Encoding(encoding_16) if encoding_16 is not None else None
    encoding_32 = Encoding(encoding_32) if encoding_32 is not None else None
 
-   opcodes[name] = Opcode(name, dests, srcs, imms, is_float, can_eliminate, encoding_16, encoding_32)
+   opcodes[name] = Opcode(name, dests, srcs, imms, is_float, can_eliminate, can_reorder, encoding_16, encoding_32)
 
 def immediate(name, ctype = "uint32_t"):
    imm = Immediate(name, ctype)
@@ -222,7 +223,7 @@ op("texture_load",
 # sources are base, index
 op("device_load",
       encoding_32 = (0x05, 0x7F, 6, 8),
-      srcs = 2, imms = [FORMAT, MASK, SCOREBOARD])
+      srcs = 2, imms = [FORMAT, MASK, SCOREBOARD], can_reorder = False)
 
 # sources are value, index
 # TODO: Consider permitting the short form
@@ -238,7 +239,7 @@ op("get_sr", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR])
 op("sample_mask", (0x7fc1, 0xffff, 6, _), dests = 0, srcs = 1, can_eliminate = False)
 
 # Essentially same encoding
-op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0, imms = [FORMAT, MASK])
+op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0, imms = [FORMAT, MASK], can_reorder = False)
 
 op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
       can_eliminate = False, imms = [FORMAT, MASK])
