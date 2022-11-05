@@ -2897,6 +2897,7 @@ dump_commands(uint32_t *dwords, uint32_t sizedwords, int level)
             dump_hex(dwords, count, level + 1);
       } else if (pkt_is_type2(dwords[0])) {
          printl(3, "%snop\n", levels[level + 1]);
+         count = 1;
       } else {
          /* for 5xx+ we can do a passable job of looking for start of next valid
           * packet: */

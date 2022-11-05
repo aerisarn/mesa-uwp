@@ -371,6 +371,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 10
+			:0,0,10,6
+0122d1e8:		0000: 0000057e 0000000a
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1251
@@ -745,6 +749,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 16
+			:0,0,16,12
+0122f1e8:		0000: 0000057e 00000010
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1252
@@ -1119,6 +1127,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 22
+			:0,0,22,18
+0122d1e8:		0000: 0000057e 00000016
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1253
@@ -1493,6 +1505,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 28
+			:0,0,28,24
+0122f1e8:		0000: 0000057e 0000001c
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1254
@@ -1867,6 +1883,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 34
+			:0,0,34,30
+0122d1e8:		0000: 0000057e 00000022
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1255
@@ -2241,6 +2261,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 40
+			:0,0,40,36
+0122f1e8:		0000: 0000057e 00000028
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1256
@@ -2615,6 +2639,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 46
+			:0,0,46,42
+0122d1e8:		0000: 0000057e 0000002e
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1257
@@ -2989,6 +3017,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 52
+			:0,0,52,48
+0122f1e8:		0000: 0000057e 00000034
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1258
@@ -3363,6 +3395,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 58
+			:0,0,58,54
+0122d1e8:		0000: 0000057e 0000003a
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1259
@@ -3706,6 +3742,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110c30c:			0000: c0004600 00000006
 0110a21c:		0000: c0013700 0110c000 000000c5
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 68
+			:0,0,68,62
+0110a22c:		0000: 0000057e 00000044
 		opcode: CP_SET_CONSTANT (2d) (3 dwords)
 			VGT_VERTEX_REUSE_BLOCK_CNTL: { VTX_REUSE_DEPTH = 2 }
 0110a234:		0000: c0012d00 00040316 00000002
@@ -4217,6 +4257,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110a2cc:		0000: c0013700 0110b000 00000198
 		nop
 		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 70
+			:0,0,70,60
+0110a2dc:		0000: 0000057e 00000046
+		write CP_SCRATCH_REG6 (057e)
 			CP_SCRATCH_REG6: 71
 			:0,0,71,60
 0110a2e4:		0000: 0000057e 00000047
@@ -4396,6 +4440,11 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0125e184:			0000: c0012d00 00040208 00000004
 0110a2ec:		0000: c0013700 0125e000 00000064
 		nop
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 72
+			:0,0,72,66
+0110a2fc:		0000: 0000057e 00000048
 		opcode: CP_SET_CONSTANT (2d) (3 dwords)
 			RB_COLOR_INFO: { FORMAT = COLORX_8_8_8_8 | ROUND_MODE = 0 | ENDIAN = 0 | SWAP = 1 | BASE = 0 }
 0110a304:		0000: c0012d00 00040001 00000205
@@ -4441,6 +4490,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		nop
 		write CP_SCRATCH_REG6 (057e)
 NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 74
+			:0,0,74,66
+0110a3a0:		0000: 0000057e 0000004a
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
 			CP_SCRATCH_REG6: 75
 			:0,0,75,66
 0110a3a8:		0000: 0000057e 0000004b
@@ -4449,6 +4503,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		ibsize:00000064
 0110a3b0:		0000: c0013700 0125e000 00000064
 		nop
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 76
+			:0,0,76,66
+0110a3c0:		0000: 0000057e 0000004c
 		opcode: CP_SET_CONSTANT (2d) (3 dwords)
 			RB_COLOR_INFO: { FORMAT = COLORX_8_8_8_8 | ROUND_MODE = 0 | ENDIAN = 0 | SWAP = 1 | BASE = 0 }
 0110a3c8:		0000: c0012d00 00040001 00000205
@@ -4494,6 +4553,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		nop
 		write CP_SCRATCH_REG6 (057e)
 NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 78
+			:0,0,78,66
+0110a464:		0000: 0000057e 0000004e
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
 			CP_SCRATCH_REG6: 79
 			:0,0,79,66
 0110a46c:		0000: 0000057e 0000004f
@@ -4502,6 +4566,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		ibsize:00000064
 0110a474:		0000: c0013700 0125e000 00000064
 		nop
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 80
+			:0,0,80,66
+0110a484:		0000: 0000057e 00000050
 		opcode: CP_SET_CONSTANT (2d) (3 dwords)
 			RB_COLOR_INFO: { FORMAT = COLORX_8_8_8_8 | ROUND_MODE = 0 | ENDIAN = 0 | SWAP = 1 | BASE = 0 }
 0110a48c:		0000: c0012d00 00040001 00000205
@@ -4547,6 +4616,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		nop
 		write CP_SCRATCH_REG6 (057e)
 NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 82
+			:0,0,82,66
+0110a528:		0000: 0000057e 00000052
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
 			CP_SCRATCH_REG6: 83
 			:0,0,83,66
 0110a530:		0000: 0000057e 00000053
@@ -4555,6 +4629,11 @@ NEEDS WFI: CP_SCRATCH_REG6 (57e)
 		ibsize:00000064
 0110a538:		0000: c0013700 0125e000 00000064
 		nop
+		write CP_SCRATCH_REG6 (057e)
+NEEDS WFI: CP_SCRATCH_REG6 (57e)
+			CP_SCRATCH_REG6: 84
+			:0,0,84,66
+0110a548:		0000: 0000057e 00000054
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1260
@@ -4941,6 +5020,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 90
+			:0,0,90,86
+0122f1e8:		0000: 0000057e 0000005a
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1261
@@ -5317,6 +5400,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110b2d8:			0000: c0004600 00000006
 0110c1d8:		0000: c0013700 0110b000 000000b8
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 96
+			:0,0,96,92
+0110c1e8:		0000: 0000057e 00000060
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1262
@@ -5691,6 +5778,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 102
+			:0,0,102,98
+0122d1e8:		0000: 0000057e 00000066
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1263
@@ -6067,6 +6158,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110b2d8:			0000: c0004600 00000006
 0110a1d8:		0000: c0013700 0110b000 000000b8
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 108
+			:0,0,108,104
+0110a1e8:		0000: 0000057e 0000006c
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1264
@@ -6441,6 +6536,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 114
+			:0,0,114,110
+0122f1e8:		0000: 0000057e 00000072
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1265
@@ -6817,6 +6916,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110b2d8:			0000: c0004600 00000006
 0110c1d8:		0000: c0013700 0110b000 000000b8
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 120
+			:0,0,120,116
+0110c1e8:		0000: 0000057e 00000078
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1266
@@ -7191,6 +7294,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122d1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 126
+			:0,0,126,122
+0122d1e8:		0000: 0000057e 0000007e
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1267
@@ -7567,6 +7674,10 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0110b2d8:			0000: c0004600 00000006
 0110a1d8:		0000: c0013700 0110b000 000000b8
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 132
+			:0,0,132,128
+0110a1e8:		0000: 0000057e 00000084
 ############################################################
 vertices: 0
 cmd: deqp-gles2/185: fence=1268
@@ -7941,5 +8052,9 @@ NEEDS WFI: CP_SCRATCH_REG7 (57f)
 0122e2d0:			0000: c0004600 00000006
 0122f1d8:		0000: c0013700 0122e000 000000b6
 		nop
+		write CP_SCRATCH_REG6 (057e)
+			CP_SCRATCH_REG6: 138
+			:0,0,138,134
+0122f1e8:		0000: 0000057e 0000008a
 ############################################################
 vertices: 0
