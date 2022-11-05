@@ -336,6 +336,12 @@ typedef struct {
    unsigned mask : 4;
 } agx_instr;
 
+static inline void
+agx_replace_src(agx_instr *I, unsigned src_index, agx_index replacement)
+{
+   I->src[src_index] = agx_replace_index(I->src[src_index], replacement);
+}
+
 struct agx_block;
 
 typedef struct agx_block {

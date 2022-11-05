@@ -190,7 +190,7 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
           !(I->op == AGX_OPCODE_DEVICE_LOAD && s == 0))
          continue;
 
-      I->src[s] = agx_replace_index(src, def->src[0]);
+      agx_replace_src(I, s, def->src[0]);
    }
 }
 

@@ -418,7 +418,7 @@ agx_ra(agx_context *ctx)
    agx_foreach_instr_global(ctx, ins) {
       agx_foreach_ssa_src(ins, s) {
          unsigned v = ssa_to_reg[ins->src[s].value];
-         ins->src[s] = agx_replace_index(ins->src[s], agx_register(v, ins->src[s].size));
+         agx_replace_src(ins, s, agx_register(v, ins->src[s].size));
       }
 
       agx_foreach_ssa_dest(ins, d) {
