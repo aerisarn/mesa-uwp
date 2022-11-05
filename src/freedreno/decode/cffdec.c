@@ -202,6 +202,8 @@ dump_hex(uint32_t *dwords, uint32_t sizedwords, int level)
    if (quiet(2))
       return;
 
+   bool highlight = highlight_gpuaddr(gpuaddr(dwords) + 4 * sizedwords - 1);
+
    for (i = 0; i < sizedwords; i += 8) {
       int zero = 1;
 
@@ -222,7 +224,6 @@ dump_hex(uint32_t *dwords, uint32_t sizedwords, int level)
          continue;
 
       uint64_t addr = gpuaddr(&dwords[i]);
-      bool highlight = highlight_gpuaddr(addr);
 
       if (highlight)
          printf("\x1b[0;1;31m");
