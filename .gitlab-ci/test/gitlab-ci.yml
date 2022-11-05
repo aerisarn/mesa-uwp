@@ -152,12 +152,12 @@ rustfmt:
 .baremetal-test-armhf:
   extends:
     - .baremetal-test
-    - .use-debian/arm_test
+    - .use-debian/armhf_test
   variables:
     BM_ROOTFS: /rootfs-armhf
     MINIO_ARTIFACT_NAME: mesa-armhf
   needs:
-    - debian/arm_test
+    - debian/armhf_test
     - job: debian-armhf
       artifacts: false
 
@@ -165,12 +165,12 @@ rustfmt:
 .baremetal-test-arm64:
   extends:
     - .baremetal-test
-    - .use-debian/arm_test
+    - .use-debian/arm64_test
   variables:
     BM_ROOTFS: /rootfs-arm64
     MINIO_ARTIFACT_NAME: mesa-arm64
   needs:
-    - debian/arm_test
+    - debian/arm64_test
     - job: debian-arm64
       artifacts: false
 
@@ -178,12 +178,12 @@ rustfmt:
 .baremetal-arm64-asan-test:
   extends:
     - .baremetal-test
-    - .use-debian/arm_test
+    - .use-debian/arm64_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6:/install/lib/libdlclose-skip.so"
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
   needs:
-    - debian/arm_test
+    - debian/arm64_test
     - job: debian-arm64-asan
       artifacts: false
 
