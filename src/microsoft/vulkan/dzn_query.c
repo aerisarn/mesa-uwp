@@ -28,7 +28,7 @@
 #include "vk_debug_report.h"
 #include "vk_util.h"
 
-#include "os_time.h"
+#include "util/os_time.h"
 
 static D3D12_QUERY_HEAP_TYPE
 dzn_query_pool_get_heap_type(VkQueryType in)

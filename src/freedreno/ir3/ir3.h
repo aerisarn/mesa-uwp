@@ -2445,7 +2445,7 @@ INSTR0(BAR)
 INSTR0(FENCE)
 
 /* ************************************************************************* */
-#include "bitset.h"
+#include "util/bitset.h"
 
 #define MAX_REG 256
 

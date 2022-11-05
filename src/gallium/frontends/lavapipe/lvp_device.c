@@ -37,11 +37,11 @@
 
 #include "util/u_inlines.h"
 #include "util/os_memory.h"
+#include "util/os_time.h"
 #include "util/u_thread.h"
 #include "util/u_atomic.h"
 #include "util/timespec.h"
 #include "util/ptralloc.h"
-#include "os_time.h"
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
     defined(VK_USE_PLATFORM_WIN32_KHR) || \

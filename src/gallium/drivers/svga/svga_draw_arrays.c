@@ -27,7 +27,7 @@
 
 #include "util/u_inlines.h"
 #include "util/u_prim.h"
-#include "indices/u_indices.h"
+#include "util/indices/u_indices.h"
 
 #include "svga_hw_reg.h"
 #include "svga_draw.h"

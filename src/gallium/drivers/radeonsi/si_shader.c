@@ -28,7 +28,6 @@
 #include "nir_builder.h"
 #include "nir_serialize.h"
 #include "nir/nir_helpers.h"
-#include "ralloc.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
@@ -36,6 +35,7 @@
 #include "tgsi/tgsi_strings.h"
 #include "util/u_memory.h"
 #include "util/mesa-sha1.h"
+#include "util/ralloc.h"
 
 static const char scratch_rsrc_dword0_symbol[] = "SCRATCH_RSRC_DWORD0";
 

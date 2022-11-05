@@ -26,8 +26,8 @@
 #include "amdgfxregs.h"
 #include "nir_builder.h"
 #include "nir_xfb_info.h"
-#include "u_math.h"
-#include "u_vector.h"
+#include "util/u_math.h"
+#include "util/u_vector.h"
 
 #define SPECIAL_MS_OUT_MASK \
    (BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) | \

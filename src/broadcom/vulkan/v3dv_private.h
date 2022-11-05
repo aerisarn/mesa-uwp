@@ -79,7 +79,7 @@
 #include "util/hash_table.h"
 #include "util/sparse_array.h"
 #include "util/xmlconfig.h"
-#include "u_atomic.h"
+#include "util/u_atomic.h"
 
 #include "v3dv_entrypoints.h"
 #include "v3dv_bo.h"

@@ -5,11 +5,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "compiler.h"
+#include "util/compiler.h"
 #include "agx_builder.h"
 
 #define XXH_INLINE_ALL
-#include "xxhash.h"
+#include "util/xxhash.h"
 
 /*
  * This pass handles CSE'ing repeated expressions created in the process of

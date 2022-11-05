@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 #include "device_select.h"
-#include "hash_table.h"
+#include "util/hash_table.h"
 #include "vk_util.h"
 #include "util/simple_mtx.h"
 
