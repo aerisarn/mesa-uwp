@@ -3185,7 +3185,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    NIR_PASS(_, stage->nir, ac_nir_lower_subdword_loads,
             (ac_nir_lower_subdword_options) {
                .modes_1_comp = nir_var_mem_ubo,
-               .modes_N_comps = nir_var_mem_ubo
+               .modes_N_comps = nir_var_mem_ubo | nir_var_mem_ssbo
             });
 
    progress = false;

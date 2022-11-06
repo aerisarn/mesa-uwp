@@ -362,7 +362,7 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
    NIR_PASS_V(nir, ac_nir_lower_subdword_loads,
               (ac_nir_lower_subdword_options) {
                  .modes_1_comp = nir_var_mem_ubo,
-                 .modes_N_comps = nir_var_mem_ubo
+                 .modes_N_comps = nir_var_mem_ubo | nir_var_mem_ssbo
               });
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared, nir_address_format_32bit_offset);
 
