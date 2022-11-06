@@ -110,8 +110,9 @@ emit_split_buffer_store(nir_builder *b, nir_ssa_def *d, nir_ssa_def *desc, nir_s
             store_bytes = MIN2(store_bytes, 2);
 
          nir_ssa_def *store_val = nir_extract_bits(b, &d, 1, start_byte * 8u, 1, store_bytes * 8u);
-         nir_store_buffer_amd(b, store_val, desc, v_off, s_off, zero, .is_swizzled = swizzled, .slc_amd = slc,
-                              .base = start_byte, .memory_modes = nir_var_shader_out, .access = ACCESS_COHERENT);
+         nir_store_buffer_amd(b, store_val, desc, v_off, s_off, zero, .is_swizzled = swizzled,
+                              .base = start_byte, .memory_modes = nir_var_shader_out,
+                              .access = ACCESS_COHERENT | (slc ? ACCESS_STREAM_CACHE_POLICY : 0));
 
          start_byte += store_bytes;
          bytes -= store_bytes;

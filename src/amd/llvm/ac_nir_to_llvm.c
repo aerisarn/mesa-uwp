@@ -4183,7 +4183,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       bool swizzled = nir_intrinsic_is_swizzled(instr);
       bool reorder = nir_intrinsic_can_reorder(instr);
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
-      bool slc = nir_intrinsic_slc_amd(instr);
+      bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
 
       enum ac_image_cache_policy cache_policy = 0;
       if (swizzled)
@@ -4226,7 +4226,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       unsigned const_offset = nir_intrinsic_base(instr);
       bool swizzled = nir_intrinsic_is_swizzled(instr);
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
-      bool slc = nir_intrinsic_slc_amd(instr);
+      bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
 
       enum ac_image_cache_policy cache_policy = 0;
       if (swizzled)

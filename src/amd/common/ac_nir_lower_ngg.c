@@ -1847,7 +1847,7 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
                            vtx_buffer_offsets[out->buffer],
                            zero, zero,
                            .base = out->offset,
-                           .slc_amd = true);
+                           .access = ACCESS_STREAM_CACHE_POLICY);
    }
 }
 

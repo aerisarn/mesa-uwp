@@ -223,9 +223,6 @@ index("unsigned", "swizzle_mask")
 # Whether the load_buffer_amd/store_buffer_amd is swizzled
 index("bool", "is_swizzled")
 
-# The SLC ("system level coherent") bit of load_buffer_amd/store_buffer_amd
-index("bool", "slc_amd")
-
 # Offsets for load_shared2_amd/store_shared2_amd
 index("uint8_t", "offset0")
 index("uint8_t", "offset1")
@@ -1320,9 +1317,9 @@ intrinsic("optimization_barrier_vgpr_amd", dest_comp=0, src_comp=[0],
 # src[] = { descriptor, vector byte offset, scalar byte offset, index offset }
 # The index offset is multiplied by the stride in the descriptor. The vertex/scalar byte offsets
 # are in bytes.
-intrinsic("load_buffer_amd", src_comp=[4, 1, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS], flags=[CAN_ELIMINATE])
+intrinsic("load_buffer_amd", src_comp=[4, 1, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, MEMORY_MODES, ACCESS], flags=[CAN_ELIMINATE])
 # src[] = { store value, descriptor, vector byte offset, scalar byte offset, index offset }
-intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS])
+intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, MEMORY_MODES, ACCESS])
 
 # src[] = { address, unsigned 32-bit offset }.
 load("global_amd", [1, 1], indices=[BASE, ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
