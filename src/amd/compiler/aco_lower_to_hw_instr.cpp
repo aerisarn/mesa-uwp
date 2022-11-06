@@ -976,8 +976,10 @@ split_copy(lower_context* ctx, unsigned offset, Definition* def, Operand* op,
    def_reg.reg_b += offset;
    op_reg.reg_b += offset;
 
-   /* 64-bit VGPR copies (implemented with v_lshrrev_b64) are slow before GFX10 */
-   if (ctx->program->gfx_level < GFX10 && src.def.regClass().type() == RegType::vgpr)
+   /* 64-bit VGPR copies (implemented with v_lshrrev_b64) are slow before GFX10, and on GFX11
+    * v_lshrrev_b64 doesn't get dual issued. */
+   if ((ctx->program->gfx_level < GFX10 || ctx->program->gfx_level >= GFX11) &&
+       src.def.regClass().type() == RegType::vgpr)
       max_size = MIN2(max_size, 4);
    unsigned max_align = src.def.regClass().type() == RegType::vgpr ? 4 : 16;
 
