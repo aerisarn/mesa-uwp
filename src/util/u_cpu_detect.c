@@ -195,8 +195,8 @@ check_os_altivec_support(void)
    if (setjmp(__lv_powerpc_jmpbuf)) {
       signal(SIGILL, SIG_DFL);
    } else {
-      boolean enable_altivec = TRUE;    /* Default: enable  if available, and if not overridden */
-      boolean enable_vsx = TRUE;
+      bool enable_altivec = true;    /* Default: enable  if available, and if not overridden */
+      bool enable_vsx = true;
 #ifdef DEBUG
       /* Disabling Altivec code generation is not the same as disabling VSX code generation,
        * which can be done simply by passing -mattr=-vsx to the LLVM compiler; cf.
@@ -205,13 +205,13 @@ check_os_altivec_support(void)
        */
       char *env_control = getenv("GALLIVM_ALTIVEC");    /* 1=enable (default); 0=disable */
       if (env_control && env_control[0] == '0') {
-         enable_altivec = FALSE;
+         enable_altivec = false;
       }
 #endif
       /* VSX instructions can be explicitly enabled/disabled via GALLIVM_VSX=1 or 0 */
       char *env_vsx = getenv("GALLIVM_VSX");
       if (env_vsx && env_vsx[0] == '0') {
-         enable_vsx = FALSE;
+         enable_vsx = false;
       }
       if (enable_altivec) {
          __lv_powerpc_canjump = 1;
@@ -368,7 +368,9 @@ static inline uint64_t xgetbv(void)
 
 
 #if defined(PIPE_ARCH_X86)
-PIPE_ALIGN_STACK static inline boolean sse2_has_daz(void)
+PIPE_ALIGN_STACK
+static inline bool
+sse2_has_daz(void)
 {
    alignas(16) struct {
       uint32_t pad1[7];
