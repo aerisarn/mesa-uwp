@@ -23,6 +23,7 @@ variables:
   LIMA_FARM: "online"
   IGALIA_FARM: "online"
   ANHOLT_FARM: "online"
+  VALVE_FARM: "online"
 
 default:
   before_script:

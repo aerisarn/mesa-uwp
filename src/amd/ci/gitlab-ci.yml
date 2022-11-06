@@ -24,7 +24,7 @@
 .radv-stoney-test:amd64:
   extends:
     - .stoney-test:amd64
-    - .radv-rules
+    - .radv-collabora-rules
   variables:
     DEQP_VER: vk
     DRIVER_NAME: radv
@@ -83,7 +83,7 @@ radeonsi-stoney-traces:amd64:
 .radv-raven-test:amd64:
   extends:
     - .raven-test:amd64
-    - .radv-rules
+    - .radv-collabora-rules
   variables:
     GPU_VERSION: radv-raven
     VK_DRIVER: radeon
@@ -160,7 +160,7 @@ radeonsi-raven-va:amd64:
 ############### Valve Infra
 .test-radv:
   extends:
-    - .radv-rules
+    - .radv-valve-rules
   variables:
     VK_DRIVER: radeon
     DRIVER_NAME: radv
