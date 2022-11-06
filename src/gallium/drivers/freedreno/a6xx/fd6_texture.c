@@ -434,14 +434,14 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
 }
 
 static uint32_t
-key_hash(const void *_key)
+tex_key_hash(const void *_key)
 {
    const struct fd6_texture_key *key = _key;
    return XXH32(key, sizeof(*key), 0);
 }
 
 static bool
-key_equals(const void *_a, const void *_b)
+tex_key_equals(const void *_a, const void *_b)
 {
    const struct fd6_texture_key *a = _a;
    const struct fd6_texture_key *b = _b;
@@ -490,7 +490,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
    key.type = type;
    key.bcolor_offset = fd6_border_color_offset(ctx, type, tex);
 
-   uint32_t hash = key_hash(&key);
+   uint32_t hash = tex_key_hash(&key);
    fd_screen_lock(ctx->screen);
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(fd6_ctx->tex_cache, hash, &key);
@@ -572,7 +572,7 @@ fd6_texture_init(struct pipe_context *pctx) disable_thread_safety_analysis
 
    ctx->rebind_resource = fd6_rebind_resource;
 
-   fd6_ctx->tex_cache = _mesa_hash_table_create(NULL, key_hash, key_equals);
+   fd6_ctx->tex_cache = _mesa_hash_table_create(NULL, tex_key_hash, tex_key_equals);
 }
 
 void
