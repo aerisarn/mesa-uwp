@@ -337,7 +337,6 @@ vkcts-navi21-valve:
   extends:
     - .vkcts-test-valve
     - .navi21-test-valve
-    - .test-manual-mr
   variables:
     GPU_VERSION: radv-navi21-aco
 
