@@ -115,7 +115,6 @@ files_libgallium = files(
   'os/os_mman.h',
   'os/os_process.c',
   'os/os_process.h',
-  'os/os_thread.h',
   'pipebuffer/pb_buffer_fenced.c',
   'pipebuffer/pb_buffer_fenced.h',
   'pipebuffer/pb_buffer.h',
