@@ -36,29 +36,6 @@
 #ifndef OS_THREAD_H_
 #define OS_THREAD_H_
 
-
-#include "pipe/p_compiler.h"
-#include "util/u_debug.h" /* for assert */
 #include "util/u_thread.h"
-
-
-#define pipe_mutex_assert_locked(mutex) \
-   __pipe_mutex_assert_locked(&(mutex))
-
-static inline void
-__pipe_mutex_assert_locked(mtx_t *mutex)
-{
-#ifdef DEBUG
-   /* NOTE: this would not work for recursive mutexes, but
-    * mtx_t doesn't support those
-    */
-   int ret = mtx_trylock(mutex);
-   assert(ret == thrd_busy);
-   if (ret == thrd_success)
-      mtx_unlock(mutex);
-#else
-   (void)mutex;
-#endif
-}
 
 #endif /* OS_THREAD_H_ */
