@@ -50,158 +50,20 @@
 #include "fd6_texture.h"
 #include "fd6_zsa.h"
 
-/* Border color layout is diff from a4xx/a5xx.. if it turns out to be
- * the same as a6xx then move this somewhere common ;-)
- *
- * Entry layout looks like (total size, 0x60 bytes):
- */
-
-struct PACKED bcolor_entry {
-   uint32_t fp32[4];
-   uint16_t ui16[4];
-   int16_t si16[4];
-   uint16_t fp16[4];
-   uint16_t rgb565;
-   uint16_t rgb5a1;
-   uint16_t rgba4;
-   uint8_t __pad0[2];
-   uint8_t ui8[4];
-   int8_t si8[4];
-   uint32_t rgb10a2;
-   uint32_t z24;
-   uint16_t
-      srgb[4]; /* appears to duplicate fp16[], but clamped, used for srgb */
-   uint8_t __pad1[56];
-};
-
-#define FD6_BORDER_COLOR_SIZE sizeof(struct bcolor_entry)
-#define FD6_BORDER_COLOR_UPLOAD_SIZE                                           \
-   (2 * PIPE_MAX_SAMPLERS * FD6_BORDER_COLOR_SIZE)
-
 static void
 setup_border_colors(struct fd_texture_stateobj *tex,
-                    struct bcolor_entry *entries,
+                    struct fd6_bcolor_entry *entries,
                     struct fd_screen *screen)
 {
-   unsigned i, j;
-   STATIC_ASSERT(sizeof(struct bcolor_entry) == FD6_BORDER_COLOR_SIZE);
-   const bool has_z24uint_s8uint = screen->info->a6xx.has_z24uint_s8uint;
+   unsigned i;
 
    for (i = 0; i < tex->num_samplers; i++) {
-      struct bcolor_entry *e = &entries[i];
       struct pipe_sampler_state *sampler = tex->samplers[i];
-      union pipe_color_union *bc;
 
       if (!sampler)
          continue;
 
-      bc = &sampler->border_color;
-
-      enum pipe_format format = sampler->border_color_format;
-      const struct util_format_description *desc =
-         util_format_description(format);
-
-      e->rgb565 = 0;
-      e->rgb5a1 = 0;
-      e->rgba4 = 0;
-      e->rgb10a2 = 0;
-      e->z24 = 0;
-
-      unsigned char swiz[4];
-
-      fdl6_format_swiz(format, false, swiz);
-
-      for (j = 0; j < 4; j++) {
-         int c = swiz[j];
-         int cd = c;
-
-         /*
-          * HACK: for PIPE_FORMAT_X24S8_UINT we end up w/ the
-          * stencil border color value in bc->ui[0] but according
-          * to desc->swizzle and desc->channel, the .x/.w component
-          * is NONE and the stencil value is in the y component.
-          * Meanwhile the hardware wants this in the .x component
-          * for x24s8 and x32_s8x24, or the .y component for x24s8 with the
-          * special Z24UINT_S8UINT format.
-          */
-         if ((format == PIPE_FORMAT_X24S8_UINT) ||
-             (format == PIPE_FORMAT_X32_S8X24_UINT)) {
-            if (j == 0) {
-               c = 1;
-               cd = (format == PIPE_FORMAT_X24S8_UINT && has_z24uint_s8uint) ? 1 : 0;
-            } else {
-               continue;
-            }
-         }
-
-         if (c >= 4)
-            continue;
-
-         if (desc->channel[c].pure_integer) {
-            uint16_t clamped;
-            switch (desc->channel[c].size) {
-            case 2:
-               assert(desc->channel[c].type == UTIL_FORMAT_TYPE_UNSIGNED);
-               clamped = CLAMP(bc->ui[j], 0, 0x3);
-               break;
-            case 8:
-               if (desc->channel[c].type == UTIL_FORMAT_TYPE_SIGNED)
-                  clamped = CLAMP(bc->i[j], -128, 127);
-               else
-                  clamped = CLAMP(bc->ui[j], 0, 255);
-               break;
-            case 10:
-               assert(desc->channel[c].type == UTIL_FORMAT_TYPE_UNSIGNED);
-               clamped = CLAMP(bc->ui[j], 0, 0x3ff);
-               break;
-            case 16:
-               if (desc->channel[c].type == UTIL_FORMAT_TYPE_SIGNED)
-                  clamped = CLAMP(bc->i[j], -32768, 32767);
-               else
-                  clamped = CLAMP(bc->ui[j], 0, 65535);
-               break;
-            default:
-               unreachable("Unexpected bit size");
-            case 32:
-               clamped = 0;
-               break;
-            }
-            e->fp32[cd] = bc->ui[j];
-            e->fp16[cd] = clamped;
-         } else {
-            float f = bc->f[j];
-            float f_u = CLAMP(f, 0, 1);
-            float f_s = CLAMP(f, -1, 1);
-
-            e->fp32[c] = fui(f);
-            e->fp16[c] = _mesa_float_to_half(f);
-            e->srgb[c] = _mesa_float_to_half(f_u);
-            e->ui16[c] = f_u * 0xffff;
-            e->si16[c] = f_s * 0x7fff;
-            e->ui8[c] = f_u * 0xff;
-            e->si8[c] = f_s * 0x7f;
-            if (c == 1)
-               e->rgb565 |= (int)(f_u * 0x3f) << 5;
-            else if (c < 3)
-               e->rgb565 |= (int)(f_u * 0x1f) << (c ? 11 : 0);
-            if (c == 3)
-               e->rgb5a1 |= (f_u > 0.5f) ? 0x8000 : 0;
-            else
-               e->rgb5a1 |= (int)(f_u * 0x1f) << (c * 5);
-            if (c == 3)
-               e->rgb10a2 |= (int)(f_u * 0x3) << 30;
-            else
-               e->rgb10a2 |= (int)(f_u * 0x3ff) << (c * 10);
-            e->rgba4 |= (int)(f_u * 0xf) << (c * 4);
-            if (c == 0)
-               e->z24 = f_u * 0xffffff;
-         }
-      }
-
-#ifdef DEBUG
-      memset(&e->__pad0, 0, sizeof(e->__pad0));
-      memset(&e->__pad1, 0, sizeof(e->__pad1));
-#endif
+      fd6_setup_border_color(screen, sampler, &entries[i]);
    }
 }
 
@@ -209,11 +71,11 @@ static void
 emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring) assert_dt
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct bcolor_entry *entries;
+   struct fd6_bcolor_entry *entries;
    unsigned off;
    void *ptr;
 
-   STATIC_ASSERT(sizeof(struct bcolor_entry) == FD6_BORDER_COLOR_SIZE);
+   STATIC_ASSERT(sizeof(struct fd6_bcolor_entry) == FD6_BORDER_COLOR_SIZE);
 
    u_upload_alloc(fd6_ctx->border_color_uploader, 0,
                   FD6_BORDER_COLOR_UPLOAD_SIZE, FD6_BORDER_COLOR_UPLOAD_SIZE,

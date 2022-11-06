@@ -36,6 +36,37 @@
 #include "fd6_context.h"
 #include "fdl/fd6_format_table.h"
 
+/* Border color layout is diff from a4xx/a5xx.. if it turns out to be
+ * the same as a6xx then move this somewhere common ;-)
+ *
+ * Entry layout looks like (total size, 0x80 bytes):
+ */
+
+struct PACKED fd6_bcolor_entry {
+   uint32_t fp32[4];
+   uint16_t ui16[4];
+   int16_t si16[4];
+   uint16_t fp16[4];
+   uint16_t rgb565;
+   uint16_t rgb5a1;
+   uint16_t rgba4;
+   uint8_t __pad0[2];
+   uint8_t ui8[4];
+   int8_t si8[4];
+   uint32_t rgb10a2;
+   uint32_t z24;
+   uint16_t srgb[4]; /* appears to duplicate fp16[], but clamped, used for srgb */
+   uint8_t __pad1[56];
+};
+
+#define FD6_BORDER_COLOR_SIZE sizeof(struct fd6_bcolor_entry)
+#define FD6_BORDER_COLOR_UPLOAD_SIZE                                           \
+   (2 * PIPE_MAX_SAMPLERS * FD6_BORDER_COLOR_SIZE)
+
+void fd6_setup_border_color(struct fd_screen *screen,
+                            const struct pipe_sampler_state *sampler,
+                            struct fd6_bcolor_entry *e);
+
 struct fd6_sampler_stateobj {
    struct pipe_sampler_state base;
    uint32_t texsamp0, texsamp1, texsamp2, texsamp3;
