@@ -220,7 +220,7 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
 
             outputs[location][j] =
                nir_load_buffer_amd(&b, 1, 32, gsvs_ring, vtx_offset, zero, zero,
-                                   .base = offset, .is_swizzled = false,
+                                   .base = offset,
                                    .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
 
             offset += gs_nir->info.gs.vertices_out * 16 * 4;
@@ -528,8 +528,8 @@ lower_legacy_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *in
          nir_ssa_def *data = nir_u2uN(b, output, 32);
 
          nir_store_buffer_amd(b, data, gsvs_ring, voffset, soffset, nir_imm_int(b, 0),
-                              .is_swizzled = true,
-                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY,
+                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY |
+                                        ACCESS_IS_SWIZZLED_AMD,
                               /* For ACO to not reorder this store around EmitVertex/EndPrimitve */
                               .memory_modes = nir_var_shader_out);
       }
@@ -571,8 +571,8 @@ lower_legacy_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *in
 
          nir_store_buffer_amd(b, nir_pack_32_2x16_split(b, output_lo, output_hi),
                               gsvs_ring, voffset, soffset, nir_imm_int(b, 0),
-                              .is_swizzled = true,
-                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY,
+                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY |
+                                        ACCESS_IS_SWIZZLED_AMD,
                               /* For ACO to not reorder this store around EmitVertex/EndPrimitve */
                               .memory_modes = nir_var_shader_out);
       }

@@ -2076,8 +2076,8 @@ export_vertex_params_gfx11(nir_builder *b, nir_ssa_def *export_tid, nir_ssa_def 
       for (unsigned j = 0; j < 4; j++)
          comp[j] = outputs[i].chan[j] ? outputs[i].chan[j] : undef;
       nir_store_buffer_amd(b, nir_vec(b, comp, 4), attr_rsrc, voffset, soffset, vindex,
-                           .is_swizzled = true, .memory_modes = nir_var_shader_out,
-                           .access = ACCESS_COHERENT);
+                           .memory_modes = nir_var_shader_out,
+                           .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
    }
 
    nir_pop_if(b, NULL);

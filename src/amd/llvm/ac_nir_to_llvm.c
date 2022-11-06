@@ -4180,7 +4180,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[3]) : NULL;
       unsigned num_components = instr->dest.ssa.num_components;
       unsigned const_offset = nir_intrinsic_base(instr);
-      bool swizzled = nir_intrinsic_is_swizzled(instr);
+      bool swizzled = nir_intrinsic_access(instr) & ACCESS_IS_SWIZZLED_AMD;
       bool reorder = nir_intrinsic_can_reorder(instr);
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
       bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
@@ -4224,7 +4224,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef addr_soffset = get_src(ctx, instr->src[3]);
       LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[4]) : NULL;
       unsigned const_offset = nir_intrinsic_base(instr);
-      bool swizzled = nir_intrinsic_is_swizzled(instr);
+      bool swizzled = nir_intrinsic_access(instr) & ACCESS_IS_SWIZZLED_AMD;
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
       bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
 
