@@ -104,6 +104,33 @@ struct perf_info {
    unsigned cost1;
 };
 
+static bool
+is_dual_issue_capable(const Program& program, const Instruction& instruction)
+{
+   if (program.gfx_level < GFX11 || !instruction.isVALU())
+      return false;
+
+   /* Currently assumed to be just the instructions that are allowed as both
+    * VOPD X and VOPD Y operation.
+    */
+   switch (instruction.opcode) {
+   case aco_opcode::v_fmac_f32:
+   case aco_opcode::v_fmaak_f32:
+   case aco_opcode::v_fmamk_f32:
+   case aco_opcode::v_mul_f32:
+   case aco_opcode::v_add_f32:
+   case aco_opcode::v_sub_f32:
+   case aco_opcode::v_subrev_f32:
+   case aco_opcode::v_mul_legacy_f32:
+   case aco_opcode::v_mov_b32:
+   case aco_opcode::v_cndmask_b32:
+   case aco_opcode::v_max_f32:
+   case aco_opcode::v_min_f32:
+   case aco_opcode::v_dot2c_f32_f16: return true;
+   default: return false;
+   }
+}
+
 static perf_info
 get_perf_info(Program* program, aco_ptr<Instruction>& instr)
 {
@@ -358,7 +385,8 @@ BlockCycleEstimator::add(aco_ptr<Instruction>& instr)
 
    unsigned start;
    bool dual_issue = program->gfx_level >= GFX10 && program->wave_size == 64 &&
-                     is_vector(instr->opcode) && program->workgroup_size > 32;
+                     is_vector(instr->opcode) && !is_dual_issue_capable(*program, *instr) &&
+                     program->workgroup_size > 32;
    for (unsigned i = 0; i < (dual_issue ? 2 : 1); i++) {
       cur_cycle += cycles_until_res_available(instr);
 
