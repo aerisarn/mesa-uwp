@@ -247,10 +247,8 @@ pub fn create_buffer_with_properties(
     }
 
     // ... or if size is greater than CL_DEVICE_MAX_MEM_ALLOC_SIZE for all devices in context.
-    for dev in &c.devs {
-        if checked_compare(size, Ordering::Greater, dev.max_mem_alloc()) {
-            return Err(CL_INVALID_BUFFER_SIZE);
-        }
+    if checked_compare(size, Ordering::Greater, c.max_mem_alloc()) {
+        return Err(CL_INVALID_BUFFER_SIZE);
     }
 
     validate_host_ptr(host_ptr, flags)?;

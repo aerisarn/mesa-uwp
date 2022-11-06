@@ -141,6 +141,15 @@ impl Context {
 
         Ok(res)
     }
+
+    /// Returns the max allocation size supported by all devices
+    pub fn max_mem_alloc(&self) -> u64 {
+        self.devs
+            .iter()
+            .map(|dev| dev.max_mem_alloc())
+            .min()
+            .unwrap()
+    }
 }
 
 impl Drop for Context {
