@@ -89,10 +89,10 @@ tex_filter(unsigned filter, bool aniso)
    }
 }
 
-void
-fd6_setup_border_color(struct fd_screen *screen,
-                       const struct pipe_sampler_state *sampler,
-                       struct fd6_bcolor_entry *e)
+static void
+setup_border_color(struct fd_screen *screen,
+                   const struct pipe_sampler_state *sampler,
+                   struct fd6_bcolor_entry *e)
 {
    STATIC_ASSERT(sizeof(struct fd6_bcolor_entry) == FD6_BORDER_COLOR_SIZE);
    const bool has_z24uint_s8uint = screen->info->a6xx.has_z24uint_s8uint;
@@ -199,11 +199,54 @@ fd6_setup_border_color(struct fd_screen *screen,
             e->z24 = f_u * 0xffffff;
       }
    }
+}
 
-#ifdef DEBUG
-   memset(&e->__pad0, 0, sizeof(e->__pad0));
-   memset(&e->__pad1, 0, sizeof(e->__pad1));
-#endif
+static uint32_t
+bcolor_key_hash(const void *_key)
+{
+   const struct fd6_bcolor_entry *key = _key;
+   return XXH32(key, sizeof(*key), 0);
+}
+
+static bool
+bcolor_key_equals(const void *_a, const void *_b)
+{
+   const struct fd6_bcolor_entry *a = _a;
+   const struct fd6_bcolor_entry *b = _b;
+   return memcmp(a, b, sizeof(struct fd6_bcolor_entry)) == 0;
+}
+
+static unsigned
+get_bcolor_offset(struct fd_context *ctx, const struct pipe_sampler_state *sampler)
+{
+   struct fd6_context *fd6_ctx = fd6_context(ctx);
+   struct fd6_bcolor_entry *entries = fd_bo_map(fd6_ctx->bcolor_mem);
+   struct fd6_bcolor_entry key = {};
+
+   setup_border_color(ctx->screen, sampler, &key);
+
+   uint32_t hash = bcolor_key_hash(&key);
+
+   struct hash_entry *entry =
+      _mesa_hash_table_search_pre_hashed(fd6_ctx->bcolor_cache, hash, &key);
+
+   if (entry) {
+      return (unsigned)(uintptr_t)entry->data;
+   }
+
+   unsigned idx = fd6_ctx->bcolor_cache->entries;
+
+   assert(idx < FD6_MAX_BORDER_COLORS);
+
+   if (idx >= FD6_MAX_BORDER_COLORS)
+      return 0;
+
+   entries[idx] = key;
+
+   _mesa_hash_table_insert_pre_hashed(fd6_ctx->bcolor_cache, hash,
+                                      &entries[idx], (void *)(uintptr_t)idx);
+
+   return idx;
 }
 
 static void *
@@ -211,6 +254,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
                          const struct pipe_sampler_state *cso)
 {
    struct fd6_sampler_stateobj *so = CALLOC_STRUCT(fd6_sampler_stateobj);
+   struct fd_context *ctx = fd_context(pctx);
    unsigned aniso = util_last_bit(MIN2(cso->max_anisotropy >> 1, 8));
    bool miplinear = false;
 
@@ -218,20 +262,20 @@ fd6_sampler_state_create(struct pipe_context *pctx,
       return NULL;
 
    so->base = *cso;
-   so->seqno = ++fd6_context(fd_context(pctx))->tex_seqno;
+   so->seqno = ++fd6_context(ctx)->tex_seqno;
 
    if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR)
       miplinear = true;
 
-   so->needs_border = false;
+   bool needs_border = false;
    so->texsamp0 =
       COND(miplinear, A6XX_TEX_SAMP_0_MIPFILTER_LINEAR_NEAR) |
       A6XX_TEX_SAMP_0_XY_MAG(tex_filter(cso->mag_img_filter, aniso)) |
       A6XX_TEX_SAMP_0_XY_MIN(tex_filter(cso->min_img_filter, aniso)) |
       A6XX_TEX_SAMP_0_ANISO(aniso) |
-      A6XX_TEX_SAMP_0_WRAP_S(tex_clamp(cso->wrap_s, &so->needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_T(tex_clamp(cso->wrap_t, &so->needs_border)) |
-      A6XX_TEX_SAMP_0_WRAP_R(tex_clamp(cso->wrap_r, &so->needs_border));
+      A6XX_TEX_SAMP_0_WRAP_S(tex_clamp(cso->wrap_s, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_T(tex_clamp(cso->wrap_t, &needs_border)) |
+      A6XX_TEX_SAMP_0_WRAP_R(tex_clamp(cso->wrap_r, &needs_border));
 
    so->texsamp1 =
       COND(cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE,
@@ -246,6 +290,9 @@ fd6_sampler_state_create(struct pipe_context *pctx,
    if (cso->compare_mode)
       so->texsamp1 |=
          A6XX_TEX_SAMP_1_COMPARE_FUNC(cso->compare_func); /* maps 1:1 */
+
+   if (needs_border)
+      so->texsamp2 = A6XX_TEX_SAMP_2_BCOLOR(get_bcolor_offset(ctx, cso));
 
    return so;
 }
@@ -455,7 +502,6 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct fd6_texture_state *state = NULL;
    struct fd6_texture_key key;
-   bool needs_border = false;
 
    memset(&key, 0, sizeof(key));
 
@@ -483,12 +529,9 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
          fd6_sampler_stateobj(tex->samplers[i]);
 
       key.samp[i].seqno = sampler->seqno;
-
-      needs_border |= sampler->needs_border;
    }
 
    key.type = type;
-   key.bcolor_offset = fd6_border_color_offset(ctx, type, tex);
 
    uint32_t hash = tex_key_hash(&key);
    fd_screen_lock(ctx->screen);
@@ -506,9 +549,8 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
    pipe_reference_init(&state->reference, 2);
    state->key = key;
    state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
-   state->needs_border = needs_border;
 
-   fd6_emit_textures(ctx, state->stateobj, type, tex, key.bcolor_offset, NULL);
+   fd6_emit_textures(ctx, state->stateobj, type, tex, NULL);
 
    /* NOTE: uses copy of key in state obj, because pointer passed by caller
     * is probably on the stack
@@ -572,6 +614,12 @@ fd6_texture_init(struct pipe_context *pctx) disable_thread_safety_analysis
 
    ctx->rebind_resource = fd6_rebind_resource;
 
+   fd6_ctx->bcolor_cache =
+         _mesa_hash_table_create(NULL, bcolor_key_hash, bcolor_key_equals);
+   fd6_ctx->bcolor_mem = fd_bo_new(ctx->screen->dev,
+                                   FD6_MAX_BORDER_COLORS * FD6_BORDER_COLOR_SIZE,
+                                   0, "bcolor");
+
    fd6_ctx->tex_cache = _mesa_hash_table_create(NULL, tex_key_hash, tex_key_equals);
 }
 
@@ -590,4 +638,6 @@ fd6_texture_fini(struct pipe_context *pctx)
    fd_screen_unlock(ctx->screen);
 
    ralloc_free(fd6_ctx->tex_cache);
+   fd_bo_del(fd6_ctx->bcolor_mem);
+   ralloc_free(fd6_ctx->bcolor_cache);
 }

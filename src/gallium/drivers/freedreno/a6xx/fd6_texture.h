@@ -60,17 +60,11 @@ struct PACKED fd6_bcolor_entry {
 };
 
 #define FD6_BORDER_COLOR_SIZE sizeof(struct fd6_bcolor_entry)
-#define FD6_BORDER_COLOR_UPLOAD_SIZE                                           \
-   (2 * PIPE_MAX_SAMPLERS * FD6_BORDER_COLOR_SIZE)
-
-void fd6_setup_border_color(struct fd_screen *screen,
-                            const struct pipe_sampler_state *sampler,
-                            struct fd6_bcolor_entry *e);
+#define FD6_MAX_BORDER_COLORS 128
 
 struct fd6_sampler_stateobj {
    struct pipe_sampler_state base;
    uint32_t texsamp0, texsamp1, texsamp2, texsamp3;
-   bool needs_border;
    uint16_t seqno;
 };
 
@@ -108,36 +102,6 @@ void fd6_sampler_view_update(struct fd_context *ctx,
 void fd6_texture_init(struct pipe_context *pctx);
 void fd6_texture_fini(struct pipe_context *pctx);
 
-static inline unsigned
-fd6_border_color_offset(struct fd_context *ctx, enum pipe_shader_type type,
-                        struct fd_texture_stateobj *tex) assert_dt
-{
-   /* Currently we put the FS border-color state after VS.  Possibly
-    * we could swap the order.
-    *
-    * This will need update for HS/DS/GS
-    */
-   if (type != PIPE_SHADER_FRAGMENT)
-      return 0;
-
-   unsigned needs_border = false;
-
-   for (unsigned i = 0; i < tex->num_samplers; i++) {
-      if (!tex->samplers[i])
-         continue;
-
-      struct fd6_sampler_stateobj *sampler =
-         fd6_sampler_stateobj(tex->samplers[i]);
-
-      needs_border |= sampler->needs_border;
-   }
-
-   if (!needs_border)
-      return 0;
-
-   return ctx->tex[PIPE_SHADER_VERTEX].num_samplers;
-}
-
 /*
  * Texture stateobj:
  *
@@ -161,14 +125,12 @@ struct fd6_texture_key {
       uint16_t seqno;
    } samp[16];
    uint8_t type;
-   uint8_t bcolor_offset;
 };
 
 struct fd6_texture_state {
    struct pipe_reference reference;
    struct fd6_texture_key key;
    struct fd_ringbuffer *stateobj;
-   bool needs_border;
 };
 
 struct fd6_texture_state *

@@ -50,9 +50,6 @@ fd6_context_destroy(struct pipe_context *pctx) in_dt
 {
    struct fd6_context *fd6_ctx = fd6_context(fd_context(pctx));
 
-   u_upload_destroy(fd6_ctx->border_color_uploader);
-   pipe_resource_reference(&fd6_ctx->border_color_buf, NULL);
-
    if (fd6_ctx->streamout_disable_stateobj)
       fd_ringbuffer_del(fd6_ctx->streamout_disable_stateobj);
 
@@ -268,9 +265,6 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv,
    fd_context_setup_common_vbos(&fd6_ctx->base);
 
    fd6_blitter_init(pctx);
-
-   fd6_ctx->border_color_uploader =
-      u_upload_create(pctx, 4096, 0, PIPE_USAGE_STREAM, 0);
 
    return fd_context_init_tc(pctx, flags);
 }

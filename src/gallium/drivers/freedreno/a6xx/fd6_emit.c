@@ -51,50 +51,6 @@
 #include "fd6_zsa.h"
 
 static void
-setup_border_colors(struct fd_texture_stateobj *tex,
-                    struct fd6_bcolor_entry *entries,
-                    struct fd_screen *screen)
-{
-   unsigned i;
-
-   for (i = 0; i < tex->num_samplers; i++) {
-      struct pipe_sampler_state *sampler = tex->samplers[i];
-
-      if (!sampler)
-         continue;
-
-      fd6_setup_border_color(screen, sampler, &entries[i]);
-   }
-}
-
-static void
-emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring) assert_dt
-{
-   struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct fd6_bcolor_entry *entries;
-   unsigned off;
-   void *ptr;
-
-   STATIC_ASSERT(sizeof(struct fd6_bcolor_entry) == FD6_BORDER_COLOR_SIZE);
-
-   u_upload_alloc(fd6_ctx->border_color_uploader, 0,
-                  FD6_BORDER_COLOR_UPLOAD_SIZE, FD6_BORDER_COLOR_UPLOAD_SIZE,
-                  &off, &fd6_ctx->border_color_buf, &ptr);
-
-   entries = ptr;
-
-   setup_border_colors(&ctx->tex[PIPE_SHADER_VERTEX], &entries[0], ctx->screen);
-   setup_border_colors(&ctx->tex[PIPE_SHADER_FRAGMENT],
-                       &entries[ctx->tex[PIPE_SHADER_VERTEX].num_samplers],
-                       ctx->screen);
-
-   OUT_PKT4(ring, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR, 2);
-   OUT_RELOC(ring, fd_resource(fd6_ctx->border_color_buf)->bo, off, 0, 0);
-
-   u_upload_unmap(fd6_ctx->border_color_uploader);
-}
-
-static void
 fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx) assert_dt
 {
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
@@ -120,14 +76,12 @@ fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx) assert_dt
    OUT_RING(state, 0);
 }
 
-bool
+void
 fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
                   enum pipe_shader_type type, struct fd_texture_stateobj *tex,
-                  unsigned bcolor_offset,
                   /* can be NULL if no image/SSBO/fb state to merge in: */
                   const struct ir3_shader_variant *v)
 {
-   bool needs_border = false;
    unsigned opcode, tex_samp_reg, tex_const_reg, tex_count_reg;
    enum a6xx_state_block sb;
 
@@ -188,10 +142,8 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
                              : &dummy_sampler;
          OUT_RING(state, sampler->texsamp0);
          OUT_RING(state, sampler->texsamp1);
-         OUT_RING(state, sampler->texsamp2 |
-                            A6XX_TEX_SAMP_2_BCOLOR(i + bcolor_offset));
+         OUT_RING(state, sampler->texsamp2);
          OUT_RING(state, sampler->texsamp3);
-         needs_border |= sampler->needs_border;
       }
 
       /* output sampler state: */
@@ -311,8 +263,6 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    OUT_PKT4(ring, tex_count_reg, 1);
    OUT_RING(ring, num_merged_textures);
-
-   return needs_border;
 }
 
 /* Emits combined texture state, which also includes any Image/SSBO
@@ -324,16 +274,13 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
  *
  * TODO Is there some sane way we can still use cached texture stateobj
  * with image/ssbo in use?
- *
- * returns whether border_color is required:
  */
-static bool
+static void
 fd6_emit_combined_textures(struct fd6_emit *emit,
                            enum pipe_shader_type type,
                            const struct ir3_shader_variant *v) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
-   bool needs_border = false;
 
    static const struct {
       enum fd6_state_id state_id;
@@ -355,20 +302,11 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
        *
        * Also, framebuffer-read is a slow-path because an extra
        * texture needs to be inserted.
-       *
-       * TODO we can probably simmplify things if we also treated
-       * border_color as a slow-path.. this way the tex state key
-       * wouldn't depend on bcolor_offset.. but fb_read might rather
-       * be *somehow* a fast-path if we eventually used it for PLS.
-       * I suppose there would be no harm in just *always* inserting
-       * an fb_read texture?
        */
       if ((ctx->dirty_shader[type] & FD_DIRTY_SHADER_TEX) &&
           ctx->tex[type].num_textures > 0) {
          struct fd6_texture_state *tex =
             fd6_texture_state(ctx, type, &ctx->tex[type]);
-
-         needs_border |= tex->needs_border;
 
          fd6_emit_add_group(emit, tex->stateobj, s[type].state_id,
                             s[type].enable_mask);
@@ -386,17 +324,13 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
          struct fd_texture_stateobj *tex = &ctx->tex[type];
          struct fd_ringbuffer *stateobj = fd_submit_new_ringbuffer(
             ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
-         unsigned bcolor_offset = fd6_border_color_offset(ctx, type, tex);
 
-         needs_border |=
-            fd6_emit_textures(ctx, stateobj, type, tex, bcolor_offset, v);
+         fd6_emit_textures(ctx, stateobj, type, tex, v);
 
          fd6_emit_take_group(emit, stateobj, s[type].state_id,
                              s[type].enable_mask);
       }
    }
-
-   return needs_border;
 }
 
 static struct fd_ringbuffer *
@@ -876,7 +810,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
    const struct ir3_shader_variant *ds = emit->ds;
    const struct ir3_shader_variant *gs = emit->gs;
    const struct ir3_shader_variant *fs = emit->fs;
-   bool needs_border = false;
 
    emit_marker6(ring, 5);
 
@@ -963,30 +896,25 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          state = fd6_build_tess_consts(emit);
          break;
       case FD6_GROUP_VS_TEX:
-         needs_border |=
-            fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX, vs);
+         fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX, vs);
          continue;
       case FD6_GROUP_HS_TEX:
          if (hs) {
-            needs_border |=
-               fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL, hs);
+            fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL, hs);
          }
          continue;
       case FD6_GROUP_DS_TEX:
          if (ds) {
-            needs_border |=
-               fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL, ds);
+            fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL, ds);
          }
          continue;
       case FD6_GROUP_GS_TEX:
          if (gs) {
-            needs_border |=
-               fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY, gs);
+            fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY, gs);
          }
          continue;
       case FD6_GROUP_FS_TEX:
-         needs_border |=
-            fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT, fs);
+         fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT, fs);
          continue;
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
@@ -1000,9 +928,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
       fd6_emit_take_group(emit, state, group, enable_mask);
    }
-
-   if (needs_border)
-      emit_border_color(ctx, ring);
 
    if (emit->num_groups > 0) {
       OUT_PKT7(ring, CP_SET_DRAW_STATE, 3 * emit->num_groups);
@@ -1040,14 +965,8 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
    if (dirty & (FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG |
                 FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) {
       struct fd_texture_stateobj *tex = &ctx->tex[PIPE_SHADER_COMPUTE];
-      unsigned bcolor_offset =
-         fd6_border_color_offset(ctx, PIPE_SHADER_COMPUTE, tex);
 
-      bool needs_border = fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex,
-                                            bcolor_offset, cp);
-
-      if (needs_border)
-         emit_border_color(ctx, ring);
+      fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex, cp);
 
       OUT_PKT4(ring, REG_A6XX_SP_VS_TEX_COUNT, 1);
       OUT_RING(ring, 0);
@@ -1227,6 +1146,12 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
       /* Updating PC_TESSFACTOR_ADDR could race with the next draw which uses it. */
       OUT_WFI5(ring);
    }
+
+   OUT_PKT4(ring, REG_A6XX_SP_TP_BORDER_COLOR_BASE_ADDR, 2);
+   OUT_RELOC(ring, fd6_context(batch->ctx)->bcolor_mem, 0, 0, 0);
+
+   OUT_PKT4(ring, REG_A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR, 2);
+   OUT_RELOC(ring, fd6_context(batch->ctx)->bcolor_mem, 0, 0, 0);
 
    if (!batch->nondraw) {
       trace_end_state_restore(&batch->trace, ring);

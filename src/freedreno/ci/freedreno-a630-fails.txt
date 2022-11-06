@@ -112,7 +112,6 @@ spec@arb_arrays_of_arrays@execution@sampler@fs-nested-struct-arrays-nonconst-nes
 # Skips prior to exposing gl45, now fails for same reason as above test
 spec@arb_gl_spirv@execution@uniform@sampler2d-nonconst-nested-array,Fail
 
-spec@arb_compute_shader@execution@border-color,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
 spec@arb_depth_buffer_float@fbo-generatemipmap-formats,Fail
@@ -185,9 +184,6 @@ spec@arb_tessellation_shader@execution@tcs-primitiveid,Fail
 # "Failed to link:
 #  error: Too many tessellation control shader atomic counters"
 spec@arb_tessellation_shader@execution@tes-primitiveid,Fail
-
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7518
-spec@arb_tessellation_shader@execution@tes-read-texture,Fail
 
 # ir3_nir_lower_tess.c:251: lower_block_to_explicit_output: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed.
 spec@arb_tessellation_shader@execution@tcs-input-read-mat,Crash
