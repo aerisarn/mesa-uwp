@@ -1891,7 +1891,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3DepthClipNegativeOneToOne = true;
          features->extendedDynamicState3ProvokingVertexMode = !pdevice->use_ngg; /* TODO: NGG */
          features->extendedDynamicState3DepthClampEnable = true;
-         features->extendedDynamicState3ColorWriteMask = false; /* TODO: Zink */
+         features->extendedDynamicState3ColorWriteMask = true;
          features->extendedDynamicState3RasterizationSamples = false; /* TODO: Zink */
          features->extendedDynamicState3ColorBlendEquation = false; /* TODO: Zink */
          features->extendedDynamicState3SampleLocationsEnable = false; /* TODO: Zink */
