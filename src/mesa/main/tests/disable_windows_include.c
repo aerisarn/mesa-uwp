@@ -39,7 +39,6 @@
 #include <mesa/main/conservativeraster.h>
 #include <mesa/main/consts_exts.h>
 #include <mesa/main/context.h>
-#include <mesa/main/cpuinfo.h>
 #include <mesa/main/dd.h>
 #include <mesa/main/debug.h>
 #include <mesa/main/debug_output.h>
