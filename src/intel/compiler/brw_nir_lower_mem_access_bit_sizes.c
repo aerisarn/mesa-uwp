@@ -29,8 +29,7 @@
 static nir_intrinsic_instr *
 dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                   nir_ssa_def *store_src, int offset,
-                  unsigned num_components, unsigned bit_size,
-                  unsigned align)
+                  unsigned num_components, unsigned bit_size)
 {
    const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
 
@@ -63,7 +62,10 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    if (nir_intrinsic_has_access(intrin))
       nir_intrinsic_set_access(dup, nir_intrinsic_access(intrin));
 
-   nir_intrinsic_set_align(dup, align, 0);
+   const unsigned align_mul = nir_intrinsic_align_mul(intrin);
+   const unsigned align_offset =
+      (nir_intrinsic_align_offset(intrin) + (unsigned)offset) % align_mul;
+   nir_intrinsic_set_align_offset(dup, align_offset);
 
    if (info->has_dest) {
       assert(intrin->dest.is_ssa);
@@ -110,7 +112,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(load_comps32 <= 3);
 
       nir_intrinsic_instr *load_instr =
-            dup_mem_intrinsic(b, intrin, NULL, -load_offset, load_comps32, 32, 4);
+            dup_mem_intrinsic(b, intrin, NULL, -load_offset, load_comps32, 32);
       nir_ssa_def *load = &load_instr->dest.ssa;
       result = nir_extract_bits(b, &load, 1, load_offset * 8,
                                 num_components, bit_size);
@@ -128,7 +130,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_ssa_def *dword_offset = nir_iand_imm(b, unaligned_offset, 0x3u);
 
       nir_intrinsic_instr *new_load_instr =
-            dup_mem_intrinsic(b, intrin, NULL, 0, 1, 32, align);
+            dup_mem_intrinsic(b, intrin, NULL, 0, 1, 32);
 
       nir_ssa_def *new_load = &new_load_instr->dest.ssa;
 
@@ -163,7 +165,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
 
          nir_intrinsic_instr *load_instr =
                dup_mem_intrinsic(b, intrin, NULL, load_offset, load_comps,
-                                 load_bit_size, align);
+                                 load_bit_size);
          loads[num_loads++] = &load_instr->dest.ssa;
 
          load_offset += load_comps * (load_bit_size / 8);
@@ -238,13 +240,11 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
          (align_mul >= 4 && (align_offset + start) % 4 == 0) ||
          (offset_is_const && (start + const_offset) % 4 == 0);
 
-      unsigned store_comps, store_bit_size, store_align;
+      unsigned store_comps, store_bit_size;
       if (chunk_bytes >= 4 && is_dword_aligned) {
-         store_align = MAX2(align, 4);
          store_bit_size = 32;
          store_comps = needs_scalar ? 1 : MIN2(chunk_bytes, 16) / 4;
       } else {
-         store_align = align;
          store_comps = 1;
          store_bit_size = MIN2(chunk_bytes, 4) * 8;
          /* The bit size must be a power of two */
@@ -257,7 +257,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
                                              store_comps, store_bit_size);
 
       dup_mem_intrinsic(b, intrin, packed, start,
-                        store_comps, store_bit_size, store_align);
+                        store_comps, store_bit_size);
 
       BITSET_CLEAR_RANGE(mask, start, (start + store_bytes - 1));
    }
