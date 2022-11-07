@@ -219,18 +219,22 @@ st_setup_current(struct st_context *st,
       GLubyte data[VERT_ATTRIB_MAX * sizeof(GLdouble) * 4];
       GLubyte *cursor = data;
       const unsigned bufidx = (*num_vbuffers)++;
-      unsigned max_alignment = 1;
 
       do {
          const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
          const struct gl_array_attributes *const attrib
             = _mesa_draw_current_attrib(ctx, attr);
          const unsigned size = attrib->Format._ElementSize;
-         const unsigned alignment = util_next_power_of_two(size);
-         max_alignment = MAX2(max_alignment, alignment);
+
+         /* When the current attribs are set (e.g. via glColor3ub or
+          * glVertexAttrib2s), they are always converted to float32 or int32
+          * or dual slots being 2x int32, so they are always dword-aligned.
+          * glBegin/End behaves in the same way. It's really an internal Mesa
+          * inefficiency that is convenient here, which is why this assertion
+          * is always true.
+          */
+         assert(size % 4 == 0); /* assume a hw-friendly alignment */
          memcpy(cursor, attrib->Ptr, size);
-         if (alignment != size)
-            memset(cursor + size, 0, alignment - size);
 
          if (UPDATE == UPDATE_ALL) {
             init_velement(velements->velems, &attrib->Format, cursor - data,
@@ -238,7 +242,7 @@ st_setup_current(struct st_context *st,
                           util_bitcount_fast<POPCNT>(inputs_read & BITFIELD_MASK(attr)));
          }
 
-         cursor += alignment;
+         cursor += size;
       } while (curmask);
 
       vbuffer[bufidx].is_user_buffer = false;
@@ -256,7 +260,7 @@ st_setup_current(struct st_context *st,
                                       st->pipe->const_uploader :
                                       st->pipe->stream_uploader;
       u_upload_data(uploader,
-                    0, cursor - data, max_alignment, data,
+                    0, cursor - data, 16, data,
                     &vbuffer[bufidx].buffer_offset,
                     &vbuffer[bufidx].buffer.resource);
       /* Always unmap. The uploader might use explicit flushes. */
