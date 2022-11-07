@@ -941,10 +941,9 @@ panfrost_box_covers_resource(const struct pipe_resource *resource,
                              const struct pipe_box *box)
 {
         return resource->last_level == 0 &&
-               resource->width0 == box->width &&
-               resource->height0 == box->height &&
-               resource->depth0 == box->depth &&
-               resource->array_size == 1;
+               util_texrange_covers_whole_level(resource, 0, box->x, box->y,
+                                                box->z, box->width, box->height,
+                                                box->depth);
 }
 
 static void *
@@ -1048,7 +1047,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 panfrost_bo_wait(bo, INT64_MAX, false);
 
                 create_new_bo = true;
-                copy_resource = !panfrost_box_covers_resource(resource, box);
+                copy_resource = !(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE);
         }
 
         /* Shadowing with separate stencil may require additional accounting.
