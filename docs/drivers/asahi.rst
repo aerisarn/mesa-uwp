@@ -285,6 +285,8 @@ Mesa includes a library that mocks out the DRM UABI used by the Asahi driver
 stack, allowing the Mesa driver to run on non-M1 Linux hardware. This can be
 useful for exercising the compiler. To build, use options:
 
+::
+
    -Dgallium-drivers=asahi -Dtools=drm-shim
 
 Then run an OpenGL workload with environment variable:
