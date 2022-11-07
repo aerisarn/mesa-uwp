@@ -808,7 +808,7 @@ PIPE_BIND_*
 
 These flags indicate how a resource will be used and are specified at resource
 creation time. Resources may be used in different roles
-during their lifecycle. Bind flags are cumulative and may be combined to create
+during their life cycle. Bind flags are cumulative and may be combined to create
 a resource which can be used for multiple things.
 Depending on the pipe driver's memory management and these bind flags,
 resources might be created and handled quite differently.
