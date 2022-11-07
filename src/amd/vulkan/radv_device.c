@@ -1895,7 +1895,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3AlphaToCoverageEnable = pdevice->rad_info.gfx_level < GFX11;
          features->extendedDynamicState3LogicOpEnable = true;
          features->extendedDynamicState3LineStippleEnable = true;
-         features->extendedDynamicState3ColorBlendEnable = false; /* TODO: Zink */
+         features->extendedDynamicState3ColorBlendEnable = true;
          features->extendedDynamicState3DepthClipEnable = true;
          features->extendedDynamicState3ConservativeRasterizationMode = true;
          features->extendedDynamicState3DepthClipNegativeOneToOne = true;
