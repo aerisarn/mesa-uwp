@@ -1000,6 +1000,14 @@ panfrost_ptr_map(struct pipe_context *pctx,
         if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_inject_mmap(bo->ptr.gpu, bo->ptr.cpu, bo->size, NULL);
 
+        /* Upgrade writes to uninitialized ranges to UNSYNCHRONIZED */
+        if ((usage & PIPE_MAP_WRITE) &&
+            resource->target == PIPE_BUFFER &&
+            !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) {
+
+                usage |= PIPE_MAP_UNSYNCHRONIZED;
+        }
+
         /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
          * being mapped.
          */
@@ -1019,8 +1027,6 @@ panfrost_ptr_map(struct pipe_context *pctx,
             !(usage & PIPE_MAP_UNSYNCHRONIZED) &&
             !(resource->flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
             (usage & PIPE_MAP_WRITE) &&
-            !(resource->target == PIPE_BUFFER
-              && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) &&
             rsrc->track.nr_users > 0) {
 
                 /* When a resource to be modified is already being used by a
@@ -1086,10 +1092,6 @@ panfrost_ptr_map(struct pipe_context *pctx,
                                 panfrost_bo_wait(bo, INT64_MAX, true);
                         }
                 }
-        } else if ((usage & PIPE_MAP_WRITE)
-                   && resource->target == PIPE_BUFFER
-                   && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) {
-                /* No flush for writes to uninitialized */
         } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
                 if (usage & PIPE_MAP_WRITE) {
                         panfrost_flush_batches_accessing_rsrc(ctx, rsrc, "Synchronized write");
