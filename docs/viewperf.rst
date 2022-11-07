@@ -2,8 +2,9 @@ Viewperf Issues
 ===============
 
 This page lists known issues with `SPEC Viewperf
-11 <https://www.spec.org/gwpg/gpc.static/vp11info.html>`__ and `SPEC
-Viewperf 12 <https://www.spec.org/gwpg/gpc.static/vp12info.html>`__ when
+11 <https://gwpg.spec.org/benchmarks/benchmark/specviewperf-11/>`__ and
+`SPEC Viewperf
+12 <https://gwpg.spec.org/benchmarks/benchmark/specviewperf-12/>`__ when
 running on Mesa-based drivers.
 
 The Viewperf data sets are basically GL API traces that are recorded
