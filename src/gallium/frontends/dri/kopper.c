@@ -497,7 +497,9 @@ kopper_allocate_textures(struct dri_context *ctx,
    __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
+#ifdef VK_USE_PLATFORM_XCB_KHR
    struct kopper_screen *kscreen = (struct kopper_screen*)drawable->sPriv->driverPrivate;
+#endif
 
    bool is_window = cdraw->is_window;
    bool is_pixmap = !is_window && cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
