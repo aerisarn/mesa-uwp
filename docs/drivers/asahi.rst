@@ -38,7 +38,7 @@ The library is only built if ``-Dtools=asahi`` is passed. It builds a single
 
 For example, to trace an app ``./app``, run:
 
-    DYLD_INSERT_LIBRARIES=~/mesa/build/src/asahi/lib/libwrap.dylib ./app
+   DYLD_INSERT_LIBRARIES=~/mesa/build/src/asahi/lib/libwrap.dylib ./app
 
 Hardware varyings
 -----------------
