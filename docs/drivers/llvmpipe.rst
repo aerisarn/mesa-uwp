@@ -266,7 +266,7 @@ Recommended Reading
    -  `Software optimization
       resources <https://www.agner.org/optimize/>`__
    -  `Intel Intrinsics
-      Guide <https://software.intel.com/en-us/articles/intel-intrinsics-guide>`__
+      Guide <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html>`__
 
 -  LLVM
 
