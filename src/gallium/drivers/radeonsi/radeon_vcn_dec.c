@@ -3219,6 +3219,9 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
       dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V2;
       break;
+   case CHIP_GFX940:
+      dec->jpg_reg.version = RDECODE_JPEG_REG_VER_V3;
+      break;
    case CHIP_GFX1100:
    case CHIP_GFX1101:
    case CHIP_GFX1102:
