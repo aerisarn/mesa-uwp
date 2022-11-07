@@ -132,7 +132,6 @@ public:
    int choose_spill_reg(struct ra_graph *g);
    void spill_reg(unsigned spill_reg);
    void move_grf_array_access_to_scratch();
-   void move_uniform_array_access_to_pull_constants();
    void split_uniform_registers();
    void setup_push_ranges();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);

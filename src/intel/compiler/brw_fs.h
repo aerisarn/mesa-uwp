@@ -254,7 +254,6 @@ public:
    bool try_constant_propagate(fs_inst *inst, acp_entry *entry);
    bool opt_copy_propagation_local(void *mem_ctx, bblock_t *block,
                                    exec_list *acp);
-   bool opt_drop_redundant_mov_to_flags();
    bool opt_register_renaming();
    bool opt_bank_conflicts();
    bool opt_split_sends();
@@ -308,7 +307,6 @@ public:
                    fs_reg result, fs_reg *op, unsigned fsign_src);
    void emit_shader_float_controls_execution_mode();
    bool opt_peephole_sel();
-   bool opt_peephole_predicated_break();
    bool opt_saturate_propagation();
    bool opt_cmod_propagation();
    bool opt_zero_samples();
@@ -384,7 +382,6 @@ public:
                                           nir_intrinsic_instr *instr);
    fs_reg get_tcs_multi_patch_icp_handle(const brw::fs_builder &bld,
                                          nir_intrinsic_instr *instr);
-   struct brw_reg get_tcs_output_urb_handle();
 
    void emit_percomp(const brw::fs_builder &bld, const fs_inst &inst,
                      unsigned wr_mask);
@@ -612,8 +609,6 @@ private:
    void generate_fb_write(fs_inst *inst, struct brw_reg payload);
    void generate_fb_read(fs_inst *inst, struct brw_reg dst,
                          struct brw_reg payload);
-   void generate_urb_read(fs_inst *inst, struct brw_reg dst, struct brw_reg payload);
-   void generate_urb_write(fs_inst *inst, struct brw_reg payload);
    void generate_cs_terminate(fs_inst *inst, struct brw_reg payload);
    void generate_barrier(fs_inst *inst, struct brw_reg src);
    bool generate_linterp(fs_inst *inst, struct brw_reg dst,
@@ -642,7 +637,6 @@ private:
    void generate_varying_pull_constant_load_gfx4(fs_inst *inst,
                                                  struct brw_reg dst,
                                                  struct brw_reg index);
-   void generate_mov_dispatch_to_flags(fs_inst *inst);
 
    void generate_pixel_interpolator_query(fs_inst *inst,
                                           struct brw_reg dst,
