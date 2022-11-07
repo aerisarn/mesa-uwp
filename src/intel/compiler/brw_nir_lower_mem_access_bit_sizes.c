@@ -91,6 +91,8 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
    const unsigned bit_size = intrin->dest.ssa.bit_size;
    const unsigned num_components = intrin->dest.ssa.num_components;
    const unsigned bytes_read = num_components * (bit_size / 8);
+   const unsigned align_mul = nir_intrinsic_align_mul(intrin);
+   const unsigned align_offset = nir_intrinsic_align_offset(intrin);
    const unsigned align = nir_intrinsic_align(intrin);
 
    if (bit_size == 32 && align >= 32 && intrin->num_components <= 4 &&
@@ -153,9 +155,24 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
          const unsigned bytes_left = bytes_read - load_offset;
          unsigned load_bit_size, load_comps;
          if (align < 4) {
-            load_comps = 1;
             /* Choose a byte, word, or dword */
-            load_bit_size = util_next_power_of_two(MIN2(bytes_left, 4)) * 8;
+            unsigned load_bytes = util_next_power_of_two(MIN2(bytes_left, 4));
+
+            if (intrin->intrinsic == nir_intrinsic_load_scratch) {
+               /* The way scratch address swizzling works in the back-end, it
+                * happens at a DWORD granularity so we can't have a single load
+                * or store cross a DWORD boundary.
+                */
+               if ((align_offset % 4) + load_bytes > MIN2(align_mul, 4))
+                  load_bytes = MIN2(align_mul, 4) - (align_offset % 4);
+            }
+
+            /* Must be a power of two */
+            if (load_bytes == 3)
+               load_bytes = 2;
+
+            load_bit_size = load_bytes * 8;
+            load_comps = 1;
          } else {
             assert(load_offset % 4 == 0);
             load_bit_size = 32;
@@ -245,11 +262,23 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
          store_bit_size = 32;
          store_comps = needs_scalar ? 1 : MIN2(chunk_bytes, 16) / 4;
       } else {
+         unsigned store_bytes = MIN2(chunk_bytes, 4);
+
+         if (intrin->intrinsic == nir_intrinsic_store_scratch) {
+            /* The way scratch address swizzling works in the back-end, it
+             * happens at a DWORD granularity so we can't have a single load
+             * or store cross a DWORD boundary.
+             */
+            if ((align_offset % 4) + store_bytes > MIN2(align_mul, 4))
+               store_bytes = MIN2(align_mul, 4) - (align_offset % 4);
+         }
+
+         /* Must be a power of two */
+         if (store_bytes == 3)
+            store_bytes = 2;
+
+         store_bit_size = store_bytes * 8;
          store_comps = 1;
-         store_bit_size = MIN2(chunk_bytes, 4) * 8;
-         /* The bit size must be a power of two */
-         if (store_bit_size == 24)
-            store_bit_size = 16;
       }
       const unsigned store_bytes = store_comps * (store_bit_size / 8);
 
