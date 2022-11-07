@@ -473,26 +473,26 @@ util_format_short_name(enum pipe_format format)
 /**
  * Whether this format is plain, see UTIL_FORMAT_LAYOUT_PLAIN for more info.
  */
-static inline boolean
+static inline bool
 util_format_is_plain(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    if (!format) {
-      return FALSE;
+      return false;
    }
 
-   return desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ? TRUE : FALSE;
+   return desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ? true : false;
 }
 
-static inline boolean
+static inline bool
 util_format_is_compressed(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
    switch (desc->layout) {
@@ -504,81 +504,81 @@ util_format_is_compressed(enum pipe_format format)
    case UTIL_FORMAT_LAYOUT_ATC:
    case UTIL_FORMAT_LAYOUT_FXT1:
       /* XXX add other formats in the future */
-      return TRUE;
+      return true;
    default:
-      return FALSE;
+      return false;
    }
 }
 
-static inline boolean
+static inline bool
 util_format_is_s3tc(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
-   return desc->layout == UTIL_FORMAT_LAYOUT_S3TC ? TRUE : FALSE;
+   return desc->layout == UTIL_FORMAT_LAYOUT_S3TC ? true : false;
 }
 
-static inline boolean
+static inline bool
 util_format_is_etc(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
-   return desc->layout == UTIL_FORMAT_LAYOUT_ETC ? TRUE : FALSE;
+   return desc->layout == UTIL_FORMAT_LAYOUT_ETC ? true : false;
 }
 
-static inline boolean
+static inline bool
 util_format_is_srgb(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
    return desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB;
 }
 
-static inline boolean
+static inline bool
 util_format_has_depth(const struct util_format_description *desc)
 {
    return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
           desc->swizzle[0] != PIPE_SWIZZLE_NONE;
 }
 
-static inline boolean
+static inline bool
 util_format_has_stencil(const struct util_format_description *desc)
 {
    return desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS &&
           desc->swizzle[1] != PIPE_SWIZZLE_NONE;
 }
 
-static inline boolean
+static inline bool
 util_format_is_depth_or_stencil(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
    return util_format_has_depth(desc) ||
           util_format_has_stencil(desc);
 }
 
-static inline boolean
+static inline bool
 util_format_is_depth_and_stencil(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
    return util_format_has_depth(desc) &&
@@ -606,14 +606,14 @@ util_format_get_depth_only(enum pipe_format format)
    }
 }
 
-static inline boolean
+static inline bool
 util_format_is_yuv(enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
 
    assert(desc);
    if (!desc) {
-      return FALSE;
+      return false;
    }
 
    return desc->colorspace == UTIL_FORMAT_COLORSPACE_YUV;
@@ -711,65 +711,65 @@ util_format_colormask(const struct util_format_description *desc)
  * @param desc       a format description to check colormask with
  * @param colormask  a bit mask for channels, matches format of PIPE_MASK_RGBA
  */
-static inline boolean
+static inline bool
 util_format_colormask_full(const struct util_format_description *desc, unsigned colormask)
 {
    return (~colormask & util_format_colormask(desc)) == 0;
 }
 
 
-boolean
+bool
 util_format_is_float(enum pipe_format format) ATTRIBUTE_CONST;
 
 
-boolean
+bool
 util_format_has_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_has_alpha1(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_luminance(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_luminance_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
 
-boolean
+bool
 util_format_is_intensity(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_subsampled_422(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_pure_integer(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_pure_sint(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_pure_uint(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_snorm(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_unorm(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_snorm8(enum pipe_format format) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_is_scaled(enum pipe_format format) ATTRIBUTE_CONST;
 /**
  * Check if the src format can be blitted to the destination format with
  * a simple memcpy.  For example, blitting from RGBA to RGBx is OK, but not
  * the reverse.
  */
-boolean
+bool
 util_is_format_compatible(const struct util_format_description *src_desc,
                           const struct util_format_description *dst_desc) ATTRIBUTE_CONST;
 
@@ -780,7 +780,7 @@ util_is_format_compatible(const struct util_format_description *src_desc,
  *
  *   PIPE_FORMAT_?8?8?8?8_UNORM
  */
-static inline boolean
+static inline bool
 util_format_is_rgba8_variant(const struct util_format_description *desc)
 {
    unsigned chan;
@@ -788,20 +788,20 @@ util_format_is_rgba8_variant(const struct util_format_description *desc)
    if(desc->block.width != 1 ||
       desc->block.height != 1 ||
       desc->block.bits != 32)
-      return FALSE;
+      return false;
 
    for(chan = 0; chan < 4; ++chan) {
       if(desc->channel[chan].type != UTIL_FORMAT_TYPE_UNSIGNED &&
          desc->channel[chan].type != UTIL_FORMAT_TYPE_VOID)
-         return FALSE;
+         return false;
       if(desc->channel[chan].type == UTIL_FORMAT_TYPE_UNSIGNED &&
          !desc->channel[chan].normalized)
-         return FALSE;
+         return false;
       if(desc->channel[chan].size != 8)
-         return FALSE;
+         return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -1627,10 +1627,10 @@ util_format_unpack_rgba_8unorm_rect(enum pipe_format format,
  * Generic format conversion;
  */
 
-boolean
+bool
 util_format_fits_8unorm(const struct util_format_description *format_desc) ATTRIBUTE_CONST;
 
-boolean
+bool
 util_format_translate(enum pipe_format dst_format,
                       void *dst, unsigned dst_stride,
                       unsigned dst_x, unsigned dst_y,
@@ -1639,7 +1639,7 @@ util_format_translate(enum pipe_format dst_format,
                       unsigned src_x, unsigned src_y,
                       unsigned width, unsigned height);
 
-boolean
+bool
 util_format_translate_3d(enum pipe_format dst_format,
                          void *dst, unsigned dst_stride,
                          unsigned dst_slice_stride,
@@ -1672,7 +1672,7 @@ void util_format_compose_swizzles(const unsigned char swz1[4],
 void util_format_apply_color_swizzle(union pipe_color_union *dst,
                                      const union pipe_color_union *src,
                                      const unsigned char swz[4],
-                                     const boolean is_integer);
+                                     const bool is_integer);
 
 void pipe_swizzle_4f(float *dst, const float *src,
                             const unsigned char swz[4]);

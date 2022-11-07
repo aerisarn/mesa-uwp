@@ -61,9 +61,9 @@ type_map = {
 
 def bool_map(value):
     if value:
-        return "TRUE"
+        return "true"
     else:
-        return "FALSE"
+        return "false"
 
 
 swizzle_map = {
