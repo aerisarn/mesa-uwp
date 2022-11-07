@@ -1944,7 +1944,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->extendedDynamicState3ProvokingVertexMode = true;
          features->extendedDynamicState3DepthClampEnable = true;
          features->extendedDynamicState3ColorWriteMask = true;
-         features->extendedDynamicState3RasterizationSamples = false; /* TODO: Zink */
+         features->extendedDynamicState3RasterizationSamples = true;
          features->extendedDynamicState3ColorBlendEquation = false; /* TODO: Zink */
          features->extendedDynamicState3SampleLocationsEnable = false; /* TODO: Zink */
          features->extendedDynamicState3LineRasterizationMode = false; /* TODO: Zink */
