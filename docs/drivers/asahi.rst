@@ -291,10 +291,14 @@ useful for exercising the compiler. To build, use options:
 
 Then run an OpenGL workload with environment variable:
 
+.. code-block:: console
+
    LD_PRELOAD=~/mesa/build/src/asahi/drm-shim/libasahi_noop_drm_shim.so
 
 For example to compile a shader with shaderdb and print some statistics along
 with the IR:
+
+.. code-block:: console
 
    ~/shader-db$ AGX_MESA_DEBUG=shaders,shaderdb ASAHI_MESA_DEBUG=precompile LIBGL_DRIVERS_PATH=~/lib/dri/ LD_PRELOAD=~/mesa/build/src/asahi/drm-shim/libasahi_noop_drm_shim.so ./run shaders/glmark/1-12.shader_test
 
