@@ -183,6 +183,18 @@ test-docs-mr:
       when: on_success
     # Other cases default to never
 
+lincheck-docs:
+  extends: .docs-base
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
+  stage: deploy
+  needs: []
+  rules:
+    - !reference [.scheduled_pipeline-rules, rules]
+  allow_failure: true
+  variables:
+    BUILDER: linkcheck
+
 # When to automatically run the CI for build jobs
 .build-rules:
   rules:
