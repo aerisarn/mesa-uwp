@@ -160,6 +160,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .sampledImageStencilSampleCounts = sample_counts,
          .storageImageSampleCounts = VK_SAMPLE_COUNT_1_BIT,
          .standardSampleLocations = true,
+         .strictLines = true,
          .optimalBufferCopyOffsetAlignment = 1,
          .optimalBufferCopyRowPitchAlignment = 1,
          .bufferImageGranularity = 1,
@@ -325,6 +326,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxCustomBorderColorSamplers = 4000;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+         VkPhysicalDeviceLineRasterizationPropertiesEXT *p = (void *)ext;
+         p->lineSubPixelPrecisionBits = 8;
+         break;
+      }
       /* More property structs */
       default:
          break;
@@ -406,6 +412,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_inline_uniform_block = true,
+      .EXT_line_rasterization = true,
       .EXT_mutable_descriptor_type = true,
       .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = info->type == NV_DEVICE_TYPE_DIS,
@@ -609,6 +616,14 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_EXT_index_type_uint8 */
       .indexTypeUint8 = true,
+
+      /* VK_EXT_line_rasterization */
+      .rectangularLines = true,
+      .bresenhamLines = true,
+      .smoothLines = true,
+      .stippledRectangularLines = true,
+      .stippledBresenhamLines = true,
+      .stippledSmoothLines = true,
 
       /* VK_EXT_non_seamless_cube_map */
       .nonSeamlessCubeMap = true,

@@ -336,6 +336,12 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .centroid   = CENTROID_PER_FRAGMENT,
    });
 
+   /* Enable multisample rasterization even for one sample rasterization,
+    * this way we get strict lines and rectangular line support.
+    * More info at: DirectX rasterization rules
+    */
+   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, V_TRUE);
+
    if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
       P_IMMD(p, NVB197, SET_OFFSET_RENDER_TARGET_INDEX,
                         BY_VIEWPORT_INDEX_FALSE);
@@ -1141,8 +1147,10 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
       P_IMMD(p, NV9097, SET_LINE_STIPPLE, dyn->rs.line.stipple.enable);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE)) {
+      /* map factor from [1,256] to [0, 255] */
+      uint32_t stipple_factor = CLAMP(dyn->rs.line.stipple.factor, 1, 256) - 1;
       P_IMMD(p, NV9097, SET_LINE_STIPPLE_PARAMETERS, {
-         .factor  = dyn->rs.line.stipple.factor,
+         .factor  = stipple_factor,
          .pattern = dyn->rs.line.stipple.pattern,
       });
    }

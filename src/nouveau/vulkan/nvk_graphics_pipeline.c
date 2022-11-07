@@ -44,7 +44,26 @@ emit_pipeline_rs_state(struct nv_push *p,
 
    P_IMMD(p, NV9097, SET_RASTER_INPUT, rs->rasterization_stream);
 
-   assert(rs->line.mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
+   switch (rs->line.mode) {
+   case VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT:
+   case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT:
+      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_FALSE);
+      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
+      break;
+
+   case VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT:
+      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
+      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
+      break;
+
+   case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT:
+      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
+      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_TRUE);
+      break;
+
+   default:
+      unreachable("Invalid line rasterization mode");
+   }
 }
 
 static void
@@ -66,7 +85,6 @@ emit_pipeline_ms_state(struct nv_push *p,
                        const struct vk_multisample_state *ms,
                        bool force_max_samples)
 {
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, ms->rasterization_samples > 1);
    P_IMMD(p, NV9097, SET_ANTI_ALIAS_ALPHA_CONTROL, {
       .alpha_to_coverage   = ms->alpha_to_coverage_enable,
       .alpha_to_one        = ms->alpha_to_one_enable,
@@ -87,9 +105,6 @@ emit_pipeline_ms_state(struct nv_push *p,
       .passes = min_samples,
       .centroid = min_samples > 1 ? CENTROID_PER_PASS : CENTROID_PER_FRAGMENT,
    });
-
-   /* TODO */
-   P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
 }
 
 static uint32_t
