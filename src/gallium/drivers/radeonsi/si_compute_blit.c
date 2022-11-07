@@ -1165,9 +1165,7 @@ bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info,
     */
    if (testing) {
       options.fp16_rtz = !util_format_is_pure_integer(info->dst.format) &&
-                         (dst_desc->channel[i].size <= 10 ||
-                          (dst_desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT &&
-                           dst_desc->channel[i].size <= 16));
+                         dst_desc->channel[i].size <= 10;
    }
 
    struct hash_entry *entry = _mesa_hash_table_search(sctx->cs_blit_shaders,
