@@ -1814,25 +1814,128 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
 
    fprintf(fp, "float_controls_execution_mode: 0x%04x\n", info->float_controls_execution_mode);
 
+   fprintf(fp, "shared: %u\n", info->shared_size);
+
    if (info->stage == MESA_SHADER_MESH || info->stage == MESA_SHADER_TASK) {
       fprintf(fp, "task_payload-size: %u\n", info->task_payload_size);
    }
 
-   fprintf(fp, "shared: %u\n", info->shared_size);
    fprintf(fp, "ray queries: %u\n", info->ray_queries);
 
-   if (info->stage == MESA_SHADER_GEOMETRY) {
+   fprintf(fp, "subgroup_size: %u\n", info->subgroup_size);
+
+   fprintf(fp, "uses_wide_subgroup_intrinsics: %u\n", info->uses_wide_subgroup_intrinsics);
+
+   fprintf(fp, "xfb_stride[]: %u %u %u %u\n",
+           info->xfb_stride[0], info->xfb_stride[1], info->xfb_stride[2], info->xfb_stride[3]);
+
+   fprintf(fp, "inlinable_uniform_dw_offsets[]: %u %u %u %u\n",
+           info->inlinable_uniform_dw_offsets[0], info->inlinable_uniform_dw_offsets[1],
+           info->inlinable_uniform_dw_offsets[2], info->inlinable_uniform_dw_offsets[3]);
+
+   fprintf(fp, "num_inlinable_uniforms: %u\n", info->num_inlinable_uniforms);
+
+   fprintf(fp, "clip_distance_arry_size: %u\n", info->clip_distance_array_size);
+   fprintf(fp, "cull_distance_array_size: %u\n", info->cull_distance_array_size);
+   fprintf(fp, "uses_texture_gather: %u\n", info->uses_texture_gather);
+   fprintf(fp, "uses_resource_info_query: %u\n", info->uses_resource_info_query);
+   fprintf(fp, "uses_fddx_fddy: %u\n", info->uses_fddx_fddy);
+   fprintf(fp, "divergence_analysis_run: %u\n", info->divergence_analysis_run);
+
+   fprintf(fp, "bit_sizes_float: 0x%02x\n", info->bit_sizes_float);
+   fprintf(fp, "bit_sizes_int: 0x%02x\n", info->bit_sizes_int);
+   fprintf(fp, "first_ubo_is_default_ubo: %u\n", info->first_ubo_is_default_ubo);
+   fprintf(fp, "separate_shader: %u\n", info->separate_shader);
+   fprintf(fp, "has_transform_feedback_varyings: %u\n", info->has_transform_feedback_varyings);
+   fprintf(fp, "flrp_lowered: %u\n", info->flrp_lowered);
+   fprintf(fp, "io_lowered: %u\n", info->io_lowered);
+   fprintf(fp, "writes_memory: %u", info->writes_memory);
+
+
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
+      fprintf(fp, "double_inputs: %" PRIx64 "\n", info->vs.double_inputs);
+      fprintf(fp, "blit_sgprs_amd: %u\n", info->vs.blit_sgprs_amd);
+      fprintf(fp, "window_space_position: %u\n", info->vs.window_space_position);
+      fprintf(fp, "needs_edge_flag: %u\n", info->vs.needs_edge_flag);
+      break;
+
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+      fprintf(fp, "primitive_mode: %u\n", info->tess._primitive_mode);
+      fprintf(fp, "tcs_vertices_out: %u\n", info->tess.tcs_vertices_out);
+      fprintf(fp, "spacing: %u\n", info->tess.spacing);
+      fprintf(fp, "ccw: %u\n", info->tess.ccw);
+      fprintf(fp, "point_mode: %u\n", info->tess.point_mode);
+      fprintf(fp, "tcs_cross_invocation_inputs_read: 0x%016" PRIx64 "\n", info->tess.tcs_cross_invocation_inputs_read);
+      fprintf(fp, "tcs_cross_invocation_outputs_read: 0x%016" PRIx64 "\n", info->tess.tcs_cross_invocation_outputs_read);
+      break;
+
+   case MESA_SHADER_GEOMETRY:
+      fprintf(fp, "output_primitive: %s\n", primitive_name(info->gs.output_primitive));
+      fprintf(fp, "input_primitive: %s\n", primitive_name(info->gs.input_primitive));
+      fprintf(fp, "vertices_out: %u\n", info->gs.vertices_out);
       fprintf(fp, "invocations: %u\n", info->gs.invocations);
-      fprintf(fp, "vertices in: %u\n", info->gs.vertices_in);
-      fprintf(fp, "vertices out: %u\n", info->gs.vertices_out);
-      fprintf(fp, "input primitive: %s\n", primitive_name(info->gs.input_primitive));
-      fprintf(fp, "output primitive: %s\n", primitive_name(info->gs.output_primitive));
-      fprintf(fp, "active_stream_mask: 0x%x\n", info->gs.active_stream_mask);
+      fprintf(fp, "vertices_in: %u\n", info->gs.vertices_in);
       fprintf(fp, "uses_end_primitive: %u\n", info->gs.uses_end_primitive);
-   } else if (info->stage == MESA_SHADER_MESH) {
-      fprintf(fp, "output primitive: %s\n", primitive_name(info->mesh.primitive_type));
-      fprintf(fp, "max primitives out: %u\n", info->mesh.max_primitives_out);
-      fprintf(fp, "max vertices out: %u\n", info->mesh.max_vertices_out);
+      fprintf(fp, "active_stream_mask: 0x%02x\n", info->gs.active_stream_mask);
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      fprintf(fp, "uses_discard: %u\n", info->fs.uses_discard);
+      fprintf(fp, "uses_demote: %u\n", info->fs.uses_demote);
+      fprintf(fp, "uses_fbfetch_output: %u\n", info->fs.uses_fbfetch_output);
+      fprintf(fp, "color_is_dual_source: %u\n", info->fs.color_is_dual_source);
+
+      fprintf(fp, "needs_quad_helper_invocations: %u\n", info->fs.needs_quad_helper_invocations);
+      fprintf(fp, "needs_all_helper_invocations: %u\n", info->fs.needs_all_helper_invocations);
+      fprintf(fp, "uses_sample_qualifier: %u\n", info->fs.uses_sample_qualifier);
+      fprintf(fp, "uses_sample_shading: %u\n", info->fs.uses_sample_shading);
+      fprintf(fp, "early_fragment_tests: %u\n", info->fs.early_fragment_tests);
+      fprintf(fp, "inner_coverage: %u\n", info->fs.inner_coverage);
+      fprintf(fp, "post_depth_coverage: %u\n", info->fs.post_depth_coverage);
+
+      fprintf(fp, "pixel_center_integer: %u\n", info->fs.pixel_center_integer);
+      fprintf(fp, "origin_upper_left: %u\n", info->fs.origin_upper_left);
+      fprintf(fp, "pixel_interlock_ordered: %u\n", info->fs.pixel_interlock_ordered);
+      fprintf(fp, "pixel_interlock_unordered: %u\n", info->fs.pixel_interlock_unordered);
+      fprintf(fp, "sample_interlock_ordered: %u\n", info->fs.sample_interlock_ordered);
+      fprintf(fp, "sample_interlock_unordered: %u\n", info->fs.sample_interlock_unordered);
+
+      fprintf(fp, "untyped_color_outputs: %u\n", info->fs.untyped_color_outputs);
+      fprintf(fp, "depth_layout: %u\n", info->fs.depth_layout);
+
+      fprintf(fp, "color0_interp: %u\n", info->fs.color0_interp);
+      fprintf(fp, "color0_sample: %u\n", info->fs.color0_sample);
+      fprintf(fp, "color0_centroid: %u\n", info->fs.color0_centroid);
+
+      fprintf(fp, "color1_interp: %u\n", info->fs.color1_interp);
+      fprintf(fp, "color1_sample: %u\n", info->fs.color1_sample);
+      fprintf(fp, "color1_centroid: %u\n", info->fs.color1_centroid);
+
+      fprintf(fp, "advancetd_blend_modes: 0x%08x\n", info->fs.advanced_blend_modes);
+      break;
+
+   case MESA_SHADER_COMPUTE:
+      fprintf(fp, "workgroup_size_hint: %u, %u, %u\n",
+              info->cs.workgroup_size_hint[0],
+              info->cs.workgroup_size_hint[1],
+              info->cs.workgroup_size_hint[2]);
+      fprintf(fp, "user_data_components_amd: %u\n", info->cs.user_data_components_amd);
+      fprintf(fp, "derivative_group: %u\n", info->cs.derivative_group);
+      fprintf(fp, "ptr_size: %u\n", info->cs.ptr_size);
+      break;
+
+   case MESA_SHADER_MESH:
+      fprintf(fp, "ms_cross_invocation_output_access: 0x%016" PRIx64 "\n", info->mesh.ms_cross_invocation_output_access);
+      fprintf(fp, "max_vertices_out: %u\n", info->mesh.max_vertices_out);
+      fprintf(fp, "max_primitives_out: %u\n", info->mesh.max_primitives_out);
+      fprintf(fp, "primitive_type: %s\n", primitive_name(info->mesh.primitive_type));
+      fprintf(fp, "nv: %u\n", info->mesh.nv);
+      break;
+
+   default:
+      fprintf(fp, "Unhandled stage %d\n", info->stage);
    }
 }
 
