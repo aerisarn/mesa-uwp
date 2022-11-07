@@ -307,4 +307,4 @@ questions, don't hesitate to visit `#zink on OFTC
 <irc://irc.oftc.net/zink>`__ and say hi!
 
 
-.. _downloaded from GPUinfo.org: https://www.saschawillems.de/blog/2022/03/12/vulkan-profiles-support-for-the-vulkan-hardware-capability-viewer-and-database/>
+.. _downloaded from GPUinfo.org: https://www.saschawillems.de/blog/2022/03/12/vulkan-profiles-support-for-the-vulkan-hardware-capability-viewer-and-database/
