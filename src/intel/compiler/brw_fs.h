@@ -461,7 +461,6 @@ public:
     */
    int *push_constant_loc;
 
-   fs_reg scratch_base;
    fs_reg frag_depth;
    fs_reg frag_stencil;
    fs_reg sample_mask;
@@ -533,7 +532,6 @@ public:
    fs_reg wpos_w;
    fs_reg pixel_w;
    fs_reg delta_xy[BRW_BARYCENTRIC_MODE_COUNT];
-   fs_reg shader_start_time;
    fs_reg final_gs_vertex_count;
    fs_reg control_data_bits;
    fs_reg invocation_id;

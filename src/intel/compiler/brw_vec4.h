@@ -113,8 +113,6 @@ public:
    brw_analysis<brw::vec4_live_variables, backend_shader> live_analysis;
    brw_analysis<brw::performance, vec4_visitor> performance_analysis;
 
-   bool need_all_constants_in_pull_buffer;
-
    /* Regs for vertex results.  Generated at ir_variable visiting time
     * for the ir->location's used.
     */
@@ -122,8 +120,6 @@ public:
    unsigned output_num_components[VARYING_SLOT_TESS_MAX][4];
    const char *output_reg_annotation[VARYING_SLOT_TESS_MAX];
    int uniforms;
-
-   src_reg shader_start_time;
 
    bool run();
    void fail(const char *msg, ...);
