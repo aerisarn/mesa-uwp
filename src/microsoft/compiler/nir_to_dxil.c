@@ -1708,7 +1708,7 @@ emit_resources(struct ntd_context *ctx)
       dxil_get_metadata_node(&ctx->mod, resources_nodes, ARRAY_SIZE(resources_nodes)): NULL;
 }
 
-static boolean
+static bool
 emit_tag(struct ntd_context *ctx, enum dxil_shader_tag tag,
          const struct dxil_mdnode *value_node)
 {
