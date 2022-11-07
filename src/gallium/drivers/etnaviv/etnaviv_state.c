@@ -777,6 +777,13 @@ etna_update_zsa(struct etna_context *ctx)
        */
       if (late_z_test || (early_z_test && late_z_write))
          new_ra_depth |= VIVS_RA_EARLY_DEPTH_HDEPTH_DISABLE;
+
+      if (ctx->framebuffer_s.nr_cbufs > 0) {
+         struct pipe_resource *res = ctx->framebuffer_s.cbufs[0]->texture;
+
+         if ((late_z_test || late_z_write) && res->nr_samples > 1)
+            new_ra_depth |= VIVS_RA_EARLY_DEPTH_LATE_DEPTH_MSAA;
+      }
    }
 
    if (new_pe_depth != zsa->PE_DEPTH_CONFIG ||
