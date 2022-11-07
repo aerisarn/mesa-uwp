@@ -578,7 +578,9 @@ radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pip
       unsigned cf;
       VkFormat fmt = state->rp->color_attachment_formats[i];
 
-      if (fmt == VK_FORMAT_UNDEFINED || !(blend->cb_target_mask & (0xfu << (i * 4)))) {
+      if (fmt == VK_FORMAT_UNDEFINED ||
+          (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) &&
+           !(blend->cb_target_mask & (0xfu << (i * 4))))) {
          cf = V_028714_SPI_SHADER_ZERO;
       } else {
          bool blend_enable = blend->blend_enable_4bit & (0xfu << (i * 4));
@@ -760,7 +762,8 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
                                      S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 
-         if (!state->cb->attachments[i].write_mask)
+         if (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) &&
+             !state->cb->attachments[i].write_mask)
             continue;
 
          /* Ignore other blend targets if dual-source blending
@@ -875,11 +878,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
           (device->physical_device->rad_info.gfx_level >= GFX11 && blend.blend_enable_4bit))
          cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
-
-   if (blend.cb_target_mask)
-      cb_color_control |= S_028808_MODE(V_028808_CB_NORMAL);
-   else
-      cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 
    if (state->rp)
       radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
@@ -1345,6 +1343,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_PROVOKING_VERTEX_MODE;
    case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:
       return RADV_DYNAMIC_DEPTH_CLAMP_ENABLE;
+   case VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT:
+      return RADV_DYNAMIC_COLOR_WRITE_MASK;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1356,7 +1356,8 @@ radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
 {
    if (cb) {
       for (uint32_t i = 0; i < cb->attachment_count; i++) {
-         if (cb->attachments[i].write_mask && cb->attachments[i].blend_enable)
+         if (((pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) ||
+              cb->attachments[i].write_mask) && cb->attachments[i].blend_enable)
             return true;
       }
    }
@@ -1925,6 +1926,12 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->depth_clamp_enable = state->rs->depth_clamp_enable;
    }
 
+   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
+      for (unsigned i = 0; i < state->cb->attachment_count; i++) {
+         dynamic->color_write_mask |= state->cb->attachments[i].write_mask << (4 * i);
+      }
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -2283,6 +2290,10 @@ static void
 radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shader *nir)
 {
    bool fixup_derefs = false;
+
+   /* Do not remove color exports when the write mask is dynamic. */
+   if (pipeline_key->dynamic_color_write_mask)
+      return;
 
    nir_foreach_shader_out_variable(var, nir) {
       int idx = var->data.location;
@@ -2886,6 +2897,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    key.dynamic_rasterization_samples =
       !!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !state->ms;
+
+   key.dynamic_color_write_mask = !!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK);
 
    return key;
 }
@@ -5614,8 +5627,7 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
       if (extra->custom_blend_mode == V_028808_CB_RESOLVE)
          pipeline->cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
 
-      pipeline->cb_color_control &= C_028808_MODE;
-      pipeline->cb_color_control |= S_028808_MODE(extra->custom_blend_mode);
+      pipeline->custom_blend_mode = extra->custom_blend_mode;
    }
 
    if (extra->use_rectlist) {
@@ -5771,8 +5783,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
        */
       blend.cb_shader_mask &= ps->info.ps.colors_written;
    }
-
-   pipeline->cb_target_mask = blend.cb_target_mask;
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
       struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];

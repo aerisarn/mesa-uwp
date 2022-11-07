@@ -133,6 +133,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .depth_clip_negative_one_to_one = 0u,
    .provoking_vertex_mode = VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT,
    .depth_clamp_enable = 0u,
+   .color_write_mask = 0u,
 };
 
 static void
@@ -287,6 +288,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(provoking_vertex_mode, RADV_DYNAMIC_PROVOKING_VERTEX_MODE);
 
    RADV_CMP_COPY(depth_clamp_enable, RADV_DYNAMIC_DEPTH_CLAMP_ENABLE);
+
+   RADV_CMP_COPY(color_write_mask, RADV_DYNAMIC_COLOR_WRITE_MASK);
 
 #undef RADV_CMP_COPY
 
@@ -1154,9 +1157,11 @@ struct radv_bin_size_entry {
 
 static VkExtent2D
 radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
-                            struct radv_rendering_state *render)
+                            struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    VkExtent2D extent = {512, 512};
 
    const unsigned db_tag_size = 64;
@@ -1188,7 +1193,7 @@ radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
       if (!iview)
          continue;
 
-      if (!((pipeline->cb_target_mask >> (i * 4)) & 0xf))
+      if (!((d->color_write_mask >> (i * 4)) & 0xf))
          continue;
 
       color_bytes_per_pixel += vk_format_get_blocksize(render->color_att[i].format);
@@ -1241,10 +1246,12 @@ radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
 
 static VkExtent2D
 radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
-                           struct radv_rendering_state *render)
+                           struct radv_cmd_buffer *cmd_buffer)
 
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    static const struct radv_bin_size_entry color_size_table[][3][9] = {
       {
          /* One RB / SE */
@@ -1472,7 +1479,7 @@ radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
       if (!iview)
          continue;
 
-      if (!((pipeline->cb_target_mask >> (i * 4)) & 0xf))
+      if (!((d->color_write_mask >> (i * 4)) & 0xf))
          continue;
 
       color_bytes_per_pixel += vk_format_get_blocksize(render->color_att[i].format);
@@ -1508,9 +1515,11 @@ radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
 
 static unsigned
 radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
-                                struct radv_rendering_state *render)
+                                struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    uint32_t pa_sc_binner_cntl_0;
 
    if (pdevice->rad_info.gfx_level >= GFX10) {
@@ -1522,7 +1531,7 @@ radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
          if (!iview)
             continue;
 
-         if (!((pipeline->cb_target_mask >> (i * 4)) & 0xf))
+         if (!((d->color_write_mask >> (i * 4)) & 0xf))
             continue;
 
          unsigned bytes = vk_format_get_blocksize(render->color_att[i].format);
@@ -1548,17 +1557,17 @@ radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
 }
 
 static unsigned
-radv_get_binning_state(struct radv_graphics_pipeline *pipeline, struct radv_rendering_state *render)
+radv_get_binning_state(struct radv_graphics_pipeline *pipeline, struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_device *device = pipeline->base.device;
    unsigned pa_sc_binner_cntl_0;
    VkExtent2D bin_size;
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      bin_size = radv_gfx10_compute_bin_size(pipeline, render);
+      bin_size = radv_gfx10_compute_bin_size(pipeline, cmd_buffer);
    } else {
       assert(device->physical_device->rad_info.gfx_level == GFX9);
-      bin_size = radv_gfx9_compute_bin_size(pipeline, render);
+      bin_size = radv_gfx9_compute_bin_size(pipeline, cmd_buffer);
    }
 
    if (device->pbb_allowed && bin_size.width && bin_size.height) {
@@ -1578,7 +1587,7 @@ radv_get_binning_state(struct radv_graphics_pipeline *pipeline, struct radv_rend
                                                                  device->physical_device->rad_info.family == CHIP_VEGA20 ||
                                                                  device->physical_device->rad_info.family >= CHIP_RAVEN2);
    } else {
-      pa_sc_binner_cntl_0 = radv_get_disabled_binning_state(pipeline, render);
+      pa_sc_binner_cntl_0 = radv_get_disabled_binning_state(pipeline, cmd_buffer);
    }
 
    return pa_sc_binner_cntl_0;
@@ -1592,7 +1601,7 @@ radv_emit_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics
    if (pipeline->base.device->physical_device->rad_info.gfx_level < GFX9)
       return;
 
-   pa_sc_binner_cntl_0 = radv_get_binning_state(pipeline, &cmd_buffer->state.render);
+   pa_sc_binner_cntl_0 = radv_get_binning_state(pipeline, cmd_buffer);
 
    if (pa_sc_binner_cntl_0 == cmd_buffer->state.last_pa_sc_binner_cntl_0)
       return;
@@ -1668,6 +1677,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       return;
 
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_rendering_state *render = &cmd_buffer->state.render;
 
    unsigned sx_ps_downconvert = 0;
@@ -1695,7 +1705,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
                      : !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
 
       uint32_t spi_format = (pipeline->col_format_non_compacted >> (i * 4)) & 0xf;
-      uint32_t colormask = (pipeline->cb_target_mask >> (i * 4)) & 0xf;
+      uint32_t colormask = (d->color_write_mask >> (i * 4)) & 0xf;
 
       if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 || format == V_028C70_COLOR_32)
          has_rgb = !has_alpha;
@@ -1857,7 +1867,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       return;
 
    radv_update_multisample_state(cmd_buffer, pipeline);
-   radv_emit_binning_state(cmd_buffer, pipeline);
 
    cmd_buffer->scratch_size_per_wave_needed =
       MAX2(cmd_buffer->scratch_size_per_wave_needed, pipeline->base.scratch_bytes_per_wave);
@@ -1885,20 +1894,18 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE |
                                  RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE |
                                  RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE;
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim))
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GUARDBAND;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control)
+       cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control ||
+       cmd_buffer->state.emitted_graphics_pipeline->custom_blend_mode != pipeline->custom_blend_mode)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
                                  RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->cb_target_mask != pipeline->cb_target_mask)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->vgt_tf_param != pipeline->vgt_tf_param)
@@ -2331,6 +2338,7 @@ radv_emit_clipping(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 {
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    unsigned cb_color_control = cmd_buffer->state.graphics_pipeline->cb_color_control;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
@@ -2344,17 +2352,24 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
       cb_color_control |= S_028808_DISABLE_DUAL_QUAD(d->logic_op_enable);
    }
 
+   if (pipeline->custom_blend_mode) {
+      cb_color_control |= S_028808_MODE(pipeline->custom_blend_mode);
+   } else if (d->color_write_mask) {
+      cb_color_control |= S_028808_MODE(V_028808_CB_NORMAL);
+   } else {
+      cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
+   }
+
    radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
 }
 
 static void
-radv_emit_color_write_enable(struct radv_cmd_buffer *cmd_buffer)
+radv_emit_color_write(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    radeon_set_context_reg(cmd_buffer->cs, R_028238_CB_TARGET_MASK,
-                          pipeline->cb_target_mask & d->color_write_enable);
+                          d->color_write_mask & d->color_write_enable);
 }
 
 static void
@@ -3956,11 +3971,13 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE))
       radv_emit_clipping(cmd_buffer);
 
-   if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE))
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK))
       radv_emit_logic_op(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE)
-      radv_emit_color_write_enable(cmd_buffer);
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK))
+      radv_emit_color_write(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT)
       radv_emit_vertex_input(cmd_buffer, pipeline_is_dirty);
@@ -6541,6 +6558,27 @@ radv_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthClam
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer, uint32_t firstAttachment,
+                             uint32_t attachmentCount, const VkColorComponentFlags *pColorWriteMasks)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   uint32_t color_write_mask = 0;
+
+   assert(firstAttachment + attachmentCount <= MAX_RTS);
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      unsigned idx = firstAttachment + i;
+
+      color_write_mask |= pColorWriteMasks[i] << (4 * idx);
+   }
+
+   state->dynamic.color_write_mask = color_write_mask;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
@@ -8081,6 +8119,10 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        cmd_buffer->state.graphics_pipeline->is_ngg)
       radv_emit_ngg_culling_state(cmd_buffer, info);
 
+   if ((cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK) ||
+       cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
+      radv_emit_binning_state(cmd_buffer, cmd_buffer->state.graphics_pipeline);
+
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)
       radv_emit_graphics_pipeline(cmd_buffer);
 
@@ -8129,7 +8171,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (device->pbb_allowed) {
       struct radv_binning_settings *settings = &device->physical_device->binning_settings;
 
-      if ((cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE) &&
+      if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE |
+                                      RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK)) &&
           settings->context_states_per_bin > 1) {
          /* Break the batch on CB_TARGET_MASK changes. */
          radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
