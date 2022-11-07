@@ -215,12 +215,6 @@ do {                       \
 #  endif
 #endif
 
-#ifdef _MSC_VER
-#define ALIGN16 __declspec(align(16))
-#else
-#define ALIGN16 __attribute__((aligned(16)))
-#endif
-
 #ifdef __cplusplus
 /**
  * Macro function that evaluates to true if T is a trivially
@@ -413,6 +407,24 @@ u_uintN_max(unsigned bit_size)
    return UINT64_MAX >> (64 - bit_size);
 }
 
+/* alignas usage
+ * For struct or union, use alignas(align_size) on any member
+ * of it will make it aligned to align_size.
+ * See https://en.cppreference.com/w/c/language/_Alignas for
+ * details. We can use static_assert and alignof to check if
+ * the alignment result of alignas(align_size) on struct or 
+ * union is valid.
+ * For example:
+ *   static_assert(alignof(struct tgsi_exec_machine) == 16, "")
+ * Also, we can use special code to see the size of the aligned
+ * struct or union at the compile time with GCC, Clang or MSVC.
+ * So we can see if the size of union or struct are as expected
+ * when using alignas(align_size) on its member.
+ * For example:
+ *   char (*__kaboom)[sizeof(struct tgsi_exec_machine)] = 1;
+ * can show us the size of struct tgsi_exec_machine at compile
+ * time.
+ */
 #ifndef __cplusplus
 #ifdef _MSC_VER
 #define alignof _Alignof
