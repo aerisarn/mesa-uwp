@@ -279,13 +279,13 @@ bool
 pan_image_layout_init(struct pan_image_layout *layout,
                       const struct pan_image_explicit_layout *explicit_layout)
 {
-        /* Explicit stride only work with non-mipmap, non-array; single-sample
-         * 2D image, and in-band CRC can't be used.
+        /* Explicit stride only work with non-mipmap, non-array, single-sample
+         * 2D image without CRC.
          */
         if (explicit_layout &&
 	    (layout->depth > 1 || layout->nr_samples > 1 ||
              layout->array_size > 1 || layout->dim != MALI_TEXTURE_DIMENSION_2D ||
-             layout->nr_slices > 1 || layout->crc_mode == PAN_IMAGE_CRC_INBAND))
+             layout->nr_slices > 1 || layout->crc))
                 return false;
 
         /* Mandate 64 byte alignement */
@@ -303,7 +303,6 @@ pan_image_layout_init(struct pan_image_layout *layout,
         bool linear = layout->modifier == DRM_FORMAT_MOD_LINEAR;
         bool is_3d = layout->dim == MALI_TEXTURE_DIMENSION_3D;
 
-        unsigned oob_crc_offset = 0;
         unsigned offset = explicit_layout ? explicit_layout->offset : 0;
         struct pan_block_size block_size =
                 panfrost_block_size(layout->modifier, layout->format);
@@ -392,18 +391,13 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 slice->size = slice_full_size;
 
                 /* Add a checksum region if necessary */
-                if (layout->crc_mode != PAN_IMAGE_CRC_NONE) {
+                if (layout->crc) {
                         slice->crc.size =
                                 panfrost_compute_checksum_size(slice, width, height);
 
-                        if (layout->crc_mode == PAN_IMAGE_CRC_INBAND) {
-                                slice->crc.offset = offset;
-                                offset += slice->crc.size;
-                                slice->size += slice->crc.size;
-                        } else {
-                                slice->crc.offset = oob_crc_offset;
-                                oob_crc_offset += slice->crc.size;
-                        }
+                        slice->crc.offset = offset;
+                        offset += slice->crc.size;
+                        slice->size += slice->crc.size;
                 }
 
                 width = u_minify(width, 1);
@@ -417,7 +411,6 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 layout->data_size = offset;
         else
                 layout->data_size = ALIGN_POT(layout->array_stride * layout->array_size, 4096);
-        layout->crc_size = oob_crc_offset;
 
         return true;
 }

@@ -336,9 +336,6 @@ panfrost_batch_read_rsrc(struct panfrost_batch *batch,
 
         panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
 
-        if (rsrc->image.crc.bo)
-                panfrost_batch_add_bo_old(batch, rsrc->image.crc.bo, access);
-
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
 
@@ -354,9 +351,6 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
                 panfrost_access_for_stage(stage);
 
         panfrost_batch_add_bo_old(batch, rsrc->image.data.bo, access);
-
-        if (rsrc->image.crc.bo)
-                panfrost_batch_add_bo_old(batch, rsrc->image.crc.bo, access);
 
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);

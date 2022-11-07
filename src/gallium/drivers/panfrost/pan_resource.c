@@ -51,9 +51,6 @@
 #include "pan_tiling.h"
 #include "decode.h"
 
-static bool
-panfrost_should_checksum(const struct panfrost_device *dev, const struct panfrost_resource *pres);
-
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
                               const struct pipe_resource *templat,
@@ -81,9 +78,6 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                        DRM_FORMAT_MOD_LINEAR : whandle->modifier;
         enum mali_texture_dimension dim =
                 panfrost_translate_texture_dimension(templat->target);
-        enum pan_image_crc_mode crc_mode =
-                panfrost_should_checksum(dev, rsc) ?
-                PAN_IMAGE_CRC_OOB : PAN_IMAGE_CRC_NONE;
         struct pan_image_explicit_layout explicit_layout = {
                 .offset = whandle->offset,
                 .row_stride = panfrost_from_legacy_stride(whandle->stride, templat->format, mod)
@@ -99,7 +93,6 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 .array_size = prsc->array_size,
                 .nr_samples = MAX2(prsc->nr_samples, 1),
                 .nr_slices = 1,
-                .crc_mode = crc_mode
         };
 
         bool valid = pan_image_layout_init(&rsc->image.layout, &explicit_layout);
@@ -117,8 +110,6 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 FREE(rsc);
                 return NULL;
         }
-        if (rsc->image.layout.crc_mode == PAN_IMAGE_CRC_OOB)
-                rsc->image.crc.bo = panfrost_bo_create(dev, rsc->image.layout.crc_size, 0, "CRC data");
 
         rsc->modifier_constant = true;
 
@@ -445,9 +436,6 @@ panfrost_resource_setup(struct panfrost_device *dev,
 {
         uint64_t chosen_mod = modifier != DRM_FORMAT_MOD_INVALID ?
                               modifier : panfrost_best_modifier(dev, pres, fmt);
-        enum pan_image_crc_mode crc_mode =
-                panfrost_should_checksum(dev, pres) ?
-                PAN_IMAGE_CRC_INBAND : PAN_IMAGE_CRC_NONE;
         enum mali_texture_dimension dim =
                 panfrost_translate_texture_dimension(pres->base.target);
 
@@ -473,7 +461,7 @@ panfrost_resource_setup(struct panfrost_device *dev,
                 .array_size = pres->base.array_size,
                 .nr_samples = MAX2(pres->base.nr_samples, 1),
                 .nr_slices = pres->base.last_level + 1,
-                .crc_mode = crc_mode
+                .crc = panfrost_should_checksum(dev, pres)
         };
 
         ASSERTED bool valid = pan_image_layout_init(&pres->image.layout, NULL);
@@ -775,9 +763,6 @@ panfrost_resource_destroy(struct pipe_screen *screen,
 
         if (rsrc->image.data.bo)
                 panfrost_bo_unreference(rsrc->image.data.bo);
-
-        if (rsrc->image.crc.bo)
-                panfrost_bo_unreference(rsrc->image.crc.bo);
 
         free(rsrc->index_cache);
         free(rsrc->damage.tile_map.data);
@@ -1204,8 +1189,6 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
         }
 
         panfrost_bo_unreference(rsrc->image.data.bo);
-        if (rsrc->image.crc.bo)
-                panfrost_bo_unreference(rsrc->image.crc.bo);
 
         rsrc->image.data.bo = tmp_rsrc->image.data.bo;
         panfrost_bo_reference(rsrc->image.data.bo);
@@ -1299,8 +1282,6 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                         if (panfrost_should_linear_convert(dev, prsrc, transfer)) {
 
                                 panfrost_bo_unreference(prsrc->image.data.bo);
-                                if (prsrc->image.crc.bo)
-                                        panfrost_bo_unreference(prsrc->image.crc.bo);
 
                                 panfrost_resource_setup(dev, prsrc, DRM_FORMAT_MOD_LINEAR,
                                                         prsrc->image.layout.format);
