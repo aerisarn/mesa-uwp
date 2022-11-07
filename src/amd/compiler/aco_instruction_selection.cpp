@@ -11063,7 +11063,7 @@ create_primitive_exports(isel_context *ctx, Temp prim_ch1)
     * bits 19..17: layer
     */
    Temp ch2 = bld.copy(bld.def(v1), Operand::c32(0));
-   uint en_mask = 1;
+   unsigned en_mask = 1;
 
    if (outinfo->writes_layer_per_primitive) {
       en_mask |= 2;
