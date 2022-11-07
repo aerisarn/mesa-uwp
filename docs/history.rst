@@ -35,7 +35,7 @@ project.
 during my work hours at the Space Science and Engineering Center at the
 University of Wisconsin in Madison. My supervisor, Bill Hibbard, lets me
 do this because Mesa is now being using for the
-`Vis5D <https://www.ssec.wisc.edu/%7Ebillh/vis.html>`__ project.
+`Vis5D <https://www.ssec.wisc.edu/~billh/vis.html>`__ project.
 
 October 1996: Mesa 2.0 is released. It implements the OpenGL 1.1
 specification.
