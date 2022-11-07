@@ -479,7 +479,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
       uint32_t type = children[i] & 7;
       uint32_t offset = (children[i] & (~7u)) << 3;
 
-      if (is_bottom_level == (type == radv_bvh_node_instance))
+      if (!is_internal_node(type) && is_bottom_level == (type == radv_bvh_node_instance))
          rra_validation_fail(&ctx,
                              is_bottom_level ? "%s node in BLAS (child index %u)"
                                              : "%s node in TLAS (child index %u)",
