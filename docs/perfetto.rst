@@ -52,14 +52,14 @@ To capture a trace with Perfetto you need to take the following steps:
 1. Build Perfetto from sources available at ``subprojects/perfetto`` following
    `this guide <https://perfetto.dev/docs/quickstart/linux-tracing>`__.
 
-2. Create a `trace config <https://perfetto.dev/#/trace-config.md>`__, which is
+2. Create a `trace config <https://perfetto.dev/docs/concepts/config>`__, which is
    a json formatted text file with extension ``.cfg``, or use one of the config
    files under the ``src/tool/pps/cfg`` directory. More examples of config files
    can be found in ``subprojects/perfetto/test/configs``.
 
 3. Change directory to ``subprojects/perfetto`` and run a
-   `convenience script <https://perfetto.dev/#/running.md>`__ to start the
-   tracing service:
+   `convenience script <https://perfetto.dev/docs/quickstart/linux-tracing#capturing-a-trace>`__
+   to start the tracing service:
 
    .. code-block:: console
 
