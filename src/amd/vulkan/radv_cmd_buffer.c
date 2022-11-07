@@ -134,6 +134,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .provoking_vertex_mode = VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT,
    .depth_clamp_enable = 0u,
    .color_write_mask = 0u,
+   .color_blend_enable = 0u,
 };
 
 static void
@@ -290,6 +291,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(depth_clamp_enable, RADV_DYNAMIC_DEPTH_CLAMP_ENABLE);
 
    RADV_CMP_COPY(color_write_mask, RADV_DYNAMIC_COLOR_WRITE_MASK);
+
+   RADV_CMP_COPY(color_blend_enable, RADV_DYNAMIC_COLOR_BLEND_ENABLE);
 
 #undef RADV_CMP_COPY
 
@@ -1911,6 +1914,13 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
        cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_aa_config != pipeline->ms.pa_sc_aa_config ||
        cmd_buffer->state.emitted_graphics_pipeline->ms.db_eqaa != pipeline->ms.db_eqaa)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
+
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       memcmp(cmd_buffer->state.emitted_graphics_pipeline->cb_blend_control,
+              pipeline->cb_blend_control, sizeof(pipeline->cb_blend_control)) ||
+       memcmp(cmd_buffer->state.emitted_graphics_pipeline->sx_mrt_blend_opt,
+              pipeline->sx_mrt_blend_opt, sizeof(pipeline->sx_mrt_blend_opt)))
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE;
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
@@ -3916,6 +3926,43 @@ radv_emit_sample_mask(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_color_blend_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned cb_blend_control[MAX_RTS], sx_mrt_blend_opt[MAX_RTS];
+
+   for (unsigned i = 0; i < MAX_RTS; i++) {
+      bool blend_enable = (d->color_blend_enable >> (i * 4)) & 0xf;
+
+      cb_blend_control[i] = pipeline->cb_blend_control[i];
+      sx_mrt_blend_opt[i] = pipeline->sx_mrt_blend_opt[i];
+
+      if (blend_enable) {
+         cb_blend_control[i] |= S_028780_ENABLE(1);
+      } else if (pdevice->rad_info.has_rbplus) {
+         /* Make sure to keep RB+ blend optimizations disabled for dual source blending. */
+         if (G_028760_COLOR_COMB_FCN(sx_mrt_blend_opt[i]) != V_028760_OPT_COMB_NONE &&
+             G_028760_ALPHA_COMB_FCN(sx_mrt_blend_opt[i]) != V_028760_OPT_COMB_NONE) {
+            sx_mrt_blend_opt[i] &= C_028760_COLOR_COMB_FCN;
+            sx_mrt_blend_opt[i] &= C_028760_ALPHA_COMB_FCN;
+            sx_mrt_blend_opt[i] |= S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) |
+                                   S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
+         }
+      }
+   }
+
+   radeon_set_context_reg_seq(cmd_buffer->cs, R_028780_CB_BLEND0_CONTROL, MAX_RTS);
+   radeon_emit_array(cmd_buffer->cs, cb_blend_control, MAX_RTS);
+
+   if (pdevice->rad_info.has_rbplus) {
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028760_SX_MRT0_BLEND_OPT, MAX_RTS);
+      radeon_emit_array(cmd_buffer->cs, sx_mrt_blend_opt, MAX_RTS);
+   }
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    uint64_t states =
@@ -4019,6 +4066,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE)
       radv_emit_depth_clamp_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE)
+      radv_emit_color_blend_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -6606,6 +6656,27 @@ radv_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer, uint32_t firstAttach
    state->dynamic.color_write_mask = color_write_mask;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer, uint32_t firstAttachment,
+                               uint32_t attachmentCount, const VkBool32* pColorBlendEnables)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   uint32_t color_blend_enable = 0;
+
+   assert(firstAttachment + attachmentCount <= MAX_RTS);
+
+   for (uint32_t i = 0; i < attachmentCount; i++) {
+      unsigned idx = firstAttachment + i;
+
+      color_blend_enable |= pColorBlendEnables[i] ? (0xfu << (idx * 4)) : 0;
+   }
+
+   state->dynamic.color_blend_enable = color_blend_enable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

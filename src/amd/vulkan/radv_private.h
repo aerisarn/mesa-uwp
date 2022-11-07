@@ -1121,7 +1121,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_PROVOKING_VERTEX_MODE = 1ull << 39,
    RADV_DYNAMIC_DEPTH_CLAMP_ENABLE = 1ull << 40,
    RADV_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
-   RADV_DYNAMIC_ALL = (1ull << 42) - 1,
+   RADV_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
+   RADV_DYNAMIC_ALL = (1ull << 43) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1169,13 +1170,14 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE = 1ull << 39,
    RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE = 1ull << 40,
    RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 42) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 42,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 43,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 44,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 45,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 46,
-   RADV_CMD_DIRTY_GUARDBAND = 1ull << 47,
+   RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 43) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 43,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 44,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 45,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 46,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 47,
+   RADV_CMD_DIRTY_GUARDBAND = 1ull << 48,
 };
 
 enum radv_cmd_flush_bits {
@@ -1397,6 +1399,8 @@ struct radv_dynamic_state {
    bool depth_clamp_enable;
 
    uint32_t color_write_mask;
+
+   uint32_t color_blend_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2075,6 +2079,8 @@ struct radv_graphics_pipeline {
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
    unsigned cb_color_control;
+   unsigned cb_blend_control[MAX_RTS];
+   unsigned sx_mrt_blend_opt[MAX_RTS];
    uint32_t binding_stride[MAX_VBS];
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
