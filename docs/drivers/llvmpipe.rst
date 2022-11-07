@@ -135,7 +135,7 @@ On Windows, building will create
 ``build/windows-x86-debug/gallium/targets/libgl-gdi/opengl32.dll`` which
 is a drop-in alternative for system's ``opengl32.dll``, which will use
 the Mesa ICD, ``build/windows-x86-debug/gallium/targets/wgl/libgallium_wgl.dll``.
-To use it put both dlls in the same directory as your application. It can also
+To use it put both DLLs in the same directory as your application. It can also
 be used by replacing the native ICD driver, but it's quite an advanced usage, so if
 you need to ask, don't even try it.
 
