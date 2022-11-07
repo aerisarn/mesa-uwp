@@ -265,8 +265,9 @@ problem.
 First, join the :doc:`mesa-dev mailing list <lists>`. That's where
 Mesa development is discussed.
 
-The `OpenGL Specification <https://www.opengl.org/documentation>`__ is
-the bible for OpenGL implementation work. You should read it.
+The `OpenGL Specification
+<https://registry.khronos.org/OpenGL/index_gl.php#apispecs>`__ is the
+bible for OpenGL implementation work. You should read it.
 
 Most of the Mesa development work involves implementing new OpenGL
 extensions, writing hardware drivers (for the DRI), and code
