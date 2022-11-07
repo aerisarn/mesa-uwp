@@ -150,6 +150,7 @@ linkcheck_ignore = [
   r'https://gitlab.freedesktop.org/.*#.*', # needs JS eval
   r'https://github.com/.*#.*', # needs JS eval
 ]
+linkcheck_exclude_documents = [r'relnotes/.*']
 
 
 # -- Options for HTMLHelp output ------------------------------------------
