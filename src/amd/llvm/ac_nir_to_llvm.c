@@ -4171,13 +4171,17 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_set_vertex_and_primitive_count:
       /* Currently ignored. */
       break;
-   case nir_intrinsic_load_buffer_amd: {
-      bool idxen = !nir_src_is_const(instr->src[3]) || nir_src_as_uint(instr->src[3]);
+   case nir_intrinsic_load_buffer_amd:
+   case nir_intrinsic_store_buffer_amd: {
+      unsigned src_base = instr->intrinsic == nir_intrinsic_store_buffer_amd ? 1 : 0;
+      bool idxen = !nir_src_is_const(instr->src[src_base + 3]) ||
+                   nir_src_as_uint(instr->src[src_base + 3]);
 
-      LLVMValueRef descriptor = get_src(ctx, instr->src[0]);
-      LLVMValueRef addr_voffset = get_src(ctx, instr->src[1]);
-      LLVMValueRef addr_soffset = get_src(ctx, instr->src[2]);
-      LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[3]) : NULL;
+      LLVMValueRef store_data = get_src(ctx, instr->src[0]);
+      LLVMValueRef descriptor = get_src(ctx, instr->src[src_base + 0]);
+      LLVMValueRef addr_voffset = get_src(ctx, instr->src[src_base + 1]);
+      LLVMValueRef addr_soffset = get_src(ctx, instr->src[src_base + 2]);
+      LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[src_base + 3]) : NULL;
       unsigned num_components = instr->dest.ssa.num_components;
       unsigned const_offset = nir_intrinsic_base(instr);
       bool swizzled = nir_intrinsic_access(instr) & ACCESS_IS_SWIZZLED_AMD;
@@ -4193,61 +4197,41 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (coherent)
          cache_policy |= ac_glc;
 
-      LLVMTypeRef channel_type;
-      if (instr->dest.ssa.bit_size == 8)
-         channel_type = ctx->ac.i8;
-      else if (instr->dest.ssa.bit_size == 16)
-         channel_type = ctx->ac.i16;
-      else if (instr->dest.ssa.bit_size == 32)
-         channel_type = ctx->ac.i32;
-      else if (instr->dest.ssa.bit_size == 64)
-         channel_type = ctx->ac.i64;
-      else if (instr->dest.ssa.bit_size == 128)
-         channel_type = ctx->ac.i128;
-      else
-         unreachable("Unsupported channel type for load_buffer_amd");
+      if (instr->intrinsic == nir_intrinsic_load_buffer_amd) {
+         LLVMTypeRef channel_type;
+         if (instr->dest.ssa.bit_size == 8)
+            channel_type = ctx->ac.i8;
+         else if (instr->dest.ssa.bit_size == 16)
+            channel_type = ctx->ac.i16;
+         else if (instr->dest.ssa.bit_size == 32)
+            channel_type = ctx->ac.i32;
+         else if (instr->dest.ssa.bit_size == 64)
+            channel_type = ctx->ac.i64;
+         else if (instr->dest.ssa.bit_size == 128)
+            channel_type = ctx->ac.i128;
+         else
+            unreachable("Unsupported channel type for load_buffer_amd");
 
-      LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
-                                          LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
-      result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, vidx, voffset,
-                                    addr_soffset, channel_type, cache_policy, reorder, false);
+         LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
+                                             LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
+         result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, vidx, voffset,
+                                       addr_soffset, channel_type, cache_policy, reorder, false);
 
-      result = ac_to_integer(&ctx->ac, ac_trim_vector(&ctx->ac, result, num_components));
-      break;
-   }
-   case nir_intrinsic_store_buffer_amd: {
-      bool idxen = !nir_src_is_const(instr->src[4]) || nir_src_as_uint(instr->src[4]);
+         result = ac_to_integer(&ctx->ac, ac_trim_vector(&ctx->ac, result, num_components));
+      } else {
+         unsigned writemask = nir_intrinsic_write_mask(instr);
+         while (writemask) {
+            int start, count;
+            u_bit_scan_consecutive_range(&writemask, &start, &count);
 
-      LLVMValueRef store_data = get_src(ctx, instr->src[0]);
-      LLVMValueRef descriptor = get_src(ctx, instr->src[1]);
-      LLVMValueRef addr_voffset = get_src(ctx, instr->src[2]);
-      LLVMValueRef addr_soffset = get_src(ctx, instr->src[3]);
-      LLVMValueRef vidx = idxen ? get_src(ctx, instr->src[4]) : NULL;
-      unsigned const_offset = nir_intrinsic_base(instr);
-      bool swizzled = nir_intrinsic_access(instr) & ACCESS_IS_SWIZZLED_AMD;
-      bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
-      bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
+            LLVMValueRef voffset = LLVMBuildAdd(
+               ctx->ac.builder, addr_voffset,
+               LLVMConstInt(ctx->ac.i32, const_offset + start * 4, 0), "");
 
-      enum ac_image_cache_policy cache_policy = 0;
-      if (swizzled)
-         cache_policy |= ac_swizzled;
-      if (coherent)
-         cache_policy |= ac_glc;
-      if (slc)
-         cache_policy |= ac_slc;
-
-      unsigned writemask = nir_intrinsic_write_mask(instr);
-      while (writemask) {
-         int start, count;
-         u_bit_scan_consecutive_range(&writemask, &start, &count);
-
-         LLVMValueRef voffset = LLVMBuildAdd(
-            ctx->ac.builder, addr_voffset,
-            LLVMConstInt(ctx->ac.i32, const_offset + start * 4, 0), "");
-
-         LLVMValueRef data = extract_vector_range(&ctx->ac, store_data, start, count);
-         ac_build_buffer_store_dword(&ctx->ac, descriptor, data, vidx, voffset, addr_soffset,
-                                     cache_policy);
+            LLVMValueRef data = extract_vector_range(&ctx->ac, store_data, start, count);
+            ac_build_buffer_store_dword(&ctx->ac, descriptor, data, vidx, voffset, addr_soffset,
+                                        cache_policy);
+         }
       }
       break;
    }
