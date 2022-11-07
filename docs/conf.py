@@ -140,6 +140,18 @@ html_redirects = [
 ]
 
 
+# -- Options for linkcheck ------------------------------------------------
+
+linkcheck_ignore = [
+  r'specs/.*\.spec', # gets copied during the build process
+  r'news:.*', # seems linkcheck doesn't like the news: URI-scheme...
+  r'http://mesa-ci-results.jf.intel.com', # only available for Intel employees
+  r'https://gitlab.com/.*#.*', # needs JS eval
+  r'https://gitlab.freedesktop.org/.*#.*', # needs JS eval
+  r'https://github.com/.*#.*', # needs JS eval
+]
+
+
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
