@@ -28,7 +28,7 @@
 #ifndef LP_BLD_BLEND_H
 #define LP_BLD_BLEND_H
 
-
+#include "pipe/p_defines.h"
 #include "gallivm/lp_bld.h"
 #include "gallivm/lp_bld_init.h"
  
