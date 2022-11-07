@@ -4555,6 +4555,7 @@ pvr_create_mapping(struct pvr_transfer_pass *pass)
 static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
 {
    struct pvr_rect_mapping *mappings = pass->mappings;
+   uint32_t new_mapping = 0;
 
    if (stride == 1U)
       return false;
@@ -4578,9 +4579,78 @@ static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
       return true;
    }
 
-   pvr_finishme("Add support for multiple mappings.");
+   for (uint32_t i = 0; i < pass->mapping_count; i++) {
+      struct pvr_rect_mapping *mapping_a = &pass->mappings[i];
+      struct pvr_rect_mapping *mapping_b =
+         &pass->mappings[pass->mapping_count + new_mapping];
+      int32_t mapping_a_src_rect_y1 =
+         mapping_a->src_rect.offset.y + mapping_a->src_rect.extent.height;
+      int32_t mapping_b_src_rect_y1 = mapping_a_src_rect_y1;
+      const bool dst_starts_odd_row = !!(mapping_a->dst_rect.offset.y & 1);
+      const bool dst_ends_odd_row =
+         !!((mapping_a->dst_rect.offset.y + mapping_a->dst_rect.extent.height) &
+            1);
+      const bool src_starts_odd_row = !!(mapping_a->src_rect.offset.y & 1);
+      const bool src_ends_odd_row =
+         !!((mapping_a->src_rect.offset.y + mapping_a->src_rect.extent.height) &
+            1);
 
-   return false;
+      assert(pass->mapping_count + new_mapping < ARRAY_SIZE(pass->mappings));
+      *mapping_b = *mapping_a;
+
+      mapping_a->src_rect.offset.y = ALIGN_POT(mapping_a->src_rect.offset.y, 2);
+      if (dst_starts_odd_row && !src_starts_odd_row)
+         mapping_a->src_rect.offset.y++;
+      else if (!dst_starts_odd_row && src_starts_odd_row)
+         mapping_a->src_rect.offset.y--;
+
+      mapping_a_src_rect_y1 = ALIGN_POT(mapping_a_src_rect_y1, 2);
+      if (dst_ends_odd_row && !src_ends_odd_row)
+         mapping_a_src_rect_y1++;
+      else if (!dst_ends_odd_row && src_ends_odd_row)
+         mapping_a_src_rect_y1--;
+
+      mapping_a->src_rect.extent.height =
+         mapping_a_src_rect_y1 - mapping_a->src_rect.offset.y;
+
+      mapping_b->src_rect.offset.y = ALIGN_POT(mapping_b->src_rect.offset.y, 2);
+      if (dst_starts_odd_row && src_starts_odd_row)
+         mapping_b->src_rect.offset.y--;
+      else if (!dst_starts_odd_row && !src_starts_odd_row)
+         mapping_b->src_rect.offset.y++;
+
+      mapping_b_src_rect_y1 = ALIGN_POT(mapping_b_src_rect_y1, 2);
+      if (dst_ends_odd_row && src_ends_odd_row)
+         mapping_b_src_rect_y1--;
+      else if (!dst_ends_odd_row && !src_ends_odd_row)
+         mapping_b_src_rect_y1++;
+
+      mapping_b->src_rect.extent.height =
+         mapping_b_src_rect_y1 - mapping_b->src_rect.offset.y;
+
+      /* Destination rectangles. */
+      mapping_a->dst_rect.offset.y = mapping_a->dst_rect.offset.y / 2;
+
+      if (dst_starts_odd_row)
+         mapping_a->dst_rect.offset.y++;
+
+      mapping_b->dst_rect.offset.x += stride;
+      mapping_b->dst_rect.offset.y /= 2;
+      mapping_b->dst_rect.extent.height /= 2;
+      mapping_a->dst_rect.extent.height -= mapping_b->dst_rect.extent.height;
+
+      if (!mapping_a->src_rect.extent.width ||
+          !mapping_a->src_rect.extent.height) {
+         *mapping_a = *mapping_b;
+      } else if (mapping_b->src_rect.extent.width &&
+                 mapping_b->src_rect.extent.height) {
+         new_mapping++;
+      }
+   }
+
+   pass->mapping_count++;
+
+   return true;
 }
 
 static void pvr_split_rect(uint32_t stride,
