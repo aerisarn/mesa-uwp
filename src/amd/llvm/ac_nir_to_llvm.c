@@ -4188,6 +4188,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       bool reorder = nir_intrinsic_can_reorder(instr);
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
       bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
+      bool uses_format = nir_intrinsic_access(instr) & ACCESS_USES_FORMAT_AMD;
 
       enum ac_image_cache_policy cache_policy = 0;
       if (swizzled)
@@ -4197,7 +4198,18 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (coherent)
          cache_policy |= ac_glc;
 
-      if (instr->intrinsic == nir_intrinsic_load_buffer_amd) {
+      LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
+                                          LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
+
+      if (instr->intrinsic == nir_intrinsic_load_buffer_amd && uses_format) {
+         assert(instr->dest.ssa.bit_size == 16 || instr->dest.ssa.bit_size == 32);
+         result = ac_build_buffer_load_format(&ctx->ac, descriptor, vidx, voffset, num_components,
+                                              cache_policy, reorder,
+                                              instr->dest.ssa.bit_size == 16, false);
+      } else if (instr->intrinsic == nir_intrinsic_store_buffer_amd && uses_format) {
+         assert(instr->src[0].ssa->bit_size == 16 || instr->src[0].ssa->bit_size == 32);
+         ac_build_buffer_store_format(&ctx->ac, descriptor, store_data, vidx, voffset, cache_policy);
+      } else if (instr->intrinsic == nir_intrinsic_load_buffer_amd) {
          LLVMTypeRef channel_type;
          if (instr->dest.ssa.bit_size == 8)
             channel_type = ctx->ac.i8;
@@ -4212,8 +4224,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          else
             unreachable("Unsupported channel type for load_buffer_amd");
 
-         LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
-                                             LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
          result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, vidx, voffset,
                                        addr_soffset, channel_type, cache_policy, reorder, false);
 
