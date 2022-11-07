@@ -1230,7 +1230,7 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       return;
    }
 
-   if (si_compute_blit(sctx, info))
+   if (si_compute_blit(sctx, info, false))
       return;
 
    si_gfx_blit(ctx, info);

@@ -1443,7 +1443,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex);
 void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uint32_t clear_value,
                          unsigned flags, enum si_coherency coher);
 void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex);
-bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info);
+bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info, bool testing);
 void si_init_compute_blit_functions(struct si_context *sctx);
 
 /* si_cp_dma.c */

@@ -948,7 +948,7 @@ void si_test_blit(struct si_screen *sscreen, unsigned test_flags)
       if (only_cb_resolve)
          success = si_msaa_resolve_blit_via_CB(ctx, &info);
       else
-         success = si_compute_blit(sctx, &info);
+         success = si_compute_blit(sctx, &info, true);
 
       if (success) {
          printf(" %-7s", only_cb_resolve ? "resolve" : "comp");

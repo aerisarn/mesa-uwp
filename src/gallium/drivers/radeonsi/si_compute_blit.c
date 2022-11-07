@@ -1078,7 +1078,7 @@ static bool si_should_blit_clamp_xy(const struct pipe_blit_info *info)
    return !in_bounds;
 }
 
-bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info)
+bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info, bool testing)
 {
    /* Compute blits require D16 right now (see the ISA).
     *
@@ -1088,7 +1088,7 @@ bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info)
     *
     * TODO: benchmark the performance on gfx11
     */
-   if (sctx->gfx_level < GFX11)
+   if (sctx->gfx_level < GFX11 && !testing)
       return false;
 
    if (!si_can_use_compute_blit(sctx, info->dst.format, info->dst.resource->nr_samples, true,
