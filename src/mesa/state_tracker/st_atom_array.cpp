@@ -203,14 +203,12 @@ st_setup_arrays(struct st_context *st,
  */
 template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 st_setup_current(struct st_context *st,
-                 const struct gl_vertex_program *vp,
-                 const struct st_common_variant *vp_variant,
+                 const GLbitfield inputs_read,
+                 const GLbitfield dual_slot_inputs,
                  struct cso_velems_state *velements,
                  struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
 {
    struct gl_context *ctx = st->ctx;
-   const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
-   const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
@@ -317,6 +315,8 @@ st_update_array_templ(struct st_context *st)
    const struct gl_vertex_program *vp =
       (struct gl_vertex_program *)ctx->VertexProgram._Current;
    const struct st_common_variant *vp_variant = st->vp_variant;
+   const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
+   const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
    unsigned num_vbuffers = 0;
@@ -326,15 +326,15 @@ st_update_array_templ(struct st_context *st)
    /* ST_NEW_VERTEX_ARRAYS */
    /* Setup arrays */
    setup_arrays<POPCNT, UPDATE>
-      (st, ctx->Array._DrawVAO, vp->Base.DualSlotInputs,
-       vp_variant->vert_attrib_mask, _mesa_draw_nonzero_divisor_bits(ctx),
+      (st, ctx->Array._DrawVAO, dual_slot_inputs,
+       inputs_read, _mesa_draw_nonzero_divisor_bits(ctx),
        _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
        &velements, vbuffer, &num_vbuffers, &uses_user_vertex_buffers);
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup zero-stride attribs. */
-   st_setup_current<POPCNT, UPDATE>(st, vp, vp_variant, &velements, vbuffer,
-                                    &num_vbuffers);
+   st_setup_current<POPCNT, UPDATE>(st, inputs_read, dual_slot_inputs,
+                                    &velements, vbuffer, &num_vbuffers);
 
    unsigned unbind_trailing_vbuffers =
       st->last_num_vbuffers > num_vbuffers ?
