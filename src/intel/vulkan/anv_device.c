@@ -2358,6 +2358,13 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *props =
+            (VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *) ext;
+         props->dynamicPrimitiveTopologyUnrestricted = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
          VkPhysicalDeviceExternalMemoryHostPropertiesEXT *props =
             (VkPhysicalDeviceExternalMemoryHostPropertiesEXT *) ext;
