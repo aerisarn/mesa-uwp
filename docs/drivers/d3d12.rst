@@ -45,8 +45,8 @@ environment variables:
 ``dump_module``
    dump module tree to stderr
 
-.. _debug layer: https://docs.microsoft.com/en-us/windows/win32/direct3d12/understanding-the-d3d12-debug-layer
-.. _GPU validator: https://docs.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation
+.. _debug layer: https://learn.microsoft.com/en-us/windows/win32/direct3d12/understanding-the-d3d12-debug-layer
+.. _GPU validator: https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation
 
 Utilities
 ---------

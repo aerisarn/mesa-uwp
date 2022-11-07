@@ -307,8 +307,8 @@ bottom_edge_rule
         assumes that top is always at y=0.
 
     See also:
-     - https://msdn.microsoft.com/en-us/library/windows/desktop/cc627092.aspx
-     - https://msdn.microsoft.com/en-us/library/windows/desktop/bb147314.aspx
+     - https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-rules
+     - https://learn.microsoft.com/en-us/windows/win32/direct3d9/rasterization-rules
 
 clip_halfz
     When true clip space in the z axis goes from [0..1] (D3D).  When false

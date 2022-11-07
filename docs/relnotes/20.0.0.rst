@@ -156,7 +156,7 @@ Bug fixes
 -  [Bisected] i965: CS:GO crashes in emit_deref_copy_load_store with
    debug Mesa
 -  radv/aco Jedi Fallen Order hair rendering buggy
--  Inaccurate information on https://www.mesa3d.org/repository.html
+-  Inaccurate information on https://docs.mesa3d.org/repository.html
    about how to get git write access.
 -  [RADV] VK_KHR_timeline_semaphore balloons in runtime
 -  Shadow of Mordor has randomly dancing black shadows on Talion's face

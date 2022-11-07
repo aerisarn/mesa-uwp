@@ -255,14 +255,14 @@ Recommended Reading
 -  SIMD
 
    -  `Whole-Function
-      Vectorization <http://www.cdl.uni-saarland.de/projects/wfv/#header4>`__
+      Vectorization <https://compilers.cs.uni-saarland.de/projects/wfv/#pubs>`__
 
 -  Optimization
 
    -  `Optimizing Pixomatic For Modern x86
       Processors <https://www.drdobbs.com/optimizing-pixomatic-for-modern-x86-proc/184405807>`__
    -  `Intel 64 and IA-32 Architectures Optimization Reference
-      Manual <https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-optimization-manual.html>`__
+      Manual <https://cdrdv2-public.intel.com/671488/248966_software_optimization_manual.pdf>`__
    -  `Software optimization
       resources <https://www.agner.org/optimize/>`__
    -  `Intel Intrinsics
@@ -273,11 +273,11 @@ Recommended Reading
    -  `LLVM Language Reference
       Manual <https://llvm.org/docs/LangRef.html>`__
    -  `The secret of LLVM C
-      bindings <https://npcontemplation.blogspot.co.uk/2008/06/secret-of-llvm-c-bindings.html>`__
+      bindings <https://npcontemplation.blogspot.com/2008/06/secret-of-llvm-c-bindings.html>`__
 
 -  General
 
    -  `A trip through the Graphics
       Pipeline <https://fgiesen.wordpress.com/2011/07/09/a-trip-through-the-graphics-pipeline-2011-index/>`__
    -  `WARP Architecture and
-      Performance <https://msdn.microsoft.com/en-us/library/gg615082.aspx#architecture>`__
+      Performance <https://learn.microsoft.com/en-us/windows/win32/direct3darticles/directx-warp#warp-architecture-and-performance>`__

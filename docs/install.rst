@@ -49,7 +49,7 @@ Third party/extra tools.
       mingw-get install msys-flex msys-bison
 
    For MSVC on Windows, install `Win
-   flex-bison <https://winflexbison.sourceforge.net/>`__.
+   flex-bison <https://sourceforge.net/projects/winflexbison/>`__.
 
 .. note::
 

@@ -154,7 +154,7 @@ using very old Xt/Motif applications with OpenGL, you shouldn't need it.
 ----------------------------------------------------------
 
 On Linux-based systems you'll want to follow the `Linux
-ABI <https://www.khronos.org/registry/OpenGL/ABI/>`__ standard.
+ABI <https://registry.khronos.org/OpenGL/ABI/>`__ standard.
 Basically you'll want the following:
 
 ``/usr/include/GL/gl.h``
