@@ -1684,9 +1684,9 @@ enum pipe_format
 util_format_snorm_to_sint(enum pipe_format format) ATTRIBUTE_CONST;
 
 extern void
-util_copy_rect(ubyte * dst, enum pipe_format format,
+util_copy_rect(void * dst, enum pipe_format format,
                unsigned dst_stride, unsigned dst_x, unsigned dst_y,
-               unsigned width, unsigned height, const ubyte * src,
+               unsigned width, unsigned height, const void * src,
                int src_stride, unsigned src_x, unsigned src_y);
 
 /**

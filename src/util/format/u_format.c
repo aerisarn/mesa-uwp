@@ -48,18 +48,20 @@
  * src_stride may be negative to do vertical flip of pixels from source.
  */
 void
-util_copy_rect(ubyte * dst,
+util_copy_rect(void * dst_in,
                enum pipe_format format,
                unsigned dst_stride,
                unsigned dst_x,
                unsigned dst_y,
                unsigned width,
                unsigned height,
-               const ubyte * src,
+               const void * src_in,
                int src_stride,
                unsigned src_x,
                unsigned src_y)
 {
+   uint8_t *dst = dst_in;
+   const uint8_t *src = src_in;
    unsigned i;
    int src_stride_pos = src_stride < 0 ? -src_stride : src_stride;
    int blocksize = util_format_get_blocksize(format);
