@@ -2217,13 +2217,8 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
    p->robustBufferAccessUpdateAfterBind = true;
    p->quadDivergentImplicitLod = false;
 
-   size_t max_descriptor_set_size =
-      ((1ull << 31) - 16 * MAX_DYNAMIC_BUFFERS -
-       MAX_INLINE_UNIFORM_BLOCK_SIZE * MAX_INLINE_UNIFORM_BLOCK_COUNT) /
-      (32 /* uniform buffer, 32 due to potential space wasted on alignment */ +
-       32 /* storage buffer, 32 due to potential space wasted on alignment */ +
-       32 /* sampler, largest when combined with image */ + 64 /* sampled image */ +
-       64 /* storage image */);
+   size_t max_descriptor_set_size = radv_max_descriptor_set_size();
+
    p->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
    p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
    p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
