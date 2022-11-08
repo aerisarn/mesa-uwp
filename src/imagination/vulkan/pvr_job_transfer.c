@@ -5267,6 +5267,9 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
       transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL ? false : true;
 }
 
+/* Route a copy_blit (FastScale HW) to a clip_blit (Fast2D HW).
+ * Destination rectangle can be specified in dst_rect, or NULL to use existing.
+ */
 static VkResult pvr_reroute_to_clip(struct pvr_transfer_ctx *ctx,
                                     const struct pvr_transfer_cmd *transfer_cmd,
                                     const struct VkRect2D *dst_rect,
@@ -5274,8 +5277,23 @@ static VkResult pvr_reroute_to_clip(struct pvr_transfer_ctx *ctx,
                                     uint32_t pass_idx,
                                     bool *finished_out)
 {
-   pvr_finishme("Unimplemented path.");
-   return VK_SUCCESS;
+   const struct pvr_transfer_blit *blit = &transfer_cmd->blit;
+   struct pvr_transfer_cmd clip_transfer_cmd;
+
+   if (blit->alpha.type != PVR_ALPHA_NONE)
+      return vk_error(ctx->device, VK_ERROR_FORMAT_NOT_SUPPORTED);
+
+   clip_transfer_cmd = *transfer_cmd;
+   clip_transfer_cmd.flags |= PVR_TRANSFER_CMD_FLAGS_FAST2D;
+
+   if (dst_rect)
+      clip_transfer_cmd.scissor = *dst_rect;
+
+   return pvr_3d_clip_blit(ctx,
+                           &clip_transfer_cmd,
+                           prep_data,
+                           pass_idx,
+                           finished_out);
 }
 
 static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
