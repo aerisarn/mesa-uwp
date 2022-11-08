@@ -56,6 +56,7 @@ struct agx_device {
 #else
    int fd;
 #endif
+   struct renderonly *ro;
 
    pthread_mutex_t bo_map_lock;
    struct util_sparse_array bo_map;
