@@ -2047,9 +2047,42 @@ static void
 end_subpass(struct vk_command_buffer *cmd_buffer,
             const VkSubpassEndInfo *end_info)
 {
+   const struct vk_render_pass *pass = cmd_buffer->render_pass;
+   const uint32_t subpass_idx = cmd_buffer->subpass_idx;
    struct vk_device_dispatch_table *disp =
       &cmd_buffer->base.device->dispatch_table;
+
    disp->CmdEndRendering(vk_command_buffer_to_handle(cmd_buffer));
+
+   bool needs_mem_barrier = false;
+   VkMemoryBarrier2 mem_barrier = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+   };
+   for (uint32_t d = 0; d < pass->dependency_count; d++) {
+      const struct vk_subpass_dependency *dep = &pass->dependencies[d];
+      if (dep->src_subpass != subpass_idx)
+         continue;
+
+      if (dep->dst_subpass != VK_SUBPASS_EXTERNAL)
+         continue;
+
+      needs_mem_barrier = true;
+      mem_barrier.srcStageMask |= dep->src_stage_mask;
+      mem_barrier.srcAccessMask |= dep->src_access_mask;
+      mem_barrier.dstStageMask |= dep->dst_stage_mask;
+      mem_barrier.dstAccessMask |= dep->dst_access_mask;
+   }
+
+   if (needs_mem_barrier) {
+      const VkDependencyInfo dependency_info = {
+         .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+         .dependencyFlags = 0,
+         .memoryBarrierCount = 1,
+         .pMemoryBarriers = &mem_barrier,
+      };
+      disp->CmdPipelineBarrier2(vk_command_buffer_to_handle(cmd_buffer),
+                                &dependency_info);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
