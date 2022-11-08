@@ -1134,9 +1134,6 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
    int num_samples = pipeline->ms.num_samples;
    struct radv_graphics_pipeline *old_pipeline = cmd_buffer->state.emitted_graphics_pipeline;
 
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.needs_sample_positions)
-      cmd_buffer->sample_positions_needed = true;
-
    if (old_pipeline && num_samples == old_pipeline->ms.num_samples)
       return;
 
@@ -5940,6 +5937,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
 
       radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
+
+      if (graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.needs_sample_positions)
+         cmd_buffer->sample_positions_needed = true;
 
       if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
          cmd_buffer->esgs_ring_size_needed = graphics_pipeline->esgs_ring_size;
