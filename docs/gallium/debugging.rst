@@ -15,12 +15,6 @@ program from that console.
 Common
 """"""
 
-.. envvar:: GALLIUM_PRINT_OPTIONS
-
-   This boolean option controls if the debug variables should be printed to
-   stderr.  This is probably the most useful variable, since it allows you to
-   find which variables a driver uses.
-
 .. envvar:: GALLIUM_TRACE
 
    If set, this variable will cause the :ref:`trace` output to be written to the
@@ -41,28 +35,6 @@ Common
    frame will be recorded into the trace output.
    Paths may be relative or absolute; relative paths are relative to the working directory.
 
-.. envvar:: GALLIUM_DUMP_CPU
-
-   Enable dumping of information about the current CPU that the driver is running on.
-
-.. envvar:: TGSI_PRINT_SANITY
-
-   Gallium has a built-in shader sanity checker.  This boolean option controls
-   whether the shader sanity checker prints its warnings and errors to stderr.
-
-.. envvar:: DRAW_USE_LLVM
-
-   Whether the :ref:`Draw` module will attempt to use LLVM for vertex and geometry shaders.
-
-
-GL State tracker-specific
-"""""""""""""""""""""""""
-
-.. envvar:: ST_DEBUG
-
-   Debug :ref:`flags` for the GL state tracker.
-
-
 Driver-specific
 """""""""""""""
 
@@ -77,14 +49,6 @@ Driver-specific
 .. envvar:: I915_DUMP_CMD
 
    Dump all commands going to the hardware.
-
-.. envvar:: LP_DEBUG
-
-   Debug :ref:`flags` for the LLVMpipe driver.
-
-.. envvar:: LP_NUM_THREADS
-
-   Number of threads that the LLVMpipe driver should use.
 
 .. envvar:: FD_MESA_DEBUG
 
