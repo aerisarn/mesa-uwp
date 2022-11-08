@@ -259,9 +259,6 @@ agx_resource_get_handle(struct pipe_screen *pscreen,
    return true;
 }
 
-/* Linear textures require specifying their strides explicitly, which only
- * works for 2D textures. Rectangle textures are a special case of 2D.
- */
 
 static bool
 agx_resource_get_param(struct pipe_screen *pscreen,
@@ -303,24 +300,78 @@ agx_is_2d(enum pipe_texture_target target)
    return (target == PIPE_TEXTURE_2D || target == PIPE_TEXTURE_RECT);
 }
 
-static uint64_t
-agx_select_modifier(const struct agx_resource *pres)
+static bool
+agx_linear_allowed(const struct agx_resource *pres)
 {
-   /* Buffers are always linear */
-   if (pres->base.target == PIPE_BUFFER)
+   /* Mipmapping not allowed with linear */
+   if (pres->base.last_level != 0)
+      return false;
+
+   switch (pres->base.target) {
+   /* 1D is always linear */
+   case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
+
+   /* Linear textures require specifying their strides explicitly, which only
+    * works for 2D textures. Rectangle textures are a special case of 2D.
+    */
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_RECT:
+      break;
+
+   /* No other texture type can specify a stride */
+   default:
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+agx_twiddled_allowed(const struct agx_resource *pres)
+{
+   /* Certain binds force linear */
+   if (pres->base.bind & (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR))
+      return false;
+
+   /* Buffers must be linear, and it does not make sense to twiddle 1D */
+   if (pres->base.target == PIPE_BUFFER || pres->base.target == PIPE_TEXTURE_1D)
+      return false;
+
+   /* Anything else may be twiddled */
+   return true;
+}
+
+static uint64_t
+agx_select_modifier_from_list(const struct agx_resource *pres,
+                              const uint64_t *modifiers, int count)
+{
+   if (agx_twiddled_allowed(pres) &&
+       drm_find_modifier(DRM_FORMAT_MOD_APPLE_TWIDDLED, modifiers, count))
+      return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+
+   if (agx_linear_allowed(pres) &&
+       drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
       return DRM_FORMAT_MOD_LINEAR;
 
-   /* Optimize streaming textures */
-   if (pres->base.usage == PIPE_USAGE_STREAM && agx_is_2d(pres->base.target))
-      return DRM_FORMAT_MOD_LINEAR;
+   /* We didn't find anything */
+   return DRM_FORMAT_MOD_INVALID;
+}
 
-   /* Default to tiled */
-   return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+static uint64_t
+agx_select_best_modifier(const struct agx_resource *pres)
+{
+   if (agx_twiddled_allowed(pres))
+      return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+
+   assert(agx_linear_allowed(pres));
+   return DRM_FORMAT_MOD_LINEAR;
 }
 
 static struct pipe_resource *
-agx_resource_create(struct pipe_screen *screen,
-                    const struct pipe_resource *templ)
+agx_resource_create_with_modifiers(struct pipe_screen *screen,
+                                   const struct pipe_resource *templ,
+                                   const uint64_t *modifiers, int count)
 {
    struct agx_device *dev = agx_device(screen);
    struct agx_resource *nresource;
@@ -332,30 +383,73 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->base = *templ;
    nresource->base.screen = screen;
 
-   nresource->modifier = agx_select_modifier(nresource);
+   if (modifiers) {
+      nresource->modifier = agx_select_modifier_from_list(nresource, modifiers, count);
+
+      /* There may not be a matching modifier, bail if so */
+      if (nresource->modifier == DRM_FORMAT_MOD_INVALID)
+         return NULL;
+   } else {
+      nresource->modifier = agx_select_best_modifier(nresource);
+
+      assert(nresource->modifier != DRM_FORMAT_MOD_INVALID);
+   }
+
    nresource->mipmapped = (templ->last_level > 0);
 
    assert(templ->format != PIPE_FORMAT_Z24X8_UNORM &&
           templ->format != PIPE_FORMAT_Z24_UNORM_S8_UINT &&
           "u_transfer_helper should have lowered");
 
-   nresource->layout = (struct ail_layout) {
-      .tiling = (nresource->modifier == DRM_FORMAT_MOD_LINEAR) ?
-                AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
-      .format = templ->format,
-      .width_px = templ->width0,
-      .height_px = templ->height0,
-      .depth_px = templ->depth0 * templ->array_size,
-      .levels = templ->last_level + 1
-   };
+   agx_resource_setup(dev, nresource);
 
    pipe_reference_init(&nresource->base.reference, 1);
 
    struct sw_winsys *winsys = ((struct agx_screen *) screen)->winsys;
 
-   if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                      PIPE_BIND_SCANOUT |
-                      PIPE_BIND_SHARED)) {
+   ail_make_miptree(&nresource->layout);
+
+   if (dev->ro && (templ->bind & PIPE_BIND_SCANOUT)) {
+      struct winsys_handle handle;
+      assert(util_format_get_blockwidth(templ->format) == 1);
+      assert(util_format_get_blockheight(templ->format) == 1);
+
+      unsigned width = templ->width0;
+      unsigned stride = templ->width0 * util_format_get_blocksize(templ->format);
+      unsigned size = nresource->layout.size_B;
+      unsigned effective_rows = DIV_ROUND_UP(size, stride);
+
+      struct pipe_resource scanout_tmpl = {
+            .target = nresource->base.target,
+            .format = templ->format,
+            .width0 = width,
+            .height0 = effective_rows,
+            .depth0 = 1,
+            .array_size = 1,
+      };
+
+      nresource->scanout = renderonly_scanout_for_resource(&scanout_tmpl,
+                                                   dev->ro,
+                                                   &handle);
+
+      if (!nresource->scanout) {
+            fprintf(stderr, "Failed to create scanout resource\n");
+            free(nresource);
+            return NULL;
+      }
+      assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+      nresource->bo = agx_bo_import(dev, handle.handle);
+      close(handle.handle);
+
+      if (!nresource->bo) {
+            free(nresource);
+            return NULL;
+      }
+
+      return &nresource->base;
+   }
+
+   if (winsys && templ->bind & PIPE_BIND_DISPLAY_TARGET) {
       unsigned width = templ->width0;
       unsigned height = templ->height0;
 
@@ -382,7 +476,6 @@ agx_resource_create(struct pipe_screen *screen,
       }
    }
 
-   ail_make_miptree(&nresource->layout);
    nresource->bo = agx_bo_create(dev, nresource->layout.size_B, AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    if (!nresource->bo) {
@@ -391,6 +484,13 @@ agx_resource_create(struct pipe_screen *screen,
    }
 
    return &nresource->base;
+}
+
+static struct pipe_resource *
+agx_resource_create(struct pipe_screen *screen,
+                    const struct pipe_resource *templ)
+{
+   return agx_resource_create_with_modifiers(screen, templ, NULL, 0);
 }
 
 static void
@@ -1418,6 +1518,8 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
    screen->context_create = agx_create_context;
    screen->resource_from_handle = agx_resource_from_handle;
    screen->resource_get_handle = agx_resource_get_handle;
+   screen->resource_get_param = agx_resource_get_param;
+   screen->resource_create_with_modifiers = agx_resource_create_with_modifiers;
    screen->flush_frontbuffer = agx_flush_frontbuffer;
    screen->get_timestamp = u_default_get_timestamp;
    screen->fence_reference = agx_fence_reference;
