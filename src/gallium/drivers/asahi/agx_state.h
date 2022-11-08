@@ -93,6 +93,8 @@ struct agx_array {
 };
 
 struct agx_batch {
+   struct agx_context *ctx;
+
    unsigned width, height, nr_cbufs;
    struct pipe_surface *cbufs[8];
    struct pipe_surface *zsbuf;
@@ -208,6 +210,9 @@ struct agx_context {
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];
 
    struct blitter_context *blitter;
+
+   /* Map of agx_resource to agx_batch that writes that resource */
+   struct hash_table *writer;
 };
 
 static inline struct agx_context *
@@ -359,6 +364,15 @@ agx_batch_bo_list_bits(struct agx_batch *batch)
    return batch->bo_list.word_count * sizeof(BITSET_WORD) * 8;
 }
 
+static bool
+agx_batch_uses_bo(struct agx_batch *batch, struct agx_bo *bo)
+{
+   if (bo->handle < agx_batch_bo_list_bits(batch))
+      return BITSET_TEST(batch->bo_list.set, bo->handle);
+   else
+      return false;
+}
+
 static inline void
 agx_batch_add_bo(struct agx_batch *batch, struct agx_bo *bo)
 {
@@ -387,6 +401,14 @@ agx_batch_num_bo(struct agx_batch *batch)
 
 #define AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) \
    BITSET_FOREACH_SET(handle, (batch)->bo_list.set, agx_batch_bo_list_bits(batch))
+
+void agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch);
+void agx_flush_readers(struct agx_context *ctx, struct agx_resource *rsrc, const char *reason);
+void agx_flush_writer(struct agx_context *ctx, struct agx_resource *rsrc, const char *reason);
+
+/* Use these instead of batch_add_bo for proper resource tracking */
+void agx_batch_reads(struct agx_batch *batch, struct agx_resource *rsrc);
+void agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc);
 
 /* Blit shaders */
 void

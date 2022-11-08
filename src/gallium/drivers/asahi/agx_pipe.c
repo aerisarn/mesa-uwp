@@ -272,10 +272,13 @@ agx_transfer_map(struct pipe_context *pctx,
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
       return NULL;
 
-   if (ctx->batch->cbufs[0] && resource == ctx->batch->cbufs[0]->texture)
-      agx_flush_all(ctx, "Transfer to colour buffer");
-   if (ctx->batch->zsbuf && resource == ctx->batch->zsbuf->texture)
-      agx_flush_all(ctx, "Transfer to depth buffer");
+   /* Synchronize */
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
+
+      if (usage & PIPE_MAP_WRITE)
+         agx_flush_readers(ctx, rsrc, "Unsynchronized read");
+   }
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
    transfer->base.level = level;
@@ -419,62 +422,68 @@ agx_flush(struct pipe_context *pctx,
    if (fence)
       *fence = NULL;
 
+   agx_flush_batch(ctx, ctx->batch);
+}
+
+void
+agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
+{
+   struct agx_device *dev = agx_device(ctx->base.screen);
+
    /* Nothing to do */
-   if (!(ctx->batch->draw | ctx->batch->clear))
+   if (!(batch->draw | batch->clear))
       return;
 
    /* Finalize the encoder */
    uint8_t stop[5 + 64] = { 0x00, 0x00, 0x00, 0xc0, 0x00 };
-   memcpy(ctx->batch->encoder_current, stop, sizeof(stop));
+   memcpy(batch->encoder_current, stop, sizeof(stop));
 
    /* Emit the commandbuffer */
    uint64_t pipeline_clear = 0, pipeline_reload = 0;
    bool clear_pipeline_textures = false;
 
-   struct agx_device *dev = agx_device(pctx->screen);
-
    uint16_t clear_colour[4] = {
-      _mesa_float_to_half(ctx->batch->clear_color[0]),
-      _mesa_float_to_half(ctx->batch->clear_color[1]),
-      _mesa_float_to_half(ctx->batch->clear_color[2]),
-      _mesa_float_to_half(ctx->batch->clear_color[3])
+      _mesa_float_to_half(batch->clear_color[0]),
+      _mesa_float_to_half(batch->clear_color[1]),
+      _mesa_float_to_half(batch->clear_color[2]),
+      _mesa_float_to_half(batch->clear_color[3])
    };
 
    pipeline_clear = agx_build_clear_pipeline(ctx,
          dev->internal.clear,
-         agx_pool_upload(&ctx->batch->pool, clear_colour, sizeof(clear_colour)));
+         agx_pool_upload(&batch->pool, clear_colour, sizeof(clear_colour)));
 
-   if (ctx->batch->cbufs[0]) {
-      enum pipe_format fmt = ctx->batch->cbufs[0]->format;
+   if (batch->cbufs[0]) {
+      enum pipe_format fmt = batch->cbufs[0]->format;
       enum agx_format internal = agx_pixel_format[fmt].internal;
       uint32_t shader = dev->reload.format[internal];
 
       pipeline_reload = agx_build_reload_pipeline(ctx, shader,
-                               ctx->batch->cbufs[0]);
+                               batch->cbufs[0]);
    }
 
-   if (ctx->batch->cbufs[0] && !(ctx->batch->clear & PIPE_CLEAR_COLOR0)) {
+   if (batch->cbufs[0] && !(batch->clear & PIPE_CLEAR_COLOR0)) {
       clear_pipeline_textures = true;
       pipeline_clear = pipeline_reload;
    }
 
    uint64_t pipeline_store = 0;
 
-   if (ctx->batch->cbufs[0]) {
+   if (batch->cbufs[0]) {
       pipeline_store =
          agx_build_store_pipeline(ctx,
                                   dev->internal.store,
-                                  agx_pool_upload(&ctx->batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
+                                  agx_pool_upload(&batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
    }
 
    /* Pipelines must 64 aligned */
-   for (unsigned i = 0; i < ctx->batch->nr_cbufs; ++i) {
-      struct agx_resource *rt = agx_resource(ctx->batch->cbufs[i]->texture);
+   for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
+      struct agx_resource *rt = agx_resource(batch->cbufs[i]->texture);
       BITSET_SET(rt->data_valid, 0);
    }
 
-   struct agx_resource *zbuf = ctx->batch->zsbuf ?
-      agx_resource(ctx->batch->zsbuf->texture) : NULL;
+   struct agx_resource *zbuf = batch->zsbuf ?
+      agx_resource(batch->zsbuf->texture) : NULL;
 
    if (zbuf) {
       BITSET_SET(zbuf->data_valid, 0);
@@ -484,35 +493,16 @@ agx_flush(struct pipe_context *pctx,
    }
 
    /* BO list for a given batch consists of:
-    *  - BOs for the batch's framebuffer surfaces
     *  - BOs for the batch's pools
     *  - BOs for the encoder
     *  - BO for internal shaders
     *  - BOs added to the batch explicitly
     */
-   struct agx_batch *batch = ctx->batch;
-
    agx_batch_add_bo(batch, batch->encoder);
    agx_batch_add_bo(batch, batch->scissor.bo);
    agx_batch_add_bo(batch, batch->depth_bias.bo);
    agx_batch_add_bo(batch, dev->internal.bo);
    agx_batch_add_bo(batch, dev->reload.bo);
-
-   for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
-      struct pipe_surface *surf = batch->cbufs[i];
-      assert(surf != NULL && surf->texture != NULL);
-      struct agx_resource *rsrc = agx_resource(surf->texture);
-      agx_batch_add_bo(batch, rsrc->bo);
-   }
-
-   if (batch->zsbuf) {
-      struct pipe_surface *surf = batch->zsbuf;
-      struct agx_resource *rsrc = agx_resource(surf->texture);
-      agx_batch_add_bo(batch, rsrc->bo);
-
-      if (rsrc->separate_stencil)
-         agx_batch_add_bo(batch, rsrc->separate_stencil->bo);
-   }
 
    unsigned handle_count =
       agx_batch_num_bo(batch) +
@@ -540,19 +530,19 @@ agx_flush(struct pipe_context *pctx,
 
    unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
-               &ctx->batch->pool,
+               &batch->pool,
                &ctx->framebuffer,
-               ctx->batch->encoder->ptr.gpu,
+               batch->encoder->ptr.gpu,
                encoder_id,
-               ctx->batch->scissor.bo->ptr.gpu,
-               ctx->batch->depth_bias.bo->ptr.gpu,
+               batch->scissor.bo->ptr.gpu,
+               batch->depth_bias.bo->ptr.gpu,
                pipeline_clear,
                pipeline_reload,
                pipeline_store,
                clear_pipeline_textures,
-               ctx->batch->clear,
-               ctx->batch->clear_depth,
-               ctx->batch->clear_stencil);
+               batch->clear,
+               batch->clear_depth,
+               batch->clear_stencil);
 
    /* Generate the mapping table from the BO list */
    demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,
@@ -573,20 +563,33 @@ agx_flush(struct pipe_context *pctx,
       agx_bo_unreference(agx_lookup_bo(dev, handle));
    }
 
+   /* There is no more writer for anything we wrote recorded on this context */
+   hash_table_foreach(ctx->writer, ent) {
+      if (ent->data == batch)
+         _mesa_hash_table_remove(ctx->writer, ent);
+   }
+
    memset(batch->bo_list.set, 0, batch->bo_list.word_count * sizeof(BITSET_WORD));
-   agx_pool_cleanup(&ctx->batch->pool);
-   agx_pool_cleanup(&ctx->batch->pipeline_pool);
-   agx_pool_init(&ctx->batch->pool, dev, AGX_MEMORY_TYPE_FRAMEBUFFER, true);
-   agx_pool_init(&ctx->batch->pipeline_pool, dev, AGX_MEMORY_TYPE_CMDBUF_32, true);
-   ctx->batch->clear = 0;
-   ctx->batch->draw = 0;
-   ctx->batch->load = 0;
-   ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
-   ctx->batch->encoder_end = ctx->batch->encoder_current + ctx->batch->encoder->size;
-   ctx->batch->scissor.count = 0;
+   agx_pool_cleanup(&batch->pool);
+   agx_pool_cleanup(&batch->pipeline_pool);
+   agx_pool_init(&batch->pool, dev, AGX_MEMORY_TYPE_FRAMEBUFFER, true);
+   agx_pool_init(&batch->pipeline_pool, dev, AGX_MEMORY_TYPE_CMDBUF_32, true);
+   batch->clear = 0;
+   batch->draw = 0;
+   batch->load = 0;
+   batch->encoder_current = batch->encoder->ptr.cpu;
+   batch->encoder_end = batch->encoder_current + batch->encoder->size;
+   batch->scissor.count = 0;
 
    agx_dirty_all(ctx);
-   agx_batch_init_state(ctx->batch);
+   agx_batch_init_state(batch);
+
+   /* After resetting the batch, rebind the framebuffer so we update resource
+    * tracking logic and the BO lists.
+    *
+    * XXX: This is a hack to workaround lack of proper batch tracking.
+    */
+   ctx->base.set_framebuffer_state(&ctx->base, &ctx->framebuffer);
 }
 
 static void
@@ -625,6 +628,7 @@ agx_create_context(struct pipe_screen *screen,
    pctx->priv = priv;
 
    ctx->batch = rzalloc(ctx, struct agx_batch);
+   ctx->batch->ctx = ctx;
    ctx->batch->bo_list.set = rzalloc_array(ctx->batch, BITSET_WORD, 128);
    ctx->batch->bo_list.word_count = 128;
    agx_pool_init(&ctx->batch->pool,
@@ -636,6 +640,8 @@ agx_create_context(struct pipe_screen *screen,
    ctx->batch->encoder_end = ctx->batch->encoder_current + ctx->batch->encoder->size;
    ctx->batch->scissor.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
    ctx->batch->depth_bias.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
+
+   ctx->writer = _mesa_pointer_hash_table_create(ctx);
 
    /* Upload fixed shaders (TODO: compile them?) */
 

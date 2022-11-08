@@ -762,6 +762,9 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    ctx->batch->zsbuf = state->zsbuf;
    ctx->dirty = ~0;
 
+   if (state->zsbuf)
+      agx_batch_writes(ctx->batch, agx_resource(state->zsbuf->texture));
+
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
       struct agx_resource *tex = agx_resource(surf->texture);
@@ -769,6 +772,8 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          util_format_description(surf->format);
       unsigned level = surf->u.tex.level;
       unsigned layer = surf->u.tex.first_layer;
+
+      agx_batch_writes(ctx->batch, tex);
 
       assert(surf->u.tex.last_layer == layer);
 
@@ -1348,7 +1353,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    for (unsigned i = 0; i < nr_textures; ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
-      agx_batch_add_bo(ctx->batch, agx_resource(tex->base.texture)->bo);
+      agx_batch_reads(ctx->batch, agx_resource(tex->base.texture));
 
       textures[i] = tex->desc;
    }
@@ -1863,10 +1868,10 @@ agx_index_buffer_ptr(struct agx_batch *batch,
    off_t offset = draw->start * info->index_size;
 
    if (!info->has_user_indices) {
-      struct agx_bo *bo = agx_resource(info->index.resource)->bo;
-      agx_batch_add_bo(batch, bo);
+      struct agx_resource *rsrc = agx_resource(info->index.resource);
+      agx_batch_reads(batch, rsrc);
 
-      return bo->ptr.gpu + offset;
+      return rsrc->bo->ptr.gpu + offset;
    } else {
       return agx_pool_upload_aligned(&batch->pool,
                                      ((uint8_t *) info->index.user) + offset,
