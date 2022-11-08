@@ -1382,6 +1382,9 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
    agx_screen->dev.debug =
       debug_get_flags_option("ASAHI_MESA_DEBUG", agx_debug_options, 0);
 
+   agx_screen->dev.fd = fd;
+   agx_screen->dev.ro = ro;
+
    /* Try to open an AGX device */
    if (!agx_open_device(screen, &agx_screen->dev)) {
       ralloc_free(agx_screen);
