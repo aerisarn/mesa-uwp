@@ -1883,24 +1883,13 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    return offset;
 }
 
+/*
+ * Preprocess NIR. In particular, this lowers I/O. Drivers should call this
+ * as soon as they don't need unlowered I/O.
+ */
 void
-agx_compile_shader_nir(nir_shader *nir,
-      struct agx_shader_key *key,
-      struct util_debug_callback *debug,
-      struct util_dynarray *binary,
-      struct agx_shader_info *out)
+agx_preprocess_nir(nir_shader *nir)
 {
-   agx_debug = debug_get_option_agx_debug();
-
-   memset(out, 0, sizeof *out);
-
-   if (nir->info.stage == MESA_SHADER_VERTEX) {
-      out->writes_psiz = nir->info.outputs_written &
-         BITFIELD_BIT(VARYING_SLOT_PSIZ);
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
-   }
-
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
    /* Lower large arrays to scratch and small arrays to csel */
@@ -1934,6 +1923,9 @@ agx_compile_shader_nir(nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
    }
 
+   /* Clean up deref gunk after lowering I/O */
+   NIR_PASS_V(nir, nir_opt_dce);
+
    nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0,
       .lower_invalid_implicit_lod = true,
@@ -1953,6 +1945,31 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, agx_nir_lower_array_texture);
    NIR_PASS_V(nir, agx_lower_resinfo);
    NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
+
+   nir->info.io_lowered = true;
+}
+
+void
+agx_compile_shader_nir(nir_shader *nir,
+      struct agx_shader_key *key,
+      struct util_debug_callback *debug,
+      struct util_dynarray *binary,
+      struct agx_shader_info *out)
+{
+   agx_debug = debug_get_option_agx_debug();
+
+   memset(out, 0, sizeof *out);
+
+   assert(nir->info.io_lowered &&
+          "agx_preprocess_nir is called first, then the shader is specalized,"
+          "then the specialized shader is compiled");
+
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      out->writes_psiz = nir->info.outputs_written &
+         BITFIELD_BIT(VARYING_SLOT_PSIZ);
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
+   }
 
    agx_optimize_nir(nir, &out->push_count);
 

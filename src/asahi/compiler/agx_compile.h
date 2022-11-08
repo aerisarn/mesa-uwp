@@ -277,6 +277,9 @@ struct agx_shader_key {
 };
 
 void
+agx_preprocess_nir(nir_shader *nir);
+
+void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
       struct util_debug_callback *debug,

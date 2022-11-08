@@ -1078,6 +1078,7 @@ agx_compile_variant(struct agx_device *dev,
       }
    }
 
+   agx_preprocess_nir(nir);
    agx_compile_shader_nir(nir, &key->base, debug, &binary, &compiled->info);
 
    if (binary.size) {

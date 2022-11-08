@@ -70,6 +70,7 @@ agx_build_reload_shader(struct agx_device *dev)
          .fs.ignore_tib_dependencies = true,
       };
 
+      agx_preprocess_nir(s);
       agx_compile_shader_nir(s, &key, NULL, &binary, &info);
 
       assert(offset + binary.size < bo_size);
