@@ -262,6 +262,41 @@ agx_resource_get_handle(struct pipe_screen *pscreen,
 /* Linear textures require specifying their strides explicitly, which only
  * works for 2D textures. Rectangle textures are a special case of 2D.
  */
+
+static bool
+agx_resource_get_param(struct pipe_screen *pscreen,
+                       struct pipe_context *pctx, struct pipe_resource *prsc,
+                       unsigned plane, unsigned layer, unsigned level,
+                       enum pipe_resource_param param,
+                       unsigned usage, uint64_t *value)
+{
+   struct agx_resource *rsrc = (struct agx_resource *)prsc;
+   struct pipe_resource *cur;
+   unsigned count;
+
+   switch (param) {
+   case PIPE_RESOURCE_PARAM_STRIDE:
+      *value = ail_get_wsi_stride_B(&rsrc->layout, level);
+      return true;
+   case PIPE_RESOURCE_PARAM_OFFSET:
+      *value = rsrc->layout.level_offsets_B[level];
+      return true;
+   case PIPE_RESOURCE_PARAM_MODIFIER:
+      *value = rsrc->modifier;
+      return true;
+   case PIPE_RESOURCE_PARAM_NPLANES:
+      /* We don't support multi-planar formats, but we should still handle
+       * this case for GBM shared resources.
+       */
+      for (count = 0, cur = prsc; cur; cur = cur->next)
+         count++;
+      *value = count;
+      return true;
+   default:
+      return false;
+   }
+}
+
 static bool
 agx_is_2d(enum pipe_texture_target target)
 {
