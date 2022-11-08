@@ -571,6 +571,23 @@ static const uint8_t vertex_formats[][4][4] = {
    },
 };
 
+/* bgra_vertex_formats[type & 0x3][normalized] */
+static const uint8_t bgra_vertex_formats[4][2] = {
+   { /* GL_UNSIGNED_INT_2_10_10_10_REV */
+      PIPE_FORMAT_B10G10R10A2_USCALED,
+      PIPE_FORMAT_B10G10R10A2_UNORM
+   },
+   { /* GL_UNSIGNED_BYTE */
+      0,
+      PIPE_FORMAT_B8G8R8A8_UNORM
+   },
+   {0}, /* unused (2) */
+   { /* GL_INT_2_10_10_10_REV */
+      PIPE_FORMAT_B10G10R10A2_SSCALED,
+      PIPE_FORMAT_B10G10R10A2_SNORM
+   }
+};
+
 /**
  * Return a PIPE_FORMAT_x for the given GL datatype and size.
  */
@@ -585,36 +602,16 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
    if (doubles)
       return PIPE_FORMAT_R64_UINT + size - 1;
 
-   switch (type) {
-   case GL_INT_2_10_10_10_REV:
+   if (format == GL_BGRA) {
       assert(size == 4 && !integer);
+      assert(type == GL_UNSIGNED_BYTE ||
+             type == GL_INT_2_10_10_10_REV ||
+             type == GL_UNSIGNED_INT_2_10_10_10_REV);
 
-      if (format == GL_BGRA) {
-         if (normalized)
-            return PIPE_FORMAT_B10G10R10A2_SNORM;
-         else
-            return PIPE_FORMAT_B10G10R10A2_SSCALED;
-      }
-      break;
-
-   case GL_UNSIGNED_INT_2_10_10_10_REV:
-      assert(size == 4 && !integer);
-
-      if (format == GL_BGRA) {
-         if (normalized)
-            return PIPE_FORMAT_B10G10R10A2_UNORM;
-         else
-            return PIPE_FORMAT_B10G10R10A2_USCALED;
-      }
-      break;
-
-   case GL_UNSIGNED_BYTE:
-      if (format == GL_BGRA) {
-         /* this is an odd-ball case */
-         assert(normalized);
-         return PIPE_FORMAT_B8G8R8A8_UNORM;
-      }
-      break;
+      enum pipe_format pipe_format =
+         bgra_vertex_formats[type & 0x3][normalized];
+      assert(pipe_format);
+      return pipe_format;
    }
 
    unsigned index = integer*2 + normalized;
