@@ -7947,77 +7947,63 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    brw_postprocess_nir(shader, compiler, true, debug_enabled,
                        key->base.robust_buffer_access);
 
-   std::unique_ptr<fs_visitor> v8, v16;
-   fs_visitor *v = NULL;
-   bool has_spilled = false;
+   brw_simd_selection_state simd_state{
+      .mem_ctx = mem_ctx,
+      .devinfo = compiler->devinfo,
+      .prog_data = prog_data,
 
-   uint8_t simd_size = 0;
-   if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
-        shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_8) &&
-       !INTEL_DEBUG(DEBUG_NO8)) {
-      v8 = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
-                                        &prog_data->base, shader,
-                                        8, debug_enabled);
-      const bool allow_spilling = true;
-      if (!v8->run_bs(allow_spilling)) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
-         return 0;
+      /* Since divergence is a lot more likely in RT than compute, it makes
+       * sense to limit ourselves to SIMD8 for now.
+       */
+      .required_width = 8,
+   };
+
+   std::unique_ptr<fs_visitor> v[2];
+
+   for (unsigned simd = 0; simd < ARRAY_SIZE(v); simd++) {
+      if (!brw_simd_should_compile(simd_state, simd))
+         continue;
+
+      const unsigned dispatch_width = 8u << simd;
+
+      v[simd] = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
+                                             &prog_data->base, shader,
+                                             dispatch_width, debug_enabled);
+
+      const bool allow_spilling = !brw_simd_any_compiled(simd_state);
+      if (v[simd]->run_bs(allow_spilling)) {
+         brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       } else {
-         v = v8.get();
-         simd_size = 8;
-         if (v8->spilled_any_registers)
-            has_spilled = true;
-      }
-   }
-
-   if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
-        shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_16) &&
-       !has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
-      v16 = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
-                                         &prog_data->base, shader,
-                                         16, debug_enabled);
-      const bool allow_spilling = (v == NULL);
-      if (!v16->run_bs(allow_spilling)) {
-         brw_shader_perf_log(compiler, log_data,
-                             "SIMD16 shader failed to compile: %s\n",
-                             v16->fail_msg);
-         if (v == NULL) {
-            assert(!v8);
-            if (error_str) {
-               *error_str = ralloc_asprintf(
-                  mem_ctx, "SIMD8 disabled and couldn't generate SIMD16: %s",
-                  v16->fail_msg);
-            }
-            return 0;
+         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         if (simd > 0) {
+            brw_shader_perf_log(compiler, log_data,
+                                "SIMD%u shader failed to compile: %s",
+                                dispatch_width, v[simd]->fail_msg);
          }
-      } else {
-         v = v16.get();
-         simd_size = 16;
-         if (v16->spilled_any_registers)
-            has_spilled = true;
       }
    }
 
-   if (unlikely(v == NULL)) {
-      assert(INTEL_DEBUG(DEBUG_NO8 | DEBUG_NO16));
-      if (error_str) {
-         *error_str = ralloc_strdup(mem_ctx,
-            "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
-      }
-      return false;
+   const int selected_simd = brw_simd_select(simd_state);
+   if (selected_simd < 0) {
+      *error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s and %s.",
+                                   simd_state.error[0], simd_state.error[1]);
+      return 0;
    }
 
-   assert(v);
+   assert(selected_simd < int(ARRAY_SIZE(v)));
+   fs_visitor *selected = v[selected_simd].get();
+   assert(selected);
 
-   int offset = g->generate_code(v->cfg, simd_size, v->shader_stats,
-                                 v->performance_analysis.require(), stats);
+   const unsigned dispatch_width = selected->dispatch_width;
+
+   int offset = g->generate_code(selected->cfg, dispatch_width, selected->shader_stats,
+                                 selected->performance_analysis.require(), stats);
    if (prog_offset)
       *prog_offset = offset;
    else
       assert(offset == 0);
 
-   return simd_size;
+   return dispatch_width;
 }
 
 uint64_t

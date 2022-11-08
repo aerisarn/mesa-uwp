@@ -37,7 +37,8 @@ struct brw_simd_selection_state {
    void *mem_ctx;
    const struct intel_device_info *devinfo;
 
-   std::variant<struct brw_cs_prog_data *> prog_data;
+   std::variant<struct brw_cs_prog_data *,
+                struct brw_bs_prog_data *> prog_data;
 
    unsigned required_width;
 
