@@ -75,6 +75,11 @@ static const struct debug_named_value agx_debug_options[] = {
    DEBUG_NAMED_VALUE_END
 };
 
+uint64_t agx_best_modifiers[] = {
+   DRM_FORMAT_MOD_APPLE_TWIDDLED,
+   DRM_FORMAT_MOD_LINEAR,
+};
+
 void agx_init_state_functions(struct pipe_context *ctx);
 
 static struct pipe_query *
@@ -1113,6 +1118,47 @@ agx_is_format_supported(struct pipe_screen* pscreen,
 }
 
 static void
+agx_query_dmabuf_modifiers(struct pipe_screen *screen,
+                           enum pipe_format format, int max,
+                           uint64_t *modifiers,
+                           unsigned int *external_only, int *out_count)
+{
+   int i;
+
+   if (max == 0) {
+      *out_count = ARRAY_SIZE(agx_best_modifiers);
+      return;
+   }
+
+   for (i = 0; i < ARRAY_SIZE(agx_best_modifiers) && i < max; i++) {
+      if (external_only)
+         external_only[i] = 0;
+
+      modifiers[i] = agx_best_modifiers[i];
+   }
+
+   /* Return the number of modifiers copied */
+   *out_count = i;
+}
+
+static bool
+agx_is_dmabuf_modifier_supported(struct pipe_screen *screen,
+                                 uint64_t modifier, enum pipe_format format,
+                                 bool *external_only)
+{
+   if (external_only)
+      *external_only = false;
+
+   switch (modifier) {
+   case DRM_FORMAT_MOD_APPLE_TWIDDLED:
+   case DRM_FORMAT_MOD_LINEAR:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
 agx_destroy_screen(struct pipe_screen *screen)
 {
    u_transfer_helper_destroy(screen->transfer_helper);
@@ -1219,6 +1265,8 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
    screen->get_compute_param = agx_get_compute_param;
    screen->get_paramf = agx_get_paramf;
    screen->is_format_supported = agx_is_format_supported;
+   screen->query_dmabuf_modifiers = agx_query_dmabuf_modifiers;
+   screen->is_dmabuf_modifier_supported = agx_is_dmabuf_modifier_supported;
    screen->context_create = agx_create_context;
    screen->resource_from_handle = agx_resource_from_handle;
    screen->resource_get_handle = agx_resource_get_handle;
