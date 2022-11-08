@@ -6013,9 +6013,11 @@ VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
 
-   cmd_buffer->state.dynamic.line_width = lineWidth;
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH | RADV_CMD_DIRTY_GUARDBAND;
+   state->dynamic.line_width = lineWidth;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH | RADV_CMD_DIRTY_GUARDBAND;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -6090,13 +6092,14 @@ radv_CmdSetStencilReference(VkCommandBuffer commandBuffer, VkStencilFaceFlags fa
                             uint32_t reference)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
 
    if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      cmd_buffer->state.dynamic.stencil_reference.front = reference;
+      state->dynamic.stencil_reference.front = reference;
    if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      cmd_buffer->state.dynamic.stencil_reference.back = reference;
+      state->dynamic.stencil_reference.back = reference;
 
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -6380,24 +6383,25 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
                           const VkVertexInputAttributeDescription2EXT *pVertexAttributeDescriptions)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   struct radv_vs_input_state *vs_state = &state->dynamic_vs_input;
 
    const VkVertexInputBindingDescription2EXT *bindings[MAX_VBS];
    for (unsigned i = 0; i < vertexBindingDescriptionCount; i++)
       bindings[pVertexBindingDescriptions[i].binding] = &pVertexBindingDescriptions[i];
 
-   cmd_buffer->state.vbo_misaligned_mask = 0;
-   cmd_buffer->state.vbo_misaligned_mask_invalid = 0;
+   state->vbo_misaligned_mask = 0;
+   state->vbo_misaligned_mask_invalid = 0;
 
-   state->attribute_mask = 0;
-   state->instance_rate_inputs = 0;
-   state->nontrivial_divisors = 0;
-   state->zero_divisors = 0;
-   state->post_shuffle = 0;
-   state->alpha_adjust_lo = 0;
-   state->alpha_adjust_hi = 0;
-   state->nontrivial_formats = 0;
-   state->bindings_match_attrib = true;
+   vs_state->attribute_mask = 0;
+   vs_state->instance_rate_inputs = 0;
+   vs_state->nontrivial_divisors = 0;
+   vs_state->zero_divisors = 0;
+   vs_state->post_shuffle = 0;
+   vs_state->alpha_adjust_lo = 0;
+   vs_state->alpha_adjust_hi = 0;
+   vs_state->nontrivial_formats = 0;
+   vs_state->bindings_match_attrib = true;
 
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
    enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
@@ -6408,50 +6412,49 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       const VkVertexInputBindingDescription2EXT *binding = bindings[attrib->binding];
       unsigned loc = attrib->location;
 
-      state->attribute_mask |= 1u << loc;
-      state->bindings[loc] = attrib->binding;
+      vs_state->attribute_mask |= 1u << loc;
+      vs_state->bindings[loc] = attrib->binding;
       if (attrib->binding != loc)
-         state->bindings_match_attrib = false;
+         vs_state->bindings_match_attrib = false;
       if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
-         state->instance_rate_inputs |= 1u << loc;
-         state->divisors[loc] = binding->divisor;
+         vs_state->instance_rate_inputs |= 1u << loc;
+         vs_state->divisors[loc] = binding->divisor;
          if (binding->divisor == 0) {
-            state->zero_divisors |= 1u << loc;
+            vs_state->zero_divisors |= 1u << loc;
          } else if (binding->divisor > 1) {
-            state->nontrivial_divisors |= 1u << loc;
+            vs_state->nontrivial_divisors |= 1u << loc;
          }
       }
       cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
-      state->offsets[loc] = attrib->offset;
+      vs_state->offsets[loc] = attrib->offset;
 
       enum pipe_format format = vk_format_to_pipe_format(attrib->format);
       const struct ac_vtx_format_info *vtx_info = &vtx_info_table[format];
 
-      state->formats[loc] = format;
+      vs_state->formats[loc] = format;
       uint8_t align_req_minus_1 = vtx_info->chan_byte_size >= 4 ? 3 : (vtx_info->element_size - 1);
-      state->format_align_req_minus_1[loc] = align_req_minus_1;
-      state->format_sizes[loc] = vtx_info->element_size;
-      state->alpha_adjust_lo |= (vtx_info->alpha_adjust & 0x1) << loc;
-      state->alpha_adjust_hi |= (vtx_info->alpha_adjust >> 1) << loc;
+      vs_state->format_align_req_minus_1[loc] = align_req_minus_1;
+      vs_state->format_sizes[loc] = vtx_info->element_size;
+      vs_state->alpha_adjust_lo |= (vtx_info->alpha_adjust & 0x1) << loc;
+      vs_state->alpha_adjust_hi |= (vtx_info->alpha_adjust >> 1) << loc;
       if (G_008F0C_DST_SEL_X(vtx_info->dst_sel) == V_008F0C_SQ_SEL_Z)
-         state->post_shuffle |= BITFIELD_BIT(loc);
+         vs_state->post_shuffle |= BITFIELD_BIT(loc);
 
       if (!(vtx_info->has_hw_format & BITFIELD_BIT(vtx_info->num_channels - 1)))
-         state->nontrivial_formats |= BITFIELD_BIT(loc);
+         vs_state->nontrivial_formats |= BITFIELD_BIT(loc);
 
       if ((chip == GFX6 || chip >= GFX10) &&
-          cmd_buffer->state.vbo_bound_mask & BITFIELD_BIT(attrib->binding)) {
+         state->vbo_bound_mask & BITFIELD_BIT(attrib->binding)) {
          if (binding->stride & align_req_minus_1) {
-            cmd_buffer->state.vbo_misaligned_mask |= BITFIELD_BIT(loc);
-         } else if ((cmd_buffer->vertex_bindings[attrib->binding].offset + state->offsets[loc]) &
+            state->vbo_misaligned_mask |= BITFIELD_BIT(loc);
+         } else if ((cmd_buffer->vertex_bindings[attrib->binding].offset + vs_state->offsets[loc]) &
                     align_req_minus_1) {
-            cmd_buffer->state.vbo_misaligned_mask |= BITFIELD_BIT(loc);
+            state->vbo_misaligned_mask |= BITFIELD_BIT(loc);
          }
       }
    }
 
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER |
-                              RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
+   state->dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
 }
 
 VKAPI_ATTR void VKAPI_CALL
