@@ -531,9 +531,10 @@
   <struct name="USC Shared" size="4">
     <field name="Tag" size="8" start="0" type="USC Control" default="Shared"/>
     <field name="Uses shared memory" size="1" start="8" type="bool"/>
-    <field name="Shared layout" size="6" start="10" type="Shared layout"/>
-    <field name="Pixel stride in 8 bytes" size="4" start="20" type="uint"/>
-    <field name="Shared memory per threadgroup in 256 bytes" size="8" start="24" type="uint"/>
+    <field name="Layout" size="6" start="10" type="Shared layout"/>
+    <field name="Sample count" size="2" start="16" type="uint" default="1" modifier="log2"/>
+    <field name="Sample stride in 8 bytes" size="4" start="20" type="uint"/>
+    <field name="Bytes per threadgroup" size="8" start="24" type="uint" modifier="groups(256)"/>
   </struct>
 
   <struct name="USC Shader" size="6">
