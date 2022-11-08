@@ -50,6 +50,8 @@ bool
 brw_simd_should_compile(brw_simd_selection_state &state,
                         unsigned simd)
 {
+   assert(simd < SIMD_COUNT);
+
    struct brw_cs_prog_data *prog_data = state.prog_data;
    assert(!test_bit(prog_data->prog_mask, simd));
 
@@ -123,11 +125,13 @@ brw_simd_should_compile(brw_simd_selection_state &state,
       return false;
    }
 
-   const bool env_skip[3] = {
+   static const bool env_skip[] = {
       INTEL_DEBUG(DEBUG_NO8) != 0,
       INTEL_DEBUG(DEBUG_NO16) != 0,
       INTEL_DEBUG(DEBUG_NO32) != 0,
    };
+
+   static_assert(ARRAY_SIZE(env_skip) == SIMD_COUNT);
 
    if (unlikely(env_skip[simd])) {
       state.error[simd] = ralloc_asprintf(
@@ -142,6 +146,8 @@ brw_simd_should_compile(brw_simd_selection_state &state,
 void
 brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spilled)
 {
+   assert(simd < SIMD_COUNT);
+
    struct brw_cs_prog_data *prog_data = state.prog_data;
    assert(!test_bit(prog_data->prog_mask, simd));
 
@@ -149,7 +155,7 @@ brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spil
 
    /* If a SIMD spilled, all the larger ones would spill too. */
    if (spilled) {
-      for (unsigned i = simd; i < 3; i++)
+      for (unsigned i = simd; i < SIMD_COUNT; i++)
          prog_data->prog_spilled |= 1u << i;
    }
 }
@@ -201,7 +207,7 @@ brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
       .prog_data = &cloned,
    };
 
-   for (unsigned simd = 0; simd < 3; simd++) {
+   for (unsigned simd = 0; simd < SIMD_COUNT; simd++) {
       /* We are not recompiling, so use original results of prog_mask and
        * prog_spilled as they will already contain all possible compilations.
        */
