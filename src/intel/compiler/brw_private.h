@@ -32,7 +32,6 @@ unsigned brw_required_dispatch_width(const struct shader_info *info);
 static constexpr int SIMD_COUNT = 3;
 
 struct brw_simd_selection_state {
-
    void *mem_ctx;
    const struct intel_device_info *devinfo;
 
@@ -41,7 +40,24 @@ struct brw_simd_selection_state {
    unsigned required_width;
 
    const char *error[SIMD_COUNT];
+
+   bool compiled[SIMD_COUNT];
+   bool spilled[SIMD_COUNT];
 };
+
+inline int brw_simd_first_compiled(const brw_simd_selection_state &state)
+{
+   for (int i = 0; i < SIMD_COUNT; i++) {
+      if (state.compiled[i])
+         return i;
+   }
+   return -1;
+}
+
+inline bool brw_simd_any_compiled(const brw_simd_selection_state &state)
+{
+   return brw_simd_first_compiled(state) >= 0;
+}
 
 bool brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd);
 

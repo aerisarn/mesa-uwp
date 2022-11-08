@@ -47,14 +47,12 @@ test_bit(unsigned mask, unsigned bit) {
 }
 
 bool
-brw_simd_should_compile(brw_simd_selection_state &state,
-                        unsigned simd)
+brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
 {
    assert(simd < SIMD_COUNT);
+   assert(!state.compiled[simd]);
 
    struct brw_cs_prog_data *prog_data = state.prog_data;
-   assert(!test_bit(prog_data->prog_mask, simd));
-
    const unsigned width = 8u << simd;
 
    /* For shaders with variable size workgroup, in most cases we can compile
@@ -64,7 +62,7 @@ brw_simd_should_compile(brw_simd_selection_state &state,
    const bool workgroup_size_variable = prog_data->local_size[0] == 0;
 
    if (!workgroup_size_variable) {
-      if (test_bit(prog_data->prog_spilled, simd)) {
+      if (state.spilled[simd]) {
          state.error[simd] = ralloc_asprintf(
             state.mem_ctx, "SIMD%u skipped because would spill", width);
          return false;
@@ -83,7 +81,7 @@ brw_simd_should_compile(brw_simd_selection_state &state,
          return false;
       }
 
-      if (simd > 0 && test_bit(prog_data->prog_mask, simd - 1) &&
+      if (simd > 0 && state.compiled[simd - 1] &&
           workgroup_size <= (width / 2)) {
          state.error[simd] = ralloc_asprintf(
             state.mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
@@ -103,7 +101,7 @@ brw_simd_should_compile(brw_simd_selection_state &state,
        * TODO: Use performance_analysis and drop this rule.
        */
       if (width == 32) {
-         if (!INTEL_DEBUG(DEBUG_DO32) && prog_data->prog_mask) {
+         if (!INTEL_DEBUG(DEBUG_DO32) && (state.compiled[0] || state.compiled[1])) {
             state.error[simd] = ralloc_strdup(
                state.mem_ctx, "SIMD32 skipped because not required");
             return false;
@@ -147,35 +145,32 @@ void
 brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spilled)
 {
    assert(simd < SIMD_COUNT);
+   assert(!state.compiled[simd]);
 
-   struct brw_cs_prog_data *prog_data = state.prog_data;
-   assert(!test_bit(prog_data->prog_mask, simd));
-
-   prog_data->prog_mask |= 1u << simd;
+   state.compiled[simd] = true;
+   state.prog_data->prog_mask |= 1u << simd;
 
    /* If a SIMD spilled, all the larger ones would spill too. */
    if (spilled) {
-      for (unsigned i = simd; i < SIMD_COUNT; i++)
-         prog_data->prog_spilled |= 1u << i;
+      for (unsigned i = simd; i < SIMD_COUNT; i++) {
+         state.spilled[i] = true;
+         state.prog_data->prog_spilled |= 1u << i;
+      }
    }
 }
 
 int
 brw_simd_select(const struct brw_simd_selection_state &state)
 {
-   const struct brw_cs_prog_data *prog_data = state.prog_data;
-   assert((prog_data->prog_mask & ~0x7u) == 0);
-   const unsigned not_spilled_mask =
-      prog_data->prog_mask & ~prog_data->prog_spilled;
-
-   /* Util functions index bits from 1 instead of 0, adjust before return. */
-
-   if (not_spilled_mask)
-      return util_last_bit(not_spilled_mask) - 1;
-   else if (prog_data->prog_mask)
-      return ffs(prog_data->prog_mask) - 1;
-   else
-      return -1;
+   for (int i = SIMD_COUNT - 1; i >= 0; i--) {
+      if (state.compiled[i] && !state.spilled[i])
+         return i;
+   }
+   for (int i = SIMD_COUNT - 1; i >= 0; i--) {
+      if (state.compiled[i])
+         return i;
+   }
+   return -1;
 }
 
 int
@@ -186,9 +181,18 @@ brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
    if (!sizes || (prog_data->local_size[0] == sizes[0] &&
                   prog_data->local_size[1] == sizes[1] &&
                   prog_data->local_size[2] == sizes[2])) {
-      const brw_simd_selection_state simd_state{
+      brw_simd_selection_state simd_state{
          .prog_data = const_cast<struct brw_cs_prog_data *>(prog_data),
       };
+
+      /* Propagate the prog_data information back to the simd_state,
+       * so we can use select() directly.
+       */
+      for (int i = 0; i < SIMD_COUNT; i++) {
+         simd_state.compiled[i] = test_bit(prog_data->prog_mask, i);
+         simd_state.spilled[i] = test_bit(prog_data->prog_spilled, i);
+      }
+
       return brw_simd_select(simd_state);
    }
 

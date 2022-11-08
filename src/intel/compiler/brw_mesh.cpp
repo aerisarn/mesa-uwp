@@ -300,8 +300,7 @@ brw_compile_task(const struct brw_compiler *compiler,
          v[simd]->import_uniforms(v[first].get());
       }
 
-      const bool allow_spilling = !prog_data->base.prog_mask;
-
+      const bool allow_spilling = !brw_simd_any_compiled(simd_state);
       if (v[simd]->run_task(allow_spilling))
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       else
@@ -811,8 +810,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
          v[simd]->import_uniforms(v[first].get());
       }
 
-      const bool allow_spilling = !prog_data->base.prog_mask;
-
+      const bool allow_spilling = !brw_simd_any_compiled(simd_state);
       if (v[simd]->run_mesh(allow_spilling))
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       else

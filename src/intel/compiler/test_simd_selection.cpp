@@ -366,3 +366,33 @@ TEST_F(SIMDSelectionCS, Require32ErrorWhenNotCompile)
 
    ASSERT_EQ(brw_simd_select(simd_state), -1);
 }
+
+TEST_F(SIMDSelectionCS, FirstCompiledIsSIMD8)
+{
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD8));
+   brw_simd_mark_compiled(simd_state, SIMD8, not_spilled);
+
+   ASSERT_TRUE(brw_simd_any_compiled(simd_state));
+   ASSERT_EQ(brw_simd_first_compiled(simd_state), SIMD8);
+}
+
+TEST_F(SIMDSelectionCS, FirstCompiledIsSIMD16)
+{
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD8));
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD16));
+   brw_simd_mark_compiled(simd_state, SIMD16, not_spilled);
+
+   ASSERT_TRUE(brw_simd_any_compiled(simd_state));
+   ASSERT_EQ(brw_simd_first_compiled(simd_state), SIMD16);
+}
+
+TEST_F(SIMDSelectionCS, FirstCompiledIsSIMD32)
+{
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD8));
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD16));
+   ASSERT_TRUE(brw_simd_should_compile(simd_state, SIMD32));
+   brw_simd_mark_compiled(simd_state, SIMD32, not_spilled);
+
+   ASSERT_TRUE(brw_simd_any_compiled(simd_state));
+   ASSERT_EQ(brw_simd_first_compiled(simd_state), SIMD32);
+}

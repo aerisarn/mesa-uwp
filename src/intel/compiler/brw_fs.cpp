@@ -7838,13 +7838,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
                                     &prog_data->base, shader, dispatch_width,
                                              debug_enabled);
 
-      if (prog_data->prog_mask) {
-         unsigned first = ffs(prog_data->prog_mask) - 1;
+      const int first = brw_simd_first_compiled(simd_state);
+      if (first >= 0)
          v[simd]->import_uniforms(v[first].get());
-      }
 
-      const bool allow_spilling = !prog_data->prog_mask ||
-                                  nir->info.workgroup_size_variable;
+      const bool allow_spilling = first < 0 || nir->info.workgroup_size_variable;
 
       if (v[simd]->run_cs(allow_spilling)) {
          cs_fill_push_const_info(compiler->devinfo, prog_data);
