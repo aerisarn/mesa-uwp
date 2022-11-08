@@ -582,9 +582,11 @@ agx_transfer_map(struct pipe_context *pctx,
       transfer->base.layer_stride = rsrc->layout.layer_stride_B;
 
       /* Be conservative for direct writes */
-
-      if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
+      if ((usage & PIPE_MAP_WRITE) &&
+          (usage & (PIPE_MAP_DIRECTLY | PIPE_MAP_PERSISTENT | PIPE_MAP_COHERENT)))
+      {
          BITSET_SET(rsrc->data_valid, level);
+      }
 
       uint32_t offset = ail_get_linear_pixel_B(&rsrc->layout, level, box->x,
                                                box->y, box->z);
