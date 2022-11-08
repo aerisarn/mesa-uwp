@@ -18,6 +18,7 @@ INSTALL=`pwd`/install
 export LD_LIBRARY_PATH=`pwd`/install/lib/
 export EGL_PLATFORM=surfaceless
 export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_CPU:-`uname -m`}.json
+export OCL_ICD_VENDORS=`pwd`/install/etc/OpenCL/vendors/
 
 RESULTS=`pwd`/${DEQP_RESULTS_DIR:-results}
 mkdir -p $RESULTS
