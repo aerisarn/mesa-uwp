@@ -7,6 +7,7 @@
 #include "nvk_instance.h"
 #include "nvk_shader.h"
 #include "nvk_wsi.h"
+#include "git_sha1.h"
 
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/wsi/wsi_common.h"
@@ -357,7 +358,18 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                       VK_RESOLVE_MODE_MAX_BIT,
       .independentResolveNone = true,
       .independentResolve = true,
+      .driverID = VK_DRIVER_ID_MESA_NVK,
+      .conformanceVersion = (VkConformanceVersion) { /* TODO: conf version */
+         .major = 0,
+         .minor = 0,
+         .subminor = 0,
+         .patch = 0,
+      },
    };
+
+   snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "nvk");
+   snprintf(core_1_2.driverInfo, VK_MAX_DRIVER_INFO_SIZE,
+            "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
    VkPhysicalDeviceVulkan13Properties core_1_3 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
@@ -427,6 +439,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_dedicated_allocation = true,
       .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
+      .KHR_driver_properties = true,
       .KHR_dynamic_rendering = true,
       .KHR_format_feature_flags2 = true,
       .KHR_get_memory_requirements2 = true,
