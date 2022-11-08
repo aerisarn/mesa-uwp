@@ -129,9 +129,9 @@ brw_simd_should_compile(void *mem_ctx,
    }
 
    const bool env_skip[3] = {
-      INTEL_DEBUG(DEBUG_NO8),
-      INTEL_DEBUG(DEBUG_NO16),
-      INTEL_DEBUG(DEBUG_NO32),
+      INTEL_DEBUG(DEBUG_NO8) != 0,
+      INTEL_DEBUG(DEBUG_NO16) != 0,
+      INTEL_DEBUG(DEBUG_NO32) != 0,
    };
 
    if (unlikely(env_skip[simd])) {

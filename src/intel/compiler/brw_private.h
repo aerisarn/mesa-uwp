@@ -27,10 +27,6 @@
 
 #include "brw_compiler.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 unsigned brw_required_dispatch_width(const struct shader_info *info);
 
 bool brw_simd_should_compile(void *mem_ctx,
@@ -49,9 +45,5 @@ int brw_simd_select(const struct brw_cs_prog_data *prog_data);
 int brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
                                        const struct brw_cs_prog_data *prog_data,
                                        const unsigned *sizes);
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #endif // BRW_PRIVATE_H
