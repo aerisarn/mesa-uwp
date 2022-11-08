@@ -1676,6 +1676,9 @@ tu_create_cmd_buffer(struct vk_command_pool *pool,
    tu_cs_init(&cmd_buffer->pre_chain.draw_cs, device, TU_CS_MODE_GROW, 4096, "prechain draw cs");
    tu_cs_init(&cmd_buffer->pre_chain.draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096, "prechain draw epiligoue cs");
 
+   for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
+      cmd_buffer->descriptors[i].push_set.base.type = VK_OBJECT_TYPE_DESCRIPTOR_SET;
+
    *cmd_buffer_out = &cmd_buffer->vk;
 
    return VK_SUCCESS;
