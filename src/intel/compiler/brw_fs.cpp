@@ -7908,9 +7908,7 @@ brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
       override_local_size ? override_local_size :
                             prog_data->local_size;
 
-   const int simd =
-      override_local_size ? brw_simd_select_for_workgroup_size(devinfo, prog_data, sizes) :
-                            brw_simd_select(prog_data);
+   const int simd = brw_simd_select_for_workgroup_size(devinfo, prog_data, sizes);
    assert(simd >= 0 && simd < 3);
 
    info.group_size = sizes[0] * sizes[1] * sizes[2];
