@@ -21,7 +21,8 @@ Usage
 
 u_trace is controlled by environment variables:
 
-:envvar:`MESA_GPU_TRACES`
+.. envvar:: MESA_GPU_TRACES
+
    controls whether u_trace is enabled and trace output
 
    ``print``
@@ -44,10 +45,12 @@ u_trace is controlled by environment variables:
          - For Turnip, ``cffdump`` can be used to view the markers in
            the trace.
 
-:envvar:`MESA_GPU_TRACEFILE`
+.. envvar:: MESA_GPU_TRACEFILE
+
    specifies a file where to write the output instead of ``stdout``
 
-:envvar:`*_GPU_TRACEPOINT`
+.. envvar:: *_GPU_TRACEPOINT
+
    tracepoints can be enabled or disabled using driver specific environment
    variable. Most tracepoints are enabled by default. For instance
    ``TU_GPU_TRACEPOINT=-blit,+render_pass`` will disable the
@@ -60,8 +63,8 @@ u_trace is controlled by environment variables:
         - Environment Variable
         - Tracepoint Definitions
       * - Freedreno
-        - :envvar:`FD_GPU_TRACEPOINT`
+        - .. envvar:: FD_GPU_TRACEPOINT
         - ``src/gallium/drivers/freedreno/freedreno_tracepoints.py``
       * - Turnip
-        - :envvar:`TU_GPU_TRACEPOINT`
+        - .. envvar:: TU_GPU_TRACEPOINT
         - ``src/freedreno/vulkan/tu_tracepoints.py``
