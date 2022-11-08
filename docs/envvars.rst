@@ -617,7 +617,7 @@ Gallium environment variables
 
 .. envvar:: GALLIUM_DRIVER
 
-   useful in combination with :envvar:`LIBGL_ALWAYS_SOFTWARE`=`true` for
+   useful in combination with :envvar:`LIBGL_ALWAYS_SOFTWARE` = ``true`` for
    choosing one of the software renderers ``softpipe`` or ``llvmpipe``.
 
 .. envvar:: GALLIUM_LOG_FILE
@@ -909,7 +909,7 @@ RADV driver environment variables
       disable TC-compat CMASK for MSAA surfaces
    ``noumr``
       disable UMR dumps during GPU hang detection (only with
-      :envvar:`RADV_DEBUG`=``hang``)
+      :envvar:`RADV_DEBUG` = ``hang``)
    ``novrsflatshading``
       disable VRS for flat shading (only on GFX10.3+)
    ``preoptir``
