@@ -24,7 +24,6 @@
 inc_util = [inc_include, include_directories('..')]
 
 subdir('blake3')
-subdir('format')
 
 files_mesa_util = files(
   'anon_file.h',
@@ -124,7 +123,6 @@ files_mesa_util = files(
   'strndup.h',
   'strtod.c',
   'strtod.h',
-  'texcompress_rgtc_tmp.h',
   'timespec.h',
   'u_atomic.c',
   'u_atomic.h',
@@ -256,16 +254,20 @@ libmesa_util_sse41 = static_library(
   'mesa_util_sse41',
   files('streaming-load-memcpy.c'),
   c_args : [c_msvc_compat_args, sse41_args],
-  include_directories : [inc_include, inc_src, inc_mesa],
+  include_directories : [inc_util],
   gnu_symbol_visibility : 'hidden',
 )
+
+# subdir format provide files_mesa_format
+subdir('format')
+files_mesa_util += files_mesa_format
 
 _libmesa_util = static_library(
   'mesa_util',
   [files_mesa_util, files_debug_stack, format_srgb],
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+  include_directories : [inc_util, include_directories('format')],
   dependencies : deps_for_libmesa_util,
-  link_with: [libmesa_format, libmesa_util_sse41],
+  link_with: [libmesa_util_sse41],
   c_args : [c_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false
@@ -273,7 +275,7 @@ _libmesa_util = static_library(
 
 idep_mesautil = declare_dependency(
   link_with : _libmesa_util,
-  include_directories : [inc_util, inc_gallium],
+  include_directories : [inc_util],
   dependencies : deps_for_libmesa_util,
 )
 
@@ -293,7 +295,6 @@ c_xmlconfig_arg = '-DWITH_XMLCONFIG=@0@'.format(use_xmlconfig.to_int())
 _libxmlconfig = static_library(
   'xmlconfig',
   files_xmlconfig,
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : [idep_mesautil, dep_m, xmlconfig_deps],
   c_args : [
     c_msvc_compat_args,
@@ -324,7 +325,6 @@ if with_tests
     test('xmlconfig',
       executable('xmlconfig_test',
         files('tests/xmlconfig.cpp'),
-        include_directories : [inc_include, inc_src],
         dependencies : [idep_mesautil, idep_xmlconfig, idep_gtest],
         override_options : ['cpp_std=c++2a'],
         cpp_args: ['-Wno-write-strings', c_xmlconfig_arg]
@@ -383,7 +383,6 @@ if with_tests
     executable(
       'util_tests',
       files_util_tests,
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
       dependencies : [idep_mesautil, idep_gtest],
     ),
     suite : ['util'],
@@ -394,7 +393,6 @@ if with_tests
   process_test_exe = executable(
     'process_test',
     files('tests/process_test.c'),
-    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
     dependencies : idep_mesautil,
     c_args : [c_msvc_compat_args],
   )
