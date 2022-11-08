@@ -219,6 +219,12 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
       &reply_dec, &struct_size, &instance->experimental);
    vn_renderer_shmem_unref(instance->renderer, reply_shmem);
 
+   /* if renderer supports multiple_timelines, the driver will use it and
+    * globalFencing support can be assumed.
+    */
+   if (instance->renderer->info.supports_multiple_timelines)
+      instance->experimental.globalFencing = VK_TRUE;
+
    if (VN_DEBUG(INIT)) {
       vn_log(instance,
              "VkVenusExperimentalFeatures100000MESA is as below:"
@@ -297,6 +303,8 @@ vn_instance_init_renderer(struct vn_instance *instance)
              renderer_info->supports_blob_id_0);
       vn_log(instance, "allow_vk_wait_syncs: %d",
              renderer_info->allow_vk_wait_syncs);
+      vn_log(instance, "supports_multiple_timelines: %d",
+             renderer_info->supports_multiple_timelines);
    }
 
    return VK_SUCCESS;

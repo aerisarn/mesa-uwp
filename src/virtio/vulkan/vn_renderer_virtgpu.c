@@ -1380,8 +1380,6 @@ virtgpu_init_renderer_info(struct virtgpu *gpu)
 
    info->has_implicit_fencing = false;
 
-   info->max_sync_queue_count = gpu->max_sync_queue_count;
-
    const struct virgl_renderer_capset_venus *capset = &gpu->capset.data;
    info->wire_format_version = capset->wire_format_version;
    info->vk_xml_version = capset->vk_xml_version;
@@ -1398,6 +1396,9 @@ virtgpu_init_renderer_info(struct virtgpu *gpu)
           sizeof(capset->vk_extension_mask1));
 
    info->allow_vk_wait_syncs = capset->allow_vk_wait_syncs;
+
+   info->supports_multiple_timelines = capset->supports_multiple_timelines;
+   info->max_sync_queue_count = gpu->max_sync_queue_count;
 
    if (gpu->bo_blob_mem == VIRTGPU_BLOB_MEM_GUEST_VRAM)
       info->has_guest_vram = true;
