@@ -215,10 +215,35 @@ st_setup_current(struct st_context *st,
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
    if (curmask) {
-      /* For each attribute, upload the maximum possible size. */
-      GLubyte data[VERT_ATTRIB_MAX * sizeof(GLdouble) * 4];
-      GLubyte *cursor = data;
+      unsigned num_attribs = util_bitcount_fast<POPCNT>(curmask);
+      unsigned num_dual_attribs = util_bitcount_fast<POPCNT>(curmask &
+                                                             dual_slot_inputs);
+      /* num_attribs includes num_dual_attribs, so adding num_dual_attribs
+       * doubles the size of those attribs.
+       */
+      unsigned max_size = (num_attribs + num_dual_attribs) * 16;
+
       const unsigned bufidx = (*num_vbuffers)++;
+      vbuffer[bufidx].is_user_buffer = false;
+      vbuffer[bufidx].buffer.resource = NULL;
+      /* vbuffer[bufidx].buffer_offset is set below */
+      vbuffer[bufidx].stride = 0;
+
+      /* Use const_uploader for zero-stride vertex attributes, because
+       * it may use a better memory placement than stream_uploader.
+       * The reason is that zero-stride attributes can be fetched many
+       * times (thousands of times), so a better placement is going to
+       * perform better.
+       */
+      struct u_upload_mgr *uploader = st->can_bind_const_buffer_as_vertex ?
+                                      st->pipe->const_uploader :
+                                      st->pipe->stream_uploader;
+      uint8_t *ptr = NULL;
+
+      u_upload_alloc(uploader, 0, max_size, 16,
+                     &vbuffer[bufidx].buffer_offset,
+                     &vbuffer[bufidx].buffer.resource, (void**)&ptr);
+      uint8_t *cursor = ptr;
 
       do {
          const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
@@ -237,7 +262,7 @@ st_setup_current(struct st_context *st,
          memcpy(cursor, attrib->Ptr, size);
 
          if (UPDATE == UPDATE_ALL) {
-            init_velement(velements->velems, &attrib->Format, cursor - data,
+            init_velement(velements->velems, &attrib->Format, cursor - ptr,
                           0, bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
                           util_bitcount_fast<POPCNT>(inputs_read & BITFIELD_MASK(attr)));
          }
@@ -245,24 +270,6 @@ st_setup_current(struct st_context *st,
          cursor += size;
       } while (curmask);
 
-      vbuffer[bufidx].is_user_buffer = false;
-      vbuffer[bufidx].buffer.resource = NULL;
-      /* vbuffer[bufidx].buffer_offset is set below */
-      vbuffer[bufidx].stride = 0;
-
-      /* Use const_uploader for zero-stride vertex attributes, because
-       * it may use a better memory placement than stream_uploader.
-       * The reason is that zero-stride attributes can be fetched many
-       * times (thousands of times), so a better placement is going to
-       * perform better.
-       */
-      struct u_upload_mgr *uploader = st->can_bind_const_buffer_as_vertex ?
-                                      st->pipe->const_uploader :
-                                      st->pipe->stream_uploader;
-      u_upload_data(uploader,
-                    0, cursor - data, 16, data,
-                    &vbuffer[bufidx].buffer_offset,
-                    &vbuffer[bufidx].buffer.resource);
       /* Always unmap. The uploader might use explicit flushes. */
       u_upload_unmap(uploader);
    }
