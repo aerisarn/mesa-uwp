@@ -26,7 +26,6 @@
 
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
-#include "asahi/lib/agx_pack.h"
 
 enum agx_push_type {
    /* Array of 64-bit pointers to the base addresses (BASES) and array of
