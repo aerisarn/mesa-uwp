@@ -292,8 +292,8 @@ being said, many people have managed to figure out the process.
 Joining the appropriate mailing lists and asking questions (and
 searching the archives) is a good way to get information.
 
-4.3 Why isn't ``GL_EXT_texture_compression_s3tc`` implemented in Mesa?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4.3 Why isn't :ext:`GL_EXT_texture_compression_s3tc` implemented in Mesa?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Oh but it is! Prior to 2nd October 2017, the Mesa project did not
 include S3TC support due to intellectual property (IP) and/or patent

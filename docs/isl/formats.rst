@@ -131,29 +131,29 @@ the sRGB colorspace.
 When sampling from a texture, the value returned to the shader is in the linear
 colorspace.  The conversion from sRGB happens as part of sampling. In OpenGL,
 thanks mostly to history, there are various knobs for determining when you
-should or should not encode or decode sRGB.  In 2007, GL_EXT_texture_sRGB added
-support for sRGB texture formats and was included in OpenGL 2.1.  In 2010,
-GL_EXT_texture_sRGB_decode added a flag to allow you to disable texture
-decoding so that the shader received the data still in the sRGB colorspace.
-Then, in 2012, GL_ARB_texture_view came along and made
-GL_EXT_texture_sRGB_decode simultaneously obsolete and very confusing.  Now,
-thanks to the combination of extensions, you can upload a texture as linear,
-create an sRGB view of it and ask that sRGB not be decoded.  What format is it
-in again?
+should or should not encode or decode sRGB.  In 2007, :ext:`GL_EXT_texture_sRGB`
+added support for sRGB texture formats and was included in OpenGL 2.1.  In
+2010, :ext:`GL_EXT_texture_sRGB_decode` added a flag to allow you to disable
+texture decoding so that the shader received the data still in the sRGB
+colorspace. Then, in 2012, :ext:`GL_ARB_texture_view` came along and made
+:ext:`GL_EXT_texture_sRGB_decode` simultaneously obsolete and very confusing.
+Now, thanks to the combination of extensions, you can upload a texture as
+linear, create an sRGB view of it and ask that sRGB not be decoded.  What
+format is it in again?
 
 The situation with render targets is a bit different.  Historically, you got
 your render target from the window system (which is always sRGB) and the spec
 said nothing whatsoever about encoding.  All render targets were sRGB because
 that's how monitors worked and application writers were expected to understand
 that their final rendering needed to be in sRGB.  However, with the advent of
-EXT_framebuffer_object this was no longer true.  Also, sRGB was causing
+:ext:`GL_EXT_framebuffer_object` this was no longer true.  Also, sRGB was causing
 problems with blending because GL was blind to the fact that the output was
 sRGB and blending was occurring in the wrong colorspace. In 2006, a set of
-EXT_framebuffer_sRGB extensions added support (on both the GL and window-system
-sides) for detecting whether a particular framebuffer was in sRGB and
-instructing GL to do the conversion into the sRGB colorspace as the final step
-prior to writing out to the render target.  Enabling sRGB also implied that
-blending would occur in the linear colorspace prior to sRGB conversion and
+:ext:`GL_EXT_framebuffer_sRGB` extensions added support (on both the GL and
+window-system sides) for detecting whether a particular framebuffer was in sRGB
+and instructing GL to do the conversion into the sRGB colorspace as the final
+step prior to writing out to the render target.  Enabling sRGB also implied
+that blending would occur in the linear colorspace prior to sRGB conversion and
 would therefore be more accurate.  When sRGB was added to the OpenGL ES spec in
 3.1, they added the query for sRGB but did not add the flag to allow you to
 turn it on and off.

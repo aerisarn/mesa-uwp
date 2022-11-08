@@ -15,7 +15,8 @@ clamp_vertex_color
    the execution of the vertex shader, before being passed to the geometry
    shader or fragment shader.
 
-   OpenGL: glClampColor(GL_CLAMP_VERTEX_COLOR) in GL 3.0 or GL_ARB_color_buffer_float
+   OpenGL: glClampColor(GL_CLAMP_VERTEX_COLOR) in GL 3.0 or
+   :ext:`GL_ARB_color_buffer_float`
 
    D3D11: seems always disabled
 
@@ -28,7 +29,8 @@ clamp_fragment_color
    Controls whether TGSI_SEMANTIC_COLOR outputs of the fragment shader
    are clamped to [0, 1].
 
-   OpenGL: glClampColor(GL_CLAMP_FRAGMENT_COLOR) in GL 3.0 or ARB_color_buffer_float
+   OpenGL: glClampColor(GL_CLAMP_FRAGMENT_COLOR) in GL 3.0 or
+   :ext:`GL_ARB_color_buffer_float`
 
    D3D11: seems always disabled
 

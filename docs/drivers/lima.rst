@@ -131,9 +131,9 @@ Here are some known caveats in OpenGL support:
     that may affect the quality of the texture lookup.
 
 - Lima supports FP16 textures in OpenGL ES (through
-  ``GL_OES_texture_half_float``), but not in OpenGL.
-  This is because it would require ``ARB_texture_float`` which would also
-  require 32-bit float textures, that the Mali-4xx does not support.
+  :ext:`GL_OES_texture_half_float<GL_OES_texture_float>`), but not in OpenGL.
+  This is because it would require :ext:`GL_ARB_texture_float` which would
+  also require 32-bit float textures, that the Mali-4xx does not support.
 - Rendering to FP16 is possible, but the result is clamped to the
   [0.0,1.0] range.
 

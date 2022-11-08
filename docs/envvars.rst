@@ -40,8 +40,8 @@ Core Mesa environment variables
 :envvar:`MESA_NO_SSE`
    if set, disables Intel SSE optimizations
 :envvar:`MESA_NO_ERROR`
-   if set to 1, error checking is disabled as per ``KHR_no_error``. This
-   will result in undefined behavior for invalid use of the API, but
+   if set to 1, error checking is disabled as per :ext:`GL_KHR_no_error`.
+   This will result in undefined behavior for invalid use of the API, but
    can reduce CPU use for apps that are known to be error free.
 :envvar:`MESA_DEBUG`
    if set, error messages are printed to stderr. For example, if the
@@ -89,11 +89,11 @@ Core Mesa environment variables
    -  ``FC`` is an optional suffix that indicates a forward compatible
       context. This is only valid for versions >= 3.0.
    -  ``COMPAT`` is an optional suffix that indicates a compatibility
-      context or ``GL_ARB_compatibility`` support. This is only valid
+      context or :ext:`GL_ARB_compatibility` support. This is only valid
       for versions >= 3.1.
    -  GL versions <= 3.0 are set to a compatibility (non-Core) profile
    -  GL versions = 3.1, depending on the driver, it may or may not have
-      the ``ARB_compatibility`` extension enabled.
+      the :ext:`GL_ARB_compatibility` extension enabled.
    -  GL versions >= 3.2 are set to a Core profile
    -  Examples:
 
@@ -104,13 +104,13 @@ Core Mesa environment variables
       ``3.0FC``
          select a Core+Forward Compatible profile with GL version 3.0.
       ``3.1``
-         select GL version 3.1 with ``GL_ARB_compatibility`` enabled per
-         the driver default.
+         select GL version 3.1 with :ext:`GL_ARB_compatibility` enabled
+         per the driver default.
       ``3.1FC``
          select GL version 3.1 with forward compatibility and
-         ``GL_ARB_compatibility`` disabled.
+         :ext:`GL_ARB_compatibility` disabled.
       ``3.1COMPAT``
-         select GL version 3.1 with ``GL_ARB_compatibility`` enabled.
+         select GL version 3.1 with :ext:`GL_ARB_compatibility` enabled.
       ``X.Y``
          override GL version to X.Y without changing the profile.
       ``X.YFC``
@@ -332,7 +332,7 @@ Intel driver environment variables
    ``perf``
       emit messages about performance issues
    ``perfmon``
-      emit messages about ``AMD_performance_monitor``
+      emit messages about :ext:`GL_AMD_performance_monitor`
    ``reemit``
       mark all state dirty on each draw call
    ``rt``
