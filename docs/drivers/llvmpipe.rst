@@ -96,17 +96,6 @@ Environment variables
    out LLVMpipe can be fastest by using 128 bit vectors,
    yet use AVX instructions.
 
-.. envvar:: GALLIUM_OVERRIDE_CPU_CAPS
-
-   Override CPU capabilities for LLVMpipe and Softpipe, possible values for x86:
-   ``nosse``
-   ``sse``
-   ``sse2``
-   ``sse3``
-   ``ssse3``
-   ``sse4.1``
-   ``avx``
-
 .. envvar:: GALLIUM_NOSSE
 
    Deprecated in favor of ``GALLIUM_OVERRIDE_CPU_CAPS``,

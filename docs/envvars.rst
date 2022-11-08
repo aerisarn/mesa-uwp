@@ -635,6 +635,26 @@ Gallium environment variables
    if non-zero, print all the Gallium environment variables which are
    used, and their current values.
 
+.. envvar:: GALLIUM_TRACE
+
+   If set, this variable will cause the :ref:`trace` output to be written to the
+   specified file. Paths may be relative or absolute; relative paths are relative
+   to the working directory.  For example, setting it to "trace.xml" will cause
+   the trace to be written to a file of the same name in the working directory.
+
+.. envvar:: GALLIUM_TRACE_TC
+
+   If enabled while :ref:`trace` is active, this variable specifies that the threaded context
+   should be traced for drivers which implement it. By default, the driver thread is traced,
+   which will include any reordering of the command stream from threaded context.
+
+.. envvar:: GALLIUM_TRACE_TRIGGER
+
+   If set while :ref:`trace` is active, this variable specifies a filename to monitor.
+   Once the file exists (e.g., from the user running 'touch /path/to/file'), a single
+   frame will be recorded into the trace output.
+   Paths may be relative or absolute; relative paths are relative to the working directory.
+
 .. envvar:: GALLIUM_DUMP_CPU
 
    if non-zero, print information about the CPU on start-up
@@ -663,6 +683,17 @@ Gallium environment variables
    controls debug output from the Mesa/Gallium state tracker. Setting to
    ``tgsi``, for example, will print all the TGSI shaders. See
    :file:`src/mesa/state_tracker/st_debug.c` for other options.
+
+.. envvar:: GALLIUM_OVERRIDE_CPU_CAPS
+
+   Override CPU capabilities for LLVMpipe and Softpipe, possible values for x86:
+   ``nosse``
+   ``sse``
+   ``sse2``
+   ``sse3``
+   ``ssse3``
+   ``sse4.1``
+   ``avx``
 
 Clover environment variables
 ----------------------------
@@ -1402,3 +1433,25 @@ Asahi driver environment variables
 
 Other Gallium drivers have their own environment variables. These may
 change frequently so the source code should be consulted for details.
+
+i915 driver environment variables
+---------------------------------
+
+.. envvar:: I915_DEBUG
+
+   Debug flags for the i915 driver.
+
+.. envvar:: I915_NO_HW
+
+   Stop the i915 driver from submitting commands to the hardware.
+
+.. envvar:: I915_DUMP_CMD
+
+   Dump all commands going to the hardware.
+
+Freedreno driver environment variables
+--------------------------------------
+
+.. envvar:: FD_MESA_DEBUG
+
+   Debug flags for the Freedreno driver.
