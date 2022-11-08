@@ -936,19 +936,18 @@ radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *
  * that will be emitted by PA_SC_AA_SAMPLE_LOCS_PIXEL_*).
  */
 static void
-radv_convert_user_sample_locs(struct radv_sample_locations_state *state, uint32_t x, uint32_t y,
-                              VkOffset2D *sample_locs)
+radv_convert_user_sample_locs(const struct radv_sample_locations_state *state,
+                              uint32_t x, uint32_t y, VkOffset2D *sample_locs)
 {
    uint32_t x_offset = x % state->grid_size.width;
    uint32_t y_offset = y % state->grid_size.height;
    uint32_t num_samples = (uint32_t)state->per_pixel;
-   VkSampleLocationEXT *user_locs;
    uint32_t pixel_offset;
 
    pixel_offset = (x_offset + y_offset * state->grid_size.width) * num_samples;
 
    assert(pixel_offset <= MAX_SAMPLE_LOCATIONS);
-   user_locs = &state->locations[pixel_offset];
+   const VkSampleLocationEXT *user_locs = &state->locations[pixel_offset];
 
    for (uint32_t i = 0; i < num_samples; i++) {
       float shifted_pos_x = user_locs[i].x - 0.5;
@@ -1029,9 +1028,9 @@ radv_compute_centroid_priority(struct radv_cmd_buffer *cmd_buffer, VkOffset2D *s
 static void
 radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_sample_locations_state *sample_location = &cmd_buffer->state.dynamic.sample_location;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   uint32_t num_samples = (uint32_t)sample_location->per_pixel;
+   uint32_t num_samples = (uint32_t)d->sample_location.per_pixel;
    unsigned pa_sc_aa_config = pipeline->ms.pa_sc_aa_config;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t sample_locs_pixel[4][2] = {0};
@@ -1039,14 +1038,14 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
    uint32_t max_sample_dist = 0;
    uint64_t centroid_priority;
 
-   if (!cmd_buffer->state.dynamic.sample_location.count)
+   if (!d->sample_location.count)
       return;
 
    /* Convert the user sample locations to hardware sample locations. */
-   radv_convert_user_sample_locs(sample_location, 0, 0, sample_locs[0]);
-   radv_convert_user_sample_locs(sample_location, 1, 0, sample_locs[1]);
-   radv_convert_user_sample_locs(sample_location, 0, 1, sample_locs[2]);
-   radv_convert_user_sample_locs(sample_location, 1, 1, sample_locs[3]);
+   radv_convert_user_sample_locs(&d->sample_location, 0, 0, sample_locs[0]);
+   radv_convert_user_sample_locs(&d->sample_location, 1, 0, sample_locs[1]);
+   radv_convert_user_sample_locs(&d->sample_location, 0, 1, sample_locs[2]);
+   radv_convert_user_sample_locs(&d->sample_location, 1, 1, sample_locs[3]);
 
    /* Compute the PA_SC_AA_SAMPLE_LOCS_PIXEL_* mask. */
    for (uint32_t i = 0; i < 4; i++) {
@@ -2051,10 +2050,9 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 void
 radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs)
 {
-   uint32_t count = cmd_buffer->state.dynamic.scissor.count;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   si_write_scissors(cs, count, cmd_buffer->state.dynamic.scissor.scissors,
-                     cmd_buffer->state.dynamic.viewport.viewports);
+   si_write_scissors(cs, d->scissor.count, d->scissor.scissors, d->viewport.viewports);
 }
 
 static void
@@ -2068,13 +2066,15 @@ radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_discard_rectangle(struct radv_cmd_buffer *cmd_buffer)
 {
-   if (!cmd_buffer->state.dynamic.discard_rectangle.count)
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   if (!d->discard_rectangle.count)
       return;
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028210_PA_SC_CLIPRECT_0_TL,
-                              cmd_buffer->state.dynamic.discard_rectangle.count * 2);
-   for (unsigned i = 0; i < cmd_buffer->state.dynamic.discard_rectangle.count; ++i) {
-      VkRect2D rect = cmd_buffer->state.dynamic.discard_rectangle.rectangles[i];
+                              d->discard_rectangle.count * 2);
+   for (unsigned i = 0; i < d->discard_rectangle.count; ++i) {
+      VkRect2D rect = d->discard_rectangle.rectangles[i];
       radeon_emit(cmd_buffer->cs, S_028210_TL_X(rect.offset.x) | S_028210_TL_Y(rect.offset.y));
       radeon_emit(cmd_buffer->cs, S_028214_BR_X(rect.offset.x + rect.extent.width) |
                                      S_028214_BR_Y(rect.offset.y + rect.extent.height));
@@ -2084,10 +2084,10 @@ radv_emit_discard_rectangle(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_line_width(struct radv_cmd_buffer *cmd_buffer)
 {
-   unsigned width = cmd_buffer->state.dynamic.line_width * 8;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    radeon_set_context_reg(cmd_buffer->cs, R_028A08_PA_SU_LINE_CNTL,
-                          S_028A08_WIDTH(CLAMP(width, 0, 0xFFFF)));
+                          S_028A08_WIDTH(CLAMP(d->line_width * 8, 0, 0xFFFF)));
 }
 
 static void
