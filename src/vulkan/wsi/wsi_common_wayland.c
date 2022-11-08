@@ -647,8 +647,7 @@ default_dmabuf_feedback_main_device(void *data,
    struct wsi_wl_display *display = data;
 
    assert(device->size == sizeof(dev_t));
-   dev_t *dev = device->data;
-   display->main_device = *dev;
+   memcpy(&display->main_device, device->data, device->size);
 }
 
 static void
