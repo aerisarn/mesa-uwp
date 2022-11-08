@@ -46,20 +46,33 @@ test_bit(unsigned mask, unsigned bit) {
    return mask & (1u << bit);
 }
 
+namespace {
+
+struct brw_cs_prog_data *
+get_cs_prog_data(brw_simd_selection_state &state)
+{
+   if (std::holds_alternative<struct brw_cs_prog_data *>(state.prog_data))
+      return std::get<struct brw_cs_prog_data *>(state.prog_data);
+   else
+      return nullptr;
+}
+
+}
+
 bool
 brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
 {
    assert(simd < SIMD_COUNT);
    assert(!state.compiled[simd]);
 
-   struct brw_cs_prog_data *prog_data = state.prog_data;
+   const auto cs_prog_data = get_cs_prog_data(state);
    const unsigned width = 8u << simd;
 
    /* For shaders with variable size workgroup, in most cases we can compile
     * all the variants (exceptions are bindless dispatch & ray queries), since
     * the choice will happen only at dispatch time.
     */
-   const bool workgroup_size_variable = prog_data->local_size[0] == 0;
+   const bool workgroup_size_variable = cs_prog_data && cs_prog_data->local_size[0] == 0;
 
    if (!workgroup_size_variable) {
       if (state.spilled[simd]) {
@@ -68,12 +81,6 @@ brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
          return false;
       }
 
-      const unsigned workgroup_size = prog_data->local_size[0] *
-                                      prog_data->local_size[1] *
-                                      prog_data->local_size[2];
-
-      unsigned max_threads = state.devinfo->max_cs_workgroup_threads;
-
       if (state.required_width && state.required_width != width) {
          state.error[simd] = ralloc_asprintf(
             state.mem_ctx, "SIMD%u skipped because required dispatch width is %u",
@@ -81,19 +88,27 @@ brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
          return false;
       }
 
-      if (simd > 0 && state.compiled[simd - 1] &&
-          workgroup_size <= (width / 2)) {
-         state.error[simd] = ralloc_asprintf(
-            state.mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
-            width, workgroup_size, width / 2);
-         return false;
-      }
+      if (cs_prog_data) {
+         const unsigned workgroup_size = cs_prog_data->local_size[0] *
+                                         cs_prog_data->local_size[1] *
+                                         cs_prog_data->local_size[2];
 
-      if (DIV_ROUND_UP(workgroup_size, width) > max_threads) {
-         state.error[simd] = ralloc_asprintf(
-            state.mem_ctx, "SIMD%u can't fit all %u invocations in %u threads",
-            width, workgroup_size, max_threads);
-         return false;
+         unsigned max_threads = state.devinfo->max_cs_workgroup_threads;
+
+         if (simd > 0 && state.compiled[simd - 1] &&
+            workgroup_size <= (width / 2)) {
+            state.error[simd] = ralloc_asprintf(
+               state.mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
+               width, workgroup_size, width / 2);
+            return false;
+         }
+
+         if (DIV_ROUND_UP(workgroup_size, width) > max_threads) {
+            state.error[simd] = ralloc_asprintf(
+               state.mem_ctx, "SIMD%u can't fit all %u invocations in %u threads",
+               width, workgroup_size, max_threads);
+            return false;
+         }
       }
 
       /* The SIMD32 is only enabled for cases it is needed unless forced.
@@ -109,14 +124,14 @@ brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
       }
    }
 
-   if (width == 32 && prog_data->base.ray_queries > 0) {
+   if (width == 32 && cs_prog_data && cs_prog_data->base.ray_queries > 0) {
       state.error[simd] = ralloc_asprintf(
          state.mem_ctx, "SIMD%u skipped because of ray queries",
          width);
       return false;
    }
 
-   if (width == 32 && prog_data->uses_btd_stack_ids) {
+   if (width == 32 && cs_prog_data && cs_prog_data->uses_btd_stack_ids) {
       state.error[simd] = ralloc_asprintf(
          state.mem_ctx, "SIMD%u skipped because of bindless shader calls",
          width);
@@ -147,14 +162,18 @@ brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spil
    assert(simd < SIMD_COUNT);
    assert(!state.compiled[simd]);
 
+   auto cs_prog_data = get_cs_prog_data(state);
+
    state.compiled[simd] = true;
-   state.prog_data->prog_mask |= 1u << simd;
+   if (cs_prog_data)
+      cs_prog_data->prog_mask |= 1u << simd;
 
    /* If a SIMD spilled, all the larger ones would spill too. */
    if (spilled) {
       for (unsigned i = simd; i < SIMD_COUNT; i++) {
          state.spilled[i] = true;
-         state.prog_data->prog_spilled |= 1u << i;
+         if (cs_prog_data)
+            cs_prog_data->prog_spilled |= 1u << i;
       }
    }
 }

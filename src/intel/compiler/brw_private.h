@@ -27,6 +27,8 @@
 
 #include "brw_compiler.h"
 
+#include <variant>
+
 unsigned brw_required_dispatch_width(const struct shader_info *info);
 
 static constexpr int SIMD_COUNT = 3;
@@ -35,7 +37,7 @@ struct brw_simd_selection_state {
    void *mem_ctx;
    const struct intel_device_info *devinfo;
 
-   struct brw_cs_prog_data *prog_data;
+   std::variant<struct brw_cs_prog_data *> prog_data;
 
    unsigned required_width;
 
