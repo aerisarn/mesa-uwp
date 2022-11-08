@@ -217,7 +217,46 @@ agx_resource_get_handle(struct pipe_screen *pscreen,
                         struct winsys_handle *handle,
                         unsigned usage)
 {
-   unreachable("Handles todo");
+   struct agx_device *dev = agx_device(pscreen);
+   struct renderonly_scanout *scanout;
+   struct pipe_resource *cur = pt;
+
+   /* Even though asahi doesn't support multi-planar formats, we
+    * can get here through GBM, which does. Walk the list of planes
+    * to find the right one.
+    */
+   for (int i = 0; i < handle->plane; i++) {
+      cur = cur->next;
+      if (!cur)
+         return false;
+   }
+
+   struct agx_resource *rsrc = (struct agx_resource *)cur;
+   scanout = rsrc->scanout;
+
+   if (handle->type == WINSYS_HANDLE_TYPE_KMS && dev->ro) {
+      return renderonly_get_handle(scanout, handle);
+   } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
+      handle->handle = rsrc->bo->handle;
+   } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
+      int fd = agx_bo_export(rsrc->bo);
+
+      if (fd < 0)
+         return false;
+
+      handle->handle = fd;
+   } else {
+      /* Other handle types not supported */
+      return false;
+   }
+
+   handle->stride = ail_get_wsi_stride_B(&rsrc->layout, 0);
+   handle->size = rsrc->layout.size_B;
+   handle->offset = rsrc->layout.level_offsets_B[0];
+   handle->format = rsrc->layout.format;
+   handle->modifier = rsrc->modifier;
+
+   return true;
 }
 
 /* Linear textures require specifying their strides explicitly, which only
