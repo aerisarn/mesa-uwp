@@ -289,7 +289,7 @@ vertex_binding_divisor(struct gl_context *ctx,
    }
 }
 
-/* vertex_formats[gltype & 0x3f][integer*2 + normalized][size - 1] */
+/* vertex_formats[(gltype & 0x3f) | (double << 5)][integer*2 + normalized][size - 1] */
 static const uint8_t vertex_formats[][4][4] = {
    { /* GL_BYTE */
       {
@@ -538,12 +538,28 @@ static const uint8_t vertex_formats[][4][4] = {
       },
    },
    {{0}}, /* unused (41) */
-   {{0}}, /* unused (42) */
+   { /* GL_DOUBLE | (doubles << 5) (real double) */
+     {
+        PIPE_FORMAT_R64_UINT,
+        PIPE_FORMAT_R64G64_UINT,
+        PIPE_FORMAT_R64G64B64_UINT,
+        PIPE_FORMAT_R64G64B64A64_UINT,
+     },
+   },
    {{0}}, /* unused (43) */
    {{0}}, /* unused (44) */
    {{0}}, /* unused (45) */
    {{0}}, /* unused (46) */
-   {{0}}, /* unused (47) */
+   { /* GL_UNSIGNED_INT64_ARB | (doubles << 5) (doubles is always true) */
+     {0},
+     {0},
+     {
+        PIPE_FORMAT_R64_UINT,
+        PIPE_FORMAT_R64G64_UINT,
+        PIPE_FORMAT_R64G64B64_UINT,
+        PIPE_FORMAT_R64G64B64A64_UINT,
+     },
+   },
    {{0}}, /* unused (48) */
    {{0}}, /* unused (49) */
    {{0}}, /* unused (50) */
@@ -598,10 +614,6 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
    assert(size >= 1 && size <= 4);
    assert(format == GL_RGBA || format == GL_BGRA);
 
-   /* Raw doubles use 64_UINT. */
-   if (doubles)
-      return PIPE_FORMAT_R64_UINT + size - 1;
-
    if (format == GL_BGRA) {
       assert(size == 4 && !integer);
       assert(type == GL_UNSIGNED_BYTE ||
@@ -620,10 +632,11 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
           type == GL_HALF_FLOAT_OES ||
           type == GL_INT_2_10_10_10_REV ||
           type == GL_UNSIGNED_INT_2_10_10_10_REV ||
-          type == GL_UNSIGNED_INT_10F_11F_11F_REV);
+          type == GL_UNSIGNED_INT_10F_11F_11F_REV ||
+          (type == GL_UNSIGNED_INT64_ARB && doubles));
 
    enum pipe_format pipe_format =
-      vertex_formats[type & 0x3f][index][size-1];
+      vertex_formats[(type & 0x3f) | ((int)doubles << 5)][index][size-1];
    assert(pipe_format);
    return pipe_format;
 }
