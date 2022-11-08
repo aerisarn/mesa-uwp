@@ -28,6 +28,8 @@
 #include "compiler/nir/nir_builder.h"
 #include "dev/intel_debug.h"
 
+#include <memory>
+
 using namespace brw;
 
 static bool
@@ -266,7 +268,7 @@ brw_compile_task(const struct brw_compiler *compiler,
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info);
 
-   fs_visitor *v[3]     = {0};
+   std::unique_ptr<fs_visitor> v[3];
    const char *error[3] = {0};
 
    for (unsigned simd = 0; simd < 3; simd++) {
@@ -287,13 +289,13 @@ brw_compile_task(const struct brw_compiler *compiler,
 
       brw_nir_adjust_payload(shader, compiler);
 
-      v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                               &prog_data->base.base, shader, dispatch_width,
-                               debug_enabled);
+      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                             &prog_data->base.base, shader, dispatch_width,
+                                             debug_enabled);
 
       if (prog_data->base.prog_mask) {
          unsigned first = ffs(prog_data->base.prog_mask) - 1;
-         v[simd]->import_uniforms(v[first]);
+         v[simd]->import_uniforms(v[first].get());
       }
 
       const bool allow_spilling = !prog_data->base.prog_mask;
@@ -311,7 +313,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       return NULL;
    }
 
-   fs_visitor *selected = v[selected_simd];
+   fs_visitor *selected = v[selected_simd].get();
    prog_data->base.prog_mask = 1 << selected_simd;
 
    if (unlikely(debug_enabled)) {
@@ -331,11 +333,6 @@ brw_compile_task(const struct brw_compiler *compiler,
 
    g.generate_code(selected->cfg, selected->dispatch_width, selected->shader_stats,
                    selected->performance_analysis.require(), params->stats);
-
-   delete v[0];
-   delete v[1];
-   delete v[2];
-
    return g.get_assembly();
 }
 
@@ -767,7 +764,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info);
 
-   fs_visitor *v[3]     = {0};
+   std::unique_ptr<fs_visitor> v[3];
    const char *error[3] = {0};
 
    for (int simd = 0; simd < 3; simd++) {
@@ -800,13 +797,13 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       brw_nir_adjust_payload(shader, compiler);
 
-      v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                               &prog_data->base.base, shader, dispatch_width,
-                               debug_enabled);
+      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                             &prog_data->base.base, shader, dispatch_width,
+                                             debug_enabled);
 
       if (prog_data->base.prog_mask) {
          unsigned first = ffs(prog_data->base.prog_mask) - 1;
-         v[simd]->import_uniforms(v[first]);
+         v[simd]->import_uniforms(v[first].get());
       }
 
       const bool allow_spilling = !prog_data->base.prog_mask;
@@ -824,7 +821,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       return NULL;
    }
 
-   fs_visitor *selected = v[selected_simd];
+   fs_visitor *selected = v[selected_simd].get();
    prog_data->base.prog_mask = 1 << selected_simd;
 
    if (unlikely(debug_enabled)) {
@@ -848,11 +845,6 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
    g.generate_code(selected->cfg, selected->dispatch_width, selected->shader_stats,
                    selected->performance_analysis.require(), params->stats);
-
-   delete v[0];
-   delete v[1];
-   delete v[2];
-
    return g.get_assembly();
 }
 

@@ -43,6 +43,8 @@
 #include "program/prog_parameter.h"
 #include "util/u_math.h"
 
+#include <memory>
+
 using namespace brw;
 
 static unsigned get_lowered_simd_width(const struct brw_compiler *compiler,
@@ -7460,17 +7462,16 @@ brw_compile_fs(const struct brw_compiler *compiler,
    brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data,
                                  params->mue_map);
 
-   fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
+   std::unique_ptr<fs_visitor> v8, v16, v32;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
    float throughput = 0;
    bool has_spilled = false;
 
-   v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                       &prog_data->base, nir, 8,
-                       debug_enabled);
+   v8 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                     &prog_data->base, nir, 8,
+                                     debug_enabled);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
       params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
-      delete v8;
       return NULL;
    } else if (!INTEL_DEBUG(DEBUG_NO8)) {
       simd8_cfg = v8->cfg;
@@ -7508,10 +7509,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
        v8->max_dispatch_width >= 16 &&
        (!INTEL_DEBUG(DEBUG_NO16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
-      v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                           &prog_data->base, nir, 16,
-                           debug_enabled);
-      v16->import_uniforms(v8);
+      v16 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                         &prog_data->base, nir, 16,
+                                         debug_enabled);
+      v16->import_uniforms(v8.get());
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
          brw_shader_perf_log(compiler, params->log_data,
                              "SIMD16 shader failed to compile: %s\n",
@@ -7535,10 +7536,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
        devinfo->ver >= 6 && !simd16_failed &&
        !INTEL_DEBUG(DEBUG_NO32)) {
       /* Try a SIMD32 compile */
-      v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                           &prog_data->base, nir, 32,
-                           debug_enabled);
-      v32->import_uniforms(v8);
+      v32 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                         &prog_data->base, nir, 32,
+                                         debug_enabled);
+      v32->import_uniforms(v8.get());
       if (!v32->run_fs(allow_spilling, false)) {
          brw_shader_perf_log(compiler, params->log_data,
                              "SIMD32 shader failed to compile: %s\n",
@@ -7648,11 +7649,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
    }
 
    g.add_const_data(nir->constant_data, nir->constant_data_size);
-
-   delete v8;
-   delete v16;
-   delete v32;
-
    return g.get_assembly();
 }
 
@@ -7813,7 +7809,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info);
 
-   fs_visitor *v[3]     = {0};
+   std::unique_ptr<fs_visitor> v[3];
    const char *error[3] = {0};
 
    for (unsigned simd = 0; simd < 3; simd++) {
@@ -7836,13 +7832,13 @@ brw_compile_cs(const struct brw_compiler *compiler,
       brw_postprocess_nir(shader, compiler, true, debug_enabled,
                           key->base.robust_buffer_access);
 
-      v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                               &prog_data->base, shader, dispatch_width,
-                               debug_enabled);
+      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+                                    &prog_data->base, shader, dispatch_width,
+                                             debug_enabled);
 
       if (prog_data->prog_mask) {
          unsigned first = ffs(prog_data->prog_mask) - 1;
-         v[simd]->import_uniforms(v[first]);
+         v[simd]->import_uniforms(v[first].get());
       }
 
       const bool allow_spilling = !prog_data->prog_mask ||
@@ -7870,12 +7866,10 @@ brw_compile_cs(const struct brw_compiler *compiler,
    }
 
    assert(selected_simd < 3);
-   fs_visitor *selected = v[selected_simd];
+   fs_visitor *selected = v[selected_simd].get();
 
    if (!nir->info.workgroup_size_variable)
       prog_data->prog_mask = 1 << selected_simd;
-
-   const unsigned *ret = NULL;
 
    fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   selected->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
@@ -7900,13 +7894,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
    g.add_const_data(nir->constant_data, nir->constant_data_size);
 
-   ret = g.get_assembly();
-
-   delete v[0];
-   delete v[1];
-   delete v[2];
-
-   return ret;
+   return g.get_assembly();
 }
 
 struct brw_cs_dispatch_info
@@ -7960,24 +7948,24 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    brw_postprocess_nir(shader, compiler, true, debug_enabled,
                        key->base.robust_buffer_access);
 
-   fs_visitor *v = NULL, *v8 = NULL, *v16 = NULL;
+   std::unique_ptr<fs_visitor> v8, v16;
+   fs_visitor *v = NULL;
    bool has_spilled = false;
 
    uint8_t simd_size = 0;
    if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
         shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_8) &&
        !INTEL_DEBUG(DEBUG_NO8)) {
-      v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
-                          &prog_data->base, shader,
-                          8, debug_enabled);
+      v8 = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
+                                        &prog_data->base, shader,
+                                        8, debug_enabled);
       const bool allow_spilling = true;
       if (!v8->run_bs(allow_spilling)) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
-         delete v8;
          return 0;
       } else {
-         v = v8;
+         v = v8.get();
          simd_size = 8;
          if (v8->spilled_any_registers)
             has_spilled = true;
@@ -7987,26 +7975,25 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
         shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_16) &&
        !has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
-      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
-                           &prog_data->base, shader,
-                           16, debug_enabled);
+      v16 = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
+                                         &prog_data->base, shader,
+                                         16, debug_enabled);
       const bool allow_spilling = (v == NULL);
       if (!v16->run_bs(allow_spilling)) {
          brw_shader_perf_log(compiler, log_data,
                              "SIMD16 shader failed to compile: %s\n",
                              v16->fail_msg);
          if (v == NULL) {
-            assert(v8 == NULL);
+            assert(!v8);
             if (error_str) {
                *error_str = ralloc_asprintf(
                   mem_ctx, "SIMD8 disabled and couldn't generate SIMD16: %s",
                   v16->fail_msg);
             }
-            delete v16;
             return 0;
          }
       } else {
-         v = v16;
+         v = v16.get();
          simd_size = 16;
          if (v16->spilled_any_registers)
             has_spilled = true;
@@ -8030,9 +8017,6 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       *prog_offset = offset;
    else
       assert(offset == 0);
-
-   delete v8;
-   delete v16;
 
    return simd_size;
 }
