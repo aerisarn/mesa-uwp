@@ -272,12 +272,6 @@ agx_device(struct pipe_screen *p)
    return &(agx_screen(p)->dev);
 }
 
-/* TODO: UABI, fake for macOS */
-#ifndef DRM_FORMAT_MOD_LINEAR
-#define DRM_FORMAT_MOD_LINEAR 1
-#endif
-#define DRM_FORMAT_MOD_APPLE_TWIDDLED (2)
-
 struct agx_resource {
    struct pipe_resource	base;
    uint64_t modifier;

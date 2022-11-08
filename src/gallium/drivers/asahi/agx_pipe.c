@@ -48,6 +48,21 @@
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/lib/decode.h"
 #include "asahi/lib/agx_formats.h"
+#include "util/u_drm.h"
+
+/* drm_fourcc cannot be built on macOS */
+#ifndef __APPLE__
+#include "drm-uapi/drm_fourcc.h"
+#endif
+
+/* In case of macOS, pick some fake modifier values so we still build */
+#ifndef DRM_FORMAT_MOD_LINEAR
+#define DRM_FORMAT_MOD_LINEAR 1
+#endif
+
+#ifndef DRM_FORMAT_MOD_APPLE_TWIDDLED
+#define DRM_FORMAT_MOD_APPLE_TWIDDLED (2)
+#endif
 
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
