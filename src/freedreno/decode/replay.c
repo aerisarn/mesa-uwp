@@ -63,7 +63,8 @@
 
 static const char *exename = NULL;
 
-static int handle_file(const char *filename, uint32_t submit_to_override,
+static int handle_file(const char *filename, uint32_t first_submit,
+                       uint32_t last_submit, uint32_t submit_to_override,
                        const char *cmdstreamgen);
 
 static void
@@ -76,6 +77,8 @@ print_usage(const char *name)
            "\t-e, --exe=NAME         - only use cmdstream from named process\n"
            "\t-o  --override=submit  - № of the submit to override\n"
            "\t-g  --generator=path   - executable which generate cmdstream for override\n"
+           "\t-f  --first=submit     - first submit № to replay\n"
+           "\t-l  --last=submit      - last submit № to replay\n"
            "\t-h, --help             - show this message\n"
            , name);
    /* clang-format on */
@@ -87,6 +90,8 @@ static const struct option opts[] = {
       { "exe",       required_argument, 0, 'e' },
       { "override",  required_argument, 0, 'o' },
       { "generator", required_argument, 0, 'g' },
+      { "first",     required_argument, 0, 'f' },
+      { "last",      required_argument, 0, 'l' },
       { "help",      no_argument,       0, 'h' },
 };
 /* clang-format on */
@@ -98,9 +103,11 @@ main(int argc, char **argv)
    int c;
 
    uint32_t submit_to_override = -1;
+   uint32_t first_submit = 0;
+   uint32_t last_submit = -1;
    const char *cmdstreamgen = NULL;
 
-   while ((c = getopt_long(argc, argv, "e:o:g:h", opts, NULL)) != -1) {
+   while ((c = getopt_long(argc, argv, "e:o:g:f:l:h", opts, NULL)) != -1) {
       switch (c) {
       case 0:
          /* option that set a flag, nothing to do */
@@ -114,6 +121,12 @@ main(int argc, char **argv)
       case 'g':
          cmdstreamgen = optarg;
          break;
+      case 'f':
+         first_submit = strtoul(optarg, NULL, 0);
+         break;
+      case 'l':
+         last_submit = strtoul(optarg, NULL, 0);
+         break;
       case 'h':
       default:
          print_usage(argv[0]);
@@ -121,7 +134,8 @@ main(int argc, char **argv)
    }
 
    while (optind < argc) {
-      ret = handle_file(argv[optind], submit_to_override, cmdstreamgen);
+      ret = handle_file(argv[optind], first_submit, last_submit,
+                        submit_to_override, cmdstreamgen);
       if (ret) {
          fprintf(stderr, "error reading: %s\n", argv[optind]);
          fprintf(stderr, "continuing..\n");
@@ -526,8 +540,8 @@ override_cmdstream(struct device *dev, struct cmdstream *cs,
 }
 
 static int
-handle_file(const char *filename, uint32_t submit_to_override,
-            const char *cmdstreamgen)
+handle_file(const char *filename, uint32_t first_submit, uint32_t last_submit,
+            uint32_t submit_to_override, const char *cmdstreamgen)
 {
    struct io *io;
    int submit = 0;
@@ -583,15 +597,24 @@ handle_file(const char *filename, uint32_t submit_to_override,
          /* no-op */
          break;
       case RD_BUFFER_CONTENTS:
+         /* TODO: skip buffer uploading and even reading if this buffer
+          * is used for submit outside of [first_submit, last_submit]
+          * range. A set of buffers is shared between several cmdstreams,
+          * so we'd have to find starting from which RD_CMD to upload
+          * the buffers.
+          */
          upload_buffer(dev, gpuaddr.gpuaddr, gpuaddr.len, ps.buf);
          break;
       case RD_CMDSTREAM_ADDR: {
          unsigned int sizedwords;
          uint64_t gpuaddr;
          parse_addr(ps.buf, ps.sz, &sizedwords, &gpuaddr);
-         printf("cmdstream %d: %d dwords\n", submit, sizedwords);
 
-         if (!skip) {
+         bool add_submit = !skip && (submit >= first_submit) && (submit <= last_submit);
+         printf("%scmdstream %d: %d dwords\n", add_submit ? "" : "skipped ",
+                submit, sizedwords);
+
+         if (add_submit) {
             struct cmdstream *cs = u_vector_add(&dev->cmdstreams);
 
             if (submit == submit_to_override) {
