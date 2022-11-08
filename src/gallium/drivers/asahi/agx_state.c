@@ -804,6 +804,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
 
          if (tex->layout.tiling == AIL_TILING_LINEAR) {
             cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
+            cfg.levels = 1;
          } else {
             cfg.unk_tiled = true;
             cfg.levels = tex->base.last_level + 1;
