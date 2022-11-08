@@ -255,23 +255,23 @@ variable:
 
 .. envvar:: ZINK_DEBUG <flags> ("")
 
-``nir``
-   Print the NIR form of all shaders to stderr.
-``spirv``
-   Write the binary SPIR-V form of all compiled shaders to a file in the
-   current directory, and print a message with the filename to stderr.
-``tgsi``
-   Print the TGSI form of TGSI shaders to stderr.
-``validation``
-   Dump Validation layer output.
-``sync``
-   Emit full synchronization barriers before every draw and dispatch.
-``compact``
-   Use a maximum of 4 descriptor sets
-``noreorder``
-   Do not reorder or optimize GL command streams
-``gpl``
-   Force using Graphics Pipeline Library for all shaders
+  ``nir``
+    Print the NIR form of all shaders to stderr.
+  ``spirv``
+    Write the binary SPIR-V form of all compiled shaders to a file in the
+    current directory, and print a message with the filename to stderr.
+  ``tgsi``
+    Print the TGSI form of TGSI shaders to stderr.
+  ``validation``
+    Dump Validation layer output.
+  ``sync``
+    Emit full synchronization barriers before every draw and dispatch.
+  ``compact``
+    Use a maximum of 4 descriptor sets
+  ``noreorder``
+    Do not reorder or optimize GL command streams
+  ``gpl``
+    Force using Graphics Pipeline Library for all shaders
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

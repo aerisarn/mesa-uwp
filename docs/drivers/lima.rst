@@ -64,7 +64,7 @@ debugging. None of this is required for normal use.
 
 .. envvar:: LIMA_DEBUG <flags> ("")
 
-accepts the following comma-separated list of flags:
+  accepts the following comma-separated list of flags:
 
   ``bocache``
     print debug info for BO cache
@@ -94,19 +94,19 @@ accepts the following comma-separated list of flags:
 
 .. envvar:: LIMA_CTX_NUM_PLB <int> (None)
 
-set number of PLB per context (used for development purposes)
+  set number of PLB per context (used for development purposes)
 
 .. envvar:: LIMA_PLB_MAX_BLK <int> (None)
 
-set PLB max block (used for development purposes)
+  set PLB max block (used for development purposes)
 
 .. envvar:: LIMA_PPIR_FORCE_SPILLING <int> (None)
 
-force spilling of variables in PPIR (used for development purposes)
+  force spilling of variables in PPIR (used for development purposes)
 
 .. envvar:: LIMA_PLB_PP_STREAM_CACHE_SIZE <int> (None)
 
-set PP stream cache size (used for development purposes)
+  set PP stream cache size (used for development purposes)
 
 Known hardware limitations
 --------------------------
