@@ -289,8 +289,8 @@ vertex_binding_divisor(struct gl_context *ctx,
    }
 }
 
-/* vertex_formats[gltype - GL_BYTE][integer*2 + normalized][size - 1] */
-static const uint16_t vertex_formats[][4][4] = {
+/* vertex_formats[gltype & 0x3f][integer*2 + normalized][size - 1] */
+static const uint8_t vertex_formats[][4][4] = {
    { /* GL_BYTE */
       {
          PIPE_FORMAT_R8_SSCALED,
@@ -470,6 +470,105 @@ static const uint16_t vertex_formats[][4][4] = {
          PIPE_FORMAT_R32G32B32A32_FIXED
       },
    },
+   {{0}}, /* unused (13) */
+   {{0}}, /* unused (14) */
+   {{0}}, /* unused (15) */
+   {{0}}, /* unused (16) */
+   {{0}}, /* unused (17) */
+   {{0}}, /* unused (18) */
+   {{0}}, /* unused (19) */
+   {{0}}, /* unused (20) */
+   {{0}}, /* unused (21) */
+   {{0}}, /* unused (22) */
+   {{0}}, /* unused (23) */
+   {{0}}, /* unused (24) */
+   {{0}}, /* unused (25) */
+   {{0}}, /* unused (26) */
+   {{0}}, /* unused (27) */
+   {{0}}, /* unused (28) */
+   {{0}}, /* unused (29) */
+   {{0}}, /* unused (30) */
+   { /* GL_INT_2_10_10_10_REV */
+      {
+         0,
+         0,
+         0,
+         PIPE_FORMAT_R10G10B10A2_SSCALED
+      },
+      {
+         0,
+         0,
+         0,
+         PIPE_FORMAT_R10G10B10A2_SNORM
+      },
+   },
+   {{0}}, /* unused (32) */
+   { /* GL_HALF_FLOAT_OES */
+      {
+         PIPE_FORMAT_R16_FLOAT,
+         PIPE_FORMAT_R16G16_FLOAT,
+         PIPE_FORMAT_R16G16B16_FLOAT,
+         PIPE_FORMAT_R16G16B16A16_FLOAT
+      },
+      {
+         PIPE_FORMAT_R16_FLOAT,
+         PIPE_FORMAT_R16G16_FLOAT,
+         PIPE_FORMAT_R16G16B16_FLOAT,
+         PIPE_FORMAT_R16G16B16A16_FLOAT
+      },
+   },
+   {{0}}, /* unused (34) */
+   {{0}}, /* unused (35) */
+   {{0}}, /* unused (36) */
+   {{0}}, /* unused (37) */
+   {{0}}, /* unused (38) */
+   {{0}}, /* unused (39) */
+   { /* GL_UNSIGNED_INT_2_10_10_10_REV */
+      {
+         0,
+         0,
+         0,
+         PIPE_FORMAT_R10G10B10A2_USCALED
+      },
+      {
+         0,
+         0,
+         0,
+         PIPE_FORMAT_R10G10B10A2_UNORM
+      },
+   },
+   {{0}}, /* unused (41) */
+   {{0}}, /* unused (42) */
+   {{0}}, /* unused (43) */
+   {{0}}, /* unused (44) */
+   {{0}}, /* unused (45) */
+   {{0}}, /* unused (46) */
+   {{0}}, /* unused (47) */
+   {{0}}, /* unused (48) */
+   {{0}}, /* unused (49) */
+   {{0}}, /* unused (50) */
+   {{0}}, /* unused (51) */
+   {{0}}, /* unused (52) */
+   {{0}}, /* unused (53) */
+   {{0}}, /* unused (54) */
+   {{0}}, /* unused (55) */
+   {{0}}, /* unused (56) */
+   {{0}}, /* unused (57) */
+   {{0}}, /* unused (58) */
+   { /* GL_UNSIGNED_INT_10F_11F_11F_REV */
+      {
+         0,
+         0,
+         PIPE_FORMAT_R11G11B10_FLOAT,
+         0
+      },
+      {
+         0,
+         0,
+         PIPE_FORMAT_R11G11B10_FLOAT,
+         0
+      },
+   },
 };
 
 /**
@@ -487,10 +586,6 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
       return PIPE_FORMAT_R64_UINT + size - 1;
 
    switch (type) {
-   case GL_HALF_FLOAT_OES:
-      type = GL_HALF_FLOAT;
-      break;
-
    case GL_INT_2_10_10_10_REV:
       assert(size == 4 && !integer);
 
@@ -499,11 +594,6 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
             return PIPE_FORMAT_B10G10R10A2_SNORM;
          else
             return PIPE_FORMAT_B10G10R10A2_SSCALED;
-      } else {
-         if (normalized)
-            return PIPE_FORMAT_R10G10B10A2_SNORM;
-         else
-            return PIPE_FORMAT_R10G10B10A2_SSCALED;
       }
       break;
 
@@ -515,17 +605,8 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
             return PIPE_FORMAT_B10G10R10A2_UNORM;
          else
             return PIPE_FORMAT_B10G10R10A2_USCALED;
-      } else {
-         if (normalized)
-            return PIPE_FORMAT_R10G10B10A2_UNORM;
-         else
-            return PIPE_FORMAT_R10G10B10A2_USCALED;
       }
       break;
-
-   case GL_UNSIGNED_INT_10F_11F_11F_REV:
-      assert(size == 3 && !integer && format == GL_RGBA);
-      return PIPE_FORMAT_R11G11B10_FLOAT;
 
    case GL_UNSIGNED_BYTE:
       if (format == GL_BGRA) {
@@ -538,8 +619,16 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
 
    unsigned index = integer*2 + normalized;
    assert(index <= 2);
-   assert(type >= GL_BYTE && type <= GL_FIXED);
-   return vertex_formats[type - GL_BYTE][index][size-1];
+   assert((type >= GL_BYTE && type <= GL_FIXED) ||
+          type == GL_HALF_FLOAT_OES ||
+          type == GL_INT_2_10_10_10_REV ||
+          type == GL_UNSIGNED_INT_2_10_10_10_REV ||
+          type == GL_UNSIGNED_INT_10F_11F_11F_REV);
+
+   enum pipe_format pipe_format =
+      vertex_formats[type & 0x3f][index][size-1];
+   assert(pipe_format);
+   return pipe_format;
 }
 
 void
