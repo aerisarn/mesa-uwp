@@ -288,6 +288,8 @@ struct agx_resource {
    struct sw_displaytarget	*dt;
    unsigned dt_stride;
 
+   struct renderonly_scanout *scanout;
+
    BITSET_DECLARE(data_valid, PIPE_MAX_TEXTURE_LEVELS);
 
    struct ail_layout layout;
