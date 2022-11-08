@@ -2582,6 +2582,56 @@ static VkResult pvr_pack_clear_color(VkFormat format,
    return VK_SUCCESS;
 }
 
+static VkResult
+pvr_isp_scan_direction(struct pvr_transfer_cmd *transfer_cmd,
+                       bool custom_mapping,
+                       enum PVRX(CR_DIR_TYPE) *const dir_type_out)
+{
+   struct pvr_transfer_cmd_surface *src = &transfer_cmd->src;
+   pvr_dev_addr_t dst_dev_addr = transfer_cmd->dst.dev_addr;
+   pvr_dev_addr_t src_dev_addr = src->dev_addr;
+   bool backwards_in_x = false;
+   bool backwards_in_y = false;
+
+   if (src_dev_addr.addr == dst_dev_addr.addr && !custom_mapping) {
+      VkRect2D *src_rect = &transfer_cmd->mappings[0].src_rect;
+      VkRect2D *dst_rect = &transfer_cmd->mappings[0].dst_rect;
+      int32_t src_x1 = src_rect->offset.x + src_rect->extent.width;
+      int32_t src_y1 = src_rect->offset.y + src_rect->extent.height;
+      int32_t dst_x1 = dst_rect->offset.x + dst_rect->extent.width;
+      int32_t dst_y1 = dst_rect->offset.y + dst_rect->extent.height;
+
+      if ((dst_rect->offset.x < src_x1 && dst_x1 > src_rect->offset.x) &&
+          (dst_rect->offset.y < src_y1 && dst_y1 > src_rect->offset.y)) {
+         if (src_rect->extent.width != dst_rect->extent.width ||
+             src_rect->extent.height != dst_rect->extent.height) {
+            /* Scaling is not possible. */
+            return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         }
+
+         /* Direction is to the right. */
+         backwards_in_x = dst_rect->offset.x > src_rect->offset.x;
+
+         /* Direction is to the bottom. */
+         backwards_in_y = dst_rect->offset.y > src_rect->offset.y;
+      }
+   }
+
+   if (backwards_in_x) {
+      if (backwards_in_y)
+         *dir_type_out = PVRX(CR_DIR_TYPE_BR2TL);
+      else
+         *dir_type_out = PVRX(CR_DIR_TYPE_TR2BL);
+   } else {
+      if (backwards_in_y)
+         *dir_type_out = PVRX(CR_DIR_TYPE_BL2TR);
+      else
+         *dir_type_out = PVRX(CR_DIR_TYPE_TL2BR);
+   }
+
+   return VK_SUCCESS;
+}
+
 static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
                                       struct pvr_transfer_cmd *transfer_cmd,
                                       struct pvr_transfer_prep_data *prep_data,
@@ -2819,8 +2869,12 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
    pvr_csb_pack (&regs->isp_render, CR_ISP_RENDER, reg) {
       reg.mode_type = PVRX(CR_ISP_RENDER_MODE_TYPE_FAST_SCALE);
-      pvr_finishme("Remove direction hardcoding.");
-      reg.dir_type = PVRX(CR_DIR_TYPE_TL2BR);
+
+      result = pvr_isp_scan_direction(transfer_cmd,
+                                      state->custom_mapping.pass_count,
+                                      &reg.dir_type);
+      if (result != VK_SUCCESS)
+         return result;
    }
 
    /* Set up pixel event handling. */
