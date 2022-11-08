@@ -7806,15 +7806,17 @@ brw_compile_cs(const struct brw_compiler *compiler,
       prog_data->local_size[2] = nir->info.workgroup_size[2];
    }
 
-   const unsigned required_dispatch_width =
-      brw_required_dispatch_width(&nir->info);
+   brw_simd_selection_state simd_state{
+      .mem_ctx = mem_ctx,
+      .devinfo = compiler->devinfo,
+      .prog_data = prog_data,
+      .required_width = brw_required_dispatch_width(&nir->info),
+   };
 
    std::unique_ptr<fs_visitor> v[3];
-   const char *error[3] = {0};
 
    for (unsigned simd = 0; simd < 3; simd++) {
-      if (!brw_simd_should_compile(mem_ctx, simd, compiler->devinfo, prog_data,
-                                   required_dispatch_width, &error[simd]))
+      if (!brw_simd_should_compile(simd_state, simd))
          continue;
 
       const unsigned dispatch_width = 8u << simd;
@@ -7847,9 +7849,9 @@ brw_compile_cs(const struct brw_compiler *compiler,
       if (v[simd]->run_cs(allow_spilling)) {
          cs_fill_push_const_info(compiler->devinfo, prog_data);
 
-         brw_simd_mark_compiled(simd, prog_data, v[simd]->spilled_any_registers);
+         brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       } else {
-         error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
          if (simd > 0) {
             brw_shader_perf_log(compiler, params->log_data,
                                 "SIMD%u shader failed to compile: %s\n",
@@ -7858,10 +7860,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
       }
    }
 
-   const int selected_simd = brw_simd_select(prog_data);
+   const int selected_simd = brw_simd_select(simd_state);
    if (selected_simd < 0) {
       params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
-                                          error[0], error[1], error[2]);;
+                                          simd_state.error[0], simd_state.error[1],
+                                          simd_state.error[2]);
       return NULL;
    }
 

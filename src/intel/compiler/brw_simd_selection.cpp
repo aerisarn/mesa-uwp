@@ -47,16 +47,11 @@ test_bit(unsigned mask, unsigned bit) {
 }
 
 bool
-brw_simd_should_compile(void *mem_ctx,
-                        unsigned simd,
-                        const struct intel_device_info *devinfo,
-                        struct brw_cs_prog_data *prog_data,
-                        unsigned required,
-                        const char **error)
-
+brw_simd_should_compile(brw_simd_selection_state &state,
+                        unsigned simd)
 {
+   struct brw_cs_prog_data *prog_data = state.prog_data;
    assert(!test_bit(prog_data->prog_mask, simd));
-   assert(error);
 
    const unsigned width = 8u << simd;
 
@@ -68,8 +63,8 @@ brw_simd_should_compile(void *mem_ctx,
 
    if (!workgroup_size_variable) {
       if (test_bit(prog_data->prog_spilled, simd)) {
-         *error = ralloc_asprintf(
-            mem_ctx, "SIMD%u skipped because would spill", width);
+         state.error[simd] = ralloc_asprintf(
+            state.mem_ctx, "SIMD%u skipped because would spill", width);
          return false;
       }
 
@@ -77,26 +72,26 @@ brw_simd_should_compile(void *mem_ctx,
                                       prog_data->local_size[1] *
                                       prog_data->local_size[2];
 
-      unsigned max_threads = devinfo->max_cs_workgroup_threads;
+      unsigned max_threads = state.devinfo->max_cs_workgroup_threads;
 
-      if (required && required != width) {
-         *error = ralloc_asprintf(
-            mem_ctx, "SIMD%u skipped because required dispatch width is %u",
-            width, required);
+      if (state.required_width && state.required_width != width) {
+         state.error[simd] = ralloc_asprintf(
+            state.mem_ctx, "SIMD%u skipped because required dispatch width is %u",
+            width, state.required_width);
          return false;
       }
 
       if (simd > 0 && test_bit(prog_data->prog_mask, simd - 1) &&
           workgroup_size <= (width / 2)) {
-         *error = ralloc_asprintf(
-            mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
+         state.error[simd] = ralloc_asprintf(
+            state.mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
             width, workgroup_size, width / 2);
          return false;
       }
 
       if (DIV_ROUND_UP(workgroup_size, width) > max_threads) {
-         *error = ralloc_asprintf(
-            mem_ctx, "SIMD%u can't fit all %u invocations in %u threads",
+         state.error[simd] = ralloc_asprintf(
+            state.mem_ctx, "SIMD%u can't fit all %u invocations in %u threads",
             width, workgroup_size, max_threads);
          return false;
       }
@@ -107,23 +102,23 @@ brw_simd_should_compile(void *mem_ctx,
        */
       if (width == 32) {
          if (!INTEL_DEBUG(DEBUG_DO32) && prog_data->prog_mask) {
-            *error = ralloc_strdup(
-               mem_ctx, "SIMD32 skipped because not required");
+            state.error[simd] = ralloc_strdup(
+               state.mem_ctx, "SIMD32 skipped because not required");
             return false;
          }
       }
    }
 
    if (width == 32 && prog_data->base.ray_queries > 0) {
-      *error = ralloc_asprintf(
-         mem_ctx, "SIMD%u skipped because of ray queries",
+      state.error[simd] = ralloc_asprintf(
+         state.mem_ctx, "SIMD%u skipped because of ray queries",
          width);
       return false;
    }
 
    if (width == 32 && prog_data->uses_btd_stack_ids) {
-      *error = ralloc_asprintf(
-         mem_ctx, "SIMD%u skipped because of bindless shader calls",
+      state.error[simd] = ralloc_asprintf(
+         state.mem_ctx, "SIMD%u skipped because of bindless shader calls",
          width);
       return false;
    }
@@ -135,8 +130,8 @@ brw_simd_should_compile(void *mem_ctx,
    };
 
    if (unlikely(env_skip[simd])) {
-      *error = ralloc_asprintf(
-         mem_ctx, "SIMD%u skipped because INTEL_DEBUG=no%u",
+      state.error[simd] = ralloc_asprintf(
+         state.mem_ctx, "SIMD%u skipped because INTEL_DEBUG=no%u",
          width, width);
       return false;
    }
@@ -145,8 +140,9 @@ brw_simd_should_compile(void *mem_ctx,
 }
 
 void
-brw_simd_mark_compiled(unsigned simd, struct brw_cs_prog_data *prog_data, bool spilled)
+brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spilled)
 {
+   struct brw_cs_prog_data *prog_data = state.prog_data;
    assert(!test_bit(prog_data->prog_mask, simd));
 
    prog_data->prog_mask |= 1u << simd;
@@ -159,8 +155,9 @@ brw_simd_mark_compiled(unsigned simd, struct brw_cs_prog_data *prog_data, bool s
 }
 
 int
-brw_simd_select(const struct brw_cs_prog_data *prog_data)
+brw_simd_select(const struct brw_simd_selection_state &state)
 {
+   const struct brw_cs_prog_data *prog_data = state.prog_data;
    assert((prog_data->prog_mask & ~0x7u) == 0);
    const unsigned not_spilled_mask =
       prog_data->prog_mask & ~prog_data->prog_spilled;
@@ -182,10 +179,12 @@ brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
 {
    if (!sizes || (prog_data->local_size[0] == sizes[0] &&
                   prog_data->local_size[1] == sizes[1] &&
-                  prog_data->local_size[2] == sizes[2]))
-      return brw_simd_select(prog_data);
-
-   void *mem_ctx = ralloc_context(NULL);
+                  prog_data->local_size[2] == sizes[2])) {
+      const brw_simd_selection_state simd_state{
+         .prog_data = const_cast<struct brw_cs_prog_data *>(prog_data),
+      };
+      return brw_simd_select(simd_state);
+   }
 
    struct brw_cs_prog_data cloned = *prog_data;
    for (unsigned i = 0; i < 3; i++)
@@ -194,20 +193,25 @@ brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
    cloned.prog_mask = 0;
    cloned.prog_spilled = 0;
 
-   const char *error[3] = {0};
+   void *mem_ctx = ralloc_context(NULL);
+
+   brw_simd_selection_state simd_state{
+      .mem_ctx = mem_ctx,
+      .devinfo = devinfo,
+      .prog_data = &cloned,
+   };
 
    for (unsigned simd = 0; simd < 3; simd++) {
       /* We are not recompiling, so use original results of prog_mask and
        * prog_spilled as they will already contain all possible compilations.
        */
-      if (brw_simd_should_compile(mem_ctx, simd, devinfo, &cloned,
-                                  0 /* required_dispatch_width */, &error[simd]) &&
+      if (brw_simd_should_compile(simd_state, simd) &&
           test_bit(prog_data->prog_mask, simd)) {
-         brw_simd_mark_compiled(simd, &cloned, test_bit(prog_data->prog_spilled, simd));
+         brw_simd_mark_compiled(simd_state, simd, test_bit(prog_data->prog_spilled, simd));
       }
    }
 
    ralloc_free(mem_ctx);
 
-   return brw_simd_select(&cloned);
+   return brw_simd_select(simd_state);
 }

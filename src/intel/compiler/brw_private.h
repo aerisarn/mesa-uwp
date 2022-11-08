@@ -29,18 +29,22 @@
 
 unsigned brw_required_dispatch_width(const struct shader_info *info);
 
-bool brw_simd_should_compile(void *mem_ctx,
-                             unsigned simd,
-                             const struct intel_device_info *devinfo,
-                             struct brw_cs_prog_data *prog_data,
-                             unsigned required_dispatch_width,
-                             const char **error);
+struct brw_simd_selection_state {
+   void *mem_ctx;
+   const struct intel_device_info *devinfo;
 
-void brw_simd_mark_compiled(unsigned simd,
-                            struct brw_cs_prog_data *prog_data,
-                            bool spilled);
+   struct brw_cs_prog_data *prog_data;
 
-int brw_simd_select(const struct brw_cs_prog_data *prog_data);
+   unsigned required_width;
+
+   const char *error[3];
+};
+
+bool brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd);
+
+void brw_simd_mark_compiled(brw_simd_selection_state &state, unsigned simd, bool spilled);
+
+int brw_simd_select(const brw_simd_selection_state &state);
 
 int brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
                                        const struct brw_cs_prog_data *prog_data,
