@@ -101,6 +101,7 @@ struct fd_dev_info {
          bool depth_bounds_require_depth_test_quirk;
 
          bool has_tex_filter_cubic;
+         bool has_separate_chroma_filter;
 
          bool has_sample_locations;
 
