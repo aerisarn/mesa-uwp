@@ -613,6 +613,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_image_2d_view_of_3d = true,
       .EXT_image_drm_format_modifier = device->rad_info.gfx_level >= GFX9,
       .EXT_image_robustness = true,
+      .EXT_image_sliced_view_of_3d = device->rad_info.gfx_level >= GFX10,
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = device->rad_info.gfx_level >= GFX8,
       .EXT_inline_uniform_block = true,
@@ -2013,6 +2014,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD *features =
             (VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD *)ext;
          features->shaderEarlyAndLateFragmentTests = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_SLICED_VIEW_OF_3D_FEATURES_EXT: {
+         VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT *features =
+            (VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT *)ext;
+         features->imageSlicedViewOf3D = true;
          break;
       }
       default:
