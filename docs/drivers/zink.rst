@@ -253,7 +253,9 @@ Debugging
 There's a few tools that are useful for debugging Zink, like this environment
 variable:
 
-.. envvar:: ZINK_DEBUG <flags> ("")
+.. envvar:: ZINK_DEBUG
+
+  Accepts the following comma-separated list of flags:
 
   ``nir``
     Print the NIR form of all shaders to stderr.

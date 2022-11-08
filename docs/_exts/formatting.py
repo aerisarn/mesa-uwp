@@ -9,18 +9,6 @@ import sphinx.addnodes
 from sphinx.util.nodes import split_explicit_title
 from docutils import nodes, utils
 
-def parse_envvar(env, sig, signode):
-    envvar, t, default = sig.split(" ", 2)
-    envvar = envvar.strip().upper()
-    t = "Type: %s" % t.strip(" <>").lower()
-    default = "Default: %s" % default.strip(" ()")
-    signode += sphinx.addnodes.desc_name(envvar, envvar)
-    signode += docutils.nodes.Text(' ')
-    signode += sphinx.addnodes.desc_type(t, t)
-    signode += docutils.nodes.Text(', ')
-    signode += sphinx.addnodes.desc_annotation(default, default)
-    return envvar
-
 def parse_opcode(env, sig, signode):
     opcode, desc = sig.split("-", 1)
     opcode = opcode.strip().upper()
@@ -46,8 +34,6 @@ def ext_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     return [pnode], []
 
 def setup(app):
-    app.add_object_type("envvar", "envvar", "%s (environment variable)",
-        parse_envvar)
     app.add_object_type("opcode", "opcode", "%s (TGSI opcode)",
         parse_opcode)
     app.add_role('ext', ext_role)

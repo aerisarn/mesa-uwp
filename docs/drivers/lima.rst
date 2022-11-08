@@ -62,7 +62,7 @@ Environment variables
 These are some Lima-specific environment variables that may aid in
 debugging. None of this is required for normal use.
 
-.. envvar:: LIMA_DEBUG <flags> ("")
+.. envvar:: LIMA_DEBUG
 
   accepts the following comma-separated list of flags:
 
@@ -92,19 +92,19 @@ debugging. None of this is required for normal use.
     disable multi job optimization
 
 
-.. envvar:: LIMA_CTX_NUM_PLB <int> (None)
+.. envvar:: LIMA_CTX_NUM_PLB
 
   set number of PLB per context (used for development purposes)
 
-.. envvar:: LIMA_PLB_MAX_BLK <int> (None)
+.. envvar:: LIMA_PLB_MAX_BLK
 
   set PLB max block (used for development purposes)
 
-.. envvar:: LIMA_PPIR_FORCE_SPILLING <int> (None)
+.. envvar:: LIMA_PPIR_FORCE_SPILLING
 
   force spilling of variables in PPIR (used for development purposes)
 
-.. envvar:: LIMA_PLB_PP_STREAM_CACHE_SIZE <int> (None)
+.. envvar:: LIMA_PLB_PP_STREAM_CACHE_SIZE
 
   set PP stream cache size (used for development purposes)
 

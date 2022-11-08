@@ -15,7 +15,9 @@ Debugging
 There's a few tools that are useful for debugging D3D12, such as these
 environment variables:
 
-.. envvar:: D3D12_DEBUG <flags> ("")
+.. envvar:: D3D12_DEBUG
+
+   Accepts the following comma-separated list of flags:
 
    ``verbose``
       Enable verbose output to stdout
@@ -34,7 +36,9 @@ environment variables:
    ``gpuvalidator``
       Enable `GPU validator`_
 
-.. envvar:: DXIL_DEBUG <flags> ("")
+.. envvar:: DXIL_DEBUG
+
+   Accepts the following comma-separated list of flags:
 
    ``verbose``
       Enable verbose output to stdout
@@ -53,7 +57,7 @@ Utilities
 
 Environment variables that control the behavior of the D3D12 driver.
 
-.. envvar:: MESA_D3D12_DEFAULT_ADAPTER_NAME <string> ("")
+.. envvar:: MESA_D3D12_DEFAULT_ADAPTER_NAME
 
    Specifies a substring to search for when choosing a default adapter to
    run on. The first adapter matching the substring is chosen. The substring
