@@ -414,16 +414,16 @@ agx_channel_from_pipe(enum pipe_swizzle in)
 }
 
 static enum agx_layout
-agx_translate_layout(uint64_t modifier)
+agx_translate_layout(enum ail_tiling tiling)
 {
-   switch (modifier) {
-   case DRM_FORMAT_MOD_APPLE_TWIDDLED:
+   switch (tiling) {
+   case AIL_TILING_TWIDDLED:
       return AGX_LAYOUT_TWIDDLED;
-   case DRM_FORMAT_MOD_LINEAR:
+   case AIL_TILING_LINEAR:
       return AGX_LAYOUT_LINEAR;
-   default:
-      unreachable("Invalid modifier");
    }
+
+   unreachable("Invalid tiling");
 }
 
 static enum agx_texture_dimension
@@ -466,13 +466,13 @@ agx_create_sampler_view(struct pipe_context *pctx,
    assert(state->u.tex.first_layer == 0);
 
    /* Must tile array textures */
-   assert((rsrc->modifier != DRM_FORMAT_MOD_LINEAR) ||
+   assert((rsrc->layout.tiling != AIL_TILING_LINEAR) ||
           (state->u.tex.last_layer == state->u.tex.first_layer));
 
    /* Pack the descriptor into GPU memory */
    agx_pack(&so->desc, TEXTURE, cfg) {
       cfg.dimension = agx_translate_texture_dimension(state->target);
-      cfg.layout = agx_translate_layout(rsrc->modifier);
+      cfg.layout = agx_translate_layout(rsrc->layout.tiling);
       cfg.channels = agx_pixel_format[state->format].channels;
       cfg.type = agx_pixel_format[state->format].type;
       cfg.swizzle_r = agx_channel_from_pipe(out_swizzle[0]);
@@ -499,10 +499,10 @@ agx_create_sampler_view(struct pipe_context *pctx,
          cfg.depth = layers;
       }
 
-      if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
+      if (rsrc->layout.tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, 0) - 16;
       } else {
-         assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
+         assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED);
          cfg.unk_tiled = true;
       }
    }
@@ -778,7 +778,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
       assert(surf->u.tex.last_layer == layer);
 
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
-         cfg.layout = agx_translate_layout(tex->modifier);
+         cfg.layout = agx_translate_layout(tex->layout.tiling);
          cfg.channels = agx_pixel_format[surf->format].channels;
          cfg.type = agx_pixel_format[surf->format].type;
 
@@ -802,7 +802,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          if (tex->mipmapped)
             cfg.unk_55 = 0x8;
 
-         if (tex->modifier == DRM_FORMAT_MOD_LINEAR) {
+         if (tex->layout.tiling == AIL_TILING_LINEAR) {
             cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
          } else {
             cfg.unk_tiled = true;
@@ -1497,7 +1497,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
        * arrays and cube maps, we map a single layer as a 2D image.
        */
       cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-      cfg.layout = agx_translate_layout(rsrc->modifier);
+      cfg.layout = agx_translate_layout(rsrc->layout.tiling);
       cfg.channels = agx_pixel_format[surf->format].channels;
       cfg.type = agx_pixel_format[surf->format].type;
       cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
@@ -1512,7 +1512,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.address = agx_map_texture_gpu(rsrc, layer);
 
-      if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
+      if (rsrc->layout.tiling == AIL_TILING_LINEAR)
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, surf->u.tex.level) - 16;
       else
          cfg.unk_tiled = true;
