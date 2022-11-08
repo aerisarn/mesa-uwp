@@ -35,10 +35,19 @@
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 #include "util/u_string.h"
+#include "util/u_debug.h"
 
 #include <stdio.h>
 
 #ifndef NDEBUG
+uint32_t mesa_spirv_debug = 0;
+
+static const struct debug_named_value mesa_spirv_debug_control[] = {
+   DEBUG_NAMED_VALUE_END,
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(mesa_spirv_debug, "MESA_SPIRV_DEBUG", mesa_spirv_debug_control, 0)
+
 static enum nir_spirv_debug_level
 vtn_default_log_level(void)
 {
@@ -6497,6 +6506,14 @@ can_remove(nir_variable *var, void *data)
    return !_mesa_set_search(vars_used_indirectly, var);
 }
 
+#ifndef NDEBUG
+static void
+initialize_mesa_spirv_debug(void)
+{
+   mesa_spirv_debug = debug_get_option_mesa_spirv_debug();
+}
+#endif
+
 nir_shader *
 spirv_to_nir(const uint32_t *words, size_t word_count,
              struct nir_spirv_specialization *spec, unsigned num_spec,
@@ -6505,6 +6522,11 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
              const nir_shader_compiler_options *nir_options)
 
 {
+#ifndef NDEBUG
+   static once_flag initialized_debug_flag = ONCE_FLAG_INIT;
+   call_once(&initialized_debug_flag, initialize_mesa_spirv_debug);
+#endif
+
    const uint32_t *word_end = words + word_count;
 
    struct vtn_builder *b = vtn_create_builder(words, word_count,
