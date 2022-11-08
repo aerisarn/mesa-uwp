@@ -25,6 +25,7 @@
  */
 #include <stdio.h>
 #include <errno.h>
+#include "asahi/layout/layout.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
@@ -42,6 +43,8 @@
 #include "gallium/auxiliary/util/u_surface.h"
 #include "gallium/auxiliary/util/u_framebuffer.h"
 #include "gallium/auxiliary/util/u_debug_cb.h"
+#include "gallium/auxiliary/renderonly/renderonly.h"
+#include "agx_device.h"
 #include "agx_public.h"
 #include "agx_state.h"
 #include "magic.h"
@@ -130,13 +133,81 @@ agx_set_active_query_state(struct pipe_context *pipe, bool enable)
  * resource
  */
 
+static void
+agx_resource_setup(struct agx_device *dev,
+                   struct agx_resource *nresource)
+{
+   struct pipe_resource *templ = &nresource->base;
+
+   nresource->layout = (struct ail_layout) {
+      .tiling = (nresource->modifier == DRM_FORMAT_MOD_LINEAR) ?
+                AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
+      .format = templ->format,
+      .width_px = templ->width0,
+      .height_px = templ->height0,
+      .depth_px = templ->depth0 * templ->array_size,
+      .levels = templ->last_level + 1,
+   };
+}
+
 static struct pipe_resource *
 agx_resource_from_handle(struct pipe_screen *pscreen,
                          const struct pipe_resource *templat,
                          struct winsys_handle *whandle,
                          unsigned usage)
 {
-   unreachable("Imports todo");
+   struct agx_device *dev = agx_device(pscreen);
+   struct agx_resource *rsc;
+   struct pipe_resource *prsc;
+
+   assert(whandle->type == WINSYS_HANDLE_TYPE_FD);
+
+   rsc = CALLOC_STRUCT(agx_resource);
+   if (!rsc)
+      return NULL;
+
+   /* We need strides to be aligned. ail asserts this, but we want to fail
+    * gracefully so the app can handle the error.
+    */
+   if ((whandle->stride % 16) != 0)
+      return false;
+
+   prsc = &rsc->base;
+
+   *prsc = *templat;
+
+   pipe_reference_init(&prsc->reference, 1);
+   prsc->screen = pscreen;
+
+   rsc->bo = agx_bo_import(dev, whandle->handle);
+   /* Sometimes an import can fail e.g. on an invalid buffer fd, out of
+   * memory space to mmap it etc.
+   */
+   if (!rsc->bo) {
+            FREE(rsc);
+            return NULL;
+   }
+
+   rsc->modifier = whandle->modifier == DRM_FORMAT_MOD_INVALID ?
+                   DRM_FORMAT_MOD_LINEAR : whandle->modifier;
+   agx_resource_setup(dev, rsc);
+
+   if (rsc->layout.tiling == AIL_TILING_LINEAR)
+      rsc->layout.linear_stride_B = whandle->stride;
+   else if (whandle->stride != ail_get_wsi_stride_B(&rsc->layout, 0))
+      return NULL;
+
+   assert(whandle->offset == 0);
+
+   ail_make_miptree(&rsc->layout);
+
+   if (dev->ro) {
+            rsc->scanout =
+                  renderonly_create_gpu_import_for_resource(prsc, dev->ro, NULL);
+            /* failure is expected in some cases.. */
+   }
+
+   return prsc;
 }
 
 static bool
