@@ -706,6 +706,21 @@ brw_nir_initialize_mue(nir_shader *nir,
    }
 }
 
+static void
+brw_nir_adjust_offset(nir_builder *b, nir_intrinsic_instr *intrin, uint32_t pitch)
+{
+   nir_src *index_src = nir_get_io_arrayed_index_src(intrin);
+   nir_src *offset_src = nir_get_io_offset_src(intrin);
+
+   assert(index_src->is_ssa);
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_ssa_def *offset =
+      nir_iadd(b,
+               offset_src->ssa,
+               nir_imul_imm(b, index_src->ssa, pitch));
+   nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+}
+
 static bool
 brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -721,32 +736,13 @@ brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr
     */
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_per_vertex_output:
-   case nir_intrinsic_store_per_vertex_output: {
-      const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_vertex_output;
-      nir_src *index_src = &intrin->src[is_load ? 0 : 1];
-      nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
+   case nir_intrinsic_store_per_vertex_output:
+      brw_nir_adjust_offset(b, intrin, map->per_vertex_pitch_dw);
 
-      assert(index_src->is_ssa);
-      b->cursor = nir_before_instr(&intrin->instr);
-      nir_ssa_def *offset =
-         nir_iadd(b,
-                  offset_src->ssa,
-                  nir_imul_imm(b, index_src->ssa, map->per_vertex_pitch_dw));
-      nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
       return true;
-   }
 
    case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_store_per_primitive_output: {
-      const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_primitive_output;
-      nir_src *index_src = &intrin->src[is_load ? 0 : 1];
-      nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
-
-      assert(index_src->is_ssa);
-      b->cursor = nir_before_instr(&intrin->instr);
-
-      assert(index_src->is_ssa);
-
       struct nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
       uint32_t pitch;
       if (sem.location == VARYING_SLOT_PRIMITIVE_INDICES)
@@ -754,11 +750,8 @@ brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr
       else
          pitch = map->per_primitive_pitch_dw;
 
-      nir_ssa_def *offset =
-         nir_iadd(b,
-                  offset_src->ssa,
-                  nir_imul_imm(b, index_src->ssa, pitch));
-      nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+      brw_nir_adjust_offset(b, intrin, pitch);
+
       return true;
    }
 
