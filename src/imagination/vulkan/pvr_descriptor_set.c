@@ -585,9 +585,10 @@ VkResult pvr_CreateDescriptorSetLayout(
 
          internal_binding->shader_stage_mask |= (1U << stage);
 
-         /* TODO: Do we have to allocate them at the end? We could speed it
-          * by allocating them here if not. */
-         /* We allocate dynamics primary and secondaries at the end. */
+         /* We allocate dynamics primary and secondaries separately so that we
+          * can do a partial update of USC shared registers by just DMAing the
+          * dynamic section and not having to re-DMA everything again.
+          */
          if (descriptor_type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC &&
              descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
             struct pvr_descriptor_size_info size_info;
