@@ -268,6 +268,9 @@ struct iris_bo {
           */
          unsigned global_name;
 
+         /** Prime fd used for shared buffers, -1 otherwise. */
+         int prime_fd;
+
          /** The mmap coherency mode selected at BO allocation time */
          enum iris_mmap_mode mmap_mode;
 
