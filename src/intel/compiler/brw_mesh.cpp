@@ -746,10 +746,18 @@ brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr
       b->cursor = nir_before_instr(&intrin->instr);
 
       assert(index_src->is_ssa);
+
+      struct nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
+      uint32_t pitch;
+      if (sem.location == VARYING_SLOT_PRIMITIVE_INDICES)
+         pitch = num_mesh_vertices_per_primitive(b->shader->info.mesh.primitive_type);
+      else
+         pitch = map->per_primitive_pitch_dw;
+
       nir_ssa_def *offset =
          nir_iadd(b,
                   offset_src->ssa,
-                  nir_imul_imm(b, index_src->ssa, map->per_primitive_pitch_dw));
+                  nir_imul_imm(b, index_src->ssa, pitch));
       nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
       return true;
    }
