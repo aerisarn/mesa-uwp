@@ -85,7 +85,7 @@ if not _shared_llvm or not (dep_clang.found() and dep_clang_usable)
   endif
 endif
 
-ocldef = files(opencl_libname + '.def')[0]
+ocldef = files(opencl_libname + '.def.in')[0]
 
 libopencl = shared_library(
   opencl_libname,
