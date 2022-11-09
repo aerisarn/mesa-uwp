@@ -136,7 +136,7 @@ support for sRGB texture formats and was included in OpenGL 2.1.  In 2010,
 GL_EXT_texture_sRGB_decode added a flag to allow you to disable texture
 decoding so that the shader received the data still in the sRGB colorspace.
 Then, in 2012, GL_ARB_texture_view came along and made
-GL_EXT_texture_sRGB_decode` simultaneously obsolete and very confusing.  Now,
+GL_EXT_texture_sRGB_decode simultaneously obsolete and very confusing.  Now,
 thanks to the combination of extensions, you can upload a texture as linear,
 create an sRGB view of it and ask that sRGB not be decoded.  What format is it
 in again?
