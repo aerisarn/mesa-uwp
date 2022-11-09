@@ -38,7 +38,7 @@
 #include "tgsi/tgsi_scan.h"
 #include "util/os_time.h"
 #include <inttypes.h>
-#include "pipe/p_config.h"
+#include "util/detect.h"
 
 void
 dd_get_debug_filename_and_mkdir(char *buf, size_t buflen, bool verbose)

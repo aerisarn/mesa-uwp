@@ -32,7 +32,7 @@
  * @author José Fonseca <jfonseca@vmware.com>
  */
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 
 #define DEBUG_MEMORY_IMPLEMENTATION
 

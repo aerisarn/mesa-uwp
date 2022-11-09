@@ -87,7 +87,7 @@
 
 #include "c11/threads.h"
 #include "util/u_thread.h"
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #include "util/u_debug.h"
 #include "util/u_cpu_detect.h"
 

@@ -37,7 +37,7 @@
 #ifndef U_SSE_H_
 #define U_SSE_H_
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #include "pipe/p_compiler.h"
 #include "util/u_debug.h"
 

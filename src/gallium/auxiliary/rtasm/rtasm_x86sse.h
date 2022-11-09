@@ -26,7 +26,7 @@
 #define _RTASM_X86SSE_H_
 
 #include "pipe/p_compiler.h"
-#include "pipe/p_config.h"
+#include "util/detect.h"
 
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
 

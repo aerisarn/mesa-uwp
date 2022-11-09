@@ -29,8 +29,7 @@
 #define P_COMPILER_H
 
 
-#include "p_config.h"
-
+#include "util/detect.h"
 #include "util/macros.h"
 
 #include <limits.h>

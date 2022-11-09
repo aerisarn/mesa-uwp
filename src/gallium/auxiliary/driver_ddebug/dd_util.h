@@ -37,7 +37,7 @@
 #include "util/u_debug.h"
 #include "util/u_string.h"
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #if defined(PIPE_OS_UNIX)
 #include <unistd.h>
 #include <sys/stat.h>

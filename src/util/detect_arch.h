@@ -43,8 +43,8 @@
  * @author José Fonseca <jfonseca@vmware.com>
  */
 
-#ifndef P_CONFIG_H_
-#define P_CONFIG_H_
+#ifndef UTIL_DETECT_ARCH_H_
+#define UTIL_DETECT_ARCH_H_
 
 #include <limits.h>
 /*
@@ -192,4 +192,4 @@
 #define PIPE_OS_CYGWIN
 #endif
 
-#endif /* P_CONFIG_H_ */
+#endif /* UTIL_DETECT_ARCH_H_ */

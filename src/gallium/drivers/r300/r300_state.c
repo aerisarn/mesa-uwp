@@ -34,7 +34,7 @@
 
 #include "tgsi/tgsi_parse.h"
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 
 #include "r300_cb.h"
 #include "r300_context.h"

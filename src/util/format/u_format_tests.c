@@ -29,7 +29,7 @@
 #include <math.h>
 #include <float.h>
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #include "util/u_memory.h"
 #include "util/format/u_format_tests.h"
 

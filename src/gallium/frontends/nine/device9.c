@@ -44,7 +44,7 @@
 
 #include "pipe/p_screen.h"
 #include "pipe/p_context.h"
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_inlines.h"

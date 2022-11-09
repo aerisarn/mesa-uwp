@@ -29,7 +29,7 @@
 #ifndef PIPE_FORMAT_H
 #define PIPE_FORMAT_H
 
-#include "p_config.h"
+#include "util/detect.h"
 
 #ifdef __cplusplus
 extern "C" {

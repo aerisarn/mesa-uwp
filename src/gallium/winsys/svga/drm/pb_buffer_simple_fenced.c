@@ -34,7 +34,7 @@
  */
 
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 
 #if defined(PIPE_OS_LINUX) || defined(PIPE_OS_BSD) || defined(PIPE_OS_SOLARIS)
 #include <unistd.h>

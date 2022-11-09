@@ -32,7 +32,7 @@
  * @author Based on the work of Eric Anholt <anholt@FreeBSD.org>
  */
 
-#include "pipe/p_config.h"
+#include "util/detect.h"
 #include "pipe/p_compiler.h"
 
 #include "util/u_debug.h"
