@@ -172,8 +172,6 @@ files_mesa_util = files(
 
 files_drirc = files('00-mesa-defaults.conf')
 
-install_data(files_drirc, install_dir : join_paths(get_option('datadir'), 'drirc.d'))
-
 if with_tests
   prog_xmllint = find_program('xmllint', required : false, native : true)
   if prog_xmllint.found()
@@ -294,6 +292,11 @@ if opt_xmlconfig.enabled() and not supports_xmlconfig
    error('xmlconfig not available on Android or Windows')
 endif
 use_xmlconfig = supports_xmlconfig and not opt_xmlconfig.disabled()
+
+# Only install the drirc file if we build with support for parsing drirc files
+if use_xmlconfig
+   install_data(files_drirc, install_dir : join_paths(get_option('datadir'), 'drirc.d'))
+endif
 
 xmlconfig_deps = []
 if use_xmlconfig
