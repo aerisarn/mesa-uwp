@@ -1436,6 +1436,11 @@ nvk_build_mme_draw(struct mme_builder *b, struct mme_value begin)
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
    mme_emit(b, first_instance);
 
+   /* Make a copy of begin because this helper may be called inside an MME loop
+    * (i.e. indirect draws) and we're going to modify the value of begin below.
+    */
+   begin = mme_mov(b, begin);
+
    mme_loop(b, instance_count) {
       mme_mthd(b, NV9097_BEGIN);
       mme_emit(b, begin);
@@ -1508,6 +1513,11 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
 
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
    mme_emit(b, first_instance);
+
+   /* Make a copy of begin because this helper may be called inside an MME loop
+    * (i.e. indirect draws) and we're going to modify the value of begin below.
+    */
+   begin = mme_mov(b, begin);
 
    mme_loop(b, instance_count) {
       mme_mthd(b, NV9097_BEGIN);
