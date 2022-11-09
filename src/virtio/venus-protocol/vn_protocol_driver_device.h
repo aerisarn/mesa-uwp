@@ -19608,12 +19608,82 @@ vn_encode_VkPhysicalDeviceGroupProperties_partial(struct vn_cs_encoder *enc, con
     vn_encode_VkPhysicalDeviceGroupProperties_self_partial(enc, val);
 }
 
+/* struct VkDeviceQueueTimelineInfoMESA chain */
+
+static inline size_t
+vn_sizeof_VkDeviceQueueTimelineInfoMESA_pnext(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkDeviceQueueTimelineInfoMESA_self(const VkDeviceQueueTimelineInfoMESA *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    size += vn_sizeof_uint32_t(&val->ringIdx);
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkDeviceQueueTimelineInfoMESA(const VkDeviceQueueTimelineInfoMESA *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkDeviceQueueTimelineInfoMESA_pnext(val->pNext);
+    size += vn_sizeof_VkDeviceQueueTimelineInfoMESA_self(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkDeviceQueueTimelineInfoMESA_pnext(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkDeviceQueueTimelineInfoMESA_self(struct vn_cs_encoder *enc, const VkDeviceQueueTimelineInfoMESA *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_encode_uint32_t(enc, &val->ringIdx);
+}
+
+static inline void
+vn_encode_VkDeviceQueueTimelineInfoMESA(struct vn_cs_encoder *enc, const VkDeviceQueueTimelineInfoMESA *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_DEVICE_QUEUE_TIMELINE_INFO_MESA);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_DEVICE_QUEUE_TIMELINE_INFO_MESA });
+    vn_encode_VkDeviceQueueTimelineInfoMESA_pnext(enc, val->pNext);
+    vn_encode_VkDeviceQueueTimelineInfoMESA_self(enc, val);
+}
+
 /* struct VkDeviceQueueInfo2 chain */
 
 static inline size_t
 vn_sizeof_VkDeviceQueueInfo2_pnext(const void *val)
 {
-    /* no known/supported struct */
+    const VkBaseInStructure *pnext = val;
+    size_t size = 0;
+
+    while (pnext) {
+        switch ((int32_t)pnext->sType) {
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_TIMELINE_INFO_MESA:
+            size += vn_sizeof_simple_pointer(pnext);
+            size += vn_sizeof_VkStructureType(&pnext->sType);
+            size += vn_sizeof_VkDeviceQueueInfo2_pnext(pnext->pNext);
+            size += vn_sizeof_VkDeviceQueueTimelineInfoMESA_self((const VkDeviceQueueTimelineInfoMESA *)pnext);
+            return size;
+        default:
+            /* ignore unknown/unsupported struct */
+            break;
+        }
+        pnext = pnext->pNext;
+    }
+
     return vn_sizeof_simple_pointer(NULL);
 }
 
@@ -19643,7 +19713,23 @@ vn_sizeof_VkDeviceQueueInfo2(const VkDeviceQueueInfo2 *val)
 static inline void
 vn_encode_VkDeviceQueueInfo2_pnext(struct vn_cs_encoder *enc, const void *val)
 {
-    /* no known/supported struct */
+    const VkBaseInStructure *pnext = val;
+
+    while (pnext) {
+        switch ((int32_t)pnext->sType) {
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_TIMELINE_INFO_MESA:
+            vn_encode_simple_pointer(enc, pnext);
+            vn_encode_VkStructureType(enc, &pnext->sType);
+            vn_encode_VkDeviceQueueInfo2_pnext(enc, pnext->pNext);
+            vn_encode_VkDeviceQueueTimelineInfoMESA_self(enc, (const VkDeviceQueueTimelineInfoMESA *)pnext);
+            return;
+        default:
+            /* ignore unknown/unsupported struct */
+            break;
+        }
+        pnext = pnext->pNext;
+    }
+
     vn_encode_simple_pointer(enc, NULL);
 }
 
