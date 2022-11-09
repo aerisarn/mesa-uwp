@@ -4827,7 +4827,6 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
                                &screen->blitter.desc_pool.base);
 #if PAN_GPU_INDIRECTS
-        GENX(pan_indirect_dispatch_init)(dev);
         GENX(panfrost_init_indirect_draw_shaders)(dev, &screen->indirect_draw.bin_pool.base);
 #endif
 }
