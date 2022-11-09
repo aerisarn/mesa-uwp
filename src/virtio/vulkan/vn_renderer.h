@@ -78,6 +78,7 @@ struct vn_renderer_info {
    /* combined mask for vk_extension_mask1, 2,..., N */
    uint32_t vk_extension_mask[32];
    uint32_t allow_vk_wait_syncs;
+   uint32_t supports_multiple_timelines;
 };
 
 struct vn_renderer_submit_batch {

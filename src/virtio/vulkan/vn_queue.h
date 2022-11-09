@@ -23,6 +23,9 @@ struct vn_queue {
    uint32_t index;
    uint32_t flags;
 
+   /* only used if renderer supports multiple timelines */
+   uint32_t ring_idx;
+
    /* wait fence used for vn_QueueWaitIdle */
    VkFence wait_fence;
 

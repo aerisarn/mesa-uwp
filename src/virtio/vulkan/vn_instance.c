@@ -720,8 +720,12 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return vn_error(NULL, result);
    }
 
+   /* ring_idx = 0 reserved for CPU timeline */
+   instance->ring_idx_used_mask = 0x1;
+
    mtx_init(&instance->physical_device.mutex, mtx_plain);
    mtx_init(&instance->cs_shmem.mutex, mtx_plain);
+   mtx_init(&instance->ring_idx_mutex, mtx_plain);
 
    if (!vn_icd_supports_api_version(
           instance->base.base.app_info.api_version)) {
@@ -823,6 +827,7 @@ fail:
       vn_renderer_destroy(instance->renderer, alloc);
 
    mtx_destroy(&instance->physical_device.mutex);
+   mtx_destroy(&instance->ring_idx_mutex);
    mtx_destroy(&instance->cs_shmem.mutex);
 
    vn_instance_base_fini(&instance->base);
@@ -850,6 +855,7 @@ vn_DestroyInstance(VkInstance _instance,
       vk_free(alloc, instance->physical_device.groups);
    }
    mtx_destroy(&instance->physical_device.mutex);
+   mtx_destroy(&instance->ring_idx_mutex);
 
    vn_call_vkDestroyInstance(instance, _instance, NULL);
 
