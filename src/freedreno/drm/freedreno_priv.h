@@ -113,10 +113,12 @@ struct fd_device_funcs {
 
 struct fd_bo_bucket {
    uint32_t size;
+   int count, hits, misses, expired;
    struct list_head list;
 };
 
 struct fd_bo_cache {
+   const char *name;
    struct fd_bo_bucket cache_bucket[14 * 4];
    int num_buckets;
    time_t time;
@@ -198,7 +200,7 @@ struct fd_device {
 #define last_submit(list) \
    list_last_entry(list, struct fd_submit, node)
 
-void fd_bo_cache_init(struct fd_bo_cache *cache, int coarse);
+void fd_bo_cache_init(struct fd_bo_cache *cache, int coarse, const char *name);
 void fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time);
 struct fd_bo *fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size,
                                 uint32_t flags);

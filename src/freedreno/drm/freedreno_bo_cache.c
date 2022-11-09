@@ -27,19 +27,82 @@
 #include "freedreno_drmif.h"
 #include "freedreno_priv.h"
 
+#define FD_BO_CACHE_STATS 0
+
+#define BO_CACHE_LOG(cache, fmt, ...) do {                      \
+      if (FD_BO_CACHE_STATS) {                                  \
+         mesa_logi("%s: "fmt, (cache)->name, ##__VA_ARGS__);    \
+      }                                                         \
+   } while (0)
+
 void bo_del(struct fd_bo *bo);
 void bo_del_flush(struct fd_device *dev);
 extern simple_mtx_t table_lock;
 
 static void
+bo_remove_from_bucket(struct fd_bo_bucket *bucket, struct fd_bo *bo)
+{
+   list_delinit(&bo->list);
+   bucket->count--;
+}
+
+static void
+dump_cache_stats(struct fd_bo_cache *cache)
+{
+   if (!FD_BO_CACHE_STATS)
+      return;
+
+   static int cnt;
+
+   if ((++cnt % 32))
+      return;
+
+   int size = 0;
+   int count = 0;
+   int hits = 0;
+   int misses = 0;
+   int expired = 0;
+
+   for (int i = 0; i < cache->num_buckets; i++) {
+      char *state = "";
+
+      struct fd_bo_bucket *bucket = &cache->cache_bucket[i];
+
+      if (bucket->count > 0) {
+         struct fd_bo *bo = list_first_entry(&bucket->list, struct fd_bo, list);
+         if (fd_bo_state(bo) == FD_BO_STATE_IDLE)
+            state = " (idle)";
+      }
+
+      BO_CACHE_LOG(cache, "bucket[%u]: count=%d\thits=%d\tmisses=%d\texpired=%d%s",
+                   bucket->size, bucket->count, bucket->hits,
+                   bucket->misses, bucket->expired, state);
+
+      size += bucket->size * bucket->count;
+      count += bucket->count;
+      hits += bucket->hits;
+      misses += bucket->misses;
+      expired += bucket->expired;
+   }
+
+   BO_CACHE_LOG(cache, "size=%d\tcount=%d\thits=%d\tmisses=%d\texpired=%d",
+                size, count, hits, misses, expired);
+}
+
+static void
 add_bucket(struct fd_bo_cache *cache, int size)
 {
    unsigned int i = cache->num_buckets;
+   struct fd_bo_bucket *bucket = &cache->cache_bucket[i];
 
    assert(i < ARRAY_SIZE(cache->cache_bucket));
 
-   list_inithead(&cache->cache_bucket[i].list);
-   cache->cache_bucket[i].size = size;
+   list_inithead(&bucket->list);
+   bucket->size = size;
+   bucket->count = 0;
+   bucket->hits = 0;
+   bucket->misses = 0;
+   bucket->expired = 0;
    cache->num_buckets++;
 }
 
@@ -48,9 +111,11 @@ add_bucket(struct fd_bo_cache *cache, int size)
  *    fill in for a bit smoother size curve..
  */
 void
-fd_bo_cache_init(struct fd_bo_cache *cache, int coarse)
+fd_bo_cache_init(struct fd_bo_cache *cache, int coarse, const char *name)
 {
    unsigned long size, cache_max_size = 64 * 1024 * 1024;
+
+   cache->name = name;
 
    /* OK, so power of two buckets was too wasteful of memory.
     * Give 3 other sizes between each power of two, to hopefully
@@ -81,7 +146,7 @@ void
 fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
 {
    struct fd_device *dev = NULL;
-   int i;
+   int i, cnt = 0;
 
    simple_mtx_assert_locked(&table_lock);
 
@@ -101,9 +166,17 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
 
          dev = bo->dev;
 
+         if (cnt == 0) {
+            BO_CACHE_LOG(cache, "cache cleanup");
+            dump_cache_stats(cache);
+         }
+
          VG_BO_OBTAIN(bo);
-         list_del(&bo->list);
+         bo_remove_from_bucket(bucket, bo);
+         bucket->expired++;
          bo_del(bo);
+
+         cnt++;
       }
    }
 
@@ -112,6 +185,11 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
     */
    if (time && dev)
       bo_del_flush(dev);
+
+   if (cnt > 0) {
+      BO_CACHE_LOG(cache, "cache cleaned %u BOs", cnt);
+      dump_cache_stats(cache);
+   }
 
    cache->time = time;
 }
@@ -148,11 +226,12 @@ find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
     */
    simple_mtx_lock(&table_lock);
    list_for_each_entry (struct fd_bo, entry, &bucket->list, list) {
-      if (fd_bo_state(entry) != FD_BO_STATE_IDLE)
+      if (fd_bo_state(entry) != FD_BO_STATE_IDLE) {
          break;
+      }
       if (entry->alloc_flags == flags) {
          bo = entry;
-         list_delinit(&bo->list);
+         bo_remove_from_bucket(bucket, bo);
          break;
       }
    }
@@ -189,9 +268,15 @@ retry:
          }
          p_atomic_set(&bo->refcnt, 1);
          bo->reloc_flags = FD_RELOC_FLAGS_INIT;
+         bucket->hits++;
          return bo;
       }
+      bucket->misses++;
    }
+
+   BO_CACHE_LOG(cache, "miss on size=%u, flags=0x%x, bucket=%u", *size, flags,
+                bucket ? bucket->size : 0);
+   dump_cache_stats(cache);
 
    return NULL;
 }
@@ -217,6 +302,9 @@ fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo)
       bo->free_time = time.tv_sec;
       VG_BO_RELEASE(bo);
       list_addtail(&bo->list, &bucket->list);
+
+      bucket->count++;
+
       fd_bo_cache_cleanup(cache, time.tv_sec);
 
       return 0;

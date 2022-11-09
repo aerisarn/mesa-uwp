@@ -52,6 +52,11 @@ lookup_bo(struct hash_table *tbl, uint32_t key)
       /* found, incr refcnt and return: */
       bo = fd_bo_ref(entry->data);
 
+      if (!list_is_empty(&bo->list)) {
+         mesa_logw("bo was in cache, size=%u, alloc_flags=0x%x\n",
+                   bo->size, bo->alloc_flags);
+      }
+
       /* don't break the bucket if this bo was found in one */
       list_delinit(&bo->list);
    }

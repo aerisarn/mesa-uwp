@@ -89,8 +89,8 @@ out:
       _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
    dev->name_table =
       _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
-   fd_bo_cache_init(&dev->bo_cache, false);
-   fd_bo_cache_init(&dev->ring_cache, true);
+   fd_bo_cache_init(&dev->bo_cache, false, "bo");
+   fd_bo_cache_init(&dev->ring_cache, true, "ring");
 
    list_inithead(&dev->deferred_submits);
    simple_mtx_init(&dev->submit_lock, mtx_plain);
