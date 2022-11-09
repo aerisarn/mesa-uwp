@@ -38,6 +38,10 @@ struct nvk_root_descriptor_table {
    struct nvk_buffer_address dynamic_buffers[NVK_MAX_DYNAMIC_BUFFERS];
 };
 
+/* helper macro for computing root descriptor byte offsets */
+#define nvk_root_descriptor_offset(member)\
+   offsetof(struct nvk_root_descriptor_table, member)
+
 struct nvk_descriptor_state {
    struct nvk_root_descriptor_table root;
    struct nvk_descriptor_set *sets[NVK_MAX_SETS];

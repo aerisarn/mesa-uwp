@@ -20,7 +20,7 @@ load_descriptor_set_addr(nir_builder *b, uint32_t set,
                          UNUSED const struct lower_descriptors_ctx *ctx)
 {
    uint32_t set_addr_offset =
-      offsetof(struct nvk_root_descriptor_table, sets) + set * sizeof(uint64_t);
+      nvk_root_descriptor_offset(sets) + set * sizeof(uint64_t);
 
    return nir_load_ubo(b, 1, 64, nir_imm_int(b, 0),
                        nir_imm_int(b, set_addr_offset),
@@ -56,7 +56,7 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
 
       nir_ssa_def *root_desc_offset =
          nir_iadd_imm(b, nir_imul_imm(b, index, sizeof(struct nvk_buffer_address)),
-                      offsetof(struct nvk_root_descriptor_table, dynamic_buffers));
+                      nvk_root_descriptor_offset(dynamic_buffers));
 
       return nir_load_ubo(b, num_components, bit_size,
                           nir_imm_int(b, 0), root_desc_offset,
@@ -128,7 +128,7 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
                          const struct lower_descriptors_ctx *ctx)
 {
    const uint32_t push_region_offset =
-      offsetof(struct nvk_root_descriptor_table, push);
+      nvk_root_descriptor_offset(push);
    const uint32_t base = nir_intrinsic_base(load);
 
    b->cursor = nir_before_instr(&load->instr);
