@@ -93,6 +93,24 @@
 
 static const bool aux_map_debug = false;
 
+/**
+ * Auxiliary surface mapping formats
+ *
+ * Several formats of AUX mapping exist. The supported formats
+ * are designated by generation and granularity here. A device
+ * can support more than one format, depending on Hardware, but
+ * we expect only one of them of a device is needed. Otherwise,
+ * we could need to change this enum into a bit map in such case
+ * later.
+ */
+enum intel_aux_map_format {
+   /**
+    * 64KB granularity format on GFX12 devices
+    */
+   INTEL_AUX_MAP_GFX12_64KB = 0,
+   INTEL_AUX_MAP_LAST,
+};
+
 struct aux_map_buffer {
    struct list_head link;
    struct intel_buffer *buffer;
