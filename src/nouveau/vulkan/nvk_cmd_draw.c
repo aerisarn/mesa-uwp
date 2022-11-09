@@ -1433,6 +1433,12 @@ nvk_build_mme_draw(struct mme_builder *b, struct mme_value begin)
    struct mme_value first_vertex = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
+   mme_emit(b, mme_zero());
+
+   mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
+   mme_emit(b, mme_zero());
+
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
    mme_emit(b, first_instance);
 
