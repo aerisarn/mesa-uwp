@@ -95,25 +95,11 @@ rusticl_lower_input_instr(struct nir_builder *b, nir_instr *instr, void *_)
 
    nir_intrinsic_instr *load = nir_instr_as_intrinsic(load_result->parent_instr);
 
-   /* If it's const, set the alignment to our known constant offset.  If
-    * not, set it to a pessimistic value based on the multiplier (or the
-    * scalar size, for qword loads).
-    *
-    * We could potentially set up stricter alignments for indirects by
-    * knowing what features are enabled in the APIs (see comment in
-    * nir_lower_ubo_vec4.c)
-    */
-   if (nir_src_is_const(intrins->src[0])) {
-      nir_intrinsic_set_align(load, NIR_ALIGN_MUL_MAX,
-                              (nir_src_as_uint(intrins->src[0]) +
-                              nir_intrinsic_base(intrins) * 1) %
-                              NIR_ALIGN_MUL_MAX);
-   } else {
-      nir_intrinsic_set_align(load, intrins->dest.ssa.bit_size / 8, 0);
-   }
-
+   nir_intrinsic_set_align_mul(load, nir_intrinsic_align_mul(intrins));
+   nir_intrinsic_set_align_offset(load, nir_intrinsic_align_offset(intrins));
    nir_intrinsic_set_range_base(load, nir_intrinsic_base(intrins));
    nir_intrinsic_set_range(load, nir_intrinsic_range(intrins));
+
    return load_result;
 }
 
