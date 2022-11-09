@@ -39,10 +39,6 @@
  * (but still builds a bos table)
  */
 
-#define INIT_SIZE 0x1000
-
-#define SUBALLOC_SIZE (32 * 1024)
-
 /* In the pipe->flush() path, we don't have a util_queue_fence we can wait on,
  * instead use a condition-variable.  Note that pipe->flush() is not expected
  * to be a common/hot path.
@@ -147,7 +143,7 @@ fd_submit_sp_new_ringbuffer(struct fd_submit *submit, uint32_t size,
       fd_submit_suballoc_ring_bo(submit, fd_ring, size);
    } else {
       if (flags & FD_RINGBUFFER_GROWABLE)
-         size = INIT_SIZE;
+         size = SUBALLOC_SIZE;
 
       fd_ring->offset = 0;
       fd_ring->ring_bo = fd_bo_new_ring(submit->pipe->dev, size);

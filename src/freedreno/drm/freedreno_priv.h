@@ -53,6 +53,8 @@
 
 extern simple_mtx_t table_lock;
 
+#define SUBALLOC_SIZE (32 * 1024)
+
 /*
  * Stupid/simple growable array implementation:
  */
