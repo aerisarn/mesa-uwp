@@ -131,9 +131,17 @@ SOFTWARE.
 
   <struct name="CONTROL_STREAM" length="1">
     <field name="cs_type" start="30" end="31" type="CS_TYPE"/>
-    <field name="cs_link" start="3" end="29" type="uint">
+    <field name="cs_link" start="3" end="29" shift="7" type="address">
       <define name="UNIT_SIZE" value="128"/>
     </field>
+  </struct>
+
+  <!-- FIXME: This is only available with SIMPLE_INTERNAL_PARAMETER_FORMAT_V2. -->
+  <struct name="CONTROL_STREAM_LINK_SIPF2" length="1">
+    <field name="cs_link" start="2" end="31" shift="6" type="address">
+      <define name="UNIT_SIZE" value="64"/>
+    </field>
+    <field name="cs_ctrl_type" start="0" end="1" type="CS_CTRL_TYPE_SIPF2" default="LINK"/>
   </struct>
 
   <!-- FIXME: This is only available with SIMPLE_INTERNAL_PARAMETER_FORMAT_V2. -->

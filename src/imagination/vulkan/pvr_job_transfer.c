@@ -3893,16 +3893,20 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                                     struct pvr_transfer_prep_data *prep_data)
 {
    const uint32_t max_mappings_per_pb = pvr_transfer_max_quads_per_pb(dev_info);
+   uint32_t free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
    struct pvr_transfer_3d_state *const state = &prep_data->state;
    struct pvr_winsys_transfer_regs *const regs = &state->regs;
    struct pvr_transfer_pass *pass = NULL;
    uint32_t flags = transfer_cmd->flags;
+   pvr_dev_addr_t stream_base_vaddr;
+   uint32_t prim_hdr_count = 0U;
    uint32_t num_prim_blks = 0U;
    uint32_t prim_blk_size = 0U;
    uint32_t region_arrays_size;
    uint32_t num_region_arrays;
    uint32_t total_stream_size;
    struct pvr_bo *pvr_cs_bo;
+   bool was_linked = false;
    uint32_t rem_mappings;
    uint32_t *blk_cs_ptr;
    uint32_t *cs_ptr;
@@ -3973,6 +3977,10 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                                      &pvr_cs_bo);
    if (result != VK_SUCCESS)
       return result;
+
+   stream_base_vaddr =
+      PVR_DEV_ADDR(pvr_cs_bo->vma->dev_addr.addr -
+                   ctx->device->heaps.transfer_3d_heap->base_addr.addr);
 
    cs_ptr = pvr_cs_bo->bo->map;
    blk_cs_ptr = cs_ptr + region_arrays_size / sizeof(uint32_t);
@@ -4209,24 +4217,59 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
          return result;
 
       while (rem_mappings > 0U) {
-         const uint64_t transfer_heap_base =
-            transfer_cmd->cmd_buffer->device->heaps.transfer_3d_heap
-               ->base_addr.addr;
+         const uint32_t min_free_ctrl_stream_words =
+            PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ? 2 : 3;
          const uint32_t num_mappings = MIN2(max_mappings_per_pb, rem_mappings);
          struct pvr_rect_mapping *mappings = NULL;
          uint32_t stream_start_offset = 0U;
          pvr_dev_addr_t prim_blk_addr;
 
+         if (free_ctrl_stream_words < min_free_ctrl_stream_words) {
+            pvr_dev_addr_t next_region_array_vaddr = stream_base_vaddr;
+
+            num_region_arrays++;
+            next_region_array_vaddr.addr +=
+               num_region_arrays * (PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS) * 4);
+
+            if (PVR_HAS_FEATURE(dev_info,
+                                simple_internal_parameter_format_v2)) {
+               uint32_t link_addr;
+
+               pvr_csb_pack (&link_addr,
+                             IPF_CONTROL_STREAM_LINK_SIPF2,
+                             control_stream) {
+                  control_stream.cs_ctrl_type =
+                     PVRX(IPF_CS_CTRL_TYPE_SIPF2_LINK);
+                  control_stream.cs_link.addr = next_region_array_vaddr.addr;
+               }
+
+               pvr_isp_ctrl_stream_sipf_write_aligned(
+                  (uint8_t *)cs_ptr,
+                  link_addr,
+                  pvr_cmd_length(IPF_CONTROL_STREAM_LINK_SIPF2) * 4);
+            } else {
+               pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, control_stream) {
+                  control_stream.cs_type = PVRX(IPF_CS_TYPE_LINK);
+                  control_stream.cs_link.addr = next_region_array_vaddr.addr;
+               }
+            }
+
+            cs_ptr = (uint32_t *)pvr_cs_bo->bo->map +
+                     num_region_arrays * PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
+            free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
+
+            was_linked = PVR_HAS_FEATURE(dev_info, ipf_creq_pf);
+         }
+
          if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
-            pvr_finishme("Unimplemented path.");
+            prim_hdr_count++;
 
          if (flags & PVR_TRANSFER_CMD_FLAGS_FILL)
             mappings = pass ? pass->mappings : &fill_mapping;
          else
             mappings = transfer_cmd->mappings;
 
-         prim_blk_addr =
-            PVR_DEV_ADDR(pvr_cs_bo->vma->dev_addr.addr - transfer_heap_base);
+         prim_blk_addr = stream_base_vaddr;
          prim_blk_addr.addr +=
             (uintptr_t)blk_cs_ptr - (uintptr_t)pvr_cs_bo->bo->map;
 
@@ -4307,6 +4350,8 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
 
             cs_ptr = (uint32_t *)cs_byte_ptr;
+
+            free_ctrl_stream_words -= 2;
          } else {
             pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_FORMAT, word) {
                word.cs_type = PVRX(IPF_CS_TYPE_PRIM);
@@ -4322,6 +4367,8 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                word.cs_prim_base = prim_blk_addr;
             }
             cs_ptr += pvr_cmd_length(IPF_PRIMITIVE_BASE);
+
+            free_ctrl_stream_words -= 2;
          }
 
          rem_mappings -= num_mappings;
@@ -4330,7 +4377,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    }
 
    if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
-      pvr_finishme("Unimplemented path.");
+      assert((num_region_arrays > 1) == was_linked);
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2)) {
       uint8_t *cs_byte_ptr = (uint8_t *)cs_ptr;
@@ -4366,8 +4413,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
          /* Bit 0 in CR_ISP_RGN.cs_size_ipf_creq_pf is used to indicate the
           * presence of a link.
           */
-         pvr_finishme("Unimplemented isp link. Defaulting to no link.");
-         isp_rgn.cs_size_ipf_creq_pf = 0;
+         isp_rgn.cs_size_ipf_creq_pf = was_linked;
       }
    } else {
       /* clang-format off */

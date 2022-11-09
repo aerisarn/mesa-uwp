@@ -499,11 +499,13 @@ SOFTWARE.
   -->
   <struct name="ISP_RGN_SIPF" length="1">
     <condition type="if" check="IPF_CREQ_PF"/>
-    <!-- FIXME: This should have a default value of 0x1F not setting it since
-	 csbgen doesn't check if the feature is present or not so this will
-	 be set even when the feature is not present.
-    -->
-    <field name="cs_size_ipf_creq_pf" start="24" end="28" type="uint"/>
+      <!-- FIXME: This should have a default value of 0x1F not setting it since
+        csbgen doesn't check if the feature is present or not so this will
+        be set even when the feature is not present.
+      -->
+      <field name="cs_size_ipf_creq_pf" start="24" end="28" type="uint">
+        <define name="MAX" value="31"/>
+      </field>
     <condition type="endif" check="IPF_CREQ_PF"/>
     <field name="size" start="0" end="23" type="uint">
       <!-- Note that this differs from ISP_RGN. -->
