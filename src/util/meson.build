@@ -286,14 +286,22 @@ idep_mesautil = declare_dependency(
   dependencies : deps_for_libmesa_util,
 )
 
+# We don't have expat on Android or Windows, which is a needed dep for xmlconfig
+supports_xmlconfig = not (with_platform_android or with_platform_windows)
+
+opt_xmlconfig = get_option('xmlconfig')
+if opt_xmlconfig.enabled() and not supports_xmlconfig
+   error('xmlconfig not available on Android or Windows')
+endif
+use_xmlconfig = supports_xmlconfig and not opt_xmlconfig.disabled()
+
 xmlconfig_deps = []
-if not (with_platform_android or with_platform_windows)
-  c_xmlconfig_arg = '-DWITH_XMLCONFIG=1'
+if use_xmlconfig
   xmlconfig_deps += dep_expat
-else
-  c_xmlconfig_arg = '-DWITH_XMLCONFIG=0'
 endif
 xmlconfig_deps += dep_regex
+
+c_xmlconfig_arg = '-DWITH_XMLCONFIG=@0@'.format(use_xmlconfig.to_int())
 
 _libxmlconfig = static_library(
   'xmlconfig',
