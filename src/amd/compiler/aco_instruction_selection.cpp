@@ -9449,8 +9449,7 @@ get_const_vec(nir_ssa_def* vec, nir_const_value* cv[4])
 void
 visit_tex(isel_context* ctx, nir_tex_instr* instr)
 {
-   assert((instr->op != nir_texop_txf_ms || ctx->program->gfx_level >= GFX11) &&
-          instr->op != nir_texop_samples_identical);
+   assert(instr->op != nir_texop_samples_identical);
 
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
