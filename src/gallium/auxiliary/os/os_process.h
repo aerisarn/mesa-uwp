@@ -34,12 +34,18 @@
 #include "util/u_process.h"
 
 
-extern bool
-os_get_process_name(char *str, size_t size);
+static inline bool
+os_get_process_name(char *str, size_t size)
+{
+   return util_get_process_name_may_override("GALLIUM_PROCESS_NAME", str, size);
+}
 
 
-extern bool
-os_get_command_line(char *cmdline, size_t size);
+static inline bool
+os_get_command_line(char *cmdline, size_t size)
+{
+   return util_get_command_line(cmdline, size);
+}
 
 
 #endif /* OS_PROCESS_H */

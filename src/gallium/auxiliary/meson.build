@@ -113,7 +113,6 @@ files_libgallium = files(
   'hud/hud_fps.c',
   'hud/hud_private.h',
   'os/os_mman.h',
-  'os/os_process.c',
   'os/os_process.h',
   'pipebuffer/pb_buffer_fenced.c',
   'pipebuffer/pb_buffer_fenced.h',

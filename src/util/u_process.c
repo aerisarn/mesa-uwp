@@ -25,6 +25,7 @@
  * of the Software.
  */
 
+#include "util/os_misc.h"
 #include "u_process.h"
 #include "detect_os.h"
 #include "macros.h"
@@ -45,6 +46,10 @@
 #if DETECT_OS_FREEBSD
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#endif
+
+#if DETECT_OS_LINUX
+#include <fcntl.h>
 #endif
 
 #include "util/u_call_once.h"
@@ -252,4 +257,68 @@ success:
 
 #endif
    return 0;
+}
+
+bool
+util_get_process_name_may_override(const char *env_name, char *procname, size_t size)
+{
+   const char *name;
+
+   /* First, check if the env var with env_name is set to
+    * override the normal process name query.
+    */
+   name = os_get_option(env_name);
+
+   if (!name) {
+      /* do normal query */
+      name = util_get_process_name();
+   }
+
+   assert(size > 0);
+   assert(procname);
+
+   if (name && procname && size > 0) {
+      strncpy(procname, name, size);
+      procname[size - 1] = '\0';
+      return true;
+   }
+   else {
+      return false;
+   }
+}
+
+bool
+util_get_command_line(char *cmdline, size_t size)
+{
+#if DETECT_OS_WINDOWS
+   const char *args = GetCommandLineA();
+   if (args) {
+      strncpy(cmdline, args, size);
+      // make sure we terminate the string
+      cmdline[size - 1] = 0;
+      return true;
+   }
+#elif DETECT_OS_LINUX
+   int f = open("/proc/self/cmdline", O_RDONLY);
+   if (f != -1) {
+      const int n = read(f, cmdline, size - 1);
+      int i;
+      assert(n < size);
+      // The arguments are separated by '\0' chars.  Convert them to spaces.
+      for (i = 0; i < n; i++) {
+         if (cmdline[i] == 0) {
+            cmdline[i] = ' ';
+         }
+      }
+      // terminate the string
+      cmdline[n] = 0;
+      close(f);
+      return true;
+   }
+#endif
+
+   /* XXX to-do: implement this function for other operating systems */
+
+   cmdline[0] = 0;
+   return false;
 }
