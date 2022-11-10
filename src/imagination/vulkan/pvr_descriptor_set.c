@@ -748,6 +748,11 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
          for (uint32_t set_num = 0; set_num < layout->set_count; set_num++) {
             const struct pvr_descriptor_set_layout *const set_layout =
                layout->set_layout[set_num];
+            const struct pvr_descriptor_set_layout_mem_layout *const mem_layout =
+               &set_layout->memory_layout_in_dwords_per_stage[stage];
+
+            if (mem_layout->secondary_dynamic_size == 0)
+               continue;
 
             for (uint32_t i = 0; i < set_layout->binding_count; i++) {
                const struct pvr_descriptor_set_layout_binding *const binding =
@@ -815,9 +820,12 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
       for (uint32_t set_num = 0; set_num < layout->set_count; set_num++) {
          const struct pvr_descriptor_set_layout *const set_layout =
             layout->set_layout[set_num];
-         const uint32_t base =
-            layout->register_layout_in_dwords_per_stage[stage][set_num]
-               .secondary_offset;
+         const struct pvr_descriptor_set_layout_mem_layout *const mem_layout =
+            &layout->register_layout_in_dwords_per_stage[stage][set_num];
+         const uint32_t base = mem_layout->secondary_offset;
+
+         if (mem_layout->secondary_size == 0)
+            continue;
 
          for (uint32_t i = 0; i < set_layout->binding_count; i++) {
             const struct pvr_descriptor_set_layout_binding *const binding =
