@@ -7997,7 +7997,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
       cmd_buffer->state.dirty &
       (RADV_CMD_DIRTY_PIPELINE |
        RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-       RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT);
+       RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE);
 
    /* Check small draw status:
     * For small draw calls, we disable culling by setting the SGPR to 0.
