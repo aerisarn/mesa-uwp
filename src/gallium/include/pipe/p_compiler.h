@@ -77,15 +77,6 @@ typedef unsigned char boolean;
 #define FALSE false
 #endif
 
-#ifndef va_copy
-#ifdef __va_copy
-#define va_copy(dest, src) __va_copy((dest), (src))
-#else
-#define va_copy(dest, src) (dest) = (src)
-#endif
-#endif
-
-
 /* XXX: Use standard `__func__` instead */
 #ifndef __FUNCTION__
 #  define __FUNCTION__ __func__
