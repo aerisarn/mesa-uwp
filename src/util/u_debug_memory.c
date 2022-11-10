@@ -365,7 +365,7 @@ debug_memory_tag(void *ptr, unsigned tag)
 
    hdr = header_from_data(ptr);
    if (hdr->magic != DEBUG_MEMORY_MAGIC) {
-      debug_printf("%s corrupted memory at %p\n", __FUNCTION__, ptr);
+      debug_printf("%s corrupted memory at %p\n", __func__, ptr);
       assert(0);
    }
 
