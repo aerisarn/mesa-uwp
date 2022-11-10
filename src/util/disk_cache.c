@@ -130,6 +130,9 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
       cache->use_cache_db = true;
    }
 
+   cache->stats.enabled = debug_get_bool_option("MESA_SHADER_CACHE_SHOW_STATS",
+                                                false);
+
    if (!disk_cache_mmap_cache_index(local, cache, path))
       goto path_fail;
 
@@ -255,6 +258,12 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
 void
 disk_cache_destroy(struct disk_cache *cache)
 {
+   if (unlikely(cache && cache->stats.enabled)) {
+      printf("disk shader cache:  hits = %u, misses = %u\n",
+             cache->stats.hits,
+             cache->stats.misses);
+   }
+
    if (cache && !cache->path_init_failed) {
       util_queue_finish(&cache->cache_queue);
       util_queue_destroy(&cache->cache_queue);
@@ -523,23 +532,33 @@ disk_cache_put_nocopy(struct disk_cache *cache, const cache_key key,
 void *
 disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
 {
+   void *buf;
+
    if (size)
       *size = 0;
 
-   if (cache->blob_get_cb)
-       return blob_get_compressed(cache, key, size);
-
-   if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
-      return disk_cache_load_item_foz(cache, key, size);
+   if (cache->blob_get_cb) {
+      buf = blob_get_compressed(cache, key, size);
+   } else if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+      buf = disk_cache_load_item_foz(cache, key, size);
    } else if (cache->use_cache_db) {
-      return disk_cache_db_load_item(cache, key, size);
+      buf = disk_cache_db_load_item(cache, key, size);
    } else {
       char *filename = disk_cache_get_cache_filename(cache, key);
       if (filename == NULL)
-         return NULL;
-
-      return disk_cache_load_item(cache, filename, size);
+         buf = NULL;
+      else
+         buf = disk_cache_load_item(cache, filename, size);
    }
+
+   if (unlikely(cache->stats.enabled)) {
+      if (buf)
+         p_atomic_inc(&cache->stats.hits);
+      else
+         p_atomic_inc(&cache->stats.misses);
+   }
+
+   return buf;
 }
 
 void

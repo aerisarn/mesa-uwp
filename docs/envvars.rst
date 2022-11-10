@@ -160,6 +160,9 @@ Core Mesa environment variables
    will be stored in ``$XDG_CACHE_HOME/mesa_shader_cache`` (if that
    variable is set), or else within ``.cache/mesa_shader_cache`` within
    the user's home directory.
+:envvar:`MESA_SHADER_CACHE_SHOW_STATS`
+   if set to ``true``, keeps hit/miss statistics for the shader cache.
+   These statistics are printed when the app terminates.
 :envvar:`MESA_GLSL`
    :ref:`shading language compiler options <envvars>`
 :envvar:`MESA_NO_MINMAX_CACHE`
