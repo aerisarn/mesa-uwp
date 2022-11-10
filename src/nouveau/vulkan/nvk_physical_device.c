@@ -173,6 +173,12 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->extendedDynamicState3ShadingRateImageEnable = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+         VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *f = (void *)ext;
+         f->image2DViewOf3D = true;
+         f->sampler2DViewOf3D = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *f = (void *)ext;
          f->vertexInputDynamicState = true;
@@ -398,6 +404,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_extended_dynamic_state2 = true,
       .EXT_extended_dynamic_state3 = true,
       .EXT_host_query_reset = true,
+      .EXT_image_2d_view_of_3d = true,
       .EXT_inline_uniform_block = true,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
