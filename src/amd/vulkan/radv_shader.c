@@ -1034,6 +1034,8 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                .lower_subgroup_masks = 1,
                .lower_relative_shuffle = 1,
                .lower_shuffle_to_32bit = 1,
+               /* TODO: Verify shared VGPRs on GFX11. */
+               .lower_shuffle = device->physical_device->rad_info.gfx_level >= GFX11,
                .lower_vote_eq = 1,
                .lower_quad_broadcast_dynamic = 1,
                .lower_quad_broadcast_dynamic_to_const = gfx7minus,
