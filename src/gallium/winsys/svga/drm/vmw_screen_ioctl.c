@@ -46,7 +46,7 @@
 #include "svga3d_caps.h"
 #include "svga3d_reg.h"
 
-#include "os/os_mman.h"
+#include "util/os_mman.h"
 
 #include <errno.h>
 #include <unistd.h>

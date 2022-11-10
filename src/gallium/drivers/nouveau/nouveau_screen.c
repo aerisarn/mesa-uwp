@@ -8,7 +8,7 @@
 #include "util/format/u_format_s3tc.h"
 #include "util/u_string.h"
 
-#include "os/os_mman.h"
+#include "util/os_mman.h"
 #include "util/os_time.h"
 
 #include <stdio.h>

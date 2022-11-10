@@ -112,7 +112,6 @@ files_libgallium = files(
   'hud/hud_driver_query.c',
   'hud/hud_fps.c',
   'hud/hud_private.h',
-  'os/os_mman.h',
   'os/os_process.h',
   'pipebuffer/pb_buffer_fenced.c',
   'pipebuffer/pb_buffer_fenced.h',

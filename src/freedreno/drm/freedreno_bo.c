@@ -24,7 +24,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "os/os_mman.h"
+#include "util/os_mman.h"
 
 #include "freedreno_drmif.h"
 #include "freedreno_priv.h"
