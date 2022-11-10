@@ -48,21 +48,21 @@
 #if UTIL_ARCH_BIG_ENDIAN
 #if defined(__linux__)
 #include <byteswap.h>
-#define CPU_TO_LE32( x )	bswap_32( x )
+#define CPU_TO_LE32( x ) bswap_32( x )
 #elif defined(__APPLE__)
 #include <CoreFoundation/CFByteOrder.h>
-#define CPU_TO_LE32( x )	CFSwapInt32HostToLittle( x )
+#define CPU_TO_LE32( x ) CFSwapInt32HostToLittle( x )
 #elif defined(__OpenBSD__)
 #include <sys/types.h>
-#define CPU_TO_LE32( x )	htole32( x )
+#define CPU_TO_LE32( x ) htole32( x )
 #else /*__linux__ */
 #include <sys/endian.h>
-#define CPU_TO_LE32( x )	bswap32( x )
+#define CPU_TO_LE32( x ) bswap32( x )
 #endif /*__linux__*/
 #else
-#define CPU_TO_LE32( x )	( x )
+#define CPU_TO_LE32( x ) ( x )
 #endif
-#define LE32_TO_CPU( x )	CPU_TO_LE32( x )
+#define LE32_TO_CPU( x ) CPU_TO_LE32( x )
 
 
 
