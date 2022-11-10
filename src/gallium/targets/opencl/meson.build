@@ -107,6 +107,7 @@ libopencl = shared_library(
   ],
   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',  # otherwise mingw will create libOpenCL-1.dll or libMesaOpenCL-1.dll
   version : '@0@.0.0'.format(opencl_version),
+  soversion : host_machine.system() == 'windows' ? '' : opencl_version,
   install : true,
 )
 
