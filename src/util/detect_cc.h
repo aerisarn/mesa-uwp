@@ -44,6 +44,8 @@
  */
 
 #if defined(__GNUC__)
+#define DETECT_CC_GCC 1
+#define DETECT_CC_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #define PIPE_CC_GCC
 #define PIPE_CC_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #endif
@@ -62,11 +64,29 @@
  * versions.
  */
 #if defined(_MSC_VER) || defined(__MSC__)
+#define DETECT_CC_MSVC 1
 #define PIPE_CC_MSVC
 #endif
 
 #if defined(__ICL)
+#define DETECT_CC_ICL 1
 #define PIPE_CC_ICL
+#endif
+
+#ifndef DETECT_CC_GCC
+#define DETECT_CC_GCC 0
+#endif
+
+#ifndef DETECT_CC_GCC_VERSION
+#define DETECT_CC_GCC_VERSION 0
+#endif
+
+#ifndef DETECT_CC_MSVC
+#define DETECT_CC_MSVC 0
+#endif
+
+#ifndef DETECT_CC_ICL
+#define DETECT_CC_ICL 0
 #endif
 
 #endif /* UTIL_DETECT_CC_H_ */
