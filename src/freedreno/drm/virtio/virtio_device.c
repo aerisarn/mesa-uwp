@@ -204,6 +204,8 @@ virtio_device_new(int fd, drmVersionPtr version)
 
    set_debuginfo(dev);
 
+   list_inithead(&virtio_dev->prealloc_list);
+
    util_vma_heap_init(&virtio_dev->address_space,
                       caps.u.msm.va_start,
                       caps.u.msm.va_size);
