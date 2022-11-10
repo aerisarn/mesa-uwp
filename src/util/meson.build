@@ -18,7 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_util = include_directories('.')
+# inc_util only depends inc_include, this folder and nothing else under src
+# so we use include_directories('..') instead of inc_src to tell the fact
+# util is self contained.
+inc_util = [inc_include, include_directories('..')]
 
 subdir('format')
 
