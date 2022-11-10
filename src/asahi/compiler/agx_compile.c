@@ -1195,18 +1195,20 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    else if (!agx_is_null(compare))
       compare_offset = compare;
 
+   unsigned channels = nir_dest_num_components(instr->dest);
+
    agx_instr *I = agx_texture_sample_to(b, dst, coords, lod, texture, sampler,
          compare_offset,
          agx_tex_dim(instr->sampler_dim, instr->is_array),
          agx_lod_mode_for_nir(instr->op),
-         0xF, /* TODO: wrmask */
+         BITFIELD_MASK(channels), /* TODO: wrmask */
          0, !agx_is_null(packed_offset), !agx_is_null(compare));
 
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;
 
    agx_wait(b, 0);
-   agx_emit_cached_split(b, dst, 4);
+   agx_emit_cached_split(b, dst, channels);
 }
 
 /*
