@@ -830,6 +830,7 @@
     <field name="Deflake 3" start="94:0" size="64" type="address"/>
     <field name="Unk 112" start="96:0" size="32" default="0x1" type="hex"/>
     <field name="Unk 114" start="98:0" size="32" default="0x1c" type="hex"/>
+    <field name="Memoryless render targets used" start="100:0" size="1" type="bool"/>
     <field name="OpenGL depth clipping" start="100:24" size="1" type="bool"/>
     <field name="Unk 118" start="102:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 119" start="103:0" size="32" default="0xffffffff" type="hex"/>
@@ -890,6 +891,7 @@
     <field name="Stencil buffer 3" start="344:0" size="64" type="address"/>
     <field name="Stencil acceleration buffer 3" start="346:0" size="64" type="address"/>
     <!-- maybe only set when doing a depth clear? -->
+    <!-- 0x1000000 bit set with memoryless render targets? -->
     <field name="Unk 352" start="352:0" size="32" default="0x1" type="hex"/>
     <field name="Unk 360" start="360:0" size="32" default="0x1c" type="hex"/>
     <field name="Encoder ID" start="362:0" size="32" type="hex"/>
