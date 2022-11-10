@@ -205,8 +205,6 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
                         struct tu_cs *cs,
                         enum tu_cmd_ccu_state ccu_state)
 {
-   enum tu_cmd_flush_bits flushes = cmd_buffer->state.cache.flush_bits;
-
    assert(ccu_state != TU_CMD_CCU_UNKNOWN);
    /* It's unsafe to flush inside condition because we clear flush_bits */
    assert(!cs->cond_stack_depth);
@@ -218,14 +216,14 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
     */
    if (ccu_state != cmd_buffer->state.ccu_state) {
       if (cmd_buffer->state.ccu_state != TU_CMD_CCU_GMEM) {
-         flushes |=
+         cmd_buffer->state.cache.flush_bits |=
             TU_CMD_FLAG_CCU_FLUSH_COLOR |
             TU_CMD_FLAG_CCU_FLUSH_DEPTH;
          cmd_buffer->state.cache.pending_flush_bits &= ~(
             TU_CMD_FLAG_CCU_FLUSH_COLOR |
             TU_CMD_FLAG_CCU_FLUSH_DEPTH);
       }
-      flushes |=
+      cmd_buffer->state.cache.flush_bits |=
          TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
          TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
          TU_CMD_FLAG_WAIT_FOR_IDLE;
@@ -235,7 +233,7 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
          TU_CMD_FLAG_WAIT_FOR_IDLE);
    }
 
-   tu6_emit_flushes(cmd_buffer, cs, flushes);
+   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.cache.flush_bits);
    cmd_buffer->state.cache.flush_bits = 0;
 
    if (ccu_state != cmd_buffer->state.ccu_state) {
