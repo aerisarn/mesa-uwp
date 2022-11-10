@@ -5490,10 +5490,63 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
                                 finished_out);
 }
 
+/* TODO: This should be generated in csbgen. */
+#define TEXSTATE_STRIDE_IMAGE_WORD1_TEXADDR_MASK \
+   BITFIELD64_RANGE(2, (53 - 16) + 1)
+
+static bool pvr_validate_source_addr(pvr_dev_addr_t addr)
+{
+   if (!pvr_dev_addr_is_aligned(
+          addr,
+          PVRX(TEXSTATE_STRIDE_IMAGE_WORD1_TEXADDR_ALIGNMENT))) {
+      return false;
+   }
+
+   if (addr.addr & TEXSTATE_STRIDE_IMAGE_WORD1_TEXADDR_MASK)
+      return false;
+
+   return true;
+}
+
+static bool pvr_supports_texel_unwind(struct pvr_transfer_cmd *transfer_cmd)
+{
+   struct pvr_transfer_cmd_surface *dst = &transfer_cmd->dst;
+
+   if (transfer_cmd->src_present) {
+      struct pvr_transfer_cmd_surface *src = &transfer_cmd->src;
+
+      if (src->height == 1) {
+         if (src->mem_layout != PVR_MEMLAYOUT_LINEAR &&
+             src->mem_layout != PVR_MEMLAYOUT_TWIDDLED &&
+             src->mem_layout != PVR_MEMLAYOUT_3DTWIDDLED) {
+            return false;
+         }
+      } else if (src->mem_layout == PVR_MEMLAYOUT_TWIDDLED ||
+                 src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED) {
+         if (!pvr_validate_source_addr(src->dev_addr))
+            return false;
+      } else {
+         if (src->mem_layout != PVR_MEMLAYOUT_LINEAR)
+            return false;
+      }
+   }
+
+   if (dst->mem_layout != PVR_MEMLAYOUT_LINEAR &&
+       dst->mem_layout != PVR_MEMLAYOUT_TWIDDLED) {
+      return false;
+   }
+
+   return true;
+}
+
 static bool pvr_3d_validate_addr(struct pvr_transfer_cmd *transfer_cmd)
 {
-   /* TODO: Complete this function, based on TQ_3DValidateVaddr. */
-   pvr_finishme("Complete pvr_3d_validate_addr().");
+   if (!pvr_supports_texel_unwind(transfer_cmd)) {
+      return pvr_dev_addr_is_aligned(
+         transfer_cmd->dst.dev_addr,
+         PVRX(PBESTATE_STATE_WORD0_ADDRESS_LOW_ALIGNMENT));
+   }
+
    return true;
 }
 
