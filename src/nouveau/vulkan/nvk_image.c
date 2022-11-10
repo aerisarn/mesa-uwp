@@ -236,6 +236,8 @@ nvk_image_init(struct nvk_device *device,
       usage |= NIL_IMAGE_USAGE_LINEAR_BIT;
    if (pCreateInfo->flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
       usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
+   if (pCreateInfo->flags & VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT)
+      usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
 
    /* We treat 3D storage images as 2D arrays.  One day, we may wire up actual
     * 3D storage image support but baseArrayLayer gets tricky.
