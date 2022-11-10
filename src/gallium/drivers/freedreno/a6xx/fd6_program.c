@@ -526,13 +526,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       ij_regid[i] =
          ir3_find_sysval_regid(fs, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
 
-   /* If we have pre-dispatch texture fetches, then ij_pix should not
-    * be DCE'd, even if not actually used in the shader itself:
-    */
    if (fs->num_sampler_prefetch > 0) {
-      assert(VALIDREG(ij_regid[IJ_PERSP_PIXEL]));
-      /* also, it seems like ij_pix is *required* to be r0.x */
-      assert(ij_regid[IJ_PERSP_PIXEL] == regid(0, 0));
+      /* It seems like ij_pix is *required* to be r0.x */
+      assert(!VALIDREG(ij_regid[IJ_PERSP_PIXEL]) ||
+             ij_regid[IJ_PERSP_PIXEL] == regid(0, 0));
    }
 
    /* we can't write gl_SampleMask for !msaa..  if b0 is zero then we
