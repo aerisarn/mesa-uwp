@@ -29,15 +29,16 @@
 #ifndef OS_PROCESS_H
 #define OS_PROCESS_H
 
+#include <stdbool.h>
 
-#include "pipe/p_compiler.h"
+#include "util/u_process.h"
 
 
-extern boolean
+extern bool
 os_get_process_name(char *str, size_t size);
 
 
-extern boolean
+extern bool
 os_get_command_line(char *cmdline, size_t size);
 
 

@@ -27,7 +27,9 @@
 
 
 #include "pipe/p_config.h"
+#include "pipe/p_compiler.h"
 #include "os/os_process.h"
+#include "util/detect_os.h"
 #include "util/u_memory.h"
 #include "util/u_process.h"
 
@@ -47,9 +49,9 @@
  * Return the name of the current process.
  * \param procname  returns the process name
  * \param size  size of the procname buffer
- * \return  TRUE or FALSE for success, failure
+ * \return  true or false for success, failure
  */
-boolean
+bool
 os_get_process_name(char *procname, size_t size)
 {
    const char *name;
@@ -61,26 +63,7 @@ os_get_process_name(char *procname, size_t size)
 
    if (!name) {
       /* do normal query */
-
-#if defined(PIPE_OS_WINDOWS)
-      char szProcessPath[MAX_PATH];
-      char *lpProcessName;
-      char *lpProcessExt;
-
-      GetModuleFileNameA(NULL, szProcessPath, ARRAY_SIZE(szProcessPath));
-
-      lpProcessName = strrchr(szProcessPath, '\\');
-      lpProcessName = lpProcessName ? lpProcessName + 1 : szProcessPath;
-
-      lpProcessExt = strrchr(lpProcessName, '.');
-      if (lpProcessExt) {
-         *lpProcessExt = '\0';
-      }
-
-      name = lpProcessName;
-#else
       name = util_get_process_name();
-#endif
    }
 
    assert(size > 0);
@@ -89,10 +72,10 @@ os_get_process_name(char *procname, size_t size)
    if (name && procname && size > 0) {
       strncpy(procname, name, size);
       procname[size - 1] = '\0';
-      return TRUE;
+      return true;
    }
    else {
-      return FALSE;
+      return false;
    }
 }
 
@@ -102,20 +85,20 @@ os_get_process_name(char *procname, size_t size)
  * the argv[] array with the arguments separated by spaces.
  * \param cmdline  returns the command line string
  * \param size  size of the cmdline buffer
- * \return  TRUE or FALSE for success, failure
+ * \return  true or false for success, failure
  */
-boolean
+bool
 os_get_command_line(char *cmdline, size_t size)
 {
-#if defined(PIPE_OS_WINDOWS)
+#if DETECT_OS_WINDOWS
    const char *args = GetCommandLineA();
    if (args) {
       strncpy(cmdline, args, size);
       // make sure we terminate the string
       cmdline[size - 1] = 0;
-      return TRUE;
+      return true;
    }
-#elif defined(PIPE_OS_LINUX)
+#elif DETECT_OS_LINUX
    int f = open("/proc/self/cmdline", O_RDONLY);
    if (f != -1) {
       const int n = read(f, cmdline, size - 1);
@@ -130,12 +113,12 @@ os_get_command_line(char *cmdline, size_t size)
       // terminate the string
       cmdline[n] = 0;
       close(f);
-      return TRUE;
+      return true;
    }
 #endif
 
    /* XXX to-do: implement this function for other operating systems */
 
    cmdline[0] = 0;
-   return FALSE;
+   return false;
 }
