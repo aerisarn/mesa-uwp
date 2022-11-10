@@ -5739,7 +5739,7 @@ ray_query_load_intrinsic_create(struct vtn_builder *b, SpvOp opcode,
                               glsl_get_vector_elements(elem_type),
                               glsl_get_bit_size(elem_type),
                               src0, src1,
-                              .base = value.nir_value,
+                              .ray_query_value = value.nir_value,
                               .column = i);
       }
 
@@ -5752,7 +5752,7 @@ ray_query_load_intrinsic_create(struct vtn_builder *b, SpvOp opcode,
                                    glsl_get_vector_elements(value.glsl_type),
                                    glsl_get_bit_size(value.glsl_type),
                                    src0, src1,
-                                   .base = value.nir_value));
+                                   .ray_query_value = value.nir_value));
    }
 }
 

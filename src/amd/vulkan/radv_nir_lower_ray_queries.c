@@ -781,7 +781,7 @@ radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device
                break;
             case nir_intrinsic_rq_load:
                new_dest = lower_rq_load(&builder, index, vars, intrinsic->src[1].ssa,
-                                        (nir_ray_query_value)nir_intrinsic_base(intrinsic),
+                                        nir_intrinsic_ray_query_value(intrinsic),
                                         nir_intrinsic_column(intrinsic));
                break;
             case nir_intrinsic_rq_proceed:

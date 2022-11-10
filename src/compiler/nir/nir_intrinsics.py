@@ -263,6 +263,9 @@ index("struct nir_io_semantics", "io_semantics")
 index("struct nir_io_xfb", "io_xfb")
 index("struct nir_io_xfb", "io_xfb2")
 
+# Ray query values accessible from the RayQueryKHR object
+index("nir_ray_query_value", "ray_query_value")
+
 # Rounding mode for conversions
 index("nir_rounding_mode", "rounding_mode")
 
@@ -550,8 +553,8 @@ intrinsic("rq_proceed", src_comp=[-1], dest_comp=1)
 intrinsic("rq_generate_intersection", src_comp=[-1, 1])
 # src[] = { query }
 intrinsic("rq_confirm_intersection", src_comp=[-1])
-# src[] = { query, committed } BASE=nir_ray_query_value
-intrinsic("rq_load", src_comp=[-1, 1], dest_comp=0, indices=[BASE,COLUMN])
+# src[] = { query, committed }
+intrinsic("rq_load", src_comp=[-1, 1], dest_comp=0, indices=[RAY_QUERY_VALUE,COLUMN])
 
 # Driver independent raytracing helpers
 
