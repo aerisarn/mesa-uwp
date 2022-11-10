@@ -2287,18 +2287,17 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
    }
 
 #if GFX_VERx10 == 125
-   /* Wa_22011440098
+   /* DG2: Wa_22011440098
+    * MTL: Wa_18022330953
     *
     * In 3D mode, after programming push constant alloc command immediately
     * program push constant command(ZERO length) without any commit between
     * them.
     */
-   if (intel_device_info_is_dg2(cmd_buffer->device->info)) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
-         /* Update empty push constants for all stages (bitmask = 11111b) */
-         c.ShaderUpdateEnable = 0x1f;
-         c.MOCS = anv_mocs(cmd_buffer->device, NULL, 0);
-      }
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
+      /* Update empty push constants for all stages (bitmask = 11111b) */
+      c.ShaderUpdateEnable = 0x1f;
+      c.MOCS = anv_mocs(cmd_buffer->device, NULL, 0);
    }
 #endif
 
