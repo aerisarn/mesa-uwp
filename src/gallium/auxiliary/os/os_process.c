@@ -78,11 +78,6 @@ os_get_process_name(char *procname, size_t size)
       }
 
       name = lpProcessName;
-
-#elif defined(PIPE_OS_HAIKU)
-      image_info info;
-      get_image_info(B_CURRENT_TEAM, &info);
-      name = info.name;
 #else
       name = util_get_process_name();
 #endif

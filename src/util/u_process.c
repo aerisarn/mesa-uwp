@@ -150,21 +150,15 @@ __getProgramName()
       progname = buf;
    return strdup(progname);
 }
-#elif defined(__HAIKU__)
-#    include <libgen.h>
-extern char **__libc_argv;
-extern int __libc_argc;
-
+#elif DETECT_OS_HAIKU
+#  include <kernel/OS.h>
+#  include <kernel/image.h>
 static char *
 __getProgramName()
 {
-   char *progname = NULL;
-   char *n = strdup(__libc_argv[0]);
-   if (n != NULL) {
-      progname = strdup(basename(n));
-      free(n);
-   }
-   return progname;
+   image_info info;
+   get_image_info(B_CURRENT_TEAM, &info);
+   return strdup(info.name);
 }
 #else
 #define GET_PROGRAM_NAME_NOT_AVAILABLE
