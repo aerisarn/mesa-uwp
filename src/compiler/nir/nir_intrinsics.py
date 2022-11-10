@@ -1474,6 +1474,11 @@ intrinsic("execute_closest_hit_amd", src_comp=[1, 1, 1, 1, 1, 1])
 #   0. Ray Tmax
 intrinsic("execute_miss_amd", src_comp=[1])
 
+# Used for saving and restoring hit attribute variables.
+# BASE=dword index
+intrinsic("load_hit_attrib_amd", dest_comp=1, bit_sizes=[32], indices=[BASE])
+intrinsic("store_hit_attrib_amd", src_comp=[1], indices=[BASE])
+
 # Load forced VRS rates.
 intrinsic("load_force_vrs_rates_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE, CAN_REORDER])
 
