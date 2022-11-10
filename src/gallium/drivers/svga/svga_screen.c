@@ -1016,7 +1016,7 @@ init_logging(struct pipe_screen *screen)
     */
    if (debug_get_bool_option("SVGA_EXTRA_LOGGING", FALSE)) {
       char cmdline[1000];
-      if (os_get_command_line(cmdline, sizeof(cmdline))) {
+      if (util_get_command_line(cmdline, sizeof(cmdline))) {
          snprintf(host_log, sizeof(host_log) - strlen(log_prefix),
                   "%s%s\n", log_prefix, cmdline);
          svgascreen->sws->host_log(svgascreen->sws, host_log);

@@ -106,7 +106,7 @@ void
 dd_write_header(FILE *f, struct pipe_screen *screen, unsigned apitrace_call_number)
 {
    char cmd_line[4096];
-   if (os_get_command_line(cmd_line, sizeof(cmd_line)))
+   if (util_get_command_line(cmd_line, sizeof(cmd_line)))
       fprintf(f, "Command: %s\n", cmd_line);
    fprintf(f, "Driver vendor: %s\n", screen->get_vendor(screen));
    fprintf(f, "Device vendor: %s\n", screen->get_device_vendor(screen));
