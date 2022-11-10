@@ -2829,10 +2829,11 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (state->ts)
       key.tcs.tess_input_vertices = state->ts->patch_control_points;
 
-   if (state->ms && state->ms->rasterization_samples > 1) {
-      uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(state);
-      key.ps.num_samples = state->ms->rasterization_samples;
-      key.ps.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
+   if (state->ms) {
+      key.ps.sample_shading_enable = state->ms->sample_shading_enable;
+      if (state->ms->rasterization_samples > 1) {
+         key.ps.num_samples = state->ms->rasterization_samples;
+      }
    }
 
    key.ps.col_format = blend->spi_shader_col_format;

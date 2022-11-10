@@ -546,19 +546,11 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_sample_mask_in: {
-            uint8_t log2_ps_iter_samples;
-
-            if (info->ps.uses_sample_shading) {
-               log2_ps_iter_samples = util_logbase2(key->ps.num_samples);
-            } else {
-               log2_ps_iter_samples = key->ps.log2_ps_iter_samples;
-            }
-
             nir_ssa_def *sample_coverage =
                nir_load_vector_arg_amd(&b, 1, .base = args->ac.sample_coverage.arg_index);
 
             nir_ssa_def *def = NULL;
-            if (log2_ps_iter_samples) {
+            if (info->ps.uses_sample_shading || key->ps.sample_shading_enable) {
                /* gl_SampleMaskIn[0] = (SampleCoverage & (1 << gl_SampleID)). */
                nir_ssa_def *sample_id = nir_load_sample_id(&b);
                def = nir_iand(&b, sample_coverage, nir_ishl(&b, nir_imm_int(&b, 1u), sample_id));
