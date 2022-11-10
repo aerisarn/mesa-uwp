@@ -46,6 +46,7 @@
 #include <util/compiler.h>
 #include <util/hash_table.h>
 #include <util/timespec.h>
+#include <util/u_endian.h>
 #include <util/u_vector.h>
 #include <util/u_dynarray.h>
 #include <util/anon_file.h>
@@ -291,7 +292,7 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
 
    /* Vulkan _PACKN formats have the same component order as DRM formats
     * on little endian systems, on big endian there exists no analog. */
-#if MESA_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
    case DRM_FORMAT_RGBA4444:
       wsi_wl_display_add_vk_format_modifier(display, formats,
                                             VK_FORMAT_R4G4B4A4_UNORM_PACK16,
@@ -472,7 +473,7 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
    case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
       return alpha ? DRM_FORMAT_ABGR4444 : DRM_FORMAT_XBGR4444;
 #endif
-#if MESA_LITTLE_ENDIAN
+#if UTIL_ARCH_LITTLE_ENDIAN
    case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
       return alpha ? DRM_FORMAT_RGBA4444 : DRM_FORMAT_RGBX4444;
    case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
