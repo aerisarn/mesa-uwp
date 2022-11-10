@@ -133,8 +133,11 @@ tu6_lazy_emit_vsc(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 static void
 tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
                  struct tu_cs *cs,
-                 enum tu_cmd_flush_bits flushes)
+                 struct tu_cache_state *cache)
 {
+   enum tu_cmd_flush_bits flushes = cache->flush_bits;
+   cache->flush_bits = 0;
+
    if (unlikely(cmd_buffer->device->physical_device->instance->debug_flags & TU_DEBUG_FLUSHALL))
       flushes |= TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_ALL_INVALIDATE;
 
@@ -178,8 +181,7 @@ static void
 tu_emit_cache_flush(struct tu_cmd_buffer *cmd_buffer,
                     struct tu_cs *cs)
 {
-   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.cache.flush_bits);
-   cmd_buffer->state.cache.flush_bits = 0;
+   tu6_emit_flushes(cmd_buffer, cs, &cmd_buffer->state.cache);
 }
 
 /* Renderpass cache flushes */
@@ -191,8 +193,7 @@ tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer,
    if (!cmd_buffer->state.renderpass_cache.flush_bits &&
        likely(!cmd_buffer->device->physical_device->instance->debug_flags))
       return;
-   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.renderpass_cache.flush_bits);
-   cmd_buffer->state.renderpass_cache.flush_bits = 0;
+   tu6_emit_flushes(cmd_buffer, cs, &cmd_buffer->state.renderpass_cache);
 }
 
 /* Cache flushes for things that use the color/depth read/write path (i.e.
@@ -233,8 +234,7 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
          TU_CMD_FLAG_WAIT_FOR_IDLE);
    }
 
-   tu6_emit_flushes(cmd_buffer, cs, cmd_buffer->state.cache.flush_bits);
-   cmd_buffer->state.cache.flush_bits = 0;
+   tu6_emit_flushes(cmd_buffer, cs, &cmd_buffer->state.cache);
 
    if (ccu_state != cmd_buffer->state.ccu_state) {
       struct tu_physical_device *phys_dev = cmd_buffer->device->physical_device;
