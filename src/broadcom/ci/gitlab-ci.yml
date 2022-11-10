@@ -121,7 +121,7 @@ v3d-rpi4-traces:arm64:
   tags:
     - igalia-rpi4
 
-v3dv-rpi4-vk:arm64:
+.v3dv-rpi4-vk:arm64:
   extends:
     - .baremetal-test-arm64
     - .v3dv-rules
