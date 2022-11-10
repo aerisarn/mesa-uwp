@@ -980,18 +980,17 @@ iris_alloc_push_constants(struct iris_batch *batch)
    }
 
 #if GFX_VERx10 == 125
-   /* Wa_22011440098
+   /* DG2: Wa_22011440098
+    * MTL: Wa_18022330953
     *
     * In 3D mode, after programming push constant alloc command immediately
     * program push constant command(ZERO length) without any commit between
     * them.
     */
-   if (intel_device_info_is_dg2(devinfo)) {
-      iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_ALL), c) {
-         /* Update empty push constants for all stages (bitmask = 11111b) */
-         c.ShaderUpdateEnable = 0x1f;
-         c.MOCS = iris_mocs(NULL, &batch->screen->isl_dev, 0);
-      }
+   iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_ALL), c) {
+      /* Update empty push constants for all stages (bitmask = 11111b) */
+      c.ShaderUpdateEnable = 0x1f;
+      c.MOCS = iris_mocs(NULL, &batch->screen->isl_dev, 0);
    }
 #endif
 }
