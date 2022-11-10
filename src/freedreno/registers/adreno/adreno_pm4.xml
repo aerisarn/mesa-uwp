@@ -10,7 +10,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="PS_DONE_TS" value="3"/>
 	<value name="CACHE_FLUSH_TS" value="4"/>
 	<value name="CONTEXT_DONE" value="5"/>
-	<value name="CACHE_FLUSH" value="6"/>
+	<value name="CACHE_FLUSH" value="6" variants="A2XX-A4XX"/>
 	<value name="VIZQUERY_START" value="7" variants="A2XX"/>
 	<value name="HLSQ_FLUSH" value="7" variants="A3XX-A4XX"/>
 	<value name="VIZQUERY_END" value="8" variants="A2XX"/>
