@@ -39,4 +39,34 @@
 #ifndef UTIL_DETECT_CC_H_
 #define UTIL_DETECT_CC_H_
 
+/*
+ * Compiler
+ */
+
+#if defined(__GNUC__)
+#define PIPE_CC_GCC
+#define PIPE_CC_GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
+#endif
+
+/*
+ * Meaning of _MSC_VER value:
+ * - 1800: Visual Studio 2013
+ * - 1700: Visual Studio 2012
+ * - 1600: Visual Studio 2010
+ * - 1500: Visual Studio 2008
+ * - 1400: Visual C++ 2005
+ * - 1310: Visual C++ .NET 2003
+ * - 1300: Visual C++ .NET 2002
+ *
+ * __MSC__ seems to be an old macro -- it is not pre-defined on recent MSVC
+ * versions.
+ */
+#if defined(_MSC_VER) || defined(__MSC__)
+#define PIPE_CC_MSVC
+#endif
+
+#if defined(__ICL)
+#define PIPE_CC_ICL
+#endif
+
 #endif /* UTIL_DETECT_CC_H_ */
