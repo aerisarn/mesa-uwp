@@ -4575,18 +4575,18 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
                &ctx->so->sampler_prefetch[idx];
             idx++;
 
-            if (instr->flags & IR3_INSTR_B) {
-               fetch->cmd = IR3_SAMPLER_BINDLESS_PREFETCH_CMD;
+            fetch->bindless = instr->flags & IR3_INSTR_B;
+            if (fetch->bindless) {
                /* In bindless mode, the index is actually the base */
                fetch->tex_id = instr->prefetch.tex_base;
                fetch->samp_id = instr->prefetch.samp_base;
                fetch->tex_bindless_id = instr->prefetch.tex;
                fetch->samp_bindless_id = instr->prefetch.samp;
             } else {
-               fetch->cmd = IR3_SAMPLER_PREFETCH_CMD;
                fetch->tex_id = instr->prefetch.tex;
                fetch->samp_id = instr->prefetch.samp;
             }
+            fetch->tex_opc = OPC_SAM;
             fetch->wrmask = instr->dsts[0]->wrmask;
             fetch->dst = instr->dsts[0]->num;
             fetch->src = instr->prefetch.input_offset;

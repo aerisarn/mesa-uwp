@@ -1468,6 +1468,17 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu6_emit_vpc_varying_modes(cs, fs, last_shader);
 }
 
+static enum a6xx_tex_prefetch_cmd
+tu6_tex_opc_to_prefetch_cmd(opc_t tex_opc)
+{
+   switch (tex_opc) {
+   case OPC_SAM:
+      return TEX_PREFETCH_SAM;
+   default:
+      unreachable("Unknown tex opc for prefeth cmd");
+   }
+}
+
 void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
@@ -1494,8 +1505,8 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
    tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CNTL_COUNT(fs->num_sampler_prefetch) |
-         A6XX_SP_FS_PREFETCH_CNTL_UNK4(regid(63, 0)) |
-         0x7000);    // XXX);
+                     COND(!VALIDREG(ij_regid[IJ_PERSP_PIXEL]),
+                          A6XX_SP_FS_PREFETCH_CNTL_IJ_WRITE_DISABLE));
    for (int i = 0; i < fs->num_sampler_prefetch; i++) {
       const struct ir3_sampler_prefetch *prefetch = &fs->sampler_prefetch[i];
       tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CMD_SRC(prefetch->src) |
@@ -1504,7 +1515,9 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
                      A6XX_SP_FS_PREFETCH_CMD_DST(prefetch->dst) |
                      A6XX_SP_FS_PREFETCH_CMD_WRMASK(prefetch->wrmask) |
                      COND(prefetch->half_precision, A6XX_SP_FS_PREFETCH_CMD_HALF) |
-                     A6XX_SP_FS_PREFETCH_CMD_CMD(prefetch->cmd));
+                     COND(prefetch->bindless, A6XX_SP_FS_PREFETCH_CMD_BINDLESS) |
+                     A6XX_SP_FS_PREFETCH_CMD_CMD(
+                        tu6_tex_opc_to_prefetch_cmd(prefetch->tex_opc)));
    }
 
    if (fs->num_sampler_prefetch > 0) {
