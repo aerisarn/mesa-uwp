@@ -684,7 +684,7 @@ static void
 pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
                                   const struct pvr_pipeline_layout *layout)
 {
-#   define SEPARATOR_LENGTH 67
+#   define SEPARATOR_LENGTH 68
 #   define LOGD_CHAR_NTIMES(c, times)         \
       do {                                    \
          char _c_buffer[times + 1];           \
@@ -704,7 +704,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
         stage++) {
       uint32_t dynamic_offset = 0;
 
-      mesa_logd("| %-63s |", stage_names[stage].primary_dynamic);
+      mesa_logd("| %-64s |", stage_names[stage].primary_dynamic);
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
 
       if (layout->per_stage_reg_info[stage].primary_dynamic_size_in_dwords) {
@@ -725,7 +725,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
                    binding->type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
                   continue;
 
-               mesa_logd("| %04u | set = %u, binding = %03u | %-26s[%3u] |",
+               mesa_logd("| +%04u | set = %u, binding = %03u | %-26s[%3u] |",
                          dynamic_offset,
                          set_num,
                          i,
@@ -740,7 +740,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
       }
 
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
-      mesa_logd("| %-63s |", stage_names[stage].secondary_dynamic);
+      mesa_logd("| %-64s |", stage_names[stage].secondary_dynamic);
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
 
       if (layout->per_stage_reg_info[stage].secondary_dynamic_size_in_dwords) {
@@ -761,7 +761,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
                    binding->type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
                   continue;
 
-               mesa_logd("| %04u | set = %u, binding = %03u | %-26s[%3u] |",
+               mesa_logd("| +%04u | set = %u, binding = %03u | %-26s[%3u] |",
                          dynamic_offset,
                          set_num,
                          i,
@@ -776,7 +776,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
       }
 
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
-      mesa_logd("| %-63s |", stage_names[stage].primary);
+      mesa_logd("| %-64s |", stage_names[stage].primary);
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
 
       /* Print primaries. */
@@ -798,7 +798,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
                 binding->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
                continue;
 
-            mesa_logd("| %04u | set = %u, binding = %03u | %-26s[%3u] |",
+            mesa_logd("| +%04u | set = %u, binding = %03u | %-26s[%3u] |",
                       base + binding->per_stage_offset_in_dwords[stage].primary,
                       set_num,
                       i,
@@ -808,7 +808,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
       }
 
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
-      mesa_logd("| %-63s |", stage_names[stage].secondary);
+      mesa_logd("| %-64s |", stage_names[stage].secondary);
       LOGD_CHAR_NTIMES('-', SEPARATOR_LENGTH);
 
       /* Print secondaries. */
@@ -830,7 +830,7 @@ pvr_dump_in_register_layout_sizes(const struct pvr_device *device,
                 binding->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
                continue;
 
-            mesa_logd("| %04u | set = %u, binding = %03u | %-26s[%3u] |",
+            mesa_logd("| +%04u | set = %u, binding = %03u | %-26s[%3u] |",
                       base +
                          binding->per_stage_offset_in_dwords[stage].secondary,
                       set_num,
