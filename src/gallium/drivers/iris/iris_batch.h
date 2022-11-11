@@ -207,7 +207,7 @@ struct iris_batch {
    struct intel_ds_queue ds;
 };
 
-void iris_init_batches(struct iris_context *ice, int priority);
+void iris_init_batches(struct iris_context *ice);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_destroy_batches(struct iris_context *ice);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);

@@ -2100,29 +2100,7 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
    return ctx_id;
 }
 
-int
-iris_kernel_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
-{
-   uint64_t priority = 0;
-   intel_gem_get_context_param(bufmgr->fd, ctx_id,
-                               I915_CONTEXT_PARAM_PRIORITY, &priority);
-   return priority; /* on error, return 0 i.e. default priority */
-}
-
-int
-iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
-                            uint32_t ctx_id,
-                            int priority)
-{
-   int err = 0;
-   if (!intel_gem_set_context_param(bufmgr->fd, ctx_id,
-                                    I915_CONTEXT_PARAM_PRIORITY, priority))
-      err = -errno;
-
-   return err;
-}
-
-static bool
+bool
 iris_hw_context_get_protected(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 {
    uint64_t protected_content = 0;
@@ -2130,21 +2108,6 @@ iris_hw_context_get_protected(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
                                I915_CONTEXT_PARAM_PROTECTED_CONTENT,
                                &protected_content);
    return protected_content;
-}
-
-uint32_t
-iris_clone_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
-{
-   uint32_t new_ctx =
-      iris_create_hw_context(bufmgr,
-                             iris_hw_context_get_protected(bufmgr, ctx_id));
-
-   if (new_ctx) {
-      int priority = iris_kernel_context_get_priority(bufmgr, ctx_id);
-      iris_hw_context_set_priority(bufmgr, new_ctx, priority);
-   }
-
-   return new_ctx;
 }
 
 void

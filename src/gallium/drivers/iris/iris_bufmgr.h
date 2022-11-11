@@ -483,13 +483,11 @@ void* iris_bufmgr_get_aux_map_context(struct iris_bufmgr *bufmgr);
 
 uint32_t iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected);
 uint32_t iris_clone_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
-int iris_kernel_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
 void iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
                                        uint32_t ctx_id);
 void iris_hw_context_set_vm_id(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
-int iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
-                                 uint32_t ctx_id, int priority);
+bool iris_hw_context_get_protected(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
 void iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
