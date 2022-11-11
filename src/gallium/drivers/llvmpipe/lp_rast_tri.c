@@ -732,7 +732,7 @@ lp_rast_triangle_32_3_4(struct lp_rasterizer_task *task,
 
 #endif
 
-#if defined PIPE_ARCH_SSE
+#if DETECT_ARCH_SSE
 #define BUILD_MASKS(c, cdiff, dcdx, dcdy, omask, pmask) build_masks_sse((int)c, (int)cdiff, dcdx, dcdy, omask, pmask)
 #define BUILD_MASK_LINEAR(c, dcdx, dcdy) build_mask_linear_sse((int)c, dcdx, dcdy)
 #elif (defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN)
