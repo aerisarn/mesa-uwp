@@ -627,6 +627,7 @@ struct iris_context {
    struct blorp_context blorp;
 
    struct iris_batch batches[IRIS_BATCH_COUNT];
+   bool has_engines_context;
 
    struct u_upload_mgr *query_buffer_uploader;
 
