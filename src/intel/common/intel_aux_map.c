@@ -213,6 +213,13 @@ get_format(enum intel_aux_map_format format)
    return &aux_formats[format];
 }
 
+static enum intel_aux_map_format
+select_format(const struct intel_device_info *devinfo)
+{
+   return devinfo->verx10 ==
+         120 ? INTEL_AUX_MAP_GFX12_64KB : INTEL_AUX_MAP_LAST;
+}
+
 static bool
 add_buffer(struct intel_aux_map_context *ctx)
 {
@@ -306,7 +313,9 @@ intel_aux_map_init(void *driver_ctx,
                    const struct intel_device_info *devinfo)
 {
    struct intel_aux_map_context *ctx;
-   if (devinfo->ver < 12)
+
+   enum intel_aux_map_format format = select_format(devinfo);
+   if (format == INTEL_AUX_MAP_LAST)
       return NULL;
 
    ctx = ralloc(NULL, struct intel_aux_map_context);
@@ -316,6 +325,7 @@ intel_aux_map_init(void *driver_ctx,
    if (pthread_mutex_init(&ctx->mutex, NULL))
       return NULL;
 
+   ctx->format = get_format(format);
    ctx->driver_ctx = driver_ctx;
    ctx->buffer_alloc = buffer_alloc;
    ctx->num_buffers = 0;
