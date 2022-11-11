@@ -56,12 +56,10 @@
 
 #if defined(__i386__) /* gcc */ || defined(_M_IX86) /* msvc */ || defined(_X86_) || defined(__386__) || defined(i386) || defined(__i386) /* Sun cc */
 #define DETECT_ARCH_X86 1
-#define PIPE_ARCH_X86
 #endif
 
 #if defined(__x86_64__) /* gcc */ || defined(_M_X64) /* msvc */ || defined(_M_AMD64) /* msvc */ || defined(__x86_64) /* Sun cc */
 #define DETECT_ARCH_X86_64 1
-#define PIPE_ARCH_X86_64
 #endif
 
 #if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
@@ -69,42 +67,34 @@
 /* #warning SSE2 support requires -msse -msse2 compiler options */
 #else
 #define DETECT_ARCH_SSE 1
-#define PIPE_ARCH_SSE
 #endif
 #endif
 
 #if defined(__ppc__) || defined(__ppc64__) || defined(__PPC__) || defined(__PPC64__)
 #define DETECT_ARCH_PPC 1
-#define PIPE_ARCH_PPC
 #if defined(__ppc64__) || defined(__PPC64__)
 #define DETECT_ARCH_PPC_64 1
-#define PIPE_ARCH_PPC_64
 #endif
 #endif
 
 #if defined(__s390x__)
 #define DETECT_ARCH_S390 1
-#define PIPE_ARCH_S390
 #endif
 
 #if defined(__arm__)
 #define DETECT_ARCH_ARM 1
-#define PIPE_ARCH_ARM
 #endif
 
 #if defined(__aarch64__) || defined(_M_ARM64)
 #define DETECT_ARCH_AARCH64 1
-#define PIPE_ARCH_AARCH64
 #endif
 
 #if defined(__mips64) && defined(__LP64__)
 #define DETECT_ARCH_MIPS64 1
-#define PIPE_ARCH_MIPS64
 #endif
 
 #if defined(__mips__)
 #define DETECT_ARCH_MIPS 1
-#define  PIPE_ARCH_MIPS
 #endif
 
 #ifndef DETECT_ARCH_X86
@@ -145,73 +135,6 @@
 
 #ifndef DETECT_ARCH_MIPS
 #define DETECT_ARCH_MIPS 0
-#endif
-
-/*
- * Endian detection.
- */
-
-#include "util/u_endian.h"
-
-/*
- * Auto-detect the operating system family.
- */
-#include "util/detect_os.h"
-
-#if DETECT_OS_LINUX
-#define PIPE_OS_LINUX
-#endif
-
-#if DETECT_OS_UNIX
-#define PIPE_OS_UNIX
-#endif
-
-#if DETECT_OS_ANDROID
-#define PIPE_OS_ANDROID
-#endif
-
-#if DETECT_OS_FREEBSD
-#define PIPE_OS_FREEBSD
-#endif
-
-#if DETECT_OS_BSD
-#define PIPE_OS_BSD
-#endif
-
-#if DETECT_OS_OPENBSD
-#define PIPE_OS_OPENBSD
-#endif
-
-#if DETECT_OS_NETBSD
-#define PIPE_OS_NETBSD
-#endif
-
-#if DETECT_OS_DRAGONFLY
-#define PIPE_OS_DRAGONFLY
-#endif
-
-#if DETECT_OS_HURD
-#define PIPE_OS_HURD
-#endif
-
-#if DETECT_OS_SOLARIS
-#define PIPE_OS_SOLARIS
-#endif
-
-#if DETECT_OS_APPLE
-#define PIPE_OS_APPLE
-#endif
-
-#if DETECT_OS_WINDOWS
-#define PIPE_OS_WINDOWS
-#endif
-
-#if DETECT_OS_HAIKU
-#define PIPE_OS_HAIKU
-#endif
-
-#if DETECT_OS_CYGWIN
-#define PIPE_OS_CYGWIN
 #endif
 
 #endif /* UTIL_DETECT_ARCH_H_ */
