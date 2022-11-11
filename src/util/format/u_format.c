@@ -33,6 +33,7 @@
  */
 
 #include "c11/threads.h"
+#include "util/detect_arch.h"
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
 #include "util/u_math.h"

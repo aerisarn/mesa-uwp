@@ -21,7 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include <u_format.h>
+#include "util/detect_arch.h"
+#include "util/format/u_format.h"
 
 #if (DETECT_ARCH_AARCH64 || DETECT_ARCH_ARM) && !defined(NO_FORMAT_ASM) && !defined(__SOFTFP__)
 

@@ -47,6 +47,8 @@
 
 #include "bitscan.h"
 #include "u_endian.h" /* for UTIL_ARCH_BIG_ENDIAN */
+#include "util/detect_cc.h"
+#include "util/detect_arch.h"
 
 #ifdef __cplusplus
 extern "C" {

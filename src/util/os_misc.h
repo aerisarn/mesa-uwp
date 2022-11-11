@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "detect_os.h"
+#include "util/detect.h"
 
 
 #if DETECT_OS_UNIX
