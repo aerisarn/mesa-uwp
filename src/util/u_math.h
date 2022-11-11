@@ -809,6 +809,20 @@ util_quantize_lod_bias(float lod)
    return roundf(lod * 256) / 256;
 }
 
+/**
+ * Adds two unsigned integers and if the addition
+ * overflows then clamp it to ~0U.
+ */
+static inline unsigned
+util_clamped_uadd(unsigned a, unsigned b)
+{
+   unsigned res = a + b;
+   if (res < a) {
+      res = ~0U;
+   }
+   return res;
+}
+
 #ifdef __cplusplus
 }
 #endif

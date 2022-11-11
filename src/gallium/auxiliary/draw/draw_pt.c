@@ -360,13 +360,9 @@ prim_restart_loop(struct draw_context *draw,
    struct pipe_draw_start_count_bias cur = *draw_info;
    cur.count = 0;
 
-   /* The largest index within a loop using the i variable as the index.
-    * Used for overflow detection */
-   const unsigned MAX_LOOP_IDX = 0xffffffff;
-
    for (unsigned j = 0; j < draw_info->count; j++) {
       unsigned index = 0;
-      unsigned i = draw_overflow_uadd(draw_info->start, j, MAX_LOOP_IDX);
+      unsigned i = util_clamped_uadd(draw_info->start, j);
       if (i < elt_max) {
          switch (draw->pt.user.eltSize) {
          case 1:
