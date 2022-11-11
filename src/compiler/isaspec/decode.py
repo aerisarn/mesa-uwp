@@ -246,7 +246,11 @@ next_instruction(bitmask_t *instr, BITSET_WORD *start)
 static inline uint64_t
 bitmask_to_uint64_t(bitmask_t mask)
 {
+%   if isa.bitsize <= 32:
+    return mask.bitset[0];
+%   else:
     return ((uint64_t)mask.bitset[1] << 32) | mask.bitset[0];
+%   endif
 }
 
 static inline bitmask_t
@@ -254,7 +258,9 @@ uint64_t_to_bitmask(uint64_t val)
 {
     bitmask_t mask = {
         .bitset[0] = val & 0xffffffff,
+%   if isa.bitsize > 32:
         .bitset[1] = (val >> 32) & 0xffffffff,
+%   endif
     };
 
     return mask;
