@@ -387,9 +387,9 @@ nir_build_wto_matrix_load(nir_builder *b, nir_ssa_def *instance_addr, nir_ssa_de
 
 /* When a hit is opaque the any_hit shader is skipped for this hit and the hit
  * is assumed to be an actual hit. */
-nir_ssa_def *
-hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, nir_ssa_def *flags,
-              nir_ssa_def *geometry_id_and_flags)
+static nir_ssa_def *
+hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags,
+              const struct radv_ray_flags *ray_flags, nir_ssa_def *geometry_id_and_flags)
 {
    nir_ssa_def *geom_force_opaque =
       nir_test_mask(b, geometry_id_and_flags, VK_GEOMETRY_OPAQUE_BIT_KHR << 28);
@@ -402,11 +402,8 @@ hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, nir_ssa_def *fl
    opaque = nir_bcsel(b, instance_force_opaque, nir_imm_bool(b, true), opaque);
    opaque = nir_bcsel(b, instance_force_non_opaque, nir_imm_bool(b, false), opaque);
 
-   nir_ssa_def *ray_force_opaque = nir_test_mask(b, flags, SpvRayFlagsOpaqueKHRMask);
-   nir_ssa_def *ray_force_non_opaque = nir_test_mask(b, flags, SpvRayFlagsNoOpaqueKHRMask);
-
-   opaque = nir_bcsel(b, ray_force_opaque, nir_imm_bool(b, true), opaque);
-   opaque = nir_bcsel(b, ray_force_non_opaque, nir_imm_bool(b, false), opaque);
+   opaque = nir_bcsel(b, ray_flags->force_opaque, nir_imm_bool(b, true), opaque);
+   opaque = nir_bcsel(b, ray_flags->force_not_opaque, nir_imm_bool(b, false), opaque);
    return opaque;
 }
 
@@ -424,7 +421,8 @@ create_bvh_descriptor(nir_builder *b)
 
 static void
 insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
-                               const struct radv_ray_traversal_args *args, nir_ssa_def *result,
+                               const struct radv_ray_traversal_args *args,
+                               const struct radv_ray_flags *ray_flags, nir_ssa_def *result,
                                nir_ssa_def *bvh_node)
 {
    if (!args->triangle_cb)
@@ -443,15 +441,9 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
                        VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR << 24);
       intersection.frontface = nir_ixor(b, intersection.frontface, switch_ccw);
 
-      nir_ssa_def *not_cull =
-         nir_inot(b, nir_test_mask(b, args->flags, SpvRayFlagsSkipTrianglesKHRMask));
+      nir_ssa_def *not_cull = ray_flags->no_skip_triangles;
       nir_ssa_def *not_facing_cull =
-         nir_ieq_imm(b,
-                     nir_iand(b, args->flags,
-                              nir_bcsel(b, intersection.frontface,
-                                        nir_imm_int(b, SpvRayFlagsCullFrontFacingTrianglesKHRMask),
-                                        nir_imm_int(b, SpvRayFlagsCullBackFacingTrianglesKHRMask))),
-                     0);
+         nir_bcsel(b, intersection.frontface, ray_flags->no_cull_front, ray_flags->no_cull_back);
 
       not_cull = nir_iand(
          b, not_cull,
@@ -471,22 +463,18 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
          intersection.base.primitive_id = nir_channel(b, triangle_info, 0);
          intersection.base.geometry_id_and_flags = nir_channel(b, triangle_info, 1);
          intersection.base.opaque =
-            hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags), args->flags,
+            hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags), ray_flags,
                           intersection.base.geometry_id_and_flags);
 
-         not_cull = nir_ieq_imm(b,
-                                nir_iand(b, args->flags,
-                                         nir_bcsel(b, intersection.base.opaque,
-                                                   nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
-                                                   nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
-                                0);
+         not_cull = nir_bcsel(b, intersection.base.opaque, ray_flags->no_cull_opaque,
+                              ray_flags->no_cull_no_opaque);
          nir_push_if(b, not_cull);
          {
             nir_ssa_def *divs[2] = {div, div};
             intersection.barycentrics =
                nir_fdiv(b, nir_channels(b, result, 0xc), nir_vec(b, divs, 2));
 
-            args->triangle_cb(b, &intersection, args);
+            args->triangle_cb(b, &intersection, args, ray_flags);
          }
          nir_pop_if(b, NULL);
       }
@@ -497,7 +485,8 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
 
 static void
 insert_traversal_aabb_case(struct radv_device *device, nir_builder *b,
-                           const struct radv_ray_traversal_args *args, nir_ssa_def *bvh_node)
+                           const struct radv_ray_traversal_args *args,
+                           const struct radv_ray_flags *ray_flags, nir_ssa_def *bvh_node)
 {
    if (!args->aabb_cb)
       return;
@@ -509,18 +498,11 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b,
    intersection.primitive_id = nir_channel(b, triangle_info, 0);
    intersection.geometry_id_and_flags = nir_channel(b, triangle_info, 1);
    intersection.opaque = hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
-                                       args->flags, intersection.geometry_id_and_flags);
+                                       ray_flags, intersection.geometry_id_and_flags);
 
-   nir_ssa_def *not_skip_aabb =
-      nir_inot(b, nir_test_mask(b, args->flags, SpvRayFlagsSkipAABBsKHRMask));
-   nir_ssa_def *not_cull = nir_iand(
-      b, not_skip_aabb,
-      nir_ieq_imm(
-         b,
-         nir_iand(b, args->flags,
-                  nir_bcsel(b, intersection.opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
-                            nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
-         0));
+   nir_ssa_def *not_cull =
+      nir_bcsel(b, intersection.opaque, ray_flags->no_cull_opaque, ray_flags->no_cull_no_opaque);
+   not_cull = nir_iand(b, not_cull, ray_flags->no_skip_aabbs);
    nir_push_if(b, not_cull);
    {
       args->aabb_cb(b, &intersection, args);
@@ -548,6 +530,24 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
       nir_ssa_def *desc = create_bvh_descriptor(b);
       nir_ssa_def *vec3ones = nir_imm_vec3(b, 1.0, 1.0, 1.0);
 
+      struct radv_ray_flags ray_flags = {
+         .force_opaque = nir_test_mask(b, args->flags, SpvRayFlagsOpaqueKHRMask),
+         .force_not_opaque = nir_test_mask(b, args->flags, SpvRayFlagsNoOpaqueKHRMask),
+         .terminate_on_first_hit =
+            nir_test_mask(b, args->flags, SpvRayFlagsTerminateOnFirstHitKHRMask),
+         .no_cull_front = nir_ieq_imm(
+            b, nir_iand_imm(b, args->flags, SpvRayFlagsCullFrontFacingTrianglesKHRMask), 0),
+         .no_cull_back = nir_ieq_imm(
+            b, nir_iand_imm(b, args->flags, SpvRayFlagsCullBackFacingTrianglesKHRMask), 0),
+         .no_cull_opaque =
+            nir_ieq_imm(b, nir_iand_imm(b, args->flags, SpvRayFlagsCullOpaqueKHRMask), 0),
+         .no_cull_no_opaque =
+            nir_ieq_imm(b, nir_iand_imm(b, args->flags, SpvRayFlagsCullNoOpaqueKHRMask), 0),
+         .no_skip_triangles =
+            nir_ieq_imm(b, nir_iand_imm(b, args->flags, SpvRayFlagsSkipTrianglesKHRMask), 0),
+         .no_skip_aabbs =
+            nir_ieq_imm(b, nir_iand_imm(b, args->flags, SpvRayFlagsSkipAABBsKHRMask), 0),
+      };
       nir_push_loop(b);
       {
          nir_push_if(
@@ -648,7 +648,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
             {
                nir_push_if(b, nir_ieq_imm(b, node_type, radv_bvh_node_aabb));
                {
-                  insert_traversal_aabb_case(device, b, args, global_bvh_node);
+                  insert_traversal_aabb_case(device, b, args, &ray_flags, global_bvh_node);
                }
                nir_push_else(b, NULL);
                {
@@ -761,7 +761,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
                   nir_load_deref(b, args->vars.origin), nir_load_deref(b, args->vars.dir),
                   nir_load_deref(b, args->vars.inv_dir));
             }
-            insert_traversal_triangle_case(device, b, args, result, global_bvh_node);
+            insert_traversal_triangle_case(device, b, args, &ray_flags, result, global_bvh_node);
          }
          nir_pop_if(b, NULL);
       }

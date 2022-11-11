@@ -322,10 +322,14 @@ copy_candidate_to_closest(nir_builder *b, nir_ssa_def *index, struct ray_query_v
 
 static void
 insert_terminate_on_first_hit(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
-                              bool break_on_terminate)
+                              const struct radv_ray_flags *ray_flags, bool break_on_terminate)
 {
-   nir_ssa_def *terminate_on_first_hit =
-      nir_test_mask(b, rq_load_var(b, index, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask);
+   nir_ssa_def *terminate_on_first_hit;
+   if (ray_flags)
+      terminate_on_first_hit = ray_flags->terminate_on_first_hit;
+   else
+      terminate_on_first_hit = nir_test_mask(b, rq_load_var(b, index, vars->flags),
+                                             SpvRayFlagsTerminateOnFirstHitKHRMask);
    nir_push_if(b, terminate_on_first_hit);
    {
       rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, false), 0x1);
@@ -340,7 +344,7 @@ lower_rq_confirm_intersection(nir_builder *b, nir_ssa_def *index, nir_intrinsic_
                               struct ray_query_vars *vars)
 {
    copy_candidate_to_closest(b, index, vars);
-   insert_terminate_on_first_hit(b, index, vars, false);
+   insert_terminate_on_first_hit(b, index, vars, NULL, false);
 }
 
 static void
@@ -351,7 +355,7 @@ lower_rq_generate_intersection(nir_builder *b, nir_ssa_def *index, nir_intrinsic
                            nir_fge(b, instr->src[1].ssa, rq_load_var(b, index, vars->tmin))));
    {
       copy_candidate_to_closest(b, index, vars);
-      insert_terminate_on_first_hit(b, index, vars, false);
+      insert_terminate_on_first_hit(b, index, vars, NULL, false);
       rq_store_var(b, index, vars->closest.t, instr->src[1].ssa, 0x1);
    }
    nir_pop_if(b, NULL);
@@ -604,7 +608,8 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
 
 static void
 handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *intersection,
-                          const struct radv_ray_traversal_args *args)
+                          const struct radv_ray_traversal_args *args,
+                          const struct radv_ray_flags *ray_flags)
 {
    struct traversal_data *data = args->data;
    struct ray_query_vars *vars = data->vars;
@@ -623,7 +628,7 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
    nir_push_if(b, intersection->base.opaque);
    {
       copy_candidate_to_closest(b, index, vars);
-      insert_terminate_on_first_hit(b, index, vars, true);
+      insert_terminate_on_first_hit(b, index, vars, ray_flags, true);
    }
    nir_push_else(b, NULL);
    {

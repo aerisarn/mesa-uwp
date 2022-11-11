@@ -999,7 +999,8 @@ struct traversal_data {
 
 static void
 handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *intersection,
-                          const struct radv_ray_traversal_args *args)
+                          const struct radv_ray_traversal_args *args,
+                          const struct radv_ray_flags *ray_flags)
 {
    struct traversal_data *data = args->data;
 
@@ -1056,10 +1057,8 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
    nir_store_var(b, data->vars->idx, sbt_idx, 1);
    nir_store_var(b, data->trav_vars->hit, nir_imm_true(b), 1);
 
-   nir_ssa_def *terminate_on_first_hit =
-      nir_test_mask(b, args->flags, SpvRayFlagsTerminateOnFirstHitKHRMask);
    nir_ssa_def *ray_terminated = nir_load_var(b, data->vars->ahit_terminate);
-   nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
+   nir_push_if(b, nir_ior(b, ray_flags->terminate_on_first_hit, ray_terminated));
    {
       nir_jump(b, nir_jump_break);
    }
