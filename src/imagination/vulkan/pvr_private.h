@@ -354,6 +354,7 @@ struct pvr_buffer_view {
    uint64_t texture_state[2];
 };
 
+#define PVR_TRANSFER_MAX_SOURCES 10U
 #define PVR_TRANSFER_MAX_CUSTOM_MAPPINGS 6U
 
 /** A surface describes a source or destination for a transfer operation. */
@@ -427,22 +428,8 @@ struct pvr_transfer_blit {
    VkOffset2D offset;
 };
 
-struct pvr_transfer_cmd {
-   /* Node to link this cmd into the transfer_cmds list in
-    * pvr_sub_cmd::transfer structure.
-    */
-   struct list_head link;
-
-   uint32_t flags;
-
-   struct pvr_transfer_cmd_surface src;
-   bool src_present;
-
-   union fi clear_color[4];
-
-   struct pvr_transfer_cmd_surface dst;
-
-   VkRect2D scissor;
+struct pvr_transfer_cmd_source {
+   struct pvr_transfer_cmd_surface surface;
 
    uint32_t mapping_count;
    struct pvr_rect_mapping mappings[PVR_TRANSFER_MAX_CUSTOM_MAPPINGS];
@@ -458,6 +445,25 @@ struct pvr_transfer_cmd {
 
    /* MSAA resolve operation. */
    enum pvr_resolve_op resolve_op;
+};
+
+struct pvr_transfer_cmd {
+   /* Node to link this cmd into the transfer_cmds list in
+    * pvr_sub_cmd::transfer structure.
+    */
+   struct list_head link;
+
+   uint32_t flags;
+
+   uint32_t source_count;
+
+   struct pvr_transfer_cmd_source sources[PVR_TRANSFER_MAX_SOURCES];
+
+   union fi clear_color[4];
+
+   struct pvr_transfer_cmd_surface dst;
+
+   VkRect2D scissor;
 
    struct pvr_transfer_blit blit;
 

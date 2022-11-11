@@ -63,9 +63,9 @@ pvr_transfer_cmd_alloc(struct pvr_cmd_buffer *cmd_buffer)
    }
 
    /* transfer_cmd->mapping_count is already set to zero. */
-   transfer_cmd->filter = PVR_FILTER_POINT;
-   transfer_cmd->resolve_op = PVR_RESOLVE_BLEND;
-   transfer_cmd->addr_mode = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
+   transfer_cmd->sources[0].filter = PVR_FILTER_POINT;
+   transfer_cmd->sources[0].resolve_op = PVR_RESOLVE_BLEND;
+   transfer_cmd->sources[0].addr_mode = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE);
    transfer_cmd->cmd_buffer = cmd_buffer;
 
    return transfer_cmd;
@@ -325,17 +325,16 @@ void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
             if (!transfer_cmd)
                return;
 
-            transfer_cmd->mappings[0].src_rect = src_rect;
-            transfer_cmd->mappings[0].dst_rect = dst_rect;
-            transfer_cmd->mapping_count++;
+            transfer_cmd->sources[0].mappings[0].src_rect = src_rect;
+            transfer_cmd->sources[0].mappings[0].dst_rect = dst_rect;
+            transfer_cmd->sources[0].mapping_count++;
 
-            transfer_cmd->src = src_surface;
-            transfer_cmd->src_present = true;
+            transfer_cmd->sources[0].surface = src_surface;
+            transfer_cmd->sources[0].filter = filter;
+            transfer_cmd->source_count = 1;
 
             transfer_cmd->dst = dst_surface;
             transfer_cmd->scissor = dst_rect;
-
-            transfer_cmd->filter = filter;
 
             result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
             if (result != VK_SUCCESS) {
@@ -479,20 +478,21 @@ pvr_copy_or_resolve_image_region(struct pvr_cmd_buffer *cmd_buffer,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       transfer_cmd->flags |= flags;
-      transfer_cmd->resolve_op = resolve_op;
+      transfer_cmd->sources[0].resolve_op = resolve_op;
 
-      pvr_setup_surface_for_image(cmd_buffer->device,
-                                  &transfer_cmd->src,
-                                  &transfer_cmd->mappings[0U].src_rect,
-                                  src,
-                                  region->srcSubresource.baseArrayLayer,
-                                  i,
-                                  region->srcSubresource.mipLevel,
-                                  &region->srcOffset,
-                                  &src_extent,
-                                  region->srcOffset.z + i,
-                                  src_format,
-                                  region->srcSubresource.aspectMask);
+      pvr_setup_surface_for_image(
+         cmd_buffer->device,
+         &transfer_cmd->sources[0].surface,
+         &transfer_cmd->sources[0].mappings[0U].src_rect,
+         src,
+         region->srcSubresource.baseArrayLayer,
+         i,
+         region->srcSubresource.mipLevel,
+         &region->srcOffset,
+         &src_extent,
+         region->srcOffset.z + i,
+         src_format,
+         region->srcSubresource.aspectMask);
 
       pvr_setup_surface_for_image(cmd_buffer->device,
                                   &transfer_cmd->dst,
@@ -507,9 +507,9 @@ pvr_copy_or_resolve_image_region(struct pvr_cmd_buffer *cmd_buffer,
                                   dst_format,
                                   region->dstSubresource.aspectMask);
 
-      transfer_cmd->src_present = true;
-      transfer_cmd->mappings[0U].dst_rect = transfer_cmd->scissor;
-      transfer_cmd->mapping_count++;
+      transfer_cmd->sources[0].mappings[0U].dst_rect = transfer_cmd->scissor;
+      transfer_cmd->sources[0].mapping_count++;
+      transfer_cmd->source_count = 1;
 
       result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
       if (result != VK_SUCCESS) {
@@ -733,17 +733,18 @@ pvr_copy_buffer_to_image_region(struct pvr_cmd_buffer *cmd_buffer,
 
          transfer_cmd->flags = flags;
 
-         pvr_setup_buffer_surface(&transfer_cmd->src,
-                                  &transfer_cmd->mappings[0].src_rect,
-                                  buffer->dev_addr,
-                                  buffer_offset,
-                                  src_format,
-                                  region->imageExtent.width,
-                                  region->imageExtent.height,
-                                  row_length_in_texels);
+         pvr_setup_buffer_surface(
+            &transfer_cmd->sources[0].surface,
+            &transfer_cmd->sources[0].mappings[0].src_rect,
+            buffer->dev_addr,
+            buffer_offset,
+            src_format,
+            region->imageExtent.width,
+            region->imageExtent.height,
+            row_length_in_texels);
 
-         transfer_cmd->src.depth = 1;
-         transfer_cmd->src_present = true;
+         transfer_cmd->sources[0].surface.depth = 1;
+         transfer_cmd->source_count = 1;
 
          pvr_setup_transfer_surface(cmd_buffer->device,
                                     &transfer_cmd->dst,
@@ -757,8 +758,8 @@ pvr_copy_buffer_to_image_region(struct pvr_cmd_buffer *cmd_buffer,
                                     dst_format,
                                     region->imageSubresource.aspectMask);
 
-         transfer_cmd->mappings[0].dst_rect = transfer_cmd->scissor;
-         transfer_cmd->mapping_count++;
+         transfer_cmd->sources[0].mappings[0].dst_rect = transfer_cmd->scissor;
+         transfer_cmd->sources[0].mapping_count++;
 
          result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
          if (result != VK_SUCCESS) {
@@ -905,12 +906,12 @@ pvr_copy_image_to_buffer_region(struct pvr_device *device,
          if (!transfer_cmd)
             return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-         transfer_cmd->mappings[0].src_rect = src_rect;
-         transfer_cmd->mappings[0].dst_rect = dst_rect;
-         transfer_cmd->mapping_count++;
+         transfer_cmd->sources[0].mappings[0].src_rect = src_rect;
+         transfer_cmd->sources[0].mappings[0].dst_rect = dst_rect;
+         transfer_cmd->sources[0].mapping_count++;
 
-         transfer_cmd->src = src_surface;
-         transfer_cmd->src_present = true;
+         transfer_cmd->sources[0].surface = src_surface;
+         transfer_cmd->source_count = 1;
 
          transfer_cmd->dst = dst_surface;
          transfer_cmd->scissor = dst_rect;
@@ -1142,15 +1143,16 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       if (!is_fill) {
-         pvr_setup_buffer_surface(&transfer_cmd->src,
-                                  &transfer_cmd->mappings[0].src_rect,
-                                  src_addr,
-                                  offset + src_offset,
-                                  vk_format,
-                                  width,
-                                  height,
-                                  width);
-         transfer_cmd->src_present = true;
+         pvr_setup_buffer_surface(
+            &transfer_cmd->sources[0].surface,
+            &transfer_cmd->sources[0].mappings[0].src_rect,
+            src_addr,
+            offset + src_offset,
+            vk_format,
+            width,
+            height,
+            width);
+         transfer_cmd->source_count = 1;
       } else {
          transfer_cmd->flags |= PVR_TRANSFER_CMD_FLAGS_FILL;
 
@@ -1167,10 +1169,11 @@ static VkResult pvr_cmd_copy_buffer_region(struct pvr_cmd_buffer *cmd_buffer,
                                height,
                                width);
 
-      if (transfer_cmd->src_present)
-         transfer_cmd->mappings[0].dst_rect = transfer_cmd->scissor;
+      if (transfer_cmd->source_count > 0) {
+         transfer_cmd->sources[0].mappings[0].dst_rect = transfer_cmd->scissor;
 
-      transfer_cmd->mapping_count++;
+         transfer_cmd->sources[0].mapping_count++;
+      }
 
       result = pvr_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
       if (result != VK_SUCCESS) {

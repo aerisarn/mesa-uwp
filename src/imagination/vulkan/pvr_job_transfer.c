@@ -70,14 +70,19 @@ enum pvr_paired_tiles {
    PVR_PAIRED_TILES_Y
 };
 
-struct pvr_transfer_pass {
-   uint32_t dst_offset;
-
+struct pvr_transfer_wa_source {
    uint32_t src_offset;
    uint32_t mapping_count;
    struct pvr_rect_mapping mappings[PVR_TRANSFER_MAX_CUSTOM_MAPPINGS];
    bool extend_height;
    bool byte_unwind;
+};
+
+struct pvr_transfer_pass {
+   uint32_t dst_offset;
+
+   uint32_t source_count;
+   struct pvr_transfer_wa_source sources[PVR_TRANSFER_MAX_SOURCES];
 
    uint32_t clip_rects_count;
    VkRect2D clip_rects[PVR_TRANSFER_MAX_CLIP_RECTS];
@@ -153,7 +158,7 @@ struct pvr_transfer_3d_state {
    struct pvr_transfer_custom_mapping custom_mapping;
    uint32_t pass_idx;
 
-   enum pvr_filter filter;
+   enum pvr_filter filter[PVR_TRANSFER_MAX_SOURCES];
    bool custom_filter;
 
    enum pvr_paired_tiles pair_tiles;
@@ -520,18 +525,19 @@ static VkResult pvr_pbe_src_format(struct pvr_transfer_cmd *transfer_cmd,
                                    struct pvr_tq_shader_properties *prop)
 {
    struct pvr_tq_layer_properties *layer = &prop->layer_props;
-   const enum pvr_filter filter =
-      transfer_cmd->src_present ? transfer_cmd->filter : PVR_FILTER_POINT;
+   const enum pvr_filter filter = transfer_cmd->source_count
+                                     ? transfer_cmd->sources[0].filter
+                                     : PVR_FILTER_POINT;
    const uint32_t flags = transfer_cmd->flags;
    VkFormat dst_format = transfer_cmd->dst.vk_format;
    const struct pvr_transfer_cmd_surface *src;
    VkFormat src_format;
    bool down_scale;
 
-   if (transfer_cmd->src_present) {
-      src = &transfer_cmd->src;
-      down_scale = transfer_cmd->resolve_op == PVR_RESOLVE_BLEND &&
-                   transfer_cmd->src.sample_count > 1U &&
+   if (transfer_cmd->source_count > 0) {
+      src = &transfer_cmd->sources[0].surface;
+      down_scale = transfer_cmd->sources[0].resolve_op == PVR_RESOLVE_BLEND &&
+                   transfer_cmd->sources[0].surface.sample_count > 1U &&
                    transfer_cmd->dst.sample_count <= 1U;
    } else {
       src = &transfer_cmd->dst;
@@ -943,8 +949,9 @@ static void pvr_pbe_setup_swizzle(const struct pvr_transfer_cmd *transfer_cmd,
                                       UTIL_FORMAT_COLORSPACE_RGB,
                                       0U);
 
-      if (transfer_cmd->src_present && vk_format_is_alpha(dst->vk_format)) {
-         if (vk_format_has_alpha(transfer_cmd->src.vk_format)) {
+      if (transfer_cmd->source_count > 0 &&
+          vk_format_is_alpha(dst->vk_format)) {
+         if (vk_format_has_alpha(transfer_cmd->sources[0].surface.vk_format)) {
             /* Modify the destination format swizzle to always source from
              * src0.
              */
@@ -976,10 +983,14 @@ static void pvr_pbe_setup_swizzle(const struct pvr_transfer_cmd *transfer_cmd,
       } else if (red_width == 32U && !state->dont_force_pbe) {
          uint32_t count = 0U;
 
-         if (transfer_cmd->src_present) {
-            VkFormat src_format = transfer_cmd->src.vk_format;
-            count = vk_format_get_common_color_channel_count(src_format,
-                                                             dst->vk_format);
+         for (uint32_t i = 0; i < transfer_cmd->source_count; i++) {
+            VkFormat src_format = transfer_cmd->sources[i].surface.vk_format;
+            uint32_t tmp;
+
+            tmp = vk_format_get_common_color_channel_count(src_format,
+                                                           dst->vk_format);
+
+            count = MAX2(count, tmp);
          }
 
          switch (count) {
@@ -1400,18 +1411,22 @@ static void pvr_uv_space(const struct pvr_device_info *dev_info,
    } else {
       state->empty_dst = false;
 
-      if (transfer_cmd->src_present) {
+      if (transfer_cmd->source_count > 0) {
          struct pvr_tq_layer_properties *layer =
             &state->shader_props.layer_props;
 
-         const VkRect2D *src_rect = &transfer_cmd->mappings[0U].src_rect;
-         const VkRect2D *dst_rect = &transfer_cmd->mappings[0U].dst_rect;
+         const VkRect2D *src_rect =
+            &transfer_cmd->sources[0U].mappings[0U].src_rect;
+         const VkRect2D *dst_rect =
+            &transfer_cmd->sources[0U].mappings[0U].dst_rect;
          int32_t dst_x1 = dst_rect->offset.x + dst_rect->extent.width;
          int32_t dst_y1 = dst_rect->offset.y + dst_rect->extent.height;
          int32_t src_x1 = src_rect->offset.x + src_rect->extent.width;
          int32_t src_y1 = src_rect->offset.y + src_rect->extent.height;
 
-         if (state->filter > PVR_FILTER_POINT) {
+         assert(transfer_cmd->source_count == 1);
+
+         if (state->filter[0U] > PVR_FILTER_POINT) {
             layer->layer_floats = PVR_INT_COORD_SET_FLOATS_4;
          } else if (src_rect->extent.width == 0U ||
                     src_rect->extent.height == 0U) {
@@ -1587,6 +1602,7 @@ static VkResult pvr_image_state_for_surface(
    const struct pvr_transfer_cmd *transfer_cmd,
    const struct pvr_transfer_cmd_surface *surface,
    uint32_t load,
+   uint32_t source,
    const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout,
    struct pvr_transfer_3d_state *state,
    uint32_t uf_image,
@@ -1627,84 +1643,88 @@ pvr_sampler_image_state(struct pvr_transfer_ctx *ctx,
                         uint32_t *mem_ptr)
 {
    if (!state->empty_dst) {
-      struct pvr_tq_layer_properties *layer =
-         &state->shader_props.layer_props;
-      uint32_t max_load =
-         pvr_pbe_pixel_num_loads(layer->pbe_format,
-                                 state->shader_props.alpha_type);
       uint32_t uf_sampler = 0U;
       uint32_t uf_image = 0U;
 
-      for (uint32_t load = 0U; load < max_load; load++) {
-         const struct pvr_transfer_cmd_surface *surface;
-         enum pvr_filter filter;
-         VkResult result;
+      for (uint32_t source = 0; source < transfer_cmd->source_count; source++) {
+         struct pvr_tq_layer_properties *layer =
+            &state->shader_props.layer_props;
+         uint32_t max_load =
+            pvr_pbe_pixel_num_loads(layer->pbe_format,
+                                    state->shader_props.alpha_type);
 
-         switch (layer->pbe_format) {
-         case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_S8_D32S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D32S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D32S8_D32S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D32S8_D32S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_S8_D24S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D24S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D24S8_D24S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D32_D24S8:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_F16F16:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_F16_U8:
-            if (load > 0U) {
-               surface = &transfer_cmd->dst;
+         for (uint32_t load = 0U; load < max_load; load++) {
+            const struct pvr_transfer_cmd_surface *surface;
+            enum pvr_filter filter;
+            VkResult result;
 
-               if (state->shader_props.alpha_type != PVR_ALPHA_NONE)
-                  filter = PVR_FILTER_POINT;
-               else
-                  filter = transfer_cmd->filter;
-            } else {
-               surface = &transfer_cmd->src;
-               filter = state->filter;
+            switch (layer->pbe_format) {
+            case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_S8_D32S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D32S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D32S8_D32S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D32S8_D32S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_S8_D24S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D24S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D24S8_D24S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D32_D24S8:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_F16F16:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_F16_U8:
+               if (load > 0U) {
+                  surface = &transfer_cmd->dst;
+
+                  if (state->shader_props.alpha_type != PVR_ALPHA_NONE)
+                     filter = PVR_FILTER_POINT;
+                  else
+                     filter = transfer_cmd->sources[source].filter;
+               } else {
+                  surface = &transfer_cmd->sources[source].surface;
+                  filter = state->filter[source];
+               }
+               break;
+
+            case PVR_TRANSFER_PBE_PIXEL_SRC_Y_UV_INTERLEAVED:
+            case PVR_TRANSFER_PBE_PIXEL_SRC_Y_U_V:
+               surface = &transfer_cmd->sources[source].surface;
+               filter = state->filter[source];
+               break;
+
+            default:
+               surface = &transfer_cmd->sources[source + load].surface;
+               filter = state->filter[source + load];
+               break;
             }
-            break;
 
-         case PVR_TRANSFER_PBE_PIXEL_SRC_Y_UV_INTERLEAVED:
-         case PVR_TRANSFER_PBE_PIXEL_SRC_Y_U_V:
-            surface = &transfer_cmd->src;
-            filter = state->filter;
-            break;
+            if (load < pvr_int_pbe_pixel_num_sampler_and_image_states(
+                          layer->pbe_format,
+                          state->shader_props.alpha_type)) {
+               const struct pvr_device_info *dev_info =
+                  &transfer_cmd->cmd_buffer->device->pdevice->dev_info;
 
-         default:
-            surface = &transfer_cmd->src;
-            filter = state->filter;
-            break;
-         }
+               result = pvr_sampler_state_for_surface(dev_info,
+                                                      surface,
+                                                      filter,
+                                                      sh_reg_layout,
+                                                      uf_sampler,
+                                                      mem_ptr);
+               if (result != VK_SUCCESS)
+                  return result;
 
-         if (load < pvr_int_pbe_pixel_num_sampler_and_image_states(
-                       layer->pbe_format,
-                       state->shader_props.alpha_type)) {
-            const struct pvr_device_info *dev_info =
-               &transfer_cmd->cmd_buffer->device->pdevice->dev_info;
+               uf_sampler++;
 
-            result = pvr_sampler_state_for_surface(dev_info,
-                                                   surface,
-                                                   filter,
-                                                   sh_reg_layout,
-                                                   uf_sampler,
-                                                   mem_ptr);
-            if (result != VK_SUCCESS)
-               return result;
+               result = pvr_image_state_for_surface(ctx,
+                                                    transfer_cmd,
+                                                    surface,
+                                                    load,
+                                                    source,
+                                                    sh_reg_layout,
+                                                    state,
+                                                    uf_image,
+                                                    mem_ptr);
+               if (result != VK_SUCCESS)
+                  return result;
 
-            uf_sampler++;
-
-            result = pvr_image_state_for_surface(ctx,
-                                                 transfer_cmd,
-                                                 surface,
-                                                 load,
-                                                 sh_reg_layout,
-                                                 state,
-                                                 uf_image,
-                                                 mem_ptr);
-            if (result != VK_SUCCESS)
-               return result;
-
-            uf_image++;
+               uf_image++;
+            }
          }
       }
    }
@@ -1743,9 +1763,10 @@ pvr_dma_texture_floats(const struct pvr_transfer_cmd *transfer_cmd,
                        uint32_t *mem_ptr)
 
 {
-   if (transfer_cmd->src_present) {
-      struct pvr_tq_layer_properties *layer = &state->shader_props.layer_props;     
-      const struct pvr_rect_mapping *mapping = &transfer_cmd->mappings[0U];
+   if (transfer_cmd->source_count > 0) {
+      struct pvr_tq_layer_properties *layer = &state->shader_props.layer_props;
+      const struct pvr_rect_mapping *mapping =
+         &transfer_cmd->sources[0].mappings[0U];
       VkRect2D src_rect = mapping->src_rect;
       VkRect2D dst_rect = mapping->dst_rect;
 
@@ -1837,12 +1858,14 @@ static bool pvr_int_pbe_pixel_requires_usc_filter(
  */
 static VkResult pvr_msaa_state(const struct pvr_device_info *dev_info,
                                const struct pvr_transfer_cmd *transfer_cmd,
-                               struct pvr_transfer_3d_state *state)
+                               struct pvr_transfer_3d_state *state,
+                               uint32_t source)
 {
    struct pvr_tq_shader_properties *shader_props = &state->shader_props;
    struct pvr_tq_layer_properties *layer = &shader_props->layer_props;
    struct pvr_winsys_transfer_regs *const regs = &state->regs;
-   uint32_t src_sample_count = transfer_cmd->src.sample_count & ~1U;
+   uint32_t src_sample_count =
+      transfer_cmd->sources[source].surface.sample_count & ~1U;
    uint32_t dst_sample_count = transfer_cmd->dst.sample_count & ~1U;
    uint32_t bsample_count = 0U;
 
@@ -1873,7 +1896,7 @@ static VkResult pvr_msaa_state(const struct pvr_device_info *dev_info,
       layer->msaa = false;
    } else if (src_sample_count != 0U && dst_sample_count == 0U) {
       /* M -> S (resolve). */
-      layer->resolve_op = transfer_cmd->resolve_op;
+      layer->resolve_op = transfer_cmd->sources[source].resolve_op;
 
       if ((uint32_t)layer->resolve_op >=
           (src_sample_count + (uint32_t)PVR_RESOLVE_SAMPLE0)) {
@@ -1886,13 +1909,14 @@ static VkResult pvr_msaa_state(const struct pvr_device_info *dev_info,
       switch (layer->resolve_op) {
       case PVR_RESOLVE_MIN:
       case PVR_RESOLVE_MAX:
-         switch (transfer_cmd->src.vk_format) {
+         switch (transfer_cmd->sources[source].surface.vk_format) {
          case VK_FORMAT_D32_SFLOAT:
          case VK_FORMAT_D16_UNORM:
          case VK_FORMAT_S8_UINT:
          case VK_FORMAT_D24_UNORM_S8_UINT:
          case VK_FORMAT_X8_D24_UNORM_PACK32:
-            if (transfer_cmd->src.vk_format != transfer_cmd->dst.vk_format) {
+            if (transfer_cmd->sources[source].surface.vk_format !=
+                transfer_cmd->dst.vk_format) {
                return vk_error(transfer_cmd->cmd_buffer,
                                VK_ERROR_FORMAT_NOT_SUPPORTED);
             }
@@ -2587,33 +2611,46 @@ pvr_isp_scan_direction(struct pvr_transfer_cmd *transfer_cmd,
                        bool custom_mapping,
                        enum PVRX(CR_DIR_TYPE) *const dir_type_out)
 {
-   struct pvr_transfer_cmd_surface *src = &transfer_cmd->src;
    pvr_dev_addr_t dst_dev_addr = transfer_cmd->dst.dev_addr;
-   pvr_dev_addr_t src_dev_addr = src->dev_addr;
    bool backwards_in_x = false;
    bool backwards_in_y = false;
+   bool done_dest_rect = false;
+   VkRect2D dst_rect;
+   int32_t dst_x1;
+   int32_t dst_y1;
 
-   if (src_dev_addr.addr == dst_dev_addr.addr && !custom_mapping) {
-      VkRect2D *src_rect = &transfer_cmd->mappings[0].src_rect;
-      VkRect2D *dst_rect = &transfer_cmd->mappings[0].dst_rect;
-      int32_t src_x1 = src_rect->offset.x + src_rect->extent.width;
-      int32_t src_y1 = src_rect->offset.y + src_rect->extent.height;
-      int32_t dst_x1 = dst_rect->offset.x + dst_rect->extent.width;
-      int32_t dst_y1 = dst_rect->offset.y + dst_rect->extent.height;
+   for (uint32_t i = 0; i < transfer_cmd->source_count; i++) {
+      struct pvr_transfer_cmd_source *src = &transfer_cmd->sources[i];
+      pvr_dev_addr_t src_dev_addr = src->surface.dev_addr;
 
-      if ((dst_rect->offset.x < src_x1 && dst_x1 > src_rect->offset.x) &&
-          (dst_rect->offset.y < src_y1 && dst_y1 > src_rect->offset.y)) {
-         if (src_rect->extent.width != dst_rect->extent.width ||
-             src_rect->extent.height != dst_rect->extent.height) {
-            /* Scaling is not possible. */
-            return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
+      if (src_dev_addr.addr == dst_dev_addr.addr && !custom_mapping) {
+         VkRect2D *src_rect = &src->mappings[0].src_rect;
+         int32_t src_x1 = src_rect->offset.x + src_rect->extent.width;
+         int32_t src_y1 = src_rect->offset.y + src_rect->extent.height;
+
+         if (!done_dest_rect) {
+            dst_rect = src->mappings[0].dst_rect;
+
+            dst_x1 = dst_rect.offset.x + dst_rect.extent.width;
+            dst_y1 = dst_rect.offset.y + dst_rect.extent.height;
+
+            done_dest_rect = true;
          }
 
-         /* Direction is to the right. */
-         backwards_in_x = dst_rect->offset.x > src_rect->offset.x;
+         if ((dst_rect.offset.x < src_x1 && dst_x1 > src_rect->offset.x) &&
+             (dst_rect.offset.y < src_y1 && dst_y1 > src_rect->offset.y)) {
+            if (src_rect->extent.width != dst_rect.extent.width ||
+                src_rect->extent.height != dst_rect.extent.height) {
+               /* Scaling is not possible. */
+               return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
+            }
 
-         /* Direction is to the bottom. */
-         backwards_in_y = dst_rect->offset.y > src_rect->offset.y;
+            /* Direction is to the right. */
+            backwards_in_x = dst_rect.offset.x > src_rect->offset.x;
+
+            /* Direction is to the bottom. */
+            backwards_in_y = dst_rect.offset.y > src_rect->offset.y;
+         }
       }
    }
 
@@ -2653,6 +2690,9 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
    if ((transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL) != 0U) {
       uint32_t packed_color[4U] = { 0U };
+
+      if (transfer_cmd->source_count != 0U)
+         return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
 
       if (vk_format_is_compressed(transfer_cmd->dst.vk_format))
          return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
@@ -2696,7 +2736,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
       state->pds_shader_task_offset = 0U;
       state->uni_tex_code_offset = 0U;
       state->tex_state_data_offset = 0U;
-   } else if (transfer_cmd->src_present) {
+   } else if (transfer_cmd->source_count > 0U) {
       const struct pvr_tq_frag_sh_reg_layout nop_sh_reg_layout = {
          /* TODO: Setting this to 1 so that we don't try to pvr_bo_alloc() with
           * zero size. The device will ignore the PDS program if USC_SHAREDSIZE
@@ -2722,9 +2762,10 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
       state->shader_props.layer_props.byte_unwind = 0U;
       state->shader_props.layer_props.sample =
-         transfer_cmd->src.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED;
+         transfer_cmd->sources[0].surface.mem_layout ==
+         PVR_MEMLAYOUT_3DTWIDDLED;
 
-      result = pvr_msaa_state(dev_info, transfer_cmd, state);
+      result = pvr_msaa_state(dev_info, transfer_cmd, state, 0);
       if (result != VK_SUCCESS)
          return result;
 
@@ -2740,8 +2781,9 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
          return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
       }
 
-      if (state->filter == PVR_FILTER_LINEAR &&
-          pvr_requires_usc_linear_filter(transfer_cmd->src.vk_format)) {
+      if (state->filter[0] == PVR_FILTER_LINEAR &&
+          pvr_requires_usc_linear_filter(
+             transfer_cmd->sources[0].surface.vk_format)) {
          if (pvr_int_pbe_usc_linear_filter(
                 state->shader_props.layer_props.pbe_format,
                 state->shader_props.layer_props.sample,
@@ -2810,9 +2852,10 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
       pvr_dma_texture_floats(transfer_cmd, state, sh_reg_layout, dma_space);
 
-      if (transfer_cmd->src.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED) {
+      if (transfer_cmd->sources[0].surface.mem_layout ==
+          PVR_MEMLAYOUT_3DTWIDDLED) {
          dma_space[pvr_dynamic_const_reg_advance(sh_reg_layout, state)] =
-            fui(transfer_cmd->src.z_position);
+            fui(transfer_cmd->sources[0].surface.z_position);
       }
 
       pvr_write_usc_constants(sh_reg_layout, dma_space);
@@ -2901,14 +2944,13 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
 static VkResult
 pvr_pbe_src_format_f2d(uint32_t merge_flags,
-                       struct pvr_transfer_cmd_surface *src,
-                       enum pvr_filter filter,
+                       struct pvr_transfer_cmd_source *src,
                        VkFormat dst_format,
                        bool down_scale,
                        bool dont_force_pbe,
                        enum pvr_transfer_pbe_pixel_src *pixel_format_out)
 {
-   VkFormat src_format = src->vk_format;
+   VkFormat src_format = src->surface.vk_format;
 
    /* This has to come before the rest as S8 for instance is integer and
     * signedsess check fails on D24S8.
@@ -2916,8 +2958,8 @@ pvr_pbe_src_format_f2d(uint32_t merge_flags,
    if (vk_format_is_depth_or_stencil(src_format) ||
        vk_format_is_depth_or_stencil(dst_format) ||
        merge_flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) {
-      return pvr_pbe_src_format_ds(src,
-                                   filter,
+      return pvr_pbe_src_format_ds(&src->surface,
+                                   src->filter,
                                    dst_format,
                                    merge_flags,
                                    down_scale,
@@ -3085,12 +3127,11 @@ static void pvr_tsp_floats(const struct pvr_device_info *dev_info,
 
 static void
 pvr_isp_prim_block_tsp_vertex_block(const struct pvr_device_info *dev_info,
-                                    const struct pvr_transfer_cmd_surface *src,
+                                    const struct pvr_transfer_cmd_source *src,
                                     struct pvr_rect_mapping *mappings,
                                     bool custom_filter,
                                     uint32_t num_mappings,
                                     uint32_t mapping_offset,
-                                    enum pvr_filter filter,
                                     uint32_t tsp_comp_format_in_dw,
                                     uint32_t **const cs_ptr_out)
 {
@@ -3109,14 +3150,15 @@ pvr_isp_prim_block_tsp_vertex_block(const struct pvr_device_info *dev_info,
     * where it should go if ever needed.
     */
    for (uint32_t i = mapping_offset; i < mapping_offset + num_mappings; i++) {
-      bool z_present = src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED;
+      bool z_present = src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED;
       const float recips[3U] = {
-         [X] = 1.0f / (float)src->width,
-         [Y] = 1.0f / (float)src->height,
-         [Z] = z_present ? 1.0f / (float)src->depth : 0.0f,
+         [X] = 1.0f / (float)src->surface.width,
+         [Y] = 1.0f / (float)src->surface.height,
+         [Z] = z_present ? 1.0f / (float)src->surface.depth : 0.0f,
       };
-      float z_pos = (filter < PVR_FILTER_LINEAR) ? floor(src->z_position + 0.5f)
-                                                 : src->z_position;
+      float z_pos = (src->filter < PVR_FILTER_LINEAR)
+                       ? floor(src->surface.z_position + 0.5f)
+                       : src->surface.z_position;
 
       pvr_tsp_floats(dev_info,
                      &mappings[i].src_rect,
@@ -3637,7 +3679,7 @@ pvr_isp_prim_block_isp_vertices(const struct pvr_device_info *dev_info,
 
 static uint32_t
 pvr_isp_primitive_block_size(const struct pvr_device_info *dev_info,
-                             const struct pvr_transfer_cmd_surface *src,
+                             const struct pvr_transfer_cmd_source *src,
                              uint32_t num_mappings)
 {
    uint32_t num_isp_vertices = num_mappings * 4U;
@@ -3655,7 +3697,7 @@ pvr_isp_primitive_block_size(const struct pvr_device_info *dev_info,
       num_tsp_vertices_per_isp_vertex = 0U;
    } else {
       num_tsp_vertices_per_isp_vertex =
-         src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
+         src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
    }
 
    tsp_data_size = num_isp_vertices * PVR_TRANSFER_NUM_LAYERS * 4U *
@@ -3674,7 +3716,7 @@ pvr_isp_primitive_block_size(const struct pvr_device_info *dev_info,
       tsp_comp_format_dw = color_fill ? 0U : PVR_TRANSFER_NUM_LAYERS;
 
       if (!color_fill) {
-         if (src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
+         if (src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
             tsp_comp_format_dw *= 2U;
       }
 
@@ -3702,7 +3744,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
                         struct pvr_transfer_ctx *ctx,
                         const struct pvr_transfer_cmd *transfer_cmd,
                         struct pvr_transfer_prep_data *prep_data,
-                        const struct pvr_transfer_cmd_surface *src,
+                        const struct pvr_transfer_cmd_source *src,
                         bool custom_filter,
                         struct pvr_rect_mapping *mappings,
                         uint32_t num_mappings,
@@ -3725,7 +3767,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
       num_tsp_vertices_per_isp_vert = 0U;
    } else {
       num_tsp_vertices_per_isp_vert =
-         src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
+         src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
    }
 
    tsp_data_size_in_bytes = num_isp_vertices * PVR_TRANSFER_NUM_LAYERS * 4U *
@@ -3736,7 +3778,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
    } else {
       tsp_comp_format_in_dw = color_fill ? 0U : PVR_TRANSFER_NUM_LAYERS;
 
-      if (!color_fill && src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
+      if (!color_fill && src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
          tsp_comp_format_in_dw *= 2U;
    }
 
@@ -3783,7 +3825,6 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
                                              custom_filter,
                                              num_mappings,
                                              mapping_offset,
-                                             transfer_cmd->filter,
                                              tsp_comp_format_in_dw,
                                              cs_ptr_out);
       }
@@ -3802,7 +3843,6 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
                                              custom_filter,
                                              num_mappings,
                                              mapping_offset,
-                                             transfer_cmd->filter,
                                              tsp_comp_format_in_dw,
                                              cs_ptr_out);
       }
@@ -3893,6 +3933,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                                     struct pvr_transfer_prep_data *prep_data)
 {
    const uint32_t max_mappings_per_pb = pvr_transfer_max_quads_per_pb(dev_info);
+   bool fill_blit = (transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL) != 0U;
    uint32_t free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
    struct pvr_transfer_3d_state *const state = &prep_data->state;
    struct pvr_winsys_transfer_regs *const regs = &state->regs;
@@ -3908,36 +3949,43 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    struct pvr_bo *pvr_cs_bo;
    bool was_linked = false;
    uint32_t rem_mappings;
+   uint32_t num_sources;
    uint32_t *blk_cs_ptr;
    uint32_t *cs_ptr;
+   uint32_t source;
    VkResult result;
 
    if (state->custom_mapping.pass_count > 0U) {
-      uint32_t num_mappings;
-
       pass = &state->custom_mapping.passes[state->pass_idx];
-      num_mappings = pass->mapping_count;
 
-      while (num_mappings > 0U) {
-         if (flags & PVR_TRANSFER_CMD_FLAGS_FILL) {
-            prim_blk_size += pvr_isp_primitive_block_size(
-               dev_info,
-               NULL,
-               MIN2(max_mappings_per_pb, num_mappings));
+      num_sources = pass->source_count;
+
+      for (source = 0; source < num_sources; source++) {
+         uint32_t num_mappings = pass->sources[source].mapping_count;
+
+         while (num_mappings > 0U) {
+            if (fill_blit) {
+               prim_blk_size += pvr_isp_primitive_block_size(
+                  dev_info,
+                  NULL,
+                  MIN2(max_mappings_per_pb, num_mappings));
+            }
+
+            if (transfer_cmd->source_count > 0) {
+               prim_blk_size += pvr_isp_primitive_block_size(
+                  dev_info,
+                  &transfer_cmd->sources[source],
+                  MIN2(max_mappings_per_pb, num_mappings));
+            }
+
+            num_mappings -= MIN2(max_mappings_per_pb, num_mappings);
+            num_prim_blks++;
          }
-
-         if (transfer_cmd->src_present) {
-            prim_blk_size += pvr_isp_primitive_block_size(
-               dev_info,
-               &transfer_cmd->src,
-               MIN2(max_mappings_per_pb, num_mappings));
-         }
-
-         num_mappings -= MIN2(max_mappings_per_pb, num_mappings);
-         num_prim_blks++;
       }
    } else {
-      if ((flags & PVR_TRANSFER_CMD_FLAGS_FILL) != 0U) {
+      num_sources = fill_blit ? 1U : transfer_cmd->source_count;
+
+      if (fill_blit) {
          num_prim_blks = 1U;
          prim_blk_size +=
             pvr_isp_primitive_block_size(dev_info,
@@ -3947,13 +3995,13 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
          /* Fill blits can also have a source; fallthrough to handle. */
       }
 
-      if (transfer_cmd->src_present) {
-         uint32_t num_mappings = transfer_cmd->mapping_count;
+      for (source = 0; source < transfer_cmd->source_count; source++) {
+         uint32_t num_mappings = transfer_cmd->sources[source].mapping_count;
 
          while (num_mappings > 0U) {
             prim_blk_size += pvr_isp_primitive_block_size(
                dev_info,
-               &transfer_cmd->src,
+               &transfer_cmd->sources[source],
                MIN2(max_mappings_per_pb, num_mappings));
 
             num_mappings -= MIN2(max_mappings_per_pb, num_mappings);
@@ -3985,394 +4033,416 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    cs_ptr = pvr_cs_bo->bo->map;
    blk_cs_ptr = cs_ptr + region_arrays_size / sizeof(uint32_t);
 
-   if (flags & PVR_TRANSFER_CMD_FLAGS_FILL)
-      rem_mappings = pass ? pass->mapping_count : 1U;
-   else
-      rem_mappings = transfer_cmd->mapping_count;
+   source = 0;
+   while (source < num_sources) {
+      if (fill_blit)
+         rem_mappings = pass ? pass->sources[source].mapping_count : 1U;
+      else
+         rem_mappings = transfer_cmd->sources[source].mapping_count;
 
-   if ((transfer_cmd->src_present || flags & PVR_TRANSFER_CMD_FLAGS_FILL) &&
-       rem_mappings != 0U) {
-      struct pvr_pds_pixel_shader_sa_program unitex_pds_prog = { 0U };
-      struct pvr_transfer_cmd_surface *src = &transfer_cmd->src;
-      struct pvr_rect_mapping fill_mapping;
-      uint32_t mapping_offset = 0U;
-      bool read_bgnd = false;
+      if ((transfer_cmd->source_count > 0 || fill_blit) && rem_mappings != 0U) {
+         struct pvr_pds_pixel_shader_sa_program unitex_pds_prog = { 0U };
+         struct pvr_transfer_cmd_source *src = &transfer_cmd->sources[source];
+         struct pvr_rect_mapping fill_mapping;
+         uint32_t mapping_offset = 0U;
+         bool read_bgnd = false;
 
-      if (flags & PVR_TRANSFER_CMD_FLAGS_FILL) {
-         uint32_t packed_color[4U] = { 0U };
+         if (fill_blit) {
+            uint32_t packed_color[4U] = { 0U };
 
-         if (vk_format_is_compressed(transfer_cmd->dst.vk_format)) {
-            return vk_error(transfer_cmd->cmd_buffer,
-                            VK_ERROR_FORMAT_NOT_SUPPORTED);
-         }
-
-         state->pds_shader_task_offset = 0U;
-         state->uni_tex_code_offset = 0U;
-         state->tex_state_data_offset = 0U;
-         state->common_ptr = 0U;
-
-         result = pvr_pack_clear_color(transfer_cmd->dst.vk_format,
-                                       transfer_cmd->clear_color,
-                                       packed_color);
-         if (result != VK_SUCCESS)
-            return result;
-
-         fill_mapping.dst_rect = transfer_cmd->scissor;
-
-         pvr_csb_pack (&regs->usc_clear_register0,
-                       CR_USC_CLEAR_REGISTER0,
-                       reg) {
-            reg.val = packed_color[0U];
-         }
-
-         pvr_csb_pack (&regs->usc_clear_register1,
-                       CR_USC_CLEAR_REGISTER1,
-                       reg) {
-            reg.val = packed_color[1U];
-         }
-
-         pvr_csb_pack (&regs->usc_clear_register2,
-                       CR_USC_CLEAR_REGISTER2,
-                       reg) {
-            reg.val = packed_color[2U];
-         }
-
-         pvr_csb_pack (&regs->usc_clear_register3,
-                       CR_USC_CLEAR_REGISTER3,
-                       reg) {
-            reg.val = packed_color[3U];
-         }
-
-         state->pds_shader_task_offset =
-            transfer_cmd->cmd_buffer->device->nop_program.pds.data_offset;
-
-         unitex_pds_prog.kick_usc = false;
-         unitex_pds_prog.clear = false;
-      } else {
-         const bool down_scale =
-            transfer_cmd->resolve_op == PVR_RESOLVE_BLEND &&
-            src->sample_count > 1U && transfer_cmd->dst.sample_count <= 1U;
-         struct pvr_tq_shader_properties *shader_props =
-            &state->shader_props;
-         struct pvr_tq_layer_properties *layer = &shader_props->layer_props;
-         const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout;
-         enum pvr_transfer_pbe_pixel_src pbe_src_format;
-         uint32_t tex_state_dma_size;
-         pvr_dev_addr_t dev_offset;
-         struct pvr_bo *pvr_bo;
-
-         /* Reset the shared register bank ptrs each src implies new texture
-          * state (Note that we don't change texture state per prim block).
-          */
-         state->common_ptr = 0U;
-         state->usc_const_reg_ptr = 0U;
-         /* We don't use state->dynamic_const_reg_ptr here. */
-
-         if (flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE)
-            read_bgnd = true;
-
-         result = pvr_pbe_src_format_f2d(flags,
-                                         src,
-                                         transfer_cmd->filter,
-                                         transfer_cmd->dst.vk_format,
-                                         down_scale,
-                                         state->dont_force_pbe,
-                                         &pbe_src_format);
-         if (result != VK_SUCCESS)
-            return result;
-
-         memset(shader_props, 0U, sizeof(*shader_props));
-
-         if (state->custom_mapping.byte_unwind_src > 0U &&
-             state->custom_mapping.passes[0U].byte_unwind) {
-            switch (vk_format_get_blocksize(transfer_cmd->dst.vk_format)) {
-            case 16:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK16;
-               break;
-            case 32:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK32;
-               break;
-            case 48:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK48;
-               break;
-            case 64:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK64;
-               break;
-            case 96:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK96;
-               break;
-            case 128:
-               pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK128;
-               break;
-            default:
-               unreachable("pixel width not valid");
-               break;
+            if (vk_format_is_compressed(transfer_cmd->dst.vk_format)) {
+               return vk_error(transfer_cmd->cmd_buffer,
+                               VK_ERROR_FORMAT_NOT_SUPPORTED);
             }
 
-            layer->byte_unwind = state->custom_mapping.byte_unwind_src;
-            read_bgnd = true;
-         }
+            state->pds_shader_task_offset = 0U;
+            state->uni_tex_code_offset = 0U;
+            state->tex_state_data_offset = 0U;
+            state->common_ptr = 0U;
 
-         layer->pbe_format = pbe_src_format;
-         layer->sample = (src->mem_layout == PVR_MEMLAYOUT_3DTWIDDLED);
-         shader_props->iterated = true;
+            result = pvr_pack_clear_color(transfer_cmd->dst.vk_format,
+                                          transfer_cmd->clear_color,
+                                          packed_color);
+            if (result != VK_SUCCESS)
+               return result;
 
-         shader_props->pick_component =
-            pvr_pick_component_needed(&state->custom_mapping);
+            fill_mapping.dst_rect = transfer_cmd->scissor;
 
-         result = pvr_msaa_state(dev_info, transfer_cmd, state);
-         if (result != VK_SUCCESS)
-            return result;
-
-         if (state->filter == PVR_FILTER_LINEAR &&
-             pvr_requires_usc_linear_filter(src->vk_format)) {
-            if (pvr_int_pbe_usc_linear_filter(layer->pbe_format,
-                                              layer->sample,
-                                              layer->msaa,
-                                              shader_props->full_rate)) {
-               layer->linear = true;
-            } else {
-               mesa_logw("Transfer: F32 linear filter not supported.");
+            pvr_csb_pack (&regs->usc_clear_register0,
+                          CR_USC_CLEAR_REGISTER0,
+                          reg) {
+               reg.val = packed_color[0U];
             }
+
+            pvr_csb_pack (&regs->usc_clear_register1,
+                          CR_USC_CLEAR_REGISTER1,
+                          reg) {
+               reg.val = packed_color[1U];
+            }
+
+            pvr_csb_pack (&regs->usc_clear_register2,
+                          CR_USC_CLEAR_REGISTER2,
+                          reg) {
+               reg.val = packed_color[2U];
+            }
+
+            pvr_csb_pack (&regs->usc_clear_register3,
+                          CR_USC_CLEAR_REGISTER3,
+                          reg) {
+               reg.val = packed_color[3U];
+            }
+
+            state->pds_shader_task_offset =
+               transfer_cmd->cmd_buffer->device->nop_program.pds.data_offset;
+
+            unitex_pds_prog.kick_usc = false;
+            unitex_pds_prog.clear = false;
+         } else {
+            const bool down_scale = transfer_cmd->sources[source].resolve_op ==
+                                       PVR_RESOLVE_BLEND &&
+                                    src->surface.sample_count > 1U &&
+                                    transfer_cmd->dst.sample_count <= 1U;
+            struct pvr_tq_shader_properties *shader_props =
+               &state->shader_props;
+            struct pvr_tq_layer_properties *layer = &shader_props->layer_props;
+            const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout;
+            enum pvr_transfer_pbe_pixel_src pbe_src_format;
+            uint32_t tex_state_dma_size;
+            pvr_dev_addr_t dev_offset;
+            struct pvr_bo *pvr_bo;
+
+            /* Reset the shared register bank ptrs each src implies new texture
+             * state (Note that we don't change texture state per prim block).
+             */
+            state->common_ptr = 0U;
+            state->usc_const_reg_ptr = 0U;
+            /* We don't use state->dynamic_const_reg_ptr here. */
+
+            if (flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE)
+               read_bgnd = true;
+
+            result = pvr_pbe_src_format_f2d(flags,
+                                            src,
+                                            transfer_cmd->dst.vk_format,
+                                            down_scale,
+                                            state->dont_force_pbe,
+                                            &pbe_src_format);
+            if (result != VK_SUCCESS)
+               return result;
+
+            memset(shader_props, 0U, sizeof(*shader_props));
+
+            if (state->custom_mapping.byte_unwind_src > 0U &&
+                state->custom_mapping.passes[0U].sources[source].byte_unwind) {
+               switch (vk_format_get_blocksize(transfer_cmd->dst.vk_format)) {
+               case 16:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK16;
+                  break;
+               case 32:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK32;
+                  break;
+               case 48:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK48;
+                  break;
+               case 64:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK64;
+                  break;
+               case 96:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK96;
+                  break;
+               case 128:
+                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK128;
+                  break;
+               default:
+                  unreachable("pixel width not valid");
+                  break;
+               }
+
+               layer->byte_unwind = state->custom_mapping.byte_unwind_src;
+               read_bgnd = true;
+            }
+
+            layer->pbe_format = pbe_src_format;
+            layer->sample =
+               (src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED);
+            shader_props->iterated = true;
+
+            shader_props->pick_component =
+               pvr_pick_component_needed(&state->custom_mapping);
+
+            result = pvr_msaa_state(dev_info, transfer_cmd, state, source);
+            if (result != VK_SUCCESS)
+               return result;
+
+            if (state->filter[source] == PVR_FILTER_LINEAR &&
+                pvr_requires_usc_linear_filter(src->surface.vk_format)) {
+               if (pvr_int_pbe_usc_linear_filter(layer->pbe_format,
+                                                 layer->sample,
+                                                 layer->msaa,
+                                                 shader_props->full_rate)) {
+                  layer->linear = true;
+               } else {
+                  mesa_logw("Transfer: F32 linear filter not supported.");
+               }
+            }
+
+            result = pvr_transfer_frag_store_get_shader_info(
+               transfer_cmd->cmd_buffer->device,
+               &ctx->frag_store,
+               shader_props,
+               &dev_offset,
+               &sh_reg_layout);
+            if (result != VK_SUCCESS)
+               return result;
+
+            assert(dev_offset.addr <= UINT32_MAX);
+            prep_data->state.pds_shader_task_offset = (uint32_t)dev_offset.addr;
+
+            result =
+               pvr_pds_coeff_task(ctx, transfer_cmd, layer->sample, prep_data);
+            if (result != VK_SUCCESS)
+               return result;
+
+            unitex_pds_prog.kick_usc = false;
+            unitex_pds_prog.clear = false;
+
+            tex_state_dma_size =
+               sh_reg_layout->driver_total + sh_reg_layout->compiler_out_total;
+
+            unitex_pds_prog.num_texture_dma_kicks = 1U;
+            unitex_pds_prog.num_uniform_dma_kicks = 0U;
+
+            /* Allocate memory for DMA. */
+            result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
+                                              ctx->device->heaps.general_heap,
+                                              tex_state_dma_size << 2U,
+                                              PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                              &pvr_bo);
+            if (result != VK_SUCCESS)
+               return result;
+
+            result = pvr_sampler_state_for_surface(
+               dev_info,
+               &transfer_cmd->sources[source].surface,
+               state->filter[source],
+               sh_reg_layout,
+               0U,
+               pvr_bo->bo->map);
+            if (result != VK_SUCCESS)
+               return result;
+
+            result = pvr_image_state_for_surface(
+               ctx,
+               transfer_cmd,
+               &transfer_cmd->sources[source].surface,
+               0U,
+               source,
+               sh_reg_layout,
+               state,
+               0U,
+               pvr_bo->bo->map);
+            if (result != VK_SUCCESS)
+               return result;
+
+            pvr_pds_encode_dma_burst(unitex_pds_prog.texture_dma_control,
+                                     unitex_pds_prog.texture_dma_address,
+                                     state->common_ptr,
+                                     tex_state_dma_size,
+                                     pvr_bo->vma->dev_addr.addr,
+                                     true,
+                                     dev_info);
+
+            state->common_ptr += tex_state_dma_size;
+
+            pvr_write_usc_constants(sh_reg_layout, pvr_bo->bo->map);
+
+            if (pvr_pick_component_needed(&state->custom_mapping))
+               pvr_dma_texel_unwind(state, sh_reg_layout, pvr_bo->bo->map);
          }
 
-         result = pvr_transfer_frag_store_get_shader_info(
-            transfer_cmd->cmd_buffer->device,
-            &ctx->frag_store,
-            shader_props,
-            &dev_offset,
-            &sh_reg_layout);
+         result = pvr_pds_unitex(dev_info,
+                                 ctx,
+                                 transfer_cmd,
+                                 &unitex_pds_prog,
+                                 prep_data);
          if (result != VK_SUCCESS)
             return result;
 
-         assert(dev_offset.addr <= UINT32_MAX);
-         prep_data->state.pds_shader_task_offset = (uint32_t)dev_offset.addr;
+         while (rem_mappings > 0U) {
+            const uint32_t min_free_ctrl_stream_words =
+               PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ? 2
+                                                                           : 3;
+            const uint32_t num_mappings =
+               MIN2(max_mappings_per_pb, rem_mappings);
+            struct pvr_rect_mapping *mappings = NULL;
+            uint32_t stream_start_offset = 0U;
+            pvr_dev_addr_t prim_blk_addr;
 
-         result =
-            pvr_pds_coeff_task(ctx, transfer_cmd, layer->sample, prep_data);
-         if (result != VK_SUCCESS)
-            return result;
+            if (free_ctrl_stream_words < min_free_ctrl_stream_words) {
+               pvr_dev_addr_t next_region_array_vaddr = stream_base_vaddr;
 
-         unitex_pds_prog.kick_usc = false;
-         unitex_pds_prog.clear = false;
+               num_region_arrays++;
+               next_region_array_vaddr.addr +=
+                  num_region_arrays *
+                  (PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS) * 4);
 
-         tex_state_dma_size =
-            sh_reg_layout->driver_total + sh_reg_layout->compiler_out_total;
+               if (PVR_HAS_FEATURE(dev_info,
+                                   simple_internal_parameter_format_v2)) {
+                  uint32_t link_addr;
 
-         unitex_pds_prog.num_texture_dma_kicks = 1U;
-         unitex_pds_prog.num_uniform_dma_kicks = 0U;
+                  pvr_csb_pack (&link_addr,
+                                IPF_CONTROL_STREAM_LINK_SIPF2,
+                                control_stream) {
+                     control_stream.cs_ctrl_type =
+                        PVRX(IPF_CS_CTRL_TYPE_SIPF2_LINK);
+                     control_stream.cs_link.addr = next_region_array_vaddr.addr;
+                  }
 
-         /* Allocate memory for DMA. */
-         result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
-                                           ctx->device->heaps.general_heap,
-                                           tex_state_dma_size << 2U,
-                                           PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                           &pvr_bo);
-         if (result != VK_SUCCESS)
-            return result;
+                  pvr_isp_ctrl_stream_sipf_write_aligned(
+                     (uint8_t *)cs_ptr,
+                     link_addr,
+                     pvr_cmd_length(IPF_CONTROL_STREAM_LINK_SIPF2) * 4);
+               } else {
+                  pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, control_stream) {
+                     control_stream.cs_type = PVRX(IPF_CS_TYPE_LINK);
+                     control_stream.cs_link.addr = next_region_array_vaddr.addr;
+                  }
+               }
 
-         result = pvr_sampler_state_for_surface(dev_info,
-                                                &transfer_cmd->src,
-                                                state->filter,
-                                                sh_reg_layout,
-                                                0U,
-                                                pvr_bo->bo->map);
-         if (result != VK_SUCCESS)
-            return result;
+               cs_ptr =
+                  (uint32_t *)pvr_cs_bo->bo->map +
+                  num_region_arrays * PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
+               free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
 
-         result = pvr_image_state_for_surface(ctx,
-                                              transfer_cmd,
-                                              &transfer_cmd->src,
-                                              0U,
-                                              sh_reg_layout,
-                                              state,
-                                              0U,
-                                              pvr_bo->bo->map);
-         if (result != VK_SUCCESS)
-            return result;
+               was_linked = PVR_HAS_FEATURE(dev_info, ipf_creq_pf);
+            }
 
-         pvr_pds_encode_dma_burst(unitex_pds_prog.texture_dma_control,
-                                  unitex_pds_prog.texture_dma_address,
-                                  state->common_ptr,
-                                  tex_state_dma_size,
-                                  pvr_bo->vma->dev_addr.addr,
-                                  true,
-                                  dev_info);
+            if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
+               prim_hdr_count++;
 
-         state->common_ptr += tex_state_dma_size;
+            if (fill_blit)
+               mappings = pass ? pass->sources[source].mappings : &fill_mapping;
+            else
+               mappings = transfer_cmd->sources[source].mappings;
 
-         pvr_write_usc_constants(sh_reg_layout, pvr_bo->bo->map);
+            prim_blk_addr = stream_base_vaddr;
+            prim_blk_addr.addr +=
+               (uintptr_t)blk_cs_ptr - (uintptr_t)pvr_cs_bo->bo->map;
 
-         if (pvr_pick_component_needed(&state->custom_mapping)) {
-            pvr_dma_texel_unwind(state, sh_reg_layout, pvr_bo->bo->map);
-         }
-      }
+            result = pvr_isp_primitive_block(dev_info,
+                                             ctx,
+                                             transfer_cmd,
+                                             prep_data,
+                                             fill_blit ? NULL : src,
+                                             state->custom_filter,
+                                             mappings,
+                                             num_mappings,
+                                             mapping_offset,
+                                             read_bgnd,
+                                             &stream_start_offset,
+                                             &blk_cs_ptr);
+            if (result != VK_SUCCESS)
+               return result;
 
-      result = pvr_pds_unitex(dev_info,
-                              ctx,
-                              transfer_cmd,
-                              &unitex_pds_prog,
-                              prep_data);
-      if (result != VK_SUCCESS)
-         return result;
-
-      while (rem_mappings > 0U) {
-         const uint32_t min_free_ctrl_stream_words =
-            PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) ? 2 : 3;
-         const uint32_t num_mappings = MIN2(max_mappings_per_pb, rem_mappings);
-         struct pvr_rect_mapping *mappings = NULL;
-         uint32_t stream_start_offset = 0U;
-         pvr_dev_addr_t prim_blk_addr;
-
-         if (free_ctrl_stream_words < min_free_ctrl_stream_words) {
-            pvr_dev_addr_t next_region_array_vaddr = stream_base_vaddr;
-
-            num_region_arrays++;
-            next_region_array_vaddr.addr +=
-               num_region_arrays * (PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS) * 4);
+            prim_blk_addr.addr += stream_start_offset;
 
             if (PVR_HAS_FEATURE(dev_info,
                                 simple_internal_parameter_format_v2)) {
-               uint32_t link_addr;
+               uint8_t *cs_byte_ptr = (uint8_t *)cs_ptr;
+               uint32_t tmp;
 
-               pvr_csb_pack (&link_addr,
-                             IPF_CONTROL_STREAM_LINK_SIPF2,
-                             control_stream) {
-                  control_stream.cs_ctrl_type =
-                     PVRX(IPF_CS_CTRL_TYPE_SIPF2_LINK);
-                  control_stream.cs_link.addr = next_region_array_vaddr.addr;
+               /* This part of the control stream is byte granular. */
+
+               pvr_csb_pack (&tmp, IPF_PRIMITIVE_HEADER_SIPF2, prim_header) {
+                  prim_header.cs_prim_base_size = 1;
+                  prim_header.cs_mask_num_bytes = 1;
+                  prim_header.cs_valid_tile0 = true;
                }
+               cs_byte_ptr =
+                  pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
 
-               pvr_isp_ctrl_stream_sipf_write_aligned(
-                  (uint8_t *)cs_ptr,
-                  link_addr,
-                  pvr_cmd_length(IPF_CONTROL_STREAM_LINK_SIPF2) * 4);
+               pvr_csb_pack (&tmp, IPF_PRIMITIVE_BASE_SIPF2, word) {
+                  word.cs_prim_base = prim_blk_addr;
+               }
+               cs_byte_ptr =
+                  pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 4);
+
+               /* IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 since
+                * IPF_PRIMITIVE_HEADER_SIPF2.cs_mask_num_bytes == 1.
+                */
+               pvr_csb_pack (&tmp,
+                             IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2,
+                             mask) {
+                  switch (num_mappings) {
+                  case 4:
+                     mask.cs_mask_one_byte_tile0_7 = true;
+                     mask.cs_mask_one_byte_tile0_6 = true;
+                     FALLTHROUGH;
+                  case 3:
+                     mask.cs_mask_one_byte_tile0_5 = true;
+                     mask.cs_mask_one_byte_tile0_4 = true;
+                     FALLTHROUGH;
+                  case 2:
+                     mask.cs_mask_one_byte_tile0_3 = true;
+                     mask.cs_mask_one_byte_tile0_2 = true;
+                     FALLTHROUGH;
+                  case 1:
+                     mask.cs_mask_one_byte_tile0_1 = true;
+                     mask.cs_mask_one_byte_tile0_0 = true;
+                     break;
+                  default:
+                     /* Unreachable since we clamped the value earlier so
+                      * reaching this is an implementation error.
+                      */
+                     unreachable("num_mapping exceeded max_mappings_per_pb");
+                     break;
+                  }
+               }
+               /* Only 1 byte since there's only 1 valid tile within the single
+                * IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 mask.
+                * ROGUE_IPF_PRIMITIVE_HEADER_SIPF2.cs_valid_tile0 == true.
+                */
+               cs_byte_ptr =
+                  pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
+
+               cs_ptr = (uint32_t *)cs_byte_ptr;
+
+               free_ctrl_stream_words -= 2;
             } else {
-               pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, control_stream) {
-                  control_stream.cs_type = PVRX(IPF_CS_TYPE_LINK);
-                  control_stream.cs_link.addr = next_region_array_vaddr.addr;
+               pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_FORMAT, word) {
+                  word.cs_type = PVRX(IPF_CS_TYPE_PRIM);
+                  word.cs_isp_state_read = true;
+                  word.cs_isp_state_size = 2U;
+                  word.cs_prim_total = 2U * num_mappings - 1U;
+                  word.cs_mask_fmt = PVRX(IPF_CS_MASK_FMT_FULL);
+                  word.cs_prim_base_pres = true;
                }
-            }
+               cs_ptr += pvr_cmd_length(IPF_PRIMITIVE_FORMAT);
 
-            cs_ptr = (uint32_t *)pvr_cs_bo->bo->map +
-                     num_region_arrays * PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
-            free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
-
-            was_linked = PVR_HAS_FEATURE(dev_info, ipf_creq_pf);
-         }
-
-         if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
-            prim_hdr_count++;
-
-         if (flags & PVR_TRANSFER_CMD_FLAGS_FILL)
-            mappings = pass ? pass->mappings : &fill_mapping;
-         else
-            mappings = transfer_cmd->mappings;
-
-         prim_blk_addr = stream_base_vaddr;
-         prim_blk_addr.addr +=
-            (uintptr_t)blk_cs_ptr - (uintptr_t)pvr_cs_bo->bo->map;
-
-         result = pvr_isp_primitive_block(
-            dev_info,
-            ctx,
-            transfer_cmd,
-            prep_data,
-            flags & PVR_TRANSFER_CMD_FLAGS_FILL ? NULL : src,
-            state->custom_filter,
-            mappings,
-            num_mappings,
-            mapping_offset,
-            read_bgnd,
-            &stream_start_offset,
-            &blk_cs_ptr);
-         if (result != VK_SUCCESS)
-            return result;
-
-         prim_blk_addr.addr += stream_start_offset;
-
-         if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format_v2)) {
-            uint8_t *cs_byte_ptr = (uint8_t *)cs_ptr;
-            uint32_t tmp;
-
-            /* This part of the control stream is byte granular. */
-
-            pvr_csb_pack (&tmp, IPF_PRIMITIVE_HEADER_SIPF2, prim_header) {
-               prim_header.cs_prim_base_size = 1;
-               prim_header.cs_mask_num_bytes = 1;
-               prim_header.cs_valid_tile0 = true;
-            }
-            cs_byte_ptr =
-               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
-
-            pvr_csb_pack (&tmp, IPF_PRIMITIVE_BASE_SIPF2, word) {
-               word.cs_prim_base = prim_blk_addr;
-            }
-            cs_byte_ptr =
-               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 4);
-
-            /* IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 since
-             * IPF_PRIMITIVE_HEADER_SIPF2.cs_mask_num_bytes == 1.
-             */
-            pvr_csb_pack (&tmp,
-                          IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2,
-                          mask) {
-               switch (num_mappings) {
-               case 4:
-                  mask.cs_mask_one_byte_tile0_7 = true;
-                  mask.cs_mask_one_byte_tile0_6 = true;
-                  FALLTHROUGH;
-               case 3:
-                  mask.cs_mask_one_byte_tile0_5 = true;
-                  mask.cs_mask_one_byte_tile0_4 = true;
-                  FALLTHROUGH;
-               case 2:
-                  mask.cs_mask_one_byte_tile0_3 = true;
-                  mask.cs_mask_one_byte_tile0_2 = true;
-                  FALLTHROUGH;
-               case 1:
-                  mask.cs_mask_one_byte_tile0_1 = true;
-                  mask.cs_mask_one_byte_tile0_0 = true;
-                  break;
-               default:
-                  /* Unreachable since we clamped the value earlier so reaching
-                   * this is an implementation error.
-                   */
-                  unreachable("num_mapping exceeded max_mappings_per_pb");
-                  break;
+               pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_BASE, word) {
+                  word.cs_prim_base = prim_blk_addr;
                }
+               cs_ptr += pvr_cmd_length(IPF_PRIMITIVE_BASE);
+
+               free_ctrl_stream_words -= 2;
             }
-            /* Only 1 byte since there's only 1 valid tile within the single
-             * IPF_BYTE_BASED_MASK_ONE_BYTE_WORD_0_SIPF2 mask.
-             * ROGUE_IPF_PRIMITIVE_HEADER_SIPF2.cs_valid_tile0 == true.
-             */
-            cs_byte_ptr =
-               pvr_isp_ctrl_stream_sipf_write_aligned(cs_byte_ptr, tmp, 1);
 
-            cs_ptr = (uint32_t *)cs_byte_ptr;
-
-            free_ctrl_stream_words -= 2;
-         } else {
-            pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_FORMAT, word) {
-               word.cs_type = PVRX(IPF_CS_TYPE_PRIM);
-               word.cs_isp_state_read = true;
-               word.cs_isp_state_size = 2U;
-               word.cs_prim_total = 2U * num_mappings - 1U;
-               word.cs_mask_fmt = PVRX(IPF_CS_MASK_FMT_FULL);
-               word.cs_prim_base_pres = true;
-            }
-            cs_ptr += pvr_cmd_length(IPF_PRIMITIVE_FORMAT);
-
-            pvr_csb_pack (cs_ptr, IPF_PRIMITIVE_BASE, word) {
-               word.cs_prim_base = prim_blk_addr;
-            }
-            cs_ptr += pvr_cmd_length(IPF_PRIMITIVE_BASE);
-
-            free_ctrl_stream_words -= 2;
+            rem_mappings -= num_mappings;
+            mapping_offset += num_mappings;
          }
+      }
 
-         rem_mappings -= num_mappings;
-         mapping_offset += num_mappings;
+      source++;
+
+      /* A fill blit may also have sources for normal blits. */
+      if (fill_blit && transfer_cmd->source_count > 0) {
+         /* Fill blit count for custom mapping equals source blit count. While
+          * normal blits use only one fill blit.
+          */
+         if (state->custom_mapping.pass_count == 0 && source > num_sources) {
+            fill_blit = false;
+            source = 0;
+         }
       }
    }
 
@@ -4427,20 +4497,19 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 static void pvr_transfer_set_filter(struct pvr_transfer_cmd *transfer_cmd,
                                     struct pvr_transfer_3d_state *state)
 {
-   VkRect2D *src = &transfer_cmd->mappings[0U].src_rect;
-   VkRect2D *dst = &transfer_cmd->mappings[0U].dst_rect;
+   for (uint32_t i = 0; i < transfer_cmd->source_count; i++) {
+      VkRect2D *src = &transfer_cmd->sources[i].mappings[0U].src_rect;
+      VkRect2D *dst = &transfer_cmd->sources[i].mappings[0U].dst_rect;
 
-   if (!transfer_cmd->src_present)
-      return;
-
-   /* If no scaling is applied to the copy region, we can use point
-    * filtering.
-    */
-   if (!state->custom_filter && (src->extent.width == dst->extent.width) &&
-       (src->extent.height == dst->extent.height))
-      state->filter = PVR_FILTER_POINT;
-   else
-      state->filter = transfer_cmd->filter;
+      /* If no scaling is applied to the copy region, we can use point
+       * filtering.
+       */
+      if (!state->custom_filter && (src->extent.width == dst->extent.width) &&
+          (src->extent.height == dst->extent.height))
+         state->filter[i] = PVR_FILTER_POINT;
+      else
+         state->filter[i] = transfer_cmd->sources[i].filter;
+   }
 }
 
 /** Generates hw resources to kick a 3D clip blit. */
@@ -4464,15 +4533,19 @@ static VkResult pvr_3d_clip_blit(struct pvr_transfer_ctx *ctx,
       ~(PVR_TRANSFER_CMD_FLAGS_FAST2D | PVR_TRANSFER_CMD_FLAGS_FILL |
         PVR_TRANSFER_CMD_FLAGS_DSMERGE | PVR_TRANSFER_CMD_FLAGS_PICKD);
 
-   bg_cmd.src_present = state->custom_mapping.pass_count > 0U ? false : true;
-   if (bg_cmd.src_present) {
-      bg_cmd.mappings[0U].src_rect = transfer_cmd->scissor;
-      bg_cmd.mappings[0U].dst_rect = transfer_cmd->scissor;
-      bg_cmd.resolve_op = PVR_RESOLVE_BLEND;
-      bg_cmd.src = transfer_cmd->dst;
+   memset(&bg_cmd.blit, 0U, sizeof(bg_cmd.blit));
+
+   bg_cmd.source_count = state->custom_mapping.pass_count > 0U ? 0 : 1;
+   if (bg_cmd.source_count > 0) {
+      struct pvr_transfer_cmd_source *src = &bg_cmd.sources[0];
+
+      src->mappings[0U].src_rect = transfer_cmd->scissor;
+      src->mappings[0U].dst_rect = transfer_cmd->scissor;
+      src->resolve_op = PVR_RESOLVE_BLEND;
+      src->surface = transfer_cmd->dst;
    }
 
-   state->filter = PVR_FILTER_DONTCARE;
+   state->filter[0] = PVR_FILTER_DONTCARE;
    bg_cmd.dst = transfer_cmd->dst;
    state->custom_mapping.texel_unwind_src =
       state->custom_mapping.texel_unwind_dst;
@@ -4592,9 +4665,7 @@ static inline bool pvr_is_pbe_stride_aligned(const uint32_t stride)
 
 static struct pvr_transfer_pass *
 pvr_create_pass(struct pvr_transfer_custom_mapping *custom_mapping,
-                uint32_t dst_offset,
-                uint32_t src_offset,
-                bool extend_height)
+                uint32_t dst_offset)
 {
    struct pvr_transfer_pass *pass;
 
@@ -4603,9 +4674,7 @@ pvr_create_pass(struct pvr_transfer_custom_mapping *custom_mapping,
    pass = &custom_mapping->passes[custom_mapping->pass_count];
    pass->clip_rects_count = 0U;
    pass->dst_offset = dst_offset;
-   pass->src_offset = src_offset;
-   pass->mapping_count = 0U;
-   pass->extend_height = extend_height;
+   pass->source_count = 0U;
 
    custom_mapping->pass_count++;
 
@@ -4615,34 +4684,76 @@ pvr_create_pass(struct pvr_transfer_custom_mapping *custom_mapping,
 /* Acquire pass with given offset. If one doesn't exist, create new. */
 static struct pvr_transfer_pass *
 pvr_acquire_pass(struct pvr_transfer_custom_mapping *custom_mapping,
-                 uint32_t dst_offset,
-                 uint32_t src_offset,
-                 bool extend_height)
+                 uint32_t dst_offset)
 {
    for (uint32_t i = 0U; i < custom_mapping->pass_count; i++) {
       if (custom_mapping->passes[i].dst_offset == dst_offset)
          return &custom_mapping->passes[i];
    }
 
-   return pvr_create_pass(custom_mapping, dst_offset, src_offset, extend_height);
+   return pvr_create_pass(custom_mapping, dst_offset);
 }
 
-static void pvr_remove_mapping(struct pvr_transfer_pass *pass, uint32_t idx)
+static struct pvr_transfer_wa_source *
+pvr_create_source(struct pvr_transfer_pass *pass,
+                  uint32_t src_offset,
+                  bool extend_height)
 {
-   assert(idx < pass->mapping_count);
+   struct pvr_transfer_wa_source *src;
 
-   for (uint32_t i = idx; i < (pass->mapping_count - 1U); i++)
-      pass->mappings[i] = pass->mappings[i + 1U];
+   assert(pass->source_count < ARRAY_SIZE(pass->sources));
 
-   pass->mapping_count--;
+   src = &pass->sources[pass->source_count];
+   src->mapping_count = 0U;
+   src->extend_height = extend_height;
+   src->byte_unwind = false;
+
+   pass->source_count++;
+
+   return src;
+}
+
+/* Acquire source with given offset. If one doesn't exist, create new. */
+static struct pvr_transfer_wa_source *
+pvr_acquire_source(struct pvr_transfer_pass *pass,
+                   uint32_t src_offset,
+                   bool extend_height)
+{
+   for (uint32_t i = 0U; i < pass->source_count; i++) {
+      if (pass->sources[i].src_offset == src_offset &&
+          pass->sources[i].extend_height == extend_height)
+         return &pass->sources[i];
+   }
+
+   return pvr_create_source(pass, src_offset, extend_height);
+}
+
+static void pvr_remove_source(struct pvr_transfer_pass *pass, uint32_t idx)
+{
+   assert(idx < pass->source_count);
+
+   for (uint32_t i = idx; i < (pass->source_count - 1U); i++)
+      pass->sources[i] = pass->sources[i + 1U];
+
+   pass->source_count--;
+}
+
+static void pvr_remove_mapping(struct pvr_transfer_wa_source *src, uint32_t idx)
+{
+   assert(idx < src->mapping_count);
+
+   for (uint32_t i = idx; i < (src->mapping_count - 1U); i++)
+      src->mappings[i] = src->mappings[i + 1U];
+
+   src->mapping_count--;
 }
 
 static struct pvr_rect_mapping *
-pvr_create_mapping(struct pvr_transfer_pass *pass)
+pvr_create_mapping(struct pvr_transfer_wa_source *src)
 {
-   assert(pass->mapping_count < ARRAY_SIZE(pass->mappings));
+   assert(src->mapping_count < ARRAY_SIZE(src->mappings));
 
-   return &pass->mappings[pass->mapping_count++];
+   return &src->mappings[src->mapping_count++];
 }
 
 /**
@@ -4654,13 +4765,14 @@ pvr_create_mapping(struct pvr_transfer_pass *pass)
  */
 static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
 {
-   struct pvr_rect_mapping *mappings = pass->mappings;
+   struct pvr_rect_mapping *mappings = pass->sources[0].mappings;
    uint32_t new_mapping = 0;
 
    if (stride == 1U)
       return false;
 
-   if (mappings[0U].dst_rect.extent.height == 1U && pass->mapping_count == 1U) {
+   if (mappings[0U].dst_rect.extent.height == 1U &&
+       pass->sources[0].mapping_count == 1U) {
       /* Only one mapping required if height is 1. */
       if ((mappings[0U].dst_rect.offset.y & 1U) != 0U) {
          mappings[0U].dst_rect.offset.x += (int32_t)stride;
@@ -4679,10 +4791,10 @@ static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
       return true;
    }
 
-   for (uint32_t i = 0; i < pass->mapping_count; i++) {
-      struct pvr_rect_mapping *mapping_a = &pass->mappings[i];
+   for (uint32_t i = 0; i < pass->sources[0].mapping_count; i++) {
+      struct pvr_rect_mapping *mapping_a = &mappings[i];
       struct pvr_rect_mapping *mapping_b =
-         &pass->mappings[pass->mapping_count + new_mapping];
+         &mappings[pass->sources[0].mapping_count + new_mapping];
       int32_t mapping_a_src_rect_y1 =
          mapping_a->src_rect.offset.y + mapping_a->src_rect.extent.height;
       int32_t mapping_b_src_rect_y1 = mapping_a_src_rect_y1;
@@ -4695,7 +4807,8 @@ static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
          !!((mapping_a->src_rect.offset.y + mapping_a->src_rect.extent.height) &
             1);
 
-      assert(pass->mapping_count + new_mapping < ARRAY_SIZE(pass->mappings));
+      assert(pass->sources[0].mapping_count + new_mapping <
+             ARRAY_SIZE(pass->sources[0].mappings));
       *mapping_b = *mapping_a;
 
       mapping_a->src_rect.offset.y = ALIGN_POT(mapping_a->src_rect.offset.y, 2);
@@ -4748,7 +4861,7 @@ static bool pvr_double_stride(struct pvr_transfer_pass *pass, uint32_t stride)
       }
    }
 
-   pass->mapping_count++;
+   pass->sources[0].mapping_count++;
 
    return true;
 }
@@ -4784,8 +4897,8 @@ static void pvr_unwind_rects(uint32_t width,
                              bool input,
                              struct pvr_transfer_pass *pass)
 {
-   uint32_t num_mappings = pass->mapping_count;
-   struct pvr_rect_mapping *mappings = pass->mappings;
+   uint32_t num_mappings = pass->sources[0].mapping_count;
+   struct pvr_rect_mapping *mappings = pass->sources[0].mappings;
    VkRect2D rect_a, rect_b;
    uint32_t new_mappings = 0;
    uint32_t i;
@@ -4814,7 +4927,7 @@ static void pvr_unwind_rects(uint32_t width,
                                     : &mappings[new_mapping].dst_rect;
          uint32_t split_point = width - texel_unwind;
 
-         assert(new_mapping < ARRAY_SIZE(pass->mappings));
+         assert(new_mapping < ARRAY_SIZE(pass->sources[0].mappings));
 
          mappings[new_mapping] = mappings[i];
 
@@ -4845,7 +4958,7 @@ static void pvr_unwind_rects(uint32_t width,
       }
    }
 
-   pass->mapping_count += new_mappings;
+   pass->sources[0].mapping_count += new_mappings;
 }
 
 /**
@@ -4859,86 +4972,100 @@ pvr_map_clip_rects(struct pvr_transfer_custom_mapping *custom_mapping)
       struct pvr_transfer_pass *pass = &custom_mapping->passes[i];
 
       pass->clip_rects_count = 0U;
-      for (uint32_t j = 0U; j < pass->mapping_count; j++) {
-         struct pvr_rect_mapping *mappings = pass->mappings;
-         VkRect2D *clip_rects = pass->clip_rects;
-         bool merged = false;
 
-         /* Try merge adjacent clip rects. */
-         for (uint32_t k = 0U; k < pass->clip_rects_count; k++) {
-            if (clip_rects[k].offset.y == mappings[j].dst_rect.offset.y &&
-                clip_rects[k].extent.height ==
-                   mappings[j].dst_rect.extent.height &&
-                clip_rects[k].offset.x + clip_rects[k].extent.width ==
-                   mappings[j].dst_rect.offset.x) {
-               clip_rects[k].extent.width += mappings[j].dst_rect.extent.width;
-               merged = true;
-               break;
+      for (uint32_t s = 0U; s < pass->source_count; s++) {
+         struct pvr_transfer_wa_source *src = &pass->sources[s];
+
+         for (uint32_t j = 0U; j < src->mapping_count; j++) {
+            struct pvr_rect_mapping *mappings = src->mappings;
+            VkRect2D *clip_rects = pass->clip_rects;
+            bool merged = false;
+
+            /* Try merge adjacent clip rects. */
+            for (uint32_t k = 0U; k < pass->clip_rects_count; k++) {
+               if (clip_rects[k].offset.y == mappings[j].dst_rect.offset.y &&
+                   clip_rects[k].extent.height ==
+                      mappings[j].dst_rect.extent.height &&
+                   clip_rects[k].offset.x + clip_rects[k].extent.width ==
+                      mappings[j].dst_rect.offset.x) {
+                  clip_rects[k].extent.width +=
+                     mappings[j].dst_rect.extent.width;
+                  merged = true;
+                  break;
+               }
+
+               if (clip_rects[k].offset.y == mappings[j].dst_rect.offset.y &&
+                   clip_rects[k].extent.height ==
+                      mappings[j].dst_rect.extent.height &&
+                   clip_rects[k].offset.x ==
+                      mappings[j].dst_rect.offset.x +
+                         mappings[j].dst_rect.extent.width) {
+                  clip_rects[k].offset.x = mappings[j].dst_rect.offset.x;
+                  clip_rects[k].extent.width +=
+                     mappings[j].dst_rect.extent.width;
+                  merged = true;
+                  break;
+               }
+
+               if (clip_rects[k].offset.x == mappings[j].dst_rect.offset.x &&
+                   clip_rects[k].extent.width ==
+                      mappings[j].dst_rect.extent.width &&
+                   clip_rects[k].offset.y + clip_rects[k].extent.height ==
+                      mappings[j].dst_rect.offset.y) {
+                  clip_rects[k].extent.height +=
+                     mappings[j].dst_rect.extent.height;
+                  merged = true;
+                  break;
+               }
+
+               if (clip_rects[k].offset.x == mappings[j].dst_rect.offset.x &&
+                   clip_rects[k].extent.width ==
+                      mappings[j].dst_rect.extent.width &&
+                   clip_rects[k].offset.y ==
+                      mappings[j].dst_rect.offset.y +
+                         mappings[j].dst_rect.extent.height) {
+                  clip_rects[k].extent.height +=
+                     mappings[j].dst_rect.extent.height;
+                  clip_rects[k].offset.y = mappings[j].dst_rect.offset.y;
+                  merged = true;
+                  break;
+               }
             }
 
-            if (clip_rects[k].offset.y == mappings[j].dst_rect.offset.y &&
-                clip_rects[k].extent.height ==
-                   mappings[j].dst_rect.extent.height &&
-                clip_rects[k].offset.x ==
-                   mappings[j].dst_rect.offset.x +
-                      mappings[j].dst_rect.extent.width) {
-               clip_rects[k].offset.x = mappings[j].dst_rect.offset.x;
-               clip_rects[k].extent.width += mappings[j].dst_rect.extent.width;
-               merged = true;
-               break;
+            if (merged)
+               continue;
+
+            /* Create new pass if needed, TDM can only have 2 clip rects. */
+            if (pass->clip_rects_count >= custom_mapping->max_clip_rects) {
+               struct pvr_transfer_pass *new_pass =
+                  pvr_create_pass(custom_mapping, pass->dst_offset);
+               struct pvr_transfer_wa_source *new_source =
+                  pvr_create_source(new_pass,
+                                    src->src_offset,
+                                    src->extend_height);
+               struct pvr_rect_mapping *new_mapping =
+                  pvr_create_mapping(new_source);
+
+               new_pass->clip_rects_count = 1U;
+               *new_mapping = src->mappings[j];
+
+               pvr_remove_mapping(src, j);
+
+               if (src->mapping_count == 0) {
+                  pvr_remove_source(pass, s);
+                  s--;
+               } else {
+                  /* Redo - mapping was replaced. */
+                  j--;
+               }
+            } else {
+               pass->clip_rects[pass->clip_rects_count] =
+                  src->mappings[j].dst_rect;
+
+               pass->clip_rects_count++;
+
+               assert(pass->clip_rects_count <= ARRAY_SIZE(pass->clip_rects));
             }
-
-            if (clip_rects[k].offset.x == mappings[j].dst_rect.offset.x &&
-                clip_rects[k].extent.width ==
-                   mappings[j].dst_rect.extent.width &&
-                clip_rects[k].offset.y + clip_rects[k].extent.height ==
-                   mappings[j].dst_rect.offset.y) {
-               clip_rects[k].extent.height +=
-                  mappings[j].dst_rect.extent.height;
-               merged = true;
-               break;
-            }
-
-            if (clip_rects[k].offset.x == mappings[j].dst_rect.offset.x &&
-                clip_rects[k].extent.width ==
-                   mappings[j].dst_rect.extent.width &&
-                clip_rects[k].offset.y ==
-                   mappings[j].dst_rect.offset.y +
-                      mappings[j].dst_rect.extent.height) {
-               clip_rects[k].extent.height +=
-                  mappings[j].dst_rect.extent.height;
-               clip_rects[k].offset.y = mappings[j].dst_rect.offset.y;
-               merged = true;
-               break;
-            }
-         }
-
-         if (merged)
-            continue;
-
-         /* Create new pass if needed, TDM can only have 2 clip rects. */
-         if (pass->clip_rects_count >= custom_mapping->max_clip_rects) {
-            struct pvr_transfer_pass *new_pass =
-               pvr_create_pass(custom_mapping,
-                               pass->dst_offset,
-                               pass->src_offset,
-                               pass->extend_height);
-            struct pvr_rect_mapping *new_mapping = pvr_create_mapping(new_pass);
-
-            new_pass->clip_rects_count = 1U;
-            *new_mapping = pass->mappings[j];
-
-            pvr_remove_mapping(pass, j);
-
-            /* Redo - mapping was replaced. */
-            j--;
-         } else {
-            pass->clip_rects[pass->clip_rects_count] =
-               pass->mappings[j].dst_rect;
-
-            pass->clip_rects_count++;
-
-            assert(pass->clip_rects_count <= ARRAY_SIZE(pass->clip_rects));
          }
       }
    }
@@ -4999,6 +5126,7 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
 {
    const uint32_t dst_bpp =
       vk_format_get_blocksizebits(transfer_cmd->dst.vk_format);
+   const struct pvr_transfer_cmd_source *src = NULL;
    struct pvr_transfer_pass *pass;
    bool ret;
 
@@ -5010,6 +5138,9 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
    custom_mapping->byte_unwind_src = 0U;
    custom_mapping->pass_count = 0U;
 
+   if (transfer_cmd->source_count > 1)
+      return false;
+
    custom_mapping->max_clip_size = PVR_MAX_CLIP_SIZE(dev_info);
 
    ret = pvr_texel_unwind(dst_bpp,
@@ -5019,11 +5150,13 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
                           &custom_mapping->texel_unwind_dst);
    if (!ret) {
       custom_mapping->texel_extend_dst = dst_bpp / 8U;
-      if (transfer_cmd->src_present) {
-         if (transfer_cmd->src.mem_layout == PVR_MEMLAYOUT_LINEAR) {
+      if (transfer_cmd->source_count > 0) {
+         if (transfer_cmd->sources[0].surface.mem_layout ==
+             PVR_MEMLAYOUT_LINEAR) {
             custom_mapping->texel_extend_src = custom_mapping->texel_extend_dst;
-         } else if (transfer_cmd->src.mem_layout == PVR_MEMLAYOUT_TWIDDLED &&
-                    transfer_cmd->src.height == 1U) {
+         } else if (transfer_cmd->sources[0].surface.mem_layout ==
+                       PVR_MEMLAYOUT_TWIDDLED &&
+                    transfer_cmd->sources[0].surface.height == 1U) {
             custom_mapping->texel_extend_src = custom_mapping->texel_extend_dst;
          }
       }
@@ -5037,16 +5170,17 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
          return false;
    }
 
-   if (transfer_cmd->src_present) {
+   if (transfer_cmd->source_count > 0) {
+      src = &transfer_cmd->sources[0];
       const uint32_t src_bpp =
-         vk_format_get_blocksizebits(transfer_cmd->src.vk_format);
+         vk_format_get_blocksizebits(src->surface.vk_format);
 
-      ret = pvr_is_surface_aligned(transfer_cmd->src.dev_addr, true, src_bpp);
+      ret = pvr_is_surface_aligned(src->surface.dev_addr, true, src_bpp);
 
-      if (!ret && (transfer_cmd->src.mem_layout == PVR_MEMLAYOUT_LINEAR ||
-                   transfer_cmd->src.height == 1U)) {
+      if (!ret && (src->surface.mem_layout == PVR_MEMLAYOUT_LINEAR ||
+                   src->surface.height == 1U)) {
          ret = pvr_texel_unwind(src_bpp,
-                                transfer_cmd->src.dev_addr,
+                                src->surface.dev_addr,
                                 true,
                                 custom_mapping->texel_extend_src,
                                 &custom_mapping->texel_unwind_src);
@@ -5054,7 +5188,7 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
 
       if (!ret && dst_bpp != 24U) {
          ret = pvr_byte_unwind(src_bpp,
-                               transfer_cmd->src.dev_addr,
+                               src->surface.dev_addr,
                                true,
                                &custom_mapping->byte_unwind_src);
       }
@@ -5064,7 +5198,7 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
          custom_mapping->texel_extend_dst = custom_mapping->texel_extend_src;
 
          ret = pvr_texel_unwind(src_bpp,
-                                transfer_cmd->src.dev_addr,
+                                src->surface.dev_addr,
                                 true,
                                 custom_mapping->texel_extend_src,
                                 &custom_mapping->texel_unwind_src);
@@ -5083,10 +5217,10 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
     * changed. Texel unwind only works with strided memory layout. 1D blits are
     * allowed.
     */
-   if (transfer_cmd->src.height > 1U && transfer_cmd->src_present &&
+   if (src && src->surface.height > 1U &&
        (custom_mapping->texel_extend_src > 1U ||
         custom_mapping->texel_unwind_src > 0U) &&
-       transfer_cmd->src.mem_layout != PVR_MEMLAYOUT_LINEAR) {
+       src->surface.mem_layout != PVR_MEMLAYOUT_LINEAR) {
       return false;
    }
 
@@ -5109,13 +5243,15 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
    if (custom_mapping->byte_unwind_src > 0U ||
        custom_mapping->texel_unwind_src > 0U ||
        custom_mapping->texel_unwind_dst > 0U || custom_mapping->double_stride) {
+      struct pvr_transfer_wa_source *wa_src;
       struct pvr_rect_mapping *mapping;
 
-      pass = pvr_acquire_pass(custom_mapping, 0U, 0U, false);
-      mapping = pvr_create_mapping(pass);
+      pass = pvr_acquire_pass(custom_mapping, 0U);
+      wa_src = pvr_create_source(pass, 0U, false);
+      mapping = pvr_create_mapping(wa_src);
 
-      if (transfer_cmd->src_present) {
-         *mapping = transfer_cmd->mappings[0U];
+      if (transfer_cmd->source_count > 0) {
+         *mapping = src->mappings[0U];
       } else {
          mapping->src_rect = transfer_cmd->scissor;
          mapping->dst_rect = transfer_cmd->scissor;
@@ -5126,20 +5262,20 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
 
    if (custom_mapping->texel_extend_src > 1U ||
        custom_mapping->texel_extend_dst > 1U) {
-      pass->mappings[0U].src_rect.offset.x *=
+      pass->sources[0].mappings[0U].src_rect.offset.x *=
          (int32_t)custom_mapping->texel_extend_dst;
-      pass->mappings[0U].src_rect.extent.width *=
+      pass->sources[0].mappings[0U].src_rect.extent.width *=
          (int32_t)custom_mapping->texel_extend_dst;
-      pass->mappings[0U].dst_rect.offset.x *=
+      pass->sources[0].mappings[0U].dst_rect.offset.x *=
          (int32_t)custom_mapping->texel_extend_dst;
-      pass->mappings[0U].dst_rect.extent.width *=
+      pass->sources[0].mappings[0U].dst_rect.extent.width *=
          (int32_t)custom_mapping->texel_extend_dst;
    }
 
-   if (transfer_cmd->src_present) {
-      pvr_generate_custom_mapping(transfer_cmd->src.stride,
-                                  transfer_cmd->src.width,
-                                  transfer_cmd->src.height,
+   if (transfer_cmd->source_count > 0) {
+      pvr_generate_custom_mapping(transfer_cmd->sources[0].surface.stride,
+                                  transfer_cmd->sources[0].surface.width,
+                                  transfer_cmd->sources[0].surface.height,
                                   transfer_cmd->dst.stride,
                                   transfer_cmd->dst.width,
                                   transfer_cmd->dst.height,
@@ -5209,7 +5345,7 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
    uint32_t bpp;
 
    if (custom_mapping->texel_extend_src > 1U) {
-      struct pvr_rect_mapping *mapping = &transfer_cmd->mappings[0];
+      struct pvr_rect_mapping *mapping = &transfer_cmd->sources[0].mappings[0];
 
       pvr_pbe_extend_rect(custom_mapping->texel_extend_src, &mapping->dst_rect);
       pvr_pbe_extend_rect(custom_mapping->texel_extend_src, &mapping->src_rect);
@@ -5217,9 +5353,11 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
       transfer_cmd->dst.vk_format = VK_FORMAT_R8_UINT;
       transfer_cmd->dst.width *= custom_mapping->texel_extend_src;
       transfer_cmd->dst.stride *= custom_mapping->texel_extend_src;
-      transfer_cmd->src.vk_format = VK_FORMAT_R8_UINT;
-      transfer_cmd->src.width *= custom_mapping->texel_extend_src;
-      transfer_cmd->src.stride *= custom_mapping->texel_extend_src;
+      transfer_cmd->sources[0].surface.vk_format = VK_FORMAT_R8_UINT;
+      transfer_cmd->sources[0].surface.width *=
+         custom_mapping->texel_extend_src;
+      transfer_cmd->sources[0].surface.stride *=
+         custom_mapping->texel_extend_src;
    } else if (custom_mapping->texel_extend_dst > 1U) {
       VkRect2D max_clip = {
          .offset = { 0, 0 },
@@ -5232,12 +5370,15 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
 
       pvr_pbe_rect_intersect(&transfer_cmd->scissor, &max_clip);
 
-      if (transfer_cmd->src_present) {
-         transfer_cmd->src.width *= custom_mapping->texel_extend_dst;
-         transfer_cmd->src.stride *= custom_mapping->texel_extend_dst;
+      if (transfer_cmd->source_count > 0) {
+         transfer_cmd->sources[0].surface.width *=
+            custom_mapping->texel_extend_dst;
+         transfer_cmd->sources[0].surface.stride *=
+            custom_mapping->texel_extend_dst;
 
-         transfer_cmd->src.vk_format =
-            pvr_texel_extend_src_format(transfer_cmd->src.vk_format);
+         transfer_cmd->sources[0].surface.vk_format =
+            pvr_texel_extend_src_format(
+               transfer_cmd->sources[0].surface.vk_format);
       }
 
       transfer_cmd->dst.vk_format = VK_FORMAT_R8_UINT;
@@ -5251,33 +5392,47 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
    }
 
    if (custom_mapping->texel_unwind_src > 0U) {
-      if (transfer_cmd->src.height == 1U) {
-         transfer_cmd->src.width += custom_mapping->texel_unwind_src;
-         transfer_cmd->src.stride += custom_mapping->texel_unwind_src;
-      } else if (transfer_cmd->src.stride == 1U) {
-         transfer_cmd->src.height += custom_mapping->texel_unwind_src;
+      if (transfer_cmd->sources[0].surface.height == 1U) {
+         transfer_cmd->sources[0].surface.width +=
+            custom_mapping->texel_unwind_src;
+         transfer_cmd->sources[0].surface.stride +=
+            custom_mapping->texel_unwind_src;
+      } else if (transfer_cmd->sources[0].surface.stride == 1U) {
+         transfer_cmd->sources[0].surface.height +=
+            custom_mapping->texel_unwind_src;
       } else {
          /* Increase source width by texel unwind. If texel unwind is less than
           * the distance between width and stride. The blit can be done with one
           * rectangle mapping, but the width of the surface needs be to
           * increased in case we sample from the area between width and stride.
           */
-         transfer_cmd->src.width =
-            MIN2(transfer_cmd->src.width + custom_mapping->texel_unwind_src,
-                 transfer_cmd->src.stride);
+         transfer_cmd->sources[0].surface.width =
+            MIN2(transfer_cmd->sources[0].surface.width +
+                    custom_mapping->texel_unwind_src,
+                 transfer_cmd->sources[0].surface.stride);
       }
    }
 
-   transfer_cmd->mapping_count = pass->mapping_count;
-   for (uint32_t i = 0U; i < transfer_cmd->mapping_count; i++)
-      transfer_cmd->mappings[i] = pass->mappings[i];
+   for (uint32_t i = 0U; i < pass->source_count; i++) {
+      struct pvr_transfer_wa_source *src = &pass->sources[i];
 
-   if (pass->extend_height)
-      transfer_cmd->src.height += 1U;
+      if (i > 0)
+         transfer_cmd->sources[i] = transfer_cmd->sources[0];
 
-   transfer_cmd->src.width = MIN2(PVR_MAX_WIDTH, transfer_cmd->src.width);
-   transfer_cmd->src.height = MIN2(PVR_MAX_WIDTH, transfer_cmd->src.height);
-   transfer_cmd->src.stride = MIN2(PVR_MAX_WIDTH, transfer_cmd->src.stride);
+      transfer_cmd->sources[i].mapping_count = src->mapping_count;
+      for (uint32_t j = 0U; j < transfer_cmd->sources[i].mapping_count; j++)
+         transfer_cmd->sources[i].mappings[j] = src->mappings[j];
+
+      if (src->extend_height)
+         transfer_cmd->sources[i].surface.height += 1U;
+
+      transfer_cmd->sources[i].surface.width =
+         MIN2(PVR_MAX_WIDTH, transfer_cmd->sources[i].surface.width);
+      transfer_cmd->sources[i].surface.height =
+         MIN2(PVR_MAX_WIDTH, transfer_cmd->sources[i].surface.height);
+      transfer_cmd->sources[i].surface.stride =
+         MIN2(PVR_MAX_WIDTH, transfer_cmd->sources[i].surface.stride);
+   }
 
    if (transfer_cmd->dst.height == 1U) {
       transfer_cmd->dst.width =
@@ -5294,13 +5449,17 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
       transfer_cmd->dst.width = MIN2(PVR_MAX_WIDTH, transfer_cmd->dst.width);
    }
 
-   if (transfer_cmd->src_present) {
-      bpp = vk_format_get_blocksizebits(transfer_cmd->src.vk_format);
+   if (transfer_cmd->source_count > 0) {
+      for (uint32_t i = 0; i < pass->source_count; i++) {
+         struct pvr_transfer_cmd_source *src = &transfer_cmd->sources[i];
 
-      transfer_cmd->src.dev_addr.addr -=
-         custom_mapping->texel_unwind_src * bpp / 8U;
-      transfer_cmd->src.dev_addr.addr +=
-         MAX2(transfer_cmd->src.sample_count, 1U) * pass->src_offset * bpp / 8U;
+         bpp = vk_format_get_blocksizebits(src->surface.vk_format);
+
+         src->surface.dev_addr.addr -=
+            custom_mapping->texel_unwind_src * bpp / 8U;
+         src->surface.dev_addr.addr += MAX2(src->surface.sample_count, 1U) *
+                                       pass->sources[i].src_offset * bpp / 8U;
+      }
    }
 
    bpp = vk_format_get_blocksizebits(transfer_cmd->dst.vk_format);
@@ -5309,8 +5468,8 @@ pvr_modify_command(struct pvr_transfer_custom_mapping *custom_mapping,
    transfer_cmd->dst.dev_addr.addr +=
       MAX2(transfer_cmd->dst.sample_count, 1U) * pass->dst_offset * bpp / 8U;
 
-   transfer_cmd->src_present =
-      transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_FILL ? false : true;
+   if (transfer_cmd->source_count > 0)
+      transfer_cmd->source_count = pass->source_count;
 }
 
 /* Route a copy_blit (FastScale HW) to a clip_blit (Fast2D HW).
@@ -5332,14 +5491,18 @@ static VkResult pvr_reroute_to_clip(struct pvr_transfer_ctx *ctx,
    clip_transfer_cmd = *transfer_cmd;
    clip_transfer_cmd.flags |= PVR_TRANSFER_CMD_FLAGS_FAST2D;
 
-   if (dst_rect)
-      clip_transfer_cmd.scissor = *dst_rect;
+   if (transfer_cmd->source_count <= 1U) {
+      if (dst_rect)
+         clip_transfer_cmd.scissor = *dst_rect;
 
-   return pvr_3d_clip_blit(ctx,
-                           &clip_transfer_cmd,
-                           prep_data,
-                           pass_idx,
-                           finished_out);
+      return pvr_3d_clip_blit(ctx,
+                              &clip_transfer_cmd,
+                              prep_data,
+                              pass_idx,
+                              finished_out);
+   }
+
+   return vk_error(ctx->device, VK_ERROR_FORMAT_NOT_SUPPORTED);
 }
 
 static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
@@ -5362,15 +5525,17 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
 
    pvr_transfer_set_filter(transfer_cmd, state);
 
-   if (transfer_cmd->src_present) {
+   if (transfer_cmd->source_count == 1U) {
+      struct pvr_transfer_cmd_source *src = &transfer_cmd->sources[0];
+
       /* Try to work out a condition to map pixel formats to RAW. That is only
        * possible if we don't perform any kind of 2D operation on the blit as we
        * don't know the actual pixel values - i.e. it has to be point sampled -
        * scaling doesn't matter as long as point sampled.
        */
-      if (transfer_cmd->src.vk_format == transfer_cmd->dst.vk_format &&
-          state->filter == PVR_FILTER_POINT &&
-          transfer_cmd->src.sample_count <= transfer_cmd->dst.sample_count &&
+      if (src->surface.vk_format == transfer_cmd->dst.vk_format &&
+          state->filter[0] == PVR_FILTER_POINT &&
+          src->surface.sample_count <= transfer_cmd->dst.sample_count &&
           (transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) == 0U &&
           transfer_cmd->blit.alpha.type == PVR_ALPHA_NONE) {
          uint32_t bpp;
@@ -5382,28 +5547,29 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
          if (bpp > 0U) {
             switch (bpp) {
             case 8U:
-               int_cmd.src.vk_format = VK_FORMAT_R8_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R8_UINT;
                break;
             case 16U:
-               int_cmd.src.vk_format = VK_FORMAT_R8G8_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R8G8_UINT;
                break;
             case 24U:
-               int_cmd.src.vk_format = VK_FORMAT_R8G8B8_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R8G8B8_UINT;
                break;
             case 32U:
-               int_cmd.src.vk_format = VK_FORMAT_R32_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R32_UINT;
                break;
             case 48U:
-               int_cmd.src.vk_format = VK_FORMAT_R16G16B16_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R16G16B16_UINT;
                break;
             case 64U:
-               int_cmd.src.vk_format = VK_FORMAT_R32G32_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R32G32_UINT;
                break;
             case 96U:
-               int_cmd.src.vk_format = VK_FORMAT_R32G32B32_UINT;
+               int_cmd.sources[0].surface.vk_format = VK_FORMAT_R32G32B32_UINT;
                break;
             case 128U:
-               int_cmd.src.vk_format = VK_FORMAT_R32G32B32A32_UINT;
+               int_cmd.sources[0].surface.vk_format =
+                  VK_FORMAT_R32G32B32A32_UINT;
                break;
             default:
                active_cmd = transfer_cmd;
@@ -5411,7 +5577,7 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
             }
          }
 
-         int_cmd.dst.vk_format = int_cmd.src.vk_format;
+         int_cmd.dst.vk_format = int_cmd.sources[0].surface.vk_format;
       }
    }
 
@@ -5437,20 +5603,21 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
 
       pvr_modify_command(&state->custom_mapping, pass_idx, active_cmd);
 
-      if (state->custom_mapping.double_stride || pass->mapping_count > 1U) {
+      if (state->custom_mapping.double_stride ||
+          pass->sources[0].mapping_count > 1U || pass->source_count > 1U) {
          result =
             pvr_3d_clip_blit(ctx, active_cmd, prep_data, pass_idx, finished_out);
       } else {
-         struct pvr_rect_mapping *mappings = &pass->mappings[0U];
+         struct pvr_rect_mapping *mappings = &pass->sources[0].mappings[0U];
 
          mappings[0U].src_rect.offset.x /=
             MAX2(1U, state->custom_mapping.texel_extend_dst);
          mappings[0U].src_rect.extent.width /=
             MAX2(1U, state->custom_mapping.texel_extend_dst);
 
-         if (int_cmd.src_present) {
-            for (uint32_t i = 0U; i < pass->mapping_count; i++)
-               active_cmd->mappings[i] = mappings[i];
+         if (int_cmd.source_count > 0) {
+            for (uint32_t i = 0U; i < pass->sources[0].mapping_count; i++)
+               active_cmd->sources[0].mappings[i] = mappings[i];
          }
 
          active_cmd->scissor = mappings[0U].dst_rect;
@@ -5512,8 +5679,11 @@ static bool pvr_supports_texel_unwind(struct pvr_transfer_cmd *transfer_cmd)
 {
    struct pvr_transfer_cmd_surface *dst = &transfer_cmd->dst;
 
-   if (transfer_cmd->src_present) {
-      struct pvr_transfer_cmd_surface *src = &transfer_cmd->src;
+   if (transfer_cmd->source_count > 1)
+      return false;
+
+   if (transfer_cmd->source_count) {
+      struct pvr_transfer_cmd_surface *src = &transfer_cmd->sources[0].surface;
 
       if (src->height == 1) {
          if (src->mem_layout != PVR_MEMLAYOUT_LINEAR &&
