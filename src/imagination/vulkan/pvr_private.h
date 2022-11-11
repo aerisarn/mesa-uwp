@@ -1185,7 +1185,7 @@ struct pvr_fragment_shader_state {
    struct pvr_pipeline_stage_state stage_state;
    /* FIXME: Move this into stage_state? */
    struct pvr_stage_allocation_descriptor_state descriptor_state;
-   uint32_t pass_type;
+   enum PVRX(TA_PASSTYPE) pass_type;
 
    struct pvr_pds_upload pds_coeff_program;
    struct pvr_pds_upload pds_fragment_program;

@@ -1429,7 +1429,7 @@ pvr_fragment_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
    fragment_state->stage_state.has_side_effects = false;
    fragment_state->stage_state.empty_program = false;
 
-   fragment_state->pass_type = 0;
+   fragment_state->pass_type = PVRX(TA_PASSTYPE_OPAQUE);
    fragment_state->entry_offset = 0;
 }
 
