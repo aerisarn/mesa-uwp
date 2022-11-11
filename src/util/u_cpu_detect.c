@@ -71,7 +71,7 @@
 #include <elf.h>
 #endif
 
-#ifdef PIPE_OS_UNIX
+#if DETECT_OS_UNIX
 #include <unistd.h>
 #endif
 

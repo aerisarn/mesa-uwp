@@ -28,7 +28,7 @@
 /* armhf builds default to vfp, not neon, and refuses to compile neon intrinsics
  * unless you tell it "no really".
  */
-#ifdef PIPE_ARCH_ARM
+#if DETECT_ARCH_ARM
 #pragma GCC target ("fpu=neon")
 #endif
 
@@ -62,7 +62,7 @@ const struct util_format_unpack_description *
 util_format_unpack_description_neon(enum pipe_format format)
 {
    /* CPU detect for NEON support.  On arm64, it's implied. */
-#ifdef PIPE_ARCH_ARM
+#if DETECT_ARCH_ARM
    if (!util_get_cpu_caps()->has_neon)
       return NULL;
 #endif

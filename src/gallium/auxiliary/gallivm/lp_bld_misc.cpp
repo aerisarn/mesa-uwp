@@ -481,7 +481,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
     * can't handle. Not entirely sure if we really need to do anything yet.
     */
 
-#ifdef PIPE_ARCH_PPC_64
+#if DETECT_ARCH_PPC_64
    /*
     * Large programs, e.g. gnome-shell and firefox, may tax the addressability
     * of the Medium code model once dynamically generated JIT-compiled shader

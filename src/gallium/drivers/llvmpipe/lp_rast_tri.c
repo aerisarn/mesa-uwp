@@ -798,7 +798,7 @@ lp_rast_triangle_32_3_4(struct lp_rasterizer_task *task,
 
 #define TAG(x) x##_32_4
 #define NR_PLANES 4
-#ifdef PIPE_ARCH_SSE
+#if DETECT_ARCH_SSE
 #define TRI_16 lp_rast_triangle_32_4_16
 #endif
 #include "lp_rast_tri_tmp.h"

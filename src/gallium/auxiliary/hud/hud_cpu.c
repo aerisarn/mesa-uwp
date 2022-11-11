@@ -35,7 +35,7 @@
 #include "util/u_queue.h"
 #include <stdio.h>
 #include <inttypes.h>
-#ifdef PIPE_OS_WINDOWS
+#if DETECT_OS_WINDOWS
 #include <windows.h>
 #endif
 #if DETECT_OS_BSD
@@ -49,7 +49,7 @@
 #endif
 
 
-#ifdef PIPE_OS_WINDOWS
+#if DETECT_OS_WINDOWS
 
 static inline uint64_t
 filetime_to_scalar(FILETIME ft)

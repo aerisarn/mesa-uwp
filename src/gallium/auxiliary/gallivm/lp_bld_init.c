@@ -447,7 +447,7 @@ lp_build_init(void)
    lp_native_vector_width = debug_get_num_option("LP_NATIVE_VECTOR_WIDTH",
                                                  lp_native_vector_width);
 
-#ifdef PIPE_ARCH_PPC_64
+#if DETECT_ARCH_PPC_64
    /* Set the NJ bit in VSCR to 0 so denormalized values are handled as
     * specified by IEEE standard (PowerISA 2.06 - Section 6.3). This guarantees
     * that some rounding and half-float to float handling does not round

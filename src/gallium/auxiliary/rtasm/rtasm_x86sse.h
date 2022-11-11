@@ -138,7 +138,7 @@ enum x86_target
 /* make this read a member of x86_function if target != host is desired */
 static inline enum x86_target x86_target( struct x86_function* p )
 {
-#ifdef PIPE_ARCH_X86
+#if DETECT_ARCH_X86
    return X86_32;
 #elif (DETECT_OS_CYGWIN || DETECT_OS_WINDOWS) && DETECT_ARCH_X86_64
    return X86_64_WIN64_ABI;

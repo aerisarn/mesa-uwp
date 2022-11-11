@@ -132,7 +132,7 @@ dd_get_file_stream(struct dd_screen *dscreen, unsigned apitrace_call_number)
 static void
 dd_dump_dmesg(FILE *f)
 {
-#ifdef PIPE_OS_LINUX
+#if DETECT_OS_LINUX
    char line[2000];
    FILE *p = popen("dmesg | tail -n60", "r");
 
@@ -697,7 +697,7 @@ dd_dump_call(FILE *f, struct dd_draw_state *state, struct dd_call *call)
 static void
 dd_kill_process(void)
 {
-#ifdef PIPE_OS_UNIX
+#if DETECT_OS_UNIX
    sync();
 #endif
    fprintf(stderr, "dd: Aborting the process...\n");
