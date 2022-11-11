@@ -26,6 +26,9 @@
  * ends up providing information about the auxiliary surface data, including
  * the address where the auxiliary data resides.
  *
+ * The below sections depict address splitting and formats of table entries of
+ * TGL platform. These may vary on other platforms.
+ *
  * The 48-bit VMA (GPU) address of the main surface is split to do the address
  * lookup:
  *
@@ -111,6 +114,47 @@ enum intel_aux_map_format {
    INTEL_AUX_MAP_LAST,
 };
 
+/**
+ * An incomplete description of AUX mapping formats
+ *
+ * Theoretically, many things can be different, depending on hardware
+ * design like level of page tables, address splitting, format bits
+ * etc. We only manage the known delta to simplify the implementation
+ * this time.
+ */
+struct aux_format_info {
+   /**
+    * Granularity of main surface in compression. It must be power of 2.
+    */
+   uint64_t main_page_size;
+   /**
+    * The ratio of main surface to an AUX entry.
+    */
+   uint64_t main_to_aux_ratio;
+   /**
+    * Page size of level 1 page table. It must be power of 2.
+    */
+   uint64_t l1_page_size;
+   /**
+    * Mask of index bits of level 1 page table in address splitting.
+    */
+   uint64_t l1_index_mask;
+   /**
+    * Offset of index bits of level 1 page table in address splitting.
+    */
+   uint64_t l1_index_offset;
+};
+
+static const struct aux_format_info aux_formats[] = {
+   [INTEL_AUX_MAP_GFX12_64KB] = {
+      .main_page_size = 64 * 1024,
+      .main_to_aux_ratio = 256,
+      .l1_page_size = 8 * 1024,
+      .l1_index_mask = 0xff,
+      .l1_index_offset = 16,
+   },
+};
+
 struct aux_map_buffer {
    struct list_head link;
    struct intel_buffer *buffer;
@@ -126,7 +170,48 @@ struct intel_aux_map_context {
    uint64_t *level3_map;
    uint32_t tail_offset, tail_remaining;
    uint32_t state_num;
+   const struct aux_format_info *format;
 };
+
+static inline uint64_t
+get_page_mask(const uint64_t page_size)
+{
+   return page_size - 1;
+}
+
+static inline uint64_t
+get_meta_page_size(const struct aux_format_info *info)
+{
+   return info->main_page_size / info->main_to_aux_ratio;
+}
+
+static inline uint64_t
+get_index(const uint64_t main_address,
+      const uint64_t index_mask, const uint64_t index_offset)
+{
+   return (main_address >> index_offset) & index_mask;
+}
+
+uint64_t
+intel_aux_get_meta_address_mask(struct intel_aux_map_context *ctx)
+{
+   return ~get_page_mask(get_meta_page_size(ctx->format)) << 16 >> 16;
+}
+
+uint64_t
+intel_aux_get_main_to_aux_ratio(struct intel_aux_map_context *ctx)
+{
+   return ctx->format->main_to_aux_ratio;
+}
+
+static const struct aux_format_info *
+get_format(enum intel_aux_map_format format)
+{
+
+   assert(format < INTEL_AUX_MAP_LAST);
+   assert(ARRAY_SIZE(aux_formats) == INTEL_AUX_MAP_LAST);
+   return &aux_formats[format];
+}
 
 static bool
 add_buffer(struct intel_aux_map_context *ctx)
