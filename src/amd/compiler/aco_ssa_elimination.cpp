@@ -356,6 +356,8 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    if (exec_val->definitions.size() > 1)
       return;
 
+   const bool vcmpx_exec_only = ctx.program->gfx_level >= GFX10;
+
    /* Check if a suitable v_cmpx opcode exists. */
    const aco_opcode v_cmpx_op =
       exec_val->isVOPC() ? get_vcmpx(exec_val->opcode) : aco_opcode::num_opcodes;
@@ -368,8 +370,7 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
    /* The copy can be removed when it kills its operand.
     * v_cmpx also writes the original destination pre GFX10.
     */
-   const bool can_remove_copy =
-      exec_copy->operands[0].isKill() || (vopc && ctx.program->gfx_level < GFX10);
+   const bool can_remove_copy = exec_copy->operands[0].isKill() || (vopc && !vcmpx_exec_only);
 
    /* Always allow reassigning when the value is written by (usable) VOPC.
     * Note, VOPC implicitly contains "& exec" because it yields zero on inactive lanes.
@@ -419,14 +420,14 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
          if (regs_intersect(exec_copy_def, op))
             return;
       /* We would write over the saved exec value in this case. */
-      if (((vopc && ctx.program->gfx_level < GFX10) || !can_remove_copy) &&
+      if (((vopc && !vcmpx_exec_only) || !can_remove_copy) &&
           regs_intersect(exec_copy_def, exec_wr_def))
          return;
    }
 
    if (vopc) {
       /* Add one extra definition for exec and copy the VOP3-specific fields if present. */
-      if (ctx.program->gfx_level < GFX10) {
+      if (!vcmpx_exec_only) {
          if (exec_val->isSDWA() || exec_val->isDPP()) {
             /* This might work but it needs testing and more code to copy the instruction. */
             return;
@@ -462,7 +463,7 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       *exec_val->definitions.rbegin() = Definition(exec, ctx.program->lane_mask);
 
       /* Change instruction from VOP3 to plain VOPC when possible. */
-      if (ctx.program->gfx_level >= GFX10 && !exec_val->usesModifiers() &&
+      if (vcmpx_exec_only && !exec_val->usesModifiers() &&
           (exec_val->operands.size() < 2 || exec_val->operands[1].isOfType(RegType::vgpr)))
          exec_val->format = Format::VOPC;
    } else {
