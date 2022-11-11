@@ -807,4 +807,90 @@ BEGIN_TEST(assembler.gfx11.ldsdir)
 
    finish_assembler_test();
 END_TEST
+
+BEGIN_TEST(assembler.gfx11.vop12c_v128)
+   if (!setup_cs(NULL, GFX11))
+      return;
+
+   Definition dst_v0 = bld.def(v1);
+   dst_v0.setFixed(PhysReg(256));
+
+   Definition dst_v128 = bld.def(v1);
+   dst_v128.setFixed(PhysReg(256 + 128));
+
+   Operand op_v1(bld.tmp(v1));
+   op_v1.setFixed(PhysReg(256 + 1));
+
+   Operand op_v2(bld.tmp(v1));
+   op_v2.setFixed(PhysReg(256 + 2));
+
+   Operand op_v129(bld.tmp(v1));
+   op_v129.setFixed(PhysReg(256 + 129));
+
+   Operand op_v130(bld.tmp(v1));
+   op_v130.setFixed(PhysReg(256 + 130));
+
+   //>> BB0:
+   //! v_mul_f16_e32 v0, v1, v2 ; Error: VGPR_32_Lo128: unknown register 128 ; 6a000501
+   bld.vop2(aco_opcode::v_mul_f16, dst_v0, op_v1, op_v2);
+
+   //! v_mul_f16_e64 v128, v1, v2                                  ; d5350080 00020501
+   bld.vop2(aco_opcode::v_mul_f16, dst_v128, op_v1, op_v2);
+
+   //! v_mul_f16_e64 v0, v129, v2                                  ; d5350000 00020581
+   bld.vop2(aco_opcode::v_mul_f16, dst_v0, op_v129, op_v2);
+
+   //! v_mul_f16_e64 v0, v1, v130                                  ; d5350000 00030501
+   bld.vop2(aco_opcode::v_mul_f16, dst_v0, op_v1, op_v130);
+
+   //! v_rcp_f16_e64 v128, v1                                      ; d5d40080 00000101
+   bld.vop1(aco_opcode::v_rcp_f16, dst_v128, op_v1);
+
+   //! v_cmp_eq_f16_e64 vcc, v129, v2                              ; d402006a 00020581
+   bld.vopc(aco_opcode::v_cmp_eq_f16, bld.def(s2, vcc), op_v129, op_v2);
+
+   //! v_mul_f16_e64_dpp v128, v1, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5350080 000204fa ff0d2101
+   bld.vop2_dpp(aco_opcode::v_mul_f16, dst_v128, op_v1, op_v2, dpp_row_rr(1));
+
+   //! v_mul_f16_e64_dpp v0, v129, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5350000 000204fa ff0d2181
+   bld.vop2_dpp(aco_opcode::v_mul_f16, dst_v0, op_v129, op_v2, dpp_row_rr(1));
+
+   //! v_mul_f16_e64_dpp v0, v1, v130 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5350000 000304fa ff0d2101
+   bld.vop2_dpp(aco_opcode::v_mul_f16, dst_v0, op_v1, op_v130, dpp_row_rr(1));
+
+   //! v_mul_f16_e64_dpp v128, v1, v2 dpp8:[0,0,0,0,0,0,0,0] fi:1  ; d5350080 000204ea 00000001
+   bld.vop2_dpp8(aco_opcode::v_mul_f16, dst_v128, op_v1, op_v2);
+
+   //! v_mul_f16_e64_dpp v0, v129, v2 dpp8:[0,0,0,0,0,0,0,0] fi:1  ; d5350000 000204ea 00000081
+   bld.vop2_dpp8(aco_opcode::v_mul_f16, dst_v0, op_v129, op_v2);
+
+   //! v_mul_f16_e64_dpp v0, v1, v130 dpp8:[0,0,0,0,0,0,0,0] fi:1  ; d5350000 000304ea 00000001
+   bld.vop2_dpp8(aco_opcode::v_mul_f16, dst_v0, op_v1, op_v130);
+
+   //! v_fma_f16 v128, v1, v2, 0x60                                ; d6480080 03fe0501 00000060
+   bld.vop2(aco_opcode::v_fmaak_f16, dst_v128, op_v1, op_v2, Operand::literal32(96));
+
+   //! v_fma_f16 v128, v1, 0x60, v2                                ; d6480080 0409ff01 00000060
+   bld.vop2(aco_opcode::v_fmamk_f16, dst_v128, op_v1, op_v2, Operand::literal32(96));
+
+   //! v_rcp_f16_e64_dpp v128, -v1 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5d40080 200000fa ff1d2101
+   bld.vop1_dpp(aco_opcode::v_rcp_f16, dst_v128, op_v1, dpp_row_rr(1))->dpp16().neg[0] = true;
+
+   //! v_rcp_f16_e64_dpp v128, |v1| row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5d40180 000000fa ff2d2101
+   bld.vop1_dpp(aco_opcode::v_rcp_f16, dst_v128, op_v1, dpp_row_rr(1))->dpp16().abs[0] = true;
+
+   //! v_mul_f16_e64_dpp v128, -v1, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5350080 200204fa ff1d2101
+   bld.vop2_dpp(aco_opcode::v_mul_f16, dst_v128, op_v1, op_v2, dpp_row_rr(1))->dpp16().neg[0] = true;
+
+   //! v_mul_f16_e64_dpp v128, |v1|, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d5350180 000204fa ff2d2101
+   bld.vop2_dpp(aco_opcode::v_mul_f16, dst_v128, op_v1, op_v2, dpp_row_rr(1))->dpp16().abs[0] = true;
+
+   //! v_cmp_eq_f16_e64_dpp vcc, -v129, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d402006a 200204fa ff1d2181
+   bld.vopc_dpp(aco_opcode::v_cmp_eq_f16, bld.def(s2, vcc), op_v129, op_v2, dpp_row_rr(1))->dpp16().neg[0] = true;
+
+   //! v_cmp_eq_f16_e64_dpp vcc, |v129|, v2 row_ror:1 row_mask:0xf bank_mask:0xf bound_ctrl:1 fi:1 ; d402016a 000204fa ff2d2181
+   bld.vopc_dpp(aco_opcode::v_cmp_eq_f16, bld.def(s2, vcc), op_v129, op_v2, dpp_row_rr(1))->dpp16().abs[0] = true;
+
+   finish_assembler_test();
+END_TEST
 #endif

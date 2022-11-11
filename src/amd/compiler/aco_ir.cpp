@@ -533,6 +533,112 @@ instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
    }
 }
 
+/* On GFX11, for some instructions, bit 7 of the destination/operand vgpr is opsel and the field
+ * only supports v0-v127.
+ */
+// TODO: take advantage of this functionality in the RA and assembler
+uint8_t
+get_gfx11_true16_mask(aco_opcode op)
+{
+   switch (op) {
+   case aco_opcode::v_ceil_f16:
+   case aco_opcode::v_cos_f16:
+   case aco_opcode::v_cvt_f16_i16:
+   case aco_opcode::v_cvt_f16_u16:
+   case aco_opcode::v_cvt_i16_f16:
+   case aco_opcode::v_cvt_u16_f16:
+   case aco_opcode::v_cvt_norm_i16_f16:
+   case aco_opcode::v_cvt_norm_u16_f16:
+   case aco_opcode::v_exp_f16:
+   case aco_opcode::v_floor_f16:
+   case aco_opcode::v_fract_f16:
+   case aco_opcode::v_frexp_exp_i16_f16:
+   case aco_opcode::v_frexp_mant_f16:
+   case aco_opcode::v_log_f16:
+   case aco_opcode::v_not_b16:
+   case aco_opcode::v_rcp_f16:
+   case aco_opcode::v_rndne_f16:
+   case aco_opcode::v_rsq_f16:
+   case aco_opcode::v_sin_f16:
+   case aco_opcode::v_sqrt_f16:
+   case aco_opcode::v_trunc_f16:
+   case aco_opcode::v_mov_b16: return 0x1 | 0x8;
+   case aco_opcode::v_add_f16:
+   case aco_opcode::v_fmaak_f16:
+   case aco_opcode::v_fmac_f16:
+   case aco_opcode::v_fmamk_f16:
+   case aco_opcode::v_ldexp_f16:
+   case aco_opcode::v_max_f16:
+   case aco_opcode::v_min_f16:
+   case aco_opcode::v_mul_f16:
+   case aco_opcode::v_sub_f16:
+   case aco_opcode::v_subrev_f16:
+   case aco_opcode::v_and_b16:
+   case aco_opcode::v_or_b16:
+   case aco_opcode::v_xor_b16: return 0x3 | 0x8;
+   case aco_opcode::v_cmp_class_f16:
+   case aco_opcode::v_cmpx_class_f16:
+   case aco_opcode::v_cvt_f32_f16:
+   case aco_opcode::v_cvt_i32_i16:
+   case aco_opcode::v_cvt_u32_u16: return 0x1;
+   case aco_opcode::v_cmp_eq_f16:
+   case aco_opcode::v_cmp_eq_i16:
+   case aco_opcode::v_cmp_eq_u16:
+   case aco_opcode::v_cmp_ge_f16:
+   case aco_opcode::v_cmp_ge_i16:
+   case aco_opcode::v_cmp_ge_u16:
+   case aco_opcode::v_cmp_gt_f16:
+   case aco_opcode::v_cmp_gt_i16:
+   case aco_opcode::v_cmp_gt_u16:
+   case aco_opcode::v_cmp_le_f16:
+   case aco_opcode::v_cmp_le_i16:
+   case aco_opcode::v_cmp_le_u16:
+   case aco_opcode::v_cmp_lg_f16:
+   case aco_opcode::v_cmp_lg_i16:
+   case aco_opcode::v_cmp_lg_u16:
+   case aco_opcode::v_cmp_lt_f16:
+   case aco_opcode::v_cmp_lt_i16:
+   case aco_opcode::v_cmp_lt_u16:
+   case aco_opcode::v_cmp_neq_f16:
+   case aco_opcode::v_cmp_nge_f16:
+   case aco_opcode::v_cmp_ngt_f16:
+   case aco_opcode::v_cmp_nle_f16:
+   case aco_opcode::v_cmp_nlg_f16:
+   case aco_opcode::v_cmp_nlt_f16:
+   case aco_opcode::v_cmp_o_f16:
+   case aco_opcode::v_cmp_u_f16:
+   case aco_opcode::v_cmpx_eq_f16:
+   case aco_opcode::v_cmpx_eq_i16:
+   case aco_opcode::v_cmpx_eq_u16:
+   case aco_opcode::v_cmpx_ge_f16:
+   case aco_opcode::v_cmpx_ge_i16:
+   case aco_opcode::v_cmpx_ge_u16:
+   case aco_opcode::v_cmpx_gt_f16:
+   case aco_opcode::v_cmpx_gt_i16:
+   case aco_opcode::v_cmpx_gt_u16:
+   case aco_opcode::v_cmpx_le_f16:
+   case aco_opcode::v_cmpx_le_i16:
+   case aco_opcode::v_cmpx_le_u16:
+   case aco_opcode::v_cmpx_lg_f16:
+   case aco_opcode::v_cmpx_lg_i16:
+   case aco_opcode::v_cmpx_lg_u16:
+   case aco_opcode::v_cmpx_lt_f16:
+   case aco_opcode::v_cmpx_lt_i16:
+   case aco_opcode::v_cmpx_lt_u16:
+   case aco_opcode::v_cmpx_neq_f16:
+   case aco_opcode::v_cmpx_nge_f16:
+   case aco_opcode::v_cmpx_ngt_f16:
+   case aco_opcode::v_cmpx_nle_f16:
+   case aco_opcode::v_cmpx_nlg_f16:
+   case aco_opcode::v_cmpx_nlt_f16:
+   case aco_opcode::v_cmpx_o_f16:
+   case aco_opcode::v_cmpx_u_f16: return 0x3;
+   case aco_opcode::v_cvt_f16_f32:
+   case aco_opcode::v_sat_pk_u8_i16: return 0x8;
+   default: return 0x0;
+   }
+}
+
 uint32_t
 get_reduction_identity(ReduceOp op, unsigned idx)
 {

@@ -1872,6 +1872,7 @@ is_dead(const std::vector<uint16_t>& uses, const Instruction* instr)
 
 bool can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx);
 bool instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op);
+uint8_t get_gfx11_true16_mask(aco_opcode op);
 bool can_use_SDWA(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr, bool pre_ra);
 bool can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra, bool dpp8);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
