@@ -76,6 +76,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .subgroup_shuffle = true,
          .subgroup_arithmetic = true,
          .physical_storage_buffer_address = true,
+         .post_depth_coverage = true,
       },
    };
 

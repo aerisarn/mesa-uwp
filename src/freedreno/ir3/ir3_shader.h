@@ -694,6 +694,8 @@ struct ir3_shader_variant {
 
    bool per_samp;
 
+   bool post_depth_coverage;
+
    /* Are we using split or merged register file? */
    bool mergedregs;
 

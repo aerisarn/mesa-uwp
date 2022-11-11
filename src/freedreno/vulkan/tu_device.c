@@ -242,6 +242,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_mutable_descriptor_type = true,
       .KHR_pipeline_library = true,
       .EXT_graphics_pipeline_library = true,
+      .EXT_post_depth_coverage = true,
    };
 }
 

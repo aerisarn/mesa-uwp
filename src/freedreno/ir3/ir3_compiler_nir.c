@@ -5004,6 +5004,10 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
        !ctx->s->info.fs.early_fragment_tests)
       ctx->so->no_earlyz |= ctx->s->info.writes_memory;
 
+   if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
+       ctx->s->info.fs.post_depth_coverage)
+      so->post_depth_coverage = true;
+
 out:
    if (ret) {
       if (so->ir)

@@ -1976,7 +1976,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x880a" name="RB_RENDER_CONTROL1">
 		<!-- enable bits for various FS sysvalue regs: -->
 		<bitfield name="SAMPLEMASK" pos="0" type="boolean"/>
-		<bitfield name="UNK1" pos="1" type="boolean"/>
+		<bitfield name="POSTDEPTHCOVERAGE" pos="1" type="boolean"/>
 		<bitfield name="FACENESS" pos="2" type="boolean"/>
 		<bitfield name="SAMPLEID" pos="3" type="boolean"/>
 		<bitfield name="FRAGCOORDSAMPLEMODE" low="4" high="5" type="a6xx_fragcoord_sample_mode"/>
