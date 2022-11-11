@@ -1939,12 +1939,12 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
                   const uint8_t *vs_output_param_offset)
 {
    uint64_t output_mask32 = 0;
-   nir_ssa_def *outputs32[64][4] = {0};
+   nir_ssa_def *outputs32[VARYING_SLOT_MAX][4] = {0};
 
-   uint64_t output_mask_lo = 0;
-   uint64_t output_mask_hi = 0;
-   nir_ssa_def *outputs_lo[64][4];
-   nir_ssa_def *outputs_hi[64][4];
+   unsigned output_mask_lo = 0;
+   unsigned output_mask_hi = 0;
+   nir_ssa_def *outputs_lo[16][4];
+   nir_ssa_def *outputs_hi[16][4];
 
    /* Assume:
     * - the shader used nir_lower_io_to_temporaries
@@ -1983,9 +1983,9 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
          }
 
          if (is_16bit && is_hi)
-            output_mask_hi |= BITFIELD64_BIT(slot - VARYING_SLOT_VAR0_16BIT);
+            output_mask_hi |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
          else if (is_16bit)
-            output_mask_lo |= BITFIELD64_BIT(slot - VARYING_SLOT_VAR0_16BIT);
+            output_mask_lo |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
          else
             output_mask32 |= BITFIELD64_BIT(slot);
 
@@ -2007,13 +2007,13 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
 
    if (output_mask_lo | output_mask_hi) {
       nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
-      u_foreach_bit64 (i, output_mask_lo | output_mask_hi) {
+      u_foreach_bit (i, output_mask_lo | output_mask_hi) {
          vs_output *output = &outputs[num_outputs++];
 
          output->slot = i + VARYING_SLOT_VAR0_16BIT;
          for (unsigned j = 0; j < 4; j++) {
-            nir_ssa_def *lo = output_mask_lo & BITFIELD64_BIT(i) ? outputs_lo[i][j] : NULL;
-            nir_ssa_def *hi = output_mask_hi & BITFIELD64_BIT(i) ? outputs_hi[i][j] : NULL;
+            nir_ssa_def *lo = output_mask_lo & BITFIELD_BIT(i) ? outputs_lo[i][j] : NULL;
+            nir_ssa_def *hi = output_mask_hi & BITFIELD_BIT(i) ? outputs_hi[i][j] : NULL;
             if (lo || hi)
                output->chan[j] = nir_pack_32_2x16_split(b, lo ? lo : undef, hi ? hi : undef);
             else
