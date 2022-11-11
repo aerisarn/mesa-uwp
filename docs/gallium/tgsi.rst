@@ -3576,7 +3576,7 @@ DCL SVIEW[#], resource, type(s)
 Declares a shader input sampler view and assigns it to a SVIEW[#]
 register.
 
-resource can be one of BUFFER, 1D, 2D, 3D, 1DArray and 2DArray.
+resource can be one of BUFFER, 1D, 2D, 3D, 1D_ARRAY and 2D_ARRAY.
 
 type must be 1 or 4 entries (if specifying on a per-component
 level) out of UNORM, SNORM, SINT, UINT and FLOAT.
@@ -3604,8 +3604,8 @@ DCL RES[#], resource [, WR] [, RAW]
 Declares a shader input resource and assigns it to a RES[#]
 register.
 
-resource can be one of BUFFER, 1D, 2D, 3D, CUBE, 1DArray and
-2DArray.
+resource can be one of BUFFER, 1D, 2D, 3D, CUBE, 1D_ARRAY and
+2D_ARRAY.
 
 If the RAW keyword is not specified, the texture data will be
 subject to conversion, swizzling and scaling as required to yield
