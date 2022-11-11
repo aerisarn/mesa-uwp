@@ -585,6 +585,6 @@ util_sse2_stretch_row_8unorm(__m128i * restrict dst,
 
 
 
-#endif /* PIPE_ARCH_SSE */
+#endif /* DETECT_ARCH_SSE */
 
 #endif /* U_SSE_H_ */

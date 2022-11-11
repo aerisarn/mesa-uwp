@@ -76,4 +76,4 @@ util_format_unpack_description_neon(enum pipe_format format)
    return &util_format_unpack_descriptions_neon[format];
 }
 
-#endif /* PIPE_ARCH_AARCH64 | PIPE_ARCH_ARM */
+#endif /* DETECT_ARCH_AARCH64 | DETECT_ARCH_ARM */

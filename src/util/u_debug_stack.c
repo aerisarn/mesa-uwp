@@ -250,7 +250,7 @@ debug_backtrace_capture(struct debug_stack_frame *backtrace,
 #endif
 
 #if DETECT_ARCH_X86
-#if DETECT_CC_GCC && (PIPE_CC_GCC_VERSION > 404) || defined(__clang__)
+#if DETECT_CC_GCC && (DETECT_CC_GCC_VERSION > 404) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wframe-address"
    const void **frame_pointer = ((const void **)__builtin_frame_address(1));

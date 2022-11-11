@@ -155,7 +155,7 @@ check_os_altivec_support(void)
          util_cpu_caps.has_altivec = 1;
       }
    }
-#elif DETECT_OS_FREEBSD /* !PIPE_OS_APPLE && !PIPE_OS_NETBSD && !PIPE_OS_OPENBSD */
+#elif DETECT_OS_FREEBSD /* !DETECT_OS_APPLE && !DETECT_OS_NETBSD && !DETECT_OS_OPENBSD */
    unsigned long hwcap = 0;
 #ifdef HAVE_ELF_AUX_INFO
    elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
@@ -167,7 +167,7 @@ check_os_altivec_support(void)
       util_cpu_caps.has_altivec = 1;
    if (hwcap & PPC_FEATURE_HAS_VSX)
       util_cpu_caps.has_vsx = 1;
-#elif DETECT_OS_LINUX /* !PIPE_OS_FREEBSD */
+#elif DETECT_OS_LINUX /* !DETECT_OS_FREEBSD */
 #if DETECT_ARCH_PPC_64
     Elf64_auxv_t aux;
 #else
@@ -188,7 +188,7 @@ check_os_altivec_support(void)
        }
        close(fd);
     }
-#else /* !PIPE_OS_APPLE && !PIPE_OS_BSD && !PIPE_OS_LINUX */
+#else /* !DETECT_OS_APPLE && !DETECT_OS_BSD && !DETECT_OS_LINUX */
    /* not on Apple/Darwin or Linux, do it the brute-force way */
    /* this is borrowed from the libmpeg2 library */
    signal(SIGILL, sigill_handler);
@@ -233,9 +233,9 @@ check_os_altivec_support(void)
          util_cpu_caps.has_altivec = 0;
       }
    }
-#endif /* !PIPE_OS_APPLE && !PIPE_OS_LINUX */
+#endif /* !DETECT_OS_APPLE && !DETECT_OS_LINUX */
 }
-#endif /* PIPE_ARCH_PPC */
+#endif /* DETECT_ARCH_PPC */
 
 
 #if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
@@ -400,7 +400,7 @@ check_os_arm_support(void)
     * On Android, the cpufeatures library is preferred way of checking
     * CPU capabilities. However, it is not available for standalone Mesa
     * builds, i.e. when Android build system (Android.mk-based) is not
-    * used. Because of this we cannot use PIPE_OS_ANDROID here, but rather
+    * used. Because of this we cannot use DETECT_OS_ANDROID here, but rather
     * have a separate macro that only gets enabled from respective Android.mk.
     */
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
@@ -434,7 +434,7 @@ check_os_arm_support(void)
        }
        close (fd);
     }
-#endif /* PIPE_OS_LINUX */
+#endif /* DETECT_OS_LINUX */
 }
 
 #elif DETECT_ARCH_AARCH64
@@ -443,7 +443,7 @@ check_os_arm_support(void)
 {
     util_cpu_caps.has_neon = true;
 }
-#endif /* PIPE_ARCH_ARM || PIPE_ARCH_AARCH64 */
+#endif /* DETECT_ARCH_ARM || DETECT_ARCH_AARCH64 */
 
 #if DETECT_ARCH_MIPS64
 static void
@@ -465,9 +465,9 @@ check_os_mips64_support(void)
        }
        close (fd);
     }
-#endif /* PIPE_OS_LINUX */
+#endif /* DETECT_OS_LINUX */
 }
-#endif /* PIPE_ARCH_MIPS64 */
+#endif /* DETECT_ARCH_MIPS64 */
 
 
 static void
@@ -609,7 +609,7 @@ void check_cpu_caps_override(void)
       util_cpu_caps.has_sse3 = 0;
    }
 #endif
-#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+#endif /* DETECT_ARCH_X86 || DETECT_ARCH_X86_64 */
 
    if (override_cpu_caps != NULL) {
 #if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
@@ -628,7 +628,7 @@ void check_cpu_caps_override(void)
       } else if (!strcmp(override_cpu_caps, "avx")) {
          util_cpu_caps.has_avx512f = 0;
       }
-#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+#endif /* DETECT_ARCH_X86 || DETECT_ARCH_X86_64 */
    }
 
 #if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
@@ -665,7 +665,7 @@ void check_cpu_caps_override(void)
       util_cpu_caps.has_avx512vl   = 0;
       util_cpu_caps.has_avx512vbmi = 0;
    }
-#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+#endif /* DETECT_ARCH_X86 || DETECT_ARCH_X86_64 */
 }
 
 static
@@ -896,7 +896,7 @@ _util_cpu_detect_once(void)
             util_cpu_caps.cacheline = cacheline;
       }
    }
-#endif /* PIPE_ARCH_X86 || PIPE_ARCH_X86_64 */
+#endif /* DETECT_ARCH_X86 || DETECT_ARCH_X86_64 */
 
 #if DETECT_ARCH_ARM || DETECT_ARCH_AARCH64
    check_os_arm_support();
@@ -904,11 +904,11 @@ _util_cpu_detect_once(void)
 
 #if DETECT_ARCH_PPC
    check_os_altivec_support();
-#endif /* PIPE_ARCH_PPC */
+#endif /* DETECT_ARCH_PPC */
 
 #if DETECT_ARCH_MIPS64
    check_os_mips64_support();
-#endif /* PIPE_ARCH_MIPS64 */
+#endif /* DETECT_ARCH_MIPS64 */
 
 #if DETECT_ARCH_S390
    util_cpu_caps.family = CPU_S390X;

@@ -1026,7 +1026,7 @@ calc_fixed_position(struct lp_setup_context *setup,
 {
    float pixel_offset = setup->multisample ? 0.0 : setup->pixel_offset;
    /*
-    * The rounding may not be quite the same with PIPE_ARCH_SSE
+    * The rounding may not be quite the same with DETECT_ARCH_SSE
     * (util_iround right now only does nearest/even on x87,
     * otherwise nearest/away-from-zero).
     * Both should be acceptable, I think.

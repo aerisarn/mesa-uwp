@@ -227,7 +227,7 @@ debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
    return true;
 }
 
-#endif /* PIPE_OS_WINDOWS */
+#endif /* DETECT_OS_WINDOWS */
 
 void
 debug_symbol_name(const void *addr, char* buf, unsigned size)

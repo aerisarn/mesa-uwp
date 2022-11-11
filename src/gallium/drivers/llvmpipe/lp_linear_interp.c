@@ -228,7 +228,7 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
    return TRUE;
 }
 
-#else //PIPE_ARCH_SSE
+#else //DETECT_ARCH_SSE
 
 boolean
 lp_linear_init_interp(struct lp_linear_interp *interp,
@@ -243,4 +243,4 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
    return FALSE;
 }
 
-#endif //PIPE_ARCH_SSE
+#endif //DETECT_ARCH_SSE

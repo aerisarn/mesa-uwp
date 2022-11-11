@@ -988,7 +988,7 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
    return TRUE;
 }
 
-#else  // PIPE_ARCH_SSE
+#else  // DETECT_ARCH_SSE
 
 boolean
 lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
@@ -997,4 +997,4 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
    return FALSE;
 }
 
-#endif  // PIPE_ARCH_SSE
+#endif  // DETECT_ARCH_SSE
