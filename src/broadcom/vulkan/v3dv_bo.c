@@ -142,15 +142,17 @@ bo_free(struct v3dv_device *device,
    if (ret != 0)
       fprintf(stderr, "close object %d: %s\n", bo->handle, strerror(errno));
 
-   device->bo_count--;
-   device->bo_size -= bo->size;
+   if (!bo->is_import) {
+      device->bo_count--;
+      device->bo_size -= bo->size;
 
-   if (dump_stats) {
-      fprintf(stderr, "Freed %s%s%dkb:\n",
-              bo->name ? bo->name : "",
-              bo->name ? " " : "",
-              bo->size / 1024);
-      bo_dump_stats(device);
+      if (dump_stats) {
+         fprintf(stderr, "Freed %s%s%dkb:\n",
+                 bo->name ? bo->name : "",
+                 bo->name ? " " : "",
+                 bo->size / 1024);
+         bo_dump_stats(device);
+      }
    }
 
    /* Our BO structs are stored in a sparse array in the physical device,
@@ -198,7 +200,19 @@ v3dv_bo_init(struct v3dv_bo *bo,
    bo->name = name;
    bo->private = private;
    bo->dumb_handle = -1;
+   bo->is_import = false;
    list_inithead(&bo->list_link);
+}
+
+void
+v3dv_bo_init_import(struct v3dv_bo *bo,
+                    uint32_t handle,
+                    uint32_t size,
+                    uint32_t offset,
+                    bool private)
+{
+   v3dv_bo_init(bo, handle, size, offset, "import", private);
+   bo->is_import = true;
 }
 
 struct v3dv_bo *

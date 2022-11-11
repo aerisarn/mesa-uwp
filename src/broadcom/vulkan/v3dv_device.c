@@ -2278,7 +2278,7 @@ device_import_bo(struct v3dv_device *device,
    assert(*bo);
 
    if ((*bo)->refcnt == 0)
-      v3dv_bo_init(*bo, handle, size, get_offset.offset, "import", false);
+      v3dv_bo_init_import(*bo, handle, size, get_offset.offset, false);
    else
       p_atomic_inc(&(*bo)->refcnt);
 
