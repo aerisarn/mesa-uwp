@@ -135,16 +135,9 @@ bo_free(struct v3dv_device *device,
    assert(p_atomic_read(&bo->refcnt) == 0);
    assert(bo->map == NULL);
 
-   /* Our BO structs are stored in a sparse array in the physical device,
-    * so we don't want to free the BO pointer, instead we want to reset it
-    * to 0, to signal that array entry as being free.
-    */
-   uint32_t handle = bo->handle;
-   memset(bo, 0, sizeof(*bo));
-
    struct drm_gem_close c;
    memset(&c, 0, sizeof(c));
-   c.handle = handle;
+   c.handle = bo->handle;
    int ret = v3dv_ioctl(device->pdevice->render_fd, DRM_IOCTL_GEM_CLOSE, &c);
    if (ret != 0)
       fprintf(stderr, "close object %d: %s\n", bo->handle, strerror(errno));
@@ -159,6 +152,12 @@ bo_free(struct v3dv_device *device,
               bo->size / 1024);
       bo_dump_stats(device);
    }
+
+   /* Our BO structs are stored in a sparse array in the physical device,
+    * so we don't want to free the BO pointer, instead we want to reset it
+    * to 0, to signal that array entry as being free.
+    */
+   memset(bo, 0, sizeof(*bo));
 
    return ret == 0;
 }
