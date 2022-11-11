@@ -189,7 +189,7 @@ lp_build_compare(struct gallivm_state *gallivm,
    assert(func > PIPE_FUNC_NEVER);
    assert(func < PIPE_FUNC_ALWAYS);
 
-#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+#if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
    /*
     * There are no unsigned integer comparison instructions in SSE.
     */

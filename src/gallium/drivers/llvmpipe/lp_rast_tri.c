@@ -159,7 +159,7 @@ lp_rast_triangle_ms_4_16(struct lp_rasterizer_task *task,
    lp_rast_triangle_ms_4(task, arg2);
 }
 
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
 
 #include <emmintrin.h>
 #include "util/u_sse.h"

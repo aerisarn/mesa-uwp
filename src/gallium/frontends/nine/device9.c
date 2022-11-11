@@ -59,7 +59,7 @@
 
 #define DBG_CHANNEL DBG_DEVICE
 
-#if defined(PIPE_CC_GCC) && (defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64))
+#if DETECT_CC_GCC && (DETECT_ARCH_X86 || DETECT_ARCH_X86_64)
 
 static void nine_setup_fpu()
 {

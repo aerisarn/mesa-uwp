@@ -42,7 +42,7 @@
 #include "util/hash_table.h"
 
 
-#if defined(PIPE_OS_WINDOWS)
+#if DETECT_OS_WINDOWS
 
 #include <windows.h>
 #include <stddef.h>
@@ -232,7 +232,7 @@ debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
 void
 debug_symbol_name(const void *addr, char* buf, unsigned size)
 {
-#if defined(PIPE_OS_WINDOWS)
+#if DETECT_OS_WINDOWS
    if (debug_symbol_name_dbghelp(addr, buf, size)) {
       return;
    }

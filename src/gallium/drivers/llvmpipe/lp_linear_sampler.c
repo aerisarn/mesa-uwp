@@ -39,7 +39,7 @@
 #include "lp_state_fs.h"
 #include "lp_linear_priv.h"
 
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
 
 #define FIXED16_SHIFT  16
 #define FIXED16_ONE    (1<<16)

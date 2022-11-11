@@ -64,8 +64,8 @@
 #define PIPE_ARCH_X86_64
 #endif
 
-#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
-#if defined(PIPE_CC_GCC) && !defined(__SSE2__)
+#if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
+#if DETECT_CC_GCC && !defined(__SSE2__)
 /* #warning SSE2 support requires -msse -msse2 compiler options */
 #else
 #define DETECT_ARCH_SSE 1

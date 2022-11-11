@@ -41,7 +41,7 @@
 #include "pipe/p_compiler.h"
 #include "util/u_debug.h"
 
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
 
 #include <emmintrin.h>
 

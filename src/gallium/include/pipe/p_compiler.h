@@ -61,7 +61,7 @@ extern "C" {
 
 
 #if !defined(__HAIKU__) && !defined(__USE_MISC)
-#if !defined(PIPE_OS_ANDROID)
+#if !DETECT_OS_ANDROID
 typedef unsigned int       uint;
 #endif
 typedef unsigned short     ushort;
@@ -94,7 +94,7 @@ typedef unsigned char boolean;
 
 
 /* Macro for stack alignment. */
-#if defined(__GNUC__) && defined(PIPE_ARCH_X86)
+#if defined(__GNUC__) && DETECT_ARCH_X86
 #define PIPE_ALIGN_STACK __attribute__((force_align_arg_pointer))
 #else
 #define PIPE_ALIGN_STACK

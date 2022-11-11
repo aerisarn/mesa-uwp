@@ -28,7 +28,7 @@
 #include "pipe/p_compiler.h"
 #include "util/detect.h"
 
-#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+#if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
 
 /* It is up to the caller to ensure that instructions issued are
  * suitable for the host cpu.  There are no checks made in this module
@@ -140,9 +140,9 @@ static inline enum x86_target x86_target( struct x86_function* p )
 {
 #ifdef PIPE_ARCH_X86
    return X86_32;
-#elif (defined(PIPE_OS_CYGWIN) || defined(PIPE_OS_WINDOWS)) && defined(PIPE_ARCH_X86_64)
+#elif (DETECT_OS_CYGWIN || DETECT_OS_WINDOWS) && DETECT_ARCH_X86_64
    return X86_64_WIN64_ABI;
-#elif defined(PIPE_ARCH_X86_64)
+#elif DETECT_ARCH_X86_64
    return X86_64_STD_ABI;
 #endif
 }

@@ -51,7 +51,7 @@ extern "C" {
 /**
  * Represent a frame from a stack backtrace.
  *
-#if defined(PIPE_OS_WINDOWS) && !defined(HAVE_LIBUNWIND)
+#if DETECT_OS_WINDOWS && !defined(HAVE_LIBUNWIND)
  * XXX: Do not change this. (passed to Windows' CaptureStackBackTrace())
 #endif
  *

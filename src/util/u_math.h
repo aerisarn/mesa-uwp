@@ -157,11 +157,11 @@ util_ifloor(float f)
 static inline int
 util_iround(float f)
 {
-#if defined(PIPE_CC_GCC) && defined(PIPE_ARCH_X86)
+#if DETECT_CC_GCC && DETECT_ARCH_X86
    int r;
    __asm__ ("fistpl %0" : "=m" (r) : "t" (f) : "st");
    return r;
-#elif defined(PIPE_CC_MSVC) && defined(PIPE_ARCH_X86)
+#elif DETECT_CC_MSVC && DETECT_ARCH_X86
    int r;
    _asm {
       fld f

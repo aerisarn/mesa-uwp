@@ -852,7 +852,7 @@ lp_setup_set_linear_mode(struct lp_setup_context *setup,
     * is more than ten-year-old technology, so it's a reasonable
     * baseline.
     */
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
    setup->permit_linear_rasterizer = (mode &&
                                       util_get_cpu_caps()->has_sse2);
 #else

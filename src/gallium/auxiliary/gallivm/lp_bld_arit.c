@@ -65,7 +65,7 @@
 #include "lp_bld_arit.h"
 #include "lp_bld_flow.h"
 
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
 #include <xmmintrin.h>
 #endif
 

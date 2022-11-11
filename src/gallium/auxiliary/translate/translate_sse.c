@@ -36,7 +36,7 @@
 #include "translate.h"
 
 
-#if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+#if DETECT_ARCH_X86 || DETECT_ARCH_X86_64
 
 #include "rtasm/rtasm_x86sse.h"
 

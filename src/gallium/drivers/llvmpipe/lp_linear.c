@@ -41,7 +41,7 @@
 #include "lp_linear_priv.h"
 
 
-#if defined(PIPE_ARCH_SSE)
+#if DETECT_ARCH_SSE
 
 
 /* For debugging (LP_DEBUG=linear), shade areas of run-time fallback

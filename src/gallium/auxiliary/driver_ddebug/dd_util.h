@@ -38,10 +38,10 @@
 #include "util/u_string.h"
 
 #include "util/detect.h"
-#if defined(PIPE_OS_UNIX)
+#if DETECT_OS_UNIX
 #include <unistd.h>
 #include <sys/stat.h>
-#elif defined(PIPE_OS_WINDOWS)
+#elif DETECT_OS_WINDOWS
 #include <direct.h>
 #include <process.h>
 #define mkdir(dir, mode) _mkdir(dir)
