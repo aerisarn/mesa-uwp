@@ -8,6 +8,7 @@ use mesa_rust_gen::*;
 use mesa_rust_util::string::*;
 
 use std::convert::TryInto;
+use std::ffi::CStr;
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::ptr;
@@ -236,6 +237,24 @@ impl PipeScreen {
 
     pub fn device_type(&self) -> pipe_loader_device_type {
         unsafe { *self.ldev.ldev }.type_
+    }
+
+    pub fn cl_cts_version(&self) -> &CStr {
+        unsafe {
+            let s = *self.screen;
+
+            let ptr = s
+                .get_cl_cts_version
+                .map_or(ptr::null(), |get_cl_cts_version| {
+                    get_cl_cts_version(self.screen)
+                });
+            if ptr.is_null() {
+                // this string is good enough to pass the CTS
+                CStr::from_bytes_with_nul(b"v0000-01-01-00\0").unwrap()
+            } else {
+                CStr::from_ptr(ptr)
+            }
+        }
     }
 
     pub fn is_format_supported(

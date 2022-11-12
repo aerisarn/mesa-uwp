@@ -113,6 +113,13 @@ struct pipe_screen {
    const char *(*get_device_vendor)(struct pipe_screen *);
 
    /**
+    * Returns the latest OpenCL CTS version passed
+    *
+    * The returned value should be the git tag used when passing conformance.
+    */
+   const char *(*get_cl_cts_version)(struct pipe_screen *);
+
+   /**
     * Query an integer-valued capability/parameter/limit
     * \param param  one of PIPE_CAP_x
     */
