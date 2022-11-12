@@ -167,6 +167,9 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
             memcpy(new_module->data, module->data, module->size);
 
             pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
+            pipeline->stages[i].pName = ralloc_strdup(pipeline->ctx, pipeline->stages[i].pName);
+            if (!pipeline->stages[i].pName)
+               goto fail;
             pipeline->stages[i].pNext = NULL;
          } else {
             assert(iinfo);
