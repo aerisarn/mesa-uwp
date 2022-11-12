@@ -2559,7 +2559,7 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
    nir_ssa_def *current_vtx_per_prim = intrin->src[1].ssa;
    nir_ssa_def *gs_emit_vtx_addr = ngg_gs_emit_vertex_addr(b, gs_emit_vtx_idx, s);
 
-   for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
+   u_foreach_bit64(slot, b->shader->info.outputs_written) {
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
       gs_output_info *info = &s->output_info[slot];
 
@@ -2742,10 +2742,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
    unsigned num_outputs = 0;
    vs_output outputs[64];
 
-   for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
-      if (!(b->shader->info.outputs_written & BITFIELD64_BIT(slot)))
-         continue;
-
+   u_foreach_bit64(slot, b->shader->info.outputs_written) {
       gs_output_info *info = &s->output_info[slot];
       unsigned mask = gs_output_component_mask_with_stream(info, 0);
       if (!mask)
