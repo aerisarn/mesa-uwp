@@ -88,6 +88,8 @@ agx_split_width(const agx_instr *I)
 static unsigned
 find_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
 {
+   assert(count >= 1);
+
    for (unsigned reg = 0; reg < max; reg += align) {
       if (!BITSET_TEST_RANGE(used_regs, reg, reg + count - 1))
          return reg;
@@ -137,6 +139,7 @@ assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
    assert(!BITSET_TEST(rctx->visited, v.value) && "SSA violated");
    BITSET_SET(rctx->visited, v.value);
 
+   assert(rctx->ncomps[v.value] >= 1);
    unsigned end = reg + rctx->ncomps[v.value] - 1;
    assert(!BITSET_TEST_RANGE(rctx->used_regs, reg, end) && "no interference");
    BITSET_SET_RANGE(rctx->used_regs, reg, end);
@@ -162,6 +165,7 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
 
    unsigned count = agx_write_registers(I, d);
    unsigned align = agx_size_align_16(idx.size);
+   assert(count >= 1);
 
    /* Try to allocate collects compatibly with their sources */
    if (I->op == AGX_OPCODE_COLLECT) {
@@ -278,6 +282,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
             unsigned reg = ssa_to_reg[I->src[s].value];
             unsigned count = ncomps[I->src[s].value];
 
+            assert(count >= 1);
             BITSET_CLEAR_RANGE(used_regs, reg, reg + count - 1);
          }
       }
