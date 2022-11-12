@@ -207,17 +207,7 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    } else if (pipeline->type == RADV_PIPELINE_LIBRARY) {
       struct radv_library_pipeline *library_pipeline = radv_pipeline_to_library(pipeline);
 
-      free(library_pipeline->groups);
-      for (uint32_t i = 0; i < library_pipeline->stage_count; i++) {
-         RADV_FROM_HANDLE(vk_shader_module, module, library_pipeline->stages[i].module);
-         if (module) {
-            vk_object_base_finish(&module->base);
-            ralloc_free(module);
-         }
-      }
-      free(library_pipeline->stages);
-      free(library_pipeline->identifiers);
-      free(library_pipeline->hashes);
+      ralloc_free(library_pipeline->ctx);
    } else if (pipeline->type == RADV_PIPELINE_GRAPHICS_LIB) {
       struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
          radv_pipeline_to_graphics_lib(pipeline);

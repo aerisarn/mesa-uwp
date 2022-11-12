@@ -2126,6 +2126,9 @@ struct radv_compute_pipeline {
 struct radv_library_pipeline {
    struct radv_pipeline base;
 
+   /* ralloc context used for allocating pipeline library resources. */
+   void *ctx;
+
    unsigned stage_count;
    VkPipelineShaderStageCreateInfo *stages;
    unsigned group_count;

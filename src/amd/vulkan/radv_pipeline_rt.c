@@ -96,6 +96,13 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    return local_create_info;
 }
 
+static void
+vk_shader_module_finish(void *_module)
+{
+   struct vk_shader_module *module = _module;
+   vk_object_base_finish(&module->base);
+}
+
 static VkResult
 radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
                                 const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
@@ -111,6 +118,8 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_LIBRARY);
 
+   pipeline->ctx = ralloc_context(NULL);
+
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
    if (!local_create_info.pStages || !local_create_info.pGroups)
@@ -120,17 +129,19 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       pipeline->stage_count = local_create_info.stageCount;
 
       size_t size = sizeof(VkPipelineShaderStageCreateInfo) * local_create_info.stageCount;
-      pipeline->stages = malloc(size);
+      pipeline->stages = ralloc_size(pipeline->ctx, size);
       if (!pipeline->stages)
          goto fail;
 
       memcpy(pipeline->stages, local_create_info.pStages, size);
 
-      pipeline->hashes = malloc(sizeof(*pipeline->hashes) * local_create_info.stageCount);
+      pipeline->hashes =
+         ralloc_size(pipeline->ctx, sizeof(*pipeline->hashes) * local_create_info.stageCount);
       if (!pipeline->hashes)
          goto fail;
 
-      pipeline->identifiers = malloc(sizeof(*pipeline->identifiers) * local_create_info.stageCount);
+      pipeline->identifiers =
+         ralloc_size(pipeline->ctx, sizeof(*pipeline->identifiers) * local_create_info.stageCount);
       if (!pipeline->identifiers)
          goto fail;
 
@@ -143,10 +154,11 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
          if (module) {
             struct vk_shader_module *new_module =
-               ralloc_size(NULL, sizeof(struct vk_shader_module) + module->size);
+               ralloc_size(pipeline->ctx, sizeof(struct vk_shader_module) + module->size);
             if (!new_module)
                goto fail;
 
+            ralloc_set_destructor(new_module, vk_shader_module_finish);
             vk_object_base_init(&device->vk, &new_module->base, VK_OBJECT_TYPE_SHADER_MODULE);
 
             new_module->nir = NULL;
@@ -175,7 +187,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (local_create_info.groupCount) {
       size_t size = sizeof(VkRayTracingShaderGroupCreateInfoKHR) * local_create_info.groupCount;
       pipeline->group_count = local_create_info.groupCount;
-      pipeline->groups = malloc(size);
+      pipeline->groups = ralloc_size(pipeline->ctx, size);
       if (!pipeline->groups)
          goto fail;
       memcpy(pipeline->groups, local_create_info.pGroups, size);
@@ -187,10 +199,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    free((void *)local_create_info.pStages);
    return VK_SUCCESS;
 fail:
-   free(pipeline->groups);
-   free(pipeline->stages);
-   free(pipeline->hashes);
-   free(pipeline->identifiers);
+   ralloc_free(pipeline->ctx);
    free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
    return VK_ERROR_OUT_OF_HOST_MEMORY;
