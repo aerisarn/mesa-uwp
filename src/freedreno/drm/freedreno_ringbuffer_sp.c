@@ -99,7 +99,7 @@ fd_submit_suballoc_ring_bo(struct fd_submit *submit,
       suballoc_offset =
          fd_ringbuffer_size(fd_submit->suballoc_ring) + suballoc_ring->offset;
 
-      suballoc_offset = align(suballoc_offset, 0x10);
+      suballoc_offset = align(suballoc_offset, SUBALLOC_ALIGNMENT);
 
       if ((size + suballoc_offset) > suballoc_bo->size) {
          suballoc_bo = NULL;
@@ -657,8 +657,7 @@ fd_ringbuffer_sp_new_object(struct fd_pipe *pipe, uint32_t size)
     */
    simple_mtx_lock(&dev->suballoc_lock);
 
-   /* Maximum known alignment requirement is a6xx's TEX_CONST at 16 dwords */
-   fd_ring->offset = align(dev->suballoc_offset, 64);
+   fd_ring->offset = align(dev->suballoc_offset, SUBALLOC_ALIGNMENT);
    if (!dev->suballoc_bo ||
        fd_ring->offset + size > fd_bo_size(dev->suballoc_bo)) {
       if (dev->suballoc_bo)

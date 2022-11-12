@@ -54,6 +54,8 @@
 extern simple_mtx_t table_lock;
 
 #define SUBALLOC_SIZE (32 * 1024)
+/* Maximum known alignment requirement is a6xx's TEX_CONST at 16 dwords */
+#define SUBALLOC_ALIGNMENT 64
 #define RING_FLAGS (FD_BO_GPUREADONLY | FD_BO_CACHED_COHERENT | _FD_BO_RING)
 
 /*
