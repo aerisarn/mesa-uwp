@@ -25,6 +25,9 @@
 #include "radv_rt_common.h"
 #include "radv_acceleration_structure.h"
 
+static nir_ssa_def *build_node_to_addr(struct radv_device *device, nir_builder *b,
+                                       nir_ssa_def *node, bool skip_type_and);
+
 bool
 radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines)
 {
@@ -78,7 +81,7 @@ intersect_ray_amd_software_box(struct radv_device *device, nir_builder *b, nir_s
    const struct glsl_type *vec4_type = glsl_vector_type(GLSL_TYPE_FLOAT, 4);
    const struct glsl_type *uvec4_type = glsl_vector_type(GLSL_TYPE_UINT, 4);
 
-   nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node);
+   nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node, false);
 
    /* vec4 distances = vec4(INF, INF, INF, INF); */
    nir_variable *distances =
@@ -179,7 +182,7 @@ intersect_ray_amd_software_tri(struct radv_device *device, nir_builder *b, nir_s
 {
    const struct glsl_type *vec4_type = glsl_vector_type(GLSL_TYPE_FLOAT, 4);
 
-   nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node);
+   nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node, false);
 
    const uint32_t coord_offsets[3] = {
       offsetof(struct radv_bvh_triangle_node, coords[0]),
@@ -345,10 +348,11 @@ build_addr_to_node(nir_builder *b, nir_ssa_def *addr)
    return nir_iand_imm(b, node, (bvh_size - 1) << 3);
 }
 
-nir_ssa_def *
-build_node_to_addr(struct radv_device *device, nir_builder *b, nir_ssa_def *node)
+static nir_ssa_def *
+build_node_to_addr(struct radv_device *device, nir_builder *b, nir_ssa_def *node,
+                   bool skip_type_and)
 {
-   nir_ssa_def *addr = nir_iand_imm(b, node, ~7ull);
+   nir_ssa_def *addr = skip_type_and ? node : nir_iand_imm(b, node, ~7ull);
    addr = nir_ishl_imm(b, addr, 3);
    /* Assumes everything is in the top half of address space, which is true in
     * GFX9+ for now. */
@@ -455,7 +459,7 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
 
                               nir_flt(b, args->tmin, intersection.t), not_cull));
       {
-         intersection.base.node_addr = build_node_to_addr(device, b, bvh_node);
+         intersection.base.node_addr = build_node_to_addr(device, b, bvh_node, false);
          nir_ssa_def *triangle_info = nir_build_load_global(
             b, 2, 32,
             nir_iadd_imm(b, intersection.base.node_addr,
@@ -492,7 +496,7 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b,
       return;
 
    struct radv_leaf_intersection intersection;
-   intersection.node_addr = build_node_to_addr(device, b, bvh_node);
+   intersection.node_addr = build_node_to_addr(device, b, bvh_node, false);
    nir_ssa_def *triangle_info =
       nir_build_load_global(b, 2, 32, nir_iadd_imm(b, intersection.node_addr, 24));
    intersection.primitive_id = nir_channel(b, triangle_info, 0);
@@ -590,7 +594,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
             {
                nir_ssa_def *prev = nir_load_deref(b, args->vars.previous_node);
                nir_ssa_def *bvh_addr =
-                  build_node_to_addr(device, b, nir_load_deref(b, args->vars.bvh_base));
+                  build_node_to_addr(device, b, nir_load_deref(b, args->vars.bvh_base), true);
 
                nir_ssa_def *parent = fetch_parent_node(b, bvh_addr, prev);
                nir_push_if(b, nir_ieq(b, parent, nir_imm_int(b, RADV_BVH_INVALID_NODE)));
@@ -653,7 +657,8 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
                nir_push_else(b, NULL);
                {
                   /* instance */
-                  nir_ssa_def *instance_node_addr = build_node_to_addr(device, b, global_bvh_node);
+                  nir_ssa_def *instance_node_addr =
+                     build_node_to_addr(device, b, global_bvh_node, false);
                   nir_ssa_def *instance_data = nir_build_load_global(
                      b, 4, 32, instance_node_addr, .align_mul = 64, .align_offset = 0);
                   nir_ssa_def *instance_and_mask = nir_channel(b, instance_data, 2);

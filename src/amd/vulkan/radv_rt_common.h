@@ -47,8 +47,6 @@ nir_ssa_def *intersect_ray_amd_software_tri(struct radv_device *device, nir_buil
 
 nir_ssa_def *build_addr_to_node(nir_builder *b, nir_ssa_def *addr);
 
-nir_ssa_def *build_node_to_addr(struct radv_device *device, nir_builder *b, nir_ssa_def *node);
-
 nir_ssa_def *nir_build_vec3_mat_mult(nir_builder *b, nir_ssa_def *vec, nir_ssa_def *matrix[],
                                      bool translation);
 
