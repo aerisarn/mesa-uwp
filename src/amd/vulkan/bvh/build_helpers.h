@@ -157,6 +157,13 @@
 #define VK_GEOMETRY_TYPE_TRIANGLES_KHR 0
 #define VK_GEOMETRY_TYPE_AABBS_KHR     1
 
+#define VK_GEOMETRY_OPAQUE_BIT_KHR 1
+
+#define VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR 1
+#define VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR         2
+#define VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR                 4
+#define VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR              8
+
 #define TYPE(type, align)                                                                          \
    layout(buffer_reference, buffer_reference_align = align, scalar) buffer type##_ref              \
    {                                                                                               \

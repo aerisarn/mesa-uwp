@@ -395,17 +395,9 @@ static nir_ssa_def *
 hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags,
               const struct radv_ray_flags *ray_flags, nir_ssa_def *geometry_id_and_flags)
 {
-   nir_ssa_def *geom_force_opaque =
-      nir_test_mask(b, geometry_id_and_flags, VK_GEOMETRY_OPAQUE_BIT_KHR << 28);
-   nir_ssa_def *instance_force_opaque =
-      nir_test_mask(b, sbt_offset_and_flags, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR << 24);
-   nir_ssa_def *instance_force_non_opaque =
-      nir_test_mask(b, sbt_offset_and_flags, VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR << 24);
-
-   nir_ssa_def *opaque = geom_force_opaque;
-   opaque = nir_bcsel(b, instance_force_opaque, nir_imm_bool(b, true), opaque);
-   opaque = nir_bcsel(b, instance_force_non_opaque, nir_imm_bool(b, false), opaque);
-
+   nir_ssa_def *opaque =
+      nir_uge(b, nir_ior(b, geometry_id_and_flags, sbt_offset_and_flags),
+              nir_imm_int(b, RADV_INSTANCE_FORCE_OPAQUE | RADV_INSTANCE_NO_FORCE_NOT_OPAQUE));
    opaque = nir_bcsel(b, ray_flags->force_opaque, nir_imm_bool(b, true), opaque);
    opaque = nir_bcsel(b, ray_flags->force_not_opaque, nir_imm_bool(b, false), opaque);
    return opaque;
@@ -440,20 +432,19 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
    nir_push_if(b, nir_flt(b, intersection.t, nir_load_deref(b, args->vars.tmax)));
    {
       intersection.frontface = nir_flt(b, nir_imm_float(b, 0), div);
-      nir_ssa_def *switch_ccw =
-         nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
-                       VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR << 24);
+      nir_ssa_def *switch_ccw = nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
+                                              RADV_INSTANCE_TRIANGLE_FLIP_FACING);
       intersection.frontface = nir_ixor(b, intersection.frontface, switch_ccw);
 
       nir_ssa_def *not_cull = ray_flags->no_skip_triangles;
       nir_ssa_def *not_facing_cull =
          nir_bcsel(b, intersection.frontface, ray_flags->no_cull_front, ray_flags->no_cull_back);
 
-      not_cull = nir_iand(
-         b, not_cull,
-         nir_ior(b, not_facing_cull,
-                 nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
-                               VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)));
+      not_cull =
+         nir_iand(b, not_cull,
+                  nir_ior(b, not_facing_cull,
+                          nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
+                                        RADV_INSTANCE_TRIANGLE_FACING_CULL_DISABLE)));
 
       nir_push_if(b, nir_iand(b,
 
