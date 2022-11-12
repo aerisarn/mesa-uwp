@@ -142,7 +142,18 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
                                  PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
 
          if (module) {
-            struct vk_shader_module *new_module = vk_shader_module_clone(NULL, module);
+            struct vk_shader_module *new_module =
+               ralloc_size(NULL, sizeof(struct vk_shader_module) + module->size);
+            if (!new_module)
+               goto fail;
+
+            vk_object_base_init(&device->vk, &new_module->base, VK_OBJECT_TYPE_SHADER_MODULE);
+
+            new_module->nir = NULL;
+            memcpy(new_module->sha1, module->sha1, sizeof(module->sha1));
+            new_module->size = module->size;
+            memcpy(new_module->data, module->data, module->size);
+
             pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
             pipeline->stages[i].pNext = NULL;
          } else {
