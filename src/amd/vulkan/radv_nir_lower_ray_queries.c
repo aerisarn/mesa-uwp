@@ -413,20 +413,20 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
          rq_store_var(b, index, vars->trav.stack, base_offset, 0x1);
          rq_store_var(b, index, vars->trav.stack_base, base_offset, 0x1);
       }
-
-      rq_store_var(b, index, vars->trav.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
-      rq_store_var(b, index, vars->trav.previous_node, nir_imm_int(b, RADV_BVH_INVALID_NODE), 0x1);
-      rq_store_var(b, index, vars->trav.instance_top_node, nir_imm_int(b, RADV_BVH_INVALID_NODE),
-                   0x1);
-      rq_store_var(b, index, vars->trav.instance_bottom_node, nir_imm_int(b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
-
-      rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, -1), 1);
    }
    nir_push_else(b, NULL);
    {
       rq_store_var(b, index, vars->root_bvh_base, nir_imm_int64(b, 0), 0x1);
    }
    nir_pop_if(b, NULL);
+
+   rq_store_var(b, index, vars->trav.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);
+   rq_store_var(b, index, vars->trav.previous_node, nir_imm_int(b, RADV_BVH_INVALID_NODE), 0x1);
+   rq_store_var(b, index, vars->trav.instance_top_node, nir_imm_int(b, RADV_BVH_INVALID_NODE), 0x1);
+   rq_store_var(b, index, vars->trav.instance_bottom_node,
+                nir_imm_int(b, RADV_BVH_NO_INSTANCE_ROOT), 0x1);
+
+   rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, -1), 1);
 
    rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, true), 0x1);
 }
