@@ -262,6 +262,13 @@ nir_blend_logicop(
    return out;
 }
 
+static bool
+channel_exists(const struct util_format_description *desc, unsigned i)
+{
+   return (i < desc->nr_channels) &&
+          desc->channel[i].type != UTIL_FORMAT_TYPE_VOID;
+}
+
 static nir_ssa_def *
 nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
 {
@@ -315,15 +322,14 @@ nir_blend(
    const struct util_format_description *desc =
       util_format_description(format);
 
-   if (desc->nr_channels < 4) {
-      nir_ssa_def *zero = nir_imm_floatN_t(b, 0.0, dst->bit_size);
-      nir_ssa_def *one = nir_imm_floatN_t(b, 1.0, dst->bit_size);
+   nir_ssa_def *zero = nir_imm_floatN_t(b, 0.0, dst->bit_size);
+   nir_ssa_def *one = nir_imm_floatN_t(b, 1.0, dst->bit_size);
 
-      dst = nir_vec4(b, nir_channel(b, dst, 0),
-            desc->nr_channels > 1 ? nir_channel(b, dst, 1) : zero,
-            desc->nr_channels > 2 ? nir_channel(b, dst, 2) : zero,
-            desc->nr_channels > 3 ? nir_channel(b, dst, 3) : one);
-   }
+   dst = nir_vec4(b,
+         channel_exists(desc, 0) ? nir_channel(b, dst, 0) : zero,
+         channel_exists(desc, 1) ? nir_channel(b, dst, 1) : zero,
+         channel_exists(desc, 2) ? nir_channel(b, dst, 2) : zero,
+         channel_exists(desc, 3) ? nir_channel(b, dst, 3) : one);
 
    /* We blend per channel and recombine later */
    nir_ssa_def *channels[4];
