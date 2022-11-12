@@ -166,7 +166,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
        * stencil test we don't really know what the updates to the
        * depth buffer will be.
        */
-      update_lrz_stencil(so, s->func, !!s->writemask);
+      update_lrz_stencil(so, s->func, util_writes_stencil(s));
 
       so->rb_stencil_control |=
          A6XX_RB_STENCIL_CONTROL_STENCIL_READ |
@@ -182,7 +182,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
       if (cso->stencil[1].enabled) {
          const struct pipe_stencil_state *bs = &cso->stencil[1];
 
-         update_lrz_stencil(so, bs->func, !!bs->writemask);
+         update_lrz_stencil(so, bs->func, util_writes_stencil(bs));
 
          so->rb_stencil_control |=
             A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
