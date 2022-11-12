@@ -166,6 +166,28 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
             new_module->size = module->size;
             memcpy(new_module->data, module->data, module->size);
 
+            const VkSpecializationInfo *spec = pipeline->stages[i].pSpecializationInfo;
+            if (spec) {
+               VkSpecializationInfo *new_spec = ralloc(pipeline->ctx, VkSpecializationInfo);
+               if (!new_spec)
+                  goto fail;
+
+               new_spec->mapEntryCount = spec->mapEntryCount;
+               uint32_t map_entries_size = sizeof(VkSpecializationMapEntry) * spec->mapEntryCount;
+               new_spec->pMapEntries = ralloc_size(pipeline->ctx, map_entries_size);
+               if (!new_spec->pMapEntries)
+                  goto fail;
+               memcpy((void *)new_spec->pMapEntries, spec->pMapEntries, map_entries_size);
+
+               new_spec->dataSize = spec->dataSize;
+               new_spec->pData = ralloc_size(pipeline->ctx, spec->dataSize);
+               if (!new_spec->pData)
+                  goto fail;
+               memcpy((void *)new_spec->pData, spec->pData, spec->dataSize);
+
+               pipeline->stages[i].pSpecializationInfo = new_spec;
+            }
+
             pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
             pipeline->stages[i].pName = ralloc_strdup(pipeline->ctx, pipeline->stages[i].pName);
             if (!pipeline->stages[i].pName)
