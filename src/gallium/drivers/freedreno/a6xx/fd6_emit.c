@@ -408,7 +408,7 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid) assert_dt
  * to invalidate lrz.
  */
 static struct fd6_lrz_state
-compute_lrz_state(struct fd6_emit *emit, bool binning_pass) assert_dt
+compute_lrz_state(struct fd6_emit *emit) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
@@ -417,9 +417,7 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass) assert_dt
 
    if (!pfb->zsbuf) {
       memset(&lrz, 0, sizeof(lrz));
-      if (!binning_pass) {
-         lrz.z_mode = compute_ztest_mode(emit, false);
-      }
+      lrz.z_mode = compute_ztest_mode(emit, false);
       return lrz;
    }
 
@@ -433,8 +431,6 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass) assert_dt
    if (blend->reads_dest || fs->writes_pos || fs->no_earlyz || fs->has_kill ||
        blend->base.alpha_to_coverage) {
       lrz.write = false;
-      if (binning_pass)
-         lrz.enable = false;
    }
 
    /* if we change depthfunc direction, bail out on using LRZ.  The
@@ -458,9 +454,7 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass) assert_dt
       lrz.test = false;
    }
 
-   if (!binning_pass) {
-      lrz.z_mode = compute_ztest_mode(emit, rsc->lrz_valid);
-   }
+   lrz.z_mode = compute_ztest_mode(emit, rsc->lrz_valid);
 
    /* Once we start writing to the real depth buffer, we lock in the
     * direction for LRZ.. if we have to skip a LRZ write for any
@@ -480,18 +474,18 @@ compute_lrz_state(struct fd6_emit *emit, bool binning_pass) assert_dt
 }
 
 static struct fd_ringbuffer *
-build_lrz(struct fd6_emit *emit, bool binning_pass) assert_dt
+build_lrz(struct fd6_emit *emit) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
    struct fd6_context *fd6_ctx = fd6_context(ctx);
-   struct fd6_lrz_state lrz = compute_lrz_state(emit, binning_pass);
+   struct fd6_lrz_state lrz = compute_lrz_state(emit);
 
    /* If the LRZ state has not changed, we can skip the emit: */
    if (!ctx->last.dirty &&
-       !memcmp(&fd6_ctx->last.lrz[binning_pass], &lrz, sizeof(lrz)))
+       !memcmp(&fd6_ctx->last.lrz, &lrz, sizeof(lrz)))
       return NULL;
 
-   fd6_ctx->last.lrz[binning_pass] = lrz;
+   fd6_ctx->last.lrz = lrz;
 
    struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
       ctx->batch->submit, 8 * 4, FD_RINGBUFFER_STREAMING);
@@ -840,16 +834,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd_ringbuffer_ref(state);
          break;
       case FD6_GROUP_LRZ:
-         state = build_lrz(emit, false);
+         state = build_lrz(emit);
          if (!state)
             continue;
-         enable_mask = ENABLE_DRAW;
-         break;
-      case FD6_GROUP_LRZ_BINNING:
-         state = build_lrz(emit, true);
-         if (!state)
-            continue;
-         enable_mask = CP_SET_DRAW_STATE__0_BINNING;
          break;
       case FD6_GROUP_SCISSOR:
          state = build_scissor(emit);

@@ -149,7 +149,7 @@ setup_state_map(struct fd_context *ctx)
    fd_context_add_map(ctx, FD_DIRTY_ZSA | FD_DIRTY_RASTERIZER,
                       BIT(FD6_GROUP_ZSA));
    fd_context_add_map(ctx, FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG,
-                      BIT(FD6_GROUP_LRZ) | BIT(FD6_GROUP_LRZ_BINNING));
+                      BIT(FD6_GROUP_LRZ));
    fd_context_add_map(ctx, FD_DIRTY_PROG | FD_DIRTY_RASTERIZER_CLIP_PLANE_ENABLE,
                       BIT(FD6_GROUP_PROG));
    fd_context_add_map(ctx, FD_DIRTY_RASTERIZER, BIT(FD6_GROUP_RASTERIZER));

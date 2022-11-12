@@ -92,10 +92,10 @@ struct fd6_context {
    struct hash_table *tex_cache;
 
    struct {
-      /* previous binning/draw lrz state, which is a function of multiple
-       * gallium stateobjs, but doesn't necessarily change as frequently:
+      /* previous lrz state, which is a function of multiple gallium
+       * stateobjs, but doesn't necessarily change as frequently:
        */
-      struct fd6_lrz_state lrz[2];
+      struct fd6_lrz_state lrz;
    } last;
 };
 
