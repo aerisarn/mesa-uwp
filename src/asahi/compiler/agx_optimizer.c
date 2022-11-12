@@ -232,7 +232,7 @@ agx_optimizer_backward(agx_context *ctx)
    agx_foreach_instr_global_rev(ctx, I) {
       struct agx_opcode_info info = agx_opcodes_info[I->op];
 
-      for (unsigned s = 0; s < info.nr_srcs; ++s) {
+      agx_foreach_ssa_src(I, s) {
          if (I->src[s].type == AGX_INDEX_NORMAL) {
             unsigned v = I->src[s].value;
 
