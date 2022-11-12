@@ -135,13 +135,6 @@ bo_free(struct v3dv_device *device,
    assert(p_atomic_read(&bo->refcnt) == 0);
    assert(bo->map == NULL);
 
-   struct drm_gem_close c;
-   memset(&c, 0, sizeof(c));
-   c.handle = bo->handle;
-   int ret = v3dv_ioctl(device->pdevice->render_fd, DRM_IOCTL_GEM_CLOSE, &c);
-   if (ret != 0)
-      fprintf(stderr, "close object %d: %s\n", bo->handle, strerror(errno));
-
    if (!bo->is_import) {
       device->bo_count--;
       device->bo_size -= bo->size;
@@ -155,11 +148,23 @@ bo_free(struct v3dv_device *device,
       }
    }
 
+   uint32_t handle = bo->handle;
    /* Our BO structs are stored in a sparse array in the physical device,
     * so we don't want to free the BO pointer, instead we want to reset it
     * to 0, to signal that array entry as being free.
+    *
+    * We must do the reset before we actually free the BO in the kernel, since
+    * otherwise there is a chance the application creates another BO in a
+    * different thread and gets the same array entry, causing a race.
     */
    memset(bo, 0, sizeof(*bo));
+
+   struct drm_gem_close c;
+   memset(&c, 0, sizeof(c));
+   c.handle = handle;
+   int ret = v3dv_ioctl(device->pdevice->render_fd, DRM_IOCTL_GEM_CLOSE, &c);
+   if (ret != 0)
+      fprintf(stderr, "close object %d: %s\n", handle, strerror(errno));
 
    return ret == 0;
 }
