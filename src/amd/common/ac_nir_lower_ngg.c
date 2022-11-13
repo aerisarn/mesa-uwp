@@ -2476,6 +2476,8 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
    assert(base_index < VARYING_SLOT_MAX);
 
    nir_ssa_def *store_val = intrin->src[0].ssa;
+   nir_alu_type src_type = nir_intrinsic_src_type(intrin);
+   enum glsl_base_type val_type = nir_get_glsl_base_type_for_nir_type(src_type);
 
    /* Small bitsize components consume the same amount of space as 32-bit components,
     * but 64-bit ones consume twice as many. (Vulkan spec 15.1.5)
@@ -2483,6 +2485,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
     * 64-bit IO has been lowered to multi 32-bit IO.
     */
    assert(store_val->bit_size <= 32);
+   assert(glsl_base_type_get_bit_size(val_type) == store_val->bit_size);
 
    /* Save output usage info. */
    gs_output_info *info = &s->output_info[location];
@@ -2515,11 +2518,10 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
       nir_variable *var = s->output_vars[location][component];
       if (!var) {
-         var = nir_local_variable_create(
-            s->impl, glsl_uintN_t_type(store_val->bit_size), "output");
+         var = nir_local_variable_create(s->impl, glsl_scalar_type(val_type), "output");
          s->output_vars[location][component] = var;
       }
-      assert(glsl_base_type_bit_size(glsl_get_base_type(var->type)) == store_val->bit_size);
+      assert(glsl_get_base_type(var->type) == val_type);
 
       nir_store_var(b, var, nir_channel(b, store_val, comp), 0x1u);
    }
