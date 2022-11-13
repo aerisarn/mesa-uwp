@@ -39,6 +39,7 @@ enum agx_dbg {
    AGX_DBG_NO16  = BITFIELD_BIT(2),
    AGX_DBG_DIRTY  = BITFIELD_BIT(3),
    AGX_DBG_PRECOMPILE  = BITFIELD_BIT(4),
+   AGX_DBG_PERF  = BITFIELD_BIT(5),
 };
 
 struct agx_device {

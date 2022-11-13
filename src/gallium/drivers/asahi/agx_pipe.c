@@ -71,6 +71,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
    {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
    {"no16",      AGX_DBG_NO16,     "Disable 16-bit support"},
+   {"perf",      AGX_DBG_PERF,     "Print performance warnings"},
 #ifndef NDEBUG
    {"dirty",     AGX_DBG_DIRTY,    "Disable dirty tracking"},
 #endif

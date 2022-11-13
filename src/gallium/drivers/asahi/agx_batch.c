@@ -12,8 +12,10 @@ agx_flush_readers(struct agx_context *ctx, struct agx_resource *rsrc, const char
    if (ctx->batch) {
       struct agx_batch *batch = ctx->batch;
 
-      if (agx_batch_uses_bo(batch, rsrc->bo))
+      if (agx_batch_uses_bo(batch, rsrc->bo)) {
+         perf_debug_ctx(ctx, "Flush reader due to: %s\n", reason);
          agx_flush_batch(ctx, batch);
+      }
    }
 }
 
@@ -22,8 +24,10 @@ agx_flush_writer(struct agx_context *ctx, struct agx_resource *rsrc, const char 
 {
    struct hash_entry *ent = _mesa_hash_table_search(ctx->writer, rsrc);
 
-   if (ent)
+   if (ent) {
+      perf_debug_ctx(ctx, "Flush writer due to: %s\n", reason);
       agx_flush_batch(ctx, ent->data);
+   }
 }
 
 void

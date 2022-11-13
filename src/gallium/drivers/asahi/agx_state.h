@@ -272,6 +272,15 @@ agx_device(struct pipe_screen *p)
    return &(agx_screen(p)->dev);
 }
 
+#define perf_debug(dev, ...) \
+        do { \
+                if (unlikely((dev)->debug & AGX_DBG_PERF)) \
+                        mesa_logw(__VA_ARGS__); \
+        } while(0)
+
+#define perf_debug_ctx(ctx, ...) \
+        perf_debug(agx_device((ctx)->base.screen), __VA_ARGS__);
+
 struct agx_resource {
    struct pipe_resource	base;
    uint64_t modifier;
@@ -420,7 +429,7 @@ void agx_internal_shaders(struct agx_device *dev);
 static void
 agx_flush_all(struct agx_context *ctx, const char *reason)
 {
-   //printf("Flushing due to: %s\n", reason);
+   perf_debug_ctx(ctx, "Flushing due to: %s\n", reason);
    ctx->base.flush(&ctx->base, NULL, 0);
 }
 
