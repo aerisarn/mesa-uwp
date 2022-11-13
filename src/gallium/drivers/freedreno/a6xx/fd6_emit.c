@@ -433,6 +433,14 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
       lrz.write = false;
    }
 
+   /* Unwritten channels *that actually exist* are a form of blending
+    * reading the dest from the PoV of LRZ, but the valid dst channels
+    * isn't known when blend CSO is constructed so we need to handle
+    * that here.
+    */
+   if (ctx->all_mrt_channel_mask & ~blend->all_mrt_write_mask)
+      lrz.write = false;
+
    /* if we change depthfunc direction, bail out on using LRZ.  The
     * LRZ buffer encodes a min/max depth value per block, but if
     * we switch from GT/GE <-> LT/LE, those values cannot be
