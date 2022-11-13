@@ -422,7 +422,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
                         A6XX_GRAS_2D_DST_BR_Y(0));
 
       OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-      OUT_RING(ring, 0x3f);
+      OUT_RING(ring, LABEL);
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
@@ -517,7 +517,7 @@ fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc) assert_dt
                A6XX_GRAS_2D_DST_BR_X(w - 1) | A6XX_GRAS_2D_DST_BR_Y(h - 1));
 
       OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-      OUT_RING(ring, 0x3f);
+      OUT_RING(ring, LABEL);
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
@@ -695,7 +695,7 @@ emit_blit_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
        * Blit command:
        */
       OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-      OUT_RING(ring, 0x3f);
+      OUT_RING(ring, LABEL);
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
@@ -824,7 +824,7 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
        * Blit command:
        */
       OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-      OUT_RING(ring, 0x3f);
+      OUT_RING(ring, LABEL);
       OUT_WFI5(ring);
 
       OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
