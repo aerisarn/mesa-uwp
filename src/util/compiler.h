@@ -38,6 +38,7 @@
 
 #include "util/macros.h"
 #include "util/u_endian.h"
+#include "util/detect_arch.h"
 
 /**
  * Define CPU_TO_LE32
@@ -65,6 +66,12 @@
 #define LE32_TO_CPU( x ) CPU_TO_LE32( x )
 
 
+/* Macro for stack alignment. */
+#if defined(__GNUC__) && DETECT_ARCH_X86
+#define UTIL_ALIGN_STACK __attribute__((force_align_arg_pointer))
+#else
+#define UTIL_ALIGN_STACK
+#endif
 
 #define IEEE_ONE 0x3f800000
 

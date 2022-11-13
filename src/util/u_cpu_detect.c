@@ -368,7 +368,7 @@ static inline uint64_t xgetbv(void)
 
 
 #if DETECT_ARCH_X86
-PIPE_ALIGN_STACK
+UTIL_ALIGN_STACK
 static inline bool
 sse2_has_daz(void)
 {

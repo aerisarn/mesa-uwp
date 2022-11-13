@@ -29,6 +29,7 @@
 #define P_COMPILER_H
 
 
+#include "util/compiler.h"
 #include "util/detect.h"
 #include "util/macros.h"
 
@@ -89,15 +90,6 @@ typedef unsigned char boolean;
 #define PIPE_CDECL __cdecl
 #else
 #define PIPE_CDECL
-#endif
-
-
-
-/* Macro for stack alignment. */
-#if defined(__GNUC__) && DETECT_ARCH_X86
-#define PIPE_ALIGN_STACK __attribute__((force_align_arg_pointer))
-#else
-#define PIPE_ALIGN_STACK
 #endif
 
 /**
