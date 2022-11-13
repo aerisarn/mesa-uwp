@@ -293,6 +293,17 @@ fn create_box(
     })
 }
 
+/// helper function to determine if we can just map the resource in question or if we have to go
+/// through a shdow buffer to let the CPU access the resources memory
+fn can_map_directly(dev: &Device, res: &PipeResource) -> bool {
+    // there are two aprts to this check:
+    //   1. is the resource located in system RAM
+    //   2. has the resource a linear memory layout
+    // we do not want to map memory over the PCIe bus as this generally leads to bad performance.
+    (dev.unified_memory() || res.is_staging() || res.is_user)
+        && (res.is_buffer() || res.is_linear())
+}
+
 impl Mem {
     pub fn new_buffer(
         context: Arc<Context>,
@@ -483,8 +494,7 @@ impl Mem {
 
         assert!(self.is_buffer());
 
-        // don't bother mapping directly if it's not UMA or a staging buffer
-        let tx = if q.device.unified_memory() || bit_check(b.flags, CL_MEM_ALLOC_HOST_PTR) {
+        let tx = if can_map_directly(&q.device, r) {
             ctx.buffer_map_directly(
                 r,
                 offset.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
@@ -543,8 +553,7 @@ impl Mem {
         let r = self.get_res()?.get(&q.device).unwrap();
         let ctx = q.device.helper_ctx();
 
-        // don't bother mapping directly if it's not staging
-        let tx = if bit_check(self.flags, CL_MEM_ALLOC_HOST_PTR) {
+        let tx = if can_map_directly(&q.device, r) {
             ctx.texture_map_directly(r, bx, rw)
         } else {
             None
