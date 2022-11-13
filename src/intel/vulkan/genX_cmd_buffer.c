@@ -543,8 +543,8 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          uint64_t address = base_address + offset;
 
          uint64_t aux_entry_addr64, *aux_entry_map;
-         aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
-                                                 address, &aux_entry_addr64);
+         struct intel_aux_map_context *ctx = cmd_buffer->device->aux_map_ctx;
+         aux_entry_map = intel_aux_map_get_entry(ctx, address, &aux_entry_addr64);
 
          struct anv_address aux_entry_address = {
             .bo = NULL,
@@ -553,7 +553,8 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
          const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
          uint64_t new_aux_entry =
-            (old_aux_entry & INTEL_AUX_MAP_ADDRESS_MASK) | format_bits;
+            (old_aux_entry & intel_aux_get_meta_address_mask(ctx)) |
+            format_bits;
 
          if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
             new_aux_entry |= INTEL_AUX_MAP_ENTRY_VALID_BIT;

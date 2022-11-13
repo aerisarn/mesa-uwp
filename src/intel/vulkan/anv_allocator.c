@@ -1446,7 +1446,9 @@ anv_device_alloc_bo(struct anv_device *device,
       size = align_u64(size, 64 * 1024);
 
       /* See anv_bo::_ccs_size */
-      ccs_size = align_u64(DIV_ROUND_UP(size, INTEL_AUX_MAP_GFX12_CCS_SCALE), 4096);
+      uint64_t aux_ratio =
+         intel_aux_get_main_to_aux_ratio(device->aux_map_ctx);
+      ccs_size = align_u64(DIV_ROUND_UP(size, aux_ratio), 4096);
    }
 
    uint32_t gem_handle;
