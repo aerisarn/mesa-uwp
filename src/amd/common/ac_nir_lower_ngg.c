@@ -2585,11 +2585,10 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
             nir_ssa_def *val = nir_load_var(b, var);
 
             /* extend 8/16 bit to 32 bit, 64 bit has been lowered */
-            unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
-            values[c - start] = bit_size == 32 ? val : nir_u2u32(b, val);
+            values[c - start] = nir_u2uN(b, val, 32);
 
             /* Clear the variable (it is undefined after emit_vertex) */
-            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, bit_size), 0x1);
+            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, val->bit_size), 0x1);
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
@@ -2792,8 +2791,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
             if (s->options->gfx_level < GFX11 || is_pos) {
                /* Convert to the expected bit size of the output variable. */
                unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
-               if (bit_size != 32)
-                  val = nir_u2uN(b, val, bit_size);
+               val = nir_u2uN(b, val, bit_size);
 
                nir_store_output(b, val, nir_imm_int(b, 0), .base = info->base,
                                 .io_semantics = io_sem, .component = start + i, .write_mask = 1);
