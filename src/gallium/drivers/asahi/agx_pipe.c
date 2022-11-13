@@ -498,13 +498,16 @@ agx_resource_destroy(struct pipe_screen *screen,
                      struct pipe_resource *prsrc)
 {
    struct agx_resource *rsrc = (struct agx_resource *)prsrc;
+   struct agx_screen *agx_screen = (struct agx_screen*)screen;
 
    if (rsrc->dt) {
       /* display target */
-      struct agx_screen *agx_screen = (struct agx_screen*)screen;
       struct sw_winsys *winsys = agx_screen->winsys;
       winsys->displaytarget_destroy(winsys, rsrc->dt);
    }
+
+   if (rsrc->scanout)
+      renderonly_scanout_destroy(rsrc->scanout, agx_screen->dev.ro);
 
    agx_bo_unreference(rsrc->bo);
    FREE(rsrc);
