@@ -172,6 +172,23 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(ASTC_10x10_SRGB,         ASTC_10X10,    UNORM,  F, _),
    AGX_FMT(ASTC_12x10_SRGB,         ASTC_12X10,    UNORM,  F, _),
    AGX_FMT(ASTC_12x12_SRGB,         ASTC_12X12,    UNORM,  F, _),
+
+   AGX_FMT(DXT1_RGB,                BC1,           UNORM,  F, _),
+   AGX_FMT(DXT1_RGBA,               BC1,           UNORM,  F, _),
+   AGX_FMT(DXT1_SRGB,               BC1,           UNORM,  F, _),
+   AGX_FMT(DXT1_SRGBA,              BC1,           UNORM,  F, _),
+   AGX_FMT(DXT3_RGBA,               BC2,           UNORM,  F, _),
+   AGX_FMT(DXT3_SRGBA,              BC2,           UNORM,  F, _),
+   AGX_FMT(DXT5_RGBA,               BC3,           UNORM,  F, _),
+   AGX_FMT(DXT5_SRGBA,              BC3,           UNORM,  F, _),
+   AGX_FMT(RGTC1_UNORM,             BC4,           UNORM,  F, _),
+   AGX_FMT(RGTC1_SNORM,             BC4,           SNORM,  F, _),
+   AGX_FMT(RGTC2_UNORM,             BC5,           UNORM,  F, _),
+   AGX_FMT(RGTC2_SNORM,             BC5,           SNORM,  F, _),
+   AGX_FMT(BPTC_RGB_FLOAT,          BC6H,          FLOAT,  F, _),
+   AGX_FMT(BPTC_RGB_UFLOAT,         BC6H_UFLOAT,   FLOAT,  F, _),
+   AGX_FMT(BPTC_RGBA_UNORM,         BC7,           UNORM,  F, _),
+   AGX_FMT(BPTC_SRGBA,              BC7,           UNORM,  F, _),
 };
 
 const enum agx_format
