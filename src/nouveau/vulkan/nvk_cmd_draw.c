@@ -224,6 +224,33 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    });
    P_IMMD(p, NV9097, SET_POINT_SIZE, fui(1.0));
 
+
+   /* From vulkan spec's point rasterization:
+    * "Point rasterization produces a fragment for each fragment area group of
+    * framebuffer pixels with one or more sample points that intersect a region
+    * centered at the point’s (xf,yf).
+    * This region is a square with side equal to the current point size.
+    * ... (xf,yf) is the exact, unrounded framebuffer coordinate of the vertex
+    * for the point"
+    *
+    * So it seems we always need square points with PointCoords like OpenGL
+    * point sprites.
+    *
+    * From OpenGL compatibility spec:
+    * Basic point rasterization:
+    * "If point sprites are enabled, then point rasterization produces a
+    * fragment for each framebuffer pixel whose center lies inside a square
+    * centered at the point’s (xw, yw), with side length equal to the current
+    * point size.
+    * ... and xw and yw are the exact, unrounded window coordinates of the
+    * vertex for the point"
+    *
+    * And Point multisample rasterization:
+    * "This region is a circle having diameter equal to the current point width
+    * if POINT_SPRITE is disabled, or a square with side equal to the current
+    * point width if POINT_SPRITE is enabled."
+    */
+   P_IMMD(p, NV9097, SET_POINT_SPRITE, ENABLE_TRUE);
    P_IMMD(p, NV9097, SET_POINT_SPRITE_SELECT, {
       .rmode      = RMODE_ZERO,
       .origin     = ORIGIN_TOP,
@@ -238,7 +265,8 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .texture8   = TEXTURE8_PASSTHROUGH,
       .texture9   = TEXTURE9_PASSTHROUGH,
    });
-   P_IMMD(p, NV9097, SET_POINT_SPRITE, ENABLE_FALSE);
+
+   /* OpenGL's GL_POINT_SMOOTH */
    P_IMMD(p, NV9097, SET_ANTI_ALIASED_POINT, ENABLE_FALSE);
 
    if (dev->ctx->eng3d.cls >= MAXWELL_B)
