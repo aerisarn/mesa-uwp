@@ -1333,7 +1333,7 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 	/* Merge MOVs to same source in different channels using the constant
 	 * swizzles.
 	 */
-	if (c->is_r500) {
+	if (c->is_r500 || c->type == RC_VERTEX_PROGRAM) {
 		inst = c->Program.Instructions.Next;
 		while(inst != &c->Program.Instructions) {
 			struct rc_instruction * cur = inst;
