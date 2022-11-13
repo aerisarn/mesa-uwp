@@ -218,8 +218,9 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .output7 = OUTPUT7_FALSE,
    });
 
+   /* vulkan allows setting point sizes only within shaders */
    P_IMMD(p, NV9097, SET_ATTRIBUTE_POINT_SIZE, {
-      .enable  = ENABLE_FALSE,
+      .enable  = ENABLE_TRUE,
       .slot    = 0,
    });
    P_IMMD(p, NV9097, SET_POINT_SIZE, fui(1.0));

@@ -56,6 +56,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .textureCompressionBC = true,
       .vertexPipelineStoresAndAtomics = true,
       .wideLines = true,
+      .largePoints = true,
       /* More features */
       .shaderStorageImageExtendedFormats = true,
       .shaderStorageImageWriteWithoutFormat = true,
