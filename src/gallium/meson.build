@@ -218,7 +218,6 @@ if with_gallium_xa
 endif
 if with_platform_haiku
   subdir('frontends/hgl')
-  subdir('targets/haiku-softpipe')
 endif
 if with_gallium_st_nine
   subdir('frontends/nine')

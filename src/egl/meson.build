@@ -146,7 +146,6 @@ if with_dri2
     endif
   endif
 elif with_platform_haiku
-  incs_for_egl += inc_haikugl
   c_args_for_egl += [
     '-D_EGL_BUILT_IN_DRIVER_HAIKU',
   ]
