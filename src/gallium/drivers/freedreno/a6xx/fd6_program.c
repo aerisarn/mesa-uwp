@@ -411,7 +411,13 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    uint8_t clip0_loc, clip1_loc;
    int i, j;
 
-   static const struct ir3_shader_variant dummy_fs = {0};
+   static const struct ir3_shader_variant dummy_fs = {
+         .info = {
+               .max_half_reg = -1,
+               .max_reg = -1,
+               .max_const = -1,
+         },
+   };
    const struct ir3_shader_variant *vs = binning_pass ? state->bs : state->vs;
    const struct ir3_shader_variant *hs = state->hs;
    const struct ir3_shader_variant *ds = state->ds;
