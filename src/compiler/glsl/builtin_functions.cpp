@@ -67,7 +67,9 @@
  * MinGW 7.3.0 (in Ubuntu 18.04) does not have this bug.  Assume versions before 7.3.x are buggy
  */
 
-#if defined(__MINGW32__) && ((__GNUC__ * 100) + __GNUC_MINOR < 703)
+#include "util/detect_cc.h"
+
+#if defined(__MINGW32__) && (DETECT_CC_GCC_VERSION < 703)
 #warning "disabling optimizations for this file to work around compiler bug"
 #pragma GCC optimize("O1")
 #endif
