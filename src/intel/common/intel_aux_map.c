@@ -94,6 +94,8 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#define INTEL_AUX_MAP_FORMAT_BITS_MASK   0xfff0000000000000ull
+
 static const bool aux_map_debug = false;
 
 /**
