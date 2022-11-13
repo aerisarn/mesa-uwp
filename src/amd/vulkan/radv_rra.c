@@ -67,6 +67,14 @@ struct rra_file_chunk_description {
 static_assert(sizeof(struct rra_file_chunk_description) == 64,
               "rra_file_chunk_description does not match RRA spec");
 
+static uint64_t
+node_to_addr(uint64_t node)
+{
+   node &= ~7ull;
+   node <<= 19;
+   return ((int64_t)node) >> 16;
+}
+
 static void
 rra_dump_header(FILE *output, uint64_t chunk_descriptions_offset, uint64_t chunk_descriptions_size)
 {
@@ -499,7 +507,7 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
                   offset);
 
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
-         uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
+         uint64_t blas_va = node_to_addr(src->bvh_ptr) - src->bvh_offset;
          if (!_mesa_hash_table_u64_search(accel_struct_vas, blas_va))
             rra_validation_fail(&instance_ctx,
                                 "Invalid instance node pointer 0x%llx (offset: 0x%x)",
@@ -560,7 +568,7 @@ static void
 rra_transcode_instance_node(struct rra_transcoding_context *ctx,
                             const struct radv_bvh_instance_node *src)
 {
-   uint64_t blas_va = src->bvh_ptr - src->bvh_offset;
+   uint64_t blas_va = node_to_addr(src->bvh_ptr) - src->bvh_offset;
 
    struct rra_instance_node *dst = (struct rra_instance_node *)(ctx->dst + ctx->dst_leaf_offset);
    ctx->dst_leaf_offset += sizeof(struct rra_instance_node);

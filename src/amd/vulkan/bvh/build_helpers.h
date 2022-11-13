@@ -266,6 +266,20 @@ pack_node_id(uint32_t offset, uint32_t type)
    return (offset >> 3) | type;
 }
 
+uint64_t
+node_to_addr(uint64_t node)
+{
+   node &= ~7ul;
+   node <<= 19;
+   return int64_t(node) >> 16;
+}
+
+uint64_t
+addr_to_node(uint64_t addr)
+{
+   return (addr >> 3) & ((1ul << 45) - 1);
+}
+
 uint32_t
 ir_id_to_offset(uint32_t id)
 {
@@ -350,7 +364,7 @@ calculate_node_bounds(VOID_REF bvh, uint32_t id)
    }
    case radv_bvh_node_instance: {
       radv_bvh_instance_node instance = DEREF(REF(radv_bvh_instance_node)(node));
-      aabb = calculate_instance_node_bounds(instance.bvh_ptr - instance.bvh_offset,
+      aabb = calculate_instance_node_bounds(node_to_addr(instance.bvh_ptr) - instance.bvh_offset,
                                             instance.otw_matrix);
       break;
    }

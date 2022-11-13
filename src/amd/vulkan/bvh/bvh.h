@@ -183,7 +183,8 @@ struct radv_bvh_aabb_node {
 };
 
 struct radv_bvh_instance_node {
-   uint64_t bvh_ptr;
+   uint64_t bvh_ptr; /* pre-shifted/masked to serve as node base */
+
    /* lower 24 bits are the custom instance index, upper 8 bits are the visibility mask */
    uint32_t custom_instance_and_mask;
    /* lower 24 bits are the sbt offset, upper 8 bits are VkGeometryInstanceFlagsKHR */
