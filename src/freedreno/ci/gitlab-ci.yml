@@ -129,11 +129,7 @@ a530-traces:
   extends:
     - .lava-test:arm64
   variables:
-    DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
-    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
     BOOT_METHOD: depthcharge
-    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
-    VK_DRIVER: freedreno
     KERNEL_IMAGE_TYPE: ""
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
@@ -166,6 +162,18 @@ a618_vk_full:
     FDO_CI_CONCURRENT: 4
     DEQP_SUITE: freedreno-a618-vk-full
     JOB_TIMEOUT: 120
+
+a618_gl:
+  extends:
+    - .a618-test
+    - .freedreno-rules
+  parallel: 4
+  variables:
+    DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
+    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
+    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
+    DEQP_SUITE: freedreno-a618
+    GPU_VERSION: freedreno-a618
 
 .a630-test:
   extends:
