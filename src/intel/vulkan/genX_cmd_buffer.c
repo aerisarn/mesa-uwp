@@ -5771,6 +5771,23 @@ compute_load_indirect_params(struct anv_cmd_buffer *cmd_buffer,
    mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
 }
 
+static void
+compute_store_indirect_params(struct anv_cmd_buffer *cmd_buffer,
+                             const struct anv_address indirect_addr)
+{
+   struct mi_builder b;
+   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+
+   struct mi_value size_x = mi_mem32(anv_address_add(indirect_addr, 0));
+   struct mi_value size_y = mi_mem32(anv_address_add(indirect_addr, 4));
+   struct mi_value size_z = mi_mem32(anv_address_add(indirect_addr, 8));
+
+   mi_store(&b, size_x, mi_reg32(GPGPU_DISPATCHDIMX));
+   mi_store(&b, size_y, mi_reg32(GPGPU_DISPATCHDIMY));
+   mi_store(&b, size_z, mi_reg32(GPGPU_DISPATCHDIMZ));
+}
+
+
 #if GFX_VERx10 >= 125
 
 static inline struct GENX(INTERFACE_DESCRIPTOR_DATA)
@@ -6062,20 +6079,12 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
       for (unsigned i = 0; i < 3; i++)
          sysvals.num_work_groups[i] = global_size[i];
    } else {
-      struct mi_builder b;
-      mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
-
       struct anv_address sysvals_addr = {
          .bo = NULL, /* General state buffer is always 0. */
          .offset = indirect_data.offset,
       };
 
-      mi_store(&b, mi_mem32(anv_address_add(sysvals_addr, 0)),
-                   mi_reg32(GPGPU_DISPATCHDIMX));
-      mi_store(&b, mi_mem32(anv_address_add(sysvals_addr, 4)),
-                   mi_reg32(GPGPU_DISPATCHDIMY));
-      mi_store(&b, mi_mem32(anv_address_add(sysvals_addr, 8)),
-                   mi_reg32(GPGPU_DISPATCHDIMZ));
+      compute_store_indirect_params(cmd_buffer, sysvals_addr);
    }
 
    memcpy(indirect_data.map, &sysvals, sizeof(sysvals));
@@ -6116,14 +6125,11 @@ genX(cmd_buffer_dispatch_kernel)(struct anv_cmd_buffer *cmd_buffer,
          cw.IndirectParameterEnable     = true;
       }
 
-      struct GENX(INTERFACE_DESCRIPTOR_DATA) idd = {
-         .KernelStartPointer = kernel->bin->kernel.offset,
-         .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
-         .SharedLocalMemorySize =
-            encode_slm_size(GFX_VER, cs_prog_data->base.total_shared),
-         .NumberOfBarriers = cs_prog_data->uses_barrier,
-      };
-      cw.InterfaceDescriptor = idd;
+      cw.InterfaceDescriptor =
+         get_interface_descriptor_data(cmd_buffer,
+                                       kernel->bin,
+                                       cs_prog_data,
+                                       &dispatch);
    }
 
    /* We just blew away the compute pipeline state */
