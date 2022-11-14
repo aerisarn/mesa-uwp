@@ -132,14 +132,14 @@ is_dual_issue_capable(const Program& program, const Instruction& instruction)
 }
 
 static perf_info
-get_perf_info(Program* program, aco_ptr<Instruction>& instr)
+get_perf_info(const Program& program, const Instruction& instr)
 {
-   instr_class cls = instr_info.classes[(int)instr->opcode];
+   instr_class cls = instr_info.classes[(int)instr.opcode];
 
 #define WAIT(res)          BlockCycleEstimator::res, 0
 #define WAIT_USE(res, cnt) BlockCycleEstimator::res, cnt
 
-   if (program->gfx_level >= GFX10) {
+   if (program.gfx_level >= GFX10) {
       /* fp64 might be incorrect */
       switch (cls) {
       case instr_class::valu32:
@@ -162,8 +162,8 @@ get_perf_info(Program* program, aco_ptr<Instruction>& instr)
       case instr_class::branch:
       case instr_class::sendmsg: return {0, WAIT_USE(branch_sendmsg, 1)};
       case instr_class::ds:
-         return instr->isDS() && instr->ds().gds ? perf_info{0, WAIT_USE(export_gds, 1)}
-                                                 : perf_info{0, WAIT_USE(lds, 1)};
+         return instr.isDS() && instr.ds().gds ? perf_info{0, WAIT_USE(export_gds, 1)}
+                                               : perf_info{0, WAIT_USE(lds, 1)};
       case instr_class::exp: return {0, WAIT_USE(export_gds, 1)};
       case instr_class::vmem: return {0, WAIT_USE(vmem, 1)};
       case instr_class::barrier:
@@ -178,8 +178,8 @@ get_perf_info(Program* program, aco_ptr<Instruction>& instr)
       case instr_class::valu64: return {8, WAIT_USE(valu, 8)};
       case instr_class::valu_quarter_rate32: return {16, WAIT_USE(valu, 16)};
       case instr_class::valu_fma:
-         return program->dev.has_fast_fma32 ? perf_info{4, WAIT_USE(valu, 4)}
-                                            : perf_info{16, WAIT_USE(valu, 16)};
+         return program.dev.has_fast_fma32 ? perf_info{4, WAIT_USE(valu, 4)}
+                                           : perf_info{16, WAIT_USE(valu, 16)};
       case instr_class::valu_transcendental32: return {16, WAIT_USE(valu, 16)};
       case instr_class::valu_double: return {64, WAIT_USE(valu, 64)};
       case instr_class::valu_double_add: return {32, WAIT_USE(valu, 32)};
@@ -191,8 +191,8 @@ get_perf_info(Program* program, aco_ptr<Instruction>& instr)
          return {8, WAIT_USE(branch_sendmsg, 8)};
          return {4, WAIT_USE(branch_sendmsg, 4)};
       case instr_class::ds:
-         return instr->isDS() && instr->ds().gds ? perf_info{4, WAIT_USE(export_gds, 4)}
-                                                 : perf_info{4, WAIT_USE(lds, 4)};
+         return instr.isDS() && instr.ds().gds ? perf_info{4, WAIT_USE(export_gds, 4)}
+                                               : perf_info{4, WAIT_USE(lds, 4)};
       case instr_class::exp: return {16, WAIT_USE(export_gds, 16)};
       case instr_class::vmem: return {4, WAIT_USE(vmem, 4)};
       case instr_class::barrier:
@@ -209,7 +209,7 @@ get_perf_info(Program* program, aco_ptr<Instruction>& instr)
 void
 BlockCycleEstimator::use_resources(aco_ptr<Instruction>& instr)
 {
-   perf_info perf = get_perf_info(program, instr);
+   perf_info perf = get_perf_info(*program, *instr);
 
    if (perf.rsrc0 != resource_count) {
       res_available[(int)perf.rsrc0] = cur_cycle + perf.cost0;
@@ -225,7 +225,7 @@ BlockCycleEstimator::use_resources(aco_ptr<Instruction>& instr)
 int32_t
 BlockCycleEstimator::cycles_until_res_available(aco_ptr<Instruction>& instr)
 {
-   perf_info perf = get_perf_info(program, instr);
+   perf_info perf = get_perf_info(*program, *instr);
 
    int32_t cost = 0;
    if (perf.rsrc0 != resource_count)
@@ -379,7 +379,7 @@ is_vector(aco_opcode op)
 void
 BlockCycleEstimator::add(aco_ptr<Instruction>& instr)
 {
-   perf_info perf = get_perf_info(program, instr);
+   perf_info perf = get_perf_info(*program, *instr);
 
    cur_cycle += get_dependency_cost(instr);
 
@@ -600,6 +600,13 @@ void
 collect_postasm_stats(Program* program, const std::vector<uint32_t>& code)
 {
    program->statistics[aco_statistic_hash] = util_hash_crc32(code.data(), code.size() * 4);
+}
+
+Instruction_cycle_info
+get_cycle_info(const Program& program, const Instruction& instr)
+{
+   perf_info info = get_perf_info(program, instr);
+   return Instruction_cycle_info{(unsigned)info.latency, std::max(info.cost0, info.cost1)};
 }
 
 } // namespace aco
