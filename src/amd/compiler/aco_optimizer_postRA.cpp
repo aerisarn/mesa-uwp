@@ -107,9 +107,17 @@ struct pr_opt_ctx {
       current_block = block;
       current_instr_idx = 0;
 
-      if ((block->kind & block_kind_loop_header) || block->linear_preds.empty()) {
+      if (block->linear_preds.empty()) {
          std::fill(instr_idx_by_regs[block->index].begin(), instr_idx_by_regs[block->index].end(),
                    not_written_yet);
+      } else if (block->kind & block_kind_loop_header) {
+         /* Initialize with content from loop preheader */
+         memcpy(&instr_idx_by_regs[block->index][0], &instr_idx_by_regs[block->index - 1][0],
+                max_reg_cnt * sizeof(Idx));
+
+         /* Assume exec writes on back-edges */
+         instr_idx_by_regs[block->index][126] = overwritten_untrackable;
+         instr_idx_by_regs[block->index][127] = overwritten_untrackable;
       } else {
          reset_block_regs(block->linear_preds, block->index, 0, max_sgpr_cnt);
          reset_block_regs(block->linear_preds, block->index, 251, 3);
