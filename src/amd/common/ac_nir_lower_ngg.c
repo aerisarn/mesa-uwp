@@ -264,7 +264,7 @@ summarize_repack(nir_builder *b, nir_ssa_def *packed_counts, unsigned num_lds_dw
     */
 
    nir_ssa_def *lane_id = nir_load_subgroup_invocation(b);
-   nir_ssa_def *shift = nir_iadd_imm_nuw(b, nir_imul_imm(b, lane_id, -4u), num_lds_dwords * 16);
+   nir_ssa_def *shift = nir_iadd_imm(b, nir_imul_imm(b, lane_id, -4u), num_lds_dwords * 16);
    bool use_dot = b->shader->options->has_udot_4x8;
 
    if (num_lds_dwords == 1) {
