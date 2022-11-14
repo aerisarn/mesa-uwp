@@ -4559,22 +4559,17 @@ static void
 radv_emit_streamout_buffers(struct radv_cmd_buffer *cmd_buffer, uint64_t va)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   struct radv_userdata_info *loc;
+   const struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_STREAMOUT_BUFFERS];
+   const unsigned stage = pipeline->last_vgt_api_stage;
    uint32_t base_reg;
 
-   for (unsigned stage = 0; stage < MESA_VULKAN_SHADER_STAGES; ++stage) {
-      if (!radv_get_shader(&pipeline->base, stage))
-         continue;
+   if (loc->sgpr_idx == -1)
+      return;
 
-      loc = radv_lookup_user_sgpr(&pipeline->base, stage, AC_UD_STREAMOUT_BUFFERS);
-      if (loc->sgpr_idx == -1)
-         continue;
+   base_reg = pipeline->base.user_data_0[stage];
 
-      base_reg = pipeline->base.user_data_0[stage];
-
-      radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, va,
-                               false);
-   }
+   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, va,
+                            false);
 
    if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
       loc = &pipeline->base.gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_STREAMOUT_BUFFERS];
