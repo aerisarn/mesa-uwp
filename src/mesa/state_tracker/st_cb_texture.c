@@ -71,6 +71,7 @@
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
+#include "util/log.h"
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
 #include "pipe/p_shader_tokens.h"
@@ -542,6 +543,18 @@ st_MapTextureImage(struct gl_context *ctx,
    }
 }
 
+static void
+log_unmap_time_delta(const struct pipe_box *box,
+                     const struct gl_texture_image *texImage,
+                     const char *pathname, int64_t start_us)
+{
+   assert(start_us >= 0);
+   mesa_logi("unmap %dx%d pixels of %s data for %s tex, %s path: "
+             "%"PRIi64" us\n", box->width, box->height,
+             util_format_short_name(texImage->TexFormat),
+             util_format_short_name(texImage->pt->format),
+             pathname, os_time_get() - start_us);
+}
 
 void
 st_UnmapTextureImage(struct gl_context *ctx,
@@ -558,6 +571,10 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       if (itransfer->box.depth != 0) {
          assert(itransfer->box.depth == 1);
+
+         /* Toggle logging for the different unmap paths. */
+         const bool log_unmap_time = false;
+         const int64_t unmap_start_us = log_unmap_time ? os_time_get() : 0;
 
          if (_mesa_is_format_astc_2d(texImage->TexFormat) &&
              util_format_is_compressed(texImage->pt->format)) {
@@ -579,6 +596,11 @@ st_UnmapTextureImage(struct gl_context *ctx,
                    texImage->pt,
                    st_texture_image_resource_level(texImage),
                    itransfer->box.z)) {
+
+               if (log_unmap_time) {
+                  log_unmap_time_delta(&itransfer->box, texImage, "GPU",
+                                       unmap_start_us);
+               }
 
                /* Mark the unmap as complete. */
                assert(itransfer->transfer == NULL);
@@ -699,6 +721,12 @@ st_UnmapTextureImage(struct gl_context *ctx,
          }
 
          st_texture_image_unmap(st, texImage, slice);
+
+         if (log_unmap_time) {
+            log_unmap_time_delta(&itransfer->box, texImage, "CPU",
+                                 unmap_start_us);
+         }
+
          memset(&itransfer->box, 0, sizeof(struct pipe_box));
       }
 
