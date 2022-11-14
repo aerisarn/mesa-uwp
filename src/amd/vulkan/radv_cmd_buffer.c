@@ -4452,37 +4452,38 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
 }
 
 static void
-radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
+radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
 {
-   if ((pipeline_is_dirty || (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
-       cmd_buffer->state.graphics_pipeline->vb_desc_usage_mask) {
-      /* Mesh shaders don't have vertex descriptors. */
-      assert(!cmd_buffer->state.mesh_shading);
+   if (!cmd_buffer->state.graphics_pipeline->vb_desc_usage_mask)
+      return;
 
-      struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-      unsigned vb_offset;
-      void *vb_ptr;
-      uint64_t va;
+   /* Mesh shaders don't have vertex descriptors. */
+   assert(!cmd_buffer->state.mesh_shading);
 
-      /* allocate some descriptor state for vertex buffers */
-      if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset,
-                                        &vb_ptr))
-         return;
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   unsigned vb_offset;
+   void *vb_ptr;
+   uint64_t va;
 
-      radv_write_vertex_descriptors(cmd_buffer, pipeline, false, vb_ptr);
+   /* allocate some descriptor state for vertex buffers */
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset,
+                                     &vb_ptr))
+      return;
 
-      va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-      va += vb_offset;
+   radv_write_vertex_descriptors(cmd_buffer, pipeline, false, vb_ptr);
 
-      radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs, &pipeline->base,
-                                 MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS, va);
+   va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+   va += vb_offset;
 
-      cmd_buffer->state.vb_va = va;
-      cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
+   radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs, &pipeline->base,
+                              MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS, va);
 
-      if (unlikely(cmd_buffer->device->trace_bo))
-         radv_save_vertex_descriptors(cmd_buffer, (uintptr_t)vb_ptr);
-   }
+   cmd_buffer->state.vb_va = va;
+   cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
+
+   if (unlikely(cmd_buffer->device->trace_bo))
+      radv_save_vertex_descriptors(cmd_buffer, (uintptr_t)vb_ptr);
+
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_VERTEX_BUFFER;
 }
 
@@ -4666,11 +4667,13 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
+radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
 
-   radv_flush_vertex_descriptors(cmd_buffer, pipeline_is_dirty);
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)
+      radv_flush_vertex_descriptors(cmd_buffer);
+
    radv_flush_streamout_descriptors(cmd_buffer);
 
    VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT;
@@ -5922,6 +5925,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
           * because a bunch of parameters (user SGPRs, TCS vertices out, etc) can be different.
           */
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
+      }
+
+      /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
+      if (graphics_pipeline->vb_desc_usage_mask) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
       }
 
       /* Re-emit the provoking vertex mode state because the SGPR idx can be different. */
@@ -8287,7 +8295,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
       si_emit_cache_flush(cmd_buffer);
       /* <-- CUs are idle here --> */
 
-      radv_upload_graphics_shader_descriptors(cmd_buffer, pipeline_is_dirty);
+      radv_upload_graphics_shader_descriptors(cmd_buffer);
    } else {
       /* If we don't wait for idle, start prefetches first, then set
        * states, and draw at the end.
@@ -8301,7 +8309,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
          radv_emit_prefetch_L2(cmd_buffer, cmd_buffer->state.graphics_pipeline, true);
       }
 
-      radv_upload_graphics_shader_descriptors(cmd_buffer, pipeline_is_dirty);
+      radv_upload_graphics_shader_descriptors(cmd_buffer);
 
       radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
    }
