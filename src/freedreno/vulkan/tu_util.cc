@@ -36,6 +36,7 @@ static const struct debug_control tu_debug_options[] = {
    { "log_skip_gmem_ops", TU_DEBUG_LOG_SKIP_GMEM_OPS },
    { "dynamic", TU_DEBUG_DYNAMIC },
    { "bos", TU_DEBUG_BOS },
+   { "3d_load", TU_DEBUG_3D_LOAD },
    { NULL, 0 }
 };
 

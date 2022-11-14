@@ -1099,6 +1099,113 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
 }
 
 static void
+r3d_src_depth(struct tu_cmd_buffer *cmd,
+              struct tu_cs *cs,
+              const struct tu_image_view *iview,
+              uint32_t layer)
+{
+   uint32_t desc[A6XX_TEX_CONST_DWORDS];
+
+   memcpy(desc, iview->view.descriptor, sizeof(desc));
+   uint64_t va = iview->depth_base_addr;
+
+   desc[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
+                A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+                A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK |
+                A6XX_TEX_CONST_0_SWAP__MASK);
+   desc[0] |= A6XX_TEX_CONST_0_FMT(FMT6_32_FLOAT) |
+              A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_X) |
+              A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_Y) |
+              A6XX_TEX_CONST_0_SWIZ_Z(A6XX_TEX_Z) |
+              A6XX_TEX_CONST_0_SWIZ_W(A6XX_TEX_W);
+   desc[2] =
+      A6XX_TEX_CONST_2_PITCH(iview->depth_pitch) |
+      A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+   desc[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(iview->depth_layer_size) |
+      (iview->view.descriptor[3] & ~A6XX_TEX_CONST_3_ARRAY_PITCH__MASK);
+   desc[4] = va;
+   desc[5] = va >> 32;
+
+   r3d_src_common(cmd, cs, desc,
+                  iview->depth_layer_size * layer, 
+                  iview->view.ubwc_layer_size * layer,
+                  VK_FILTER_NEAREST);
+}
+
+static void
+r3d_src_stencil(struct tu_cmd_buffer *cmd,
+                struct tu_cs *cs,
+                const struct tu_image_view *iview,
+                uint32_t layer)
+{
+   uint32_t desc[A6XX_TEX_CONST_DWORDS];
+
+   memcpy(desc, iview->view.descriptor, sizeof(desc));
+   uint64_t va = iview->stencil_base_addr;
+
+   desc[0] &= ~(A6XX_TEX_CONST_0_FMT__MASK |
+                A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+                A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK |
+                A6XX_TEX_CONST_0_SWAP__MASK);
+   desc[0] |= A6XX_TEX_CONST_0_FMT(FMT6_8_UINT) |
+              A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_X) |
+              A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_Y) |
+              A6XX_TEX_CONST_0_SWIZ_Z(A6XX_TEX_Z) |
+              A6XX_TEX_CONST_0_SWIZ_W(A6XX_TEX_W);
+   desc[2] =
+      A6XX_TEX_CONST_2_PITCH(iview->stencil_pitch) |
+      A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+   desc[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(iview->stencil_layer_size);
+   desc[4] = va;
+   desc[5] = va >> 32;
+   for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+      desc[i] = 0;
+
+   r3d_src_common(cmd, cs, desc, iview->stencil_layer_size * layer, 0,
+                  VK_FILTER_NEAREST);
+}
+
+static void
+r3d_src_gmem_load(struct tu_cmd_buffer *cmd,
+                  struct tu_cs *cs,
+                  const struct tu_image_view *iview,
+                  uint32_t layer)
+{
+   uint32_t desc[A6XX_TEX_CONST_DWORDS];
+
+   memcpy(desc, iview->view.descriptor, sizeof(desc));
+
+   /* Fixup D24 formats because we always load both depth and stencil. */
+   enum pipe_format format = iview->view.format;
+   if (format == PIPE_FORMAT_X24S8_UINT ||
+       format == PIPE_FORMAT_Z24X8_UNORM ||
+       format == PIPE_FORMAT_Z24_UNORM_S8_UINT) {
+      desc[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
+      if (iview->view.ubwc_enabled)
+         desc[0] |= A6XX_TEX_CONST_0_FMT(FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8);
+      else
+         desc[0] |= A6XX_TEX_CONST_0_FMT(FMT6_8_8_8_8_UNORM);
+   }
+
+   /* When loading/storing GMEM we always load the full image and don't do any
+    * swizzling or swapping, that's done in the draw when reading/writing
+    * GMEM, so we need to fixup the swizzle and swap.
+    */
+   desc[0] &= ~(A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+                A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK |
+                A6XX_TEX_CONST_0_SWAP__MASK);
+   desc[0] |= A6XX_TEX_CONST_0_SWIZ_X(A6XX_TEX_X) |
+              A6XX_TEX_CONST_0_SWIZ_Y(A6XX_TEX_Y) |
+              A6XX_TEX_CONST_0_SWIZ_Z(A6XX_TEX_Z) |
+              A6XX_TEX_CONST_0_SWIZ_W(A6XX_TEX_W);
+
+   r3d_src_common(cmd, cs, desc,
+                  iview->view.layer_size * layer,
+                  iview->view.ubwc_layer_size * layer,
+                  VK_FILTER_NEAREST);
+}
+
+static void
 r3d_src_gmem(struct tu_cmd_buffer *cmd,
              struct tu_cs *cs,
              const struct tu_image_view *iview,
@@ -1211,6 +1318,43 @@ r3d_dst_buffer(struct tu_cs *cs, enum pipe_format format, uint64_t va, uint32_t 
    tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL());
 }
 
+static void
+r3d_dst_gmem(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
+             const struct tu_image_view *iview,
+             const struct tu_render_pass_attachment *att,
+             bool separate_stencil, unsigned layer)
+{
+   unsigned RB_MRT_BUF_INFO;
+   unsigned gmem_offset;
+
+   if (att->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      if (!separate_stencil) {
+         RB_MRT_BUF_INFO = tu_image_view_depth(iview, RB_MRT_BUF_INFO);
+         gmem_offset = tu_attachment_gmem_offset(cmd, att, layer);
+      } else {
+         RB_MRT_BUF_INFO = tu_image_view_stencil(iview, RB_MRT_BUF_INFO);
+         gmem_offset = tu_attachment_gmem_offset_stencil(cmd, att, layer);
+      }
+   } else {
+      RB_MRT_BUF_INFO = iview->view.RB_MRT_BUF_INFO;
+      gmem_offset = tu_attachment_gmem_offset(cmd, att, layer);
+   }
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_MRT_BUF_INFO(0, .dword = RB_MRT_BUF_INFO),
+                   A6XX_RB_MRT_PITCH(0, 0),
+                   A6XX_RB_MRT_ARRAY_PITCH(0, 0),
+                   A6XX_RB_MRT_BASE(0, 0),
+                   A6XX_RB_MRT_BASE_GMEM(0, gmem_offset));
+
+   enum a6xx_format color_format =
+      (enum a6xx_format)(RB_MRT_BUF_INFO & A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT__MASK);
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_LRZ_MRT_BUF_INFO_0(.color_format = color_format));
+
+   tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL());
+}
+
 static uint8_t
 aspect_write_mask(enum pipe_format format, VkImageAspectFlags aspect_mask)
 {
@@ -1227,6 +1371,11 @@ aspect_write_mask(enum pipe_format format, VkImageAspectFlags aspect_mask)
    }
    return mask;
 }
+
+enum r3d_blit_param {
+   R3D_Z_SCALE = 1 << 0,
+   R3D_DST_GMEM = 1 << 1,
+};
 
 static void
 r3d_setup(struct tu_cmd_buffer *cmd,
@@ -1251,10 +1400,12 @@ r3d_setup(struct tu_cmd_buffer *cmd,
       tu6_emit_window_scissor(cs, 0, 0, 0x3fff, 0x3fff);
    }
 
-   tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
-   tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.dword = 0xc00000));
+   if (!(blit_param & R3D_DST_GMEM)) {
+      tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.buffers_location = BUFFERS_IN_SYSMEM));
+      tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.buffers_location = BUFFERS_IN_SYSMEM));
+   }
 
-   r3d_common(cmd, cs, !clear, 1, blit_param, samples);
+   r3d_common(cmd, cs, !clear, 1, blit_param & R3D_Z_SCALE, samples);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
@@ -1652,7 +1803,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
        filter == VK_FILTER_CUBIC_EXT ||
        z_scale) {
       ops = &r3d_ops;
-      blit_param = z_scale;
+      blit_param = z_scale ? R3D_Z_SCALE : 0;
    }
 
    /* use the right format in setup() for D32_S8
@@ -3157,6 +3308,63 @@ blit_can_resolve(VkFormat format)
 }
 
 static void
+load_3d_blit(struct tu_cmd_buffer *cmd,
+             struct tu_cs *cs,
+             const struct tu_image_view *iview,
+             const struct tu_render_pass_attachment *att,
+             bool separate_stencil)
+{
+   const struct tu_framebuffer *fb = cmd->state.framebuffer;
+   enum pipe_format format = iview->view.format;
+   if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      if (separate_stencil)
+         format = PIPE_FORMAT_S8_UINT;
+      else
+         format = PIPE_FORMAT_Z32_FLOAT;
+   }
+   r3d_setup(cmd, cs, format, format,
+             VK_IMAGE_ASPECT_COLOR_BIT, R3D_DST_GMEM, false,
+             iview->view.ubwc_enabled, iview->image->vk.samples);
+
+   r3d_coords(cs, &(VkOffset2D) { 0, 0 }, &(VkOffset2D) { 0, 0 },
+              &(VkExtent2D) { fb->width, fb->height });
+
+   /* Normal loads read directly from system memory, so we have to invalidate
+    * UCHE in case it contains stale data.
+    */
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+
+   /* Wait for CACHE_INVALIDATE to land */
+   tu_cs_emit_wfi(cs);
+
+   for_each_layer(i, att->clear_views, cmd->state.framebuffer->layers) {
+      r3d_dst_gmem(cmd, cs, iview, att, separate_stencil, i);
+
+      if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         if (separate_stencil)
+            r3d_src_stencil(cmd, cs, iview, i);
+         else
+            r3d_src_depth(cmd, cs, iview, i);
+      } else {
+         r3d_src_gmem_load(cmd, cs, iview, i);
+      }
+
+      r3d_run(cmd, cs);
+   }
+
+   r3d_teardown(cmd, cs);
+
+   /* It seems we need to WFI here for depth/stencil because color writes here
+    * aren't synchronized with depth/stencil writes.
+    *
+    * Note: the blob also uses a WFI for color attachments but this hasn't
+    * been seen to be necessary.
+    */
+   if (vk_format_is_depth_or_stencil(att->format))
+      tu_cs_emit_wfi(cs);
+}
+
+static void
 tu_begin_load_store_cond_exec(struct tu_cmd_buffer *cmd,
                               struct tu_cs *cs, bool load)
 {
@@ -3232,11 +3440,22 @@ tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (cond_exec)
       tu_begin_load_store_cond_exec(cmd, cs, true);
 
-   if (load_common)
-      tu_emit_blit(cmd, cs, iview, attachment, false, false);
+   if (TU_DEBUG(3D_LOAD)) {
+      if (load_common || load_stencil)
+         tu_disable_draw_states(cmd, cs);
 
-   if (load_stencil)
-      tu_emit_blit(cmd, cs, iview, attachment, false, true);
+      if (load_common)
+         load_3d_blit(cmd, cs, iview, attachment, false);
+
+      if (load_stencil)
+         load_3d_blit(cmd, cs, iview, attachment, true);
+   } else {
+      if (load_common)
+         tu_emit_blit(cmd, cs, iview, attachment, false, false);
+
+      if (load_stencil)
+         tu_emit_blit(cmd, cs, iview, attachment, false, true);
+   }
 
    if (cond_exec)
       tu_end_load_store_cond_exec(cmd, cs, true);
