@@ -2427,7 +2427,7 @@ ngg_gs_shader_query(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_st
       nir_ssa_def *gs_vtx_cnt = intrin->src[0].ssa;
       nir_ssa_def *prm_cnt = intrin->src[1].ssa;
       if (s->num_vertices_per_primitive > 1)
-         prm_cnt = nir_iadd_nuw(b, nir_imul_imm(b, prm_cnt, -1u * (s->num_vertices_per_primitive - 1)), gs_vtx_cnt);
+         prm_cnt = nir_iadd(b, nir_imul_imm(b, prm_cnt, -1u * (s->num_vertices_per_primitive - 1)), gs_vtx_cnt);
       num_prims_in_wave = nir_reduce(b, prm_cnt, .reduction_op = nir_op_iadd);
    }
 
