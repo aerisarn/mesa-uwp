@@ -2421,7 +2421,12 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             continue;
          }
          const struct anv_descriptor *desc = &set->descriptors[binding->index];
-
+         /* Relative offset in the STATE_BASE_ADDRESS::SurfaceStateBaseAddress
+          * heap. Depending on where the descriptor surface state is
+          * allocated, they can either come from
+          * device->internal_surface_state_pool or
+          * device->bindless_surface_state_pool.
+          */
          switch (desc->type) {
          case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
          case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -2451,10 +2456,11 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   binding->lowered_storage_surface
                   ? desc->image_view->planes[binding->plane].lowered_storage_surface_state
                   : desc->image_view->planes[binding->plane].storage_surface_state;
-               surface_state =
-                  anv_bindless_state_for_binding_table(sstate.state);
+               const bool lowered_surface_state_is_null =
+                  desc->image_view->planes[binding->plane].lowered_surface_state_is_null;
+               surface_state = anv_bindless_state_for_binding_table(sstate.state);
                assert(surface_state.alloc_size);
-               if (surface_state.offset == 0) {
+               if (binding->lowered_storage_surface && lowered_surface_state_is_null) {
                   mesa_loge("Bound a image to a descriptor where the "
                             "descriptor does not have NonReadable "
                             "set and the image does not have a "
@@ -2752,7 +2758,12 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
       anv_batch_emit(&cmd_buffer->batch,
                      GENX(3DSTATE_BINDING_TABLE_POINTERS_VS), btp) {
          btp._3DCommandSubOpcode = binding_table_opcodes[s];
+#if GFX_VERX10 >= 125
+         btp.PointertoVSBindingTable = SCRATCH_SURFACE_STATE_POOL_SIZE +
+                                       cmd_buffer->state.binding_tables[s].offset;
+#else
          btp.PointertoVSBindingTable = cmd_buffer->state.binding_tables[s].offset;
+#endif
       }
    }
 }

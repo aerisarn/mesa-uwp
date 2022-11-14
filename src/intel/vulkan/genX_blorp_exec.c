@@ -181,7 +181,11 @@ static uint32_t
 blorp_binding_table_offset_to_pointer(struct blorp_batch *batch,
                                       uint32_t offset)
 {
+#if GFX_VERX10 >= 125
+   return SCRATCH_SURFACE_STATE_POOL_SIZE + offset;
+#else
    return offset;
+#endif
 }
 
 static void *

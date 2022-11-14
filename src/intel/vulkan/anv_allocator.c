@@ -1197,7 +1197,7 @@ anv_scratch_pool_finish(struct anv_device *device, struct anv_scratch_pool *pool
 
    for (unsigned i = 0; i < 16; i++) {
       if (pool->surf_states[i].map != NULL) {
-         anv_state_pool_free(&device->internal_surface_state_pool,
+         anv_state_pool_free(&device->scratch_surface_state_pool,
                              pool->surf_states[i]);
       }
    }
@@ -1274,6 +1274,8 @@ anv_scratch_pool_get_surf(struct anv_device *device,
                           struct anv_scratch_pool *pool,
                           unsigned per_thread_scratch)
 {
+   assert(device->info->verx10 >= 125);
+
    if (per_thread_scratch == 0)
       return 0;
 
@@ -1290,7 +1292,7 @@ anv_scratch_pool_get_surf(struct anv_device *device,
    struct anv_address addr = { .bo = bo };
 
    struct anv_state state =
-      anv_state_pool_alloc(&device->internal_surface_state_pool,
+      anv_state_pool_alloc(&device->scratch_surface_state_pool,
                            device->isl_dev.ss.size, 64);
 
    isl_buffer_fill_state(&device->isl_dev, state.map,
@@ -1305,7 +1307,7 @@ anv_scratch_pool_get_surf(struct anv_device *device,
    uint32_t current = p_atomic_cmpxchg(&pool->surfs[scratch_size_log2],
                                        0, state.offset);
    if (current) {
-      anv_state_pool_free(&device->internal_surface_state_pool, state);
+      anv_state_pool_free(&device->scratch_surface_state_pool, state);
       return current;
    } else {
       pool->surf_states[scratch_size_log2] = state;

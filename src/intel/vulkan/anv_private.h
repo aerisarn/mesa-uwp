@@ -160,8 +160,10 @@ struct intel_perf_query_result;
 #define BINDING_TABLE_POOL_MAX_ADDRESS             0x00013fffffffULL
 #define INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS    0x000140000000ULL /* 5 GiB */
 #define INTERNAL_SURFACE_STATE_POOL_MAX_ADDRESS    0x0001bfffffffULL
-#define BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS    0x0001c0000000ULL /* 7 GiB */
-#define BINDLESS_SURFACE_STATE_POOL_MAX_ADDRESS    0x0001bfffffffULL
+#define SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS     0x000140000000ULL /* 5 GiB (8MiB overlaps surface state pool) */
+#define SCRATCH_SURFACE_STATE_POOL_MAX_ADDRESS     0x0001407fffffULL
+#define BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS    0x0001c0000000ULL /* 7 GiB (64MiB) */
+#define BINDLESS_SURFACE_STATE_POOL_MAX_ADDRESS    0x0001c3ffffffULL
 #define INSTRUCTION_STATE_POOL_MIN_ADDRESS         0x000200000000ULL /* 8 GiB */
 #define INSTRUCTION_STATE_POOL_MAX_ADDRESS         0x00023fffffffULL
 #define CLIENT_VISIBLE_HEAP_MIN_ADDRESS            0x000240000000ULL /* 9 GiB */
@@ -177,10 +179,12 @@ struct intel_perf_query_result;
 #define BINDING_TABLE_POOL_SIZE     \
    (BINDING_TABLE_POOL_MAX_ADDRESS - BINDING_TABLE_POOL_MIN_ADDRESS + 1)
 #define BINDING_TABLE_POOL_BLOCK_SIZE (65536)
-#define INTERNAL_SURFACE_STATE_POOL_SIZE \
-   (INTERNAL_SURFACE_STATE_POOL_MAX_ADDRESS - INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
+#define SCRATCH_SURFACE_STATE_POOL_SIZE \
+   (SCRATCH_SURFACE_STATE_POOL_MAX_ADDRESS - SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
 #define BINDLESS_SURFACE_STATE_POOL_SIZE \
    (BINDLESS_SURFACE_STATE_POOL_MAX_ADDRESS - BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
+#define INTERNAL_SURFACE_STATE_POOL_SIZE \
+   (INTERNAL_SURFACE_STATE_POOL_MAX_ADDRESS - INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
 #define INSTRUCTION_STATE_POOL_SIZE \
    (INSTRUCTION_STATE_POOL_MAX_ADDRESS - INSTRUCTION_STATE_POOL_MIN_ADDRESS + 1)
 #define CLIENT_VISIBLE_HEAP_SIZE               \
@@ -1158,6 +1162,7 @@ struct anv_device {
     struct anv_state_pool                       dynamic_state_pool;
     struct anv_state_pool                       instruction_state_pool;
     struct anv_state_pool                       binding_table_pool;
+    struct anv_state_pool                       scratch_surface_state_pool;
     struct anv_state_pool                       internal_surface_state_pool;
     struct anv_state_pool                       bindless_surface_state_pool;
 
@@ -3831,6 +3836,8 @@ struct anv_image_view {
        */
       struct anv_surface_state storage_surface_state;
       struct anv_surface_state lowered_storage_surface_state;
+
+      bool lowered_surface_state_is_null;
    } planes[3];
 };
 

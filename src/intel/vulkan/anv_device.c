@@ -3063,9 +3063,11 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
       return ret_bo;
    if (get_bo_from_pool(&ret_bo, &device->binding_table_pool.block_pool, address))
       return ret_bo;
-   if (get_bo_from_pool(&ret_bo, &device->internal_surface_state_pool.block_pool, address))
+   if (get_bo_from_pool(&ret_bo, &device->scratch_surface_state_pool.block_pool, address))
       return ret_bo;
    if (get_bo_from_pool(&ret_bo, &device->bindless_surface_state_pool.block_pool, address))
+      return ret_bo;
+   if (get_bo_from_pool(&ret_bo, &device->internal_surface_state_pool.block_pool, address))
       return ret_bo;
 
    if (!device->cmd_buffer_being_decoded)
@@ -3437,11 +3439,27 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
-   result = anv_state_pool_init(&device->internal_surface_state_pool, device,
-                                "internal surface state pool",
-                                INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+   if (device->info->verx10 >= 125) {
+      /* Put the scratch surface states at the beginning of the internal
+       * surface state pool.
+       */
+      result = anv_state_pool_init(&device->scratch_surface_state_pool, device,
+                                   "scratch surface state pool",
+                                   SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+      if (result != VK_SUCCESS)
+         goto fail_instruction_state_pool;
+
+      result = anv_state_pool_init(&device->internal_surface_state_pool, device,
+                                   "internal surface state pool",
+                                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS,
+                                   SCRATCH_SURFACE_STATE_POOL_SIZE, 4096);
+   } else {
+      result = anv_state_pool_init(&device->internal_surface_state_pool, device,
+                                   "internal surface state pool",
+                                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+   }
    if (result != VK_SUCCESS)
-      goto fail_instruction_state_pool;
+      goto fail_scratch_surface_state_pool;
 
    result = anv_state_pool_init(&device->bindless_surface_state_pool, device,
                                 "bindless surface state pool",
@@ -3549,7 +3567,9 @@ VkResult anv_CreateDevice(
     * to zero and they have a valid descriptor.
     */
    device->null_surface_state =
-      anv_state_pool_alloc(&device->internal_surface_state_pool,
+      anv_state_pool_alloc(device->info->verx10 >= 125 ?
+                           &device->scratch_surface_state_pool :
+                           &device->internal_surface_state_pool,
                            device->isl_dev.ss.size,
                            device->isl_dev.ss.align);
    isl_null_fill_state(&device->isl_dev, device->null_surface_state.map,
@@ -3650,6 +3670,9 @@ VkResult anv_CreateDevice(
    anv_state_pool_finish(&device->bindless_surface_state_pool);
  fail_internal_surface_state_pool:
    anv_state_pool_finish(&device->internal_surface_state_pool);
+ fail_scratch_surface_state_pool:
+   if (device->info->verx10 >= 125)
+      anv_state_pool_finish(&device->scratch_surface_state_pool);
  fail_instruction_state_pool:
    anv_state_pool_finish(&device->instruction_state_pool);
  fail_dynamic_state_pool:
@@ -3738,6 +3761,8 @@ void anv_DestroyDevice(
    }
 
    anv_state_pool_finish(&device->binding_table_pool);
+   if (device->info->verx10 >= 125)
+      anv_state_pool_finish(&device->scratch_surface_state_pool);
    anv_state_pool_finish(&device->internal_surface_state_pool);
    anv_state_pool_finish(&device->bindless_surface_state_pool);
    anv_state_pool_finish(&device->instruction_state_pool);
