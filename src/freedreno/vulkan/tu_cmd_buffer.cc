@@ -1280,7 +1280,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
          dst[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
          dst[0] |= A6XX_TEX_CONST_0_FMT(FMT6_8_UINT);
          dst[2] &= ~(A6XX_TEX_CONST_2_PITCHALIGN__MASK | A6XX_TEX_CONST_2_PITCH__MASK);
-         dst[2] |= A6XX_TEX_CONST_2_PITCH(iview->stencil_PITCH << 6);
+         dst[2] |= A6XX_TEX_CONST_2_PITCH(iview->stencil_pitch);
          dst[3] = 0;
          dst[4] = iview->stencil_base_addr;
          dst[5] = (dst[5] & 0xffff) | iview->stencil_base_addr >> 32;

@@ -278,7 +278,7 @@ r2d_src_depth(struct tu_cmd_buffer *cmd,
    tu_cs_emit(cs, iview->view.SP_PS_2D_SRC_SIZE);
    tu_cs_emit_qw(cs, iview->depth_base_addr + iview->depth_layer_size * layer);
    /* SP_PS_2D_SRC_PITCH has shifted pitch field */
-   tu_cs_emit(cs, iview->depth_PITCH << 9);
+   tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_PITCH(.pitch = iview->depth_pitch).value);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_FLAGS, 3);
    tu_cs_image_flag_ref(cs, &iview->view, layer);
@@ -295,8 +295,7 @@ r2d_src_stencil(struct tu_cmd_buffer *cmd,
    tu_cs_emit(cs, tu_image_view_stencil(iview, SP_PS_2D_SRC_INFO) & ~A6XX_SP_PS_2D_SRC_INFO_FLAGS);
    tu_cs_emit(cs, iview->view.SP_PS_2D_SRC_SIZE);
    tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
-   /* SP_PS_2D_SRC_PITCH has shifted pitch field */
-   tu_cs_emit(cs, iview->stencil_PITCH << 9);
+   tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_PITCH(.pitch = iview->stencil_pitch).value);
 }
 
 static void
@@ -349,7 +348,7 @@ r2d_dst_depth(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t laye
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
    tu_cs_emit(cs, tu_image_view_depth(iview, RB_2D_DST_INFO));
    tu_cs_emit_qw(cs, iview->depth_base_addr + iview->depth_layer_size * layer);
-   tu_cs_emit(cs, iview->depth_PITCH);
+   tu_cs_emit(cs, A6XX_RB_2D_DST_PITCH(iview->depth_pitch).value);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_FLAGS, 3);
    tu_cs_image_flag_ref(cs, &iview->view, layer);
@@ -361,7 +360,7 @@ r2d_dst_stencil(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t la
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
    tu_cs_emit(cs, tu_image_view_stencil(iview, RB_2D_DST_INFO) & ~A6XX_RB_2D_DST_INFO_FLAGS);
    tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
-   tu_cs_emit(cs, iview->stencil_PITCH);
+   tu_cs_emit(cs, A6XX_RB_2D_DST_PITCH(iview->stencil_pitch).value);
 }
 
 static void
@@ -3089,14 +3088,14 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
          if (!separate_stencil) {
             tu_cs_emit(cs, tu_image_view_depth(iview, RB_BLIT_DST_INFO));
             tu_cs_emit_qw(cs, iview->depth_base_addr + iview->depth_layer_size * i);
-            tu_cs_emit(cs, iview->depth_PITCH);
+            tu_cs_emit(cs, A6XX_RB_2D_DST_PITCH(iview->depth_pitch).value);
 
             tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
             tu_cs_image_flag_ref(cs, &iview->view, i);
          } else {
             tu_cs_emit(cs, tu_image_view_stencil(iview, RB_BLIT_DST_INFO) & ~A6XX_RB_BLIT_DST_INFO_FLAGS);
             tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * i);
-            tu_cs_emit(cs, iview->stencil_PITCH);
+            tu_cs_emit(cs, A6XX_RB_BLIT_DST_PITCH(iview->stencil_pitch).value);
          }
       } else {
          tu_cs_emit(cs, iview->view.RB_BLIT_DST_INFO);

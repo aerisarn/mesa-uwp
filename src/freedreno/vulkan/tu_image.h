@@ -53,12 +53,12 @@ struct tu_image_view
    /* for d32s8 separate depth */
    uint64_t depth_base_addr;
    uint32_t depth_layer_size;
-   uint32_t depth_PITCH;
+   uint32_t depth_pitch;
 
    /* for d32s8 separate stencil */
    uint64_t stencil_base_addr;
    uint32_t stencil_layer_size;
-   uint32_t stencil_PITCH;
+   uint32_t stencil_pitch;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
