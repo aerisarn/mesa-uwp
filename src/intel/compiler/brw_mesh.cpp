@@ -921,6 +921,43 @@ adjust_handle_and_offset(const fs_builder &bld,
 }
 
 static void
+emit_urb_direct_vec4_write(const fs_builder &bld,
+                           unsigned urb_global_offset,
+                           const fs_reg &src,
+                           fs_reg urb_handle,
+                           unsigned src_comp_offset,
+                           unsigned dst_comp_offset,
+                           unsigned comps,
+                           unsigned mask)
+{
+   for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
+      fs_builder bld8 = bld.group(8, q);
+
+      fs_reg payload_srcs[4];
+      unsigned length = 0;
+
+      for (unsigned i = 0; i < dst_comp_offset; i++)
+         payload_srcs[length++] = reg_undef;
+
+      for (unsigned c = 0; c < comps; c++)
+         payload_srcs[length++] = quarter(offset(src, bld, c + src_comp_offset), q);
+
+      fs_reg srcs[URB_LOGICAL_NUM_SRCS];
+      srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
+      srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(mask << 16);
+      srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
+                                          BRW_REGISTER_TYPE_F);
+      bld8.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
+
+      fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
+                                reg_undef, srcs, ARRAY_SIZE(srcs));
+      inst->mlen = 2 + length;
+      inst->offset = urb_global_offset;
+      assert(inst->offset < 2048);
+   }
+}
+
+static void
 emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
                        const fs_reg &src, fs_reg urb_handle)
 {
@@ -954,60 +991,14 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
    unsigned urb_global_offset = offset_in_dwords / 4;
    adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
 
-   if (first_mask > 0) {
-      for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
-         fs_builder bld8 = bld.group(8, q);
-
-         fs_reg payload_srcs[4];
-         unsigned length = 0;
-
-         for (unsigned i = 0; i < comp_shift; i++)
-            payload_srcs[length++] = reg_undef;
-
-         for (unsigned c = 0; c < first_comps; c++)
-            payload_srcs[length++] = quarter(offset(src, bld, c), q);
-
-         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
-         srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(first_mask << 16);
-         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
-                                             BRW_REGISTER_TYPE_F);
-         bld8.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
-
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
-                                   reg_undef, srcs, ARRAY_SIZE(srcs));
-         inst->mlen = 2 + length;
-         inst->offset = urb_global_offset;
-         assert(inst->offset < 2048);
-      }
-   }
+   if (first_mask > 0)
+      emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, 0, comp_shift, first_comps, first_mask);
 
    if (second_mask > 0) {
       urb_global_offset++;
       adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
 
-      for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
-         fs_builder bld8 = bld.group(8, q);
-
-         fs_reg payload_srcs[4];
-         unsigned length = 0;
-
-         for (unsigned c = 0; c < second_comps; c++)
-            payload_srcs[length++] = quarter(offset(src, bld, c + first_comps), q);
-
-         fs_reg srcs[URB_LOGICAL_NUM_SRCS];
-         srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
-         srcs[URB_LOGICAL_SRC_CHANNEL_MASK] = brw_imm_ud(second_mask << 16);
-         srcs[URB_LOGICAL_SRC_DATA] = fs_reg(VGRF, bld.shader->alloc.allocate(length),
-                                             BRW_REGISTER_TYPE_F);
-         bld8.LOAD_PAYLOAD(srcs[URB_LOGICAL_SRC_DATA], payload_srcs, length, 0);
-
-         fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_LOGICAL,
-                                   reg_undef, srcs, ARRAY_SIZE(srcs));
-         inst->mlen = 2 + length;
-         inst->offset = urb_global_offset;
-         assert(inst->offset < 2048);
-      }
+      emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, first_comps, 0, second_comps, second_mask);
    }
 }
 
