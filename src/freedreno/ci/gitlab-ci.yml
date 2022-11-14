@@ -143,8 +143,12 @@ a618_vk:
   extends:
     - .a618-test
     - .turnip-rules
-  parallel: 9
+  parallel: 12
   variables:
+    DEVICE_TYPE: sc7180-trogdor-kingoftown
+    DTB: sc7180-trogdor-kingoftown-r1
+    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-kingoftown
+    VK_DRIVER: freedreno
     DEQP_SUITE: freedreno-a618-vk
     GPU_VERSION: freedreno-a618
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1

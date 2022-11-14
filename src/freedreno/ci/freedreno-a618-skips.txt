@@ -14,4 +14,5 @@ dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies
+spill-dEQP-VK.graphicsfuzz.cov-nested-loop-large-array-index-using-vector-components
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
