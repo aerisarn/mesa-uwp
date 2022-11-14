@@ -39,6 +39,7 @@
 #include "radv_shader.h"
 #include "radv_shader_args.h"
 #include "vk_pipeline.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 #include "util/u_debug.h"
@@ -69,6 +70,7 @@ struct radv_blend_state {
 
 struct radv_depth_stencil_state {
    uint32_t db_render_control;
+   uint32_t db_shader_control;
 };
 
 struct radv_dsa_order_invariance {
@@ -1928,12 +1930,80 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    pipeline->dynamic_state.mask = states;
 }
 
+static bool
+radv_pipeline_uses_ds_feedback_loop(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                    const struct vk_graphics_pipeline_state *state)
+{
+   VK_FROM_HANDLE(vk_render_pass, render_pass, state->rp->render_pass);
+
+   if (render_pass) {
+      uint32_t subpass_idx = state->rp->subpass;
+      struct vk_subpass *subpass = &render_pass->subpasses[subpass_idx];
+      struct vk_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
+
+      for (uint32_t i = 0; i < subpass->input_count; i++) {
+         if (ds_att && ds_att->attachment == subpass->input_attachments[i].attachment) {
+            return true;
+         }
+      }
+   }
+
+   return (pCreateInfo->flags & VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
+}
+
+static uint32_t
+radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
+                                const struct vk_graphics_pipeline_state *state,
+                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   bool uses_ds_feedback_loop = radv_pipeline_uses_ds_feedback_loop(pCreateInfo, state);
+   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+   unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
+   unsigned z_order;
+
+   /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
+    * invocations read the correct value.
+    */
+   if (!uses_ds_feedback_loop && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory))
+      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
+   else
+      z_order = V_02880C_LATE_Z;
+
+   if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
+      conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
+   else if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
+      conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
+
+   bool disable_rbplus = pdevice->rad_info.has_rbplus && !pdevice->rad_info.rbplus_allowed;
+
+   /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
+    * but this appears to break Project Cars (DXVK). See
+    * https://bugs.freedesktop.org/show_bug.cgi?id=109401
+    */
+   bool mask_export_enable = ps->info.ps.writes_sample_mask;
+
+   return S_02880C_Z_EXPORT_ENABLE(ps->info.ps.writes_z) |
+          S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.ps.writes_stencil) |
+          S_02880C_KILL_ENABLE(!!ps->info.ps.can_discard) |
+          S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
+          S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) | S_02880C_Z_ORDER(z_order) |
+          S_02880C_DEPTH_BEFORE_SHADER(ps->info.ps.early_fragment_test) |
+          S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.ps.post_depth_coverage) |
+          S_02880C_EXEC_ON_HIER_FAIL(ps->info.ps.writes_memory) |
+          S_02880C_EXEC_ON_NOOP(ps->info.ps.writes_memory) |
+          S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);
+}
+
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
-                                       const struct vk_graphics_pipeline_state *state)
+                                       const struct vk_graphics_pipeline_state *state,
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_depth_stencil_state ds_state = {0};
+
+   ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo);
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;
@@ -4132,6 +4202,7 @@ radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
                                        const struct radv_depth_stencil_state *ds_state)
 {
    radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, ds_state->db_render_control);
+   radeon_set_context_reg(ctx_cs, R_02880C_DB_SHADER_CONTROL, ds_state->db_shader_control);
 }
 
 static void
@@ -4788,43 +4859,6 @@ radv_pipeline_emit_ps_inputs(struct radeon_cmdbuf *ctx_cs,
    }
 }
 
-static uint32_t
-radv_compute_db_shader_control(const struct radv_physical_device *pdevice,
-                               const struct radv_graphics_pipeline *pipeline,
-                               const struct radv_shader *ps)
-{
-   unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
-   unsigned z_order;
-   if (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory)
-      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
-   else
-      z_order = V_02880C_LATE_Z;
-
-   if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
-      conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
-   else if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
-      conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
-
-   bool disable_rbplus = pdevice->rad_info.has_rbplus && !pdevice->rad_info.rbplus_allowed;
-
-   /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
-    * but this appears to break Project Cars (DXVK). See
-    * https://bugs.freedesktop.org/show_bug.cgi?id=109401
-    */
-   bool mask_export_enable = ps->info.ps.writes_sample_mask;
-
-   return S_02880C_Z_EXPORT_ENABLE(ps->info.ps.writes_z) |
-          S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.ps.writes_stencil) |
-          S_02880C_KILL_ENABLE(!!ps->info.ps.can_discard) |
-          S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
-          S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) | S_02880C_Z_ORDER(z_order) |
-          S_02880C_DEPTH_BEFORE_SHADER(ps->info.ps.early_fragment_test) |
-          S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.ps.post_depth_coverage) |
-          S_02880C_EXEC_ON_HIER_FAIL(ps->info.ps.writes_memory) |
-          S_02880C_EXEC_ON_NOOP(ps->info.ps.writes_memory) |
-          S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);
-}
-
 static void
 radv_pipeline_emit_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs,
                                    const struct radv_graphics_pipeline *pipeline)
@@ -4843,9 +4877,6 @@ radv_pipeline_emit_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_c
    radeon_emit(cs, S_00B024_MEM_BASE(va >> 40));
    radeon_emit(cs, ps->config.rsrc1);
    radeon_emit(cs, ps->config.rsrc2);
-
-   radeon_set_context_reg(ctx_cs, R_02880C_DB_SHADER_CONTROL,
-                          radv_compute_db_shader_control(pdevice, pipeline, ps));
 
    radeon_set_context_reg_seq(ctx_cs, R_0286CC_SPI_PS_INPUT_ENA, 2);
    radeon_emit(ctx_cs, ps->config.spi_ps_input_ena);
@@ -5510,7 +5541,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_dynamic_state(pipeline, &state);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, &state);
+      radv_pipeline_init_depth_stencil_state(pipeline, &state, pCreateInfo);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
