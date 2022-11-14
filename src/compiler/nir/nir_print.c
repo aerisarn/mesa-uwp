@@ -1730,12 +1730,69 @@ primitive_name(unsigned primitive)
 }
 
 static void
-print_bitset(FILE *fp, const char *name, const unsigned *words, int size) {
-   fprintf(fp, "%s: ", name);
+print_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
+   fprintf(fp, "%s: ", label);
    for (int i = 0; i < size; ++i) {
       fprintf(fp, i ? "'%08x" : "0x%08x", words[i]);
    }
    fprintf(fp, "\n");
+}
+
+/* Print bitset, only if some bits are set */
+static void
+print_nz_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
+   bool is_all_zero = true;
+   for (int i = 0; i < size; ++i) {
+      if (words[i]) {
+         is_all_zero = false;
+         break;
+      }
+   }
+
+   if (!is_all_zero)
+      print_bitset(fp, label, words, size);
+}
+
+/* Print uint64_t value in hex, only if non-zero */
+static void
+print_nz_x64(FILE *fp, const char *label, uint64_t value) {
+   if (value)
+      fprintf(fp, "%s: 0x%016" PRIx64 "\n", label, value);
+}
+
+/* Print uint32_t value in hex, only if non-zero */
+static void
+print_nz_x32(FILE *fp, const char *label, uint32_t value) {
+   if (value)
+      fprintf(fp, "%s: 0x%08" PRIx32 "\n", label, value);
+}
+
+/* Print uint16_t value in hex, only if non-zero */
+static void
+print_nz_x16(FILE *fp, const char *label, uint16_t value) {
+   if (value)
+      fprintf(fp, "%s: 0x%04x\n", label, value);
+}
+
+/* Print uint8_t value in hex, only if non-zero */
+static void
+print_nz_x8(FILE *fp, const char *label, uint8_t value) {
+   if (value)
+      fprintf(fp, "%s: 0x%02x\n", label, value);
+}
+
+/* Print unsigned value in decimal, only if non-zero */
+static void
+print_nz_unsigned(FILE *fp, const char *label, unsigned value) {
+   if (value)
+      fprintf(fp, "%s: %u\n", label, value);
+}
+
+/* Print bool only if set */
+static void
+print_nz_bool(FILE *fp, const char *label, bool value) {
+   if (value)
+      fprintf(fp, "%s\n", label);
 }
 
 static void
@@ -1761,103 +1818,106 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
       fprintf(fp, "shared-size: %u\n", info->shared_size);
    }
 
-   fprintf(fp, "stage: %d\nnext_stage: %d\n", info->stage, info->next_stage);
+   fprintf(fp, "stage: %d\n"
+               "next_stage: %d\n",
+           info->stage, info->next_stage);
 
-   fprintf(fp, "num_textures: %u\nnum_ubos: %u\nnum_abos: %u\nnum_ssbos: %u\nnum_images: %u\n",
-           info->num_textures, info->num_ubos, info->num_abos, info->num_ssbos, info->num_images);
+   print_nz_unsigned(fp, "num_textures", info->num_textures);
+   print_nz_unsigned(fp, "num_ubos", info->num_ubos);
+   print_nz_unsigned(fp, "num_abos", info->num_abos);
+   print_nz_unsigned(fp, "num_ssbos", info->num_ssbos);
+   print_nz_unsigned(fp, "num_images", info->num_images);
 
-   fprintf(fp, "inputs_read: 0x%016" PRIx64 "\noutputs_written: 0x%016" PRIx64 "\noutputs_read: 0x%016" PRIx64 "\n",
-           info->inputs_read, info->outputs_written, info->outputs_read);
+   print_nz_x64(fp, "inputs_read", info->inputs_read);
+   print_nz_x64(fp, "outputs_written", info->outputs_written);
+   print_nz_x64(fp, "outputs_read", info->outputs_read);
 
-   print_bitset(fp, "system_values_read", info->system_values_read, ARRAY_SIZE(info->system_values_read));
+   print_nz_bitset(fp, "system_values_read", info->system_values_read, ARRAY_SIZE(info->system_values_read));
 
-   fprintf(fp, "per_primitive_inputs: 0x%016" PRIx64 "\n"
-               "per_primitive_outputs: 0x%016" PRIx64 "\n"
-               "per_view_outputs: 0x%016" PRIx64 "\n",
-           info->per_primitive_inputs,
-           info->per_primitive_outputs,
-           info->per_view_outputs);
+   print_nz_x64(fp, "per_primitive_inputs", info->per_primitive_inputs);
+   print_nz_x64(fp, "per_primitive_outputs", info->per_primitive_outputs);
+   print_nz_x64(fp, "per_view_outputs", info->per_view_outputs);
 
-   fprintf(fp, "inputs_read_16bit: 0x%04x\n"
-               "outputs_written_16bit: 0x%04x\n"
-               "outputs_read_16bit: 0x%04x\n"
-               "inputs_read_indirectly_16bit: 0x%04x\n"
-               "outputs_accessed_indirectly_16bit: 0x%04x\n",
-           info->inputs_read_16bit,
-           info->outputs_written_16bit,
-           info->outputs_read_16bit,
-           info->inputs_read_indirectly_16bit,
-           info->outputs_accessed_indirectly_16bit);
+   print_nz_x16(fp, "inputs_read_16bit", info->inputs_read_16bit);
+   print_nz_x16(fp, "outputs_written_16bit", info->outputs_written_16bit);
+   print_nz_x16(fp, "outputs_read_16bit", info->outputs_read_16bit);
+   print_nz_x16(fp, "inputs_read_indirectly_16bit", info->inputs_read_indirectly_16bit);
+   print_nz_x16(fp, "outputs_accessed_indirectly_16bit", info->outputs_accessed_indirectly_16bit);
 
-   fprintf(fp, "patch_inputs_read: %u\n"
-           "patch_outputs_written: %u\n"
-           "patch_outputs_read: %u\n",
-           info->patch_inputs_read,
-           info->patch_outputs_written,
-           info->patch_outputs_read);
+   print_nz_x32(fp, "patch_inputs_read", info->patch_inputs_read);
+   print_nz_x32(fp, "patch_outputs_written", info->patch_outputs_written);
+   print_nz_x32(fp, "patch_outputs_read", info->patch_outputs_read);
 
-   fprintf(fp, "inputs_read_indirectly: %" PRIx64 "\n"
-           "outputs_accessed_indirectly: %" PRIx64 "\n"
-           "patch_inputs_read_indirectly: %" PRIx64 "\n"
-           "patch_outputs_acessed_indirectly: %" PRIx64 "\n",
-           info->inputs_read_indirectly,
-           info->outputs_accessed_indirectly,
-           info->patch_inputs_read_indirectly,
-           info->patch_outputs_accessed_indirectly);
+   print_nz_x64(fp, "inputs_read_indirectly", info->inputs_read_indirectly);
+   print_nz_x64(fp, "outputs_accessed_indirectly", info->outputs_accessed_indirectly);
+   print_nz_x64(fp, "patch_inputs_read_indirectly", info->patch_inputs_read_indirectly);
+   print_nz_x64(fp, "patch_outputs_accessed_indirectly", info->patch_outputs_accessed_indirectly);
 
-   print_bitset(fp, "textures_used", info->textures_used, ARRAY_SIZE(info->textures_used));
-   print_bitset(fp, "textures_used_by_txf", info->textures_used_by_txf, ARRAY_SIZE(info->textures_used_by_txf));
-   print_bitset(fp, "samplers_used", info->samplers_used, ARRAY_SIZE(info->samplers_used));
-   print_bitset(fp, "images_used", info->images_used, ARRAY_SIZE(info->images_used));
-   print_bitset(fp, "image_buffers", info->image_buffers, ARRAY_SIZE(info->image_buffers));
-   print_bitset(fp, "msaa_images", info->msaa_images, ARRAY_SIZE(info->msaa_images));
+   print_nz_bitset(fp, "textures_used", info->textures_used, ARRAY_SIZE(info->textures_used));
+   print_nz_bitset(fp, "textures_used_by_txf", info->textures_used_by_txf, ARRAY_SIZE(info->textures_used_by_txf));
+   print_nz_bitset(fp, "samplers_used", info->samplers_used, ARRAY_SIZE(info->samplers_used));
+   print_nz_bitset(fp, "images_used", info->images_used, ARRAY_SIZE(info->images_used));
+   print_nz_bitset(fp, "image_buffers", info->image_buffers, ARRAY_SIZE(info->image_buffers));
+   print_nz_bitset(fp, "msaa_images", info->msaa_images, ARRAY_SIZE(info->msaa_images));
 
-   fprintf(fp, "float_controls_execution_mode: 0x%04x\n", info->float_controls_execution_mode);
+   print_nz_x16(fp, "float_controls_execution_mode", info->float_controls_execution_mode);
 
-   fprintf(fp, "shared: %u\n", info->shared_size);
+   print_nz_unsigned(fp, "shared_size", info->shared_size);
 
    if (info->stage == MESA_SHADER_MESH || info->stage == MESA_SHADER_TASK) {
-      fprintf(fp, "task_payload-size: %u\n", info->task_payload_size);
+      fprintf(fp, "task_payload_size: %u\n", info->task_payload_size);
    }
 
-   fprintf(fp, "ray queries: %u\n", info->ray_queries);
+   print_nz_unsigned(fp, "ray queries", info->ray_queries);
 
    fprintf(fp, "subgroup_size: %u\n", info->subgroup_size);
 
-   fprintf(fp, "uses_wide_subgroup_intrinsics: %u\n", info->uses_wide_subgroup_intrinsics);
+   print_nz_bool(fp, "uses_wide_subgroup_intrinsics", info->uses_wide_subgroup_intrinsics);
 
-   fprintf(fp, "xfb_stride[]: %u %u %u %u\n",
-           info->xfb_stride[0], info->xfb_stride[1], info->xfb_stride[2], info->xfb_stride[3]);
+   bool has_xfb_stride = info->xfb_stride[0] || info->xfb_stride[1] || info->xfb_stride[2] || info->xfb_stride[3];
+   if (has_xfb_stride)
+      fprintf(fp, "xfb_stride: {%u, %u, %u, %u}\n",
+              info->xfb_stride[0],
+              info->xfb_stride[1],
+              info->xfb_stride[2],
+              info->xfb_stride[3]);
 
-   fprintf(fp, "inlinable_uniform_dw_offsets[]: %u %u %u %u\n",
-           info->inlinable_uniform_dw_offsets[0], info->inlinable_uniform_dw_offsets[1],
-           info->inlinable_uniform_dw_offsets[2], info->inlinable_uniform_dw_offsets[3]);
+   bool has_inlinable_uniform_dw_offsets = info->inlinable_uniform_dw_offsets[0]
+                                           || info->inlinable_uniform_dw_offsets[1]
+                                           || info->inlinable_uniform_dw_offsets[2]
+                                           || info->inlinable_uniform_dw_offsets[3];
+   if (has_inlinable_uniform_dw_offsets)
+      fprintf(fp, "inlinable_uniform_dw_offsets: {%u, %u, %u, %u}\n",
+              info->inlinable_uniform_dw_offsets[0],
+              info->inlinable_uniform_dw_offsets[1],
+              info->inlinable_uniform_dw_offsets[2],
+              info->inlinable_uniform_dw_offsets[3]);
 
-   fprintf(fp, "num_inlinable_uniforms: %u\n", info->num_inlinable_uniforms);
+   print_nz_unsigned(fp, "num_inlinable_uniforms", info->num_inlinable_uniforms);
+   print_nz_unsigned(fp, "clip_distance_array_size", info->clip_distance_array_size);
+   print_nz_unsigned(fp, "cull_distance_array_size", info->cull_distance_array_size);
 
-   fprintf(fp, "clip_distance_arry_size: %u\n", info->clip_distance_array_size);
-   fprintf(fp, "cull_distance_array_size: %u\n", info->cull_distance_array_size);
-   fprintf(fp, "uses_texture_gather: %u\n", info->uses_texture_gather);
-   fprintf(fp, "uses_resource_info_query: %u\n", info->uses_resource_info_query);
-   fprintf(fp, "uses_fddx_fddy: %u\n", info->uses_fddx_fddy);
-   fprintf(fp, "divergence_analysis_run: %u\n", info->divergence_analysis_run);
+   print_nz_bool(fp, "uses_texture_gather", info->uses_texture_gather);
+   print_nz_bool(fp, "uses_resource_info_query", info->uses_resource_info_query);
+   print_nz_bool(fp, "uses_fddx_fddy", info->uses_fddx_fddy);
+   print_nz_bool(fp, "divergence_analysis_run", info->divergence_analysis_run);
 
-   fprintf(fp, "bit_sizes_float: 0x%02x\n", info->bit_sizes_float);
-   fprintf(fp, "bit_sizes_int: 0x%02x\n", info->bit_sizes_int);
-   fprintf(fp, "first_ubo_is_default_ubo: %u\n", info->first_ubo_is_default_ubo);
-   fprintf(fp, "separate_shader: %u\n", info->separate_shader);
-   fprintf(fp, "has_transform_feedback_varyings: %u\n", info->has_transform_feedback_varyings);
-   fprintf(fp, "flrp_lowered: %u\n", info->flrp_lowered);
-   fprintf(fp, "io_lowered: %u\n", info->io_lowered);
-   fprintf(fp, "writes_memory: %u", info->writes_memory);
+   print_nz_x8(fp, "bit_sizes_float", info->bit_sizes_float);
+   print_nz_x8(fp, "bit_sizes_int", info->bit_sizes_int);
 
+   print_nz_bool(fp, "first_ubo_is_default_ubo", info->first_ubo_is_default_ubo);
+   print_nz_bool(fp, "separate_shader", info->separate_shader);
+   print_nz_bool(fp, "has_transform_feedback_varyings", info->has_transform_feedback_varyings);
+   print_nz_bool(fp, "flrp_lowered", info->flrp_lowered);
+   print_nz_bool(fp, "io_lowered", info->io_lowered);
+   print_nz_bool(fp, "writes_memory", info->writes_memory);
 
    switch (info->stage) {
    case MESA_SHADER_VERTEX:
-      fprintf(fp, "double_inputs: %" PRIx64 "\n", info->vs.double_inputs);
-      fprintf(fp, "blit_sgprs_amd: %u\n", info->vs.blit_sgprs_amd);
-      fprintf(fp, "window_space_position: %u\n", info->vs.window_space_position);
-      fprintf(fp, "needs_edge_flag: %u\n", info->vs.needs_edge_flag);
+      print_nz_x64(fp, "double_inputs", info->vs.double_inputs);
+      print_nz_unsigned(fp, "blit_sgprs_amd", info->vs.blit_sgprs_amd);
+      print_nz_bool(fp, "window_space_position", info->vs.window_space_position);
+      print_nz_bool(fp, "needs_edge_flag", info->vs.needs_edge_flag);
       break;
 
    case MESA_SHADER_TESS_CTRL:
@@ -1865,10 +1925,11 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
       fprintf(fp, "primitive_mode: %u\n", info->tess._primitive_mode);
       fprintf(fp, "tcs_vertices_out: %u\n", info->tess.tcs_vertices_out);
       fprintf(fp, "spacing: %u\n", info->tess.spacing);
-      fprintf(fp, "ccw: %u\n", info->tess.ccw);
-      fprintf(fp, "point_mode: %u\n", info->tess.point_mode);
-      fprintf(fp, "tcs_cross_invocation_inputs_read: 0x%016" PRIx64 "\n", info->tess.tcs_cross_invocation_inputs_read);
-      fprintf(fp, "tcs_cross_invocation_outputs_read: 0x%016" PRIx64 "\n", info->tess.tcs_cross_invocation_outputs_read);
+
+      print_nz_bool(fp, "ccw", info->tess.ccw);
+      print_nz_bool(fp, "point_mode", info->tess.point_mode);
+      print_nz_x64(fp, "tcs_cross_invocation_inputs_read", info->tess.tcs_cross_invocation_inputs_read);
+      print_nz_x64(fp, "tcs_cross_invocation_outputs_read", info->tess.tcs_cross_invocation_outputs_read);
       break;
 
    case MESA_SHADER_GEOMETRY:
@@ -1877,61 +1938,64 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
       fprintf(fp, "vertices_out: %u\n", info->gs.vertices_out);
       fprintf(fp, "invocations: %u\n", info->gs.invocations);
       fprintf(fp, "vertices_in: %u\n", info->gs.vertices_in);
-      fprintf(fp, "uses_end_primitive: %u\n", info->gs.uses_end_primitive);
+      print_nz_bool(fp, "uses_end_primitive", info->gs.uses_end_primitive);
       fprintf(fp, "active_stream_mask: 0x%02x\n", info->gs.active_stream_mask);
       break;
 
    case MESA_SHADER_FRAGMENT:
-      fprintf(fp, "uses_discard: %u\n", info->fs.uses_discard);
-      fprintf(fp, "uses_demote: %u\n", info->fs.uses_demote);
-      fprintf(fp, "uses_fbfetch_output: %u\n", info->fs.uses_fbfetch_output);
-      fprintf(fp, "color_is_dual_source: %u\n", info->fs.color_is_dual_source);
+      print_nz_bool(fp, "uses_discard", info->fs.uses_discard);
+      print_nz_bool(fp, "uses_demote", info->fs.uses_demote);
+      print_nz_bool(fp, "uses_fbfetch_output", info->fs.uses_fbfetch_output);
+      print_nz_bool(fp, "color_is_dual_source", info->fs.color_is_dual_source);
 
-      fprintf(fp, "needs_quad_helper_invocations: %u\n", info->fs.needs_quad_helper_invocations);
-      fprintf(fp, "needs_all_helper_invocations: %u\n", info->fs.needs_all_helper_invocations);
-      fprintf(fp, "uses_sample_qualifier: %u\n", info->fs.uses_sample_qualifier);
-      fprintf(fp, "uses_sample_shading: %u\n", info->fs.uses_sample_shading);
-      fprintf(fp, "early_fragment_tests: %u\n", info->fs.early_fragment_tests);
-      fprintf(fp, "inner_coverage: %u\n", info->fs.inner_coverage);
-      fprintf(fp, "post_depth_coverage: %u\n", info->fs.post_depth_coverage);
+      print_nz_bool(fp, "needs_quad_helper_invocations", info->fs.needs_quad_helper_invocations);
+      print_nz_bool(fp, "needs_all_helper_invocations", info->fs.needs_all_helper_invocations);
+      print_nz_bool(fp, "uses_sample_qualifier", info->fs.uses_sample_qualifier);
+      print_nz_bool(fp, "uses_sample_shading", info->fs.uses_sample_shading);
+      print_nz_bool(fp, "early_fragment_tests", info->fs.early_fragment_tests);
+      print_nz_bool(fp, "inner_coverage", info->fs.inner_coverage);
+      print_nz_bool(fp, "post_depth_coverage", info->fs.post_depth_coverage);
 
-      fprintf(fp, "pixel_center_integer: %u\n", info->fs.pixel_center_integer);
-      fprintf(fp, "origin_upper_left: %u\n", info->fs.origin_upper_left);
-      fprintf(fp, "pixel_interlock_ordered: %u\n", info->fs.pixel_interlock_ordered);
-      fprintf(fp, "pixel_interlock_unordered: %u\n", info->fs.pixel_interlock_unordered);
-      fprintf(fp, "sample_interlock_ordered: %u\n", info->fs.sample_interlock_ordered);
-      fprintf(fp, "sample_interlock_unordered: %u\n", info->fs.sample_interlock_unordered);
+      print_nz_bool(fp, "pixel_center_integer", info->fs.pixel_center_integer);
+      print_nz_bool(fp, "origin_upper_left", info->fs.origin_upper_left);
+      print_nz_bool(fp, "pixel_interlock_ordered", info->fs.pixel_interlock_ordered);
+      print_nz_bool(fp, "pixel_interlock_unordered", info->fs.pixel_interlock_unordered);
+      print_nz_bool(fp, "sample_interlock_ordered", info->fs.sample_interlock_ordered);
+      print_nz_bool(fp, "sample_interlock_unordered", info->fs.sample_interlock_unordered);
+      print_nz_bool(fp, "untyped_color_outputs", info->fs.untyped_color_outputs);
 
-      fprintf(fp, "untyped_color_outputs: %u\n", info->fs.untyped_color_outputs);
-      fprintf(fp, "depth_layout: %u\n", info->fs.depth_layout);
+      print_nz_unsigned(fp, "depth_layout", info->fs.depth_layout);
 
-      fprintf(fp, "color0_interp: %u\n", info->fs.color0_interp);
-      fprintf(fp, "color0_sample: %u\n", info->fs.color0_sample);
-      fprintf(fp, "color0_centroid: %u\n", info->fs.color0_centroid);
+      fprintf(fp, "color0_interp: %u\n", info->fs.color0_interp);      
+      print_nz_bool(fp, "color0_sample", info->fs.color0_sample);
+      print_nz_bool(fp, "color0_centroid", info->fs.color0_centroid);
 
       fprintf(fp, "color1_interp: %u\n", info->fs.color1_interp);
-      fprintf(fp, "color1_sample: %u\n", info->fs.color1_sample);
-      fprintf(fp, "color1_centroid: %u\n", info->fs.color1_centroid);
+      print_nz_bool(fp, "color1_sample", info->fs.color1_sample);
+      print_nz_bool(fp, "color1_centroid", info->fs.color1_centroid);
 
-      fprintf(fp, "advancetd_blend_modes: 0x%08x\n", info->fs.advanced_blend_modes);
+      print_nz_x32(fp, "advanced_blend_modes", info->fs.advanced_blend_modes);
       break;
 
    case MESA_SHADER_COMPUTE:
-      fprintf(fp, "workgroup_size_hint: %u, %u, %u\n",
-              info->cs.workgroup_size_hint[0],
-              info->cs.workgroup_size_hint[1],
-              info->cs.workgroup_size_hint[2]);
-      fprintf(fp, "user_data_components_amd: %u\n", info->cs.user_data_components_amd);
-      fprintf(fp, "derivative_group: %u\n", info->cs.derivative_group);
+      if (info->cs.workgroup_size_hint[0]
+          || info->cs.workgroup_size_hint[1]
+          || info->cs.workgroup_size_hint[2])
+         fprintf(fp, "workgroup_size_hint: {%u, %u, %u}\n",
+                 info->cs.workgroup_size_hint[0],
+                 info->cs.workgroup_size_hint[1],
+                 info->cs.workgroup_size_hint[2]);
+      print_nz_unsigned(fp, "user_data_components_amd", info->cs.user_data_components_amd);
+      print_nz_unsigned(fp, "derivative_group", info->cs.derivative_group);
       fprintf(fp, "ptr_size: %u\n", info->cs.ptr_size);
       break;
 
    case MESA_SHADER_MESH:
-      fprintf(fp, "ms_cross_invocation_output_access: 0x%016" PRIx64 "\n", info->mesh.ms_cross_invocation_output_access);
+      print_nz_x16(fp, "ms_cross_invocation_output_access", info->mesh.ms_cross_invocation_output_access);
       fprintf(fp, "max_vertices_out: %u\n", info->mesh.max_vertices_out);
       fprintf(fp, "max_primitives_out: %u\n", info->mesh.max_primitives_out);
       fprintf(fp, "primitive_type: %s\n", primitive_name(info->mesh.primitive_type));
-      fprintf(fp, "nv: %u\n", info->mesh.nv);
+      print_nz_bool(fp, "nv", info->mesh.nv);
       break;
 
    default:
