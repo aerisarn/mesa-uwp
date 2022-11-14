@@ -618,6 +618,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_AMD_texture_gather_bias_lod                        DONE (radv)
   VK_ARM_rasterization_order_attachment_access          DONE (lvp, tu)
   VK_EXT_mutable_descriptor_type                        DONE (anv, radv, tu, vn)
+  VK_EXT_swapchain_colorspace                           DONE (radv)
 
 
 OpenCL 1.0 -- all DONE:
