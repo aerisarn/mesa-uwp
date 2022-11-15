@@ -2719,7 +2719,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
       db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
    }
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10_3 &&
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3 &&
        !cmd_buffer->state.render.vrs_att.iview) {
       db_htile_surface &= C_028ABC_VRS_HTILE_ENCODING;
    }
