@@ -640,18 +640,14 @@ drisw_create_buffer(__DRIscreen * sPriv,
  *
  * DRI versions differ in their implementation of init_screen and swap_buffers.
  */
-const struct __DriverAPIRec galliumsw_driver_api = {
+static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
+   .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = drisw_init_screen,
    .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = drisw_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
    .SwapBuffers = drisw_swap_buffers,
    .CopySubBuffer = drisw_copy_sub_buffer,
-};
-
-static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
-   .vtable = &galliumsw_driver_api,
 };
 
 /* swrast copy sub buffer entrypoint. */

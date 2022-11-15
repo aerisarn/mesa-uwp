@@ -66,7 +66,29 @@
 
 typedef struct __DRIDriverVtableExtensionRec {
     __DRIextension base;
-    const struct __DriverAPIRec *vtable;
+
+    const __DRIconfig **(*InitScreen) (__DRIscreen * priv);
+
+    void (*DestroyScreen)(__DRIscreen *driScrnPriv);
+
+    GLboolean (*CreateBuffer)(__DRIscreen *driScrnPriv,
+                              __DRIdrawable *driDrawPriv,
+                              const struct gl_config *glVis,
+                              GLboolean pixmapBuffer);
+
+    void (*DestroyBuffer)(__DRIdrawable *driDrawPriv);
+
+    void (*SwapBuffers)(__DRIdrawable *driDrawPriv);
+
+    __DRIbuffer *(*AllocateBuffer) (__DRIscreen *screenPrivate,
+                                    unsigned int attachment,
+                                    unsigned int format,
+                                    int width, int height);
+
+    void (*ReleaseBuffer) (__DRIscreen *screenPrivate, __DRIbuffer *buffer);
+
+    void (*CopySubBuffer)(__DRIdrawable *driDrawPriv, int x, int y,
+                          int w, int h);
 } __DRIDriverVtableExtension;
 
 struct __DRIconfigRec {
@@ -126,37 +148,6 @@ struct __DriverContextConfig {
 #define __DRIVER_CONTEXT_ATTRIB_PROTECTED        (1 << 4)
 
 /**
- * Driver callback functions.
- *
- * Each DRI driver must have one of these structures with all the pointers set
- * to appropriate functions within the driver.
- */
-struct __DriverAPIRec {
-    const __DRIconfig **(*InitScreen) (__DRIscreen * priv);
-
-    void (*DestroyScreen)(__DRIscreen *driScrnPriv);
-
-    GLboolean (*CreateBuffer)(__DRIscreen *driScrnPriv,
-                              __DRIdrawable *driDrawPriv,
-                              const struct gl_config *glVis,
-                              GLboolean pixmapBuffer);
-
-    void (*DestroyBuffer)(__DRIdrawable *driDrawPriv);
-
-    void (*SwapBuffers)(__DRIdrawable *driDrawPriv);
-
-    __DRIbuffer *(*AllocateBuffer) (__DRIscreen *screenPrivate,
-                                    unsigned int attachment,
-                                    unsigned int format,
-                                    int width, int height);
-
-    void (*ReleaseBuffer) (__DRIscreen *screenPrivate, __DRIbuffer *buffer);
-
-    void (*CopySubBuffer)(__DRIdrawable *driDrawPriv, int x, int y,
-                          int w, int h);
-};
-
-/**
  * Per-screen private driver information.
  */
 struct __DRIscreenRec {
@@ -164,7 +155,7 @@ struct __DRIscreenRec {
      * Driver-specific entrypoints provided by the driver's
      * __DRIDriverVtableExtensionRec.
      */
-    const struct __DriverAPIRec *driver;
+    const struct __DRIDriverVtableExtensionRec *driver;
 
     /**
      * Current screen's number

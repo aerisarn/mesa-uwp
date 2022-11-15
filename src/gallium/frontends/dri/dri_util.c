@@ -117,7 +117,7 @@ driCreateNewScreen2(int scrn, int fd,
     for (int i = 0; driver_extensions[i]; i++) {
        if (strcmp(driver_extensions[i]->name, __DRI_DRIVER_VTABLE) == 0) {
           psp->driver =
-             ((__DRIDriverVtableExtension *)driver_extensions[i])->vtable;
+             (__DRIDriverVtableExtension *)driver_extensions[i];
        }
     }
 

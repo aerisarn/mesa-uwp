@@ -1043,18 +1043,14 @@ const __DRIkopperExtension driKopperExtension = {
    .queryBufferAge             = kopperQueryBufferAge,
 };
 
-const struct __DriverAPIRec galliumvk_driver_api = {
+static const struct __DRIDriverVtableExtensionRec galliumvk_vtable = {
+   .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = kopper_init_screen,
    .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = kopper_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
    .SwapBuffers = kopper_swap_buffers,
    .CopySubBuffer = NULL,
-};
-
-static const struct __DRIDriverVtableExtensionRec galliumvk_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
-   .vtable = &galliumvk_driver_api,
 };
 
 const __DRIextension *galliumvk_driver_extensions[] = {

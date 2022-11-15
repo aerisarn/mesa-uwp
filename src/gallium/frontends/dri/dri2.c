@@ -2432,30 +2432,9 @@ dri2_create_buffer(__DRIscreen * sPriv,
  *
  * DRI versions differ in their implementation of init_screen and swap_buffers.
  */
-const struct __DriverAPIRec galliumdrm_driver_api = {
-   .InitScreen = dri2_init_screen,
-   .DestroyScreen = dri_destroy_screen,
-   .CreateBuffer = dri2_create_buffer,
-   .DestroyBuffer = dri_destroy_buffer,
-
-   .AllocateBuffer = dri2_allocate_buffer,
-   .ReleaseBuffer  = dri2_release_buffer,
-};
-
 static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
-   .vtable = &galliumdrm_driver_api,
-};
-
-/**
- * DRI driver virtual function table.
- *
- * KMS/DRM version of the DriverAPI above sporting a different InitScreen
- * hook. The latter is used to explicitly initialise the kms_swrast driver
- * rather than selecting the approapriate driver as suggested by the loader.
- */
-const struct __DriverAPIRec dri_swrast_kms_driver_api = {
-   .InitScreen = dri_swrast_kms_init_screen,
+   .InitScreen = dri2_init_screen,
    .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = dri2_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
@@ -2474,9 +2453,22 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
     NULL
 };
 
+/**
+ * DRI driver virtual function table.
+ *
+ * KMS/DRM version of the DriverAPI above sporting a different InitScreen
+ * hook. The latter is used to explicitly initialise the kms_swrast driver
+ * rather than selecting the approapriate driver as suggested by the loader.
+ */
 static const struct __DRIDriverVtableExtensionRec dri_swrast_kms_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
-   .vtable = &dri_swrast_kms_driver_api,
+   .InitScreen = dri_swrast_kms_init_screen,
+   .DestroyScreen = dri_destroy_screen,
+   .CreateBuffer = dri2_create_buffer,
+   .DestroyBuffer = dri_destroy_buffer,
+
+   .AllocateBuffer = dri2_allocate_buffer,
+   .ReleaseBuffer  = dri2_release_buffer,
 };
 
 const __DRIextension *dri_swrast_kms_driver_extensions[] = {
