@@ -993,8 +993,6 @@ kopperCreateNewDrawable(__DRIscreen *screen,
        return NULL;
     }
 
-    pdraw->dri2.stamp = pdraw->lastStamp + 1;
-
     return pdraw;
 }
 

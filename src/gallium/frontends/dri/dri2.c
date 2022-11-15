@@ -103,8 +103,7 @@ dri2_invalidate_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   dPriv->dri2.stamp++;
-   drawable->dPriv->lastStamp = drawable->dPriv->dri2.stamp;
+   drawable->dPriv->lastStamp++;
    drawable->texture_mask = 0; /* mark all attachments as invalid */
 
    p_atomic_inc(&drawable->base.stamp);

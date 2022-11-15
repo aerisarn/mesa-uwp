@@ -296,22 +296,14 @@ struct __DRIdrawableRec {
     int refcount;
 
     /**
-     * Last value of the stamp.
+     * Increased when the loader calls invalidate.
      *
-     * If this differs from the value stored at __DRIdrawable::dri2.stamp,
-     * then the drawable information has been modified by the X server, and the
-     * drawable information (below) should be retrieved from the X server.
+     * If this changes, the drawable information (below) should be retrieved
+     * from the loader.
      */
     unsigned int lastStamp;
 
     int w, h;
-
-    /**
-     * Drawable timestamp.  Increased when the loader calls invalidate.
-     */
-    struct {
-	unsigned int stamp;
-    } dri2;
 };
 
 extern uint32_t

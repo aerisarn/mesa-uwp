@@ -66,11 +66,6 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
    /* record newly allocated textures */
    new_mask = (statt_mask & ~drawable->texture_mask);
 
-   /*
-    * dPriv->dri2.stamp is the server stamp.  dPriv->lastStamp is the
-    * client stamp.  It has the value of the server stamp when last
-    * checked.
-    */
    do {
       lastStamp = drawable->dPriv->lastStamp;
       new_stamp = (drawable->texture_stamp != lastStamp);
