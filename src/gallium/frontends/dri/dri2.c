@@ -76,6 +76,28 @@ dri2_flush_drawable(__DRIdrawable *dPriv)
    dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
 }
 
+/**
+ * Invalidate the drawable.
+ *
+ * How we get here is listed below.
+ *
+ * 1. Called by these SwapBuffers implementations where the context is known:
+ *       loader_dri3_swap_buffers_msc
+ *       EGL: droid_swap_buffers
+ *       EGL: dri2_drm_swap_buffers
+ *       EGL: dri2_wl_swap_buffers_with_damage
+ *       EGL: dri2_x11_swap_buffers_msc
+ *
+ * 2. Other callers where the context is known:
+ *       st_manager_flush_frontbuffer -> dri2_flush_frontbuffer
+ *          -> EGL droid_display_shared_buffer
+ *
+ * 3. Other callers where the context is unknown:
+ *       loader: dri3_handle_present_event - XCB_PRESENT_CONFIGURE_NOTIFY
+ *       eglQuerySurface -> dri3_query_surface
+ *          -> loader_dri3_update_drawable_geometry
+ *       EGL: wl_egl_window::resize_callback (called outside Mesa)
+ */
 static void
 dri2_invalidate_drawable(__DRIdrawable *dPriv)
 {
@@ -83,7 +105,7 @@ dri2_invalidate_drawable(__DRIdrawable *dPriv)
 
    dPriv->dri2.stamp++;
    drawable->dPriv->lastStamp = drawable->dPriv->dri2.stamp;
-   drawable->texture_mask = 0;
+   drawable->texture_mask = 0; /* mark all attachments as invalid */
 
    p_atomic_inc(&drawable->base.stamp);
 }
@@ -287,6 +309,21 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
       }
    }
 
+   /* Stamp usage behavior in the getBuffers callback:
+    *
+    * 1. DRI3 (EGL and GLX):
+    *       This calls loader_dri3_get_buffers, which saves the stamp pointer
+    *       in loader_dri3_drawable::stamp, which is only changed (incremented)
+    *       by loader_dri3_swap_buffers_msc.
+    *
+    * 2. EGL Android, Device, Surfaceless, Wayland:
+    *       The stamp is unused.
+    *
+    * How do we get here:
+    *    dri_set_tex_buffer2 (GLX_EXT_texture_from_pixmap)
+    *    st_api_make_current
+    *    st_manager_validate_framebuffers (part of st_validate_state)
+    */
    return sPriv->image.loader->getBuffers(dPriv, image_format,
                                           (uint32_t *)&drawable->base.stamp,
                                           dPriv->loaderPrivate, buffer_mask,
