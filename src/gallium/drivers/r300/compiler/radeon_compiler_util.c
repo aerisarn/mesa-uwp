@@ -457,6 +457,16 @@ unsigned int rc_inst_can_use_presub(
 		return 0;
 	}
 
+	/* We can't allow constant swizzles from presubtract, because it is not possible
+	 * to rewrite it to a native swizzle later. */
+	if (!c->is_r500) {
+		for (i = 0; i < 4; i++) {
+			rc_swizzle swz = GET_SWZ(replace_reg->Swizzle, i);
+			if (swz > RC_SWIZZLE_W && swz < RC_SWIZZLE_UNUSED)
+				return 0;
+		}
+	}
+
 	/* We can't use more than one presubtract value in an
 	 * instruction, unless the two prsubtract operations
 	 * are the same and read from the same registers.
