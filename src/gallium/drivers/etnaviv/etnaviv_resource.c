@@ -519,6 +519,9 @@ select_best_modifier(const struct etna_screen * screen,
 
    best_modifier = base_modifier = priority_to_modifier[prio];
 
+   if (!VIV_FEATURE(screen, chipFeatures, FAST_CLEAR))
+      return best_modifier;
+
    /* Make a second pass to try and find the best TS modifier if any. */
    for (int i = 0; i < count; i++) {
       if ((modifiers[i] & ~VIVANTE_MOD_EXT_MASK) == base_modifier)
