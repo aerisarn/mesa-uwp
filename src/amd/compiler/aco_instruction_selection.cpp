@@ -5329,7 +5329,7 @@ emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Tem
       prim_mask_op.setLateKill(true); /* we don't want the bld.lm definition to use m0 */
       Operand coord2_op(coord2);
       coord2_op.setLateKill(true); /* we re-use the destination reg in the middle */
-      bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm),
+      bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm), bld.def(s1, scc),
                  Operand(v1.as_linear()), Operand::c32(idx), Operand::c32(component), coord1,
                  coord2_op, prim_mask_op);
       return;
