@@ -264,7 +264,7 @@ protected:
 
    std::bitset<es_last> m_sv_values;
 
-   Shader(const char *type_id);
+   Shader(const char *type_id, unsigned atomic_base);
 
    const ShaderInput& input(int base) const;
 

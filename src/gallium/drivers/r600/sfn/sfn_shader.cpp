@@ -171,11 +171,12 @@ ShaderInput::set_uses_interpolate_at_centroid()
    m_uses_interpolate_at_centroid = true;
 }
 
-Shader::Shader(const char *type_id):
+Shader::Shader(const char *type_id, unsigned atomic_base):
     m_current_block(nullptr),
     m_type_id(type_id),
     m_chip_class(ISA_CC_R600),
-    m_next_block(0)
+    m_next_block(0),
+    m_atomic_base(atomic_base)
 {
    m_instr_factory = new InstrFactory();
    m_chain_instr.this_shader = this;

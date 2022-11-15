@@ -31,7 +31,7 @@
 namespace r600 {
 
 ComputeShader::ComputeShader(UNUSED const r600_shader_key& key):
-    Shader("CS")
+    Shader("CS", 0)
 {
 }
 
