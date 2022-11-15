@@ -886,11 +886,9 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
  * image's fast clear state buffer.
  */
 static void
-genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
+genX(load_image_clear_color)(struct anv_cmd_buffer *cmd_buffer,
                              struct anv_state surface_state,
-                             const struct anv_image *image,
-                             VkImageAspectFlagBits aspect,
-                             bool copy_from_surface_state)
+                             const struct anv_image *image)
 {
    assert(cmd_buffer && image);
    assert(image->vk.aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
@@ -903,32 +901,29 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
                       cmd_buffer->device->isl_dev.ss.clear_value_offset
          });
    const struct anv_address entry_addr =
-      anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
+      anv_image_get_clear_color_addr(cmd_buffer->device, image,
+                                     VK_IMAGE_ASPECT_COLOR_BIT);
    unsigned copy_size = cmd_buffer->device->isl_dev.ss.clear_value_size;
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
 
-   if (copy_from_surface_state) {
-      mi_memcpy(&b, entry_addr, ss_clear_addr, copy_size);
-   } else {
-      mi_memcpy(&b, ss_clear_addr, entry_addr, copy_size);
+   mi_memcpy(&b, ss_clear_addr, entry_addr, copy_size);
 
-      /* Updating a surface state object may require that the state cache be
-       * invalidated. From the SKL PRM, Shared Functions -> State -> State
-       * Caching:
-       *
-       *    Whenever the RENDER_SURFACE_STATE object in memory pointed to by
-       *    the Binding Table Pointer (BTP) and Binding Table Index (BTI) is
-       *    modified [...], the L1 state cache must be invalidated to ensure
-       *    the new surface or sampler state is fetched from system memory.
-       *
-       * In testing, SKL doesn't actually seem to need this, but HSW does.
-       */
-      anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_STATE_CACHE_INVALIDATE_BIT,
-                                "after copy_fast_clear_dwords surface state update");
-   }
+   /* Updating a surface state object may require that the state cache be
+    * invalidated. From the SKL PRM, Shared Functions -> State -> State
+    * Caching:
+    *
+    *    Whenever the RENDER_SURFACE_STATE object in memory pointed to by
+    *    the Binding Table Pointer (BTP) and Binding Table Index (BTI) is
+    *    modified [...], the L1 state cache must be invalidated to ensure
+    *    the new surface or sampler state is fetched from system memory.
+    *
+    * In testing, SKL doesn't actually seem to need this, but HSW does.
+    */
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_STATE_CACHE_INVALIDATE_BIT,
+                             "after load_image_clear_color surface state update");
 }
 
 /**
@@ -7322,11 +7317,9 @@ void genX(CmdBeginRendering)(
           iview->image->planes[0].aux_usage != ISL_AUX_USAGE_NONE &&
           iview->planes[0].isl.base_level == 0 &&
           iview->planes[0].isl.base_array_layer == 0) {
-         genX(copy_fast_clear_dwords)(cmd_buffer,
+         genX(load_image_clear_color)(cmd_buffer,
                                       gfx->color_att[i].surface_state.state,
-                                      iview->image,
-                                      VK_IMAGE_ASPECT_COLOR_BIT,
-                                      false /* copy to ss */);
+                                      iview->image);
       }
 
       if (att->resolveMode != VK_RESOLVE_MODE_NONE) {
