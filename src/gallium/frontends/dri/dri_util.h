@@ -62,6 +62,13 @@
 #include "util/xmlconfig.h"
 #include <stdbool.h>
 
+#define __DRI_DRIVER_VTABLE "DRI_DriverVtable"
+
+typedef struct __DRIDriverVtableExtensionRec {
+    __DRIextension base;
+    const struct __DriverAPIRec *vtable;
+} __DRIDriverVtableExtension;
+
 struct __DRIconfigRec {
     struct gl_config modes;
 };
