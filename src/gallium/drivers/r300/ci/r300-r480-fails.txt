@@ -618,10 +618,6 @@ dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.unconditional_conti
 dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.unconditional_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.vector_counter_fragment,Fail
 dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.vector_counter_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.angle_and_trigonometry.asin.highp_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.angle_and_trigonometry.asin.mediump_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.angle_and_trigonometry.atan.highp_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.angle_and_trigonometry.atan.mediump_vec2_fragment,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.1,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.5,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.6,Fail
