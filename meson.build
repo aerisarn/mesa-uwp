@@ -1633,13 +1633,21 @@ if dep_thread.found()
     pre_args += '-DHAVE_PTHREAD_SETAFFINITY'
   endif
 endif
+
+# We don't have expat on Android or Windows, which is a needed dep for xmlconfig
+supports_xmlconfig = not (with_platform_android or with_platform_windows)
+
+opt_xmlconfig = get_option('xmlconfig')
+if opt_xmlconfig.enabled() and not supports_xmlconfig
+   error('xmlconfig not available on Android or Windows')
+endif
+use_xmlconfig = supports_xmlconfig and not opt_xmlconfig.disabled()
+
 if host_machine.system() == 'darwin'
   dep_expat = meson.get_compiler('c').find_library('expat')
-elif host_machine.system() != 'windows'
-  dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'],
-                         required: not with_platform_android)
 else
-  dep_expat = null_dep
+  dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'],
+                         required: use_xmlconfig)
 endif
 # Predefined macros for windows
 if host_machine.system() == 'windows'

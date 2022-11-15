@@ -284,15 +284,6 @@ idep_mesautil = declare_dependency(
   dependencies : deps_for_libmesa_util,
 )
 
-# We don't have expat on Android or Windows, which is a needed dep for xmlconfig
-supports_xmlconfig = not (with_platform_android or with_platform_windows)
-
-opt_xmlconfig = get_option('xmlconfig')
-if opt_xmlconfig.enabled() and not supports_xmlconfig
-   error('xmlconfig not available on Android or Windows')
-endif
-use_xmlconfig = supports_xmlconfig and not opt_xmlconfig.disabled()
-
 # Only install the drirc file if we build with support for parsing drirc files
 if use_xmlconfig
    install_data(files_drirc, install_dir : join_paths(get_option('datadir'), 'drirc.d'))
