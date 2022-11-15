@@ -83,15 +83,15 @@ instr_is_shader_call(nir_instr *instr)
  * named bitset in sys/_bitset.h required by pthread_np.h which is included
  * from src/util/u_thread.h that is indirectly included by this file.
  */
-struct brw_bitset {
+struct sized_bitset {
    BITSET_WORD *set;
    unsigned size;
 };
 
-static struct brw_bitset
+static struct sized_bitset
 bitset_create(void *mem_ctx, unsigned size)
 {
-   return (struct brw_bitset) {
+   return (struct sized_bitset) {
       .set = rzalloc_array(mem_ctx, BITSET_WORD, BITSET_WORDS(size)),
       .size = size,
    };
@@ -100,7 +100,7 @@ bitset_create(void *mem_ctx, unsigned size)
 static bool
 src_is_in_bitset(nir_src *src, void *_set)
 {
-   struct brw_bitset *set = _set;
+   struct sized_bitset *set = _set;
    assert(src->is_ssa);
 
    /* Any SSA values which were added after we generated liveness information
@@ -115,7 +115,7 @@ src_is_in_bitset(nir_src *src, void *_set)
 }
 
 static void
-add_ssa_def_to_bitset(nir_ssa_def *def, struct brw_bitset *set)
+add_ssa_def_to_bitset(nir_ssa_def *def, struct sized_bitset *set)
 {
    if (def->index >= set->size)
       return;
@@ -124,7 +124,7 @@ add_ssa_def_to_bitset(nir_ssa_def *def, struct brw_bitset *set)
 }
 
 static bool
-can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
+can_remat_instr(nir_instr *instr, struct sized_bitset *remat)
 {
    /* Set of all values which are trivially re-materializable and we shouldn't
     * ever spill them.  This includes:
@@ -212,14 +212,14 @@ can_remat_instr(nir_instr *instr, struct brw_bitset *remat)
 }
 
 static bool
-can_remat_ssa_def(nir_ssa_def *def, struct brw_bitset *remat)
+can_remat_ssa_def(nir_ssa_def *def, struct sized_bitset *remat)
 {
    return can_remat_instr(def->parent_instr, remat);
 }
 
 struct add_instr_data {
    struct util_dynarray *buf;
-   struct brw_bitset *remat;
+   struct sized_bitset *remat;
 };
 
 static bool
@@ -251,7 +251,7 @@ compare_instr_indexes(const void *_inst1, const void *_inst2)
 }
 
 static bool
-can_remat_chain_ssa_def(nir_ssa_def *def, struct brw_bitset *remat, struct util_dynarray *buf)
+can_remat_chain_ssa_def(nir_ssa_def *def, struct sized_bitset *remat, struct util_dynarray *buf)
 {
    assert(util_dynarray_num_elements(buf, nir_instr *) == 0);
 
@@ -282,7 +282,7 @@ can_remat_chain_ssa_def(nir_ssa_def *def, struct brw_bitset *remat, struct util_
     * through values that might not be in that set but that we can
     * rematerialize.
     */
-   struct brw_bitset potential_remat = bitset_create(mem_ctx, remat->size);
+   struct sized_bitset potential_remat = bitset_create(mem_ctx, remat->size);
    memcpy(potential_remat.set, remat->set, BITSET_WORDS(remat->size) * sizeof(BITSET_WORD));
 
    util_dynarray_foreach(buf, nir_instr *, instr_ptr) {
@@ -321,7 +321,7 @@ remat_ssa_def(nir_builder *b, nir_ssa_def *def, struct hash_table *remap_table)
 
 static nir_ssa_def *
 remat_chain_ssa_def(nir_builder *b, struct util_dynarray *buf,
-                    struct brw_bitset *remat, nir_ssa_def ***fill_defs,
+                    struct sized_bitset *remat, nir_ssa_def ***fill_defs,
                     unsigned call_idx, struct hash_table *remap_table)
 {
    nir_ssa_def *last_def = NULL;
@@ -454,7 +454,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
 
    const unsigned num_ssa_defs = impl->ssa_alloc;
    const unsigned live_words = BITSET_WORDS(num_ssa_defs);
-   struct brw_bitset trivial_remat = bitset_create(mem_ctx, num_ssa_defs);
+   struct sized_bitset trivial_remat = bitset_create(mem_ctx, num_ssa_defs);
 
    /* Array of all live SSA defs which are spill candidates */
    nir_ssa_def **spill_defs =
@@ -534,7 +534,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
          /* Make a copy of trivial_remat that we'll update as we crawl through
           * the live SSA defs and unspill them.
           */
-         struct brw_bitset remat = bitset_create(mem_ctx, num_ssa_defs);
+         struct sized_bitset remat = bitset_create(mem_ctx, num_ssa_defs);
          memcpy(remat.set, trivial_remat.set, live_words * sizeof(BITSET_WORD));
 
          /* Before the two builders are always separated by the call
@@ -964,7 +964,7 @@ flatten_resume_if_ladder(nir_builder *b,
                          struct exec_list *child_list,
                          bool child_list_contains_cursor,
                          nir_instr *resume_instr,
-                         struct brw_bitset *remat)
+                         struct sized_bitset *remat)
 {
    nir_cf_list cf_list;
 
@@ -1194,7 +1194,7 @@ lower_resume(nir_shader *shader, int call_idx)
 
    if (duplicate_loop_bodies(impl, resume_instr)) {
       nir_validate_shader(shader, "after duplicate_loop_bodies in "
-                                  "brw_nir_lower_shader_calls");
+                                  "nir_lower_shader_calls");
       /* If we duplicated the bodies of any loops, run regs_to_ssa to get rid
        * of all those pesky registers we just added.
        */
@@ -1214,7 +1214,7 @@ lower_resume(nir_shader *shader, int call_idx)
    /* Used to track which things may have been assumed to be re-materialized
     * by the spilling pass and which we shouldn't delete.
     */
-   struct brw_bitset remat = bitset_create(mem_ctx, impl->ssa_alloc);
+   struct sized_bitset remat = bitset_create(mem_ctx, impl->ssa_alloc);
 
    /* Create a nop instruction to use as a cursor as we extract and re-insert
     * stuff into the CFG.
@@ -1235,7 +1235,7 @@ lower_resume(nir_shader *shader, int call_idx)
    ralloc_free(mem_ctx);
 
    nir_validate_shader(shader, "after flatten_resume_if_ladder in "
-                               "brw_nir_lower_shader_calls");
+                               "nir_lower_shader_calls");
 
    nir_metadata_preserve(impl, nir_metadata_none);
 
