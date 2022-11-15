@@ -452,9 +452,7 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
                         unsigned *error,
                         void *data)
 {
-    __DRIcontext *context;
     const struct gl_config *modes = (config != NULL) ? &config->modes : NULL;
-    void *shareCtx = (shared != NULL) ? shared->driverPrivate : NULL;
     gl_api mesa_api;
     struct __DriverContextConfig ctx_config;
 
@@ -628,26 +626,11 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
                                   error))
        return NULL;
 
-    context = calloc(1, sizeof *context);
-    if (!context) {
-        *error = __DRI_CTX_ERROR_NO_MEMORY;
-        return NULL;
-    }
-
-    context->loaderPrivate = data;
-
-    context->driScreenPriv = screen;
-    context->draw = NULL;
-    context->read = NULL;
-
-    if (!dri_create_context(mesa_api, modes, context, &ctx_config, error,
-                            shareCtx)) {
-        free(context);
-        return NULL;
-    }
-
-    *error = __DRI_CTX_ERROR_SUCCESS;
-    return context;
+    struct dri_context *ctx = dri_create_context(dri_screen(screen), mesa_api,
+                                                 modes, &ctx_config, error,
+                                                 dri_context(shared),
+                                                 data);
+    return opaque_dri_context(ctx);
 }
 
 static __DRIcontext *
@@ -679,10 +662,8 @@ driCreateNewContext(__DRIscreen *screen, const __DRIconfig *config,
 static void
 driDestroyContext(__DRIcontext *pcp)
 {
-    if (pcp) {
-        dri_destroy_context(pcp);
-        free(pcp);
-    }
+    if (pcp)
+        dri_destroy_context(dri_context(pcp));
 }
 
 static int
@@ -702,9 +683,6 @@ driCopyContext(__DRIcontext *dest, __DRIcontext *src, unsigned long mask)
 /*****************************************************************/
 /*@{*/
 
-static void dri_get_drawable(struct dri_drawable *drawable);
-static void dri_put_drawable(struct dri_drawable *drawable);
-
 /**
  * This function takes both a read buffer and a draw buffer.  This is needed
  * for \c glXMakeCurrentReadSGI or GLX 1.3's \c glXMakeContextCurrent
@@ -716,28 +694,14 @@ static int driBindContext(__DRIcontext *pcp,
 {
    /*
     ** Assume error checking is done properly in glXMakeCurrent before
-    ** calling driUnbindContext.
+    ** calling driBindContext.
     */
 
     if (!pcp)
         return GL_FALSE;
 
-    struct dri_drawable *draw = dri_drawable(pdp);
-    struct dri_drawable *read = dri_drawable(prp);
-
-    /* Bind the drawable to the context */
-    pcp->draw = draw;
-    pcp->read = read;
-
-    if (draw) {
-        draw->driContextPriv = pcp;
-        dri_get_drawable(draw);
-    }
-    if (prp && pdp != prp) {
-        dri_get_drawable(read);
-    }
-
-    return dri_make_current(pcp, draw, read);
+    return dri_make_current(dri_context(pcp), dri_drawable(pdp),
+                            dri_drawable(prp));
 }
 
 /**
@@ -770,56 +734,10 @@ static int driUnbindContext(__DRIcontext *pcp)
     ** Call dri_unbind_context before checking for valid drawables
     ** to handle surfaceless contexts properly.
     */
-    dri_unbind_context(pcp);
-
-    struct dri_drawable *draw = pcp->draw;
-    struct dri_drawable *read = pcp->read;
-
-    /* already unbound */
-    if (!draw && !read)
-        return GL_TRUE;
-
-    assert(draw);
-    if (draw->refcount == 0) {
-        /* ERROR!!! */
-        return GL_FALSE;
-    }
-
-    dri_put_drawable(draw);
-
-    if (read != draw) {
-        if (read->refcount == 0) {
-            /* ERROR!!! */
-            return GL_FALSE;
-        }
-
-        dri_put_drawable(read);
-    }
-
-    pcp->draw = NULL;
-    pcp->read = NULL;
-
-    return GL_TRUE;
+    return dri_unbind_context(dri_context(pcp));
 }
 
 /*@}*/
-
-
-static void dri_get_drawable(struct dri_drawable *drawable)
-{
-    drawable->refcount++;
-}
-
-static void dri_put_drawable(struct dri_drawable *drawable)
-{
-    if (drawable) {
-        drawable->refcount--;
-        if (drawable->refcount)
-            return;
-
-        dri_destroy_buffer(drawable);
-    }
-}
 
 static __DRIdrawable *
 driCreateNewDrawable(__DRIscreen *screen,

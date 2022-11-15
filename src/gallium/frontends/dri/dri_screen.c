@@ -814,10 +814,10 @@ dri_set_background_context(struct st_context_iface *st,
 {
    struct dri_context *ctx = (struct dri_context *)st->st_manager_private;
    const __DRIbackgroundCallableExtension *backgroundCallable =
-      ctx->sPriv->dri2.backgroundCallable;
+      ctx->screen->sPriv->dri2.backgroundCallable;
 
    if (backgroundCallable)
-      backgroundCallable->setBackgroundContext(ctx->cPriv->loaderPrivate);
+      backgroundCallable->setBackgroundContext(ctx->loaderPrivate);
 
    if (ctx->hud)
       hud_add_queue_for_monitoring(ctx->hud, queue_info);

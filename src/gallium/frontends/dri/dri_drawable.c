@@ -158,7 +158,7 @@ dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
 
    drawable->loaderPrivate = loaderPrivate;
    drawable->sPriv = sPriv;
-   drawable->driContextPriv = NULL;
+   drawable->ctx = NULL;
    drawable->refcount = 1;
    drawable->lastStamp = 0;
    drawable->w = 0;
@@ -186,7 +186,7 @@ fail:
    return NULL;
 }
 
-void
+static void
 dri_destroy_buffer(struct dri_drawable *drawable)
 {
    struct dri_screen *screen = drawable->screen;
@@ -205,6 +205,18 @@ dri_destroy_buffer(struct dri_drawable *drawable)
 
    FREE(drawable->damage_rects);
    FREE(drawable);
+}
+
+void
+dri_put_drawable(struct dri_drawable *drawable)
+{
+    if (drawable) {
+        drawable->refcount--;
+        if (drawable->refcount)
+            return;
+
+        dri_destroy_buffer(drawable);
+    }
 }
 
 /**
@@ -515,7 +527,7 @@ dri_flush(__DRIcontext *cPriv,
       flush_flags |= ST_FLUSH_END_OF_FRAME;
 
    /* Flush the context and throttle if needed. */
-   if (dri_screen(ctx->sPriv)->throttle &&
+   if (ctx->screen->throttle &&
        drawable &&
        (reason == __DRI2_THROTTLE_SWAPBUFFER ||
         reason == __DRI2_THROTTLE_FLUSHFRONT)) {

@@ -90,7 +90,8 @@ static unsigned dri2_fence_get_caps(__DRIscreen *_screen)
 static void *
 dri2_create_fence(__DRIcontext *_ctx)
 {
-   struct st_context_iface *stapi = dri_context(_ctx)->st;
+   struct dri_context *ctx = dri_context(_ctx);
+   struct st_context_iface *stapi = ctx->st;
    struct dri2_fence *fence = CALLOC_STRUCT(dri2_fence);
 
    if (!fence)
@@ -109,14 +110,15 @@ dri2_create_fence(__DRIcontext *_ctx)
       return NULL;
    }
 
-   fence->driscreen = dri_screen(_ctx->driScreenPriv);
+   fence->driscreen = ctx->screen;
    return fence;
 }
 
 static void *
 dri2_create_fence_fd(__DRIcontext *_ctx, int fd)
 {
-   struct st_context_iface *stapi = dri_context(_ctx)->st;
+   struct dri_context *dri_ctx = dri_context(_ctx);
+   struct st_context_iface *stapi = dri_ctx->st;
    struct pipe_context *ctx = stapi->pipe;
    struct dri2_fence *fence = CALLOC_STRUCT(dri2_fence);
 
@@ -138,7 +140,7 @@ dri2_create_fence_fd(__DRIcontext *_ctx, int fd)
       return NULL;
    }
 
-   fence->driscreen = dri_screen(_ctx->driScreenPriv);
+   fence->driscreen = dri_ctx->screen;
    return fence;
 }
 
@@ -292,7 +294,8 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
 				     int renderbuffer, void *loaderPrivate,
                                      unsigned *error)
 {
-   struct st_context_iface *st = dri_context(context)->st;
+   struct dri_context *dri_ctx = dri_context(context);
+   struct st_context_iface *st = dri_ctx->st;
    struct st_context *st_ctx = (struct st_context *)st;
    struct gl_context *ctx = st_ctx->ctx;
    struct pipe_context *p_ctx = st_ctx->pipe;
@@ -338,7 +341,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
    img->dri_format = driGLFormatToImageFormat(rb->Format);
    img->internal_format = rb->InternalFormat;
    img->loader_private = loaderPrivate;
-   img->sPriv = context->driScreenPriv;
+   img->sPriv = dri_ctx->screen->sPriv;
    img->in_fence_fd = -1;
 
    pipe_resource_reference(&img->texture, tex);
@@ -393,7 +396,8 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
                          void *loaderPrivate)
 {
    __DRIimage *img;
-   struct st_context_iface *st = dri_context(context)->st;
+   struct dri_context *dri_ctx = dri_context(context);
+   struct st_context_iface *st = dri_ctx->st;
    struct st_context *st_ctx = (struct st_context *)st;
    struct gl_context *ctx = st_ctx->ctx;
    struct pipe_context *p_ctx = st_ctx->pipe;
@@ -449,7 +453,7 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
    img->internal_format = obj->Image[face][level]->InternalFormat;
 
    img->loader_private = loaderPrivate;
-   img->sPriv = context->driScreenPriv;
+   img->sPriv = dri_ctx->screen->sPriv;
 
    pipe_resource_reference(&img->texture, tex);
 

@@ -40,13 +40,21 @@ struct pipe_context;
 struct pipe_fence;
 struct st_context_iface;
 struct dri_drawable;
+struct dri_screen;
 
 struct dri_context
 {
    /* dri */
-   __DRIscreen *sPriv;
-   __DRIcontext *cPriv;
+   struct dri_screen *screen;
+
+   /**
+    * Pointer to drawable currently bound to this context for drawing.
+    */
    struct dri_drawable *draw;
+
+   /**
+    * Pointer to drawable currently bound to this context for reading.
+    */
    struct dri_drawable *read;
 
    /**
@@ -55,6 +63,16 @@ struct dri_context
     */
    bool is_shared_buffer_bound;
 
+   /**
+    * The loaders's private context data.  This structure is opaque.
+    */
+   void *loaderPrivate;
+
+   struct {
+       int draw_stamp;
+       int read_stamp;
+   } dri2;
+
    /* gallium */
    struct st_context_iface *st;
    struct pp_queue_t *pp;
@@ -62,35 +80,39 @@ struct dri_context
 };
 
 static inline struct dri_context *
-dri_context(__DRIcontext * driContextPriv)
+dri_context(__DRIcontext *driContextPriv)
 {
-   if (!driContextPriv)
-     return NULL;
-   return (struct dri_context *)driContextPriv->driverPrivate;
+   return (struct dri_context *)driContextPriv;
+}
+
+static inline __DRIcontext *
+opaque_dri_context(struct dri_context *ctx)
+{
+   return (__DRIcontext *)ctx;
 }
 
 /***********************************************************************
  * dri_context.c
  */
-void dri_destroy_context(__DRIcontext * driContextPriv);
+void dri_destroy_context(struct dri_context *ctx);
 
-boolean dri_unbind_context(__DRIcontext * driContextPriv);
+boolean dri_unbind_context(struct dri_context *ctx);
 
 boolean
-dri_make_current(__DRIcontext * driContextPriv,
+dri_make_current(struct dri_context *ctx,
                  struct dri_drawable *draw,
 		 struct dri_drawable *read);
 
 struct dri_context *
 dri_get_current(__DRIscreen * driScreenPriv);
 
-boolean
-dri_create_context(gl_api api,
-                   const struct gl_config * visual,
-                   __DRIcontext * driContextPriv,
+struct dri_context *
+dri_create_context(struct dri_screen *screen,
+                   gl_api api, const struct gl_config *visual,
                    const struct __DriverContextConfig *ctx_config,
                    unsigned *error,
-                   void *sharedContextPrivate);
+                   struct dri_context *sharedContextPrivate,
+                   void *loaderPrivate);
 
 #endif
 

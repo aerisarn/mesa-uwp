@@ -70,7 +70,7 @@ struct dri_drawable
    /**
     * Pointer to context to which this drawable is currently bound.
     */
-   __DRIcontext *driContextPriv;
+   struct dri_context *ctx;
 
    /**
     * Reference count for number of context's currently bound to this
@@ -124,6 +124,12 @@ opaque_dri_drawable(struct dri_drawable *drawable)
    return (__DRIdrawable *)drawable;
 }
 
+static inline void
+dri_get_drawable(struct dri_drawable *drawable)
+{
+    drawable->refcount++;
+}
+
 /***********************************************************************
  * dri_drawable.c
  */
@@ -131,7 +137,8 @@ struct dri_drawable *
 dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
                   bool isPixmap, void *loaderPrivate);
 
-void dri_destroy_buffer(struct dri_drawable *drawable);
+void
+dri_put_drawable(struct dri_drawable *drawable);
 
 void
 dri_drawable_get_format(struct dri_drawable *drawable,

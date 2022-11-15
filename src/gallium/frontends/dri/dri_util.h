@@ -207,41 +207,6 @@ struct __DRIscreenRec {
     unsigned int api_mask;
 };
 
-/**
- * Per-context private driver information.
- */
-struct __DRIcontextRec {
-    /**
-     * Device driver's private context data.  This structure is opaque.
-     */
-    void *driverPrivate;
-
-    /**
-     * The loaders's private context data.  This structure is opaque.
-     */
-    void *loaderPrivate;
-
-    /**
-     * Pointer to drawable currently bound to this context for drawing.
-     */
-    struct dri_drawable *draw;
-
-    /**
-     * Pointer to drawable currently bound to this context for reading.
-     */
-    struct dri_drawable *read;
-
-    /**
-     * Pointer to screen on which this context was created.
-     */
-    __DRIscreen *driScreenPriv;
-
-    struct {
-	int draw_stamp;
-	int read_stamp;
-    } dri2;
-};
-
 extern uint32_t
 driGLFormatToImageFormat(mesa_format format);
 

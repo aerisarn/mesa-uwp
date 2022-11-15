@@ -75,7 +75,8 @@ dri2_flush_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   dri_flush(drawable->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
+   dri_flush(opaque_dri_context(drawable->ctx), dPriv, __DRI2_FLUSH_DRAWABLE,
+             -1);
 }
 
 /**
@@ -444,9 +445,8 @@ dri2_set_in_fence_fd(__DRIimage *img, int fd)
 }
 
 static void
-handle_in_fence(__DRIcontext *context, __DRIimage *img)
+handle_in_fence(struct dri_context *ctx, __DRIimage *img)
 {
-   struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
    struct pipe_fence_handle *fence;
    int fd = img->in_fence_fd;
@@ -576,7 +576,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
-         handle_in_fence(ctx->cPriv, images.front);
+         handle_in_fence(ctx, images.front);
       }
 
       if (images.image_mask & __DRI_IMAGE_BUFFER_BACK) {
@@ -588,7 +588,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
-         handle_in_fence(ctx->cPriv, images.back);
+         handle_in_fence(ctx, images.back);
       }
 
       if (images.image_mask & __DRI_IMAGE_BUFFER_SHARED) {
@@ -600,7 +600,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
-         handle_in_fence(ctx->cPriv, images.back);
+         handle_in_fence(ctx, images.back);
 
          ctx->is_shared_buffer_bound = true;
       } else {
@@ -1812,7 +1812,7 @@ dri2_blit_image(__DRIcontext *context, __DRIimage *dst, __DRIimage *src,
    if (ctx->st->thread_finish)
       ctx->st->thread_finish(ctx->st);
 
-   handle_in_fence(context, dst);
+   handle_in_fence(ctx, dst);
 
    memset(&blit, 0, sizeof(blit));
    blit.dst.resource = dst->texture;
@@ -1838,7 +1838,7 @@ dri2_blit_image(__DRIcontext *context, __DRIimage *dst, __DRIimage *src,
       pipe->flush_resource(pipe, dst->texture);
       ctx->st->flush(ctx->st, 0, NULL, NULL, NULL);
    } else if (flush_flag == __BLIT_FLAG_FINISH) {
-      screen = dri_screen(ctx->sPriv)->base.screen;
+      screen = ctx->screen->base.screen;
       pipe->flush_resource(pipe, dst->texture);
       ctx->st->flush(ctx->st, 0, &fence, NULL, NULL);
       (void) screen->fence_finish(screen, NULL, fence, PIPE_TIMEOUT_INFINITE);
@@ -1870,7 +1870,7 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    if (ctx->st->thread_finish)
       ctx->st->thread_finish(ctx->st);
 
-   handle_in_fence(context, image);
+   handle_in_fence(ctx, image);
 
    struct pipe_resource *resource = image->texture;
    while (plane--)

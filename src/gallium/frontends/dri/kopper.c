@@ -75,7 +75,8 @@ kopper_flush_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   dri_flush(drawable->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
+   dri_flush(opaque_dri_context(drawable->ctx), dPriv, __DRI2_FLUSH_DRAWABLE,
+             -1);
 }
 
 static inline void
@@ -376,9 +377,8 @@ dri3_create_image(xcb_connection_t *c,
 
 
 static void
-handle_in_fence(__DRIcontext *context, __DRIimage *img)
+handle_in_fence(struct dri_context *ctx, __DRIimage *img)
 {
-   struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
    struct pipe_fence_handle *fence;
    int fd = img->in_fence_fd;
@@ -631,7 +631,7 @@ XXX do this once swapinterval is hooked up
 #ifdef VK_USE_PLATFORM_XCB_KHR
          else if (is_pixmap && statts[i] == ST_ATTACHMENT_FRONT_LEFT && !kscreen->is_sw) {
             drawable->textures[statts[i]] = kopper_get_pixmap_buffer(cdraw, format);
-            handle_in_fence(ctx->cPriv, cdraw->image);
+            handle_in_fence(ctx, cdraw->image);
          }
 #endif
          else {
@@ -926,7 +926,11 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
       ctx->st->thread_finish(ctx->st);
 
    drawable->texture_stamp = drawable->lastStamp - 1;
-   dri_flush(ctx->cPriv, opaque_dri_drawable(drawable), __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
+
+   dri_flush(opaque_dri_context(ctx), opaque_dri_drawable(drawable),
+             __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT,
+             __DRI2_THROTTLE_SWAPBUFFER);
+
    kopper_copy_to_front(ctx->st->pipe, drawable, ptex);
    if (kdraw->is_window && !zink_kopper_check(ptex))
       return -1;

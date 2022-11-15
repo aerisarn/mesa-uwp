@@ -41,15 +41,14 @@
 #include "util/u_memory.h"
 #include "util/u_debug.h"
 
-GLboolean
-dri_create_context(gl_api api, const struct gl_config * visual,
-                   __DRIcontext * cPriv,
+struct dri_context *
+dri_create_context(struct dri_screen *screen,
+                   gl_api api, const struct gl_config *visual,
                    const struct __DriverContextConfig *ctx_config,
                    unsigned *error,
-                   void *sharedContextPrivate)
+                   struct dri_context *sharedContextPrivate,
+                   void *loaderPrivate)
 {
-   __DRIscreen *sPriv = cPriv->driScreenPriv;
-   struct dri_screen *screen = dri_screen(sPriv);
    struct dri_context *ctx = NULL;
    struct st_context_iface *st_share = NULL;
    struct st_context_attribs attribs;
@@ -155,9 +154,8 @@ dri_create_context(gl_api api, const struct gl_config * visual,
       goto fail;
    }
 
-   cPriv->driverPrivate = ctx;
-   ctx->cPriv = cPriv;
-   ctx->sPriv = sPriv;
+   ctx->screen = screen;
+   ctx->loaderPrivate = loaderPrivate;
 
    /* KHR_no_error is likely to crash, overflow memory, etc if an application
     * has errors so don't enable it for setuid processes.
@@ -217,7 +215,7 @@ dri_create_context(gl_api api, const struct gl_config * visual,
       if (backgroundCallable &&
           backgroundCallable->base.version >= 2 &&
           backgroundCallable->isThreadSafe &&
-          !backgroundCallable->isThreadSafe(cPriv->loaderPrivate))
+          !backgroundCallable->isThreadSafe(loaderPrivate))
          safe = false;
 
       if (safe)
@@ -225,21 +223,19 @@ dri_create_context(gl_api api, const struct gl_config * visual,
    }
 
    *error = __DRI_CTX_ERROR_SUCCESS;
-   return GL_TRUE;
+   return ctx;
 
  fail:
    if (ctx && ctx->st)
       ctx->st->destroy(ctx->st);
 
    free(ctx);
-   return GL_FALSE;
+   return NULL;
 }
 
 void
-dri_destroy_context(__DRIcontext * cPriv)
+dri_destroy_context(struct dri_context *ctx)
 {
-   struct dri_context *ctx = dri_context(cPriv);
-
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
@@ -265,10 +261,9 @@ dri_destroy_context(__DRIcontext * cPriv)
 
 /* This is called inside MakeCurrent to unbind the context. */
 GLboolean
-dri_unbind_context(__DRIcontext * cPriv)
+dri_unbind_context(struct dri_context *ctx)
 {
    /* dri_util.c ensures cPriv is not null */
-   struct dri_context *ctx = dri_context(cPriv);
    struct st_context_iface *st = ctx->st;
 
    if (st == st_api_get_current()) {
@@ -281,19 +276,52 @@ dri_unbind_context(__DRIcontext * cPriv)
 
       st_api_make_current(NULL, NULL, NULL);
    }
-   ctx->draw = NULL;
-   ctx->read = NULL;
+
+   if (ctx->draw || ctx->read) {
+      assert(ctx->draw);
+      if (ctx->draw->refcount == 0) {
+          /* ERROR!!! */
+          return GL_FALSE;
+      }
+
+      dri_put_drawable(ctx->draw);
+
+      if (ctx->read != ctx->draw) {
+          if (ctx->read->refcount == 0) {
+              /* ERROR!!! */
+              return GL_FALSE;
+          }
+
+          dri_put_drawable(ctx->read);
+      }
+
+      ctx->draw = NULL;
+      ctx->read = NULL;
+   }
 
    return GL_TRUE;
 }
 
 GLboolean
-dri_make_current(__DRIcontext * cPriv,
+dri_make_current(struct dri_context *ctx,
 		 struct dri_drawable *draw,
 		 struct dri_drawable *read)
 {
    /* dri_util.c ensures cPriv is not null */
-   struct dri_context *ctx = dri_context(cPriv);
+   struct dri_drawable *old_draw = ctx->draw;
+   struct dri_drawable *old_read = ctx->read;
+
+   /* Bind the drawable to the context */
+   ctx->draw = draw;
+   ctx->read = read;
+
+   if (draw) {
+       draw->ctx = ctx;
+       dri_get_drawable(draw);
+   }
+
+   if (read && draw != read)
+       dri_get_drawable(read);
 
    /* Wait for glthread to finish because we can't use st_context from
     * multiple threads.
@@ -306,14 +334,10 @@ dri_make_current(__DRIcontext * cPriv,
    else if (!draw || !read)
       return GL_FALSE;
 
-   if (ctx->draw != draw) {
-      ctx->draw = draw;
+   if (old_draw != draw)
       draw->texture_stamp = draw->lastStamp - 1;
-   }
-   if (ctx->read != read) {
-      ctx->read = read;
+   if (old_read != read)
       read->texture_stamp = read->lastStamp - 1;
-   }
 
    st_api_make_current(ctx->st, &draw->base, &read->base);
 
