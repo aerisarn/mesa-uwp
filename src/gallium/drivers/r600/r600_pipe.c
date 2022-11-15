@@ -703,9 +703,6 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 	rscreen->b.b.get_shader_param = r600_get_shader_param;
 	rscreen->b.b.resource_create = r600_resource_create;
 
-   if (is_nir_enabled(&rscreen->b))
-       rscreen->b.b.finalize_nir = r600_finalize_nir;
-
 	if (!r600_common_screen_init(&rscreen->b, ws)) {
 		FREE(rscreen);
 		return NULL;
@@ -730,6 +727,9 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 		FREE(rscreen);
 		return NULL;
 	}
+
+   if (is_nir_enabled(&rscreen->b))
+       rscreen->b.b.finalize_nir = r600_finalize_nir;
 
 	rscreen->b.has_streamout = true;
 
