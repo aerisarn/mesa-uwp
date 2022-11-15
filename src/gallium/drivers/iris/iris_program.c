@@ -2426,7 +2426,7 @@ iris_get_scratch_surf(struct iris_context *ice,
    struct iris_bo *scratch_bo =
       iris_get_scratch_space(ice, per_thread_scratch, MESA_SHADER_COMPUTE);
 
-   void *map = upload_state(ice->state.bindless_uploader, ref,
+   void *map = upload_state(ice->state.scratch_surface_uploader, ref,
                             screen->isl_dev.ss.size, 64);
 
    isl_buffer_fill_state(&screen->isl_dev, map,

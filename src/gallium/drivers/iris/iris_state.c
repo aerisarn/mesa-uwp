@@ -718,8 +718,8 @@ init_state_base_address(struct iris_batch *batch)
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.SurfaceStateBaseAddressModifyEnable   = true;
 #if GFX_VER >= 9
-      sba.BindlessSurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_BINDLESS_START);
-      sba.BindlessSurfaceStateSize = (IRIS_BINDLESS_SIZE >> 12) - 1;
+      sba.BindlessSurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_SCRATCH_START);
+      sba.BindlessSurfaceStateSize = (IRIS_SCRATCH_ZONE_SIZE >> 12) - 1;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
       sba.BindlessSurfaceStateMOCS    = mocs;
 #endif
@@ -5332,7 +5332,7 @@ pin_scratch_space(struct iris_context *ice,
                          false, IRIS_DOMAIN_NONE);
       scratch_addr = ref->offset +
                      iris_resource_bo(ref->res)->address -
-                     IRIS_MEMZONE_BINDLESS_START;
+                     IRIS_MEMZONE_SCRATCH_START;
       assert((scratch_addr & 0x3f) == 0 && scratch_addr < (1 << 26));
 #else
       scratch_addr = scratch_bo->address;
