@@ -90,6 +90,11 @@ struct dri_drawable
    unsigned int lastStamp;
    int w, h;
 
+   /* kopper */
+   struct kopper_loader_info info;
+   __DRIimage   *image; //texture_from_pixmap
+   bool is_window;
+
    /* hooks filled in by dri2 & drisw */
    void (*allocate_textures)(struct dri_context *ctx,
                              struct dri_drawable *drawable,
