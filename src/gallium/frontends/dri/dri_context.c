@@ -297,19 +297,14 @@ dri_make_current(struct dri_context *ctx,
 		 struct dri_drawable *draw,
 		 struct dri_drawable *read)
 {
-   /* dri_util.c ensures cPriv is not null */
-   struct dri_drawable *old_draw = ctx->draw;
-   struct dri_drawable *old_read = ctx->read;
+   /* dri_unbind_context() is always called before this, so drawables are
+    * always NULL here.
+    */
+   assert(!ctx->draw);
+   assert(!ctx->read);
 
-   /* Bind the drawable to the context */
-   ctx->draw = draw;
-   ctx->read = read;
-
-   if (draw)
-       dri_get_drawable(draw);
-
-   if (read && draw != read)
-       dri_get_drawable(read);
+   if ((draw && !read) || (!draw && read))
+      return GL_FALSE; /* only both non-NULL or both NULL are allowed */
 
    /* Wait for glthread to finish because we can't use st_context from
     * multiple threads.
@@ -317,15 +312,23 @@ dri_make_current(struct dri_context *ctx,
    if (ctx->st->thread_finish)
       ctx->st->thread_finish(ctx->st);
 
+   /* There are 2 cases that can occur here. Either we bind drawables, or we
+    * bind NULL for configless and surfaceless contexts.
+    */
    if (!draw && !read)
       return st_api_make_current(ctx->st, NULL, NULL);
-   else if (!draw || !read)
-      return GL_FALSE;
 
-   if (old_draw != draw)
-      draw->texture_stamp = draw->lastStamp - 1;
-   if (old_read != read)
+   /* Bind drawables to the context */
+   ctx->draw = draw;
+   ctx->read = read;
+
+   dri_get_drawable(draw);
+   draw->texture_stamp = draw->lastStamp - 1;
+
+   if (draw != read) {
+      dri_get_drawable(read);
       read->texture_stamp = read->lastStamp - 1;
+   }
 
    st_api_make_current(ctx->st, &draw->base, &read->base);
 
