@@ -207,13 +207,13 @@ dri_destroy_drawable(struct dri_drawable *drawable)
 void
 dri_put_drawable(struct dri_drawable *drawable)
 {
-    if (drawable) {
-        drawable->refcount--;
-        if (drawable->refcount)
-            return;
+   if (drawable) {
+      int refcount = --drawable->refcount;
+      assert(refcount >= 0);
 
-        dri_destroy_drawable(drawable);
-    }
+      if (!refcount)
+         dri_destroy_drawable(drawable);
+   }
 }
 
 /**

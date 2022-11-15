@@ -279,21 +279,11 @@ dri_unbind_context(struct dri_context *ctx)
 
    if (ctx->draw || ctx->read) {
       assert(ctx->draw);
-      if (ctx->draw->refcount == 0) {
-          /* ERROR!!! */
-          return GL_FALSE;
-      }
 
       dri_put_drawable(ctx->draw);
 
-      if (ctx->read != ctx->draw) {
-          if (ctx->read->refcount == 0) {
-              /* ERROR!!! */
-              return GL_FALSE;
-          }
-
+      if (ctx->read != ctx->draw)
           dri_put_drawable(ctx->read);
-      }
 
       ctx->draw = NULL;
       ctx->read = NULL;
