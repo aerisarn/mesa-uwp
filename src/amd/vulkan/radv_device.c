@@ -419,8 +419,8 @@ radv_perf_query_supported(const struct radv_physical_device *pdev)
 static bool
 radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 {
-   return !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ) &&
-          pdevice->rad_info.gfx_level < GFX11; /* TODO: VRS no longer uses HTILE. */
+   return pdevice->rad_info.gfx_level >= GFX11 ||
+          !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ);
 }
 
 static bool
