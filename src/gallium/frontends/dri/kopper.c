@@ -1046,7 +1046,6 @@ const __DRIkopperExtension driKopperExtension = {
 static const struct __DRIDriverVtableExtensionRec galliumvk_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = kopper_init_screen,
-   .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = kopper_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
    .SwapBuffers = kopper_swap_buffers,

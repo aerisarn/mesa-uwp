@@ -643,7 +643,6 @@ drisw_create_buffer(__DRIscreen * sPriv,
 static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = drisw_init_screen,
-   .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = drisw_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
    .SwapBuffers = drisw_swap_buffers,

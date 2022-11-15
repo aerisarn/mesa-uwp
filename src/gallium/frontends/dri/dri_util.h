@@ -69,8 +69,6 @@ typedef struct __DRIDriverVtableExtensionRec {
 
     const __DRIconfig **(*InitScreen) (__DRIscreen * priv);
 
-    void (*DestroyScreen)(__DRIscreen *driScrnPriv);
-
     GLboolean (*CreateBuffer)(__DRIscreen *driScrnPriv,
                               __DRIdrawable *driDrawPriv,
                               const struct gl_config *glVis,

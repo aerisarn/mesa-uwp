@@ -230,7 +230,7 @@ static void driDestroyScreen(__DRIscreen *psp)
          * stream open to the X-server anymore.
          */
 
-        psp->driver->DestroyScreen(psp);
+        dri_destroy_screen(psp);
 
         driDestroyOptionCache(&psp->optionCache);
         driDestroyOptionInfo(&psp->optionInfo);

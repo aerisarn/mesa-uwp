@@ -2435,7 +2435,6 @@ dri2_create_buffer(__DRIscreen * sPriv,
 static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = dri2_init_screen,
-   .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = dri2_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
 
@@ -2463,7 +2462,6 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
 static const struct __DRIDriverVtableExtensionRec dri_swrast_kms_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = dri_swrast_kms_init_screen,
-   .DestroyScreen = dri_destroy_screen,
    .CreateBuffer = dri2_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
 
