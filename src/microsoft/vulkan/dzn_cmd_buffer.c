@@ -311,6 +311,75 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    vk_free(&cbuf->pool->alloc, cmdbuf);
 }
 
+static void
+dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags flags)
+{
+   struct dzn_cmd_buffer *cmdbuf = container_of(cbuf, struct dzn_cmd_buffer, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   const struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
+   const struct vk_command_pool *pool = cmdbuf->vk.pool;
+
+   /* Reset the state */
+   memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
+
+   /* TODO: Return resources to the pool */
+   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
+      list_del(&res->link);
+      ID3D12Resource_Release(res->res);
+      vk_free(&cmdbuf->vk.pool->alloc, res);
+   }
+
+   util_dynarray_clear(&cmdbuf->events.wait);
+   util_dynarray_clear(&cmdbuf->events.signal);
+   util_dynarray_clear(&cmdbuf->queries.reset);
+   util_dynarray_clear(&cmdbuf->queries.wait);
+   util_dynarray_clear(&cmdbuf->queries.signal);
+   hash_table_foreach(cmdbuf->rtvs.ht, he)
+      vk_free(&cmdbuf->vk.pool->alloc, he->data);
+   _mesa_hash_table_clear(cmdbuf->rtvs.ht, NULL);
+   cmdbuf->null_rtv.ptr = 0;
+   dzn_descriptor_heap_pool_reset(&cmdbuf->rtvs.pool);
+   hash_table_foreach(cmdbuf->dsvs.ht, he)
+      vk_free(&cmdbuf->vk.pool->alloc, he->data);
+   _mesa_hash_table_clear(cmdbuf->dsvs.ht, NULL);
+   hash_table_foreach(cmdbuf->queries.ht, he) {
+      struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
+      util_dynarray_fini(&qpstate->reset);
+      util_dynarray_fini(&qpstate->collect);
+      util_dynarray_fini(&qpstate->wait);
+      util_dynarray_fini(&qpstate->signal);
+      vk_free(&cmdbuf->vk.pool->alloc, he->data);
+   }
+   _mesa_hash_table_clear(cmdbuf->queries.ht, NULL);
+   _mesa_hash_table_clear(cmdbuf->events.ht, NULL);
+   hash_table_foreach(cmdbuf->transition_barriers, he)
+      vk_free(&cmdbuf->vk.pool->alloc, he->data);
+   _mesa_hash_table_clear(cmdbuf->transition_barriers, NULL);
+   dzn_descriptor_heap_pool_reset(&cmdbuf->dsvs.pool);
+   dzn_descriptor_heap_pool_reset(&cmdbuf->cbv_srv_uav_pool);
+   dzn_descriptor_heap_pool_reset(&cmdbuf->sampler_pool);
+   vk_command_buffer_reset(&cmdbuf->vk);
+
+   /* cmdlist->Reset() doesn't return the memory back the the command list
+    * allocator, and cmdalloc->Reset() can only be called if there's no live
+    * cmdlist allocated from the allocator, so we need to release and create
+    * a new command list.
+    */
+   ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
+   cmdbuf->cmdlist = NULL;
+   ID3D12CommandAllocator_Reset(cmdbuf->cmdalloc);
+   D3D12_COMMAND_LIST_TYPE type =
+      pdev->queue_families[pool->queue_family_index].desc.Type;
+   if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0,
+                                              type,
+                                              cmdbuf->cmdalloc, NULL,
+                                              &IID_ID3D12GraphicsCommandList1,
+                                              (void **)&cmdbuf->cmdlist))) {
+      vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+}
+
 static uint32_t
 dzn_cmd_buffer_rtv_key_hash_function(const void *key)
 {
@@ -337,6 +406,7 @@ dzn_cmd_buffer_dsv_key_equals_function(const void *a, const void *b)
 
 static const struct vk_command_buffer_ops cmd_buffer_ops = {
    .destroy = dzn_cmd_buffer_destroy,
+   .reset = dzn_cmd_buffer_reset,
 };
 
 static VkResult
@@ -430,76 +500,6 @@ out:
    return result;
 }
 
-static VkResult
-dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
-{
-   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-   const struct dzn_physical_device *pdev =
-      container_of(device->vk.physical, struct dzn_physical_device, vk);
-   const struct vk_command_pool *pool = cmdbuf->vk.pool;
-
-   /* Reset the state */
-   memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
-
-   /* TODO: Return resources to the pool */
-   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
-      list_del(&res->link);
-      ID3D12Resource_Release(res->res);
-      vk_free(&cmdbuf->vk.pool->alloc, res);
-   }
-
-   util_dynarray_clear(&cmdbuf->events.wait);
-   util_dynarray_clear(&cmdbuf->events.signal);
-   util_dynarray_clear(&cmdbuf->queries.reset);
-   util_dynarray_clear(&cmdbuf->queries.wait);
-   util_dynarray_clear(&cmdbuf->queries.signal);
-   hash_table_foreach(cmdbuf->rtvs.ht, he)
-      vk_free(&cmdbuf->vk.pool->alloc, he->data);
-   _mesa_hash_table_clear(cmdbuf->rtvs.ht, NULL);
-   cmdbuf->null_rtv.ptr = 0;
-   dzn_descriptor_heap_pool_reset(&cmdbuf->rtvs.pool);
-   hash_table_foreach(cmdbuf->dsvs.ht, he)
-      vk_free(&cmdbuf->vk.pool->alloc, he->data);
-   _mesa_hash_table_clear(cmdbuf->dsvs.ht, NULL);
-   hash_table_foreach(cmdbuf->queries.ht, he) {
-      struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
-      util_dynarray_fini(&qpstate->reset);
-      util_dynarray_fini(&qpstate->collect);
-      util_dynarray_fini(&qpstate->wait);
-      util_dynarray_fini(&qpstate->signal);
-      vk_free(&cmdbuf->vk.pool->alloc, he->data);
-   }
-   _mesa_hash_table_clear(cmdbuf->queries.ht, NULL);
-   _mesa_hash_table_clear(cmdbuf->events.ht, NULL);
-   hash_table_foreach(cmdbuf->transition_barriers, he)
-      vk_free(&cmdbuf->vk.pool->alloc, he->data);
-   _mesa_hash_table_clear(cmdbuf->transition_barriers, NULL);
-   dzn_descriptor_heap_pool_reset(&cmdbuf->dsvs.pool);
-   dzn_descriptor_heap_pool_reset(&cmdbuf->cbv_srv_uav_pool);
-   dzn_descriptor_heap_pool_reset(&cmdbuf->sampler_pool);
-   vk_command_buffer_reset(&cmdbuf->vk);
-
-   /* cmdlist->Reset() doesn't return the memory back the the command list
-    * allocator, and cmdalloc->Reset() can only be called if there's no live
-    * cmdlist allocated from the allocator, so we need to release and create
-    * a new command list.
-    */
-   ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
-   cmdbuf->cmdlist = NULL;
-   ID3D12CommandAllocator_Reset(cmdbuf->cmdalloc);
-   D3D12_COMMAND_LIST_TYPE type =
-      pdev->queue_families[pool->queue_family_index].desc.Type;
-   if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0,
-                                              type,
-                                              cmdbuf->cmdalloc, NULL,
-                                              &IID_ID3D12GraphicsCommandList1,
-                                              (void **)&cmdbuf->cmdlist))) {
-      vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-   }
-
-   return vk_command_buffer_get_record_result(&cmdbuf->vk);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 dzn_AllocateCommandBuffers(VkDevice device,
                            const VkCommandBufferAllocateInfo *pAllocateInfo,
@@ -527,35 +527,12 @@ dzn_AllocateCommandBuffers(VkDevice device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-dzn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                       VkCommandBufferResetFlags flags)
-{
-   VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-
-   return dzn_cmd_buffer_reset(cmdbuf);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
 dzn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                        const VkCommandBufferBeginInfo *info)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-
-   /* If this is the first vkBeginCommandBuffer, we must *initialize* the
-    * command buffer's state. Otherwise, we must *reset* its state. In both
-    * cases we reset it.
-    *
-    * From the Vulkan 1.0 spec:
-    *
-    *    If a command buffer is in the executable state and the command buffer
-    *    was allocated from a command pool with the
-    *    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT flag set, then
-    *    vkBeginCommandBuffer implicitly resets the command buffer, behaving
-    *    as if vkResetCommandBuffer had been called with
-    *    VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT not set. It then puts
-    *    the command buffer in the recording state.
-    */
-   return dzn_cmd_buffer_reset(cmdbuf);
+   vk_command_buffer_begin(&cmdbuf->vk, info);
+   return vk_command_buffer_get_record_result(&cmdbuf->vk);
 }
 
 static void
@@ -866,7 +843,7 @@ dzn_EndCommandBuffer(VkCommandBuffer commandBuffer)
          vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   return vk_command_buffer_get_record_result(&cmdbuf->vk);
+   return vk_command_buffer_end(&cmdbuf->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL
