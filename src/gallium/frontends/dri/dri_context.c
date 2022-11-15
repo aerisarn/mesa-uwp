@@ -281,21 +281,19 @@ dri_unbind_context(__DRIcontext * cPriv)
 
       st_api_make_current(NULL, NULL, NULL);
    }
-   ctx->dPriv = NULL;
-   ctx->rPriv = NULL;
+   ctx->draw = NULL;
+   ctx->read = NULL;
 
    return GL_TRUE;
 }
 
 GLboolean
 dri_make_current(__DRIcontext * cPriv,
-		 __DRIdrawable * driDrawPriv,
-		 __DRIdrawable * driReadPriv)
+		 struct dri_drawable *draw,
+		 struct dri_drawable *read)
 {
    /* dri_util.c ensures cPriv is not null */
    struct dri_context *ctx = dri_context(cPriv);
-   struct dri_drawable *draw = dri_drawable(driDrawPriv);
-   struct dri_drawable *read = dri_drawable(driReadPriv);
 
    /* Wait for glthread to finish because we can't use st_context from
     * multiple threads.
@@ -308,13 +306,13 @@ dri_make_current(__DRIcontext * cPriv,
    else if (!draw || !read)
       return GL_FALSE;
 
-   if (ctx->dPriv != driDrawPriv) {
-      ctx->dPriv = driDrawPriv;
-      draw->texture_stamp = driDrawPriv->lastStamp - 1;
+   if (ctx->draw != draw) {
+      ctx->draw = draw;
+      draw->texture_stamp = draw->lastStamp - 1;
    }
-   if (ctx->rPriv != driReadPriv) {
-      ctx->rPriv = driReadPriv;
-      read->texture_stamp = driReadPriv->lastStamp - 1;
+   if (ctx->read != read) {
+      ctx->read = read;
+      read->texture_stamp = read->lastStamp - 1;
    }
 
    st_api_make_current(ctx->st, &draw->base, &read->base);

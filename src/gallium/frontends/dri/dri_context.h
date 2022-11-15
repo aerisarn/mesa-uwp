@@ -46,11 +46,11 @@ struct dri_context
    /* dri */
    __DRIscreen *sPriv;
    __DRIcontext *cPriv;
-   __DRIdrawable *dPriv;
-   __DRIdrawable *rPriv;
+   struct dri_drawable *draw;
+   struct dri_drawable *read;
 
    /**
-    * True if the __DRIdrawable's current __DRIimageBufferMask is
+    * True if the dri_drawable's current __DRIimageBufferMask is
     * __DRI_IMAGE_BUFFER_SHARED.
     */
    bool is_shared_buffer_bound;
@@ -78,8 +78,8 @@ boolean dri_unbind_context(__DRIcontext * driContextPriv);
 
 boolean
 dri_make_current(__DRIcontext * driContextPriv,
-		 __DRIdrawable * driDrawPriv,
-		 __DRIdrawable * driReadPriv);
+                 struct dri_drawable *draw,
+		 struct dri_drawable *read);
 
 struct dri_context *
 dri_get_current(__DRIscreen * driScreenPriv);

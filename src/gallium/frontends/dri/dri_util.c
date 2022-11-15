@@ -637,8 +637,8 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
     context->loaderPrivate = data;
 
     context->driScreenPriv = screen;
-    context->driDrawablePriv = NULL;
-    context->driReadablePriv = NULL;
+    context->draw = NULL;
+    context->read = NULL;
 
     if (!dri_create_context(mesa_api, modes, context, &ctx_config, error,
                             shareCtx)) {
@@ -702,8 +702,8 @@ driCopyContext(__DRIcontext *dest, __DRIcontext *src, unsigned long mask)
 /*****************************************************************/
 /*@{*/
 
-static void dri_get_drawable(__DRIdrawable *pdp);
-static void dri_put_drawable(__DRIdrawable *pdp);
+static void dri_get_drawable(struct dri_drawable *drawable);
+static void dri_put_drawable(struct dri_drawable *drawable);
 
 /**
  * This function takes both a read buffer and a draw buffer.  This is needed
@@ -714,7 +714,7 @@ static int driBindContext(__DRIcontext *pcp,
                           __DRIdrawable *pdp,
                           __DRIdrawable *prp)
 {
-    /*
+   /*
     ** Assume error checking is done properly in glXMakeCurrent before
     ** calling driUnbindContext.
     */
@@ -722,18 +722,22 @@ static int driBindContext(__DRIcontext *pcp,
     if (!pcp)
         return GL_FALSE;
 
+    struct dri_drawable *draw = dri_drawable(pdp);
+    struct dri_drawable *read = dri_drawable(prp);
+
     /* Bind the drawable to the context */
-    pcp->driDrawablePriv = pdp;
-    pcp->driReadablePriv = prp;
-    if (pdp) {
-        pdp->driContextPriv = pcp;
-        dri_get_drawable(pdp);
+    pcp->draw = draw;
+    pcp->read = read;
+
+    if (draw) {
+        draw->driContextPriv = pcp;
+        dri_get_drawable(draw);
     }
     if (prp && pdp != prp) {
-        dri_get_drawable(prp);
+        dri_get_drawable(read);
     }
 
-    return dri_make_current(pcp, pdp, prp);
+    return dri_make_current(pcp, draw, read);
 }
 
 /**
@@ -746,7 +750,7 @@ static int driBindContext(__DRIcontext *pcp,
  *
  * \internal
  * This function calls __DriverAPIRec::UnbindContext, and then decrements
- * __DRIdrawableRec::refcount which must be non-zero for a successful
+ * dri_drawable::refcount which must be non-zero for a successful
  * return.
  *
  * While casting the opaque private pointers associated with the parameters
@@ -754,9 +758,6 @@ static int driBindContext(__DRIcontext *pcp,
  */
 static int driUnbindContext(__DRIcontext *pcp)
 {
-    __DRIdrawable *pdp;
-    __DRIdrawable *prp;
-
     /*
     ** Assume error checking is done properly in glXMakeCurrent before
     ** calling driUnbindContext.
@@ -771,32 +772,32 @@ static int driUnbindContext(__DRIcontext *pcp)
     */
     dri_unbind_context(pcp);
 
-    pdp = pcp->driDrawablePriv;
-    prp = pcp->driReadablePriv;
+    struct dri_drawable *draw = pcp->draw;
+    struct dri_drawable *read = pcp->read;
 
     /* already unbound */
-    if (!pdp && !prp)
+    if (!draw && !read)
         return GL_TRUE;
 
-    assert(pdp);
-    if (pdp->refcount == 0) {
+    assert(draw);
+    if (draw->refcount == 0) {
         /* ERROR!!! */
         return GL_FALSE;
     }
 
-    dri_put_drawable(pdp);
+    dri_put_drawable(draw);
 
-    if (prp != pdp) {
-        if (prp->refcount == 0) {
+    if (read != draw) {
+        if (read->refcount == 0) {
             /* ERROR!!! */
             return GL_FALSE;
         }
 
-        dri_put_drawable(prp);
+        dri_put_drawable(read);
     }
 
-    pcp->driDrawablePriv = NULL;
-    pcp->driReadablePriv = NULL;
+    pcp->draw = NULL;
+    pcp->read = NULL;
 
     return GL_TRUE;
 }
@@ -804,20 +805,19 @@ static int driUnbindContext(__DRIcontext *pcp)
 /*@}*/
 
 
-static void dri_get_drawable(__DRIdrawable *pdp)
+static void dri_get_drawable(struct dri_drawable *drawable)
 {
-    pdp->refcount++;
+    drawable->refcount++;
 }
 
-static void dri_put_drawable(__DRIdrawable *pdp)
+static void dri_put_drawable(struct dri_drawable *drawable)
 {
-    if (pdp) {
-        pdp->refcount--;
-        if (pdp->refcount)
+    if (drawable) {
+        drawable->refcount--;
+        if (drawable->refcount)
             return;
 
-        dri_destroy_buffer(pdp);
-        free(pdp);
+        dri_destroy_buffer(drawable);
     }
 }
 
@@ -826,48 +826,18 @@ driCreateNewDrawable(__DRIscreen *screen,
                      const __DRIconfig *config,
                      void *data)
 {
-    __DRIdrawable *pdraw;
-
     assert(data != NULL);
 
-    pdraw = malloc(sizeof *pdraw);
-    if (!pdraw)
-        return NULL;
+    struct dri_drawable *drawable =
+       screen->driver->CreateBuffer(screen, &config->modes, GL_FALSE, data);
 
-    pdraw->loaderPrivate = data;
-
-    pdraw->driScreenPriv = screen;
-    pdraw->driContextPriv = NULL;
-    pdraw->refcount = 0;
-    pdraw->lastStamp = 0;
-    pdraw->w = 0;
-    pdraw->h = 0;
-
-    dri_get_drawable(pdraw);
-
-    if (!screen->driver->CreateBuffer(screen, pdraw, &config->modes,
-                                      GL_FALSE)) {
-       free(pdraw);
-       return NULL;
-    }
-
-    return pdraw;
+    return opaque_dri_drawable(drawable);
 }
 
 static void
 driDestroyDrawable(__DRIdrawable *pdp)
 {
-    /*
-     * The loader's data structures are going away, even if pdp itself stays
-     * around for the time being because it is currently bound. This happens
-     * when a currently bound GLX pixmap is destroyed.
-     *
-     * Clear out the pointer back into the loader's data structures to avoid
-     * accessing an outdated pointer.
-     */
-    pdp->loaderPrivate = NULL;
-
-    dri_put_drawable(pdp);
+    dri_put_drawable(dri_drawable(pdp));
 }
 
 static __DRIbuffer *
@@ -946,9 +916,11 @@ driGetAPIMask(__DRIscreen *screen)
 static void
 driSwapBuffers(__DRIdrawable *pdp)
 {
-    assert(pdp->driScreenPriv->swrast_loader);
+   struct dri_drawable *drawable = dri_drawable(pdp);
 
-    pdp->driScreenPriv->driver->SwapBuffers(pdp);
+   assert(drawable->sPriv->swrast_loader);
+
+   drawable->sPriv->driver->SwapBuffers(drawable);
 }
 
 /** Core interface */

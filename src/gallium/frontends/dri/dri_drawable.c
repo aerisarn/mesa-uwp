@@ -67,7 +67,7 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
    new_mask = (statt_mask & ~drawable->texture_mask);
 
    do {
-      lastStamp = drawable->dPriv->lastStamp;
+      lastStamp = drawable->lastStamp;
       new_stamp = (drawable->texture_stamp != lastStamp);
 
       if (new_stamp || new_mask) {
@@ -85,7 +85,7 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
          drawable->texture_stamp = lastStamp;
          drawable->texture_mask = statt_mask;
       }
-   } while (lastStamp != drawable->dPriv->lastStamp);
+   } while (lastStamp != drawable->lastStamp);
 
    /* Flush the pending set_damage_region request. */
    struct pipe_screen *pscreen = screen->base.screen;
@@ -142,10 +142,9 @@ dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
 /**
  * This is called when we need to set up GL rendering to a new X window.
  */
-bool
-dri_create_buffer(__DRIscreen * sPriv,
-		  __DRIdrawable * dPriv,
-		  const struct gl_config * visual, bool isPixmap)
+struct dri_drawable *
+dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+                  bool isPixmap, void *loaderPrivate)
 {
    struct dri_screen *screen = sPriv->driverPrivate;
    struct dri_drawable *drawable = NULL;
@@ -156,6 +155,14 @@ dri_create_buffer(__DRIscreen * sPriv,
    drawable = CALLOC_STRUCT(dri_drawable);
    if (drawable == NULL)
       goto fail;
+
+   drawable->loaderPrivate = loaderPrivate;
+   drawable->sPriv = sPriv;
+   drawable->driContextPriv = NULL;
+   drawable->refcount = 1;
+   drawable->lastStamp = 0;
+   drawable->w = 0;
+   drawable->h = 0;
 
    dri_fill_st_visual(&drawable->stvis, screen, visual);
 
@@ -168,23 +175,20 @@ dri_create_buffer(__DRIscreen * sPriv,
 
    drawable->screen = screen;
    drawable->sPriv = sPriv;
-   drawable->dPriv = dPriv;
 
-   dPriv->driverPrivate = (void *)drawable;
    p_atomic_set(&drawable->base.stamp, 1);
    drawable->base.ID = p_atomic_inc_return(&drifb_ID);
    drawable->base.state_manager = &screen->base;
 
-   return true;
+   return drawable;
 fail:
    FREE(drawable);
-   return false;
+   return NULL;
 }
 
 void
-dri_destroy_buffer(__DRIdrawable * dPriv)
+dri_destroy_buffer(struct dri_drawable *drawable)
 {
-   struct dri_drawable *drawable = dri_drawable(dPriv);
    struct dri_screen *screen = drawable->screen;
    int i;
 
@@ -227,7 +231,7 @@ dri_drawable_validate_att(struct dri_context *ctx,
    }
    statts[count++] = statt;
 
-   drawable->texture_stamp = drawable->dPriv->lastStamp - 1;
+   drawable->texture_stamp = drawable->lastStamp - 1;
 
    drawable->base.validate(ctx->st, &drawable->base, statts, count, NULL);
 }

@@ -73,7 +73,9 @@ extern const __DRIimageExtension driVkImageExtensionSw;
 static void
 kopper_flush_drawable(__DRIdrawable *dPriv)
 {
-   dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
+   struct dri_drawable *drawable = dri_drawable(dPriv);
+
+   dri_flush(drawable->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
 }
 
 static inline void
@@ -81,7 +83,7 @@ kopper_invalidate_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   drawable->texture_stamp = dPriv->lastStamp - 1;
+   drawable->texture_stamp = drawable->lastStamp - 1;
 
    p_atomic_inc(&drawable->base.stamp);
 }
@@ -199,16 +201,6 @@ fail:
 }
 
 // copypasta alert
-
-static inline void
-drisw_present_texture(struct pipe_context *pipe, __DRIdrawable *dPriv,
-                      struct pipe_resource *ptex, struct pipe_box *sub_box)
-{
-   struct dri_drawable *drawable = dri_drawable(dPriv);
-   struct dri_screen *screen = dri_screen(drawable->sPriv);
-
-   screen->base.screen->flush_frontbuffer(screen->base.screen, pipe, ptex, 0, 0, drawable, sub_box);
-}
 
 extern bool
 dri_image_drawable_get_buffers(struct dri_drawable *drawable,
@@ -475,8 +467,8 @@ kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
       free(bp_reply);
    }
 
-   cdraw->base.dPriv->w = width;
-   cdraw->base.dPriv->h = height;
+   cdraw->base.w = width;
+   cdraw->base.h = height;
 
    return cdraw->image->texture;
 }
@@ -494,7 +486,6 @@ kopper_allocate_textures(struct dri_context *ctx,
    boolean resized;
    unsigned i;
    struct __DRIimageList images;
-   __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
 #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -504,8 +495,8 @@ kopper_allocate_textures(struct dri_context *ctx,
    bool is_window = cdraw->is_window;
    bool is_pixmap = !is_window && cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
 
-   width  = drawable->dPriv->w;
-   height = drawable->dPriv->h;
+   width  = drawable->w;
+   height = drawable->h;
 
    resized = (drawable->old_w != width ||
               drawable->old_h != height);
@@ -529,8 +520,8 @@ kopper_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
          struct pipe_resource *texture = images.front->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
       }
@@ -540,8 +531,8 @@ kopper_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_BACK_LEFT];
          struct pipe_resource *texture = images.back->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
       }
@@ -551,8 +542,8 @@ kopper_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_BACK_LEFT];
          struct pipe_resource *texture = images.back->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
 
@@ -664,22 +655,21 @@ XXX do this once swapinterval is hooked up
 }
 
 static inline void
-get_drawable_info(__DRIdrawable *dPriv, int *x, int *y, int *w, int *h)
+get_drawable_info(struct dri_drawable *drawable, int *x, int *y, int *w, int *h)
 {
-   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   __DRIscreen *sPriv = drawable->sPriv;
    const __DRIswrastLoaderExtension *loader = sPriv->swrast_loader;
 
    if (loader)
-      loader->getDrawableInfo(dPriv,
+      loader->getDrawableInfo(opaque_dri_drawable(drawable),
                               x, y, w, h,
-                              dPriv->loaderPrivate);
+                              drawable->loaderPrivate);
 }
 
 static void
 kopper_update_drawable_info(struct dri_drawable *drawable)
 {
-   __DRIdrawable *dPriv = drawable->dPriv;
-   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   __DRIscreen *sPriv = drawable->sPriv;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
    bool is_window = cdraw->info.bos.sType != 0;
    int x, y;
@@ -691,16 +681,15 @@ kopper_update_drawable_info(struct dri_drawable *drawable)
 
    bool do_kopper_update = is_window && ptex && kscreen->base.fd == -1;
    if (cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR && do_kopper_update)
-      zink_kopper_update(screen, ptex, &dPriv->w, &dPriv->h);
+      zink_kopper_update(screen, ptex, &drawable->w, &drawable->h);
    else
-      get_drawable_info(dPriv, &x, &y, &dPriv->w, &dPriv->h);
+      get_drawable_info(drawable, &x, &y, &drawable->w, &drawable->h);
 }
 
 static inline void
-kopper_present_texture(struct pipe_context *pipe, __DRIdrawable *dPriv,
+kopper_present_texture(struct pipe_context *pipe, struct dri_drawable *drawable,
                       struct pipe_resource *ptex, struct pipe_box *sub_box)
 {
-   struct dri_drawable *drawable = dri_drawable(dPriv);
    struct dri_screen *screen = dri_screen(drawable->sPriv);
 
    screen->base.screen->flush_frontbuffer(screen->base.screen, pipe, ptex, 0, 0, drawable, sub_box);
@@ -708,12 +697,12 @@ kopper_present_texture(struct pipe_context *pipe, __DRIdrawable *dPriv,
 
 static inline void
 kopper_copy_to_front(struct pipe_context *pipe,
-                    __DRIdrawable * dPriv,
+                    struct dri_drawable *drawable,
                     struct pipe_resource *ptex)
 {
-   kopper_present_texture(pipe, dPriv, ptex, NULL);
+   kopper_present_texture(pipe, drawable, ptex, NULL);
 
-   kopper_invalidate_drawable(dPriv);
+   kopper_invalidate_drawable(opaque_dri_drawable(drawable));
 }
 
 static bool
@@ -767,28 +756,28 @@ kopper_flush_frontbuffer(struct dri_context *ctx,
          screen->fence_reference(screen, &drawable->throttle_fence, NULL);
       }
       drawable->throttle_fence = new_fence;
-      kopper_copy_to_front(st->pipe, ctx->dPriv, ptex);
+      kopper_copy_to_front(st->pipe, ctx->draw, ptex);
    }
 
    return true;
 }
 
 static inline void
-get_image(__DRIdrawable *dPriv, int x, int y, int width, int height, void *data)
+get_image(struct dri_drawable *drawable, int x, int y, int width, int height, void *data)
 {
-   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   __DRIscreen *sPriv = drawable->sPriv;
    const __DRIswrastLoaderExtension *loader = sPriv->swrast_loader;
 
-   loader->getImage(dPriv,
+   loader->getImage(opaque_dri_drawable(drawable),
                     x, y, width, height,
-                    data, dPriv->loaderPrivate);
+                    data, drawable->loaderPrivate);
 }
 
 static inline bool
-get_image_shm(__DRIdrawable *dPriv, int x, int y, int width, int height,
+get_image_shm(struct dri_drawable *drawable, int x, int y, int width, int height,
               struct pipe_resource *res)
 {
-   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   __DRIscreen *sPriv = drawable->sPriv;
    const __DRIswrastLoaderExtension *loader = sPriv->swrast_loader;
    struct winsys_handle whandle;
 
@@ -801,9 +790,9 @@ get_image_shm(__DRIdrawable *dPriv, int x, int y, int width, int height,
       return FALSE;
 
    if (loader->base.version > 5 && loader->getImageShm2)
-      return loader->getImageShm2(dPriv, x, y, width, height, whandle.handle, dPriv->loaderPrivate);
+      return loader->getImageShm2(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
 
-   loader->getImageShm(dPriv, x, y, width, height, whandle.handle, dPriv->loaderPrivate);
+   loader->getImageShm(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
    return TRUE;
 }
 
@@ -812,8 +801,7 @@ kopper_update_tex_buffer(struct dri_drawable *drawable,
                          struct dri_context *ctx,
                          struct pipe_resource *res)
 {
-   __DRIdrawable *dPriv = drawable->dPriv;
-   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   __DRIscreen *sPriv = drawable->sPriv;
    struct kopper_screen *kscreen = (struct kopper_screen*)sPriv->driverPrivate;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
    struct st_context *st_ctx = (struct st_context *)ctx->st;
@@ -832,7 +820,7 @@ kopper_update_tex_buffer(struct dri_drawable *drawable,
    if (ctx->st->thread_finish)
       ctx->st->thread_finish(ctx->st);
 
-   get_drawable_info(dPriv, &x, &y, &w, &h);
+   get_drawable_info(drawable, &x, &y, &w, &h);
 
    map = pipe_texture_map(pipe, res,
                           0, 0, // level, layer,
@@ -840,8 +828,8 @@ kopper_update_tex_buffer(struct dri_drawable *drawable,
                           x, y, w, h, &transfer);
 
    /* Copy the Drawable content to the mapped texture buffer */
-   if (!get_image_shm(dPriv, x, y, w, h, res))
-      get_image(dPriv, x, y, w, h, map);
+   if (!get_image_shm(drawable, x, y, w, h, res))
+      get_image(drawable, x, y, w, h, map);
 
    /* The pipe transfer has a pitch rounded up to the nearest 64 pixels.
       get_image() has a pitch rounded up to 4 bytes.  */
@@ -866,7 +854,7 @@ kopper_flush_swapbuffers(struct dri_context *ctx,
 // - since the point is to use it as the superclass initializer before we add
 // our own state. kindagross but easier than fixing the object model first.
 static struct kopper_drawable *
-kopper_create_drawable(__DRIdrawable *dPriv, struct dri_drawable *base)
+kopper_create_drawable(struct dri_drawable *base)
 {
    struct kopper_drawable *_ret = CALLOC_STRUCT(kopper_drawable);
 
@@ -880,7 +868,6 @@ kopper_create_drawable(__DRIdrawable *dPriv, struct dri_drawable *base)
    // relocate references to the old struct
    ret->base.visual = &ret->stvis;
    ret->base.st_manager_private = (void *) ret;
-   dPriv->driverPrivate = ret;
 
    // and fill in the vtable
    ret->allocate_textures = kopper_allocate_textures;
@@ -894,35 +881,34 @@ out:
    return _ret;
 }
 
-static boolean
-kopper_create_buffer(__DRIscreen * sPriv,
-                     __DRIdrawable * dPriv,
-                     const struct gl_config *visual, boolean isPixmap)
+static struct dri_drawable *
+kopper_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+                     boolean isPixmap, void *loaderPrivate)
 {
-   struct kopper_drawable *drawable = NULL;
-
    /* always pass !pixmap because it isn't "handled" or relevant */
-   if (!dri_create_buffer(sPriv, dPriv, visual, false))
-      return FALSE;
+   struct dri_drawable *base_drawable = dri_create_buffer(sPriv, visual, false,
+                                                          loaderPrivate);
+   if (!base_drawable)
+      return NULL;
 
-   drawable = kopper_create_drawable(dPriv, dPriv->driverPrivate);
+   struct kopper_drawable *drawable = kopper_create_drawable(base_drawable);
    if (!drawable)
-      return FALSE;
+      return NULL;
 
    drawable->info.has_alpha = visual->alphaBits > 0;
    if (sPriv->kopper_loader->SetSurfaceCreateInfo)
-      sPriv->kopper_loader->SetSurfaceCreateInfo(dPriv->loaderPrivate,
+      sPriv->kopper_loader->SetSurfaceCreateInfo(drawable->base.loaderPrivate,
                                                  &drawable->info);
    drawable->is_window = !isPixmap && drawable->info.bos.sType != 0;
 
-   return TRUE;
+   return &drawable->base;
 }
 
 static int64_t
 kopperSwapBuffers(__DRIdrawable *dPriv)
 {
-   struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_context *ctx = dri_get_current(drawable->sPriv);
    struct kopper_drawable *kdraw = (struct kopper_drawable *)drawable;
    struct pipe_resource *ptex;
 
@@ -939,9 +925,9 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
    if (ctx->st->thread_finish)
       ctx->st->thread_finish(ctx->st);
 
-   drawable->texture_stamp = dPriv->lastStamp - 1;
-   dri_flush(ctx->cPriv, dPriv, __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
-   kopper_copy_to_front(ctx->st->pipe, dPriv, ptex);
+   drawable->texture_stamp = drawable->lastStamp - 1;
+   dri_flush(ctx->cPriv, opaque_dri_drawable(drawable), __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
+   kopper_copy_to_front(ctx->st->pipe, drawable, ptex);
    if (kdraw->is_window && !zink_kopper_check(ptex))
       return -1;
    if (!drawable->textures[ST_ATTACHMENT_FRONT_LEFT]) {
@@ -956,9 +942,9 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
 }
 
 static void
-kopper_swap_buffers(__DRIdrawable *dPriv)
+kopper_swap_buffers(struct dri_drawable *drawable)
 {
-   kopperSwapBuffers(dPriv);
+   kopperSwapBuffers(opaque_dri_drawable(drawable));
 }
 
 static __DRIdrawable *
@@ -967,33 +953,12 @@ kopperCreateNewDrawable(__DRIscreen *screen,
                         void *data,
                         int is_pixmap)
 {
-    __DRIdrawable *pdraw;
-
     assert(data != NULL);
 
-    pdraw = malloc(sizeof *pdraw);
-    if (!pdraw)
-	return NULL;
+    struct dri_drawable *drawable =
+       screen->driver->CreateBuffer(screen, &config->modes, is_pixmap, data);
 
-    pdraw->loaderPrivate = data;
-
-    pdraw->driScreenPriv = screen;
-    pdraw->driContextPriv = NULL;
-    pdraw->refcount = 0;
-    pdraw->lastStamp = 0;
-    pdraw->w = 0;
-    pdraw->h = 0;
-
-    //dri_get_drawable(pdraw);
-    pdraw->refcount++;
-
-    if (!screen->driver->CreateBuffer(screen, pdraw, &config->modes,
-                                      is_pixmap)) {
-       free(pdraw);
-       return NULL;
-    }
-
-    return pdraw;
+    return opaque_dri_drawable(drawable);
 }
 
 static void
@@ -1020,8 +985,8 @@ kopperSetSwapInterval(__DRIdrawable *dPriv, int interval)
 static int
 kopperQueryBufferAge(__DRIdrawable *dPriv)
 {
-   struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_context *ctx = dri_get_current(drawable->sPriv);
    struct pipe_resource *ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT] ?
                                 drawable->textures[ST_ATTACHMENT_BACK_LEFT] :
                                 drawable->textures[ST_ATTACHMENT_FRONT_LEFT];

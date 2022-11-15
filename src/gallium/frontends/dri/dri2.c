@@ -73,7 +73,9 @@ dri2_buffer(__DRIbuffer * driBufferPriv)
 static void
 dri2_flush_drawable(__DRIdrawable *dPriv)
 {
-   dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
+   struct dri_drawable *drawable = dri_drawable(dPriv);
+
+   dri_flush(drawable->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE, -1);
 }
 
 /**
@@ -103,7 +105,7 @@ dri2_invalidate_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   drawable->dPriv->lastStamp++;
+   drawable->lastStamp++;
    drawable->texture_mask = 0; /* mark all attachments as invalid */
 
    p_atomic_inc(&drawable->base.stamp);
@@ -125,7 +127,6 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
                           const enum st_attachment_type *atts,
                           unsigned *count)
 {
-   __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIdri2LoaderExtension *loader = drawable->sPriv->dri2.loader;
    boolean with_format;
    __DRIbuffer *buffers;
@@ -213,16 +214,16 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
 
    if (with_format) {
       num_attachments /= 2;
-      buffers = loader->getBuffersWithFormat(dri_drawable,
-            &dri_drawable->w, &dri_drawable->h,
+      buffers = loader->getBuffersWithFormat(opaque_dri_drawable(drawable),
+            &drawable->w, &drawable->h,
             attachments, num_attachments,
-            &num_buffers, dri_drawable->loaderPrivate);
+            &num_buffers, drawable->loaderPrivate);
    }
    else {
-      buffers = loader->getBuffers(dri_drawable,
-            &dri_drawable->w, &dri_drawable->h,
+      buffers = loader->getBuffers(opaque_dri_drawable(drawable),
+            &drawable->w, &drawable->h,
             attachments, num_attachments,
-            &num_buffers, dri_drawable->loaderPrivate);
+            &num_buffers, drawable->loaderPrivate);
    }
 
    if (buffers)
@@ -242,7 +243,6 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
                                const enum st_attachment_type *statts,
                                unsigned statts_count)
 {
-   __DRIdrawable *dPriv = drawable->dPriv;
    __DRIscreen *sPriv = drawable->sPriv;
    unsigned int image_format = __DRI_IMAGE_FORMAT_NONE;
    enum pipe_format pf;
@@ -323,9 +323,10 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
     *    st_api_make_current
     *    st_manager_validate_framebuffers (part of st_validate_state)
     */
-   return sPriv->image.loader->getBuffers(dPriv, image_format,
+   return sPriv->image.loader->getBuffers(opaque_dri_drawable(drawable),
+                                          image_format,
                                           (uint32_t *)&drawable->base.stamp,
-                                          dPriv->loaderPrivate, buffer_mask,
+                                          drawable->loaderPrivate, buffer_mask,
                                           images);
 }
 
@@ -475,7 +476,6 @@ dri2_allocate_textures(struct dri_context *ctx,
                        unsigned statts_count)
 {
    __DRIscreen *sPriv = drawable->sPriv;
-   __DRIdrawable *dri_drawable = drawable->dPriv;
    struct dri_screen *screen = dri_screen(sPriv);
    struct pipe_resource templ;
    boolean alloc_depthstencil = FALSE;
@@ -505,8 +505,8 @@ dri2_allocate_textures(struct dri_context *ctx,
    else {
       buffers = dri2_drawable_get_buffers(drawable, statts, &num_buffers);
       if (!buffers || (drawable->old_num == num_buffers &&
-                       drawable->old_w == dri_drawable->w &&
-                       drawable->old_h == dri_drawable->h &&
+                       drawable->old_w == drawable->w &&
+                       drawable->old_h == drawable->h &&
                        memcmp(drawable->old, buffers,
                               sizeof(__DRIbuffer) * num_buffers) == 0))
          return;
@@ -572,8 +572,8 @@ dri2_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
          struct pipe_resource *texture = images.front->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
          handle_in_fence(ctx->cPriv, images.front);
@@ -584,8 +584,8 @@ dri2_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_BACK_LEFT];
          struct pipe_resource *texture = images.back->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
          handle_in_fence(ctx->cPriv, images.back);
@@ -596,8 +596,8 @@ dri2_allocate_textures(struct dri_context *ctx,
             &drawable->textures[ST_ATTACHMENT_BACK_LEFT];
          struct pipe_resource *texture = images.back->texture;
 
-         dri_drawable->w = texture->width0;
-         dri_drawable->h = texture->height0;
+         drawable->w = texture->width0;
+         drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
          handle_in_fence(ctx->cPriv, images.back);
@@ -610,8 +610,8 @@ dri2_allocate_textures(struct dri_context *ctx,
       /* Note: if there is both a back and a front buffer,
        * then they have the same size.
        */
-      templ.width0 = dri_drawable->w;
-      templ.height0 = dri_drawable->h;
+      templ.width0 = drawable->w;
+      templ.height0 = drawable->h;
    }
    else {
       memset(&whandle, 0, sizeof(whandle));
@@ -644,8 +644,8 @@ dri2_allocate_textures(struct dri_context *ctx,
 
          /* dri2_drawable_get_buffers has already filled dri_drawable->w
           * and dri_drawable->h */
-         templ.width0 = dri_drawable->w;
-         templ.height0 = dri_drawable->h;
+         templ.width0 = drawable->w;
+         templ.height0 = drawable->h;
          templ.format = format;
          templ.bind = bind;
          whandle.handle = buf->name;
@@ -767,8 +767,8 @@ dri2_allocate_textures(struct dri_context *ctx,
     */
    if (!image) {
       drawable->old_num = num_buffers;
-      drawable->old_w = dri_drawable->w;
-      drawable->old_h = dri_drawable->h;
+      drawable->old_w = drawable->w;
+      drawable->old_h = drawable->h;
       memcpy(drawable->old, buffers, sizeof(__DRIbuffer) * num_buffers);
    }
 }
@@ -778,7 +778,6 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
                        struct dri_drawable *drawable,
                        enum st_attachment_type statt)
 {
-   __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    const __DRIdri2LoaderExtension *loader = drawable->sPriv->dri2.loader;
    const __DRImutableRenderBufferLoaderExtension *shared_buffer_loader =
@@ -820,19 +819,22 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
    }
 
    if (image) {
-      image->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
+      image->flushFrontBuffer(opaque_dri_drawable(drawable),
+                              drawable->loaderPrivate);
       if (ctx->is_shared_buffer_bound) {
          if (fence)
             fence_fd = pipe->screen->fence_get_fd(pipe->screen, fence);
 
-         shared_buffer_loader->displaySharedBuffer(dri_drawable, fence_fd,
-                                                   dri_drawable->loaderPrivate);
+         shared_buffer_loader->displaySharedBuffer(opaque_dri_drawable(drawable),
+                                                   fence_fd,
+                                                   drawable->loaderPrivate);
 
          pipe->screen->fence_reference(pipe->screen, &fence, NULL);
       }
    }
    else if (loader->flushFrontBuffer) {
-      loader->flushFrontBuffer(dri_drawable, dri_drawable->loaderPrivate);
+      loader->flushFrontBuffer(opaque_dri_drawable(drawable),
+                               drawable->loaderPrivate);
    }
 
    return true;
@@ -845,11 +847,11 @@ static void
 dri2_flush_swapbuffers(struct dri_context *ctx,
                        struct dri_drawable *drawable)
 {
-   __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
 
    if (image && image->base.version >= 3 && image->flushSwapBuffers) {
-      image->flushSwapBuffers(dri_drawable, dri_drawable->loaderPrivate);
+      image->flushSwapBuffers(opaque_dri_drawable(drawable),
+                              drawable->loaderPrivate);
    }
 }
 
@@ -2054,7 +2056,7 @@ dri2_set_damage_region(__DRIdrawable *dPriv, unsigned int nrects, int *rects)
    drawable->num_damage_rects = nrects;
 
    /* Only apply the damage region if the BACK_LEFT texture is up-to-date. */
-   if (drawable->texture_stamp == drawable->dPriv->lastStamp &&
+   if (drawable->texture_stamp == drawable->lastStamp &&
        (drawable->texture_mask & (1 << ST_ATTACHMENT_BACK_LEFT))) {
       struct pipe_screen *screen = drawable->screen->base.screen;
       struct pipe_resource *resource;
@@ -2407,24 +2409,21 @@ release_pipe:
    return NULL;
 }
 
-static boolean
-dri2_create_buffer(__DRIscreen * sPriv,
-                   __DRIdrawable * dPriv,
-                   const struct gl_config * visual, boolean isPixmap)
+static struct dri_drawable *
+dri2_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+                   boolean isPixmap, void *loaderPrivate)
 {
-   struct dri_drawable *drawable = NULL;
-
-   if (!dri_create_buffer(sPriv, dPriv, visual, isPixmap))
-      return FALSE;
-
-   drawable = dPriv->driverPrivate;
+   struct dri_drawable *drawable = dri_create_buffer(sPriv, visual, isPixmap,
+                                                     loaderPrivate);
+   if (!drawable)
+      return NULL;
 
    drawable->allocate_textures = dri2_allocate_textures;
    drawable->flush_frontbuffer = dri2_flush_frontbuffer;
    drawable->update_tex_buffer = dri2_update_tex_buffer;
    drawable->flush_swapbuffers = dri2_flush_swapbuffers;
 
-   return TRUE;
+   return drawable;
 }
 
 /**

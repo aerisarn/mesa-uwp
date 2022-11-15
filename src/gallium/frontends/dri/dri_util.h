@@ -69,12 +69,12 @@ typedef struct __DRIDriverVtableExtensionRec {
 
     const __DRIconfig **(*InitScreen) (__DRIscreen * priv);
 
-    GLboolean (*CreateBuffer)(__DRIscreen *driScrnPriv,
-                              __DRIdrawable *driDrawPriv,
-                              const struct gl_config *glVis,
-                              GLboolean pixmapBuffer);
+    struct dri_drawable *(*CreateBuffer)(__DRIscreen *driScrnPriv,
+                                         const struct gl_config *glVis,
+                                         GLboolean pixmapBuffer,
+                                         void *loaderPrivate);
 
-    void (*SwapBuffers)(__DRIdrawable *driDrawPriv);
+    void (*SwapBuffers)(struct dri_drawable *drawable);
 
     __DRIbuffer *(*AllocateBuffer) (__DRIscreen *screenPrivate,
                                     unsigned int attachment,
@@ -224,12 +224,12 @@ struct __DRIcontextRec {
     /**
      * Pointer to drawable currently bound to this context for drawing.
      */
-    __DRIdrawable *driDrawablePriv;
+    struct dri_drawable *draw;
 
     /**
      * Pointer to drawable currently bound to this context for reading.
      */
-    __DRIdrawable *driReadablePriv;
+    struct dri_drawable *read;
 
     /**
      * Pointer to screen on which this context was created.
@@ -240,54 +240,6 @@ struct __DRIcontextRec {
 	int draw_stamp;
 	int read_stamp;
     } dri2;
-};
-
-/**
- * Per-drawable private DRI driver information.
- */
-struct __DRIdrawableRec {
-    /**
-     * Driver's private drawable information.
-     *
-     * This structure is opaque.
-     */
-    void *driverPrivate;
-
-    /**
-     * Private data from the loader.  We just hold on to it and pass
-     * it back when calling into loader provided functions.
-     */
-    void *loaderPrivate;
-
-    /**
-     * Pointer to context to which this drawable is currently bound.
-     */
-    __DRIcontext *driContextPriv;
-
-    /**
-     * Pointer to screen on which this drawable was created.
-     */
-    __DRIscreen *driScreenPriv;
-
-    /**
-     * Reference count for number of context's currently bound to this
-     * drawable.
-     *
-     * Once it reaches zero, the drawable can be destroyed.
-     *
-     * \note This behavior will change with GLX 1.3.
-     */
-    int refcount;
-
-    /**
-     * Increased when the loader calls invalidate.
-     *
-     * If this changes, the drawable information (below) should be retrieved
-     * from the loader.
-     */
-    unsigned int lastStamp;
-
-    int w, h;
 };
 
 extern uint32_t

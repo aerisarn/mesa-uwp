@@ -43,9 +43,6 @@ struct dri_drawable
    struct st_visual stvis;
 
    struct dri_screen *screen;
-
-   /* dri */
-   __DRIdrawable *dPriv;
    __DRIscreen *sPriv;
 
    __DRIbuffer old[__DRI_BUFFER_COUNT];
@@ -63,6 +60,36 @@ struct dri_drawable
 
    struct pipe_fence_handle *throttle_fence;
    bool flushing; /* prevents recursion in dri_flush */
+
+   /**
+    * Private data from the loader.  We just hold on to it and pass
+    * it back when calling into loader provided functions.
+    */
+   void *loaderPrivate;
+
+   /**
+    * Pointer to context to which this drawable is currently bound.
+    */
+   __DRIcontext *driContextPriv;
+
+   /**
+    * Reference count for number of context's currently bound to this
+    * drawable.
+    *
+    * Once it reaches zero, the drawable can be destroyed.
+    *
+    * \note This behavior will change with GLX 1.3.
+    */
+   int refcount;
+
+   /**
+    * Increased when the loader calls invalidate.
+    *
+    * If this changes, the drawable information (below) should be retrieved
+    * from the loader.
+    */
+   unsigned int lastStamp;
+   int w, h;
 
    /* hooks filled in by dri2 & drisw */
    void (*allocate_textures)(struct dri_context *ctx,
@@ -83,22 +110,28 @@ struct dri_drawable
                              struct dri_drawable *drawable);
 };
 
+/* Typecast the opaque pointer to our own type. */
 static inline struct dri_drawable *
-dri_drawable(__DRIdrawable * driDrawPriv)
+dri_drawable(__DRIdrawable *drawable)
 {
-   return (struct dri_drawable *) (driDrawPriv)
-      ? driDrawPriv->driverPrivate : NULL;
+   return (struct dri_drawable *)drawable;
+}
+
+/* Typecast our own type to the opaque pointer. */
+static inline __DRIdrawable *
+opaque_dri_drawable(struct dri_drawable *drawable)
+{
+   return (__DRIdrawable *)drawable;
 }
 
 /***********************************************************************
  * dri_drawable.c
  */
-bool
-dri_create_buffer(__DRIscreen * sPriv,
-		  __DRIdrawable * dPriv,
-		  const struct gl_config * visual, bool isPixmap);
+struct dri_drawable *
+dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+                  bool isPixmap, void *loaderPrivate);
 
-void dri_destroy_buffer(__DRIdrawable * dPriv);
+void dri_destroy_buffer(struct dri_drawable *drawable);
 
 void
 dri_drawable_get_format(struct dri_drawable *drawable,
