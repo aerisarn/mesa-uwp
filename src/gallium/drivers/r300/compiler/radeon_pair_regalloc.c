@@ -121,6 +121,7 @@ static unsigned int is_derivative(rc_opcode op)
 struct variable_get_class_cb_data {
 	unsigned int * can_change_writemask;
 	unsigned int conversion_swizzle;
+	struct radeon_compiler * c;
 };
 
 static void variable_get_class_read_cb(
@@ -132,7 +133,17 @@ static void variable_get_class_read_cb(
 	struct variable_get_class_cb_data * d = userdata;
 	unsigned int new_swizzle = rc_adjust_channels(arg->Swizzle,
 							d->conversion_swizzle);
-	if (!r300_swizzle_is_native_basic(new_swizzle)) {
+	/* We can't just call r300_swizzle_is_native basic here, because it ignores the
+	 * extra requirements for presubtract. However, after pair translation we no longer
+	 * have the rc_src_register required for the native swizzle, so we have to
+	 * reconstruct it. */
+	struct rc_src_register reg = {};
+	reg.Swizzle = new_swizzle;
+	reg.File = src->File;
+
+	assert(inst->Type == RC_INSTRUCTION_PAIR);
+	/* The opcode is unimportant, we can't have TEX here. */
+	if (!d->c->SwizzleCaps->IsNative(RC_OPCODE_MAD, reg)) {
 		*d->can_change_writemask = 0;
 	}
 }
@@ -180,6 +191,7 @@ static unsigned variable_get_class(
 				struct variable_get_class_cb_data d;
 				d.can_change_writemask = &can_change_writemask;
 				d.conversion_swizzle = conversion_swizzle;
+				d.c = variable->C;
 				/* If we get this far var_ptr->Inst has to
 				 * be a pair instruction.  If variable or any
 				 * of its friends are normal instructions,
