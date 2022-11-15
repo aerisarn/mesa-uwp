@@ -2436,7 +2436,6 @@ static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = dri2_init_screen,
    .CreateBuffer = dri2_create_buffer,
-   .DestroyBuffer = dri_destroy_buffer,
 
    .AllocateBuffer = dri2_allocate_buffer,
    .ReleaseBuffer  = dri2_release_buffer,
@@ -2463,7 +2462,6 @@ static const struct __DRIDriverVtableExtensionRec dri_swrast_kms_vtable = {
    .base = { __DRI_DRIVER_VTABLE, 1 },
    .InitScreen = dri_swrast_kms_init_screen,
    .CreateBuffer = dri2_create_buffer,
-   .DestroyBuffer = dri_destroy_buffer,
 
    .AllocateBuffer = dri2_allocate_buffer,
    .ReleaseBuffer  = dri2_release_buffer,

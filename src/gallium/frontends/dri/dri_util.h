@@ -74,8 +74,6 @@ typedef struct __DRIDriverVtableExtensionRec {
                               const struct gl_config *glVis,
                               GLboolean pixmapBuffer);
 
-    void (*DestroyBuffer)(__DRIdrawable *driDrawPriv);
-
     void (*SwapBuffers)(__DRIdrawable *driDrawPriv);
 
     __DRIbuffer *(*AllocateBuffer) (__DRIscreen *screenPrivate,

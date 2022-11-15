@@ -43,6 +43,7 @@
 #include "dri_util.h"
 #include "dri_context.h"
 #include "dri_screen.h"
+#include "dri_drawable.h"
 #include "util/u_endian.h"
 #include "util/driconf.h"
 #include "main/framebuffer.h"
@@ -815,7 +816,7 @@ static void dri_put_drawable(__DRIdrawable *pdp)
         if (pdp->refcount)
             return;
 
-        pdp->driScreenPriv->driver->DestroyBuffer(pdp);
+        dri_destroy_buffer(pdp);
         free(pdp);
     }
 }
