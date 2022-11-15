@@ -271,9 +271,6 @@ fedora-release:
     C_ARGS: >
       -Wno-error=array-bounds
       -Wno-error=stringop-overread
-      -Wno-error=uninitialized
-    CPP_ARGS: >
-      -Wno-error=array-bounds
     DRI_LOADERS: >
       -D glx=dri
       -D gbm=enabled
