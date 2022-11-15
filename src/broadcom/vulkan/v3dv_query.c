@@ -224,7 +224,7 @@ destroy_vk_storage_buffer(struct v3dv_device *device,
 }
 
 /**
- * Allocates descriptor sets to access query pool BOs (availability and
+ * Allocates descriptor sets to access query pool BO (availability and
  * occlusion query results) from Vulkan pipelines.
  */
 static VkResult
@@ -236,12 +236,12 @@ create_pool_descriptors(struct v3dv_device *device,
 
    VkDescriptorPoolSize pool_size = {
       .type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-      .descriptorCount = 2,
+      .descriptorCount = 1,
    };
    VkDescriptorPoolCreateInfo pool_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
       .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-      .maxSets = 2,
+      .maxSets = 1,
       .poolSizeCount = 1,
       .pPoolSizes = &pool_size,
    };
@@ -252,55 +252,33 @@ create_pool_descriptors(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   VkDescriptorSetLayout set_layouts[2] = {
-      device->queries.buf_descriptor_set_layout,
-      device->queries.buf_descriptor_set_layout
-   };
    VkDescriptorSetAllocateInfo alloc_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool = pool->meta.descriptor_pool,
-      .descriptorSetCount = 2,
-      .pSetLayouts = set_layouts,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &device->queries.buf_descriptor_set_layout,
    };
    result = v3dv_AllocateDescriptorSets(vk_device, &alloc_info,
-                                        pool->meta.descriptor_sets);
+                                        &pool->meta.descriptor_set);
    if (result != VK_SUCCESS)
       return result;
 
-   VkDescriptorBufferInfo desc_buf_info[2] = {
-      {
-         .buffer = pool->meta.avail_buf,
-         .offset = 0,
-         .range = VK_WHOLE_SIZE,
-      },
-      {
-         .buffer = pool->meta.res_buf,
-         .offset = 0,
-         .range = VK_WHOLE_SIZE,
-      },
+   VkDescriptorBufferInfo desc_buf_info = {
+      .buffer = pool->meta.buf,
+      .offset = 0,
+      .range = VK_WHOLE_SIZE,
    };
 
-   VkWriteDescriptorSet writes[2] = {
-      {
-         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-         .dstSet = pool->meta.descriptor_sets[0],
-         .dstBinding = 0,
-         .dstArrayElement = 0,
-         .descriptorCount = 1,
-         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-         .pBufferInfo = &desc_buf_info[0],
-      },
-      {
-         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-         .dstSet = pool->meta.descriptor_sets[1],
-         .dstBinding = 0,
-         .dstArrayElement = 0,
-         .descriptorCount = 1,
-         .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-         .pBufferInfo = &desc_buf_info[1],
-      },
+   VkWriteDescriptorSet write = {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstSet = pool->meta.descriptor_set,
+      .dstBinding = 0,
+      .dstArrayElement = 0,
+      .descriptorCount = 1,
+      .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+      .pBufferInfo = &desc_buf_info,
    };
-   v3dv_UpdateDescriptorSets(vk_device, 2, writes, 0, NULL);
+   v3dv_UpdateDescriptorSets(vk_device, 1, &write, 0, NULL);
 
    return VK_SUCCESS;
 }
@@ -313,9 +291,8 @@ destroy_pool_descriptors(struct v3dv_device *device,
 
    v3dv_FreeDescriptorSets(v3dv_device_to_handle(device),
                            pool->meta.descriptor_pool,
-                           2, pool->meta.descriptor_sets);
-   pool->meta.descriptor_sets[0] = VK_NULL_HANDLE;
-   pool->meta.descriptor_sets[1] = VK_NULL_HANDLE;
+                           1, &pool->meta.descriptor_set);
+   pool->meta.descriptor_set = VK_NULL_HANDLE;
 
    v3dv_DestroyDescriptorPool(v3dv_device_to_handle(device),
                               pool->meta.descriptor_pool, NULL);
@@ -332,14 +309,9 @@ pool_create_meta_resources(struct v3dv_device *device,
       return VK_SUCCESS;
 
    result = create_vk_storage_buffer(device, pool->occlusion.bo,
-                                     &pool->meta.res_buf,
-                                     &pool->meta.res_mem);
+                                     &pool->meta.buf, &pool->meta.mem);
    if (result != VK_SUCCESS)
       return result;
-
-   result = create_vk_storage_buffer(device, pool->avail_bo,
-                                     &pool->meta.avail_buf,
-                                     &pool->meta.avail_mem);
 
    result = create_pool_descriptors(device, pool);
    if (result != VK_SUCCESS)
@@ -356,8 +328,7 @@ pool_destroy_meta_resources(struct v3dv_device *device,
       return;
 
    destroy_pool_descriptors(device, pool);
-   destroy_vk_storage_buffer(device, &pool->meta.avail_buf, &pool->meta.avail_mem);
-   destroy_vk_storage_buffer(device, &pool->meta.res_buf, &pool->meta.res_mem);
+   destroy_vk_storage_buffer(device, &pool->meta.buf, &pool->meta.mem);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -400,27 +371,17 @@ v3dv_CreateQueryPool(VkDevice _device,
        * aligned to a 1024 byte boundary.
        */
       const uint32_t query_groups = DIV_ROUND_UP(pool->query_count, 16);
-      const uint32_t bo_size = query_groups * 1024;
-      pool->occlusion.bo = v3dv_bo_alloc(device, bo_size, "query:r", true);
+      uint32_t bo_size = query_groups * 1024;
+      /* After the counters we store avalability data, 1 byte/query */
+      pool->occlusion.avail_offset = bo_size;
+      bo_size += pool->query_count;
+      pool->occlusion.bo = v3dv_bo_alloc(device, bo_size, "query:o", true);
       if (!pool->occlusion.bo) {
          result = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          goto fail;
       }
       if (!v3dv_bo_map(device, pool->occlusion.bo, bo_size)) {
          result = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         goto fail;
-      }
-
-      /* For now we only use the availability BO with occlusion queries, but
-       * in the future we may want to use this with more query types.
-       */
-      pool->avail_bo = v3dv_bo_alloc(device, pool->query_count, "query:a", true);
-      if (!pool->avail_bo) {
-            result = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-            goto fail;
-      }
-      if (!v3dv_bo_map(device, pool->avail_bo, pool->avail_bo->size)) {
-         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
       }
       break;
@@ -493,8 +454,6 @@ fail:
          vk_sync_destroy(&device->vk, pool->queries[j].perf.last_job_sync);
    }
 
-   if (pool->avail_bo)
-      v3dv_bo_free(device, pool->avail_bo);
    if (pool->occlusion.bo)
       v3dv_bo_free(device, pool->occlusion.bo);
    if (pool->queries)
@@ -515,9 +474,6 @@ v3dv_DestroyQueryPool(VkDevice _device,
 
    if (!pool)
       return;
-
-   if (pool->avail_bo)
-      v3dv_bo_free(device, pool->avail_bo);
 
    if (pool->occlusion.bo)
       v3dv_bo_free(device, pool->occlusion.bo);
@@ -561,7 +517,8 @@ query_wait_available(struct v3dv_device *device,
     * do not involve the one we want to wait on.
     */
    if (pool->query_type == VK_QUERY_TYPE_OCCLUSION) {
-      uint8_t *q_addr = ((uint8_t *) pool->avail_bo->map) + query_idx;
+      uint8_t *q_addr = ((uint8_t *) pool->occlusion.bo->map) +
+                        pool->occlusion.avail_offset + query_idx;
       while (*q_addr == 0)
          usleep(250);
       return VK_SUCCESS;
@@ -621,7 +578,8 @@ query_check_available(struct v3dv_device *device,
 {
    /* For occlusion and performance queries we check the availability BO */
    if (pool->query_type == VK_QUERY_TYPE_OCCLUSION) {
-      const uint8_t *q_addr = ((uint8_t *) pool->avail_bo->map) + query_idx;
+      const uint8_t *q_addr = ((uint8_t *) pool->occlusion.bo->map) +
+                              pool->occlusion.avail_offset + query_idx;
       return (*q_addr != 0) ? VK_SUCCESS : VK_NOT_READY;
    }
 
@@ -915,17 +873,18 @@ v3dv_cmd_buffer_emit_set_query_availability(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_CmdBindDescriptorSets(vk_cmd_buffer,
                               VK_PIPELINE_BIND_POINT_COMPUTE,
                               device->queries.avail_pipeline_layout,
-                              0, 1, &pool->meta.descriptor_sets[0],
+                              0, 1, &pool->meta.descriptor_set,
                               0, NULL);
 
    struct {
+      uint32_t offset;
       uint32_t query;
       uint8_t availability;
-   } push_data = { query, availability };
+   } push_data = { pool->occlusion.avail_offset, query, availability };
    v3dv_CmdPushConstants(vk_cmd_buffer,
                          device->queries.avail_pipeline_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT,
-                         0, 5, &push_data);
+                         0, sizeof(push_data), &push_data);
    cmd_buffer_emit_dispatch_queries(cmd_buffer, count);
 
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, 0, false);
@@ -964,13 +923,16 @@ cmd_buffer_emit_reset_occlusion_query_pool(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_CmdBindDescriptorSets(vk_cmd_buffer,
                               VK_PIPELINE_BIND_POINT_COMPUTE,
                               device->queries.reset_occlusion_pipeline_layout,
-                              0, 2, pool->meta.descriptor_sets,
+                              0, 1, &pool->meta.descriptor_set,
                               0, NULL);
-
+   struct {
+      uint32_t offset;
+      uint32_t query;
+   } push_data = { pool->occlusion.avail_offset, query };
    v3dv_CmdPushConstants(vk_cmd_buffer,
                          device->queries.reset_occlusion_pipeline_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT,
-                         0, 4, &query);
+                         0, sizeof(push_data), &push_data);
 
    cmd_buffer_emit_dispatch_queries(cmd_buffer, count);
 
@@ -1202,19 +1164,18 @@ cmd_buffer_emit_copy_query_pool_results(struct v3dv_cmd_buffer *cmd_buffer,
                         VK_PIPELINE_BIND_POINT_COMPUTE,
                         device->queries.copy_pipeline);
 
-   VkDescriptorSet sets[3] = {
-      pool->meta.descriptor_sets[0],
-      pool->meta.descriptor_sets[1],
+   VkDescriptorSet sets[2] = {
+      pool->meta.descriptor_set,
       out_buf_descriptor_set,
    };
    v3dv_CmdBindDescriptorSets(vk_cmd_buffer,
                               VK_PIPELINE_BIND_POINT_COMPUTE,
                               device->queries.copy_pipeline_layout,
-                              0, 3, sets, 0, NULL);
+                              0, 2, sets, 0, NULL);
 
    struct {
-      uint32_t first, offset, stride, flags;
-   } push_data = { first, offset, stride, flags };
+      uint32_t avail_offset, first, offset, stride, flags;
+   } push_data = { pool->occlusion.avail_offset, first, offset, stride, flags };
    v3dv_CmdPushConstants(vk_cmd_buffer,
                          device->queries.copy_pipeline_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT,
@@ -1330,7 +1291,8 @@ v3dv_reset_query_pool_cpu(struct v3dv_device *device,
       switch (pool->query_type) {
       case VK_QUERY_TYPE_OCCLUSION: {
          /* Reset availability */
-         uint8_t *base_addr = ((uint8_t *) pool->avail_bo->map) + first;
+         uint8_t *base_addr = ((uint8_t *) pool->occlusion.bo->map) +
+                              pool->occlusion.avail_offset + first;
          memset(base_addr, 0, count);
 
          /* Reset occlusion counter */
@@ -1438,21 +1400,22 @@ v3dv_ReleaseProfilingLockKHR(VkDevice device)
 static inline void
 nir_set_query_availability(nir_builder *b,
                            nir_ssa_def *buf,
+                           nir_ssa_def *offset,
                            nir_ssa_def *query_idx,
                            nir_ssa_def *avail)
 {
-   nir_ssa_def *offset = query_idx; /* we use 1B per query */
+   offset = nir_iadd(b, offset, query_idx); /* we use 1B per query */
    nir_store_ssbo(b, avail, buf, offset, .write_mask = 0x1, .align_mul = 1);
 }
 
 static inline nir_ssa_def *
 nir_get_query_availability(nir_builder *b,
                            nir_ssa_def *buf,
+                           nir_ssa_def *offset,
                            nir_ssa_def *query_idx)
 {
-   nir_ssa_def *offset = query_idx; /* we use 1B per query */
-   nir_ssa_def *avail =
-      nir_load_ssbo(b, 1, 8, buf, offset, .align_mul = 1);
+   offset = nir_iadd(b, offset, query_idx); /* we use 1B per query */
+   nir_ssa_def *avail = nir_load_ssbo(b, 1, 8, buf, offset, .align_mul = 1);
    return nir_i2i32(b, avail);
 }
 
@@ -1480,14 +1443,17 @@ get_set_query_availability_cs()
     */
    nir_ssa_def *wg_id = nir_channel(&b, nir_load_workgroup_id(&b, 32), 0);
 
-   nir_ssa_def *base_query_idx =
+   nir_ssa_def *offset =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
 
-   nir_ssa_def *avail =
-      nir_load_push_constant(&b, 1, 8, nir_imm_int(&b, 0), .base = 4, .range = 1);
+   nir_ssa_def *query_idx =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 4, .range = 4);
 
-   nir_ssa_def *query_idx = nir_iadd(&b, base_query_idx, wg_id);
-   nir_set_query_availability(&b, buf, query_idx, avail);
+   nir_ssa_def *avail =
+      nir_load_push_constant(&b, 1, 8, nir_imm_int(&b, 0), .base = 8, .range = 1);
+
+   query_idx = nir_iadd(&b, query_idx, wg_id);
+   nir_set_query_availability(&b, buf, offset, query_idx, avail);
 
    return b.shader;
 }
@@ -1534,15 +1500,9 @@ get_reset_occlusion_query_cs()
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
 
-   nir_ssa_def *buf_avail =
+   nir_ssa_def *buf =
       nir_vulkan_resource_index(&b, 2, 32, nir_imm_int(&b, 0),
                                 .desc_set = 0,
-                                .binding = 0,
-                                .desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
-   nir_ssa_def *buf_res =
-      nir_vulkan_resource_index(&b, 2, 32, nir_imm_int(&b, 0),
-                                .desc_set = 1,
                                 .binding = 0,
                                 .desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -1552,13 +1512,17 @@ get_reset_occlusion_query_cs()
     */
    nir_ssa_def *wg_id = nir_channel(&b, nir_load_workgroup_id(&b, 32), 0);
 
-   nir_ssa_def *base_query_idx =
+   nir_ssa_def *avail_offset =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
+
+   nir_ssa_def *base_query_idx =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 4, .range = 4);
 
    nir_ssa_def *query_idx = nir_iadd(&b, base_query_idx, wg_id);
 
-   nir_set_query_availability(&b, buf_avail, query_idx, nir_imm_intN_t(&b, 0, 8));
-   nir_reset_occlusion_counter(&b, buf_res, query_idx);
+   nir_set_query_availability(&b, buf, avail_offset, query_idx,
+                              nir_imm_intN_t(&b, 0, 8));
+   nir_reset_occlusion_counter(&b, buf, query_idx);
 
    return b.shader;
 }
@@ -1598,36 +1562,33 @@ get_copy_query_results_cs()
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
 
-   nir_ssa_def *buf_avail =
+   nir_ssa_def *buf =
       nir_vulkan_resource_index(&b, 2, 32, nir_imm_int(&b, 0),
                                 .desc_set = 0,
                                 .binding = 0,
                                 .desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-   nir_ssa_def *buf_res =
+   nir_ssa_def *buf_out =
       nir_vulkan_resource_index(&b, 2, 32, nir_imm_int(&b, 0),
                                 .desc_set = 1,
                                 .binding = 0,
                                 .desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-   nir_ssa_def *buf_out =
-      nir_vulkan_resource_index(&b, 2, 32, nir_imm_int(&b, 0),
-                                .desc_set = 2,
-                                .binding = 0,
-                                .desc_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
    /* Read push constants */
-   nir_ssa_def *base_query_idx =
+   nir_ssa_def *avail_offset =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 0, .range = 4);
 
-   nir_ssa_def *base_offset_out =
+   nir_ssa_def *base_query_idx =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 4, .range = 4);
 
-   nir_ssa_def *stride =
+   nir_ssa_def *base_offset_out =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 8, .range = 4);
 
-   nir_ssa_def *flags =
+   nir_ssa_def *stride =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 12, .range = 4);
+
+   nir_ssa_def *flags =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
 
    /* Check copy flags */
    nir_ssa_def *flag_64bit =
@@ -1647,10 +1608,11 @@ get_copy_query_results_cs()
    nir_ssa_def *query_idx = nir_iadd(&b, base_query_idx, wg_id);
 
    /* Read query availability */
-   nir_ssa_def *avail = nir_get_query_availability(&b, buf_avail, query_idx);
+   nir_ssa_def *avail =
+      nir_get_query_availability(&b, buf, avail_offset, query_idx);
 
    /* Read query result */
-   nir_ssa_def *query_res = nir_read_occlusion_counter(&b, buf_res, query_idx);
+   nir_ssa_def *query_res = nir_read_occlusion_counter(&b, buf, query_idx);
 
    /* Write output buffer */
    nir_ssa_def *offset =
@@ -1703,8 +1665,9 @@ create_query_pipelines(struct v3dv_device *device)
     * Pipeline layout:
     *  - 1 storage buffer for the BO with the query availability.
     *  - 2 push constants:
-    *    0B: base query index (4 bytes).
-    *    4B: availability (1 byte).
+    *    0B: offset of the availability info in the buffer (4 bytes)
+    *    4B: base query index (4 bytes).
+    *    8B: availability (1 byte).
     */
    if (!device->queries.avail_pipeline_layout) {
       VkPipelineLayoutCreateInfo pipeline_layout_info = {
@@ -1713,7 +1676,7 @@ create_query_pipelines(struct v3dv_device *device)
          .pSetLayouts = &device->queries.buf_descriptor_set_layout,
          .pushConstantRangeCount = 1,
          .pPushConstantRanges =
-             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 5 },
+             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 9 },
       };
 
       result =
@@ -1742,23 +1705,19 @@ create_query_pipelines(struct v3dv_device *device)
    /* Reset occlusion query pipeline.
     *
     * Pipeline layout:
-    *  - 1 storage buffer for the BO with the query availability.
-    *  - 1 storage buffer for the BO with the occlusion query results.
+    *  - 1 storage buffer for the BO with the occlusion and availability data.
     *  - Push constants:
-    *    0B: base query index (4B)
+    *    0B: offset of the availability info in the buffer (4B)
+    *    4B: base query index (4B)
     */
    if (!device->queries.reset_occlusion_pipeline_layout) {
-      VkDescriptorSetLayout set_layouts[2] = {
-         device->queries.buf_descriptor_set_layout,
-         device->queries.buf_descriptor_set_layout,
-      };
       VkPipelineLayoutCreateInfo pipeline_layout_info = {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-         .setLayoutCount = 2,
-         .pSetLayouts = set_layouts,
+         .setLayoutCount = 1,
+         .pSetLayouts = &device->queries.buf_descriptor_set_layout,
          .pushConstantRangeCount = 1,
          .pPushConstantRanges =
-             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 4 },
+             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 8 },
       };
 
       result =
@@ -1788,28 +1747,27 @@ create_query_pipelines(struct v3dv_device *device)
    /* Copy query results pipeline.
     *
     * Pipeline layout:
-    *  - 1 storage buffer for the BO with the query availability.
-    *  - 1 storage buffer for the BO with the occlusion query results.
+    *  - 1 storage buffer for the BO with the query availability and occlusion.
     *  - 1 storage buffer for the output.
     *  - Push constants:
-    *    0B: base query index (4B)
-    *    4B: offset into output buffer (4B)
-    *    8B: stride (4B)
-    *    12B: copy flags (4B)
+    *    0B: offset of the availability info in the buffer (4B)
+    *    4B: base query index (4B)
+    *    8B: offset into output buffer (4B)
+    *    12B: stride (4B)
+    *    16B: copy flags (4B)
     */
    if (!device->queries.copy_pipeline_layout) {
-      VkDescriptorSetLayout set_layouts[3] = {
-         device->queries.buf_descriptor_set_layout,
+      VkDescriptorSetLayout set_layouts[2] = {
          device->queries.buf_descriptor_set_layout,
          device->queries.buf_descriptor_set_layout
       };
       VkPipelineLayoutCreateInfo pipeline_layout_info = {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-         .setLayoutCount = 3,
+         .setLayoutCount = 2,
          .pSetLayouts = set_layouts,
          .pushConstantRangeCount = 1,
          .pPushConstantRanges =
-             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 16 },
+             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 20 },
       };
 
       result =

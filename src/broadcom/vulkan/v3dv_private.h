@@ -1547,35 +1547,27 @@ struct v3dv_query {
 struct v3dv_query_pool {
    struct vk_object_base base;
 
-   /* Availability state for each query in the pool. Only used with occlusion
-    * queries for now, but could be used by other query types in the future.
-    */
-   struct v3dv_bo *avail_bo;
-
    /* Per-pool Vulkan resources required to implement GPU-side query
     * functions (only occlusion queries for now).
     */
    struct {
-      /* Buffer to access query availability state */
-      VkBuffer avail_buf;
-      VkDeviceMemory avail_mem;
-
-      /* Buffer to access occlusion query results */
-      VkBuffer res_buf;
-      VkDeviceMemory res_mem;
-
-      VkDescriptorPool descriptor_pool;
-
-      /* Two descriptor sets: one for accessing the availability buffer and
-       * another for the buffer with the occlusion query results.
+      /* Buffer to access the BO with the occlusion query results and
+       * availability info.
        */
-      VkDescriptorSet descriptor_sets[2];
+      VkBuffer buf;
+      VkDeviceMemory mem;
+
+      /* Descriptor set for accessing the buffer from a pipeline. */
+      VkDescriptorPool descriptor_pool;
+      VkDescriptorSet descriptor_set;
    } meta;
 
    /* Only used with occlusion queries */
    struct {
-      /* BO with the occlusion counters */
+      /* BO with the occlusion counters and query availability */
       struct v3dv_bo *bo;
+      /* Offset of the availability info in the BO */
+      uint32_t avail_offset;
    } occlusion;
 
    /* Only used with performance queries */
