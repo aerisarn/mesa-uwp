@@ -582,6 +582,7 @@ cmd_buffer_add_cpu_jobs_for_pending_state(struct v3dv_cmd_buffer *cmd_buffer)
          job->cpu.query_end = state->query.end.states[i];
          list_addtail(&job->list_link, &cmd_buffer->jobs);
       }
+      state->query.end.used_count = 0;
    }
 }
 
