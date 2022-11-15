@@ -128,7 +128,7 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
                           const enum st_attachment_type *atts,
                           unsigned *count)
 {
-   const __DRIdri2LoaderExtension *loader = drawable->sPriv->dri2.loader;
+   const __DRIdri2LoaderExtension *loader = drawable->screen->dri2.loader;
    boolean with_format;
    __DRIbuffer *buffers;
    int num_buffers;
@@ -137,7 +137,7 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
 
    assert(loader);
    assert(*count <= __DRI_BUFFER_COUNT);
-   with_format = dri_with_format(drawable->sPriv);
+   with_format = dri_with_format(drawable->screen);
 
    num_attachments = 0;
 
@@ -244,7 +244,6 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
                                const enum st_attachment_type *statts,
                                unsigned statts_count)
 {
-   __DRIscreen *sPriv = drawable->sPriv;
    unsigned int image_format = __DRI_IMAGE_FORMAT_NONE;
    enum pipe_format pf;
    uint32_t buffer_mask = 0;
@@ -324,7 +323,8 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
     *    st_api_make_current
     *    st_manager_validate_framebuffers (part of st_validate_state)
     */
-   return sPriv->image.loader->getBuffers(opaque_dri_drawable(drawable),
+   return drawable->screen->image.loader->getBuffers(
+                                          opaque_dri_drawable(drawable),
                                           image_format,
                                           (uint32_t *)&drawable->base.stamp,
                                           drawable->loaderPrivate, buffer_mask,
@@ -332,11 +332,10 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
 }
 
 static __DRIbuffer *
-dri2_allocate_buffer(__DRIscreen *sPriv,
+dri2_allocate_buffer(struct dri_screen *screen,
                      unsigned attachment, unsigned format,
                      int width, int height)
 {
-   struct dri_screen *screen = dri_screen(sPriv);
    struct dri2_buffer *buffer;
    struct pipe_resource templ;
    enum pipe_format pf;
@@ -428,7 +427,7 @@ dri2_allocate_buffer(__DRIscreen *sPriv,
 }
 
 static void
-dri2_release_buffer(__DRIscreen *sPriv, __DRIbuffer *bPriv)
+dri2_release_buffer(__DRIbuffer *bPriv)
 {
    struct dri2_buffer *buffer = dri2_buffer(bPriv);
 
@@ -475,12 +474,11 @@ dri2_allocate_textures(struct dri_context *ctx,
                        const enum st_attachment_type *statts,
                        unsigned statts_count)
 {
-   __DRIscreen *sPriv = drawable->sPriv;
-   struct dri_screen *screen = dri_screen(sPriv);
+   struct dri_screen *screen = drawable->screen;
    struct pipe_resource templ;
    boolean alloc_depthstencil = FALSE;
    unsigned i, j, bind;
-   const __DRIimageLoaderExtension *image = sPriv->image.loader;
+   const __DRIimageLoaderExtension *image = screen->image.loader;
    /* Image specific variables */
    struct __DRIimageList images;
    /* Dri2 specific variables */
@@ -778,10 +776,10 @@ dri2_flush_frontbuffer(struct dri_context *ctx,
                        struct dri_drawable *drawable,
                        enum st_attachment_type statt)
 {
-   const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
-   const __DRIdri2LoaderExtension *loader = drawable->sPriv->dri2.loader;
+   const __DRIimageLoaderExtension *image = drawable->screen->image.loader;
+   const __DRIdri2LoaderExtension *loader = drawable->screen->dri2.loader;
    const __DRImutableRenderBufferLoaderExtension *shared_buffer_loader =
-      drawable->sPriv->mutableRenderBuffer.loader;
+      drawable->screen->mutableRenderBuffer.loader;
    struct pipe_context *pipe = ctx->st->pipe;
    struct pipe_fence_handle *fence = NULL;
    int fence_fd = -1;
@@ -847,7 +845,7 @@ static void
 dri2_flush_swapbuffers(struct dri_context *ctx,
                        struct dri_drawable *drawable)
 {
-   const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
+   const __DRIimageLoaderExtension *image = drawable->screen->image.loader;
 
    if (image && image->base.version >= 3 && image->flushSwapBuffers) {
       image->flushSwapBuffers(opaque_dri_drawable(drawable),
@@ -1024,7 +1022,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    img->use = 0;
    img->in_fence_fd = -1;
    img->loader_private = loaderPrivate;
-   img->sPriv = _screen;
+   img->screen = screen;
 
    return img;
 }
@@ -1238,7 +1236,7 @@ dri2_create_image_common(__DRIscreen *_screen,
    img->in_fence_fd = -1;
 
    img->loader_private = loaderPrivate;
-   img->sPriv = _screen;
+   img->screen = screen;
    return img;
 }
 
@@ -1506,7 +1504,7 @@ dri2_dup_image(__DRIimage *image, void *loaderPrivate)
    img->in_fence_fd = (image->in_fence_fd > 0) ?
          os_dupfd_cloexec(image->in_fence_fd) : -1;
    img->loader_private = loaderPrivate;
-   img->sPriv = image->sPriv;
+   img->screen = image->screen;
 
    return img;
 }
@@ -2218,7 +2216,7 @@ dri2_init_screen_extensions(struct dri_screen *screen,
                  sizeof(dri_screen_extensions_base));
    memcpy(&screen->screen_extensions, dri_screen_extensions_base,
           sizeof(dri_screen_extensions_base));
-   screen->sPriv->extensions = screen->screen_extensions;
+   screen->extensions = screen->screen_extensions;
 
    /* Point nExt at the end of the extension list */
    nExt = &screen->screen_extensions[ARRAY_SIZE(dri_screen_extensions_base)];
@@ -2238,7 +2236,7 @@ dri2_init_screen_extensions(struct dri_screen *screen,
    if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
       uint64_t cap;
 
-      if (drmGetCap(screen->sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
+      if (drmGetCap(screen->fd, DRM_CAP_PRIME, &cap) == 0 &&
           (cap & DRM_PRIME_CAP_IMPORT)) {
          screen->image_extension.createImageFromFds = dri2_from_fds;
          screen->image_extension.createImageFromFds2 = dri2_from_fds2;
@@ -2283,21 +2281,12 @@ dri2_init_screen_extensions(struct dri_screen *screen,
  * Returns the struct gl_config supported by this driver.
  */
 static const __DRIconfig **
-dri2_init_screen(__DRIscreen * sPriv)
+dri2_init_screen(struct dri_screen *screen)
 {
    const __DRIconfig **configs;
-   struct dri_screen *screen;
    struct pipe_screen *pscreen = NULL;
 
-   screen = CALLOC_STRUCT(dri_screen);
-   if (!screen)
-      return NULL;
-
-   screen->sPriv = sPriv;
-   screen->fd = sPriv->fd;
    (void) mtx_init(&screen->opencl_func_mutex, mtx_plain);
-
-   sPriv->driverPrivate = (void *)screen;
 
    if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd)) {
       pscreen = pipe_loader_create_screen(screen->dev);
@@ -2319,10 +2308,10 @@ dri2_init_screen(__DRIscreen * sPriv)
       goto destroy_screen;
 
    screen->can_share_buffer = true;
-   screen->auto_fake_front = dri_with_format(sPriv);
+   screen->auto_fake_front = dri_with_format(screen);
    screen->lookup_egl_image = dri2_lookup_egl_image;
 
-   const __DRIimageLookupExtension *loader = sPriv->dri2.image;
+   const __DRIimageLookupExtension *loader = screen->dri2.image;
    if (loader &&
        loader->base.version >= 2 &&
        loader->validateEGLImage &&
@@ -2340,7 +2329,6 @@ release_pipe:
    if (screen->dev)
       pipe_loader_release(&screen->dev, 1);
 
-   FREE(screen);
    return NULL;
 }
 
@@ -2350,21 +2338,11 @@ release_pipe:
  * Returns the struct gl_config supported by this driver.
  */
 static const __DRIconfig **
-dri_swrast_kms_init_screen(__DRIscreen * sPriv)
+dri_swrast_kms_init_screen(struct dri_screen *screen)
 {
 #if defined(GALLIUM_SOFTPIPE)
    const __DRIconfig **configs;
-   struct dri_screen *screen;
    struct pipe_screen *pscreen = NULL;
-
-   screen = CALLOC_STRUCT(dri_screen);
-   if (!screen)
-      return NULL;
-
-   screen->sPriv = sPriv;
-   screen->fd = sPriv->fd;
-
-   sPriv->driverPrivate = (void *)screen;
 
 #ifdef HAVE_DRISW_KMS
    if (pipe_loader_sw_probe_kms(&screen->dev, screen->fd)) {
@@ -2383,10 +2361,10 @@ dri_swrast_kms_init_screen(__DRIscreen * sPriv)
       goto destroy_screen;
 
    screen->can_share_buffer = false;
-   screen->auto_fake_front = dri_with_format(sPriv);
+   screen->auto_fake_front = dri_with_format(screen);
    screen->lookup_egl_image = dri2_lookup_egl_image;
 
-   const __DRIimageLookupExtension *loader = sPriv->dri2.image;
+   const __DRIimageLookupExtension *loader = screen->dri2.image;
    if (loader &&
        loader->base.version >= 2 &&
        loader->validateEGLImage &&
@@ -2404,16 +2382,15 @@ release_pipe:
    if (screen->dev)
       pipe_loader_release(&screen->dev, 1);
 
-   FREE(screen);
 #endif // GALLIUM_SOFTPIPE
    return NULL;
 }
 
 static struct dri_drawable *
-dri2_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+dri2_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
                    boolean isPixmap, void *loaderPrivate)
 {
-   struct dri_drawable *drawable = dri_create_buffer(sPriv, visual, isPixmap,
+   struct dri_drawable *drawable = dri_create_buffer(screen, visual, isPixmap,
                                                      loaderPrivate);
    if (!drawable)
       return NULL;

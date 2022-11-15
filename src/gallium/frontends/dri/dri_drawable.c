@@ -50,7 +50,7 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
    struct dri_context *ctx = (struct dri_context *)stctx->st_manager_private;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
-   struct dri_screen *screen = dri_screen(drawable->sPriv);
+   struct dri_screen *screen = drawable->screen;
    unsigned statt_mask, new_mask;
    bool new_stamp;
    int i;
@@ -143,10 +143,9 @@ dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
  * This is called when we need to set up GL rendering to a new X window.
  */
 struct dri_drawable *
-dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+dri_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
                   bool isPixmap, void *loaderPrivate)
 {
-   struct dri_screen *screen = sPriv->driverPrivate;
    struct dri_drawable *drawable = NULL;
 
    if (isPixmap)
@@ -157,7 +156,6 @@ dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
       goto fail;
 
    drawable->loaderPrivate = loaderPrivate;
-   drawable->sPriv = sPriv;
    drawable->ctx = NULL;
    drawable->refcount = 1;
    drawable->lastStamp = 0;
@@ -174,7 +172,6 @@ dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
    drawable->base.st_manager_private = (void *) drawable;
 
    drawable->screen = screen;
-   drawable->sPriv = sPriv;
 
    p_atomic_set(&drawable->base.stamp, 1);
    drawable->base.ID = p_atomic_inc_return(&drifb_ID);

@@ -60,7 +60,7 @@ dri_create_context(struct dri_screen *screen,
       __DRIVER_CONTEXT_ATTRIB_RELEASE_BEHAVIOR |
       __DRIVER_CONTEXT_ATTRIB_NO_ERROR;
    const __DRIbackgroundCallableExtension *backgroundCallable =
-      screen->sPriv->dri2.backgroundCallable;
+      screen->dri2.backgroundCallable;
    const struct driOptionCache *optionCache = &screen->dev->option_cache;
 
    if (screen->has_reset_status_query) {
@@ -350,7 +350,7 @@ dri_make_current(struct dri_context *ctx,
 }
 
 struct dri_context *
-dri_get_current(__DRIscreen *sPriv)
+dri_get_current(void)
 {
    struct st_context_iface *st = st_api_get_current();
 

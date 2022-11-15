@@ -43,7 +43,6 @@ struct dri_drawable
    struct st_visual stvis;
 
    struct dri_screen *screen;
-   __DRIscreen *sPriv;
 
    __DRIbuffer old[__DRI_BUFFER_COUNT];
    unsigned old_num;
@@ -134,7 +133,7 @@ dri_get_drawable(struct dri_drawable *drawable)
  * dri_drawable.c
  */
 struct dri_drawable *
-dri_create_buffer(__DRIscreen *sPriv, const struct gl_config *visual,
+dri_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
                   bool isPixmap, void *loaderPrivate);
 
 void

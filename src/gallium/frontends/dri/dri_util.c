@@ -45,6 +45,7 @@
 #include "dri_screen.h"
 #include "dri_drawable.h"
 #include "util/u_endian.h"
+#include "util/u_memory.h"
 #include "util/driconf.h"
 #include "main/framebuffer.h"
 #include "main/version.h"
@@ -69,28 +70,28 @@ driOptionDescription __dri2ConfigOptions[] = {
 /*@{*/
 
 static void
-setupLoaderExtensions(__DRIscreen *psp,
+setupLoaderExtensions(struct dri_screen *screen,
                       const __DRIextension **extensions)
 {
     int i;
 
     for (i = 0; extensions[i]; i++) {
         if (strcmp(extensions[i]->name, __DRI_DRI2_LOADER) == 0)
-            psp->dri2.loader = (__DRIdri2LoaderExtension *) extensions[i];
+            screen->dri2.loader = (__DRIdri2LoaderExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_IMAGE_LOOKUP) == 0)
-            psp->dri2.image = (__DRIimageLookupExtension *) extensions[i];
+            screen->dri2.image = (__DRIimageLookupExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_USE_INVALIDATE) == 0)
-            psp->dri2.useInvalidate = (__DRIuseInvalidateExtension *) extensions[i];
+            screen->dri2.useInvalidate = (__DRIuseInvalidateExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_BACKGROUND_CALLABLE) == 0)
-            psp->dri2.backgroundCallable = (__DRIbackgroundCallableExtension *) extensions[i];
+            screen->dri2.backgroundCallable = (__DRIbackgroundCallableExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_SWRAST_LOADER) == 0)
-            psp->swrast_loader = (__DRIswrastLoaderExtension *) extensions[i];
+            screen->swrast_loader = (__DRIswrastLoaderExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_IMAGE_LOADER) == 0)
-           psp->image.loader = (__DRIimageLoaderExtension *) extensions[i];
+           screen->image.loader = (__DRIimageLoaderExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_MUTABLE_RENDER_BUFFER_LOADER) == 0)
-           psp->mutableRenderBuffer.loader = (__DRImutableRenderBufferLoaderExtension *) extensions[i];
+           screen->mutableRenderBuffer.loader = (__DRImutableRenderBufferLoaderExtension *) extensions[i];
         if (strcmp(extensions[i]->name, __DRI_KOPPER_LOADER) == 0)
-            psp->kopper_loader = (__DRIkopperLoaderExtension *) extensions[i];
+            screen->kopper_loader = (__DRIkopperLoaderExtension *) extensions[i];
     }
 }
 
@@ -108,42 +109,42 @@ driCreateNewScreen2(int scrn, int fd,
                     const __DRIconfig ***driver_configs, void *data)
 {
     static const __DRIextension *emptyExtensionList[] = { NULL };
-    __DRIscreen *psp;
+    struct dri_screen *screen;
 
-    psp = calloc(1, sizeof(*psp));
-    if (!psp)
-        return NULL;
+    screen = CALLOC_STRUCT(dri_screen);
+    if (!screen)
+       return NULL;
 
     assert(driver_extensions);
     for (int i = 0; driver_extensions[i]; i++) {
        if (strcmp(driver_extensions[i]->name, __DRI_DRIVER_VTABLE) == 0) {
-          psp->driver =
+          screen->driver =
              (__DRIDriverVtableExtension *)driver_extensions[i];
        }
     }
 
-    setupLoaderExtensions(psp, extensions);
+    setupLoaderExtensions(screen, extensions);
     // dri2 drivers require working invalidate
-    if (fd != -1 && !psp->dri2.useInvalidate) {
-       free(psp);
+    if (fd != -1 && !screen->dri2.useInvalidate) {
+       free(screen);
        return NULL;
     }
 
-    psp->loaderPrivate = data;
+    screen->loaderPrivate = data;
 
-    psp->extensions = emptyExtensionList;
-    psp->fd = fd;
-    psp->myNum = scrn;
+    screen->extensions = emptyExtensionList;
+    screen->fd = fd;
+    screen->myNum = scrn;
 
     /* Option parsing before ->InitScreen(), as some options apply there. */
-    driParseOptionInfo(&psp->optionInfo,
+    driParseOptionInfo(&screen->optionInfo,
                        __dri2ConfigOptions, ARRAY_SIZE(__dri2ConfigOptions));
-    driParseConfigFiles(&psp->optionCache, &psp->optionInfo, psp->myNum,
+    driParseConfigFiles(&screen->optionCache, &screen->optionInfo, screen->myNum,
                         "dri2", NULL, NULL, NULL, 0, NULL, 0);
 
-    *driver_configs = psp->driver->InitScreen(psp);
+    *driver_configs = screen->driver->InitScreen(screen);
     if (*driver_configs == NULL) {
-        free(psp);
+        free(screen);
         return NULL;
     }
 
@@ -153,28 +154,28 @@ driCreateNewScreen2(int scrn, int fd,
 
     api = API_OPENGLES2;
     if (_mesa_override_gl_version_contextless(&consts, &api, &version))
-       psp->max_gl_es2_version = version;
+       screen->max_gl_es2_version = version;
 
     api = API_OPENGL_COMPAT;
     if (_mesa_override_gl_version_contextless(&consts, &api, &version)) {
-       psp->max_gl_core_version = version;
+       screen->max_gl_core_version = version;
        if (api == API_OPENGL_COMPAT)
-          psp->max_gl_compat_version = version;
+          screen->max_gl_compat_version = version;
     }
 
-    psp->api_mask = 0;
-    if (psp->max_gl_compat_version > 0)
-       psp->api_mask |= (1 << __DRI_API_OPENGL);
-    if (psp->max_gl_core_version > 0)
-       psp->api_mask |= (1 << __DRI_API_OPENGL_CORE);
-    if (psp->max_gl_es1_version > 0)
-       psp->api_mask |= (1 << __DRI_API_GLES);
-    if (psp->max_gl_es2_version > 0)
-       psp->api_mask |= (1 << __DRI_API_GLES2);
-    if (psp->max_gl_es2_version >= 30)
-       psp->api_mask |= (1 << __DRI_API_GLES3);
+    screen->api_mask = 0;
+    if (screen->max_gl_compat_version > 0)
+       screen->api_mask |= (1 << __DRI_API_OPENGL);
+    if (screen->max_gl_core_version > 0)
+       screen->api_mask |= (1 << __DRI_API_OPENGL_CORE);
+    if (screen->max_gl_es1_version > 0)
+       screen->api_mask |= (1 << __DRI_API_GLES);
+    if (screen->max_gl_es2_version > 0)
+       screen->api_mask |= (1 << __DRI_API_GLES2);
+    if (screen->max_gl_es2_version >= 30)
+       screen->api_mask |= (1 << __DRI_API_GLES3);
 
-    return psp;
+    return opaque_dri_screen(screen);
 }
 
 static __DRIscreen *
@@ -231,18 +232,13 @@ static void driDestroyScreen(__DRIscreen *psp)
          * stream open to the X-server anymore.
          */
 
-        dri_destroy_screen(psp);
-
-        driDestroyOptionCache(&psp->optionCache);
-        driDestroyOptionInfo(&psp->optionInfo);
-
-        free(psp);
+        dri_destroy_screen(dri_screen(psp));
     }
 }
 
 static const __DRIextension **driGetExtensions(__DRIscreen *psp)
 {
-    return psp->extensions;
+    return dri_screen(psp)->extensions;
 }
 
 /*@}*/
@@ -400,7 +396,7 @@ driIndexConfigAttrib(const __DRIconfig *config, int index,
 }
 
 static bool
-validate_context_version(__DRIscreen *screen,
+validate_context_version(struct dri_screen *screen,
                          int mesa_api,
                          unsigned major_version,
                          unsigned minor_version,
@@ -444,7 +440,7 @@ validate_context_version(__DRIscreen *screen,
 /*@{*/
 
 static __DRIcontext *
-driCreateContextAttribs(__DRIscreen *screen, int api,
+driCreateContextAttribs(__DRIscreen *psp, int api,
                         const __DRIconfig *config,
                         __DRIcontext *shared,
                         unsigned num_attribs,
@@ -452,6 +448,7 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
                         unsigned *error,
                         void *data)
 {
+    struct dri_screen *screen = dri_screen(psp);
     const struct gl_config *modes = (config != NULL) ? &config->modes : NULL;
     gl_api mesa_api;
     struct __DriverContextConfig ctx_config;
@@ -626,7 +623,7 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
                                   error))
        return NULL;
 
-    struct dri_context *ctx = dri_create_context(dri_screen(screen), mesa_api,
+    struct dri_context *ctx = dri_create_context(screen, mesa_api,
                                                  modes, &ctx_config, error,
                                                  dri_context(shared),
                                                  data);
@@ -740,12 +737,13 @@ static int driUnbindContext(__DRIcontext *pcp)
 /*@}*/
 
 static __DRIdrawable *
-driCreateNewDrawable(__DRIscreen *screen,
+driCreateNewDrawable(__DRIscreen *psp,
                      const __DRIconfig *config,
                      void *data)
 {
     assert(data != NULL);
 
+    struct dri_screen *screen = dri_screen(psp);
     struct dri_drawable *drawable =
        screen->driver->CreateBuffer(screen, &config->modes, GL_FALSE, data);
 
@@ -759,24 +757,30 @@ driDestroyDrawable(__DRIdrawable *pdp)
 }
 
 static __DRIbuffer *
-dri2AllocateBuffer(__DRIscreen *screen,
+dri2AllocateBuffer(__DRIscreen *psp,
                    unsigned int attachment, unsigned int format,
                    int width, int height)
 {
-    return screen->driver->AllocateBuffer(screen, attachment, format,
-                                          width, height);
+   struct dri_screen *screen = dri_screen(psp);
+
+   return screen->driver->AllocateBuffer(screen, attachment, format,
+                                         width, height);
 }
 
 static void
-dri2ReleaseBuffer(__DRIscreen *screen, __DRIbuffer *buffer)
+dri2ReleaseBuffer(__DRIscreen *psp, __DRIbuffer *buffer)
 {
-    screen->driver->ReleaseBuffer(screen, buffer);
+   struct dri_screen *screen = dri_screen(psp);
+
+   screen->driver->ReleaseBuffer(buffer);
 }
 
 
 static int
-dri2ConfigQueryb(__DRIscreen *screen, const char *var, unsigned char *val)
+dri2ConfigQueryb(__DRIscreen *psp, const char *var, unsigned char *val)
 {
+   struct dri_screen *screen = dri_screen(psp);
+
    if (!driCheckOption(&screen->optionCache, var, DRI_BOOL))
       return -1;
 
@@ -786,8 +790,10 @@ dri2ConfigQueryb(__DRIscreen *screen, const char *var, unsigned char *val)
 }
 
 static int
-dri2ConfigQueryi(__DRIscreen *screen, const char *var, int *val)
+dri2ConfigQueryi(__DRIscreen *psp, const char *var, int *val)
 {
+   struct dri_screen *screen = dri_screen(psp);
+
    if (!driCheckOption(&screen->optionCache, var, DRI_INT) &&
        !driCheckOption(&screen->optionCache, var, DRI_ENUM))
       return -1;
@@ -798,8 +804,10 @@ dri2ConfigQueryi(__DRIscreen *screen, const char *var, int *val)
 }
 
 static int
-dri2ConfigQueryf(__DRIscreen *screen, const char *var, float *val)
+dri2ConfigQueryf(__DRIscreen *psp, const char *var, float *val)
 {
+   struct dri_screen *screen = dri_screen(psp);
+
    if (!driCheckOption(&screen->optionCache, var, DRI_FLOAT))
       return -1;
 
@@ -809,8 +817,10 @@ dri2ConfigQueryf(__DRIscreen *screen, const char *var, float *val)
 }
 
 static int
-dri2ConfigQuerys(__DRIscreen *screen, const char *var, char **val)
+dri2ConfigQuerys(__DRIscreen *psp, const char *var, char **val)
 {
+   struct dri_screen *screen = dri_screen(psp);
+
    if (!driCheckOption(&screen->optionCache, var, DRI_STRING))
       return -1;
 
@@ -822,7 +832,7 @@ dri2ConfigQuerys(__DRIscreen *screen, const char *var, char **val)
 static unsigned int
 driGetAPIMask(__DRIscreen *screen)
 {
-    return screen->api_mask;
+    return dri_screen(screen)->api_mask;
 }
 
 /**
@@ -836,9 +846,9 @@ driSwapBuffers(__DRIdrawable *pdp)
 {
    struct dri_drawable *drawable = dri_drawable(pdp);
 
-   assert(drawable->sPriv->swrast_loader);
+   assert(drawable->screen->swrast_loader);
 
-   drawable->sPriv->driver->SwapBuffers(drawable);
+   drawable->screen->driver->SwapBuffers(drawable);
 }
 
 /** Core interface */

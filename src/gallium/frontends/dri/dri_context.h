@@ -104,7 +104,7 @@ dri_make_current(struct dri_context *ctx,
 		 struct dri_drawable *read);
 
 struct dri_context *
-dri_get_current(__DRIscreen * driScreenPriv);
+dri_get_current(void);
 
 struct dri_context *
 dri_create_context(struct dri_screen *screen,

@@ -261,14 +261,14 @@ const __DRI2fenceExtension dri2FenceExtension = {
 __DRIimage *
 dri2_lookup_egl_image(struct dri_screen *screen, void *handle)
 {
-   const __DRIimageLookupExtension *loader = screen->sPriv->dri2.image;
+   const __DRIimageLookupExtension *loader = screen->dri2.image;
    __DRIimage *img;
 
    if (!loader->lookupEGLImage)
       return NULL;
 
-   img = loader->lookupEGLImage(screen->sPriv,
-				handle, screen->sPriv->loaderPrivate);
+   img = loader->lookupEGLImage(opaque_dri_screen(screen),
+				handle, screen->loaderPrivate);
 
    return img;
 }
@@ -276,17 +276,17 @@ dri2_lookup_egl_image(struct dri_screen *screen, void *handle)
 boolean
 dri2_validate_egl_image(struct dri_screen *screen, void *handle)
 {
-   const __DRIimageLookupExtension *loader = screen->sPriv->dri2.image;
+   const __DRIimageLookupExtension *loader = screen->dri2.image;
 
-   return loader->validateEGLImage(handle, screen->sPriv->loaderPrivate);
+   return loader->validateEGLImage(handle, screen->loaderPrivate);
 }
 
 __DRIimage *
 dri2_lookup_egl_image_validated(struct dri_screen *screen, void *handle)
 {
-   const __DRIimageLookupExtension *loader = screen->sPriv->dri2.image;
+   const __DRIimageLookupExtension *loader = screen->dri2.image;
 
-   return loader->lookupEGLImageValidated(handle, screen->sPriv->loaderPrivate);
+   return loader->lookupEGLImageValidated(handle, screen->loaderPrivate);
 }
 
 __DRIimage *
@@ -341,7 +341,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
    img->dri_format = driGLFormatToImageFormat(rb->Format);
    img->internal_format = rb->InternalFormat;
    img->loader_private = loaderPrivate;
-   img->sPriv = dri_ctx->screen->sPriv;
+   img->screen = dri_ctx->screen;
    img->in_fence_fd = -1;
 
    pipe_resource_reference(&img->texture, tex);
@@ -370,8 +370,8 @@ dri2_create_image_from_renderbuffer(__DRIcontext *context,
 void
 dri2_destroy_image(__DRIimage *img)
 {
-   const __DRIimageLoaderExtension *imgLoader = img->sPriv->image.loader;
-   const __DRIdri2LoaderExtension *dri2Loader = img->sPriv->dri2.loader;
+   const __DRIimageLoaderExtension *imgLoader = img->screen->image.loader;
+   const __DRIdri2LoaderExtension *dri2Loader = img->screen->dri2.loader;
 
    if (imgLoader && imgLoader->base.version >= 4 &&
          imgLoader->destroyLoaderImageState) {
@@ -453,7 +453,7 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
    img->internal_format = obj->Image[face][level]->InternalFormat;
 
    img->loader_private = loaderPrivate;
-   img->sPriv = dri_ctx->screen->sPriv;
+   img->screen = dri_ctx->screen;
 
    pipe_resource_reference(&img->texture, tex);
 

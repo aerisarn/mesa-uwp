@@ -64,24 +64,26 @@
 
 #define __DRI_DRIVER_VTABLE "DRI_DriverVtable"
 
+struct dri_screen;
+
 typedef struct __DRIDriverVtableExtensionRec {
     __DRIextension base;
 
-    const __DRIconfig **(*InitScreen) (__DRIscreen * priv);
+    const __DRIconfig **(*InitScreen)(struct dri_screen *screen);
 
-    struct dri_drawable *(*CreateBuffer)(__DRIscreen *driScrnPriv,
+    struct dri_drawable *(*CreateBuffer)(struct dri_screen *screen,
                                          const struct gl_config *glVis,
                                          GLboolean pixmapBuffer,
                                          void *loaderPrivate);
 
     void (*SwapBuffers)(struct dri_drawable *drawable);
 
-    __DRIbuffer *(*AllocateBuffer) (__DRIscreen *screenPrivate,
-                                    unsigned int attachment,
-                                    unsigned int format,
-                                    int width, int height);
+    __DRIbuffer *(*AllocateBuffer)(struct dri_screen *screen,
+                                   unsigned int attachment,
+                                   unsigned int format,
+                                   int width, int height);
 
-    void (*ReleaseBuffer) (__DRIscreen *screenPrivate, __DRIbuffer *buffer);
+    void (*ReleaseBuffer)(__DRIbuffer *buffer);
 } __DRIDriverVtableExtension;
 
 struct __DRIconfigRec {
@@ -139,73 +141,6 @@ struct __DriverContextConfig {
 #define __DRIVER_CONTEXT_ATTRIB_RELEASE_BEHAVIOR (1 << 2)
 #define __DRIVER_CONTEXT_ATTRIB_NO_ERROR         (1 << 3)
 #define __DRIVER_CONTEXT_ATTRIB_PROTECTED        (1 << 4)
-
-/**
- * Per-screen private driver information.
- */
-struct __DRIscreenRec {
-    /**
-     * Driver-specific entrypoints provided by the driver's
-     * __DRIDriverVtableExtensionRec.
-     */
-    const struct __DRIDriverVtableExtensionRec *driver;
-
-    /**
-     * Current screen's number
-     */
-    int myNum;
-
-    /**
-     * File descriptor returned when the kernel device driver is opened.
-     *
-     * Used to:
-     *   - authenticate client to kernel
-     *   - map the frame buffer, SAREA, etc.
-     *   - close the kernel device driver
-     */
-    int fd;
-
-    /**
-     * Device-dependent private information (not stored in the SAREA).
-     *
-     * This pointer is never touched by the DRI layer.
-     */
-    void *driverPrivate;
-
-    void *loaderPrivate;
-
-    int max_gl_core_version;
-    int max_gl_compat_version;
-    int max_gl_es1_version;
-    int max_gl_es2_version;
-
-    const __DRIextension **extensions;
-
-    const __DRIswrastLoaderExtension *swrast_loader;
-    const __DRIkopperLoaderExtension *kopper_loader;
-
-    struct {
-	/* Flag to indicate that this is a DRI2 screen.  Many of the above
-	 * fields will not be valid or initializaed in that case. */
-	const __DRIdri2LoaderExtension *loader;
-	const __DRIimageLookupExtension *image;
-	const __DRIuseInvalidateExtension *useInvalidate;
-        const __DRIbackgroundCallableExtension *backgroundCallable;
-    } dri2;
-
-    struct {
-        const __DRIimageLoaderExtension *loader;
-    } image;
-
-    struct {
-       const __DRImutableRenderBufferLoaderExtension *loader;
-    } mutableRenderBuffer;
-
-    driOptionCache optionInfo;
-    driOptionCache optionCache;
-
-    unsigned int api_mask;
-};
 
 extern uint32_t
 driGLFormatToImageFormat(mesa_format format);
