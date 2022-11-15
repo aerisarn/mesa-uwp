@@ -61,7 +61,7 @@ dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_static_loop_write_d
 dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_static_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_static_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_static_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_loop_read_fragment,Timeout
+dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_dynamic_loop_read_fragment,Fail
@@ -72,7 +72,7 @@ dEQP-GLES2.functional.shaders.indexing.tmp_array.float_static_loop_write_dynamic
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_static_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_static_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_static_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_read_fragment,Timeout
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_vertex,Fail
@@ -84,7 +84,7 @@ dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_static_loop_write_dynamic_
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_static_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_static_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_static_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_loop_read_fragment,Timeout
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_vertex,Fail
@@ -96,7 +96,7 @@ dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_static_loop_write_dynamic_
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_static_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_static_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_static_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_loop_read_fragment,Timeout
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_loop_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_vertex,Fail
