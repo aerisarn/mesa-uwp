@@ -3338,7 +3338,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
           */
          radv_load_ds_clear_metadata(cmd_buffer, iview);
       }
-   } else if (render->vrs_att.iview && radv_cmd_buffer_get_vrs_image(cmd_buffer)) {
+   } else if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3 &&
+              render->vrs_att.iview && radv_cmd_buffer_get_vrs_image(cmd_buffer)) {
       /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have to
        * bind our internal depth buffer that contains the VRS data as part of HTILE.
        */
@@ -7062,7 +7063,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
    render->vrs_texel_size = vrs_texel_size;
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
 
-   if (render->vrs_att.iview) {
+   if (render->vrs_att.iview && cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3) {
       if (render->ds_att.iview) {
          /* When we have a VRS attachment and a depth/stencil attachment, we just need to copy the
           * VRS rates to the HTILE buffer of the attachment.

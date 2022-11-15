@@ -344,6 +344,8 @@ radv_use_fmask_for_image(const struct radv_device *device, const struct radv_ima
 static inline bool
 radv_use_htile_for_image(const struct radv_device *device, const struct radv_image *image)
 {
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+
    /* TODO:
     * - Investigate about mips+layers.
     * - Enable on other gens.
@@ -357,11 +359,11 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
       return false;
 
    /* Do not enable HTILE for very small images because it seems less performant but make sure it's
-    * allowed with VRS attachments because we need HTILE.
+    * allowed with VRS attachments because we need HTILE on GFX10.3.
     */
    if (image->info.width * image->info.height < 8 * 8 &&
        !(device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS) &&
-       !device->attachment_vrs_enabled)
+       !(gfx_level == GFX10_3 && device->attachment_vrs_enabled))
       return false;
 
    return (image->info.levels == 1 || use_htile_for_mips) && !image->shareable;
