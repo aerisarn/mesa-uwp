@@ -719,14 +719,14 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    /* Create a new drawable */
    if (kopper) {
       pdp->driDrawable =
-         (*kopper->createNewDrawable) (psc->driScreen, config->driConfig, pdp, !(type & GLX_WINDOW_BIT));
+         kopper->createNewDrawable(psc->driScreen, config->driConfig, pdp, !(type & GLX_WINDOW_BIT));
 
       pdp->swapInterval = dri_get_initial_swap_interval(psc->driScreen, psc->config);
       psc->kopper->setSwapInterval(pdp->driDrawable, pdp->swapInterval);
    }
    else
       pdp->driDrawable =
-         (*swrast->createNewDrawable) (psc->driScreen, config->driConfig, pdp);
+         swrast->createNewDrawable(psc->driScreen, config->driConfig, pdp);
 
    if (!pdp->driDrawable) {
       XDestroyDrawable(pdp, psc->base.dpy, xDrawable);
