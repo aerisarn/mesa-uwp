@@ -55,6 +55,10 @@
 extern const __DRIimageExtension driVkImageExtension;
 extern const __DRIimageExtension driVkImageExtensionSw;
 
+static struct dri_drawable *
+kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
+                       boolean isPixmap, void *loaderPrivate);
+
 static void
 kopper_flush_drawable(__DRIdrawable *dPriv)
 {
@@ -166,6 +170,8 @@ kopper_init_screen(struct dri_screen *screen)
       screen->validate_egl_image = dri2_validate_egl_image;
       screen->lookup_egl_image_validated = dri2_lookup_egl_image_validated;
    }
+
+   screen->create_drawable = kopper_create_drawable;
 
    return configs;
 fail:
@@ -812,13 +818,16 @@ kopper_flush_swapbuffers(struct dri_context *ctx,
    /* does this actually need to do anything? */
 }
 
+static void
+kopper_swap_buffers(struct dri_drawable *drawable);
+
 static struct dri_drawable *
-kopper_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
-                     boolean isPixmap, void *loaderPrivate)
+kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
+                       boolean isPixmap, void *loaderPrivate)
 {
    /* always pass !pixmap because it isn't "handled" or relevant */
-   struct dri_drawable *drawable = dri_create_buffer(screen, visual, false,
-                                                     loaderPrivate);
+   struct dri_drawable *drawable = dri_create_drawable(screen, visual, false,
+                                                       loaderPrivate);
    if (!drawable)
       return NULL;
 
@@ -832,6 +841,7 @@ kopper_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
    drawable->flush_frontbuffer = kopper_flush_frontbuffer;
    drawable->update_tex_buffer = kopper_update_tex_buffer;
    drawable->flush_swapbuffers = kopper_flush_swapbuffers;
+   drawable->swap_buffers = kopper_swap_buffers;
 
    drawable->info.has_alpha = visual->alphaBits > 0;
    if (screen->kopper_loader->SetSurfaceCreateInfo)
@@ -898,7 +908,7 @@ kopperCreateNewDrawable(__DRIscreen *psp,
 
     struct dri_screen *screen = dri_screen(psp);
     struct dri_drawable *drawable =
-       screen->driver->CreateBuffer(screen, &config->modes, is_pixmap, data);
+       screen->create_drawable(screen, &config->modes, is_pixmap, data);
 
     return opaque_dri_drawable(drawable);
 }
@@ -948,11 +958,9 @@ const __DRIkopperExtension driKopperExtension = {
    .queryBufferAge             = kopperQueryBufferAge,
 };
 
-static const struct __DRIDriverVtableExtensionRec galliumvk_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
+static const struct __DRIBackendVtableExtensionRec galliumvk_vtable = {
+   .base = { __DRI_BACKEND_VTABLE, 1 },
    .InitScreen = kopper_init_screen,
-   .CreateBuffer = kopper_create_buffer,
-   .SwapBuffers = kopper_swap_buffers,
 };
 
 const __DRIextension *galliumvk_driver_extensions[] = {

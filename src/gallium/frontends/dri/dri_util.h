@@ -27,27 +27,8 @@
  * \file dri_util.h
  * DRI utility functions definitions.
  *
- * This module acts as glue between GLX and the actual hardware driver.  A DRI
- * driver doesn't really \e have to use any of this - it's optional.  But, some
- * useful stuff is done here that otherwise would have to be duplicated in most
- * drivers.
- *
- * Basically, these utility functions take care of some of the dirty details of
- * screen initialization, context creation, context binding, DRM setup, etc.
- *
- * These functions are compiled into each DRI driver so libGL.so knows nothing
- * about them.
- *
- * \sa dri_util.c.
- *
  * \author Kevin E. Martin <kevin@precisioninsight.com>
  * \author Brian Paul <brian@precisioninsight.com>
- */
-
-/**
- * The following structs are shared between DRISW and DRI2, the DRISW structs
- * are essentially base classes of the DRI2 structs. DRISW needs to compile on
- * platforms without DRM, so keep the structs opaque to DRM.
  */
 
 #ifndef _DRI_UTIL_H_
@@ -62,29 +43,14 @@
 #include "util/xmlconfig.h"
 #include <stdbool.h>
 
-#define __DRI_DRIVER_VTABLE "DRI_DriverVtable"
-
 struct dri_screen;
 
-typedef struct __DRIDriverVtableExtensionRec {
+#define __DRI_BACKEND_VTABLE "DRI_DriverVtable"
+
+typedef struct __DRIBackendVtableExtensionRec {
     __DRIextension base;
-
     const __DRIconfig **(*InitScreen)(struct dri_screen *screen);
-
-    struct dri_drawable *(*CreateBuffer)(struct dri_screen *screen,
-                                         const struct gl_config *glVis,
-                                         GLboolean pixmapBuffer,
-                                         void *loaderPrivate);
-
-    void (*SwapBuffers)(struct dri_drawable *drawable);
-
-    __DRIbuffer *(*AllocateBuffer)(struct dri_screen *screen,
-                                   unsigned int attachment,
-                                   unsigned int format,
-                                   int width, int height);
-
-    void (*ReleaseBuffer)(__DRIbuffer *buffer);
-} __DRIDriverVtableExtension;
+} __DRIBackendVtableExtension;
 
 struct __DRIconfigRec {
     struct gl_config modes;

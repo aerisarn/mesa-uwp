@@ -53,9 +53,6 @@ struct dri_screen
    struct st_manager base;
 
    /* dri */
-   /* Backend-specific entrypoints (dri, swrast, kopper) */
-   const struct __DRIDriverVtableExtensionRec *driver;
-
    /* Current screen's number */
    int myNum;
 
@@ -140,6 +137,18 @@ struct dri_screen
    bool has_dmabuf;
    bool has_modifiers;
    bool is_sw;
+
+   struct dri_drawable *(*create_drawable)(struct dri_screen *screen,
+                                           const struct gl_config *glVis,
+                                           GLboolean pixmapBuffer,
+                                           void *loaderPrivate);
+
+   __DRIbuffer *(*allocate_buffer)(struct dri_screen *screen,
+                                   unsigned int attachment,
+                                   unsigned int format,
+                                   int width, int height);
+
+   void (*release_buffer)(__DRIbuffer *buffer);
 };
 
 /** cast wrapper */

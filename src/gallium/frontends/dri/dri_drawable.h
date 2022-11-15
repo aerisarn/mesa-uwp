@@ -112,6 +112,8 @@ struct dri_drawable
                              struct pipe_resource *res);
    void (*flush_swapbuffers)(struct dri_context *ctx,
                              struct dri_drawable *drawable);
+
+   void (*swap_buffers)(struct dri_drawable *drawable);
 };
 
 /* Typecast the opaque pointer to our own type. */
@@ -138,8 +140,8 @@ dri_get_drawable(struct dri_drawable *drawable)
  * dri_drawable.c
  */
 struct dri_drawable *
-dri_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
-                  bool isPixmap, void *loaderPrivate);
+dri_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
+                    bool isPixmap, void *loaderPrivate);
 
 void
 dri_put_drawable(struct dri_drawable *drawable);

@@ -143,8 +143,8 @@ dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
  * This is called when we need to set up GL rendering to a new X window.
  */
 struct dri_drawable *
-dri_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
-                  bool isPixmap, void *loaderPrivate)
+dri_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
+                    bool isPixmap, void *loaderPrivate)
 {
    struct dri_drawable *drawable = NULL;
 
@@ -184,7 +184,7 @@ fail:
 }
 
 static void
-dri_destroy_buffer(struct dri_drawable *drawable)
+dri_destroy_drawable(struct dri_drawable *drawable)
 {
    struct dri_screen *screen = drawable->screen;
    int i;
@@ -212,7 +212,7 @@ dri_put_drawable(struct dri_drawable *drawable)
         if (drawable->refcount)
             return;
 
-        dri_destroy_buffer(drawable);
+        dri_destroy_drawable(drawable);
     }
 }
 

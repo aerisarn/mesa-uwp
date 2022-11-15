@@ -2275,6 +2275,23 @@ dri2_init_screen_extensions(struct dri_screen *screen,
    assert(!*nExt);
 }
 
+static struct dri_drawable *
+dri2_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
+                     boolean isPixmap, void *loaderPrivate)
+{
+   struct dri_drawable *drawable = dri_create_drawable(screen, visual, isPixmap,
+                                                       loaderPrivate);
+   if (!drawable)
+      return NULL;
+
+   drawable->allocate_textures = dri2_allocate_textures;
+   drawable->flush_frontbuffer = dri2_flush_frontbuffer;
+   drawable->update_tex_buffer = dri2_update_tex_buffer;
+   drawable->flush_swapbuffers = dri2_flush_swapbuffers;
+
+   return drawable;
+}
+
 /**
  * This is the driver specific part of the createNewScreen entry point.
  *
@@ -2319,6 +2336,10 @@ dri2_init_screen(struct dri_screen *screen)
       screen->validate_egl_image = dri2_validate_egl_image;
       screen->lookup_egl_image_validated = dri2_lookup_egl_image_validated;
    }
+
+   screen->create_drawable = dri2_create_drawable;
+   screen->allocate_buffer = dri2_allocate_buffer;
+   screen->release_buffer = dri2_release_buffer;
 
    return configs;
 
@@ -2386,35 +2407,14 @@ release_pipe:
    return NULL;
 }
 
-static struct dri_drawable *
-dri2_create_buffer(struct dri_screen *screen, const struct gl_config *visual,
-                   boolean isPixmap, void *loaderPrivate)
-{
-   struct dri_drawable *drawable = dri_create_buffer(screen, visual, isPixmap,
-                                                     loaderPrivate);
-   if (!drawable)
-      return NULL;
-
-   drawable->allocate_textures = dri2_allocate_textures;
-   drawable->flush_frontbuffer = dri2_flush_frontbuffer;
-   drawable->update_tex_buffer = dri2_update_tex_buffer;
-   drawable->flush_swapbuffers = dri2_flush_swapbuffers;
-
-   return drawable;
-}
-
 /**
  * DRI driver virtual function table.
  *
  * DRI versions differ in their implementation of init_screen and swap_buffers.
  */
-static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
+static const struct __DRIBackendVtableExtensionRec galliumdrm_vtable = {
+   .base = { __DRI_BACKEND_VTABLE, 1 },
    .InitScreen = dri2_init_screen,
-   .CreateBuffer = dri2_create_buffer,
-
-   .AllocateBuffer = dri2_allocate_buffer,
-   .ReleaseBuffer  = dri2_release_buffer,
 };
 
 /* This is the table of extensions that the loader will dlsym() for. */
@@ -2434,13 +2434,9 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
  * hook. The latter is used to explicitly initialise the kms_swrast driver
  * rather than selecting the approapriate driver as suggested by the loader.
  */
-static const struct __DRIDriverVtableExtensionRec dri_swrast_kms_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
+static const struct __DRIBackendVtableExtensionRec dri_swrast_kms_vtable = {
+   .base = { __DRI_BACKEND_VTABLE, 1 },
    .InitScreen = dri_swrast_kms_init_screen,
-   .CreateBuffer = dri2_create_buffer,
-
-   .AllocateBuffer = dri2_allocate_buffer,
-   .ReleaseBuffer  = dri2_release_buffer,
 };
 
 const __DRIextension *dri_swrast_kms_driver_extensions[] = {

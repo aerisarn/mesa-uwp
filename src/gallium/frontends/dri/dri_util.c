@@ -110,6 +110,7 @@ driCreateNewScreen2(int scrn, int fd,
 {
     static const __DRIextension *emptyExtensionList[] = { NULL };
     struct dri_screen *screen;
+    const struct __DRIBackendVtableExtensionRec *backend = NULL;
 
     screen = CALLOC_STRUCT(dri_screen);
     if (!screen)
@@ -117,9 +118,8 @@ driCreateNewScreen2(int scrn, int fd,
 
     assert(driver_extensions);
     for (int i = 0; driver_extensions[i]; i++) {
-       if (strcmp(driver_extensions[i]->name, __DRI_DRIVER_VTABLE) == 0) {
-          screen->driver =
-             (__DRIDriverVtableExtension *)driver_extensions[i];
+       if (strcmp(driver_extensions[i]->name, __DRI_BACKEND_VTABLE) == 0) {
+          backend = (__DRIBackendVtableExtension *)driver_extensions[i];
        }
     }
 
@@ -142,7 +142,7 @@ driCreateNewScreen2(int scrn, int fd,
     driParseConfigFiles(&screen->optionCache, &screen->optionInfo, screen->myNum,
                         "dri2", NULL, NULL, NULL, 0, NULL, 0);
 
-    *driver_configs = screen->driver->InitScreen(screen);
+    *driver_configs = backend->InitScreen(screen);
     if (*driver_configs == NULL) {
         free(screen);
         return NULL;
@@ -745,7 +745,7 @@ driCreateNewDrawable(__DRIscreen *psp,
 
     struct dri_screen *screen = dri_screen(psp);
     struct dri_drawable *drawable =
-       screen->driver->CreateBuffer(screen, &config->modes, GL_FALSE, data);
+       screen->create_drawable(screen, &config->modes, GL_FALSE, data);
 
     return opaque_dri_drawable(drawable);
 }
@@ -763,8 +763,7 @@ dri2AllocateBuffer(__DRIscreen *psp,
 {
    struct dri_screen *screen = dri_screen(psp);
 
-   return screen->driver->AllocateBuffer(screen, attachment, format,
-                                         width, height);
+   return screen->allocate_buffer(screen, attachment, format, width, height);
 }
 
 static void
@@ -772,7 +771,7 @@ dri2ReleaseBuffer(__DRIscreen *psp, __DRIbuffer *buffer)
 {
    struct dri_screen *screen = dri_screen(psp);
 
-   screen->driver->ReleaseBuffer(buffer);
+   screen->release_buffer(buffer);
 }
 
 
@@ -848,7 +847,7 @@ driSwapBuffers(__DRIdrawable *pdp)
 
    assert(drawable->screen->swrast_loader);
 
-   drawable->screen->driver->SwapBuffers(drawable);
+   drawable->swap_buffers(drawable);
 }
 
 /** Core interface */

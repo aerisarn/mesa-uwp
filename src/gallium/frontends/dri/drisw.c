@@ -523,6 +523,24 @@ static const struct drisw_loader_funcs drisw_shm_lf = {
    .put_image_shm = drisw_put_image_shm
 };
 
+static struct dri_drawable *
+drisw_create_drawable(struct dri_screen *screen, const struct gl_config * visual,
+                      boolean isPixmap, void *loaderPrivate)
+{
+   struct dri_drawable *drawable = dri_create_drawable(screen, visual, isPixmap,
+                                                       loaderPrivate);
+   if (!drawable)
+      return NULL;
+
+   drawable->allocate_textures = drisw_allocate_textures;
+   drawable->update_drawable_info = drisw_update_drawable_info;
+   drawable->flush_frontbuffer = drisw_flush_frontbuffer;
+   drawable->update_tex_buffer = drisw_update_tex_buffer;
+   drawable->swap_buffers = drisw_swap_buffers;
+
+   return drawable;
+}
+
 static const __DRIconfig **
 drisw_init_screen(struct dri_screen *screen)
 {
@@ -574,6 +592,8 @@ drisw_init_screen(struct dri_screen *screen)
       screen->lookup_egl_image_validated = dri2_lookup_egl_image_validated;
    }
 
+   screen->create_drawable = drisw_create_drawable;
+
    return configs;
 fail:
    dri_destroy_screen_helper(screen);
@@ -583,33 +603,14 @@ fail:
    return NULL;
 }
 
-static struct dri_drawable *
-drisw_create_buffer(struct dri_screen *screen, const struct gl_config * visual,
-                    boolean isPixmap, void *loaderPrivate)
-{
-   struct dri_drawable *drawable = dri_create_buffer(screen, visual, isPixmap,
-                                                     loaderPrivate);
-   if (!drawable)
-      return NULL;
-
-   drawable->allocate_textures = drisw_allocate_textures;
-   drawable->update_drawable_info = drisw_update_drawable_info;
-   drawable->flush_frontbuffer = drisw_flush_frontbuffer;
-   drawable->update_tex_buffer = drisw_update_tex_buffer;
-
-   return drawable;
-}
-
 /**
  * DRI driver virtual function table.
  *
  * DRI versions differ in their implementation of init_screen and swap_buffers.
  */
-static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
-   .base = { __DRI_DRIVER_VTABLE, 1 },
+static const struct __DRIBackendVtableExtensionRec galliumsw_vtable = {
+   .base = { __DRI_BACKEND_VTABLE, 1 },
    .InitScreen = drisw_init_screen,
-   .CreateBuffer = drisw_create_buffer,
-   .SwapBuffers = drisw_swap_buffers,
 };
 
 /* swrast copy sub buffer entrypoint. */
