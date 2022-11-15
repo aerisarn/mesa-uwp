@@ -43,7 +43,13 @@ option(
   value : false,
   description : 'Build against android-stub',
 )
-
+option(
+  'android-libbacktrace',
+  type : 'combo',
+  value : 'auto',
+  choices : ['auto', 'true', 'false'],
+  description : 'Use Android\'s libbacktrace',
+)
 option(
   'dri3',
   type : 'feature',
