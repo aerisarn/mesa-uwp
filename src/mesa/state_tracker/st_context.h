@@ -158,6 +158,7 @@ struct st_context
    boolean has_indirect_partial_stride;
    boolean has_occlusion_query;
    boolean has_single_pipe_stat;
+   boolean has_pipeline_stat;
    boolean has_indep_blend_func;
    boolean needs_rgb_dst_alpha_override;
    boolean can_dither;

@@ -629,6 +629,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       screen->get_param(screen, PIPE_CAP_OCCLUSION_QUERY);
    st->has_single_pipe_stat =
       screen->get_param(screen, PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE);
+   st->has_pipeline_stat =
+      screen->get_param(screen, PIPE_CAP_QUERY_PIPELINE_STATISTICS);
    st->has_indep_blend_func =
       screen->get_param(screen, PIPE_CAP_INDEP_BLEND_FUNC);
    st->needs_rgb_dst_alpha_override =
