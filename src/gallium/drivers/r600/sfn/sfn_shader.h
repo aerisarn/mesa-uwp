@@ -243,6 +243,8 @@ public:
 
    PRegister emit_load_to_register(PVirtualValue src);
 
+   virtual unsigned image_size_const_offset() { return 0;}
+
 protected:
    enum ESlots {
       es_face,

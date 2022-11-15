@@ -51,7 +51,8 @@ FragmentShader::FragmentShader(const r600_shader_key& key):
     m_pos_input(127, false),
     m_fs_write_all(false),
     m_apply_sample_mask(key.ps.apply_sample_id_mask),
-    m_rat_base(key.ps.nr_cbufs)
+    m_rat_base(key.ps.nr_cbufs),
+    m_image_size_const_offset(key.ps.image_size_const_offset)
 {
 }
 

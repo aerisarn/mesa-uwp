@@ -455,7 +455,7 @@ Shader::translate_from_nir(nir_shader *nir,
       break;
    case MESA_SHADER_KERNEL:
    case MESA_SHADER_COMPUTE:
-      shader = new ComputeShader(key);
+      shader = new ComputeShader(key, BITSET_COUNT(nir->info.samplers_used));
       break;
    default:
       return nullptr;
