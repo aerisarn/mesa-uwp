@@ -177,7 +177,9 @@ To do so, follow `GitLab's instructions
 register your personal GitLab runner in your Mesa fork.  Then, tell
 Mesa how many jobs it should serve (``concurrent=``) and how many
 cores those jobs should use (``FDO_CI_CONCURRENT=``) by editing these
-lines in ``/etc/gitlab-runner/config.toml``, for example::
+lines in ``/etc/gitlab-runner/config.toml``, for example:
+
+.. code-block:: toml
 
   concurrent = 2
 
