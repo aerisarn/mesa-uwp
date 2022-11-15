@@ -576,6 +576,8 @@
       when: on_success
     - changes:
       - src/microsoft/**/*
+      - src/gallium/frontends/va/*
+      - src/gallium/targets/va/*
       when: on_success
     - changes:
         *radv_file_list
