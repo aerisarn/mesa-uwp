@@ -5071,6 +5071,17 @@ pvr_map_clip_rects(struct pvr_transfer_custom_mapping *custom_mapping)
    }
 }
 
+static bool pvr_extend_height(const VkRect2D *rect,
+                              const uint32_t height,
+                              const uint32_t unwind_src)
+{
+   if (rect->offset.x >= (int32_t)unwind_src)
+      return false;
+
+   return (rect->offset.y > (int32_t)height) ||
+          ((rect->offset.y + rect->extent.height) > (int32_t)height);
+}
+
 static void
 pvr_generate_custom_mapping(uint32_t src_stride,
                             uint32_t src_width,
@@ -5114,7 +5125,38 @@ pvr_generate_custom_mapping(uint32_t src_stride,
     * are split to two sources.
     */
    if (custom_mapping->texel_unwind_src > 0U) {
-      pvr_finishme("Implement pvr_generate_custom_mapping().");
+      for (uint32_t i = 0; i < custom_mapping->pass_count; i++) {
+         struct pvr_transfer_pass *pass = &custom_mapping->passes[i];
+
+         for (uint32_t j = 0; j < pass->source_count; j++) {
+            struct pvr_transfer_wa_source *src = &pass->sources[j];
+
+            for (uint32_t k = 0; k < src->mapping_count; k++) {
+               VkRect2D *src_rect = &src->mappings[i].src_rect;
+               bool extend_height =
+                  pvr_extend_height(src_rect,
+                                    src_height,
+                                    custom_mapping->texel_unwind_src);
+
+               if (src->mapping_count == 1) {
+                  src->extend_height = extend_height;
+               } else if (!src->extend_height && extend_height) {
+                  struct pvr_transfer_wa_source *new_src =
+                     pvr_acquire_source(pass, src->src_offset, extend_height);
+
+                  new_src->mappings[new_src->mapping_count] = src->mappings[k];
+                  new_src->src_offset = src->src_offset;
+
+                  for (uint32_t l = i + 1; l < src->mapping_count; l++)
+                     src->mappings[l - 1] = src->mappings[l];
+
+                  new_src->mapping_count++;
+                  src->mapping_count--;
+                  k--;
+               }
+            }
+         }
+      }
    }
 }
 
