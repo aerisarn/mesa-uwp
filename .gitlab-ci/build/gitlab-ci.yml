@@ -456,7 +456,6 @@ debian-clang:
       -Wno-error=implicit-const-int-float-conversion
       -Wno-error=overloaded-virtual
       -Wno-error=tautological-constant-out-of-range-compare
-      -Wno-error=unused-const-variable
       -Wno-error=unused-private-field
     DRI_LOADERS: >
       -D glx=dri
