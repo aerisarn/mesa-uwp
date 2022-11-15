@@ -570,6 +570,18 @@ dri_flush(__DRIcontext *cPriv,
 }
 
 /**
+ * DRI2 flush extension.
+ */
+void
+dri_flush_drawable(__DRIdrawable *dPriv)
+{
+   struct dri_context *ctx = dri_get_current();
+
+   if (ctx)
+      dri_flush(opaque_dri_context(ctx), dPriv, __DRI2_FLUSH_DRAWABLE, -1);
+}
+
+/**
  * dri_throttle - A DRI2ThrottleExtension throttling function.
  */
 static void

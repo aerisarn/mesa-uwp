@@ -158,6 +158,9 @@ dri_flush(__DRIcontext *cPriv,
           unsigned flags,
           enum __DRI2throttleReason reason);
 
+void
+dri_flush_drawable(__DRIdrawable *dPriv);
+
 extern const __DRItexBufferExtension driTexBufferExtension;
 extern const __DRI2throttleExtension dri2ThrottleExtension;
 #endif

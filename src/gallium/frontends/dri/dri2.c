@@ -68,18 +68,6 @@ dri2_buffer(__DRIbuffer * driBufferPriv)
 }
 
 /**
- * DRI2 flush extension.
- */
-static void
-dri2_flush_drawable(__DRIdrawable *dPriv)
-{
-   struct dri_context *ctx = dri_get_current();
-
-   if (ctx)
-      dri_flush(opaque_dri_context(ctx), dPriv, __DRI2_FLUSH_DRAWABLE, -1);
-}
-
-/**
  * Invalidate the drawable.
  *
  * How we get here is listed below.
@@ -115,7 +103,7 @@ dri2_invalidate_drawable(__DRIdrawable *dPriv)
 static const __DRI2flushExtension dri2FlushExtension = {
     .base = { __DRI2_FLUSH, 4 },
 
-    .flush                = dri2_flush_drawable,
+    .flush                = dri_flush_drawable,
     .invalidate           = dri2_invalidate_drawable,
     .flush_with_flags     = dri_flush,
 };

@@ -59,13 +59,6 @@ static struct dri_drawable *
 kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
                        boolean isPixmap, void *loaderPrivate);
 
-static void
-kopper_flush_drawable(__DRIdrawable *dPriv)
-{
-   dri_flush(opaque_dri_context(dri_get_current()), dPriv,
-             __DRI2_FLUSH_DRAWABLE, -1);
-}
-
 static inline void
 kopper_invalidate_drawable(__DRIdrawable *dPriv)
 {
@@ -79,7 +72,7 @@ kopper_invalidate_drawable(__DRIdrawable *dPriv)
 static const __DRI2flushExtension driVkFlushExtension = {
     .base = { __DRI2_FLUSH, 4 },
 
-    .flush                = kopper_flush_drawable,
+    .flush                = dri_flush_drawable,
     .invalidate           = kopper_invalidate_drawable,
     .flush_with_flags     = dri_flush,
 };
