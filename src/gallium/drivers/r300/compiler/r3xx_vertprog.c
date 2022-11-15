@@ -32,7 +32,6 @@
 #include "radeon_program.h"
 #include "radeon_program_alu.h"
 #include "radeon_swizzle.h"
-#include "radeon_emulate_branches.h"
 #include "radeon_remove_constants.h"
 #include "radeon_regalloc.h"
 #include "radeon_list.h"
@@ -907,7 +906,6 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 	struct radeon_compiler_pass vs_list[] = {
 		/* NAME				DUMP PREDICATE	FUNCTION			PARAM */
 		{"add artificial outputs",	0, 1,		rc_vs_add_artificial_outputs,	NULL},
-		{"emulate branches",		1, !is_r500,	rc_emulate_branches,		NULL},
 		{"emulate negative addressing", 1, 1,		rc_emulate_negative_addressing,	NULL},
 		{"native rewrite",		1, is_r500,	rc_local_transform,		alu_rewrite_r500},
 		{"native rewrite",		1, !is_r500,	rc_local_transform,		alu_rewrite_r300},
