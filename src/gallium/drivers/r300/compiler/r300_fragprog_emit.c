@@ -157,7 +157,11 @@ static int emit_alu(struct r300_emit_state * emit, struct rc_pair_instruction* i
 	PROG_CODE;
 
 	if (code->alu.length >= c->Base.max_alu_insts) {
-		error("Too many ALU instructions");
+		/* rc_recompute_ips does not give an exact count, because it counts extra stuff
+		 * like BEGINTEX, but here it is intended to be only approximative anyway,
+		 * just to give some idea how close to the limit we are. */
+		rc_error(&c->Base, "Too many ALU instructions used: %u, max: %u.\n",
+		         rc_recompute_ips(&c->Base), c->Base.max_alu_insts);
 		return 0;
 	}
 
