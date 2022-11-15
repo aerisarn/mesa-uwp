@@ -82,9 +82,6 @@ typedef struct __DRIDriverVtableExtensionRec {
                                     int width, int height);
 
     void (*ReleaseBuffer) (__DRIscreen *screenPrivate, __DRIbuffer *buffer);
-
-    void (*CopySubBuffer)(__DRIdrawable *driDrawPriv, int x, int y,
-                          int w, int h);
 } __DRIDriverVtableExtension;
 
 struct __DRIconfigRec {

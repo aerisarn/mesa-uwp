@@ -645,7 +645,6 @@ static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
    .InitScreen = drisw_init_screen,
    .CreateBuffer = drisw_create_buffer,
    .SwapBuffers = drisw_swap_buffers,
-   .CopySubBuffer = drisw_copy_sub_buffer,
 };
 
 /* swrast copy sub buffer entrypoint. */
@@ -654,7 +653,7 @@ static void driswCopySubBuffer(__DRIdrawable *pdp, int x, int y,
 {
    assert(pdp->driScreenPriv->swrast_loader);
 
-   pdp->driScreenPriv->driver->CopySubBuffer(pdp, x, y, w, h);
+   drisw_copy_sub_buffer(pdp, x, y, w, h);
 }
 
 /* for swrast only */

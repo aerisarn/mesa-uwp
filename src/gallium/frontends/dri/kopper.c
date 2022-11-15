@@ -1048,7 +1048,6 @@ static const struct __DRIDriverVtableExtensionRec galliumvk_vtable = {
    .InitScreen = kopper_init_screen,
    .CreateBuffer = kopper_create_buffer,
    .SwapBuffers = kopper_swap_buffers,
-   .CopySubBuffer = NULL,
 };
 
 const __DRIextension *galliumvk_driver_extensions[] = {
