@@ -3044,6 +3044,15 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
                (struct pvr_const_map_entry_vertex_attribute_address *)entries;
          const struct pvr_vertex_binding *const binding =
             &state->vertex_bindings[attribute->binding_index];
+         /* In relation to the Vulkan spec. 22.4. Vertex Input Address
+          * Calculation:
+          *    Adding binding->offset corresponds to calculating the
+          *    `bufferBindingAddress`. Adding attribute->offset corresponds to
+          *    adding the `attribDesc.offset`. The `effectiveVertexOffset` is
+          *    taken care by the PDS program itself with a DDMAD which will
+          *    multiply the vertex/instance idx with the binding's stride and
+          *    add that to the address provided here.
+          */
          const pvr_dev_addr_t addr =
             PVR_DEV_ADDR_OFFSET(binding->buffer->dev_addr,
                                 binding->offset + attribute->offset);

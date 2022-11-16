@@ -744,7 +744,8 @@ void pvr_pds_generate_vertex_primary_program(
       uint32_t control_word;
       struct pvr_const_map_entry_literal32 *literal_entry;
 
-      struct pvr_pds_vertex_dma *vertex_dma = &input_program->dma_list[dma];
+      const struct pvr_pds_vertex_dma *vertex_dma =
+         &input_program->dma_list[dma];
       bool last_dma = (++running_dma_count == total_dma_count);
 
       pvr_debug_pds_note("Vertex Attribute DMA %d (last=%d)", dma, last_dma);

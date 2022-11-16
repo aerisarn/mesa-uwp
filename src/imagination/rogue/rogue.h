@@ -2879,6 +2879,9 @@ typedef struct rogue_build_data {
       bool phas; /* Indicates the presence of PHAS instruction. */
    } fs;
    struct rogue_vs_build_data {
+      /* TODO: Should these be removed since the driver allocates the vertex
+       * inputs?
+       */
       rogue_vertex_inputs inputs;
       unsigned num_vertex_input_regs; /* Final number of inputs. */
 

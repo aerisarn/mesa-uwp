@@ -49,6 +49,7 @@
 #include "util/u_dynarray.h"
 #include "util/u_math.h"
 #include "vk_alloc.h"
+#include "vk_format.h"
 #include "vk_graphics_state.h"
 #include "vk_log.h"
 #include "vk_object.h"
@@ -461,26 +462,41 @@ typedef struct pvr_pds_attrib_program (*const pvr_pds_attrib_programs_array_ptr)
 /* If allocator == NULL, the internal one will be used.
  *
  * programs_out_ptr is a pointer to the array where the outputs will be placed.
- * */
+ */
 static VkResult pvr_pds_vertex_attrib_programs_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *const allocator,
    const VkPipelineVertexInputStateCreateInfo *const vertex_input_state,
    uint32_t usc_temp_count,
    const struct rogue_vs_build_data *vs_data,
+
+   /* Needed for the new path. */
+   /* TODO: Remove some of the above once the compiler is hooked up. */
+   const struct pvr_pds_vertex_dma
+      dma_descriptions[static const PVR_MAX_VERTEX_ATTRIB_DMAS],
+   uint32_t dma_count,
+
    pvr_pds_attrib_programs_array_ptr programs_out_ptr)
 {
-   struct pvr_pds_vertex_dma dma_descriptions[PVR_MAX_VERTEX_ATTRIB_DMAS];
+   struct pvr_pds_vertex_dma dma_descriptions_old[PVR_MAX_VERTEX_ATTRIB_DMAS];
+
    struct pvr_pds_attrib_program *const programs_out = *programs_out_ptr;
-   struct pvr_pds_vertex_primary_program_input input = {
-      .dma_list = dma_descriptions,
-   };
+   struct pvr_pds_vertex_primary_program_input input = { 0 };
    VkResult result;
 
-   pvr_pds_vertex_attrib_init_dma_descriptions(vertex_input_state,
-                                               vs_data,
-                                               &dma_descriptions,
-                                               &input.dma_count);
+   const bool old_path = pvr_has_hard_coded_shaders(&device->pdevice->dev_info);
+
+   if (old_path) {
+      pvr_pds_vertex_attrib_init_dma_descriptions(vertex_input_state,
+                                                  vs_data,
+                                                  &dma_descriptions_old,
+                                                  &input.dma_count);
+
+      input.dma_list = dma_descriptions_old;
+   } else {
+      input.dma_list = dma_descriptions;
+      input.dma_count = dma_count;
+   }
 
    pvr_pds_setup_doutu(&input.usc_task_control,
                        0,
@@ -1446,6 +1462,7 @@ pvr_graphics_pipeline_destroy(struct pvr_device *const device,
 static void
 pvr_vertex_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
                       const struct rogue_common_build_data *common_data,
+                      uint32_t vtxin_regs_used,
                       const struct rogue_vs_build_data *vs_data)
 {
    struct pvr_vertex_shader_state *vertex_state =
@@ -1464,7 +1481,7 @@ pvr_vertex_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
    vertex_state->stage_state.has_side_effects = false;
    vertex_state->stage_state.empty_program = false;
 
-   vertex_state->vertex_input_size = vs_data->num_vertex_input_regs;
+   vertex_state->vertex_input_size = vtxin_regs_used;
    vertex_state->vertex_output_size =
       vs_data->num_vertex_outputs * ROGUE_REG_SIZE_BYTES;
    vertex_state->user_clip_planes_mask = 0;
@@ -1628,6 +1645,174 @@ static uint32_t pvr_graphics_pipeline_alloc_shareds(
 
 #undef PVR_DEV_ADDR_SIZE_IN_SH_REGS
 
+static void pvr_graphics_pipeline_alloc_vertex_inputs(
+   const VkPipelineVertexInputStateCreateInfo *const vs_data,
+   rogue_vertex_inputs *const vertex_input_layout_out,
+   unsigned *num_vertex_input_regs_out,
+   pvr_pds_attrib_dma_descriptions_array_ptr dma_descriptions_out_ptr,
+   uint32_t *const dma_count_out)
+{
+   const VkVertexInputBindingDescription
+      *sorted_bindings[PVR_MAX_VERTEX_INPUT_BINDINGS] = { 0 };
+   const VkVertexInputAttributeDescription
+      *sorted_attributes[PVR_MAX_VERTEX_INPUT_BINDINGS] = { 0 };
+
+   rogue_vertex_inputs build_data = {
+      .num_input_vars = vs_data->vertexAttributeDescriptionCount,
+   };
+   uint32_t next_reg_offset = 0;
+
+   struct pvr_pds_vertex_dma *const dma_descriptions =
+      *dma_descriptions_out_ptr;
+   uint32_t dma_count = 0;
+
+   /* Vertex attributes map to the `layout(location = x)` annotation in the
+    * shader where `x` is the attribute's location.
+    * Vertex bindings have NO relation to the shader. They have nothing to do
+    * with the `layout(set = x, binding = y)` notation. They instead indicate
+    * where the data for a collection of vertex attributes comes from. The
+    * application binds a VkBuffer with vkCmdBindVertexBuffers() to a specific
+    * binding number and based on that we'll know which buffer to DMA the data
+    * from, to fill in the collection of vertex attributes.
+    */
+
+   for (uint32_t i = 0; i < vs_data->vertexBindingDescriptionCount; i++) {
+      const VkVertexInputBindingDescription *binding_desc =
+         &vs_data->pVertexBindingDescriptions[i];
+
+      sorted_bindings[binding_desc->binding] = binding_desc;
+   }
+
+   for (uint32_t i = 0; i < vs_data->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *attribute_desc =
+         &vs_data->pVertexAttributeDescriptions[i];
+
+      sorted_attributes[attribute_desc->location] = attribute_desc;
+   }
+
+   for (uint32_t i = 0, j = 0; i < ARRAY_SIZE(sorted_attributes); i++) {
+      if (sorted_attributes[i])
+         sorted_attributes[j++] = sorted_attributes[i];
+   }
+
+   for (uint32_t i = 0; i < vs_data->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *attribute = sorted_attributes[i];
+      const VkVertexInputBindingDescription *binding =
+         sorted_bindings[attribute->binding];
+      const struct util_format_description *fmt_description =
+         vk_format_description(attribute->format);
+      struct pvr_pds_vertex_dma *dma_desc = &dma_descriptions[dma_count];
+      unsigned vtxin_reg_offset;
+
+      /* Reg allocation. */
+
+      vtxin_reg_offset = next_reg_offset;
+      build_data.base[i] = vtxin_reg_offset;
+
+      if (fmt_description->colorspace != UTIL_FORMAT_COLORSPACE_RGB ||
+          fmt_description->layout != UTIL_FORMAT_LAYOUT_PLAIN ||
+          fmt_description->block.bits % 32 != 0 || !fmt_description->is_array) {
+         /* For now we only support formats with 32 bit components since we
+          * don't need to pack/unpack them.
+          */
+         /* TODO: Support any other format with VERTEX_BUFFER_BIT set that
+          * doesn't have 32 bit components if we're advertising any.
+          */
+         assert(false);
+      }
+
+      /* TODO: Check if this is fine with the compiler. Does it want the amount
+       * of components or does it want a size in dwords to figure out how many
+       * vtxin regs are covered. For formats with 32 bit components the
+       * distinction doesn't change anything.
+       */
+      build_data.components[i] =
+         util_format_get_nr_components(fmt_description->format);
+
+      next_reg_offset += build_data.components[i];
+
+      /* DMA setup. */
+
+      /* The PDS program sets up DDMADs to DMA attributes into vtxin regs.
+       *
+       * DDMAD -> Multiply, add, and DOUTD (i.e. DMA from that address).
+       *          DMA source addr = src0 * src1 + src2
+       *          DMA params = src3
+       *
+       * In the PDS program we setup src0 with the binding's stride and src1
+       * with either the instance id or vertex id (both of which get filled by
+       * the hardware). We setup src2 later on once we know which VkBuffer to
+       * DMA the data from so it's saved for later when we patch the data
+       * section.
+       */
+
+      /* TODO: Right now we're setting up a DMA per attribute. In a case where
+       * there are multiple attributes packed into a single binding with
+       * adjacent locations we'd still be DMAing them separately. This is not
+       * great so the DMA setup should be smarter and could do with some
+       * optimization.
+       */
+
+      *dma_desc = (struct pvr_pds_vertex_dma){ 0 };
+
+      /* In relation to the Vulkan spec. 22.4. Vertex Input Address Calculation
+       * this corresponds to `attribDesc.offset`.
+       * The PDS program doesn't do anything with it but just save it in the
+       * PDS program entry.
+       */
+      dma_desc->offset = attribute->offset;
+
+      /* In relation to the Vulkan spec. 22.4. Vertex Input Address Calculation
+       * this corresponds to `bindingDesc.stride`.
+       * The PDS program will calculate the `effectiveVertexOffset` with this
+       * and add it to the address provided in the patched data segment.
+       */
+      dma_desc->stride = binding->stride;
+
+      if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
+         dma_desc->flags = PVR_PDS_VERTEX_DMA_FLAGS_INSTANCE_RATE;
+      else
+         dma_desc->flags = 0;
+
+      /* Size to DMA per vertex attribute. Used to setup src3 in the DDMAD. */
+      assert(fmt_description->block.bits != 0); /* Likely an unsupported fmt. */
+      dma_desc->size_in_dwords = fmt_description->block.bits / 32;
+
+      /* Vtxin reg offset to start DMAing into. */
+      dma_desc->destination = vtxin_reg_offset;
+
+      /* Will be used by the driver to figure out buffer address to patch in the
+       * data section. I.e. which binding we should DMA from.
+       */
+      dma_desc->binding_index = attribute->binding;
+
+      /* We don't currently support VK_EXT_vertex_attribute_divisor so no
+       * repeating of instance-rate vertex attributes needed. We should always
+       * move on to the next vertex attribute.
+       */
+      dma_desc->divisor = 1;
+
+      /* Will be used to generate PDS code that takes care of robust buffer
+       * access, and later on by the driver to write the correct robustness
+       * buffer address to DMA the fallback values from.
+       */
+      dma_desc->robustness_buffer_offset =
+         pvr_get_robustness_buffer_format_offset(attribute->format);
+
+      /* Used by later on by the driver to figure out if the buffer is being
+       * accessed out of bounds, for robust buffer access.
+       */
+      dma_desc->component_size_in_bytes =
+         fmt_description->block.bits / fmt_description->nr_channels / 8;
+
+      dma_count++;
+   };
+
+   *vertex_input_layout_out = build_data;
+   *num_vertex_input_regs_out = next_reg_offset;
+   *dma_count_out = dma_count;
+}
+
 /* Compiles and uploads shaders and PDS programs. */
 static VkResult
 pvr_graphics_pipeline_compile(struct pvr_device *const device,
@@ -1661,9 +1846,22 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    const bool old_path = pvr_has_hard_coded_shaders(&device->pdevice->dev_info);
 
    /* Vars needed for the new path. */
+   struct pvr_pds_vertex_dma vtx_dma_descriptions[PVR_MAX_VERTEX_ATTRIB_DMAS];
+   uint32_t vtx_dma_count = 0;
+   /* TODO: This should be used by the compiler for compiler the vertex shader.
+    */
+   rogue_vertex_inputs vertex_input_layout;
+   unsigned vertex_input_reg_count = 0;
+
    uint32_t sh_count[PVR_STAGE_ALLOCATION_COUNT] = { 0 };
 
-   if (!old_path)
+   if (!old_path) {
+      pvr_graphics_pipeline_alloc_vertex_inputs(vertex_input_state,
+                                                &vertex_input_layout,
+                                                &vertex_input_reg_count,
+                                                &vtx_dma_descriptions,
+                                                &vtx_dma_count);
+
       for (enum pvr_stage_allocation pvr_stage =
               PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY;
            pvr_stage < PVR_STAGE_ALLOCATION_COMPUTE;
@@ -1673,6 +1871,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
             layout,
             pvr_stage,
             &layout->sh_reg_layout_per_stage[pvr_stage]);
+   }
 
    /* Setup shared build context. */
    ctx = rogue_build_context_create(compiler, layout);
@@ -1775,6 +1974,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    } else {
       pvr_vertex_state_init(gfx_pipeline,
                             &ctx->common_data[MESA_SHADER_VERTEX],
+                            vertex_input_reg_count,
                             &ctx->stage_data.vs);
 
       if (!old_path) {
@@ -1787,6 +1987,9 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
           */
          vertex_state->stage_state.const_shared_reg_count =
             sh_count[PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY];
+
+         gfx_pipeline->shader_state.vertex.vertex_input_size =
+            ctx->stage_data.vs.num_vertex_input_regs;
       }
    }
 
@@ -1864,6 +2067,8 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       vertex_input_state,
       ctx->common_data[MESA_SHADER_VERTEX].temps,
       &ctx->stage_data.vs,
+      vtx_dma_descriptions,
+      vtx_dma_count,
       &gfx_pipeline->shader_state.vertex.pds_attrib_programs);
    if (result != VK_SUCCESS)
       goto err_free_frag_program;

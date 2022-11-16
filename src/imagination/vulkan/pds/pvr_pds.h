@@ -978,7 +978,7 @@ struct pvr_pds_vertex_primary_program_input {
    /* Control for the DOUTU that kicks the vertex USC shader. */
    struct pvr_pds_usc_task_control usc_task_control;
    /* List of DMAs (of size dma_count). */
-   struct pvr_pds_vertex_dma *dma_list;
+   const struct pvr_pds_vertex_dma *dma_list;
    uint32_t dma_count;
 
    /* ORd bitfield of PVR_PDS_VERTEX_FLAGS_* */
