@@ -213,7 +213,7 @@ debian/x86_test-gl:
     - .set-image-base-tag
   variables:
     MESA_BASE_TAG: *debian-x86_test-base
-    MESA_IMAGE_PATH: ${DEBIAN_X86_TEST_IMAGE_PATH}
+    MESA_IMAGE_PATH: ${DEBIAN_X86_TEST_IMAGE_GL_PATH}
     MESA_IMAGE_TAG: *debian-x86_test-gl
   needs:
     - debian/x86_test-gl
@@ -229,7 +229,7 @@ debian/x86_test-vk:
     - .set-image-base-tag
   variables:
     MESA_BASE_TAG: *debian-x86_test-base
-    MESA_IMAGE_PATH: "debian/x86_test-vk"
+    MESA_IMAGE_PATH: ${DEBIAN_X86_TEST_IMAGE_VK_PATH}
     MESA_IMAGE_TAG: *debian-x86_test-vk
   needs:
     - debian/x86_test-vk
