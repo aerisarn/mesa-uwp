@@ -157,6 +157,7 @@ supported:
 
 * ``VkPhysicalDeviceLimits``
 
+  * ``maxImageDimension1D`` ≥ 16384
   * ``maxImageDimension2D`` ≥ 16384
   * ``maxViewports`` ≥ 16
 
