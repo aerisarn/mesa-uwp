@@ -35,7 +35,7 @@
 
 #include "util/u_inlines.h"
 #include "pipe/p_screen.h"
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "pipe-loader/pipe_loader.h"
 #include "frontend/drm_driver.h"
 

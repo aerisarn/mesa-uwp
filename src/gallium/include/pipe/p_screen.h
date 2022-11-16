@@ -39,7 +39,7 @@
 
 
 #include "pipe/p_compiler.h"
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_video_enums.h"
 

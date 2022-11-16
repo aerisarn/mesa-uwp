@@ -24,7 +24,7 @@
  **********************************************************/
 
 
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"

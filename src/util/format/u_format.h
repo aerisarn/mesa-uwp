@@ -30,7 +30,7 @@
 #define U_FORMAT_H
 
 
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "pipe/p_defines.h"
 #include "util/u_debug.h"
 

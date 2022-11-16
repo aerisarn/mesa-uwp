@@ -18,7 +18,7 @@
 #include "bitmap_wrapper.h"
 
 #include "glapi/glapi.h"
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 //#include "state_tracker/st_cb_fbo.h"
 //#include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_context.h"

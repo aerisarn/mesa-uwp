@@ -25,7 +25,7 @@
 #define R300_STATE_INLINES_H
 
 #include "draw/draw_vertex.h"
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "util/format/u_format.h"
 #include "r300_reg.h"
 #include <stdio.h>

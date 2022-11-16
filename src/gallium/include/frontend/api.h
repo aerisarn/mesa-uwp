@@ -27,7 +27,7 @@
 #ifndef _API_H_
 #define _API_H_
 
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 
 /**
  * \file API for communication between gallium frontends and supporting

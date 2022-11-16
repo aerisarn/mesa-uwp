@@ -32,7 +32,7 @@
 #include "drm/freedreno_drmif.h"
 #include "drm/freedreno_ringbuffer.h"
 
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "pipe/p_state.h"
 #include "util/compiler.h"
 #include "util/half_float.h"

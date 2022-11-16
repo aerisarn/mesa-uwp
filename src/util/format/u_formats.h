@@ -26,8 +26,8 @@
  *
  **************************************************************************/
 
-#ifndef PIPE_FORMAT_H
-#define PIPE_FORMAT_H
+#ifndef U_FORMATS_H_
+#define U_FORMATS_H_
 
 #include "util/detect.h"
 
@@ -647,4 +647,4 @@ pipe_format_to_chroma_format(enum pipe_format format)
 }
 #endif
 
-#endif
+#endif /* U_FORMATS_H_ */

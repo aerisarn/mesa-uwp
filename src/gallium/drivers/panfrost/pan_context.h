@@ -39,7 +39,7 @@
 #include "util/detect.h"
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
-#include "pipe/p_format.h"
+#include "util/format/u_formats.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "util/u_blitter.h"
