@@ -124,12 +124,6 @@
             "formats": {
                 "VK_FORMAT_R32G32B32_SFLOAT": {
                     "VkFormatProperties": {
-                        "linearTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
-                        "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
                         "bufferFeatures": [
                             "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
                         ]
@@ -137,12 +131,6 @@
                 },
                 "VK_FORMAT_R32G32B32_SINT": {
                     "VkFormatProperties": {
-                        "linearTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
-                        "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
                         "bufferFeatures": [
                             "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
                         ]
@@ -150,12 +138,6 @@
                 },
                 "VK_FORMAT_R32G32B32_UINT": {
                     "VkFormatProperties": {
-                        "linearTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
-                        "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
-                        ],
                         "bufferFeatures": [
                             "VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT"
                         ]
@@ -172,11 +154,7 @@
             "properties": {
                 "VkPhysicalDeviceProperties": {
                     "limits": {
-                        "maxImageDimension1D": 16384,
                         "maxImageDimension2D": 16384,
-                        "maxImageDimension3D": 2048,
-                        "maxImageDimensionCube": 16384,
-                        "maxImageArrayLayers": 2048,
                         "maxViewports": 16
                     }
                 }
@@ -214,16 +192,10 @@
             }
         },
         "gl43_baseline": {
-            "extensions": {
-                "VK_EXT_robustness2": 1
-            },
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "robustBufferAccess": true,
                     "multiDrawIndirect": true
-                },
-                "VkPhysicalDeviceRobustness2FeaturesEXT": {
-                    "robustImageAccess2": true
                 }
             },
             "formats": {
@@ -233,9 +205,6 @@
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ],
                         "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
@@ -247,9 +216,6 @@
                         ],
                         "optimalTilingFeatures": [ 
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
                 },
@@ -259,9 +225,6 @@
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ],
                         "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
@@ -273,9 +236,6 @@
                         ],
                         "optimalTilingFeatures": [ 
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
                 },
@@ -285,9 +245,6 @@
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ],
                         "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
@@ -299,9 +256,6 @@
                         ],
                         "optimalTilingFeatures": [ 
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
                 },
@@ -311,9 +265,6 @@
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ],
                         "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
-                        "bufferFeatures": [
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
                     }
@@ -327,12 +278,6 @@
             "formats": {
                 "VK_FORMAT_B10G11R11_UFLOAT_PACK32": {
                     "VkFormatProperties": {
-                        "linearTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT"
-                        ],
-                        "optimalTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT"
-                        ],
                         "bufferFeatures": [
                             "VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT"
                         ]
