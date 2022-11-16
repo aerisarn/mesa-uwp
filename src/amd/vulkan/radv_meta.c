@@ -62,6 +62,12 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
       state->active_prims_gen_gds_queries = cmd_buffer->state.active_prims_gen_gds_queries;
       cmd_buffer->state.active_prims_gen_gds_queries = 0;
    }
+
+   /* Transform feedback queries (NGG). */
+   if (cmd_buffer->state.active_prims_xfb_gds_queries) {
+      state->active_prims_xfb_gds_queries = cmd_buffer->state.active_prims_xfb_gds_queries;
+      cmd_buffer->state.active_prims_xfb_gds_queries = 0;
+   }
 }
 
 static void
@@ -90,6 +96,11 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
    if (state->active_prims_gen_gds_queries) {
       cmd_buffer->state.active_prims_gen_gds_queries = state->active_prims_gen_gds_queries;
    }
+
+   /* Transform feedback queries (NGG). */
+   if (state->active_prims_xfb_gds_queries) {
+      cmd_buffer->state.active_prims_xfb_gds_queries = state->active_prims_xfb_gds_queries;
+   }
 }
 
 void
@@ -106,6 +117,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
 
    state->flags = flags;
    state->active_prims_gen_gds_queries = 0;
+   state->active_prims_xfb_gds_queries = 0;
 
    if (state->flags & RADV_META_SAVE_GRAPHICS_PIPELINE) {
       assert(!(state->flags & RADV_META_SAVE_COMPUTE_PIPELINE));
