@@ -936,6 +936,12 @@ can_fuse_fmul_fsign(nir_alu_instr *instr, unsigned fsign_src)
           is_used_once(fsign_instr);
 }
 
+static bool
+is_const_zero(const nir_src &src)
+{
+   return nir_src_is_const(src) && nir_src_as_int(src) == 0;
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
                          bool need_dest)
@@ -1733,7 +1739,16 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
    case nir_op_bfi:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
-      bld.BFI2(result, op[0], op[1], op[2]);
+
+      /* bfi is ((...) | (~src0 & src2)). The second part is zero when src2 is
+       * either 0 or src0. Replacing the 0 with another value can eliminate a
+       * temporary register.
+       */
+      if (is_const_zero(instr->src[2].src))
+         bld.BFI2(result, op[0], op[1], op[0]);
+      else
+         bld.BFI2(result, op[0], op[1], op[2]);
+
       break;
 
    case nir_op_bitfield_insert:
