@@ -173,15 +173,15 @@ supported:
 
   * ``shaderStorageImageExtendedFormats``
   * ``shaderStorageImageWriteWithoutFormat``
+  * ``vertexPipelineStoresAndAtomics``
+  * ``fragmentStoresAndAtomics``
+  * ``textureCompressionBC``
 
 * For Vulkan 1.2 and above:
 
   * ``VkPhysicalDeviceVulkan11Features``:
 
     * ``shaderDrawParameters``
-    * ``vertexPipelineStoresAndAtomics``
-    * ``fragmentStoresAndAtomics``
-    * ``textureCompressionBC``
 
 * For Vulkan 1.1 and below:
 
