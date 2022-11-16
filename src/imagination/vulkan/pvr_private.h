@@ -1614,21 +1614,21 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_render_pass,
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
 /* Debug helper macros. */
-#define PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer)         \
-   do {                                                             \
-      struct pvr_cmd_buffer *const _cmd_buffer = (cmd_buffer);      \
+#define PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer)                  \
+   do {                                                                      \
+      struct pvr_cmd_buffer *const _cmd_buffer = (cmd_buffer);               \
       if (_cmd_buffer->vk.state != MESA_VK_COMMAND_BUFFER_STATE_RECORDING) { \
-         vk_errorf(_cmd_buffer,                                     \
-                   VK_ERROR_OUT_OF_DEVICE_MEMORY,                   \
-                   "Command buffer is not in recording state");     \
-         return;                                                    \
-      } else if (_cmd_buffer->state.status < VK_SUCCESS) {          \
-         vk_errorf(_cmd_buffer,                                     \
-                   _cmd_buffer->state.status,                       \
-                   "Skipping function as command buffer has "       \
-                   "previous build error");                         \
-         return;                                                    \
-      }                                                             \
+         vk_errorf(_cmd_buffer,                                              \
+                   VK_ERROR_OUT_OF_DEVICE_MEMORY,                            \
+                   "Command buffer is not in recording state");              \
+         return;                                                             \
+      } else if (_cmd_buffer->state.status < VK_SUCCESS) {                   \
+         vk_errorf(_cmd_buffer,                                              \
+                   _cmd_buffer->state.status,                                \
+                   "Skipping function as command buffer has "                \
+                   "previous build error");                                  \
+         return;                                                             \
+      }                                                                      \
    } while (0)
 
 /**
