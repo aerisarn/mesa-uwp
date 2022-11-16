@@ -519,7 +519,7 @@
         "GL_ARB_shader_viewport_layer_array_ext": {
             "extensions": {
                 "VK_EXT_shader_viewport_index_layer": 1
-            },
+            }
         },
         "GL_ARB_shader_viewport_layer_array_vk12": {
             "features": {
@@ -582,7 +582,7 @@
             "properties": {
                 "VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT": {
                     "filterMinmaxSingleComponentFormats": true,
-                    "filterMinmaxImageComponentMapping": true,
+                    "filterMinmaxImageComponentMapping": true
                 }
             } 
         },
@@ -590,7 +590,7 @@
             "properties": {
                 "VkPhysicalDeviceVulkan12Properties": {
                     "filterMinmaxSingleComponentFormats": true,
-                    "filterMinmaxImageComponentMapping": true,
+                    "filterMinmaxImageComponentMapping": true
                 }
             }       
         }
