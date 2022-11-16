@@ -410,6 +410,9 @@ stw_st_flush(struct st_context_iface *stctx,
    if (flags & ST_FLUSH_WAIT)
       pfence = &fence;
    stctx->flush(stctx, flags, pfence, notify_before_flush_cb, &args);
+
+   /* TODO: remove this if the framebuffer state doesn't change. */
+   stctx->invalidate_state(stctx, ST_INVALIDATE_FB_STATE);
 }
 
 /**

@@ -349,6 +349,9 @@ GalliumContext::SwapBuffers(context_id contextID)
 		p_atomic_inc(&buffer->stfbi->stamp);
 	}
 
+        /* TODO: remove this if the framebuffer state doesn't change. */
+        context->st->invalidate_state(context->st, ST_INVALIDATE_FB_STATE);
+
 	Unlock();
 	return B_OK;
 }
