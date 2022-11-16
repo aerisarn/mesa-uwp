@@ -566,6 +566,7 @@ static void
 panfrost_destroy(struct pipe_context *pipe)
 {
         struct panfrost_context *panfrost = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
 
         _mesa_hash_table_destroy(panfrost->writers, NULL);
 
@@ -578,6 +579,7 @@ panfrost_destroy(struct pipe_context *pipe)
         panfrost_pool_cleanup(&panfrost->descs);
         panfrost_pool_cleanup(&panfrost->shaders);
 
+        drmSyncobjDestroy(dev->fd, panfrost->syncobj);
         ralloc_free(pipe);
 }
 
