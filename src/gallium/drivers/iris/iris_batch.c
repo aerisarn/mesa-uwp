@@ -877,8 +877,8 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
    }
 }
 
-static void
-update_batch_syncobjs(struct iris_batch *batch)
+void
+iris_batch_update_syncobjs(struct iris_batch *batch)
 {
    for (int i = 0; i < batch->exec_count; i++) {
       struct iris_bo *bo = batch->exec_bos[i];
@@ -942,7 +942,7 @@ submit_batch(struct iris_batch *batch)
 
    simple_mtx_lock(bo_deps_lock);
 
-   update_batch_syncobjs(batch);
+   iris_batch_update_syncobjs(batch);
 
    if (INTEL_DEBUG(DEBUG_BATCH | DEBUG_SUBMIT)) {
       iris_dump_fence_list(batch);
