@@ -718,14 +718,14 @@ BEGIN_TEST(optimize.minmax)
       if (!setup_cs("v1", (amd_gfx_level)i))
          continue;
 
-      //! v1: %res0 = v_max3_f32 0, -0, %a
+      //! v1: %res0 = v_max3_f32 -0, %a, 0
       //! p_unit_test 0, %res0
       Temp xor0 = fneg(inputs[0]);
       Temp min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand::zero(), xor0);
       Temp xor1 = fneg(min);
       writeout(0, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand::zero(), xor1));
 
-      //! v1: %res1 = v_max3_f32 0, -0, -%a
+      //! v1: %res1 = v_max3_f32 -0, -%a, 0
       //! p_unit_test 1, %res1
       min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand::zero(), Operand(inputs[0]));
       xor1 = fneg(min);

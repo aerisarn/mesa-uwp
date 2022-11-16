@@ -2625,22 +2625,22 @@ bool
 combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposite, aco_opcode minmax3)
 {
    /* TODO: this can handle SDWA min/max instructions by using opsel */
-   if (combine_three_valu_op(ctx, instr, instr->opcode, minmax3, "012", 1 | 2))
+   if (combine_three_valu_op(ctx, instr, instr->opcode, minmax3, "120", 1 | 2))
       return true;
 
-   /* min(-max(a, b), c) -> min3(c, -a, -b) *
-    * max(-min(a, b), c) -> max3(c, -a, -b) */
+   /* min(-max(a, b), c) -> min3(-a, -b, c) *
+    * max(-min(a, b), c) -> max3(-a, -b, c) */
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
       bool neg[3], abs[3], clamp, precise;
       uint8_t opsel = 0, omod = 0;
       bool inbetween_neg;
-      if (match_op3_for_vop3(ctx, instr->opcode, opposite, instr.get(), swap, "012", operands, neg,
+      if (match_op3_for_vop3(ctx, instr->opcode, opposite, instr.get(), swap, "120", operands, neg,
                              abs, &opsel, &clamp, &omod, &inbetween_neg, NULL, NULL, &precise) &&
           inbetween_neg) {
          ctx.uses[instr->operands[swap].tempId()]--;
+         neg[0] = !neg[0];
          neg[1] = !neg[1];
-         neg[2] = !neg[2];
          create_vop3_for_op3(ctx, minmax3, instr, operands, neg, abs, opsel, clamp, omod);
          return true;
       }
