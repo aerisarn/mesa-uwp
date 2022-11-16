@@ -5604,7 +5604,7 @@ pvr_resolve_unemitted_resolve_attachments(struct pvr_cmd_buffer *cmd_buffer,
       dst_view->vk.image->format = dst_format;
 
       state->current_sub_cmd->flags |=
-         PVR_SUB_COMMAND_FLAG_WAIT_ON_PREVIOUS_FRAG;
+         PVR_SUB_COMMAND_FLAG_TRANSFER_SERIALIZE_WITH_FRAG;
 
       if (result != VK_SUCCESS)
          return result;
