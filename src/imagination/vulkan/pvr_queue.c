@@ -728,10 +728,33 @@ static VkResult pvr_process_cmd_buffer(
                              sub_cmd,
                              &cmd_buffer->sub_cmds,
                              link) {
-      /* TODO: Process  PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY flag. */
-
       switch (sub_cmd->type) {
-      case PVR_SUB_CMD_TYPE_GRAPHICS:
+      case PVR_SUB_CMD_TYPE_GRAPHICS: {
+         if (sub_cmd->flags & PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY) {
+            struct pvr_sub_cmd_event frag_to_transfer_barrier = {
+               .type = PVR_EVENT_TYPE_BARRIER,
+               .barrier = {
+                  .wait_for_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,
+                  .wait_at_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
+               },
+            };
+
+            /* If the fragment job utilizes occlusion queries, for data
+             * integrity it needs to wait for the occlusion query to be
+             * processed.
+             */
+
+            result = pvr_process_event_cmd_barrier(device,
+                                                   &frag_to_transfer_barrier,
+                                                   barriers,
+                                                   per_cmd_buffer_syncobjs,
+                                                   per_submit_syncobjs,
+                                                   queue_syncobjs,
+                                                   previous_queue_syncobjs);
+            if (result != VK_SUCCESS)
+               break;
+         }
+
          result = pvr_process_graphics_cmd(device,
                                            queue,
                                            cmd_buffer,
@@ -743,6 +766,7 @@ static VkResult pvr_process_cmd_buffer(
                                            stage_flags,
                                            per_cmd_buffer_syncobjs);
          break;
+      }
 
       case PVR_SUB_CMD_TYPE_COMPUTE:
          result = pvr_process_compute_cmd(device,
