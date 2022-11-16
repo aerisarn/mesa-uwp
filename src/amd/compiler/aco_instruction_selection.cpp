@@ -5408,7 +5408,7 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
       if (in_exec_divergent_or_in_loop(ctx)) {
          Operand prim_mask_op = bld.m0(prim_mask);
          prim_mask_op.setLateKill(true); /* we don't want the bld.lm definition to use m0 */
-         bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm),
+         bld.pseudo(aco_opcode::p_interp_gfx11, Definition(dst), bld.def(bld.lm), bld.def(s1, scc),
                     Operand(v1.as_linear()), Operand::c32(idx), Operand::c32(component),
                     Operand::c32(dpp_ctrl), prim_mask_op);
       } else {
