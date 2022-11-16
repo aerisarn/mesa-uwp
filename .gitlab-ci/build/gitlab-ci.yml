@@ -333,6 +333,7 @@ debian-android:
       -D llvm=disabled
       -D platform-sdk-version=29
       -D valgrind=disabled
+      -D android-libbacktrace=false
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
