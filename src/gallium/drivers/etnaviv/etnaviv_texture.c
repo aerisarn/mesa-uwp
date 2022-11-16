@@ -186,10 +186,8 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
          to->flush_seqno = from->seqno;
          ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
       }
-  } else if ((to == from) && (to->flush_seqno < from->seqno)) {
-      to->flush_seqno = from->seqno;
-      ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
    }
+
    if (etna_configure_sampler_ts(ctx->ts_for_sampler_view(view), view, enable_sampler_ts)) {
       ctx->dirty |= ETNA_DIRTY_SAMPLER_VIEWS | ETNA_DIRTY_TEXTURE_CACHES;
       ctx->dirty_sampler_views |= (1 << num);
