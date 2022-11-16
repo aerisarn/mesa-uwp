@@ -305,10 +305,8 @@ dri_make_current(struct dri_context *ctx,
    ctx->draw = draw;
    ctx->read = read;
 
-   if (draw) {
-       draw->ctx = ctx;
+   if (draw)
        dri_get_drawable(draw);
-   }
 
    if (read && draw != read)
        dri_get_drawable(read);

@@ -62,10 +62,8 @@ kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual
 static void
 kopper_flush_drawable(__DRIdrawable *dPriv)
 {
-   struct dri_drawable *drawable = dri_drawable(dPriv);
-
-   dri_flush(opaque_dri_context(drawable->ctx), dPriv, __DRI2_FLUSH_DRAWABLE,
-             -1);
+   dri_flush(opaque_dri_context(dri_get_current()), dPriv,
+             __DRI2_FLUSH_DRAWABLE, -1);
 }
 
 static inline void

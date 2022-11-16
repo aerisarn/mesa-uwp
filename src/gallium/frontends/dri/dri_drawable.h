@@ -67,11 +67,6 @@ struct dri_drawable
    void *loaderPrivate;
 
    /**
-    * Pointer to context to which this drawable is currently bound.
-    */
-   struct dri_context *ctx;
-
-   /**
     * Reference count for number of context's currently bound to this
     * drawable.
     *

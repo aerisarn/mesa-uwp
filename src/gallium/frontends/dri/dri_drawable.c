@@ -156,7 +156,6 @@ dri_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
       goto fail;
 
    drawable->loaderPrivate = loaderPrivate;
-   drawable->ctx = NULL;
    drawable->refcount = 1;
    drawable->lastStamp = 0;
    drawable->w = 0;

@@ -73,10 +73,10 @@ dri2_buffer(__DRIbuffer * driBufferPriv)
 static void
 dri2_flush_drawable(__DRIdrawable *dPriv)
 {
-   struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_context *ctx = dri_get_current();
 
-   dri_flush(opaque_dri_context(drawable->ctx), dPriv, __DRI2_FLUSH_DRAWABLE,
-             -1);
+   if (ctx)
+      dri_flush(opaque_dri_context(ctx), dPriv, __DRI2_FLUSH_DRAWABLE, -1);
 }
 
 /**
