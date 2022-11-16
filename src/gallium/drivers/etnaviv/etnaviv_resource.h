@@ -100,6 +100,18 @@ etna_resource_level_ts_valid(struct etna_resource_level *lvl)
    return lvl->ts_valid;
 }
 
+static inline void
+etna_resource_level_ts_mark_valid(struct etna_resource_level *lvl)
+{
+   lvl->ts_valid = true;
+}
+
+static inline void
+etna_resource_level_ts_mark_invalid(struct etna_resource_level *lvl)
+{
+   lvl->ts_valid = false;
+}
+
 /* returns TRUE if a is older than b */
 static inline bool
 etna_resource_level_needs_flush(struct etna_resource_level *lvl)

@@ -264,7 +264,7 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
           etna_resource_ext_ts(etna_resource(dst->texture))))
          etna_resource(dst->texture)->ts_meta->v0.clear_value = new_clear_value;
 
-      surf->level->ts_valid = true;
+      etna_resource_level_ts_mark_valid(surf->level);
       ctx->dirty |= ETNA_DIRTY_TS | ETNA_DIRTY_DERIVE_TS;
    }
 
@@ -346,7 +346,7 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    /* This made the TS valid */
    if (surf->level->ts_size) {
       ctx->framebuffer.TS_DEPTH_CLEAR_VALUE = surf->level->clear_value;
-      surf->level->ts_valid = true;
+      etna_resource_level_ts_mark_valid(surf->level);
       ctx->dirty |= ETNA_DIRTY_TS | ETNA_DIRTY_DERIVE_TS;
    }
 
@@ -579,7 +579,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
    resource_written(ctx, &dst->base);
 
    etna_resource_level_mark_changed(dst_lev);
-   dst_lev->ts_valid = false;
+   etna_resource_level_ts_mark_invalid(dst_lev);
 
    return true;
 }

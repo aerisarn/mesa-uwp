@@ -164,7 +164,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          FREE(trans->staging);
       }
 
-      res_level->ts_valid = false;
+      etna_resource_level_ts_mark_invalid(res_level);
       etna_resource_level_mark_changed(res_level);
 
       if (rsc->base.bind & PIPE_BIND_SAMPLER_VIEW) {
