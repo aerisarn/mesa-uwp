@@ -2698,6 +2698,19 @@ optimizations.extend([
     (('fisnormal', 'a@64'), ('ult', 0x3fffffffffffff, ('iadd', ('ishl', a, 1), 0x20000000000000)), 'options->lower_fisnormal')
     ])
 
+for s in range(0, 31):
+    mask = 0xffffffff << s
+
+    # bfi is ((mask & ...) | (~mask & ...)). Since the two sources of the ior
+    # will never both have the same bits set, replacing the ior with an iadd
+    # is safe (i.e., a carry out of a bit can never be generated). The iadd is
+    # more likely to participate in other optimization patterns (e.g., iadd of
+    # constant reassociation)
+    optimizations.extend([
+        (('bfi', mask, a, '#b'), ('iadd', ('ishl', a, s), ('iand', b, ~mask)),
+         'options->avoid_ternary_with_two_constants'),
+    ])
+
 # This section contains optimizations to propagate downsizing conversions of
 # constructed vectors into vectors of downsized components. Whether this is
 # useful depends on the SIMD semantics of the backend. On a true SIMD machine,
