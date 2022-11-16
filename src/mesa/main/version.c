@@ -335,6 +335,9 @@ compute_version(const struct gl_extensions *extensions,
                          consts->GLSLVersion >= 410 &&
                          consts->MaxTextureSize >= 16384 &&
                          consts->MaxRenderbufferSize >= 16384 &&
+                         consts->MaxCubeTextureLevels >= 15 &&
+                         consts->Max3DTextureLevels >= 12 &&
+                         consts->MaxArrayTextureLayers >= 2048 &&
                          extensions->ARB_ES2_compatibility &&
                          extensions->ARB_shader_precision &&
                          extensions->ARB_vertex_attrib_64bit &&
