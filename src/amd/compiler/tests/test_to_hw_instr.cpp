@@ -626,7 +626,9 @@ BEGIN_TEST(to_hw_instr.extract)
       EXT(2, 8)
       //! v1: %_:v[0] = @v_shr 24, %_:v[1]
       EXT(3, 8)
-      //! v1: %_:v[0] = @v_bfe %_:v[1], 0, 16
+      //~gfx(7|8|9)_.*! v1: %_:v[0] = @v_bfe %_:v[1], 0, 16
+      //~gfx11_unsigned! v1: %_:v[0] = v_cvt_u32_u16 %_:v[1]
+      //~gfx11_signed! v1: %_:v[0] = v_cvt_i32_i16 %_:v[1]
       EXT(0, 16)
       //! v1: %_:v[0] = @v_shr 16, %_:v[1]
       EXT(1, 16)

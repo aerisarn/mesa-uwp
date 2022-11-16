@@ -1478,6 +1478,8 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
       /* move lo and zero high bits */
       if (lo.physReg().byte() == 2)
          bld.vop2(aco_opcode::v_lshrrev_b32, def_lo, Operand::c32(16u), lo);
+      else if (ctx->program->gfx_level >= GFX11)
+         bld.vop1(aco_opcode::v_cvt_u32_u16, def, lo);
       else
          bld.vop2(aco_opcode::v_and_b32, def_lo, Operand::c32(0xFFFFu), lo);
       bld.vop2(aco_opcode::v_or_b32, def, Operand::c32(hi.constantValue() << 16u),
@@ -2237,6 +2239,9 @@ lower_to_hw_instr(Program* program)
                   if (offset == (32 - bits) && op.regClass() != s1) {
                      bld.vop2(signext ? aco_opcode::v_ashrrev_i32 : aco_opcode::v_lshrrev_b32, dst,
                               Operand::c32(offset), op);
+                  } else if (offset == 0 && bits == 16 && ctx.program->gfx_level >= GFX11) {
+                     bld.vop1(signext ? aco_opcode::v_cvt_i32_i16 : aco_opcode::v_cvt_u32_u16, dst,
+                              op);
                   } else {
                      bld.vop3(signext ? aco_opcode::v_bfe_i32 : aco_opcode::v_bfe_u32, dst, op,
                               Operand::c32(offset), Operand::c32(bits));
