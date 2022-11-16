@@ -1650,7 +1650,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *features =
             (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *)ext;
          features->shaderBufferFloat32Atomics = true;
-         features->shaderBufferFloat32AtomicAdd = false;
+         features->shaderBufferFloat32AtomicAdd = pdevice->rad_info.gfx_level >= GFX11;
          features->shaderBufferFloat64Atomics = true;
          features->shaderBufferFloat64AtomicAdd = false;
          features->shaderSharedFloat32Atomics = true;
