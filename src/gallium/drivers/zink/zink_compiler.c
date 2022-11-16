@@ -31,6 +31,7 @@
 #include "pipe/p_state.h"
 
 #include "nir.h"
+#include "nir/nir_draw_helpers.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_builtin_builder.h"
 
@@ -67,6 +68,7 @@ fields[member_idx].offset = offsetof(struct zink_gfx_push_constant, field);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL, default_outer_level);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN, line_stipple_pattern);
    PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_VIEWPORT_SCALE, viewport_scale);
+   PUSHCONST_MEMBER(ZINK_GFX_PUSHCONST_LINE_WIDTH, line_width);
 
    pushconst = nir_variable_create(nir, nir_var_mem_push_const,
                                    glsl_struct_type(fields, ZINK_GFX_PUSHCONST_MAX, "struct", false),
@@ -557,6 +559,253 @@ lower_line_stipple_fs(nir_shader *shader)
    nir_pop_loop(&b, NULL);
    nir_store_var(&b, sample_mask_out, nir_load_var(&b, sample_mask), 1);
 
+   return true;
+}
+
+struct lower_line_smooth_state {
+   nir_variable *pos_out;
+   nir_variable *line_coord_out;
+   nir_variable *prev_pos;
+   nir_variable *pos_counter;
+   nir_variable *prev_varyings[VARYING_SLOT_MAX],
+                *varyings[VARYING_SLOT_MAX];
+};
+
+static bool
+lower_line_smooth_gs_store(nir_builder *b,
+                           nir_intrinsic_instr *intrin,
+                           struct lower_line_smooth_state *state)
+{
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   if (nir_deref_mode_is(deref, nir_var_shader_out)) {
+      nir_variable *var = nir_deref_instr_get_variable(deref);
+
+      // we take care of position elsewhere
+      gl_varying_slot location = var->data.location;
+      if (location != VARYING_SLOT_POS) {
+         assert(state->varyings[location]);
+         assert(intrin->src[1].is_ssa);
+         nir_store_var(b, state->varyings[location],
+                       intrin->src[1].ssa,
+                       nir_intrinsic_write_mask(intrin));
+         nir_instr_remove(&intrin->instr);
+         return true;
+      }
+   }
+
+   return false;
+}
+
+static bool
+lower_line_smooth_gs_emit_vertex(nir_builder *b,
+                                 nir_intrinsic_instr *intrin,
+                                 struct lower_line_smooth_state *state)
+{
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   nir_push_if(b, nir_ine_imm(b, nir_load_var(b, state->pos_counter), 0));
+   nir_ssa_def *vp_scale = nir_load_push_constant(b, 2, 32,
+                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE),
+                                                  .base = 1,
+                                                  .range = 2);
+   nir_ssa_def *prev = nir_load_var(b, state->prev_pos);
+   nir_ssa_def *curr = nir_load_var(b, state->pos_out);
+   nir_ssa_def *prev_vp = viewport_map(b, prev, vp_scale);
+   nir_ssa_def *curr_vp = viewport_map(b, curr, vp_scale);
+
+   nir_ssa_def *width = nir_load_push_constant(b, 1, 32,
+                                               nir_imm_int(b, ZINK_GFX_PUSHCONST_LINE_WIDTH),
+                                               .base = 1);
+   nir_ssa_def *half_width = nir_fadd_imm(b, nir_fmul_imm(b, width, 0.5), 0.5);
+
+   const unsigned yx[2] = { 1, 0 };
+   nir_ssa_def *vec = nir_fsub(b, curr_vp, prev_vp);
+   nir_ssa_def *len = nir_fast_length(b, vec);
+   nir_ssa_def *dir = nir_normalize(b, vec);
+   nir_ssa_def *half_length = nir_fmul_imm(b, len, 0.5);
+   half_length = nir_fadd_imm(b, half_length, 0.5);
+
+   nir_ssa_def *vp_scale_rcp = nir_frcp(b, vp_scale);
+   nir_ssa_def *tangent =
+      nir_fmul(b,
+               nir_fmul(b,
+                        nir_swizzle(b, dir, yx, 2),
+                        nir_imm_vec2(b, 1.0, -1.0)),
+               vp_scale_rcp);
+   tangent = nir_fmul(b, tangent, half_width);
+   tangent = nir_pad_vector_imm_int(b, tangent, 0, 4);
+   dir = nir_fmul_imm(b, nir_fmul(b, dir, vp_scale_rcp), 0.5);
+
+   nir_ssa_def *line_offets[4] = {
+      nir_fadd(b, tangent, nir_fneg(b, dir)),
+      nir_fadd(b, nir_fneg(b, tangent), nir_fneg(b, dir)),
+      nir_fadd(b, tangent, dir),
+      nir_fadd(b, nir_fneg(b, tangent), dir),
+   };
+   nir_ssa_def *line_coord =
+      nir_vec4(b, half_width, half_width, half_length, half_length);
+   nir_ssa_def *line_coords[4] = {
+      nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,  -1,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,  -1,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,   1,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,   1,  1)),
+   };
+
+   /* emit first two vertices */
+   for (int i = 0; i < 2; ++i) {
+      nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
+         gl_varying_slot location = var->data.location;
+         if (state->prev_varyings[location])
+            nir_copy_var(b, var, state->prev_varyings[location]);
+      }
+      nir_store_var(b, state->pos_out,
+                    nir_fadd(b, prev, nir_fmul(b, line_offets[i],
+                             nir_channel(b, prev, 3))), 0xf);
+      nir_store_var(b, state->line_coord_out, line_coords[i], 0xf);
+      nir_emit_vertex(b);
+   }
+
+   /* emit last two vertices */
+   for (int i = 2; i < 4; ++i) {
+      nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
+         gl_varying_slot location = var->data.location;
+         if (state->varyings[location])
+            nir_copy_var(b, var, state->varyings[location]);
+      }
+      nir_store_var(b, state->pos_out,
+                    nir_fadd(b, curr, nir_fmul(b, line_offets[i],
+                             nir_channel(b, curr, 3))), 0xf);
+      nir_store_var(b, state->line_coord_out, line_coords[i], 0xf);
+      nir_emit_vertex(b);
+   }
+   nir_end_primitive(b);
+
+   nir_pop_if(b, NULL);
+
+   nir_copy_var(b, state->prev_pos, state->pos_out);
+   nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
+      gl_varying_slot location = var->data.location;
+      if (state->varyings[location])
+         nir_copy_var(b, state->prev_varyings[location], state->varyings[location]);
+   }
+
+   // update prev_pos and pos_counter for next vertex
+   b->cursor = nir_after_instr(&intrin->instr);
+   nir_store_var(b, state->pos_counter,
+                    nir_iadd_imm(b, nir_load_var(b, state->pos_counter),
+                                    1), 1);
+
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
+static bool
+lower_line_smooth_gs_end_primitive(nir_builder *b,
+                                   nir_intrinsic_instr *intrin,
+                                   struct lower_line_smooth_state *state)
+{
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   // reset line counter
+   nir_store_var(b, state->pos_counter, nir_imm_int(b, 0), 1);
+
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
+static bool
+lower_line_smooth_gs_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   struct lower_line_smooth_state *state = data;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_store_deref:
+      return lower_line_smooth_gs_store(b, intrin, state);
+   case nir_intrinsic_copy_deref:
+      unreachable("should be lowered");
+   case nir_intrinsic_emit_vertex_with_counter:
+   case nir_intrinsic_emit_vertex:
+      return lower_line_smooth_gs_emit_vertex(b, intrin, state);
+   case nir_intrinsic_end_primitive:
+   case nir_intrinsic_end_primitive_with_counter:
+      return lower_line_smooth_gs_end_primitive(b, intrin, state);
+   default:
+      return false;
+   }
+}
+
+static bool
+lower_line_smooth_gs(nir_shader *shader)
+{
+   nir_builder b;
+   struct lower_line_smooth_state state;
+
+   memset(state.varyings, 0, sizeof(state.varyings));
+   memset(state.prev_varyings, 0, sizeof(state.prev_varyings));
+   nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
+      gl_varying_slot location = var->data.location;
+      if (location == VARYING_SLOT_POS)
+         continue;
+
+      char name[100];
+      snprintf(name, sizeof(name), "__tmp_%d", location);
+      state.varyings[location] =
+         nir_variable_create(shader, nir_var_shader_temp,
+                              var->type, name);
+
+      snprintf(name, sizeof(name), "__tmp_prev_%d", location);
+      state.prev_varyings[location] =
+         nir_variable_create(shader, nir_var_shader_temp,
+                              var->type, name);
+   }
+
+   state.pos_out =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      VARYING_SLOT_POS);
+
+   // if position isn't written, we have nothing to do
+   if (!state.pos_out)
+      return false;
+
+   state.line_coord_out =
+      nir_variable_create(shader, nir_var_shader_out, glsl_vec4_type(),
+                          "__line_coord");
+   state.line_coord_out->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
+   state.line_coord_out->data.driver_location = shader->num_outputs++;
+   state.line_coord_out->data.location = MAX2(util_last_bit64(shader->info.outputs_written), VARYING_SLOT_VAR0);
+   shader->info.outputs_written |= BITFIELD64_BIT(state.line_coord_out->data.location);
+
+   // create temp variables
+   state.prev_pos = nir_variable_create(shader, nir_var_shader_temp,
+                                        glsl_vec4_type(),
+                                        "__prev_pos");
+   state.pos_counter = nir_variable_create(shader, nir_var_shader_temp,
+                                           glsl_uint_type(),
+                                           "__pos_counter");
+
+   // initialize pos_counter
+   nir_function_impl *entry = nir_shader_get_entrypoint(shader);
+   nir_builder_init(&b, entry);
+   b.cursor = nir_before_cf_list(&entry->body);
+   nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
+
+   shader->info.gs.vertices_out = 2 * shader->info.gs.vertices_out;
+   shader->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
+
+   return nir_shader_instructions_pass(shader, lower_line_smooth_gs_instr,
+                                       nir_metadata_dominance, &state);
+}
+
+static bool
+lower_line_smooth_fs(nir_shader *shader)
+{
+   int dummy;
+   nir_lower_aaline_fs(shader, &dummy);
    return true;
 }
 
