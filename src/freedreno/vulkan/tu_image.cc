@@ -118,7 +118,7 @@ tu_is_r8g8_compatible(enum pipe_format format)
 void
 tu_cs_image_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer)
 {
-   tu_cs_emit(cs, iview->PITCH);
+   tu_cs_emit(cs, A6XX_RB_MRT_PITCH(0, iview->pitch).value);
    tu_cs_emit(cs, iview->layer_size >> 6);
    tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
 }
@@ -144,7 +144,10 @@ tu_cs_image_ref_2d(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t lay
 {
    tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
    /* SP_PS_2D_SRC_PITCH has shifted pitch field */
-   tu_cs_emit(cs, iview->PITCH << (src ? 9 : 0));
+   if (src)
+      tu_cs_emit(cs, A6XX_SP_PS_2D_SRC_PITCH(.pitch = iview->pitch).value);
+   else
+      tu_cs_emit(cs, A6XX_RB_2D_DST_PITCH(iview->pitch).value);
 }
 
 void

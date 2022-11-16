@@ -308,8 +308,9 @@ struct fdl6_view {
     */
    uint32_t storage_descriptor[FDL6_TEX_CONST_DWORDS];
 
+   uint32_t pitch;
+
    /* pre-filled register values */
-   uint32_t PITCH;
    uint32_t FLAG_BUFFER_PITCH;
 
    uint32_t RB_MRT_BUF_INFO;
