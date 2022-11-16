@@ -5347,7 +5347,10 @@ emit_interp_instr_gfx11(isel_context* ctx, unsigned idx, unsigned component, Tem
       res = bld.vinterp_inreg(aco_opcode::v_interp_p2_f32_inreg, bld.def(v1), p, coord2, p10);
    }
    /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
-   emit_wqm(bld, res, dst, true);
+   if (dst.regClass() != v2b)
+      emit_wqm(bld, res, dst, true);
+   else
+      emit_extract_vector(ctx, emit_wqm(bld, res, Temp(0, s1), true), 0, dst);
 }
 
 void
@@ -5417,7 +5420,10 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
          Temp res = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), p, dpp_ctrl);
 
          /* lds_param_load must be done in WQM, and the result kept valid for helper lanes. */
-         emit_wqm(bld, res, dst, true);
+         if (dst.regClass() != v2b)
+            emit_wqm(bld, res, dst, true);
+         else
+            emit_extract_vector(ctx, emit_wqm(bld, res, Temp(0, s1), true), 0, dst);
       }
    } else {
       bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
