@@ -1234,10 +1234,10 @@ lower_resume(nir_shader *shader, int call_idx)
 
    ralloc_free(mem_ctx);
 
+   nir_metadata_preserve(impl, nir_metadata_none);
+
    nir_validate_shader(shader, "after flatten_resume_if_ladder in "
                                "nir_lower_shader_calls");
-
-   nir_metadata_preserve(impl, nir_metadata_none);
 
    return resume_instr;
 }
