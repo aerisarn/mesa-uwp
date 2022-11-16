@@ -3994,6 +3994,7 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
          .color_is_int8 = pipeline_key->ps.is_int8,
          .color_is_int10 = pipeline_key->ps.is_int10,
          .enable_mrt_output_nan_fixup = pipeline_key->ps.enable_mrt_output_nan_fixup,
+         .mrt0_is_dual_src = pipeline_key->ps.mrt0_is_dual_src,
       };
 
       pipeline->ps_epilog = radv_create_ps_epilog(device, &epilog_key);
@@ -5918,6 +5919,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          .color_is_int8 = blend.col_format_is_int8,
          .color_is_int10 = blend.col_format_is_int10,
          .enable_mrt_output_nan_fixup = key.ps.enable_mrt_output_nan_fixup,
+         .mrt0_is_dual_src = blend.mrt0_is_dual_src,
       };
 
       pipeline->base.ps_epilog = radv_create_ps_epilog(device, &epilog_key);
