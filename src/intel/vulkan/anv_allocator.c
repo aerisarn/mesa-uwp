@@ -113,19 +113,6 @@
 #define PAGE_SIZE 4096
 #endif
 
-static inline uint32_t
-ilog2_round_up(uint32_t value)
-{
-   assert(value != 0);
-   return 32 - __builtin_clz(value - 1);
-}
-
-static inline uint32_t
-round_to_power_of_two(uint32_t value)
-{
-   return 1 << ilog2_round_up(value);
-}
-
 struct anv_state_table_cleanup {
    void *map;
    size_t size;
@@ -734,7 +721,7 @@ anv_fixed_size_state_pool_alloc_new(struct anv_fixed_size_state_pool *pool,
 static uint32_t
 anv_state_pool_get_bucket(uint32_t size)
 {
-   unsigned size_log2 = ilog2_round_up(size);
+   unsigned size_log2 = util_logbase2_ceil(size);
    assert(size_log2 <= ANV_MAX_STATE_SIZE_LOG2);
    if (size_log2 < ANV_MIN_STATE_SIZE_LOG2)
       size_log2 = ANV_MIN_STATE_SIZE_LOG2;
@@ -1023,7 +1010,7 @@ anv_state_stream_alloc(struct anv_state_stream *stream,
    if (offset + size > stream->block.alloc_size) {
       uint32_t block_size = stream->block_size;
       if (block_size < size)
-         block_size = round_to_power_of_two(size);
+         block_size = util_next_power_of_two(size);
 
       stream->block = anv_state_pool_alloc_no_vg(stream->state_pool,
                                                  block_size, PAGE_SIZE);
@@ -1143,7 +1130,7 @@ VkResult
 anv_bo_pool_alloc(struct anv_bo_pool *pool, uint32_t size,
                   struct anv_bo **bo_out)
 {
-   const unsigned size_log2 = size < 4096 ? 12 : ilog2_round_up(size);
+   const unsigned size_log2 = size < 4096 ? 12 : util_logbase2_ceil(size);
    const unsigned pow2_size = 1 << size_log2;
    const unsigned bucket = size_log2 - 12;
    assert(bucket < ARRAY_SIZE(pool->free_list));
@@ -1180,7 +1167,7 @@ anv_bo_pool_free(struct anv_bo_pool *pool, struct anv_bo *bo)
    VG(VALGRIND_MEMPOOL_FREE(pool, bo->map));
 
    assert(util_is_power_of_two_or_zero(bo->size));
-   const unsigned size_log2 = ilog2_round_up(bo->size);
+   const unsigned size_log2 = util_logbase2_ceil(bo->size);
    const unsigned bucket = size_log2 - 12;
    assert(bucket < ARRAY_SIZE(pool->free_list));
 
