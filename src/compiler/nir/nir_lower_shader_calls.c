@@ -1185,11 +1185,42 @@ found_resume:
    return true;
 }
 
+static bool
+wrap_jump_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_jump)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_if *_if = nir_push_if(b, nir_imm_true(b));
+   nir_pop_if(b, NULL);
+
+   nir_cf_list cf_list;
+   nir_cf_extract(&cf_list, nir_before_instr(instr), nir_after_instr(instr));
+   nir_cf_reinsert(&cf_list, nir_before_block(nir_if_first_then_block(_if)));
+
+   return true;
+}
+
+/* This pass wraps jump instructions in a dummy if block so that when
+ * flatten_resume_if_ladder() does its job, it doesn't move a jump instruction
+ * directly in front of another instruction which the NIR control flow helpers
+ * do not allow.
+ */
+static bool
+wrap_jumps(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, wrap_jump_instr,
+                                       nir_metadata_none, NULL);
+}
+
 static nir_instr *
 lower_resume(nir_shader *shader, int call_idx)
 {
-   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   wrap_jumps(shader);
 
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_instr *resume_instr = find_resume_instr(impl, call_idx);
 
    if (duplicate_loop_bodies(impl, resume_instr)) {
