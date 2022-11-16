@@ -251,6 +251,8 @@ struct pvr_winsys_transfer_ctx {
    struct pvr_winsys *ws;
 };
 
+#define PVR_WINSYS_TRANSFER_FLAG_SINGLE_CORE BITFIELD_BIT(0U)
+
 #define PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT 16U
 #define PVR_TRANSFER_MAX_RENDER_TARGETS 3U
 

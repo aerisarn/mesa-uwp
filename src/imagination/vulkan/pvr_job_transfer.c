@@ -5038,6 +5038,17 @@ pvr_submit_info_stream_init(struct pvr_transfer_ctx *ctx,
    assert(cmd->fw_stream_len <= ARRAY_SIZE(cmd->fw_stream));
 }
 
+static void
+pvr_submit_info_flags_init(const struct pvr_device_info *const dev_info,
+                           const struct pvr_transfer_prep_data *const prep_data,
+                           uint32_t *const flags)
+{
+   *flags = prep_data->flags;
+
+   if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support))
+      *flags |= PVR_WINSYS_TRANSFER_FLAG_SINGLE_CORE;
+}
+
 static void pvr_transfer_job_ws_submit_info_init(
    struct pvr_transfer_ctx *ctx,
    struct pvr_transfer_submit *submit,
@@ -5045,6 +5056,7 @@ static void pvr_transfer_job_ws_submit_info_init(
    struct pvr_winsys_transfer_submit_info *submit_info)
 {
    const struct pvr_device *const device = ctx->device;
+   const struct pvr_device_info *const dev_info = &device->pdevice->dev_info;
 
    submit_info->frame_num = device->global_queue_present_count;
    submit_info->job_num = device->global_cmd_buffer_submit_count;
@@ -5056,8 +5068,7 @@ static void pvr_transfer_job_ws_submit_info_init(
       struct pvr_transfer_prep_data *prep_data = &submit->prep_array[i];
 
       pvr_submit_info_stream_init(ctx, prep_data, cmd);
-
-      cmd->flags = prep_data->flags;
+      pvr_submit_info_flags_init(dev_info, prep_data, &cmd->flags);
    }
 }
 
