@@ -94,6 +94,12 @@ etna_resource_level_older(struct etna_resource_level *a,
    return (int)(a->seqno - b->seqno) < 0;
 }
 
+static inline bool
+etna_resource_level_ts_valid(struct etna_resource_level *lvl)
+{
+   return lvl->ts_valid;
+}
+
 /* returns TRUE if a is older than b */
 static inline bool
 etna_resource_level_needs_flush(struct etna_resource_level *lvl)

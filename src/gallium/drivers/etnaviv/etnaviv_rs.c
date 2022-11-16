@@ -734,7 +734,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
 
    /* Set up color TS to source surface before blit, if needed */
    bool source_ts_valid = false;
-   if (src_lev->ts_size && src_lev->ts_valid) {
+   if (etna_resource_level_ts_valid(src_lev)) {
       struct etna_reloc reloc;
       unsigned ts_offset =
          src_lev->ts_offset + blit_info->src.box.z * src_lev->ts_layer_stride;

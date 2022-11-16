@@ -650,7 +650,7 @@ etna_update_ts_config(struct etna_context *ctx)
    if (ctx->framebuffer_s.nr_cbufs > 0) {
       struct etna_surface *c_surf = etna_surface(ctx->framebuffer_s.cbufs[0]);
 
-      if(c_surf->level->ts_size && c_surf->level->ts_valid) {
+      if (etna_resource_level_ts_valid(c_surf->level)) {
          new_ts_config |= VIVS_TS_MEM_CONFIG_COLOR_FAST_CLEAR;
       } else {
          new_ts_config &= ~VIVS_TS_MEM_CONFIG_COLOR_FAST_CLEAR;
@@ -660,7 +660,7 @@ etna_update_ts_config(struct etna_context *ctx)
    if (ctx->framebuffer_s.zsbuf) {
       struct etna_surface *zs_surf = etna_surface(ctx->framebuffer_s.zsbuf);
 
-      if(zs_surf->level->ts_size && zs_surf->level->ts_valid) {
+      if (etna_resource_level_ts_valid(zs_surf->level)) {
          new_ts_config |= VIVS_TS_MEM_CONFIG_DEPTH_FAST_CLEAR;
       } else {
          new_ts_config &= ~VIVS_TS_MEM_CONFIG_DEPTH_FAST_CLEAR;

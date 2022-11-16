@@ -471,7 +471,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
     */
    if (src == dst) {
       assert(!memcmp(&blit_info->src, &blit_info->dst, sizeof(blit_info->src)));
-      if (!src_lev->ts_size || !src_lev->ts_valid) /* No TS, no worries */
+      if (!etna_resource_level_ts_valid(src_lev)) /* No TS, no worries */
          return true;
    }
 
@@ -517,7 +517,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
       for (unsigned x=0; x<4; ++x)
          op.src.swizzle[x] = x;
 
-      if (src_lev->ts_size && src_lev->ts_valid) {
+      if (etna_resource_level_ts_valid(src_lev)) {
          op.src.use_ts = 1;
          op.src.ts_addr.bo = src->ts_bo;
          op.src.ts_addr.offset = src_lev->ts_offset + blit_info->src.box.z * src_lev->ts_layer_stride;

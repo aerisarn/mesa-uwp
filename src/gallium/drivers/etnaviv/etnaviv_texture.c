@@ -96,7 +96,7 @@ etna_configure_sampler_ts(struct etna_sampler_ts *sts, struct pipe_sampler_view 
        (lev->clear_value >> 32) != sts->TS_SAMPLER_CLEAR_VALUE2)
       dirty = true;
 
-   assert(rsc->ts_bo && lev->ts_valid);
+   assert(rsc->ts_bo && etna_resource_level_ts_valid(lev));
 
    sts->mode = lev->ts_mode;
    sts->comp = lev->ts_compress_fmt >= 0;
@@ -151,7 +151,7 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
       return false;
 
    /* The resource TS is valid for level 0. */
-   if (!rsc->levels[0].ts_valid)
+   if (!etna_resource_level_ts_valid(&rsc->levels[0]))
       return false;
 
    return true;
