@@ -50,6 +50,10 @@ struct etna_ts_sw_meta {
       uint32_t layer_stride;
       uint32_t comp_format;
       uint64_t clear_value;
+      uint32_t seqno;
+      uint32_t flush_seqno;
+      uint8_t valid;
+      uint8_t pad[3];
    } v0;
 };
 
@@ -85,7 +89,10 @@ static inline bool
 etna_resource_level_newer(struct etna_resource_level *a,
                           struct etna_resource_level *b)
 {
-   return (int)(a->seqno - b->seqno) > 0;
+   uint32_t a_seqno = a->ts_meta ? a->ts_meta->v0.seqno : a->seqno;
+   uint32_t b_seqno = b->ts_meta ? b->ts_meta->v0.seqno : b->seqno;
+
+   return (int)(a_seqno - b_seqno) > 0;
 }
 
 /* returns TRUE if a is older than b */
@@ -93,51 +100,80 @@ static inline bool
 etna_resource_level_older(struct etna_resource_level *a,
                           struct etna_resource_level *b)
 {
-   return (int)(a->seqno - b->seqno) < 0;
+   uint32_t a_seqno = a->ts_meta ? a->ts_meta->v0.seqno : a->seqno;
+   uint32_t b_seqno = b->ts_meta ? b->ts_meta->v0.seqno : b->seqno;
+
+   return (int)(a_seqno - b_seqno) < 0;
 }
 
 static inline bool
 etna_resource_level_ts_valid(struct etna_resource_level *lvl)
 {
-   return lvl->ts_valid;
+   if (unlikely(lvl->ts_meta))
+      return lvl->ts_meta->v0.valid;
+   else
+      return lvl->ts_valid;
 }
 
 static inline void
 etna_resource_level_ts_mark_valid(struct etna_resource_level *lvl)
 {
-   lvl->ts_valid = true;
+   if (unlikely(lvl->ts_meta))
+      lvl->ts_meta->v0.valid = 1;
+   else
+      lvl->ts_valid = true;
 }
 
 static inline void
 etna_resource_level_ts_mark_invalid(struct etna_resource_level *lvl)
 {
-   lvl->ts_valid = false;
+   if (unlikely(lvl->ts_meta))
+      lvl->ts_meta->v0.valid = 0;
+   else
+      lvl->ts_valid = false;
 }
 
 /* returns TRUE if a is older than b */
 static inline bool
 etna_resource_level_needs_flush(struct etna_resource_level *lvl)
 {
-   return lvl->ts_valid && ((int)(lvl->seqno - lvl->flush_seqno) > 0);
+   if (!etna_resource_level_ts_valid(lvl))
+      return false;
+
+   if (unlikely(lvl->ts_meta))
+      return ((int)(lvl->ts_meta->v0.seqno - lvl->ts_meta->v0.flush_seqno) > 0);
+   else
+      return ((int)(lvl->seqno - lvl->flush_seqno) > 0);
 }
 
 static inline void
 etna_resource_level_mark_flushed(struct etna_resource_level *lvl)
 {
-   lvl->flush_seqno = lvl->seqno;
+   if (unlikely(lvl->ts_meta))
+      lvl->ts_meta->v0.flush_seqno = lvl->ts_meta->v0.seqno;
+   else
+      lvl->flush_seqno = lvl->seqno;
 }
 
 static inline void
 etna_resource_level_mark_changed(struct etna_resource_level *lvl)
 {
-   lvl->seqno++;
+   if (unlikely(lvl->ts_meta))
+      lvl->ts_meta->v0.seqno++;
+   else
+      lvl->seqno++;
 }
 
 static inline void
 etna_resource_level_copy_seqno(struct etna_resource_level *dst,
                                struct etna_resource_level *src)
 {
-   dst->seqno = src->seqno;
+   uint32_t src_seqno = src->ts_meta ? src->ts_meta->v0.seqno : src->seqno;
+
+   if (unlikely(dst->ts_meta))
+      dst->ts_meta->v0.seqno = src_seqno;
+   else
+      dst->seqno = src_seqno;
 }
 
 /* status of queued up but not flushed reads and write operations.

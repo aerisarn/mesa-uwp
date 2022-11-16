@@ -632,7 +632,6 @@ static void etna_resource_finish_ts_import(struct etna_screen *screen,
    lvl->clear_value = lvl->ts_meta->v0.clear_value;
    lvl->ts_size = lvl->ts_meta->v0.data_size;
    lvl->ts_mode = ts_mode;
-   etna_resource_level_ts_mark_valid(lvl);
 
    etna_resource_destroy(&screen->base, rsc->base.next);
    rsc->base.next = NULL;
