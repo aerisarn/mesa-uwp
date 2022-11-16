@@ -169,8 +169,7 @@
                     "shaderStorageImageExtendedFormats": true,
                     "shaderStorageImageWriteWithoutFormat": true,
                     "vertexPipelineStoresAndAtomics": true,
-                    "fragmentStoresAndAtomics": true,
-                    "textureCompressionBC": true
+                    "fragmentStoresAndAtomics": true
                 }
             }
         },
@@ -314,6 +313,9 @@
                 "VK_EXT_non_seamless_cube_map": 1
             },
             "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "textureCompressionBC": true
+                },
                 "VkPhysicalDeviceExtendedDynamicStateFeaturesEXT": {
                     "extendedDynamicState": true
                 },

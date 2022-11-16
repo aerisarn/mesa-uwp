@@ -175,7 +175,6 @@ supported:
   * ``shaderStorageImageWriteWithoutFormat``
   * ``vertexPipelineStoresAndAtomics``
   * ``fragmentStoresAndAtomics``
-  * ``textureCompressionBC``
 
 * For Vulkan 1.2 and above:
 
