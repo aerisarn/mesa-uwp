@@ -70,6 +70,8 @@ struct etna_resource_level {
    uint8_t ts_mode;
    int8_t ts_compress_fmt; /* COLOR_COMPRESSION_FORMAT_* (-1 = disable) */
 
+   struct etna_ts_sw_meta *ts_meta; /* metadata for shared TS */
+
    /* keep track if we have done some per block patching */
    bool patched;
    struct util_dynarray *patch_offsets;
@@ -159,7 +161,6 @@ struct etna_resource {
    struct etna_bo *bo; /* Surface video memory */
    struct etna_bo *ts_bo; /* Tile status video memory */
    struct renderonly_scanout *ts_scanout; /* display compatible TS */
-   struct etna_ts_sw_meta *ts_meta; /* metadata for shared TS */
 
    struct etna_resource_level levels[ETNA_NUM_LOD];
 
