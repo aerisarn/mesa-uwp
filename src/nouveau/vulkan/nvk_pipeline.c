@@ -34,6 +34,7 @@ nvk_pipeline_free(struct nvk_device *device,
                        pipeline->shaders[s].upload_addr,
                        pipeline->shaders[s].upload_size);
       }
+      free(pipeline->shaders[s].xfb);
    }
 
    vk_object_free(&device->vk, pAllocator, pipeline);

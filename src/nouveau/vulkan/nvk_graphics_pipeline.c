@@ -175,6 +175,27 @@ emit_pipeline_cb_state(struct nv_push *p,
    }
 }
 
+static void
+emit_pipeline_xfb_state(struct nv_push *p,
+                        const struct nvk_transform_feedback_state *xfb)
+{
+   const uint8_t max_buffers = 4;
+   for (uint8_t b = 0; b < max_buffers; ++b) {
+      const uint32_t var_count = xfb->varying_count[b];
+      P_MTHD(p, NV9097, SET_STREAM_OUT_CONTROL_STREAM(b));
+      P_NV9097_SET_STREAM_OUT_CONTROL_STREAM(p, b, xfb->stream[b]);
+      P_NV9097_SET_STREAM_OUT_CONTROL_COMPONENT_COUNT(p, b, var_count);
+      P_NV9097_SET_STREAM_OUT_CONTROL_STRIDE(p, b, xfb->stride[b]);
+
+      /* upload packed varying indices in multiples of 4 bytes */
+      const uint32_t n = (var_count + 3) / 4;
+      if (n > 0) {
+         P_MTHD(p, NV9097, SET_STREAM_OUT_LAYOUT_SELECT(b, 0));
+         P_INLINE_ARRAY(p, (const uint32_t*)xfb->varying_index[b], n);
+      }
+   }
+}
+
 static const uint32_t mesa_to_nv9097_shader_type[] = {
    [MESA_SHADER_VERTEX]    = NV9097_SET_PIPELINE_SHADER_TYPE_VERTEX,
    [MESA_SHADER_TESS_CTRL] = NV9097_SET_PIPELINE_SHADER_TYPE_TESSELLATION_INIT,
@@ -358,6 +379,10 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                  CONTROL_GEOMETRY_SHADER_SELECTS_LAYER :
                  CONTROL_V_SELECTS_LAYER,
    });
+
+   if (last_geom->xfb) {
+      emit_pipeline_xfb_state(&push, last_geom->xfb);
+   }
 
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);

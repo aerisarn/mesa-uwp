@@ -11,6 +11,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "compiler/spirv/nir_spirv.h"
+#include "compiler/nir/nir_xfb_info.h"
 
 #include "nv50_ir_driver.h"
 
@@ -67,6 +68,7 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
          .draw_parameters = true,
          .image_write_without_format = true,
          .physical_storage_buffer_address = true,
+         .transform_feedback = true,
       },
       .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
@@ -754,6 +756,65 @@ nvk_fs_gen_header(struct nvk_shader *fs, struct nv50_ir_prog_info_out *info)
    return 0;
 }
 
+static uint8_t find_register_index_for_xfb_output(const struct nir_shader *nir,
+                                                  nir_xfb_output_info output)
+{
+   nir_foreach_shader_out_variable(var, nir) {
+      uint32_t slots = glsl_count_vec4_slots(var->type, false, false);
+      for (uint32_t i = 0; i < slots; ++i) {
+         if (output.location == (var->data.location+i)) {
+            return var->data.driver_location+i;
+         }
+      }
+   }
+   // should not be reached
+   return 0;
+}
+
+static struct nvk_transform_feedback_state *
+nvk_fill_transform_feedback_state(struct nir_shader *nir,
+                                  const struct nv50_ir_prog_info_out *info)
+{
+   const uint8_t max_buffers = 4;
+   const uint8_t dw_bytes = 4;
+   const struct nir_xfb_info *nx = nir->xfb_info;
+   //nir_print_xfb_info(nx, stdout);
+
+   struct nvk_transform_feedback_state *xfb =
+      malloc(sizeof(struct nvk_transform_feedback_state));
+
+   if (!xfb)
+      return NULL;
+
+   for (uint8_t b = 0; b < max_buffers; ++b) {
+      xfb->stride[b] = b < nx->buffers_written ? nx->buffers[b].stride : 0;
+      xfb->varying_count[b] = 0;
+      xfb->stream[b] = nx->buffer_to_stream[b];
+   }
+   memset(xfb->varying_index, 0xff, sizeof(xfb->varying_index)); /* = skip */
+
+   for (uint32_t i = 0; i < nx->output_count; ++i) {
+      const nir_xfb_output_info output = nx->outputs[i];
+      const uint8_t b = output.buffer;
+      const uint8_t r = find_register_index_for_xfb_output(nir, output);
+      uint32_t p = output.offset / dw_bytes;
+
+      assert(r < info->numOutputs && p < ARRAY_SIZE(xfb->varying_index[b]));
+
+      u_foreach_bit(c, nx->outputs[i].component_mask)
+         xfb->varying_index[b][p++] = info->out[r].slot[c];
+
+      xfb->varying_count[b] = MAX2(xfb->varying_count[b], p);
+   }
+
+   /* zero unused indices */
+   for (uint8_t b = 0; b < 4; ++b)
+      for (uint32_t c = xfb->varying_count[b]; c & 3; ++c)
+         xfb->varying_index[b][c] = 0;
+
+   return xfb;
+}
+
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
@@ -839,6 +900,13 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
       shader->hdr[0] |= 1 << 16;
    if (info_out.io.fp64)
       shader->hdr[0] |= 1 << 27;
+
+   if (nir->xfb_info) {
+      shader->xfb = nvk_fill_transform_feedback_state(nir, &info_out);
+      if (shader->xfb == NULL) {
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
+   }
 
    return VK_SUCCESS;
 }
