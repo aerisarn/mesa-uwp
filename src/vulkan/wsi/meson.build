@@ -38,7 +38,7 @@ if with_platform_wayland
 endif
 
 if with_platform_windows
-  files_vulkan_wsi += files('wsi_common_win32.c')
+  files_vulkan_wsi += files('wsi_common_win32.cpp')
 endif
 
 if system_has_kms_drm and not with_platform_android

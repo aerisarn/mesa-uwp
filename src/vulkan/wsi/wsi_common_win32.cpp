@@ -88,7 +88,7 @@ wsi_CreateWin32SurfaceKHR(VkInstance _instance,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR);
 
-   surface = vk_zalloc2(&instance->alloc, pAllocator, sizeof(*surface), 8,
+   surface = (VkIcdSurfaceWin32 *)vk_zalloc2(&instance->alloc, pAllocator, sizeof(*surface), 8,
                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (surface == NULL)
@@ -130,12 +130,12 @@ wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surf,
    /* There is no real maximum */
    caps->maxImageCount = 0;
 
-   caps->currentExtent = (VkExtent2D) {
-      win_rect.right - win_rect.left,
-      win_rect.bottom - win_rect.top
+   caps->currentExtent = {
+      (uint32_t)win_rect.right - (uint32_t)win_rect.left,
+      (uint32_t)win_rect.bottom - (uint32_t)win_rect.top
    };
-   caps->minImageExtent = (VkExtent2D) { 1, 1 };
-   caps->maxImageExtent = (VkExtent2D) {
+   caps->minImageExtent = { 1u, 1u };
+   caps->maxImageExtent = {
       wsi_device->maxImageDimension2D,
       wsi_device->maxImageDimension2D,
    };
@@ -174,8 +174,8 @@ wsi_win32_surface_get_capabilities2(VkIcdSurfaceBase *surface,
    vk_foreach_struct(ext, caps->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
-         VkSurfaceProtectedCapabilitiesKHR *protected = (void *)ext;
-         protected->supportsProtected = VK_FALSE;
+         VkSurfaceProtectedCapabilitiesKHR *protected_cap = (VkSurfaceProtectedCapabilitiesKHR *)ext;
+         protected_cap->supportsProtected = VK_FALSE;
          break;
       }
 
@@ -192,8 +192,8 @@ wsi_win32_surface_get_capabilities2(VkIcdSurfaceBase *surface,
 static const struct {
    VkFormat     format;
 } available_surface_formats[] = {
-   { .format = VK_FORMAT_B8G8R8A8_SRGB },
-   { .format = VK_FORMAT_B8G8R8A8_UNORM },
+   { VK_FORMAT_B8G8R8A8_SRGB },
+   { VK_FORMAT_B8G8R8A8_UNORM },
 };
 
 
@@ -292,9 +292,9 @@ wsi_win32_surface_get_present_rectangles(VkIcdSurfaceBase *surface,
 
    vk_outarray_append_typed(VkRect2D, &out, rect) {
       /* We don't know a size so just return the usual "I don't know." */
-      *rect = (VkRect2D) {
-         .offset = { 0, 0 },
-         .extent = { UINT32_MAX, UINT32_MAX },
+      *rect = {
+         { 0, 0 },
+         { UINT32_MAX, UINT32_MAX },
       };
    }
 
@@ -410,8 +410,8 @@ wsi_win32_queue_present(struct wsi_swapchain *drv_chain,
 
    assert(chain->base.blit.type == WSI_SWAPCHAIN_BUFFER_BLIT);
 
-   char *ptr = image->base.cpu_map;
-   char *dptr = image->ppvBits;
+   char *ptr = (char *)image->base.cpu_map;
+   char *dptr = (char *)image->ppvBits;
 
    for (unsigned h = 0; h < chain->extent.height; h++) {
       memcpy(dptr, ptr, chain->extent.width * 4);
@@ -443,14 +443,14 @@ wsi_win32_surface_create_swapchain(
    struct wsi_win32_swapchain *chain;
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
 
-   chain = vk_zalloc(allocator, size,
+   chain = (wsi_win32_swapchain *)vk_zalloc(allocator, size,
                      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    struct wsi_cpu_image_params image_params = {
-      .base.image_type = WSI_IMAGE_TYPE_CPU,
+      { WSI_IMAGE_TYPE_CPU },
    };
 
    VkResult result = wsi_swapchain_init(wsi_device, &chain->base, device,
@@ -503,7 +503,7 @@ wsi_win32_init_wsi(struct wsi_device *wsi_device,
    struct wsi_win32 *wsi;
    VkResult result;
 
-   wsi = vk_alloc(alloc, sizeof(*wsi), 8,
+   wsi = (wsi_win32 *)vk_alloc(alloc, sizeof(*wsi), 8,
                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!wsi) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;

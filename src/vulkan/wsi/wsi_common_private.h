@@ -28,6 +28,10 @@
 #include "vulkan/runtime/vk_object.h"
 #include "vulkan/runtime/vk_sync.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct wsi_image;
 struct wsi_swapchain;
 
@@ -357,6 +361,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(wsi_swapchain, base, VkSwapchainKHR,
 #if defined(HAVE_PTHREAD) && !defined(_WIN32)
 bool
 wsi_init_pthread_cond_monotonic(pthread_cond_t *cond);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* WSI_COMMON_PRIVATE_H */
