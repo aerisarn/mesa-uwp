@@ -522,27 +522,31 @@ vlVaQuerySurfaceAttributes(VADriverContextP ctx, VAConfigID config_id,
          attribs[i].value.value.i = VA_FOURCC_NV12;
          i++;
       }
-      if (config->rt_format & VA_RT_FORMAT_YUV400) {
-         attribs[i].type = VASurfaceAttribPixelFormat;
-         attribs[i].value.type = VAGenericValueTypeInteger;
-         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-         attribs[i].value.value.i = VA_FOURCC_Y800;
-         i++;
-      }
-      if (config->rt_format & VA_RT_FORMAT_YUV422) {
-         attribs[i].type = VASurfaceAttribPixelFormat;
-         attribs[i].value.type = VAGenericValueTypeInteger;
-         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-         attribs[i].value.value.i = VA_FOURCC_YUY2;
-         i++;
-      }
 
-      if (config->rt_format & VA_RT_FORMAT_YUV444) {
-         attribs[i].type = VASurfaceAttribPixelFormat;
-         attribs[i].value.type = VAGenericValueTypeInteger;
-         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
-         attribs[i].value.value.i = VA_FOURCC_444P;
-         i++;
+      if (config->profile == PIPE_VIDEO_PROFILE_JPEG_BASELINE) {
+         if (config->rt_format & VA_RT_FORMAT_YUV400) {
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_Y800;
+            i++;
+         }
+
+         if (config->rt_format & VA_RT_FORMAT_YUV422) {
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_YUY2;
+            i++;
+         }
+
+         if (config->rt_format & VA_RT_FORMAT_YUV444) {
+            attribs[i].type = VASurfaceAttribPixelFormat;
+            attribs[i].value.type = VAGenericValueTypeInteger;
+            attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
+            attribs[i].value.value.i = VA_FOURCC_444P;
+            i++;
+         }
       }
    }
 
