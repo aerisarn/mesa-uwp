@@ -294,6 +294,8 @@ struct fdl6_view {
    uint32_t layer_size;
    uint32_t ubwc_layer_size;
 
+   uint32_t offset;
+
    uint32_t width, height;
    bool need_y2_align;
 

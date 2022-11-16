@@ -200,8 +200,8 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
       depth /= 6;
    }
 
-   uint64_t base_addr = args->iova +
-      fdl_surface_offset(layout, args->base_miplevel, args->base_array_layer);
+   view->offset = fdl_surface_offset(layout, args->base_miplevel, args->base_array_layer);
+   uint64_t base_addr = args->iova + view->offset;
    uint64_t ubwc_addr = args->iova +
       fdl_ubwc_offset(layout, args->base_miplevel, args->base_array_layer);
 
