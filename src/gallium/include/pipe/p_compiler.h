@@ -77,12 +77,6 @@ typedef unsigned char boolean;
 #define FALSE false
 #endif
 
-/* XXX: Use standard `__func__` instead */
-#ifndef __FUNCTION__
-#  define __FUNCTION__ __func__
-#endif
-
-
 /* This should match linux gcc cdecl semantics everywhere, so that we
  * just codegen one calling convention on all platforms.
  */
