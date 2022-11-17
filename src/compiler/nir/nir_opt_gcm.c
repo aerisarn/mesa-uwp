@@ -792,14 +792,11 @@ gcm_place_instr(nir_instr *instr, struct gcm_state *state)
 }
 
 /**
- * Are ALU instructions a and b both contained in the same if/else block?
+ * Are instructions a and b both contained in the same if/else block?
  */
 static bool
 weak_gvn(const nir_instr *a, const nir_instr *b)
 {
-   if (a->type != nir_instr_type_alu)
-      return false;
-
    const struct nir_cf_node *ap = a->block->cf_node.parent;
    const struct nir_cf_node *bp = b->block->cf_node.parent;
    return ap && ap == bp && ap->type == nir_cf_node_if;
