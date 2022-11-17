@@ -2542,3 +2542,12 @@ vk_common_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
    SET_DYN_ARRAY(dyn, CB_BLEND_CONSTANTS, cb.blend_constants,
                  0, 4, blendConstants);
 }
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetColorBlendAdvancedEXT(VkCommandBuffer commandBuffer,
+                                      uint32_t firstAttachment,
+                                      uint32_t attachmentCount,
+                                      const VkColorBlendAdvancedEXT* pColorBlendAdvanced)
+{
+   unreachable("VK_EXT_blend_operation_advanced unsupported");
+}
