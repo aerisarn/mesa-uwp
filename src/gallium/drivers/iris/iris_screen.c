@@ -574,7 +574,7 @@ iris_get_compute_param(struct pipe_screen *pscreen,
       RET((uint64_t []) { 3 });
 
    case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
-      RET(((uint64_t []) { 65535, 65535, 65535 }));
+      RET(((uint64_t []) { UINT32_MAX, UINT32_MAX, UINT32_MAX }));
 
    case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
       /* MaxComputeWorkGroupSize[0..2] */
