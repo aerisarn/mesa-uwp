@@ -34,10 +34,10 @@ agx_const_buffer_ptr(struct agx_batch *batch,
                      struct pipe_constant_buffer *cb)
 {
    if (cb->buffer) {
-      struct agx_bo *bo = agx_resource(cb->buffer)->bo;
-      agx_batch_add_bo(batch, bo);
+      struct agx_resource *rsrc = agx_resource(cb->buffer);
+      agx_batch_reads(batch, rsrc);
 
-      return bo->ptr.gpu + cb->buffer_offset;
+      return rsrc->bo->ptr.gpu + cb->buffer_offset;
    } else {
       return agx_pool_upload_aligned(&batch->pool,
                                      ((uint8_t *) cb->user_buffer) + cb->buffer_offset,
@@ -75,10 +75,10 @@ agx_push_location_direct(struct agx_batch *batch, struct agx_push push,
       struct pipe_vertex_buffer vb = ctx->vertex_buffers[push.vbo];
       assert(!vb.is_user_buffer);
 
-      struct agx_bo *bo = agx_resource(vb.buffer.resource)->bo;
-      agx_batch_add_bo(batch, bo);
+      struct agx_resource *rsrc = agx_resource(vb.buffer.resource);
+      agx_batch_reads(batch, rsrc);
 
-      *address = bo->ptr.gpu + vb.buffer_offset;
+      *address = rsrc->bo->ptr.gpu + vb.buffer_offset;
       return ptr.gpu;
    }
 
