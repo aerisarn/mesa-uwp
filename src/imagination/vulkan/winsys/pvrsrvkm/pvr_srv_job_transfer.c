@@ -194,8 +194,8 @@ VkResult pvr_srv_winsys_transfer_submit(
    uint32_t client_update_count[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT] = { 0 };
    void **update_ufo_syc_prims[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT] = { 0 };
    uint32_t *update_values[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT] = { 0 };
+   uint32_t cmd_flags[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT] = { 0 };
    uint32_t cmd_sizes[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
-   uint32_t cmd_flags[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
 
    struct pvr_srv_sync *srv_signal_sync;
    uint32_t job_num;
@@ -215,14 +215,6 @@ VkResult pvr_srv_winsys_transfer_submit(
 
    for (uint32_t i = 0U; i < submit_info->cmd_count; i++) {
       cmd_sizes[i] = sizeof(**cmds_ptr_arr);
-
-      cmd_flags[i] = 0;
-      if (submit_info->cmds[i].flags & PVR_WINSYS_TRANSFER_FLAG_START)
-         cmd_flags[i] |= PVR_TRANSFER_PREP_FLAGS_START;
-
-      if (submit_info->cmds[i].flags & PVR_WINSYS_TRANSFER_FLAG_END)
-         cmd_flags[i] |= PVR_TRANSFER_PREP_FLAGS_END;
-
       cmds_ptr_arr[i] = &transfer_cmds[i];
    }
 
