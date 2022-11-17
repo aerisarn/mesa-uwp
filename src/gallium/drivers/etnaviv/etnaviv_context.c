@@ -419,9 +419,9 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       pctx->flush(pctx, NULL, 0);
 
    if (ctx->framebuffer_s.cbufs[0])
-      etna_resource(ctx->framebuffer_s.cbufs[0]->texture)->seqno++;
+      etna_surface(ctx->framebuffer_s.cbufs[0])->level->seqno++;
    if (ctx->framebuffer_s.zsbuf)
-      etna_resource(ctx->framebuffer_s.zsbuf->texture)->seqno++;
+      etna_surface(ctx->framebuffer_s.zsbuf)->level->seqno++;
    if (info->index_size && indexbuf != info->index.resource)
       pipe_resource_reference(&indexbuf, NULL);
 }

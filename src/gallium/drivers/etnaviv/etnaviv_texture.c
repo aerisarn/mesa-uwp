@@ -174,17 +174,14 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
    if ((to != from) && etna_resource_older(to, from)) {
       etna_copy_resource(view->context, &to->base, &from->base, 0,
                          view->texture->last_level);
-      to->seqno = from->seqno;
       ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
    } else if ((to == from) && etna_resource_needs_flush(to)) {
       if (etna_can_use_sampler_ts(view, num)) {
          enable_sampler_ts = true;
-         /* Do not set flush_seqno because the resolve-to-self was bypassed */
       } else {
          /* Resolve TS if needed */
          etna_copy_resource(view->context, &to->base, &from->base, 0,
                             view->texture->last_level);
-         to->flush_seqno = from->seqno;
          ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
       }
    }

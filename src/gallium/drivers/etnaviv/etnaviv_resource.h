@@ -73,7 +73,33 @@ struct etna_resource_level {
    /* keep track if we have done some per block patching */
    bool patched;
    struct util_dynarray *patch_offsets;
+
+   uint32_t seqno;
+   uint32_t flush_seqno;
 };
+
+/* returns TRUE if a is newer than b */
+static inline bool
+etna_resource_level_newer(struct etna_resource_level *a,
+                          struct etna_resource_level *b)
+{
+   return (int)(a->seqno - b->seqno) > 0;
+}
+
+/* returns TRUE if a is older than b */
+static inline bool
+etna_resource_level_older(struct etna_resource_level *a,
+                          struct etna_resource_level *b)
+{
+   return (int)(a->seqno - b->seqno) < 0;
+}
+
+/* returns TRUE if a is older than b */
+static inline bool
+etna_resource_level_needs_flush(struct etna_resource_level *lvl)
+{
+   return lvl->ts_valid && ((int)(lvl->seqno - lvl->flush_seqno) > 0);
+}
 
 /* status of queued up but not flushed reads and write operations.
  * In _transfer_map() we need to know if queued up rendering needs
@@ -86,8 +112,6 @@ enum etna_resource_status {
 struct etna_resource {
    struct pipe_resource base;
    struct renderonly_scanout *scanout;
-   uint32_t seqno;
-   uint32_t flush_seqno;
 
    /* only lod 0 used for non-texture buffers */
    /* Layout for surface (tiled, multitiled, split tiled, ...) */
@@ -117,26 +141,30 @@ struct etna_resource {
 static inline bool
 etna_resource_newer(struct etna_resource *a, struct etna_resource *b)
 {
-   return (int)(a->seqno - b->seqno) > 0;
+   assert(a->base.last_level == b->base.last_level);
+
+   for (int level = 0; level <= a->base.last_level; level++)
+      if (etna_resource_level_newer(&a->levels[level], &b->levels[level]))
+         return true;
+
+   return false;
 }
 
 /* returns TRUE if a is older than b */
 static inline bool
 etna_resource_older(struct etna_resource *a, struct etna_resource *b)
 {
-   return (int)(a->seqno - b->seqno) < 0;
-}
+   assert(a->base.last_level == b->base.last_level);
 
-/* returns TRUE if a resource has a TS, and it is valid for at least one level */
-bool
-etna_resource_has_valid_ts(struct etna_resource *res);
+   for (int level = 0; level <= a->base.last_level; level++)
+      if (etna_resource_level_older(&a->levels[level], &b->levels[level]))
+         return true;
+
+   return false;
+}
 
 /* returns TRUE if the resource needs a resolve to itself */
-static inline bool
-etna_resource_needs_flush(struct etna_resource *res)
-{
-   return etna_resource_has_valid_ts(res) && ((int)(res->seqno - res->flush_seqno) > 0);
-}
+bool etna_resource_needs_flush(struct etna_resource *res);
 
 /* is the resource only used on the sampler? */
 static inline bool

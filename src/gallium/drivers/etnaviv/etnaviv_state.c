@@ -120,10 +120,8 @@ etna_update_render_resource(struct pipe_context *pctx, struct etna_resource *bas
    if (base->render)
       to = etna_resource(base->render);
 
-   if ((to != from) && etna_resource_older(to, from)) {
+   if ((to != from) && etna_resource_older(to, from))
       etna_copy_resource(pctx, &to->base, &from->base, 0, base->base.last_level);
-      to->seqno = from->seqno;
-   }
 }
 
 static void

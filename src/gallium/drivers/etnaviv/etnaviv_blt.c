@@ -270,7 +270,7 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
 
    surf->level->clear_value = new_clear_value;
    resource_written(ctx, surf->base.texture);
-   etna_resource(surf->base.texture)->seqno++;
+   surf->level->seqno++;
 }
 
 static void
@@ -351,7 +351,7 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    }
 
    resource_written(ctx, surf->base.texture);
-   etna_resource(surf->base.texture)->seqno++;
+   surf->level->seqno++;
 }
 
 static void
@@ -573,7 +573,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
    resource_read(ctx, &src->base);
    resource_written(ctx, &dst->base);
 
-   dst->seqno++;
+   dst_lev->seqno++;
    dst_lev->ts_valid = false;
 
    return true;

@@ -104,6 +104,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    struct etna_context *ctx = etna_context(pctx);
    struct etna_transfer *trans = etna_transfer(ptrans);
    struct etna_resource *rsc = etna_resource(ptrans->resource);
+   struct etna_resource_level *res_level;
 
    /* XXX
     * When writing to a resource that is already in use, replace the resource
@@ -116,6 +117,8 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    if (rsc->texture && !etna_resource_newer(rsc, etna_resource(rsc->texture)))
       rsc = etna_resource(rsc->texture); /* switch to using the texture resource */
 
+   res_level = &rsc->levels[ptrans->level];
+
    /*
     * Temporary resources are always pulled into the CPU domain, must push them
     * back into GPU domain before the RS execs the blit to the base resource.
@@ -124,11 +127,11 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
       etna_bo_cpu_fini(etna_resource(trans->rsc)->bo);
 
    if (ptrans->usage & PIPE_MAP_WRITE) {
-      if (etna_resource_needs_flush(rsc)) {
+      if (etna_resource_level_needs_flush(res_level)) {
          if (ptrans->usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
-            rsc->flush_seqno = rsc->seqno;
+            res_level->flush_seqno = res_level->seqno;
          else
-            etna_copy_resource(pctx, &rsc->base, &rsc->base, 0, rsc->base.last_level);
+            etna_copy_resource(pctx, &rsc->base, &rsc->base, ptrans->level, ptrans->level);
       }
 
       if (trans->rsc) {
@@ -138,8 +141,6 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          etna_copy_resource_box(pctx, ptrans->resource, trans->rsc, ptrans->level, &ptrans->box);
       } else if (trans->staging) {
          /* map buffer object */
-         struct etna_resource_level *res_level = &rsc->levels[ptrans->level];
-
          if (rsc->layout == ETNA_LAYOUT_TILED) {
             for (unsigned z = 0; z < ptrans->box.depth; z++) {
                etna_texture_tile(
@@ -163,8 +164,8 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          FREE(trans->staging);
       }
 
-      rsc->levels[ptrans->level].ts_valid = false;
-      rsc->seqno++;
+      res_level->ts_valid = false;
+      res_level->seqno++;
 
       if (rsc->base.bind & PIPE_BIND_SAMPLER_VIEW) {
          ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;

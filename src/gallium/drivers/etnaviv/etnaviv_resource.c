@@ -567,7 +567,10 @@ etna_resource_create_modifiers(struct pipe_screen *pscreen,
 static void
 etna_resource_changed(struct pipe_screen *pscreen, struct pipe_resource *prsc)
 {
-   etna_resource(prsc)->seqno++;
+   struct etna_resource *rsc = etna_resource(prsc);
+
+   for (int level = 0; level <= prsc->last_level; level++)
+      rsc->levels[level].seqno++;
 }
 
 static void
@@ -671,7 +674,6 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    if (modifier == DRM_FORMAT_MOD_INVALID)
       modifier = DRM_FORMAT_MOD_LINEAR;
 
-   rsc->seqno = 1;
    rsc->layout = modifier_to_layout(modifier);
    rsc->modifier = modifier;
 
@@ -683,6 +685,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    level->depth = tmpl->depth0;
    level->stride = handle->stride;
    level->offset = handle->offset;
+   level->seqno = 1;
 
    /* Determine padding of the imported resource. */
    unsigned paddingX, paddingY;
@@ -894,13 +897,13 @@ etna_resource_status(struct etna_context *ctx, struct etna_resource *res)
 }
 
 bool
-etna_resource_has_valid_ts(struct etna_resource *rsc)
+etna_resource_needs_flush(struct etna_resource *rsc)
 {
    if (!rsc->ts_bo)
       return false;
 
    for (int level = 0; level <= rsc->base.last_level; level++)
-      if (rsc->levels[level].ts_valid)
+      if (etna_resource_level_needs_flush(&rsc->levels[level]))
          return true;
 
    return false;
