@@ -4675,7 +4675,7 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.active_prims_gen_gds_queries)
       ngg_query_state |= radv_ngg_query_prim_gen;
 
-   if (cmd_buffer->state.active_prims_xfb_gds_queries) {
+   if (cmd_buffer->state.active_prims_xfb_gds_queries && radv_is_streamout_enabled(cmd_buffer)) {
       ngg_query_state |= radv_ngg_query_prim_xfb | radv_ngg_query_prim_gen;
    }
 
