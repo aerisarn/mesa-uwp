@@ -443,15 +443,15 @@ iris_resource_disable_aux(struct iris_resource *res)
    res->aux.state = NULL;
 }
 
-static uint32_t
+static unsigned
 iris_resource_alloc_flags(const struct iris_screen *screen,
                           const struct pipe_resource *templ,
                           enum isl_aux_usage aux_usage)
 {
    if (templ->flags & IRIS_RESOURCE_FLAG_DEVICE_MEM)
-      return 0;
+      return BO_ALLOC_PLAIN;
 
-   uint32_t flags = 0;
+   unsigned flags = BO_ALLOC_PLAIN;
 
    switch (templ->usage) {
    case PIPE_USAGE_STAGING:
@@ -1959,11 +1959,12 @@ iris_invalidate_buffer(struct iris_context *ice, struct iris_resource *res)
       return false;
 
    struct iris_bo *old_bo = res->bo;
+   unsigned flags = old_bo->real.protected ? BO_ALLOC_PROTECTED : BO_ALLOC_PLAIN;
    struct iris_bo *new_bo =
       iris_bo_alloc(screen->bufmgr, res->bo->name, res->base.b.width0,
                     iris_buffer_alignment(res->base.b.width0),
                     iris_memzone_for_address(old_bo->address),
-                    old_bo->real.protected ? BO_ALLOC_PROTECTED : 0);
+                    flags);
    if (!new_bo)
       return false;
 

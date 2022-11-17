@@ -654,8 +654,7 @@ iris_slab_alloc(void *priv,
 {
    struct iris_bufmgr *bufmgr = priv;
    struct iris_slab *slab = calloc(1, sizeof(struct iris_slab));
-   unsigned flags = heap == IRIS_HEAP_SYSTEM_MEMORY ? BO_ALLOC_SMEM :
-                    heap == IRIS_HEAP_DEVICE_LOCAL ? BO_ALLOC_LMEM : 0;
+   uint32_t flags;
    unsigned slab_size = 0;
    /* We only support slab allocation for IRIS_MEMZONE_OTHER */
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
@@ -706,6 +705,13 @@ iris_slab_alloc(void *priv,
       }
    }
    assert(slab_size != 0);
+
+   if (heap == IRIS_HEAP_SYSTEM_MEMORY)
+      flags = BO_ALLOC_SMEM;
+   else if (heap == IRIS_HEAP_DEVICE_LOCAL)
+      flags = BO_ALLOC_LMEM;
+   else
+      flags = BO_ALLOC_PLAIN;
 
    slab->bo =
       iris_bo_alloc(bufmgr, "slab", slab_size, slab_size, memzone, flags);
