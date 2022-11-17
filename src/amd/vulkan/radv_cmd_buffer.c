@@ -6765,6 +6765,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          primary->sample_positions_needed = true;
       if (secondary->gds_needed)
          primary->gds_needed = true;
+      if (secondary->gds_oa_needed)
+         primary->gds_oa_needed = true;
 
       if (!secondary->state.render.has_image_views && primary->state.render.active &&
           (primary->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)) {
