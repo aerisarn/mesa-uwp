@@ -4588,8 +4588,8 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
       struct radv_streamout_binding *sb = cmd_buffer->streamout_bindings;
       struct radv_streamout_state *so = &cmd_buffer->state.streamout;
       unsigned so_offset;
+      uint64_t desc_va;
       void *so_ptr;
-      uint64_t va;
 
       /* Allocate some descriptor state for streamout buffers. */
       if (!radv_cmd_buffer_upload_alloc(cmd_buffer, MAX_SO_BUFFERS * 16, &so_offset, &so_ptr))
@@ -4598,27 +4598,28 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
       for (uint32_t i = 0; i < MAX_SO_BUFFERS; i++) {
          struct radv_buffer *buffer = sb[i].buffer;
          uint32_t *desc = &((uint32_t *)so_ptr)[i * 4];
+         uint32_t size = 0;
+         uint64_t va = 0;
 
-         if (!(so->enabled_mask & (1 << i)))
-            continue;
+         if (so->enabled_mask & (1 << i)) {
+            va = radv_buffer_get_va(buffer->bo) + buffer->offset;
 
-         va = radv_buffer_get_va(buffer->bo) + buffer->offset;
+            va += sb[i].offset;
 
-         va += sb[i].offset;
-
-         /* Set the descriptor.
-          *
-          * On GFX8, the format must be non-INVALID, otherwise
-          * the buffer will be considered not bound and store
-          * instructions will be no-ops.
-          */
-         uint32_t size = 0xffffffff;
-
-         if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-            /* With NGG streamout, the buffer size is used to determine the max emit per buffer and
-             * also acts as a disable bit when it's 0.
+            /* Set the descriptor.
+             *
+             * On GFX8, the format must be non-INVALID, otherwise
+             * the buffer will be considered not bound and store
+             * instructions will be no-ops.
              */
-            size = radv_is_streamout_enabled(cmd_buffer) ? sb[i].size : 0;
+            size = 0xffffffff;
+
+            if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+               /* With NGG streamout, the buffer size is used to determine the max emit per buffer
+                * and also acts as a disable bit when it's 0.
+                */
+               size = radv_is_streamout_enabled(cmd_buffer) ? sb[i].size : 0;
+            }
          }
 
          uint32_t rsrc_word3 =
@@ -4641,10 +4642,10 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
          desc[3] = rsrc_word3;
       }
 
-      va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-      va += so_offset;
+      desc_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+      desc_va += so_offset;
 
-      radv_emit_streamout_buffers(cmd_buffer, va);
+      radv_emit_streamout_buffers(cmd_buffer, desc_va);
    }
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_STREAMOUT_BUFFER;
@@ -5998,6 +5999,18 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       /* Re-emit the provoking vertex mode state because the SGPR idx can be different. */
       if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX].sgpr_idx != -1) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
+      }
+
+      /* Re-emit the streamout buffers because the SGPR idx can be different and with NGG streamout
+       * they always need to be emitted because a buffer size of 0 is used to disable streamout.
+       */
+      if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_STREAMOUT_BUFFERS].sgpr_idx != -1) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
+
+         if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+            cmd_buffer->gds_needed = true;
+            cmd_buffer->gds_oa_needed = true;
+         }
       }
 
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
@@ -10458,14 +10471,9 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
         (old_hw_enabled_mask != so->hw_enabled_mask)))
       radv_emit_streamout_enable(cmd_buffer);
 
-   if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-      cmd_buffer->gds_needed = true;
-      cmd_buffer->gds_oa_needed = true;
-
-      if (!enable) {
-         /* Re-emit streamout buffers to unbind them. */
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
-      }
+   if (cmd_buffer->device->physical_device->use_ngg_streamout && !enable) {
+      /* Re-emit streamout buffers to unbind them. */
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
    }
 }
 
