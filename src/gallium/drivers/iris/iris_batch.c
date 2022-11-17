@@ -141,6 +141,9 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
       uint64_t bo_address = bo->address & (~0ull >> 16);
 
       if (address >= bo_address && address < bo_address + bo->size) {
+         if (bo->real.mmap_mode == IRIS_MMAP_NONE)
+            return (struct intel_batch_decode_bo) { };
+
          return (struct intel_batch_decode_bo) {
             .addr = bo_address,
             .size = bo->size,
