@@ -167,10 +167,13 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
    if (!rsc)
       return NULL;
 
+   rsc->modifier = whandle->modifier == DRM_FORMAT_MOD_INVALID ?
+                   DRM_FORMAT_MOD_LINEAR : whandle->modifier;
+
    /* We need strides to be aligned. ail asserts this, but we want to fail
     * gracefully so the app can handle the error.
     */
-   if ((whandle->stride % 16) != 0)
+   if (rsc->modifier == DRM_FORMAT_MOD_LINEAR && (whandle->stride % 16) != 0)
       return false;
 
    prsc = &rsc->base;
@@ -189,8 +192,6 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
             return NULL;
    }
 
-   rsc->modifier = whandle->modifier == DRM_FORMAT_MOD_INVALID ?
-                   DRM_FORMAT_MOD_LINEAR : whandle->modifier;
    agx_resource_setup(dev, rsc);
 
    if (rsc->layout.tiling == AIL_TILING_LINEAR)
