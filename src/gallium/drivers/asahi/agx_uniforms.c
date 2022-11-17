@@ -46,10 +46,10 @@ agx_const_buffer_ptr(struct agx_batch *batch,
 }
 
 static uint64_t
-agx_push_location_direct(struct agx_context *ctx, struct agx_push push,
+agx_push_location_direct(struct agx_batch *batch, struct agx_push push,
                          enum pipe_shader_type stage)
 {
-   struct agx_batch *batch = ctx->batch;
+   struct agx_context *ctx = batch->ctx;
    struct agx_stage *st = &ctx->stage[stage];
 
    switch (push.type) {
@@ -101,11 +101,11 @@ agx_push_location_direct(struct agx_context *ctx, struct agx_push push,
 }
 
 uint64_t
-agx_push_location(struct agx_context *ctx, struct agx_push push,
+agx_push_location(struct agx_batch *batch, struct agx_push push,
                   enum pipe_shader_type stage)
 {
-   uint64_t direct = agx_push_location_direct(ctx, push, stage);
-   struct agx_pool *pool = &ctx->batch->pool;
+   uint64_t direct = agx_push_location_direct(batch, push, stage);
+   struct agx_pool *pool = &batch->pool;
 
    if (push.indirect)
       return agx_pool_upload(pool, &direct, sizeof(direct));

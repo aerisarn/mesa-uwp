@@ -1289,15 +1289,16 @@ agx_delete_shader_state(struct pipe_context *ctx,
 }
 
 static uint32_t
-agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum pipe_shader_type stage)
+agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum pipe_shader_type stage)
 {
+   struct agx_context *ctx = batch->ctx;
    unsigned nr_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = ctx->stage[stage].sampler_count;
 
-   struct agx_ptr T_tex = agx_pool_alloc_aligned(&ctx->batch->pool,
+   struct agx_ptr T_tex = agx_pool_alloc_aligned(&batch->pool,
          AGX_TEXTURE_LENGTH * nr_textures, 64);
 
-   struct agx_ptr T_samp = agx_pool_alloc_aligned(&ctx->batch->pool,
+   struct agx_ptr T_samp = agx_pool_alloc_aligned(&batch->pool,
          AGX_SAMPLER_LENGTH * nr_samplers, 64);
 
    struct agx_texture_packed *textures = T_tex.cpu;
@@ -1306,7 +1307,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    for (unsigned i = 0; i < nr_textures; ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
-      agx_batch_reads(ctx->batch, agx_resource(tex->base.texture));
+      agx_batch_reads(batch, agx_resource(tex->base.texture));
 
       textures[i] = tex->desc;
    }
@@ -1320,7 +1321,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
    }
 
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&ctx->batch->pipeline_pool,
+      agx_alloc_usc_control(&batch->pipeline_pool,
                            cs->info.push_ranges + 2);
 
    if (nr_textures) {
@@ -1330,7 +1331,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
          cfg.buffer = T_tex.gpu;
       }
 
-      ctx->batch->textures = T_tex.gpu;
+      batch->textures = T_tex.gpu;
    }
 
    if (nr_samplers) {
@@ -1346,7 +1347,7 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
     */
    for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
       agx_usc_uniform(&b, cs->info.push[i].base, cs->info.push[i].length,
-                      agx_push_location(ctx, cs->info.push[i], stage));
+                      agx_push_location(batch, cs->info.push[i], stage));
    }
 
    agx_usc_pack(&b, SHARED, cfg) {
@@ -1393,10 +1394,10 @@ agx_build_pipeline(struct agx_context *ctx, struct agx_compiled_shader *cs, enum
 
 /* Internal pipelines (TODO: refactor?) */
 uint64_t
-agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_buf)
+agx_build_clear_pipeline(struct agx_batch *batch, uint32_t code, uint64_t clear_buf)
 {
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&ctx->batch->pipeline_pool, 1);
+      agx_alloc_usc_control(&batch->pipeline_pool, 1);
 
    agx_usc_pack(&b, UNIFORM, cfg) {
       cfg.start_halfs = (6 * 2);
@@ -1423,10 +1424,10 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
 }
 
 uint64_t
-agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_surface *surf)
+agx_build_reload_pipeline(struct agx_batch *batch, uint32_t code, struct pipe_surface *surf)
 {
-   struct agx_ptr sampler = agx_pool_alloc_aligned(&ctx->batch->pool, AGX_SAMPLER_LENGTH, 64);
-   struct agx_ptr texture = agx_pool_alloc_aligned(&ctx->batch->pool, AGX_TEXTURE_LENGTH, 64);
+   struct agx_ptr sampler = agx_pool_alloc_aligned(&batch->pool, AGX_SAMPLER_LENGTH, 64);
+   struct agx_ptr texture = agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
 
    agx_pack(sampler.cpu, SAMPLER, cfg) {
       cfg.magnify_linear = true;
@@ -1472,7 +1473,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
    }
 
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&ctx->batch->pipeline_pool, 2);
+      agx_alloc_usc_control(&batch->pipeline_pool, 2);
 
    agx_usc_pack(&b, TEXTURE, cfg) {
       cfg.start = 0;
@@ -1505,11 +1506,10 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
 }
 
 uint64_t
-agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
+agx_build_store_pipeline(struct agx_batch *batch, uint32_t code,
                          uint64_t render_target)
 {
-   struct agx_usc_builder b =
-      agx_alloc_usc_control(&ctx->batch->pipeline_pool, 2);
+   struct agx_usc_builder b = agx_alloc_usc_control(&batch->pipeline_pool, 2);
 
    agx_usc_pack(&b, TEXTURE, cfg) {
       cfg.start = 0;
@@ -1522,7 +1522,7 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
    agx_usc_pack(&b, UNIFORM, cfg) {
       cfg.start_halfs = 4;
       cfg.size_halfs = 4;
-      cfg.buffer = agx_pool_upload_aligned(&ctx->batch->pool, unk, sizeof(unk), 16);
+      cfg.buffer = agx_pool_upload_aligned(&batch->pool, unk, sizeof(unk), 16);
    }
 
    agx_usc_pack(&b, SHARED, cfg) {
@@ -1620,7 +1620,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-         cfg.pipeline = agx_build_pipeline(ctx, ctx->vs, PIPE_SHADER_VERTEX);
+         cfg.pipeline = agx_build_pipeline(ctx->batch, ctx->vs, PIPE_SHADER_VERTEX);
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH;
 
@@ -1781,7 +1781,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    if (IS_DIRTY(FS) || varyings_dirty) {
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
-         cfg.pipeline = agx_build_pipeline(ctx, ctx->fs, PIPE_SHADER_FRAGMENT),
+         cfg.pipeline = agx_build_pipeline(ctx->batch, ctx->fs, PIPE_SHADER_FRAGMENT),
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;

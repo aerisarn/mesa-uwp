@@ -737,7 +737,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       _mesa_float_to_half(batch->clear_color[3])
    };
 
-   pipeline_clear = agx_build_clear_pipeline(ctx,
+   pipeline_clear = agx_build_clear_pipeline(batch,
          dev->internal.clear,
          agx_pool_upload(&batch->pool, clear_colour, sizeof(clear_colour)));
 
@@ -746,7 +746,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       enum agx_format internal = agx_pixel_format[fmt].internal;
       uint32_t shader = dev->reload.format[internal];
 
-      pipeline_reload = agx_build_reload_pipeline(ctx, shader,
+      pipeline_reload = agx_build_reload_pipeline(batch, shader,
                                batch->cbufs[0]);
    }
 
@@ -759,7 +759,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
 
    if (batch->cbufs[0]) {
       pipeline_store =
-         agx_build_store_pipeline(ctx,
+         agx_build_store_pipeline(batch,
                                   dev->internal.store,
                                   agx_pool_upload(&batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
    }

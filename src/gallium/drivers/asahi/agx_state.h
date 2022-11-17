@@ -350,18 +350,18 @@ agx_transfer(struct pipe_transfer *p)
 }
 
 uint64_t
-agx_push_location(struct agx_context *ctx, struct agx_push push,
+agx_push_location(struct agx_batch *batch, struct agx_push push,
                   enum pipe_shader_type stage);
 
 uint64_t
-agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_buf);
+agx_build_clear_pipeline(struct agx_batch *batch, uint32_t code, uint64_t clear_buf);
 
 uint64_t
-agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
+agx_build_store_pipeline(struct agx_batch *batch, uint32_t code,
                          uint64_t render_target);
 
 uint64_t
-agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_surface *surf);
+agx_build_reload_pipeline(struct agx_batch *batch, uint32_t code, struct pipe_surface *surf);
 
 /* Add a BO to a batch. This needs to be amortized O(1) since it's called in
  * hot paths. To achieve this we model BO lists by bit sets */
