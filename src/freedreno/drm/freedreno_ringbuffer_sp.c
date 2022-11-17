@@ -392,8 +392,7 @@ fd_submit_sp_destroy(struct fd_submit *submit)
    // an indication that we are leaking bo's
    slab_destroy_child(&fd_submit->ring_pool);
 
-   for (unsigned i = 0; i < fd_submit->nr_bos; i++)
-      fd_bo_del(fd_submit->bos[i]);
+   fd_bo_del_array(fd_submit->bos, fd_submit->nr_bos);
 
    free(fd_submit->bos);
    free(fd_submit);
@@ -548,15 +547,13 @@ fd_ringbuffer_sp_destroy(struct fd_ringbuffer *ring)
    fd_bo_del(fd_ring->ring_bo);
 
    if (ring->flags & _FD_RINGBUFFER_OBJECT) {
-      for (unsigned i = 0; i < fd_ring->u.nr_reloc_bos; i++) {
-         fd_bo_del(fd_ring->u.reloc_bos[i]);
-      }
+      fd_bo_del_array(fd_ring->u.reloc_bos, fd_ring->u.nr_reloc_bos);
       free(fd_ring->u.reloc_bos);
-
       free(fd_ring);
    } else {
       struct fd_submit *submit = fd_ring->u.submit;
 
+      // TODO re-arrange the data structures so we can use fd_bo_del_array()
       for (unsigned i = 0; i < fd_ring->u.nr_cmds; i++) {
          fd_bo_del(fd_ring->u.cmds[i].ring_bo);
       }

@@ -301,6 +301,15 @@ fd_bo_del(struct fd_bo *bo)
    simple_mtx_unlock(&table_lock);
 }
 
+void
+fd_bo_del_array(struct fd_bo **bos, unsigned count)
+{
+   simple_mtx_lock(&table_lock);
+   for (unsigned i = 0; i < count; i++)
+      fd_bo_del_locked(bos[i]);
+   simple_mtx_unlock(&table_lock);
+}
+
 /**
  * Cleanup fences, dropping pipe references.  If 'expired' is true, only
  * cleanup expired fences.

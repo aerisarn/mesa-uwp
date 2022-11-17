@@ -281,6 +281,7 @@ fd_bo_get_iova(struct fd_bo *bo)
 
 struct fd_bo *fd_bo_ref(struct fd_bo *bo);
 void fd_bo_del(struct fd_bo *bo);
+void fd_bo_del_array(struct fd_bo **bos, unsigned count);
 int fd_bo_get_name(struct fd_bo *bo, uint32_t *name);
 uint32_t fd_bo_handle(struct fd_bo *bo);
 int fd_bo_dmabuf(struct fd_bo *bo);
