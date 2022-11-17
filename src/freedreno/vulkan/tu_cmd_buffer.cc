@@ -2908,13 +2908,11 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
                  const VkRect2D *pScissors)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs cs;
 
    memcpy(&cmd->state.scissor[firstScissor], pScissors, scissorCount * sizeof(*pScissors));
    cmd->state.max_scissor = MAX2(cmd->state.max_scissor, firstScissor + scissorCount);
 
-   cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.max_scissor);
-   tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.max_scissor);
+   cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5042,6 +5040,11 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
       tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport,
                         cmd->state.z_negative_one_to_one);
+   }
+
+   if (dirty & TU_CMD_DIRTY_SCISSORS) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.max_scissor);
+      tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.max_scissor);
    }
 
    if (dirty & TU_CMD_DIRTY_BLEND) {

@@ -65,10 +65,11 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_VS_PARAMS = BIT(9),
    TU_CMD_DIRTY_PC_RASTER_CNTL = BIT(10),
    TU_CMD_DIRTY_VIEWPORTS = BIT(11),
-   TU_CMD_DIRTY_BLEND = BIT(12),
-   TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(13),
+   TU_CMD_DIRTY_SCISSORS = BIT(12),
+   TU_CMD_DIRTY_BLEND = BIT(13),
+   TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(14),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(14)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(15)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
