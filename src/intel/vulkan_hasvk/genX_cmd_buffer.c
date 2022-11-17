@@ -87,7 +87,7 @@ convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
    if (INTEL_DEBUG(DEBUG_PIPE_CONTROL)) { \
       fputs("pc: emit PC=( ", stderr); \
       anv_dump_pipe_bits(convert_pc_to_bits(&(pc))); \
-      fprintf(stderr, ") reason: %s\n", __FUNCTION__); \
+      fprintf(stderr, ") reason: %s\n", __func__); \
    }
 
 static bool

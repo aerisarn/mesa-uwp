@@ -54,7 +54,7 @@ int agx_debug = 0;
 #define DBG(fmt, ...) \
    do { if (agx_debug & AGX_DBG_MSGS) \
       fprintf(stderr, "%s:%d: "fmt, \
-            __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
+            __func__, __LINE__, ##__VA_ARGS__); } while (0)
 
 static agx_index
 agx_cached_preload(agx_context *ctx, agx_index *cache, unsigned base, enum agx_size size)
