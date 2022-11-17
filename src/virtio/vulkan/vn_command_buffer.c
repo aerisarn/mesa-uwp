@@ -639,6 +639,14 @@ vn_DestroyCommandPool(VkDevice device,
    vk_free(alloc, pool);
 }
 
+static void
+vn_cmd_reset(struct vn_command_buffer *cmd)
+{
+   vn_cs_encoder_reset(&cmd->cs);
+   cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
+   cmd->draw_cmd_batched = 0;
+}
+
 VkResult
 vn_ResetCommandPool(VkDevice device,
                     VkCommandPool commandPool,
@@ -650,8 +658,7 @@ vn_ResetCommandPool(VkDevice device,
 
    list_for_each_entry_safe(struct vn_command_buffer, cmd,
                             &pool->command_buffers, head) {
-      vn_cs_encoder_reset(&cmd->cs);
-      cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
+      vn_cmd_reset(cmd);
    }
 
    vn_async_vkResetCommandPool(dev->instance, device, commandPool, flags);
@@ -763,9 +770,7 @@ vn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
 
-   vn_cs_encoder_reset(&cmd->cs);
-   cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
-   cmd->draw_cmd_batched = 0;
+   vn_cmd_reset(cmd);
 
    vn_async_vkResetCommandBuffer(cmd->device->instance, commandBuffer, flags);
 
