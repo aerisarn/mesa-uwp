@@ -280,12 +280,6 @@ virtio_bo_destroy(struct fd_bo *bo)
       set_iova(bo, 0);
 
       virtio_dev_free_iova(bo->dev, bo->iova, bo->size);
-
-      /* Need to flush batched ccmds to ensure the host sees the iova
-       * release before the GEM handle is closed (ie. detach_resource()
-       * on the host side)
-       */
-      virtio_execbuf_flush(bo->dev);
    }
 
    free(virtio_bo);

@@ -43,6 +43,7 @@ static const struct fd_device_funcs funcs = {
    .bo_new = virtio_bo_new,
    .bo_from_handle = virtio_bo_from_handle,
    .pipe_new = virtio_pipe_new,
+   .flush = virtio_execbuf_flush,
    .destroy = virtio_device_destroy,
 };
 

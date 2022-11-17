@@ -107,7 +107,10 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
       }
    }
 
-   if (dev)
+   /* Note: when called in bo_del_or_recycle() -> fd_bo_cache_free() path,
+    * the caller will handle bo_del_flush().
+    */
+   if (time && dev)
       bo_del_flush(dev);
 
    cache->time = time;
