@@ -38,6 +38,7 @@ static const struct debug_control vn_perf_options[] = {
    { "no_async_queue_submit", VN_PERF_NO_ASYNC_QUEUE_SUBMIT },
    { "no_event_feedback", VN_PERF_NO_EVENT_FEEDBACK },
    { "no_fence_feedback", VN_PERF_NO_FENCE_FEEDBACK },
+   { "no_memory_suballoc", VN_PERF_NO_MEMORY_SUBALLOC },
    { NULL, 0 },
    /* clang-format on */
 };
