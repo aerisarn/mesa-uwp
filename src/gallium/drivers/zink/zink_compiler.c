@@ -2410,9 +2410,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       }
 
       /* TODO: use a separate mem ctx here for ralloc */
-      switch (zs->nir->info.stage) {
-      case MESA_SHADER_VERTEX: {
-         if (!screen->optimal_keys) {
+
+      if (!screen->optimal_keys) {
+         switch (zs->nir->info.stage) {
+         case MESA_SHADER_VERTEX: {
             uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
             const struct zink_vs_key *vs_key = zink_vs_key(key);
             switch (vs_key->size) {
@@ -2432,9 +2433,16 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             }
             if (decomposed_attrs || decomposed_attrs_without_w)
                NIR_PASS_V(nir, decompose_attribs, decomposed_attrs, decomposed_attrs_without_w);
+            break;
          }
-         FALLTHROUGH;
+
+         default:
+            break;
+         }
       }
+
+      switch (zs->nir->info.stage) {
+      case MESA_SHADER_VERTEX:
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
          if (zink_vs_key_base(key)->last_vertex_stage) {
