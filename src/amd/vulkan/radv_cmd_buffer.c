@@ -4614,11 +4614,12 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
           */
          uint32_t size = 0xffffffff;
 
-         /* Set the correct buffer size for NGG streamout because it's used to determine the max
-          * emit per buffer.
-          */
-         if (cmd_buffer->device->physical_device->use_ngg_streamout)
-            size = sb[i].size;
+         if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+            /* With NGG streamout, the buffer size is used to determine the max emit per buffer and
+             * also acts as a disable bit when it's 0.
+             */
+            size = radv_is_streamout_enabled(cmd_buffer) ? sb[i].size : 0;
+         }
 
          uint32_t rsrc_word3 =
             S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -10460,6 +10461,11 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
    if (cmd_buffer->device->physical_device->use_ngg_streamout) {
       cmd_buffer->gds_needed = true;
       cmd_buffer->gds_oa_needed = true;
+
+      if (!enable) {
+         /* Re-emit streamout buffers to unbind them. */
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
+      }
    }
 }
 
