@@ -179,15 +179,15 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
        * VIVS_PE_COLOR_FORMAT_OVERWRITE comes from blend_state
        * but only if we set the bits above. */
       /* merged with depth_stencil_alpha */
-      if ((cbuf->surf.offset & 63) ||
-          (((cbuf->surf.stride * 4) & 63) && cbuf->surf.height > 4)) {
+      if ((cbuf->offset & 63) ||
+          (((cbuf->level->stride * 4) & 63) && cbuf->level->height > 4)) {
          /* XXX Must make temporary surface here.
           * Need the same mechanism on gc2000 when we want to do mipmap
           * generation by
           * rendering to levels > 1 due to multitiled / tiled conversion. */
          BUG("Alignment error, trying to render to offset %08x with tile "
              "stride %i",
-             cbuf->surf.offset, cbuf->surf.stride * 4);
+             cbuf->offset, cbuf->level->stride * 4);
       }
 
       if (screen->specs.halti >= 0 && screen->model != 0x880) {
@@ -204,9 +204,9 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
          cs->PE_COLOR_ADDR.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
       }
 
-      cs->PE_COLOR_STRIDE = cbuf->surf.stride;
+      cs->PE_COLOR_STRIDE = cbuf->level->stride;
 
-      if (cbuf->surf.ts_size) {
+      if (cbuf->level->ts_size) {
          cs->TS_COLOR_CLEAR_VALUE = cbuf->level->clear_value;
          cs->TS_COLOR_CLEAR_VALUE_EXT = cbuf->level->clear_value >> 32;
 
@@ -283,11 +283,11 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
          cs->PE_DEPTH_ADDR.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
       }
 
-      cs->PE_DEPTH_STRIDE = zsbuf->surf.stride;
+      cs->PE_DEPTH_STRIDE = zsbuf->level->stride;
       cs->PE_HDEPTH_CONTROL = VIVS_PE_HDEPTH_CONTROL_FORMAT_DISABLED;
       cs->PE_DEPTH_NORMALIZE = fui(exp2f(depth_bits) - 1.0f);
 
-      if (zsbuf->surf.ts_size) {
+      if (zsbuf->level->ts_size) {
          cs->TS_DEPTH_CLEAR_VALUE = zsbuf->level->clear_value;
 
          cs->TS_DEPTH_STATUS_BASE = zsbuf->ts_reloc;
