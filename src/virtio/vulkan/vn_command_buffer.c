@@ -18,6 +18,9 @@
 #include "vn_image.h"
 #include "vn_render_pass.h"
 
+static void
+vn_cmd_submit(struct vn_command_buffer *cmd);
+
 #define VN_CMD_ENQUEUE(cmd_name, commandBuffer, ...)                         \
    do {                                                                      \
       struct vn_command_buffer *_cmd =                                       \
@@ -28,6 +31,9 @@
          vn_encode_##cmd_name(&_cmd->cs, 0, commandBuffer, ##__VA_ARGS__);   \
       else                                                                   \
          _cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;                      \
+                                                                             \
+      if (VN_PERF(NO_CMD_BATCHING))                                          \
+         vn_cmd_submit(_cmd);                                                \
    } while (0)
 
 static bool
