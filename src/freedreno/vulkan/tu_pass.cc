@@ -514,6 +514,15 @@ static void update_samples(struct tu_subpass *subpass,
 }
 
 static void
+tu_render_pass_calc_views(struct tu_render_pass *pass)
+{
+   uint32_t view_mask = 0;
+   for (unsigned i = 0; i < pass->subpass_count; i++)
+      view_mask |= pass->subpasses[i].multiview_mask;
+   pass->num_views = util_last_bit(view_mask);
+}
+
+static void
 tu_render_pass_calc_hash(struct tu_render_pass *pass)
 {
    #define HASH(hash, data) XXH64(&(data), sizeof(data), hash)
@@ -952,6 +961,7 @@ tu_CreateRenderPass2(VkDevice _device,
    tu_render_pass_cond_config(pass);
    tu_render_pass_gmem_config(pass, device->physical_device);
    tu_render_pass_bandwidth_config(pass);
+   tu_render_pass_calc_views(pass);
    tu_render_pass_calc_hash(pass);
 
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
@@ -1126,6 +1136,7 @@ tu_setup_dynamic_render_pass(struct tu_cmd_buffer *cmd_buffer,
    tu_render_pass_cond_config(pass);
    tu_render_pass_gmem_config(pass, device->physical_device);
    tu_render_pass_bandwidth_config(pass);
+   tu_render_pass_calc_views(pass);
    tu_render_pass_calc_hash(pass);
 }
 
@@ -1185,6 +1196,8 @@ tu_setup_dynamic_inheritance(struct tu_cmd_buffer *cmd_buffer,
    } else {
       subpass->depth_stencil_attachment.attachment = VK_ATTACHMENT_UNUSED;
    }
+
+   tu_render_pass_calc_views(pass);
 }
 
 VKAPI_ATTR void VKAPI_CALL

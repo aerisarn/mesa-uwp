@@ -107,6 +107,8 @@ struct tu_render_pass
    uint32_t gmem_bandwidth_per_pixel;
    uint32_t sysmem_bandwidth_per_pixel;
 
+   unsigned num_views;
+
    struct tu_subpass_attachment *subpass_attachments;
 
    struct tu_render_pass_attachment *attachments;
