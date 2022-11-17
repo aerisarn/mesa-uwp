@@ -197,6 +197,7 @@ a630_gl:
     DEQP_SUITE: freedreno-a630
 
 # Run dEQP EGL window system tests separately with the window systems available.
+# X11 takes over the screen, wayland is run headless.
 a630_egl:
   extends:
     - .baremetal-deqp-test
@@ -204,6 +205,7 @@ a630_egl:
   variables:
     DEQP_VER: egl
     HWCI_START_XORG: 1
+    HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-egl
 
 a630_gles_asan:
