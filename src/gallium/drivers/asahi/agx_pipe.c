@@ -823,7 +823,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
                &batch->pool,
-               &ctx->framebuffer,
+               &batch->key,
                batch->encoder->ptr.gpu,
                encoder_id,
                batch->scissor.bo->ptr.gpu,
