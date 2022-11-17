@@ -659,7 +659,7 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
           const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct agx_context *ctx = agx_context(pctx);
-   struct agx_batch *batch = ctx->batch;
+   struct agx_batch *batch = agx_get_batch(ctx);
 
    unsigned fastclear = buffers & ~(batch->draw | batch->load);
    unsigned slowclear = buffers & ~fastclear;
@@ -690,11 +690,11 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
    assert((batch->draw & slowclear) == slowclear);
 }
 
-
 static void
 agx_flush_resource(struct pipe_context *ctx,
                    struct pipe_resource *resource)
 {
+   agx_flush_writer(agx_context(ctx), agx_resource(resource), "flush_resource");
 }
 
 /*
@@ -710,7 +710,7 @@ agx_flush(struct pipe_context *pctx,
    if (fence)
       *fence = NULL;
 
-   agx_flush_batch(ctx, ctx->batch);
+   agx_flush_all(ctx, "Gallium flush");
 }
 
 void
@@ -718,9 +718,13 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
 
+   assert(agx_batch_is_active(batch));
+
    /* Nothing to do */
-   if (!(batch->draw | batch->clear))
+   if (!(batch->draw | batch->clear)) {
+      agx_batch_cleanup(ctx, batch);
       return;
+   }
 
    /* Finalize the encoder */
    uint8_t stop[5 + 64] = { 0x00, 0x00, 0x00, 0xc0, 0x00 };
@@ -761,7 +765,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       pipeline_store =
          agx_build_store_pipeline(batch,
                                   dev->internal.store,
-                                  agx_pool_upload(&batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
+                                  agx_batch_upload_pbe(batch, 0));
    }
 
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
@@ -851,37 +855,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       agxdecode_next_frame();
    }
 
-   AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
-      agx_bo_unreference(agx_lookup_bo(dev, handle));
-   }
-
-   /* There is no more writer for anything we wrote recorded on this context */
-   hash_table_foreach(ctx->writer, ent) {
-      if (ent->data == batch)
-         _mesa_hash_table_remove(ctx->writer, ent);
-   }
-
-   memset(batch->bo_list.set, 0, batch->bo_list.word_count * sizeof(BITSET_WORD));
-   agx_pool_cleanup(&batch->pool);
-   agx_pool_cleanup(&batch->pipeline_pool);
-   agx_pool_init(&batch->pool, dev, AGX_MEMORY_TYPE_FRAMEBUFFER, true);
-   agx_pool_init(&batch->pipeline_pool, dev, AGX_MEMORY_TYPE_CMDBUF_32, true);
-   batch->clear = 0;
-   batch->draw = 0;
-   batch->load = 0;
-   batch->encoder_current = batch->encoder->ptr.cpu;
-   batch->encoder_end = batch->encoder_current + batch->encoder->size;
-   batch->scissor.count = 0;
-
-   agx_dirty_all(ctx);
-   agx_batch_init_state(batch);
-
-   /* After resetting the batch, rebind the framebuffer so we update resource
-    * tracking logic and the BO lists.
-    *
-    * XXX: This is a hack to workaround lack of proper batch tracking.
-    */
-   ctx->base.set_framebuffer_state(&ctx->base, &ctx->framebuffer);
+   agx_batch_cleanup(ctx, batch);
 }
 
 static void
@@ -918,20 +892,6 @@ agx_create_context(struct pipe_screen *screen,
 
    pctx->screen = screen;
    pctx->priv = priv;
-
-   ctx->batch = rzalloc(ctx, struct agx_batch);
-   ctx->batch->ctx = ctx;
-   ctx->batch->bo_list.set = rzalloc_array(ctx->batch, BITSET_WORD, 128);
-   ctx->batch->bo_list.word_count = 128;
-   agx_pool_init(&ctx->batch->pool,
-                 agx_device(screen), AGX_MEMORY_TYPE_FRAMEBUFFER, true);
-   agx_pool_init(&ctx->batch->pipeline_pool,
-                 agx_device(screen), AGX_MEMORY_TYPE_SHADER, true);
-   ctx->batch->encoder = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
-   ctx->batch->encoder_current = ctx->batch->encoder->ptr.cpu;
-   ctx->batch->encoder_end = ctx->batch->encoder_current + ctx->batch->encoder->size;
-   ctx->batch->scissor.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
-   ctx->batch->depth_bias.bo = agx_bo_create(agx_device(screen), 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    ctx->writer = _mesa_pointer_hash_table_create(ctx);
 

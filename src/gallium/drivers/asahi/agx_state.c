@@ -781,62 +781,60 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    if (!state)
       return;
 
-   /* XXX: eliminate this flush with batch tracking logic */
-   agx_flush_all(ctx, "Framebuffer switch");
-
    util_copy_framebuffer_state(&ctx->framebuffer, state);
-   util_copy_framebuffer_state(&ctx->batch->key, state);
-   ctx->dirty = ~0;
-
-   if (state->zsbuf)
-      agx_batch_writes(ctx->batch, agx_resource(state->zsbuf->texture));
-
-
-   for (unsigned i = 0; i < state->nr_cbufs; ++i) {
-      struct pipe_surface *surf = state->cbufs[i];
-      struct agx_resource *tex = agx_resource(surf->texture);
-      const struct util_format_description *desc =
-         util_format_description(surf->format);
-      unsigned level = surf->u.tex.level;
-      unsigned layer = surf->u.tex.first_layer;
-
-      agx_batch_writes(ctx->batch, tex);
-
-      assert(surf->u.tex.last_layer == layer);
-
-      agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
-         cfg.layout = agx_translate_layout(tex->layout.tiling);
-         cfg.channels = agx_pixel_format[surf->format].channels;
-         cfg.type = agx_pixel_format[surf->format].type;
-
-         assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
-         cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]) & 3;
-
-         if (desc->nr_channels >= 2)
-            cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]) & 3;
-
-         if (desc->nr_channels >= 3)
-            cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]) & 3;
-
-         if (desc->nr_channels >= 4)
-            cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]) & 3;
-
-         cfg.width = state->width;
-         cfg.height = state->height;
-         cfg.level = surf->u.tex.level;
-         cfg.buffer = agx_map_texture_gpu(tex, layer);
-         cfg.unk_mipmapped = tex->mipmapped;
-
-         if (tex->layout.tiling == AIL_TILING_LINEAR) {
-            cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
-            cfg.levels = 1;
-         } else {
-            cfg.unk_tiled = true;
-            cfg.levels = tex->base.last_level + 1;
-         }
-      };
-   }
+   ctx->batch = NULL;
+   agx_dirty_all(ctx);
 }
+
+uint64_t
+agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
+{
+   struct pipe_surface *surf = batch->key.cbufs[rt];
+   struct agx_resource *tex = agx_resource(surf->texture);
+   const struct util_format_description *desc =
+      util_format_description(surf->format);
+   unsigned level = surf->u.tex.level;
+   unsigned layer = surf->u.tex.first_layer;
+
+   assert(surf->u.tex.last_layer == layer);
+
+   struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, AGX_RENDER_TARGET_LENGTH, 256);
+
+   agx_pack(T.cpu, RENDER_TARGET, cfg) {
+      cfg.layout = agx_translate_layout(tex->layout.tiling);
+      cfg.channels = agx_pixel_format[surf->format].channels;
+      cfg.type = agx_pixel_format[surf->format].type;
+
+      assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
+      cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]) & 3;
+
+      if (desc->nr_channels >= 2)
+         cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]) & 3;
+
+      if (desc->nr_channels >= 3)
+         cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]) & 3;
+
+      if (desc->nr_channels >= 4)
+         cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]) & 3;
+
+      cfg.width = batch->key.width;
+      cfg.height = batch->key.height;
+      cfg.level = surf->u.tex.level;
+      cfg.buffer = agx_map_texture_gpu(tex, layer);
+      cfg.unk_mipmapped = tex->mipmapped;
+
+      if (tex->layout.tiling == AIL_TILING_LINEAR) {
+         cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
+         cfg.levels = 1;
+      } else {
+         cfg.unk_tiled = true;
+         cfg.levels = tex->base.last_level + 1;
+      }
+   };
+
+   return T.gpu;
+}
+
 
 /* Likewise constant buffers, textures, and samplers are handled in a common
  * per-draw path, with dirty tracking to reduce the costs involved.
@@ -1224,18 +1222,20 @@ agx_update_vs(struct agx_context *ctx)
 }
 
 static bool
-agx_update_fs(struct agx_context *ctx)
+agx_update_fs(struct agx_batch *batch)
 {
+   struct agx_context *ctx = batch->ctx;
+
    struct asahi_shader_key key = {
-      .nr_cbufs = ctx->batch->key.nr_cbufs,
+      .nr_cbufs = batch->key.nr_cbufs,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
    };
 
-   if (ctx->batch->reduced_prim == PIPE_PRIM_POINTS)
+   if (batch->reduced_prim == PIPE_PRIM_POINTS)
       key.sprite_coord_enable = ctx->rast->base.sprite_coord_enable;
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
-      struct pipe_surface *surf = ctx->batch->key.cbufs[i];
+      struct pipe_surface *surf = batch->key.cbufs[i];
 
       if (surf) {
          enum pipe_format fmt = surf->format;
@@ -1557,9 +1557,6 @@ agx_batch_init_state(struct agx_batch *batch)
 
    agx_ppp_fini(&out, &ppp);
    batch->encoder_current = out;
-
-   /* We need to emit prim state at the start. Max collides with all. */
-   batch->reduced_prim = PIPE_PRIM_MAX;
 }
 
 static enum agx_object_type
@@ -1586,9 +1583,10 @@ agx_pass_type_for_shader(struct agx_shader_info *info)
 #define MAX_PPP_UPDATES 2
 
 static uint8_t *
-agx_encode_state(struct agx_context *ctx, uint8_t *out,
+agx_encode_state(struct agx_batch *batch, uint8_t *out,
                  bool is_lines, bool is_points)
 {
+   struct agx_context *ctx = batch->ctx;
    struct agx_rasterizer *rast = ctx->rast;
    unsigned ppp_updates = 0;
 
@@ -1613,7 +1611,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-         cfg.pipeline = agx_build_pipeline(ctx->batch, ctx->vs, PIPE_SHADER_VERTEX);
+         cfg.pipeline = agx_build_pipeline(batch, ctx->vs, PIPE_SHADER_VERTEX);
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH;
 
@@ -1634,17 +1632,17 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
       out += 4;
    }
 
-   struct agx_pool *pool = &ctx->batch->pool;
+   struct agx_pool *pool = &batch->pool;
    struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
    unsigned zbias = 0;
 
    if (ctx->rast->base.offset_tri) {
-      zbias = agx_upload_depth_bias(ctx->batch, &ctx->rast->base);
+      zbias = agx_upload_depth_bias(batch, &ctx->rast->base);
       ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
    }
 
    if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS)) {
-      agx_upload_viewport_scissor(pool, ctx->batch, &out, &ctx->viewport,
+      agx_upload_viewport_scissor(pool, batch, &out, &ctx->viewport,
             ctx->rast->base.scissor ? &ctx->scissor : NULL,
             zbias);
    }
@@ -1652,7 +1650,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    bool varyings_dirty = false;
 
    if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
-      ctx->batch->varyings = agx_link_varyings_vs_fs(&ctx->batch->pipeline_pool,
+      batch->varyings = agx_link_varyings_vs_fs(&batch->pipeline_pool,
             &ctx->vs->info.varyings.vs,
             &ctx->fs->info.varyings.fs,
             ctx->rast->base.flatshade_first);
@@ -1774,13 +1772,13 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    if (IS_DIRTY(FS) || varyings_dirty) {
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
-         cfg.pipeline = agx_build_pipeline(ctx->batch, ctx->fs, PIPE_SHADER_FRAGMENT),
+         cfg.pipeline = agx_build_pipeline(batch, ctx->fs, PIPE_SHADER_FRAGMENT),
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;
          cfg.sampler_state_register_count = frag_tex_count;
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
-         cfg.cf_bindings = ctx->batch->varyings;
+         cfg.cf_bindings = batch->varyings;
 
          /* XXX: This is probably wrong */
          cfg.unknown_30 = frag_tex_count >= 4;
@@ -1883,18 +1881,12 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    struct agx_context *ctx = agx_context(pctx);
-   struct agx_batch *batch = ctx->batch;
+   struct agx_batch *batch = agx_get_batch(ctx);
 
    if (agx_scissor_culls_everything(ctx))
 	   return;
 
-#ifndef NDEBUG
-   /* For debugging dirty tracking, mark all state as dirty every draw, forcing
-    * everything to be re-emitted fresh.
-    */
-   if (unlikely(agx_device(pctx->screen)->debug & AGX_DBG_DIRTY))
-      agx_dirty_all(ctx);
-#endif
+   agx_dirty_all(ctx);
 
    /* Dirty track the reduced prim: lines vs points vs triangles */
    enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
@@ -1902,8 +1894,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    batch->reduced_prim = reduced_prim;
 
    /* TODO: masks */
-   ctx->batch->draw |= ~0;
-   ctx->batch->load |= ~0;
+   batch->draw |= ~0;
+   batch->load |= ~0;
 
    /* TODO: These are expensive calls, consider finer dirty tracking */
    if (agx_update_vs(ctx))
@@ -1911,7 +1903,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)
       ctx->dirty |= AGX_DIRTY_VS;
 
-   if (agx_update_fs(ctx))
+   if (agx_update_fs(batch))
       ctx->dirty |= AGX_DIRTY_FS | AGX_DIRTY_FS_PROG;
    else if (ctx->stage[PIPE_SHADER_FRAGMENT].dirty)
       ctx->dirty |= AGX_DIRTY_FS;
@@ -1939,7 +1931,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                                AGX_INDEX_LIST_START_LENGTH +
                                AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
 
-   uint8_t *out = agx_encode_state(ctx, batch->encoder_current,
+   uint8_t *out = agx_encode_state(batch, batch->encoder_current,
                                    reduced_prim == PIPE_PRIM_LINES,
                                    reduced_prim == PIPE_PRIM_POINTS);
 
@@ -2008,6 +2000,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    assert(batch->encoder_current <= batch->encoder_end &&
           "Failed to reserve sufficient space in encoder");
    ctx->dirty = 0;
+
+   assert(batch == agx_get_batch(ctx) && "batch should not change under us");
 }
 
 void agx_init_state_functions(struct pipe_context *ctx);
