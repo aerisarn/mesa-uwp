@@ -2249,6 +2249,17 @@ vk_common_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetSampleLocationsEnableEXT(VkCommandBuffer commandBuffer,
+                                         VkBool32 sampleLocationsEnable)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_BOOL(dyn, MS_SAMPLE_LOCATIONS_ENABLE,
+                ms.sample_locations_enable, sampleLocationsEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdSetDepthTestEnable(VkCommandBuffer commandBuffer,
                                 VkBool32 depthTestEnable)
 {
