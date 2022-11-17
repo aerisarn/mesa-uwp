@@ -714,7 +714,7 @@ llvmpipe_transfer_map_ms(struct pipe_context *pipe,
                                    read_only,
                                    TRUE, /* cpu_access */
                                    do_not_block,
-                                   __FUNCTION__)) {
+                                   __func__)) {
          /*
           * It would have blocked, but gallium frontend requested no to.
           */

@@ -203,7 +203,7 @@ lp_build_compare(struct gallivm_state *gallivm,
         func == PIPE_FUNC_GEQUAL) &&
        (gallivm_debug & GALLIVM_DEBUG_PERF)) {
          debug_printf("%s: inefficient <%u x i%u> unsigned comparison\n",
-                      __FUNCTION__, type.length, type.width);
+                      __func__, type.length, type.width);
    }
 #endif
 

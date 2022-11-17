@@ -892,7 +892,7 @@ svga_fence_finish(struct pipe_screen *screen,
    }
    else {
       SVGA_DBG(DEBUG_DMA|DEBUG_PERF, "%s fence_ptr %p\n",
-               __FUNCTION__, fence);
+               __func__, fence);
 
       retVal = sws->fence_finish(sws, fence, timeout, 0) == 0;
    }

@@ -573,7 +573,7 @@ dri_fill_in_modes(struct dri_screen *screen)
    }
 
    if (configs == NULL) {
-      debug_printf("%s: driCreateConfigs failed\n", __FUNCTION__);
+      debug_printf("%s: driCreateConfigs failed\n", __func__);
       return NULL;
    }
 

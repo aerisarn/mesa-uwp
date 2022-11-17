@@ -61,7 +61,7 @@ struct r300_emit_state {
 
 #define error(fmt, args...) do {			\
 		rc_error(&c->Base, "%s::%s(): " fmt "\n",	\
-			__FILE__, __FUNCTION__, ##args);	\
+			__FILE__, __func__, ##args);	\
 	} while(0)
 
 static unsigned int get_msbs_alu(unsigned int bits)

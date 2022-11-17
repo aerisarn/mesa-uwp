@@ -612,7 +612,7 @@ draw_geometry_shader_run(struct draw_geometry_shader *shader,
 
 #if 0
    debug_printf("%s count = %d (in prims # = %d, invocs = %d, streams = %d)\n",
-                __FUNCTION__, num_input_verts, num_in_primitives,
+                __func__, num_input_verts, num_in_primitives,
                 shader->num_invocations, shader->num_vertex_streams);
    debug_printf("\tlinear = %d, prim_info->count = %d\n",
                 input_prim->linear, input_prim->count);

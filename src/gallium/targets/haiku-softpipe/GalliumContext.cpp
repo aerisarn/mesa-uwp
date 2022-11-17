@@ -96,7 +96,7 @@ GalliumContext::CreateDisplay()
 	struct pipe_screen* screen = sw_screen_create(winsys);
 
 	if (screen == NULL) {
-		ERROR("%s: Couldn't create screen!\n", __FUNCTION__);
+		ERROR("%s: Couldn't create screen!\n", __func__);
 		winsys->destroy(winsys);
 		return B_ERROR;
 	}
@@ -109,7 +109,7 @@ GalliumContext::CreateDisplay()
 	fDisplay = hgl_create_display(screen);
 
 	if (fDisplay == NULL) {
-		ERROR("%s: Couldn't create display!\n", __FUNCTION__);
+		ERROR("%s: Couldn't create display!\n", __func__);
 		screen->destroy(screen); // will also destroy winsys
 		return B_ERROR;
 	}
@@ -140,7 +140,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	struct hgl_context* context = CALLOC_STRUCT(hgl_context);
 
 	if (!context) {
-		ERROR("%s: Couldn't create pipe context!\n", __FUNCTION__);
+		ERROR("%s: Couldn't create pipe context!\n", __func__);
 		return 0;
 	}
 

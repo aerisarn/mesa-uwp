@@ -1485,7 +1485,7 @@ translate_sse_set_buffer(struct translate *translate,
 
    if (0)
       debug_printf("%s %d/%d: %p %d\n",
-                   __FUNCTION__, buf, p->nr_buffers, ptr, stride);
+                   __func__, buf, p->nr_buffers, ptr, stride);
 }
 
 

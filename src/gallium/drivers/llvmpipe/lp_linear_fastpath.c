@@ -69,7 +69,7 @@ lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
    const struct lp_jit_context *context = &state->jit_context;
    const struct lp_jit_texture *texture = &context->textures[0];
 
-   LP_DBG(DEBUG_RAST, "%s\n", __FUNCTION__);
+   LP_DBG(DEBUG_RAST, "%s\n", __func__);
 
    /* Require w==1.0:
     */
@@ -118,7 +118,7 @@ lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
    const struct lp_jit_context *context = &state->jit_context;
    const struct lp_jit_texture *texture = &context->textures[0];
 
-   LP_DBG(DEBUG_RAST, "%s\n", __FUNCTION__);
+   LP_DBG(DEBUG_RAST, "%s\n", __func__);
 
    /* Require w==1.0:
     */

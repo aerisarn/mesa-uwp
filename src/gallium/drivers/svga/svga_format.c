@@ -2039,7 +2039,7 @@ svga_typeless_format(SVGA3dSurfaceFormat format)
       return format;
    default:
       debug_printf("Unexpected format %s in %s\n",
-                   svga_format_name(format), __FUNCTION__);
+                   svga_format_name(format), __func__);
       return format;
    }
 }

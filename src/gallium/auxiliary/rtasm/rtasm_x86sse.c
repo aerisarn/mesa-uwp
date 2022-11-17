@@ -84,7 +84,7 @@ void x86_print_reg( struct x86_reg reg )
 #define DUMP_END() debug_printf( "\n" )
 
 #define DUMP() do {                             \
-   const char *foo = __FUNCTION__;              \
+   const char *foo = __func__;              \
    while (*foo && *foo != '_')                  \
       foo++;                                    \
    if  (*foo)                                   \
