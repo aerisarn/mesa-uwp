@@ -52,6 +52,7 @@
 #include "util/format/u_format.h"
 #include "util/log.h"
 #include "util/macros.h"
+#include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
 #include "vk_buffer.h"
 #include "vk_command_buffer.h"
@@ -397,6 +398,14 @@ struct pvr_device {
       uint32_t vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
       uint32_t large_clear_vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
    } static_clear_state;
+
+   struct {
+      simple_mtx_t mtx;
+
+#define PVR_MAX_TILE_BUFFER_COUNT 7U
+      struct pvr_bo *buffers[PVR_MAX_TILE_BUFFER_COUNT];
+      uint32_t buffer_count;
+   } tile_buffer_state;
 
    VkPhysicalDeviceFeatures features;
 
@@ -1520,6 +1529,10 @@ VkResult pvr_pds_unitex_state_program_create_and_upload(
    uint32_t texture_kicks,
    uint32_t uniform_kicks,
    struct pvr_pds_upload *const pds_upload_out);
+
+VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
+                                           uint32_t capacity,
+                                           uint32_t size_in_bytes);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
    VK_FROM_HANDLE(__pvr_type, __name, __handle)
