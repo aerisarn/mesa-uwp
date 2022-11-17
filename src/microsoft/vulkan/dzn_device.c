@@ -516,7 +516,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
          .queueFlags = VK_QUEUE_GRAPHICS_BIT |
                        VK_QUEUE_COMPUTE_BIT |
                        VK_QUEUE_TRANSFER_BIT,
-         .queueCount = 1,
+         .queueCount = 4,
          .timestampValidBits = 64,
          .minImageTransferGranularity = { 0, 0, 0 },
       },
