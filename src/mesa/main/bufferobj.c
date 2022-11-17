@@ -670,11 +670,8 @@ get_buffer_target(struct gl_context *ctx, GLenum target)
       switch (target) {
       case GL_ARRAY_BUFFER:
       case GL_ELEMENT_ARRAY_BUFFER:
-         break;
       case GL_PIXEL_PACK_BUFFER:
       case GL_PIXEL_UNPACK_BUFFER:
-         if (!ctx->Extensions.EXT_pixel_buffer_object)
-            return NULL;
          break;
       default:
          return NULL;
