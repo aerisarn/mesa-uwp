@@ -1698,9 +1698,10 @@ brw_type_for_nir_type(const struct intel_device_info *devinfo,
 
 nir_shader *
 brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compiler,
-                               const nir_shader_compiler_options *options,
                                const struct brw_tcs_prog_key *key)
 {
+   const nir_shader_compiler_options *options =
+      compiler->nir_options[MESA_SHADER_TESS_CTRL];
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_CTRL,
                                                   options, "passthrough TCS");
    ralloc_steal(mem_ctx, b.shader);

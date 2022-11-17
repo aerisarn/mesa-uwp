@@ -1503,8 +1503,6 @@ iris_compile_tcs(struct iris_screen *screen,
                  struct iris_compiled_shader *shader)
 {
    const struct brw_compiler *compiler = screen->compiler;
-   const struct nir_shader_compiler_options *options =
-      compiler->nir_options[MESA_SHADER_TESS_CTRL];
    void *mem_ctx = ralloc_context(NULL);
    struct brw_tcs_prog_data *tcs_prog_data =
       rzalloc(mem_ctx, struct brw_tcs_prog_data);
@@ -1532,7 +1530,7 @@ iris_compile_tcs(struct iris_screen *screen,
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
    } else {
       nir =
-         brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, &brw_key);
+         brw_nir_create_passthrough_tcs(mem_ctx, compiler, &brw_key);
 
       /* Reserve space for passing the default tess levels as constants. */
       num_cbufs = 1;
