@@ -527,6 +527,27 @@ agx_transfer_flush_region(struct pipe_context *pipe,
 {
 }
 
+/*
+ * Perform the required synchronization before a transfer_map operation can
+ * complete. This may require flushing batches.
+ */
+static void
+agx_prepare_for_map(struct agx_context *ctx,
+                    struct agx_resource *rsrc,
+                    unsigned level,
+                    unsigned usage,  /* a combination of PIPE_MAP_x */
+                    const struct pipe_box *box)
+{
+   /* If the access is unsynchronized, there's nothing to do */
+   if (usage & PIPE_MAP_UNSYNCHRONIZED)
+      return;
+
+   agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
+
+   if (usage & PIPE_MAP_WRITE)
+      agx_flush_readers(ctx, rsrc, "Unsynchronized read");
+}
+
 static void *
 agx_transfer_map(struct pipe_context *pctx,
                  struct pipe_resource *resource,
@@ -542,13 +563,7 @@ agx_transfer_map(struct pipe_context *pctx,
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
       return NULL;
 
-   /* Synchronize */
-   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-      agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
-
-      if (usage & PIPE_MAP_WRITE)
-         agx_flush_readers(ctx, rsrc, "Unsynchronized read");
-   }
+   agx_prepare_for_map(ctx, rsrc, level, usage, box);
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
    transfer->base.level = level;
