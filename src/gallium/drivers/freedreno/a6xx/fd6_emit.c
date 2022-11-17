@@ -1026,7 +1026,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
    OUT_WFI5(ring);
 
-   WRITE(REG_A6XX_RB_DBG_ECO_CNTL, 0x0);
+   WRITE(REG_A6XX_RB_DBG_ECO_CNTL, screen->info->a6xx.magic.RB_DBG_ECO_CNTL);
    WRITE(REG_A6XX_SP_FLOAT_CNTL, A6XX_SP_FLOAT_CNTL_F16_NO_INF);
    WRITE(REG_A6XX_SP_DBG_ECO_CNTL, 0);
    WRITE(REG_A6XX_SP_PERFCTR_ENABLE, 0x3f);

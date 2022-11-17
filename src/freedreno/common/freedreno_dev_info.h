@@ -154,6 +154,7 @@ struct fd_dev_info {
             uint32_t UCHE_CLIENT_PF;
             uint32_t PC_MODE_CNTL;
             uint32_t SP_DBG_ECO_CNTL;
+            uint32_t RB_DBG_ECO_CNTL;
             uint32_t RB_DBG_ECO_CNTL_blit;
             uint32_t HLSQ_DBG_ECO_CNTL;
             uint32_t RB_UNKNOWN_8E01;
