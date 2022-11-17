@@ -991,14 +991,12 @@ isl_formats_are_ccs_e_compatible(const struct intel_device_info *devinfo,
        !isl_format_supports_ccs_e(devinfo, format2))
       return false;
 
-   /* Gfx12 added CCS_E support for A8_UNORM, A8_UNORM and R8_UNORM share the
-    * same aux map format encoding so they are definitely compatible.
+   /* On TGL+, drivers may specify a compression format independently from the
+    * surface format. So, even if the surface format changes, hardware is
+    * still able to determine how to access the CCS.
     */
-   if (format1 == ISL_FORMAT_A8_UNORM)
-      format1 = ISL_FORMAT_R8_UNORM;
-
-   if (format2 == ISL_FORMAT_A8_UNORM)
-      format2 = ISL_FORMAT_R8_UNORM;
+   if (devinfo->ver >= 12)
+      return true;
 
    /* The compression used by CCS is not dependent on the actual data encoding
     * of the format but only depends on the bit-layout of the channels.
