@@ -1461,7 +1461,7 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
       options.early_prim_export = info->has_ngg_early_prim_export;
       options.passthrough = info->is_ngg_passthrough;
       options.primitive_id_location = info->outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1;
-      options.instance_rate_inputs = pl_key->vs.instance_rate_inputs;
+      options.instance_rate_inputs = pl_key->vs.instance_rate_inputs << VERT_ATTRIB_GENERIC0;
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, &options);
 

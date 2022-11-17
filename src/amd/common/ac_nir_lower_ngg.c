@@ -856,8 +856,7 @@ cleanup_culling_shader_after_dce(nir_shader *shader,
             uses_vs_instance_id = true;
             break;
          case nir_intrinsic_load_input:
-            if (state->options->instance_rate_inputs &
-                (1u << (nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0)))
+            if (state->options->instance_rate_inputs & BITFIELD_BIT(nir_intrinsic_base(intrin)))
                uses_vs_instance_id = true;
             else
                uses_vs_vertex_id = true;
