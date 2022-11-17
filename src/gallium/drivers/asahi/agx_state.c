@@ -129,14 +129,15 @@ agx_create_blend_state(struct pipe_context *ctx,
    if (state->logicop_enable) {
       so->logicop_enable = true;
       so->logicop_func = state->logicop_func;
-      return so;
    }
 
    for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
       unsigned rti = state->independent_blend_enable ? i : 0;
       struct pipe_rt_blend_state rt = state->rt[rti];
 
-      if (!rt.blend_enable) {
+      if (state->logicop_enable) {
+         /* No blending, but we get the colour mask below */
+      } else if (!rt.blend_enable) {
          static const nir_lower_blend_channel replace = {
             .func = BLEND_FUNC_ADD,
             .src_factor = BLEND_FACTOR_ZERO,
@@ -160,7 +161,7 @@ agx_create_blend_state(struct pipe_context *ctx,
          so->rt[i].alpha.dst_factor = util_blend_factor_to_shader(rt.alpha_dst_factor);
          so->rt[i].alpha.invert_dst_factor = util_blend_factor_is_inverted(rt.alpha_dst_factor);
 
-	 so->blend_enable = true;
+         so->blend_enable = true;
       }
 
       so->rt[i].colormask = rt.colormask;
