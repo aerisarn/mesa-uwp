@@ -94,10 +94,7 @@ struct agx_array {
 
 struct agx_batch {
    struct agx_context *ctx;
-
-   unsigned width, height, nr_cbufs;
-   struct pipe_surface *cbufs[8];
-   struct pipe_surface *zsbuf;
+   struct pipe_framebuffer_state key;
 
    /* PIPE_CLEAR_* bitmask */
    uint32_t clear, draw, load;

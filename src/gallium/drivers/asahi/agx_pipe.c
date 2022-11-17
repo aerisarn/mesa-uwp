@@ -741,31 +741,31 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
          dev->internal.clear,
          agx_pool_upload(&batch->pool, clear_colour, sizeof(clear_colour)));
 
-   if (batch->cbufs[0]) {
-      enum pipe_format fmt = batch->cbufs[0]->format;
+   if (batch->key.cbufs[0]) {
+      enum pipe_format fmt = batch->key.cbufs[0]->format;
       enum agx_format internal = agx_pixel_format[fmt].internal;
       uint32_t shader = dev->reload.format[internal];
 
       pipeline_reload = agx_build_reload_pipeline(batch, shader,
-                               batch->cbufs[0]);
+                               batch->key.cbufs[0]);
    }
 
-   if (batch->cbufs[0] && !(batch->clear & PIPE_CLEAR_COLOR0)) {
+   if (batch->key.cbufs[0] && !(batch->clear & PIPE_CLEAR_COLOR0)) {
       clear_pipeline_textures = true;
       pipeline_clear = pipeline_reload;
    }
 
    uint64_t pipeline_store = 0;
 
-   if (batch->cbufs[0]) {
+   if (batch->key.cbufs[0]) {
       pipeline_store =
          agx_build_store_pipeline(batch,
                                   dev->internal.store,
                                   agx_pool_upload(&batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
    }
 
-   for (unsigned i = 0; i < batch->nr_cbufs; ++i) {
-      struct pipe_surface *surf = batch->cbufs[i];
+   for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+      struct pipe_surface *surf = batch->key.cbufs[i];
 
       if (surf && surf->texture) {
          struct agx_resource *rt = agx_resource(surf->texture);
@@ -773,11 +773,11 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       }
    }
 
-   struct agx_resource *zbuf = batch->zsbuf ?
-      agx_resource(batch->zsbuf->texture) : NULL;
+   struct agx_resource *zbuf = batch->key.zsbuf ?
+      agx_resource(batch->key.zsbuf->texture) : NULL;
 
    if (zbuf) {
-      unsigned level = ctx->batch->zsbuf->u.tex.level;
+      unsigned level = batch->key.zsbuf->u.tex.level;
       BITSET_SET(zbuf->data_valid, level);
 
       if (zbuf->separate_stencil)

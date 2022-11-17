@@ -690,10 +690,10 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
     * the viewport is an odd number of pixels, both the translate and the scale
     * will have a fractional part of 0.5, so adding and subtracting them yields
     * an integer. Therefore we don't need to round explicitly */
-   unsigned minx = CLAMP((int) (trans_x - abs_scale_x), 0, batch->width);
-   unsigned miny = CLAMP((int) (trans_y - abs_scale_y), 0, batch->height);
-   unsigned maxx = CLAMP((int) (trans_x + abs_scale_x), 0, batch->width);
-   unsigned maxy = CLAMP((int) (trans_y + abs_scale_y), 0, batch->height);
+   unsigned minx = CLAMP((int) (trans_x - abs_scale_x), 0, batch->key.width);
+   unsigned miny = CLAMP((int) (trans_y - abs_scale_y), 0, batch->key.height);
+   unsigned maxx = CLAMP((int) (trans_x + abs_scale_x), 0, batch->key.width);
+   unsigned maxy = CLAMP((int) (trans_y + abs_scale_y), 0, batch->key.height);
 
    if (ss) {
       minx = MAX2(ss->minx, minx);
@@ -785,22 +785,15 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    agx_flush_all(ctx, "Framebuffer switch");
 
    util_copy_framebuffer_state(&ctx->framebuffer, state);
-   ctx->batch->width = state->width;
-   ctx->batch->height = state->height;
-   ctx->batch->nr_cbufs = state->nr_cbufs;
-   ctx->batch->zsbuf = state->zsbuf;
+   util_copy_framebuffer_state(&ctx->batch->key, state);
    ctx->dirty = ~0;
 
    if (state->zsbuf)
       agx_batch_writes(ctx->batch, agx_resource(state->zsbuf->texture));
 
-   /* Clear out stale pointers */
-   memset(ctx->batch->cbufs, 0, sizeof(ctx->batch->cbufs));
 
    for (unsigned i = 0; i < state->nr_cbufs; ++i) {
       struct pipe_surface *surf = state->cbufs[i];
-      ctx->batch->cbufs[i] = surf;
-
       struct agx_resource *tex = agx_resource(surf->texture);
       const struct util_format_description *desc =
          util_format_description(surf->format);
@@ -1234,7 +1227,7 @@ static bool
 agx_update_fs(struct agx_context *ctx)
 {
    struct asahi_shader_key key = {
-      .nr_cbufs = ctx->batch->nr_cbufs,
+      .nr_cbufs = ctx->batch->key.nr_cbufs,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
    };
 
@@ -1242,7 +1235,7 @@ agx_update_fs(struct agx_context *ctx)
       key.sprite_coord_enable = ctx->rast->base.sprite_coord_enable;
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
-      struct pipe_surface *surf = ctx->batch->cbufs[i];
+      struct pipe_surface *surf = ctx->batch->key.cbufs[i];
 
       if (surf) {
          enum pipe_format fmt = surf->format;
