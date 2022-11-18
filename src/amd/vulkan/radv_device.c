@@ -1699,7 +1699,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceAccelerationStructureFeaturesKHR *features =
             (VkPhysicalDeviceAccelerationStructureFeaturesKHR *)ext;
          features->accelerationStructure = true;
-         features->accelerationStructureCaptureReplay = false;
+         features->accelerationStructureCaptureReplay = true;
          features->accelerationStructureIndirectBuild = false;
          features->accelerationStructureHostCommands = false;
          features->descriptorBindingAccelerationStructureUpdateAfterBind = true;
