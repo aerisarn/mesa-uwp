@@ -2852,37 +2852,6 @@ struct gl_matrix_stack
 /*@}*/
 
 
-/**
- * Composite state flags, deprecated and inefficient, do not use.
- */
-/*@{*/
-#define _NEW_LIGHT     (_NEW_LIGHT_CONSTANTS |  /* state parameters */ \
-                        _NEW_LIGHT_STATE |      /* rasterizer state */ \
-                        _NEW_MATERIAL |         /* light materials */ \
-                        _NEW_FF_VERT_PROGRAM | \
-                        _NEW_FF_FRAG_PROGRAM)
-
-#define _NEW_TEXTURE   (_NEW_TEXTURE_OBJECT | _NEW_TEXTURE_STATE | \
-                        _NEW_FF_VERT_PROGRAM | _NEW_FF_FRAG_PROGRAM)
-
-#define _MESA_NEW_NEED_EYE_COORDS         (_NEW_FF_VERT_PROGRAM | \
-                                           _NEW_FF_FRAG_PROGRAM | \
-                                           _NEW_LIGHT_CONSTANTS | \
-                                           _NEW_TEXTURE_STATE |	\
-                                           _NEW_POINT |		\
-                                           _NEW_PROGRAM |	\
-                                           _NEW_MODELVIEW)
-
-#define _MESA_NEW_SEPARATE_SPECULAR        (_NEW_LIGHT | \
-                                            _NEW_FOG | \
-                                            _NEW_PROGRAM)
-
-
-/*@}*/
-
-
-
-
 /* This has to be included here. */
 #include "dd.h"
 
