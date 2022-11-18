@@ -726,7 +726,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
 {
    const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
-   unsigned cb_color_control = 0;
+   bool disable_dual_quad = false;
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
@@ -858,15 +858,16 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
       /* RB+ doesn't work with dual source blending, logic op and
        * RESOLVE.
        */
-      if (blend.mrt0_is_dual_src || (state->cb && state->cb->logic_op_enable) ||
+      if (blend.mrt0_is_dual_src ||
+          (state->cb && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) && state->cb->logic_op_enable) ||
           (device->physical_device->rad_info.gfx_level >= GFX11 && blend.blend_enable_4bit))
-         cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
+         disable_dual_quad = true;
    }
 
    if (state->rp)
       radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
 
-   pipeline->cb_color_control = cb_color_control;
+   pipeline->disable_dual_quad = disable_dual_quad;
 
    return blend;
 }
@@ -5618,7 +5619,7 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
       blend_state->cb_shader_mask = 0xf;
 
       if (extra->custom_blend_mode == V_028808_CB_RESOLVE)
-         pipeline->cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
+         pipeline->disable_dual_quad = true;
 
       pipeline->custom_blend_mode = extra->custom_blend_mode;
    }

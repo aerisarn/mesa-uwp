@@ -1912,7 +1912,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GUARDBAND;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->cb_color_control != pipeline->cb_color_control ||
+       cmd_buffer->state.emitted_graphics_pipeline->disable_dual_quad != pipeline->disable_dual_quad ||
        cmd_buffer->state.emitted_graphics_pipeline->custom_blend_mode != pipeline->custom_blend_mode)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
                                  RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
@@ -2381,8 +2381,8 @@ static void
 radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   unsigned cb_color_control = cmd_buffer->state.graphics_pipeline->cb_color_control;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned cb_color_control = 0;
 
    if (d->logic_op_enable) {
       cb_color_control |= S_028808_ROP3(d->logic_op);
@@ -2391,7 +2391,8 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->device->physical_device->rad_info.has_rbplus) {
-      cb_color_control |= S_028808_DISABLE_DUAL_QUAD(d->logic_op_enable);
+      cb_color_control |=
+         S_028808_DISABLE_DUAL_QUAD(pipeline->disable_dual_quad || d->logic_op_enable);
    }
 
    if (pipeline->custom_blend_mode) {

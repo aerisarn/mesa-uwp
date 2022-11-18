@@ -2088,7 +2088,7 @@ struct radv_graphics_pipeline {
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
-   unsigned cb_color_control;
+   bool disable_dual_quad;
    unsigned cb_blend_control[MAX_RTS];
    unsigned sx_mrt_blend_opt[MAX_RTS];
    uint32_t binding_stride[MAX_VBS];
