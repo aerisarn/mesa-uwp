@@ -113,6 +113,13 @@ etna_resource_level_mark_changed(struct etna_resource_level *lvl)
    lvl->seqno++;
 }
 
+static inline void
+etna_resource_level_copy_seqno(struct etna_resource_level *dst,
+                               struct etna_resource_level *src)
+{
+   dst->seqno = src->seqno;
+}
+
 /* status of queued up but not flushed reads and write operations.
  * In _transfer_map() we need to know if queued up rendering needs
  * to be flushed to preserve the order of cpu and gpu access. */
