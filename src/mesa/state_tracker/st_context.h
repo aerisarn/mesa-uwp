@@ -62,6 +62,10 @@ struct st_bitmap_cache
    /** Bounds of region used in window coords */
    GLint xmin, ymin, xmax, ymax;
 
+   /** GL states */
+   struct gl_program *fp;
+   bool scissor_enabled;
+   bool clamp_frag_color;
    GLfloat color[4];
 
    /** Bitmap's Z position */

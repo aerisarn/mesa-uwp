@@ -868,8 +868,6 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             GLbitfield newEnabled =
                state * ((1 << ctx->Const.MaxViewports) - 1);
             if (newEnabled != ctx->Scissor.EnableFlags) {
-               st_flush_bitmap_cache(st_context(ctx));
-
                FLUSH_VERTICES(ctx, 0,
                               GL_SCISSOR_BIT | GL_ENABLE_BIT);
                ctx->NewDriverState |= ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
@@ -1404,8 +1402,6 @@ _mesa_set_enablei(struct gl_context *ctx, GLenum cap,
          return;
       }
       if (((ctx->Scissor.EnableFlags >> index) & 1) != state) {
-         st_flush_bitmap_cache(st_context(ctx));
-
          FLUSH_VERTICES(ctx, 0,
                         GL_SCISSOR_BIT | GL_ENABLE_BIT);
          ctx->NewDriverState |= ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
