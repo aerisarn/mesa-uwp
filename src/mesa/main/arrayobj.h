@@ -182,12 +182,24 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
                             GLbitfield *nonzero_divisor_attribs)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
+   const gl_attribute_map_mode mode = vao->_AttributeMapMode;
+   /* Enabled array bits. */
+   const GLbitfield enabled = vao->Enabled;
+   /* VBO array bits. */
+   const GLbitfield vbos = vao->VertexAttribBufferMask;
+   const GLbitfield divisor_is_nonzero = vao->NonZeroDivisorMask;
 
    assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
-   *enabled_user_attribs = ~vao->_EffEnabledVBO &
-                           ctx->Array._DrawVAOEnabledAttribs;
-   *nonzero_divisor_attribs = vao->_EffEnabledNonZeroDivisor &
-                              ctx->Array._DrawVAOEnabledAttribs;
+
+   /* Mask of VERT_BIT_* enabled arrays past position/generic0 mapping. */
+   *enabled_user_attribs =
+      ~_mesa_vao_enable_to_vp_inputs(mode, enabled & vbos) &
+      ctx->Array._DrawVAOEnabledAttribs;
+
+   /* Same as above, but for instance divisors. */
+   *nonzero_divisor_attribs =
+      _mesa_vao_enable_to_vp_inputs(mode, enabled & divisor_is_nonzero) &
+      ctx->Array._DrawVAOEnabledAttribs;
 }
 
 /**

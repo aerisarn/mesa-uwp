@@ -1680,18 +1680,6 @@ struct gl_vertex_array_object
     */
    GLbitfield NonDefaultStateMask;
 
-   /**
-    * Mask of VERT_BIT_* enabled arrays past position/generic0 mapping
-    *
-    * The value is valid past calling _mesa_update_vao_derived_arrays.
-    * Note that _mesa_update_vao_derived_arrays is called when binding
-    * the VAO to Array._DrawVAO.
-    */
-   GLbitfield _EffEnabledVBO;
-
-   /** Same as _EffEnabledVBO, but for instance divisors. */
-   GLbitfield _EffEnabledNonZeroDivisor;
-
    /** Denotes the way the position/generic0 attribute is mapped */
    gl_attribute_map_mode _AttributeMapMode;
 

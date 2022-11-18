@@ -1205,8 +1205,6 @@ copy_array_object(struct gl_context *ctx,
    /* Enabled must be the same than on push */
    dest->Enabled = src->Enabled;
    dest->_EnabledWithMapMode = src->_EnabledWithMapMode;
-   dest->_EffEnabledVBO = src->_EffEnabledVBO;
-   dest->_EffEnabledNonZeroDivisor = src->_EffEnabledNonZeroDivisor;
    /* The bitmask of bound VBOs needs to match the VertexBinding array */
    dest->VertexAttribBufferMask = src->VertexAttribBufferMask;
    dest->NonZeroDivisorMask = src->NonZeroDivisorMask;
