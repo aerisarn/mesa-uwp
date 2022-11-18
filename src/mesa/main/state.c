@@ -335,6 +335,9 @@ update_program(struct gl_context *ctx)
       dirty |= prev_fp_affected_states;
       if (ctx->FragmentProgram._Current)
          dirty |= ctx->FragmentProgram._Current->affected_states;
+
+      if (!ctx->st->needs_texcoord_semantic)
+         dirty |= ST_NEW_RASTERIZER;
    }
 
    if (cp_changed) {
