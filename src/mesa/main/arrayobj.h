@@ -182,24 +182,40 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
                             GLbitfield *nonzero_divisor_attribs)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
-   const gl_attribute_map_mode mode = vao->_AttributeMapMode;
-   /* Enabled array bits. */
    const GLbitfield enabled = vao->Enabled;
-   /* VBO array bits. */
-   const GLbitfield vbos = vao->VertexAttribBufferMask;
-   const GLbitfield divisor_is_nonzero = vao->NonZeroDivisorMask;
+   const GLbitfield enabled_nonuser = enabled & vao->VertexAttribBufferMask;
+   const GLbitfield enabled_nonzero_divisor = enabled & vao->NonZeroDivisorMask;
 
    assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
 
-   /* Mask of VERT_BIT_* enabled arrays past position/generic0 mapping. */
-   *enabled_user_attribs =
-      ~_mesa_vao_enable_to_vp_inputs(mode, enabled & vbos) &
-      ctx->Array._DrawVAOEnabledAttribs;
+   *enabled_user_attribs = ~enabled_nonuser &
+                           ctx->Array._DrawVAOEnabledAttribs;
+   *nonzero_divisor_attribs = enabled_nonzero_divisor &
+                              ctx->Array._DrawVAOEnabledAttribs;
 
-   /* Same as above, but for instance divisors. */
-   *nonzero_divisor_attribs =
-      _mesa_vao_enable_to_vp_inputs(mode, enabled & divisor_is_nonzero) &
-      ctx->Array._DrawVAOEnabledAttribs;
+   switch (vao->_AttributeMapMode) {
+   case ATTRIBUTE_MAP_MODE_POSITION:
+      /* Copy VERT_ATTRIB_POS enable bit into GENERIC0 position */
+      *enabled_user_attribs =
+         (*enabled_user_attribs & ~VERT_BIT_GENERIC0) |
+         ((*enabled_user_attribs & VERT_BIT_POS) << VERT_ATTRIB_GENERIC0);
+      *nonzero_divisor_attribs =
+         (*nonzero_divisor_attribs & ~VERT_BIT_GENERIC0) |
+         ((*nonzero_divisor_attribs & VERT_BIT_POS) << VERT_ATTRIB_GENERIC0);
+      break;
+
+   case ATTRIBUTE_MAP_MODE_GENERIC0:
+      /* Copy VERT_ATTRIB_GENERIC0 enable bit into POS position */
+      *enabled_user_attribs =
+         (*enabled_user_attribs & ~VERT_BIT_POS) |
+         ((*enabled_user_attribs & VERT_BIT_GENERIC0) >> VERT_ATTRIB_GENERIC0);
+      *nonzero_divisor_attribs =
+         (*nonzero_divisor_attribs & ~VERT_BIT_POS) |
+         ((*nonzero_divisor_attribs & VERT_BIT_GENERIC0) >> VERT_ATTRIB_GENERIC0);
+      break;
+   default:
+      break;
+   }
 }
 
 /**
