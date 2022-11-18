@@ -684,12 +684,6 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
    default:
       assert(0);
    }
-
-   /* Since we only track the varying inputs while being in fixed function
-    * vertex processing mode, we may need to update fixed-func shaders
-    * for zero-stride vertex attribs.
-    */
-   _mesa_set_varying_vp_inputs(ctx, ctx->Array._DrawVAOEnabledAttribs);
 }
 
 
