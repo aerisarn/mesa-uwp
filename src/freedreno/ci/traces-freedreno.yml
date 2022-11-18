@@ -82,7 +82,9 @@ traces:
     freedreno-a530:
       label: [unsupported]
     freedreno-a630:
+      label: [skip]
       checksum: 491a16f1f9bf8bc467fadbc8439c1a2a
+      text: causes GPU hangs, see https://gitlab.freedesktop.org/mesa/mesa/-/issues/7732
     zink-a630:
       checksum: 491a16f1f9bf8bc467fadbc8439c1a2a
 
