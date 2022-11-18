@@ -103,12 +103,6 @@ traces:
   bgfx/40-svt.rdc:
     gl-vmware-llvmpipe:
       checksum: 83bf05971404700b874c4e9d9edd1379
-  glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true-v2.trace:
-    gl-vmware-llvmpipe:
-      checksum: fa54af7770699dfe78c3e33061312739
-  glmark2/jellyfish-v2.trace:
-    gl-vmware-llvmpipe:
-      checksum: da850394d7f99a895322222cc95170af
   glxgears/glxgears-2-v2.trace:
     gl-vmware-llvmpipe:
       checksum: f8eba0fec6e3e0af9cb09844bc73bdc8
