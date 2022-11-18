@@ -303,7 +303,8 @@ st_update_array_templ(struct st_context *st)
 
    /* vertex program validation must be done before this */
    /* _NEW_PROGRAM, ST_NEW_VS_STATE */
-   const struct gl_vertex_program *vp = (struct gl_vertex_program *)st->vp;
+   const struct gl_vertex_program *vp =
+      (struct gl_vertex_program *)ctx->VertexProgram._Current;
    const struct st_common_variant *vp_variant = st->vp_variant;
 
    struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
