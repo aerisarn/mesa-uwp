@@ -1065,7 +1065,7 @@ static VkResult pvr_compute_pipeline_compile(
       struct pvr_hard_code_compute_build_info build_info;
 
       result = pvr_hard_code_compute_pipeline(device,
-                                              &compute_pipeline->state.shader,
+                                              &compute_pipeline->shader_state,
                                               &build_info);
       if (result != VK_SUCCESS)
          return result;
@@ -1110,7 +1110,7 @@ static VkResult pvr_compute_pipeline_compile(
       &explicit_const_usage,
       compute_pipeline->base.layout,
       PVR_STAGE_ALLOCATION_COMPUTE,
-      &compute_pipeline->state.descriptor);
+      &compute_pipeline->descriptor_state);
    if (result != VK_SUCCESS)
       goto err_free_shader;
 
@@ -1121,21 +1121,21 @@ static VkResult pvr_compute_pipeline_compile(
       work_group_input_regs,
       barrier_coefficient,
       usc_temps,
-      compute_pipeline->state.shader.bo->vma->dev_addr,
-      &compute_pipeline->state.primary_program,
-      &compute_pipeline->state.primary_program_info);
+      compute_pipeline->shader_state.bo->vma->dev_addr,
+      &compute_pipeline->primary_program,
+      &compute_pipeline->primary_program_info);
    if (result != VK_SUCCESS)
       goto err_free_descriptor_program;
 
    /* If the workgroup ID is required, then we require the base workgroup
     * variant of the PDS compute program as well.
     */
-   compute_pipeline->state.flags.base_workgroup =
+   compute_pipeline->flags.base_workgroup =
       work_group_input_regs[0] != PVR_PDS_COMPUTE_INPUT_REG_UNUSED ||
       work_group_input_regs[1] != PVR_PDS_COMPUTE_INPUT_REG_UNUSED ||
       work_group_input_regs[2] != PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
 
-   if (compute_pipeline->state.flags.base_workgroup) {
+   if (compute_pipeline->flags.base_workgroup) {
       result = pvr_pds_compute_base_workgroup_variant_program_init(
          device,
          allocator,
@@ -1143,8 +1143,8 @@ static VkResult pvr_compute_pipeline_compile(
          work_group_input_regs,
          barrier_coefficient,
          usc_temps,
-         compute_pipeline->state.shader.bo->vma->dev_addr,
-         &compute_pipeline->state.primary_base_workgroup_variant_program);
+         compute_pipeline->shader_state.bo->vma->dev_addr,
+         &compute_pipeline->primary_base_workgroup_variant_program);
       if (result != VK_SUCCESS)
          goto err_destroy_compute_program;
    }
@@ -1152,17 +1152,16 @@ static VkResult pvr_compute_pipeline_compile(
    return VK_SUCCESS;
 
 err_destroy_compute_program:
-   pvr_pds_compute_program_destroy(
-      device,
-      allocator,
-      &compute_pipeline->state.primary_program,
-      &compute_pipeline->state.primary_program_info);
+   pvr_pds_compute_program_destroy(device,
+                                   allocator,
+                                   &compute_pipeline->primary_program,
+                                   &compute_pipeline->primary_program_info);
 
 err_free_descriptor_program:
-   pvr_bo_free(device, compute_pipeline->state.descriptor.pds_code.pvr_bo);
+   pvr_bo_free(device, compute_pipeline->descriptor_state.pds_code.pvr_bo);
 
 err_free_shader:
-   pvr_bo_free(device, compute_pipeline->state.shader.bo);
+   pvr_bo_free(device, compute_pipeline->shader_state.bo);
 
    return result;
 }
@@ -1235,22 +1234,21 @@ static void pvr_compute_pipeline_destroy(
    const VkAllocationCallbacks *const allocator,
    struct pvr_compute_pipeline *const compute_pipeline)
 {
-   if (compute_pipeline->state.flags.base_workgroup) {
+   if (compute_pipeline->flags.base_workgroup) {
       pvr_pds_compute_base_workgroup_variant_program_finish(
          device,
          allocator,
-         &compute_pipeline->state.primary_base_workgroup_variant_program);
+         &compute_pipeline->primary_base_workgroup_variant_program);
    }
 
-   pvr_pds_compute_program_destroy(
-      device,
-      allocator,
-      &compute_pipeline->state.primary_program,
-      &compute_pipeline->state.primary_program_info);
+   pvr_pds_compute_program_destroy(device,
+                                   allocator,
+                                   &compute_pipeline->primary_program,
+                                   &compute_pipeline->primary_program_info);
    pvr_pds_descriptor_program_destroy(device,
                                       allocator,
-                                      &compute_pipeline->state.descriptor);
-   pvr_bo_free(device, compute_pipeline->state.shader.bo);
+                                      &compute_pipeline->descriptor_state);
+   pvr_bo_free(device, compute_pipeline->shader_state.bo);
 
    pvr_pipeline_finish(&compute_pipeline->base);
 

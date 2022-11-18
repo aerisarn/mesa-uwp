@@ -2960,7 +2960,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
    const uint32_t const_shared_reg_count =
-      pipeline->state.shader.const_shared_reg_count;
+      pipeline->shader_state.const_shared_reg_count;
    struct pvr_compute_kernel_info info;
 
    /* No shared regs, no need to use an allocation kernel. */
@@ -2986,9 +2986,9 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
     * allocation of the local/common store shared registers. Use the
     * pre-uploaded empty PDS program in this instance.
     */
-   if (pipeline->state.descriptor.pds_info.code_size_in_dwords) {
+   if (pipeline->descriptor_state.pds_info.code_size_in_dwords) {
       uint32_t pds_data_size_in_dwords =
-         pipeline->state.descriptor.pds_info.data_size_in_dwords;
+         pipeline->descriptor_state.pds_info.data_size_in_dwords;
 
       info.pds_data_offset = state->pds_compute_descriptor_data_offset;
       info.pds_data_size =
@@ -2996,8 +2996,8 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
 
       /* Check that we have upload the code section. */
-      assert(pipeline->state.descriptor.pds_code.code_size);
-      info.pds_code_offset = pipeline->state.descriptor.pds_code.code_offset;
+      assert(pipeline->descriptor_state.pds_code.code_size);
+      info.pds_code_offset = pipeline->descriptor_state.pds_code.code_offset;
    } else {
       const struct pvr_pds_upload *program = &device->pds_compute_empty_program;
 
@@ -3179,8 +3179,9 @@ static void pvr_compute_update_kernel(
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
-   const struct pvr_pds_info *program_info =
-      &pipeline->state.primary_program_info;
+   const struct pvr_compute_shader_state *shader_state =
+      &pipeline->shader_state;
+   const struct pvr_pds_info *program_info = &pipeline->primary_program_info;
 
    struct pvr_compute_kernel_info info = {
       .indirect_buffer_addr = indirect_addr,
@@ -3192,13 +3193,13 @@ static void pvr_compute_update_kernel(
       .pds_data_size =
          DIV_ROUND_UP(program_info->data_size_in_dwords << 2U,
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
-      .pds_data_offset = pipeline->state.primary_program.data_offset,
-      .pds_code_offset = pipeline->state.primary_program.code_offset,
+      .pds_data_offset = pipeline->primary_program.data_offset,
+      .pds_code_offset = pipeline->primary_program.code_offset,
 
       .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
 
       .usc_unified_size =
-         DIV_ROUND_UP(pipeline->state.shader.input_register_count << 2U,
+         DIV_ROUND_UP(shader_state->input_register_count << 2U,
                       PVRX(CDMCTRL_KERNEL0_USC_UNIFIED_SIZE_UNIT_SIZE)),
 
       /* clang-format off */
@@ -3210,7 +3211,7 @@ static void pvr_compute_update_kernel(
       /* clang-format on */
    };
 
-   uint32_t work_size = pipeline->state.shader.work_size;
+   uint32_t work_size = shader_state->work_size;
    uint32_t coeff_regs;
 
    if (work_size > ROGUE_MAX_INSTANCES_PER_TASK) {
@@ -3218,7 +3219,7 @@ static void pvr_compute_update_kernel(
        */
       coeff_regs = dev_runtime_info->cdm_max_local_mem_size_regs;
    } else {
-      coeff_regs = pipeline->state.shader.coefficient_register_count;
+      coeff_regs = shader_state->coefficient_register_count;
    }
 
    info.usc_common_size =
@@ -3228,9 +3229,9 @@ static void pvr_compute_update_kernel(
    /* Use a whole slot per workgroup. */
    work_size = MAX2(work_size, ROGUE_MAX_INSTANCES_PER_TASK);
 
-   coeff_regs += pipeline->state.shader.const_shared_reg_count;
+   coeff_regs += shader_state->const_shared_reg_count;
 
-   if (pipeline->state.shader.const_shared_reg_count > 0)
+   if (shader_state->const_shared_reg_count > 0)
       info.sd_type = PVRX(CDMCTRL_SD_TYPE_USC);
 
    work_size =
@@ -3270,8 +3271,8 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
 
    sub_cmd = &state->current_sub_cmd->compute;
 
-   sub_cmd->uses_atomic_ops |= compute_pipeline->state.shader.uses_atomic_ops;
-   sub_cmd->uses_barrier |= compute_pipeline->state.shader.uses_barrier;
+   sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
+   sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
 
    if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
       /* TODO: Add a dirty push constants mask in the cmd_buffer state and
@@ -3280,7 +3281,7 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       pvr_finishme("Add support for push constants.");
    }
 
-   if (compute_pipeline->state.shader.uses_num_workgroups) {
+   if (compute_pipeline->shader_state.uses_num_workgroups) {
       struct pvr_bo *num_workgroups_bo;
 
       result = pvr_cmd_buffer_upload_general(cmd_buffer,
@@ -3293,7 +3294,7 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->state.descriptor,
+         &compute_pipeline->descriptor_state,
          &num_workgroups_bo->vma->dev_addr,
          &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)
@@ -3305,7 +3306,7 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->state.descriptor,
+         &compute_pipeline->descriptor_state,
          NULL,
          &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)
@@ -3343,8 +3344,8 @@ void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
 
    sub_cmd = &state->current_sub_cmd->compute;
-   sub_cmd->uses_atomic_ops |= compute_pipeline->state.shader.uses_atomic_ops;
-   sub_cmd->uses_barrier |= compute_pipeline->state.shader.uses_barrier;
+   sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
+   sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
 
    if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
       /* TODO: Add a dirty push constants mask in the cmd_buffer state and
@@ -3353,11 +3354,11 @@ void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
       pvr_finishme("Add support for push constants.");
    }
 
-   if (compute_pipeline->state.shader.uses_num_workgroups) {
+   if (compute_pipeline->shader_state.uses_num_workgroups) {
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->state.descriptor,
+         &compute_pipeline->descriptor_state,
          &indirect_addr,
          &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)
@@ -3369,7 +3370,7 @@ void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
       result = pvr_setup_descriptor_mappings(
          cmd_buffer,
          PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->state.descriptor,
+         &compute_pipeline->descriptor_state,
          NULL,
          &state->pds_compute_descriptor_data_offset);
       if (result != VK_SUCCESS)

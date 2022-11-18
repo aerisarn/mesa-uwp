@@ -1162,6 +1162,21 @@ struct pvr_pipeline_stage_state {
    bool empty_program;
 };
 
+struct pvr_compute_shader_state {
+   /* Pointer to a buffer object that contains the shader binary. */
+   struct pvr_bo *bo;
+
+   bool uses_atomic_ops;
+   bool uses_barrier;
+   /* E.g. GLSL shader uses gl_NumWorkGroups. */
+   bool uses_num_workgroups;
+
+   uint32_t const_shared_reg_count;
+   uint32_t input_register_count;
+   uint32_t work_size;
+   uint32_t coefficient_register_count;
+};
+
 struct pvr_vertex_shader_state {
    /* Pointer to a buffer object that contains the shader binary. */
    struct pvr_bo *bo;
@@ -1207,46 +1222,28 @@ struct pvr_pipeline {
 struct pvr_compute_pipeline {
    struct pvr_pipeline base;
 
+   struct pvr_compute_shader_state shader_state;
+
    struct {
-      /* TODO: Change this to be an anonymous struct once the shader hardcoding
-       * is removed.
+      uint32_t base_workgroup : 1;
+   } flags;
+
+   struct pvr_stage_allocation_descriptor_state descriptor_state;
+
+   struct pvr_pds_upload primary_program;
+   struct pvr_pds_info primary_program_info;
+
+   struct pvr_pds_base_workgroup_program {
+      struct pvr_pds_upload code_upload;
+
+      uint32_t *data_section;
+      /* Offset within the PDS data section at which the base workgroup id
+       * resides.
        */
-      struct pvr_compute_pipeline_shader_state {
-         /* Pointer to a buffer object that contains the shader binary. */
-         struct pvr_bo *bo;
+      uint32_t base_workgroup_data_patching_offset;
 
-         bool uses_atomic_ops;
-         bool uses_barrier;
-         /* E.g. GLSL shader uses gl_NumWorkGroups. */
-         bool uses_num_workgroups;
-
-         uint32_t const_shared_reg_count;
-         uint32_t input_register_count;
-         uint32_t work_size;
-         uint32_t coefficient_register_count;
-      } shader;
-
-      struct {
-         uint32_t base_workgroup : 1;
-      } flags;
-
-      struct pvr_stage_allocation_descriptor_state descriptor;
-
-      struct pvr_pds_upload primary_program;
-      struct pvr_pds_info primary_program_info;
-
-      struct pvr_pds_base_workgroup_program {
-         struct pvr_pds_upload code_upload;
-
-         uint32_t *data_section;
-         /* Offset within the PDS data section at which the base workgroup id
-          * resides.
-          */
-         uint32_t base_workgroup_data_patching_offset;
-
-         struct pvr_pds_info info;
-      } primary_base_workgroup_variant_program;
-   } state;
+      struct pvr_pds_info info;
+   } primary_base_workgroup_variant_program;
 };
 
 struct pvr_graphics_pipeline {
