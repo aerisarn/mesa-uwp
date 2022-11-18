@@ -165,7 +165,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
       }
 
       res_level->ts_valid = false;
-      res_level->seqno++;
+      etna_resource_level_mark_changed(res_level);
 
       if (rsc->base.bind & PIPE_BIND_SAMPLER_VIEW) {
          ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;

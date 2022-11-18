@@ -570,7 +570,7 @@ etna_resource_changed(struct pipe_screen *pscreen, struct pipe_resource *prsc)
    struct etna_resource *rsc = etna_resource(prsc);
 
    for (int level = 0; level <= prsc->last_level; level++)
-      rsc->levels[level].seqno++;
+      etna_resource_level_mark_changed(&rsc->levels[level]);
 }
 
 static void
