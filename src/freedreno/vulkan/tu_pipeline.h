@@ -46,6 +46,8 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_BLEND_ENABLE,
    TU_DYNAMIC_STATE_BLEND_EQUATION,
    TU_DYNAMIC_STATE_COLOR_WRITE_MASK,
+   TU_DYNAMIC_STATE_VIEWPORT_COUNT,
+   TU_DYNAMIC_STATE_SCISSOR_COUNT,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
    TU_DYNAMIC_STATE_RAST = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
@@ -251,7 +253,7 @@ struct tu_pipeline
 
    struct {
       VkViewport viewports[MAX_VIEWPORTS];
-      unsigned num_viewports;
+      unsigned num_viewports, num_scissors;
       bool set_dynamic_vp_to_static;
       bool z_negative_one_to_one;
    } viewport;

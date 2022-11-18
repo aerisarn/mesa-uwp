@@ -427,7 +427,7 @@ struct tu_cmd_state
 
    VkViewport viewport[MAX_VIEWPORTS];
    VkRect2D scissor[MAX_SCISSORS];
-   uint32_t max_viewport, max_scissor;
+   uint32_t viewport_count, scissor_count;
 
    /* for dynamic states that can't be emitted directly */
    uint32_t dynamic_stencil_mask;

@@ -2796,11 +2796,22 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
              pipeline->viewport.num_viewports *
              sizeof(pipeline->viewport.viewports[0]));
 
-      /* Any viewports set dynamically are invalidated when the pipeline is
-       * bound, so we don't need to take the max here.
-       */
-      cmd->state.max_viewport = pipeline->viewport.num_viewports;
+      cmd->state.viewport_count = pipeline->viewport.num_viewports;
       cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
+   }
+
+   if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
+       !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VIEWPORT_COUNT)) &&
+       cmd->state.viewport_count != pipeline->viewport.num_viewports) {
+      cmd->state.viewport_count = pipeline->viewport.num_viewports;
+      cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
+   }
+
+   if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_SCISSOR)) &&
+       !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_SCISSOR_COUNT)) &&
+       cmd->state.scissor_count != pipeline->viewport.num_scissors) {
+      cmd->state.scissor_count = pipeline->viewport.num_scissors;
+      cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
    }
 
    if (!(pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)))
@@ -2892,7 +2903,6 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    memcpy(&cmd->state.viewport[firstViewport], pViewports, viewportCount * sizeof(*pViewports));
-   cmd->state.max_viewport = MAX2(cmd->state.max_viewport, firstViewport + viewportCount);
 
    /* With VK_EXT_depth_clip_control we have to take into account
     * negativeOneToOne property of the pipeline, so the viewport calculations
@@ -2910,7 +2920,6 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    memcpy(&cmd->state.scissor[firstScissor], pScissors, scissorCount * sizeof(*pScissors));
-   cmd->state.max_scissor = MAX2(cmd->state.max_scissor, firstScissor + scissorCount);
 
    cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
 }
@@ -3079,7 +3088,12 @@ tu_CmdSetViewportWithCountEXT(VkCommandBuffer commandBuffer,
                               uint32_t viewportCount,
                               const VkViewport* pViewports)
 {
-   tu_CmdSetViewport(commandBuffer, 0, viewportCount, pViewports);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   memcpy(cmd->state.viewport, pViewports, viewportCount * sizeof(*pViewports));
+   cmd->state.viewport_count = viewportCount;
+
+   cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3087,7 +3101,12 @@ tu_CmdSetScissorWithCountEXT(VkCommandBuffer commandBuffer,
                              uint32_t scissorCount,
                              const VkRect2D* pScissors)
 {
-   tu_CmdSetScissor(commandBuffer, 0, scissorCount, pScissors);
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   memcpy(cmd->state.scissor, pScissors, scissorCount * sizeof(*pScissors));
+   cmd->state.scissor_count = scissorCount;
+
+   cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5032,14 +5051,14 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       cmd->state.shader_const = tu6_emit_consts(cmd, pipeline, false);
 
    if (dirty & TU_CMD_DIRTY_VIEWPORTS) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
-      tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport,
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.viewport_count);
+      tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.viewport_count,
                         cmd->state.z_negative_one_to_one);
    }
 
    if (dirty & TU_CMD_DIRTY_SCISSORS) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.max_scissor);
-      tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.max_scissor);
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.scissor_count);
+      tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.scissor_count);
    }
 
    if (dirty & TU_CMD_DIRTY_BLEND) {

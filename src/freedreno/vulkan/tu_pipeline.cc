@@ -3654,11 +3654,15 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_VB_STRIDE);
          break;
       case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
-         pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_VIEWPORT);
+         pipeline->dynamic_state_mask |=
+            BIT(VK_DYNAMIC_STATE_VIEWPORT) |
+            BIT(TU_DYNAMIC_STATE_VIEWPORT_COUNT);
          dynamic_viewport = true;
          break;
       case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
-         pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_SCISSOR);
+         pipeline->dynamic_state_mask |=
+            BIT(VK_DYNAMIC_STATE_SCISSOR) |
+            BIT(TU_DYNAMIC_STATE_SCISSOR_COUNT);
          break;
       case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
          pipeline->ds.rb_depth_cntl_mask &=
@@ -3906,7 +3910,9 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(TU_DYNAMIC_STATE_TESS_DOMAIN_ORIGIN) |
             BIT(TU_DYNAMIC_STATE_VIEWPORT_RANGE) |
             BIT(TU_DYNAMIC_STATE_LINE_MODE) |
-            BIT(TU_DYNAMIC_STATE_PROVOKING_VTX);
+            BIT(TU_DYNAMIC_STATE_PROVOKING_VTX) |
+            BIT(TU_DYNAMIC_STATE_VIEWPORT_COUNT) |
+            BIT(TU_DYNAMIC_STATE_SCISSOR_COUNT);
       }
 
       if (library->state &
@@ -4245,11 +4251,14 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
    } else if (pipeline->viewport.set_dynamic_vp_to_static) {
       memcpy(pipeline->viewport.viewports, vp_info->pViewports,
              vp_info->viewportCount * sizeof(*vp_info->pViewports));
-      pipeline->viewport.num_viewports = vp_info->viewportCount;
    }
+
+   pipeline->viewport.num_viewports = vp_info->viewportCount;
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * vp_info->scissorCount))
       tu6_emit_scissor(&cs, vp_info->pScissors, vp_info->scissorCount);
+
+   pipeline->viewport.num_scissors = vp_info->scissorCount;
 }
 
 uint32_t
