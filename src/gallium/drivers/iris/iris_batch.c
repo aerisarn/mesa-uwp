@@ -69,8 +69,8 @@
 static void
 iris_batch_reset(struct iris_batch *batch);
 
-static unsigned
-num_fences(struct iris_batch *batch)
+unsigned
+iris_batch_num_fences(struct iris_batch *batch)
 {
    return util_dynarray_num_elements(&batch->exec_fences,
                                      struct drm_i915_gem_exec_fence);
@@ -82,7 +82,7 @@ num_fences(struct iris_batch *batch)
 void
 iris_dump_fence_list(struct iris_batch *batch)
 {
-   fprintf(stderr, "Fence list (length %u):      ", num_fences(batch));
+   fprintf(stderr, "Fence list (length %u):      ", iris_batch_num_fences(batch));
 
    util_dynarray_foreach(&batch->exec_fences,
                          struct drm_i915_gem_exec_fence, f) {
@@ -974,9 +974,9 @@ submit_batch(struct iris_batch *batch)
       .rsvd1 = batch->ctx_id, /* rsvd1 is actually the context ID */
    };
 
-   if (num_fences(batch)) {
+   if (iris_batch_num_fences(batch)) {
       execbuf.flags |= I915_EXEC_FENCE_ARRAY;
-      execbuf.num_cliprects = num_fences(batch);
+      execbuf.num_cliprects = iris_batch_num_fences(batch);
       execbuf.cliprects_ptr =
          (uintptr_t)util_dynarray_begin(&batch->exec_fences);
    }

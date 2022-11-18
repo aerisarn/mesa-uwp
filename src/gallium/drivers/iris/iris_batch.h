@@ -430,6 +430,7 @@ iris_batch_name_to_string(enum iris_batch_name name);
         ++batch)
 
 void iris_batch_update_syncobjs(struct iris_batch *batch);
+unsigned iris_batch_num_fences(struct iris_batch *batch);
 
 void iris_dump_fence_list(struct iris_batch *batch);
 void iris_dump_bo_list(struct iris_batch *batch);
