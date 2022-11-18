@@ -64,9 +64,12 @@ llvmpipe:
     - mesa-swrast
   variables:
     DEQP_SUITE: llvmpipe
+    XDG_RUNTIME_DIR: /run/user
   extends: .llvmpipe-deqp-test
   script:
-    - LD_LIBRARY_PATH=`pwd`/install xvfb-run --server-args='-noreset' install/deqp-runner.sh
+    - mkdir -p $XDG_RUNTIME_DIR
+    - LD_LIBRARY_PATH=`pwd`/install weston -Bheadless-backend.so -Swayland-0 &
+    - LD_LIBRARY_PATH=`pwd`/install WAYLAND_DISPLAY=wayland-0 xvfb-run --server-args='-noreset' install/deqp-runner.sh
 
 llvmpipe-deqp-asan:
   variables:

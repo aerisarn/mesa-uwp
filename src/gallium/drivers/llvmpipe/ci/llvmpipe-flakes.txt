@@ -12,6 +12,9 @@ dEQP-EGL.functional.sharing.gles2.multithread.simple_egl_sync.programs.link
 # ../src/gallium/auxiliary/util/u_inlines.h:83: pipe_reference_described: Assertion `count != 1' failed.
 dEQP-EGL.functional.sharing.gles2.multithread.random.*copytex.*image
 
+# Same set, for wayland.
+wayland-dEQP-EGL.functional.sharing.gles2.multithread.*
+
 glx@glx-multithread-clearbuffer
 glx@glx-multithread-shader-compile
 glx@glx-multithread-texture
