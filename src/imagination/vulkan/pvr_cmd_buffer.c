@@ -2959,13 +2959,22 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
-   const uint32_t const_shared_reg_count =
+   const uint32_t const_shared_regs =
       pipeline->shader_state.const_shared_reg_count;
    struct pvr_compute_kernel_info info;
 
    /* No shared regs, no need to use an allocation kernel. */
-   if (!const_shared_reg_count)
+   if (!const_shared_regs)
       return;
+
+   /* Accumulate the MAX number of shared registers across the kernels in this
+    * dispatch. This is used by the FW for context switching, so must be large
+    * enough to contain all the shared registers that might be in use for this
+    * compute job. Coefficients don't need to be included as the context switch
+    * will not happen within the execution of a single workgroup, thus nothing
+    * needs to be preserved.
+    */
+   state->max_shared_regs = MAX2(state->max_shared_regs, const_shared_regs);
 
    info = (struct pvr_compute_kernel_info){
       .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
@@ -2974,7 +2983,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
       .usc_common_shared = true,
       .usc_common_size =
-         DIV_ROUND_UP(const_shared_reg_count,
+         DIV_ROUND_UP(const_shared_regs,
                       PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE)),
 
       .local_size = { 1, 1, 1 },
@@ -3011,7 +3020,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
    /* We don't need to pad the workgroup size. */
 
    info.max_instances =
-      pvr_compute_flat_slot_size(pdevice, const_shared_reg_count, false, 1U);
+      pvr_compute_flat_slot_size(pdevice, const_shared_regs, false, 1U);
 
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
@@ -3022,6 +3031,7 @@ void pvr_compute_update_shared_private(
    struct pvr_private_compute_pipeline *pipeline)
 {
    const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    const uint32_t const_shared_regs = pipeline->const_shared_regs_count;
    struct pvr_csb *csb = &sub_cmd->control_stream;
    struct pvr_compute_kernel_info info;
@@ -3029,6 +3039,9 @@ void pvr_compute_update_shared_private(
    /* No shared regs, no need to use an allocation kernel. */
    if (!const_shared_regs)
       return;
+
+   /* See comment in pvr_compute_update_shared() for details on this. */
+   state->max_shared_regs = MAX2(state->max_shared_regs, const_shared_regs);
 
    info = (struct pvr_compute_kernel_info){
       .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
