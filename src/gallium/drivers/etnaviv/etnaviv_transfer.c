@@ -129,7 +129,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    if (ptrans->usage & PIPE_MAP_WRITE) {
       if (etna_resource_level_needs_flush(res_level)) {
          if (ptrans->usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
-            res_level->flush_seqno = res_level->seqno;
+            etna_resource_level_mark_flushed(res_level);
          else
             etna_copy_resource(pctx, &rsc->base, &rsc->base, ptrans->level, ptrans->level);
       }

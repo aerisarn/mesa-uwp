@@ -243,7 +243,7 @@ etna_copy_resource(struct pipe_context *pctx, struct pipe_resource *dst,
       }
 
       if (src == dst)
-         dst_priv->levels[level].flush_seqno = src_priv->levels[level].seqno;
+         etna_resource_level_mark_flushed(&dst_priv->levels[level]);
       else
          dst_priv->levels[level].seqno = src_priv->levels[level].seqno;
    }
@@ -280,7 +280,7 @@ etna_copy_resource_box(struct pipe_context *pctx, struct pipe_resource *dst,
    }
 
    if (src == dst)
-      dst_priv->levels[level].flush_seqno = src_priv->levels[level].seqno;
+      etna_resource_level_mark_flushed(&dst_priv->levels[level]);
    else
       dst_priv->levels[level].seqno = src_priv->levels[level].seqno;
 }

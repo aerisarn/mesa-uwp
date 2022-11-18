@@ -101,6 +101,12 @@ etna_resource_level_needs_flush(struct etna_resource_level *lvl)
    return lvl->ts_valid && ((int)(lvl->seqno - lvl->flush_seqno) > 0);
 }
 
+static inline void
+etna_resource_level_mark_flushed(struct etna_resource_level *lvl)
+{
+   lvl->flush_seqno = lvl->seqno;
+}
+
 /* status of queued up but not flushed reads and write operations.
  * In _transfer_map() we need to know if queued up rendering needs
  * to be flushed to preserve the order of cpu and gpu access. */
