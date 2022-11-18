@@ -1296,20 +1296,19 @@ handle_bind_buffer_gen(struct gl_context *ctx,
 {
    struct gl_buffer_object *buf = *buf_handle;
 
-   if (!no_error && !buf && (ctx->API == API_OPENGL_CORE)) {
+   if (unlikely(!no_error && !buf && (ctx->API == API_OPENGL_CORE))) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-gen name)", caller);
       return false;
    }
 
-   if (!buf || buf == &DummyBufferObject) {
+   if (unlikely(!buf || buf == &DummyBufferObject)) {
       /* If this is a new buffer object id, or one which was generated but
        * never used before, allocate a buffer object now.
        */
       *buf_handle = new_gl_buffer_object(ctx, buffer);
-      if (!*buf_handle) {
-         if (!no_error)
-            _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
-	 return false;
+      if (!no_error && !*buf_handle) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
+         return false;
       }
       _mesa_HashLockMaybeLocked(ctx->Shared->BufferObjects,
                                 ctx->BufferObjectsLocked);
@@ -1363,13 +1362,13 @@ bind_buffer_object(struct gl_context *ctx,
    /* Get pointer to old buffer object (to be unbound) */
    oldBufObj = *bindTarget;
    GLuint old_name = oldBufObj && !oldBufObj->DeletePending ? oldBufObj->Name : 0;
-   if (old_name == buffer)
+   if (unlikely(old_name == buffer))
       return;   /* rebinding the same buffer object- no change */
 
    newBufObj = _mesa_lookup_bufferobj(ctx, buffer);
    /* Get a new buffer object if it hasn't been created. */
-   if (!handle_bind_buffer_gen(ctx, buffer, &newBufObj, "glBindBuffer",
-                               no_error))
+   if (unlikely(!handle_bind_buffer_gen(ctx, buffer, &newBufObj, "glBindBuffer",
+                                        no_error)))
       return;
 
    /* At this point, the compiler should deduce that newBufObj is non-NULL if
