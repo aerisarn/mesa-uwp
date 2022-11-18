@@ -128,7 +128,9 @@ client_state(struct gl_context *ctx, struct gl_vertex_array_object* vao,
 
       case GL_POINT_SIZE_ARRAY_OES:
          if (ctx->VertexProgram.PointSizeEnabled != state) {
-            FLUSH_VERTICES(ctx, _NEW_PROGRAM, 0);
+            FLUSH_VERTICES(ctx, ctx->st->lower_point_size ? _NEW_PROGRAM : 0,
+                           0);
+            ctx->NewDriverState |= ST_NEW_RASTERIZER;
             ctx->VertexProgram.PointSizeEnabled = state;
          }
          vao_state(ctx, vao, VERT_ATTRIB_POINT_SIZE, state);
@@ -1091,7 +1093,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->VertexProgram.PointSizeEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_PROGRAM, GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, ctx->st->lower_point_size ? _NEW_PROGRAM : 0,
+                        GL_ENABLE_BIT);
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->VertexProgram.PointSizeEnabled = state;
          break;
       case GL_VERTEX_PROGRAM_TWO_SIDE_ARB:
