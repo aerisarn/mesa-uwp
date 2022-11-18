@@ -367,6 +367,19 @@ struct pvr_device {
    } static_clear_state;
 
    struct {
+      struct pvr_bo *usc_programs;
+      struct pvr_bo *pds_programs;
+
+      struct {
+         pvr_dev_addr_t pds_pixel_program_offset;
+         pvr_dev_addr_t pds_uniform_program_offset;
+
+         uint32_t pds_texture_program_data_size;
+         uint32_t pds_texture_program_temps_count;
+      } load_program[PVR_SPM_LOAD_PROGRAM_COUNT];
+   } spm_load_state;
+
+   struct {
       simple_mtx_t mtx;
 
 #define PVR_MAX_TILE_BUFFER_COUNT 7U
