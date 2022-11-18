@@ -59,7 +59,7 @@ apt-get install -y --no-remove \
         libxshmfence-dev \
         libxxf86vm-dev \
         make \
-        meson \
+        ninja-build \
         pkg-config \
         python3-mako \
         python3-pil \
