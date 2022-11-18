@@ -171,20 +171,6 @@ _mesa_draw_array_bits(const struct gl_context *ctx)
 
 
 /**
- * Return enabled buffer object vertex attribute bits for draw.
- *
- * Needs the a fully updated VAO ready for draw.
- */
-static inline GLbitfield
-_mesa_draw_vbo_array_bits(const struct gl_context *ctx)
-{
-   const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
-   assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
-   return vao->_EffEnabledVBO & ctx->Array._DrawVAOEnabledAttribs;
-}
-
-
-/**
  * Return enabled user space vertex attribute bits for draw.
  *
  * Needs the a fully updated VAO ready for draw.
@@ -250,17 +236,6 @@ _mesa_draw_array_attrib(const struct gl_vertex_array_object *vao,
 
 
 /**
- * Return a vertex array vertex format provided the attribute number.
- */
-static inline const struct gl_vertex_format *
-_mesa_draw_array_format(const struct gl_vertex_array_object *vao,
-                        gl_vert_attrib attr)
-{
-   return &_mesa_draw_array_attrib(vao, attr)->Format;
-}
-
-
-/**
  * Return vertex buffer binding provided an attribute number.
  */
 static inline const struct gl_vertex_buffer_binding*
@@ -316,16 +291,6 @@ static inline const struct gl_array_attributes*
 _mesa_draw_current_attrib(const struct gl_context *ctx, gl_vert_attrib attr)
 {
    return _vbo_current_attrib(ctx, attr);
-}
-
-
-/**
- * Return a current value vertex format provided the attribute number.
- */
-static inline const struct gl_vertex_format *
-_mesa_draw_current_format(const struct gl_context *ctx, gl_vert_attrib attr)
-{
-   return &_vbo_current_attrib(ctx, attr)->Format;
 }
 
 
