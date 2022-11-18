@@ -217,6 +217,15 @@ etna_copy_resource(struct pipe_context *pctx, struct pipe_resource *dst,
 
    /* Copy each level and each layer */
    for (int level = first_level; level <= last_level; level++) {
+      /* skip levels that don't need to be flushed or are of the same age */
+      if (src == dst) {
+         if (!etna_resource_level_needs_flush(&src_priv->levels[level]))
+            continue;
+      } else {
+         if (!etna_resource_level_older(&dst_priv->levels[level], &src_priv->levels[level]))
+            continue;
+      }
+
       blit.src.level = blit.dst.level = level;
       blit.src.box.width = blit.dst.box.width =
          MIN2(src_priv->levels[level].padded_width, dst_priv->levels[level].padded_width);
