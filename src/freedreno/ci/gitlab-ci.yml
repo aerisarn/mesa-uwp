@@ -196,8 +196,7 @@ a630_gl:
   variables:
     DEQP_SUITE: freedreno-a630
 
-# Robustness tests may be disruptive to other tests, so we run EGL's robustness
-# tests separately.
+# Run dEQP EGL window system tests separately with the window systems available.
 a630_egl:
   extends:
     - .baremetal-deqp-test
@@ -205,7 +204,7 @@ a630_egl:
   variables:
     DEQP_VER: egl
     HWCI_START_XORG: 1
-    HWCI_TEST_SCRIPT: "/install/bare-metal/arm64_a630_egl.sh"
+    DEQP_SUITE: freedreno-a630-egl
 
 a630_gles_asan:
   extends:
