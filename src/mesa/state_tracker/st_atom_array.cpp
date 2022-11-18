@@ -296,7 +296,9 @@ st_setup_current_user(struct st_context *st,
 }
 
 template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
-st_update_array_templ(struct st_context *st)
+st_update_array_templ(struct st_context *st,
+                      const GLbitfield enabled_user_attribs,
+                      const GLbitfield nonzero_divisor_attribs)
 {
    struct gl_context *ctx = st->ctx;
 
@@ -307,11 +309,11 @@ st_update_array_templ(struct st_context *st)
    const struct st_common_variant *vp_variant = st->vp_variant;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
-   const GLbitfield userbuf_attribs = inputs_read & _mesa_draw_user_array_bits(ctx);
+   const GLbitfield userbuf_attribs = inputs_read & enabled_user_attribs;
    bool uses_user_vertex_buffers = userbuf_attribs != 0;
 
    st->draw_needs_minmax_index =
-      (userbuf_attribs & ~_mesa_draw_nonzero_divisor_bits(ctx)) != 0;
+      (userbuf_attribs & ~nonzero_divisor_attribs) != 0;
 
    struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
    unsigned num_vbuffers = 0;
@@ -361,6 +363,11 @@ template<util_popcnt POPCNT> void ALWAYS_INLINE
 st_update_array_impl(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
+   GLbitfield enabled_user_attribs;
+   GLbitfield nonzero_divisor_attribs;
+
+   _mesa_get_derived_vao_masks(ctx, &enabled_user_attribs,
+                               &nonzero_divisor_attribs);
 
    /* Changing from user to non-user buffers and vice versa can switch between
     * cso and u_vbuf, which means that we need to update vertex elements even
@@ -368,10 +375,12 @@ st_update_array_impl(struct st_context *st)
     */
    if (ctx->Array.NewVertexElements ||
        st->uses_user_vertex_buffers !=
-       !!(st->vp_variant->vert_attrib_mask & _mesa_draw_user_array_bits(ctx))) {
-      st_update_array_templ<POPCNT, UPDATE_ALL>(st);
+       !!(st->vp_variant->vert_attrib_mask & enabled_user_attribs)) {
+      st_update_array_templ<POPCNT, UPDATE_ALL>
+         (st, enabled_user_attribs, nonzero_divisor_attribs);
    } else {
-      st_update_array_templ<POPCNT, UPDATE_BUFFERS_ONLY>(st);
+      st_update_array_templ<POPCNT, UPDATE_BUFFERS_ONLY>
+         (st, enabled_user_attribs, nonzero_divisor_attribs);
    }
 }
 
