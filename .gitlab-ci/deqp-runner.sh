@@ -86,14 +86,6 @@ if [ -z "$DEQP_SUITE" ]; then
        sed -ni $CI_NODE_INDEX~$CI_NODE_TOTAL"p" /tmp/case-list.txt
     fi
 
-    if [ -n "$DEQP_CASELIST_FILTER" ]; then
-        sed -ni "/$DEQP_CASELIST_FILTER/p" /tmp/case-list.txt
-    fi
-
-    if [ -n "$DEQP_CASELIST_INV_FILTER" ]; then
-        sed -ni "/$DEQP_CASELIST_INV_FILTER/!p" /tmp/case-list.txt
-    fi
-
     if [ ! -s /tmp/case-list.txt ]; then
         echo "Caselist generation failed"
         exit 1
