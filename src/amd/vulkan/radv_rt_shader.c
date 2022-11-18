@@ -282,6 +282,13 @@ enum sbt_type {
    SBT_CALLABLE = offsetof(VkTraceRaysIndirectCommand2KHR, callableShaderBindingTableAddress),
 };
 
+enum sbt_entry {
+   SBT_GENERAL_IDX = offsetof(struct radv_pipeline_group_handle, general_index),
+   SBT_CLOSEST_HIT_IDX = offsetof(struct radv_pipeline_group_handle, closest_hit_index),
+   SBT_INTERSECTION_IDX = offsetof(struct radv_pipeline_group_handle, intersection_index),
+   SBT_ANY_HIT_IDX = offsetof(struct radv_pipeline_group_handle, any_hit_index),
+};
+
 static nir_ssa_def *
 get_sbt_ptr(nir_builder *b, nir_ssa_def *idx, enum sbt_type binding)
 {
@@ -299,7 +306,7 @@ get_sbt_ptr(nir_builder *b, nir_ssa_def *idx, enum sbt_type binding)
 
 static void
 load_sbt_entry(nir_builder *b, const struct rt_variables *vars, nir_ssa_def *idx,
-               enum sbt_type binding, unsigned offset)
+               enum sbt_type binding, enum sbt_entry offset)
 {
    nir_ssa_def *addr = get_sbt_ptr(b, idx, binding);
 
@@ -342,7 +349,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->stack_ptr,
                              nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16),
                              1);
-               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, 0);
+               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, SBT_GENERAL_IDX);
 
                nir_store_var(&b_shader, vars->arg,
                              nir_iadd_imm(&b_shader, intr->src[1].ssa, -size - 16), 1);
@@ -596,7 +603,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->instance_addr, intr->src[3].ssa, 0x1);
                nir_store_var(&b_shader, vars->geometry_id_and_flags, intr->src[4].ssa, 0x1);
                nir_store_var(&b_shader, vars->hit_kind, intr->src[5].ssa, 0x1);
-               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_HIT, 0);
+               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_HIT, SBT_CLOSEST_HIT_IDX);
 
                nir_ssa_def *should_return =
                   nir_ior(&b_shader,
@@ -619,7 +626,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->geometry_id_and_flags, undef, 0x1);
                nir_store_var(&b_shader, vars->hit_kind, undef, 0x1);
                nir_ssa_def *miss_index = nir_load_var(&b_shader, vars->miss_index);
-               load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, 0);
+               load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, SBT_GENERAL_IDX);
                break;
             }
             default:
@@ -1034,7 +1041,7 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
                     0x1);
       nir_store_var(b, inner_vars.hit_kind, hit_kind, 0x1);
 
-      load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, 4);
+      load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, SBT_ANY_HIT_IDX);
 
       visit_any_hit_shaders(data->device, data->createInfo, b, &inner_vars);
 
@@ -1090,7 +1097,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
    nir_store_var(b, inner_vars.instance_addr, nir_load_var(b, data->trav_vars->instance_addr), 0x1);
    nir_store_var(b, inner_vars.opaque, intersection->opaque, 1);
 
-   load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, 4);
+   load_sbt_entry(b, &inner_vars, sbt_idx, SBT_HIT, SBT_INTERSECTION_IDX);
 
    nir_store_var(b, data->vars->ahit_accept, nir_imm_false(b), 0x1);
    nir_store_var(b, data->vars->ahit_terminate, nir_imm_false(b), 0x1);
@@ -1413,7 +1420,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
 
    struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, stack_sizes);
-   load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, 0);
+   load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, SBT_GENERAL_IDX);
    if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
       nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
    else

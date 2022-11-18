@@ -2000,7 +2000,14 @@ enum radv_pipeline_type {
 };
 
 struct radv_pipeline_group_handle {
-   uint32_t handles[2];
+   union {
+      uint32_t general_index;
+      uint32_t closest_hit_index;
+   };
+   union {
+      uint32_t intersection_index;
+      uint32_t any_hit_index;
+   };
 };
 
 struct radv_pipeline_shader_stack_size {

@@ -351,17 +351,19 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       switch (group_info->type) {
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
          if (group_info->generalShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].handles[0] = group_info->generalShader + 2;
+            rt_pipeline->group_handles[i].general_index = group_info->generalShader + 2;
          break;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
+         if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
+            rt_pipeline->group_handles[i].closest_hit_index = group_info->closestHitShader + 2;
          if (group_info->intersectionShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].handles[1] = i + 2;
-         FALLTHROUGH;
+            rt_pipeline->group_handles[i].intersection_index = i + 2;
+         break;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
          if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].handles[0] = group_info->closestHitShader + 2;
+            rt_pipeline->group_handles[i].closest_hit_index = group_info->closestHitShader + 2;
          if (group_info->anyHitShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].handles[1] = i + 2;
+            rt_pipeline->group_handles[i].any_hit_index = i + 2;
          break;
       case VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR:
          unreachable("VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR");
