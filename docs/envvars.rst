@@ -610,6 +610,11 @@ Gallium environment variables
 
    Scale HUD by an integer factor, for high DPI displays. Default is 1.
 
+.. envvar:: GALLIUM_HUD_ROTATION
+
+   Rotate the HUD by an integer number of degrees, the specified value must be
+   a multiple of 90. Default is 0.
+
 .. envvar:: GALLIUM_HUD_DUMP_DIR
 
    specifies a directory for writing the displayed HUD values into
