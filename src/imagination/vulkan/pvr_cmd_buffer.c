@@ -3260,13 +3260,11 @@ static void pvr_compute_update_kernel(
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
-void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
-                     uint32_t groupCountX,
-                     uint32_t groupCountY,
-                     uint32_t groupCountZ)
+static void pvr_cmd_dispatch(
+   struct pvr_cmd_buffer *const cmd_buffer,
+   const pvr_dev_addr_t indirect_addr,
+   const uint32_t workgroup_size[static const PVR_WORKGROUP_DIMENSIONS])
 {
-   const uint32_t workgroup_size[] = { groupCountX, groupCountY, groupCountZ };
-   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    const struct pvr_compute_pipeline *compute_pipeline =
       state->compute_pipeline;
@@ -3274,125 +3272,94 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
       compute_pipeline->base.layout->push_constants_shader_stages;
    struct pvr_sub_cmd_compute *sub_cmd;
    VkResult result;
+
+   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
+
+   sub_cmd = &state->current_sub_cmd->compute;
+   sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
+   sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
+
+   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
+      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
+       * check for dirty compute stage.
+       */
+      pvr_finishme("Add support for push constants.");
+   }
+
+   if (compute_pipeline->shader_state.uses_num_workgroups) {
+      pvr_dev_addr_t descriptor_data_offset_out;
+
+      if (indirect_addr.addr) {
+         descriptor_data_offset_out = indirect_addr;
+      } else {
+         struct pvr_bo *num_workgroups_bo;
+
+         result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                                workgroup_size,
+                                                sizeof(*workgroup_size) *
+                                                   PVR_WORKGROUP_DIMENSIONS,
+                                                &num_workgroups_bo);
+         if (result != VK_SUCCESS)
+            return;
+
+         descriptor_data_offset_out = num_workgroups_bo->vma->dev_addr;
+      }
+
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->descriptor_state,
+         &descriptor_data_offset_out,
+         &state->pds_compute_descriptor_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   } else if ((compute_pipeline->base.layout
+                  ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
+               state->dirty.compute_desc_dirty) ||
+              state->dirty.compute_pipeline_binding) {
+      result = pvr_setup_descriptor_mappings(
+         cmd_buffer,
+         PVR_STAGE_ALLOCATION_COMPUTE,
+         &compute_pipeline->descriptor_state,
+         NULL,
+         &state->pds_compute_descriptor_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   }
+
+   pvr_compute_update_shared(cmd_buffer, sub_cmd);
+   pvr_compute_update_kernel(cmd_buffer, sub_cmd, indirect_addr, workgroup_size);
+}
+
+void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
+                     uint32_t groupCountX,
+                     uint32_t groupCountY,
+                     uint32_t groupCountZ)
+{
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
    if (!groupCountX || !groupCountY || !groupCountZ)
       return;
 
-   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
-
-   sub_cmd = &state->current_sub_cmd->compute;
-
-   sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
-   sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
-
-   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
-      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
-       * check for dirty compute stage.
-       */
-      pvr_finishme("Add support for push constants.");
-   }
-
-   if (compute_pipeline->shader_state.uses_num_workgroups) {
-      struct pvr_bo *num_workgroups_bo;
-
-      result = pvr_cmd_buffer_upload_general(cmd_buffer,
-                                             workgroup_size,
-                                             sizeof(workgroup_size),
-                                             &num_workgroups_bo);
-      if (result != VK_SUCCESS)
-         return;
-
-      result = pvr_setup_descriptor_mappings(
-         cmd_buffer,
-         PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->descriptor_state,
-         &num_workgroups_bo->vma->dev_addr,
-         &state->pds_compute_descriptor_data_offset);
-      if (result != VK_SUCCESS)
-         return;
-   } else if ((compute_pipeline->base.layout
-                  ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
-               state->dirty.compute_desc_dirty) ||
-              state->dirty.compute_pipeline_binding) {
-      result = pvr_setup_descriptor_mappings(
-         cmd_buffer,
-         PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->descriptor_state,
-         NULL,
-         &state->pds_compute_descriptor_data_offset);
-      if (result != VK_SUCCESS)
-         return;
-   }
-
-   pvr_compute_update_shared(cmd_buffer, sub_cmd);
-
-   pvr_compute_update_kernel(cmd_buffer,
-                             sub_cmd,
-                             PVR_DEV_ADDR_INVALID,
-                             workgroup_size);
+   pvr_cmd_dispatch(cmd_buffer,
+                    PVR_DEV_ADDR_INVALID,
+                    (uint32_t[]){ groupCountX, groupCountY, groupCountZ });
 }
 
 void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                              VkBuffer _buffer,
                              VkDeviceSize offset)
 {
-   const uint32_t workgroup_size[PVR_WORKGROUP_DIMENSIONS] = { 1, 1, 1 };
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
-   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct pvr_compute_pipeline *compute_pipeline =
-      state->compute_pipeline;
-   const VkShaderStageFlags push_consts_stage_mask =
-      compute_pipeline->base.layout->push_constants_shader_stages;
    PVR_FROM_HANDLE(pvr_buffer, buffer, _buffer);
-   struct pvr_sub_cmd_compute *sub_cmd;
-   pvr_dev_addr_t indirect_addr;
-   VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
 
-   indirect_addr = PVR_DEV_ADDR_OFFSET(buffer->dev_addr, offset);
-
-   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
-
-   sub_cmd = &state->current_sub_cmd->compute;
-   sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
-   sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
-
-   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
-      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
-       * check for dirty compute stage.
-       */
-      pvr_finishme("Add support for push constants.");
-   }
-
-   if (compute_pipeline->shader_state.uses_num_workgroups) {
-      result = pvr_setup_descriptor_mappings(
-         cmd_buffer,
-         PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->descriptor_state,
-         &indirect_addr,
-         &state->pds_compute_descriptor_data_offset);
-      if (result != VK_SUCCESS)
-         return;
-   } else if ((compute_pipeline->base.layout
-                  ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
-               state->dirty.compute_desc_dirty) ||
-              state->dirty.compute_pipeline_binding) {
-      result = pvr_setup_descriptor_mappings(
-         cmd_buffer,
-         PVR_STAGE_ALLOCATION_COMPUTE,
-         &compute_pipeline->descriptor_state,
-         NULL,
-         &state->pds_compute_descriptor_data_offset);
-      if (result != VK_SUCCESS)
-         return;
-   }
-
-   pvr_compute_update_shared(cmd_buffer, sub_cmd);
-
-   pvr_compute_update_kernel(cmd_buffer, sub_cmd, indirect_addr, workgroup_size);
+   pvr_cmd_dispatch(cmd_buffer,
+                    PVR_DEV_ADDR_OFFSET(buffer->dev_addr, offset),
+                    (uint32_t[]){ 1, 1, 1 });
 }
 
 static void
