@@ -150,6 +150,33 @@ _mesa_update_allow_draw_out_of_order(struct gl_context *ctx)
       FLUSH_VERTICES(ctx, 0, 0);
 }
 
+uint64_t
+_mesa_get_active_states(struct gl_context *ctx)
+{
+   struct gl_program *vp = ctx->VertexProgram._Current;
+   struct gl_program *tcp = ctx->TessCtrlProgram._Current;
+   struct gl_program *tep = ctx->TessEvalProgram._Current;
+   struct gl_program *gp = ctx->GeometryProgram._Current;
+   struct gl_program *fp = ctx->FragmentProgram._Current;
+   struct gl_program *cp = ctx->ComputeProgram._Current;
+   uint64_t active_shader_states = 0;
+
+   if (vp)
+      active_shader_states |= vp->affected_states;
+   if (tcp)
+      active_shader_states |= tcp->affected_states;
+   if (tep)
+      active_shader_states |= tep->affected_states;
+   if (gp)
+      active_shader_states |= gp->affected_states;
+   if (fp)
+      active_shader_states |= fp->affected_states;
+   if (cp)
+      active_shader_states |= cp->affected_states;
+
+   /* Mark non-shader-resource shader states as "always active". */
+   return active_shader_states | ~ST_ALL_SHADER_RESOURCES;
+}
 
 /**
  * Update the ctx->*Program._Current pointers to point to the
@@ -364,8 +391,11 @@ update_program(struct gl_context *ctx)
 
    /* Let the driver know what's happening: */
    if (fp_changed || vp_changed || gp_changed || tep_changed ||
-       tcp_changed || cp_changed)
+       tcp_changed || cp_changed) {
+      /* This will mask out unused shader resources. */
+      st->active_states = _mesa_get_active_states(ctx);
       return _NEW_PROGRAM;
+   }
 
    return 0;
 }
