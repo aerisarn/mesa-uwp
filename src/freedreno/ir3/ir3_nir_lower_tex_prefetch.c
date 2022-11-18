@@ -91,6 +91,13 @@ coord_offset(nir_ssa_def *ssa)
    if (interp->intrinsic != nir_intrinsic_load_barycentric_pixel)
       return -1;
 
+   /* interpolation modes such as noperspective aren't covered by the other
+    * test, we need to explicitly check for them here.
+    */
+   unsigned interp_mode = nir_intrinsic_interp_mode(interp);
+   if (interp_mode != INTERP_MODE_NONE && interp_mode != INTERP_MODE_SMOOTH)
+      return -1;
+
    /* we also need a const input offset: */
    if (!nir_src_is_const(input->src[1]))
       return -1;
