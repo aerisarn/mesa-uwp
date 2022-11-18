@@ -108,9 +108,6 @@ st_invalidate_state(struct gl_context *ctx)
       /* These set a subset of flags set by _NEW_BUFFERS, so we only have to
        * check them when _NEW_BUFFERS isn't set.
        */
-      if (new_state & _NEW_PROGRAM)
-         st->dirty |= ST_NEW_RASTERIZER;
-
       if (new_state & _NEW_FOG)
          st->dirty |= ST_NEW_FS_STATE;
    }
