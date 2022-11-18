@@ -1103,7 +1103,14 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->VertexProgram.TwoSideEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, _NEW_PROGRAM, GL_ENABLE_BIT);
+         FLUSH_VERTICES(ctx, 0, GL_ENABLE_BIT);
+         if (ctx->st->lower_two_sided_color) {
+            /* TODO: this could be smaller, but most drivers don't get here */
+            ctx->NewDriverState |= ST_NEW_VS_STATE |
+                                   ST_NEW_TES_STATE |
+                                   ST_NEW_GS_STATE;
+         }
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->VertexProgram.TwoSideEnabled = state;
          break;
 
