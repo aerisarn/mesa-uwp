@@ -1766,6 +1766,11 @@ struct gl_array_attrib
    GLbitfield _DrawVAOEnabledAttribs;
 
    /**
+    * Whether the VAO has been changed.
+    */
+   bool NewVAO;
+
+   /**
     * If gallium vertex buffers are dirty, this flag indicates whether gallium
     * vertex elements are dirty too. If this is false, GL states corresponding
     * to vertex elements have not been changed. Thus, this affects what will

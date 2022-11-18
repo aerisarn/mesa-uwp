@@ -951,7 +951,8 @@ bind_vertex_array(struct gl_context *ctx, GLuint id, bool no_error)
     * or to prevent a crash if the VAO being unbound is going to be
     * deleted.
     */
-   _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO, 0);
+   _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO);
+   _mesa_update_vao_state(ctx, 0);
 
    _mesa_reference_vao(ctx, &ctx->Array.VAO, newObj);
 
@@ -1013,8 +1014,11 @@ delete_vertex_arrays(struct gl_context *ctx, GLsizei n, const GLuint *ids)
 
          if (ctx->Array.LastLookedUpVAO == obj)
             _mesa_reference_vao(ctx, &ctx->Array.LastLookedUpVAO, NULL);
-         if (ctx->Array._DrawVAO == obj)
-            _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO, 0);
+
+         if (ctx->Array._DrawVAO == obj) {
+            _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO);
+            _mesa_update_vao_state(ctx, 0);
+         }
 
          /* Unreference the array object.
           * If refcount hits zero, the object will be deleted.

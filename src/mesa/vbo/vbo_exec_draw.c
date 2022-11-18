@@ -147,7 +147,8 @@ vbo_exec_bind_arrays(struct gl_context *ctx)
    assert(!exec->vtx.bufferobj ||
           (vao_enabled & ~vao->VertexAttribBufferMask) == 0);
 
-   _mesa_set_draw_vao(ctx, vao, vao_filter);
+   _mesa_set_draw_vao(ctx, vao);
+   _mesa_update_vao_state(ctx, vao_filter);
 }
 
 

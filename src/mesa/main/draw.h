@@ -80,12 +80,11 @@ struct _mesa_index_buffer
 void
 _mesa_set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs);
 
-/**
- * Set the _DrawVAO and the net enabled arrays.
- */
 void
-_mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
-                   GLbitfield filter);
+_mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao);
+
+void
+_mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter);
 
 void
 _mesa_bitmap(struct gl_context *ctx, GLsizei width, GLsizei height,

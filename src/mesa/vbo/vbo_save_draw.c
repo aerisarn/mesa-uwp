@@ -138,7 +138,8 @@ bind_vertex_list(struct gl_context *ctx,
 {
    const gl_vertex_processing_mode mode = ctx->VertexProgram._VPMode;
 
-   _mesa_set_draw_vao(ctx, node->cold->VAO[mode], _vbo_get_vao_filter(mode));
+   _mesa_set_draw_vao(ctx, node->cold->VAO[mode]);
+   _mesa_update_vao_state(ctx, _vbo_get_vao_filter(mode));
 }
 
 
