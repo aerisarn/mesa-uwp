@@ -517,6 +517,7 @@ void
 _mesa_update_vao_derived_arrays(struct gl_context *ctx,
                                 struct gl_vertex_array_object *vao)
 {
+   assert(!vao->IsDynamic);
    /* Make sure we do not run into problems with shared objects */
    assert(!vao->SharedAndImmutable || (!vao->NewVertexBuffers && !vao->NewVertexElements));
 
@@ -541,10 +542,6 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
    const GLbitfield enabled = vao->Enabled;
    /* VBO array bits. */
    const GLbitfield vbos = vao->VertexAttribBufferMask;
-
-   /* Fast path when the VAO is updated too often. */
-   if (vao->IsDynamic)
-      return;
 
    /* More than 4 updates turn the VAO to dynamic. */
    if (ctx->Const.AllowDynamicVAOFastPath && ++vao->NumUpdates > 4) {

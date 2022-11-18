@@ -153,7 +153,8 @@ _mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter)
    ctx->Array.NewVAO = false;
 
    if (vao->NewVertexBuffers || vao->NewVertexElements) {
-      _mesa_update_vao_derived_arrays(ctx, vao);
+      if (!vao->IsDynamic)
+         _mesa_update_vao_derived_arrays(ctx, vao);
       new_vertex_buffers |= vao->NewVertexBuffers;
       new_vertex_elements |= vao->NewVertexElements;
       vao->NewVertexBuffers = false;
