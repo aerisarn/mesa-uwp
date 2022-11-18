@@ -41,21 +41,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-#if defined(_WIN32) && !defined(__WIN32__)
-#define __WIN32__
-#endif
-
-#if defined(_MSC_VER)
-
-#include <intrin.h>
-
-/* Avoid 'expression is always true' warning */
-#pragma warning(disable: 4296)
-
-#endif /* _MSC_VER */
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
