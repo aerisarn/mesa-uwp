@@ -77,15 +77,6 @@ typedef unsigned char boolean;
 #define FALSE false
 #endif
 
-/* This should match linux gcc cdecl semantics everywhere, so that we
- * just codegen one calling convention on all platforms.
- */
-#ifdef _MSC_VER
-#define PIPE_CDECL __cdecl
-#else
-#define PIPE_CDECL
-#endif
-
 #if defined(__cplusplus)
 }
 #endif

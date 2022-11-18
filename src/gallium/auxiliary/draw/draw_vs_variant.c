@@ -149,7 +149,7 @@ do_viewport(struct draw_vs_variant_generic *vsvg,
 }
 
 
-static void PIPE_CDECL
+static void UTIL_CDECL
 vsvg_run_elts(struct draw_vs_variant *variant,
               const unsigned *elts,
               unsigned count,
@@ -214,7 +214,7 @@ vsvg_run_elts(struct draw_vs_variant *variant,
 }
 
 
-static void PIPE_CDECL
+static void UTIL_CDECL
 vsvg_run_linear(struct draw_vs_variant *variant,
                 unsigned start,
                 unsigned count,

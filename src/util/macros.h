@@ -67,6 +67,15 @@
 #  define __builtin_types_compatible_p(type1, type2) (1)
 #endif
 
+/* This should match linux gcc cdecl semantics everywhere, so that we
+ * just codegen one calling convention on all platforms.
+ */
+#ifdef _MSC_VER
+#define UTIL_CDECL __cdecl
+#else
+#define UTIL_CDECL
+#endif
+
 /**
  * Static (compile-time) assertion.
  */
