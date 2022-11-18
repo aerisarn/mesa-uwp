@@ -42,7 +42,7 @@ print_metric_set(const struct intel_perf_query_info *metric_set)
 {
    for (uint32_t c = 0; c < metric_set->n_counters; c++) {
       const struct intel_perf_query_counter *counter = &metric_set->counters[c];
-      fprintf(stdout, "   %s: offset=%li/0x%lx name=%s\n",
+      fprintf(stdout, "   %s: offset=%zx/0x%zx name=%s\n",
               counter->symbol_name, counter->offset, counter->offset, counter->name);
    }
 }
@@ -109,7 +109,7 @@ main(int argc, char *argv[])
          const struct intel_perf_query_info *metric_set = &perf_cfg->queries[i];
 
          if (metric_set->symbol_name && !strcmp(metric_set->symbol_name, print_metric)) {
-            fprintf(stdout, "%s name=%s size=%li counters=%u:\n",
+            fprintf(stdout, "%s name=%s size=%zx counters=%u:\n",
                     metric_set->symbol_name, metric_set->name,
                     metric_set->data_size, metric_set->n_counters);
             print_metric_set(metric_set);
@@ -126,7 +126,7 @@ main(int argc, char *argv[])
       for (uint32_t i = 0; i < perf_cfg->n_queries; i++) {
          const struct intel_perf_query_info *metric_set = &perf_cfg->queries[i];
 
-         fprintf(stdout, "%s name=%s size=%li counters=%u:\n",
+         fprintf(stdout, "%s name=%s size=%zx counters=%u:\n",
                  metric_set->symbol_name, metric_set->name,
                  metric_set->data_size, metric_set->n_counters);
          print_metric_set(metric_set);
