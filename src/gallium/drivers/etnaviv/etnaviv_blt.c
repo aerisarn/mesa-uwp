@@ -579,7 +579,14 @@ etna_try_blt_blit(struct pipe_context *pctx,
    resource_written(ctx, &dst->base);
 
    etna_resource_level_mark_changed(dst_lev);
-   etna_resource_level_ts_mark_invalid(dst_lev);
+
+   /* We don't need to mark the TS as invalid if this was just a flush without
+    * compression, as in that case only clear tiles are filled and the tile
+    * status still matches the blit target buffer. For compressed formats the
+    * tiles are decompressed, so tile status doesn't match anymore.
+    */
+   if (src != dst || src_lev->ts_compress_fmt >= 0)
+      etna_resource_level_ts_mark_invalid(dst_lev);
 
    return true;
 }
