@@ -125,6 +125,10 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
 
    /* Sampler TS can be used under the following conditions: */
 
+   /* The resource TS is valid for level 0. */
+   if (!etna_resource_level_ts_valid(&rsc->levels[0]))
+      return false;
+
    /* The hardware supports it. */
    if (!VIV_FEATURE(screen, chipMinorFeatures2, TEXTURE_TILED_READ))
       return false;
@@ -150,10 +154,6 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
        MIN2(view->u.tex.last_level, rsc->base.last_level) != 0)
       return false;
 
-   /* The resource TS is valid for level 0. */
-   if (!etna_resource_level_ts_valid(&rsc->levels[0]))
-      return false;
-
    return true;
 }
 
@@ -176,10 +176,10 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
                          view->u.tex.first_level,
                          MIN2(view->texture->last_level, view->u.tex.last_level));
       ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
-   } else if ((to == from) && etna_resource_needs_flush(to)) {
+   } else if (to == from) {
       if (etna_can_use_sampler_ts(view, num)) {
          enable_sampler_ts = true;
-      } else {
+      } else if (etna_resource_needs_flush(to)) {
          /* Resolve TS if needed */
          etna_copy_resource(view->context, &to->base, &from->base,
                             view->u.tex.first_level,
