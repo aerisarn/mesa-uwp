@@ -128,21 +128,6 @@ playback_copy_to_current(struct gl_context *ctx,
 }
 
 
-
-/**
- * Set the appropriate VAO to draw.
- */
-static void
-bind_vertex_list(struct gl_context *ctx,
-                 const struct vbo_save_vertex_list *node)
-{
-   const gl_vertex_processing_mode mode = ctx->VertexProgram._VPMode;
-
-   _mesa_set_draw_vao(ctx, node->cold->VAO[mode]);
-   _mesa_update_vao_state(ctx, _vbo_get_vao_filter(mode));
-}
-
-
 static void
 loopback_vertex_list(struct gl_context *ctx,
                      const struct vbo_save_vertex_list *list)
@@ -329,7 +314,12 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
    if (vbo_save_playback_vertex_list_gallium(ctx, node, copy_to_current) == DONE)
       return;
 
-   bind_vertex_list(ctx, node);
+   /* Save the Draw VAO before we override it. */
+   const gl_vertex_processing_mode mode = ctx->VertexProgram._VPMode;
+   struct gl_vertex_array_object *old_vao;
+
+   _mesa_save_and_set_draw_vao(ctx, node->cold->VAO[mode], &old_vao);
+   _mesa_update_vao_state(ctx, _vbo_get_vao_filter(mode));
 
    /* Need that at least one time. */
    if (ctx->NewState)
@@ -337,6 +327,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
 
    /* Return precomputed GL errors such as invalid shaders. */
    if (!ctx->ValidPrimMask) {
+      _mesa_restore_draw_vao(ctx, old_vao);
       _mesa_error(ctx, ctx->DrawGLError, "glCallList");
       return;
    }
@@ -357,6 +348,8 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
                               node->num_draws);
    }
    info->index.gl_bo = gl_bo;
+
+   _mesa_restore_draw_vao(ctx, old_vao);
 
    if (copy_to_current)
       playback_copy_to_current(ctx, node);

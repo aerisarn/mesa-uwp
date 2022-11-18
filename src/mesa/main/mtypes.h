@@ -1780,12 +1780,6 @@ struct gl_array_attrib
     */
    bool NewVertexElements;
 
-   /**
-    * Initially or if the VAO referenced by _DrawVAO is deleted the _DrawVAO
-    * pointer is set to the _EmptyVAO which is just an empty VAO all the time.
-    */
-   struct gl_vertex_array_object *_EmptyVAO;
-
    /** Legal array datatypes and the API for which they have been computed */
    GLbitfield LegalTypesMask;
    gl_api LegalTypesMaskAPI;

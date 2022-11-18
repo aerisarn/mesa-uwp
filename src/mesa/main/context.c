@@ -1105,7 +1105,6 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
 
    _mesa_reference_vao(ctx, &ctx->Array.VAO, NULL);
    _mesa_reference_vao(ctx, &ctx->Array.DefaultVAO, NULL);
-   _mesa_reference_vao(ctx, &ctx->Array._EmptyVAO, NULL);
    _mesa_reference_vao(ctx, &ctx->Array._DrawVAO, NULL);
 
    _mesa_free_attrib_data(ctx);

@@ -84,6 +84,15 @@ void
 _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao);
 
 void
+_mesa_save_and_set_draw_vao(struct gl_context *ctx,
+                            struct gl_vertex_array_object *vao,
+                            struct gl_vertex_array_object **old_vao);
+
+void
+_mesa_restore_draw_vao(struct gl_context *ctx,
+                       struct gl_vertex_array_object *saved);
+
+void
 _mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter);
 
 void

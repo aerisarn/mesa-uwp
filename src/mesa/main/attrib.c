@@ -1309,10 +1309,6 @@ restore_array_attrib(struct gl_context *ctx,
       copy_array_attrib(ctx, dest, src, true, 0);
    }
 
-   /* Invalidate array state. It will be updated during the next draw. */
-   _mesa_set_draw_vao(ctx, ctx->Array._EmptyVAO);
-   _mesa_update_vao_state(ctx, 0);
-
    if (is_vao_name_zero || !src->VAO->IndexBufferObj ||
        _mesa_IsBuffer(src->VAO->IndexBufferObj->Name)) {
       _mesa_BindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,
