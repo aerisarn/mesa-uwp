@@ -185,8 +185,6 @@ st_invalidate_state(struct gl_context *ctx)
 
    /* Which shaders are dirty will be determined manually. */
    if (new_state & _NEW_PROGRAM) {
-      st->gfx_shaders_may_be_dirty = true;
-      st->compute_shader_may_be_dirty = true;
       /* This will mask out unused shader resources. */
       st->active_states = st_get_active_states(ctx);
    }

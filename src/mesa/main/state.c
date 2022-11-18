@@ -56,6 +56,7 @@
 #include "blend.h"
 
 #include "state_tracker/st_context.h"
+#include "state_tracker/st_util.h"
 
 void
 _mesa_update_allow_draw_out_of_order(struct gl_context *ctx)
@@ -184,6 +185,12 @@ update_program(struct gl_context *ctx)
    const struct gl_program *prevTCP = ctx->TessCtrlProgram._Current;
    const struct gl_program *prevTEP = ctx->TessEvalProgram._Current;
    const struct gl_program *prevCP = ctx->ComputeProgram._Current;
+   uint64_t prev_vp_affected_states = prevVP ? prevVP->affected_states : 0;
+   uint64_t prev_tcp_affected_states = prevTCP ? prevTCP->affected_states : 0;
+   uint64_t prev_tep_affected_states = prevTEP ? prevTEP->affected_states : 0;
+   uint64_t prev_gp_affected_states = prevGP ? prevGP->affected_states : 0;
+   uint64_t prev_fp_affected_states = prevFP ? prevFP->affected_states : 0;
+   uint64_t prev_cp_affected_states = prevCP ? prevCP->affected_states : 0;
 
    /*
     * Set the ctx->VertexProgram._Current and ctx->FragmentProgram._Current
@@ -259,24 +266,105 @@ update_program(struct gl_context *ctx)
    _mesa_reference_program(ctx, &ctx->ComputeProgram._Current, csProg);
 
    bool vp_changed = ctx->VertexProgram._Current != prevVP;
+   bool tcp_changed = ctx->TessCtrlProgram._Current != prevTCP;
    bool tep_changed = ctx->TessEvalProgram._Current != prevTEP;
    bool gp_changed = ctx->GeometryProgram._Current != prevGP;
-   if (ctx->GeometryProgram._Current) {
-      ctx->LastVertexStageDirty |= gp_changed;
-   } else if (ctx->TessEvalProgram._Current) {
-      ctx->LastVertexStageDirty |= gp_changed | tep_changed;
-   } else {
-      ctx->LastVertexStageDirty |= gp_changed | tep_changed | vp_changed;
+   bool fp_changed = ctx->FragmentProgram._Current != prevFP;
+   bool cp_changed = ctx->ComputeProgram._Current != prevCP;
+
+   /* Set NewDriverState depending on which shaders have changed. */
+   uint64_t dirty = 0;
+
+   /* Flag states used by both new and old shaders to rebind shader resources
+    * (because shaders pack them and reorder them) and to unbind shader
+    * resources properly when transitioning to shaders that don't use them.
+    */
+   if (vp_changed) {
+      ctx->Array.NewVertexElements = true;
+      dirty |= prev_vp_affected_states;
+      if (ctx->VertexProgram._Current)
+         dirty |= ST_NEW_VERTEX_PROGRAM(ctx, ctx->VertexProgram._Current);
    }
 
-   /* Let the driver know what's happening:
+   if (tcp_changed) {
+      dirty |= prev_tcp_affected_states;
+      if (ctx->TessCtrlProgram._Current)
+         dirty |= ctx->TessCtrlProgram._Current->affected_states;
+   }
+
+   if (tep_changed) {
+      dirty |= prev_tep_affected_states;
+      if (ctx->TessEvalProgram._Current)
+         dirty |= ctx->TessEvalProgram._Current->affected_states;
+   }
+
+   if (gp_changed) {
+      dirty |= prev_gp_affected_states;
+      if (ctx->GeometryProgram._Current)
+         dirty |= ctx->GeometryProgram._Current->affected_states;
+   }
+
+   if (fp_changed) {
+      dirty |= prev_fp_affected_states;
+      if (ctx->FragmentProgram._Current)
+         dirty |= ctx->FragmentProgram._Current->affected_states;
+   }
+
+   if (cp_changed) {
+      dirty |= prev_cp_affected_states;
+      if (ctx->ComputeProgram._Current)
+         dirty |= ctx->ComputeProgram._Current->affected_states;
+   }
+
+   struct gl_program *last_vertex_stage;
+   bool last_vertex_stage_dirty;
+
+   if (ctx->GeometryProgram._Current) {
+      last_vertex_stage = ctx->GeometryProgram._Current;
+      last_vertex_stage_dirty = gp_changed;
+   } else if (ctx->TessEvalProgram._Current) {
+      last_vertex_stage = ctx->TessEvalProgram._Current;
+      last_vertex_stage_dirty = gp_changed | tep_changed;
+   } else {
+      last_vertex_stage = ctx->VertexProgram._Current;
+      last_vertex_stage_dirty = gp_changed | tep_changed | vp_changed;
+   }
+
+   /* Find out the number of viewports. This determines how many scissors
+    * and viewport states we need to update.
     */
-   if (ctx->FragmentProgram._Current != prevFP ||
-       ctx->VertexProgram._Current != prevVP ||
-       ctx->GeometryProgram._Current != prevGP ||
-       ctx->TessEvalProgram._Current != prevTEP ||
-       ctx->TessCtrlProgram._Current != prevTCP ||
-       ctx->ComputeProgram._Current != prevCP)
+   struct st_context *st = ctx->st;
+   unsigned num_viewports = 1;
+
+   if (last_vertex_stage &&
+       last_vertex_stage->info.outputs_written & (
+             VARYING_BIT_VIEWPORT | VARYING_BIT_VIEWPORT_MASK))
+      num_viewports = ctx->Const.MaxViewports;
+
+   if (st->state.num_viewports != num_viewports) {
+      st->state.num_viewports = num_viewports;
+      dirty |= ST_NEW_VIEWPORT;
+
+      if (ctx->Scissor.EnableFlags & u_bit_consecutive(0, num_viewports))
+         dirty |= ST_NEW_SCISSOR;
+   }
+
+   if (st->lower_point_size && last_vertex_stage_dirty &&
+       !ctx->VertexProgram.PointSizeEnabled && !ctx->PointSizeIsSet) {
+      if (ctx->GeometryProgram._Current) {
+         st->dirty |= ST_NEW_GS_CONSTANTS;
+      } else if (ctx->TessEvalProgram._Current) {
+         st->dirty |= ST_NEW_TES_CONSTANTS;
+      } else {
+         st->dirty |= ST_NEW_VS_CONSTANTS;
+      }
+   }
+
+   ctx->NewDriverState |= dirty;
+
+   /* Let the driver know what's happening: */
+   if (fp_changed || vp_changed || gp_changed || tep_changed ||
+       tcp_changed || cp_changed)
       return _NEW_PROGRAM;
 
    return 0;

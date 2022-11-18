@@ -618,8 +618,7 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
     * explicitly uploaded in the draw_bitmap_quad() function.
     */
    if ((st->dirty | ctx->NewDriverState) & st->active_states &
-       ~ST_NEW_CONSTANTS & ST_PIPELINE_RENDER_STATE_MASK ||
-       st->gfx_shaders_may_be_dirty) {
+       ~ST_NEW_CONSTANTS & ST_PIPELINE_RENDER_STATE_MASK) {
       st_validate_state(st, ST_PIPELINE_META);
    }
 

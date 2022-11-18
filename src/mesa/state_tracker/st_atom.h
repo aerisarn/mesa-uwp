@@ -120,8 +120,8 @@ enum {
                                  ST_NEW_SAMPLE_STATE | \
                                  ST_NEW_SAMPLE_SHADING)
 
-#define ST_NEW_VERTEX_PROGRAM(st, p) ((p)->affected_states | \
-                                      (st_user_clip_planes_enabled(st->ctx) ? \
+#define ST_NEW_VERTEX_PROGRAM(ctx, p) ((p)->affected_states | \
+                                      (st_user_clip_planes_enabled(ctx) ? \
                                        ST_NEW_CLIP_STATE : 0))
 
 #define ST_NEW_CONSTANTS        (ST_NEW_VS_CONSTANTS | \
