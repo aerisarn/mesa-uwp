@@ -189,7 +189,6 @@
   </enum>
 
   <struct name="Render Target" size="24">
-    <!-- 2D or 2D Multisampled, no layering -->
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Channels" size="7" start="6" type="Channels"/>
@@ -209,8 +208,10 @@
     <!-- N.b. sRGB is not specified here -->
     <field name="Level" size="4" start="100" type="uint"/>
 
-    <!-- If layout is not linear -->
-    <field name="Levels" size="6" start="104" type="uint" modifier="minus(1)"/>
+    <!-- If layout is not linear. Layers must be zero unless rendering to an
+    array texture (with a layered framebuffer) -->
+    <field name="Levels" size="4" start="104" type="uint" modifier="minus(1)"/>
+    <field name="Layers" size="14" start="108" type="uint" modifier="minus(1)" default="1"/>
     <field name="Unk tiled" size="1" start="124" type="bool"/>
 
     <!-- If layout is linear. Off by 4? -->
@@ -440,6 +441,12 @@
   <struct name="Output Select" size="4">
     <field name="Varyings" size="1" start="16" type="bool"/>
     <field name="Point size" size="1" start="18" type="bool"/>
+    <!-- For layered rendering, enable both and write the 2x16-bit tuple from
+    the vertex shader (layer, (viewport << u) + (u & layer)). So far unclear
+    what u is supposed to be. If u=0, this simplifies to the expected (layer,
+        viewport) at least. -->
+    <field name="Viewport target" size="1" start="19" type="bool"/>
+    <field name="Render target" size="1" start="20" type="bool"/>
     <field name="Frag coord Z" size="1" start="21" type="bool"/>
   </struct>
 
@@ -903,16 +910,29 @@
     <field name="Unknown buffer" start="370:0" size="64" type="address"/>
     <field name="Width 2" start="382:0" size="32" type="uint"/>
     <field name="Height 2" start="383:0" size="32" type="uint"/>
-    <field name="Unk 384" start="384:0" size="32" default="1" type="uint"/>
-    <field name="Unk 385" start="385:0" size="32" default="8" type="uint"/>
-    <field name="Unk 386" start="386:0" size="32" default="8" type="uint"/>
+    <field name="Sample count" start="384:0" size="32" default="1" type="uint"/>
+
+    <!-- Divided by 16 and rounded -->
+    <field name="Sample 0 X" start="385:0" size="5" default="8" type="uint"/>
+    <field name="Sample 0 Y" start="386:0" size="5" default="8" type="uint"/>
+    <field name="Sample 1 X" start="387:0" size="5" default="0" type="uint"/>
+    <field name="Sample 1 Y" start="388:0" size="5" default="0" type="uint"/>
+    <field name="Sample 2 X" start="389:0" size="5" default="0" type="uint"/>
+    <field name="Sample 2 Y" start="390:0" size="5" default="0" type="uint"/>
+    <field name="Sample 3 X" start="391:0" size="5" default="0" type="uint"/>
+    <field name="Sample 3 Y" start="392:0" size="5" default="0" type="uint"/>
+
     <!-- if tile size 32x32: max(tib allocation, 8) rounded to POT
          if tile size 32x16: that, halved
          -->
     <field name="Unk 49:0" start="401:0" size="32" default="8" type="uint"/>
     <field name="Tile width" start="402:0" size="32" default="32" type="uint"/>
     <field name="Tile height" start="403:0" size="32" default="32" type="uint"/>
-    <field name="Unk 52:0" start="404:0" size="32" default="1" type="uint"/>
+    <!-- Number of framebuffer layers when rendering to a layered framebuffer (1
+        otherwise). This affects tiling calculations. It also affects how many
+    times the background program and end-of-tile programs are executed. The
+    layer index is available in sr2. -->
+    <field name="Framebuffer layers" start="404:0" size="32" default="1" type="uint"/>
     <field name="Unk 56:0" start="408:0" size="32" default="0" type="uint"/>
     <field name="Unk 70:0" start="410:0" size="32" default="1" type="uint"/>
   </struct>
