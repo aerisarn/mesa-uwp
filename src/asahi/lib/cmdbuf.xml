@@ -436,6 +436,8 @@
 
   <struct name="Cull 2" size="4">
     <field name="Unknown 2" size="32" start="0" type="hex" default="0xa0"/>
+    <field name="Draw clipped edges" size="1" start="9" type="bool"/>
+    <field name="Primitive MSAA" size="1" start="15" type="bool"/>
   </struct>
 
   <struct name="Varying 0" size="4">
@@ -452,6 +454,22 @@
   </struct>
 
   <struct name="Output Select" size="4">
+    <field name="Clip distance plane 0" size="1" start="0" type="bool"/>
+    <field name="Clip distance plane 1" size="1" start="1" type="bool"/>
+    <field name="Clip distance plane 2" size="1" start="2" type="bool"/>
+    <field name="Clip distance plane 3" size="1" start="3" type="bool"/>
+    <field name="Clip distance plane 4" size="1" start="4" type="bool"/>
+    <field name="Clip distance plane 5" size="1" start="5" type="bool"/>
+    <field name="Clip distance plane 6" size="1" start="6" type="bool"/>
+    <field name="Clip distance plane 7" size="1" start="7" type="bool"/>
+    <field name="Clip distance plane 8" size="1" start="8" type="bool"/>
+    <field name="Clip distance plane 9" size="1" start="9" type="bool"/>
+    <field name="Clip distance plane 10" size="1" start="10" type="bool"/>
+    <field name="Clip distance plane 11" size="1" start="11" type="bool"/>
+    <field name="Clip distance plane 12" size="1" start="12" type="bool"/>
+    <field name="Clip distance plane 13" size="1" start="13" type="bool"/>
+    <field name="Clip distance plane 14" size="1" start="14" type="bool"/>
+    <field name="Clip distance plane 15" size="1" start="15" type="bool"/>
     <field name="Varyings" size="1" start="16" type="bool"/>
     <field name="Point size" size="1" start="18" type="bool"/>
     <!-- For layered rendering, enable both and write the 2x16-bit tuple from
