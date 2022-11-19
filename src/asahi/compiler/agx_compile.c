@@ -635,6 +635,49 @@ agx_emit_store_preamble(agx_builder *b, nir_intrinsic_instr *instr)
    return agx_uniform_store(b, value, offset);
 }
 
+static enum agx_dim
+agx_tex_dim(enum glsl_sampler_dim dim, bool array)
+{
+   switch (dim) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_BUF:
+      return array ? AGX_DIM_1D_ARRAY : AGX_DIM_1D;
+
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      return array ? AGX_DIM_2D_ARRAY : AGX_DIM_2D;
+
+   case GLSL_SAMPLER_DIM_MS:
+      return array ? AGX_DIM_2D_MS_ARRAY : AGX_DIM_2D_MS;
+
+   case GLSL_SAMPLER_DIM_3D:
+      assert(!array && "3D arrays unsupported");
+      return AGX_DIM_3D;
+
+   case GLSL_SAMPLER_DIM_CUBE:
+      return array ? AGX_DIM_CUBE_ARRAY : AGX_DIM_CUBE;
+
+   default:
+      unreachable("Invalid sampler dim\n");
+   }
+}
+
+static agx_instr *
+agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unsigned image = nir_src_as_uint(instr->src[0]);
+   agx_index offset = agx_src_index(&instr->src[1]);
+   enum agx_format format = agx_format_for_pipe(nir_intrinsic_format(instr));
+   enum agx_dim dim = agx_tex_dim(nir_intrinsic_image_dim(instr), false);
+
+   // XXX: how does this possibly work
+   if (format == AGX_FORMAT_F16)
+      format = AGX_FORMAT_I16;
+
+   return agx_block_image_store(b, agx_immediate(image), offset, format, dim);
+}
+
 /*
  * Emit code to generate gl_FragCoord. The xy components are calculated from
  * special registers, whereas the zw components are interpolated varyings.
@@ -767,6 +810,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
   case nir_intrinsic_store_preamble:
      return agx_emit_store_preamble(b, instr);
+
+  case nir_intrinsic_block_image_store_agx:
+     return agx_emit_block_image_store(b, instr);
 
   case nir_intrinsic_load_blend_const_color_r_float: return agx_blend_const(b, dst, 0);
   case nir_intrinsic_load_blend_const_color_g_float: return agx_blend_const(b, dst, 1);
@@ -1078,35 +1124,6 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    default:
       fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
       unreachable("Unhandled ALU instruction");
-   }
-}
-
-static enum agx_dim
-agx_tex_dim(enum glsl_sampler_dim dim, bool array)
-{
-   switch (dim) {
-   case GLSL_SAMPLER_DIM_1D:
-   case GLSL_SAMPLER_DIM_BUF:
-      return array ? AGX_DIM_1D_ARRAY : AGX_DIM_1D;
-
-   case GLSL_SAMPLER_DIM_2D:
-   case GLSL_SAMPLER_DIM_RECT:
-   case GLSL_SAMPLER_DIM_EXTERNAL:
-      return array ? AGX_DIM_2D_ARRAY : AGX_DIM_2D;
-
-   case GLSL_SAMPLER_DIM_MS:
-      assert(!array && "multisampled arrays unsupported");
-      return AGX_DIM_2D_MS;
-
-   case GLSL_SAMPLER_DIM_3D:
-      assert(!array && "3D arrays unsupported");
-      return AGX_DIM_3D;
-
-   case GLSL_SAMPLER_DIM_CUBE:
-      return array ? AGX_DIM_CUBE_ARRAY : AGX_DIM_CUBE;
-
-   default:
-      unreachable("Invalid sampler dim\n");
    }
 }
 
