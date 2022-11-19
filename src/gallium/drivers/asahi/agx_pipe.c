@@ -147,6 +147,7 @@ agx_resource_setup(struct agx_device *dev,
       .width_px = templ->width0,
       .height_px = templ->height0,
       .depth_px = templ->depth0 * templ->array_size,
+      .sample_count_sa = MAX2(templ->nr_samples, 1),
       .levels = templ->last_level + 1,
    };
 }

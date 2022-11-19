@@ -68,6 +68,9 @@ struct ail_layout {
    /** Width, height, and depth in pixels at level 0 */
    uint32_t width_px, height_px, depth_px;
 
+   /** Number of samples per pixel. 1 if multisampling is disabled. */
+   uint8_t sample_count_sa;
+
    /** Number of miplevels. 1 if no mipmapping is used. */
    uint8_t levels;
 
@@ -164,6 +167,8 @@ ail_get_linear_pixel_B(struct ail_layout *layout, ASSERTED unsigned level,
          "Strided linear block formats unsupported");
    assert(util_format_get_blockheight(layout->format) == 1 &&
          "Strided linear block formats unsupported");
+   assert(layout->sample_count_sa == 1 &&
+          "Strided linear multisampling unsupported");
 
    return (y_px * ail_get_linear_stride_B(layout, level)) +
           (x_px * util_format_get_blocksize(layout->format));
