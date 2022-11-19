@@ -122,6 +122,7 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I,
 
       /* cmpselsrc takes integer immediates only */
       if (s >= 2 && I->op == AGX_OPCODE_FCMPSEL) float_src = false;
+      if (I->op == AGX_OPCODE_ST_TILE && s == 0) continue;
 
       if (float_src) {
          bool fp16 = (def->dest[0].size == AGX_SIZE_16);
@@ -215,9 +216,11 @@ agx_optimizer_forward(agx_context *ctx)
          agx_optimizer_fmov(defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
-      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_ST_TILE &&
-          I->op != AGX_OPCODE_COLLECT && I->op != AGX_OPCODE_TEXTURE_SAMPLE &&
-          I->op != AGX_OPCODE_TEXTURE_LOAD && I->op != AGX_OPCODE_UNIFORM_STORE &&
+      if (I->op != AGX_OPCODE_ST_VARY &&
+          I->op != AGX_OPCODE_COLLECT &&
+          I->op != AGX_OPCODE_TEXTURE_SAMPLE &&
+          I->op != AGX_OPCODE_TEXTURE_LOAD &&
+          I->op != AGX_OPCODE_UNIFORM_STORE &&
           I->op != AGX_OPCODE_BLOCK_IMAGE_STORE)
          agx_optimizer_inline_imm(defs, I, info.nr_srcs, info.is_float);
    }

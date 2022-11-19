@@ -1140,6 +1140,14 @@ agx_compile_variant(struct agx_device *dev,
    }
 
    agx_preprocess_nir(nir);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      struct agx_tilebuffer_layout tib =
+         agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
+
+      agx_nir_lower_tilebuffer(nir, &tib);
+   }
+
    agx_compile_shader_nir(nir, &key->base, debug, &binary, &compiled->info);
 
    if (binary.size) {
@@ -1205,7 +1213,7 @@ agx_create_shader_state(struct pipe_context *pctx,
       }
       case MESA_SHADER_FRAGMENT:
          key.nr_cbufs = 1;
-         key.base.fs.tib_formats[0] = AGX_FORMAT_U8NORM;
+         key.rt_formats[0] = PIPE_FORMAT_R8G8B8A8_UNORM;
          break;
       default:
          unreachable("Unknown shader stage in shader-db precompile");
@@ -1275,13 +1283,7 @@ agx_update_fs(struct agx_batch *batch)
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->key.cbufs[i];
 
-      if (surf) {
-         enum pipe_format fmt = surf->format;
-         key.rt_formats[i] = fmt;
-         key.base.fs.tib_formats[i] = AGX_FORMAT_U8NORM /* other formats broken */;
-      } else {
-         key.rt_formats[i] = PIPE_FORMAT_NONE;
-      }
+      key.rt_formats[i] = surf ? surf->format : PIPE_FORMAT_NONE;
    }
 
    memcpy(&key.blend, ctx->blend, sizeof(key.blend));
@@ -1417,42 +1419,91 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
    return agx_usc_fini(&b);
 }
 
-/* Internal pipelines (TODO: refactor?) */
 uint64_t
-agx_build_clear_pipeline(struct agx_batch *batch, uint32_t code, uint64_t clear_buf)
+agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
 {
+   struct agx_context *ctx = batch->ctx;
+
+   /* Construct the key */
+   struct agx_meta_key key = {
+      .tib = batch->tilebuffer_layout
+   };
+
+   for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
+      struct pipe_surface *surf = batch->key.cbufs[rt];
+
+      if (surf == NULL)
+         continue;
+
+      if (store) {
+         /* TODO: Suppress stores to discarded render targets */
+         key.op[rt] = AGX_META_OP_STORE;
+      } else {
+         bool load = !(batch->clear & (PIPE_CLEAR_COLOR0 << rt));
+
+         /* The background program used for partial renders must always load
+          * whatever was stored in the mid-frame end-of-tile program.
+          */
+         load |= partial_render;
+
+         key.op[rt] = load ? AGX_META_OP_LOAD : AGX_META_OP_CLEAR;
+      }
+   }
+
+   /* Get the shader */
+   struct agx_meta_shader *shader = agx_get_meta_shader(&ctx->meta, &key);
+   agx_batch_add_bo(batch, shader->bo);
+
+   /* Begin building the pipeline */
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&batch->pipeline_pool, 1);
+      agx_alloc_usc_control(&batch->pipeline_pool, 1 + PIPE_MAX_COLOR_BUFS);
 
-   agx_usc_pack(&b, UNIFORM, cfg) {
-      cfg.start_halfs = (6 * 2);
-      cfg.size_halfs = 4;
-      cfg.buffer = clear_buf;
+   for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
+      if (key.op[rt] == AGX_META_OP_LOAD) {
+         /* Each reloaded render target is textured */
+         struct agx_ptr texture = agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
+         struct pipe_surface *surf = batch->key.cbufs[rt];
+         assert(surf != NULL && "cannot load nonexistant attachment");
+
+         struct agx_resource *rsrc = agx_resource(surf->texture);
+
+         agx_pack_texture(texture.cpu, rsrc, surf->format, &(struct pipe_sampler_view) {
+               /* To reduce shader variants, we always use a 2D texture. For
+                * reloads of arrays and cube maps, we map a single layer as a 2D
+                * image.
+                */
+               .target = PIPE_TEXTURE_2D,
+               .swizzle_r = PIPE_SWIZZLE_X,
+               .swizzle_g = PIPE_SWIZZLE_Y,
+               .swizzle_b = PIPE_SWIZZLE_Z,
+               .swizzle_a = PIPE_SWIZZLE_W,
+               .u.tex = {
+                  .first_layer = surf->u.tex.first_layer,
+                  .last_layer = surf->u.tex.last_layer,
+                  .first_level = surf->u.tex.level,
+                  .last_level = surf->u.tex.level
+               }
+         });
+
+         agx_usc_pack(&b, TEXTURE, cfg) {
+            cfg.start = rt;
+            cfg.count = 1;
+            cfg.buffer = texture.gpu;
+         }
+      } else if (key.op[rt] == AGX_META_OP_CLEAR) {
+         assert(batch->uploaded_clear_color[rt] && "set when cleared");
+         agx_usc_uniform(&b, 8 * rt, 8, batch->uploaded_clear_color[rt]);
+      } else if (key.op[rt] == AGX_META_OP_STORE) {
+         agx_usc_pack(&b, TEXTURE, cfg) {
+            cfg.start = rt;
+            cfg.count = 1;
+            cfg.buffer = agx_batch_upload_pbe(batch, rt);
+         }
+      }
    }
 
-   agx_usc_pack(&b, SHARED, cfg) {
-      cfg.uses_shared_memory = true;
-      cfg.layout = AGX_SHARED_LAYOUT_32X32;
-      cfg.sample_stride_in_8_bytes = 1;
-      cfg.bytes_per_threadgroup = 32 * 256;
-   }
-
-   agx_usc_pack(&b, SHADER, cfg) {
-      cfg.code = code;
-      cfg.unk_2 = 3;
-   }
-
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 8;
-   agx_usc_pack(&b, NO_PRESHADER, cfg);
-
-   return agx_usc_fini(&b);
-}
-
-uint64_t
-agx_build_reload_pipeline(struct agx_batch *batch, uint32_t code, struct pipe_surface *surf)
-{
+   /* All render targets share a sampler */
    struct agx_ptr sampler = agx_pool_alloc_aligned(&batch->pool, AGX_SAMPLER_LENGTH, 64);
-   struct agx_ptr texture = agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
 
    agx_pack(sampler.cpu, SAMPLER, cfg) {
       cfg.magnify_linear = true;
@@ -1466,100 +1517,20 @@ agx_build_reload_pipeline(struct agx_batch *batch, uint32_t code, struct pipe_su
       cfg.unk_3 = 0;
    }
 
-   agx_pack(texture.cpu, TEXTURE, cfg) {
-      struct agx_resource *rsrc = agx_resource(surf->texture);
-      unsigned layer = surf->u.tex.first_layer;
-      const struct util_format_description *desc =
-         util_format_description(surf->format);
-
-      /* To reduce shader variants, we always use a 2D texture. For reloads of
-       * arrays and cube maps, we map a single layer as a 2D image.
-       */
-      cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-      cfg.layout = agx_translate_layout(rsrc->layout.tiling);
-      cfg.channels = agx_pixel_format[surf->format].channels;
-      cfg.type = agx_pixel_format[surf->format].type;
-      cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]);
-      cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
-      cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
-      cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
-      cfg.width = surf->width;
-      cfg.height = surf->height;
-      cfg.first_level = surf->u.tex.level;
-      cfg.last_level = surf->u.tex.level;
-      cfg.unk_mipmapped = rsrc->mipmapped;
-      cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = agx_map_texture_gpu(rsrc, layer);
-
-      if (rsrc->layout.tiling == AIL_TILING_LINEAR)
-         cfg.stride = ail_get_linear_stride_B(&rsrc->layout, surf->u.tex.level) - 16;
-      else
-         cfg.unk_tiled = true;
-   }
-
-   struct agx_usc_builder b =
-      agx_alloc_usc_control(&batch->pipeline_pool, 2);
-
-   agx_usc_pack(&b, TEXTURE, cfg) {
-      cfg.start = 0;
-      cfg.count = 1;
-      cfg.buffer = texture.gpu;
-   }
-
    agx_usc_pack(&b, SAMPLER, cfg) {
       cfg.start = 0;
       cfg.count = 1;
       cfg.buffer = sampler.gpu;
    }
 
-   agx_usc_pack(&b, SHARED, cfg) {
-      cfg.uses_shared_memory = true;
-      cfg.layout = AGX_SHARED_LAYOUT_32X32;
-      cfg.sample_stride_in_8_bytes = 1;
-      cfg.sample_count = 1;
-      cfg.bytes_per_threadgroup = 8 * 32 * 32;
-   }
+   agx_usc_tilebuffer(&b, &batch->tilebuffer_layout);
 
    agx_usc_pack(&b, SHADER, cfg) {
-      cfg.code = code;
-      cfg.unk_2 = 3;
+      cfg.code = shader->ptr;
+      cfg.unk_2 = 0;
    }
 
    agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 256;
-   agx_usc_pack(&b, NO_PRESHADER, cfg);
-
-   return agx_usc_fini(&b);
-}
-
-uint64_t
-agx_build_store_pipeline(struct agx_batch *batch, uint32_t code,
-                         uint64_t render_target)
-{
-   struct agx_usc_builder b = agx_alloc_usc_control(&batch->pipeline_pool, 2);
-
-   agx_usc_pack(&b, TEXTURE, cfg) {
-      cfg.start = 0;
-      cfg.count = 1;
-      cfg.buffer = render_target;
-   }
-
-   uint32_t unk[] = { 0, ~0 };
-
-   agx_usc_pack(&b, UNIFORM, cfg) {
-      cfg.start_halfs = 4;
-      cfg.size_halfs = 4;
-      cfg.buffer = agx_pool_upload_aligned(&batch->pool, unk, sizeof(unk), 16);
-   }
-
-   agx_usc_pack(&b, SHARED, cfg) {
-      cfg.uses_shared_memory = true;
-      cfg.layout = AGX_SHARED_LAYOUT_32X32;
-      cfg.sample_stride_in_8_bytes = 1;
-      cfg.bytes_per_threadgroup = 32 * 256;
-   }
-
-   agx_usc_pack(&b, SHADER, cfg) cfg.code = code;
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 8;
    agx_usc_pack(&b, NO_PRESHADER, cfg);
 
    return agx_usc_fini(&b);

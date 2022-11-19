@@ -94,6 +94,7 @@ SHIFT = immediate("shift")
 MASK = immediate("mask")
 BFI_MASK = immediate("bfi_mask")
 LOD_MODE = immediate("lod_mode", "enum agx_lod_mode")
+PIXEL_OFFSET = immediate("pixel_offset")
 
 DIM = enum("dim", {
     0: '1d',
@@ -250,11 +251,12 @@ op("get_sr", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR])
 
 op("sample_mask", (0x7fc1, 0xffff, 6, _), dests = 0, srcs = 1, can_eliminate = False)
 
-# Essentially same encoding
-op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0, imms = [FORMAT, MASK], can_reorder = False)
+# Essentially same encoding. Last source is the sample mask
+op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 1,
+        imms = [FORMAT, MASK, PIXEL_OFFSET], can_reorder = False)
 
-op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
-      can_eliminate = False, imms = [FORMAT, MASK])
+op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 2,
+      can_eliminate = False, imms = [FORMAT, MASK, PIXEL_OFFSET])
 
 for (name, exact) in [("any", 0xC000), ("none", 0xC200)]:
    op("jmp_exec_" + name, (exact, (1 << 16) - 1, 6, _), dests = 0, srcs = 0,

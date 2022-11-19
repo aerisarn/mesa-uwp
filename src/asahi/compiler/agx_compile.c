@@ -504,14 +504,8 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 }
 
 static agx_instr *
-agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
+agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
-   unsigned loc = sem.location;
-   assert(sem.dual_source_blend_index == 0 && "todo: dual-source blending");
-   assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
-   unsigned rt = (loc - FRAG_RESULT_DATA0);
-
    /* TODO: Reverse-engineer interactions with MRT */
    if (b->shader->key->fs.ignore_tib_dependencies) {
       assert(b->shader->nir->info.internal && "only for clear shaders");
@@ -532,19 +526,15 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 
    b->shader->did_writeout = true;
    return agx_st_tile(b, agx_src_index(&instr->src[0]),
-             b->shader->key->fs.tib_formats[rt],
-             nir_intrinsic_write_mask(instr));
+                         agx_src_index(&instr->src[1]),
+                         agx_format_for_pipe(nir_intrinsic_format(instr)),
+                         nir_intrinsic_write_mask(instr),
+                         nir_intrinsic_base(instr));
 }
 
 static void
-agx_emit_load_tile(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
+agx_emit_local_load_pixel(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
-   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
-   unsigned loc = sem.location;
-   assert(sem.dual_source_blend_index == 0 && "dual src ld_tile is nonsense");
-   assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
-   unsigned rt = (loc - FRAG_RESULT_DATA0);
-
    /* TODO: Reverse-engineer interactions with MRT */
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
    agx_writeout(b, 0x0008);
@@ -552,8 +542,10 @@ agx_emit_load_tile(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    b->shader->out->reads_tib = true;
 
    unsigned nr_comps = nir_dest_num_components(instr->dest);
-   agx_ld_tile_to(b, dest, b->shader->key->fs.tib_formats[rt],
-                  BITFIELD_MASK(nr_comps));
+   agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]),
+                  agx_format_for_pipe(nir_intrinsic_format(instr)),
+                  BITFIELD_MASK(nr_comps),
+                  nir_intrinsic_base(instr));
    agx_emit_cached_split(b, dest, nr_comps);
 }
 
@@ -770,16 +762,16 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
         return NULL;
 
   case nir_intrinsic_store_output:
-     if (stage == MESA_SHADER_FRAGMENT)
-        return agx_emit_fragment_out(b, instr);
-     else if (stage == MESA_SHADER_VERTEX)
-        return agx_emit_store_vary(b, instr);
-     else
-        unreachable("Unsupported shader stage");
+     assert(stage == MESA_SHADER_VERTEX);
+     return agx_emit_store_vary(b, instr);
 
-  case nir_intrinsic_load_output:
+  case nir_intrinsic_store_local_pixel_agx:
      assert(stage == MESA_SHADER_FRAGMENT);
-     agx_emit_load_tile(b, dst, instr);
+     return agx_emit_local_store_pixel(b, instr);
+
+  case nir_intrinsic_load_local_pixel_agx:
+     assert(stage == MESA_SHADER_FRAGMENT);
+     agx_emit_local_load_pixel(b, dst, instr);
      return NULL;
 
   case nir_intrinsic_load_ubo:

@@ -668,8 +668,15 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
    assert(scissor_state == NULL && "we don't support PIPE_CAP_CLEAR_SCISSORED");
 
    /* Fast clears configure the batch */
-   if (fastclear & PIPE_CLEAR_COLOR0)
-      memcpy(batch->clear_color, color->f, sizeof(color->f));
+   for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
+      if (!(fastclear & (PIPE_CLEAR_COLOR0 << rt)))
+         continue;
+
+      static_assert(sizeof(color->f) == 16, "mismatched structure");
+
+      batch->uploaded_clear_color[rt] =
+         agx_pool_upload_aligned(&batch->pool, color->f, sizeof(color->f), 16);
+   }
 
    if (fastclear & PIPE_CLEAR_DEPTH)
       batch->clear_depth = depth;
@@ -731,42 +738,11 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    uint8_t stop[5 + 64] = { 0x00, 0x00, 0x00, 0xc0, 0x00 };
    memcpy(batch->encoder_current, stop, sizeof(stop));
 
-   /* Emit the commandbuffer */
-   uint64_t pipeline_clear = 0, pipeline_reload = 0;
+   uint64_t pipeline_background = agx_build_meta(batch, false, false);
+   uint64_t pipeline_background_partial = agx_build_meta(batch, false, true);
+   uint64_t pipeline_store = agx_build_meta(batch, true, false);
+
    bool clear_pipeline_textures = false;
-
-   uint16_t clear_colour[4] = {
-      _mesa_float_to_half(batch->clear_color[0]),
-      _mesa_float_to_half(batch->clear_color[1]),
-      _mesa_float_to_half(batch->clear_color[2]),
-      _mesa_float_to_half(batch->clear_color[3])
-   };
-
-   pipeline_clear = agx_build_clear_pipeline(batch,
-         dev->internal.clear,
-         agx_pool_upload(&batch->pool, clear_colour, sizeof(clear_colour)));
-
-   if (batch->key.cbufs[0]) {
-      enum agx_format internal = AGX_FORMAT_U8NORM /* other formats broken */;
-      uint32_t shader = dev->reload.format[internal];
-
-      pipeline_reload = agx_build_reload_pipeline(batch, shader,
-                               batch->key.cbufs[0]);
-   }
-
-   if (batch->key.cbufs[0] && !(batch->clear & PIPE_CLEAR_COLOR0)) {
-      clear_pipeline_textures = true;
-      pipeline_clear = pipeline_reload;
-   }
-
-   uint64_t pipeline_store = 0;
-
-   if (batch->key.cbufs[0]) {
-      pipeline_store =
-         agx_build_store_pipeline(batch,
-                                  dev->internal.store,
-                                  agx_batch_upload_pbe(batch, 0));
-   }
 
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->key.cbufs[i];
@@ -774,6 +750,9 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       if (surf && surf->texture) {
          struct agx_resource *rt = agx_resource(surf->texture);
          BITSET_SET(rt->data_valid, surf->u.tex.level);
+
+         if (!(batch->clear & (PIPE_CLEAR_COLOR0 << i)))
+            clear_pipeline_textures = true;
       }
    }
 
@@ -797,8 +776,6 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    agx_batch_add_bo(batch, batch->encoder);
    agx_batch_add_bo(batch, batch->scissor.bo);
    agx_batch_add_bo(batch, batch->depth_bias.bo);
-   agx_batch_add_bo(batch, dev->internal.bo);
-   agx_batch_add_bo(batch, dev->reload.bo);
 
    unsigned handle_count =
       agx_batch_num_bo(batch) +
@@ -832,8 +809,8 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
                encoder_id,
                batch->scissor.bo->ptr.gpu,
                batch->depth_bias.bo->ptr.gpu,
-               pipeline_clear,
-               pipeline_reload,
+               pipeline_background,
+               pipeline_background_partial,
                pipeline_store,
                clear_pipeline_textures,
                batch->clear,
@@ -845,8 +822,6 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
                 cmdbuf_id, encoder_id, cmdbuf_size);
 
    free(handles);
-
-   agx_submit_cmdbuf(dev, dev->cmdbuf.handle, dev->memmap.handle, dev->queue.id);
 
    agx_wait_queue(dev->queue);
 
@@ -929,6 +904,7 @@ agx_create_context(struct pipe_screen *screen,
    pctx->invalidate_resource = agx_invalidate_resource;
    agx_init_state_functions(pctx);
 
+   agx_meta_init(&ctx->meta, agx_device(screen), ctx);
 
    ctx->blitter = util_blitter_create(pctx);
 
@@ -1528,8 +1504,6 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
                                                       U_TRANSFER_HELPER_SEPARATE_STENCIL |
                                                       U_TRANSFER_HELPER_MSAA_MAP |
                                                       U_TRANSFER_HELPER_Z24_IN_Z32F);
-
-   agx_internal_shaders(&agx_screen->dev);
 
    return screen;
 }

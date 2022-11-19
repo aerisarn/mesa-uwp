@@ -300,14 +300,17 @@ typedef struct {
       uint32_t component;
       uint32_t channels;
       uint32_t bfi_mask;
+      uint16_t pixel_offset;
       enum agx_sr sr;
       enum agx_icond icond;
       enum agx_fcond fcond;
-      enum agx_format format;
       enum agx_round round;
       enum agx_lod_mode lod_mode;
       struct agx_block *target;
    };
+
+   /* For local access */
+   enum agx_format format;
 
    /* For load varying */
    bool perspective : 1;

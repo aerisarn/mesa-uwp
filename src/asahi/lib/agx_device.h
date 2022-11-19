@@ -61,18 +61,6 @@ struct agx_device {
 
    pthread_mutex_t bo_map_lock;
    struct util_sparse_array bo_map;
-
-   /* Fixed shaders */
-   struct {
-      struct agx_bo *bo;
-      uint32_t clear;
-      uint32_t store;
-   } internal;
-
-   struct {
-      struct agx_bo *bo;
-      uint32_t format[AGX_NUM_FORMATS];
-   } reload;
 };
 
 bool

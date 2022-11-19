@@ -426,18 +426,28 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
    {
       bool load = (I->op == AGX_OPCODE_LD_TILE);
       unsigned D = agx_pack_alu_dst(load ? I->dest[0] : I->src[0]);
-      unsigned rt = 0; /* TODO */
       assert(I->mask < 0x10);
+      assert(I->pixel_offset < 0x200);
+
+      agx_index sample_index = load ? I->src[0] : I->src[1];
+      assert(sample_index.type == AGX_INDEX_REGISTER ||
+             sample_index.type == AGX_INDEX_IMMEDIATE);
+      assert(sample_index.size == AGX_SIZE_16);
+      unsigned St = (sample_index.type == AGX_INDEX_REGISTER) ? 1 : 0;
+      unsigned S = sample_index.value;
+      assert(S < 0x100);
 
       uint64_t raw =
-         0x09 |
-         (load ? (1 << 6) : 0) |
+         agx_opcodes_info[I->op].encoding.exact |
          ((uint64_t) (D & BITFIELD_MASK(8)) << 7) |
+         (St << 22) |
          ((uint64_t) (I->format) << 24) |
-         ((uint64_t) (rt) << 32) |
+         ((uint64_t) (I->pixel_offset & BITFIELD_MASK(7)) << 28) |
          (load ? (1ull << 35) : 0) |
          ((uint64_t) (I->mask) << 36) |
-         ((uint64_t) 0x0380FC << 40) |
+         ((uint64_t) (I->pixel_offset >> 7) << 40) |
+         ((uint64_t) (S & BITFIELD_MASK(6)) << 42) |
+         ((uint64_t) (S >> 6) << 56) |
          (((uint64_t) (D >> 8)) << 60);
 
       unsigned size = 8;

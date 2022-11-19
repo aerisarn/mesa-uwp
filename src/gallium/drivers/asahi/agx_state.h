@@ -39,6 +39,7 @@
 #include "compiler/nir/nir_lower_blend.h"
 #include "util/hash_table.h"
 #include "util/bitset.h"
+#include "agx_meta.h"
 
 struct agx_streamout_target {
    struct pipe_stream_output_target base;
@@ -106,7 +107,7 @@ struct agx_batch {
    /* Base of uploaded texture descriptors */
    uint64_t textures;
 
-   float clear_color[4];
+   uint64_t uploaded_clear_color[PIPE_MAX_COLOR_BUFS];
    double clear_depth;
    unsigned clear_stencil;
 
@@ -225,6 +226,8 @@ struct agx_context {
 
    /* Map of agx_resource to agx_batch that writes that resource */
    struct hash_table *writer;
+
+   struct agx_meta_cache meta;
 };
 
 static inline struct agx_context *
@@ -369,16 +372,6 @@ bool
 agx_batch_is_active(struct agx_batch *batch);
 
 uint64_t
-agx_build_clear_pipeline(struct agx_batch *batch, uint32_t code, uint64_t clear_buf);
-
-uint64_t
-agx_build_store_pipeline(struct agx_batch *batch, uint32_t code,
-                         uint64_t render_target);
-
-uint64_t
-agx_build_reload_pipeline(struct agx_batch *batch, uint32_t code, struct pipe_surface *surf);
-
-uint64_t
 agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt);
 
 /* Add a BO to a batch. This needs to be amortized O(1) since it's called in
@@ -448,11 +441,12 @@ agx_blitter_save(struct agx_context *ctx, struct blitter_context *blitter,
 void agx_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info);
 
-void agx_internal_shaders(struct agx_device *dev);
-
 /* Batch logic */
 
 void
 agx_batch_init_state(struct agx_batch *batch);
+
+uint64_t
+agx_build_meta(struct agx_batch *batch, bool store, bool partial_render);
 
 #endif
