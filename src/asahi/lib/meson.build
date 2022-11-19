@@ -25,6 +25,7 @@ libasahi_lib_files = files(
   'agx_device.c',
   'agx_formats.c',
   'agx_tilebuffer.c',
+  'agx_nir_lower_tilebuffer.c',
   'agx_ppp.h',
   'pool.c',
 )
