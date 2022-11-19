@@ -2019,6 +2019,13 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    assert(batch == agx_get_batch(ctx) && "batch should not change under us");
 }
 
+static void
+agx_texture_barrier(struct pipe_context *pipe, unsigned flags)
+{
+   struct agx_context *ctx = agx_context(pipe);
+   agx_flush_all(ctx, "Texture barrier");
+}
+
 void agx_init_state_functions(struct pipe_context *ctx);
 
 void
@@ -2064,4 +2071,5 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->create_stream_output_target = agx_create_stream_output_target;
    ctx->stream_output_target_destroy = agx_stream_output_target_destroy;
    ctx->set_stream_output_targets = agx_set_stream_output_targets;
+   ctx->texture_barrier = agx_texture_barrier;
 }
