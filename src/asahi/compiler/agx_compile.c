@@ -31,6 +31,7 @@
 #include "agx_compile.h"
 #include "agx_compiler.h"
 #include "agx_builder.h"
+#include "agx_internal_formats.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
@@ -331,6 +332,30 @@ agx_udiv_const(agx_builder *b, agx_index P, uint32_t Q)
    if (info.post_shift != 0) n = agx_ushr(b, n, postshift);
 
    return n;
+}
+
+static enum agx_format
+agx_format_for_pipe(enum pipe_format format)
+{
+#define CASE(x) \
+   if (format == (enum pipe_format) AGX_INTERNAL_FORMAT_##x) \
+      return AGX_FORMAT_##x;
+
+   CASE(I8);
+   CASE(I16);
+   CASE(I32);
+   CASE(F16);
+   CASE(U8NORM);
+   CASE(S8NORM);
+   CASE(U16NORM);
+   CASE(S16NORM);
+   CASE(RGB10A2);
+   CASE(SRGBA8);
+   CASE(RG11B10F);
+   CASE(RGB9E5);
+
+#undef CASE
+   unreachable("Invalid format");
 }
 
 /* AGX appears to lack support for vertex attributes. Lower to global loads. */
