@@ -91,5 +91,13 @@ agx_usc_fini(struct agx_usc_builder *b)
    return b->T.gpu;
 }
 
+static void
+agx_usc_shared_none(struct agx_usc_builder *b)
+{
+   agx_usc_pack(b, SHARED, cfg) {
+      cfg.layout = AGX_SHARED_LAYOUT_VERTEX_COMPUTE;
+      cfg.bytes_per_threadgroup = 65536;
+   }
+}
 
 #endif
