@@ -46,16 +46,6 @@ idep_agx_pack = declare_dependency(
   include_directories : include_directories('.'),
 )
 
-libasahi_lib = static_library(
-  'asahi_lib',
-  [libasahi_lib_files, agx_pack],
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
-  c_args : [no_override_init_args],
-  gnu_symbol_visibility : 'hidden',
-  dependencies: [dep_libdrm, dep_valgrind, idep_nir, dep_iokit],
-  build_by_default : false,
-)
-
 libasahi_decode = static_library(
   'asahi_decode',
   [libasahi_decode_files, agx_pack],
@@ -63,6 +53,17 @@ libasahi_decode = static_library(
   dependencies : [dep_valgrind, idep_mesautil],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
+  build_by_default : false,
+)
+
+libasahi_lib = static_library(
+  'asahi_lib',
+  [libasahi_lib_files, agx_pack],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  link_with: [libasahi_decode],
+  dependencies: [dep_libdrm, dep_valgrind, idep_nir, dep_iokit],
   build_by_default : false,
 )
 
