@@ -1240,7 +1240,7 @@ agx_update_fs(struct agx_batch *batch)
       if (surf) {
          enum pipe_format fmt = surf->format;
          key.rt_formats[i] = fmt;
-         key.base.fs.tib_formats[i] = agx_pixel_format[fmt].internal;
+         key.base.fs.tib_formats[i] = AGX_FORMAT_U8NORM /* other formats broken */;
       } else {
          key.rt_formats[i] = PIPE_FORMAT_NONE;
       }

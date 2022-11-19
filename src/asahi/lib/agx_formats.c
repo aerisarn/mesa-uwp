@@ -23,17 +23,18 @@
 
 #include "agx_pack.h"
 #include "agx_formats.h"
+#include "agx_internal_formats.h"
 
 #define T true
 #define F false
-#define AGX_FORMAT__ 0
+#define AGX_INTERNAL_FORMAT__ PIPE_FORMAT_NONE
 
 #define AGX_FMT(pipe, channels_, type_, is_renderable, internal_fmt) \
    [PIPE_FORMAT_ ## pipe] = { \
       .channels = AGX_CHANNELS_ ## channels_, \
       .type = AGX_TEXTURE_TYPE_ ## type_, \
       .renderable = is_renderable, \
-      .internal = AGX_FORMAT_ ## internal_fmt,\
+      .internal = (enum pipe_format) AGX_INTERNAL_FORMAT_ ## internal_fmt,\
    }
 
 const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {

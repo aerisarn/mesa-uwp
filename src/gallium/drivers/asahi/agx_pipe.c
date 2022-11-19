@@ -746,8 +746,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
          agx_pool_upload(&batch->pool, clear_colour, sizeof(clear_colour)));
 
    if (batch->key.cbufs[0]) {
-      enum pipe_format fmt = batch->key.cbufs[0]->format;
-      enum agx_format internal = agx_pixel_format[fmt].internal;
+      enum agx_format internal = AGX_FORMAT_U8NORM /* other formats broken */;
       uint32_t shader = dev->reload.format[internal];
 
       pipeline_reload = agx_build_reload_pipeline(batch, shader,
