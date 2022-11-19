@@ -1979,6 +1979,22 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
                                    img_barrier->oldLayout,
                                    img_barrier->newLayout,
                                    false /* will_full_fast_clear */);
+
+         /* If we are in a renderpass, the gfx7 stencil shadow may need to be
+          * updated even if the layout doesn't change
+          */
+         if (cmd_buffer->state.gfx.samples &&
+              (img_barrier->dstAccessMask & (VK_ACCESS_2_SHADER_READ_BIT |
+                                             VK_ACCESS_2_SHADER_SAMPLED_READ_BIT |
+                                             VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT))) {
+            const uint32_t plane =
+               anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
+            if (anv_surface_is_valid(&image->planes[plane].shadow_surface))
+               anv_image_copy_to_shadow(cmd_buffer, image,
+                                        VK_IMAGE_ASPECT_STENCIL_BIT,
+                                        range->baseMipLevel, level_count,
+                                        base_layer, layer_count);
+         }
       }
 
       if (range->aspectMask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
