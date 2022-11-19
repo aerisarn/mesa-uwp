@@ -427,42 +427,48 @@ agx_translate_layout(enum ail_tiling tiling)
 }
 
 static enum agx_texture_dimension
-agx_translate_texture_dimension(enum pipe_texture_target dim)
+agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
 {
+   assert(samples >= 1);
+
    switch (dim) {
    case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_2D: return AGX_TEXTURE_DIMENSION_2D;
-   case PIPE_TEXTURE_2D_ARRAY: return AGX_TEXTURE_DIMENSION_2D_ARRAY;
-   case PIPE_TEXTURE_3D: return AGX_TEXTURE_DIMENSION_3D;
-   case PIPE_TEXTURE_CUBE: return AGX_TEXTURE_DIMENSION_CUBE;
-   default: unreachable("Unsupported texture dimension");
+   case PIPE_TEXTURE_2D:
+      return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED :
+                           AGX_TEXTURE_DIMENSION_2D;
+
+   case PIPE_TEXTURE_2D_ARRAY:
+      return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED :
+                           AGX_TEXTURE_DIMENSION_2D_ARRAY;
+
+   case PIPE_TEXTURE_3D:
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_3D;
+
+   case PIPE_TEXTURE_CUBE:
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_CUBE;
+
+   default:
+      unreachable("Unsupported texture dimension");
    }
 }
 
-static struct pipe_sampler_view *
-agx_create_sampler_view(struct pipe_context *pctx,
-                        struct pipe_resource *orig_texture,
-                        const struct pipe_sampler_view *state)
+static enum agx_sample_count
+agx_translate_sample_count(unsigned samples)
 {
-   struct agx_resource *rsrc = agx_resource(orig_texture);
-   struct agx_sampler_view *so = CALLOC_STRUCT(agx_sampler_view);
-
-   if (!so)
-      return NULL;
-
-   struct pipe_resource *texture = orig_texture;
-   enum pipe_format format = state->format;
-
-   /* Use stencil attachment, separate stencil always used on G13 */
-   if (rsrc->separate_stencil) {
-      rsrc = rsrc->separate_stencil;
-      texture = &rsrc->base;
-      format = texture->format;
+   switch (samples) {
+   case 2: return AGX_SAMPLE_COUNT_2;
+   case 4: return AGX_SAMPLE_COUNT_4;
+   default: unreachable("Invalid sample count");
    }
+}
 
-   /* Save off the BO that we actually use, with the stencil fixed up */
-   so->bo = rsrc->bo;
-
+static void
+agx_pack_texture(void *out, struct agx_resource *rsrc,
+                 enum pipe_format format /* override */,
+                 const struct pipe_sampler_view *state)
+{
    const struct util_format_description *desc =
       util_format_description(format);
 
@@ -492,15 +498,14 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    util_format_compose_swizzles(format_swizzle, view_swizzle, out_swizzle);
 
-   assert(state->u.tex.first_layer == 0);
-
    /* Must tile array textures */
    assert((rsrc->layout.tiling != AIL_TILING_LINEAR) ||
           (state->u.tex.last_layer == state->u.tex.first_layer));
 
    /* Pack the descriptor into GPU memory */
-   agx_pack(&so->desc, TEXTURE, cfg) {
-      cfg.dimension = agx_translate_texture_dimension(state->target);
+   agx_pack(out, TEXTURE, cfg) {
+      cfg.dimension = agx_translate_tex_dim(state->target,
+                                            util_res_sample_count(&rsrc->base));
       cfg.layout = agx_translate_layout(rsrc->layout.tiling);
       cfg.channels = agx_pixel_format[format].channels;
       cfg.type = agx_pixel_format[format].type;
@@ -508,8 +513,8 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(out_swizzle[3]);
-      cfg.width = texture->width0;
-      cfg.height = texture->height0;
+      cfg.width = rsrc->base.width0;
+      cfg.height = rsrc->base.height0;
       cfg.first_level = state->u.tex.first_level;
       cfg.last_level = state->u.tex.last_level;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
@@ -518,7 +523,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
       if (state->target == PIPE_TEXTURE_3D) {
-         cfg.depth = texture->depth0;
+         cfg.depth = rsrc->base.depth0;
       } else {
          unsigned layers = state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
@@ -528,6 +533,9 @@ agx_create_sampler_view(struct pipe_context *pctx,
          cfg.depth = layers;
       }
 
+      if (rsrc->base.nr_samples > 1)
+         cfg.samples = agx_translate_sample_count(rsrc->base.nr_samples);
+
       if (rsrc->layout.tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, 0) - 16;
       } else {
@@ -535,6 +543,33 @@ agx_create_sampler_view(struct pipe_context *pctx,
          cfg.unk_tiled = true;
       }
    }
+}
+
+static struct pipe_sampler_view *
+agx_create_sampler_view(struct pipe_context *pctx,
+                        struct pipe_resource *orig_texture,
+                        const struct pipe_sampler_view *state)
+{
+   struct agx_resource *rsrc = agx_resource(orig_texture);
+   struct agx_sampler_view *so = CALLOC_STRUCT(agx_sampler_view);
+
+   if (!so)
+      return NULL;
+
+   struct pipe_resource *texture = orig_texture;
+   enum pipe_format format = state->format;
+
+   /* Use stencil attachment, separate stencil always used on G13 */
+   if (rsrc->separate_stencil) {
+      rsrc = rsrc->separate_stencil;
+      texture = &rsrc->base;
+      format = texture->format;
+   }
+
+   agx_pack_texture(&so->desc, rsrc, format, state);
+
+   /* Save off the BO that we actually use, with the stencil fixed up */
+   so->bo = rsrc->bo;
 
    so->base = *state;
    so->base.texture = NULL;
@@ -799,6 +834,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
    struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, AGX_RENDER_TARGET_LENGTH, 256);
 
    agx_pack(T.cpu, RENDER_TARGET, cfg) {
+      cfg.dimension = agx_translate_tex_dim(PIPE_TEXTURE_2D,
+                                            util_res_sample_count(&tex->base));
       cfg.layout = agx_translate_layout(tex->layout.tiling);
       cfg.channels = agx_pixel_format[surf->format].channels;
       cfg.type = agx_pixel_format[surf->format].type;
@@ -820,6 +857,9 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
       cfg.level = surf->u.tex.level;
       cfg.buffer = agx_map_texture_gpu(tex, layer);
       cfg.unk_mipmapped = tex->mipmapped;
+
+      if (tex->base.nr_samples > 1)
+         cfg.samples = agx_translate_sample_count(tex->base.nr_samples);
 
       if (tex->layout.tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
