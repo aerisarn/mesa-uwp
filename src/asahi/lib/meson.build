@@ -24,6 +24,7 @@ dep_iokit = dependency('IOKit', required : false)
 libasahi_lib_files = files(
   'agx_device.c',
   'agx_formats.c',
+  'agx_tilebuffer.c',
   'agx_ppp.h',
   'pool.c',
 )
@@ -74,12 +75,13 @@ if with_tests
       'libasahi_tests',
       files(
         'tests/test-packing.cpp',
+        'tests/test-tilebuffer.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_mesa],
-      dependencies: [idep_gtest, idep_agx_pack],
-      link_with : [],
+      dependencies: [idep_gtest, idep_agx_pack, idep_mesautil],
+      link_with : [libasahi_lib],
     ),
     suite : ['asahi'],
     protocol : gtest_test_protocol,
