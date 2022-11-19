@@ -1559,6 +1559,19 @@ agx_batch_init_state(struct agx_batch *batch)
 
    agx_ppp_fini(&out, &ppp);
    batch->encoder_current = out;
+
+   /* Choose a tilebuffer layout given the framebuffer key */
+   enum pipe_format formats[PIPE_MAX_COLOR_BUFS] = { 0 };
+   for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+      struct pipe_surface *surf = batch->key.cbufs[i];
+      if (surf)
+         formats[i] = surf->format;
+   }
+
+   batch->tilebuffer_layout =
+      agx_build_tilebuffer_layout(formats, batch->key.nr_cbufs,
+                                  util_framebuffer_get_num_samples(&batch->key));
+
 }
 
 static enum agx_object_type

@@ -33,6 +33,7 @@
 #include "asahi/lib/agx_bo.h"
 #include "asahi/lib/agx_device.h"
 #include "asahi/lib/pool.h"
+#include "asahi/lib/agx_tilebuffer.h"
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/layout/layout.h"
 #include "compiler/nir/nir_lower_blend.h"
@@ -96,6 +97,8 @@ struct agx_batch {
    struct agx_context *ctx;
    struct pipe_framebuffer_state key;
    uint64_t seqnum;
+
+   struct agx_tilebuffer_layout tilebuffer_layout;
 
    /* PIPE_CLEAR_* bitmask */
    uint32_t clear, draw, load;
