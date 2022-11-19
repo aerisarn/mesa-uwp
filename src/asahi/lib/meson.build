@@ -24,6 +24,7 @@ dep_iokit = dependency('IOKit', required : false)
 libasahi_lib_files = files(
   'agx_device.c',
   'agx_formats.c',
+  'agx_meta.c',
   'agx_tilebuffer.c',
   'agx_nir_lower_tilebuffer.c',
   'agx_ppp.h',
