@@ -316,7 +316,7 @@ typedef struct {
    bool invert_cond : 1;
 
    /* TODO: Handle tex ops more efficient */
-   enum agx_dim dim : 3;
+   enum agx_dim dim : 4;
    bool offset : 1;
    bool shadow : 1;
 

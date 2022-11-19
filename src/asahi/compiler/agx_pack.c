@@ -618,6 +618,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       uint32_t extend =
             ((U & BITFIELD_MASK(5)) << 0) |
             (kill << 5) |
+            ((I->dim >> 3) << 7) |
             ((R >> 6) << 8) |
             ((C >> 6) << 10) |
             ((D >> 6) << 12) |
@@ -644,7 +645,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
             (q2 << 30) |
             (((uint64_t) (T & BITFIELD_MASK(6))) << 32) |
             (((uint64_t) Tt) << 38) |
-            (((uint64_t) I->dim) << 40) |
+            (((uint64_t) (I->dim & BITFIELD_MASK(3))) << 40) |
             (((uint64_t) q3) << 43) |
             (((uint64_t) I->mask) << 48) |
             (((uint64_t) I->lod_mode) << 52) |

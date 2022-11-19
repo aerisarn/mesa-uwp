@@ -103,7 +103,8 @@ DIM = enum("dim", {
     4: '2d_ms',
     5: '3d',
     6: 'cube',
-    7: 'cube_array'
+    7: 'cube_array',
+    8: '2d_ms_array',
 })
 
 OFFSET = immediate("offset", "bool")

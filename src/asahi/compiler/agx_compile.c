@@ -1094,6 +1094,7 @@ agx_lod_mode_for_nir(nir_texop op)
    case nir_texop_txd: return AGX_LOD_MODE_LOD_GRAD;
    case nir_texop_txl: return AGX_LOD_MODE_LOD_MIN;
    case nir_texop_txf: return AGX_LOD_MODE_LOD_MIN;
+   case nir_texop_txf_ms: return AGX_LOD_MODE_AUTO_LOD; /* no mipmapping */
    default: unreachable("Unhandled texture op");
    }
 }
@@ -1108,13 +1109,12 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
              compare = agx_null(),
              packed_offset = agx_null();
 
-   bool txf = instr->op == nir_texop_txf;
+   bool txf = (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms);
 
    for (unsigned i = 0; i < instr->num_srcs; ++i) {
       agx_index index = agx_src_index(&instr->src[i].src);
 
       switch (instr->src[i].src_type) {
-      case nir_tex_src_coord:
       case nir_tex_src_backend1:
          coords = index;
          break;
@@ -1175,7 +1175,6 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          /* handled above */
          break;
 
-      case nir_tex_src_ms_index:
       case nir_tex_src_texture_offset:
       case nir_tex_src_sampler_offset:
       default:
@@ -1939,12 +1938,18 @@ agx_preprocess_nir(nir_shader *nir)
    nir_tex_src_type_constraints tex_constraints = {
       [nir_tex_src_lod] = { true, 16 },
       [nir_tex_src_bias] = { true, 16 },
+      [nir_tex_src_ms_index] = { true, 16 },
    };
 
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
+
+   /* Lower texture sources after legalizing types (as the lowering depends on
+    * 16-bit multisample indices) but before lowering queries (as the lowering
+    * generates txs for array textures).
+    */
    NIR_PASS_V(nir, agx_nir_lower_array_texture);
    NIR_PASS_V(nir, agx_lower_resinfo);
-   NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    nir->info.io_lowered = true;
 }
