@@ -1381,17 +1381,10 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
                       agx_push_location(batch, cs->info.push[i], stage));
    }
 
-   agx_usc_pack(&b, SHARED, cfg) {
-      if (stage == PIPE_SHADER_FRAGMENT) {
-         cfg.uses_shared_memory = true;
-         cfg.layout = AGX_SHARED_LAYOUT_32X32;
-         cfg.sample_stride_in_8_bytes = 1;
-         cfg.bytes_per_threadgroup = 8 * 32 * 32;
-         cfg.sample_count = 1;
-      } else {
-         cfg.layout = AGX_SHARED_LAYOUT_VERTEX_COMPUTE;
-      }
-   }
+   if (stage == PIPE_SHADER_FRAGMENT)
+      agx_usc_tilebuffer(&b, &batch->tilebuffer_layout);
+   else
+      agx_usc_shared_none(&b);
 
    agx_usc_pack(&b, SHADER, cfg) {
       cfg.loads_varyings = (stage == PIPE_SHADER_FRAGMENT);
