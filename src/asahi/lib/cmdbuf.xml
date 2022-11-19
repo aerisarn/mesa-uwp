@@ -358,8 +358,20 @@
     <field name="Depth function" size="3" start="24" type="ZS Func"/>
   </struct>
 
+  <enum name="Conservative depth">
+    <value name="Any" value="0"/>
+    <value name="Greater" value="1"/>
+    <value name="Less" value="2"/>
+    <value name="Unchanged" value="3"/>
+  </enum>
+
   <struct name="Fragment face 2" size="4">
-    <field name="Unknown" size="8" start="20" type="hex" default="0x7e"/>
+    <!-- If either disable is zeroed, depth is written -->
+    <field name="Disable depth write" size="1" start="21" type="bool" default="true"/>
+    <!-- If depth written from FS -->
+    <field name="Conservative depth" size="2" start="22" type="Conservative depth" default="Unchanged"/>
+    <!-- Both depth functions must pass -->
+    <field name="Depth function" size="3" start="24" type="ZS Func" default="Always"/>
     <field name="Object type" size="4" start="28" type="Object Type"/>
   </struct>
 
