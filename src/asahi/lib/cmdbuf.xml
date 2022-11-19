@@ -439,6 +439,7 @@
   </struct>
 
   <struct name="Varying 0" size="4">
+    <!-- TODO: 16-bit is separate AFAIU -->
     <field name="Count" size="32" start="0" type="uint"/>
   </struct>
 
