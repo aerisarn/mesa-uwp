@@ -299,7 +299,24 @@ init_render_queue_state(struct anv_queue *queue)
 
    anv_batch_emit(&batch, GENX(3DSTATE_WM_CHROMAKEY), ck);
 
-   genX(emit_sample_pattern)(&batch, NULL);
+   /* SKL PRMs, Volume 2a: Command Reference: Instructions: 3DSTATE_WM_HZ_OP:
+    *
+    *   "3DSTATE_RASTER if used must be programmed prior to using this
+    *    packet."
+    *
+    * Emit this before 3DSTATE_WM_HZ_OP below.
+    */
+   anv_batch_emit(&batch, GENX(3DSTATE_RASTER), rast);
+
+   /* SKL PRMs, Volume 2a: Command Reference: Instructions: 3DSTATE_WM_HZ_OP:
+    *
+    *    "3DSTATE_MULTISAMPLE packet must be used prior to this packet to
+    *     change the Number of Multisamples. This packet must not be used to
+    *     change Number of Multisamples in a rendering sequence."
+    *
+    * Emit this before 3DSTATE_WM_HZ_OP below.
+    */
+   genX(emit_multisample)(&batch, 1);
 
    /* The BDW+ docs describe how to use the 3DSTATE_WM_HZ_OP instruction in the
     * section titled, "Optimized Depth Buffer Clear and/or Stencil Buffer
@@ -310,6 +327,8 @@ init_render_queue_state(struct anv_queue *queue)
     * number of GPU hangs on ICL.
     */
    anv_batch_emit(&batch, GENX(3DSTATE_WM_HZ_OP), hzp);
+
+   genX(emit_sample_pattern)(&batch, NULL);
 
 #if GFX_VER == 11
    /* The default behavior of bit 5 "Headerless Message for Pre-emptable
