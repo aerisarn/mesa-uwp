@@ -1295,8 +1295,6 @@ agx_is_format_supported(struct pipe_screen* pscreen,
 
       if ((usage & PIPE_BIND_RENDER_TARGET) && !ent.renderable)
          return false;
-      if ((usage & PIPE_BIND_RENDER_TARGET) && !util_format_is_unorm8(util_format_description(format)))
-         return false;
    }
 
    /* TODO: formats */
