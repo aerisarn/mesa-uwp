@@ -423,6 +423,12 @@ agx_ra(agx_context *ctx)
          ctx->max_reg = MAX2(ctx->max_reg, ssa_to_reg[i] + ncomps[i] - 1);
    }
 
+   /* Vertex shaders preload the vertex/instance IDs (r5, r6) even if the shader
+    * don't use them. Account for that so the preload doesn't clobber GPRs.
+    */
+   if (ctx->nir->info.stage == MESA_SHADER_VERTEX)
+      ctx->max_reg = MAX2(ctx->max_reg, 6 * 2);
+
    agx_foreach_instr_global(ctx, ins) {
       agx_foreach_ssa_src(ins, s) {
          unsigned v = ssa_to_reg[ins->src[s].value];
