@@ -61,7 +61,7 @@ agx_write_registers(agx_instr *I, unsigned d)
    case AGX_OPCODE_LDCF:
       return 6;
    case AGX_OPCODE_COLLECT:
-      return I->nr_srcs * size;
+      return I->nr_srcs * agx_size_align_16(I->src[0].size);
    default:
       return size;
    }
@@ -176,6 +176,10 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
 
          unsigned base = affinity_base_of_collect(rctx, I, s);
          if (base >= rctx->bound || (base + count) > rctx->bound)
+            continue;
+
+         /* Unaligned destinations can happen when dest size > src size */
+         if (base % align)
             continue;
 
          if (!BITSET_TEST_RANGE(rctx->used_regs, base, base + count - 1))
@@ -424,7 +428,7 @@ agx_ra(agx_context *ctx)
       if (ins->op == AGX_OPCODE_COLLECT) {
          assert(ins->dest[0].type == AGX_INDEX_REGISTER);
          unsigned base = ins->dest[0].value;
-         unsigned width = agx_size_align_16(ins->dest[0].size);
+         unsigned width = agx_size_align_16(ins->src[0].size);
 
          struct agx_copy *copies = alloca(sizeof(copies[0]) * ins->nr_srcs);
          unsigned n = 0;
@@ -432,7 +436,7 @@ agx_ra(agx_context *ctx)
          /* Move the sources */
          agx_foreach_src(ins, i) {
             if (agx_is_null(ins->src[i])) continue;
-            assert(ins->src[i].size == ins->dest[0].size);
+            assert(ins->src[i].size == ins->src[0].size);
 
             copies[n++] = (struct agx_copy) {
                .dest = base + (i * width),
