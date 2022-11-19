@@ -52,6 +52,9 @@ const struct agx_pixel_format_entry agx_pixel_format[PIPE_FORMAT_COUNT] = {
    AGX_FMT(R16_UNORM,               R16,           UNORM,  T, U16NORM),
    AGX_FMT(R16G16_UNORM,            R16G16,        UNORM,  T, U16NORM),
    AGX_FMT(R16G16B16A16_UNORM,      R16G16B16A16,  UNORM,  T, U16NORM),
+   AGX_FMT(R16_SNORM,               R16,           SNORM,  T, S16NORM),
+   AGX_FMT(R16G16_SNORM,            R16G16,        SNORM,  T, S16NORM),
+   AGX_FMT(R16G16B16A16_SNORM,      R16G16B16A16,  SNORM,  T, S16NORM),
 
    AGX_FMT(R8_SRGB,                 R8,            UNORM,  T, SRGBA8),
    AGX_FMT(R8G8_SRGB,               R8G8,          UNORM,  T, SRGBA8),
