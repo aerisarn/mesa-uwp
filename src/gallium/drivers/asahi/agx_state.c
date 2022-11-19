@@ -122,9 +122,7 @@ agx_create_blend_state(struct pipe_context *ctx,
    struct agx_blend *so = CALLOC_STRUCT(agx_blend);
 
    assert(!state->alpha_to_coverage);
-   assert(!state->alpha_to_coverage_dither);
    assert(!state->alpha_to_one);
-   assert(!state->advanced_blend_func);
 
    if (state->logicop_enable) {
       so->logicop_enable = true;
