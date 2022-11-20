@@ -232,7 +232,8 @@ agx_bo_export(struct agx_bo *bo)
 }
 
 struct agx_bo *
-agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags)
+agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags,
+              const char *label)
 {
    struct agx_bo *bo;
    assert(size > 0);
@@ -248,6 +249,7 @@ agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags)
       return NULL;
    }
 
+   bo->label = label;
    p_atomic_set(&bo->refcnt, 1);
 
    if (dev->debug & AGX_DBG_TRACE)

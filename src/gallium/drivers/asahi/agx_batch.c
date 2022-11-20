@@ -46,7 +46,7 @@ agx_batch_init(struct agx_context *ctx,
    }
 
    if (!batch->encoder) {
-      batch->encoder = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
+      batch->encoder = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Encoder");
       batch->encoder_current = batch->encoder->ptr.cpu;
       batch->encoder_end = batch->encoder_current + batch->encoder->size;
    } else {
@@ -55,11 +55,11 @@ agx_batch_init(struct agx_context *ctx,
    }
 
    if (!batch->scissor.bo) {
-      batch->scissor.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
+      batch->scissor.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Scissors");
    }
 
    if (!batch->depth_bias.bo) {
-      batch->depth_bias.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER);
+      batch->depth_bias.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Depth bias");
    }
 
    batch->clear = 0;

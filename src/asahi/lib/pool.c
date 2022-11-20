@@ -36,8 +36,8 @@
 static struct agx_bo *
 agx_pool_alloc_backing(struct agx_pool *pool, size_t bo_sz)
 {
-   struct agx_bo *bo = agx_bo_create(pool->dev, bo_sz,
-                            pool->create_flags);
+   struct agx_bo *bo = agx_bo_create(pool->dev, bo_sz, pool->create_flags,
+                                     "Pool");
 
    util_dynarray_append(&pool->bos, struct agx_bo *, bo);
    pool->transient_bo = bo;

@@ -83,10 +83,14 @@ struct agx_bo {
 
    /* Used while decoding, mapped */
    bool mapped;
+
+   /* For debugging */
+   const char *label;
 };
 
 struct agx_bo *
-agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags);
+agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags,
+              const char *label);
 
 void agx_bo_reference(struct agx_bo *bo);
 void agx_bo_unreference(struct agx_bo *bo);

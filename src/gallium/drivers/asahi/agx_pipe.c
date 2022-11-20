@@ -483,7 +483,26 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
       }
    }
 
-   nresource->bo = agx_bo_create(dev, nresource->layout.size_B, AGX_MEMORY_TYPE_FRAMEBUFFER);
+   /* Guess a label based on the bind */
+   unsigned bind = templ->bind;
+
+   const char *label =
+      (bind & PIPE_BIND_INDEX_BUFFER) ? "Index buffer" :
+      (bind & PIPE_BIND_SCANOUT) ? "Scanout" :
+      (bind & PIPE_BIND_DISPLAY_TARGET) ? "Display target" :
+      (bind & PIPE_BIND_SHARED) ? "Shared resource" :
+      (bind & PIPE_BIND_RENDER_TARGET) ? "Render target" :
+      (bind & PIPE_BIND_DEPTH_STENCIL) ? "Depth/stencil buffer" :
+      (bind & PIPE_BIND_SAMPLER_VIEW) ? "Texture" :
+      (bind & PIPE_BIND_VERTEX_BUFFER) ? "Vertex buffer" :
+      (bind & PIPE_BIND_CONSTANT_BUFFER) ? "Constant buffer" :
+      (bind & PIPE_BIND_GLOBAL) ? "Global memory" :
+      (bind & PIPE_BIND_SHADER_BUFFER) ? "Shader buffer" :
+      (bind & PIPE_BIND_SHADER_IMAGE) ? "Shader image" :
+      "Other resource";
+
+   nresource->bo = agx_bo_create(dev, nresource->layout.size_B,
+                                 AGX_MEMORY_TYPE_FRAMEBUFFER, label);
 
    if (!nresource->bo) {
       FREE(nresource);
