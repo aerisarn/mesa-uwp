@@ -125,8 +125,8 @@ def postprocess_file(args: Arguments) -> None:
         w.writelines(lines)
 
 
-def preprocess_file(args: Arguments, origin_file: T.TextIO) -> str:
-    with open(origin_file.name + ".copy", "w") as copy_file:
+def preprocess_file(args: Arguments, origin_file: T.TextIO, directory: os.PathLike) -> str:
+    with open(os.path.join(directory, os.path.basename(origin_file.name)), "w") as copy_file:
         lines = origin_file.readlines()
 
         if args.create_entry is not None:
@@ -142,7 +142,8 @@ def preprocess_file(args: Arguments, origin_file: T.TextIO) -> str:
 
 def process_file(args: Arguments) -> None:
     with open(args.input, "r") as infile:
-        copy_file = preprocess_file(args, infile)
+        copy_file = preprocess_file(args, infile,
+                                    os.path.dirname(args.output))
 
     cmd_list = [args.glslang]
 
