@@ -996,6 +996,8 @@ intel_perf_get_counters_passes(struct intel_perf_config *perf,
 
       assert(n_written_passes <= n_passes);
    }
+
+   free(pass_array);
 }
 
 /* Accumulate 32bits OA counters */
