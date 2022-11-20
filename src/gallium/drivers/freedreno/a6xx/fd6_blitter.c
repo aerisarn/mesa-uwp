@@ -239,7 +239,8 @@ can_do_clear(const struct pipe_resource *prsc, unsigned level,
              const struct pipe_box *box)
 {
    return ok_format(prsc->format) &&
-          ok_dims(prsc, box, level);
+          ok_dims(prsc, box, level) &&
+          (fd_resource_nr_samples(prsc) == 1);
 
    return true;
 }
