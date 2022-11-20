@@ -954,6 +954,7 @@ static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
 {
    rvcn_dec_message_av1_t result;
    unsigned i, j;
+   uint16_t tile_count = pic->picture_parameter.tile_cols * pic->picture_parameter.tile_rows;
 
    memset(&result, 0, sizeof(result));
 
@@ -1294,7 +1295,7 @@ static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
       for (j = 0; j < 6; ++j)
          result.global_motion[i + 1].wmmat[j] = pic->picture_parameter.wm[i].wmmat[j];
    }
-   for (i = 0; i < 256; ++i) {
+   for (i = 0; i < tile_count && i < 256; ++i) {
       result.tile_info[i].offset = pic->slice_parameter.slice_data_offset[i];
       result.tile_info[i].size = pic->slice_parameter.slice_data_size[i];
    }
