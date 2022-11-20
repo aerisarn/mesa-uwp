@@ -392,8 +392,10 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
       nresource->modifier = agx_select_modifier_from_list(nresource, modifiers, count);
 
       /* There may not be a matching modifier, bail if so */
-      if (nresource->modifier == DRM_FORMAT_MOD_INVALID)
+      if (nresource->modifier == DRM_FORMAT_MOD_INVALID) {
+         free(nresource);
          return NULL;
+      }
    } else {
       nresource->modifier = agx_select_best_modifier(nresource);
 
