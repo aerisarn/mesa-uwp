@@ -195,6 +195,8 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 			goto error;
 		}
 	} else {
+		glsl_type_singleton_init_or_ref();
+
 		if (sel->ir_type == PIPE_SHADER_IR_TGSI) {
 			if (sel->nir)
 				ralloc_free(sel->nir);
@@ -216,6 +218,9 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		nir_tgsi_scan_shader(sel->nir, &sel->info, true);
 
 		r = r600_shader_from_nir(rctx, shader, &key);
+
+		glsl_type_singleton_decref();
+
 		if (r) {
 			fprintf(stderr, "--Failed shader--------------------------------------------------\n");
 			
