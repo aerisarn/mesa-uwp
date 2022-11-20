@@ -115,7 +115,7 @@ extern bool fd_binning_enabled;
    do {                                                                        \
       if (FD_DBG(MSGS))                                                        \
          mesa_logi("%5d: %s:%d: " fmt, ((pid_t)syscall(SYS_gettid)),           \
-                                        __func__, __LINE__,                \
+                                        __func__, __LINE__,                    \
                                         ##__VA_ARGS__);                        \
    } while (0)
 
