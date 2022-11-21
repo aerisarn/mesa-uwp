@@ -233,6 +233,8 @@ struct tu_pipeline
       uint32_t hs_param_dwords;
       uint32_t hs_vertices_out;
       uint32_t cs_instrlen;
+
+      bool writes_viewport;
    } program;
 
    struct
@@ -258,9 +260,12 @@ struct tu_pipeline
 
    struct {
       VkViewport viewports[MAX_VIEWPORTS];
+      VkRect2D scissors[MAX_SCISSORS];
       unsigned num_viewports, num_scissors;
       bool set_dynamic_vp_to_static;
+      bool set_dynamic_scissor_to_static;
       bool z_negative_one_to_one;
+      bool per_view_viewport;
    } viewport;
 
    /* Used only for libraries. compiled_shaders only contains variants compiled

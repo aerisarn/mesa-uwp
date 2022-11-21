@@ -859,6 +859,21 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
             frag_areas[i].height--;
       }
 
+      /* If at any point we were forced to use the same scaling for all
+       * viewports, we need to make sure that any users *not* using shared
+       * scaling, including loads/stores, also consistently share the scaling. 
+       */
+      if (cmd->state.rp.shared_viewport) {
+         VkExtent2D frag_area = { UINT32_MAX, UINT32_MAX };
+         for (unsigned i = 0; i < views; i++) {
+            frag_area.width = MIN2(frag_area.width, frag_areas[i].width);
+            frag_area.height = MIN2(frag_area.height, frag_areas[i].height);
+         }
+
+         for (unsigned i = 0; i < views; i++)
+            frag_areas[i] = frag_area;
+      }
+
       VkRect2D bin = { { x1, y1 }, { x2 - x1, y2 - y1 } };
       util_dynarray_foreach (&cmd->fdm_bin_patchpoints,
                              struct tu_fdm_bin_patchpoint, patch) {
@@ -1455,6 +1470,15 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
       tu_clear_sysmem_attachment(cmd, cs, i, &clear_values[i]);
 
    tu_cond_exec_end(cs);
+
+   /* We need to re-emit any draw states that are patched in order for them to
+    * be correctly added to the per-renderpass patchpoint list, even if they
+    * are the same as before.
+    */
+   if (cmd->state.pass->has_fdm) {
+      cmd->state.dirty |=
+         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS;
+   }
 }
 
 static void
@@ -1693,6 +1717,15 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
    tu6_tile_render_end(cmd, &cmd->cs, autotune_result);
 
    trace_end_render_pass(&cmd->trace, &cmd->cs);
+
+   /* We have trashed the dynamically-emitted viewport, scissor, and FS params
+    * via the patchpoints, so we need to re-emit them if they are reused for a
+    * later render pass.
+    */
+   if (cmd->state.pass->has_fdm) {
+      cmd->state.dirty |=
+         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS;
+   }
 
    /* tu6_render_tile has cloned these tracepoints for each tile */
    if (!u_trace_iterator_equal(cmd->trace_renderpass_start, cmd->trace_renderpass_end))
@@ -2911,6 +2944,15 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
    }
 
+   if (pipeline->viewport.set_dynamic_scissor_to_static) {
+      memcpy(cmd->state.scissor, pipeline->viewport.scissors,
+             pipeline->viewport.num_viewports *
+             sizeof(pipeline->viewport.scissors[0]));
+
+      cmd->state.scissor_count = pipeline->viewport.num_scissors;
+      cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
+   }
+
    if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
        !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VIEWPORT_COUNT)) &&
        cmd->state.viewport_count != pipeline->viewport.num_viewports) {
@@ -2923,6 +2965,14 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        cmd->state.scissor_count != pipeline->viewport.num_scissors) {
       cmd->state.scissor_count = pipeline->viewport.num_scissors;
       cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
+   }
+
+   if (pipeline->viewport.per_view_viewport != cmd->state.per_view_viewport) {
+      cmd->state.per_view_viewport = pipeline->viewport.per_view_viewport;
+      if (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT))
+         cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
+      if (pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_SCISSOR))
+         cmd->state.dirty |= TU_CMD_DIRTY_SCISSORS;
    }
 
    if (!(pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)))
@@ -4122,6 +4172,7 @@ tu_render_pass_state_merge(struct tu_render_pass_state *dst,
    dst->disable_gmem |= src->disable_gmem;
    dst->sysmem_single_prim_mode |= src->sysmem_single_prim_mode;
    dst->draw_cs_writes_to_cond_pred |= src->draw_cs_writes_to_cond_pred;
+   dst->shared_viewport |= src->shared_viewport;
 
    dst->drawcall_count += src->drawcall_count;
    dst->drawcall_bandwidth_per_sample_sum +=
@@ -5060,6 +5111,146 @@ tu6_emit_blend(struct tu_cs *cs, struct tu_cmd_buffer *cmd)
                    ~pipeline->blend.rb_blend_cntl_mask));
 }
 
+struct apply_viewport_state {
+   VkViewport viewports[MAX_VIEWPORTS];
+   unsigned num_viewports;
+   bool z_negative_one_to_one;
+   bool share_scale;
+};
+
+/* It's a hardware restriction that the window offset (i.e. bin.offset) must
+ * be the same for all views. This means that GMEM coordinates cannot be a
+ * simple scaling of framebuffer coordinates, because this would require us to
+ * scale the window offset and the scale may be different per view. Instead we
+ * have to apply a per-bin offset to the GMEM coordinate transform to make
+ * sure that the window offset maps to itself. Specifically we need an offset
+ * o to the transform:
+ *
+ * x' = s * x + o
+ *
+ * so that when we plug in the bin start b_s:
+ * 
+ * b_s = s * b_s + o
+ *
+ * and we get:
+ *
+ * o = b_s - s * b_s
+ *
+ * We use this form exactly, because we know the bin offset is a multiple of
+ * the frag area so s * b_s is an integer and we can compute an exact result
+ * easily.
+ */
+
+static VkOffset2D
+fdm_per_bin_offset(VkExtent2D frag_area, VkRect2D bin)
+{
+   assert(bin.offset.x % frag_area.width == 0);
+   assert(bin.offset.y % frag_area.height == 0);
+
+   return (VkOffset2D) {
+      bin.offset.x - bin.offset.x / frag_area.width,
+      bin.offset.y - bin.offset.y / frag_area.height
+   };
+}
+
+static void
+fdm_apply_viewports(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
+                    VkExtent2D *frag_areas)
+{
+   VkViewport viewports[MAX_VIEWPORTS];
+   const struct apply_viewport_state *state =
+      (const struct apply_viewport_state *)data;
+
+   for (unsigned i = 0; i < state->num_viewports; i++) {
+      /* Note: If we're using shared scaling, the scale should already be the
+       * same across all views, we can pick any view. However the number
+       * of viewports and number of views is not guaranteed the same, so we
+       * need to pick the 0'th view which always exists to be safe.
+       *
+       * Conversly, if we're not using shared scaling then the rasterizer in
+       * the original pipeline is using only the first viewport, so we need to
+       * replicate it across all viewports.
+       */
+      VkExtent2D frag_area = state->share_scale ? frag_areas[0] : frag_areas[i];
+      VkViewport viewport =
+         state->share_scale ? state->viewports[i] : state->viewports[0];
+      if (frag_area.width == 1 && frag_area.height == 1) {
+         viewports[i] = viewport;
+         continue;
+      }
+
+      float scale_x = (float) 1.0f / frag_area.width;
+      float scale_y = (float) 1.0f / frag_area.height;
+
+      viewports[i].minDepth = viewport.minDepth;
+      viewports[i].maxDepth = viewport.maxDepth;
+      viewports[i].width = viewport.width * scale_x;
+      viewports[i].height = viewport.height * scale_y;
+
+      VkOffset2D offset = fdm_per_bin_offset(frag_area, bin);
+
+      viewports[i].x = scale_x * viewport.x + offset.x;
+      viewports[i].y = scale_y * viewport.y + offset.y;
+   }
+
+   tu6_emit_viewport(cs, viewports, state->num_viewports, state->z_negative_one_to_one);
+}
+
+struct apply_scissor_state {
+   VkRect2D scissors[MAX_VIEWPORTS];
+   unsigned num_scissors;
+   bool share_scale;
+};
+
+static void
+fdm_apply_scissors(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
+                   VkExtent2D *frag_areas)
+{
+   VkRect2D scissors[MAX_VIEWPORTS];
+   const struct apply_scissor_state *state =
+      (const struct apply_scissor_state *)data;
+
+   for (unsigned i = 0; i < state->num_scissors; i++) {
+      VkExtent2D frag_area = state->share_scale ? frag_areas[0] : frag_areas[i];
+      VkRect2D scissor =
+         state->share_scale ? state->scissors[i] : state->scissors[0];
+      if (frag_area.width == 1 && frag_area.height == 1) {
+         scissors[i] = scissor;
+         continue;
+      }
+
+      /* Transform the scissor following the viewport. It's unclear how this
+       * is supposed to handle cases where the scissor isn't aligned to the
+       * fragment area, but we round outwards to always render partial
+       * fragments if the scissor size equals the framebuffer size and it
+       * isn't aligned to the fragment area.
+       */
+      VkOffset2D offset = fdm_per_bin_offset(frag_area, bin);
+      VkOffset2D min = {
+         scissor.offset.x / frag_area.width + offset.x,
+         scissor.offset.y / frag_area.width + offset.y,
+      };
+      VkOffset2D max = {
+         DIV_ROUND_UP(scissor.offset.x + scissor.extent.width, frag_area.width) + offset.x,
+         DIV_ROUND_UP(scissor.offset.y + scissor.extent.height, frag_area.height) + offset.y,
+      };
+
+      /* Intersect scissor with the scaled bin, this essentially replaces the
+       * window scissor.
+       */
+      uint32_t scaled_width = bin.extent.width / frag_area.width;
+      uint32_t scaled_height = bin.extent.height / frag_area.height;
+      scissors[i].offset.x = MAX2(min.x, bin.offset.x);
+      scissors[i].offset.y = MAX2(min.y, bin.offset.y);
+      scissors[i].extent.width =
+         MIN2(max.x, bin.offset.x + scaled_width) - scissors[i].offset.x;
+      scissors[i].extent.height =
+         MIN2(max.y, bin.offset.y + scaled_height) - scissors[i].offset.y;
+   }
+
+   tu6_emit_scissor(cs, scissors, state->num_scissors);
+}
+
 static VkResult
 tu6_draw_common(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
@@ -5190,14 +5381,49 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       cmd->state.shader_const = tu6_emit_consts(cmd, pipeline, false);
 
    if (dirty & TU_CMD_DIRTY_VIEWPORTS) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.viewport_count);
-      tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.viewport_count,
-                        cmd->state.z_negative_one_to_one);
+      if (pipeline->fs.fragment_density_map) {
+         unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
+         unsigned num_viewports = cmd->state.per_view_viewport ?
+            num_views : cmd->state.viewport_count;
+         struct apply_viewport_state state = {
+            .num_viewports = num_viewports,
+            .z_negative_one_to_one = cmd->state.z_negative_one_to_one,
+            .share_scale = !cmd->state.per_view_viewport,
+         };
+         memcpy(&state.viewports, cmd->state.viewport, sizeof(state.viewports));
+         tu_cs_set_writeable(&cmd->sub_cs, true);
+         struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * num_viewports);
+         tu_cs_set_writeable(&cmd->sub_cs, false);
+         tu_create_fdm_bin_patchpoint(cmd, &cs, 8 + 10 * num_viewports,
+                                      fdm_apply_viewports, state);
+         cmd->state.rp.shared_viewport |= !cmd->state.per_view_viewport;
+      } else {
+         struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.viewport_count);
+         tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.viewport_count,
+                           cmd->state.z_negative_one_to_one);
+      }
    }
 
    if (dirty & TU_CMD_DIRTY_SCISSORS) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.scissor_count);
-      tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.scissor_count);
+      if (pipeline->fs.fragment_density_map) {
+         unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
+         unsigned num_scissors = cmd->state.per_view_viewport ?
+            num_views : cmd->state.scissor_count;
+         struct apply_scissor_state state = {
+            .num_scissors = num_scissors,
+            .share_scale = !cmd->state.per_view_viewport,
+         };
+         memcpy(&state.scissors, cmd->state.scissor, sizeof(state.scissors));
+         tu_cs_set_writeable(&cmd->sub_cs, true);
+         struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * num_scissors);
+         tu_cs_set_writeable(&cmd->sub_cs, false);
+         tu_create_fdm_bin_patchpoint(cmd, &cs, 1 + 2 * num_scissors,
+                                      fdm_apply_scissors, state);
+         cmd->state.rp.shared_viewport |= !cmd->state.per_view_viewport;
+      } else {
+         struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.scissor_count);
+         tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.scissor_count);
+      }
    }
 
    if (dirty & TU_CMD_DIRTY_BLEND) {
