@@ -72,7 +72,7 @@ traces:
       checksum: de5452f4cbc0100d8ecb51459e47cd99
   bgfx/29-debugdraw.rdc:
     gl-vmware-llvmpipe:
-      checksum: 164e5226af26b6552506542a45bc6bf5
+      checksum: 015201fe000d6a323b0f7d3f218d3e47
   bgfx/31-rsm.rdc:
     gl-vmware-llvmpipe:
       checksum: b59d323511488d5c098ebfa9b434c2dc
@@ -120,7 +120,7 @@ traces:
       checksum: a55dd3d87a86b3b47121ff67861028c3
   jvgs/jvgs-d27fb67-v2.trace:
     gl-vmware-llvmpipe:
-      checksum: b8c21bf76e667735d1640b215f456531
+      checksum: 43b89627364b4cabbab84931aef4ce5e
   pathfinder/demo-v2.trace:
     gl-vmware-llvmpipe:
       checksum: a053c56658bc830249bc94317a3b3ea8
