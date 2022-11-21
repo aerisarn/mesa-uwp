@@ -970,6 +970,9 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    const struct tu_subpass *subpass = &pass->subpasses[pass->subpass_count-1];
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
 
+   if (pass->has_fdm)
+      tu_cs_set_writeable(cs, true);
+
    tu_cs_emit_pkt7(cs, CP_SET_MARKER, 1);
    tu_cs_emit(cs, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
 
@@ -995,6 +998,9 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          }
       }
    }
+
+   if (pass->has_fdm)
+      tu_cs_set_writeable(cs, false);
 }
 
 void
@@ -1453,6 +1459,9 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
 {
    struct tu_cs *cs = &cmd->draw_cs;
 
+   if (cmd->state.pass->has_fdm)
+      tu_cs_set_writeable(cs, true);
+
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
    tu6_emit_tile_load(cmd, cs);
@@ -1463,6 +1472,9 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
       tu_clear_gmem_attachment(cmd, cs, i, &clear_values[i]);
 
    tu_cond_exec_end(cs);
+
+   if (cmd->state.pass->has_fdm)
+      tu_cs_set_writeable(cs, false);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
 
@@ -4744,6 +4756,9 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    }
 
    if (cmd->state.tiling->possible) {
+      if (cmd->state.pass->has_fdm)
+         tu_cs_set_writeable(cs, true);
+
       tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
       if (subpass->resolve_attachments) {
@@ -4771,6 +4786,9 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
       }
 
       tu_cond_exec_end(cs);
+
+      if (cmd->state.pass->has_fdm)
+         tu_cs_set_writeable(cs, false);
 
       tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
    }

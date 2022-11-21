@@ -3307,6 +3307,33 @@ blit_can_resolve(VkFormat format)
    return true;
 }
 
+struct apply_load_coords_state {
+   unsigned view;
+};
+
+static void
+fdm_apply_load_coords(struct tu_cs *cs, void *data, VkRect2D bin,
+                      unsigned views, VkExtent2D *frag_areas)
+{
+   const struct apply_load_coords_state *state =
+      (const struct apply_load_coords_state *)data;
+   assert(state->view < views);
+   VkExtent2D frag_area = frag_areas[state->view];
+
+   assert(bin.extent.width % frag_area.width == 0);
+   assert(bin.extent.height % frag_area.height == 0);
+   uint32_t scaled_width = bin.extent.width / frag_area.width;
+   uint32_t scaled_height = bin.extent.height / frag_area.height;
+
+   const float coords[] = {
+      bin.offset.x,                    bin.offset.y,
+      bin.offset.x,                    bin.offset.y,
+      bin.offset.x + scaled_width,     bin.offset.y + scaled_height,
+      bin.offset.x + bin.extent.width, bin.offset.y + bin.extent.height,
+   };
+   r3d_coords_raw(cs, coords);
+}
+
 static void
 load_3d_blit(struct tu_cmd_buffer *cmd,
              struct tu_cs *cs,
@@ -3326,8 +3353,10 @@ load_3d_blit(struct tu_cmd_buffer *cmd,
              VK_IMAGE_ASPECT_COLOR_BIT, R3D_DST_GMEM, false,
              iview->view.ubwc_enabled, iview->image->vk.samples);
 
-   r3d_coords(cs, &(VkOffset2D) { 0, 0 }, &(VkOffset2D) { 0, 0 },
-              &(VkExtent2D) { fb->width, fb->height });
+   if (!cmd->state.pass->has_fdm) {
+      r3d_coords(cs, (VkOffset2D) { 0, 0 }, (VkOffset2D) { 0, 0 },
+                 (VkExtent2D) { fb->width, fb->height });
+   }
 
    /* Normal loads read directly from system memory, so we have to invalidate
     * UCHE in case it contains stale data.
@@ -3338,6 +3367,13 @@ load_3d_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit_wfi(cs);
 
    for_each_layer(i, att->clear_views, cmd->state.framebuffer->layers) {
+      if (cmd->state.pass->has_fdm) {
+         struct apply_load_coords_state state = {
+            .view = att->clear_views ? i : 0,
+         };
+         tu_create_fdm_bin_patchpoint(cmd, cs, 1 + 3 + 8, fdm_apply_load_coords, state);
+      }
+
       r3d_dst_gmem(cmd, cs, iview, att, separate_stencil, i);
 
       if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
@@ -3440,7 +3476,8 @@ tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
    if (cond_exec)
       tu_begin_load_store_cond_exec(cmd, cs, true);
 
-   if (TU_DEBUG(3D_LOAD)) {
+   if (TU_DEBUG(3D_LOAD) ||
+       cmd->state.pass->has_fdm) {
       if (load_common || load_stencil)
          tu_disable_draw_states(cmd, cs);
 
@@ -3502,8 +3539,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
                                          !util_format_is_depth_or_stencil(dst_format),
                       .unk20 = 1,
                       .unk22 = 1),
-                   /* note: src size does not matter when not scaling */
-                   A6XX_SP_PS_2D_SRC_SIZE( .width = 0x3fff, .height = 0x3fff),
+                   A6XX_SP_PS_2D_SRC_SIZE( .width = iview->vk.extent.width, .height = iview->vk.extent.height),
                    A6XX_SP_PS_2D_SRC(.qword = cmd->device->physical_device->gmem_base + gmem_offset),
                    A6XX_SP_PS_2D_SRC_PITCH(.pitch = cmd->state.tiling->tile0.width * cpp));
 
@@ -3603,6 +3639,10 @@ tu_attachment_store_unaligned(struct tu_cmd_buffer *cmd, uint32_t a)
    if (TU_DEBUG(UNALIGNED_STORE))
       return true;
 
+   /* We always use the unaligned store path when scaling rendering. */
+   if (cmd->state.pass->has_fdm)
+      return true;
+
    uint32_t x1 = render_area->offset.x;
    uint32_t y1 = render_area->offset.y;
    uint32_t x2 = x1 + render_area->extent.width;
@@ -3645,6 +3685,41 @@ tu_choose_gmem_layout(struct tu_cmd_buffer *cmd)
    }
 
    cmd->state.tiling = &cmd->state.framebuffer->tiling[cmd->state.gmem_layout];
+}
+
+struct apply_store_coords_state {
+   unsigned view;
+};
+
+static void
+fdm_apply_store_coords(struct tu_cs *cs, void *data, VkRect2D bin,
+                       unsigned views, VkExtent2D *frag_areas)
+{
+   const struct apply_store_coords_state *state =
+      (const struct apply_store_coords_state *)data;
+   assert(state->view < views);
+   VkExtent2D frag_area = frag_areas[state->view];
+
+   /* The bin width/height must be a multiple of the frag_area to make sure
+    * that the scaling happens correctly. This means there may be some
+    * destination pixels jut out of the framebuffer, but they should be
+    * clipped by the render area.
+    */
+   assert(bin.extent.width % frag_area.width == 0);
+   assert(bin.extent.height % frag_area.height == 0);
+   uint32_t scaled_width = bin.extent.width / frag_area.width;
+   uint32_t scaled_height = bin.extent.height / frag_area.height;
+
+   tu_cs_emit_regs(cs,
+      A6XX_GRAS_2D_DST_TL(.x = bin.offset.x,
+                          .y = bin.offset.y),
+      A6XX_GRAS_2D_DST_BR(.x = bin.offset.x + bin.extent.width - 1,
+                          .y = bin.offset.y + bin.extent.height - 1));
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_2D_SRC_TL_X(bin.offset.x),
+                   A6XX_GRAS_2D_SRC_BR_X(bin.offset.x + scaled_width - 1),
+                   A6XX_GRAS_2D_SRC_TL_Y(bin.offset.y),
+                   A6XX_GRAS_2D_SRC_BR_Y(bin.offset.y + scaled_height - 1));
 }
 
 void
@@ -3745,9 +3820,33 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
          }
       }
    } else {
-      r2d_coords(cs, render_area->offset, render_area->offset, render_area->extent);
+      if (!cmd->state.pass->has_fdm) {
+         r2d_coords(cs, render_area->offset, render_area->offset,
+                    render_area->extent);
+      } else {
+         /* Usually GRAS_2D_RESOLVE_CNTL_* clips the destination to the bin
+          * area and the coordinates span the entire render area, but for
+          * FDM we need to scale the coordinates so we need to take the
+          * opposite aproach, specifying the exact bin size in the destination
+          * coordinates and using GRAS_2D_RESOLVE_CNTL_* to clip to the render
+          * area.
+          */
+         tu_cs_emit_regs(cs,
+                         A6XX_GRAS_2D_RESOLVE_CNTL_1(.x = render_area->offset.x,
+                                                     .y = render_area->offset.y,),
+                         A6XX_GRAS_2D_RESOLVE_CNTL_2(.x = render_area->offset.x + render_area->extent.width - 1,
+                                                     .y = render_area->offset.y + render_area->extent.height - 1,));
+      }
 
-      for_each_layer(i, layer_mask, layers) {
+      for_each_layer (i, layer_mask, layers) {
+         if (cmd->state.pass->has_fdm) {
+            unsigned view = layer_mask ? i : 0;
+            struct apply_store_coords_state state = {
+               .view = view,
+            };
+            tu_create_fdm_bin_patchpoint(cmd, cs, 8, fdm_apply_store_coords,
+                                         state);
+         }
          if (store_common) {
             store_cp_blit(cmd, cs, iview, src->samples, false, src_format,
                           dst_format, i, tu_attachment_gmem_offset(cmd, src, i), src->cpp);
