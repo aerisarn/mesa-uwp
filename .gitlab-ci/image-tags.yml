@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-01-20-kernel-6.1-439f86d0"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2023-01-20-mold-1_10"
+   DEBIAN_BUILD_TAG: "2023-01-24-android"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2023-01-03-ci-libva-2.17"
@@ -13,6 +13,8 @@ variables:
    DEBIAN_X86_TEST_IMAGE_GL_PATH: "debian/x86_test-gl"
    DEBIAN_X86_TEST_IMAGE_VK_PATH: "debian/x86_test-vk"
    DEBIAN_X86_TEST_IMAGE_PATH: ${DEBIAN_X86_TEST_IMAGE_GL_PATH}
+   DEBIAN_X86_TEST_ANDROID_IMAGE_PATH: "debian/x86_test-android"
+   DEBIAN_X86_TEST_ANDROID_TAG: "2023-01-24-test-android-2"
 
    DEBIAN_X86_TEST_GL_TAG: "2023-01-23-vkvalidate"
    DEBIAN_X86_TEST_VK_TAG: "2023-01-12-cts"

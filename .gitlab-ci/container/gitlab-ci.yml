@@ -236,6 +236,23 @@ debian/x86_test-vk:
   needs:
     - debian/x86_test-vk
 
+# Debian 11 based x86 test image for Android
+debian/x86_test-android:
+  extends: .use-debian/x86_test-base
+  variables:
+    MESA_IMAGE_TAG: &debian-x86_test-android ${DEBIAN_X86_TEST_ANDROID_TAG}
+    ANDROID_NDK: android-ndk-r25b
+
+.use-debian/x86_test-android:
+  extends:
+    - .set-image-base-tag
+  variables:
+    MESA_BASE_TAG: *debian-x86_test-base
+    MESA_IMAGE_PATH: ${DEBIAN_X86_TEST_ANDROID_IMAGE_PATH}
+    MESA_IMAGE_TAG: *debian-x86_test-android
+  needs:
+    - debian/x86_test-android
+
 # Debian 11 based ARM build image
 debian/arm_build:
   extends:

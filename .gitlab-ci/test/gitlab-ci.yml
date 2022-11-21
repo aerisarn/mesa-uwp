@@ -52,6 +52,20 @@ rustfmt:
   needs:
     - debian/x86_test-gl
 
+.test-android:
+  extends:
+    - .test
+    - .use-debian/x86_test-android
+  variables:
+    MINIO_ARTIFACT_NAME: mesa-x86_64-android
+  needs:
+    - job: debian-testing
+      artifacts: true  # On the host we want the Linux build
+    - job: debian-android
+      artifacts: false  # The Android build will be downloaded later
+    - job: debian/x86_test-android
+      artifacts: false
+
 .vkd3d-proton-test:
   artifacts:
     when: on_failure

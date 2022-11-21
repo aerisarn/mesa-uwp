@@ -105,3 +105,13 @@ virgl-iris-traces-performance:
     PIGLIT_REPLAY_LOOP_TIMES: 150
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=${FDO_HTTP_CACHE_URI}"
   allow_failure: true
+
+android-virgl-llvmpipe:
+  extends:
+    - .test-android
+    - .virgl-rules
+  script:
+    - ./install/cuttlefish-runner.sh
+  artifacts:
+    paths:
+      - results/
