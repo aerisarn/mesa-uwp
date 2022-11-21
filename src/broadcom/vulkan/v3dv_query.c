@@ -1100,6 +1100,34 @@ allocate_storage_buffer_descriptor_set(struct v3dv_cmd_buffer *cmd_buffer,
    return result;
 }
 
+static uint32_t
+copy_pipeline_index_from_flags(VkQueryResultFlags flags)
+{
+   uint32_t index = 0;
+   if (flags & VK_QUERY_RESULT_64_BIT)
+      index |= 1;
+   if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
+      index |= 2;
+   if (flags & VK_QUERY_RESULT_PARTIAL_BIT)
+      index |= 4;
+   assert(index < 8);
+   return index;
+}
+
+static VkQueryResultFlags
+copy_pipeline_flags_from_index(uint32_t index)
+{
+   assert(index < 8);
+   VkQueryResultFlagBits flags = 0;
+   if (index & 1)
+      flags |= VK_QUERY_RESULT_64_BIT;
+   if (index & 2)
+      flags |= VK_QUERY_RESULT_WITH_AVAILABILITY_BIT;
+   if (index & 4)
+      flags |= VK_QUERY_RESULT_PARTIAL_BIT;
+   return flags;
+}
+
 static void
 cmd_buffer_emit_copy_query_pool_results(struct v3dv_cmd_buffer *cmd_buffer,
                                         struct v3dv_query_pool *pool,
@@ -1160,9 +1188,10 @@ cmd_buffer_emit_copy_query_pool_results(struct v3dv_cmd_buffer *cmd_buffer,
    /* Dispatch copy */
    v3dv_cmd_buffer_meta_state_push(cmd_buffer, true);
 
+   uint32_t pipeline_idx = copy_pipeline_index_from_flags(flags);
    v3dv_CmdBindPipeline(vk_cmd_buffer,
                         VK_PIPELINE_BIND_POINT_COMPUTE,
-                        device->queries.copy_pipeline);
+                        device->queries.copy_pipeline[pipeline_idx]);
 
    VkDescriptorSet sets[2] = {
       pool->meta.descriptor_set,
@@ -1532,27 +1561,28 @@ write_query_buffer(nir_builder *b,
                    nir_ssa_def *buf,
                    nir_ssa_def **offset,
                    nir_ssa_def *value,
-                   nir_ssa_def *flag_64bit)
+                   bool flag_64bit)
 {
-   nir_ssa_def *do_64bit_cond = nir_ine_imm(b, flag_64bit, 0);
-   nir_if *if_stmt = nir_push_if(b, do_64bit_cond);
+   if (flag_64bit) {
       /* Create a 64-bit value using a vec2 with the .Y component set to 0
        * so we can write a 64-bit value in a single store.
        */
       nir_ssa_def *value64 = nir_vec2(b, value, nir_imm_int(b, 0));
       nir_store_ssbo(b, value64, buf, *offset, .write_mask = 0x3, .align_mul = 8);
-   nir_push_else(b, NULL);
+      *offset = nir_iadd(b, *offset, nir_imm_int(b, 8));
+   } else {
       nir_store_ssbo(b, value, buf, *offset, .write_mask = 0x1, .align_mul = 4);
-   nir_pop_if(b, if_stmt);
-
-   *offset = nir_bcsel(b, do_64bit_cond,
-                          nir_iadd(b, *offset, nir_imm_int(b, 8)),
-                          nir_iadd(b, *offset, nir_imm_int(b, 4)));
+      *offset = nir_iadd(b, *offset, nir_imm_int(b, 4));
+   }
 }
 
 static nir_shader *
-get_copy_query_results_cs()
+get_copy_query_results_cs(VkQueryResultFlags flags)
 {
+   bool flag_64bit = flags & VK_QUERY_RESULT_64_BIT;
+   bool flag_avail = flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT;
+   bool flag_partial = flags & VK_QUERY_RESULT_PARTIAL_BIT;
+
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options,
                                                   "copy query results cs");
@@ -1587,19 +1617,6 @@ get_copy_query_results_cs()
    nir_ssa_def *stride =
       nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 12, .range = 4);
 
-   nir_ssa_def *flags =
-      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
-
-   /* Check copy flags */
-   nir_ssa_def *flag_64bit =
-      nir_iand(&b, flags, nir_imm_int(&b, (uint32_t)VK_QUERY_RESULT_64_BIT));
-
-   nir_ssa_def *flag_partial =
-      nir_iand(&b, flags, nir_imm_int(&b, (uint32_t)VK_QUERY_RESULT_PARTIAL_BIT));
-
-   nir_ssa_def *flag_avail =
-      nir_iand(&b, flags, nir_imm_int(&b, (uint32_t)VK_QUERY_RESULT_WITH_AVAILABILITY_BIT));
-
    /* This assumes a local size of 1 and a horizontal-only dispatch. If we
     * ever change any of these parameters we need to update how we compute the
     * query index here.
@@ -1607,27 +1624,30 @@ get_copy_query_results_cs()
    nir_ssa_def *wg_id = nir_channel(&b, nir_load_workgroup_id(&b, 32), 0);
    nir_ssa_def *query_idx = nir_iadd(&b, base_query_idx, wg_id);
 
-   /* Read query availability */
-   nir_ssa_def *avail =
-      nir_get_query_availability(&b, buf, avail_offset, query_idx);
+   /* Read query availability if needed */
+   nir_ssa_def *avail = NULL;
+   if (flag_avail || !flag_partial)
+      avail = nir_get_query_availability(&b, buf, avail_offset, query_idx);
 
-   /* Read query result */
-   nir_ssa_def *query_res = nir_read_occlusion_counter(&b, buf, query_idx);
-
-   /* Write output buffer */
+   /* Write occusion query result... */
    nir_ssa_def *offset =
       nir_iadd(&b, base_offset_out, nir_imul(&b, wg_id, stride));
-   nir_ssa_def *write_result = nir_ior(&b, flag_partial, avail);
 
-   /* Query result */
-   nir_if *if_stmt = nir_push_if(&b, nir_ine_imm(&b, write_result, 0));
+   /* ...if partial is requested, we always write */
+   if(flag_partial) {
+      nir_ssa_def *query_res = nir_read_occlusion_counter(&b, buf, query_idx);
       write_query_buffer(&b, buf_out, &offset, query_res, flag_64bit);
-   nir_pop_if(&b, if_stmt);
+   } else {
+      /*...otherwise, we only write if the query is available */
+      nir_if *if_stmt = nir_push_if(&b, nir_ine_imm(&b, avail, 0));
+         nir_ssa_def *query_res = nir_read_occlusion_counter(&b, buf, query_idx);
+         write_query_buffer(&b, buf_out, &offset, query_res, flag_64bit);
+      nir_pop_if(&b, if_stmt);
+   }
 
-   /* Availability */
-   if_stmt = nir_push_if(&b, nir_ine_imm(&b, flag_avail, 0));
+   /* Write query availability */
+   if (flag_avail)
       write_query_buffer(&b, buf_out, &offset, avail, flag_64bit);
-   nir_pop_if(&b, if_stmt);
 
    return b.shader;
 }
@@ -1744,7 +1764,7 @@ create_query_pipelines(struct v3dv_device *device)
       device->queries.reset_occlusion_pipeline = pipeline;
    }
 
-   /* Copy query results pipeline.
+   /* Copy query results pipelines.
     *
     * Pipeline layout:
     *  - 1 storage buffer for the BO with the query availability and occlusion.
@@ -1754,7 +1774,10 @@ create_query_pipelines(struct v3dv_device *device)
     *    4B: base query index (4B)
     *    8B: offset into output buffer (4B)
     *    12B: stride (4B)
-    *    16B: copy flags (4B)
+    *
+    * We create multiple specialized pipelines depending on the copy flags
+    * to remove conditionals from the copy shader and get more optimized
+    * pipelines.
     */
    if (!device->queries.copy_pipeline_layout) {
       VkDescriptorSetLayout set_layouts[2] = {
@@ -1767,7 +1790,7 @@ create_query_pipelines(struct v3dv_device *device)
          .pSetLayouts = set_layouts,
          .pushConstantRangeCount = 1,
          .pPushConstantRanges =
-             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 20 },
+             &(VkPushConstantRange) { VK_SHADER_STAGE_COMPUTE_BIT, 0, 16 },
       };
 
       result =
@@ -1780,17 +1803,20 @@ create_query_pipelines(struct v3dv_device *device)
          return false;
    }
 
-   if (!device->queries.copy_pipeline) {
-      nir_shader *copy_query_results_cs_nir = get_copy_query_results_cs();
-      result = v3dv_create_compute_pipeline_from_nir(device,
-                                                     copy_query_results_cs_nir,
-                                                     device->queries.copy_pipeline_layout,
-                                                     &pipeline);
-      ralloc_free(copy_query_results_cs_nir);
-      if (result != VK_SUCCESS)
-         return false;
+   for (int i = 0; i < 8; i++) {
+      if (!device->queries.copy_pipeline[i]) {
+         VkQueryResultFlags flags = copy_pipeline_flags_from_index(i);
+         nir_shader *copy_query_results_cs_nir = get_copy_query_results_cs(flags);
+         result = v3dv_create_compute_pipeline_from_nir(device,
+                                                        copy_query_results_cs_nir,
+                                                        device->queries.copy_pipeline_layout,
+                                                        &pipeline);
+         ralloc_free(copy_query_results_cs_nir);
+         if (result != VK_SUCCESS)
+            return false;
 
-      device->queries.copy_pipeline = pipeline;
+         device->queries.copy_pipeline[i] = pipeline;
+      }
    }
 
    return true;
@@ -1818,10 +1844,12 @@ destroy_query_pipelines(struct v3dv_device *device)
                               &device->vk.alloc);
    device->queries.reset_occlusion_pipeline_layout = VK_NULL_HANDLE;
 
-   /* Copy pipeline */
-   v3dv_DestroyPipeline(_device, device->queries.copy_pipeline,
-                         &device->vk.alloc);
-   device->queries.copy_pipeline = VK_NULL_HANDLE;
+   /* Copy pipelines */
+   for (int i = 0; i < 8; i++) {
+      v3dv_DestroyPipeline(_device, device->queries.copy_pipeline[i],
+                            &device->vk.alloc);
+      device->queries.copy_pipeline[i] = VK_NULL_HANDLE;
+   }
    v3dv_DestroyPipelineLayout(_device, device->queries.copy_pipeline_layout,
                               &device->vk.alloc);
    device->queries.copy_pipeline_layout = VK_NULL_HANDLE;

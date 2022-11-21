@@ -578,7 +578,7 @@ struct v3dv_device {
 
       /* Copy query results */
       VkPipelineLayout copy_pipeline_layout;
-      VkPipeline copy_pipeline;
+      VkPipeline copy_pipeline[8];
    } queries;
 
    struct v3dv_pipeline_cache default_pipeline_cache;
