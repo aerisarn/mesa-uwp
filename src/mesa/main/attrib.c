@@ -1313,6 +1313,8 @@ restore_array_attrib(struct gl_context *ctx,
                        src->VAO->IndexBufferObj ?
                           src->VAO->IndexBufferObj->Name : 0);
    }
+
+   _mesa_update_edgeflag_state_vao(ctx);
 }
 
 

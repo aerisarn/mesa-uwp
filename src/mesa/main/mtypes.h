@@ -1754,6 +1754,18 @@ struct gl_array_attrib
    GLbitfield _DrawVAOEnabledAttribs;
 
    /**
+    * Whether per-vertex edge flags are enabled and should be processed by
+    * the vertex shader.
+    */
+   bool _PerVertexEdgeFlagsEnabled;
+
+   /**
+    * Whether all edge flags are false, causing all points and lines generated
+    * by polygon mode to be not drawn. (i.e. culled)
+    */
+   bool _PolygonModeAlwaysCulls;
+
+   /**
     * Whether the VAO has been changed.
     */
    bool NewVAO;

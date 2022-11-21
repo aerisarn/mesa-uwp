@@ -110,6 +110,7 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao)
 
    if (*ptr != vao) {
       _mesa_reference_vao_(ctx, ptr, vao);
+      _mesa_update_edgeflag_state_vao(ctx);
       ctx->Array.NewVAO = true;
    }
 }
@@ -135,6 +136,7 @@ _mesa_restore_draw_vao(struct gl_context *ctx,
 {
    _mesa_reference_vao(ctx, &ctx->Array._DrawVAO, NULL);
    ctx->Array._DrawVAO = saved;
+   _mesa_update_edgeflag_state_vao(ctx);
    ctx->Array.NewVAO = true;
 }
 

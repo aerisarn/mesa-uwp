@@ -78,6 +78,9 @@ copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
              current_index == VBO_ATTRIB_MAT_BACK_SHININESS)
             ctx->NewState |= _NEW_FF_VERT_PROGRAM;
 
+         if (current_index == VBO_ATTRIB_EDGEFLAG)
+            _mesa_update_edgeflag_state_vao(ctx);
+
          ctx->NewState |= state;
          ctx->PopAttribState |= pop_state;
       }
@@ -270,6 +273,9 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
       info.take_vertex_state_ownership = true;
    }
 
+   /* Set edge flags. */
+   _mesa_update_edgeflag_state_explicit(ctx, enabled & VERT_BIT_EDGEFLAG);
+
    /* Fast path using a pre-built gallium vertex buffer state. */
    if (node->modes || node->num_draws > 1) {
       ctx->Driver.DrawGalliumVertexState(ctx, state, info,
@@ -283,6 +289,9 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
                                          NULL, 1,
                                          enabled & VERT_ATTRIB_EDGEFLAG);
    }
+
+   /* Restore edge flag state. */
+   _mesa_update_edgeflag_state_vao(ctx);
 
    if (copy_to_current)
       playback_copy_to_current(ctx, node);

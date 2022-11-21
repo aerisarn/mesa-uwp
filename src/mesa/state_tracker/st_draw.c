@@ -349,12 +349,6 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
                              bool per_vertex_edgeflags)
 {
    struct st_context *st = st_context(ctx);
-   bool old_vertdata_edgeflags = st->vertdata_edgeflags;
-
-   /* We don't flag any other states to make st_validate state update edge
-    * flags, so we need to update them here.
-    */
-   st_update_edgeflags(st, per_vertex_edgeflags);
 
    prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS,
                 ST_PIPELINE_RENDER_NO_VARRAYS);
@@ -382,15 +376,6 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
             first = i;
          }
       }
-   }
-
-   /* If per-vertex edge flags are different than the non-display-list state,
-    *  just flag ST_NEW_VERTEX_ARRAY, which will also completely revalidate
-    * edge flags in st_validate_state.
-    */
-   if (st->vertdata_edgeflags != old_vertdata_edgeflags) {
-      ctx->Array.NewVertexElements = true;
-      st->dirty |= ST_NEW_VERTEX_ARRAYS;
    }
 }
 

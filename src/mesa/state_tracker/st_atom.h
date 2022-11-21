@@ -62,7 +62,6 @@ enum st_pipeline {
 void st_init_atoms( struct st_context *st );
 void st_destroy_atoms( struct st_context *st );
 void st_validate_state( struct st_context *st, enum st_pipeline pipeline );
-void st_update_edgeflags(struct st_context *st, bool per_vertex_edgeflags);
 
 void
 st_setup_arrays(struct st_context *st,

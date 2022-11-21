@@ -254,9 +254,6 @@ struct st_context
    /** This masks out unused shader resources. Only valid in draw calls. */
    uint64_t active_states;
 
-   GLboolean vertdata_edgeflags;
-   GLboolean edgeflag_culls_prims;
-
    /**
     * The number of currently active queries (excluding timer queries).
     * This is used to know if we need to pause any queries for meta ops.

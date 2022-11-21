@@ -314,16 +314,6 @@ _mesa_draw_current_attrib(const struct gl_context *ctx, gl_vert_attrib attr)
 }
 
 
-/**
- * Return true if we have the VERT_ATTRIB_EDGEFLAG array enabled.
- */
-static inline bool
-_mesa_draw_edge_flag_array_enabled(const struct gl_context *ctx)
-{
-   return ctx->Array._DrawVAOEnabledAttribs & VERT_BIT_EDGEFLAG;
-}
-
-
 #ifdef __cplusplus
 }
 #endif
