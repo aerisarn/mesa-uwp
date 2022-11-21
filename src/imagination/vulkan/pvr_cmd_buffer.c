@@ -1500,7 +1500,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
             query_pool = gfx_sub_cmd->query_pool;
          }
 
-         sub_cmd->flags |= PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY;
+         gfx_sub_cmd->has_occlusion_query = true;
 
          util_dynarray_clear(&state->query_indices);
       }
@@ -5603,8 +5603,7 @@ pvr_resolve_unemitted_resolve_attachments(struct pvr_cmd_buffer *cmd_buffer,
       src_view->vk.image->format = src_format;
       dst_view->vk.image->format = dst_format;
 
-      state->current_sub_cmd->flags |=
-         PVR_SUB_COMMAND_FLAG_TRANSFER_SERIALIZE_WITH_FRAG;
+      state->current_sub_cmd->transfer.serialize_with_frag = true;
 
       if (result != VK_SUCCESS)
          return result;
@@ -5773,7 +5772,6 @@ static VkResult pvr_execute_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
 
    primary_sub_cmd->type = sec_sub_cmd->type;
    primary_sub_cmd->owned = false;
-   primary_sub_cmd->flags = sec_sub_cmd->flags;
 
    list_addtail(&primary_sub_cmd->link, &cmd_buffer->sub_cmds);
 

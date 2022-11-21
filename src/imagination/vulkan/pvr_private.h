@@ -117,11 +117,6 @@ enum pvr_event_type {
    PVR_EVENT_TYPE_BARRIER,
 };
 
-enum pvr_sub_command_flags {
-   PVR_SUB_COMMAND_FLAG_TRANSFER_SERIALIZE_WITH_FRAG = BITFIELD_BIT(0),
-   PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY = BITFIELD_BIT(1),
-};
-
 enum pvr_depth_stencil_usage {
    PVR_DEPTH_STENCIL_USAGE_UNDEFINED = 0, /* explicitly treat 0 as undefined */
    PVR_DEPTH_STENCIL_USAGE_NEEDED,
@@ -751,6 +746,8 @@ struct pvr_sub_cmd_gfx {
     * both texture reads and texture writes.
     */
    bool frag_uses_texture_rw;
+
+   bool has_occlusion_query;
 };
 
 struct pvr_sub_cmd_compute {
@@ -770,6 +767,8 @@ struct pvr_sub_cmd_compute {
 };
 
 struct pvr_sub_cmd_transfer {
+   bool serialize_with_frag;
+
    /* List of pvr_transfer_cmd type structures. */
    struct list_head transfer_cmds;
 };
@@ -814,8 +813,6 @@ struct pvr_sub_cmd {
    struct list_head link;
 
    enum pvr_sub_cmd_type type;
-
-   enum pvr_sub_command_flags flags;
 
    /* True if the sub_cmd is owned by this command buffer. False if taken from
     * a secondary command buffer, in that case we are not supposed to free any

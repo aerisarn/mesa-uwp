@@ -730,7 +730,7 @@ static VkResult pvr_process_cmd_buffer(
                              link) {
       switch (sub_cmd->type) {
       case PVR_SUB_CMD_TYPE_GRAPHICS: {
-         if (sub_cmd->flags & PVR_SUB_COMMAND_FLAG_OCCLUSION_QUERY) {
+         if (sub_cmd->gfx.has_occlusion_query) {
             struct pvr_sub_cmd_event frag_to_transfer_barrier = {
                .type = PVR_EVENT_TYPE_BARRIER,
                .barrier = {
@@ -780,8 +780,7 @@ static VkResult pvr_process_cmd_buffer(
          break;
 
       case PVR_SUB_CMD_TYPE_TRANSFER: {
-         const bool serialize_with_frag =
-            sub_cmd->flags & PVR_SUB_COMMAND_FLAG_TRANSFER_SERIALIZE_WITH_FRAG;
+         const bool serialize_with_frag = sub_cmd->transfer.serialize_with_frag;
 
          if (serialize_with_frag) {
             struct pvr_sub_cmd_event frag_to_transfer_barrier = {
