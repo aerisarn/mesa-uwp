@@ -39,10 +39,6 @@ static const uint32_t morton_spv[] = {
 #include "bvh/morton.comp.spv.h"
 };
 
-static const uint32_t lbvh_internal_spv[] = {
-#include "bvh/lbvh_internal.comp.spv.h"
-};
-
 static const uint32_t lbvh_main_spv[] = {
 #include "bvh/lbvh_main.comp.spv.h"
 };
@@ -333,8 +329,6 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                         state->accel_struct_build.lbvh_generate_ir_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.lbvh_main_pipeline,
                         &state->alloc);
-   radv_DestroyPipeline(radv_device_to_handle(device),
-                        state->accel_struct_build.lbvh_internal_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device),
@@ -351,8 +345,6 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                               state->accel_struct_build.lbvh_generate_ir_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.lbvh_main_p_layout, &state->alloc);
-   radv_DestroyPipelineLayout(radv_device_to_handle(device),
-                              state->accel_struct_build.lbvh_internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.leaf_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -445,13 +437,6 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    result = create_build_pipeline_spv(device, leaf_spv, sizeof(leaf_spv), sizeof(struct leaf_args),
                                       &device->meta_state.accel_struct_build.leaf_pipeline,
                                       &device->meta_state.accel_struct_build.leaf_p_layout);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = create_build_pipeline_spv(
-      device, lbvh_internal_spv, sizeof(lbvh_internal_spv), sizeof(struct lbvh_internal_args),
-      &device->meta_state.accel_struct_build.lbvh_internal_pipeline,
-      &device->meta_state.accel_struct_build.lbvh_internal_p_layout);
    if (result != VK_SUCCESS)
       return result;
 

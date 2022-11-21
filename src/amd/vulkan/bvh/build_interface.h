@@ -57,14 +57,6 @@ struct morton_args {
    REF(key_id_pair) ids;
 };
 
-struct lbvh_internal_args {
-   VOID_REF bvh;
-   REF(key_id_pair) src_ids;
-   REF(key_id_pair) dst_ids;
-   uint32_t dst_offset;
-   uint32_t src_count;
-};
-
 #define LBVH_RIGHT_CHILD_BIT_SHIFT 29
 #define LBVH_RIGHT_CHILD_BIT (1 << LBVH_RIGHT_CHILD_BIT_SHIFT)
 
