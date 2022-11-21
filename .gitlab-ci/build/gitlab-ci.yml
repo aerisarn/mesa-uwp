@@ -314,6 +314,7 @@ debian-android:
   extends:
     - .meson-cross
     - .use-debian/android_build
+    - .ci-deqp-artifacts
   variables:
     UNWIND: "disabled"
     C_ARGS: >
@@ -356,6 +357,8 @@ debian-android:
       -D gallium-rusticl=false
     LLVM_VERSION: ""
     PKG_CONFIG_LIBDIR: "/disable/non/android/system/pc/files"
+    ARTIFACTS_DEBUG_SYMBOLS: 1
+    MINIO_ARTIFACT_NAME: mesa-x86_64-android
   script:
     - CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost,vc4,v3d VULKAN_DRIVERS=freedreno,broadcom,virtio-experimental .gitlab-ci/meson/build.sh
     # x86_64 build:
@@ -364,6 +367,7 @@ debian-android:
     # drivers because they requires LLVM, which we don't have an Android build
     # of.
     - CROSS=x86_64-linux-android GALLIUM_DRIVERS=iris,virgl VULKAN_DRIVERS=amd,intel .gitlab-ci/meson/build.sh
+    - .gitlab-ci/prepare-artifacts.sh
 
 .meson-cross:
   extends:
