@@ -21,6 +21,8 @@
 bvh_shaders = [
   'copy.comp',
   'lbvh_internal.comp',
+  'lbvh_generate_ir.comp',
+  'lbvh_main.comp',
   'leaf.comp',
   'morton.comp',
   'ploc_internal.comp',

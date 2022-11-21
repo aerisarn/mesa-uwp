@@ -65,6 +65,34 @@ struct lbvh_internal_args {
    uint32_t src_count;
 };
 
+#define LBVH_RIGHT_CHILD_BIT_SHIFT 29
+#define LBVH_RIGHT_CHILD_BIT (1 << LBVH_RIGHT_CHILD_BIT_SHIFT)
+
+struct lbvh_node_info {
+   /* Number of children that have been processed (or are invalid/leaves) in
+    * the lbvh_generate_ir pass.
+    */
+   uint32_t path_count;
+
+   uint32_t children[2];
+   uint32_t parent;
+};
+
+struct lbvh_main_args {
+   VOID_REF bvh;
+   REF(key_id_pair) src_ids;
+   VOID_REF node_info;
+   uint32_t id_count;
+   uint32_t internal_node_base;
+};
+
+struct lbvh_generate_ir_args {
+   VOID_REF bvh;
+   VOID_REF node_info;
+   VOID_REF header;
+   uint32_t internal_node_base;
+};
+
 #define RADV_COPY_MODE_COPY        0
 #define RADV_COPY_MODE_SERIALIZE   1
 #define RADV_COPY_MODE_DESERIALIZE 2

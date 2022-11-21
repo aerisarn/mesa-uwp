@@ -679,6 +679,10 @@ struct radv_meta_state {
       VkPipeline morton_pipeline;
       VkPipelineLayout lbvh_internal_p_layout;
       VkPipeline lbvh_internal_pipeline;
+      VkPipelineLayout lbvh_main_p_layout;
+      VkPipeline lbvh_main_pipeline;
+      VkPipelineLayout lbvh_generate_ir_p_layout;
+      VkPipeline lbvh_generate_ir_pipeline;
       VkPipelineLayout ploc_p_layout;
       VkPipeline ploc_pipeline;
       VkPipelineLayout convert_leaf_p_layout;
