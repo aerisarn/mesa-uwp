@@ -2265,7 +2265,7 @@ eglDupNativeFenceFDANDROID(EGLDisplay dpy, EGLSync sync)
 {
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLSync *s = _eglLookupSync(sync, disp);
-   EGLint ret;
+   EGLint ret = EGL_NO_NATIVE_FENCE_FD_ANDROID;
 
    _EGL_FUNC_START(disp, EGL_OBJECT_SYNC_KHR, s);
 
