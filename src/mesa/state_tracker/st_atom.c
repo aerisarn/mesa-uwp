@@ -41,25 +41,23 @@
 #include "util/u_cpu_detect.h"
 
 
-typedef void (*update_func_t)(struct st_context *st);
-
 /* The list state update functions. */
-static update_func_t update_functions[ST_NUM_ATOMS];
+st_update_func_t st_update_functions[ST_NUM_ATOMS];
 
 static void
 init_atoms_once(void)
 {
-#define ST_STATE(FLAG, st_update) update_functions[FLAG##_INDEX] = st_update;
+#define ST_STATE(FLAG, st_update) st_update_functions[FLAG##_INDEX] = st_update;
 #include "st_atom_list.h"
 #undef ST_STATE
 
    if (util_get_cpu_caps()->has_popcnt)
-      update_functions[ST_NEW_VERTEX_ARRAYS_INDEX] = st_update_array_with_popcnt;
+      st_update_functions[ST_NEW_VERTEX_ARRAYS_INDEX] = st_update_array_with_popcnt;
 }
 
 void st_init_atoms( struct st_context *st )
 {
-   STATIC_ASSERT(ARRAY_SIZE(update_functions) <= 64);
+   STATIC_ASSERT(ARRAY_SIZE(st_update_functions) <= 64);
 
    static once_flag flag = ONCE_FLAG_INIT;
    call_once(&flag, init_atoms_once);
@@ -68,32 +66,4 @@ void st_init_atoms( struct st_context *st )
 void st_destroy_atoms( struct st_context *st )
 {
    /* no-op */
-}
-
-/***********************************************************************
- * Update all derived state:
- */
-
-void st_validate_state(struct st_context *st, uint64_t pipeline_state_mask)
-{
-   struct gl_context *ctx = st->ctx;
-
-   /* Inactive states are shader states not used by shaders at the moment. */
-   uint64_t dirty = ctx->NewDriverState & st->active_states & pipeline_state_mask;
-   if (!dirty)
-      return;
-
-   ctx->NewDriverState &= ~dirty;
-
-   uint32_t dirty_lo = dirty;
-   uint32_t dirty_hi = dirty >> 32;
-
-   /* Update states.
-    *
-    * Don't use u_bit_scan64, it may be slower on 32-bit.
-    */
-   while (dirty_lo)
-      update_functions[u_bit_scan(&dirty_lo)](st);
-   while (dirty_hi)
-      update_functions[32 + u_bit_scan(&dirty_hi)](st);
 }

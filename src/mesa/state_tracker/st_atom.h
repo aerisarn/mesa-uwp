@@ -35,6 +35,7 @@
 #define ST_ATOM_H
 
 #include "util/glheader.h"
+#include "main/mtypes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,7 +51,6 @@ struct cso_velems_state;
 
 void st_init_atoms( struct st_context *st );
 void st_destroy_atoms( struct st_context *st );
-void st_validate_state(struct st_context *st, uint64_t pipeline_state_mask);
 
 void
 st_setup_arrays(struct st_context *st,
@@ -182,6 +182,10 @@ enum {
 
 #define ST_ALL_STATES_MASK (ST_PIPELINE_RENDER_STATE_MASK | \
                             ST_PIPELINE_COMPUTE_STATE_MASK)
+
+typedef void (*st_update_func_t)(struct st_context *st);
+
+extern st_update_func_t st_update_functions[ST_NUM_ATOMS];
 
 #ifdef __cplusplus
 }

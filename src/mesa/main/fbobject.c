@@ -56,6 +56,7 @@
 #include "state_tracker/st_cb_eglimage.h"
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
+#include "state_tracker/st_util.h"
 
 /**
  * Notes:

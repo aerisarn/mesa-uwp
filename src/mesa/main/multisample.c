@@ -36,7 +36,7 @@
 
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
-#include "state_tracker/st_context.h"
+#include "state_tracker/st_util.h"
 
 /**
  * Called via glSampleCoverageARB

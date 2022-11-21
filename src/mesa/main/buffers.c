@@ -46,6 +46,7 @@
 #include "state_tracker/st_manager.h"
 #include "state_tracker/st_atom.h"
 #include "state_tracker/st_context.h"
+#include "state_tracker/st_util.h"
 
 #define BAD_MASK ~0u
 

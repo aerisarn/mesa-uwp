@@ -85,9 +85,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask)
    st_invalidate_readpix_cache(st);
 
    /* Validate state. */
-   if (ctx->NewDriverState & st->active_states & state_mask) {
-      st_validate_state(st, state_mask);
-   }
+   st_validate_state(st, state_mask);
 
    /* Pin threads regularly to the same Zen CCX that the main thread is
     * running on. The main thread can move between CCXs.

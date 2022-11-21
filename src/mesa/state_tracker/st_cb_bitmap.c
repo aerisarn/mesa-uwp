@@ -633,10 +633,7 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
     * for bitmap drawing uses no constants and the FS constants are
     * explicitly uploaded in the draw_bitmap_quad() function.
     */
-   if (ctx->NewDriverState & st->active_states &
-       ~ST_NEW_CONSTANTS & ST_PIPELINE_RENDER_STATE_MASK) {
-      st_validate_state(st, ST_PIPELINE_META_STATE_MASK);
-   }
+   st_validate_state(st, ST_PIPELINE_META_STATE_MASK & ~ST_NEW_CONSTANTS);
 
    struct pipe_sampler_view *view = NULL;
 
