@@ -210,3 +210,11 @@ spec@ext_texture_lod_bias@lodbias
 # Started around 2022-11-16, first appeared in https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19588
 # Tracking issue: https://gitlab.freedesktop.org/mesa/mesa/-/issues/7713
 KHR-GL45.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-std430-matC-pad
+
+# sometimes passes.
+KHR-GL45.shader_image_load_store.basic-allTargets-store
+
+# First appeared 2022-09-28, innocent branch
+KHR-GLES31.core.shader_image_load_store.basic-allTargets-atomicFS
+
+KHR-GL45.shader_image_load_store.basic-allTargets-atomic
