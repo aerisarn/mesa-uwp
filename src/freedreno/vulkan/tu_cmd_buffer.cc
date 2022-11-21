@@ -592,9 +592,13 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
     * value as the last draw. This means that if the descriptor sets change
     * but not the pipeline, we'd try to re-execute the same buffer which
     * the firmware would ignore and we wouldn't pre-load the new
-    * descriptors. Set the DIRTY bit to avoid this optimization
+    * descriptors. Set the DIRTY bit to avoid this optimization.
+    *
+    * We also need to set this bit for draw states which may be patched by the
+    * GPU, because their underlying memory may change between setting the draw
+    * state.
     */
-   if (id == TU_DRAW_STATE_DESC_SETS_LOAD)
+   if (id == TU_DRAW_STATE_DESC_SETS_LOAD || state.writeable)
       enable_mask |= CP_SET_DRAW_STATE__0_DIRTY;
 
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(state.size) |
@@ -767,7 +771,8 @@ tu6_emit_cond_for_load_stores(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 static void
 tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
-                     uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot)
+                     uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot,
+                     const struct tu_image_view *fdm)
 {
    const struct tu_tiling_config *tiling = cmd->state.tiling;
 
@@ -776,9 +781,9 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 
    const uint32_t x1 = tiling->tile0.width * tx;
    const uint32_t y1 = tiling->tile0.height * ty;
-   const uint32_t x2 = MIN2(x1 + tiling->tile0.width - 1, MAX_VIEWPORT_SIZE - 1);
-   const uint32_t y2 = MIN2(y1 + tiling->tile0.height - 1, MAX_VIEWPORT_SIZE - 1);
-   tu6_emit_window_scissor(cs, x1, y1, x2, y2);
+   const uint32_t x2 = MIN2(x1 + tiling->tile0.width, MAX_VIEWPORT_SIZE);
+   const uint32_t y2 = MIN2(y1 + tiling->tile0.height, MAX_VIEWPORT_SIZE);
+   tu6_emit_window_scissor(cs, x1, y1, x2 - 1, y2 - 1);
    tu6_emit_window_offset(cs, x1, y1);
 
    bool hw_binning = use_hw_binning(cmd);
@@ -804,6 +809,70 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt7(cs, CP_SET_MODE, 1);
    tu_cs_emit(cs, 0x0);
+
+   if (fdm || (TU_DEBUG(FDM) && cmd->state.pass->has_fdm)) {
+      unsigned views =
+         cmd->state.pass->num_views ? cmd->state.pass->num_views : 1;
+      const struct tu_framebuffer *fb = cmd->state.framebuffer;
+      struct tu_frag_area raw_areas[views];
+      if (fdm) {
+         tu_fragment_density_map_sample(fdm,
+                                        (x1 + MIN2(x2, fb->width)) / 2,
+                                        (y1 + MIN2(y2, fb->height)) / 2,
+                                        fb->width, fb->height, views,
+                                        raw_areas);
+      } else {
+         for (unsigned i = 0; i < views; i++)
+            raw_areas[i].width = raw_areas[i].height = 1.0f;
+      }
+
+      VkExtent2D frag_areas[views];
+      for (unsigned i = 0; i < views; i++) {
+         float floor_x, floor_y;
+         float area = raw_areas[i].width * raw_areas[i].height;
+         float frac_x = modff(raw_areas[i].width, &floor_x);
+         float frac_y = modff(raw_areas[i].height, &floor_y);
+         /* The spec allows rounding up one of the axes as long as the total
+          * area is less than or equal to the original area. Take advantage of
+          * this to try rounding up the number with the largest fraction.
+          */
+         if ((frac_x > frac_y ? (floor_x + 1.f) * floor_y :
+                                 floor_x * (floor_y + 1.f)) <= area) {
+            if (frac_x > frac_y)
+               floor_x += 1.f;
+            else
+               floor_y += 1.f;
+         }
+         frag_areas[i].width = floor_x;
+         frag_areas[i].height = floor_y;
+
+         /* Make sure that the width/height divides the tile width/height so
+          * we don't have to do extra awkward clamping of the edges of each
+          * bin when resolving. Note that because the tile width is rounded to
+          * a multiple of 32 any power of two 32 or less will work.
+          *
+          * TODO: Try to take advantage of the total area allowance here, too.
+          */
+         while (tiling->tile0.width % frag_areas[i].width != 0)
+            frag_areas[i].width--;
+         while (tiling->tile0.height % frag_areas[i].height != 0)
+            frag_areas[i].height--;
+      }
+
+      VkRect2D bin = { { x1, y1 }, { x2 - x1, y2 - y1 } };
+      util_dynarray_foreach (&cmd->fdm_bin_patchpoints,
+                             struct tu_fdm_bin_patchpoint, patch) {
+         tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 2 + patch->size);
+         tu_cs_emit_qw(cs, patch->iova);
+         patch->apply(cs, patch->data, bin, views, frag_areas);
+      }
+
+      /* Make the CP wait until the CP_MEM_WRITE's to the command buffers
+       * land.
+       */
+      tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+   }
 }
 
 static void
@@ -1109,6 +1178,28 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
+
+   /* If this command buffer may be executed multiple times, then
+    * viewports/scissor states may have been changed by previous executions
+    * and we need to reset them before executing the binning IB.
+    */
+   if (!(cmd->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) &&
+       cmd->fdm_bin_patchpoints.size != 0) {
+      unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
+      VkExtent2D unscaled_frag_areas[num_views];
+      for (unsigned i = 0; i < num_views; i++)
+         unscaled_frag_areas[i] = (VkExtent2D) { 1, 1 };
+      VkRect2D bin = { { 0, 0 }, { fb->width, fb->height } };
+      util_dynarray_foreach (&cmd->fdm_bin_patchpoints,
+                             struct tu_fdm_bin_patchpoint, patch) {
+         tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 2 + patch->size);
+         tu_cs_emit_qw(cs, patch->iova);
+         patch->apply(cs, patch->data, bin, num_views, unscaled_frag_areas);
+      }
+
+      tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+   }
 
    tu6_emit_window_scissor(cs, 0, 0, fb->width - 1, fb->height - 1);
 
@@ -1487,9 +1578,10 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
 
 static void
 tu6_render_tile(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot)
+                uint32_t tx, uint32_t ty, uint32_t pipe, uint32_t slot,
+                const struct tu_image_view *fdm)
 {
-   tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot);
+   tu6_emit_tile_select(cmd, &cmd->cs, tx, ty, pipe, slot, fdm);
 
    trace_start_draw_ib_gmem(&cmd->trace, &cmd->cs);
 
@@ -1546,6 +1638,11 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
                     struct tu_renderpass_result *autotune_result)
 {
    const struct tu_tiling_config *tiling = cmd->state.tiling;
+   const struct tu_image_view *fdm = NULL;
+
+   if (cmd->state.pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED) {
+      fdm = cmd->state.attachments[cmd->state.pass->fragment_density_map.attachment];
+   }
 
    /* Create gmem stores now (at EndRenderPass time)) because they needed to
     * know whether to allow their conditional execution, which was tied to a
@@ -1586,7 +1683,7 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
                else
                   tx = tile_row_i;
                uint32_t slot = slot_row + tx;
-               tu6_render_tile(cmd, &cmd->cs, tx1 + tx, ty, pipe, slot);
+               tu6_render_tile(cmd, &cmd->cs, tx1 + tx, ty, pipe, slot, fdm);
             }
             slot_row += tile_row_stride;
          }
@@ -1666,6 +1763,11 @@ static void tu_reset_render_pass(struct tu_cmd_buffer *cmd_buffer)
    /* LRZ is not valid next time we use it */
    cmd_buffer->state.lrz.valid = false;
    cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
+
+   /* Patchpoints have been executed */
+   util_dynarray_clear(&cmd_buffer->fdm_bin_patchpoints);
+   ralloc_free(cmd_buffer->patchpoints_ctx);
+   cmd_buffer->patchpoints_ctx = NULL;
 }
 
 static VkResult
@@ -1738,6 +1840,9 @@ tu_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
               cmd_buffer->descriptors[i].push_set.mapped_ptr);
    }
 
+   ralloc_free(cmd_buffer->patchpoints_ctx);
+   util_dynarray_fini(&cmd_buffer->fdm_bin_patchpoints);
+
    vk_command_buffer_finish(&cmd_buffer->vk);
    vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->vk.pool->alloc,
             cmd_buffer);
@@ -1781,6 +1886,10 @@ tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    cmd_buffer->state.last_prim_params.valid = false;
 
    cmd_buffer->vsc_initialized = false;
+
+   ralloc_free(cmd_buffer->patchpoints_ctx);
+   cmd_buffer->patchpoints_ctx = NULL;
+   util_dynarray_clear(&cmd_buffer->fdm_bin_patchpoints);
 }
 
 const struct vk_command_buffer_ops tu_cmd_buffer_ops = {
@@ -1890,6 +1999,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
             cmd_buffer->state.subpass =
                &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
          }
+
+         cmd_buffer->patchpoints_ctx = ralloc_parent(NULL);
 
          /* We can't set the gmem layout here, because the state.pass only has
           * to be compatible (same formats/sample counts) with the primary's
@@ -4046,6 +4157,8 @@ tu_append_pre_chain(struct tu_cmd_buffer *cmd,
                               &secondary->pre_chain.state);
    tu_clone_trace_range(cmd, &cmd->draw_cs, secondary->pre_chain.trace_renderpass_start,
          secondary->pre_chain.trace_renderpass_end);
+   util_dynarray_append_dynarray(&cmd->fdm_bin_patchpoints,
+                                 &secondary->pre_chain.fdm_bin_patchpoints);
 }
 
 /* Take the saved post-chain in "secondary" and copy it to "cmd".
@@ -4060,6 +4173,8 @@ tu_append_post_chain(struct tu_cmd_buffer *cmd,
    tu_clone_trace_range(cmd, &cmd->draw_cs, secondary->trace_renderpass_start,
          secondary->trace_renderpass_end);
    cmd->state.rp = secondary->state.rp;
+   util_dynarray_append_dynarray(&cmd->fdm_bin_patchpoints,
+                                 &secondary->fdm_bin_patchpoints);
 }
 
 /* Assuming "secondary" is just a sequence of suspended and resuming passes,
@@ -4079,6 +4194,8 @@ tu_append_pre_post_chain(struct tu_cmd_buffer *cmd,
          secondary->trace_renderpass_end);
    tu_render_pass_state_merge(&cmd->state.rp,
                               &secondary->state.rp);
+   util_dynarray_append_dynarray(&cmd->fdm_bin_patchpoints,
+                                 &secondary->fdm_bin_patchpoints);
 }
 
 /* Take the current render pass state and save it to "pre_chain" to be
@@ -4096,6 +4213,10 @@ tu_save_pre_chain(struct tu_cmd_buffer *cmd)
    cmd->pre_chain.trace_renderpass_end =
       cmd->trace_renderpass_end;
    cmd->pre_chain.state = cmd->state.rp;
+   util_dynarray_append_dynarray(&cmd->pre_chain.fdm_bin_patchpoints,
+                                 &cmd->fdm_bin_patchpoints);
+   cmd->pre_chain.patchpoints_ctx = cmd->patchpoints_ctx;
+   cmd->patchpoints_ctx = NULL;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4145,6 +4266,8 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 
          tu_clone_trace(cmd, &cmd->draw_cs, &secondary->trace);
          tu_render_pass_state_merge(&cmd->state.rp, &secondary->state.rp);
+         util_dynarray_append_dynarray(&cmd->fdm_bin_patchpoints,
+                                       &secondary->fdm_bin_patchpoints);
       } else {
          switch (secondary->state.suspend_resume) {
          case SR_NONE:
@@ -4389,6 +4512,9 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 
    tu_emit_renderpass_begin(cmd, pRenderPassBegin->pClearValues);
    tu_emit_subpass_begin(cmd);
+
+   if (pass->has_fdm)
+      cmd->patchpoints_ctx = ralloc_parent(NULL);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4464,6 +4590,9 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
       TU_FROM_HANDLE(tu_image_view, view, fdm_info->imageView);
       cmd->state.attachments[a] = view;
    }
+
+   if (cmd->dynamic_pass.has_fdm)
+      cmd->patchpoints_ctx = ralloc_context(NULL);
 
    tu_choose_gmem_layout(cmd);
 

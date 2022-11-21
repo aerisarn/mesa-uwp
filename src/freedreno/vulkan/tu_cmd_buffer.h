@@ -558,6 +558,9 @@ struct tu_cmd_buffer
    struct list_head renderpass_autotune_results;
    struct tu_autotune_results_buffer* autotune_buffer;
 
+   void *patchpoints_ctx;
+   struct util_dynarray fdm_bin_patchpoints;
+
    VkCommandBufferUsageFlags usage_flags;
 
    VkQueryPipelineStatisticFlags inherited_pipeline_statistics;
@@ -602,6 +605,9 @@ struct tu_cmd_buffer
       struct u_trace_iterator trace_renderpass_start, trace_renderpass_end;
 
       struct tu_render_pass_state state;
+
+      struct util_dynarray fdm_bin_patchpoints;
+      void *patchpoints_ctx;
    } pre_chain;
 
    uint32_t vsc_draw_strm_pitch;
@@ -690,5 +696,56 @@ void tu6_apply_depth_bounds_workaround(struct tu_device *device,
 
 void
 update_stencil_mask(uint32_t *value, VkStencilFaceFlags face, uint32_t mask);
+
+typedef void (*tu_fdm_bin_apply_t)(struct tu_cs *cs, void *data, VkRect2D bin,
+                                   unsigned views, VkExtent2D *frag_areas);
+
+struct tu_fdm_bin_patchpoint {
+   uint64_t iova;
+   uint32_t size;
+   void *data;
+   tu_fdm_bin_apply_t apply;
+};
+
+static inline void
+_tu_create_fdm_bin_patchpoint(struct tu_cmd_buffer *cmd,
+                              struct tu_cs *cs,
+                              unsigned size,
+                              tu_fdm_bin_apply_t apply,
+                              void *state,
+                              unsigned state_size)
+{
+   void *data = ralloc_size(cmd->patchpoints_ctx, state_size);
+   memcpy(data, state, state_size);
+   assert(cs->writeable);
+   tu_cs_reserve_space(cs, size);
+   struct tu_fdm_bin_patchpoint patch = {
+      .iova = tu_cs_get_cur_iova(cs),
+      .size = size,
+      .data = data,
+      .apply = apply,
+   };
+
+   /* Apply the "default" setup where there is no scaling. This is used if
+    * sysmem is required, and uses up the dwords that have been reserved.
+    */
+   unsigned num_views = MAX2(cmd->state.pass->num_views, 1);
+   VkExtent2D unscaled_frag_areas[num_views];
+   for (unsigned i = 0; i < num_views; i++) {
+      unscaled_frag_areas[i] = (VkExtent2D) { 1, 1 };
+   }
+   apply(cs, state, (VkRect2D) {
+         { 0, 0 },
+         { MAX_VIEWPORT_SIZE, MAX_VIEWPORT_SIZE },
+        }, num_views, unscaled_frag_areas);
+   assert(tu_cs_get_cur_iova(cs) == patch.iova + patch.size * sizeof(uint32_t));
+
+   util_dynarray_append(&cmd->fdm_bin_patchpoints,
+                        struct tu_fdm_bin_patchpoint,
+                        patch);
+}
+
+#define tu_create_fdm_bin_patchpoint(cmd, cs, size, apply, state) \
+   _tu_create_fdm_bin_patchpoint(cmd, cs, size, apply, &state, sizeof(state))
 
 #endif /* TU_CMD_BUFFER_H */

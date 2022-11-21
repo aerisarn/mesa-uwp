@@ -66,8 +66,9 @@ struct tu_cs_memory {
 };
 
 struct tu_draw_state {
-   uint64_t iova : 48;
-   uint32_t size : 16;
+   uint64_t iova;
+   uint16_t size;
+   bool writeable;
 };
 
 struct tu_bo_array {
@@ -164,6 +165,7 @@ tu_cs_end_draw_state(struct tu_cs *cs, struct tu_cs *sub_cs)
    return (struct tu_draw_state) {
       .iova = entry.bo->iova + entry.offset,
       .size = entry.size / sizeof(uint32_t),
+      .writeable = sub_cs->writeable,
    };
 }
 
@@ -188,6 +190,7 @@ tu_cs_draw_state(struct tu_cs *sub_cs, struct tu_cs *cs, uint32_t size)
    return (struct tu_draw_state) {
       .iova = memory.iova,
       .size = size,
+      .writeable = sub_cs->writeable,
    };
 }
 
