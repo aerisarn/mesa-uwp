@@ -2149,8 +2149,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       const struct util_format_description *desc = vk_format_description(iview->vk.format);
       if (desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
          iview->plane_id = 1;
-         iview->vk.format = etc2_emulation_format(iview->vk.format);
          iview->vk.view_format = etc2_emulation_format(iview->vk.format);
+         iview->vk.format = etc2_emulation_format(iview->vk.format);
       }
 
       plane_count = 1;
