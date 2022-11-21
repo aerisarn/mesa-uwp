@@ -900,19 +900,6 @@ radv_pipeline_depth_samples(const struct vk_graphics_pipeline_state *state)
    return state->ms ? state->ms->rasterization_samples : 1;
 }
 
-static uint8_t
-radv_pipeline_get_ps_iter_samples(const struct vk_graphics_pipeline_state *state)
-{
-   uint32_t ps_iter_samples = 1;
-   uint32_t num_samples = radv_pipeline_color_samples(state);
-
-   if (state->ms && state->ms->sample_shading_enable) {
-      ps_iter_samples = ceilf(state->ms->min_sample_shading * num_samples);
-      ps_iter_samples = util_next_power_of_two(ps_iter_samples);
-   }
-   return ps_iter_samples;
-}
-
 static bool
 radv_is_depth_write_enabled(const struct vk_depth_stencil_state *ds)
 {
@@ -1101,10 +1088,19 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
     *
     * Otherwise, sample shading is considered disabled."
     */
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
-      ps_iter_samples = ms->num_samples;
-   } else {
-      ps_iter_samples = radv_pipeline_get_ps_iter_samples(state);
+   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading ||
+       (state->ms && state->ms->sample_shading_enable)) {
+      uint32_t color_samples = radv_pipeline_color_samples(state);
+      float min_sample_shading;
+
+      if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
+         min_sample_shading = 1.0f;
+      } else {
+         min_sample_shading = state->ms->min_sample_shading;
+      }
+
+      ps_iter_samples = ceilf(min_sample_shading * color_samples);
+      ps_iter_samples = util_next_power_of_two(ps_iter_samples);
    }
 
    if (state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
