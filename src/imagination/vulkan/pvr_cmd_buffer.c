@@ -5626,10 +5626,6 @@ void pvr_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    assert(state->render_pass_info.pass);
    assert(state->render_pass_info.framebuffer);
 
-   /* TODO: Investigate why pvr_cmd_buffer_end_sub_cmd/EndSubCommand is called
-    * twice in this path, one here and one from
-    * pvr_resolve_unemitted_resolve_attachments.
-    */
    result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    if (result != VK_SUCCESS)
       return;
