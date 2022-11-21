@@ -741,10 +741,10 @@ agx_upload_viewport_scissor(struct agx_pool *pool,
    util_viewport_zmin_zmax(vp, false, &minz, &maxz);
 
    /* Allocate a new scissor descriptor */
-   struct agx_scissor_packed *ptr = batch->scissor.bo->ptr.cpu;
-   unsigned index = (batch->scissor.count++);
+   unsigned index = batch->scissor.size / AGX_SCISSOR_LENGTH;
+   void *ptr = util_dynarray_grow_bytes(&batch->scissor, 1, AGX_SCISSOR_LENGTH);
 
-   agx_pack(ptr + index, SCISSOR, cfg) {
+   agx_pack(ptr, SCISSOR, cfg) {
       cfg.min_x = minx;
       cfg.min_y = miny;
       cfg.min_z = minz;
@@ -789,10 +789,11 @@ static uint16_t
 agx_upload_depth_bias(struct agx_batch *batch,
                       const struct pipe_rasterizer_state *rast)
 {
-   struct agx_depth_bias_packed *ptr = batch->depth_bias.bo->ptr.cpu;
-   unsigned index = (batch->depth_bias.count++);
+   unsigned index = batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH;
+   void *ptr = util_dynarray_grow_bytes(&batch->depth_bias, 1,
+                                        AGX_DEPTH_BIAS_LENGTH);
 
-   agx_pack(ptr + index, DEPTH_BIAS, cfg) {
+   agx_pack(ptr, DEPTH_BIAS, cfg) {
       cfg.depth_bias    = rast->offset_units;
       cfg.slope_scale   = rast->offset_scale;
       cfg.clamp         = rast->offset_clamp;
@@ -2020,6 +2021,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    ctx->dirty = 0;
 
    assert(batch == agx_get_batch(ctx) && "batch should not change under us");
+
+   /* The scissor/zbias arrays are indexed with 16-bit integers, imposigin a
+    * maximum of UINT16_MAX descriptors. Flush if the next draw would overflow
+    */
+   if (unlikely((batch->scissor.size / AGX_SCISSOR_LENGTH) >= UINT16_MAX) ||
+                (batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH) >= UINT16_MAX) {
+      agx_flush_batch_for_reason(ctx, batch, "Scissor/depth bias overflow");
+   }
 }
 
 static void

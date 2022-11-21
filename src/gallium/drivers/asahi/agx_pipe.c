@@ -790,6 +790,15 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
          BITSET_SET(zbuf->separate_stencil->data_valid, level);
    }
 
+   /* Scissor and depth bias arrays are staged to dynamic arrays on the CPU. At
+    * submit time, they're done growing and are uploaded to GPU memory attached
+    * to the batch.
+    */
+   uint64_t scissor = agx_pool_upload_aligned(&batch->pool, batch->scissor.data,
+                                              batch->scissor.size, 64);
+   uint64_t zbias   = agx_pool_upload_aligned(&batch->pool, batch->depth_bias.data,
+                                              batch->depth_bias.size, 64);
+
    /* BO list for a given batch consists of:
     *  - BOs for the batch's pools
     *  - BOs for the encoder
@@ -797,8 +806,6 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
     *  - BOs added to the batch explicitly
     */
    agx_batch_add_bo(batch, batch->encoder);
-   agx_batch_add_bo(batch, batch->scissor.bo);
-   agx_batch_add_bo(batch, batch->depth_bias.bo);
 
    unsigned handle_count =
       agx_batch_num_bo(batch) +
@@ -830,8 +837,8 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
                &batch->key,
                batch->encoder->ptr.gpu,
                encoder_id,
-               batch->scissor.bo->ptr.gpu,
-               batch->depth_bias.bo->ptr.gpu,
+               scissor,
+               zbias,
                pipeline_background,
                pipeline_background_partial,
                pipeline_store,
