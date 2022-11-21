@@ -4138,6 +4138,9 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       case VARYING_SLOT_PSIZ:
          so->writes_psize = true;
          break;
+      case VARYING_SLOT_VIEWPORT:
+         so->writes_viewport = true;
+         break;
       case VARYING_SLOT_PRIMITIVE_ID:
       case VARYING_SLOT_GS_VERTEX_FLAGS_IR3:
          assert(ctx->so->type == MESA_SHADER_GEOMETRY);
@@ -4151,7 +4154,6 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       case VARYING_SLOT_CLIP_DIST1:
       case VARYING_SLOT_CLIP_VERTEX:
       case VARYING_SLOT_LAYER:
-      case VARYING_SLOT_VIEWPORT:
          break;
       default:
          if (slot >= VARYING_SLOT_VAR0)

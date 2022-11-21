@@ -607,7 +607,7 @@ struct ir3_shader_variant {
       uint8_t view;
       bool half : 1;
    } outputs[32 + 2]; /* +POSITION +PSIZE */
-   bool writes_pos, writes_smask, writes_psize, writes_stencilref;
+   bool writes_pos, writes_smask, writes_psize, writes_viewport, writes_stencilref;
 
    /* Size in dwords of all outputs for VS, size of entire patch for HS. */
    uint32_t output_size;
