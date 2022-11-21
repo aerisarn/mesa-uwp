@@ -45,22 +45,12 @@ agx_batch_init(struct agx_context *ctx,
       memset(batch->bo_list.set, 0, batch->bo_list.word_count * sizeof(BITSET_WORD));
    }
 
-   if (!batch->encoder) {
-      batch->encoder = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Encoder");
-      batch->encoder_current = batch->encoder->ptr.cpu;
-      batch->encoder_end = batch->encoder_current + batch->encoder->size;
-   } else {
-      batch->encoder_current = batch->encoder->ptr.cpu;
-      batch->encoder_end = batch->encoder_current + batch->encoder->size;
-   }
+   batch->encoder = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Encoder");
+   batch->encoder_current = batch->encoder->ptr.cpu;
+   batch->encoder_end = batch->encoder_current + batch->encoder->size;
 
-   if (!batch->scissor.bo) {
-      batch->scissor.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Scissors");
-   }
-
-   if (!batch->depth_bias.bo) {
-      batch->depth_bias.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Depth bias");
-   }
+   batch->scissor.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Scissors");
+   batch->depth_bias.bo = agx_bo_create(dev, 0x80000, AGX_MEMORY_TYPE_FRAMEBUFFER, "Depth bias");
 
    batch->clear = 0;
    batch->draw = 0;
@@ -108,6 +98,9 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch)
       agx_bo_unreference(agx_lookup_bo(dev, handle));
    }
 
+   agx_bo_unreference(batch->scissor.bo);
+   agx_bo_unreference(batch->depth_bias.bo);
+   agx_bo_unreference(batch->encoder);
    agx_pool_cleanup(&batch->pool);
    agx_pool_cleanup(&batch->pipeline_pool);
    util_unreference_framebuffer_state(&batch->key);
