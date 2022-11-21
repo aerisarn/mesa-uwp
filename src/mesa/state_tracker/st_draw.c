@@ -345,8 +345,7 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
                              struct pipe_draw_vertex_state_info info,
                              const struct pipe_draw_start_count_bias *draws,
                              const uint8_t *mode,
-                             unsigned num_draws,
-                             bool per_vertex_edgeflags)
+                             unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
 

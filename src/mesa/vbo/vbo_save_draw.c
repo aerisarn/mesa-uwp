@@ -281,13 +281,11 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
       ctx->Driver.DrawGalliumVertexState(ctx, state, info,
                                          node->start_counts,
                                          node->modes,
-                                         node->num_draws,
-                                         enabled & VERT_ATTRIB_EDGEFLAG);
+                                         node->num_draws);
    } else if (node->num_draws) {
       ctx->Driver.DrawGalliumVertexState(ctx, state, info,
                                          &node->start_count,
-                                         NULL, 1,
-                                         enabled & VERT_ATTRIB_EDGEFLAG);
+                                         NULL, 1);
    }
 
    /* Restore edge flag state. */
