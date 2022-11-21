@@ -16,12 +16,12 @@ arch2=${6:-$2}
 
 cat > "$cross_file" <<EOF
 [binaries]
-ar = '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/$arch-ar'
+ar = '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
 c = ['ccache', '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch2}${sdk_version}-clang', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables']
-cpp = ['ccache', '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch2}${sdk_version}-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables']
+cpp = ['ccache', '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch2}${sdk_version}-clang++', '-fno-exceptions', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-static-libstdc++']
 c_ld = 'lld'
 cpp_ld = 'lld'
-strip = '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/$arch-strip'
+strip = '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
 pkgconfig = ['/usr/bin/pkg-config']
 
 [host_machine]

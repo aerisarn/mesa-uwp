@@ -174,8 +174,8 @@ debian/android_build:
     - .use-debian/x86_build-base
   variables:
     MESA_IMAGE_TAG: &debian-android_build ${DEBIAN_BUILD_TAG}
-    ANDROID_SDK_VERSION: 29
-    ANDROID_NDK: android-ndk-r21d
+    ANDROID_SDK_VERSION: 33
+    ANDROID_NDK: android-ndk-r25b
 
 .use-debian/android_build:
   extends:

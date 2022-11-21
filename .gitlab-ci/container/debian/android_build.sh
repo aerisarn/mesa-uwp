@@ -14,7 +14,7 @@ apt-get install -y --no-remove $EPHEMERAL
 # Fetch the NDK and extract just the toolchain we want.
 ndk=$ANDROID_NDK
 curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
-  -o $ndk.zip https://dl.google.com/android/repository/$ndk-linux-x86_64.zip
+  -o $ndk.zip https://dl.google.com/android/repository/$ndk-linux.zip
 unzip -d / $ndk.zip "$ndk/toolchains/llvm/*"
 rm $ndk.zip
 # Since it was packed as a zip file, symlinks/hardlinks got turned into
@@ -90,11 +90,11 @@ for arch in \
        ccarch=armv7a-linux-androideabi
     fi
 
-    export CC=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ar
+    export CC=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
     export CC=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}${ANDROID_SDK_VERSION}-clang
     export CXX=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}${ANDROID_SDK_VERSION}-clang++
     export LD=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ld
-    export RANLIB=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ranlib
+    export RANLIB=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
 
     # The configure script doesn't know about android, but doesn't really use the host anyway it
     # seems
