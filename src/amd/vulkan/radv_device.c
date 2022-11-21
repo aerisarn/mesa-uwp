@@ -6961,6 +6961,10 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
    s_offs = z_offs = va;
 
+   /* Recommended value for better performance with 4x and 8x. */
+   ds->db_render_override2 = S_028010_DECOMPRESS_Z_ON_FLUSH(iview->image->info.samples >= 4) |
+                             S_028010_CENTROID_COMPUTATION_MODE(device->physical_device->rad_info.gfx_level >= GFX10_3);
+
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
       assert(surf->u.gfx9.surf_offset == 0);
       s_offs += surf->u.gfx9.zs.stencil_offset;

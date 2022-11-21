@@ -69,7 +69,6 @@ struct radv_blend_state {
 
 struct radv_depth_stencil_state {
    uint32_t db_render_control;
-   uint32_t db_render_override2;
 };
 
 struct radv_dsa_order_invariance {
@@ -1934,17 +1933,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_depth_stencil_state ds_state = {0};
-
-   bool has_depth_attachment = state->rp->depth_attachment_format != VK_FORMAT_UNDEFINED;
-
-   if (has_depth_attachment) {
-      /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
-      ds_state.db_render_override2 |=
-         S_028010_DECOMPRESS_Z_ON_FLUSH(state->ms && state->ms->rasterization_samples > 2);
-
-      if (pdevice->rad_info.gfx_level >= GFX10_3)
-         ds_state.db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
-   }
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;
@@ -4354,8 +4342,6 @@ radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
                                        const struct radv_depth_stencil_state *ds_state)
 {
    radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, ds_state->db_render_control);
-
-   radeon_set_context_reg(ctx_cs, R_028010_DB_RENDER_OVERRIDE2, ds_state->db_render_override2);
 }
 
 static void
