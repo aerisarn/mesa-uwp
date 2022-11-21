@@ -1500,6 +1500,8 @@ struct radv_rendering_state {
    VkRect2D area;
    uint32_t layer_count;
    uint32_t view_mask;
+   uint32_t color_samples;
+   uint32_t ds_samples;
    uint32_t max_samples;
    struct radv_sample_locations_state sample_locations;
    uint32_t color_att_count;

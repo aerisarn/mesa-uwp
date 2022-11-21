@@ -6943,7 +6943,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
                    sample_locs_info->sampleLocationsCount);
    }
 
-   uint32_t max_samples = 0;
+   uint32_t color_samples = 0, ds_samples = 0;
    struct radv_attachment color_att[MAX_RTS];
    for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
       const VkRenderingAttachmentInfo *att_info =
@@ -6967,7 +6967,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
          color_att[i].resolve_layout = att_info->resolveImageLayout;
       }
 
-      max_samples = MAX2(max_samples, color_att[i].iview->vk.image->samples);
+      color_samples = MAX2(color_samples, color_att[i].iview->vk.image->samples);
 
       VkImageLayout initial_layout = attachment_initial_layout(att_info);
       if (initial_layout != color_att[i].layout) {
@@ -7025,7 +7025,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
       assert(d_res_iview == NULL || s_res_iview == NULL || d_res_iview == s_res_iview);
       ds_att.resolve_iview = d_res_iview ? d_res_iview : s_res_iview;
 
-      max_samples = MAX2(max_samples, ds_att.iview->vk.image->samples);
+      ds_samples = ds_att.iview->vk.image->samples;
 
       if (initial_depth_layout != ds_att.layout ||
           initial_stencil_layout != ds_att.stencil_layout) {
@@ -7065,7 +7065,9 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
    render->area = pRenderingInfo->renderArea;
    render->view_mask = pRenderingInfo->viewMask;
    render->layer_count = pRenderingInfo->layerCount;
-   render->max_samples = max_samples;
+   render->color_samples = color_samples;
+   render->ds_samples = ds_samples;
+   render->max_samples = MAX2(color_samples, ds_samples);
    render->sample_locations = sample_locations;
    render->color_att_count = pRenderingInfo->colorAttachmentCount;
    typed_memcpy(render->color_att, color_att, render->color_att_count);
