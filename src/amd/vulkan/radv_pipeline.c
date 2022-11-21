@@ -69,7 +69,6 @@ struct radv_blend_state {
 };
 
 struct radv_depth_stencil_state {
-   uint32_t db_render_control;
    uint32_t db_shader_control;
 };
 
@@ -873,35 +872,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    return blend;
 }
 
-static unsigned
-radv_pipeline_color_samples(const struct vk_graphics_pipeline_state *state)
-{
-   if (radv_pipeline_has_color_attachments(state->rp)) {
-      unsigned color_attachment_samples = 0;
-      for (uint32_t i = 0; i < state->rp->color_attachment_count; i++) {
-         if (state->rp->color_attachment_formats[i] != VK_FORMAT_UNDEFINED) {
-            color_attachment_samples =
-               MAX2(color_attachment_samples, state->rp->color_attachment_samples[i]);
-         }
-      }
-
-      if (color_attachment_samples)
-         return color_attachment_samples;
-   }
-
-   return state->ms ? state->ms->rasterization_samples : 1;
-}
-
-static unsigned
-radv_pipeline_depth_samples(const struct vk_graphics_pipeline_state *state)
-{
-   if (state->rp->depth_stencil_attachment_samples && radv_pipeline_has_ds_attachments(state->rp)) {
-      return state->rp->depth_stencil_attachment_samples;
-   }
-
-   return state->ms ? state->ms->rasterization_samples : 1;
-}
-
 static bool
 radv_is_depth_write_enabled(const struct vk_depth_stencil_state *ds)
 {
@@ -1070,9 +1040,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    struct radv_multisample_state *ms = &pipeline->ms;
    unsigned num_tile_pipes = pdevice->rad_info.num_tile_pipes;
    bool out_of_order_rast = false;
-   int ps_iter_samples = 1;
-
-   ms->num_samples = state->ms ? state->ms->rasterization_samples : 1;
 
    /* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
     *
@@ -1092,17 +1059,13 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
     */
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading ||
        (state->ms && state->ms->sample_shading_enable)) {
-      uint32_t color_samples = radv_pipeline_color_samples(state);
-      float min_sample_shading;
-
       if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
-         min_sample_shading = 1.0f;
+         ms->min_sample_shading = 1.0f;
       } else {
-         min_sample_shading = state->ms->min_sample_shading;
+         ms->min_sample_shading = state->ms->min_sample_shading;
       }
 
-      ps_iter_samples = ceilf(min_sample_shading * color_samples);
-      ps_iter_samples = util_next_power_of_two(ps_iter_samples);
+      ms->sample_shading_enable = true;
    }
 
    if (state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
@@ -1117,12 +1080,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       out_of_order_rast = radv_pipeline_out_of_order_rast(pipeline, blend, state);
    }
 
-   ms->pa_sc_aa_config = 0;
-   ms->db_eqaa = S_028804_HIGH_QUALITY_INTERSECTIONS(1) | S_028804_INCOHERENT_EQAA_READS(1) |
-                 S_028804_INTERPOLATE_COMP_Z(pdevice->rad_info.gfx_level < GFX11) |
-                 S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
-
-   ms->pa_sc_mode_cntl_1 =
+   pipeline->pa_sc_mode_cntl_1 =
       S_028A4C_WALK_FENCE_ENABLE(1) | // TODO linear dst fixes
       S_028A4C_WALK_FENCE_SIZE(num_tile_pipes == 2 ? 2 : 3) |
       S_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE(out_of_order_rast) |
@@ -1131,8 +1089,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       S_028A4C_WALK_ALIGN8_PRIM_FITS_ST(1) | S_028A4C_SUPERTILE_WALK_ORDER_ENABLE(1) |
       S_028A4C_TILE_WALK_ORDER_ENABLE(1) | S_028A4C_MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE(1) |
       S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) | S_028A4C_FORCE_EOV_REZ_ENABLE(1);
-   ms->pa_sc_mode_cntl_0 = S_028A48_ALTERNATE_RBS_PER_TILE(pdevice->rad_info.gfx_level >= GFX9) |
-                           S_028A48_VPORT_SCISSOR_ENABLE(1);
 
    if (state->rs->line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
        radv_rast_prim_is_line(rast_prim)) {
@@ -1145,27 +1101,7 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
        * number of rasterization samples, and cover all samples in those pixels (unless masked out
        * or killed)."
        */
-      ms->num_samples = 1;
-   }
-
-   if (ms->num_samples > 1) {
-      uint32_t z_samples = radv_pipeline_depth_samples(state);
-      unsigned log_samples = util_logbase2(ms->num_samples);
-      unsigned log_z_samples = util_logbase2(z_samples);
-      unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
-      ms->pa_sc_mode_cntl_0 |= S_028A48_MSAA_ENABLE(1);
-      ms->db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
-                     S_028804_PS_ITER_SAMPLES(log_ps_iter_samples) |
-                     S_028804_MASK_EXPORT_NUM_SAMPLES(log_samples) |
-                     S_028804_ALPHA_TO_MASK_NUM_SAMPLES(log_samples);
-      ms->pa_sc_aa_config |=
-         S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
-         S_028BE0_MAX_SAMPLE_DIST(radv_get_default_max_sample_dist(log_samples)) |
-         S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) | /* CM_R_028BE0_PA_SC_AA_CONFIG */
-         S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
-      ms->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(ps_iter_samples > 1);
-      if (ps_iter_samples > 1)
-         pipeline->spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
+      pipeline->uses_bresenham_lines = true;
    }
 }
 
@@ -1174,7 +1110,6 @@ gfx103_pipeline_init_vrs_state(struct radv_graphics_pipeline *pipeline,
                                const struct vk_graphics_pipeline_state *state)
 {
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   struct radv_multisample_state *ms = &pipeline->ms;
    struct radv_vrs_state *vrs = &pipeline->vrs;
 
    if ((state->ms && state->ms->sample_shading_enable) ||
@@ -1194,8 +1129,8 @@ gfx103_pipeline_init_vrs_state(struct radv_graphics_pipeline *pipeline,
        * mode if PS_ITER_SAMPLE is 0, and it uses the per-draw rate.
        * The default VRS rate when sample shading is enabled is 1x1.
        */
-      if (!G_028A4C_PS_ITER_SAMPLE(ms->pa_sc_mode_cntl_1))
-         ms->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
+      if (!G_028A4C_PS_ITER_SAMPLE(pipeline->pa_sc_mode_cntl_1))
+         pipeline->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
    } else {
       vrs->pa_cl_vrs_cntl = S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
    }
@@ -1330,6 +1265,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_COLOR_WRITE_MASK;
    case VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT:
       return RADV_DYNAMIC_COLOR_BLEND_ENABLE;
+   case VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT:
+      return RADV_DYNAMIC_RASTERIZATION_SAMPLES;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1927,6 +1864,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       }
    }
 
+   if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
+      dynamic->rasterization_samples = state->ms->rasterization_samples;
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -2000,37 +1941,9 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
                                        const struct vk_graphics_pipeline_state *state,
                                        const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_depth_stencil_state ds_state = {0};
 
    ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo);
-
-   if (pdevice->rad_info.gfx_level >= GFX11) {
-      unsigned max_allowed_tiles_in_wave = 0;
-      unsigned num_samples = MAX2(radv_pipeline_color_samples(state),
-                                  radv_pipeline_depth_samples(state));
-
-      if (pdevice->rad_info.has_dedicated_vram) {
-         if (num_samples == 8)
-            max_allowed_tiles_in_wave = 7;
-         else if (num_samples == 4)
-            max_allowed_tiles_in_wave = 14;
-      } else {
-         if (num_samples == 8)
-            max_allowed_tiles_in_wave = 8;
-      }
-
-      /* TODO: We may want to disable this workaround for future chips. */
-      if (num_samples >= 4) {
-         if (max_allowed_tiles_in_wave)
-            max_allowed_tiles_in_wave--;
-         else
-            max_allowed_tiles_in_wave = 15;
-      }
-
-      ds_state.db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
-                                    S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
-   }
 
    return ds_state;
 }
@@ -2839,7 +2752,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    if (state->ms) {
       key.ps.sample_shading_enable = state->ms->sample_shading_enable;
-      if (state->ms->rasterization_samples > 1) {
+      if (!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) &&
+          state->ms->rasterization_samples > 1) {
          key.ps.num_samples = state->ms->rasterization_samples;
       }
    }
@@ -2897,7 +2811,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
    key.dynamic_rasterization_samples =
-      !!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !state->ms;
+      !!(pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) ||
+      (!!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !state->ms);
 
    key.dynamic_color_write_mask = !!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK);
 
@@ -4201,7 +4116,6 @@ static void
 radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
                                        const struct radv_depth_stencil_state *ds_state)
 {
-   radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, ds_state->db_render_control);
    radeon_set_context_reg(ctx_cs, R_02880C_DB_SHADER_CONTROL, ds_state->db_shader_control);
 }
 
@@ -4213,15 +4127,6 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
 
    radeon_set_context_reg(ctx_cs, R_02823C_CB_SHADER_MASK, blend->cb_shader_mask);
-}
-
-static void
-radv_pipeline_emit_multisample_state(struct radeon_cmdbuf *ctx_cs,
-                                     const struct radv_graphics_pipeline *pipeline)
-{
-   const struct radv_multisample_state *ms = &pipeline->ms;
-
-   radeon_set_context_reg(ctx_cs, R_028A4C_PA_SC_MODE_CNTL_1, ms->pa_sc_mode_cntl_1);
 }
 
 static void
@@ -4893,19 +4798,10 @@ radv_pipeline_emit_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_c
       S_0286D8_PS_W32_EN(ps->info.wave_size == 32) |
       S_0286D8_PARAM_GEN(param_gen));
 
-   radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->spi_baryc_cntl);
-
    radeon_set_context_reg(
       ctx_cs, R_028710_SPI_SHADER_Z_FORMAT,
       ac_get_spi_shader_z_format(ps->info.ps.writes_z, ps->info.ps.writes_stencil,
                                  ps->info.ps.writes_sample_mask, ps->info.ps.writes_mrt0_alpha));
-
-   struct radv_userdata_info *loc =
-      radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_FRAGMENT, AC_UD_PS_NUM_SAMPLES);
-   if (loc->sgpr_idx != -1) {
-      uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_FRAGMENT];
-      radeon_set_sh_reg(cs, base_reg + loc->sgpr_idx * 4, pipeline->ms.num_samples);
-   }
 }
 
 static void
@@ -5151,7 +5047,6 @@ radv_pipeline_emit_pm4(struct radv_graphics_pipeline *pipeline,
 
    radv_pipeline_emit_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_emit_blend_state(ctx_cs, pipeline, blend);
-   radv_pipeline_emit_multisample_state(ctx_cs, pipeline);
    radv_pipeline_emit_vgt_gs_mode(ctx_cs, pipeline);
    radv_pipeline_emit_vertex_shader(ctx_cs, cs, pipeline);
    radv_pipeline_emit_mesh_shader(ctx_cs, cs, pipeline);
@@ -5412,7 +5307,6 @@ static void
 radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
                          const struct radv_graphics_pipeline_create_info *extra,
                          struct radv_blend_state *blend_state,
-                         struct radv_depth_stencil_state *ds_state,
                          const struct vk_graphics_pipeline_state *state,
                          uint32_t *vgt_gs_out_prim_type)
 {
@@ -5444,11 +5338,11 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
    }
 
    if (radv_pipeline_has_ds_attachments(state->rp)) {
-      ds_state->db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
-      ds_state->db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
-      ds_state->db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
-      ds_state->db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
-      ds_state->db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
+      pipeline->db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
+      pipeline->db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
+      pipeline->db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
+      pipeline->db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
+      pipeline->db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
    }
 }
 
@@ -5529,8 +5423,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
    }
-
-   pipeline->spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 
    uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &state);
 
@@ -5620,7 +5512,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
 
    if (extra) {
-      radv_pipeline_init_extra(pipeline, extra, &blend, &ds_state, &state, &vgt_gs_out_prim_type);
+      radv_pipeline_init_extra(pipeline, extra, &blend, &state, &vgt_gs_out_prim_type);
    }
 
    radv_pipeline_emit_pm4(pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &state);

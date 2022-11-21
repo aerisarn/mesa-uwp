@@ -135,6 +135,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .depth_clamp_enable = 0u,
    .color_write_mask = 0u,
    .color_blend_enable = 0u,
+   .rasterization_samples = VK_SAMPLE_COUNT_1_BIT,
 };
 
 static void
@@ -293,6 +294,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(color_write_mask, RADV_DYNAMIC_COLOR_WRITE_MASK);
 
    RADV_CMP_COPY(color_blend_enable, RADV_DYNAMIC_COLOR_BLEND_ENABLE);
+
+   RADV_CMP_COPY(rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
 
 #undef RADV_CMP_COPY
 
@@ -954,6 +957,37 @@ radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *
    }
 }
 
+static ALWAYS_INLINE unsigned
+radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   if (pipeline->uses_bresenham_lines) {
+      return 1;
+   }
+
+   return MAX2(1, d->rasterization_samples);
+}
+
+static ALWAYS_INLINE unsigned
+radv_get_ps_iter_samples(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   unsigned ps_iter_samples = 1;
+
+   if (pipeline->ms.sample_shading_enable) {
+      unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+      unsigned color_samples = MAX2(render->color_samples, rasterization_samples);
+
+      ps_iter_samples = ceilf(pipeline->ms.min_sample_shading * color_samples);
+      ps_iter_samples = util_next_power_of_two(ps_iter_samples);
+   }
+
+   return ps_iter_samples;
+}
+
 /**
  * Convert the user sample locations to hardware sample locations (the values
  * that will be emitted by PA_SC_AA_SAMPLE_LOCS_PIXEL_*).
@@ -1052,13 +1086,10 @@ static void
 radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    uint32_t num_samples = (uint32_t)d->sample_location.per_pixel;
-   unsigned pa_sc_aa_config = pipeline->ms.pa_sc_aa_config;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t sample_locs_pixel[4][2] = {0};
    VkOffset2D sample_locs[4][8]; /* 8 is the max. sample count supported */
-   uint32_t max_sample_dist = 0;
    uint64_t centroid_priority;
 
    if (!d->sample_location.count)
@@ -1077,14 +1108,6 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 
    /* Compute the PA_SC_CENTROID_PRIORITY_* mask. */
    centroid_priority = radv_compute_centroid_priority(cmd_buffer, sample_locs[0], num_samples);
-
-   /* Compute the maximum sample distance from the specified locations. */
-   for (unsigned i = 0; i < 4; ++i) {
-      for (uint32_t j = 0; j < num_samples; j++) {
-         VkOffset2D offset = sample_locs[i][j];
-         max_sample_dist = MAX2(max_sample_dist, MAX2(abs(offset.x), abs(offset.y)));
-      }
-   }
 
    /* Emit the specified user sample locations. */
    switch (num_samples) {
@@ -1121,12 +1144,6 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
       unreachable("invalid number of samples");
    }
 
-   /* Emit the maximum sample distance and the centroid priority. */
-   pa_sc_aa_config &= C_028BE0_MAX_SAMPLE_DIST;
-   pa_sc_aa_config |= S_028BE0_MAX_SAMPLE_DIST(max_sample_dist);
-
-   radeon_set_context_reg(cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
-
    radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
    radeon_emit(cs, centroid_priority);
    radeon_emit(cs, centroid_priority >> 32);
@@ -1148,21 +1165,6 @@ radv_emit_inline_push_consts(struct radv_device *device, struct radeon_cmdbuf *c
 
    radeon_set_sh_reg_seq(cs, base_reg + loc->sgpr_idx * 4, loc->num_sgprs);
    radeon_emit_array(cs, values, loc->num_sgprs);
-}
-
-static void
-radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
-                              struct radv_graphics_pipeline *pipeline)
-{
-   int num_samples = pipeline->ms.num_samples;
-   struct radv_graphics_pipeline *old_pipeline = cmd_buffer->state.emitted_graphics_pipeline;
-
-   if (old_pipeline && num_samples == old_pipeline->ms.num_samples)
-      return;
-
-   radv_emit_default_sample_locations(cmd_buffer->cs, num_samples);
-
-   cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
 struct radv_bin_size_entry {
@@ -1195,8 +1197,7 @@ radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
    const unsigned fmask_tag_part =
       (fmask_tag_count * rb_count / pipe_count) * fmask_tag_size * pipe_count;
 
-   const unsigned total_samples =
-      1u << G_028BE0_MSAA_NUM_SAMPLES(pipeline->ms.pa_sc_aa_config);
+   const unsigned total_samples = radv_get_rasterization_samples(cmd_buffer);
    const unsigned samples_log = util_logbase2_ceil(total_samples);
 
    unsigned color_bytes_per_pixel = 0;
@@ -1483,8 +1484,8 @@ radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
       util_logbase2_ceil(pdevice->rad_info.max_render_backends / pdevice->rad_info.max_se);
    unsigned log_num_se = util_logbase2_ceil(pdevice->rad_info.max_se);
 
-   unsigned total_samples = 1u << G_028BE0_MSAA_NUM_SAMPLES(pipeline->ms.pa_sc_aa_config);
-   unsigned ps_iter_samples = 1u << G_028804_PS_ITER_SAMPLES(pipeline->ms.db_eqaa);
+   unsigned total_samples = radv_get_rasterization_samples(cmd_buffer);
+   unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
    unsigned effective_samples = total_samples;
    unsigned color_bytes_per_pixel = 0;
 
@@ -1881,8 +1882,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.emitted_graphics_pipeline == pipeline)
       return;
 
-   radv_update_multisample_state(cmd_buffer, pipeline);
-
    cmd_buffer->scratch_size_per_wave_needed =
       MAX2(cmd_buffer->scratch_size_per_wave_needed, pipeline->base.scratch_bytes_per_wave);
    cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted, pipeline->base.max_waves);
@@ -1910,7 +1909,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE |
                                  RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE |
-                                 RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
+                                 RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE |
+                                 RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim))
@@ -1927,20 +1928,19 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
 
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_mode_cntl_0 != pipeline->ms.pa_sc_mode_cntl_0)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
-       cmd_buffer->state.emitted_graphics_pipeline->ms.pa_sc_aa_config != pipeline->ms.pa_sc_aa_config ||
-       cmd_buffer->state.emitted_graphics_pipeline->ms.db_eqaa != pipeline->ms.db_eqaa)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
-
-   if (!cmd_buffer->state.emitted_graphics_pipeline ||
        memcmp(cmd_buffer->state.emitted_graphics_pipeline->cb_blend_control,
               pipeline->cb_blend_control, sizeof(pipeline->cb_blend_control)) ||
        memcmp(cmd_buffer->state.emitted_graphics_pipeline->sx_mrt_blend_opt,
               pipeline->sx_mrt_blend_opt, sizeof(pipeline->sx_mrt_blend_opt)))
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE;
+
+   if (!cmd_buffer->state.emitted_graphics_pipeline ||
+       cmd_buffer->state.emitted_graphics_pipeline->ms.sample_shading_enable != pipeline->ms.sample_shading_enable ||
+       cmd_buffer->state.emitted_graphics_pipeline->ms.min_sample_shading != pipeline->ms.min_sample_shading ||
+       cmd_buffer->state.emitted_graphics_pipeline->uses_bresenham_lines != pipeline->uses_bresenham_lines ||
+       cmd_buffer->state.emitted_graphics_pipeline->pa_sc_mode_cntl_1 != pipeline->pa_sc_mode_cntl_1 ||
+       cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
@@ -2479,10 +2479,7 @@ static void
 radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   unsigned pa_sc_aa_config = pipeline->ms.pa_sc_aa_config;
-   unsigned db_eqaa = pipeline->ms.db_eqaa;
 
    if (pdevice->rad_info.gfx_level >= GFX9) {
       uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
@@ -2503,19 +2500,11 @@ radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
                S_028C4C_UNDER_RAST_ENABLE(1) | S_028C4C_UNDER_RAST_SAMPLE_SELECT(0) |
                S_028C4C_PBB_UNCERTAINTY_REGION_ENABLE(0);
          }
-
-         /* Adjust MSAA state if conservative rasterization is enabled. */
-         pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
-         db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) |
-                    S_028804_OVERRASTERIZATION_AMOUNT(4);
       }
 
       radeon_set_context_reg(cmd_buffer->cs, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
                              pa_sc_conservative_rast);
    }
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
-   radeon_set_context_reg(cmd_buffer->cs, R_028804_DB_EQAA, db_eqaa);
 }
 
 static void
@@ -2527,6 +2516,83 @@ radv_emit_depth_clamp_enable(struct radv_cmd_buffer *cmd_buffer)
                           S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
                           S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE) |
                           S_02800C_DISABLE_VIEWPORT_CLAMP(mode == RADV_DEPTH_CLAMP_MODE_DISABLED));
+}
+
+static unsigned
+radv_get_pa_sc_mode_cntl_1(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+   unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
+
+   if (rasterization_samples) {
+      unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
+
+      pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(ps_iter_samples > 1);
+   }
+
+   return pa_sc_mode_cntl_1;
+}
+
+static void
+radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   unsigned pa_sc_mode_cntl_1 = radv_get_pa_sc_mode_cntl_1(cmd_buffer);
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
+   unsigned db_render_control = pipeline->db_render_control;
+
+   if (!d->sample_location.count)
+      radv_emit_default_sample_locations(cmd_buffer->cs, rasterization_samples);
+
+   if (rasterization_samples > 1) {
+      unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
+
+      if (ps_iter_samples > 1)
+         spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
+   }
+
+   if (pdevice->rad_info.gfx_level >= GFX11) {
+      unsigned num_samples = render->max_samples;
+      unsigned max_allowed_tiles_in_wave = 0;
+
+      if (pdevice->rad_info.has_dedicated_vram) {
+         if (num_samples == 8)
+            max_allowed_tiles_in_wave = 7;
+         else if (num_samples == 4)
+            max_allowed_tiles_in_wave = 14;
+      } else {
+         if (num_samples == 8)
+            max_allowed_tiles_in_wave = 8;
+      }
+
+      /* TODO: We may want to disable this workaround for future chips. */
+      if (num_samples >= 4) {
+         if (max_allowed_tiles_in_wave)
+            max_allowed_tiles_in_wave--;
+         else
+            max_allowed_tiles_in_wave = 15;
+      }
+
+      db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
+                           S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
+   }
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028000_DB_RENDER_CONTROL, db_render_control);
+   radeon_set_context_reg(cmd_buffer->cs, R_0286E0_SPI_BARYC_CNTL, spi_baryc_cntl);
+   radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
+
+   /* Pass the number of samples to the fragment shader because it might be needed. */
+   struct radv_userdata_info *loc =
+      radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_FRAGMENT, AC_UD_PS_NUM_SAMPLES);
+   if (loc->sgpr_idx != -1) {
+      uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_FRAGMENT];
+      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
+   }
 }
 
 static void
@@ -3477,7 +3543,7 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlus
 {
    bool has_perfect_queries = cmd_buffer->state.perfect_occlusion_queries_enabled;
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   uint32_t pa_sc_mode_cntl_1 = pipeline ? pipeline->ms.pa_sc_mode_cntl_1 : 0;
+   uint32_t pa_sc_mode_cntl_1 = pipeline ? radv_get_pa_sc_mode_cntl_1(cmd_buffer) : 0;
    uint32_t db_count_control;
 
    if (!enable_occlusion_queries) {
@@ -3909,18 +3975,6 @@ radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_line_stipple_enable(struct radv_cmd_buffer *cmd_buffer)
-{
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   unsigned pa_sc_mode_cntl_0 = pipeline->ms.pa_sc_mode_cntl_0;
-
-   pa_sc_mode_cntl_0 |= S_028A48_LINE_STIPPLE_ENABLE(d->stippled_line_enable);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028A48_PA_SC_MODE_CNTL_0, pa_sc_mode_cntl_0);
-}
-
-static void
 radv_emit_alpha_to_coverage_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
@@ -3986,6 +4040,75 @@ radv_emit_color_blend_enable(struct radv_cmd_buffer *cmd_buffer)
       radeon_set_context_reg_seq(cmd_buffer->cs, R_028760_SX_MRT0_BLEND_OPT, MAX_RTS);
       radeon_emit_array(cmd_buffer->cs, sx_mrt_blend_opt, MAX_RTS);
    }
+}
+
+static void
+radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned log_samples = util_logbase2(rasterization_samples);
+   unsigned pa_sc_aa_config = 0;
+   unsigned max_sample_dist = 0;
+   unsigned db_eqaa;
+
+   db_eqaa = S_028804_HIGH_QUALITY_INTERSECTIONS(1) | S_028804_INCOHERENT_EQAA_READS(1) |
+             S_028804_INTERPOLATE_COMP_Z(1) | S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
+
+   if (pdevice->rad_info.gfx_level >= GFX9 &&
+       d->conservative_rast_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+      /* Adjust MSAA state if conservative rasterization is enabled. */
+      db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) | S_028804_OVERRASTERIZATION_AMOUNT(4);
+      pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
+   }
+
+   if (!d->sample_location.count) {
+      max_sample_dist = radv_get_default_max_sample_dist(log_samples);
+   } else {
+      uint32_t num_samples = (uint32_t)d->sample_location.per_pixel;
+      VkOffset2D sample_locs[4][8]; /* 8 is the max. sample count supported */
+
+      /* Convert the user sample locations to hardware sample locations. */
+      radv_convert_user_sample_locs(&d->sample_location, 0, 0, sample_locs[0]);
+      radv_convert_user_sample_locs(&d->sample_location, 1, 0, sample_locs[1]);
+      radv_convert_user_sample_locs(&d->sample_location, 0, 1, sample_locs[2]);
+      radv_convert_user_sample_locs(&d->sample_location, 1, 1, sample_locs[3]);
+
+      /* Compute the maximum sample distance from the specified locations. */
+      for (unsigned i = 0; i < 4; ++i) {
+         for (uint32_t j = 0; j < num_samples; j++) {
+            VkOffset2D offset = sample_locs[i][j];
+            max_sample_dist = MAX2(max_sample_dist, MAX2(abs(offset.x), abs(offset.y)));
+         }
+      }
+   }
+
+   if (rasterization_samples > 1) {
+      unsigned z_samples = MAX2(render->ds_samples, rasterization_samples);
+      unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
+      unsigned log_z_samples = util_logbase2(z_samples);
+      unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
+
+      db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
+                 S_028804_PS_ITER_SAMPLES(log_ps_iter_samples) |
+                 S_028804_MASK_EXPORT_NUM_SAMPLES(log_samples) |
+                 S_028804_ALPHA_TO_MASK_NUM_SAMPLES(log_samples);
+
+      pa_sc_aa_config |= S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
+                         S_028BE0_MAX_SAMPLE_DIST(max_sample_dist) |
+                         S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) | /* CM_R_028BE0_PA_SC_AA_CONFIG */
+                         S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
+   }
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028804_DB_EQAA, db_eqaa);
+   radeon_set_context_reg(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
+   radeon_set_context_reg(cmd_buffer->cs, R_028A48_PA_SC_MODE_CNTL_0,
+                          S_028A48_ALTERNATE_RBS_PER_TILE(pdevice->rad_info.gfx_level >= GFX9) |
+                          S_028A48_VPORT_SCISSOR_ENABLE(1) |
+                          S_028A48_LINE_STIPPLE_ENABLE(d->stippled_line_enable) |
+                          S_028A48_MSAA_ENABLE(rasterization_samples > 1));
 }
 
 static void
@@ -4082,9 +4205,6 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN)
       radv_emit_tess_domain_origin(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE)
-      radv_emit_line_stipple_enable(cmd_buffer);
-
    if (states & RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE)
       radv_emit_alpha_to_coverage_enable(cmd_buffer);
 
@@ -4097,6 +4217,15 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE)
       radv_emit_color_blend_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES)
+      radv_emit_rasterization_samples(cmd_buffer);
+
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
+                 RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |
+                 RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES))
+      radv_emit_msaa_state(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -6021,11 +6150,17 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          }
       }
 
+      /* Re-emit the rasterization samples state because the SGPR idx can be different. */
+      const struct radv_shader *ps = graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+      if (ps->info.user_sgprs_locs.shader_data[AC_UD_PS_NUM_SAMPLES].sgpr_idx != -1) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+      }
+
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
 
       radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
 
-      if (graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.needs_sample_positions)
+      if (ps->info.ps.needs_sample_positions)
          cmd_buffer->sample_positions_needed = true;
 
       if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
@@ -6719,6 +6854,18 @@ radv_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer, uint32_t firstAtta
    state->dynamic.color_blend_enable = color_blend_enable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
+                                   VkSampleCountFlagBits rasterizationSamples)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.rasterization_samples = rasterizationSamples;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -8127,8 +8274,9 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
        * num_samples is also always a power of two, so the small prim precision can only be
        * a power of two between 2^-2 and 2^-6, therefore it's enough to remember the exponent.
        */
+      unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
       unsigned subpixel_bits = 256;
-      int32_t small_prim_precision_log2 = util_logbase2(pipeline->ms.num_samples) - util_logbase2(subpixel_bits);
+      int32_t small_prim_precision_log2 = util_logbase2(rasterization_samples) - util_logbase2(subpixel_bits);
       nggc_settings |= ((uint32_t) small_prim_precision_log2 << 24u);
    }
 
@@ -8159,7 +8307,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
       (RADV_CMD_DIRTY_PIPELINE |
        RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
        RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE);
+       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES);
 
    /* Check small draw status:
     * For small draw calls, we disable culling by setting the SGPR to 0.
@@ -8205,8 +8353,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 
       /* Correction for number of samples per pixel. */
       for (unsigned i = 0; i < 2; ++i) {
-         vp_scale[i] *= (float) pipeline->ms.num_samples;
-         vp_translate[i] *= (float) pipeline->ms.num_samples;
+         vp_scale[i] *= (float) cmd_buffer->state.dynamic.rasterization_samples;
+         vp_translate[i] *= (float) cmd_buffer->state.dynamic.rasterization_samples;
       }
 
       uint32_t vp_reg_values[4] = {fui(vp_scale[0]), fui(vp_scale[1]), fui(vp_translate[0]), fui(vp_translate[1])};
@@ -8268,7 +8416,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        cmd_buffer->state.graphics_pipeline->is_ngg)
       radv_emit_ngg_culling_state(cmd_buffer, info);
 
-   if ((cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK) ||
+   if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
+                                   RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES)) ||
        cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
       radv_emit_binning_state(cmd_buffer, cmd_buffer->state.graphics_pipeline);
 

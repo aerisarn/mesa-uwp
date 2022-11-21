@@ -1136,7 +1136,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_DEPTH_CLAMP_ENABLE = 1ull << 40,
    RADV_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
    RADV_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
-   RADV_DYNAMIC_ALL = (1ull << 43) - 1,
+   RADV_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
+   RADV_DYNAMIC_ALL = (1ull << 44) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1185,13 +1186,14 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE = 1ull << 40,
    RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
    RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 43) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 43,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 44,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 45,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 46,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 47,
-   RADV_CMD_DIRTY_GUARDBAND = 1ull << 48,
+   RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 44) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 44,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 45,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 46,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 47,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 48,
+   RADV_CMD_DIRTY_GUARDBAND = 1ull << 49,
 };
 
 enum radv_cmd_flush_bits {
@@ -1415,6 +1417,8 @@ struct radv_dynamic_state {
    uint32_t color_write_mask;
 
    uint32_t color_blend_enable;
+
+   VkSampleCountFlagBits rasterization_samples;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1983,11 +1987,8 @@ extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
 unsigned radv_format_meta_fs_key(struct radv_device *device, VkFormat format);
 
 struct radv_multisample_state {
-   uint32_t db_eqaa;
-   uint32_t pa_sc_mode_cntl_0;
-   uint32_t pa_sc_mode_cntl_1;
-   uint32_t pa_sc_aa_config;
-   unsigned num_samples;
+   bool sample_shading_enable;
+   float min_sample_shading;
 };
 
 struct radv_vrs_state {
@@ -2098,7 +2099,6 @@ struct radv_graphics_pipeline {
    uint64_t dynamic_states;
    struct radv_multisample_state ms;
    struct radv_vrs_state vrs;
-   uint32_t spi_baryc_cntl;
    unsigned esgs_ring_size;
    unsigned gsvs_ring_size;
    uint32_t vtx_base_sgpr;
@@ -2117,6 +2117,8 @@ struct radv_graphics_pipeline {
    uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
    uint32_t vgt_tf_param;
+   uint32_t pa_sc_mode_cntl_1;
+   uint32_t db_render_control;
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;
@@ -2131,6 +2133,7 @@ struct radv_graphics_pipeline {
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;
+   bool uses_bresenham_lines;
 
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;
