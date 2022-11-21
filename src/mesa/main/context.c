@@ -708,7 +708,7 @@ init_attrib_groups(struct gl_context *ctx)
    ctx->TileRasterOrderIncreasingX = GL_TRUE;
    ctx->TileRasterOrderIncreasingY = GL_TRUE;
    ctx->NewState = _NEW_ALL;
-   ctx->NewDriverState = ~0;
+   ctx->NewDriverState = ST_ALL_STATES_MASK;
    ctx->ErrorValue = GL_NO_ERROR;
    ctx->ShareGroupReset = false;
    ctx->VertexProgram._VaryingInputs = VERT_BIT_ALL;
@@ -1278,7 +1278,7 @@ _mesa_copy_context( const struct gl_context *src, struct gl_context *dst,
    /* XXX FIXME:  Call callbacks?
     */
    dst->NewState = _NEW_ALL;
-   dst->NewDriverState = ~0;
+   dst->NewDriverState = ST_ALL_STATES_MASK;
 }
 
 

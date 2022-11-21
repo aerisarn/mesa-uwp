@@ -354,8 +354,8 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
    /* Restore pipe state */
    cso_restore_state(cso, 0);
    ctx->Array.NewVertexElements = true;
-   st->dirty |= ST_NEW_VERTEX_ARRAYS |
-                ST_NEW_FS_CONSTANTS;
+   ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS |
+                          ST_NEW_FS_CONSTANTS;
 }
 
 

@@ -382,11 +382,11 @@ update_program(struct gl_context *ctx)
    if (st->lower_point_size && last_vertex_stage_dirty &&
        !ctx->VertexProgram.PointSizeEnabled && !ctx->PointSizeIsSet) {
       if (ctx->GeometryProgram._Current) {
-         st->dirty |= ST_NEW_GS_CONSTANTS;
+         ctx->NewDriverState |= ST_NEW_GS_CONSTANTS;
       } else if (ctx->TessEvalProgram._Current) {
-         st->dirty |= ST_NEW_TES_CONSTANTS;
+         ctx->NewDriverState |= ST_NEW_TES_CONSTANTS;
       } else {
-         st->dirty |= ST_NEW_VS_CONSTANTS;
+         ctx->NewDriverState |= ST_NEW_VS_CONSTANTS;
       }
    }
 

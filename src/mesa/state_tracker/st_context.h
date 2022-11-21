@@ -249,8 +249,6 @@ struct st_context
          PIPE_MAX_SAMPLE_LOCATION_GRID_SIZE * 32];
    } state;
 
-   uint64_t dirty; /**< dirty states */
-
    /** This masks out unused shader resources. Only valid in draw calls. */
    uint64_t active_states;
 

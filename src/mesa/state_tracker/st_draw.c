@@ -86,7 +86,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
    st_invalidate_readpix_cache(st);
 
    /* Validate state. */
-   if ((st->dirty | ctx->NewDriverState) & st->active_states & state_mask) {
+   if (ctx->NewDriverState & st->active_states & state_mask) {
       st_validate_state(st, pipeline);
    }
 

@@ -77,15 +77,7 @@ void st_destroy_atoms( struct st_context *st )
 void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
 {
    struct gl_context *ctx = st->ctx;
-   uint64_t dirty, pipeline_mask;
-   uint32_t dirty_lo, dirty_hi;
-
-   /* Get Mesa driver state.
-    *
-    * Inactive states are shader states not used by shaders at the moment.
-    */
-   st->dirty |= ctx->NewDriverState & st->active_states & ST_ALL_STATES_MASK;
-   ctx->NewDriverState &= ~st->dirty;
+   uint64_t pipeline_mask;
 
    /* Get pipeline state. */
    switch (pipeline) {
@@ -125,12 +117,15 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
       unreachable("Invalid pipeline specified");
    }
 
-   dirty = st->dirty & pipeline_mask;
+   /* Inactive states are shader states not used by shaders at the moment. */
+   uint64_t dirty = ctx->NewDriverState & st->active_states & pipeline_mask;
    if (!dirty)
       return;
 
-   dirty_lo = dirty;
-   dirty_hi = dirty >> 32;
+   ctx->NewDriverState &= ~dirty;
+
+   uint32_t dirty_lo = dirty;
+   uint32_t dirty_hi = dirty >> 32;
 
    /* Update states.
     *
@@ -140,7 +135,4 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
       update_functions[u_bit_scan(&dirty_lo)](st);
    while (dirty_hi)
       update_functions[32 + u_bit_scan(&dirty_hi)](st);
-
-   /* Clear the render or compute state bits. */
-   st->dirty &= ~pipeline_mask;
 }
