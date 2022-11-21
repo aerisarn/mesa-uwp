@@ -3663,26 +3663,26 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
          pipeline->ds.rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
          pipeline->ds.rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
          pipeline->ds.rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_ZFUNC__MASK;
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
          pipeline->ds.rb_depth_cntl_mask &=
             ~(A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE);
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
          pipeline->ds.rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
                                                 A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
                                                 A6XX_RB_STENCIL_CONTROL_STENCIL_READ);
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_STENCIL_OP:
          pipeline->ds.rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_FUNC__MASK |
@@ -3693,7 +3693,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
                                                 A6XX_RB_STENCIL_CONTROL_FAIL_BF__MASK |
                                                 A6XX_RB_STENCIL_CONTROL_ZPASS_BF__MASK |
                                                 A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK);
-         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_DS);
          break;
       case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
          pipeline->rast.gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_POLY_OFFSET;
@@ -3759,7 +3759,7 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
       case VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT:
          pipeline->dynamic_state_mask |=
             BIT(TU_DYNAMIC_STATE_RAST)  |
-            BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+            BIT(TU_DYNAMIC_STATE_DS);
          pipeline->rast.gras_cl_cntl_mask &=
             ~A6XX_GRAS_CL_CNTL_Z_CLAMP_ENABLE;
          pipeline->rast.rb_depth_cntl_mask &=
@@ -3919,8 +3919,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
             BIT(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) |
             BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) |
             BIT(VK_DYNAMIC_STATE_STENCIL_REFERENCE) |
-            BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL) |
-            BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL) |
+            BIT(TU_DYNAMIC_STATE_DS) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
          pipeline->shared_consts = library->shared_consts;
       }
@@ -4437,11 +4436,6 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    }
 
    pipeline->ds.rb_depth_cntl = rb_depth_cntl;
-
-   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2)) {
-      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
-      tu_cs_emit(&cs, rb_stencil_cntl);
-   }
    pipeline->ds.rb_stencil_cntl = rb_stencil_cntl;
 
    /* the remaining draw states arent used if there is no d/s, leave them empty */
@@ -4495,7 +4489,10 @@ tu_pipeline_builder_parse_rast_ds(struct tu_pipeline_builder *builder,
       pipeline->rast.rb_depth_cntl_mask & pipeline->ds.rb_depth_cntl_mask;
 
    struct tu_cs cs;
-   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_DS, 4)) {
+      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
+      tu_cs_emit(&cs, pipeline->ds.rb_stencil_cntl);
+
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
       if (pipeline->output.rb_depth_cntl_disable)
          tu_cs_emit(&cs, 0);

@@ -2829,8 +2829,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
     */
    UPDATE_REG(rast, gras_su_cntl, RAST);
    UPDATE_REG(rast, gras_cl_cntl, RAST);
-   UPDATE_REG(rast_ds, rb_depth_cntl, RB_DEPTH_CNTL);
-   UPDATE_REG(ds, rb_stencil_cntl, RB_STENCIL_CNTL);
+   UPDATE_REG(rast_ds, rb_depth_cntl, DS);
+   UPDATE_REG(ds, rb_stencil_cntl, DS);
    UPDATE_REG(rast, pc_raster_cntl, PC_RASTER_CNTL);
    UPDATE_REG(rast, vpc_unknown_9107, PC_RASTER_CNTL);
    UPDATE_REG(blend, sp_blend_cntl, BLEND);
@@ -2880,7 +2880,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    }
 
    if (pipeline->output.rb_depth_cntl_disable)
-      cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
+      cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3101,7 +3101,7 @@ tu_CmdSetDepthTestEnableEXT(VkCommandBuffer commandBuffer,
    if (depthTestEnable)
       cmd->state.rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3115,7 +3115,7 @@ tu_CmdSetDepthWriteEnableEXT(VkCommandBuffer commandBuffer,
    if (depthWriteEnable)
       cmd->state.rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3129,7 +3129,7 @@ tu_CmdSetDepthCompareOpEXT(VkCommandBuffer commandBuffer,
    cmd->state.rb_depth_cntl |=
       A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(depthCompareOp));
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3143,7 +3143,7 @@ tu_CmdSetDepthBoundsTestEnableEXT(VkCommandBuffer commandBuffer,
    if (depthBoundsTestEnable)
       cmd->state.rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_DEPTH_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3164,7 +3164,7 @@ tu_CmdSetStencilTestEnableEXT(VkCommandBuffer commandBuffer,
          A6XX_RB_STENCIL_CONTROL_STENCIL_READ;
    }
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_STENCIL_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3205,7 +3205,7 @@ tu_CmdSetStencilOpEXT(VkCommandBuffer commandBuffer,
          A6XX_RB_STENCIL_CONTROL_ZFAIL_BF(tu6_stencil_op(depthFailOp));
    }
 
-   cmd->state.dirty |= TU_CMD_DIRTY_RB_STENCIL_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3346,7 +3346,7 @@ tu_CmdSetDepthClampEnableEXT(VkCommandBuffer commandBuffer,
    cmd->state.rb_depth_cntl =
       (cmd->state.rb_depth_cntl & ~A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE) |
       COND(depthClampEnable, A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE);
-   cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_RB_DEPTH_CNTL;
+   cmd->state.dirty |= TU_CMD_DIRTY_RAST | TU_CMD_DIRTY_DS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4966,8 +4966,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       return VK_SUCCESS;
 
    bool dirty_lrz =
-      dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL |
-                          TU_CMD_DIRTY_RB_STENCIL_CNTL | TU_CMD_DIRTY_BLEND);
+      dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_DS | TU_CMD_DIRTY_BLEND);
 
    if (dirty_lrz) {
       struct tu_cs cs;
@@ -5010,8 +5009,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                     gras_cl_cntl, cmd->state.polygon_mode);
    }
 
-   if (dirty & TU_CMD_DIRTY_RB_DEPTH_CNTL) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2);
+   if (dirty & TU_CMD_DIRTY_DS) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_DS, 4);
       uint32_t rb_depth_cntl = cmd->state.rb_depth_cntl;
 
       if ((rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE) ||
@@ -5026,10 +5025,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          rb_depth_cntl = 0;
 
       tu_cs_emit_regs(&cs, A6XX_RB_DEPTH_CNTL(.dword = rb_depth_cntl));
-   }
-
-   if (dirty & TU_CMD_DIRTY_RB_STENCIL_CNTL) {
-      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2);
       tu_cs_emit_regs(&cs, A6XX_RB_STENCIL_CONTROL(.dword = cmd->state.rb_stencil_cntl));
    }
 
