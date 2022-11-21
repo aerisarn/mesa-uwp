@@ -109,10 +109,13 @@ struct tu_render_pass
 
    unsigned num_views;
 
+   struct tu_subpass_attachment fragment_density_map;
+
    struct tu_subpass_attachment *subpass_attachments;
 
    struct tu_render_pass_attachment *attachments;
    bool has_cond_load_store;
+   bool has_fdm;
 
    struct tu_subpass_barrier end_barrier;
    struct tu_subpass subpasses[0];

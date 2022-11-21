@@ -170,6 +170,11 @@ struct tu_pipeline
       bool write_enable;
    } ds;
 
+   /* Misc. information provided by the fragment shader stage. */
+   struct {
+      bool fragment_density_map;
+   } fs;
+
    struct {
       unsigned num_rts;
       uint32_t rb_mrt_control[MAX_RTS], rb_mrt_control_mask;

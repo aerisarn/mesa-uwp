@@ -571,10 +571,10 @@ struct tu_cmd_buffer
 
    struct tu_descriptor_state descriptors[MAX_BIND_POINTS];
 
-   struct tu_render_pass_attachment dynamic_rp_attachments[2 * (MAX_RTS + 1)];
+   struct tu_render_pass_attachment dynamic_rp_attachments[2 * (MAX_RTS + 1) + 1];
    struct tu_subpass_attachment dynamic_color_attachments[MAX_RTS];
    struct tu_subpass_attachment dynamic_resolve_attachments[MAX_RTS + 1];
-   const struct tu_image_view *dynamic_attachments[2 * (MAX_RTS + 1)];
+   const struct tu_image_view *dynamic_attachments[2 * (MAX_RTS + 1) + 1];
 
    struct tu_render_pass dynamic_pass;
    struct tu_subpass dynamic_subpass;

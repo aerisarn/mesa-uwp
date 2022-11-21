@@ -37,6 +37,7 @@ static const struct debug_control tu_debug_options[] = {
    { "dynamic", TU_DEBUG_DYNAMIC },
    { "bos", TU_DEBUG_BOS },
    { "3d_load", TU_DEBUG_3D_LOAD },
+   { "fdm", TU_DEBUG_FDM },
    { NULL, 0 }
 };
 
