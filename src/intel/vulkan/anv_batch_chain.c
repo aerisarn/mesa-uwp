@@ -1427,9 +1427,9 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    return VK_SUCCESS;
 }
 
-static void
-chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
-                      uint32_t num_cmd_buffers)
+void
+anv_cmd_buffer_chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
+                                     uint32_t num_cmd_buffers)
 {
    if (!anv_cmd_buffer_is_chainable(cmd_buffers[0])) {
       assert(num_cmd_buffers == 1);
@@ -1470,7 +1470,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    /* Edit the tail of the command buffers to chain them all together if they
     * can be.
     */
-   chain_command_buffers(cmd_buffers, num_cmd_buffers);
+   anv_cmd_buffer_chain_command_buffers(cmd_buffers, num_cmd_buffers);
 
    for (uint32_t i = 0; i < num_cmd_buffers; i++) {
       anv_measure_submit(cmd_buffers[i]);
@@ -1683,11 +1683,12 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    return result;
 }
 
-static void
-anv_exec_batch_debug(struct anv_queue *queue, uint32_t cmd_buffer_count,
-                     struct anv_cmd_buffer **cmd_buffers,
-                     struct anv_query_pool *perf_query_pool,
-                     uint32_t perf_query_pass)
+void
+anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
+                                uint32_t cmd_buffer_count,
+                                struct anv_cmd_buffer **cmd_buffers,
+                                struct anv_query_pool *perf_query_pool,
+                                uint32_t perf_query_pass)
 {
    if (!INTEL_DEBUG(DEBUG_BATCH))
       return;
@@ -1849,8 +1850,8 @@ anv_queue_exec_locked(struct anv_queue *queue,
       }
    }
 
-   anv_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers, perf_query_pool,
-                        perf_query_pass);
+   anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
+                                   perf_query_pool, perf_query_pass);
 
    if (execbuf.syncobj_values) {
       execbuf.timeline_fences.fence_count = execbuf.syncobj_count;

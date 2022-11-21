@@ -2822,6 +2822,16 @@ struct anv_state
 anv_cmd_buffer_alloc_dynamic_state(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t size, uint32_t alignment);
 
+void
+anv_cmd_buffer_chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
+                                     uint32_t num_cmd_buffers);
+void
+anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
+                                uint32_t cmd_buffer_count,
+                                struct anv_cmd_buffer **cmd_buffers,
+                                struct anv_query_pool *perf_query_pool,
+                                uint32_t perf_query_pass);
+
 /**
  * A allocation tied to a command buffer.
  *
