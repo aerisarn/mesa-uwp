@@ -2205,8 +2205,8 @@ tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
 
    if (multiview) {
       gras_su_cntl |=
-         A6XX_GRAS_SU_CNTL_UNK17 |
-         A6XX_GRAS_SU_CNTL_MULTIVIEW_ENABLE;
+         A6XX_GRAS_SU_CNTL_MULTIVIEW_ENABLE |
+         A6XX_GRAS_SU_CNTL_RENDERTARGETINDEXINCR;
    }
 
    return gras_su_cntl;

@@ -238,6 +238,7 @@ a6xx_gen3 = dict(
         has_lrz_dir_tracking = True,
         enable_lrz_fast_clear = True,
         lrz_track_quirk = True,
+        has_per_view_viewport = True,
     )
 
 # a635, a660:
@@ -263,6 +264,7 @@ a6xx_gen4 = dict(
         has_dp4acc = True,
         enable_lrz_fast_clear = True,
         has_lrz_dir_tracking = True,
+        has_per_view_viewport = True,
     )
 
 add_gpus([
