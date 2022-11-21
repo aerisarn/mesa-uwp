@@ -763,13 +763,9 @@ v3d_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
         int i;
         int num_modifiers = ARRAY_SIZE(v3d_available_modifiers);
 
-        /* Expose DRM_FORMAT_MOD_BROADCOM_SAND128 only for PIPE_FORMAT_NV12
-         * and PIPE_FORMAT_P030, in the case of P030 we don't expose LINEAR
-         * or UIF.
-         */
-        if (format != PIPE_FORMAT_NV12 && format != PIPE_FORMAT_P030) {
-                num_modifiers--;
-        } else if (format == PIPE_FORMAT_P030 ) {
+        switch (format) {
+        case PIPE_FORMAT_P030:
+                /* Expose SAND128, but not LINEAR or UIF */
                 *count = 1;
                 if (modifiers && max > 0) {
                         modifiers[0] = DRM_FORMAT_MOD_BROADCOM_SAND128;
@@ -777,6 +773,14 @@ v3d_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                 external_only[0] = true;
                 }
                 return;
+
+        case PIPE_FORMAT_NV12:
+                /* Expose UIF, LINEAR and SAND128 */
+                break;
+
+        default:
+                /* Expose UIF and LINEAR, but not SAND128 */
+                num_modifiers--;
         }
 
         if (!modifiers) {
