@@ -355,16 +355,6 @@ do {                       \
 /** Checks is a value is a power of two. Does not handle zero. */
 #define IS_POT(v) (((v) & ((v) - 1)) == 0)
 
-/**
- * Macro for declaring an explicit conversion operator.  Defaults to an
- * implicit conversion if C++11 is not supported.
- */
-#if __cplusplus >= 201103L
-#define EXPLICIT_CONVERSION explicit
-#elif defined(__cplusplus)
-#define EXPLICIT_CONVERSION
-#endif
-
 /** Set a single bit */
 #define BITFIELD_BIT(b)      (1u << (b))
 /** Set all bits up to excluding bit b */
