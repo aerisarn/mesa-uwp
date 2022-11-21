@@ -88,6 +88,7 @@ struct scratch_layout {
    uint32_t sort_internal_offset;
 
    uint32_t ploc_prefix_sum_partition_offset;
+   uint32_t lbvh_node_offset;
 
    uint32_t ir_offset;
 };
@@ -177,10 +178,13 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       uint32_t offset = 0;
 
       uint32_t ploc_scratch_space = 0;
+      uint32_t lbvh_node_space = 0;
 
-      if (build_type(leaf_count, build_info))
+      if (build_type(leaf_count, build_info) == RADV_ACCEL_STRUCT_BUILD_TYPE_PLOC)
          ploc_scratch_space = DIV_ROUND_UP(leaf_count, PLOC_WORKGROUP_SIZE) *
                               sizeof(struct ploc_prefix_scan_partition);
+      else
+         lbvh_node_space = sizeof(struct lbvh_node_info) * internal_count;
 
       scratch->header_offset = offset;
       offset += sizeof(struct radv_ir_header);
@@ -192,10 +196,11 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       offset += requirements.keyvals_size;
 
       scratch->sort_internal_offset = offset;
-      /* Internal sorting data is not needed when PLOC is invoked,
+      /* Internal sorting data is not needed when PLOC/LBVH are invoked,
        * save space by aliasing them */
       scratch->ploc_prefix_sum_partition_offset = offset;
-      offset += MAX2(requirements.internal_size, ploc_scratch_space);
+      scratch->lbvh_node_offset = offset;
+      offset += MAX3(requirements.internal_size, ploc_scratch_space, lbvh_node_space);
 
       scratch->ir_offset = offset;
       offset += ir_leaf_size * leaf_count;
@@ -514,7 +519,7 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
 }
 
 struct bvh_state {
-   uint32_t node_offset;
+   uint32_t internal_node_base;
    uint32_t node_count;
    uint32_t scratch_offset;
 
@@ -614,7 +619,7 @@ build_leaves(VkCommandBuffer commandBuffer, uint32_t infoCount,
          bvh_states[i].leaf_node_count += buildRangeInfo->primitiveCount;
          bvh_states[i].node_count += buildRangeInfo->primitiveCount;
       }
-      bvh_states[i].node_offset = leaf_consts.dst_offset;
+      bvh_states[i].internal_node_base = leaf_consts.dst_offset;
    }
 
    cmd_buffer->state.flush_bits |= flush_bits;
@@ -694,60 +699,51 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_pipeline);
-   bool progress = true;
-   for (unsigned iter = 0; progress; ++iter) {
-      progress = false;
-      for (uint32_t i = 0; i < infoCount; ++i) {
-         if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH)
-            continue;
+                        cmd_buffer->device->meta_state.accel_struct_build.lbvh_main_pipeline);
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH)
+         continue;
 
-         if (iter && bvh_states[i].node_count == 1)
-            continue;
+      uint32_t src_scratch_offset = bvh_states[i].scratch_offset;
+      uint32_t internal_node_count = MAX2(bvh_states[i].node_count, 2) - 1;
 
-         if (!progress)
-            cmd_buffer->state.flush_bits |= flush_bits;
+      const struct lbvh_main_args consts = {
+         .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
+         .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
+         .node_info = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.lbvh_node_offset,
+         .id_count = bvh_states[i].node_count,
+         .internal_node_base = bvh_states[i].internal_node_base,
+      };
 
-         progress = true;
-
-         uint32_t dst_node_count = MAX2(1, DIV_ROUND_UP(bvh_states[i].node_count, 2));
-
-         uint32_t src_scratch_offset = bvh_states[i].scratch_offset;
-         uint32_t dst_scratch_offset =
-            (src_scratch_offset == bvh_states[i].scratch.sort_buffer_offset[0])
-               ? bvh_states[i].scratch.sort_buffer_offset[1]
-               : bvh_states[i].scratch.sort_buffer_offset[0];
-
-         uint32_t dst_node_offset = bvh_states[i].node_offset;
-
-         const struct lbvh_internal_args consts = {
-            .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
-            .src_ids = pInfos[i].scratchData.deviceAddress + src_scratch_offset,
-            .dst_ids = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
-            .dst_offset = dst_node_offset,
-            .src_count = bvh_states[i].node_count,
-         };
-
-         radv_CmdPushConstants(
-            commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.lbvh_internal_p_layout,
-            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
-         radv_unaligned_dispatch(cmd_buffer, dst_node_count, 1, 1);
-         bvh_states[i].node_offset += dst_node_count * sizeof(struct radv_ir_box_node);
-         bvh_states[i].node_count = dst_node_count;
-         bvh_states[i].internal_node_count += dst_node_count;
-         bvh_states[i].scratch_offset = dst_scratch_offset;
-      }
+      radv_CmdPushConstants(commandBuffer,
+                            cmd_buffer->device->meta_state.accel_struct_build.lbvh_main_p_layout,
+                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+      radv_unaligned_dispatch(cmd_buffer, internal_node_count, 1, 1);
+      bvh_states[i].node_count = internal_node_count;
+      bvh_states[i].internal_node_count = internal_node_count;
    }
+
+   cmd_buffer->state.flush_bits |= flush_bits;
+
+   radv_CmdBindPipeline(
+      commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+      cmd_buffer->device->meta_state.accel_struct_build.lbvh_generate_ir_pipeline);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
       if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH)
          continue;
 
-      radv_update_buffer_cp(cmd_buffer,
-                            pInfos[i].scratchData.deviceAddress +
-                               bvh_states[i].scratch.header_offset +
-                               offsetof(struct radv_ir_header, ir_internal_node_count),
-                            &bvh_states[i].internal_node_count, 4);
+      const struct lbvh_generate_ir_args consts = {
+         .bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
+         .node_info = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.lbvh_node_offset,
+         .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
+         .internal_node_base = bvh_states[i].internal_node_base,
+      };
+
+      radv_CmdPushConstants(commandBuffer,
+                            cmd_buffer->device->meta_state.accel_struct_build.lbvh_main_p_layout,
+                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+      radv_unaligned_dispatch(cmd_buffer, bvh_states[i].internal_node_count, 1, 1);
    }
 }
 
@@ -788,7 +784,7 @@ ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .ids_1 = pInfos[i].scratchData.deviceAddress + dst_scratch_offset,
          .prefix_scan_partitions = pInfos[i].scratchData.deviceAddress +
                                    bvh_states[i].scratch.ploc_prefix_sum_partition_offset,
-         .internal_node_offset = bvh_states[i].node_offset,
+         .internal_node_offset = bvh_states[i].internal_node_base,
       };
 
       radv_CmdPushConstants(commandBuffer,
