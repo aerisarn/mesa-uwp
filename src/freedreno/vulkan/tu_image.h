@@ -34,6 +34,9 @@ struct tu_image
    struct tu_bo *bo;
    uint64_t iova;
 
+   /* For fragment density map */
+   void *map;
+
    uint32_t lrz_height;
    uint32_t lrz_pitch;
    uint32_t lrz_offset;
@@ -49,6 +52,8 @@ struct tu_image_view
    struct tu_image *image; /**< VkImageViewCreateInfo::image */
 
    struct fdl6_view view;
+
+   unsigned char swizzle[4];
 
    /* for d32s8 separate depth */
    uint64_t depth_base_addr;
@@ -114,5 +119,16 @@ void
 tu_buffer_view_init(struct tu_buffer_view *view,
                     struct tu_device *device,
                     const VkBufferViewCreateInfo *pCreateInfo);
+
+struct tu_frag_area {
+   float width;
+   float height;
+};
+
+void
+tu_fragment_density_map_sample(const struct tu_image_view *fdm,
+                               uint32_t x, uint32_t y,
+                               uint32_t width, uint32_t height,
+                               uint32_t layers, struct tu_frag_area *areas);
 
 #endif /* TU_IMAGE_H */

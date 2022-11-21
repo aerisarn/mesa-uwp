@@ -2870,10 +2870,12 @@ tu_BindBufferMemory2(VkDevice device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-tu_BindImageMemory2(VkDevice device,
+tu_BindImageMemory2(VkDevice _device,
                     uint32_t bindInfoCount,
                     const VkBindImageMemoryInfo *pBindInfos)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
+
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       TU_FROM_HANDLE(tu_image, image, pBindInfos[i].image);
       TU_FROM_HANDLE(tu_device_memory, mem, pBindInfos[i].memory);
@@ -2881,8 +2883,21 @@ tu_BindImageMemory2(VkDevice device,
       if (mem) {
          image->bo = mem->bo;
          image->iova = mem->bo->iova + pBindInfos[i].memoryOffset;
+
+         if (image->vk.usage & VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT) {
+            if (!mem->bo->map) {
+               VkResult result = tu_bo_map(device, mem->bo);
+               if (result != VK_SUCCESS)
+                  return result;
+            }
+
+            image->map = (char *)mem->bo->map + pBindInfos[i].memoryOffset;
+         } else {
+            image->map = NULL;
+         }
       } else {
          image->bo = NULL;
+         image->map = NULL;
          image->iova = 0;
       }
    }

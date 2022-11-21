@@ -3892,7 +3892,8 @@ static enum tu_stage
 vk2tu_single_stage(VkPipelineStageFlags2 vk_stage, bool dst)
 {
    if (vk_stage == VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT)
+       vk_stage == VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT ||
+       vk_stage == VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT)
       return TU_STAGE_CP;
 
    if (vk_stage == VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT ||
