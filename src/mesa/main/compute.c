@@ -297,7 +297,7 @@ prepare_compute(struct gl_context *ctx)
 
    if (ctx->NewDriverState & st->active_states &
        ST_PIPELINE_COMPUTE_STATE_MASK)
-      st_validate_state(st, ST_PIPELINE_COMPUTE);
+      st_validate_state(st, ST_PIPELINE_COMPUTE_STATE_MASK);
 
 }
 

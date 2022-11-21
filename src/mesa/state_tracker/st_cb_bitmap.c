@@ -635,7 +635,7 @@ st_Bitmap(struct gl_context *ctx, GLint x, GLint y,
     */
    if (ctx->NewDriverState & st->active_states &
        ~ST_NEW_CONSTANTS & ST_PIPELINE_RENDER_STATE_MASK) {
-      st_validate_state(st, ST_PIPELINE_META);
+      st_validate_state(st, ST_PIPELINE_META_STATE_MASK);
    }
 
    struct pipe_sampler_view *view = NULL;

@@ -74,8 +74,7 @@ static_assert(GL_TRIANGLE_STRIP_ADJACENCY == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY,
 static_assert(GL_PATCHES == PIPE_PRIM_PATCHES, "enum mismatch");
 
 static inline void
-prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
-             enum st_pipeline pipeline)
+prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask)
 {
    /* Mesa core state should have been validated already */
    assert(ctx->NewState == 0x0);
@@ -87,7 +86,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
 
    /* Validate state. */
    if (ctx->NewDriverState & st->active_states & state_mask) {
-      st_validate_state(st, pipeline);
+      st_validate_state(st, state_mask);
    }
 
    /* Pin threads regularly to the same Zen CCX that the main thread is
@@ -165,7 +164,7 @@ st_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;
@@ -182,7 +181,7 @@ st_draw_gallium_multimode(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;
@@ -239,7 +238,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       return;
 
    assert(stride);
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
@@ -322,7 +321,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_start_count_bias draw = {0};
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
@@ -349,8 +348,7 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS,
-                ST_PIPELINE_RENDER_NO_VARRAYS);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS);
 
    struct pipe_context *pipe = st->pipe;
    uint32_t velem_mask = ctx->VertexProgram._Current->info.inputs_read;
@@ -516,7 +514,7 @@ st_hw_select_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;
@@ -537,7 +535,7 @@ st_hw_select_draw_gallium_multimode(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;

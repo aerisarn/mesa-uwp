@@ -74,51 +74,12 @@ void st_destroy_atoms( struct st_context *st )
  * Update all derived state:
  */
 
-void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
+void st_validate_state(struct st_context *st, uint64_t pipeline_state_mask)
 {
    struct gl_context *ctx = st->ctx;
-   uint64_t pipeline_mask;
-
-   /* Get pipeline state. */
-   switch (pipeline) {
-   case ST_PIPELINE_RENDER:
-   case ST_PIPELINE_RENDER_NO_VARRAYS:
-      if (pipeline == ST_PIPELINE_RENDER)
-         pipeline_mask = ST_PIPELINE_RENDER_STATE_MASK;
-      else
-         pipeline_mask = ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS;
-      break;
-
-   case ST_PIPELINE_CLEAR:
-      pipeline_mask = ST_PIPELINE_CLEAR_STATE_MASK;
-      break;
-
-   case ST_PIPELINE_META:
-      pipeline_mask = ST_PIPELINE_META_STATE_MASK;
-      break;
-
-   case ST_PIPELINE_UPDATE_FRAMEBUFFER:
-      pipeline_mask = ST_PIPELINE_UPDATE_FB_STATE_MASK;
-      break;
-
-   case ST_PIPELINE_COMPUTE: {
-      /*
-       * We add the ST_NEW_FB_STATE bit here as well, because glBindFramebuffer
-       * acts as a barrier that breaks feedback loops between the framebuffer
-       * and textures bound to the framebuffer, even when those textures are
-       * accessed by compute shaders; so we must inform the driver of new
-       * framebuffer state.
-       */
-      pipeline_mask = ST_PIPELINE_COMPUTE_STATE_MASK | ST_NEW_FB_STATE;
-      break;
-   }
-
-   default:
-      unreachable("Invalid pipeline specified");
-   }
 
    /* Inactive states are shader states not used by shaders at the moment. */
-   uint64_t dirty = ctx->NewDriverState & st->active_states & pipeline_mask;
+   uint64_t dirty = ctx->NewDriverState & st->active_states & pipeline_state_mask;
    if (!dirty)
       return;
 

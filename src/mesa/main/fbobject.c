@@ -5733,7 +5733,7 @@ _mesa_EvaluateDepthValuesARB(void)
       return;
    }
 
-   st_validate_state(st_context(ctx), ST_PIPELINE_UPDATE_FRAMEBUFFER);
+   st_validate_state(st_context(ctx), ST_PIPELINE_UPDATE_FB_STATE_MASK);
 
    ctx->pipe->evaluate_depth_buffer(ctx->pipe);
 }
