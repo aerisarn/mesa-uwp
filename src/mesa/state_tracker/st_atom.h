@@ -48,10 +48,6 @@ struct pipe_vertex_buffer;
 struct pipe_vertex_element;
 struct cso_velems_state;
 
-
-void st_init_atoms( struct st_context *st );
-void st_destroy_atoms( struct st_context *st );
-
 void
 st_setup_arrays(struct st_context *st,
                 const struct gl_vertex_program *vp,
@@ -182,10 +178,6 @@ enum {
 
 #define ST_ALL_STATES_MASK (ST_PIPELINE_RENDER_STATE_MASK | \
                             ST_PIPELINE_COMPUTE_STATE_MASK)
-
-typedef void (*st_update_func_t)(struct st_context *st);
-
-extern st_update_func_t st_update_functions[ST_NUM_ATOMS];
 
 #ifdef __cplusplus
 }

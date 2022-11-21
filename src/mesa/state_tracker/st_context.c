@@ -71,6 +71,22 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 
+/* The list of state update functions. */
+st_update_func_t st_update_functions[ST_NUM_ATOMS];
+
+static void
+init_atoms_once(void)
+{
+   STATIC_ASSERT(ARRAY_SIZE(st_update_functions) <= 64);
+
+#define ST_STATE(FLAG, st_update) st_update_functions[FLAG##_INDEX] = st_update;
+#include "st_atom_list.h"
+#undef ST_STATE
+
+   if (util_get_cpu_caps()->has_popcnt)
+      st_update_functions[ST_NEW_VERTEX_ARRAYS_INDEX] = st_update_array_with_popcnt;
+}
+
 void
 st_invalidate_buffers(struct st_context *st)
 {
@@ -331,7 +347,6 @@ st_context_free_zombie_objects(struct st_context *st)
 static void
 st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
 {
-   st_destroy_atoms(st);
    st_destroy_draw(st);
    st_destroy_clear(st);
    st_destroy_bitmap(st);
@@ -475,7 +490,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->cso_context = cso_create_context(pipe, cso_flags);
    ctx->cso_context = st->cso_context;
 
-   st_init_atoms(st);
+   static once_flag flag = ONCE_FLAG_INIT;
+   call_once(&flag, init_atoms_once);
+
    st_init_clear(st);
    {
       enum pipe_texture_transfer_mode val = screen->get_param(screen, PIPE_CAP_TEXTURE_TRANSFER_MODES);

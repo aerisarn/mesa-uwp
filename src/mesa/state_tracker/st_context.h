@@ -508,6 +508,10 @@ st_api_destroy_drawable(struct pipe_frontend_drawable *drawable);
 void
 st_screen_destroy(struct pipe_frontend_screen *fscreen);
 
+typedef void (*st_update_func_t)(struct st_context *st);
+
+extern st_update_func_t st_update_functions[ST_NUM_ATOMS];
+
 #ifdef __cplusplus
 }
 #endif
