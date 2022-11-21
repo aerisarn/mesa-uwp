@@ -363,8 +363,12 @@ template<util_popcnt POPCNT> void ALWAYS_INLINE
 st_update_array_impl(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
+   struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
    GLbitfield enabled_user_attribs;
    GLbitfield nonzero_divisor_attribs;
+
+   if (!vao->IsDynamic && !vao->SharedAndImmutable)
+      _mesa_update_vao_derived_arrays(ctx, vao);
 
    _mesa_get_derived_vao_masks(ctx, &enabled_user_attribs,
                                &nonzero_divisor_attribs);
