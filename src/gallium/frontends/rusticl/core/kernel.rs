@@ -688,6 +688,12 @@ fn lower_and_optimize_nir_late(
      * other things we depend on
      */
     KernelArg::assign_locations(args, &mut res, nir);
+
+    /* update the has_variable_shared_mem info as we might have DCEed all of them */
+    nir.set_has_variable_shared_mem(
+        args.iter()
+            .any(|arg| arg.kind == KernelArgType::MemLocal && !arg.dead),
+    );
     dev.screen.finalize_nir(nir);
 
     nir.pass0(nir_opt_dce);
