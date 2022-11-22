@@ -118,25 +118,47 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao)
 
 /**
  * Other than setting the new VAO, this returns a VAO reference to
- * the previously-bound VAO through the parameter. The caller must call
- * _mesa_restore_draw_vao to ensure reference counting is done properly.
+ * the previously-bound VAO and the previous _VPModeInputFilter value through
+ * parameters. The caller must call _mesa_restore_draw_vao to ensure
+ * reference counting is done properly and the affected states are restored.
+ *
+ * \param ctx  GL context
+ * \param vao  VAO to set.
+ * \param vp_input_filter  Mask of enabled vertex attribs.
+ *        Possible values that can also be OR'd with each other:
+ *        - VERT_BIT_FF_ALL
+ *        - VERT_BIT_MAT_ALL
+ *        - VERT_BIT_ALL
+ *        - VERT_BIT_SELECT_RESULT_OFFSET
+ * \param old_vao  Previous bound VAO.
+ * \param old_vp_input_filter  Previous value of vp_input_filter.
  */
 void
 _mesa_save_and_set_draw_vao(struct gl_context *ctx,
                             struct gl_vertex_array_object *vao,
-                            struct gl_vertex_array_object **old_vao)
+                            GLbitfield vp_input_filter,
+                            struct gl_vertex_array_object **old_vao,
+                            GLbitfield *old_vp_input_filter)
 {
    *old_vao = ctx->Array._DrawVAO;
+   *old_vp_input_filter = ctx->VertexProgram._VPModeInputFilter;
+
    ctx->Array._DrawVAO = NULL;
+   ctx->VertexProgram._VPModeInputFilter = vp_input_filter;
    _mesa_set_draw_vao(ctx, vao);
 }
 
 void
 _mesa_restore_draw_vao(struct gl_context *ctx,
-                       struct gl_vertex_array_object *saved)
+                       struct gl_vertex_array_object *saved,
+                       GLbitfield saved_vp_input_filter)
 {
+   /* Restore states. */
    _mesa_reference_vao(ctx, &ctx->Array._DrawVAO, NULL);
    ctx->Array._DrawVAO = saved;
+   ctx->VertexProgram._VPModeInputFilter = saved_vp_input_filter;
+
+   /* Update states. */
    _mesa_update_edgeflag_state_vao(ctx);
    ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
    ctx->Array.NewVertexElements = true;
@@ -151,19 +173,7 @@ void
 _mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter)
 {
    struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
-
-   assert(vao->_EnabledWithMapMode ==
-          _mesa_vao_enable_to_vp_inputs(vao->_AttributeMapMode, vao->Enabled));
-
-   /* Filter out unwanted arrays. */
-   const GLbitfield enabled = filter & vao->_EnabledWithMapMode;
-   if (ctx->Array._DrawVAOEnabledAttribs != enabled) {
-      ctx->Array._DrawVAOEnabledAttribs = enabled;
-      ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
-      ctx->Array.NewVertexElements |= true;
-   }
-
-   _mesa_set_varying_vp_inputs(ctx, enabled);
+   _mesa_set_varying_vp_inputs(ctx, filter & vao->_EnabledWithMapMode);
 }
 
 

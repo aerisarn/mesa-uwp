@@ -152,6 +152,17 @@ _mesa_vao_enable_to_vp_inputs(gl_attribute_map_mode mode, GLbitfield enabled)
    }
 }
 
+/**
+ * Return enabled vertex arrays. The bitmask is trimmed based on POS/GENERIC0
+ * remapping, and generic varyings are masked out for fixed-func shaders.
+ */
+static inline GLbitfield
+_mesa_get_enabled_vertex_arrays(const struct gl_context *ctx)
+{
+   return ctx->VertexProgram._VPModeInputFilter &
+          ctx->Array._DrawVAO->_EnabledWithMapMode;
+}
+
 
 /**
  * Return the enabled user (= non-VBO) attrib mask and the non-zero divisor
@@ -161,6 +172,7 @@ _mesa_vao_enable_to_vp_inputs(gl_attribute_map_mode mode, GLbitfield enabled)
  */
 static inline void
 _mesa_get_derived_vao_masks(const struct gl_context *ctx,
+                            const GLbitfield enabled_attribs,
                             GLbitfield *enabled_user_attribs,
                             GLbitfield *nonzero_divisor_attribs)
 {
@@ -169,10 +181,8 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
    const GLbitfield enabled_nonuser = enabled & vao->VertexAttribBufferMask;
    const GLbitfield enabled_nonzero_divisor = enabled & vao->NonZeroDivisorMask;
 
-   *enabled_user_attribs = ~enabled_nonuser &
-                           ctx->Array._DrawVAOEnabledAttribs;
-   *nonzero_divisor_attribs = enabled_nonzero_divisor &
-                              ctx->Array._DrawVAOEnabledAttribs;
+   *enabled_user_attribs = ~enabled_nonuser & enabled_attribs;
+   *nonzero_divisor_attribs = enabled_nonzero_divisor & enabled_attribs;
 
    switch (vao->_AttributeMapMode) {
    case ATTRIBUTE_MAP_MODE_POSITION:

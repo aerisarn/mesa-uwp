@@ -178,10 +178,11 @@ st_setup_arrays(struct st_context *st,
                 struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
 {
    struct gl_context *ctx = st->ctx;
+   GLbitfield enabled_attribs = _mesa_get_enabled_vertex_arrays(ctx);
 
    setup_arrays<POPCNT_NO, UPDATE_ALL>
       (st, ctx->Array._DrawVAO, vp->Base.DualSlotInputs,
-       vp_variant->vert_attrib_mask, ctx->Array._DrawVAOEnabledAttribs,
+       vp_variant->vert_attrib_mask, enabled_attribs,
        velements, vbuffer, num_vbuffers);
 }
 
@@ -195,13 +196,14 @@ template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 st_setup_current(struct st_context *st,
                  const GLbitfield inputs_read,
                  const GLbitfield dual_slot_inputs,
+                 const GLbitfield enabled_attribs,
                  struct cso_velems_state *velements,
                  struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
 {
    struct gl_context *ctx = st->ctx;
 
    /* Process values that should have better been uniforms in the application */
-   GLbitfield curmask = inputs_read & ~ctx->Array._DrawVAOEnabledAttribs;
+   GLbitfield curmask = inputs_read & ~enabled_attribs;
    if (curmask) {
       unsigned num_attribs = util_bitcount_fast<POPCNT>(curmask);
       unsigned num_dual_attribs = util_bitcount_fast<POPCNT>(curmask &
@@ -272,11 +274,12 @@ st_setup_current_user(struct st_context *st,
                       struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers)
 {
    struct gl_context *ctx = st->ctx;
+   const GLbitfield enabled_attribs = _mesa_get_enabled_vertex_arrays(ctx);
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
    const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
-   GLbitfield curmask = inputs_read & ~ctx->Array._DrawVAOEnabledAttribs;
+   GLbitfield curmask = inputs_read & ~enabled_attribs;
    /* For each attribute, make an own user buffer binding. */
    while (curmask) {
       const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
@@ -297,6 +300,7 @@ st_setup_current_user(struct st_context *st,
 
 template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 st_update_array_templ(struct st_context *st,
+                      const GLbitfield enabled_attribs,
                       const GLbitfield enabled_user_attribs,
                       const GLbitfield nonzero_divisor_attribs)
 {
@@ -323,11 +327,12 @@ st_update_array_templ(struct st_context *st,
    /* Setup arrays */
    setup_arrays<POPCNT, UPDATE>
       (st, ctx->Array._DrawVAO, dual_slot_inputs, inputs_read,
-       ctx->Array._DrawVAOEnabledAttribs, &velements, vbuffer, &num_vbuffers);
+       enabled_attribs, &velements, vbuffer, &num_vbuffers);
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup zero-stride attribs. */
    st_setup_current<POPCNT, UPDATE>(st, inputs_read, dual_slot_inputs,
+                                    enabled_attribs,
                                     &velements, vbuffer, &num_vbuffers);
 
    unsigned unbind_trailing_vbuffers =
@@ -364,13 +369,17 @@ st_update_array_impl(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
    struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
+   const GLbitfield enabled_attribs = _mesa_get_enabled_vertex_arrays(ctx);
    GLbitfield enabled_user_attribs;
    GLbitfield nonzero_divisor_attribs;
+
+   assert(vao->_EnabledWithMapMode ==
+          _mesa_vao_enable_to_vp_inputs(vao->_AttributeMapMode, vao->Enabled));
 
    if (!vao->IsDynamic && !vao->SharedAndImmutable)
       _mesa_update_vao_derived_arrays(ctx, vao);
 
-   _mesa_get_derived_vao_masks(ctx, &enabled_user_attribs,
+   _mesa_get_derived_vao_masks(ctx, enabled_attribs, &enabled_user_attribs,
                                &nonzero_divisor_attribs);
 
    /* Changing from user to non-user buffers and vice versa can switch between
@@ -381,10 +390,10 @@ st_update_array_impl(struct st_context *st)
        st->uses_user_vertex_buffers !=
        !!(st->vp_variant->vert_attrib_mask & enabled_user_attribs)) {
       st_update_array_templ<POPCNT, UPDATE_ALL>
-         (st, enabled_user_attribs, nonzero_divisor_attribs);
+         (st, enabled_attribs, enabled_user_attribs, nonzero_divisor_attribs);
    } else {
       st_update_array_templ<POPCNT, UPDATE_BUFFERS_ONLY>
-         (st, enabled_user_attribs, nonzero_divisor_attribs);
+         (st, enabled_attribs, enabled_user_attribs, nonzero_divisor_attribs);
    }
 }
 

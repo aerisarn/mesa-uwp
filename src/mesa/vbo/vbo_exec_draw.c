@@ -84,7 +84,8 @@ vbo_exec_copy_vertices(struct vbo_exec_context *exec)
  */
 static void
 vbo_exec_bind_arrays(struct gl_context *ctx,
-                     struct gl_vertex_array_object **old_vao)
+                     struct gl_vertex_array_object **old_vao,
+                     GLbitfield *old_vp_input_filter)
 {
    struct vbo_context *vbo = vbo_context(ctx);
    struct gl_vertex_array_object *vao = vbo->VAO;
@@ -148,7 +149,8 @@ vbo_exec_bind_arrays(struct gl_context *ctx,
    assert(!exec->vtx.bufferobj ||
           (vao_enabled & ~vao->VertexAttribBufferMask) == 0);
 
-   _mesa_save_and_set_draw_vao(ctx, vao, old_vao);
+   _mesa_save_and_set_draw_vao(ctx, vao, vao_filter,
+                               old_vao, old_vp_input_filter);
    _mesa_update_vao_state(ctx, vao_filter);
 }
 
@@ -320,9 +322,10 @@ vbo_exec_vtx_flush(struct vbo_exec_context *exec)
 
       if (exec->vtx.copied.nr != exec->vtx.vert_count) {
          struct gl_vertex_array_object *old_vao;
+         GLbitfield old_vp_input_filter;
 
-         /* Prepare and set the exec draws internal VAO for drawing. */
-         vbo_exec_bind_arrays(ctx, &old_vao);
+         /* Prepare and set the Begin/End internal VAO for drawing. */
+         vbo_exec_bind_arrays(ctx, &old_vao, &old_vp_input_filter);
 
          if (ctx->NewState)
             _mesa_update_state(ctx);
@@ -345,7 +348,7 @@ vbo_exec_vtx_flush(struct vbo_exec_context *exec)
          if (!persistent_mapping)
             vbo_exec_vtx_map(exec);
 
-         _mesa_restore_draw_vao(ctx, old_vao);
+         _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
       }
    }
 

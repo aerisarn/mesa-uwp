@@ -270,13 +270,15 @@ st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
 
    /* Save the Draw VAO before we override it. */
    struct gl_vertex_array_object *old_vao;
+   GLbitfield old_vp_input_filter;
 
-   _mesa_save_and_set_draw_vao(ctx, rs->VAO, &old_vao);
+   _mesa_save_and_set_draw_vao(ctx, rs->VAO, VERT_BIT_POS,
+                               &old_vao, &old_vp_input_filter);
    _mesa_update_vao_state(ctx, VERT_BIT_POS);
 
    st_feedback_draw_vbo(ctx, &rs->info, 0, &rs->draw, 1);
 
-   _mesa_restore_draw_vao(ctx, old_vao);
+   _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
 
    /* restore draw's rasterization stage depending on rendermode */
    if (ctx->RenderMode == GL_FEEDBACK) {

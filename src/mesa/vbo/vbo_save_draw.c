@@ -203,7 +203,6 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
     * which attribs have stride = 0 and whether edge flags are enabled.
     */
    const GLbitfield enabled = node->enabled_attribs[mode];
-   ctx->Array._DrawVAOEnabledAttribs = enabled;
    _mesa_set_varying_vp_inputs(ctx, enabled);
 
    if (ctx->NewState)
@@ -323,10 +322,13 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
 
    /* Save the Draw VAO before we override it. */
    const gl_vertex_processing_mode mode = ctx->VertexProgram._VPMode;
+   GLbitfield vao_filter = _vbo_get_vao_filter(mode);
    struct gl_vertex_array_object *old_vao;
+   GLbitfield old_vp_input_filter;
 
-   _mesa_save_and_set_draw_vao(ctx, node->cold->VAO[mode], &old_vao);
-   _mesa_update_vao_state(ctx, _vbo_get_vao_filter(mode));
+   _mesa_save_and_set_draw_vao(ctx, node->cold->VAO[mode], vao_filter,
+                               &old_vao, &old_vp_input_filter);
+   _mesa_update_vao_state(ctx, vao_filter);
 
    /* Need that at least one time. */
    if (ctx->NewState)
@@ -334,7 +336,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
 
    /* Return precomputed GL errors such as invalid shaders. */
    if (!ctx->ValidPrimMask) {
-      _mesa_restore_draw_vao(ctx, old_vao);
+      _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
       _mesa_error(ctx, ctx->DrawGLError, "glCallList");
       return;
    }
@@ -356,7 +358,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
    }
    info->index.gl_bo = gl_bo;
 
-   _mesa_restore_draw_vao(ctx, old_vao);
+   _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
 
    if (copy_to_current)
       playback_copy_to_current(ctx, node);
