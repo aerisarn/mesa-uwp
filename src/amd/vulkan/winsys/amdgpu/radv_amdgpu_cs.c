@@ -884,7 +884,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
                                      struct radv_winsys_sem_info *sem_info,
                                      struct radeon_cmdbuf **cs_array, unsigned cs_count,
                                      struct radeon_cmdbuf **initial_preamble_cs,
-                                     unsigned preamble_count)
+                                     unsigned preamble_count, bool uses_shadow_regs)
 {
    struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
    struct radv_amdgpu_winsys *aws = cs0->ws;
@@ -892,6 +892,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
    struct radv_amdgpu_cs_request request;
    struct radv_amdgpu_cs_ib_info ibs[1 + AMD_NUM_IP_TYPES];
    unsigned num_handles = 0;
+   uint32_t pre_ena = cs0->hw_ip == AMDGPU_HW_IP_GFX && uses_shadow_regs ? S_3F2_PRE_ENA(1) : 0;
    VkResult result;
 
    for (unsigned i = cs_count; i--;) {
@@ -918,7 +919,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
          cs->base.buf[cs->base.cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
          cs->base.buf[cs->base.cdw - 3] = next->ib.ib_mc_address;
          cs->base.buf[cs->base.cdw - 2] = next->ib.ib_mc_address >> 32;
-         cs->base.buf[cs->base.cdw - 1] = S_3F2_CHAIN(1) | S_3F2_VALID(1) | next->ib.size;
+         cs->base.buf[cs->base.cdw - 1] = S_3F2_CHAIN(1) | S_3F2_VALID(1) | pre_ena | next->ib.size;
       }
    }
 
@@ -938,6 +939,8 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
    }
 
    ibs[preamble_count] = cs0->ib;
+   if (uses_shadow_regs && cs0->hw_ip == AMDGPU_HW_IP_GFX)
+      ibs[preamble_count].flags |= AMDGPU_IB_FLAG_PREEMPT;
 
    request.ip_type = cs0->hw_ip;
    request.ip_instance = 0;
@@ -967,7 +970,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
                                       struct radv_winsys_sem_info *sem_info,
                                       struct radeon_cmdbuf **cs_array, unsigned cs_count,
                                       struct radeon_cmdbuf **initial_preamble_cs,
-                                      unsigned preamble_count)
+                                      unsigned preamble_count, bool uses_shadow_regs)
 {
    const unsigned number_of_ibs = cs_count + preamble_count;
    struct drm_amdgpu_bo_list_entry *handles = NULL;
@@ -1020,6 +1023,9 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
          cs->base.buf[cs->base.cdw - 1] =  PKT3_NOP_PAD;
          cs->is_chained = false;
       }
+
+      if (uses_shadow_regs && cs->ib.ip_type == AMDGPU_HW_IP_GFX)
+         cs->ib.flags |= AMDGPU_IB_FLAG_PREEMPT;
    }
 
    request.ip_type = last_cs->hw_ip;
@@ -1051,7 +1057,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
                                     struct radv_winsys_sem_info *sem_info,
                                     struct radeon_cmdbuf **cs_array, unsigned cs_count,
                                     struct radeon_cmdbuf *initial_preamble_cs,
-                                    struct radeon_cmdbuf *continue_preamble_cs)
+                                    struct radeon_cmdbuf *continue_preamble_cs,
+                                    bool uses_shadow_regs)
 {
    struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
    struct radeon_winsys *ws = (struct radeon_winsys *)cs0->ws;
@@ -1140,7 +1147,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
 
             ibs[j].size = size;
             ibs[j].ib_mc_address = radv_buffer_get_va(bos[j]);
-            ibs[j].flags = 0;
+            ibs[j].flags =
+               uses_shadow_regs && cs->hw_ip == AMDGPU_HW_IP_GFX ? AMDGPU_IB_FLAG_PREEMPT : 0;
             ibs[j].ip_type = cs->hw_ip;
          }
 
@@ -1187,7 +1195,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
 
          ibs[0].size = size;
          ibs[0].ib_mc_address = radv_buffer_get_va(bos[0]);
-         ibs[0].flags = 0;
+         ibs[0].flags =
+            uses_shadow_regs && cs->hw_ip == AMDGPU_HW_IP_GFX ? AMDGPU_IB_FLAG_PREEMPT : 0;
          ibs[0].ip_type = cs->hw_ip;
       }
 
@@ -1339,15 +1348,15 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
       assert(submit->preamble_count <= 1);
       result = radv_amdgpu_winsys_cs_submit_sysmem(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-         submit->initial_preamble_cs[0], submit->continue_preamble_cs);
+         submit->initial_preamble_cs[0], submit->continue_preamble_cs, submit->uses_shadow_regs);
    } else if (can_patch) {
       result = radv_amdgpu_winsys_cs_submit_chained(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-         submit->initial_preamble_cs, submit->preamble_count);
+         submit->initial_preamble_cs, submit->preamble_count, submit->uses_shadow_regs);
    } else {
       result = radv_amdgpu_winsys_cs_submit_fallback(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-         submit->initial_preamble_cs, submit->preamble_count);
+         submit->initial_preamble_cs, submit->preamble_count, submit->uses_shadow_regs);
    }
 
    return result;

@@ -195,6 +195,7 @@ struct radv_winsys_submit_info {
    struct radeon_cmdbuf **cs_array;
    struct radeon_cmdbuf **initial_preamble_cs;
    struct radeon_cmdbuf *continue_preamble_cs;
+   bool uses_shadow_regs;
 };
 
 /* Kernel effectively allows 0-31. This sets some priorities for fixed

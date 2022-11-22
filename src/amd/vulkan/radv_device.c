@@ -5846,6 +5846,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .preamble_count = 1,
       .initial_preamble_cs = preambles,
       .continue_preamble_cs = queue->state.continue_preamble_cs,
+      .uses_shadow_regs = queue->state.uses_shadow_regs,
    };
 
    for (uint32_t j = 0, advance; j < cmd_buffer_count; j += advance) {
