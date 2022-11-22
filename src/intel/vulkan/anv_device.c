@@ -535,12 +535,16 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       };
    }
 
-   device->memory.need_clflush = false;
    for (unsigned i = 0; i < device->memory.type_count; i++) {
       VkMemoryPropertyFlags props = device->memory.types[i].propertyFlags;
       if ((props & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
           !(props & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
          device->memory.need_clflush = true;
+#else
+         return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                          "Memory configuration requires flushing, but it's not implemented for this architecture");
+#endif
    }
 
    return VK_SUCCESS;
@@ -3023,8 +3027,10 @@ anv_device_init_trivial_batch(struct anv_device *device)
    anv_batch_emit(&batch, GFX7_MI_BATCH_BUFFER_END, bbe);
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
+#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    if (device->physical->memory.need_clflush)
       intel_clflush_range(batch.start, batch.next - batch.start);
+#endif
 
    return VK_SUCCESS;
 }
@@ -4392,6 +4398,7 @@ VkResult anv_FlushMappedMemoryRanges(
     uint32_t                                    memoryRangeCount,
     const VkMappedMemoryRange*                  pMemoryRanges)
 {
+#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    ANV_FROM_HANDLE(anv_device, device, _device);
 
    if (!device->physical->memory.need_clflush)
@@ -4413,7 +4420,7 @@ VkResult anv_FlushMappedMemoryRanges(
                           MIN2(pMemoryRanges[i].size,
                                mem->map_size - map_offset));
    }
-
+#endif
    return VK_SUCCESS;
 }
 
@@ -4422,6 +4429,7 @@ VkResult anv_InvalidateMappedMemoryRanges(
     uint32_t                                    memoryRangeCount,
     const VkMappedMemoryRange*                  pMemoryRanges)
 {
+#ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    ANV_FROM_HANDLE(anv_device, device, _device);
 
    if (!device->physical->memory.need_clflush)
@@ -4443,7 +4451,7 @@ VkResult anv_InvalidateMappedMemoryRanges(
 
    /* Make sure no reads get moved up above the invalidate. */
    __builtin_ia32_mfence();
-
+#endif
    return VK_SUCCESS;
 }
 
