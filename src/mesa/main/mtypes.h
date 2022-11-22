@@ -1686,10 +1686,6 @@ struct gl_vertex_array_object
    /** "Enabled" with the position/generic0 attribute aliasing resolved */
    GLbitfield _EnabledWithMapMode;
 
-   /** Which states have been changed according to the gallium definitions. */
-   bool NewVertexBuffers;
-   bool NewVertexElements;
-
    /** The index buffer (also known as the element array buffer in OpenGL). */
    struct gl_buffer_object *IndexBufferObj;
 };

@@ -519,7 +519,7 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
 {
    assert(!vao->IsDynamic);
    /* Make sure we do not run into problems with shared objects */
-   assert(!vao->SharedAndImmutable || (!vao->NewVertexBuffers && !vao->NewVertexElements));
+   assert(!vao->SharedAndImmutable);
 
    /* Limit used for common binding scanning below. */
    const GLsizeiptr MaxRelativeOffset =
@@ -801,8 +801,6 @@ _mesa_set_vao_immutable(struct gl_context *ctx,
                         struct gl_vertex_array_object *vao)
 {
    _mesa_update_vao_derived_arrays(ctx, vao);
-   vao->NewVertexBuffers = false;
-   vao->NewVertexElements = false;
    vao->SharedAndImmutable = true;
 }
 

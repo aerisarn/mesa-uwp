@@ -186,8 +186,6 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
    const GLbitfield enabled_nonuser = enabled & vao->VertexAttribBufferMask;
    const GLbitfield enabled_nonzero_divisor = enabled & vao->NonZeroDivisorMask;
 
-   assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
-
    *enabled_user_attribs = ~enabled_nonuser &
                            ctx->Array._DrawVAOEnabledAttribs;
    *nonzero_divisor_attribs = enabled_nonzero_divisor &
@@ -237,7 +235,6 @@ static inline const struct gl_vertex_buffer_binding*
 _mesa_draw_buffer_binding_from_attrib(const struct gl_vertex_array_object *vao,
                                       const struct gl_array_attributes *attrib)
 {
-   assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
    return &vao->BufferBinding[attrib->_EffBufferBindingIndex];
 }
 
@@ -249,7 +246,6 @@ static inline const struct gl_array_attributes*
 _mesa_draw_array_attrib(const struct gl_vertex_array_object *vao,
                         gl_vert_attrib attr)
 {
-   assert(!vao->NewVertexBuffers && !vao->NewVertexElements);
    const gl_attribute_map_mode map_mode = vao->_AttributeMapMode;
    return &vao->VertexAttrib[_mesa_vao_attribute_map[map_mode][attr]];
 }

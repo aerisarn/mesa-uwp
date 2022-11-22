@@ -261,10 +261,12 @@ st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
     * Just plug in position pointer now.
     */
    rs->VAO->VertexAttrib[VERT_ATTRIB_POS].Ptr = (GLubyte *) v;
-   rs->VAO->NewVertexBuffers = true;
+   ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
+
    /* Non-dynamic VAOs merge vertex buffers, which changes vertex elements. */
-   if (!rs->VAO->IsDynamic)
-      rs->VAO->NewVertexElements = true;
+   if (!rs->VAO->IsDynamic) {
+      ctx->Array.NewVertexElements = true;
+   }
 
    /* Save the Draw VAO before we override it. */
    struct gl_vertex_array_object *old_vao;
