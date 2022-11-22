@@ -235,7 +235,7 @@ _vbo_get_vao_enabled_from_vbo(gl_vertex_processing_mode vertex_processing_mode,
       return (((GLbitfield)enabled) & VERT_BIT_FF_ALL)
          | (((GLbitfield)(enabled >> VBO_MATERIAL_SHIFT)) & VERT_BIT_MAT_ALL);
    } else {
-      return ((GLbitfield)enabled) & VERT_BIT_ALL;
+      return enabled;
    }
 }
 

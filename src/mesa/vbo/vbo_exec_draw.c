@@ -112,7 +112,7 @@ vbo_exec_bind_arrays(struct gl_context *ctx,
    }
 
    /* At first disable arrays no longer needed */
-   _mesa_disable_vertex_array_attribs(ctx, vao, VERT_BIT_ALL & ~vao_enabled);
+   _mesa_disable_vertex_array_attribs(ctx, vao, ~vao_enabled);
    assert((~vao_enabled & vao->Enabled) == 0);
 
    /* Bind the buffer object */

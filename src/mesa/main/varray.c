@@ -2060,7 +2060,6 @@ _mesa_enable_vertex_array_attribs(struct gl_context *ctx,
                                   struct gl_vertex_array_object *vao,
                                   GLbitfield attrib_bits)
 {
-   assert((attrib_bits & ~VERT_BIT_ALL) == 0);
    assert(!vao->SharedAndImmutable);
 
    /* Only work on bits that are disabled */
@@ -2165,7 +2164,6 @@ _mesa_disable_vertex_array_attribs(struct gl_context *ctx,
                                    struct gl_vertex_array_object *vao,
                                    GLbitfield attrib_bits)
 {
-   assert((attrib_bits & ~VERT_BIT_ALL) == 0);
    assert(!vao->SharedAndImmutable);
 
    /* Only work on bits that are enabled */

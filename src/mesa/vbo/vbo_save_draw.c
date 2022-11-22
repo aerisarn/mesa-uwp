@@ -108,7 +108,7 @@ playback_copy_to_current(struct gl_context *ctx,
    bool color0_changed = false;
 
    /* Copy conventional attribs and generics except pos */
-   copy_vao(ctx, node->cold->VAO[VP_MODE_SHADER], ~VERT_BIT_POS & VERT_BIT_ALL,
+   copy_vao(ctx, node->cold->VAO[VP_MODE_SHADER], ~VERT_BIT_POS,
             _NEW_CURRENT_ATTRIB, GL_CURRENT_BIT, 0, &data, &color0_changed);
    /* Copy materials */
    copy_vao(ctx, node->cold->VAO[VP_MODE_FF], VERT_BIT_MAT_ALL,

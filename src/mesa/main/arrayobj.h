@@ -222,7 +222,7 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
 static inline GLbitfield
 _mesa_draw_current_bits(const struct gl_context *ctx)
 {
-   return ~ctx->Array._DrawVAOEnabledAttribs & VERT_BIT_ALL;
+   return ~ctx->Array._DrawVAOEnabledAttribs;
 }
 
 
