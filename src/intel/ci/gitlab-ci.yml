@@ -278,7 +278,6 @@ iris-cml-traces:
     GIT_STRATEGY: none
     HWCI_FREQ_MAX: "true"
     LAVA_TAGS: "cbg-0"
-  allow_failure: true
 
 iris-apl-traces-performance:
   extends:

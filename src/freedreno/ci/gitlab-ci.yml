@@ -353,4 +353,3 @@ a630-traces-performance:
     EGL_PLATFORM: surfaceless
     GIT_STRATEGY: none
     HWCI_FREQ_MAX: "true"
-  allow_failure: true

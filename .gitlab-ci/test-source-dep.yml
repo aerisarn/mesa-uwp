@@ -259,6 +259,9 @@
     - changes:
         *gallium_core_file_list
       when: manual
+  # Allow the merge to complete even before the job completes (since it won't
+  # even start until the separate script triggers on it).
+  allow_failure: true
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
