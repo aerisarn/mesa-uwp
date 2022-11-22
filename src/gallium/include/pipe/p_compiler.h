@@ -97,7 +97,7 @@ typedef unsigned char boolean;
  * CALLOC_STRUCT_CL or MALLOC_STRUCT_CL and FREE_CL should be used to allocate
  * structures that contain this.
  *
- * NOTE: Don't use PIPE_ALIGN_VAR because it causes the whole structure to be
+ * NOTE: Don't use c11 alignas because it causes the whole structure to be
  *       aligned, but we only want to align the field.
  */
 #define EXCLUSIVE_CACHELINE(decl) \
