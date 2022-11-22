@@ -4559,7 +4559,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_sample_pos_from_id:
       return emit_load_sample_pos_from_id(ctx, intr);
 
-   case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_is_helper_invocation:
       return emit_load_unary_external_function(
          ctx, intr, "dx.op.isHelperLane", DXIL_INTR_IS_HELPER_LANE);
 
@@ -6097,6 +6097,12 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
    NIR_PASS_V(s, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_system_value | nir_var_shader_out);
+   if (opts->shader_model_max < SHADER_MODEL_6_6) {
+      /* In a later pass, load_helper_invocation will be lowered to sample mask based fallback,
+       * so both load- and is- will be emulated eventually.
+       */
+      NIR_PASS_V(s, nir_lower_is_helper_invocation);
+   }
 
    if (ctx->mod.shader_kind == DXIL_HULL_SHADER)
       NIR_PASS_V(s, dxil_nir_split_tess_ctrl, &ctx->tess_ctrl_patch_constant_func);
