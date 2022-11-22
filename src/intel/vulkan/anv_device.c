@@ -1735,13 +1735,13 @@ void anv_GetPhysicalDeviceFeatures2(
          features->extendedDynamicState3ColorBlendEnable = true;
          features->extendedDynamicState3ColorWriteMask = true;
          features->extendedDynamicState3ColorBlendEquation = true;
+         features->extendedDynamicState3SampleLocationsEnable = true;
          features->extendedDynamicState3SampleMask = true;
 
          features->extendedDynamicState3RasterizationSamples = false;
          features->extendedDynamicState3AlphaToCoverageEnable = false;
          features->extendedDynamicState3ConservativeRasterizationMode = false;
          features->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
-         features->extendedDynamicState3SampleLocationsEnable = false;
          features->extendedDynamicState3ViewportWScalingEnable = false;
          features->extendedDynamicState3ViewportSwizzle = false;
          features->extendedDynamicState3ShadingRateImageEnable = false;
