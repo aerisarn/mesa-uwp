@@ -670,8 +670,8 @@ set_viewport(struct vl_compositor_state *s,
    *ptr_int++ = drawn->area.y0;
    *ptr_int++ = drawn->area.x1;
    *ptr_int++ = drawn->area.y1;
-   *ptr_int++ = drawn->translate_x;
-   *ptr_int++ = drawn->translate_y;
+   *ptr_int++ = -drawn->translate_x;
+   *ptr_int++ = -drawn->translate_y;
 
    ptr_float = (float *)ptr_int;
    *ptr_float++ = drawn->sampler0_w;
@@ -711,15 +711,14 @@ draw_layers(struct vl_compositor       *c,
 
          drawn.area = calc_drawn_area(s, layer);
          drawn.scale_x = layer->viewport.scale[0] /
-                  (float)layer->sampler_views[0]->texture->width0 * 
-                  (layer->src.br.x - layer->src.tl.x);
-         drawn.scale_y = layer->viewport.scale[1] /
-                  ((float)layer->sampler_views[0]->texture->height0 * 
-                   (s->interlaced ? 2.0 : 1.0) * 
-                   (layer->src.br.y - layer->src.tl.y));
-
-         drawn.translate_x = (int)layer->viewport.translate[0];
-         drawn.translate_y = (int)layer->viewport.translate[1];
+            ((float)layer->sampler_views[0]->texture->width0 *
+             (layer->src.br.x - layer->src.tl.x));
+         drawn.scale_y  = layer->viewport.scale[1] /
+            ((float)layer->sampler_views[0]->texture->height0 *
+             (s->interlaced ? 2.0 : 1.0) *
+             (layer->src.br.y - layer->src.tl.y));
+         drawn.translate_x = (int)(layer->src.tl.x * layer->sampler_views[0]->texture->width0);
+         drawn.translate_y = (int)(layer->src.tl.y * layer->sampler_views[0]->texture->height0);
          drawn.sampler0_w = (float)layer->sampler_views[0]->texture->width0;
          drawn.sampler0_h = (float)layer->sampler_views[0]->texture->height0;
          set_viewport(s, &drawn, samplers);
