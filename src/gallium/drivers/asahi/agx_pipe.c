@@ -1136,9 +1136,6 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
-   case PIPE_CAP_SHAREABLE_SHADERS:
-      return 1;
-
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
