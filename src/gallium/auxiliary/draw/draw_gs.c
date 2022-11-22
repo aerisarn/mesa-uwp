@@ -123,7 +123,7 @@ tgsi_fetch_gs_outputs(struct draw_geometry_shader *shader,
 }
 
 
-/*#define DEBUG_INPUTS 1*/
+#define DEBUG_INPUTS 0
 static void
 tgsi_fetch_gs_input(struct draw_geometry_shader *shader,
                     unsigned *indices,
