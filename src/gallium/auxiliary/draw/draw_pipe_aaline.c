@@ -420,13 +420,12 @@ aaline_line(struct draw_stage *stage, struct prim_header *header)
    float *pos, *tex;
    float dx = header->v[1]->data[posPos][0] - header->v[0]->data[posPos][0];
    float dy = header->v[1]->data[posPos][1] - header->v[0]->data[posPos][1];
-   float a = atan2f(dy, dx);
-   float c_a = cosf(a), s_a = sinf(a);
-   float half_length;
+   float length = sqrtf(dx * dx + dy * dy);
+   float c_a = dx / length, s_a = dy / length;
+   float half_length = 0.5 * length;
    float t_l, t_w;
    uint i;
 
-   half_length = 0.5f * sqrtf(dx * dx + dy * dy);
    half_length = half_length + 0.5f;
 
    t_w = half_width;
