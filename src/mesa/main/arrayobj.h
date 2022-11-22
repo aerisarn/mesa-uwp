@@ -154,23 +154,6 @@ _mesa_vao_enable_to_vp_inputs(gl_attribute_map_mode mode, GLbitfield enabled)
 
 
 /**
- * Helper functions for consuming backends to walk the
- * ctx->Array._DrawVAO for driver side array setup.
- * Note that mesa provides preprocessed minimal binding information
- * in the VAO. See _mesa_update_vao_derived_arrays for documentation.
- */
-
-/**
- * Return enabled vertex attribute bits for draw.
- */
-static inline GLbitfield
-_mesa_draw_array_bits(const struct gl_context *ctx)
-{
-   return ctx->Array._DrawVAOEnabledAttribs;
-}
-
-
-/**
  * Return the enabled user (= non-VBO) attrib mask and the non-zero divisor
  * attrib mask for the draw.
  *
@@ -214,15 +197,6 @@ _mesa_get_derived_vao_masks(const struct gl_context *ctx,
    default:
       break;
    }
-}
-
-/**
- * Return enabled current values attribute bits for draw.
- */
-static inline GLbitfield
-_mesa_draw_current_bits(const struct gl_context *ctx)
-{
-   return ~ctx->Array._DrawVAOEnabledAttribs;
 }
 
 

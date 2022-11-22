@@ -181,7 +181,7 @@ st_setup_arrays(struct st_context *st,
 
    setup_arrays<POPCNT_NO, UPDATE_ALL>
       (st, ctx->Array._DrawVAO, vp->Base.DualSlotInputs,
-       vp_variant->vert_attrib_mask, _mesa_draw_array_bits(ctx),
+       vp_variant->vert_attrib_mask, ctx->Array._DrawVAOEnabledAttribs,
        velements, vbuffer, num_vbuffers);
 }
 
@@ -201,7 +201,7 @@ st_setup_current(struct st_context *st,
    struct gl_context *ctx = st->ctx;
 
    /* Process values that should have better been uniforms in the application */
-   GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
+   GLbitfield curmask = inputs_read & ~ctx->Array._DrawVAOEnabledAttribs;
    if (curmask) {
       unsigned num_attribs = util_bitcount_fast<POPCNT>(curmask);
       unsigned num_dual_attribs = util_bitcount_fast<POPCNT>(curmask &
@@ -276,7 +276,7 @@ st_setup_current_user(struct st_context *st,
    const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
-   GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
+   GLbitfield curmask = inputs_read & ~ctx->Array._DrawVAOEnabledAttribs;
    /* For each attribute, make an own user buffer binding. */
    while (curmask) {
       const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
@@ -323,7 +323,7 @@ st_update_array_templ(struct st_context *st,
    /* Setup arrays */
    setup_arrays<POPCNT, UPDATE>
       (st, ctx->Array._DrawVAO, dual_slot_inputs, inputs_read,
-       _mesa_draw_array_bits(ctx), &velements, vbuffer, &num_vbuffers);
+       ctx->Array._DrawVAOEnabledAttribs, &velements, vbuffer, &num_vbuffers);
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup zero-stride attribs. */

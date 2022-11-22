@@ -108,7 +108,7 @@ static inline bool
 st_vp_uses_current_values(const struct gl_context *ctx)
 {
    const uint64_t inputs = ctx->VertexProgram._Current->info.inputs_read;
-   return _mesa_draw_current_bits(ctx) & inputs;
+   return ~ctx->Array._DrawVAOEnabledAttribs & inputs;
 }
 
 
