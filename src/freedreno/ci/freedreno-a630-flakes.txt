@@ -70,7 +70,6 @@ dEQP-EGL.functional.render.single_context.gles3.rgb888_pbuffer
 dEQP-EGL.functional.render.single_context.gles3.rgb888_window
 dEQP-EGL.functional.render.single_context.gles3.rgba8888_pbuffer
 dEQP-EGL.functional.render.single_context.gles3.rgba8888_window
-dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.sync_status.vertex
 dEQP-EGL.functional.sharing.gles2.buffer.render
 dEQP-EGL.functional.sharing.gles2.multithread.random_egl_server_sync.textures.copyteximage2d.13
 dEQP-EGL.functional.sharing.gles2.multithread.random_egl_sync.textures.copyteximage2d.0
