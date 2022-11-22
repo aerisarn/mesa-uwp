@@ -133,6 +133,8 @@ vn_CreatePipelineLayout(VkDevice device,
       break;
    }
 
+   layout->has_push_constant_ranges = pCreateInfo->pPushConstantRanges > 0;
+
    VkPipelineLayout layout_handle = vn_pipeline_layout_to_handle(layout);
    vn_async_vkCreatePipelineLayout(dev->instance, device, pCreateInfo, NULL,
                                    &layout_handle);
@@ -747,7 +749,8 @@ vn_CreateGraphicsPipelines(VkDevice device,
       struct vn_pipeline *pipeline = vn_pipeline_from_handle(pPipelines[i]);
       struct vn_pipeline_layout *layout =
          vn_pipeline_layout_from_handle(pCreateInfos[i].layout);
-      if (layout->push_descriptor_set_layout) {
+      if (layout->push_descriptor_set_layout ||
+          layout->has_push_constant_ranges) {
          pipeline->layout = vn_pipeline_layout_ref(dev, layout);
       }
       if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK))
@@ -799,7 +802,8 @@ vn_CreateComputePipelines(VkDevice device,
       struct vn_pipeline *pipeline = vn_pipeline_from_handle(pPipelines[i]);
       struct vn_pipeline_layout *layout =
          vn_pipeline_layout_from_handle(pCreateInfos[i].layout);
-      if (layout->push_descriptor_set_layout) {
+      if (layout->push_descriptor_set_layout ||
+          layout->has_push_constant_ranges) {
          pipeline->layout = vn_pipeline_layout_ref(dev, layout);
       }
       if ((pCreateInfos[i].flags & VN_PIPELINE_CREATE_SYNC_MASK))
