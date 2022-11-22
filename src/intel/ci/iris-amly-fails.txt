@@ -13,8 +13,6 @@ dEQP-GLES3.functional.texture.compressed.astc.void_extent_ldr.8x5,Fail
 dEQP-GLES3.functional.texture.compressed.astc.void_extent_ldr.8x6,Fail
 dEQP-GLES3.functional.texture.compressed.astc.void_extent_ldr.8x8,Fail
 
-dEQP-EGL.functional.sharing.gles2.multithread.random.images.copyteximage2d.12,Crash
-
 # EGL_BAD_DISPLAY is generated if display is not an EGL display connection
 # eglCreatePixmapSurface(0, 0x0000000000000000, 0x0000000000000000, { EGL_NONE });
 # // 0x0000000000000000 returned
