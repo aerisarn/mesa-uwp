@@ -164,6 +164,11 @@
   rules:
     - if: '$VALVE_FARM == "offline"'
       when: never
+    # The Valve CI Farm uses allow lists for projects/users to prevent abuse,
+    # so only enable automatic testing when running in the context of Mesa to
+    # prevent failures in forks.
+    - if: '$CI_PROJECT_NAMESPACE != "mesa"'
+      when: manual
 
 # Skips freedreno jobs if either of the farms we use are offline.
 .freedreno-farm-rules:
