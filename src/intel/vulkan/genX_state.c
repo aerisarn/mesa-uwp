@@ -181,7 +181,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    /* Emit STATE_BASE_ADDRESS on Gfx12+ because we set a default CPS_STATE and
     * those are relative to STATE_BASE_ADDRESS::DynamicStateBaseAddress.
     */
-#if GFX_VERx >= 12
+#if GFX_VER >= 12
    /* GEN:BUG:1607854226:
     *
     *  Non-pipelined state has issues with not applying in MEDIA/GPGPU mode.
@@ -233,7 +233,9 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
 
+#if GFX_VERx10 >= 125
       sba.L1CacheControl = L1CC_WB;
+#endif
    }
 #endif
 
