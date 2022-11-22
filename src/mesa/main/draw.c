@@ -151,7 +151,6 @@ void
 _mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter)
 {
    struct gl_vertex_array_object *vao = ctx->Array._DrawVAO;
-   bool new_vertex_buffers = false, new_vertex_elements = false;
 
    assert(vao->_EnabledWithMapMode ==
           _mesa_vao_enable_to_vp_inputs(vao->_AttributeMapMode, vao->Enabled));
@@ -160,13 +159,8 @@ _mesa_update_vao_state(struct gl_context *ctx, GLbitfield filter)
    const GLbitfield enabled = filter & vao->_EnabledWithMapMode;
    if (ctx->Array._DrawVAOEnabledAttribs != enabled) {
       ctx->Array._DrawVAOEnabledAttribs = enabled;
-      new_vertex_buffers = true;
-      new_vertex_elements = true;
-   }
-
-   if (new_vertex_buffers || new_vertex_elements) {
       ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
-      ctx->Array.NewVertexElements |= new_vertex_elements;
+      ctx->Array.NewVertexElements |= true;
    }
 
    _mesa_set_varying_vp_inputs(ctx, enabled);
