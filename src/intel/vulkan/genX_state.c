@@ -311,7 +311,9 @@ init_render_queue_state(struct anv_queue *queue)
     *
     * Emit this before 3DSTATE_WM_HZ_OP below.
     */
-   anv_batch_emit(&batch, GENX(3DSTATE_RASTER), rast);
+   anv_batch_emit(&batch, GENX(3DSTATE_RASTER), rast) {
+      rast.APIMode = DX101;
+   }
 
    /* SKL PRMs, Volume 2a: Command Reference: Instructions: 3DSTATE_WM_HZ_OP:
     *
