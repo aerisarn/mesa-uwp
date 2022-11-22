@@ -189,7 +189,7 @@ radeonsi-raven-va:amd64:
   variables:
     B2C_JOB_SUCCESS_REGEX: '^\+ DEQP_EXITCODE=0\r$'
     B2C_TEST_SCRIPT: ./install/deqp-runner.sh
-    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache"
+    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache,install/*,*/install/*"
 
 .kabini-test-valve:
   variables:
