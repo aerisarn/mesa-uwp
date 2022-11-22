@@ -154,7 +154,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    DBG_F(ETNA_DBG_RESOURCE_MSGS, "%p: Allocating tile status of size %zu",
          rsc, ts_bo_size);
 
-   if ((rsc->base.bind & PIPE_BIND_SCANOUT) && screen->ro->kms_fd >= 0) {
+   if ((rsc->base.bind & PIPE_BIND_SCANOUT) && screen->ro) {
       struct pipe_resource scanout_templat;
       struct winsys_handle handle;
 
