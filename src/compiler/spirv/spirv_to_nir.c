@@ -6499,6 +6499,9 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
    for (unsigned i = 0; i < entry_point->num_params; ++i) {
       struct vtn_type *param_type = b->entry_point->func->type->params[i];
 
+      b->shader->info.cs.has_variable_shared_mem |=
+         param_type->storage_class == SpvStorageClassWorkgroup;
+
       /* consider all pointers to function memory to be parameters passed
        * by value
        */
