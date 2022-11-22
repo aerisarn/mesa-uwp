@@ -203,6 +203,12 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
                                  VARYING_SLOT_POS);
       val = nir_load_var(b, var);
       break;
+   case nir_intrinsic_load_point_coord:
+      var = find_or_create_input(b, glsl_vector_type(GLSL_TYPE_FLOAT, 2),
+                                 "gl_PointCoord",
+                                 VARYING_SLOT_PNTC);
+      val = nir_load_var(b, var);
+      break;
    case nir_intrinsic_load_sample_pos:
       var = find_or_create_input(b, glsl_vec4_type(),
                                  "gl_FragCoord",
