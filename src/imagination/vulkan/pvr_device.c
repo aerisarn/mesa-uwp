@@ -1777,6 +1777,8 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
 
    pvr_device_init_default_sampler_state(device);
 
+   pvr_spm_init_scratch_buffer_store(device);
+
    if (pCreateInfo->pEnabledFeatures)
       memcpy(&device->features,
              pCreateInfo->pEnabledFeatures,
@@ -1846,6 +1848,7 @@ void pvr_DestroyDevice(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
+   pvr_spm_finish_scratch_buffer_store(device);
    pvr_queues_destroy(device);
    pvr_device_finish_tile_buffer_state(device);
    pvr_device_finish_graphics_static_clear_state(device);
