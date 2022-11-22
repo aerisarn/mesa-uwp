@@ -1137,7 +1137,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
    RADV_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
    RADV_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
-   RADV_DYNAMIC_ALL = (1ull << 44) - 1,
+   RADV_DYNAMIC_LINE_RASTERIZATION_MODE = 1ull << 44,
+   RADV_DYNAMIC_ALL = (1ull << 45) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1187,13 +1188,14 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK = 1ull << 41,
    RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 44) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 44,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 45,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 46,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 47,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 48,
-   RADV_CMD_DIRTY_GUARDBAND = 1ull << 49,
+   RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE = 1ull << 44,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 45) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 45,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 46,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 47,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 48,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 49,
+   RADV_CMD_DIRTY_GUARDBAND = 1ull << 50,
 };
 
 enum radv_cmd_flush_bits {
@@ -1419,6 +1421,8 @@ struct radv_dynamic_state {
    uint32_t color_blend_enable;
 
    VkSampleCountFlagBits rasterization_samples;
+
+   VkLineRasterizationModeEXT line_rasterization_mode;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -2133,7 +2137,6 @@ struct radv_graphics_pipeline {
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;
-   bool uses_bresenham_lines;
 
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;

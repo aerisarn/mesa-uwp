@@ -136,6 +136,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .color_write_mask = 0u,
    .color_blend_enable = 0u,
    .rasterization_samples = VK_SAMPLE_COUNT_1_BIT,
+   .line_rasterization_mode = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT,
 };
 
 static void
@@ -296,6 +297,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(color_blend_enable, RADV_DYNAMIC_COLOR_BLEND_ENABLE);
 
    RADV_CMP_COPY(rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
+
+   RADV_CMP_COPY(line_rasterization_mode, RADV_DYNAMIC_LINE_RASTERIZATION_MODE);
 
 #undef RADV_CMP_COPY
 
@@ -963,7 +966,17 @@ radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   if (pipeline->uses_bresenham_lines) {
+   if (d->line_rasterization_mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
+       radv_rast_prim_is_line(pipeline->rast_prim)) {
+      /* From the Vulkan spec 1.3.221:
+       *
+       * "When Bresenham lines are being rasterized, sample locations may all be treated as being at
+       * the pixel center (this may affect attribute and depth interpolation)."
+       *
+       * "One consequence of this is that Bresenham lines cover the same pixels regardless of the
+       * number of rasterization samples, and cover all samples in those pixels (unless masked out
+       * or killed)."
+       */
       return 1;
    }
 
@@ -1937,9 +1950,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->ms.sample_shading_enable != pipeline->ms.sample_shading_enable ||
        cmd_buffer->state.emitted_graphics_pipeline->ms.min_sample_shading != pipeline->ms.min_sample_shading ||
-       cmd_buffer->state.emitted_graphics_pipeline->uses_bresenham_lines != pipeline->uses_bresenham_lines ||
        cmd_buffer->state.emitted_graphics_pipeline->pa_sc_mode_cntl_1 != pipeline->pa_sc_mode_cntl_1 ||
-       cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control)
+       cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control ||
+       cmd_buffer->state.emitted_graphics_pipeline->rast_prim != pipeline->rast_prim)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
@@ -4218,13 +4231,15 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE)
       radv_emit_color_blend_enable(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES)
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                 RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_rasterization_samples(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE_ENABLE |
                  RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
                  RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |
-                 RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES))
+                 RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                 RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_msaa_state(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
@@ -6869,6 +6884,18 @@ radv_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetLineRasterizationModeEXT(VkCommandBuffer commandBuffer,
+                                    VkLineRasterizationModeEXT lineRasterizationMode)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.line_rasterization_mode = lineRasterizationMode;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
@@ -8417,7 +8444,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       radv_emit_ngg_culling_state(cmd_buffer, info);
 
    if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
-                                   RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES)) ||
+                                   RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                                   RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE)) ||
        cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
       radv_emit_binning_state(cmd_buffer, cmd_buffer->state.graphics_pipeline);
 

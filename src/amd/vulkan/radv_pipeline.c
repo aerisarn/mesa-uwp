@@ -1089,20 +1089,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       S_028A4C_WALK_ALIGN8_PRIM_FITS_ST(1) | S_028A4C_SUPERTILE_WALK_ORDER_ENABLE(1) |
       S_028A4C_TILE_WALK_ORDER_ENABLE(1) | S_028A4C_MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE(1) |
       S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) | S_028A4C_FORCE_EOV_REZ_ENABLE(1);
-
-   if (state->rs->line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
-       radv_rast_prim_is_line(rast_prim)) {
-      /* From the Vulkan spec 1.3.221:
-       *
-       * "When Bresenham lines are being rasterized, sample locations may all be treated as being at
-       * the pixel center (this may affect attribute and depth interpolation)."
-       *
-       * "One consequence of this is that Bresenham lines cover the same pixels regardless of the
-       * number of rasterization samples, and cover all samples in those pixels (unless masked out
-       * or killed)."
-       */
-      pipeline->uses_bresenham_lines = true;
-   }
 }
 
 static void
@@ -1267,6 +1253,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_COLOR_BLEND_ENABLE;
    case VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT:
       return RADV_DYNAMIC_RASTERIZATION_SAMPLES;
+   case VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT:
+      return RADV_DYNAMIC_LINE_RASTERIZATION_MODE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1866,6 +1854,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
       dynamic->rasterization_samples = state->ms->rasterization_samples;
+   }
+
+   if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
+      dynamic->line_rasterization_mode = state->rs->line.mode;
    }
 
    pipeline->dynamic_state.mask = states;
