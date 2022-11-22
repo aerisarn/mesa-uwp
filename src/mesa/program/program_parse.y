@@ -109,22 +109,22 @@ static struct asm_instruction *asm_instruction_copy_ctor(
 #define TRUE (!FALSE)
 #endif
 
-#define YYLLOC_DEFAULT(Current, Rhs, N)               \
-   do {                           \
-      if (N) {                     \
-    (Current).first_line = YYRHSLOC(Rhs, 1).first_line;      \
-    (Current).first_column = YYRHSLOC(Rhs, 1).first_column;   \
-    (Current).position = YYRHSLOC(Rhs, 1).position;      \
-    (Current).last_line = YYRHSLOC(Rhs, N).last_line;      \
-    (Current).last_column = YYRHSLOC(Rhs, N).last_column;      \
-      } else {                        \
-    (Current).first_line = YYRHSLOC(Rhs, 0).last_line;      \
-    (Current).last_line = (Current).first_line;         \
-    (Current).first_column = YYRHSLOC(Rhs, 0).last_column;      \
-    (Current).last_column = (Current).first_column;      \
-    (Current).position = YYRHSLOC(Rhs, 0).position         \
-       + (Current).first_column;               \
-      }                           \
+#define YYLLOC_DEFAULT(Current, Rhs, N)                          \
+   do {                                                          \
+      if (N) {                                                   \
+         (Current).first_line = YYRHSLOC(Rhs, 1).first_line;     \
+         (Current).first_column = YYRHSLOC(Rhs, 1).first_column; \
+         (Current).position = YYRHSLOC(Rhs, 1).position;         \
+         (Current).last_line = YYRHSLOC(Rhs, N).last_line;       \
+         (Current).last_column = YYRHSLOC(Rhs, N).last_column;   \
+      } else {                                                   \
+         (Current).first_line = YYRHSLOC(Rhs, 0).last_line;      \
+         (Current).last_line = (Current).first_line;             \
+         (Current).first_column = YYRHSLOC(Rhs, 0).last_column;  \
+         (Current).last_column = (Current).first_column;         \
+         (Current).position = YYRHSLOC(Rhs, 0).position          \
+         + (Current).first_column;                               \
+      }                                                          \
    } while(0)
 %}
 
@@ -334,8 +334,8 @@ option: OPTION string ';'
 
       if (!valid) {
          const char *const err_str = (state->mode == ARB_vertex)
-       ? "invalid ARB vertex program option"
-       : "invalid ARB fragment program option";
+            ? "invalid ARB vertex program option"
+            : "invalid ARB fragment program option";
 
          yyerror(& @2, state, err_str);
          YYERROR;
@@ -441,12 +441,12 @@ SAMPLE_instruction: SAMPLE_OP maskedDstReg ',' swizzleSrcReg ',' texImageUnit ',
          $$->Base.TexSrcUnit = $6;
 
          if ($8 < 0) {
-       shadow_tex = tex_mask;
+            shadow_tex = tex_mask;
 
-       $$->Base.TexSrcTarget = -$8;
-       $$->Base.TexShadow = 1;
+            $$->Base.TexSrcTarget = -$8;
+            $$->Base.TexShadow = 1;
          } else {
-       $$->Base.TexSrcTarget = $8;
+            $$->Base.TexSrcTarget = $8;
          }
 
          target_mask = (1U << $$->Base.TexSrcTarget);
@@ -458,12 +458,12 @@ SAMPLE_instruction: SAMPLE_OP maskedDstReg ',' swizzleSrcReg ',' texImageUnit ',
           * had a different shadow mode, generate an error.
           */
          if ((state->prog->TexturesUsed[$6] != 0)
-        && ((state->prog->TexturesUsed[$6] != target_mask)
-            || ((state->prog->ShadowSamplers & tex_mask)
-           != shadow_tex))) {
-       yyerror(& @8, state,
-          "multiple targets used on one texture image unit");
-       YYERROR;
+             && ((state->prog->TexturesUsed[$6] != target_mask)
+                 || ((state->prog->ShadowSamplers & tex_mask)
+                     != shadow_tex))) {
+            yyerror(& @8, state,
+                    "multiple targets used on one texture image unit");
+            YYERROR;
          }
 
 
@@ -492,12 +492,12 @@ TXD_instruction: TXD_OP maskedDstReg ',' swizzleSrcReg ',' swizzleSrcReg ',' swi
          $$->Base.TexSrcUnit = $10;
 
          if ($12 < 0) {
-       shadow_tex = tex_mask;
+            shadow_tex = tex_mask;
 
-       $$->Base.TexSrcTarget = -$12;
-       $$->Base.TexShadow = 1;
+            $$->Base.TexSrcTarget = -$12;
+            $$->Base.TexShadow = 1;
          } else {
-       $$->Base.TexSrcTarget = $12;
+            $$->Base.TexSrcTarget = $12;
          }
 
          target_mask = (1U << $$->Base.TexSrcTarget);
@@ -509,12 +509,12 @@ TXD_instruction: TXD_OP maskedDstReg ',' swizzleSrcReg ',' swizzleSrcReg ',' swi
           * had a different shadow mode, generate an error.
           */
          if ((state->prog->TexturesUsed[$10] != 0)
-        && ((state->prog->TexturesUsed[$10] != target_mask)
-            || ((state->prog->ShadowSamplers & tex_mask)
-           != shadow_tex))) {
-       yyerror(& @12, state,
-          "multiple targets used on one texture image unit");
-       YYERROR;
+             && ((state->prog->TexturesUsed[$10] != target_mask)
+                 || ((state->prog->ShadowSamplers & tex_mask)
+                     != shadow_tex))) {
+            yyerror(& @12, state,
+               "multiple targets used on one texture image unit");
+            YYERROR;
          }
 
 
@@ -571,7 +571,7 @@ scalarUse:  srcReg scalarSuffix
       $$ = $1;
 
       $$.Base.Swizzle = _mesa_combine_swizzles($$.Base.Swizzle,
-                      $2.swizzle);
+                                               $2.swizzle);
    }
    ;
 
@@ -584,7 +584,7 @@ swizzleSrcReg: optionalSign srcReg swizzleSuffix
       }
 
       $$.Base.Swizzle = _mesa_combine_swizzles($$.Base.Swizzle,
-                      $3.swizzle);
+                                               $3.swizzle);
    }
    ;
 
@@ -599,13 +599,13 @@ maskedDstReg: dstReg optionalMask
           * set in fragment program mode, so it is somewhat irrelevant.
           */
          if (state->option.PositionInvariant
-          && ($$.Index == VARYING_SLOT_POS)) {
-       yyerror(& @1, state, "position-invariant programs cannot "
-          "write position");
-       YYERROR;
+             && ($$.Index == VARYING_SLOT_POS)) {
+            yyerror(& @1, state, "position-invariant programs cannot "
+                    "write position");
+            YYERROR;
          }
 
-              state->prog->info.outputs_written |= BITFIELD64_BIT($$.Index);
+         state->prog->info.outputs_written |= BITFIELD64_BIT($$.Index);
       }
    }
    ;
@@ -757,16 +757,16 @@ srcReg: USED_IDENTIFIER /* temporaryReg | progParamSingle */
          set_src_reg(& $$, PROGRAM_TEMPORARY, s->temp_binding);
          break;
       case at_param:
-              set_src_reg_swz(& $$, s->param_binding_type,
-                              s->param_binding_begin,
-                              s->param_binding_swizzle);
+         set_src_reg_swz(& $$, s->param_binding_type,
+                         s->param_binding_begin,
+                         s->param_binding_swizzle);
          break;
       case at_attrib:
          set_src_reg(& $$, PROGRAM_INPUT, s->attrib_binding);
               state->prog->info.inputs_read |= BITFIELD64_BIT($$.Base.Index);
 
          if (!validate_inputs(& @1, state)) {
-       YYERROR;
+            YYERROR;
          }
          break;
 
@@ -808,7 +808,7 @@ srcReg: USED_IDENTIFIER /* temporaryReg | progParamSingle */
    }
    | paramSingleItemUse
    {
-           gl_register_file file = ($1.name != NULL)
+      gl_register_file file = ($1.name != NULL)
          ? $1.param_binding_type
          : PROGRAM_CONSTANT;
            set_src_reg_swz(& $$, file, $1.param_binding_begin,
@@ -897,9 +897,9 @@ addrRegRelOffset:              { $$ = 0; }
 addrRegPosOffset: INTEGER
    {
       if (($1 < 0) || ($1 > (state->limits->MaxAddressOffset - 1))) {
-              char s[100];
-              snprintf(s, sizeof(s),
-                             "relative address offset too large (%d)", $1);
+         char s[100];
+         snprintf(s, sizeof(s),
+                  "relative address offset too large (%d)", $1);
          yyerror(& @1, state, s);
          YYERROR;
       } else {
@@ -911,8 +911,8 @@ addrRegPosOffset: INTEGER
 addrRegNegOffset: INTEGER
    {
       if (($1 < 0) || ($1 > state->limits->MaxAddressOffset)) {
-              char s[100];
-              snprintf(s, sizeof(s),
+         char s[100];
+         snprintf(s, sizeof(s),
                              "relative address offset too large (%d)", $1);
          yyerror(& @1, state, s);
          YYERROR;
@@ -934,7 +934,7 @@ addrReg: USED_IDENTIFIER
          YYERROR;
       } else if (s->type != at_address) {
          yyerror(& @1, state,
-            "invalid variable for indexed array access");
+                 "invalid variable for indexed array access");
          YYERROR;
       } else {
          $$ = s;
@@ -1090,7 +1090,7 @@ PARAM_singleStmt: PARAM IDENTIFIER paramSingleInit
          s->param_binding_type = $3.param_binding_type;
          s->param_binding_begin = $3.param_binding_begin;
          s->param_binding_length = $3.param_binding_length;
-              s->param_binding_swizzle = $3.param_binding_swizzle;
+         s->param_binding_swizzle = $3.param_binding_swizzle;
          s->param_is_array = 0;
       }
    }
@@ -1101,21 +1101,21 @@ PARAM_multipleStmt: PARAM IDENTIFIER '[' optArraySize ']' paramMultipleInit
       if (($4 != 0) && ((unsigned) $4 != $6.param_binding_length)) {
          free($2);
          yyerror(& @4, state,
-            "parameter array size and number of bindings must match");
+                 "parameter array size and number of bindings must match");
          YYERROR;
       } else {
          struct asm_symbol *const s =
-       declare_variable(state, $2, $6.type, & @2);
+            declare_variable(state, $2, $6.type, & @2);
 
          if (s == NULL) {
-       free($2);
-       YYERROR;
+            free($2);
+            YYERROR;
          } else {
-       s->param_binding_type = $6.param_binding_type;
-       s->param_binding_begin = $6.param_binding_begin;
-       s->param_binding_length = $6.param_binding_length;
-                 s->param_binding_swizzle = SWIZZLE_XYZW;
-       s->param_is_array = 1;
+            s->param_binding_type = $6.param_binding_type;
+            s->param_binding_begin = $6.param_binding_begin;
+            s->param_binding_length = $6.param_binding_length;
+            s->param_binding_swizzle = SWIZZLE_XYZW;
+            s->param_is_array = 1;
          }
       }
    }
@@ -1128,10 +1128,10 @@ optArraySize:
    | INTEGER
         {
       if (($1 < 1) || ((unsigned) $1 > state->limits->MaxParameters)) {
-              char msg[100];
-              snprintf(msg, sizeof(msg),
-                             "invalid parameter array size (size=%d max=%u)",
-                             $1, state->limits->MaxParameters);
+         char msg[100];
+         snprintf(msg, sizeof(msg),
+                  "invalid parameter array size (size=%d max=%u)",
+                  $1, state->limits->MaxParameters);
          yyerror(& @1, state, msg);
          YYERROR;
       } else {
@@ -1646,7 +1646,7 @@ progEnvParams: PROGRAM ENV '[' progEnvParamNums ']'
       $$[0] = state->state_param_enum_env;
       $$[1] = $4[0];
       $$[2] = $4[1];
-           $$[3] = 0;
+      $$[3] = 0;
    }
    ;
 
@@ -1668,7 +1668,7 @@ progEnvParam: PROGRAM ENV '[' progEnvParamNum ']'
       $$[0] = state->state_param_enum_env;
       $$[1] = $4;
       $$[2] = $4;
-           $$[3] = 0;
+      $$[3] = 0;
    }
    ;
 
@@ -1678,7 +1678,7 @@ progLocalParams: PROGRAM LOCAL '[' progLocalParamNums ']'
       $$[0] = state->state_param_enum_local;
       $$[1] = $4[0];
       $$[2] = $4[1];
-           $$[3] = 0;
+      $$[3] = 0;
    }
 
 progLocalParamNums: progLocalParamNum
@@ -1699,7 +1699,7 @@ progLocalParam: PROGRAM LOCAL '[' progLocalParamNum ']'
       $$[0] = state->state_param_enum_local;
       $$[1] = $4;
       $$[2] = $4;
-           $$[3] = 0;
+      $$[3] = 0;
    }
    ;
 
@@ -1906,9 +1906,9 @@ optResultFaceType:
          $$ = VARYING_SLOT_COL0;
       } else {
          if (state->option.DrawBuffers)
-       $$ = FRAG_RESULT_DATA0;
+            $$ = FRAG_RESULT_DATA0;
          else
-       $$ = FRAG_RESULT_COLOR;
+            $$ = FRAG_RESULT_COLOR;
       }
    }
    | '[' INTEGER ']'
@@ -1918,23 +1918,23 @@ optResultFaceType:
          YYERROR;
       } else {
          if (!state->option.DrawBuffers) {
-       /* From the ARB_draw_buffers spec (same text exists
-        * for ATI_draw_buffers):
-        *
-        *     If this option is not specified, a fragment
-        *     program that attempts to bind
-        *     "result.color[n]" will fail to load, and only
-        *     "result.color" will be allowed.
-        */
-       yyerror(& @1, state,
-          "result.color[] used without "
-          "`OPTION ARB_draw_buffers' or "
-          "`OPTION ATI_draw_buffers'");
-       YYERROR;
+            /* From the ARB_draw_buffers spec (same text exists
+             * for ATI_draw_buffers):
+             *
+             *     If this option is not specified, a fragment
+             *     program that attempts to bind
+             *     "result.color[n]" will fail to load, and only
+             *     "result.color" will be allowed.
+             */
+            yyerror(& @1, state,
+                    "result.color[] used without "
+                    "`OPTION ARB_draw_buffers' or "
+                    "`OPTION ATI_draw_buffers'");
+            YYERROR;
          } else if ($2 >= state->MaxDrawBuffers) {
-       yyerror(& @1, state,
-          "result.color[] exceeds MAX_DRAW_BUFFERS_ARB");
-       YYERROR;
+            yyerror(& @1, state,
+                    "result.color[] exceeds MAX_DRAW_BUFFERS_ARB");
+            YYERROR;
          }
          $$ = FRAG_RESULT_DATA0 + $2;
       }
@@ -1984,7 +1984,7 @@ optResultColorType:
    ;
 
 optFaceType:    { $$ = 0; }
-   | FRONT   { $$ = 0; }
+   | FRONT { $$ = 0; }
    | BACK  { $$ = 1; }
    ;
 
@@ -2056,10 +2056,10 @@ ALIAS_statement: ALIAS IDENTIFIER '=' USED_IDENTIFIER
       } else if (target == NULL) {
          free($2);
          yyerror(& @4, state,
-            "undefined variable binding in ALIAS statement");
+                 "undefined variable binding in ALIAS statement");
          YYERROR;
       } else {
-              _mesa_symbol_table_add_symbol(state->st, $2, target);
+         _mesa_symbol_table_add_symbol(state->st, $2, target);
       }
    }
    ;
@@ -2072,10 +2072,10 @@ string: IDENTIFIER
 
 void
 asm_instruction_set_operands(struct asm_instruction *inst,
-              const struct prog_dst_register *dst,
-              const struct asm_src_register *src0,
-              const struct asm_src_register *src1,
-              const struct asm_src_register *src2)
+                             const struct prog_dst_register *dst,
+                             const struct asm_src_register *src0,
+                             const struct asm_src_register *src1,
+                             const struct asm_src_register *src2)
 {
    /* In the core ARB extensions only the KIL instruction doesn't have a
     * destination register.
@@ -2111,10 +2111,10 @@ asm_instruction_set_operands(struct asm_instruction *inst,
 
 struct asm_instruction *
 asm_instruction_ctor(enum prog_opcode op,
-           const struct prog_dst_register *dst,
-           const struct asm_src_register *src0,
-           const struct asm_src_register *src1,
-           const struct asm_src_register *src2)
+                     const struct prog_dst_register *dst,
+                     const struct asm_src_register *src0,
+                     const struct asm_src_register *src1,
+                     const struct asm_src_register *src2)
 {
    struct asm_instruction *inst = calloc(1, sizeof(struct asm_instruction));
 
@@ -2131,10 +2131,10 @@ asm_instruction_ctor(enum prog_opcode op,
 
 struct asm_instruction *
 asm_instruction_copy_ctor(const struct prog_instruction *base,
-           const struct prog_dst_register *dst,
-           const struct asm_src_register *src0,
-           const struct asm_src_register *src1,
-           const struct asm_src_register *src2)
+                          const struct prog_dst_register *dst,
+                          const struct asm_src_register *src0,
+                          const struct asm_src_register *src1,
+                          const struct asm_src_register *src2)
 {
    struct asm_instruction *inst = CALLOC_STRUCT(asm_instruction);
 
@@ -2170,8 +2170,8 @@ set_dst_reg(struct prog_dst_register *r, gl_register_file file, GLint index)
    assert(index <= maxIndex);
    (void) maxIndex;
    assert(file == PROGRAM_TEMPORARY ||
-     file == PROGRAM_ADDRESS ||
-     file == PROGRAM_OUTPUT);
+          file == PROGRAM_ADDRESS ||
+          file == PROGRAM_OUTPUT);
    memset(r, 0, sizeof(*r));
    r->File = file;
    r->Index = index;
@@ -2265,7 +2265,7 @@ validate_inputs(struct YYLTYPE *locp, struct asm_parser_state *state)
 
 struct asm_symbol *
 declare_variable(struct asm_parser_state *state, char *name, enum asm_type t,
-       struct YYLTYPE *locp)
+                 struct YYLTYPE *locp)
 {
    struct asm_symbol *s = NULL;
    struct asm_symbol *exist = (struct asm_symbol *)
@@ -2282,30 +2282,30 @@ declare_variable(struct asm_parser_state *state, char *name, enum asm_type t,
       switch (t) {
       case at_temp:
          if (state->prog->arb.NumTemporaries >= state->limits->MaxTemps) {
-       yyerror(locp, state, "too many temporaries declared");
-       free(s);
-       return NULL;
-    }
+            yyerror(locp, state, "too many temporaries declared");
+            free(s);
+            return NULL;
+         }
 
          s->temp_binding = state->prog->arb.NumTemporaries;
          state->prog->arb.NumTemporaries++;
-    break;
+         break;
 
       case at_address:
          if (state->prog->arb.NumAddressRegs >=
              state->limits->MaxAddressRegs) {
-       yyerror(locp, state, "too many address registers declared");
-       free(s);
-       return NULL;
-    }
+            yyerror(locp, state, "too many address registers declared");
+            free(s);
+            return NULL;
+         }
 
-    /* FINISHME: Add support for multiple address registers.
-     */
+         /* FINISHME: Add support for multiple address registers.
+          */
          state->prog->arb.NumAddressRegs++;
-    break;
+         break;
 
       default:
-    break;
+         break;
       }
 
       _mesa_symbol_table_add_symbol(state->st, s->name, s);
@@ -2318,7 +2318,7 @@ declare_variable(struct asm_parser_state *state, char *name, enum asm_type t,
 
 
 int add_state_reference(struct gl_program_parameter_list *param_list,
-         const gl_state_index16 tokens[STATE_LENGTH])
+                        const gl_state_index16 tokens[STATE_LENGTH])
 {
    const GLuint size = 4; /* XXX fix */
    char *name;
@@ -2338,8 +2338,8 @@ int add_state_reference(struct gl_program_parameter_list *param_list,
 
 int
 initialize_symbol_from_state(struct gl_program *prog,
-              struct asm_symbol *param_var,
-              const gl_state_index16 tokens[STATE_LENGTH])
+                             struct asm_symbol *param_var,
+                             const gl_state_index16 tokens[STATE_LENGTH])
 {
    int idx = -1;
    gl_state_index16 state_tokens[STATE_LENGTH];
@@ -2361,21 +2361,21 @@ initialize_symbol_from_state(struct gl_program *prog,
       const int last_row = state_tokens[3];
 
       for (row = first_row; row <= last_row; row++) {
-    state_tokens[2] = state_tokens[3] = row;
+         state_tokens[2] = state_tokens[3] = row;
 
-    idx = add_state_reference(prog->Parameters, state_tokens);
-    if (param_var->param_binding_begin == ~0U) {
-       param_var->param_binding_begin = idx;
+         idx = add_state_reference(prog->Parameters, state_tokens);
+         if (param_var->param_binding_begin == ~0U) {
+            param_var->param_binding_begin = idx;
             param_var->param_binding_swizzle = SWIZZLE_XYZW;
          }
 
-    param_var->param_binding_length++;
+         param_var->param_binding_length++;
       }
    }
    else {
       idx = add_state_reference(prog->Parameters, state_tokens);
       if (param_var->param_binding_begin == ~0U) {
-    param_var->param_binding_begin = idx;
+         param_var->param_binding_begin = idx;
          param_var->param_binding_swizzle = SWIZZLE_XYZW;
       }
       param_var->param_binding_length++;
@@ -2387,8 +2387,8 @@ initialize_symbol_from_state(struct gl_program *prog,
 
 int
 initialize_symbol_from_param(struct gl_program *prog,
-              struct asm_symbol *param_var,
-              const gl_state_index16 tokens[STATE_LENGTH])
+                             struct asm_symbol *param_var,
+                             const gl_state_index16 tokens[STATE_LENGTH])
 {
    int idx = -1;
    gl_state_index16 state_tokens[STATE_LENGTH];
@@ -2417,20 +2417,20 @@ initialize_symbol_from_param(struct gl_program *prog,
       const int last_row = state_tokens[2];
 
       for (row = first_row; row <= last_row; row++) {
-    state_tokens[1] = state_tokens[2] = row;
+         state_tokens[1] = state_tokens[2] = row;
 
-    idx = add_state_reference(prog->Parameters, state_tokens);
-    if (param_var->param_binding_begin == ~0U) {
-       param_var->param_binding_begin = idx;
+         idx = add_state_reference(prog->Parameters, state_tokens);
+         if (param_var->param_binding_begin == ~0U) {
+            param_var->param_binding_begin = idx;
             param_var->param_binding_swizzle = SWIZZLE_XYZW;
          }
-    param_var->param_binding_length++;
+         param_var->param_binding_length++;
       }
    }
    else {
       idx = add_state_reference(prog->Parameters, state_tokens);
       if (param_var->param_binding_begin == ~0U) {
-    param_var->param_binding_begin = idx;
+         param_var->param_binding_begin = idx;
          param_var->param_binding_swizzle = SWIZZLE_XYZW;
       }
       param_var->param_binding_length++;
@@ -2452,8 +2452,8 @@ initialize_symbol_from_param(struct gl_program *prog,
  */
 int
 initialize_symbol_from_const(struct gl_program *prog,
-              struct asm_symbol *param_var,
-              const struct asm_vector *vec,
+                             struct asm_symbol *param_var,
+                             const struct asm_vector *vec,
                              GLboolean allowSwizzle)
 {
    unsigned swizzle;
@@ -2517,7 +2517,7 @@ yyerror(YYLTYPE *locp, struct asm_parser_state *state, const char *s)
    }
 
    err_str = make_error_string("line %u, char %u: error: %s\n",
-                locp->first_line, locp->first_column, s);
+                               locp->first_line, locp->first_column, s);
    _mesa_set_program_error(state->ctx, locp->position, err_str);
 
    if (err_str) {
@@ -2528,7 +2528,7 @@ yyerror(YYLTYPE *locp, struct asm_parser_state *state, const char *s)
 
 GLboolean
 _mesa_parse_arb_program(struct gl_context *ctx, GLenum target, const GLubyte *str,
-         GLsizei len, struct asm_parser_state *state)
+                        GLsizei len, struct asm_parser_state *state)
 {
    struct asm_instruction *inst;
    unsigned i;
