@@ -350,7 +350,7 @@ vkcts-navi21-llvm-valve:
     RADV_DEBUG: llvm,checkir
 
 vkcts-vangogh-valve:
-  parallel: 2
+  parallel: 4
   extends:
     - .vkcts-test-valve
     - .vangogh-test-valve
