@@ -19,17 +19,17 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-clang_resource_dir = join_paths(llvm_libdir, 'clang', dep_llvm.version(), 'include')
 
 files_libclc = files(
   'clc.c',
   'clc_helpers.cpp',
 )
 
-_libclc_cpp_args = ['-DCLANG_RESOURCE_DIR="@0@"'.format(clang_resource_dir)]
+_libclc_cpp_args = ['-DLLVM_LIB_DIR="@0@"'.format(llvm_libdir)]
 _libclc_sources = []
 
 if with_microsoft_clc
+  clang_resource_dir = join_paths(llvm_libdir, 'clang', dep_llvm.version(), 'include')
   if dep_llvm.version().version_compare('< 15.0')
     opencl_c_h = custom_target(
       'opencl-c.h',
