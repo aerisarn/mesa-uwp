@@ -471,7 +471,7 @@ get_pipe_stats_binding_point(struct gl_context *ctx,
    const int which = target - GL_VERTICES_SUBMITTED;
    assert(which < MAX_PIPELINE_STATISTICS);
 
-   if (!_mesa_has_ARB_pipeline_statistics_query(ctx))
+   if (!_mesa_has_pipeline_statistics(ctx))
       return NULL;
 
    return &ctx->Query.pipeline_stats[which];
@@ -487,14 +487,12 @@ get_query_binding_point(struct gl_context *ctx, GLenum target, GLuint index)
 {
    switch (target) {
    case GL_SAMPLES_PASSED:
-      if (_mesa_has_ARB_occlusion_query(ctx) ||
-          _mesa_has_ARB_occlusion_query2(ctx))
+      if (_mesa_has_occlusion_query(ctx))
          return &ctx->Query.CurrentOcclusionObject;
       else
          return NULL;
    case GL_ANY_SAMPLES_PASSED:
-      if (_mesa_has_ARB_occlusion_query2(ctx) ||
-          _mesa_has_EXT_occlusion_query_boolean(ctx))
+      if (_mesa_has_occlusion_query_boolean(ctx))
          return &ctx->Query.CurrentOcclusionObject;
       else
          return NULL;
