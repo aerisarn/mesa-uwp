@@ -87,7 +87,8 @@
 #  define HAS_CLANG_FALLTHROUGH 0
 #endif
 
-#if __cplusplus >= 201703L || __STDC_VERSION__ > 201710L
+#if (defined(__cplusplus) && (__cplusplus >= 201703L)) || \
+    (defined(__STDC_VERSION__) && (__STDC_VERSION__ > 201710L))
 /* Standard C++17/C23 attribute */
 #define FALLTHROUGH [[fallthrough]]
 #elif HAS_CLANG_FALLTHROUGH
