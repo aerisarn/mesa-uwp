@@ -84,7 +84,7 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
             .rt_array_index = rects[r].baseArrayLayer,
          });
 
-         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_LAYERS));
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_VIEWS));
          P_INLINE_DATA(p, payload);
          P_INLINE_DATA(p, render->view_mask);
       } else {
