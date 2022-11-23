@@ -399,6 +399,7 @@ agx_create_sampler_state(struct pipe_context *pctx,
    agx_pack(&so->desc, SAMPLER, cfg) {
       cfg.minimum_lod = state->min_lod;
       cfg.maximum_lod = state->max_lod;
+      cfg.maximum_anisotropy = util_next_power_of_two(MAX2(state->max_anisotropy, 1));
       cfg.magnify_linear = (state->mag_img_filter == PIPE_TEX_FILTER_LINEAR);
       cfg.minify_linear = (state->min_img_filter == PIPE_TEX_FILTER_LINEAR);
       cfg.mip_filter = agx_mip_filter_from_pipe(state->min_mip_filter);
