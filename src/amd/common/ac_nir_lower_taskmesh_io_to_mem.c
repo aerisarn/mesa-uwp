@@ -269,9 +269,13 @@ lower_task_launch_mesh_workgroups(nir_builder *b,
     * so we assume that all invocations are active here.
     */
 
-   /* Wait for all necessary stores to finish. */
+   /* Wait for all necessary stores to finish.
+    * Device memory scope is necessary because we need to ensure there is
+    * always a waitcnt_vscnt instruction in order to avoid a race condition
+    * between payload stores and their loads after mesh shaders launch.
+    */
    nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP,
-                         .memory_scope = NIR_SCOPE_WORKGROUP,
+                         .memory_scope = NIR_SCOPE_DEVICE,
                          .memory_semantics = NIR_MEMORY_ACQ_REL,
                          .memory_modes = nir_var_mem_task_payload | nir_var_shader_out |
                                          nir_var_mem_ssbo | nir_var_mem_global);
