@@ -280,6 +280,7 @@
   <struct name="Sampler" size="8">
     <field name="Minimum LOD" size="10" start="0" type="lod" default="0.0"/>
     <field name="Maximum LOD" size="10" start="10" type="lod" default="INFINITY"/>
+    <field name="Maximum anisotropy" size="3" start="20" type="uint" default="1" modifier="log2"/>
     <field name="Magnify linear" size="1" start="23" type="bool"/>
     <field name="Minify linear" size="1" start="25" type="bool"/>
     <field name="Mip filter" size="2" start="27" type="Mip filter"/>
