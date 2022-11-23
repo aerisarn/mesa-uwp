@@ -3599,23 +3599,30 @@ void
 fs_visitor::emit_repclear_shader()
 {
    brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
-   int color_mrf = 2;
+   fs_inst *write = NULL;
 
    assert(uniforms == 0);
    assume(key->nr_color_regions > 0);
 
-   struct brw_reg reg =
+   fs_reg color_output, header;
+   if (devinfo->ver >= 7) {
+      color_output = retype(brw_vec4_grf(127, 0), BRW_REGISTER_TYPE_UD);
+      header = retype(brw_vec8_grf(125, 0), BRW_REGISTER_TYPE_UD);
+   } else {
+      color_output = retype(brw_vec4_reg(MRF, 2, 0), BRW_REGISTER_TYPE_UD);
+      header = retype(brw_vec8_reg(MRF, 0, 0), BRW_REGISTER_TYPE_UD);
+   }
+
+   /* We pass the clear color as a flat input.  Copy it to the output. */
+   fs_reg color_input =
       brw_reg(BRW_GENERAL_REGISTER_FILE, 2, 3, 0, 0, BRW_REGISTER_TYPE_UD,
               BRW_VERTICAL_STRIDE_8, BRW_WIDTH_2, BRW_HORIZONTAL_STRIDE_4,
               BRW_SWIZZLE_XYZW, WRITEMASK_XYZW);
 
-   bld.exec_all().group(4, 0).MOV(brw_uvec_mrf(4, color_mrf, 0), fs_reg(reg));
-
-   fs_inst *write = NULL;
-   struct brw_reg header;
+   bld.exec_all().group(4, 0).MOV(color_output, color_input);
 
    if (key->nr_color_regions > 1) {
-      header = retype(brw_message_reg(color_mrf - 2), BRW_REGISTER_TYPE_UD);
+      /* Copy g0..g1 as the message header */
       bld.exec_all().group(16, 0)
          .MOV(header, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
    }
@@ -3624,12 +3631,27 @@ fs_visitor::emit_repclear_shader()
       if (i > 0)
          bld.exec_all().group(1, 0).MOV(component(header, 2), brw_imm_ud(i));
 
-      write = bld.emit(FS_OPCODE_REP_FB_WRITE);
-      write->target = i;
+      if (devinfo->ver >= 7) {
+         write = bld.emit(SHADER_OPCODE_SEND);
+         write->resize_sources(3);
+         write->sfid = GFX6_SFID_DATAPORT_RENDER_CACHE;
+         write->src[0] = brw_imm_ud(0);
+         write->src[1] = brw_imm_ud(0);
+         write->src[2] = i == 0 ? color_output : header;
+         write->check_tdr = true;
+         write->send_has_side_effects = true;
+         write->desc = brw_fb_write_desc(devinfo, i,
+            BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD16_SINGLE_SOURCE_REPLICATED,
+            i == key->nr_color_regions - 1, false);
+      } else {
+         write = bld.emit(FS_OPCODE_REP_FB_WRITE);
+         write->target = i;
+         write->base_mrf = i == 0 ? color_output.nr : header.nr;
+      }
+
       /* We can use a headerless message for the first render target */
       write->header_size = i == 0 ? 0 : 2;
       write->mlen = 1 + write->header_size;
-      write->base_mrf = color_mrf - write->header_size;
    }
    write->eot = true;
    write->last_rt = true;
