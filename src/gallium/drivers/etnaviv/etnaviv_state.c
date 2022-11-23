@@ -719,7 +719,7 @@ etna_update_zsa(struct etna_context *ctx)
    struct etna_screen *screen = ctx->screen;
    uint32_t new_pe_depth, new_ra_depth;
    bool early_z_allowed = !VIV_FEATURE(screen, chipFeatures, NO_EARLY_Z);
-   bool late_z_write = false, early_z_write = false,
+   bool late_zs = false, early_zs = false,
         late_z_test = false, early_z_test = false;
 
    /* Linear PE breaks the combination of early test with late write, as it
@@ -735,21 +735,20 @@ etna_update_zsa(struct etna_context *ctx)
          early_z_allowed = false;
    }
 
-   if (zsa->z_write_enabled) {
+   if (zsa->z_write_enabled || zsa->stencil_enabled) {
       if (VIV_FEATURE(screen, chipMinorFeatures5, RA_WRITE_DEPTH) &&
           early_z_allowed &&
-          !zsa->stencil_enabled &&
           !zsa_state->alpha_enabled &&
           !shader_state->writes_z &&
           !shader_state->uses_discard)
-         early_z_write = true;
+         early_zs = true;
       else
-         late_z_write = true;
+         late_zs = true;
    }
 
    if (zsa->z_test_enabled) {
       if (early_z_allowed &&
-          !zsa->stencil_modified &&
+          (!zsa->stencil_modified || early_zs) &&
           !shader_state->writes_z)
          early_z_test = true;
       else
@@ -761,7 +760,7 @@ etna_update_zsa(struct etna_context *ctx)
                      zsa_state->depth_func : PIPE_FUNC_ALWAYS) |
                   COND(zsa->z_write_enabled, VIVS_PE_DEPTH_CONFIG_WRITE_ENABLE) |
                   COND(early_z_test, VIVS_PE_DEPTH_CONFIG_EARLY_Z) |
-                  COND(!late_z_write && !late_z_test && !zsa->stencil_enabled,
+                  COND(!late_zs && !late_z_test,
                        VIVS_PE_DEPTH_CONFIG_DISABLE_ZS);
 
    /* blob sets this to 0x40000031 on GC7000, seems to make no difference,
@@ -770,18 +769,18 @@ etna_update_zsa(struct etna_context *ctx)
                   COND(early_z_test, VIVS_RA_EARLY_DEPTH_TEST_ENABLE);
 
    if (VIV_FEATURE(screen, chipMinorFeatures5, RA_WRITE_DEPTH)) {
-      if (!early_z_write)
+      if (!early_zs)
          new_ra_depth |= VIVS_RA_EARLY_DEPTH_WRITE_DISABLE;
       /* The new early hierarchical test seems to only work properly if depth
        * is also written from the early stage.
        */
-      if (late_z_test || (early_z_test && late_z_write))
+      if (late_z_test || (early_z_test && late_zs))
          new_ra_depth |= VIVS_RA_EARLY_DEPTH_HDEPTH_DISABLE;
 
       if (ctx->framebuffer_s.nr_cbufs > 0) {
          struct pipe_resource *res = ctx->framebuffer_s.cbufs[0]->texture;
 
-         if ((late_z_test || late_z_write) && res->nr_samples > 1)
+         if ((late_z_test || late_zs) && res->nr_samples > 1)
             new_ra_depth |= VIVS_RA_EARLY_DEPTH_LATE_DEPTH_MSAA;
       }
    }
