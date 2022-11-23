@@ -1698,7 +1698,6 @@ agx_batch_init_state(struct agx_batch *batch)
       .w_clamp = true,
       .varying_word_1 = true,
       .cull_2 = true,
-      .occlusion_query = true,
       .occlusion_query_2 = true,
       .output_unknown = true,
       .varying_word_2 = true,
@@ -1707,7 +1706,6 @@ agx_batch_init_state(struct agx_batch *batch)
    agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
    agx_ppp_push(&ppp, VARYING_1, cfg);
    agx_ppp_push(&ppp, CULL_2, cfg);
-   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
    agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
    agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
    agx_ppp_push(&ppp, VARYING_2, cfg);
@@ -1833,7 +1831,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
                             (is_points && IS_DIRTY(SPRITE_COORD_MODE));
 
    bool fragment_control_dirty = IS_DIRTY(ZS) || IS_DIRTY(RS) ||
-                                 IS_DIRTY(PRIM);
+                                 IS_DIRTY(PRIM) || IS_DIRTY(QUERY);
 
    bool fragment_face_dirty = IS_DIRTY(ZS) || IS_DIRTY(STENCIL_REF) ||
                               IS_DIRTY(RS);
@@ -1857,11 +1855,19 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       .varying_word_0 = IS_DIRTY(VS_PROG),
       .cull = IS_DIRTY(RS),
       .fragment_shader = IS_DIRTY(FS) || varyings_dirty,
+      .occlusion_query = IS_DIRTY(QUERY),
       .output_size = IS_DIRTY(VS_PROG),
    });
 
    if (fragment_control_dirty) {
       agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
+         if (ctx->active_queries && ctx->occlusion_query) {
+            if (ctx->occlusion_query->type == PIPE_QUERY_OCCLUSION_COUNTER)
+               cfg.visibility_mode = AGX_VISIBILITY_MODE_COUNTING;
+            else
+               cfg.visibility_mode = AGX_VISIBILITY_MODE_BOOLEAN;
+         }
+
          cfg.stencil_test_enable = ctx->zs->base.stencil[0].enabled;
          cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
          cfg.depth_bias_enable = rast->base.offset_tri;
@@ -1951,6 +1957,16 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
 
          /* XXX: This is probably wrong */
          cfg.unknown_30 = frag_tex_count >= 4;
+      }
+   }
+
+   if (IS_DIRTY(QUERY)) {
+      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg) {
+         if (ctx->active_queries && ctx->occlusion_query) {
+            cfg.index = agx_get_oq_index(batch, ctx->occlusion_query);
+         } else {
+            cfg.index = 0;
+         }
       }
    }
 

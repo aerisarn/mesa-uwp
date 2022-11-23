@@ -1012,6 +1012,18 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
     */
    agx_batch_add_bo(batch, batch->encoder);
 
+   /* Occlusion queries are allocated as a contiguous pool */
+   unsigned oq_count = util_dynarray_num_elements(&batch->occlusion_queries,
+                                                  struct agx_query *);
+   size_t oq_size = oq_count * sizeof(uint64_t);
+
+   if (oq_size) {
+      batch->occlusion_buffer = agx_pool_alloc_aligned(&batch->pool, oq_size, 64);
+      memset(batch->occlusion_buffer.cpu, 0, oq_size);
+   } else {
+      batch->occlusion_buffer.gpu = 0;
+   }
+
    unsigned handle_count =
       agx_batch_num_bo(batch) +
       agx_pool_num_bos(&batch->pool) +
@@ -1044,6 +1056,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
                encoder_id,
                scissor,
                zbias,
+               batch->occlusion_buffer.gpu,
                pipeline_background,
                pipeline_background_partial,
                pipeline_store,
