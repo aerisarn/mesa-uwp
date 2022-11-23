@@ -1784,8 +1784,8 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceRayTracingPipelineFeaturesKHR *features =
             (VkPhysicalDeviceRayTracingPipelineFeaturesKHR *)ext;
          features->rayTracingPipeline = true;
-         features->rayTracingPipelineShaderGroupHandleCaptureReplay = false;
-         features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
+         features->rayTracingPipelineShaderGroupHandleCaptureReplay = true;
+         features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = true;
          features->rayTracingPipelineTraceRaysIndirect = true;
          features->rayTraversalPrimitiveCulling = true;
          break;
@@ -2620,7 +2620,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxRayRecursionDepth = 31;    /* Minimum allowed for DXR. */
          props->maxShaderGroupStride = 16384; /* dummy */
          props->shaderGroupBaseAlignment = 16;
-         props->shaderGroupHandleCaptureReplaySize = 16;
+         props->shaderGroupHandleCaptureReplaySize = RADV_RT_HANDLE_SIZE;
          props->maxRayDispatchInvocationCount = 1024 * 1024 * 64;
          props->shaderGroupHandleAlignment = 16;
          props->maxRayHitAttributeSize = RADV_MAX_HIT_ATTRIB_SIZE;
