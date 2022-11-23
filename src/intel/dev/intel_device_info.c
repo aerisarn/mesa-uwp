@@ -1065,7 +1065,8 @@ static const struct intel_device_info intel_device_info_sg1 = {
    .apply_hwconfig = true,                                      \
    .has_coarse_pixel_primitive_and_cb = true,                   \
    .has_mesh_shading = true,                                    \
-   .has_ray_tracing = true
+   .has_ray_tracing = true,                                     \
+   .has_flat_ccs = true
 
 static const struct intel_device_info intel_device_info_dg2_g10 = {
    DG2_FEATURES,
