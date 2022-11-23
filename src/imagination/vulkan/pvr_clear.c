@@ -325,7 +325,7 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                                                             state->vertices_bo,
                                                             &state->pds);
    if (result != VK_SUCCESS)
-      goto err_free_verices_buffer;
+      goto err_free_vertices_buffer;
 
    pvr_device_setup_graphics_static_clear_ppp_base(&state->ppp_base);
    pvr_device_setup_graphics_static_clear_ppp_templates(state->ppp_templates);
@@ -357,7 +357,7 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
 
    return VK_SUCCESS;
 
-err_free_verices_buffer:
+err_free_vertices_buffer:
    pvr_bo_free(device, state->vertices_bo);
 
 err_free_usc_shader:
