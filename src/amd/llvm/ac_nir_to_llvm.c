@@ -713,32 +713,8 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_ixor:
       result = LLVMBuildXor(ctx->ac.builder, src[0], src[1], "");
       break;
-   case nir_op_ishl: {
-      if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[1])) <
-          ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])))
-         src[1] = LLVMBuildZExt(ctx->ac.builder, src[1], LLVMTypeOf(src[0]), "");
-      else if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[1])) >
-               ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])))
-         src[1] = LLVMBuildTrunc(ctx->ac.builder, src[1], LLVMTypeOf(src[0]), "");
-      LLVMTypeRef type = LLVMTypeOf(src[0]);
-      src[1] = LLVMBuildAnd(ctx->ac.builder, src[1],
-                            LLVMConstInt(type, LLVMGetIntTypeWidth(type) - 1, false), "");
-      result = LLVMBuildShl(ctx->ac.builder, src[0], src[1], "");
-      break;
-   }
-   case nir_op_ishr: {
-      if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[1])) <
-          ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])))
-         src[1] = LLVMBuildZExt(ctx->ac.builder, src[1], LLVMTypeOf(src[0]), "");
-      else if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[1])) >
-               ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])))
-         src[1] = LLVMBuildTrunc(ctx->ac.builder, src[1], LLVMTypeOf(src[0]), "");
-      LLVMTypeRef type = LLVMTypeOf(src[0]);
-      src[1] = LLVMBuildAnd(ctx->ac.builder, src[1],
-                            LLVMConstInt(type, LLVMGetIntTypeWidth(type) - 1, false), "");
-      result = LLVMBuildAShr(ctx->ac.builder, src[0], src[1], "");
-      break;
-   }
+   case nir_op_ishl:
+   case nir_op_ishr:
    case nir_op_ushr: {
       if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[1])) <
           ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])))
@@ -749,7 +725,19 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       LLVMTypeRef type = LLVMTypeOf(src[0]);
       src[1] = LLVMBuildAnd(ctx->ac.builder, src[1],
                             LLVMConstInt(type, LLVMGetIntTypeWidth(type) - 1, false), "");
-      result = LLVMBuildLShr(ctx->ac.builder, src[0], src[1], "");
+      switch (instr->op) {
+      case nir_op_ishl:
+         result = LLVMBuildShl(ctx->ac.builder, src[0], src[1], "");
+         break;
+      case nir_op_ishr:
+         result = LLVMBuildAShr(ctx->ac.builder, src[0], src[1], "");
+         break;
+      case nir_op_ushr:
+         result = LLVMBuildLShr(ctx->ac.builder, src[0], src[1], "");
+         break;
+      default:
+         break;
+      }
       break;
    }
    case nir_op_ilt:
