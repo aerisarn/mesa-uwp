@@ -418,6 +418,7 @@ agx_translate_layout(enum ail_tiling tiling)
 {
    switch (tiling) {
    case AIL_TILING_TWIDDLED:
+   case AIL_TILING_TWIDDLED_COMPRESSED:
       return AGX_LAYOUT_TWIDDLED;
    case AIL_TILING_LINEAR:
       return AGX_LAYOUT_LINEAR;
@@ -522,6 +523,12 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
+      if (ail_is_compressed(&rsrc->layout)) {
+         cfg.compressed_1 = true;
+         cfg.compressed_2 = true;
+         cfg.acceleration_buffer = cfg.address + rsrc->layout.metadata_offset_B;
+      }
+
       if (state->target == PIPE_TEXTURE_3D) {
          cfg.depth = rsrc->base.depth0;
       } else {
@@ -539,7 +546,9 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       if (rsrc->layout.tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, 0) - 16;
       } else {
-         assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED);
+         assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED ||
+                rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED);
+
          cfg.unk_tiled = true;
       }
    }
@@ -858,6 +867,12 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
       cfg.level = surf->u.tex.level;
       cfg.buffer = agx_map_texture_gpu(tex, layer);
       cfg.unk_mipmapped = tex->mipmapped;
+
+      if (ail_is_compressed(&tex->layout)) {
+         cfg.compressed_1 = true;
+         cfg.compressed_2 = true;
+         cfg.acceleration_buffer = cfg.buffer + tex->layout.metadata_offset_B;
+      }
 
       if (tex->base.nr_samples > 1)
          cfg.samples = agx_translate_sample_count(tex->base.nr_samples);

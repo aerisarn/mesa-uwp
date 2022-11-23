@@ -67,6 +67,10 @@
 #define DRM_FORMAT_MOD_APPLE_TWIDDLED (2)
 #endif
 
+#ifndef DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED
+#define DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED (3)
+#endif
+
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
    {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
@@ -76,10 +80,12 @@ static const struct debug_named_value agx_debug_options[] = {
    {"dirty",     AGX_DBG_DIRTY,    "Disable dirty tracking"},
 #endif
    {"precompile",AGX_DBG_PRECOMPILE,"Precompile shaders for shader-db"},
+   {"nocompress",AGX_DBG_NOCOMPRESS,"Disable lossless compression"},
    DEBUG_NAMED_VALUE_END
 };
 
 uint64_t agx_best_modifiers[] = {
+   DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED,
    DRM_FORMAT_MOD_APPLE_TWIDDLED,
    DRM_FORMAT_MOD_LINEAR,
 };
@@ -134,6 +140,21 @@ agx_set_active_query_state(struct pipe_context *pipe, bool enable)
  * resource
  */
 
+static enum ail_tiling
+ail_modifier_to_tiling(uint64_t modifier)
+{
+   switch (modifier) {
+   case DRM_FORMAT_MOD_LINEAR:
+      return AIL_TILING_LINEAR;
+   case DRM_FORMAT_MOD_APPLE_TWIDDLED:
+      return AIL_TILING_TWIDDLED;
+   case DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED:
+      return AIL_TILING_TWIDDLED_COMPRESSED;
+   default:
+      unreachable("Unsupported modifier");
+   }
+}
+
 static void
 agx_resource_setup(struct agx_device *dev,
                    struct agx_resource *nresource)
@@ -141,8 +162,7 @@ agx_resource_setup(struct agx_device *dev,
    struct pipe_resource *templ = &nresource->base;
 
    nresource->layout = (struct ail_layout) {
-      .tiling = (nresource->modifier == DRM_FORMAT_MOD_LINEAR) ?
-                AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
+      .tiling = ail_modifier_to_tiling(nresource->modifier),
       .format = templ->format,
       .width_px = templ->width0,
       .height_px = templ->height0,
@@ -347,13 +367,24 @@ agx_twiddled_allowed(const struct agx_resource *pres)
    return true;
 }
 
+static bool
+agx_compression_allowed(const struct agx_resource *pres)
+{
+   /* At this point in the series, compression isn't fully plumbed in */
+   return false;
+}
+
 static uint64_t
 agx_select_modifier_from_list(const struct agx_resource *pres,
                               const uint64_t *modifiers, int count)
 {
+   if (agx_twiddled_allowed(pres) && agx_compression_allowed(pres) &&
+       drm_find_modifier(DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED, modifiers, count))
+      return DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED;
+
    if (agx_twiddled_allowed(pres) &&
        drm_find_modifier(DRM_FORMAT_MOD_APPLE_TWIDDLED, modifiers, count))
-      return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+         return DRM_FORMAT_MOD_APPLE_TWIDDLED;
 
    if (agx_linear_allowed(pres) &&
        drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count))
@@ -366,8 +397,12 @@ agx_select_modifier_from_list(const struct agx_resource *pres,
 static uint64_t
 agx_select_best_modifier(const struct agx_resource *pres)
 {
-   if (agx_twiddled_allowed(pres))
-      return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+   if (agx_twiddled_allowed(pres)) {
+      if (agx_compression_allowed(pres))
+         return DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED;
+      else
+         return DRM_FORMAT_MOD_APPLE_TWIDDLED;
+   }
 
    assert(agx_linear_allowed(pres));
    return DRM_FORMAT_MOD_LINEAR;
@@ -572,6 +607,90 @@ agx_prepare_for_map(struct agx_context *ctx,
       agx_flush_readers(ctx, rsrc, "Unsynchronized read");
 }
 
+
+/* Most of the time we can do CPU-side transfers, but sometimes we need to use
+ * the 3D pipe for this. Let's wrap u_blitter to blit to/from staging textures.
+ * Code adapted from panfrost */
+
+static struct agx_resource *
+agx_alloc_staging(struct agx_context *ctx, struct agx_resource *rsc,
+                  unsigned level, const struct pipe_box *box)
+{
+   struct pipe_context *pctx = &ctx->base;
+   struct pipe_resource tmpl = rsc->base;
+
+   tmpl.width0  = box->width;
+   tmpl.height0 = box->height;
+
+   /* for array textures, box->depth is the array_size, otherwise for 3d
+    * textures, it is the depth.
+    */
+   if (tmpl.array_size > 1) {
+      if (tmpl.target == PIPE_TEXTURE_CUBE)
+         tmpl.target = PIPE_TEXTURE_2D_ARRAY;
+      tmpl.array_size = box->depth;
+      tmpl.depth0 = 1;
+   } else {
+      tmpl.array_size = 1;
+      tmpl.depth0 = box->depth;
+   }
+   tmpl.last_level = 0;
+   tmpl.bind |= PIPE_BIND_LINEAR;
+
+   struct pipe_resource *pstaging =
+      pctx->screen->resource_create(pctx->screen, &tmpl);
+   if (!pstaging)
+            return NULL;
+
+   return agx_resource(pstaging);
+}
+
+static enum pipe_format
+agx_blit_format(enum pipe_format fmt)
+{
+   return fmt;
+}
+
+static void
+agx_blit_from_staging(struct pipe_context *pctx, struct agx_transfer *trans)
+{
+   struct pipe_resource *dst = trans->base.resource;
+   struct pipe_blit_info blit = {0};
+
+   blit.dst.resource = dst;
+   blit.dst.format   = agx_blit_format(dst->format);
+   blit.dst.level    = trans->base.level;
+   blit.dst.box      = trans->base.box;
+   blit.src.resource = trans->staging.rsrc;
+   blit.src.format   = agx_blit_format(trans->staging.rsrc->format);
+   blit.src.level    = 0;
+   blit.src.box      = trans->staging.box;
+   blit.mask = util_format_get_mask(blit.src.format);
+   blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+   agx_blit(pctx, &blit);
+}
+
+static void
+agx_blit_to_staging(struct pipe_context *pctx, struct agx_transfer *trans)
+{
+   struct pipe_resource *src = trans->base.resource;
+   struct pipe_blit_info blit = {0};
+
+   blit.src.resource = src;
+   blit.src.format   = agx_blit_format(src->format);
+   blit.src.level    = trans->base.level;
+   blit.src.box      = trans->base.box;
+   blit.dst.resource = trans->staging.rsrc;
+   blit.dst.format   = agx_blit_format(trans->staging.rsrc->format);
+   blit.dst.level    = 0;
+   blit.dst.box      = trans->staging.box;
+   blit.mask = util_format_get_mask(blit.dst.format);
+   blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+   agx_blit(pctx, &blit);
+}
+
 static void *
 agx_transfer_map(struct pipe_context *pctx,
                  struct pipe_resource *resource,
@@ -596,6 +715,36 @@ agx_transfer_map(struct pipe_context *pctx,
 
    pipe_resource_reference(&transfer->base.resource, resource);
    *out_transfer = &transfer->base;
+
+   /* For compression, we use a staging blit as we do not implement AGX
+    * compression in software. In some cases, we could use this path for
+    * twiddled too, but we don't have a use case for that yet.
+    */
+   if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED) {
+      struct agx_resource *staging = agx_alloc_staging(ctx, rsrc, level, box);
+      assert(staging);
+
+      /* Staging resources have one LOD: level 0. Query the strides
+       * on this LOD.
+       */
+      transfer->base.stride = ail_get_linear_stride_B(&staging->layout, 0);
+      transfer->base.layer_stride = staging->layout.layer_stride_B;
+      transfer->staging.rsrc = &staging->base;
+
+      transfer->staging.box = *box;
+      transfer->staging.box.x = 0;
+      transfer->staging.box.y = 0;
+      transfer->staging.box.z = 0;
+
+      assert(transfer->staging.rsrc != NULL);
+
+      if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
+            agx_blit_to_staging(pctx, transfer);
+            agx_flush_writer(ctx, staging, "GPU read staging blit");
+      }
+
+      return staging->bo->ptr.cpu;
+   }
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
       transfer->base.stride =
@@ -652,10 +801,13 @@ agx_transfer_unmap(struct pipe_context *pctx,
    if (transfer->usage & PIPE_MAP_WRITE)
       BITSET_SET(rsrc->data_valid, transfer->level);
 
-   /* Tiling will occur in software from a staging cpu buffer */
-   if ((transfer->usage & PIPE_MAP_WRITE) &&
-         rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
-      assert(trans->map != NULL);
+   if (trans->staging.rsrc && (transfer->usage & PIPE_MAP_WRITE)) {
+         agx_blit_from_staging(pctx, trans);
+         agx_flush_readers(agx_context(pctx), agx_resource(trans->staging.rsrc),
+                           "GPU write staging blit");
+         pipe_resource_reference(&trans->staging.rsrc, NULL);
+   } else if (trans->map && (transfer->usage & PIPE_MAP_WRITE)) {
+      assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
 
       for (unsigned z = 0; z < transfer->box.depth; ++z) {
          uint8_t *map = agx_map_texture_cpu(rsrc, transfer->level,
@@ -961,6 +1113,7 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
       ail_detile(rsrc->bo->ptr.cpu, map, &rsrc->layout, 0, rsrc->dt_stride,
                  0, 0, rsrc->base.width0, rsrc->base.height0);
    } else {
+      assert(rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
       memcpy(map, rsrc->bo->ptr.cpu, rsrc->dt_stride * rsrc->base.height0);
    }
 
