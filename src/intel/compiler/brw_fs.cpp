@@ -3625,7 +3625,6 @@ fs_visitor::emit_repclear_shader()
          bld.exec_all().group(1, 0).MOV(component(header, 2), brw_imm_ud(i));
 
       write = bld.emit(FS_OPCODE_REP_FB_WRITE);
-      write->saturate = key->clamp_fragment_color;
       write->target = i;
       /* We can use a headerless message for the first render target */
       write->header_size = i == 0 ? 0 : 2;
