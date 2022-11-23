@@ -688,6 +688,7 @@ init_attrib_groups(struct gl_context *ctx)
    _mesa_init_pixelstore( ctx );
    _mesa_init_point( ctx );
    _mesa_init_polygon( ctx );
+   _mesa_init_varray( ctx ); /* should be before _mesa_init_program */
    _mesa_init_program( ctx );
    _mesa_init_queryobj( ctx );
    _mesa_init_sync( ctx );
@@ -697,7 +698,6 @@ init_attrib_groups(struct gl_context *ctx)
    _mesa_init_stencil( ctx );
    _mesa_init_transform( ctx );
    _mesa_init_transform_feedback( ctx );
-   _mesa_init_varray( ctx );
    _mesa_init_viewport( ctx );
    _mesa_init_resident_handles( ctx );
 

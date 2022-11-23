@@ -151,7 +151,6 @@ vbo_exec_bind_arrays(struct gl_context *ctx,
 
    _mesa_save_and_set_draw_vao(ctx, vao, vao_filter,
                                old_vao, old_vp_input_filter);
-   _mesa_update_vao_state(ctx, vao_filter);
 }
 
 

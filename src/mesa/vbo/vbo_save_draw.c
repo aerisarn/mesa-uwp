@@ -328,7 +328,6 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
 
    _mesa_save_and_set_draw_vao(ctx, node->cold->VAO[mode], vao_filter,
                                &old_vao, &old_vp_input_filter);
-   _mesa_update_vao_state(ctx, vao_filter);
 
    /* Need that at least one time. */
    if (ctx->NewState)
