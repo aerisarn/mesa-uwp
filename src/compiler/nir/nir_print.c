@@ -1753,11 +1753,31 @@ print_nz_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
       print_bitset(fp, label, words, size);
 }
 
-/* Print uint64_t value in hex, only if non-zero */
+/* Print uint64_t value, only if non-zero.
+ * The value is printed by enumerating the ranges of bits that are set.
+ * E.g. inputs_read: 0,15-17
+ */
 static void
 print_nz_x64(FILE *fp, const char *label, uint64_t value) {
-   if (value)
-      fprintf(fp, "%s: 0x%016" PRIx64 "\n", label, value);
+   if (value) {
+      char acc[256] = {0};
+      char buf[32];
+      int start = 0;
+      int count = 0;
+      while (value) {
+         u_bit_scan_consecutive_range64(&value, &start, &count);
+         assert(count > 0);
+         bool is_first = !acc[0];
+         if (count > 1) {
+            snprintf(buf, sizeof(buf), is_first ? "%d-%d" : ",%d-%d", start, start + count - 1);
+         } else {
+            snprintf(buf, sizeof(buf), is_first ? "%d" : ",%d", start);
+         }
+         assert(strlen(acc) + strlen(buf) + 1 < sizeof(acc));
+         strcat(acc, buf);
+      }
+      fprintf(fp, "%s: %s\n", label, acc);
+   }
 }
 
 /* Print uint32_t value in hex, only if non-zero */
@@ -1991,7 +2011,7 @@ print_shader_info(const struct shader_info *info, FILE *fp) {
       break;
 
    case MESA_SHADER_MESH:
-      print_nz_x16(fp, "ms_cross_invocation_output_access", info->mesh.ms_cross_invocation_output_access);
+      print_nz_x64(fp, "ms_cross_invocation_output_access", info->mesh.ms_cross_invocation_output_access);
       fprintf(fp, "max_vertices_out: %u\n", info->mesh.max_vertices_out);
       fprintf(fp, "max_primitives_out: %u\n", info->mesh.max_primitives_out);
       fprintf(fp, "primitive_type: %s\n", primitive_name(info->mesh.primitive_type));
