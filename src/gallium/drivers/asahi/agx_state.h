@@ -245,6 +245,8 @@ agx_context(struct pipe_context *pctx)
    return (struct agx_context *) pctx;
 }
 
+void agx_init_query_functions(struct pipe_context *ctx);
+
 static inline void
 agx_dirty_all(struct agx_context *ctx)
 {

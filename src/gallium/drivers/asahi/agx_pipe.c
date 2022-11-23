@@ -95,50 +95,6 @@ uint64_t agx_best_modifiers[] = {
 
 void agx_init_state_functions(struct pipe_context *ctx);
 
-static struct pipe_query *
-agx_create_query(struct pipe_context *ctx, unsigned query_type, unsigned index)
-{
-   struct agx_query *query = CALLOC_STRUCT(agx_query);
-
-   return (struct pipe_query *)query;
-}
-
-static void
-agx_destroy_query(struct pipe_context *ctx, struct pipe_query *query)
-{
-   FREE(query);
-}
-
-static bool
-agx_begin_query(struct pipe_context *ctx, struct pipe_query *query)
-{
-   return true;
-}
-
-static bool
-agx_end_query(struct pipe_context *ctx, struct pipe_query *query)
-{
-   return true;
-}
-
-static bool
-agx_get_query_result(struct pipe_context *ctx,
-                     struct pipe_query *query,
-                     bool wait,
-                     union pipe_query_result *vresult)
-{
-   uint64_t *result = (uint64_t*)vresult;
-
-   *result = 0;
-   return true;
-}
-
-static void
-agx_set_active_query_state(struct pipe_context *pipe, bool enable)
-{
-}
-
-
 /*
  * resource
  */
@@ -1177,12 +1133,6 @@ agx_create_context(struct pipe_screen *screen,
    pctx->resource_copy_region = util_resource_copy_region;
    pctx->blit = agx_blit;
    pctx->flush_resource = agx_flush_resource;
-   pctx->create_query = agx_create_query;
-   pctx->destroy_query = agx_destroy_query;
-   pctx->begin_query = agx_begin_query;
-   pctx->end_query = agx_end_query;
-   pctx->get_query_result = agx_get_query_result;
-   pctx->set_active_query_state = agx_set_active_query_state;
 
    pctx->buffer_map = u_transfer_helper_transfer_map;
    pctx->buffer_unmap = u_transfer_helper_transfer_unmap;
@@ -1194,7 +1144,9 @@ agx_create_context(struct pipe_screen *screen,
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->set_debug_callback = u_default_set_debug_callback;
    pctx->invalidate_resource = agx_invalidate_resource;
+
    agx_init_state_functions(pctx);
+   agx_init_query_functions(pctx);
 
    agx_meta_init(&ctx->meta, agx_device(screen), ctx);
 
