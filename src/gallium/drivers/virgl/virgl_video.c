@@ -594,6 +594,51 @@ static int fill_mpeg12_picture_desc(const struct pipe_picture_desc *desc,
 }
 
 
+static int fill_vc1_picture_desc(const struct pipe_picture_desc *desc,
+                                 union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_video_buffer *vbuf;
+    struct virgl_vc1_picture_desc *vvc1 = &vdsc->vc1;
+    struct pipe_vc1_picture_desc *vc1 = (struct pipe_vc1_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vvc1->base);
+
+    for (i = 0; i < 2; i++) {
+        vbuf = virgl_video_buffer(vc1->ref[i]);
+        vvc1->ref[i] = vbuf ? vbuf->handle : 0;
+    }
+    ITEM_SET(vvc1, vc1, picture_type);
+    ITEM_SET(vvc1, vc1, pulldown);
+    ITEM_SET(vvc1, vc1, interlace);
+    ITEM_SET(vvc1, vc1, tfcntrflag);
+    ITEM_SET(vvc1, vc1, finterpflag);
+    ITEM_SET(vvc1, vc1, psf);
+    ITEM_SET(vvc1, vc1, dquant);
+    ITEM_SET(vvc1, vc1, panscan_flag);
+    ITEM_SET(vvc1, vc1, refdist_flag);
+    ITEM_SET(vvc1, vc1, quantizer);
+    ITEM_SET(vvc1, vc1, extended_mv);
+    ITEM_SET(vvc1, vc1, extended_dmv);
+    ITEM_SET(vvc1, vc1, overlap);
+    ITEM_SET(vvc1, vc1, vstransform);
+    ITEM_SET(vvc1, vc1, loopfilter);
+    ITEM_SET(vvc1, vc1, fastuvmc);
+    ITEM_SET(vvc1, vc1, range_mapy_flag);
+    ITEM_SET(vvc1, vc1, range_mapy);
+    ITEM_SET(vvc1, vc1, range_mapuv_flag);
+    ITEM_SET(vvc1, vc1, range_mapuv);
+    ITEM_SET(vvc1, vc1, multires);
+    ITEM_SET(vvc1, vc1, syncmarker);
+    ITEM_SET(vvc1, vc1, rangered);
+    ITEM_SET(vvc1, vc1, maxbframes);
+    ITEM_SET(vvc1, vc1, deblockEnable);
+    ITEM_SET(vvc1, vc1, pquant);
+    ITEM_SET(vvc1, vc1, slice_count);
+
+    return 0;
+}
+
 #undef ITEM_SET
 #undef ITEM_CPY
 
@@ -609,6 +654,8 @@ static int fill_picture_desc(const struct pipe_picture_desc *desc,
         return fill_h265_picture_desc(desc, vdsc);
     case PIPE_VIDEO_FORMAT_MPEG12:
         return fill_mpeg12_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_VC1:
+        return fill_vc1_picture_desc(desc, vdsc);
     default:
         return -1;
     }
@@ -862,7 +909,8 @@ virgl_video_create_codec(struct pipe_context *ctx,
         height = align(height, VL_MACROBLOCK_HEIGHT);
         break;
     case PIPE_VIDEO_FORMAT_HEVC: 
-    case PIPE_VIDEO_FORMAT_MPEG12: /* fall through */
+    case PIPE_VIDEO_FORMAT_MPEG12: 
+    case PIPE_VIDEO_FORMAT_VC1: /* fall through */
     default:
         break;
     }

@@ -582,12 +582,50 @@ struct virgl_mpeg12_picture_desc
     uint32_t ref[2];
 };
 
+struct virgl_vc1_picture_desc
+{
+   struct virgl_base_picture_desc base;
+
+   uint32_t slice_count;
+   uint8_t picture_type;
+   uint8_t frame_coding_mode;
+   uint8_t postprocflag;
+   uint8_t pulldown;
+   uint8_t interlace;
+   uint8_t tfcntrflag;
+   uint8_t finterpflag;
+   uint8_t psf;
+   uint8_t dquant;
+   uint8_t panscan_flag;
+   uint8_t refdist_flag;
+   uint8_t quantizer;
+   uint8_t extended_mv;
+   uint8_t extended_dmv;
+   uint8_t overlap;
+   uint8_t vstransform;
+   uint8_t loopfilter;
+   uint8_t fastuvmc;
+   uint8_t range_mapy_flag;
+   uint8_t range_mapy;
+   uint8_t range_mapuv_flag;
+   uint8_t range_mapuv;
+   uint8_t multires;
+   uint8_t syncmarker;
+   uint8_t rangered;
+   uint8_t maxbframes;
+   uint8_t deblockEnable;
+   uint8_t pquant;
+
+   uint32_t ref[2];
+};
+
 union virgl_picture_desc {
     struct virgl_base_picture_desc base;
     struct virgl_h264_picture_desc h264;
     struct virgl_h265_picture_desc h265;
     struct virgl_mpeg4_picture_desc mpeg4;
     struct virgl_mpeg12_picture_desc mpeg12;
+    struct virgl_vc1_picture_desc vc1;
     struct virgl_h264_enc_picture_desc h264_enc;
     struct virgl_h265_enc_picture_desc h265_enc;
 };

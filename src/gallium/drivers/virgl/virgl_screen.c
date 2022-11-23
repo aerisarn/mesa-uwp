@@ -499,6 +499,7 @@ virgl_get_video_param(struct pipe_screen *screen,
                         entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE);
        break;
    case PIPE_VIDEO_FORMAT_MPEG12:
+   case PIPE_VIDEO_FORMAT_VC1:
       drv_supported = (entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM);
       break;
    default:
