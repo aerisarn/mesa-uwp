@@ -148,6 +148,8 @@ VkResult pvr_free_list_create(struct pvr_device *device,
                               struct pvr_free_list *parent_free_list,
                               struct pvr_free_list **const free_list_out)
 {
+   const struct pvr_device_runtime_info *runtime_info =
+      &device->pdevice->dev_runtime_info;
    struct pvr_winsys_free_list *parent_ws_free_list =
       parent_free_list ? parent_free_list->ws_free_list : NULL;
    const uint64_t bo_flags = PVR_BO_ALLOC_FLAG_GPU_UNCACHED |
@@ -205,8 +207,8 @@ VkResult pvr_free_list_create(struct pvr_device *device,
    /* Make sure the 'max' size doesn't exceed what the firmware supports and
     * adjust the other sizes accordingly.
     */
-   if (max_size > ROGUE_FREE_LIST_MAX_SIZE) {
-      max_size = ROGUE_FREE_LIST_MAX_SIZE;
+   if (max_size > runtime_info->max_free_list_size) {
+      max_size = runtime_info->max_free_list_size;
       assert(align64(max_size, size_alignment) == max_size);
    }
 
