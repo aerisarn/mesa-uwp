@@ -4871,6 +4871,15 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
                                        const struct pipe_vertex_element *elements)
 {
    struct si_screen *sscreen = (struct si_screen *)ctx->screen;
+
+   if (sscreen->debug_flags & DBG(VERTEX_ELEMENTS)) {
+      for (int i = 0; i < count; ++i) {
+         const struct pipe_vertex_element *e = elements + i;
+         fprintf(stderr, "elements[%d]: offset %2d, buffer_index %d, dual_slot %d, format %3d, divisor %u\n",
+                i, e->src_offset, e->vertex_buffer_index, e->dual_slot, e->src_format, e->instance_divisor);
+      }
+   }
+
    struct si_vertex_elements *v = CALLOC_STRUCT(si_vertex_elements);
    struct si_fast_udiv_info32 divisor_factors[SI_MAX_ATTRIBS] = {};
    STATIC_ASSERT(sizeof(struct si_fast_udiv_info32) == 16);
