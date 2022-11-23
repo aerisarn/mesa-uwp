@@ -1424,6 +1424,18 @@ if get_option('intel-xe-kmd').enabled()
   pre_args += '-DINTEL_XE_KMD_SUPPORTED'
 endif
 
+if with_intel_hasvk and host_machine.cpu_family().startswith('x86') == false
+  error('Intel "hasvk" Vulkan driver requires x86 or x86_64 CPU family')
+endif
+
+if with_gallium_crocus and host_machine.cpu_family().startswith('x86') == false
+  error('Intel "crocus" Gallium driver requires x86 or x86_64 CPU family')
+endif
+
+if with_gallium_i915 and host_machine.cpu_family().startswith('x86') == false
+  error('Intel "i915" Gallium driver requires x86 or x86_64 CPU family')
+endif
+
 # Determine whether or not the rt library is needed for time functions
 if host_machine.system() == 'windows' or cc.has_function('clock_gettime')
   dep_clock = null_dep
