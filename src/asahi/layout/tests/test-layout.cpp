@@ -56,7 +56,7 @@ TEST(Miptree, SmokeTestBuffer)
 
    ail_make_miptree(&layout);
 
-   EXPECT_EQ(layout.size_B, ALIGN_POT(81946, 0x4000));
+   EXPECT_EQ(layout.size_B, ALIGN_POT(81946, AIL_CACHELINE));
 }
 
 /*
