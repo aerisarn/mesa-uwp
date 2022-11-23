@@ -7266,9 +7266,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
    payload_ = new fs_thread_payload(*this, source_depth_to_render_target,
                                     runtime_check_aads_emit);
 
-   if (0) {
-      emit_dummy_fs();
-   } else if (do_rep_send) {
+   if (do_rep_send) {
       assert(dispatch_width == 16);
       emit_repclear_shader();
    } else {

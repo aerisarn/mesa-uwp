@@ -303,7 +303,6 @@ public:
    bool lower_sub_sat();
    bool opt_combine_constants();
 
-   void emit_dummy_fs();
    void emit_repclear_shader();
    void emit_fragcoord_interpolation(fs_reg wpos);
    void emit_is_helper_invocation(fs_reg result);
