@@ -2041,6 +2041,10 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (agx_scissor_culls_everything(ctx))
 	   return;
 
+   /* We don't support side effects in vertex stages, so this is trivial */
+   if (ctx->rast->base.rasterizer_discard)
+      return;
+
    /* Dirty track the reduced prim: lines vs points vs triangles */
    enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
    if (reduced_prim != batch->reduced_prim) ctx->dirty |= AGX_DIRTY_PRIM;
