@@ -45,6 +45,8 @@
 
 #include "drm-uapi/drm_fourcc.h"
 
+#define ETNA_PIPE_MAP_DISCARD_LEVEL   (PIPE_MAP_DRV_PRV << 0)
+
 /* Compute offset into a 1D/2D/3D buffer of a certain box.
  * This box must be aligned to the block width and height of the
  * underlying format. */
@@ -128,7 +130,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 
    if (ptrans->usage & PIPE_MAP_WRITE) {
       if (etna_resource_level_needs_flush(res_level)) {
-         if (ptrans->usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
+         if (ptrans->usage & ETNA_PIPE_MAP_DISCARD_LEVEL)
             etna_resource_level_mark_flushed(res_level);
          else
             etna_copy_resource(pctx, &rsc->base, &rsc->base, ptrans->level, ptrans->level);
@@ -214,6 +216,8 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
    if (!trans)
       return NULL;
 
+   assert(level <= prsc->last_level);
+
    /*
     * Upgrade to UNSYNCHRONIZED if target is PIPE_BUFFER and range is uninitialized.
     */
@@ -240,13 +244,18 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
    }
 
+   if ((usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) ||
+       ((usage & PIPE_MAP_DISCARD_RANGE) &&
+        util_texrange_covers_whole_level(prsc, level, box->x, box->y, box->z,
+                                         box->width, box->height, box->depth)))
+      usage |= ETNA_PIPE_MAP_DISCARD_LEVEL;
+
+
    ptrans = &trans->base;
    pipe_resource_reference(&ptrans->resource, prsc);
    ptrans->level = level;
    ptrans->usage = usage;
    ptrans->box = *box;
-
-   assert(level <= prsc->last_level);
 
    /* This one is a little tricky: if we have a separate render resource, which
     * is newer than the base resource we want the transfer to target this one,
@@ -314,7 +323,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          ptrans->box.height = align(ptrans->box.height, ETNA_RS_HEIGHT_MASK + 1);
       }
 
-      if (!(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE))
+      if ((usage & PIPE_MAP_READ) || !(usage & ETNA_PIPE_MAP_DISCARD_LEVEL))
          etna_copy_resource_box(pctx, trans->rsc, &rsc->base, level, &ptrans->box);
 
       /* Switch to using the temporary resource instead */
