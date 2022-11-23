@@ -421,7 +421,8 @@
   </struct>
 
   <struct name="Fragment occlusion query" size="4">
-    <field name="Offset" size="18" start="14" type="uint"/>
+    <!-- 64-bit index into occlusion result buffer -->
+    <field name="Index" size="15" start="17" type="uint"/>
   </struct>
 
   <struct name="Fragment occlusion query 2" size="4">
