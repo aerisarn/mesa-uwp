@@ -172,7 +172,7 @@ radeonsi-raven-va:amd64:
     MESA_SPIRV_LOG_LEVEL: error
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
-    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache,install/*,*/install/*"
+    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache,install/*,*/install/*,*/vkd3d-proton.cache*,vkd3d-proton.cache*"
 
 .b2c-test-radv-vk:
   extends:
