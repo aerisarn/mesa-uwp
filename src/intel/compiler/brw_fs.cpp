@@ -3599,10 +3599,10 @@ void
 fs_visitor::emit_repclear_shader()
 {
    brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
-   int base_mrf = 0;
-   int color_mrf = base_mrf + 2;
+   int color_mrf = 2;
 
    assert(uniforms == 0);
+   assume(key->nr_color_regions > 0);
 
    struct brw_reg reg =
       brw_reg(BRW_GENERAL_REGISTER_FILE, 2, 3, 0, 0, BRW_REGISTER_TYPE_UD,
@@ -3612,34 +3612,25 @@ fs_visitor::emit_repclear_shader()
    bld.exec_all().group(4, 0).MOV(brw_uvec_mrf(4, color_mrf, 0), fs_reg(reg));
 
    fs_inst *write = NULL;
-   if (key->nr_color_regions == 1) {
-      write = bld.emit(FS_OPCODE_REP_FB_WRITE);
-      write->saturate = key->clamp_fragment_color;
-      write->base_mrf = color_mrf;
-      write->target = 0;
-      write->header_size = 0;
-      write->mlen = 1;
-   } else {
-      assume(key->nr_color_regions > 0);
+   struct brw_reg header;
 
-      struct brw_reg header =
-         retype(brw_message_reg(base_mrf), BRW_REGISTER_TYPE_UD);
+   if (key->nr_color_regions > 1) {
+      header = retype(brw_message_reg(color_mrf - 2), BRW_REGISTER_TYPE_UD);
       bld.exec_all().group(16, 0)
          .MOV(header, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
+   }
 
-      for (int i = 0; i < key->nr_color_regions; ++i) {
-         if (i > 0) {
-            bld.exec_all().group(1, 0)
-               .MOV(component(header, 2), brw_imm_ud(i));
-         }
+   for (int i = 0; i < key->nr_color_regions; ++i) {
+      if (i > 0)
+         bld.exec_all().group(1, 0).MOV(component(header, 2), brw_imm_ud(i));
 
-         write = bld.emit(FS_OPCODE_REP_FB_WRITE);
-         write->saturate = key->clamp_fragment_color;
-         write->base_mrf = base_mrf;
-         write->target = i;
-         write->header_size = 2;
-         write->mlen = 3;
-      }
+      write = bld.emit(FS_OPCODE_REP_FB_WRITE);
+      write->saturate = key->clamp_fragment_color;
+      write->target = i;
+      /* We can use a headerless message for the first render target */
+      write->header_size = i == 0 ? 0 : 2;
+      write->mlen = 1 + write->header_size;
+      write->base_mrf = color_mrf - write->header_size;
    }
    write->eot = true;
    write->last_rt = true;
