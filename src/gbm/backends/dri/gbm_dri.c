@@ -301,12 +301,12 @@ static struct dri_extension_match dri_core_extensions[] = {
 
 static struct dri_extension_match gbm_dri_device_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
-   { __DRI_DRI2, 1, offsetof(struct gbm_dri_device, dri2), false },
+   { __DRI_DRI2, 4, offsetof(struct gbm_dri_device, dri2), false },
 };
 
 static struct dri_extension_match gbm_swrast_device_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
-   { __DRI_SWRAST, 1, offsetof(struct gbm_dri_device, swrast), false },
+   { __DRI_SWRAST, 4, offsetof(struct gbm_dri_device, swrast), false },
    { __DRI_KOPPER, 1, offsetof(struct gbm_dri_device, kopper), true },
 };
 
@@ -430,16 +430,10 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
    if (dri->dri2 == NULL)
       return -1;
 
-   if (dri->dri2->base.version >= 4) {
-      dri->screen = dri->dri2->createNewScreen2(0, dri->base.v0.fd,
-                                                dri->loader_extensions,
-                                                dri->driver_extensions,
-                                                &dri->driver_configs, dri);
-   } else {
-      dri->screen = dri->dri2->createNewScreen(0, dri->base.v0.fd,
-                                               dri->loader_extensions,
-                                               &dri->driver_configs, dri);
-   }
+   dri->screen = dri->dri2->createNewScreen2(0, dri->base.v0.fd,
+                                             dri->loader_extensions,
+                                             dri->driver_extensions,
+                                             &dri->driver_configs, dri);
    if (dri->screen == NULL)
       return -1;
 
@@ -482,14 +476,9 @@ dri_screen_create_swrast(struct gbm_dri_device *dri)
    if (dri->swrast == NULL)
       return -1;
 
-   if (dri->swrast->base.version >= 4) {
-      dri->screen = dri->swrast->createNewScreen2(0, dri->loader_extensions,
-                                                  dri->driver_extensions,
-                                                  &dri->driver_configs, dri);
-   } else {
-      dri->screen = dri->swrast->createNewScreen(0, dri->loader_extensions,
-                                                 &dri->driver_configs, dri);
-   }
+   dri->screen = dri->swrast->createNewScreen2(0, dri->loader_extensions,
+                                               dri->driver_extensions,
+                                               &dri->driver_configs, dri);
    if (dri->screen == NULL)
       return -1;
 
