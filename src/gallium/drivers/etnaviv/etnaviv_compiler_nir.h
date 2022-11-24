@@ -31,6 +31,7 @@
 #include "etnaviv_asm.h"
 #include "etnaviv_compiler.h"
 #include "util/compiler.h"
+#include "util/log.h"
 
 struct etna_compile {
    nir_shader *nir;
@@ -60,7 +61,7 @@ struct etna_compile {
 };
 
 #define compile_error(ctx, args...) ({ \
-   printf(args); \
+   mesa_loge(args); \
    ctx->error = true; \
    abort(); \
 })
