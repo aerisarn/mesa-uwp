@@ -106,10 +106,10 @@ def test_branch_has_commit(branch: str, commit: str, expected: bool) -> None:
         ('20.1', 'dd2bd68fa69124c86cd008b256d06f44fab8e6cd', 'd043d24654c851f0be57dbbf48274b5373dea42b'),
         ('20.1', '20.1-branchpoint', ''),
         ('20.1', '20.0', ''),
-        ('20.1', '20.2', ''),
+        ('20.1', '20.2', 'abac4859618e02aea00f705b841a7c5c5007ad1a'),
         ('20.1', 'main', ''),
         ('20.1', 'd043d24654c851f0be57dbbf48274b5373dea42b', ''),
-        ('20.0', 'dd2bd68fa69124c86cd008b256d06f44fab8e6cd', ''),
+        ('20.0', 'dd2bd68fa69124c86cd008b256d06f44fab8e6cd', '8cd4f57381cefe69019a3282d457d5bda3644030'),
     ])
 def test_branch_has_backport_of_commit(branch: str, commit: str, expected: bool) -> None:
     upstream = get_upstream()
