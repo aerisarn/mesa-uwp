@@ -236,13 +236,13 @@ endforeach
 
 with_gallium = gallium_drivers.length() != 0
 with_gallium_kmsro = system_has_kms_drm and [
+  with_gallium_asahi,
+  with_gallium_etnaviv,
+  with_gallium_freedreno,
+  with_gallium_lima,
+  with_gallium_panfrost,
   with_gallium_v3d,
   with_gallium_vc4,
-  with_gallium_etnaviv,
-  with_gallium_panfrost,
-  with_gallium_lima,
-  with_gallium_freedreno,
-  with_gallium_asahi,
 ].contains(true)
 
 with_dri = false
@@ -670,11 +670,11 @@ elif not with_platform_x11
     _vdpau = 'disabled'
   endif
 elif not [
+           with_gallium_d3d12_video,
+           with_gallium_nouveau,
            with_gallium_r300,
            with_gallium_r600,
            with_gallium_radeonsi,
-           with_gallium_nouveau,
-           with_gallium_d3d12_video,
          ].contains(true)
   if _vdpau == 'enabled'
     error('VDPAU state tracker requires at least one of the following gallium drivers: r300, r600, radeonsi, nouveau, d3d12 (with option gallium-d3d12-video).')
@@ -799,10 +799,10 @@ elif _va == 'false'
   warning('gallium-va option "false" deprecated, please use "disabled" instead.')
 endif
 if not [
+         with_gallium_d3d12_video,
+         with_gallium_nouveau,
          with_gallium_r600,
          with_gallium_radeonsi,
-         with_gallium_nouveau,
-         with_gallium_d3d12_video,
          with_gallium_virgl,
        ].contains(true)
   if _va == 'enabled'
@@ -868,16 +868,16 @@ if with_gallium_st_nine
   if not with_gallium_softpipe
     error('The nine state tracker requires gallium softpipe/llvmpipe.')
   elif not [
-             with_gallium_radeonsi,
-             with_gallium_nouveau,
-             with_gallium_r600,
-             with_gallium_r300,
-             with_gallium_svga,
+             with_gallium_crocus,
+             with_gallium_freedreno,
              with_gallium_i915,
              with_gallium_iris,
-             with_gallium_crocus,
+             with_gallium_nouveau,
+             with_gallium_r300,
+             with_gallium_r600,
+             with_gallium_radeonsi,
+             with_gallium_svga,
              with_gallium_zink,
-             with_gallium_freedreno,
            ].contains(true)
     error('The nine state tracker requires at least one non-swrast gallium driver.')
   endif
