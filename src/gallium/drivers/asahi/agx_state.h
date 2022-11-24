@@ -257,8 +257,8 @@ struct agx_sampler_state {
 struct agx_sampler_view {
    struct pipe_sampler_view base;
 
-   /* BO, may differ from base.texture's BO in case of separate stencil */
-   struct agx_bo *bo;
+   /* Resource, may differ from base.texture in case of separate stencil */
+   struct agx_resource *rsrc;
 
    /* Prepared descriptor */
    struct agx_texture_packed desc;

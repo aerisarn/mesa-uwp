@@ -468,7 +468,8 @@ agx_translate_sample_count(unsigned samples)
 static void
 agx_pack_texture(void *out, struct agx_resource *rsrc,
                  enum pipe_format format /* override */,
-                 const struct pipe_sampler_view *state)
+                 const struct pipe_sampler_view *state,
+                 bool include_bo)
 {
    const struct util_format_description *desc =
       util_format_description(format);
@@ -519,14 +520,20 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       cfg.first_level = state->u.tex.first_level;
       cfg.last_level = state->u.tex.last_level;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = agx_map_texture_gpu(rsrc, state->u.tex.first_layer);
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
 
       if (ail_is_compressed(&rsrc->layout)) {
          cfg.compressed_1 = true;
          cfg.compressed_2 = true;
-         cfg.acceleration_buffer = cfg.address + rsrc->layout.metadata_offset_B;
+      }
+
+      if (include_bo) {
+         cfg.address = agx_map_texture_gpu(rsrc, state->u.tex.first_layer);
+
+         if (ail_is_compressed(&rsrc->layout)) {
+            cfg.acceleration_buffer = cfg.address + rsrc->layout.metadata_offset_B;
+         }
       }
 
       if (state->target == PIPE_TEXTURE_3D) {
@@ -575,10 +582,9 @@ agx_create_sampler_view(struct pipe_context *pctx,
       format = texture->format;
    }
 
-   agx_pack_texture(&so->desc, rsrc, format, state);
-
-   /* Save off the BO that we actually use, with the stencil fixed up */
-   so->bo = rsrc->bo;
+   /* Save off the resource that we actually use, with the stencil fixed up */
+   so->rsrc = rsrc;
+   agx_pack_texture(&so->desc, rsrc, format, state, false);
 
    so->base = *state;
    so->base.texture = NULL;
@@ -1359,7 +1365,21 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
       agx_batch_reads(batch, agx_resource(tex->base.texture));
 
-      textures[i] = tex->desc;
+      /* Without the address */
+      struct agx_texture_packed texture = tex->desc;
+
+      /* Just the address */
+      struct agx_texture_packed texture2;
+      agx_pack(&texture2, TEXTURE, cfg) {
+         cfg.address = agx_map_texture_gpu(tex->rsrc, tex->base.u.tex.first_layer);
+
+         if (ail_is_compressed(&tex->rsrc->layout)) {
+            cfg.acceleration_buffer = cfg.address + tex->rsrc->layout.metadata_offset_B;
+         }
+      }
+
+      agx_merge(texture, texture2, TEXTURE);
+      textures[i] = texture;
    }
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
@@ -1500,7 +1520,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
                   .first_level = surf->u.tex.level,
                   .last_level = surf->u.tex.level
                }
-         });
+         }, true);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
