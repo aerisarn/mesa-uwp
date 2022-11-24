@@ -136,11 +136,8 @@ struct agx_zsa {
 
 struct agx_blend {
    bool logicop_enable, blend_enable;
-
-   union {
-      nir_lower_blend_rt rt[8];
-      unsigned logicop_func;
-   };
+   nir_lower_blend_rt rt[8];
+   unsigned logicop_func;
 };
 
 struct asahi_shader_key {
