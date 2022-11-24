@@ -121,7 +121,7 @@ consequence, we need to ensure command buffers are properly
 instrumented for the Perfetto driver data sources prior to Perfetto
 actually collecting traces.
 
-This can be achieved by setting the envvar:`MESA_GPU_TRACES`
+This can be achieved by setting the :envvar:`MESA_GPU_TRACES`
 environment variable before starting a Vulkan application :
 
 .. code-block:: console
