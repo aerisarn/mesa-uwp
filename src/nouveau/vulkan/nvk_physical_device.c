@@ -408,6 +408,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->transformFeedbackPreservesTriangleFanProvokingVertex = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+         VkPhysicalDevicePushDescriptorPropertiesKHR *p = (void *)ext;
+         p->maxPushDescriptors = NVK_MAX_PUSH_DESCRIPTORS;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
          VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *p = (void *)ext;
          p->maxVertexAttribDivisor = UINT32_MAX;
@@ -643,11 +648,6 @@ nvk_GetPhysicalDeviceMemoryProperties2(
    vk_foreach_struct(ext, pMemoryProperties->pNext)
    {
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-         VkPhysicalDevicePushDescriptorPropertiesKHR *p = (void *)ext;
-         p->maxPushDescriptors = NVK_MAX_PUSH_DESCRIPTORS;
-         break;
-      }
       default:
          nvk_debug_ignored_stype(ext->sType);
          break;
