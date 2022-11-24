@@ -1532,7 +1532,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       cfg.unk_2 = 0;
    }
 
-   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = 256;
+   agx_usc_pack(&b, REGISTERS, cfg) cfg.register_count = shader->info.nr_gprs;
    agx_usc_pack(&b, NO_PRESHADER, cfg);
 
    return agx_usc_fini(&b);
