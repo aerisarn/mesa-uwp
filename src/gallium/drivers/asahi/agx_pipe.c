@@ -1117,9 +1117,22 @@ agx_destroy_context(struct pipe_context *pctx)
 }
 
 static void
-agx_invalidate_resource(struct pipe_context *ctx,
+agx_invalidate_resource(struct pipe_context *pctx,
                         struct pipe_resource *resource)
 {
+   struct agx_context *ctx = agx_context(pctx);
+   struct agx_batch *batch = agx_get_batch(ctx);
+
+   /* Handle the glInvalidateFramebuffer case */
+   if (batch->key.zsbuf && batch->key.zsbuf->texture == resource)
+      batch->resolve &= ~PIPE_CLEAR_DEPTHSTENCIL;
+
+   for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+      struct pipe_surface *surf = batch->key.cbufs[i];
+
+      if (surf && surf->texture == resource)
+         batch->resolve &= ~(PIPE_CLEAR_COLOR0 << i);
+   }
 }
 
 static struct pipe_context *
