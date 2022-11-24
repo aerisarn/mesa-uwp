@@ -587,15 +587,15 @@ intrinsic("rt_trace_ray", src_comp=[-1, 1, 1, 1, 1, 1, 3, 1, 3, 1, -1],
 # undefined.")
 def atomic(name, flags=[]):
     intrinsic(name + "_deref", src_comp=[-1], dest_comp=1, flags=flags)
-    intrinsic(name, src_comp=[1], dest_comp=1, indices=[BASE], flags=flags)
+    intrinsic(name, src_comp=[1], dest_comp=1, indices=[BASE, RANGE_BASE], flags=flags)
 
 def atomic2(name):
     intrinsic(name + "_deref", src_comp=[-1, 1], dest_comp=1)
-    intrinsic(name, src_comp=[1, 1], dest_comp=1, indices=[BASE])
+    intrinsic(name, src_comp=[1, 1], dest_comp=1, indices=[BASE, RANGE_BASE])
 
 def atomic3(name):
     intrinsic(name + "_deref", src_comp=[-1, 1, 1], dest_comp=1)
-    intrinsic(name, src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
+    intrinsic(name, src_comp=[1, 1, 1], dest_comp=1, indices=[BASE, RANGE_BASE])
 
 atomic("atomic_counter_inc")
 atomic("atomic_counter_pre_dec")
