@@ -604,7 +604,7 @@ agx_prepare_for_map(struct agx_context *ctx,
    agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
 
    if (usage & PIPE_MAP_WRITE)
-      agx_flush_readers(ctx, rsrc, "Unsynchronized read");
+      agx_flush_readers(ctx, rsrc, "Unsynchronized write");
 }
 
 
