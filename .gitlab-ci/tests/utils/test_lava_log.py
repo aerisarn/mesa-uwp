@@ -164,40 +164,42 @@ def test_hide_sensitive_data(input, expectation, tag):
     assert result == expectation
 
 
-GITLAB_SECTION_MANGLED_SCENARIOS = {
-    "Mangled section_start at target level": (
-        create_lava_yaml_msg(
-            msg="[0Ksection_start:1652658415:deqp[collapsed=false][0Kdeqp-runner",
-            lvl="target",
+GITLAB_SECTION_SPLIT_SCENARIOS = {
+    "Split section_start at target level": (
+        "\x1b[0Ksection_start:1668454947:test_post_process[collapsed=true]\r\x1b[0Kpost-processing test results",
+        (
+            "\x1b[0Ksection_start:1668454947:test_post_process[collapsed=true]",
+            "\x1b[0Kpost-processing test results",
         ),
-        "\x1b[0Ksection_start:1652658415:deqp[collapsed=false]\r\x1b[0Kdeqp-runner",
     ),
-    "Mangled section_start at target level with header with spaces": (
-        create_lava_yaml_msg(
-            msg="[0Ksection_start:1652658415:deqp[collapsed=false][0Kdeqp runner stats",
-            lvl="target",
-        ),
-        "\x1b[0Ksection_start:1652658415:deqp[collapsed=false]\r\x1b[0Kdeqp runner stats",
+    "Split section_end at target level": (
+        "\x1b[0Ksection_end:1666309222:test_post_process\r\x1b[0K",
+        ("\x1b[0Ksection_end:1666309222:test_post_process", "\x1b[0K"),
     ),
-    "Mangled section_end at target level": (
-        create_lava_yaml_msg(
-            msg="[0Ksection_end:1652658415:test_setup[0K",
-            lvl="target",
-        ),
-        "\x1b[0Ksection_end:1652658415:test_setup\r\x1b[0K",
+    "Second line is not split from the first": (
+        ("\x1b[0Ksection_end:1666309222:test_post_process", "Any message"),
+        ("\x1b[0Ksection_end:1666309222:test_post_process", "Any message"),
     ),
 }
 
 
 @pytest.mark.parametrize(
-    "message, fixed_message",
-    GITLAB_SECTION_MANGLED_SCENARIOS.values(),
-    ids=GITLAB_SECTION_MANGLED_SCENARIOS.keys(),
+    "expected_message, messages",
+    GITLAB_SECTION_SPLIT_SCENARIOS.values(),
+    ids=GITLAB_SECTION_SPLIT_SCENARIOS.keys(),
 )
-def test_fix_lava_gitlab_section_log(message, fixed_message):
-    fix_lava_gitlab_section_log(message)
+def test_fix_lava_gitlab_section_log(expected_message, messages):
+    fixed_messages = []
+    gen = fix_lava_gitlab_section_log()
+    next(gen)
 
-    assert message["msg"] == fixed_message
+    for message in messages:
+        lava_log = create_lava_yaml_msg(msg=message, lvl="target")
+        if recovered_line := gen.send(lava_log):
+            fixed_messages.append((recovered_line, lava_log["msg"]))
+        fixed_messages.append(lava_log["msg"])
+
+    assert expected_message in fixed_messages
 
 
 WATCHDOG_SCENARIOS = {
