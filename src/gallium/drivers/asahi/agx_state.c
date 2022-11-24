@@ -1333,6 +1333,13 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 static bool
 agx_update_vs(struct agx_context *ctx)
 {
+   /* Only proceed if the shader or anything the key depends on changes
+    *
+    * vb_mask, attributes, vertex_buffers: VERTEX
+    */
+   if (!(ctx->dirty & (AGX_DIRTY_VS_PROG | AGX_DIRTY_VERTEX)))
+      return false;
+
    struct asahi_vs_shader_key key = {
       .vbuf.count = util_last_bit(ctx->vb_mask),
    };
@@ -1352,6 +1359,15 @@ static bool
 agx_update_fs(struct agx_batch *batch)
 {
    struct agx_context *ctx = batch->ctx;
+
+   /* Only proceed if the shader or anything the key depends on changes
+    *
+    * batch->key: implicitly dirties everyting, no explicit check
+    * rast: RS
+    * blend: BLEND
+    */
+   if (!(ctx->dirty & (AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_BLEND)))
+      return false;
 
    struct asahi_fs_shader_key key = {
       .nr_cbufs = batch->key.nr_cbufs,
@@ -1384,6 +1400,11 @@ agx_bind_shader_state(struct pipe_context *pctx, void *cso)
 
    enum pipe_shader_type type = pipe_shader_type_from_mesa(so->nir->info.stage);
    ctx->stage[type].shader = so;
+
+   if (type == PIPE_SHADER_VERTEX)
+      ctx->dirty |= AGX_DIRTY_VS_PROG;
+   else
+      ctx->dirty |= AGX_DIRTY_FS_PROG;
 }
 
 static void
@@ -2030,7 +2051,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->resolve |= ctx->zs->store;
    }
 
-   /* TODO: These are expensive calls, consider finer dirty tracking */
    if (agx_update_vs(ctx))
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
    else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)
