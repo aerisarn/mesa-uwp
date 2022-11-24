@@ -1960,10 +1960,13 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    struct agx_context *ctx = agx_context(pctx);
    struct agx_batch *batch = agx_get_batch(ctx);
 
+#ifndef NDEBUG
+   if (unlikely(agx_device(pctx->screen)->debug & AGX_DBG_DIRTY))
+         agx_dirty_all(ctx);
+#endif
+
    if (agx_scissor_culls_everything(ctx))
 	   return;
-
-   agx_dirty_all(ctx);
 
    /* Dirty track the reduced prim: lines vs points vs triangles */
    enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
