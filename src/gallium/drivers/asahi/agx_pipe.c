@@ -626,6 +626,27 @@ agx_transfer_flush_region(struct pipe_context *pipe,
 {
 }
 
+/* Reallocate the backing buffer of a resource, returns true if successful */
+static bool
+agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc)
+{
+   struct agx_device *dev = agx_device(ctx->base.screen);
+   struct agx_bo *old = rsrc->bo;
+   struct agx_bo *new_ = agx_bo_create(dev, old->size, old->flags, old->label);
+
+   /* If allocation failed, we can fallback on a flush gracefully*/
+   if (new_ == NULL)
+      return false;
+
+   /* Swap the pointers, dropping a reference */
+   agx_bo_unreference(rsrc->bo);
+   rsrc->bo = new_;
+
+   /* Reemit descriptors using this resource */
+   agx_dirty_all(ctx);
+   return true;
+}
+
 /*
  * Perform the required synchronization before a transfer_map operation can
  * complete. This may require flushing batches.
@@ -637,14 +658,37 @@ agx_prepare_for_map(struct agx_context *ctx,
                     unsigned usage,  /* a combination of PIPE_MAP_x */
                     const struct pipe_box *box)
 {
+   /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
+    * being mapped.
+    */
+   if ((usage & PIPE_MAP_DISCARD_RANGE) &&
+       !(rsrc->base.flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
+       rsrc->base.last_level == 0 &&
+       util_texrange_covers_whole_level(&rsrc->base, 0, box->x, box->y,
+                                        box->z, box->width, box->height,
+                                        box->depth)) {
+
+      usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
+   }
+
+   /* Shadowing doesn't work separate stencil or shared resources */
+   if (rsrc->separate_stencil || (rsrc->bo->flags & AGX_BO_SHARED))
+      usage &= ~PIPE_MAP_DISCARD_WHOLE_RESOURCE;
+
    /* If the access is unsynchronized, there's nothing to do */
    if (usage & PIPE_MAP_UNSYNCHRONIZED)
       return;
 
    agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
 
-   if (usage & PIPE_MAP_WRITE)
+   if (usage & PIPE_MAP_WRITE) {
+      /* Try to shadow the resource to avoid a flush */
+      if ((usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) && agx_shadow(ctx, rsrc))
+         return;
+
+      /* Otherwise, we need to flush */
       agx_flush_readers(ctx, rsrc, "Unsynchronized write");
+   }
 }
 
 
