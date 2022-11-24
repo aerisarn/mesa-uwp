@@ -147,10 +147,11 @@ struct agx_blend {
    uint32_t store;
 };
 
-struct asahi_shader_key {
-   struct agx_shader_key base;
+struct asahi_vs_shader_key {
    struct agx_vbufs vbuf;
+};
 
+struct asahi_fs_shader_key {
    struct agx_blend blend;
    unsigned nr_cbufs;
 
@@ -159,6 +160,11 @@ struct asahi_shader_key {
 
    uint8_t clip_plane_enable;
    enum pipe_format rt_formats[PIPE_MAX_COLOR_BUFS];
+};
+
+union asahi_shader_key {
+   struct asahi_vs_shader_key vs;
+   struct asahi_fs_shader_key fs;
 };
 
 enum agx_dirty {
