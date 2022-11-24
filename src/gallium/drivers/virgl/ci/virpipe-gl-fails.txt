@@ -67,11 +67,6 @@ KHR-Single-GL43.arrays_of_arrays_gl.SubroutineArgumentAliasing4,Fail
 KHR-Single-GL43.arrays_of_arrays_gl.SubroutineFunctionCalls1,Fail
 KHR-Single-GL43.arrays_of_arrays_gl.SubroutineFunctionCalls2,Fail
 
-# virglrenderer translates TGSI IMAGE declaration "WR" ("image is not readonly")
-# into the writeonly qualifier, which works for gles (where each image is either
-# RO or WO) but not for desktop GL.
-KHR-GL43.shading_language_420pack.binding_image_array,Fail
-
 KHR-GL43.shading_language_420pack.binding_images,Fail
 KHR-GL43.texture_view.view_sampling,Fail
 KHR-GL43.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs,Fail

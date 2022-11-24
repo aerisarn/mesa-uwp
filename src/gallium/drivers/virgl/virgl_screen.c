@@ -1180,6 +1180,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    }
    screen->compiler_options.lower_ffma32 = true;
    screen->compiler_options.fuse_ffma32 = false;
+   screen->compiler_options.lower_image_offset_to_range_base = true;
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct virgl_transfer), 16);
 
