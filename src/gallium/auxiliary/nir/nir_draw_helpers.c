@@ -147,70 +147,51 @@ nir_lower_pstipple_fs(struct nir_shader *shader,
 }
 
 typedef struct {
-   nir_builder b;
-   nir_shader *shader;
    nir_variable *line_width_input;
 } lower_aaline;
 
-static void
-nir_lower_aaline_block(nir_block *block,
-                       lower_aaline *state)
+static bool
+lower_aaline_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-  nir_builder *b = &state->b;
-  nir_foreach_instr(instr, block) {
-      if (instr->type != nir_instr_type_intrinsic)
-         continue;
+   lower_aaline *state = data;
 
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-      if (intrin->intrinsic != nir_intrinsic_store_deref)
-         continue;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
 
-      nir_variable *var = nir_intrinsic_get_var(intrin, 0);
-      if (var->data.mode != nir_var_shader_out)
-         continue;
-      if (var->data.location < FRAG_RESULT_DATA0 && var->data.location != FRAG_RESULT_COLOR)
-         continue;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_store_deref)
+      return false;
 
-      nir_ssa_def *out_input = intrin->src[1].ssa;
-      b->cursor = nir_before_instr(instr);
-      nir_ssa_def *lw = nir_load_var(b, state->line_width_input);
-      nir_ssa_def *len = nir_channel(b, lw, 3);
-      len = nir_fadd_imm(b, nir_fmul_imm(b, len, 2.0), -1.0);
-      nir_ssa_def *tmp = nir_fsat(b, nir_fadd(b, nir_channels(b, lw, 0xa),
-                                              nir_fneg(b, nir_fabs(b, nir_channels(b, lw, 0x5)))));
+   nir_variable *var = nir_intrinsic_get_var(intrin, 0);
+   if (var->data.mode != nir_var_shader_out)
+      return false;
+   if (var->data.location < FRAG_RESULT_DATA0 && var->data.location != FRAG_RESULT_COLOR)
+      return false;
 
-      tmp = nir_fmul(b, nir_channel(b, tmp, 0),
-                     nir_fmin(b, nir_channel(b, tmp, 1), len));
-      tmp = nir_fmul(b, nir_channel(b, out_input, 3), tmp);
+   nir_ssa_def *out_input = intrin->src[1].ssa;
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *lw = nir_load_var(b, state->line_width_input);
+   nir_ssa_def *len = nir_channel(b, lw, 3);
+   len = nir_fadd_imm(b, nir_fmul_imm(b, len, 2.0), -1.0);
+   nir_ssa_def *tmp = nir_fsat(b, nir_fadd(b, nir_channels(b, lw, 0xa),
+                                             nir_fneg(b, nir_fabs(b, nir_channels(b, lw, 0x5)))));
 
-      nir_ssa_def *out = nir_vec4(b, nir_channel(b, out_input, 0),
-                                  nir_channel(b, out_input, 1),
-                                  nir_channel(b, out_input, 2),
-                                  tmp);
-      nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(out));
-   }
+   tmp = nir_fmul(b, nir_channel(b, tmp, 0),
+                  nir_fmin(b, nir_channel(b, tmp, 1), len));
+   tmp = nir_fmul(b, nir_channel(b, out_input, 3), tmp);
 
-}
-
-static void
-nir_lower_aaline_impl(nir_function_impl *impl,
-                      lower_aaline *state)
-{
-   nir_builder *b = &state->b;
-
-   nir_builder_init(b, impl);
-
-   nir_foreach_block(block, impl) {
-      nir_lower_aaline_block(block, state);
-   }
+   nir_ssa_def *out = nir_vec4(b, nir_channel(b, out_input, 0),
+                                 nir_channel(b, out_input, 1),
+                                 nir_channel(b, out_input, 2),
+                                 tmp);
+   nir_instr_rewrite_src(instr, &intrin->src[1], nir_src_for_ssa(out));
+   return true;
 }
 
 void
 nir_lower_aaline_fs(struct nir_shader *shader, int *varying)
 {
-   lower_aaline state = {
-      .shader = shader,
-   };
+   lower_aaline state;
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
       return;
 
@@ -235,11 +216,8 @@ nir_lower_aaline_fs(struct nir_shader *shader, int *varying)
    *varying = tgsi_get_generic_gl_varying_index(line_width->data.location, true);
    state.line_width_input = line_width;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_lower_aaline_impl(function->impl, &state);
-      }
-   }
+   nir_shader_instructions_pass(shader, lower_aaline_instr,
+                                nir_metadata_dominance, &state);
 }
 
 typedef struct {
