@@ -2077,6 +2077,7 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    default:
       resource = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
                                        instr->src[0], 2);
+      resource.Index += nir_intrinsic_range_base(instr);
    }
 
    struct ureg_dst dst;
