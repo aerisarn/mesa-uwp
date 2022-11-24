@@ -173,6 +173,7 @@ agx_bind_blend_state(struct pipe_context *pctx, void *cso)
 {
    struct agx_context *ctx = agx_context(pctx);
    ctx->blend = cso;
+   ctx->dirty |= AGX_DIRTY_BLEND;
 }
 
 static const enum agx_stencil_op agx_stencil_ops[PIPE_STENCIL_OP_INVERT + 1] = {

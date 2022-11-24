@@ -172,6 +172,8 @@ enum agx_dirty {
    /* Just the progs themselves */
    AGX_DIRTY_VS_PROG    = BITFIELD_BIT(10),
    AGX_DIRTY_FS_PROG    = BITFIELD_BIT(11),
+
+   AGX_DIRTY_BLEND      = BITFIELD_BIT(12),
 };
 
 #define AGX_MAX_BATCHES (2)
