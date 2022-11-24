@@ -954,6 +954,7 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
    }
 
    batch->clear |= fastclear;
+   batch->resolve |= buffers;
    assert((batch->draw & slowclear) == slowclear);
 }
 

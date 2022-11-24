@@ -163,6 +163,9 @@ agx_create_blend_state(struct pipe_context *ctx,
       }
 
       so->rt[i].colormask = rt.colormask;
+
+      if (rt.colormask)
+         so->store |= (PIPE_CLEAR_COLOR0 << i);
    }
 
    return so;
@@ -247,6 +250,22 @@ agx_create_zsa_state(struct pipe_context *ctx,
    } else {
       /* One sided stencil */
       so->back_stencil = so->front_stencil;
+   }
+
+   if (state->depth_enabled) {
+      if (state->depth_func != PIPE_FUNC_NEVER &&
+          state->depth_func != PIPE_FUNC_ALWAYS) {
+
+         so->load |= PIPE_CLEAR_DEPTH;
+      }
+
+      if (state->depth_writemask)
+         so->store |= PIPE_CLEAR_DEPTH;
+   }
+
+   if (state->stencil[0].enabled) {
+      so->load |= PIPE_CLEAR_STENCIL; /* TODO: Optimize */
+      so->store |= PIPE_CLEAR_STENCIL;
    }
 
    return so;
@@ -1974,9 +1993,18 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (reduced_prim != batch->reduced_prim) ctx->dirty |= AGX_DIRTY_PRIM;
    batch->reduced_prim = reduced_prim;
 
-   /* TODO: masks */
-   batch->draw |= ~0;
-   batch->load |= ~0;
+   /* Update batch masks based on current state */
+   if (ctx->dirty & AGX_DIRTY_BLEND) {
+      /* TODO: Any point to tracking load? */
+      batch->draw |= ctx->blend->store;
+      batch->resolve |= ctx->blend->store;
+   }
+
+   if (ctx->dirty & AGX_DIRTY_ZS) {
+      batch->load |= ctx->zs->load;
+      batch->draw |= ctx->zs->store;
+      batch->resolve |= ctx->zs->store;
+   }
 
    /* TODO: These are expensive calls, consider finer dirty tracking */
    if (agx_update_vs(ctx))

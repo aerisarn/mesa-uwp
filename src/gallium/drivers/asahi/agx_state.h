@@ -97,7 +97,7 @@ struct agx_batch {
    struct agx_tilebuffer_layout tilebuffer_layout;
 
    /* PIPE_CLEAR_* bitmask */
-   uint32_t clear, draw, load;
+   uint32_t clear, draw, load, resolve;
 
    /* Base of uploaded texture descriptors */
    uint64_t textures;
@@ -133,12 +133,18 @@ struct agx_zsa {
    struct pipe_depth_stencil_alpha_state base;
    struct agx_fragment_face_packed depth;
    struct agx_fragment_stencil_packed front_stencil, back_stencil;
+
+   /* PIPE_CLEAR_* bitmask corresponding to this depth/stencil state */
+   uint32_t load, store;
 };
 
 struct agx_blend {
    bool logicop_enable, blend_enable;
    nir_lower_blend_rt rt[8];
    unsigned logicop_func;
+
+   /* PIPE_CLEAR_* bitmask corresponding to this blend state */
+   uint32_t store;
 };
 
 struct asahi_shader_key {
