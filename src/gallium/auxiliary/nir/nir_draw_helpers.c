@@ -192,8 +192,7 @@ void
 nir_lower_aaline_fs(struct nir_shader *shader, int *varying)
 {
    lower_aaline state;
-   if (shader->info.stage != MESA_SHADER_FRAGMENT)
-      return;
+   assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
    int highest_location = -1, highest_drv_location = -1;
    nir_foreach_shader_in_variable(var, shader) {
