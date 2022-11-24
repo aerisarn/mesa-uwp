@@ -1348,7 +1348,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
    }
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
-   for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; ++i) {
+   for (unsigned i = 0; i < nr_samplers; ++i) {
       struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
 
       if (sampler)
