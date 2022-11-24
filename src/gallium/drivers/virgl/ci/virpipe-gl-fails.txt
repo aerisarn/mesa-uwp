@@ -51,7 +51,6 @@ KHR-GL43.shader_storage_buffer_object.basic-atomic-case1,Fail
 KHR-GL43.shader_storage_buffer_object.basic-atomic-case2,Fail
 KHR-GL43.shader_subroutine.ssbo_atomic_image_load_store,Fail
 
-KHR-Single-GL43.arrays_of_arrays_gl.AtomicUsage,Fail
 KHR-Single-GL43.arrays_of_arrays_gl.InteractionArgumentAliasing1,Fail
 KHR-Single-GL43.arrays_of_arrays_gl.InteractionArgumentAliasing2,Fail
 KHR-Single-GL43.arrays_of_arrays_gl.InteractionArgumentAliasing3,Fail
