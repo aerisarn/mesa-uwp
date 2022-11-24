@@ -224,16 +224,16 @@
   </struct>
 
   <struct name="Texture" size="24">
-    <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
+    <field name="Dimension" size="4" start="0" type="Texture dimension"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Channels" size="7" start="6" type="Channels"/>
     <field name="Type" size="3" start="13" type="Texture Type"/>
-    <field name="Swizzle R" size="3" start="16" type="Channel" default="R"/>
-    <field name="Swizzle G" size="3" start="19" type="Channel" default="G"/>
-    <field name="Swizzle B" size="3" start="22" type="Channel" default="B"/>
-    <field name="Swizzle A" size="3" start="25" type="Channel" default="A"/>
-    <field name="Width" size="14" start="28" type="uint" modifier="minus(1)"/>
-    <field name="Height" size="14" start="42" type="uint" modifier="minus(1)"/>
+    <field name="Swizzle R" size="3" start="16" type="Channel"/>
+    <field name="Swizzle G" size="3" start="19" type="Channel"/>
+    <field name="Swizzle B" size="3" start="22" type="Channel"/>
+    <field name="Swizzle A" size="3" start="25" type="Channel"/>
+    <field name="Width" size="14" start="28" type="uint" modifier="minus(1)" default="1"/>
+    <field name="Height" size="14" start="42" type="uint" modifier="minus(1)" default="1"/>
     <field name="First level" size="4" start="56" type="uint"/>
     <field name="Last level" size="4" start="60" type="uint"/>
     <field name="Samples" size="1" start="64" type="Sample Count"/>
