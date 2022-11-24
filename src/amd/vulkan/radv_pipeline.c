@@ -3761,7 +3761,7 @@ radv_pipeline_stage_retain_shader(struct radv_pipeline *pipeline, struct radv_pi
 {
    gl_shader_stage s = stage->stage;
 
-   pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stage->nir);
+   pipeline->retained_shaders[s].nir = stage->nir;
 }
 
 static void
