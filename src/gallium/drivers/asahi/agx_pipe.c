@@ -1373,6 +1373,18 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
 
+   case PIPE_CAP_SUPPORTED_PRIM_MODES:
+   case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART:
+      return BITFIELD_BIT(PIPE_PRIM_POINTS) |
+             BITFIELD_BIT(PIPE_PRIM_LINES) |
+             BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+             BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+             BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+             BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+             BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN) |
+             BITFIELD_BIT(PIPE_PRIM_QUADS) |
+             BITFIELD_BIT(PIPE_PRIM_QUAD_STRIP);
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
