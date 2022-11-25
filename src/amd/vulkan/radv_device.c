@@ -5311,7 +5311,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 static VkResult
 radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device,
                       struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count,
-                      bool *uses_perf_counters)
+                      bool *use_perf_counters)
 {
    if (queue->qf == RADV_QUEUE_TRANSFER)
       return VK_SUCCESS;
@@ -5323,7 +5323,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
     * - Allocate the max size and reuse it, but don't free it until the queue is destroyed
     */
    struct radv_queue_ring_info needs = queue->ring_info;
-   *uses_perf_counters = false;
+   *use_perf_counters = false;
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
 
@@ -5342,7 +5342,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
       needs.gds |= cmd_buffer->gds_needed;
       needs.gds_oa |= cmd_buffer->gds_oa_needed;
       needs.sample_positions |= cmd_buffer->sample_positions_needed;
-      *uses_perf_counters |= cmd_buffer->state.uses_perf_counters;
+      *use_perf_counters |= cmd_buffer->state.uses_perf_counters;
    }
 
    /* Sanitize scratch size information. */
@@ -5551,21 +5551,21 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
    bool can_patch = true;
    bool use_ace = false;
+   bool use_perf_counters = false;
    VkResult result;
-   bool uses_perf_counters = false;
 
    result = radv_update_preambles(&queue->state, queue->device, submission->command_buffers,
-                                  submission->command_buffer_count, &uses_perf_counters);
+                                  submission->command_buffer_count, &use_perf_counters);
    if (result != VK_SUCCESS)
       return result;
 
    if (queue->device->trace_bo)
       simple_mtx_lock(&queue->device->trace_mtx);
 
+   const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
-   const unsigned cs_offset = uses_perf_counters ? 1 : 0;
-   const unsigned cmd_buffer_count =
-      submission->command_buffer_count + (uses_perf_counters ? 2 : 0);
+   const unsigned cs_offset = use_perf_counters ? 1 : 0;
+   const unsigned cmd_buffer_count = submission->command_buffer_count + num_perfctr_cs;
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cmd_buffer_count);
    if (!cs_array)
@@ -5582,7 +5582,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       use_ace |= radv_cmd_buffer_needs_ace(cmd_buffer);
    }
 
-   if (uses_perf_counters) {
+   if (use_perf_counters) {
       cs_array[0] =
          radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, false);
       cs_array[cmd_buffer_count - 1] =
