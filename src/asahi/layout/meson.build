@@ -39,6 +39,7 @@ if with_tests
       'asahi_layout_tests',
       files(
         'tests/test-layout.cpp',
+        'tests/test-compression.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
