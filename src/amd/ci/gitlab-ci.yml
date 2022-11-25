@@ -380,7 +380,7 @@ radv-zink-navi10-valve:
     - .navi10-test-valve
     - .test-manual-mr
   variables:
-    GPU_VERSION: zink-radv
+    GPU_VERSION: zink-radv-navi10
 
 ############### Fossilize
 radv-fossils:
