@@ -191,6 +191,7 @@ anv_shader_stage_to_nir(struct anv_device *device,
    const nir_shader_compiler_options *nir_options =
       compiler->nir_options[stage];
 
+   const bool rt_enabled = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
    const struct spirv_to_nir_options spirv_options = {
       .caps = {
          .demote_to_helper_invocation = true,
@@ -227,8 +228,9 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .post_depth_coverage = true,
          .runtime_descriptor_array = true,
          .float_controls = true,
-         .ray_query = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing,
-         .ray_tracing = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing,
+         .ray_cull_mask = rt_enabled,
+         .ray_query = rt_enabled,
+         .ray_tracing = rt_enabled,
          .shader_clock = true,
          .shader_viewport_index_layer = true,
          .stencil_export = true,
