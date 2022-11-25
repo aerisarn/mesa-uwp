@@ -2641,7 +2641,9 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
       }
    }
 
-   if (G_028C70_DCC_ENABLE(cb_color_info)) {
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
+          ? G_028C78_FDCC_ENABLE(cb_fdcc_control)
+          : G_028C70_DCC_ENABLE(cb_color_info)) {
       /* Drawing with DCC enabled also compresses colorbuffers. */
       VkImageSubresourceRange range = {
          .aspectMask = iview->vk.aspects,
