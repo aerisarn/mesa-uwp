@@ -382,6 +382,15 @@ radv-zink-navi10-valve:
   variables:
     GPU_VERSION: zink-radv-navi10
 
+radv-zink-vangogh-valve:
+  parallel: 2
+  extends:
+    - .radv-zink-test-valve
+    - .vangogh-test-valve
+    - .test-manual-mr
+  variables:
+    GPU_VERSION: zink-radv-vangogh
+
 ############### Fossilize
 radv-fossils:
   extends:
