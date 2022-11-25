@@ -259,6 +259,17 @@ agx_bind_zsa_state(struct pipe_context *pctx, void *cso)
    ctx->dirty |= AGX_DIRTY_ZS;
 }
 
+static enum agx_polygon_mode
+agx_translate_polygon_mode(unsigned mode)
+{
+   switch (mode) {
+   case PIPE_POLYGON_MODE_FILL: return AGX_POLYGON_MODE_FILL;
+   case PIPE_POLYGON_MODE_POINT: return AGX_POLYGON_MODE_POINT;
+   case PIPE_POLYGON_MODE_LINE: return AGX_POLYGON_MODE_LINE;
+   default: unreachable("Unsupported polygon mode");
+   }
+}
+
 static void *
 agx_create_rs_state(struct pipe_context *ctx,
                     const struct pipe_rasterizer_state *cso)
@@ -279,6 +290,16 @@ agx_create_rs_state(struct pipe_context *ctx,
       cfg.depth_clip = cso->depth_clip_near;
       cfg.depth_clamp = !cso->depth_clip_near;
    };
+
+   /* Two-sided polygon mode doesn't seem to work on G13. Apple's OpenGL
+    * implementation lowers to multiple draws with culling. Warn.
+    */
+   if (unlikely(cso->fill_front != cso->fill_back)) {
+      fprintf(stderr, "Warning: Two-sided fill modes are unsupported, "
+                      "rendering may be incorrect.\n");
+   }
+
+   so->polygon_mode = agx_translate_polygon_mode(cso->fill_front);
 
    return so;
 }
@@ -1783,15 +1804,14 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       agx_pack(&front_face, FRAGMENT_FACE, cfg) {
          cfg.stencil_reference = ctx->stencil_ref.ref_value[0];
          cfg.line_width = rast->line_width;
-         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+         cfg.polygon_mode = rast->polygon_mode;
       };
 
       agx_pack(&back_face, FRAGMENT_FACE, cfg) {
          bool twosided = ctx->zs->base.stencil[1].enabled;
          cfg.stencil_reference = ctx->stencil_ref.ref_value[twosided ? 1 : 0];
-
          cfg.line_width = rast->line_width;
-         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+         cfg.polygon_mode = rast->polygon_mode;
       };
 
       front_face.opaque[0] |= ctx->zs->depth.opaque[0];
