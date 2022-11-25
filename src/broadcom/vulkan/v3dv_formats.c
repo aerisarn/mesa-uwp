@@ -77,22 +77,6 @@ v3dv_format_swizzle_needs_reverse(const uint8_t *swizzle)
    return false;
 }
 
-uint8_t
-v3dv_get_tex_return_size(const struct v3dv_format *vf,
-                         bool compare_enable)
-{
-   if (V3D_DBG(TMU_16BIT))
-      return 16;
-
-   if (V3D_DBG(TMU_32BIT))
-      return 32;
-
-   if (compare_enable)
-      return 16;
-
-   return vf->return_size;
-}
-
 /* Some cases of transfer operations are raw data copies that don't depend
  * on the semantics of the pixel format (no pixel format conversions are
  * involved). In these cases, it is safe to choose any format supported by

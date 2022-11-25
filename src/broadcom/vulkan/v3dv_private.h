@@ -2301,7 +2301,6 @@ uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
    mesa_logd("%s: ignored VkStructureType %u:%s\n\n", __func__, (sType), vk_StructureType_to_str(sType))
 
 const uint8_t *v3dv_get_format_swizzle(struct v3dv_device *device, VkFormat f);
-uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 const struct v3dv_format *
 v3dv_get_compatible_tfu_format(struct v3dv_device *device,
                                uint32_t bpp, VkFormat *out_vk_format);
