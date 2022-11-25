@@ -5562,9 +5562,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    if (result != VK_SUCCESS)
       return result;
 
-   if (queue->device->trace_bo)
-      simple_mtx_lock(&queue->device->trace_mtx);
-
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cs_offset = use_perf_counters ? 1 : 0;
@@ -5572,7 +5569,10 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cmd_buffer_count);
    if (!cs_array)
-      goto fail;
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   if (queue->device->trace_bo)
+      simple_mtx_lock(&queue->device->trace_mtx);
 
    for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = (struct radv_cmd_buffer *)submission->command_buffers[j];
