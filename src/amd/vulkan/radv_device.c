@@ -5471,32 +5471,33 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
-   const unsigned cs_offset = use_perf_counters ? 1 : 0;
-   const unsigned cmd_buffer_count = submission->command_buffer_count + num_perfctr_cs;
+   const unsigned cmd_buffer_count = submission->command_buffer_count;
+   const unsigned cs_array_size = MIN2(max_cs_submission, cmd_buffer_count) + num_perfctr_cs;
 
-   struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cmd_buffer_count);
+   struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cs_array_size);
    if (!cs_array)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    if (queue->device->trace_bo)
       simple_mtx_lock(&queue->device->trace_mtx);
 
-   for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
-      struct radv_cmd_buffer *cmd_buffer = (struct radv_cmd_buffer *)submission->command_buffers[j];
-      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-      cs_array[j + cs_offset] = cmd_buffer->cs;
-      if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
-         can_patch = false;
-   }
+   struct radeon_cmdbuf *perf_ctr_lock_cs = NULL;
+   struct radeon_cmdbuf *perf_ctr_unlock_cs = NULL;
 
    if (use_perf_counters) {
-      cs_array[0] =
+      /* Create the lock/unlock CS. */
+      perf_ctr_lock_cs =
          radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, false);
-      cs_array[cmd_buffer_count - 1] =
+      perf_ctr_unlock_cs =
          radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, true);
+
+      /* RADV only supports perf counters on the GFX queue currently. */
+      assert(radv_queue_ring(queue) == AMD_IP_GFX);
+
+      /* Disallow chaining the lock/unlock CS. */
       can_patch = false;
-      if (!cs_array[0] || !cs_array[cmd_buffer_count - 1]) {
+
+      if (!perf_ctr_lock_cs || !perf_ctr_unlock_cs) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
       }
@@ -5521,11 +5522,30 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    for (uint32_t j = 0, advance; j < cmd_buffer_count; j += advance) {
       advance = MIN2(max_cs_submission, cmd_buffer_count - j);
       const bool last_submit = j + advance == cmd_buffer_count;
+      unsigned num_submitted_cs = 0;
 
       if (queue->device->trace_bo)
          *queue->device->trace_id_ptr = 0;
 
-      submit.cs_count = advance;
+      /* Add perf counter lock CS (GFX only) to the beginning of each submit. */
+      if (use_perf_counters)
+         cs_array[num_submitted_cs++] = perf_ctr_lock_cs;
+
+      /* Add CS from submitted command buffers. */
+      for (unsigned c = 0; c < advance; ++c) {
+         struct radv_cmd_buffer *cmd_buffer =
+            (struct radv_cmd_buffer *)submission->command_buffers[j + c];
+         assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+         can_patch &= !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+         cs_array[num_submitted_cs++] = cmd_buffer->cs;
+      }
+
+      /* Add perf counter unlock CS (GFX only) to the end of each submit. */
+      if (use_perf_counters)
+         cs_array[num_submitted_cs++] = perf_ctr_unlock_cs;
+
+      submit.cs_count = num_submitted_cs;
 
       result = queue->device->ws->cs_submit(
          ctx, 1, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
@@ -5542,7 +5562,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          radv_check_trap_handler(queue);
       }
 
-      submit.cs_array += advance;
       submit.initial_preamble_cs = &queue->state.initial_preamble_cs;
    }
 
