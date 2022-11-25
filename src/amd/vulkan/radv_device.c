@@ -413,9 +413,7 @@ radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 static bool
 radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
 {
-   return pdevice->use_ngg && !pdevice->use_llvm && pdevice->rad_info.gfx_level == GFX10_3 &&
-          !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE) &&
-          pdevice->rad_info.has_scheduled_fence_dependency;
+   return false;
 }
 
 static bool
@@ -5458,99 +5456,6 @@ radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submis
 }
 
 static VkResult
-radv_queue_submit_with_ace(struct radv_queue *queue, struct vk_queue_submit *submission,
-                           struct radeon_cmdbuf **cs_array, unsigned cs_count, unsigned cs_offset,
-                           bool can_patch)
-{
-   /* Submits command buffers that may have an internal ACE cmdbuf
-    * using scheduled dependencies. This guarantees that the GFX cmdbuf
-    * is only scheduled after ACE.
-    *
-    * TODO: Unfortunately this is prone to a deadlock, so is considered a
-    *       temporary solution until gang submit is merged in the upstream kernel.
-    */
-   struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-   const uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
-   const bool need_wait = submission->wait_count > 0;
-   VkResult result = VK_SUCCESS;
-
-   struct radeon_cmdbuf **ace_cs_array = calloc(max_cs_submission, sizeof(struct radeon_cmdbuf *));
-   if (!ace_cs_array) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto finish;
-   }
-
-   result = radv_update_ace_preambles(queue);
-   if (result != VK_SUCCESS)
-      goto finish;
-
-   struct radv_winsys_submit_info submit[2] = {
-      {
-         .ip_type = AMD_IP_COMPUTE,
-         .cs_array = ace_cs_array,
-         .cs_count = 0,
-         .preamble_count = 1,
-         .initial_preamble_cs = need_wait
-                                   ? &queue->ace_internal_state->initial_full_flush_preamble_cs
-                                   : &queue->ace_internal_state->initial_preamble_cs,
-      },
-      {
-         .ip_type = radv_queue_ring(queue),
-         .queue_index = queue->vk.index_in_family,
-         .cs_array = cs_array,
-         .cs_count = 0,
-         .preamble_count = 1,
-         .initial_preamble_cs = need_wait ? &queue->state.initial_full_flush_preamble_cs
-                                          : &queue->state.initial_preamble_cs,
-      }};
-
-   for (uint32_t advance, j = 0; j < cs_count; j += advance) {
-      advance = MIN2(max_cs_submission, cs_count - j);
-      bool last_submit = j + advance == cs_count;
-
-      if (queue->device->trace_bo)
-         *queue->device->trace_id_ptr = 0;
-
-      for (unsigned c = 0; c < advance; ++c) {
-         const struct radv_cmd_buffer *cmd_buffer =
-            (struct radv_cmd_buffer *)submission->command_buffers[j + c + cs_offset];
-         if (!radv_cmd_buffer_needs_ace(cmd_buffer))
-            continue;
-
-         submit[0].cs_array[submit[0].cs_count++] = cmd_buffer->ace_internal.cs;
-      }
-
-      const uint32_t submit_count = 1 + !!submit[0].cs_count;
-      const struct radv_winsys_submit_info *submit_ptr = submit + !submit[0].cs_count;
-      submit[1].cs_count = advance;
-
-      result = queue->device->ws->cs_submit(
-         ctx, submit_count, submit_ptr, j == 0 ? submission->wait_count : 0, submission->waits,
-         last_submit ? submission->signal_count : 0, submission->signals, can_patch);
-
-      if (result != VK_SUCCESS)
-         goto finish;
-
-      if (queue->device->trace_bo) {
-         radv_check_gpu_hangs(queue, cs_array[j]);
-      }
-
-      if (queue->device->tma_bo) {
-         radv_check_trap_handler(queue);
-      }
-
-      submit[1].cs_array += submit[1].cs_count;
-      submit[1].initial_preamble_cs = &queue->state.initial_preamble_cs;
-      submit[0].cs_count = 0;
-      submit[0].initial_preamble_cs = &queue->ace_internal_state->initial_preamble_cs;
-   }
-
-finish:
-   free(ace_cs_array);
-   return result;
-}
-
-static VkResult
 radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submission)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
@@ -5595,12 +5500,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
       }
-   }
-
-   if (use_ace) {
-      result = radv_queue_submit_with_ace(queue, submission, cs_array, cmd_buffer_count, cs_offset,
-                                          can_patch);
-      goto fail;
    }
 
    /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
