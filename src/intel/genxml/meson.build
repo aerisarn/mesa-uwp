@@ -73,6 +73,12 @@ genX_bits_included_symbols = [
   'CLEAR_COLOR',
   'VERTEX_BUFFER_STATE::Buffer Starting Address',
   'CPS_STATE',
+  'RT_DISPATCH_GLOBALS::Hit Group Table',
+  'RT_DISPATCH_GLOBALS::Miss Group Table',
+  'RT_DISPATCH_GLOBALS::Callable Group Table',
+  'RT_DISPATCH_GLOBALS::Launch Width',
+  'RT_DISPATCH_GLOBALS::Launch Height',
+  'RT_DISPATCH_GLOBALS::Launch Depth',
 ]
 
 genX_bits_h = custom_target(
