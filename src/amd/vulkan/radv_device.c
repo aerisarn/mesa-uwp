@@ -5549,10 +5549,8 @@ static VkResult
 radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submission)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-   uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    bool can_patch = true;
    bool use_ace = false;
-   uint32_t advance;
    VkResult result;
    bool uses_perf_counters = false;
 
@@ -5564,6 +5562,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    if (queue->device->trace_bo)
       simple_mtx_lock(&queue->device->trace_mtx);
 
+   const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cs_offset = uses_perf_counters ? 1 : 0;
    const unsigned cmd_buffer_count =
       submission->command_buffer_count + (uses_perf_counters ? 2 : 0);
@@ -5602,8 +5601,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    }
 
    /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
-    * before starting the next cmdbuffer, so we need to do it here. */
-   bool need_wait = submission->wait_count > 0;
+    * before starting the next cmdbuffer, so we need to do it here.
+    */
+   const bool need_wait = submission->wait_count > 0;
 
    struct radv_winsys_submit_info submit = {
       .ip_type = radv_queue_ring(queue),
@@ -5615,9 +5615,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .continue_preamble_cs = queue->state.continue_preamble_cs,
    };
 
-   for (uint32_t j = 0; j < cmd_buffer_count; j += advance) {
+   for (uint32_t j = 0, advance; j < cmd_buffer_count; j += advance) {
       advance = MIN2(max_cs_submission, cmd_buffer_count - j);
-      bool last_submit = j + advance == cmd_buffer_count;
+      const bool last_submit = j + advance == cmd_buffer_count;
 
       if (queue->device->trace_bo)
          *queue->device->trace_id_ptr = 0;
