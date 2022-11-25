@@ -330,7 +330,7 @@ rustfmt:
     paths:
       - ${JOB_FOLDER}/results
     reports:
-      junit: ${JOB_FOLDER}/results/junit.xml
+      junit: ${JOB_FOLDER}/results/**/junit.xml
 
 .b2c-test-vk:
   extends:
