@@ -25,6 +25,7 @@
 #define __AGX_DEVICE_H
 
 #include "util/sparse_array.h"
+#include "util/simple_mtx.h"
 #include "io.h"
 #include "agx_formats.h"
 
