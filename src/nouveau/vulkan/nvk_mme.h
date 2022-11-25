@@ -19,6 +19,7 @@ enum nvk_mme {
    NVK_MME_WRITE_CS_INVOCATIONS,
    NVK_MME_COPY_QUERIES,
    NVK_MME_XFB_COUNTER_LOAD,
+   NVK_MME_XFB_DRAW_INDIRECT,
    NVK_MME_COUNT,
 };
 
@@ -50,5 +51,6 @@ void nvk_mme_dispatch_indirect(struct mme_builder *b);
 void nvk_mme_write_cs_invocations(struct mme_builder *b);
 void nvk_mme_copy_queries(struct mme_builder *b);
 void nvk_mme_xfb_counter_load(struct mme_builder *b);
+void nvk_mme_xfb_draw_indirect(struct mme_builder *b);
 
 #endif /* NVK_MME_H */

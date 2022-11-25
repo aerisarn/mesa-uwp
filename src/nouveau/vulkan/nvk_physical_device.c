@@ -239,7 +239,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->transformFeedbackQueries = false;
          p->transformFeedbackStreamsLinesTriangles = false;
          p->transformFeedbackRasterizationStreamSelect = false;
-         p->transformFeedbackDraw = false;
+         p->transformFeedbackDraw = true;
          break;
       }
       /* More property structs */

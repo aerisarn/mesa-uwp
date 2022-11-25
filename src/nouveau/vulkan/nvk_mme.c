@@ -16,6 +16,7 @@ static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
    [NVK_MME_WRITE_CS_INVOCATIONS]        = nvk_mme_write_cs_invocations,
    [NVK_MME_COPY_QUERIES]                = nvk_mme_copy_queries,
    [NVK_MME_XFB_COUNTER_LOAD]            = nvk_mme_xfb_counter_load,
+   [NVK_MME_XFB_DRAW_INDIRECT]           = nvk_mme_xfb_draw_indirect
 };
 
 uint32_t *
