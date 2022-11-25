@@ -5311,7 +5311,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 static VkResult
 radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device,
                       struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count,
-                      bool *use_perf_counters)
+                      bool *use_perf_counters, bool *use_ace)
 {
    if (queue->qf == RADV_QUEUE_TRANSFER)
       return VK_SUCCESS;
@@ -5324,6 +5324,8 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
     */
    struct radv_queue_ring_info needs = queue->ring_info;
    *use_perf_counters = false;
+   *use_ace = false;
+
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
 
@@ -5343,6 +5345,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
       needs.gds_oa |= cmd_buffer->gds_oa_needed;
       needs.sample_positions |= cmd_buffer->sample_positions_needed;
       *use_perf_counters |= cmd_buffer->state.uses_perf_counters;
+      *use_ace |= !!cmd_buffer->ace_internal.cs;
    }
 
    /* Sanitize scratch size information. */
@@ -5555,7 +5558,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    VkResult result;
 
    result = radv_update_preambles(&queue->state, queue->device, submission->command_buffers,
-                                  submission->command_buffer_count, &use_perf_counters);
+                                  submission->command_buffer_count, &use_perf_counters, &use_ace);
    if (result != VK_SUCCESS)
       return result;
 
@@ -5578,8 +5581,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       cs_array[j + cs_offset] = cmd_buffer->cs;
       if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
          can_patch = false;
-
-      use_ace |= radv_cmd_buffer_needs_ace(cmd_buffer);
    }
 
    if (use_perf_counters) {
