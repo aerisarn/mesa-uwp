@@ -27,6 +27,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_serialize.h"
+#include "nir_xfb_info.h"
 #include "nir/nir_helpers.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
@@ -170,29 +171,6 @@ unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
       return 53;
    case VARYING_SLOT_PRIMITIVE_ID:
       return 54;
-   }
-}
-
-static void si_dump_streamout(struct pipe_stream_output_info *so)
-{
-   unsigned i;
-
-   if (so->num_outputs) {
-      fprintf(stderr, "STREAMOUT\n");
-
-      fprintf(stderr, "  STRIDES: {");
-      for (i = 0; i < PIPE_MAX_SO_BUFFERS; i++)
-         fprintf(stderr, "%u%s", so->stride[i], i < 3 ? ", " : "");
-      fprintf(stderr, "}\n");
-   }
-
-   for (i = 0; i < so->num_outputs; i++) {
-      unsigned mask = ((1 << so->output[i].num_components) - 1) << so->output[i].start_component;
-      fprintf(stderr, "  %i: STREAM%u: BUF%i[%i..%i] <- OUT[%i].%s%s%s%s\n",
-              i, so->output[i].stream, so->output[i].output_buffer,
-              so->output[i].dst_offset, so->output[i].dst_offset + so->output[i].num_components - 1,
-              so->output[i].register_index, mask & 1 ? "x" : "", mask & 2 ? "y" : "",
-              mask & 4 ? "z" : "", mask & 8 ? "w" : "");
    }
 }
 
@@ -1992,7 +1970,9 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    if (si_can_dump_shader(sscreen, sel->stage) &&
        !(sscreen->debug_flags & DBG(NO_NIR))) {
       nir_print_shader(nir, stderr);
-      si_dump_streamout(&so);
+
+      if (nir->xfb_info)
+         nir_print_xfb_info(nir->xfb_info, stderr);
    }
 
    /* Initialize vs_output_ps_input_cntl to default. */
