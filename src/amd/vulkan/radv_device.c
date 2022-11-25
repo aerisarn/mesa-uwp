@@ -5481,7 +5481,8 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cmd_buffer_count = submission->command_buffer_count;
-   const unsigned cs_array_size = MIN2(max_cs_submission, cmd_buffer_count) + num_perfctr_cs;
+   const unsigned cs_array_size =
+      (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count) + num_perfctr_cs;
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cs_array_size);
    if (!cs_array)
@@ -5517,20 +5518,29 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
     */
    const bool need_wait = submission->wait_count > 0;
 
+   struct radeon_cmdbuf *preambles[2] = {
+      need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs,
+   };
+
+   if (use_ace) {
+      preambles[1] = need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
+                               : queue->ace_internal_state->initial_preamble_cs;
+   }
+
    struct radv_winsys_submit_info submit = {
       .ip_type = radv_queue_ring(queue),
       .queue_index = queue->vk.index_in_family,
       .cs_array = cs_array,
       .cs_count = 0,
       .preamble_count = 1,
-      .initial_preamble_cs = need_wait ? &queue->state.initial_full_flush_preamble_cs
-                                       : &queue->state.initial_preamble_cs,
+      .initial_preamble_cs = preambles,
       .continue_preamble_cs = queue->state.continue_preamble_cs,
    };
 
    for (uint32_t j = 0, advance; j < cmd_buffer_count; j += advance) {
       advance = MIN2(max_cs_submission, cmd_buffer_count - j);
       const bool last_submit = j + advance == cmd_buffer_count;
+      bool submit_ace = false;
       unsigned num_submitted_cs = 0;
 
       if (queue->device->trace_bo)
@@ -5546,6 +5556,12 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
             (struct radv_cmd_buffer *)submission->command_buffers[j + c];
          assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
+         /* ACE needs to be first because the last CS must match the queue's IP type. */
+         if (radv_cmd_buffer_needs_ace(cmd_buffer)) {
+            cs_array[num_submitted_cs++] = cmd_buffer->ace_internal.cs;
+            submit_ace = true;
+         }
+
          can_patch &= !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
          cs_array[num_submitted_cs++] = cmd_buffer->cs;
       }
@@ -5555,6 +5571,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          cs_array[num_submitted_cs++] = perf_ctr_unlock_cs;
 
       submit.cs_count = num_submitted_cs;
+      submit.preamble_count = submit_ace ? 2 : 1;
 
       result = queue->device->ws->cs_submit(
          ctx, 1, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
@@ -5571,7 +5588,8 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          radv_check_trap_handler(queue);
       }
 
-      submit.initial_preamble_cs = &queue->state.initial_preamble_cs;
+      preambles[0] = queue->state.initial_preamble_cs;
+      preambles[1] = !use_ace ? NULL : queue->ace_internal_state->initial_preamble_cs;
    }
 
 fail:
