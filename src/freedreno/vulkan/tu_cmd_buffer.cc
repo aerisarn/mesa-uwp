@@ -648,6 +648,7 @@ tu6_update_msaa_samples(struct tu_cmd_buffer *cmd, VkSampleCountFlagBits samples
 {
    if (cmd->state.samples != samples) {
       cmd->state.samples = samples;
+      cmd->state.dirty |= TU_CMD_DIRTY_FS_PARAMS;
       tu6_update_msaa(cmd);
    }
 }
@@ -1489,7 +1490,8 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd,
     */
    if (cmd->state.pass->has_fdm) {
       cmd->state.dirty |=
-         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS;
+         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS |
+         TU_CMD_DIRTY_FS_PARAMS;
    }
 }
 
@@ -1736,7 +1738,8 @@ tu_cmd_render_tiles(struct tu_cmd_buffer *cmd,
     */
    if (cmd->state.pass->has_fdm) {
       cmd->state.dirty |=
-         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS;
+         TU_CMD_DIRTY_VIEWPORTS | TU_CMD_DIRTY_SCISSORS |
+         TU_CMD_DIRTY_FS_PARAMS;
    }
 
    /* tu6_render_tile has cloned these tracepoints for each tile */
@@ -2847,7 +2850,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    cmd->state.pipeline = pipeline;
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS | TU_CMD_DIRTY_SHADER_CONSTS |
-                       TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_VS_PARAMS;
+                       TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_VS_PARAMS |
+                       TU_CMD_DIRTY_FS_PARAMS;
 
    if (pipeline->output.feedback_loop_may_involve_textures &&
        !cmd->state.rp.disable_gmem) {
@@ -5269,6 +5273,121 @@ fdm_apply_scissors(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
    tu6_emit_scissor(cs, scissors, state->num_scissors);
 }
 
+static uint32_t
+fs_params_offset(struct tu_cmd_buffer *cmd)
+{
+   const struct tu_program_descriptor_linkage *link =
+      &cmd->state.pipeline->program.link[MESA_SHADER_FRAGMENT];
+   const struct ir3_const_state *const_state = &link->const_state;
+
+   if (const_state->num_driver_params <= IR3_DP_FS_DYNAMIC)
+      return 0;
+
+   if (const_state->offsets.driver_param + IR3_DP_FS_DYNAMIC / 4 >= link->constlen)
+      return 0;
+
+   return const_state->offsets.driver_param + IR3_DP_FS_DYNAMIC / 4;
+}
+
+static uint32_t
+fs_params_size(struct tu_cmd_buffer *cmd)
+{
+   const struct tu_program_descriptor_linkage *link =
+      &cmd->state.pipeline->program.link[MESA_SHADER_FRAGMENT];
+   const struct ir3_const_state *const_state = &link->const_state;
+
+   return DIV_ROUND_UP(const_state->num_driver_params - IR3_DP_FS_DYNAMIC, 4);
+}
+
+struct apply_fs_params_state {
+   unsigned num_consts;
+};
+
+static void
+fdm_apply_fs_params(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
+                    VkExtent2D *frag_areas)
+{
+   const struct apply_fs_params_state *state =
+      (const struct apply_fs_params_state *)data;
+   unsigned num_consts = state->num_consts;
+
+   for (unsigned i = 0; i < num_consts; i++) {
+      assert(i < views);
+      VkExtent2D area = frag_areas[i];
+      VkOffset2D offset = fdm_per_bin_offset(area, bin);
+      
+      tu_cs_emit(cs, area.width);
+      tu_cs_emit(cs, area.height);
+      tu_cs_emit(cs, fui(offset.x));
+      tu_cs_emit(cs, fui(offset.y));
+   }
+}
+
+static void
+tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
+{
+   uint32_t offset = fs_params_offset(cmd);
+
+   if (offset == 0) {
+      cmd->state.fs_params = (struct tu_draw_state) {};
+      return;
+   }
+
+   struct tu_pipeline *pipeline = cmd->state.pipeline;
+
+   unsigned num_units = fs_params_size(cmd);
+
+   if (pipeline->fs.fragment_density_map)
+      tu_cs_set_writeable(&cmd->sub_cs, true);
+
+   struct tu_cs cs;
+   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 4 + 4 * num_units, &cs);
+   if (result != VK_SUCCESS) {
+      tu_cs_set_writeable(&cmd->sub_cs, false);
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
+
+   tu_cs_emit_pkt7(&cs, CP_LOAD_STATE6_FRAG, 3 + 4 * num_units);
+   tu_cs_emit(&cs, CP_LOAD_STATE6_0_DST_OFF(offset) |
+         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+         CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+         CP_LOAD_STATE6_0_STATE_BLOCK(SB6_FS_SHADER) |
+         CP_LOAD_STATE6_0_NUM_UNIT(num_units));
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, 0);
+
+   STATIC_ASSERT(IR3_DP_FS_FRAG_INVOCATION_COUNT == IR3_DP_FS_DYNAMIC);
+   tu_cs_emit(&cs, pipeline->program.per_samp ? cmd->state.samples : 1);
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, 0);
+   tu_cs_emit(&cs, 0);
+
+   STATIC_ASSERT(IR3_DP_FS_FRAG_SIZE == IR3_DP_FS_DYNAMIC + 4);
+   STATIC_ASSERT(IR3_DP_FS_FRAG_OFFSET == IR3_DP_FS_DYNAMIC + 6);
+   if (num_units > 1) {
+      if (pipeline->fs.fragment_density_map) {
+         struct apply_fs_params_state state = {
+            .num_consts = num_units - 1,
+         };
+         tu_create_fdm_bin_patchpoint(cmd, &cs, 4 * (num_units - 1),
+                                      fdm_apply_fs_params, state);
+      } else {
+         for (unsigned i = 1; i < num_units; i++) {
+            tu_cs_emit(&cs, 1);
+            tu_cs_emit(&cs, 1);
+            tu_cs_emit(&cs, fui(0.0f));
+            tu_cs_emit(&cs, fui(0.0f));
+         }
+      }
+   }
+
+   cmd->state.fs_params = tu_cs_end_draw_state(&cmd->sub_cs, &cs);
+
+   if (pipeline->fs.fragment_density_map)
+      tu_cs_set_writeable(&cmd->sub_cs, false);
+}
+
 static VkResult
 tu6_draw_common(struct tu_cmd_buffer *cmd,
                 struct tu_cs *cs,
@@ -5464,6 +5583,9 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (dirty & TU_CMD_DIRTY_DESC_SETS)
       tu6_emit_descriptor_sets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
+   if (dirty & TU_CMD_DIRTY_FS_PARAMS)
+      tu6_emit_fs_params(cmd);
+
    /* for the first draw in a renderpass, re-emit all the draw states
     *
     * and if a draw-state disabling path (CmdClearAttachments 3D fallback) was
@@ -5487,6 +5609,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_PARAMS, cmd->state.fs_params);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
 
@@ -5507,6 +5630,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          ((dirty & TU_CMD_DIRTY_DESC_SETS) ? 1 : 0) +
          ((dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          ((dirty & TU_CMD_DIRTY_VS_PARAMS) ? 1 : 0) +
+         ((dirty & TU_CMD_DIRTY_FS_PARAMS) ? 1 : 0) +
          (dirty_lrz ? 1 : 0);
 
       if ((dirty & TU_CMD_DIRTY_VB_STRIDE) &&
@@ -5553,6 +5677,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       }
       if (dirty & TU_CMD_DIRTY_VS_PARAMS)
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
+      if (dirty & TU_CMD_DIRTY_FS_PARAMS)
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_PARAMS, cmd->state.fs_params);
 
       if (dirty_lrz) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);

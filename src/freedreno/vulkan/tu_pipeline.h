@@ -235,6 +235,7 @@ struct tu_pipeline
       uint32_t cs_instrlen;
 
       bool writes_viewport;
+      bool per_samp;
    } program;
 
    struct

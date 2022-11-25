@@ -29,6 +29,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_DESC_SETS,
    TU_DRAW_STATE_DESC_SETS_LOAD,
    TU_DRAW_STATE_VS_PARAMS,
+   TU_DRAW_STATE_FS_PARAMS,
    TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM,
    TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM,
    TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE,
@@ -62,13 +63,14 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_SHADER_CONSTS = BIT(6),
    TU_CMD_DIRTY_LRZ = BIT(7),
    TU_CMD_DIRTY_VS_PARAMS = BIT(8),
-   TU_CMD_DIRTY_PC_RASTER_CNTL = BIT(9),
-   TU_CMD_DIRTY_VIEWPORTS = BIT(10),
-   TU_CMD_DIRTY_SCISSORS = BIT(11),
-   TU_CMD_DIRTY_BLEND = BIT(12),
-   TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(13),
+   TU_CMD_DIRTY_FS_PARAMS = BIT(9),
+   TU_CMD_DIRTY_PC_RASTER_CNTL = BIT(10),
+   TU_CMD_DIRTY_VIEWPORTS = BIT(11),
+   TU_CMD_DIRTY_SCISSORS = BIT(12),
+   TU_CMD_DIRTY_BLEND = BIT(13),
+   TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(14),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(14)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(15)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -462,6 +464,7 @@ struct tu_cmd_state
    struct tu_draw_state msaa;
 
    struct tu_draw_state vs_params;
+   struct tu_draw_state fs_params;
 
    /* Index buffer */
    uint64_t index_va;

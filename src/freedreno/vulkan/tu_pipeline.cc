@@ -274,6 +274,7 @@ struct tu_pipeline_builder
    bool subpass_feedback_loop_ds;
    bool feedback_loop_may_involve_textures;
    bool fragment_density_map;
+   uint8_t unscaled_input_fragcoord;
 
    /* Each library defines at least one piece of state in
     * VkGraphicsPipelineLibraryFlagsEXT, and libraries cannot overlap, so
@@ -620,14 +621,14 @@ tu6_emit_xs(struct tu_cs *cs,
       }
    }
 
-   /* emit FS driver param */
+   /* emit statically-known FS driver param */
    if (stage == MESA_SHADER_FRAGMENT && const_state->num_driver_params > 0) {
       uint32_t base = const_state->offsets.driver_param;
-      int32_t size = DIV_ROUND_UP(const_state->num_driver_params, 4);
+      int32_t size = DIV_ROUND_UP(MAX2(const_state->num_driver_params, 4), 4);
       size = MAX2(MIN2(size + base, xs->constlen) - base, 0);
 
       if (size > 0) {
-         tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
+         tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + 4);
          tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                     CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
@@ -636,7 +637,6 @@ tu6_emit_xs(struct tu_cs *cs,
          tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
          tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-         assert(size == 1);
          tu_cs_emit(cs, xs->info.double_threadsize ? 128 : 64);
          tu_cs_emit(cs, 0);
          tu_cs_emit(cs, 0);
@@ -1941,6 +1941,7 @@ tu6_emit_program(struct tu_cs *cs,
    if (fs) {
       tu6_emit_fs_inputs(cs, fs);
       tu6_emit_fs_outputs(cs, fs, pipeline);
+      pipeline->program.per_samp = fs->per_samp || fs->key.sample_shading;
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
@@ -3202,6 +3203,10 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    if (builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
       keys[MESA_SHADER_FRAGMENT].multiview_mask = builder->multiview_mask;
       keys[MESA_SHADER_FRAGMENT].force_sample_interp = ir3_key.sample_shading;
+      keys[MESA_SHADER_FRAGMENT].fragment_density_map =
+         builder->fragment_density_map;
+      keys[MESA_SHADER_FRAGMENT].unscaled_input_fragcoord =
+         builder->unscaled_input_fragcoord;
       pipeline->fs.fragment_density_map = builder->fragment_density_map;
    }
 
@@ -5111,6 +5116,7 @@ tu_pipeline_builder_init_graphics(
          builder->subpass_raster_order_attachment_access = false;
          builder->subpass_feedback_loop_ds = false;
          builder->subpass_feedback_loop_color = false;
+         builder->unscaled_input_fragcoord = 0;
 
          rendering_flags = vk_get_pipeline_rendering_flags(builder->create_info);
 
@@ -5146,6 +5152,15 @@ tu_pipeline_builder_init_graphics(
          if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED)
             rendering_flags |=
                VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+
+         builder->unscaled_input_fragcoord = 0;
+         for (unsigned i = 0; i < subpass->input_count; i++) {
+            /* Input attachments stored in GMEM must be loaded with unscaled
+             * FragCoord.
+             */
+            if (subpass->input_attachments[i].patch_input_gmem)
+               builder->unscaled_input_fragcoord |= 1u << i;
+         }
 
          if (!builder->rasterizer_discard) {
             const uint32_t a = subpass->depth_stencil_attachment.attachment;

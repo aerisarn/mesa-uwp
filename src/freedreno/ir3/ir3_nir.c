@@ -924,6 +924,20 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
                layout->num_driver_params = MAX2(layout->num_driver_params,
                                                 IR3_DP_HS_DEFAULT_INNER_LEVEL_Y + 1);
                break;
+            case nir_intrinsic_load_frag_size_ir3:
+               layout->num_driver_params = MAX2(layout->num_driver_params,
+                                                IR3_DP_FS_FRAG_SIZE + 2 +
+                                                (nir_intrinsic_range(intr) - 1) * 4);
+               break;
+            case nir_intrinsic_load_frag_offset_ir3:
+               layout->num_driver_params = MAX2(layout->num_driver_params,
+                                                IR3_DP_FS_FRAG_OFFSET + 2 +
+                                                (nir_intrinsic_range(intr) - 1) * 4);
+               break;
+            case nir_intrinsic_load_frag_invocation_count:
+               layout->num_driver_params = MAX2(layout->num_driver_params,
+                                                IR3_DP_FS_FRAG_INVOCATION_COUNT + 1);
+               break;
             default:
                break;
             }

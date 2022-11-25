@@ -1205,6 +1205,12 @@ intrinsic("cond_end_ir3", src_comp=[1])
 # signals the TE that the patch is complete and can be tessellated.
 intrinsic("end_patch_ir3")
 
+# Per-view gl_FragSizeEXT and gl_FragCoord offset.
+intrinsic("load_frag_size_ir3", src_comp=[1], dest_comp=2, indices=[RANGE],
+        flags=[CAN_ELIMINATE, CAN_REORDER], bit_sizes=[32])
+intrinsic("load_frag_offset_ir3", src_comp=[1], dest_comp=2, indices=[RANGE],
+        flags=[CAN_ELIMINATE, CAN_REORDER], bit_sizes=[32])
+
 # IR3-specific load/store intrinsics. These access a buffer used to pass data
 # between geometry stages - perhaps it's explicit access to the vertex cache.
 

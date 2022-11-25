@@ -112,6 +112,17 @@ create_driver_param(struct ir3_context *ctx, enum ir3_driver_param dp)
    return create_uniform(ctx->block, r);
 }
 
+static struct ir3_instruction *
+create_driver_param_indirect(struct ir3_context *ctx, enum ir3_driver_param dp,
+                             struct ir3_instruction *address)
+{
+   /* first four vec4 sysval's reserved for UBOs: */
+   /* NOTE: dp is in scalar, but there can be >4 dp components: */
+   struct ir3_const_state *const_state = ir3_const_state(ctx->so);
+   unsigned n = const_state->offsets.driver_param;
+   return create_uniform_indirect(ctx->block, n * 4 + dp, TYPE_U32, address);
+}
+
 /*
  * Adreno's comparisons produce a 1 for true and 0 for false, in either 16 or
  * 32-bit registers.  We use NIR's 1-bit integers to represent bools, and
@@ -2367,6 +2378,32 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          dst[i] = create_driver_param(ctx, IR3_DP_HS_DEFAULT_INNER_LEVEL_X + i);
       }
       break;
+   case nir_intrinsic_load_frag_invocation_count:
+      dst[0] = create_driver_param(ctx, IR3_DP_FS_FRAG_INVOCATION_COUNT);
+      break;
+   case nir_intrinsic_load_frag_size_ir3:
+   case nir_intrinsic_load_frag_offset_ir3: {
+      enum ir3_driver_param param =
+         intr->intrinsic == nir_intrinsic_load_frag_size_ir3 ?
+         IR3_DP_FS_FRAG_SIZE : IR3_DP_FS_FRAG_OFFSET;
+      if (nir_src_is_const(intr->src[0])) {
+         uint32_t view = nir_src_as_uint(intr->src[0]);
+         for (int i = 0; i < dest_components; i++) {
+            dst[i] = create_driver_param(ctx, param + 4 * view + i);
+         }
+      } else {
+         struct ir3_instruction *view = ir3_get_src(ctx, &intr->src[0])[0];
+         for (int i = 0; i < dest_components; i++) {
+            dst[i] = create_driver_param_indirect(ctx, param + i,
+                                                  ir3_get_addr0(ctx, view, 4));
+         }
+         ctx->so->constlen =
+            MAX2(ctx->so->constlen,
+                 const_state->offsets.driver_param + param / 4 +
+                 nir_intrinsic_range(intr));
+      }
+      break;
+   }
    case nir_intrinsic_discard_if:
    case nir_intrinsic_discard:
    case nir_intrinsic_demote:

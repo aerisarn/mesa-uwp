@@ -86,6 +86,11 @@ enum ir3_driver_param {
 
    /* fragment shader driver params: */
    IR3_DP_FS_SUBGROUP_SIZE = 0,
+   /* Dynamic params (that aren't known when compiling the shader) */
+   IR3_DP_FS_DYNAMIC = 4,
+   IR3_DP_FS_FRAG_INVOCATION_COUNT = IR3_DP_FS_DYNAMIC,
+   IR3_DP_FS_FRAG_SIZE = IR3_DP_FS_DYNAMIC + 4,
+   IR3_DP_FS_FRAG_OFFSET = IR3_DP_FS_DYNAMIC + 6,
 };
 
 #define IR3_MAX_SHADER_BUFFERS  32
