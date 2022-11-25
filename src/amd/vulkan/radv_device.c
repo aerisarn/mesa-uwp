@@ -5469,6 +5469,15 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    if (result != VK_SUCCESS)
       return result;
 
+   if (use_ace) {
+      /* TODO: chaining with gang submit. */
+      can_patch = false;
+
+      result = radv_update_ace_preambles(queue);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cmd_buffer_count = submission->command_buffer_count;
