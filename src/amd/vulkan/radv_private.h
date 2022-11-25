@@ -3210,6 +3210,151 @@ si_translate_blend_logic_op(VkLogicOp op)
    }
 }
 
+static inline uint32_t
+si_translate_blend_function(VkBlendOp op)
+{
+   switch (op) {
+   case VK_BLEND_OP_ADD:
+      return V_028780_COMB_DST_PLUS_SRC;
+   case VK_BLEND_OP_SUBTRACT:
+      return V_028780_COMB_SRC_MINUS_DST;
+   case VK_BLEND_OP_REVERSE_SUBTRACT:
+      return V_028780_COMB_DST_MINUS_SRC;
+   case VK_BLEND_OP_MIN:
+      return V_028780_COMB_MIN_DST_SRC;
+   case VK_BLEND_OP_MAX:
+      return V_028780_COMB_MAX_DST_SRC;
+   default:
+      return 0;
+   }
+}
+
+static inline uint32_t
+si_translate_blend_factor(enum amd_gfx_level gfx_level, VkBlendFactor factor)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_ZERO:
+      return V_028780_BLEND_ZERO;
+   case VK_BLEND_FACTOR_ONE:
+      return V_028780_BLEND_ONE;
+   case VK_BLEND_FACTOR_SRC_COLOR:
+      return V_028780_BLEND_SRC_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+      return V_028780_BLEND_ONE_MINUS_SRC_COLOR;
+   case VK_BLEND_FACTOR_DST_COLOR:
+      return V_028780_BLEND_DST_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+      return V_028780_BLEND_ONE_MINUS_DST_COLOR;
+   case VK_BLEND_FACTOR_SRC_ALPHA:
+      return V_028780_BLEND_SRC_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+      return V_028780_BLEND_ONE_MINUS_SRC_ALPHA;
+   case VK_BLEND_FACTOR_DST_ALPHA:
+      return V_028780_BLEND_DST_ALPHA;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+      return V_028780_BLEND_ONE_MINUS_DST_ALPHA;
+   case VK_BLEND_FACTOR_CONSTANT_COLOR:
+      return gfx_level >= GFX11 ? V_028780_BLEND_CONSTANT_COLOR_GFX11
+                                : V_028780_BLEND_CONSTANT_COLOR_GFX6;
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+      return gfx_level >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX11
+                                 : V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
+   case VK_BLEND_FACTOR_CONSTANT_ALPHA:
+      return gfx_level >= GFX11 ? V_028780_BLEND_CONSTANT_ALPHA_GFX11
+                                 : V_028780_BLEND_CONSTANT_ALPHA_GFX6;
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
+      return gfx_level >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX11
+                                 : V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
+   case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      return V_028780_BLEND_SRC_ALPHA_SATURATE;
+   case VK_BLEND_FACTOR_SRC1_COLOR:
+      return gfx_level >= GFX11 ? V_028780_BLEND_SRC1_COLOR_GFX11 : V_028780_BLEND_SRC1_COLOR_GFX6;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+      return gfx_level >= GFX11 ? V_028780_BLEND_INV_SRC1_COLOR_GFX11
+                                 : V_028780_BLEND_INV_SRC1_COLOR_GFX6;
+   case VK_BLEND_FACTOR_SRC1_ALPHA:
+      return gfx_level >= GFX11 ? V_028780_BLEND_SRC1_ALPHA_GFX11 : V_028780_BLEND_SRC1_ALPHA_GFX6;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+      return gfx_level >= GFX11 ? V_028780_BLEND_INV_SRC1_ALPHA_GFX11
+                                 : V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
+   default:
+      return 0;
+   }
+}
+
+static inline uint32_t
+si_translate_blend_opt_factor(VkBlendFactor factor, bool is_alpha)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_ZERO:
+      return V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_ALL;
+   case VK_BLEND_FACTOR_ONE:
+      return V_028760_BLEND_OPT_PRESERVE_ALL_IGNORE_NONE;
+   case VK_BLEND_FACTOR_SRC_COLOR:
+      return is_alpha ? V_028760_BLEND_OPT_PRESERVE_A1_IGNORE_A0
+                      : V_028760_BLEND_OPT_PRESERVE_C1_IGNORE_C0;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+      return is_alpha ? V_028760_BLEND_OPT_PRESERVE_A0_IGNORE_A1
+                      : V_028760_BLEND_OPT_PRESERVE_C0_IGNORE_C1;
+   case VK_BLEND_FACTOR_SRC_ALPHA:
+      return V_028760_BLEND_OPT_PRESERVE_A1_IGNORE_A0;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+      return V_028760_BLEND_OPT_PRESERVE_A0_IGNORE_A1;
+   case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      return is_alpha ? V_028760_BLEND_OPT_PRESERVE_ALL_IGNORE_NONE
+                      : V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
+   default:
+      return V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
+   }
+}
+
+static inline uint32_t
+si_translate_blend_opt_function(VkBlendOp op)
+{
+   switch (op) {
+   case VK_BLEND_OP_ADD:
+      return V_028760_OPT_COMB_ADD;
+   case VK_BLEND_OP_SUBTRACT:
+      return V_028760_OPT_COMB_SUBTRACT;
+   case VK_BLEND_OP_REVERSE_SUBTRACT:
+      return V_028760_OPT_COMB_REVSUBTRACT;
+   case VK_BLEND_OP_MIN:
+      return V_028760_OPT_COMB_MIN;
+   case VK_BLEND_OP_MAX:
+      return V_028760_OPT_COMB_MAX;
+   default:
+      return V_028760_OPT_COMB_BLEND_DISABLED;
+   }
+}
+
+static inline bool
+si_blend_factor_uses_dst(VkBlendFactor factor)
+{
+   return factor == VK_BLEND_FACTOR_DST_COLOR || factor == VK_BLEND_FACTOR_DST_ALPHA ||
+          factor == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
+          factor == VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA ||
+          factor == VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+}
+
+static inline bool
+radv_is_dual_src(VkBlendFactor factor)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_SRC1_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+   case VK_BLEND_FACTOR_SRC1_ALPHA:
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+      return true;
+   default:
+      return false;
+   }
+}
+
+void si_blend_remove_dst(VkBlendOp *func, VkBlendFactor *src_factor, VkBlendFactor *dst_factor,
+                         VkBlendFactor expected_dst, VkBlendFactor replacement_src);
+
+bool radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att);
+
 uint32_t radv_get_tess_output_topology(const struct radv_graphics_pipeline *pipeline,
                                        VkTessellationDomainOrigin domain_origin);
 
