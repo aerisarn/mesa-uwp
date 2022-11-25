@@ -397,7 +397,7 @@ agx_emit_load_attr(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    unsigned actual_comps = (attrib.nr_comps_minus_1 + 1);
    agx_index vec = agx_vec_for_dest(b->shader, &instr->dest);
    agx_device_load_to(b, vec, base, offset, attrib.format,
-                      BITFIELD_MASK(attrib.nr_comps_minus_1 + 1), 0);
+                      BITFIELD_MASK(attrib.nr_comps_minus_1 + 1), 0, 0);
    agx_wait(b, 0);
 
    agx_index dests[4] = { agx_null() };
@@ -568,7 +568,7 @@ agx_emit_load_global(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    enum agx_format fmt = agx_format_for_bits(nir_dest_bit_size(instr->dest));
 
    agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(nir_dest_num_components(instr->dest)), 0);
+                      BITFIELD_MASK(nir_dest_num_components(instr->dest)), 0, 0);
    agx_wait(b, 0);
    agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
 }
@@ -602,7 +602,7 @@ agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
     */
    agx_device_load_to(b, dst, agx_mov(b, base), agx_src_index(offset),
                       agx_format_for_bits(nir_dest_bit_size(instr->dest)),
-                      BITFIELD_MASK(instr->num_components), 0);
+                      BITFIELD_MASK(instr->num_components), 0, 0);
    agx_wait(b, 0);
    agx_emit_cached_split(b, dst, instr->num_components);
 
