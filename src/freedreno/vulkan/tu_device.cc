@@ -223,6 +223,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_extended_dynamic_state3 = true,
       .EXT_external_memory_dma_buf = true,
       .EXT_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
+      .EXT_fragment_density_map = true,
       .EXT_global_priority = true,
       .EXT_global_priority_query = true,
       .EXT_graphics_pipeline_library = true,
@@ -1000,6 +1001,14 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->descriptorBufferPushDescriptors = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT: {
+         VkPhysicalDeviceFragmentDensityMapFeaturesEXT *features =
+            (VkPhysicalDeviceFragmentDensityMapFeaturesEXT *)ext;
+         features->fragmentDensityMap = true;
+         features->fragmentDensityMapDynamic = false;
+         features->fragmentDensityMapNonSubsampledImages = true;
+         break;
+      }
 
       default:
          break;
@@ -1516,6 +1525,20 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->samplerDescriptorBufferAddressSpaceSize = ~0ull;
          properties->resourceDescriptorBufferAddressSpaceSize = ~0ull;
          properties->descriptorBufferAddressSpaceSize = ~0ull;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_DENSITY_MAP_PROPERTIES_EXT: {
+         VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT *properties =
+            (VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT *)ext;
+         properties->combinedImageSamplerDensityMapDescriptorSize = 2 * A6XX_TEX_CONST_DWORDS * 4;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT: {
+         VkPhysicalDeviceFragmentDensityMapPropertiesEXT *properties =
+            (VkPhysicalDeviceFragmentDensityMapPropertiesEXT *)ext;
+         properties->minFragmentDensityTexelSize = (VkExtent2D) { MIN_FDM_TEXEL_SIZE, MIN_FDM_TEXEL_SIZE };
+         properties->maxFragmentDensityTexelSize = (VkExtent2D) { MAX_FDM_TEXEL_SIZE, MAX_FDM_TEXEL_SIZE };
+         properties->fragmentDensityInvocations = false;
          break;
       }
       default:
