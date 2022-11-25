@@ -1543,13 +1543,12 @@ agx_is_dmabuf_modifier_supported(struct pipe_screen *screen,
    if (external_only)
       *external_only = false;
 
-   switch (modifier) {
-   case DRM_FORMAT_MOD_APPLE_TWIDDLED:
-   case DRM_FORMAT_MOD_LINEAR:
-      return true;
-   default:
-      return false;
+   for (unsigned i = 0; i < ARRAY_SIZE(agx_best_modifiers); ++i) {
+      if (agx_best_modifiers[i] == modifier)
+         return true;
    }
+
+   return false;
 }
 
 static void
