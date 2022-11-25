@@ -5800,7 +5800,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
 
    anv_batch_emit(&cmd_buffer->batch, GENX(COMPUTE_WALKER), cw) {
       cw.IndirectParameterEnable        = is_indirect;
-      cw.PredicateEnable                = false;
+      cw.PredicateEnable                = cmd_buffer->state.conditional_render_enabled;
       cw.SIMDSize                       = dispatch.simd_size / 16;
       cw.LocalXMaximum                  = (1 << local_size_log2[0]) - 1;
       cw.LocalYMaximum                  = (1 << local_size_log2[1]) - 1;
