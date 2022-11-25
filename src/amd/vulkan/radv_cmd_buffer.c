@@ -7113,6 +7113,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
       }
    }
 
+   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 6);
    radeon_set_context_reg(cmd_buffer->cs, R_028204_PA_SC_WINDOW_SCISSOR_TL,
                           S_028204_TL_X(render->area.offset.x) |
                           S_028204_TL_Y(render->area.offset.y));
