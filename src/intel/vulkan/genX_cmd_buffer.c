@@ -5829,7 +5829,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       struct brw_rt_raygen_trampoline_params trampoline_params = {
          .rt_disp_globals_addr = anv_address_physical(rtdg_addr),
          .raygen_bsr_addr = raygen_sbt->deviceAddress,
-         .is_indirect = is_indirect,
+         .is_indirect = false, /* Only for raygen_bsr_addr */
          .local_group_size_log2 = {
             local_size_log2[0],
             local_size_log2[1],
