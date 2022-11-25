@@ -358,61 +358,6 @@ agx_format_for_pipe(enum pipe_format format)
    unreachable("Invalid format");
 }
 
-/* AGX appears to lack support for vertex attributes. Lower to global loads. */
-static void
-agx_emit_load_attr(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
-{
-   nir_src *offset_src = nir_get_io_offset_src(instr);
-   assert(nir_src_is_const(*offset_src) && "no attribute indirects");
-   unsigned index = nir_intrinsic_base(instr) +
-                    nir_src_as_uint(*offset_src);
-
-   struct agx_shader_key *key = b->shader->key;
-   struct agx_attribute attrib = key->vs.attributes[index];
-
-   /* address = base + (stride * vertex_id) + src_offset */
-   unsigned buf = attrib.buf;
-   unsigned stride = key->vs.vbuf_strides[buf];
-   unsigned shift = agx_format_shift(attrib.format);
-
-   agx_index shifted_stride = agx_mov_imm(b, 32, stride >> shift);
-   agx_index src_offset = agx_mov_imm(b, 32, attrib.src_offset);
-
-   /* A nonzero divisor requires dividing the instance ID. A zero divisor
-    * specifies per-instance data. */
-   agx_index element_id = (attrib.divisor == 0) ? agx_vertex_id(b) :
-                          agx_udiv_const(b, agx_instance_id(b), attrib.divisor);
-
-   agx_index offset = agx_imad(b, element_id, shifted_stride, src_offset, 0);
-
-   /* Each VBO has a 64-bit = 4 x 16-bit address, lookup the base address as a
-    * sysval.  Mov around the base to handle uniform restrictions, copyprop will
-    * usually clean that up.
-    */
-   agx_index base = agx_mov(b, agx_vbo_base(b->shader, buf));
-
-   /* Load the data */
-   assert(instr->num_components <= 4);
-
-   unsigned actual_comps = (attrib.nr_comps_minus_1 + 1);
-   agx_index vec = agx_vec_for_dest(b->shader, &instr->dest);
-   agx_device_load_to(b, vec, base, offset, attrib.format,
-                      BITFIELD_MASK(attrib.nr_comps_minus_1 + 1), 0, 0);
-   agx_wait(b, 0);
-
-   agx_index dests[4] = { agx_null() };
-   agx_emit_split(b, dests, vec, actual_comps);
-
-   agx_index one = agx_mov_imm(b, 32, fui(1.0));
-   agx_index zero = agx_mov_imm(b, 32, 0);
-   agx_index default_value[4] = { zero, zero, zero, one };
-
-   for (unsigned i = actual_comps; i < instr->num_components; ++i)
-      dests[i] = default_value[i];
-
-   agx_emit_collect_to(b, dest, instr->num_components, dests);
-}
-
 static void
 agx_emit_load_vary_flat(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -733,13 +678,8 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      return NULL;
 
   case nir_intrinsic_load_input:
-     if (stage == MESA_SHADER_FRAGMENT)
-        agx_emit_load_vary_flat(b, dst, instr);
-     else if (stage == MESA_SHADER_VERTEX)
-        agx_emit_load_attr(b, dst, instr);
-     else
-        unreachable("Unsupported shader stage");
-
+     assert(stage == MESA_SHADER_FRAGMENT && "vertex loads lowered");
+     agx_emit_load_vary_flat(b, dst, instr);
      return NULL;
 
   case nir_intrinsic_load_global:
@@ -784,6 +724,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
               AGX_PUSH_UBO_BASES, AGX_SIZE_64,
               nir_src_as_uint(instr->src[0]) * 4,
               b->shader->nir->info.num_ubos * 4));
+
+  case nir_intrinsic_load_vbo_base_agx:
+     return agx_mov_to(b, dst,
+                       agx_vbo_base(b->shader, nir_src_as_uint(instr->src[0])));
 
   case nir_intrinsic_load_vertex_id:
      return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));

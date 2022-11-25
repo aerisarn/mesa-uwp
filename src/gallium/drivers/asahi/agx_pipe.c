@@ -1573,18 +1573,8 @@ agx_is_format_supported(struct pipe_screen* pscreen,
          return false;
    }
 
-   /* TODO: formats */
-   if (usage & PIPE_BIND_VERTEX_BUFFER) {
-      switch (format) {
-      case PIPE_FORMAT_R32_FLOAT:
-      case PIPE_FORMAT_R32G32_FLOAT:
-      case PIPE_FORMAT_R32G32B32_FLOAT:
-      case PIPE_FORMAT_R32G32B32A32_FLOAT:
-         break;
-      default:
-         return false;
-      }
-   }
+   if ((usage & PIPE_BIND_VERTEX_BUFFER) && !agx_vbo_supports_format(format))
+      return false;
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
       switch (format) {

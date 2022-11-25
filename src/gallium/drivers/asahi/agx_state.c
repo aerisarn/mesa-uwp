@@ -987,18 +987,13 @@ agx_create_vertex_elements(struct pipe_context *ctx,
 
       const struct util_format_description *desc =
          util_format_description(ve.src_format);
-
       unsigned chan_size = desc->channel[0].size / 8;
-
-      assert(chan_size == 1 || chan_size == 2 || chan_size == 4);
-      assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
       assert((ve.src_offset & (chan_size - 1)) == 0);
 
       attribs[i] = (struct agx_attribute) {
          .buf = ve.vertex_buffer_index,
-         .src_offset = ve.src_offset / chan_size,
-         .nr_comps_minus_1 = desc->nr_channels - 1,
-         .format = agx_vertex_format[ve.src_format],
+         .src_offset = ve.src_offset,
+         .format = ve.src_format,
          .divisor = ve.instance_divisor
       };
    }
@@ -1184,7 +1179,9 @@ agx_compile_variant(struct agx_device *dev,
 
    agx_preprocess_nir(nir);
 
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
+   } else {
       struct agx_tilebuffer_layout tib =
          agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
 
@@ -1243,13 +1240,12 @@ agx_create_shader_state(struct pipe_context *pctx,
       switch (so->nir->info.stage) {
       case MESA_SHADER_VERTEX:
       {
-         key.base.vs.num_vbufs = AGX_MAX_VBUFS;
+         key.vbuf.count = AGX_MAX_VBUFS;
          for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
-            key.base.vs.vbuf_strides[i] = 16;
-            key.base.vs.attributes[i] = (struct agx_attribute) {
+            key.vbuf.strides[i] = 16;
+            key.vbuf.attributes[i] = (struct agx_attribute) {
                .buf = i,
-               .nr_comps_minus_1 = 4 - 1,
-               .format = AGX_FORMAT_I32
+               .format = PIPE_FORMAT_R32G32B32A32_FLOAT
             };
          }
 
@@ -1295,20 +1291,18 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 static bool
 agx_update_vs(struct agx_context *ctx)
 {
-   struct agx_vs_shader_key key = { 0 };
-
-   memcpy(key.attributes, ctx->attributes,
-          sizeof(key.attributes[0]) * AGX_MAX_ATTRIBS);
-
-   u_foreach_bit(i, ctx->vb_mask) {
-      key.vbuf_strides[i] = ctx->vertex_buffers[i].stride;
-   }
-
-   struct asahi_shader_key akey = {
-      .base.vs = key
+   struct asahi_shader_key key = {
+      .vbuf.count = util_last_bit(ctx->vb_mask),
    };
 
-   return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX, &akey);
+   memcpy(key.vbuf.attributes, ctx->attributes,
+          sizeof(key.vbuf.attributes[0]) * AGX_MAX_ATTRIBS);
+
+   u_foreach_bit(i, ctx->vb_mask) {
+      key.vbuf.strides[i] = ctx->vertex_buffers[i].stride;
+   }
+
+   return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX, &key);
 }
 
 static bool
