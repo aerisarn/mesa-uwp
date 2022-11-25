@@ -809,6 +809,7 @@ bool agx_lower_resinfo(nir_shader *s);
 bool agx_nir_lower_array_texture(nir_shader *s);
 bool agx_nir_opt_preamble(nir_shader *s, unsigned *preamble_size);
 bool agx_nir_lower_load_mask(nir_shader *shader);
+bool agx_nir_lower_ubo(nir_shader *shader);
 
 #ifdef __cplusplus
 } /* extern C */

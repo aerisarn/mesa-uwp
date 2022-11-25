@@ -573,42 +573,6 @@ agx_emit_load_global(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
 }
 
-static agx_instr *
-agx_emit_load_ubo(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
-{
-   nir_src *offset = nir_get_io_offset_src(instr);
-
-   if (!nir_src_is_const(instr->src[0]))
-      unreachable("todo: indirect UBO access");
-
-   /* UBO blocks are specified */
-   uint32_t block = nir_src_as_uint(instr->src[0]);
-
-   /* Each UBO has a 64-bit = 4 x 16-bit address */
-   unsigned num_ubos = b->shader->nir->info.num_ubos;
-   unsigned base_length = (num_ubos * 4);
-   unsigned index = block * 4; /* 16 bit units */
-
-   /* Lookup the base address (TODO: indirection) */
-   agx_index base = agx_indexed_sysval(b->shader,
-                                       AGX_PUSH_UBO_BASES, AGX_SIZE_64,
-                                       index, base_length);
-
-   /* Load the data */
-   assert(instr->num_components <= 4);
-
-   /* Mov around the base to handle uniform restrictions, copyprop will usually
-    * clean that up.
-    */
-   agx_device_load_to(b, dst, agx_mov(b, base), agx_src_index(offset),
-                      agx_format_for_bits(nir_dest_bit_size(instr->dest)),
-                      BITFIELD_MASK(instr->num_components), 0, 0);
-   agx_wait(b, 0);
-   agx_emit_cached_split(b, dst, instr->num_components);
-
-   return NULL;
-}
-
 static void
 agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -801,9 +765,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      agx_emit_local_load_pixel(b, dst, instr);
      return NULL;
 
-  case nir_intrinsic_load_ubo:
-     return agx_emit_load_ubo(b, dst, instr);
-
   case nir_intrinsic_load_frag_coord:
      agx_emit_load_frag_coord(b, dst, instr);
      return NULL;
@@ -817,6 +778,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_load_texture_base_agx:
      return agx_mov_to(b, dst, agx_indexed_sysval(b->shader,
               AGX_PUSH_TEXTURE_BASE, AGX_SIZE_64, 0, 4));
+
+  case nir_intrinsic_load_ubo_base_agx:
+     return agx_mov_to(b, dst, agx_indexed_sysval(b->shader,
+              AGX_PUSH_UBO_BASES, AGX_SIZE_64,
+              nir_src_as_uint(instr->src[0]) * 4,
+              b->shader->nir->info.num_ubos * 4));
 
   case nir_intrinsic_load_vertex_id:
      return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
@@ -1703,33 +1670,6 @@ agx_lower_front_face(struct nir_builder *b,
    return true;
 }
 
-static bool
-agx_lower_aligned_offsets(struct nir_builder *b,
-                          nir_instr *instr, UNUSED void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_ubo)
-      return false;
-
-   b->cursor = nir_before_instr(&intr->instr);
-
-   unsigned bytes = nir_dest_bit_size(intr->dest) / 8;
-   assert(util_is_power_of_two_or_zero(bytes) && bytes != 0);
-
-   nir_src *offset = &intr->src[1];
-
-   unsigned shift = util_logbase2(bytes);
-
-   nir_ssa_def *old = nir_ssa_for_src(b, *offset, 1);
-   nir_ssa_def *new = nir_ishr_imm(b, old, shift);
-
-   nir_instr_rewrite_src_ssa(instr, offset, new);
-   return true;
-}
-
 static void
 agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
@@ -1989,10 +1929,8 @@ agx_preprocess_nir(nir_shader *nir)
             nir_var_shader_in | nir_var_shader_out,
             ~agx_flat_varying_mask(nir), false);
    }
-   NIR_PASS_V(nir, nir_shader_instructions_pass,
-         agx_lower_aligned_offsets,
-         nir_metadata_block_index | nir_metadata_dominance, NULL);
 
+   NIR_PASS_V(nir, agx_nir_lower_ubo);
    NIR_PASS_V(nir, nir_lower_ssbo);
 
    /* Varying output is scalar, other I/O is vector */
