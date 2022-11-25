@@ -5432,7 +5432,7 @@ genX(cmd_buffer_ray_query_globals)(struct anv_cmd_buffer *cmd_buffer)
    brw_rt_compute_scratch_layout(&layout, device->info,
                                  stack_ids_per_dss, 1 << 10);
 
-   struct GFX_RT_DISPATCH_GLOBALS rtdg = {
+   struct GENX(RT_DISPATCH_GLOBALS) rtdg = {
       .MemBaseAddress = (struct anv_address) {
          /* The ray query HW computes offsets from the top of the buffer, so
           * let the address at the end of the buffer.
@@ -5448,7 +5448,7 @@ genX(cmd_buffer_ray_query_globals)(struct anv_cmd_buffer *cmd_buffer)
          .bo = cmd_buffer->state.ray_query_shadow_bo,
       },
    };
-   GFX_RT_DISPATCH_GLOBALS_pack(NULL, state.map, &rtdg);
+   GENX(RT_DISPATCH_GLOBALS_pack)(NULL, state.map, &rtdg);
 
    return state;
 #else
@@ -5608,10 +5608,10 @@ calc_local_trace_size(uint8_t local_shift[3], const uint32_t global[3])
    local_shift[0] += 3 - total_shift;
 }
 
-static struct GFX_RT_SHADER_TABLE
+static struct GENX(RT_SHADER_TABLE)
 vk_sdar_to_shader_table(const VkStridedDeviceAddressRegionKHR *region)
 {
-   return (struct GFX_RT_SHADER_TABLE) {
+   return (struct GENX(RT_SHADER_TABLE)) {
       .BaseAddress = anv_address_from_u64(region->deviceAddress),
       .Stride = region->stride,
    };
@@ -5667,7 +5667,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
                                          sizeof(struct anv_push_constants),
                                          64);
 
-   struct GFX_RT_DISPATCH_GLOBALS rtdg = {
+   struct GENX(RT_DISPATCH_GLOBALS) rtdg = {
       .MemBaseAddress = (struct anv_address) {
          .bo = rt->scratch.bo,
          .offset = rt->scratch.layout.ray_stack_start,
@@ -5686,10 +5686,10 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       .LaunchDepth = launch_depth,
       .CallableGroupTable = vk_sdar_to_shader_table(callable_sbt),
    };
-   GFX_RT_DISPATCH_GLOBALS_pack(NULL, rtdg_state.map, &rtdg);
+   GENX(RT_DISPATCH_GLOBALS_pack)(NULL, rtdg_state.map, &rtdg);
 
    /* Push constants go after the RT_DISPATCH_GLOBALS */
-   assert(GFX_RT_DISPATCH_GLOBALS_length * 4 <= BRW_RT_PUSH_CONST_OFFSET);
+   assert(GENX(RT_DISPATCH_GLOBALS_length) * 4 <= BRW_RT_PUSH_CONST_OFFSET);
    memcpy(rtdg_state.map + BRW_RT_PUSH_CONST_OFFSET,
           &cmd_buffer->state.rt.base.push_constants,
           sizeof(struct anv_push_constants));

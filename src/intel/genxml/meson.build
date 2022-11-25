@@ -77,7 +77,7 @@ genX_bits_included_symbols = [
 
 genX_bits_h = custom_target(
   'genX_bits.h',
-  input : ['gen_bits_header.py', gen_xml_files],
+  input : ['gen_bits_header.py', gen_xml_files, 'gen_rt.xml'],
   output : 'genX_bits.h',
   command : [prog_python, '@INPUT@', '-o', '@OUTPUT@',
              '--include-symbols', ','.join(genX_bits_included_symbols)],

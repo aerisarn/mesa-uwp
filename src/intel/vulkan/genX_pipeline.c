@@ -1990,28 +1990,28 @@ genX(ray_tracing_pipeline_emit)(struct anv_ray_tracing_pipeline *pipeline)
 
       switch (group->type) {
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR: {
-         struct GFX_RT_GENERAL_SBT_HANDLE sh = {};
+         struct GENX(RT_GENERAL_SBT_HANDLE) sh = {};
          sh.General = anv_shader_bin_get_bsr(group->general, 32);
-         GFX_RT_GENERAL_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         GENX(RT_GENERAL_SBT_HANDLE_pack)(NULL, group->handle, &sh);
          break;
       }
 
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR: {
-         struct GFX_RT_TRIANGLES_SBT_HANDLE sh = {};
+         struct GENX(RT_TRIANGLES_SBT_HANDLE) sh = {};
          if (group->closest_hit)
             sh.ClosestHit = anv_shader_bin_get_bsr(group->closest_hit, 32);
          if (group->any_hit)
             sh.AnyHit = anv_shader_bin_get_bsr(group->any_hit, 24);
-         GFX_RT_TRIANGLES_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         GENX(RT_TRIANGLES_SBT_HANDLE_pack)(NULL, group->handle, &sh);
          break;
       }
 
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR: {
-         struct GFX_RT_PROCEDURAL_SBT_HANDLE sh = {};
+         struct GENX(RT_PROCEDURAL_SBT_HANDLE) sh = {};
          if (group->closest_hit)
             sh.ClosestHit = anv_shader_bin_get_bsr(group->closest_hit, 32);
          sh.Intersection = anv_shader_bin_get_bsr(group->intersection, 24);
-         GFX_RT_PROCEDURAL_SBT_HANDLE_pack(NULL, group->handle, &sh);
+         GENX(RT_PROCEDURAL_SBT_HANDLE_pack)(NULL, group->handle, &sh);
          break;
       }
 
