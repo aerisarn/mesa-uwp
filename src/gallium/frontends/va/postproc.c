@@ -252,6 +252,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    }
 
    if (src->interlaced != dst->interlaced) {
+      deinterlace = deinterlace ? deinterlace : VL_COMPOSITOR_WEAVE;
       vl_compositor_yuv_deint_full(&drv->cstate, &drv->compositor,
                                    src, dst, &src_rect, &dst_rect,
                                    deinterlace);
