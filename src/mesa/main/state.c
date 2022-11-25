@@ -207,23 +207,20 @@ update_program(struct gl_context *ctx)
       _mesa_reference_program(ctx, &ctx->FragmentProgram._Current, fsProg);
       _mesa_reference_program(ctx, &ctx->FragmentProgram._TexEnvProgram,
                               NULL);
-   }
-   else if (_mesa_arb_fragment_program_enabled(ctx)) {
+   } else if (_mesa_arb_fragment_program_enabled(ctx)) {
       /* Use user-defined fragment program */
       _mesa_reference_program(ctx, &ctx->FragmentProgram._Current,
                               ctx->FragmentProgram.Current);
       _mesa_reference_program(ctx, &ctx->FragmentProgram._TexEnvProgram,
 			      NULL);
-   }
-   else if (_mesa_ati_fragment_shader_enabled(ctx) &&
+   } else if (_mesa_ati_fragment_shader_enabled(ctx) &&
             ctx->ATIFragmentShader.Current->Program) {
        /* Use the enabled ATI fragment shader's associated program */
       _mesa_reference_program(ctx, &ctx->FragmentProgram._Current,
                               ctx->ATIFragmentShader.Current->Program);
       _mesa_reference_program(ctx, &ctx->FragmentProgram._TexEnvProgram,
                               NULL);
-   }
-   else {
+   } else {
       /* Use fragment program generated from fixed-function state */
       struct gl_shader_program *f = _mesa_get_fixed_func_fragment_program(ctx);
 
@@ -231,32 +228,6 @@ update_program(struct gl_context *ctx)
 			      f->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program);
       _mesa_reference_program(ctx, &ctx->FragmentProgram._TexEnvProgram,
 			      f->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program);
-   }
-
-   if (gsProg) {
-      /* Use GLSL geometry shader */
-      _mesa_reference_program(ctx, &ctx->GeometryProgram._Current, gsProg);
-   } else {
-      /* No geometry program */
-      _mesa_reference_program(ctx, &ctx->GeometryProgram._Current, NULL);
-   }
-
-   if (tesProg) {
-      /* Use GLSL tessellation evaluation shader */
-      _mesa_reference_program(ctx, &ctx->TessEvalProgram._Current, tesProg);
-   }
-   else {
-      /* No tessellation evaluation program */
-      _mesa_reference_program(ctx, &ctx->TessEvalProgram._Current, NULL);
-   }
-
-   if (tcsProg) {
-      /* Use GLSL tessellation control shader */
-      _mesa_reference_program(ctx, &ctx->TessCtrlProgram._Current, tcsProg);
-   }
-   else {
-      /* No tessellation control program */
-      _mesa_reference_program(ctx, &ctx->TessCtrlProgram._Current, NULL);
    }
 
    /* Examine vertex program after fragment program as
@@ -267,14 +238,12 @@ update_program(struct gl_context *ctx)
       /* Use GLSL vertex shader */
       assert(VP_MODE_SHADER == ctx->VertexProgram._VPMode);
       _mesa_reference_program(ctx, &ctx->VertexProgram._Current, vsProg);
-   }
-   else if (_mesa_arb_vertex_program_enabled(ctx)) {
+   } else if (_mesa_arb_vertex_program_enabled(ctx)) {
       /* Use user-defined vertex program */
       assert(VP_MODE_SHADER == ctx->VertexProgram._VPMode);
       _mesa_reference_program(ctx, &ctx->VertexProgram._Current,
                               ctx->VertexProgram.Current);
-   }
-   else {
+   } else {
       /* Use vertex program generated from fixed-function state */
       assert(VP_MODE_FF == ctx->VertexProgram._VPMode);
       _mesa_reference_program(ctx, &ctx->VertexProgram._Current,
@@ -283,13 +252,11 @@ update_program(struct gl_context *ctx)
                               ctx->VertexProgram._Current);
    }
 
-   if (csProg) {
-      /* Use GLSL compute shader */
-      _mesa_reference_program(ctx, &ctx->ComputeProgram._Current, csProg);
-   } else {
-      /* no compute program */
-      _mesa_reference_program(ctx, &ctx->ComputeProgram._Current, NULL);
-   }
+   /* Bind or unbind these shaders. (NULL = unbind) */
+   _mesa_reference_program(ctx, &ctx->GeometryProgram._Current, gsProg);
+   _mesa_reference_program(ctx, &ctx->TessEvalProgram._Current, tesProg);
+   _mesa_reference_program(ctx, &ctx->TessCtrlProgram._Current, tcsProg);
+   _mesa_reference_program(ctx, &ctx->ComputeProgram._Current, csProg);
 
    bool vp_changed = ctx->VertexProgram._Current != prevVP;
    bool tep_changed = ctx->TessEvalProgram._Current != prevTEP;
