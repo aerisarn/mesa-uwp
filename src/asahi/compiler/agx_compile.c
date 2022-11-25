@@ -1015,18 +1015,26 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_i2i32:
    {
-      if (s0.size != AGX_SIZE_16)
-         unreachable("todo: more conversions");
-
-      return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+      if (src_sz == 8) {
+         /* Sign extend in software, NIR likes 8-bit conversions */
+         agx_index ishl16 = agx_bfi(b, agx_zero(), s0, agx_immediate(8), 0);
+         return agx_asr_to(b, dst, ishl16, agx_immediate(8));
+      } else {
+         assert(s0.size == AGX_SIZE_16 && "other conversions lowered");
+         return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+      }
    }
 
    case nir_op_i2i16:
    {
-      if (s0.size != AGX_SIZE_32)
-         unreachable("todo: more conversions");
-
-      return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+      if (src_sz == 8) {
+         /* Sign extend in software, NIR likes 8-bit conversions */
+         agx_index ishl16 = agx_bfi(b, agx_zero(), s0, agx_immediate(8), 0);
+         return agx_asr_to(b, dst, ishl16, agx_immediate(8));
+      } else {
+         assert (s0.size == AGX_SIZE_32 && "other conversions lowered");
+         return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+      }
    }
 
    case nir_op_iadd_sat:
