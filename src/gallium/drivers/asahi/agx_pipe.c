@@ -370,8 +370,41 @@ agx_twiddled_allowed(const struct agx_resource *pres)
 static bool
 agx_compression_allowed(const struct agx_resource *pres)
 {
-   /* At this point in the series, compression isn't fully plumbed in */
-   return false;
+   /* Allow disabling compression for debugging */
+   if (agx_device(pres->base.screen)->debug & AGX_DBG_NOCOMPRESS)
+      return false;
+
+   /* Limited to renderable */
+   if (pres->base.bind & ~(PIPE_BIND_SAMPLER_VIEW |
+                           PIPE_BIND_RENDER_TARGET |
+                           PIPE_BIND_DEPTH_STENCIL |
+                           PIPE_BIND_SHARED |
+                           PIPE_BIND_SCANOUT))
+      return false;
+
+   /* We use the PBE for compression via staging blits, so we can only compress
+    * renderable formats. As framebuffer compression, other formats don't make a
+    * ton of sense to compress anyway.
+    */
+   if (!agx_pixel_format[pres->base.format].renderable)
+      return false;
+
+   /* Lossy-compressed texture formats cannot be compressed */
+   assert(!util_format_is_compressed(pres->base.format) &&
+          "block-compressed formats are not renderable");
+
+   /* TODO: Compression of arrays/cubes currently fails because it would require
+    * arrayed linear staging resources, which the hardware doesn't support. This
+    * could be worked around with more sophisticated blit code.
+    */
+   if (pres->base.target != PIPE_TEXTURE_2D && pres->base.target != PIPE_TEXTURE_RECT)
+      return false;
+
+   /* Small textures cannot (should not?) be compressed */
+   if (pres->base.width0 < 16 || pres->base.height0 < 16)
+      return false;
+
+   return true;
 }
 
 static uint64_t
