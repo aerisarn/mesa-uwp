@@ -442,6 +442,7 @@ agx_size_for_bits(unsigned bits)
 {
    switch (bits) {
    case 1:
+   case 8:
    case 16: return AGX_SIZE_16;
    case 32: return AGX_SIZE_32;
    case 64: return AGX_SIZE_64;

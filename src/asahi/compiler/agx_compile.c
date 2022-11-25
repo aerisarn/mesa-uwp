@@ -852,7 +852,7 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
    unsigned comps = nir_src_num_components(src.src);
    unsigned channel = src.swizzle[0];
 
-   assert(bitsize == 1 || bitsize == 16 || bitsize == 32 || bitsize == 64);
+   assert(bitsize == 1 || bitsize == 8 || bitsize == 16 || bitsize == 32 || bitsize == 64);
    assert(!(src.negate || src.abs));
    assert(channel < comps);
 
