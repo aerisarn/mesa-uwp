@@ -278,6 +278,17 @@ nir_blend_logicop(
    const struct util_format_description *format_desc =
       util_format_description(format);
 
+   /* From section 17.3.9 ("Logical Operation") of the OpenGL 4.6 core spec:
+    *
+    *    Logical operation has no effect on a floating-point destination color
+    *    buffer, or when FRAMEBUFFER_SRGB is enabled and the value of
+    *    FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING for the framebuffer attachment
+    *    corresponding to the destination buffer is SRGB (see section 9.2.3).
+    *    However, if logical operation is enabled, blending is still disabled.
+    */
+   if (util_format_is_float(format) || util_format_is_srgb(format))
+      return src;
+
    if (bit_size != 32) {
       src = nir_f2f32(b, src);
       dst = nir_f2f32(b, dst);
