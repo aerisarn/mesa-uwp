@@ -225,37 +225,37 @@ static nir_ssa_def *
 nir_logicop_func(
    nir_builder *b,
    unsigned func,
-   nir_ssa_def *src, nir_ssa_def *dst)
+   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bitmask)
 {
    switch (func) {
    case PIPE_LOGICOP_CLEAR:
       return nir_imm_ivec4(b, 0, 0, 0, 0);
    case PIPE_LOGICOP_NOR:
-      return nir_inot(b, nir_ior(b, src, dst));
+      return nir_ixor(b, nir_ior(b, src, dst), bitmask);
    case PIPE_LOGICOP_AND_INVERTED:
-      return nir_iand(b, nir_inot(b, src), dst);
+      return nir_iand(b, nir_ixor(b, src, bitmask), dst);
    case PIPE_LOGICOP_COPY_INVERTED:
-      return nir_inot(b, src);
+      return nir_ixor(b, src, bitmask);
    case PIPE_LOGICOP_AND_REVERSE:
-      return nir_iand(b, src, nir_inot(b, dst));
+      return nir_iand(b, src, nir_ixor(b, dst, bitmask));
    case PIPE_LOGICOP_INVERT:
-      return nir_inot(b, dst);
+      return nir_ixor(b, dst, bitmask);
    case PIPE_LOGICOP_XOR:
       return nir_ixor(b, src, dst);
    case PIPE_LOGICOP_NAND:
-      return nir_inot(b, nir_iand(b, src, dst));
+      return nir_ixor(b, nir_iand(b, src, dst), bitmask);
    case PIPE_LOGICOP_AND:
       return nir_iand(b, src, dst);
    case PIPE_LOGICOP_EQUIV:
-      return nir_inot(b, nir_ixor(b, src, dst));
+      return nir_ixor(b, nir_ixor(b, src, dst), bitmask);
    case PIPE_LOGICOP_NOOP:
       return dst;
    case PIPE_LOGICOP_OR_INVERTED:
-      return nir_ior(b, nir_inot(b, src), dst);
+      return nir_ior(b, nir_ixor(b, src, bitmask), dst);
    case PIPE_LOGICOP_COPY:
       return src;
    case PIPE_LOGICOP_OR_REVERSE:
-      return nir_ior(b, src, nir_inot(b, dst));
+      return nir_ior(b, src, nir_ixor(b, dst, bitmask));
    case PIPE_LOGICOP_OR:
       return nir_ior(b, src, dst);
    case PIPE_LOGICOP_SET:
@@ -300,15 +300,12 @@ nir_blend_logicop(
       assert(util_format_is_pure_integer(format));
    }
 
-   nir_ssa_def *out = nir_logicop_func(b, options->logicop_func, src, dst);
+   nir_const_value mask[4];
+   for (int i = 0; i < 4; ++i)
+      mask[i] = nir_const_value_for_int(BITFIELD_MASK(bits[i]), 32);
 
-   if (bits[0] < 32) {
-       nir_const_value mask[4];
-       for (int i = 0; i < 4; ++i)
-           mask[i] = nir_const_value_for_int((1u << bits[i]) - 1, 32);
-
-       out = nir_iand(b, out, nir_build_imm(b, 4, 32, mask));
-   }
+   nir_ssa_def *out = nir_logicop_func(b, options->logicop_func, src, dst,
+                                       nir_build_imm(b, 4, 32, mask));
 
    if (util_format_is_unorm(format)) {
       out = nir_format_unorm_to_float(b, out, bits);
