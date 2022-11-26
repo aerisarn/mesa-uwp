@@ -13,8 +13,9 @@ fi
 # shellcheck disable=SC1003 # how this sed doesn't seems to work for me locally
 sed -i -e '/\[properties\]/a\' -e "needs_exe_wrapper = False" "$cross_file"
 
-# Add a line for rustc, which debcrossgen is missing.
-cc=$(sed -n 's|c = .\(.*\).|\1|p' < "$cross_file")
+# Add a line for rustc, which meson env2mfile is missing.
+cc=$(sed -n "s|^c\s*=\s*\[?'\(.*\)'\]?|\1|p" < "$cross_file")
+
 if [[ "$arch" = "arm64" ]]; then
     rust_target=aarch64-unknown-linux-gnu
 elif [[ "$arch" = "armhf" ]]; then
