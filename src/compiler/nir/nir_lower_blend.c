@@ -126,19 +126,81 @@ nir_blend_factor_value(
 }
 
 static nir_ssa_def *
+nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
+{
+   return nir_fclamp(b, x, nir_imm_floatN_t(b, -1.0, x->bit_size),
+                           nir_imm_floatN_t(b, +1.0, x->bit_size));
+}
+
+static nir_ssa_def *
+nir_fsat_to_format(nir_builder *b, nir_ssa_def *x, enum pipe_format format)
+{
+   if (util_format_is_unorm(format))
+      return nir_fsat(b, x);
+   else if (util_format_is_snorm(format))
+      return nir_fsat_signed(b, x);
+   else
+      return x;
+}
+
+/*
+ * The spec says we need to clamp blend factors. However, we don't want to clamp
+ * unnecessarily, as the clamp might not be optimized out. Check whether
+ * clamping a blend factor is needed.
+ */
+static bool
+should_clamp_factor(enum blend_factor factor, bool inverted, bool snorm)
+{
+   switch (factor) {
+   case BLEND_FACTOR_ZERO:
+      /* 0, 1 are in [0, 1] and [-1, 1] */
+      return false;
+
+   case BLEND_FACTOR_SRC_COLOR:
+   case BLEND_FACTOR_SRC1_COLOR:
+   case BLEND_FACTOR_DST_COLOR:
+   case BLEND_FACTOR_SRC_ALPHA:
+   case BLEND_FACTOR_SRC1_ALPHA:
+   case BLEND_FACTOR_DST_ALPHA:
+      /* Colours are already clamped. For unorm, the complement of something
+       * clamped is still clamped. But for snorm, this is not true. Clamp for
+       * snorm only.
+       */
+      return inverted && snorm;
+
+   case BLEND_FACTOR_CONSTANT_COLOR:
+   case BLEND_FACTOR_CONSTANT_ALPHA:
+      /* Constant colours are not yet clamped */
+      return true;
+
+   case BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      /* For unorm, this is in bounds (and hence so is its complement). For
+       * snorm, it may not be.
+       */
+      return snorm;
+   }
+
+   unreachable("invalid blend factor");
+}
+
+static nir_ssa_def *
 nir_blend_factor(
    nir_builder *b,
    nir_ssa_def *raw_scalar,
    nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst, nir_ssa_def *bconst,
    unsigned chan,
    enum blend_factor factor,
-   bool inverted)
+   bool inverted,
+   enum pipe_format format)
 {
    nir_ssa_def *f =
       nir_blend_factor_value(b, src, src1, dst, bconst, chan, factor);
 
    if (inverted)
       f = nir_fadd_imm(b, nir_fneg(b, f), 1.0);
+
+   if (should_clamp_factor(factor, inverted, util_format_is_snorm(format)))
+      f = nir_fsat_to_format(b, f, format);
 
    return nir_fmul(b, raw_scalar, f);
 }
@@ -269,13 +331,6 @@ channel_exists(const struct util_format_description *desc, unsigned i)
           desc->channel[i].type != UTIL_FORMAT_TYPE_VOID;
 }
 
-static nir_ssa_def *
-nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
-{
-   return nir_fclamp(b, x, nir_imm_floatN_t(b, -1.0, x->bit_size),
-                           nir_imm_floatN_t(b, +1.0, x->bit_size));
-}
-
 /* Given a blend state, the source color, and the destination color,
  * return the blended color
  */
@@ -312,11 +367,16 @@ nir_blend(
     *     [-1, 1] respectively for an unsigned normalized or signed normalized
     *     color buffer prior to evaluating the blend equation. If the color
     *     buffer is floating-point, no clamping occurs.
+    *
+    * Blend factors are clamped at the time of their use to ensure we properly
+    * clamp negative constant colours with signed normalized formats and
+    * ONE_MINUS_CONSTANT_* factors. Notice that -1 is in [-1, 1] but 1 - (-1) =
+    * 2 is not in [-1, 1] and should be clamped to 1.
     */
-   if (util_format_is_unorm(format))
-      src = nir_fsat(b, src);
-   else if (util_format_is_snorm(format))
-      src = nir_fsat_signed(b, src);
+   src = nir_fsat_to_format(b, src, format);
+
+   if (src1)
+      src1 = nir_fsat_to_format(b, src1, format);
 
    /* DST_ALPHA reads back 1.0 if there is no alpha channel */
    const struct util_format_description *desc =
@@ -346,12 +406,12 @@ nir_blend(
          psrc = nir_blend_factor(
                    b, psrc,
                    src, src1, dst, bconst, c,
-                   chan.src_factor, chan.invert_src_factor);
+                   chan.src_factor, chan.invert_src_factor, format);
 
          pdst = nir_blend_factor(
                    b, pdst,
                    src, src1, dst, bconst, c,
-                   chan.dst_factor, chan.invert_dst_factor);
+                   chan.dst_factor, chan.invert_dst_factor, format);
       }
 
       channels[c] = nir_blend_func(b, chan.func, psrc, pdst);
