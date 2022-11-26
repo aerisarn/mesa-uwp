@@ -313,6 +313,8 @@ nir_blend_logicop(
    if (util_format_is_unorm(format)) {
       out = nir_format_unorm_to_float(b, out, bits);
    } else if (util_format_is_snorm(format)) {
+      /* Sign extend before converting so the i2f in snorm_to_float works */
+      out = nir_format_sign_extend_ivec(b, out, bits);
       out = nir_format_snorm_to_float(b, out, bits);
    } else {
       assert(util_format_is_pure_integer(format));
