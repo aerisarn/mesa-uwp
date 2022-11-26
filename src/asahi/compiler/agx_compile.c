@@ -682,8 +682,9 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst, nir_intrinsic_instr *ins
    agx_index dests[4] = { agx_null() };
 
    u_foreach_bit(i, nir_ssa_def_components_read(&instr->dest.ssa)) {
+      agx_index fp32 = agx_temp(b->shader, AGX_SIZE_32);
+
       if (i < 2) {
-         agx_index fp32 = agx_temp(b->shader, AGX_SIZE_32);
          agx_convert_to(b, fp32, agx_immediate(AGX_CONVERT_U32_TO_F),
                   agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
                   AGX_ROUND_RTE);
@@ -691,7 +692,9 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst, nir_intrinsic_instr *ins
          dests[i] = agx_fadd(b, fp32, agx_immediate_f(0.5f));
       } else {
          agx_index cf = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
-         dests[i] = agx_iter(b, cf, agx_null(), 1, false);
+
+         dests[i] = fp32;
+         agx_iter_to(b, fp32, cf, agx_null(), 1, false);
       }
    }
 
