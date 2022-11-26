@@ -1276,6 +1276,7 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_PACKED_UNIFORMS:
+   case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return 1;
 
    case PIPE_CAP_VS_INSTANCEID:
