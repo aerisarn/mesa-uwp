@@ -168,7 +168,6 @@ enum {
 
 #define ST_ALL_SHADER_RESOURCES (ST_NEW_SAMPLER_VIEWS | \
                                  ST_NEW_SAMPLERS | \
-                                 ST_NEW_CONSTANTS | \
                                  ST_NEW_UNIFORM_BUFFER | \
                                  ST_NEW_ATOMIC_BUFFER | \
                                  ST_NEW_STORAGE_BUFFER | \
