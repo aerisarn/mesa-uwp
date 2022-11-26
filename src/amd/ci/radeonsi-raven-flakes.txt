@@ -1,2 +1,4 @@
 spec@arb_timer_query@timestamp-get
 spec@arb_shader_draw_parameters@drawid-single-draw-display-list
+spec@egl_chromium_sync_control@conformance
+spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test
