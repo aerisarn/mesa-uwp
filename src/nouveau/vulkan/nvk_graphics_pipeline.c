@@ -42,7 +42,7 @@ emit_pipeline_rs_state(struct nv_push *p,
       .geometry_guardband_z      = GEOMETRY_GUARDBAND_Z_SAME_AS_XY_GUARDBAND,
    });
 
-   assert(rs->rasterization_stream == 0);
+   P_IMMD(p, NV9097, SET_RASTER_INPUT, rs->rasterization_stream);
 
    assert(rs->line.mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
 }

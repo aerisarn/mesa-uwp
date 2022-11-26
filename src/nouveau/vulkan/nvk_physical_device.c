@@ -230,7 +230,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
          VkPhysicalDeviceTransformFeedbackPropertiesEXT *p = (void *)ext;
-         p->maxTransformFeedbackStreams = 0;
+         p->maxTransformFeedbackStreams = 4;
          p->maxTransformFeedbackBuffers = 4;
          p->maxTransformFeedbackBufferSize = UINT32_MAX;
          p->maxTransformFeedbackStreamDataSize = 2048;
@@ -238,7 +238,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->maxTransformFeedbackBufferDataStride = 2048;
          p->transformFeedbackQueries = false;
          p->transformFeedbackStreamsLinesTriangles = false;
-         p->transformFeedbackRasterizationStreamSelect = false;
+         p->transformFeedbackRasterizationStreamSelect = true;
          p->transformFeedbackDraw = true;
          break;
       }
@@ -483,7 +483,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
 
       /* VK_EXT_transform_feedback */
       .transformFeedback = dev->cls_eng3d >= TURING_A,
-      .geometryStreams = false,
+      .geometryStreams = dev->cls_eng3d >= TURING_A,
 
       /* VK_EXT_vertex_attribute_divisor */
       .vertexAttributeInstanceRateDivisor = true,
