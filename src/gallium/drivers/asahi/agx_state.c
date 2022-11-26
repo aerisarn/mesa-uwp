@@ -474,6 +474,14 @@ agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
    assert(samples >= 1);
 
    switch (dim) {
+   case PIPE_TEXTURE_1D:
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_1D;
+
+   case PIPE_TEXTURE_1D_ARRAY:
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_1D_ARRAY;
+
    case PIPE_TEXTURE_RECT:
    case PIPE_TEXTURE_2D:
       return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED :
