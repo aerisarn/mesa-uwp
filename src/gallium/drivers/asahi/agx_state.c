@@ -1363,6 +1363,13 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    for (unsigned i = 0; i < nr_textures; ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
+
+      /* TODO: Use an actual null texture for robustness */
+      if (tex == NULL) {
+         memset(&textures[i], 0, sizeof(textures[i]));
+         continue;
+      }
+
       agx_batch_reads(batch, agx_resource(tex->base.texture));
 
       /* Without the address */
@@ -1388,6 +1395,8 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs, enum
 
       if (sampler)
          samplers[i] = sampler->desc;
+      else
+         memset(&samplers[i], 0, sizeof(samplers[i]));
    }
 
    struct agx_usc_builder b =
