@@ -1934,6 +1934,9 @@ agx_preprocess_nir(nir_shader *nir)
 {
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
+
    /* Lower large arrays to scratch and small arrays to csel */
    NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
          glsl_get_natural_size_align_bytes);
