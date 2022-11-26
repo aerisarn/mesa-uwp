@@ -50,6 +50,10 @@ nvk_CreateQueryPool(VkDevice device,
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
       reports_per_query = 2 * util_bitcount(pool->vk.pipeline_statistics);
       break;
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+      // 2 for primitives succeeded 2 for primitives needed
+      reports_per_query = 4;
+      break;
    default:
       unreachable("Unsupported query type");
    }
@@ -366,6 +370,29 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
       }
       break;
    }
+
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
+      const uint32_t xfb_reports[] = {
+         NV9097_SET_REPORT_SEMAPHORE_D_REPORT_STREAMING_PRIMITIVES_SUCCEEDED,
+         NV9097_SET_REPORT_SEMAPHORE_D_REPORT_STREAMING_PRIMITIVES_NEEDED,
+      };
+      p = nvk_cmd_buffer_push(cmd, 5*ARRAY_SIZE(xfb_reports) + 5*end);
+      for (uint32_t i = 0; i < ARRAY_SIZE(xfb_reports); ++i) {
+         P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+         P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+         P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+         P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+         P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+               .operation = OPERATION_REPORT_ONLY,
+               .pipeline_location = PIPELINE_LOCATION_STREAMING_OUTPUT,
+               .report = xfb_reports[i],
+               .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+               .sub_report = index,
+               });
+         report_addr += 2*sizeof(struct nvk_query_report);
+      }
+      break;
+   }
    default:
       unreachable("Unsupported query type");
    }
@@ -512,6 +539,16 @@ nvk_GetQueryPoolResults(VkDevice device,
          if (write_results) {
             for (uint32_t j = 0; j < stat_count; j++)
                cpu_get_query_delta(dst, src, j, flags);
+         }
+         break;
+      }
+      case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
+         const int prims_succeeded_idx = 0;
+         const int prims_needed_idx = 1;
+         available_dst_idx = 2;
+         if (write_results) {
+            cpu_get_query_delta(dst, src, prims_succeeded_idx, flags);
+            cpu_get_query_delta(dst, src, prims_needed_idx, flags);
          }
          break;
       }

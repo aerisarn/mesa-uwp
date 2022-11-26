@@ -236,7 +236,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->maxTransformFeedbackStreamDataSize = 2048;
          p->maxTransformFeedbackBufferDataSize = 512;
          p->maxTransformFeedbackBufferDataStride = 2048;
-         p->transformFeedbackQueries = false;
+         p->transformFeedbackQueries = true;
          p->transformFeedbackStreamsLinesTriangles = false;
          p->transformFeedbackRasterizationStreamSelect = true;
          p->transformFeedbackDraw = true;
