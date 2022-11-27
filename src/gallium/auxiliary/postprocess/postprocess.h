@@ -54,7 +54,8 @@ typedef void (*pp_func) (struct pp_queue_t *, struct pipe_resource *,
 struct pp_queue_t *pp_init(struct pipe_context *pipe,
                            const unsigned int *enabled,
                            struct cso_context *,
-                           struct st_context_iface *st);
+                           void *st,
+                           void (*st_invalidate_state)(void *st, unsigned flags));
 
 void pp_run(struct pp_queue_t *, struct pipe_resource *,
             struct pipe_resource *, struct pipe_resource *);

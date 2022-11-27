@@ -805,7 +805,8 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
          osmesa->pp = pp_init(osmesa->stctx->pipe,
                               osmesa->pp_enabled,
                               osmesa->stctx->cso_context,
-                              osmesa->stctx);
+                              osmesa->stctx,
+                              (void*)osmesa->stctx->invalidate_state);
 
          pp_init_fbos(osmesa->pp, width, height);
       }
