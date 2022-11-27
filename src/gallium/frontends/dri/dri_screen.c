@@ -811,7 +811,7 @@ static void
 dri_set_background_context(struct st_context_iface *st,
                            struct util_queue_monitoring *queue_info)
 {
-   struct dri_context *ctx = (struct dri_context *)st->st_manager_private;
+   struct dri_context *ctx = (struct dri_context *)st->frontend_context;
    const __DRIbackgroundCallableExtension *backgroundCallable =
       ctx->screen->dri2.backgroundCallable;
 

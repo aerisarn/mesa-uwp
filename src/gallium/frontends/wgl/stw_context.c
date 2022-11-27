@@ -56,7 +56,7 @@ stw_current_context(void)
 
    st = (stw_dev) ? st_api_get_current() : NULL;
 
-   return (struct stw_context *) ((st) ? st->st_manager_private : NULL);
+   return (struct stw_context *) ((st) ? st->frontend_context : NULL);
 }
 
 
@@ -246,7 +246,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    if (ctx->st == NULL)
       goto no_st_ctx;
 
-   ctx->st->st_manager_private = (void *) ctx;
+   ctx->st->frontend_context = (void *) ctx;
 
    if (ctx->st->cso_context) {
       ctx->hud = hud_create(ctx->st->cso_context, ctx->st, NULL);

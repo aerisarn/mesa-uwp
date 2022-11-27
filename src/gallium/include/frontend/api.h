@@ -366,12 +366,12 @@ struct st_framebuffer_iface
 struct st_context_iface
 {
    /**
-    * Available for the gallium frontend and the manager to use.
+    * The frontend context. (such as dri_context)
     */
-   void *st_manager_private;
+   void *frontend_context;
 
    /**
-    * The frontend manager that manages this object.
+    * The frontend screen. (such as dri_screen)
     */
    struct pipe_frontend_screen *frontend_screen;
 

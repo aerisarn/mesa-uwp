@@ -36,7 +36,7 @@ hgl_st_context(struct st_context_iface *stctxi)
 {
 	struct hgl_context* context;
 	assert(stctxi);
-	context = (struct hgl_context*)stctxi->st_manager_private;
+	context = (struct hgl_context*)stctxi->frontend_context;
 	assert(context);
 	return context;
 }
@@ -345,7 +345,7 @@ hgl_create_display(struct pipe_screen* screen)
 	assert(display->fscreen);
 	display->fscreen->screen = screen;
 	display->fscreen->get_param = hgl_st_manager_get_param;
-	// display->manager->st_manager_private is used by llvmpipe
+	// display->fscreen->st_manager_private is used by llvmpipe
 
 	return display;
 }

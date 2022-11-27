@@ -197,7 +197,7 @@ dri_create_context(struct dri_screen *screen,
       }
       goto fail;
    }
-   ctx->st->st_manager_private = (void *) ctx;
+   ctx->st->frontend_context = (void *) ctx;
 
    if (ctx->st->cso_context) {
       ctx->pp = pp_init(ctx->st->pipe, screen->pp_enabled, ctx->st->cso_context,
@@ -345,7 +345,7 @@ dri_get_current(void)
 {
    struct st_context_iface *st = st_api_get_current();
 
-   return (struct dri_context *) st ? st->st_manager_private : NULL;
+   return (struct dri_context *) st ? st->frontend_context : NULL;
 }
 
 /* vim: set sw=3 ts=8 sts=3 expandtab: */

@@ -47,7 +47,7 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
                             unsigned count,
                             struct pipe_resource **out)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->st_manager_private;
+   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
    struct dri_screen *screen = drawable->screen;
@@ -114,7 +114,7 @@ dri_st_framebuffer_flush_front(struct st_context_iface *stctx,
                                struct st_framebuffer_iface *stfbi,
                                enum st_attachment_type statt)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->st_manager_private;
+   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
 
@@ -129,7 +129,7 @@ static bool
 dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
                                      struct st_framebuffer_iface *stfbi)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->st_manager_private;
+   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
 

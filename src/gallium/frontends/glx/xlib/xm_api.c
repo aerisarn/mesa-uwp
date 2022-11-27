@@ -1009,7 +1009,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
    if (c->st == NULL)
       goto no_st;
 
-   c->st->st_manager_private = (void *) c;
+   c->st->frontend_context = (void *) c;
 
    c->hud = hud_create(c->st->cso_context, c->st, NULL);
 
@@ -1318,7 +1318,7 @@ GLboolean XMesaUnbindContext( XMesaContext c )
 XMesaContext XMesaGetCurrentContext( void )
 {
    struct st_context_iface *st = st_api_get_current();
-   return (XMesaContext) (st) ? st->st_manager_private : NULL;
+   return (XMesaContext) (st) ? st->frontend_context : NULL;
 }
 
 

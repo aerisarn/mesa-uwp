@@ -213,8 +213,8 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 		return -1;
 	}
 
-	assert(!context->st->st_manager_private);
-	context->st->st_manager_private = (void*)context;
+	assert(!context->st->frontend_context);
+	context->st->frontend_context = (void*)context;
 
 	struct st_context *stContext = (struct st_context*)context->st;
 

@@ -686,7 +686,7 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
       return NULL;
    }
 
-   osmesa->stctx->st_manager_private = osmesa;
+   osmesa->stctx->frontend_context = osmesa;
 
    osmesa->format = format;
    osmesa->user_row_length = 0;
@@ -822,7 +822,7 @@ GLAPI OSMesaContext GLAPIENTRY
 OSMesaGetCurrentContext(void)
 {
    struct st_context_iface *st = st_api_get_current();
-   return st ? (OSMesaContext) st->st_manager_private : NULL;
+   return st ? (OSMesaContext) st->frontend_context : NULL;
 }
 
 
