@@ -35,6 +35,8 @@
 #include "state_tracker/st_context.h"
 
 struct xmesa_st_framebuffer {
+   struct st_framebuffer_iface base;
+
    XMesaDisplay display;
    XMesaBuffer buffer;
    struct pipe_screen *screen;
@@ -286,15 +288,12 @@ static uint32_t xmesa_stfbi_ID = 0;
 struct st_framebuffer_iface *
 xmesa_create_st_framebuffer(XMesaDisplay xmdpy, XMesaBuffer b)
 {
-   struct st_framebuffer_iface *stfbi;
    struct xmesa_st_framebuffer *xstfb;
 
    assert(xmdpy->display == b->xm_visual->display);
 
-   stfbi = CALLOC_STRUCT(st_framebuffer_iface);
    xstfb = CALLOC_STRUCT(xmesa_st_framebuffer);
-   if (!stfbi || !xstfb) {
-      free(stfbi);
+   if (!xstfb) {
       free(xstfb);
       return NULL;
    }
@@ -308,15 +307,15 @@ xmesa_create_st_framebuffer(XMesaDisplay xmdpy, XMesaBuffer b)
    else
       xstfb->target = PIPE_TEXTURE_RECT;
 
-   stfbi->visual = &xstfb->stvis;
-   stfbi->flush_front = xmesa_st_framebuffer_flush_front;
-   stfbi->validate = xmesa_st_framebuffer_validate;
-   stfbi->ID = p_atomic_inc_return(&xmesa_stfbi_ID);
-   stfbi->fscreen = xmdpy->fscreen;
-   p_atomic_set(&stfbi->stamp, 1);
-   stfbi->st_manager_private = (void *) xstfb;
+   xstfb->base.visual = &xstfb->stvis;
+   xstfb->base.flush_front = xmesa_st_framebuffer_flush_front;
+   xstfb->base.validate = xmesa_st_framebuffer_validate;
+   xstfb->base.ID = p_atomic_inc_return(&xmesa_stfbi_ID);
+   xstfb->base.fscreen = xmdpy->fscreen;
+   p_atomic_set(&xstfb->base.stamp, 1);
+   xstfb->base.st_manager_private = (void *) xstfb;
 
-   return stfbi;
+   return &xstfb->base;
 }
 
 
@@ -332,7 +331,6 @@ xmesa_destroy_st_framebuffer(struct st_framebuffer_iface *stfbi)
       pipe_resource_reference(&xstfb->textures[i], NULL);
 
    free(xstfb);
-   free(stfbi);
 }
 
 
