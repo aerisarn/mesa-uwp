@@ -931,6 +931,9 @@ st_manager_destroy(struct pipe_frontend_screen *fscreen)
 }
 
 
+/**
+ * Create a rendering context.
+ */
 struct st_context *
 st_api_create_context(struct pipe_frontend_screen *fscreen,
                       const struct st_context_attribs *attribs,
@@ -1071,6 +1074,9 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
 }
 
 
+/**
+ * Get the currently bound context in the calling thread.
+ */
 struct st_context *
 st_api_get_current(void)
 {
@@ -1124,6 +1130,11 @@ st_framebuffer_reuse_or_create(struct st_context *st,
 }
 
 
+/**
+ * Bind the context to the calling thread with draw and read as drawables.
+ *
+ * The framebuffers might be NULL, meaning the context is surfaceless.
+ */
 bool
 st_api_make_current(struct st_context *st,
                     struct st_framebuffer_iface *stdrawi,
@@ -1350,6 +1361,10 @@ get_version(struct pipe_screen *screen,
 }
 
 
+/**
+ * Query supported OpenGL versions. (if applicable)
+ * The format is (major*10+minor).
+ */
 void
 st_api_query_versions(struct pipe_frontend_screen *fscreen,
                       struct st_config_options *options,

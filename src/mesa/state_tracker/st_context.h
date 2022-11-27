@@ -453,6 +453,32 @@ st_get_nir_compiler_options(struct st_context *st, gl_shader_stage stage);
 void st_invalidate_state(struct gl_context *ctx);
 void st_set_background_context(struct gl_context *ctx,
                                struct util_queue_monitoring *queue_info);
+
+void
+st_api_query_versions(struct pipe_frontend_screen *fscreen,
+                      struct st_config_options *options,
+                      int *gl_core_version,
+                      int *gl_compat_version,
+                      int *gl_es1_version,
+                      int *gl_es2_version);
+
+struct st_context *
+st_api_create_context(struct pipe_frontend_screen *fscreen,
+                      const struct st_context_attribs *attribs,
+                      enum st_context_error *error,
+                      struct st_context *shared_ctx);
+
+bool
+st_api_make_current(struct st_context *st,
+                    struct st_framebuffer_iface *stdrawi,
+                    struct st_framebuffer_iface *streadi);
+
+struct st_context *
+st_api_get_current(void);
+
+void
+st_api_destroy_drawable(struct st_framebuffer_iface *stfbi);
+
 #ifdef __cplusplus
 }
 #endif
