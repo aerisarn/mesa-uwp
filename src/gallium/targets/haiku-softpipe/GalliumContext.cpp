@@ -125,7 +125,7 @@ GalliumContext::DestroyDisplay()
 		return;
 
 	if (fDisplay != NULL) {
-		struct pipe_screen* screen = fDisplay->manager->screen;
+		struct pipe_screen* screen = fDisplay->fscreen->screen;
 		hgl_destroy_display(fDisplay); fDisplay = NULL;
 		screen->destroy(screen); // destroy will deallocate object
 	}
@@ -178,7 +178,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 
 	// Create context using state tracker api call
 	enum st_context_error result;
-	context->st = st_api_create_context(fDisplay->manager,
+	context->st = st_api_create_context(fDisplay->fscreen,
 		&attribs, &result, shared);
 
 	if (!context->st) {

@@ -133,7 +133,7 @@ DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
    if (!pfi)
       return 0;
 
-   struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, NULL, stw_dev->smapi, 1, 0, 0,
+   struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, NULL, stw_dev->fscreen, 1, 0, 0,
                                                         WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
                                                         pfi, WGL_NO_RESET_NOTIFICATION_ARB);
    if (!ctx)
@@ -152,7 +152,7 @@ DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
  */
 struct stw_context *
 stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCtx,
-                           struct st_manager *smapi,
+                           struct pipe_frontend_screen *fscreen,
                            int majorVersion, int minorVersion,
                            int contextFlags, int profileMask,
                            const struct stw_pixelformat_info *pfi,
@@ -242,7 +242,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    attribs.options = stw_dev->st_options;
 
    ctx->st = st_api_create_context(
-         smapi, &attribs, &ctx_err, shareCtx ? shareCtx->st : NULL);
+         fscreen, &attribs, &ctx_err, shareCtx ? shareCtx->st : NULL);
    if (ctx->st == NULL)
       goto no_st_ctx;
 
@@ -539,7 +539,7 @@ get_unlocked_refd_framebuffer_from_dc(HDC hDC)
        */
       int iPixelFormat = stw_pixelformat_guess(hDC);
       if (iPixelFormat)
-         fb = stw_framebuffer_create(WindowFromDC(hDC), stw_pixelformat_get_info(iPixelFormat), STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
+         fb = stw_framebuffer_create(WindowFromDC(hDC), stw_pixelformat_get_info(iPixelFormat), STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->fscreen);
       if (!fb)
          return NULL;
    }

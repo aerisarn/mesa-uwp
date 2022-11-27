@@ -681,11 +681,11 @@ st_framebuffer_iface_equal(const void *a, const void *b)
 
 
 static bool
-st_framebuffer_iface_lookup(struct st_manager *smapi,
+st_framebuffer_iface_lookup(struct pipe_frontend_screen *fscreen,
                             const struct st_framebuffer_iface *stfbi)
 {
    struct st_manager_private *smPriv =
-      (struct st_manager_private *)smapi->st_manager_private;
+      (struct st_manager_private *)fscreen->st_manager_private;
    struct hash_entry *entry;
 
    assert(smPriv);
@@ -700,11 +700,11 @@ st_framebuffer_iface_lookup(struct st_manager *smapi,
 
 
 static bool
-st_framebuffer_iface_insert(struct st_manager *smapi,
+st_framebuffer_iface_insert(struct pipe_frontend_screen *fscreen,
                             struct st_framebuffer_iface *stfbi)
 {
    struct st_manager_private *smPriv =
-      (struct st_manager_private *)smapi->st_manager_private;
+      (struct st_manager_private *)fscreen->st_manager_private;
    struct hash_entry *entry;
 
    assert(smPriv);
@@ -719,11 +719,11 @@ st_framebuffer_iface_insert(struct st_manager *smapi,
 
 
 static void
-st_framebuffer_iface_remove(struct st_manager *smapi,
+st_framebuffer_iface_remove(struct pipe_frontend_screen *fscreen,
                             struct st_framebuffer_iface *stfbi)
 {
    struct st_manager_private *smPriv =
-      (struct st_manager_private *)smapi->st_manager_private;
+      (struct st_manager_private *)fscreen->st_manager_private;
    struct hash_entry *entry;
 
    if (!smPriv || !smPriv->stfbi_ht)
@@ -751,7 +751,7 @@ st_api_destroy_drawable(struct st_framebuffer_iface *stfbi)
    if (!stfbi)
       return;
 
-   st_framebuffer_iface_remove(stfbi->state_manager, stfbi);
+   st_framebuffer_iface_remove(stfbi->fscreen, stfbi);
 }
 
 
@@ -763,10 +763,10 @@ static void
 st_framebuffers_purge(struct st_context *st)
 {
    struct st_context_iface *st_iface = &st->iface;
-   struct st_manager *smapi = st_iface->state_manager;
+   struct pipe_frontend_screen *fscreen = st_iface->frontend_screen;
    struct gl_framebuffer *stfb, *next;
 
-   assert(smapi);
+   assert(fscreen);
 
    LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {
       struct st_framebuffer_iface *stfbi = stfb->iface;
@@ -779,7 +779,7 @@ st_framebuffers_purge(struct st_context *st)
        * and unreference the framebuffer object, so its resources can be
        * deleted.
        */
-      if (!st_framebuffer_iface_lookup(smapi, stfbi)) {
+      if (!st_framebuffer_iface_lookup(fscreen, stfbi)) {
          list_del(&stfb->head);
          _mesa_reference_framebuffer(&stfb, NULL);
       }
@@ -985,21 +985,21 @@ st_context_invalidate_state(struct st_context_iface *stctxi,
 
 
 static void
-st_manager_destroy(struct st_manager *smapi)
+st_manager_destroy(struct pipe_frontend_screen *fscreen)
 {
-   struct st_manager_private *smPriv = smapi->st_manager_private;
+   struct st_manager_private *smPriv = fscreen->st_manager_private;
 
    if (smPriv && smPriv->stfbi_ht) {
       _mesa_hash_table_destroy(smPriv->stfbi_ht, NULL);
       simple_mtx_destroy(&smPriv->st_mutex);
       FREE(smPriv);
-      smapi->st_manager_private = NULL;
+      fscreen->st_manager_private = NULL;
    }
 }
 
 
 struct st_context_iface *
-st_api_create_context(struct st_manager *smapi,
+st_api_create_context(struct pipe_frontend_screen *fscreen,
                       const struct st_context_attribs *attribs,
                       enum st_context_error *error,
                       struct st_context_iface *shared_stctxi)
@@ -1038,7 +1038,7 @@ st_api_create_context(struct st_manager *smapi,
    /* Create a hash table for the framebuffer interface objects
     * if it has not been created for this st manager.
     */
-   if (smapi->st_manager_private == NULL) {
+   if (fscreen->st_manager_private == NULL) {
       struct st_manager_private *smPriv;
 
       smPriv = CALLOC_STRUCT(st_manager_private);
@@ -1046,8 +1046,8 @@ st_api_create_context(struct st_manager *smapi,
       smPriv->stfbi_ht = _mesa_hash_table_create(NULL,
                                                  st_framebuffer_iface_hash,
                                                  st_framebuffer_iface_equal);
-      smapi->st_manager_private = smPriv;
-      smapi->destroy = st_manager_destroy;
+      fscreen->st_manager_private = smPriv;
+      fscreen->destroy = st_manager_destroy;
    }
 
    if (attribs->flags & ST_CONTEXT_FLAG_ROBUST_ACCESS)
@@ -1067,7 +1067,7 @@ st_api_create_context(struct st_manager *smapi,
    if (attribs->flags & ST_CONTEXT_FLAG_PROTECTED)
       ctx_flags |= PIPE_CONTEXT_PROTECTED;
 
-   pipe = smapi->screen->context_create(smapi->screen, NULL, ctx_flags);
+   pipe = fscreen->screen->context_create(fscreen->screen, NULL, ctx_flags);
    if (!pipe) {
       *error = ST_CONTEXT_ERROR_NO_MEMORY;
       return NULL;
@@ -1078,7 +1078,7 @@ st_api_create_context(struct st_manager *smapi,
       mode_ptr = NULL;
    st = st_create_context(api, pipe, mode_ptr, shared_ctx,
                           &attribs->options, no_error,
-                          !!smapi->validate_egl_image);
+                          !!fscreen->validate_egl_image);
    if (!st) {
       *error = ST_CONTEXT_ERROR_NO_MEMORY;
       pipe->destroy(pipe);
@@ -1126,7 +1126,7 @@ st_api_create_context(struct st_manager *smapi,
    st->can_scissor_clear = !!st->screen->get_param(st->screen, PIPE_CAP_CLEAR_SCISSORED);
 
    st->ctx->invalidate_on_gl_viewport =
-      smapi->get_param(smapi, ST_MANAGER_BROKEN_INVALIDATE);
+      fscreen->get_param(fscreen, ST_MANAGER_BROKEN_INVALIDATE);
 
    st->iface.destroy = st_context_destroy;
    st->iface.flush = st_context_flush;
@@ -1136,10 +1136,10 @@ st_api_create_context(struct st_manager *smapi,
    st->iface.start_thread = st_start_thread;
    st->iface.thread_finish = st_thread_finish;
    st->iface.invalidate_state = st_context_invalidate_state;
-   st->iface.st_context_private = (void *) smapi;
+   st->iface.st_context_private = (void *) fscreen;
    st->iface.cso_context = st->cso_context;
    st->iface.pipe = st->pipe;
-   st->iface.state_manager = smapi;
+   st->iface.frontend_screen = fscreen;
 
    if (st->ctx->IntelBlackholeRender &&
        st->screen->get_param(st->screen, PIPE_CAP_FRONTEND_NOOP))
@@ -1188,7 +1188,7 @@ st_framebuffer_reuse_or_create(struct st_context *st,
          /* add the referenced framebuffer interface object to
           * the framebuffer interface object hash table.
           */
-         if (!st_framebuffer_iface_insert(stfbi->state_manager, stfbi)) {
+         if (!st_framebuffer_iface_insert(stfbi->fscreen, stfbi)) {
             _mesa_reference_framebuffer(&cur, NULL);
             return NULL;
          }
@@ -1432,17 +1432,17 @@ get_version(struct pipe_screen *screen,
 
 
 void
-st_api_query_versions(struct st_manager *sm,
+st_api_query_versions(struct pipe_frontend_screen *fscreen,
                       struct st_config_options *options,
                       int *gl_core_version,
                       int *gl_compat_version,
                       int *gl_es1_version,
                       int *gl_es2_version)
 {
-   *gl_core_version = get_version(sm->screen, options, API_OPENGL_CORE);
-   *gl_compat_version = get_version(sm->screen, options, API_OPENGL_COMPAT);
-   *gl_es1_version = get_version(sm->screen, options, API_OPENGLES);
-   *gl_es2_version = get_version(sm->screen, options, API_OPENGLES2);
+   *gl_core_version = get_version(fscreen->screen, options, API_OPENGL_CORE);
+   *gl_compat_version = get_version(fscreen->screen, options, API_OPENGL_COMPAT);
+   *gl_es1_version = get_version(fscreen->screen, options, API_OPENGLES);
+   *gl_es2_version = get_version(fscreen->screen, options, API_OPENGLES2);
 }
 
 

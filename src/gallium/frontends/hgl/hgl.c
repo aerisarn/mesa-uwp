@@ -198,7 +198,7 @@ hgl_st_framebuffer_validate(struct st_context_iface *stctxi,
 
 
 static int
-hgl_st_manager_get_param(struct st_manager *smapi, enum st_manager_param param)
+hgl_st_manager_get_param(struct pipe_frontend_screen *fscreen, enum st_manager_param param)
 {
 	CALLED();
 
@@ -236,7 +236,7 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 
 	// Prepare our buffer
 	buffer->visual = context->stVisual;
-	buffer->screen = context->display->manager->screen;
+	buffer->screen = context->display->fscreen->screen;
 	buffer->winsysContext = winsysContext;
 
 	if (buffer->screen->get_param(buffer->screen, PIPE_CAP_NPOT_TEXTURES))
@@ -252,7 +252,7 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 	p_atomic_set(&buffer->stfbi->stamp, 1);
 	buffer->stfbi->st_manager_private = (void*)buffer;
 	buffer->stfbi->ID = p_atomic_inc_return(&hgl_fb_ID);
-	buffer->stfbi->state_manager = context->display->manager;
+	buffer->stfbi->fscreen = context->display->fscreen;
 
 	return buffer;
 }
@@ -341,10 +341,10 @@ hgl_create_display(struct pipe_screen* screen)
 
 	display = CALLOC_STRUCT(hgl_display);
 	assert(display);
-	display->manager = CALLOC_STRUCT(st_manager);
-	assert(display->manager);
-	display->manager->screen = screen;
-	display->manager->get_param = hgl_st_manager_get_param;
+	display->fscreen = CALLOC_STRUCT(pipe_frontend_screen);
+	assert(display->fscreen);
+	display->fscreen->screen = screen;
+	display->fscreen->get_param = hgl_st_manager_get_param;
 	// display->manager->st_manager_private is used by llvmpipe
 
 	return display;
@@ -354,8 +354,8 @@ hgl_create_display(struct pipe_screen* screen)
 void
 hgl_destroy_display(struct hgl_display *display)
 {
-	if (display->manager->destroy)
-		display->manager->destroy(display->manager);
-	FREE(display->manager);
+	if (display->fscreen->destroy)
+		display->fscreen->destroy(display->fscreen);
+	FREE(display->fscreen);
 	FREE(display);
 }

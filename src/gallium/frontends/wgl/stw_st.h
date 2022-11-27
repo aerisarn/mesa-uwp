@@ -38,7 +38,7 @@ bool
 stw_own_mutex(const CRITICAL_SECTION *cs);
 
 struct st_framebuffer_iface *
-stw_st_create_framebuffer(struct stw_framebuffer *fb, struct st_manager *smapi);
+stw_st_create_framebuffer(struct stw_framebuffer *fb, struct pipe_frontend_screen *fscreen);
 
 void
 stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb);

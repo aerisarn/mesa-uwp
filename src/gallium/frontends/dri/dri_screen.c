@@ -709,11 +709,11 @@ dri_fill_st_visual(struct st_visual *stvis,
 }
 
 static bool
-dri_get_egl_image(struct st_manager *smapi,
+dri_get_egl_image(struct pipe_frontend_screen *fscreen,
                   void *egl_image,
                   struct st_egl_image *stimg)
 {
-   struct dri_screen *screen = (struct dri_screen *)smapi;
+   struct dri_screen *screen = (struct dri_screen *)fscreen;
    __DRIimage *img = NULL;
    const struct dri2_format_mapping *map;
 
@@ -751,16 +751,16 @@ dri_get_egl_image(struct st_manager *smapi,
 }
 
 static bool
-dri_validate_egl_image(struct st_manager *smapi,
+dri_validate_egl_image(struct pipe_frontend_screen *fscreen,
                        void *egl_image)
 {
-   struct dri_screen *screen = (struct dri_screen *)smapi;
+   struct dri_screen *screen = (struct dri_screen *)fscreen;
 
    return screen->validate_egl_image(screen, egl_image);
 }
 
 static int
-dri_get_param(struct st_manager *smapi,
+dri_get_param(struct pipe_frontend_screen *fscreen,
               enum st_manager_param param)
 {
    return 0;

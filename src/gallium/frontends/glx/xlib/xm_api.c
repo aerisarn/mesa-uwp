@@ -107,7 +107,7 @@ xmesa_strict_invalidate(void)
 }
 
 static int
-xmesa_get_param(struct st_manager *smapi,
+xmesa_get_param(struct pipe_frontend_screen *fscreen,
                 enum st_manager_param param)
 {
    switch(param) {
@@ -181,9 +181,9 @@ xmesa_close_display(Display *display)
     * }
     */
 
-   if (xmdpy->smapi->destroy)
-      xmdpy->smapi->destroy(xmdpy->smapi);
-   free(xmdpy->smapi);
+   if (xmdpy->fscreen->destroy)
+      xmdpy->fscreen->destroy(xmdpy->fscreen);
+   free(xmdpy->fscreen);
 
    XFree((char *) info);
 }
@@ -227,8 +227,8 @@ xmesa_init_display( Display *display )
    xmdpy->display = display;
    xmdpy->pipe = NULL;
 
-   xmdpy->smapi = CALLOC_STRUCT(st_manager);
-   if (!xmdpy->smapi) {
+   xmdpy->fscreen = CALLOC_STRUCT(pipe_frontend_screen);
+   if (!xmdpy->fscreen) {
       Xfree(info);
       mtx_unlock(&init_mutex);
       return NULL;
@@ -236,15 +236,15 @@ xmesa_init_display( Display *display )
 
    xmdpy->screen = xlib_create_screen(display);
    if (!xmdpy->screen) {
-      free(xmdpy->smapi);
+      free(xmdpy->fscreen);
       Xfree(info);
       mtx_unlock(&init_mutex);
       return NULL;
    }
 
-   /* At this point, both smapi and screen are known to be valid */
-   xmdpy->smapi->screen = xmdpy->screen;
-   xmdpy->smapi->get_param = xmesa_get_param;
+   /* At this point, both fscreen and screen are known to be valid */
+   xmdpy->fscreen->screen = xmdpy->screen;
+   xmdpy->fscreen->get_param = xmesa_get_param;
    (void) mtx_init(&xmdpy->mutex, mtx_plain);
 
    /* chain to the list of displays */
@@ -1004,7 +1004,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
       goto no_st;
    }
 
-   c->st = st_api_create_context(xmdpy->smapi, &attribs,
+   c->st = st_api_create_context(xmdpy->fscreen, &attribs,
          &ctx_err, (share_list) ? share_list->st : NULL);
    if (c->st == NULL)
       goto no_st;

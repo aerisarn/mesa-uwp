@@ -124,21 +124,21 @@ struct osmesa_context
  * Called from the ST manager.
  */
 static int
-osmesa_st_get_param(struct st_manager *smapi, enum st_manager_param param)
+osmesa_st_get_param(struct pipe_frontend_screen *fscreen, enum st_manager_param param)
 {
    /* no-op */
    return 0;
 }
 
-static struct st_manager *stmgr = NULL;
+static struct pipe_frontend_screen *global_fscreen = NULL;
 
 static void
 destroy_st_manager(void)
 {
-   if (stmgr) {
-      if (stmgr->screen)
-         stmgr->screen->destroy(stmgr->screen);
-      FREE(stmgr);
+   if (global_fscreen) {
+      if (global_fscreen->screen)
+         global_fscreen->screen->destroy(global_fscreen->screen);
+      FREE(global_fscreen);
    }
 }
 
@@ -148,25 +148,25 @@ create_st_manager(void)
    if (atexit(destroy_st_manager) != 0)
       return;
 
-   stmgr = CALLOC_STRUCT(st_manager);
-   if (stmgr) {
-      stmgr->screen = osmesa_create_screen();
-      stmgr->get_param = osmesa_st_get_param;
-      stmgr->get_egl_image = NULL;
+   global_fscreen = CALLOC_STRUCT(pipe_frontend_screen);
+   if (global_fscreen) {
+      global_fscreen->screen = osmesa_create_screen();
+      global_fscreen->get_param = osmesa_st_get_param;
+      global_fscreen->get_egl_image = NULL;
    }
 }
 
 /**
  * Create/return a singleton st_manager object.
  */
-static struct st_manager *
+static struct pipe_frontend_screen *
 get_st_manager(void)
 {
    static once_flag create_once_flag = ONCE_FLAG_INIT;
 
    call_once(&create_once_flag, create_st_manager);
 
-   return stmgr;
+   return global_fscreen;
 }
 
 /* Reads the color or depth buffer from the backing context to either the user storage
@@ -467,7 +467,7 @@ osmesa_create_st_framebuffer(void)
       stfbi->validate = osmesa_st_framebuffer_validate;
       p_atomic_set(&stfbi->stamp, 1);
       stfbi->ID = p_atomic_inc_return(&osmesa_fb_ID);
-      stfbi->state_manager = get_st_manager();
+      stfbi->fscreen = get_st_manager();
    }
    return stfbi;
 }

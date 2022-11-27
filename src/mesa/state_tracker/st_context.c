@@ -775,11 +775,11 @@ st_set_background_context(struct gl_context *ctx,
                           struct util_queue_monitoring *queue_info)
 {
    struct st_context *st = ctx->st;
-   struct st_manager *smapi =
-      (struct st_manager *) st->iface.st_context_private;
+   struct pipe_frontend_screen *fscreen =
+      (struct pipe_frontend_screen *) st->iface.st_context_private;
 
-   assert(smapi->set_background_context);
-   smapi->set_background_context(&st->iface, queue_info);
+   assert(fscreen->set_background_context);
+   fscreen->set_background_context(&st->iface, queue_info);
 }
 
 static void

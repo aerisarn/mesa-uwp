@@ -272,7 +272,7 @@ struct st_context_attribs
 };
 
 struct st_context_iface;
-struct st_manager;
+struct pipe_frontend_screen;
 
 /**
  * Represent a windowing system drawable.
@@ -308,7 +308,7 @@ struct st_framebuffer_iface
    /**
     * The frontend manager that manages this object.
     */
-   struct st_manager *state_manager;
+   struct pipe_frontend_screen *fscreen;
 
    /**
     * Available for the frontend manager to use.
@@ -374,7 +374,7 @@ struct st_context_iface
    /**
     * The frontend manager that manages this object.
     */
-   struct st_manager *state_manager;
+   struct pipe_frontend_screen *frontend_screen;
 
    /**
     * The CSO context associated with this context in case we need to draw
@@ -444,12 +444,9 @@ struct st_context_iface
 
 
 /**
- * Represent a frontend manager.
- *
- * This interface is implemented by the frontend manager.  It corresponds
- * to a "display" in the window system.
+ * This is inherited by a screen in the DRI/GLX/WGL frontends, e.g. dri_screen.
  */
-struct st_manager
+struct pipe_frontend_screen
 {
    struct pipe_screen *screen;
 
@@ -461,27 +458,27 @@ struct st_manager
     * function call and the information needed to access this is returned
     * in the given struct out.
     *
-    * @smapi: manager owning the caller context
+    * @fscreen: manager owning the caller context
     * @stctx: caller context
     * @egl_image: EGLImage that caller recived
     * @out: return struct filled out with access information.
     *
     * This function is optional.
     */
-   bool (*get_egl_image)(struct st_manager *smapi,
+   bool (*get_egl_image)(struct pipe_frontend_screen *fscreen,
                          void *egl_image,
                          struct st_egl_image *out);
 
    /**
     * Validate EGLImage passed to get_egl_image.
     */
-   bool (*validate_egl_image)(struct st_manager *smapi,
+   bool (*validate_egl_image)(struct pipe_frontend_screen *fscreen,
                               void *egl_image);
 
    /**
     * Query an manager param.
     */
-   int (*get_param)(struct st_manager *smapi,
+   int (*get_param)(struct pipe_frontend_screen *fscreen,
                     enum st_manager_param param);
 
    /**
@@ -494,7 +491,7 @@ struct st_manager
    /**
     * Destroy any private data used by the frontend manager.
     */
-   void (*destroy)(struct st_manager *smapi);
+   void (*destroy)(struct pipe_frontend_screen *fscreen);
 
    /**
     * Available for the frontend manager to use.
@@ -513,7 +510,7 @@ struct st_manager
  * The format is (major*10+minor).
  */
 void
-st_api_query_versions(struct st_manager *sm,
+st_api_query_versions(struct pipe_frontend_screen *fscreen,
                       struct st_config_options *options,
                       int *gl_core_version,
                       int *gl_compat_version,
@@ -524,7 +521,7 @@ st_api_query_versions(struct st_manager *sm,
  * Create a rendering context.
  */
 struct st_context_iface *
-st_api_create_context(struct st_manager *smapi,
+st_api_create_context(struct pipe_frontend_screen *fscreen,
                       const struct st_context_attribs *attribs,
                       enum st_context_error *error,
                       struct st_context_iface *stsharei);

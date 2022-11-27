@@ -52,7 +52,7 @@ struct hgl_display
 {
 	mtx_t mutex;
 
-	struct st_manager* manager;
+	struct pipe_frontend_screen *fscreen;
 };
 
 
@@ -83,8 +83,8 @@ struct hgl_buffer* hgl_create_st_framebuffer(struct hgl_context* context, void *
 void hgl_destroy_st_framebuffer(struct hgl_buffer *buffer);
 
 // hgl manager
-struct st_manager* hgl_create_st_manager(struct hgl_context* screen);
-void hgl_destroy_st_manager(struct st_manager *manager);
+struct pipe_frontend_screen* hgl_create_st_manager(struct hgl_context* screen);
+void hgl_destroy_st_manager(struct pipe_frontend_screen *fscreen);
 
 // hgl visual
 struct st_visual* hgl_create_st_visual(ulong options);

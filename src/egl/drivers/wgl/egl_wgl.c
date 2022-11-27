@@ -198,14 +198,14 @@ wgl_display_destroy(_EGLDisplay *disp)
 }
 
 static int
-wgl_egl_st_get_param(struct st_manager *smapi, enum st_manager_param param)
+wgl_egl_st_get_param(struct pipe_frontend_screen *fscreen, enum st_manager_param param)
 {
    /* no-op */
    return 0;
 }
 
 static bool
-wgl_get_egl_image(struct st_manager *smapi, void *image, struct st_egl_image *out)
+wgl_get_egl_image(struct pipe_frontend_screen *fscreen, void *image, struct st_egl_image *out)
 {
    struct wgl_egl_image *wgl_img = (struct wgl_egl_image *)image;
    stw_translate_image(wgl_img->img, out);
@@ -213,9 +213,9 @@ wgl_get_egl_image(struct st_manager *smapi, void *image, struct st_egl_image *ou
 }
 
 static bool
-wgl_validate_egl_image(struct st_manager *smapi, void *image)
+wgl_validate_egl_image(struct pipe_frontend_screen *fscreen, void *image)
 {
-   struct wgl_egl_display *wgl_dpy = (struct wgl_egl_display *)smapi;
+   struct wgl_egl_display *wgl_dpy = (struct wgl_egl_display *)fscreen;
    _EGLDisplay *disp = _eglLockDisplay(wgl_dpy->parent);
    _EGLImage *img = _eglLookupImage(image, disp);
    _eglUnlockDisplay(disp);
