@@ -50,8 +50,7 @@ dri_st_framebuffer_validate(struct st_context *st,
                             struct pipe_resource **out)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable =
-      (struct dri_drawable *) stfbi->st_manager_private;
+   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
    struct dri_screen *screen = drawable->screen;
    unsigned statt_mask, new_mask;
    bool new_stamp;
@@ -117,8 +116,7 @@ dri_st_framebuffer_flush_front(struct st_context *st,
                                enum st_attachment_type statt)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable =
-      (struct dri_drawable *) stfbi->st_manager_private;
+   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
 
    /* XXX remove this and just set the correct one on the framebuffer */
    return drawable->flush_frontbuffer(ctx, drawable, statt);
@@ -132,8 +130,7 @@ dri_st_framebuffer_flush_swapbuffers(struct st_context *st,
                                      struct st_framebuffer_iface *stfbi)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable =
-      (struct dri_drawable *) stfbi->st_manager_private;
+   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
 
    if (drawable->flush_swapbuffers)
       drawable->flush_swapbuffers(ctx, drawable);
@@ -170,7 +167,6 @@ dri_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
    drawable->base.flush_front = dri_st_framebuffer_flush_front;
    drawable->base.validate = dri_st_framebuffer_validate;
    drawable->base.flush_swapbuffers = dri_st_framebuffer_flush_swapbuffers;
-   drawable->base.st_manager_private = (void *) drawable;
 
    drawable->screen = screen;
 

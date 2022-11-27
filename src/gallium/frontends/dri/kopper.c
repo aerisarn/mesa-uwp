@@ -822,7 +822,6 @@ kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual
 
    // relocate references to the old struct
    drawable->base.visual = &drawable->stvis;
-   drawable->base.st_manager_private = (void *) drawable;
 
    // and fill in the vtable
    drawable->allocate_textures = kopper_allocate_textures;

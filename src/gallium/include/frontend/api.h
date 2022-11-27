@@ -246,11 +246,6 @@ struct st_framebuffer_iface
    struct pipe_frontend_screen *fscreen;
 
    /**
-    * Available for the frontend manager to use.
-    */
-   void *st_manager_private;
-
-   /**
     * The visual of a framebuffer.
     */
    const struct st_visual *visual;

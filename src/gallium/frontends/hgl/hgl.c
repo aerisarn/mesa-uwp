@@ -49,7 +49,7 @@ hgl_st_framebuffer(struct st_framebuffer_iface *stfbi)
 {
 	struct hgl_buffer* buffer;
 	assert(stfbi);
-	buffer = (struct hgl_buffer*)stfbi->st_manager_private;
+	buffer = (struct hgl_buffer*)stfbi;
 	assert(buffer);
 	return buffer;
 }
@@ -250,7 +250,6 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 	buffer->stfbi->visual = context->stVisual;
 
 	p_atomic_set(&buffer->stfbi->stamp, 1);
-	buffer->stfbi->st_manager_private = (void*)buffer;
 	buffer->stfbi->ID = p_atomic_inc_return(&hgl_fb_ID);
 	buffer->stfbi->fscreen = context->display->fscreen;
 

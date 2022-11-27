@@ -54,7 +54,7 @@ struct xmesa_st_framebuffer {
 static inline struct xmesa_st_framebuffer *
 xmesa_st_framebuffer(struct st_framebuffer_iface *stfbi)
 {
-   return (struct xmesa_st_framebuffer *) stfbi->st_manager_private;
+   return (struct xmesa_st_framebuffer *)stfbi;
 }
 
 
@@ -313,7 +313,6 @@ xmesa_create_st_framebuffer(XMesaDisplay xmdpy, XMesaBuffer b)
    xstfb->base.ID = p_atomic_inc_return(&xmesa_stfbi_ID);
    xstfb->base.fscreen = xmdpy->fscreen;
    p_atomic_set(&xstfb->base.stamp, 1);
-   xstfb->base.st_manager_private = (void *) xstfb;
 
    return &xstfb->base;
 }

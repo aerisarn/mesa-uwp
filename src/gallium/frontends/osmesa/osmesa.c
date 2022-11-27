@@ -332,7 +332,7 @@ osmesa_init_st_visual(struct st_visual *vis,
 static inline struct osmesa_buffer *
 stfbi_to_osbuffer(struct st_framebuffer_iface *stfbi)
 {
-   return (struct osmesa_buffer *) stfbi->st_manager_private;
+   return (struct osmesa_buffer *)stfbi;
 }
 
 
@@ -487,8 +487,6 @@ osmesa_create_buffer(enum pipe_format color_format,
    struct osmesa_buffer *osbuffer = CALLOC_STRUCT(osmesa_buffer);
    if (osbuffer) {
       osbuffer->stfb = osmesa_create_st_framebuffer();
-
-      osbuffer->stfb->st_manager_private = osbuffer;
       osbuffer->stfb->visual = &osbuffer->visual;
 
       osmesa_init_st_visual(&osbuffer->visual, color_format,
