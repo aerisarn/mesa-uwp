@@ -395,6 +395,37 @@ struct st_context
    struct hash_table *hw_select_shaders;
 };
 
+/**
+ * Represent the attributes of a context.
+ */
+struct st_context_attribs
+{
+   /**
+    * The profile and minimal version to support.
+    *
+    * The valid profiles and versions are rendering API dependent.  The latest
+    * version satisfying the request should be returned.
+    */
+   gl_api profile;
+   int major, minor;
+
+   /** Mask of ST_CONTEXT_FLAG_x bits */
+   unsigned flags;
+
+   /** Mask of PIPE_CONTEXT_x bits */
+   unsigned context_flags;
+
+   /**
+    * The visual of the framebuffers the context will be bound to.
+    */
+   struct st_visual visual;
+
+   /**
+    * Configuration options.
+    */
+   struct st_config_options options;
+};
+
 
 /*
  * Get the state tracker context for the given Mesa context.

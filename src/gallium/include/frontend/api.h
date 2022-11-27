@@ -39,17 +39,6 @@ struct st_context;
  * their managers.
  */
 
-/**
- * The profile of a context.
- */
-enum st_profile_type
-{
-   ST_PROFILE_DEFAULT,			/**< OpenGL compatibility profile */
-   ST_PROFILE_OPENGL_CORE,		/**< OpenGL 3.2+ core profile */
-   ST_PROFILE_OPENGL_ES1,		/**< OpenGL ES 1.x */
-   ST_PROFILE_OPENGL_ES2		/**< OpenGL ES 2.0 */
-};
-
 
 /**
  * New context flags for GL 3.0 and beyond.
@@ -220,37 +209,6 @@ struct st_config_options
    char *force_gl_renderer;
    char *mesa_extension_override;
    unsigned char config_options_sha1[20];
-};
-
-/**
- * Represent the attributes of a context.
- */
-struct st_context_attribs
-{
-   /**
-    * The profile and minimal version to support.
-    *
-    * The valid profiles and versions are rendering API dependent.  The latest
-    * version satisfying the request should be returned.
-    */
-   enum st_profile_type profile;
-   int major, minor;
-
-   /** Mask of ST_CONTEXT_FLAG_x bits */
-   unsigned flags;
-
-   /** Mask of PIPE_CONTEXT_x bits */
-   unsigned context_flags;
-
-   /**
-    * The visual of the framebuffers the context will be bound to.
-    */
-   struct st_visual visual;
-
-   /**
-    * Configuration options.
-    */
-   struct st_config_options options;
 };
 
 struct pipe_frontend_screen;

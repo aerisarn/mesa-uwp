@@ -207,7 +207,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
        *     of the context is determined solely by the requested version."
        */
       if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2)) {
-         attribs.profile = ST_PROFILE_OPENGL_CORE;
+         attribs.profile = API_OPENGL_CORE;
          break;
       }
       FALLTHROUGH;
@@ -228,13 +228,13 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
        * GL_ARB_compatibility, so returning a core profile here does more harm
        * than good.
        */
-      attribs.profile = ST_PROFILE_DEFAULT;
+      attribs.profile = API_OPENGL_COMPAT;
       break;
    case WGL_CONTEXT_ES_PROFILE_BIT_EXT:
       if (majorVersion >= 2) {
-         attribs.profile = ST_PROFILE_OPENGL_ES2;
+         attribs.profile = API_OPENGLES2;
       } else {
-         attribs.profile = ST_PROFILE_OPENGL_ES1;
+         attribs.profile = API_OPENGLES;
       }
       break;
    default:

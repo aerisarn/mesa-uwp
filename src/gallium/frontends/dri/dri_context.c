@@ -84,18 +84,18 @@ dri_create_context(struct dri_screen *screen,
    memset(&attribs, 0, sizeof(attribs));
    switch (api) {
    case API_OPENGLES:
-      attribs.profile = ST_PROFILE_OPENGL_ES1;
+      attribs.profile = API_OPENGLES;
       break;
    case API_OPENGLES2:
-      attribs.profile = ST_PROFILE_OPENGL_ES2;
+      attribs.profile = API_OPENGLES2;
       break;
    case API_OPENGL_COMPAT:
    case API_OPENGL_CORE:
       if (driQueryOptionb(optionCache, "force_compat_profile")) {
-         attribs.profile = ST_PROFILE_DEFAULT;
+         attribs.profile = API_OPENGL_COMPAT;
       } else {
-         attribs.profile = api == API_OPENGL_COMPAT ? ST_PROFILE_DEFAULT
-                                                    : ST_PROFILE_OPENGL_CORE;
+         attribs.profile = api == API_OPENGL_COMPAT ? API_OPENGL_COMPAT
+                                                    : API_OPENGL_CORE;
       }
 
       attribs.major = ctx_config->major_version;

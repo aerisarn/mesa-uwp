@@ -943,26 +943,7 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    struct st_context *st;
    struct pipe_context *pipe;
    struct gl_config mode, *mode_ptr = &mode;
-   gl_api api;
    bool no_error = false;
-
-   switch (attribs->profile) {
-   case ST_PROFILE_DEFAULT:
-      api = API_OPENGL_COMPAT;
-      break;
-   case ST_PROFILE_OPENGL_ES1:
-      api = API_OPENGLES;
-      break;
-   case ST_PROFILE_OPENGL_ES2:
-      api = API_OPENGLES2;
-      break;
-   case ST_PROFILE_OPENGL_CORE:
-      api = API_OPENGL_CORE;
-      break;
-   default:
-      *error = ST_CONTEXT_ERROR_BAD_API;
-      return NULL;
-   }
 
    _mesa_initialize(attribs->options.mesa_extension_override);
 
@@ -995,7 +976,7 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    st_visual_to_context_mode(&attribs->visual, &mode);
    if (attribs->visual.color_format == PIPE_FORMAT_NONE)
       mode_ptr = NULL;
-   st = st_create_context(api, pipe, mode_ptr, shared_ctx,
+   st = st_create_context(attribs->profile, pipe, mode_ptr, shared_ctx,
                           &attribs->options, no_error,
                           !!fscreen->validate_egl_image);
    if (!st) {

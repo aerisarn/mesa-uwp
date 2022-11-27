@@ -668,7 +668,7 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
     */
    memset(&attribs, 0, sizeof(attribs));
    attribs.profile = (profile == OSMESA_CORE_PROFILE)
-      ? ST_PROFILE_OPENGL_CORE : ST_PROFILE_DEFAULT;
+      ? API_OPENGL_CORE : API_OPENGL_COMPAT;
    attribs.major = version_major;
    attribs.minor = version_minor;
    attribs.flags = 0;  /* ST_CONTEXT_FLAG_x */

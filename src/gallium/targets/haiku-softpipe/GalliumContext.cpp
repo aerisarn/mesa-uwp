@@ -163,7 +163,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	struct st_context_attribs attribs;
 	memset(&attribs, 0, sizeof(attribs));
 	attribs.options.force_glsl_extensions_warn = false;
-	attribs.profile = ST_PROFILE_DEFAULT;
+	attribs.profile = API_OPENGL_COMPAT;
 	attribs.visual = *context->stVisual;
 	attribs.major = 1;
 	attribs.minor = 0;

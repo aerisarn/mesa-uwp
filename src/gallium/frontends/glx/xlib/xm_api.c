@@ -971,7 +971,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
        *     of the context is determined solely by the requested version."
        */
       if (major > 3 || (major == 3 && minor >= 2)) {
-         attribs.profile = ST_PROFILE_OPENGL_CORE;
+         attribs.profile = API_OPENGL_CORE;
          break;
       }
       FALLTHROUGH;
@@ -990,16 +990,16 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
        * honour a 3.1 context is through core profile.
        */
       if (major == 3 && minor == 1) {
-         attribs.profile = ST_PROFILE_OPENGL_CORE;
+         attribs.profile = API_OPENGL_CORE;
       } else {
-         attribs.profile = ST_PROFILE_DEFAULT;
+         attribs.profile = API_OPENGL_COMPAT;
       }
       break;
    case GLX_CONTEXT_ES_PROFILE_BIT_EXT:
       if (major >= 2) {
-         attribs.profile = ST_PROFILE_OPENGL_ES2;
+         attribs.profile = API_OPENGLES2;
       } else {
-         attribs.profile = ST_PROFILE_OPENGL_ES1;
+         attribs.profile = API_OPENGLES;
       }
       break;
    default:
