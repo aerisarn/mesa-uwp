@@ -349,9 +349,11 @@ struct pipe_frontend_screen
    void (*destroy)(struct pipe_frontend_screen *fscreen);
 
    /**
-    * Available for the frontend manager to use.
+    * GL frontend state associated with the screen.
+    *
+    * This is where st_context stores the state shared by all contexts.
     */
-   void *st_manager_private;
+   void *st_screen;
 };
 
 #endif /* _API_H_ */

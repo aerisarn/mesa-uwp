@@ -345,7 +345,7 @@ hgl_create_display(struct pipe_screen* screen)
 	assert(display->fscreen);
 	display->fscreen->screen = screen;
 	display->fscreen->get_param = hgl_st_manager_get_param;
-	// display->fscreen->st_manager_private is used by llvmpipe
+	// display->fscreen->st_screen is used by llvmpipe
 
 	return display;
 }

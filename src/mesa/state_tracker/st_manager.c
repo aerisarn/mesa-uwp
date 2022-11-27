@@ -64,7 +64,8 @@
 #include "util/u_memory.h"
 
 struct hash_table;
-struct st_manager_private
+
+struct st_screen
 {
    struct hash_table *stfbi_ht; /* framebuffer iface objects hash table */
    simple_mtx_t st_mutex;
@@ -684,16 +685,16 @@ static bool
 st_framebuffer_iface_lookup(struct pipe_frontend_screen *fscreen,
                             const struct st_framebuffer_iface *stfbi)
 {
-   struct st_manager_private *smPriv =
-      (struct st_manager_private *)fscreen->st_manager_private;
+   struct st_screen *screen =
+      (struct st_screen *)fscreen->st_screen;
    struct hash_entry *entry;
 
-   assert(smPriv);
-   assert(smPriv->stfbi_ht);
+   assert(screen);
+   assert(screen->stfbi_ht);
 
-   simple_mtx_lock(&smPriv->st_mutex);
-   entry = _mesa_hash_table_search(smPriv->stfbi_ht, stfbi);
-   simple_mtx_unlock(&smPriv->st_mutex);
+   simple_mtx_lock(&screen->st_mutex);
+   entry = _mesa_hash_table_search(screen->stfbi_ht, stfbi);
+   simple_mtx_unlock(&screen->st_mutex);
 
    return entry != NULL;
 }
@@ -703,16 +704,16 @@ static bool
 st_framebuffer_iface_insert(struct pipe_frontend_screen *fscreen,
                             struct st_framebuffer_iface *stfbi)
 {
-   struct st_manager_private *smPriv =
-      (struct st_manager_private *)fscreen->st_manager_private;
+   struct st_screen *screen =
+      (struct st_screen *)fscreen->st_screen;
    struct hash_entry *entry;
 
-   assert(smPriv);
-   assert(smPriv->stfbi_ht);
+   assert(screen);
+   assert(screen->stfbi_ht);
 
-   simple_mtx_lock(&smPriv->st_mutex);
-   entry = _mesa_hash_table_insert(smPriv->stfbi_ht, stfbi, stfbi);
-   simple_mtx_unlock(&smPriv->st_mutex);
+   simple_mtx_lock(&screen->st_mutex);
+   entry = _mesa_hash_table_insert(screen->stfbi_ht, stfbi, stfbi);
+   simple_mtx_unlock(&screen->st_mutex);
 
    return entry != NULL;
 }
@@ -722,22 +723,22 @@ static void
 st_framebuffer_iface_remove(struct pipe_frontend_screen *fscreen,
                             struct st_framebuffer_iface *stfbi)
 {
-   struct st_manager_private *smPriv =
-      (struct st_manager_private *)fscreen->st_manager_private;
+   struct st_screen *screen =
+      (struct st_screen *)fscreen->st_screen;
    struct hash_entry *entry;
 
-   if (!smPriv || !smPriv->stfbi_ht)
+   if (!screen || !screen->stfbi_ht)
       return;
 
-   simple_mtx_lock(&smPriv->st_mutex);
-   entry = _mesa_hash_table_search(smPriv->stfbi_ht, stfbi);
+   simple_mtx_lock(&screen->st_mutex);
+   entry = _mesa_hash_table_search(screen->stfbi_ht, stfbi);
    if (!entry)
       goto unlock;
 
-   _mesa_hash_table_remove(smPriv->stfbi_ht, entry);
+   _mesa_hash_table_remove(screen->stfbi_ht, entry);
 
 unlock:
-   simple_mtx_unlock(&smPriv->st_mutex);
+   simple_mtx_unlock(&screen->st_mutex);
 }
 
 
@@ -920,13 +921,13 @@ st_context_invalidate_state(struct st_context *st, unsigned flags)
 static void
 st_manager_destroy(struct pipe_frontend_screen *fscreen)
 {
-   struct st_manager_private *smPriv = fscreen->st_manager_private;
+   struct st_screen *screen = fscreen->st_screen;
 
-   if (smPriv && smPriv->stfbi_ht) {
-      _mesa_hash_table_destroy(smPriv->stfbi_ht, NULL);
-      simple_mtx_destroy(&smPriv->st_mutex);
-      FREE(smPriv);
-      fscreen->st_manager_private = NULL;
+   if (screen && screen->stfbi_ht) {
+      _mesa_hash_table_destroy(screen->stfbi_ht, NULL);
+      simple_mtx_destroy(&screen->st_mutex);
+      FREE(screen);
+      fscreen->st_screen = NULL;
    }
 }
 
@@ -950,15 +951,15 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    /* Create a hash table for the framebuffer interface objects
     * if it has not been created for this st manager.
     */
-   if (fscreen->st_manager_private == NULL) {
-      struct st_manager_private *smPriv;
+   if (fscreen->st_screen == NULL) {
+      struct st_screen *screen;
 
-      smPriv = CALLOC_STRUCT(st_manager_private);
-      simple_mtx_init(&smPriv->st_mutex, mtx_plain);
-      smPriv->stfbi_ht = _mesa_hash_table_create(NULL,
+      screen = CALLOC_STRUCT(st_screen);
+      simple_mtx_init(&screen->st_mutex, mtx_plain);
+      screen->stfbi_ht = _mesa_hash_table_create(NULL,
                                                  st_framebuffer_iface_hash,
                                                  st_framebuffer_iface_equal);
-      fscreen->st_manager_private = smPriv;
+      fscreen->st_screen = screen;
       fscreen->destroy = st_manager_destroy;
    }
 
