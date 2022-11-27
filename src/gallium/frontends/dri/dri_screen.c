@@ -771,8 +771,7 @@ dri_get_param(struct pipe_frontend_screen *fscreen,
 void
 dri_destroy_screen_helper(struct dri_screen * screen)
 {
-   if (screen->base.destroy)
-      screen->base.destroy(&screen->base);
+   st_screen_destroy(&screen->base);
 
    if (screen->base.screen)
       screen->base.screen->destroy(screen->base.screen);

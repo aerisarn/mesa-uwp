@@ -918,8 +918,8 @@ st_context_invalidate_state(struct st_context *st, unsigned flags)
 }
 
 
-static void
-st_manager_destroy(struct pipe_frontend_screen *fscreen)
+void
+st_screen_destroy(struct pipe_frontend_screen *fscreen)
 {
    struct st_screen *screen = fscreen->st_screen;
 
@@ -960,7 +960,6 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
                                                  st_framebuffer_iface_hash,
                                                  st_framebuffer_iface_equal);
       fscreen->st_screen = screen;
-      fscreen->destroy = st_manager_destroy;
    }
 
    if (attribs->flags & ST_CONTEXT_FLAG_NO_ERROR)

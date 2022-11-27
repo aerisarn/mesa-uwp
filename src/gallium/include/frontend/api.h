@@ -323,11 +323,6 @@ struct pipe_frontend_screen
                                   struct util_queue_monitoring *queue_info);
 
    /**
-    * Destroy st_screen.
-    */
-   void (*destroy)(struct pipe_frontend_screen *fscreen);
-
-   /**
     * GL frontend state associated with the screen.
     *
     * This is where st_context stores the state shared by all contexts.

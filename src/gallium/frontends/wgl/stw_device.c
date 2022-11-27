@@ -25,6 +25,8 @@
  *
  **************************************************************************/
 
+#include "state_tracker/st_context.h"
+
 #include <windows.h>
 
 #include "glapi/glapi.h"
@@ -248,9 +250,7 @@ stw_cleanup(void)
    DeleteCriticalSection(&stw_dev->ctx_mutex);
    DeleteCriticalSection(&stw_dev->screen_mutex);
 
-   if (stw_dev->fscreen->destroy)
-      stw_dev->fscreen->destroy(stw_dev->fscreen);
-
+   st_screen_destroy(stw_dev->fscreen);
    FREE(stw_dev->fscreen);
 
    stw_dev->screen->destroy(stw_dev->screen);

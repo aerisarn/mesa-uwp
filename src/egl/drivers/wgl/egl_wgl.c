@@ -194,8 +194,8 @@ static void
 wgl_display_destroy(_EGLDisplay *disp)
 {
    struct wgl_egl_display *wgl_dpy = wgl_egl_display(disp);
-   if (wgl_dpy->base.destroy)
-      wgl_dpy->base.destroy(&wgl_dpy->base);
+
+   st_screen_destroy(&wgl_dpy->base);
    free(wgl_dpy);
 }
 

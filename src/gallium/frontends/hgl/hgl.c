@@ -353,8 +353,7 @@ hgl_create_display(struct pipe_screen* screen)
 void
 hgl_destroy_display(struct hgl_display *display)
 {
-	if (display->fscreen->destroy)
-		display->fscreen->destroy(display->fscreen);
+	st_screen_destroy(display->fscreen);
 	FREE(display->fscreen);
 	FREE(display);
 }

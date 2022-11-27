@@ -184,8 +184,7 @@ xmesa_close_display(Display *display)
     * }
     */
 
-   if (xmdpy->fscreen->destroy)
-      xmdpy->fscreen->destroy(xmdpy->fscreen);
+   st_screen_destroy(xmdpy->fscreen);
    free(xmdpy->fscreen);
 
    XFree((char *) info);

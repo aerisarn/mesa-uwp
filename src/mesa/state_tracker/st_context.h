@@ -510,6 +510,9 @@ st_api_get_current(void);
 void
 st_api_destroy_drawable(struct st_framebuffer_iface *stfbi);
 
+void
+st_screen_destroy(struct pipe_frontend_screen *fscreen);
+
 #ifdef __cplusplus
 }
 #endif
