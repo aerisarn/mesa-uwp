@@ -786,11 +786,10 @@ st_framebuffers_purge(struct st_context *st)
 }
 
 
-static void
+void
 st_context_flush(struct st_context *st, unsigned flags,
                  struct pipe_fence_handle **fence,
-                 void (*before_flush_cb) (void*),
-                 void* args)
+                 void (*before_flush_cb) (void*), void* args)
 {
    unsigned pipe_flags = 0;
 
@@ -820,10 +819,13 @@ st_context_flush(struct st_context *st, unsigned flags,
       st_manager_flush_frontbuffer(st);
 }
 
-/* This is only for GLX_EXT_texture_from_pixmap and equivalent features
+/**
+ * Replace the texture image of a texture object at the specified level.
+ *
+ * This is only for GLX_EXT_texture_from_pixmap and equivalent features
  * in EGL and WGL.
  */
-static bool
+bool
 st_context_teximage(struct st_context *st,
                     enum st_texture_type tex_type,
                     int level, enum pipe_format pipe_format,
@@ -912,46 +914,12 @@ st_context_teximage(struct st_context *st,
 }
 
 
-static void
-st_context_copy(struct st_context *st,
-                struct st_context *src, unsigned mask)
-{
-   _mesa_copy_context(src->ctx, st->ctx, mask);
-}
-
-
-static bool
-st_context_share(struct st_context *st,
-                 struct st_context *src)
-{
-   return _mesa_share_state(st->ctx, src->ctx);
-}
-
-
-static void
-st_context_destroy(struct st_context *st)
-{
-   st_destroy_context(st);
-}
-
-
-static void
-st_start_thread(struct st_context *st)
-{
-   _mesa_glthread_init(st->ctx);
-}
-
-
-static void
-st_thread_finish(struct st_context *st)
-{
-   _mesa_glthread_finish(st->ctx);
-}
-
-
-static void
-st_context_invalidate_state(struct st_context *st,
-                            unsigned flags)
+/**
+ * Invalidate states to notify the frontend that driver states have been
+ * changed behind its back.
+ */
+void
+st_context_invalidate_state(struct st_context *st, unsigned flags)
 {
    if (flags & ST_INVALIDATE_FS_SAMPLER_VIEWS)
       st->dirty |= ST_NEW_FS_SAMPLER_VIEWS;
@@ -1111,16 +1079,6 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    st->ctx->invalidate_on_gl_viewport =
       fscreen->get_param(fscreen, ST_MANAGER_BROKEN_INVALIDATE);
 
-   st->destroy = st_context_destroy;
-   st->flush = st_context_flush;
-   st->teximage = st_context_teximage;
-   st->copy = st_context_copy;
-   st->share = st_context_share;
-   st->start_thread = st_start_thread;
-   st->thread_finish = st_thread_finish;
-   st->invalidate_state = st_context_invalidate_state;
-   st->cso_context = st->cso_context;
-   st->pipe = st->pipe;
    st->frontend_screen = fscreen;
 
    if (st->ctx->IntelBlackholeRender &&

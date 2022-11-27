@@ -107,8 +107,8 @@ DrvShareLists(DHGLRC dhglrc1, DHGLRC dhglrc2)
    ctx1 = stw_lookup_context_locked( dhglrc1 );
    ctx2 = stw_lookup_context_locked( dhglrc2 );
 
-   if (ctx1 && ctx2 && ctx2->st->share) {
-      ret = ctx2->st->share(ctx2->st, ctx1->st);
+   if (ctx1 && ctx2) {
+      ret = _mesa_share_state(ctx2->st->ctx, ctx1->st->ctx);
       ctx1->shared = TRUE;
       ctx2->shared = TRUE;
    }
@@ -253,7 +253,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
 
    if (ctx->st->cso_context) {
       ctx->hud = hud_create(ctx->st->cso_context, NULL, ctx->st,
-                            (void*)ctx->st->invalidate_state);
+                            (void*)st_context_invalidate_state);
    }
 
    return ctx;
@@ -302,7 +302,7 @@ stw_destroy_context(struct stw_context *ctx)
       hud_destroy(ctx->hud, NULL);
    }
 
-   ctx->st->destroy(ctx->st);
+   st_destroy_context(ctx->st);
    FREE(ctx);
 }
 
@@ -448,16 +448,16 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
                             ST_FLUSH_FRONT | ST_FLUSH_WAIT);
             } else {
                struct pipe_fence_handle *fence = NULL;
-               old_ctx->st->flush(old_ctx->st,
-                                  ST_FLUSH_FRONT | ST_FLUSH_WAIT, &fence,
-                                  NULL, NULL);
+               st_context_flush(old_ctx->st,
+                                ST_FLUSH_FRONT | ST_FLUSH_WAIT, &fence,
+                                NULL, NULL);
             }
          } else {
             if (old_ctx->current_framebuffer)
                stw_st_flush(old_ctx->st, old_ctx->current_framebuffer->stfb,
                             ST_FLUSH_FRONT);
             else
-               old_ctx->st->flush(old_ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+               st_context_flush(old_ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
          }
       }
    }

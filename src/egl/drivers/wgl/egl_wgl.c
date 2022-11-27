@@ -772,7 +772,7 @@ wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
       assert(!"Unexpected texture target in wgl_bind_tex_image()");
    }
 
-   wgl_ctx->ctx->st->teximage(wgl_ctx->ctx->st, target, 0, format, pres, false);
+   st_context_teximage(wgl_ctx->ctx->st, target, 0, format, pres, false);
 
    return EGL_TRUE;
 }
@@ -803,7 +803,7 @@ wgl_wait_client(_EGLDisplay *disp, _EGLContext *ctx)
 {
    struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
    struct pipe_fence_handle *fence = NULL;
-   wgl_ctx->ctx->st->flush(wgl_ctx->ctx->st, ST_FLUSH_END_OF_FRAME | ST_FLUSH_WAIT, &fence, NULL, NULL);
+   st_context_flush(wgl_ctx->ctx->st, ST_FLUSH_END_OF_FRAME | ST_FLUSH_WAIT, &fence, NULL, NULL);
    return EGL_TRUE;
 }
 
@@ -995,7 +995,7 @@ wgl_create_sync_khr(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_lis
 
    switch (type) {
    case EGL_SYNC_FENCE_KHR:
-      st->flush(st, 0, &wgl_sync->fence, NULL, NULL);
+      st_context_flush(st, 0, &wgl_sync->fence, NULL, NULL);
       if (!wgl_sync->fence) {
          _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
          free(wgl_sync);

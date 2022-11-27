@@ -710,7 +710,7 @@ OSMesaDestroyContext(OSMesaContext osmesa)
 {
    if (osmesa) {
       pp_free(osmesa->pp);
-      osmesa->st->destroy(osmesa->st);
+      st_destroy_context(osmesa->st);
       free(osmesa->zs);
       FREE(osmesa);
    }
@@ -809,7 +809,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
                               osmesa->pp_enabled,
                               osmesa->st->cso_context,
                               osmesa->st,
-                              (void*)osmesa->st->invalidate_state);
+                              (void*)st_context_invalidate_state);
 
          pp_init_fbos(osmesa->pp, width, height);
       }

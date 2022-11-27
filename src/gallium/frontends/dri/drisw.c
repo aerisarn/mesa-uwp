@@ -231,8 +231,7 @@ drisw_swap_buffers(struct dri_drawable *drawable)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT];
 
@@ -244,7 +243,7 @@ drisw_swap_buffers(struct dri_drawable *drawable)
       if (ctx->hud)
          hud_run(ctx->hud, ctx->st->cso_context, ptex);
 
-      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
+      st_context_flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
 
       if (drawable->stvis.samples > 1) {
          /* Resolve the back buffer. */
@@ -259,7 +258,7 @@ drisw_swap_buffers(struct dri_drawable *drawable)
       drisw_copy_to_front(ctx->st->pipe, drawable, ptex);
 
       /* TODO: remove this if the framebuffer state doesn't change. */
-      ctx->st->invalidate_state(ctx->st, ST_INVALIDATE_FB_STATE);
+      st_context_invalidate_state(ctx->st, ST_INVALIDATE_FB_STATE);
    }
 }
 
@@ -280,14 +279,13 @@ drisw_copy_sub_buffer(struct dri_drawable *drawable, int x, int y,
       /* Wait for glthread to finish because we can't use pipe_context from
        * multiple threads.
        */
-      if (ctx->st->thread_finish)
-         ctx->st->thread_finish(ctx->st);
+      _mesa_glthread_finish(ctx->st->ctx);
 
       struct pipe_fence_handle *fence = NULL;
       if (ctx->pp && drawable->textures[ST_ATTACHMENT_DEPTH_STENCIL])
          pp_run(ctx->pp, ptex, ptex, drawable->textures[ST_ATTACHMENT_DEPTH_STENCIL]);
 
-      ctx->st->flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
+      st_context_flush(ctx->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
 
       screen->base.screen->fence_finish(screen->base.screen, ctx->st->pipe,
                                         fence, PIPE_TIMEOUT_INFINITE);
@@ -318,8 +316,7 @@ drisw_flush_frontbuffer(struct dri_context *ctx,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    if (drawable->stvis.samples > 1) {
       /* Resolve the front buffer. */
@@ -359,8 +356,7 @@ drisw_allocate_textures(struct dri_context *stctx,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (stctx->st->thread_finish)
-      stctx->st->thread_finish(stctx->st);
+   _mesa_glthread_finish(stctx->st->ctx);
 
    width  = drawable->w;
    height = drawable->h;
@@ -449,8 +445,7 @@ drisw_update_tex_buffer(struct dri_drawable *drawable,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    get_drawable_info(drawable, &x, &y, &w, &h);
 

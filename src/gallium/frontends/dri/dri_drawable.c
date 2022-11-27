@@ -258,8 +258,7 @@ dri_set_tex_buffer2(__DRIcontext *pDRICtx, GLint target,
    struct dri_drawable *drawable = dri_drawable(dPriv);
    struct pipe_resource *pt;
 
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    dri_drawable_validate_att(ctx, drawable, ST_ATTACHMENT_FRONT_LEFT);
 
@@ -294,7 +293,7 @@ dri_set_tex_buffer2(__DRIcontext *pDRICtx, GLint target,
 
       drawable->update_tex_buffer(drawable, ctx, pt);
 
-      ctx->st->teximage(ctx->st,
+      st_context_teximage(ctx->st,
             (target == GL_TEXTURE_2D) ? ST_TEXTURE_2D : ST_TEXTURE_RECT,
             0, internal_format, pt, false);
    }
@@ -426,8 +425,7 @@ notify_before_flush_cb(void* _args)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    if (args->drawable->stvis.samples > 1 &&
        (args->reason == __DRI2_THROTTLE_SWAPBUFFER ||
@@ -490,8 +488,7 @@ dri_flush(__DRIcontext *cPriv,
    }
 
    st = ctx->st;
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    if (drawable) {
       /* prevent recursion */
@@ -533,7 +530,7 @@ dri_flush(__DRIcontext *cPriv,
       struct pipe_screen *screen = drawable->screen->base.screen;
       struct pipe_fence_handle *new_fence = NULL;
 
-      st->flush(st, flush_flags, &new_fence, args.ctx ? notify_before_flush_cb : NULL, &args);
+      st_context_flush(st, flush_flags, &new_fence, args.ctx ? notify_before_flush_cb : NULL, &args);
 
       /* throttle on the previous fence */
       if (drawable->throttle_fence) {
@@ -543,7 +540,7 @@ dri_flush(__DRIcontext *cPriv,
       drawable->throttle_fence = new_fence;
    }
    else if (flags & (__DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT)) {
-      st->flush(st, flush_flags, NULL, args.ctx ? notify_before_flush_cb : NULL, &args);
+      st_context_flush(st, flush_flags, NULL, args.ctx ? notify_before_flush_cb : NULL, &args);
    }
 
    if (drawable) {
@@ -568,7 +565,7 @@ dri_flush(__DRIcontext *cPriv,
       p_atomic_inc(&drawable->base.stamp);
    }
 
-   st->invalidate_state(st, ST_INVALIDATE_FB_STATE);
+   st_context_invalidate_state(st, ST_INVALIDATE_FB_STATE);
 }
 
 /**

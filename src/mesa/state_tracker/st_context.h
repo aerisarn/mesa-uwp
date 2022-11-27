@@ -393,62 +393,6 @@ struct st_context
    } zombie_shaders;
 
    struct hash_table *hw_select_shaders;
-
-   /* TODO: Burn these callbacks to the ground: */
-
-   /**
-    * Destroy the context.
-    */
-   void (*destroy)(struct st_context *st);
-
-   /**
-    * Flush all drawing from context to the pipe also flushes the pipe.
-    */
-   void (*flush)(struct st_context *st, unsigned flags,
-                 struct pipe_fence_handle **fence,
-                 void (*notify_before_flush_cb) (void*),
-                 void* notify_before_flush_cb_args);
-
-   /**
-    * Replace the texture image of a texture object at the specified level.
-    *
-    * This function is optional.
-    */
-   bool (*teximage)(struct st_context *st,
-                    enum st_texture_type target,
-                    int level, enum pipe_format internal_format,
-                    struct pipe_resource *tex, bool mipmap);
-
-   /**
-    * Used to implement glXCopyContext.
-    */
-   void (*copy)(struct st_context *st,
-                struct st_context *src, unsigned mask);
-
-   /**
-    * Used to implement wglShareLists.
-    */
-   bool (*share)(struct st_context *st,
-                 struct st_context *src);
-
-   /**
-    * Start the thread if the API has a worker thread.
-    * Called after the context has been created and fully initialized on both
-    * sides (e.g. st/mesa and st/dri).
-    */
-   void (*start_thread)(struct st_context *st);
-
-   /**
-    * If the API is multithreaded, wait for all queued commands to complete.
-    * Called from the main thread.
-    */
-   void (*thread_finish)(struct st_context *st);
-
-   /**
-    * Invalidate states to notify the frontend that states have been changed
-    * behind its back.
-    */
-   void (*invalidate_state)(struct st_context *st, unsigned flags);
 };
 
 
@@ -472,6 +416,19 @@ st_create_context(gl_api api, struct pipe_context *pipe,
 extern void
 st_destroy_context(struct st_context *st);
 
+extern void
+st_context_flush(struct st_context *st, unsigned flags,
+                 struct pipe_fence_handle **fence,
+                 void (*before_flush_cb) (void*), void* args);
+
+extern bool
+st_context_teximage(struct st_context *st,
+                    enum st_texture_type tex_type,
+                    int level, enum pipe_format pipe_format,
+                    struct pipe_resource *tex, bool mipmap);
+
+extern void
+st_context_invalidate_state(struct st_context *st, unsigned flags);
 
 extern void
 st_invalidate_buffers(struct st_context *st);

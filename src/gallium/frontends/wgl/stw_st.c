@@ -411,10 +411,10 @@ stw_st_flush(struct st_context *st,
 
    if (flags & ST_FLUSH_WAIT)
       pfence = &fence;
-   st->flush(st, flags, pfence, notify_before_flush_cb, &args);
+   st_context_flush(st, flags, pfence, notify_before_flush_cb, &args);
 
    /* TODO: remove this if the framebuffer state doesn't change. */
-   st->invalidate_state(st, ST_INVALIDATE_FB_STATE);
+   st_context_invalidate_state(st, ST_INVALIDATE_FB_STATE);
 }
 
 /**

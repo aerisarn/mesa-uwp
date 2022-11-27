@@ -472,8 +472,7 @@ kopper_allocate_textures(struct dri_context *ctx,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    /* First get the buffers from the loader */
    if (image) {
@@ -683,8 +682,7 @@ kopper_flush_frontbuffer(struct dri_context *ctx,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    if (drawable) {
       /* prevent recursion */
@@ -709,10 +707,8 @@ kopper_flush_frontbuffer(struct dri_context *ctx,
       struct pipe_fence_handle *new_fence = NULL;
 
       st = ctx->st;
-      if (st->thread_finish)
-         st->thread_finish(st);
 
-      st->flush(st, ST_FLUSH_FRONT, &new_fence, NULL, NULL);
+      st_context_flush(st, ST_FLUSH_FRONT, &new_fence, NULL, NULL);
       if (drawable) {
          drawable->flushing = false;
       }
@@ -779,8 +775,7 @@ kopper_update_tex_buffer(struct dri_drawable *drawable,
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    get_drawable_info(drawable, &x, &y, &w, &h);
 
@@ -863,8 +858,7 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    drawable->texture_stamp = drawable->lastStamp - 1;
 
@@ -938,8 +932,7 @@ kopperQueryBufferAge(__DRIdrawable *dPriv)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    return zink_kopper_query_buffer_age(ctx->st->pipe, ptex);
 }

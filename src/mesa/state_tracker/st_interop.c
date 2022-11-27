@@ -254,8 +254,7 @@ st_interop_export_object(struct st_context *st,
       return MESA_GLINTEROP_INVALID_VERSION;
 
    /* Wait for glthread to finish to get up-to-date GL object lookups. */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    /* Validate the OpenGL object and get pipe_resource. */
    simple_mtx_lock(&ctx->Shared->Mutex);
@@ -348,8 +347,7 @@ st_interop_flush_objects(struct st_context *st,
    struct gl_context *ctx = st->ctx;
 
    /* Wait for glthread to finish to get up-to-date GL object lookups. */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    simple_mtx_lock(&ctx->Shared->Mutex);
 

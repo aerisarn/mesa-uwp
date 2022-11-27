@@ -222,7 +222,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	// TODO: no pp filters are enabled yet through postProcessEnable
 	context->postProcess = pp_init(stContext->pipe, context->postProcessEnable,
 		stContext->cso_context, stContext,
-                (void*)stContext->invalidate_state);
+                (void*)st_context_invalidate_state);
 
 	context_id contextNext = -1;
 	Lock();
@@ -261,8 +261,8 @@ GalliumContext::DestroyContext(context_id contextID)
 		return;
 
 	if (fContext[contextID]->st) {
-		fContext[contextID]->st->flush(fContext[contextID]->st, 0, NULL, NULL, NULL);
-		fContext[contextID]->st->destroy(fContext[contextID]->st);
+		st_context_flush(fContext[contextID]->st, 0, NULL, NULL, NULL);
+		st_destroy_context(fContext[contextID]->st);
 	}
 
 	if (fContext[contextID]->postProcess)
@@ -310,7 +310,7 @@ GalliumContext::SetCurrentContext(bool set, context_id contextID)
 	fCurrentContext = contextID;
 
 	if (oldContextID > 0 && oldContextID != contextID) {
-		fContext[oldContextID]->st->flush(fContext[oldContextID]->st,
+		st_context_flush(fContext[oldContextID]->st,
 			ST_FLUSH_FRONT, NULL, NULL, NULL);
 	}
 
@@ -338,7 +338,7 @@ GalliumContext::SwapBuffers(context_id contextID)
 	}
 
 	// will flush front buffer if no double buffering is used
-	context->st->flush(context->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+	st_context_flush(context->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
 
 	struct hgl_buffer* buffer = context->buffer;
 
@@ -351,7 +351,7 @@ GalliumContext::SwapBuffers(context_id contextID)
 	}
 
         /* TODO: remove this if the framebuffer state doesn't change. */
-        context->st->invalidate_state(context->st, ST_INVALIDATE_FB_STATE);
+        st_context_invalidate_state(context->st, ST_INVALIDATE_FB_STATE);
 
 	Unlock();
 	return B_OK;

@@ -100,10 +100,9 @@ dri2_create_fence(__DRIcontext *_ctx)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
-   st->flush(st, 0, &fence->pipe_fence, NULL, NULL);
+   st_context_flush(st, 0, &fence->pipe_fence, NULL, NULL);
 
    if (!fence->pipe_fence) {
       FREE(fence);
@@ -125,12 +124,11 @@ dri2_create_fence_fd(__DRIcontext *_ctx, int fd)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    if (fd == -1) {
       /* exporting driver created fence, flush: */
-      st->flush(st, ST_FLUSH_FENCE_FD, &fence->pipe_fence, NULL, NULL);
+      st_context_flush(st, ST_FLUSH_FENCE_FD, &fence->pipe_fence, NULL, NULL);
    } else {
       /* importing a foreign fence fd: */
       ctx->create_fence_fd(ctx, &fence->pipe_fence, fd, PIPE_FD_TYPE_NATIVE_SYNC);
@@ -238,8 +236,7 @@ dri2_server_wait_sync(__DRIcontext *_ctx, void *_fence, unsigned flags)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    if (ctx->fence_server_sync)
       ctx->fence_server_sync(ctx, fence->pipe_fence);
@@ -303,8 +300,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
    __DRIimage *img;
 
    /* Wait for glthread to finish to get up-to-date GL object lookups. */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    /* Section 3.9 (EGLImage Specification and Management) of the EGL 1.5
     * specification says:
@@ -404,8 +400,7 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
    GLuint face = 0;
 
    /* Wait for glthread to finish to get up-to-date GL object lookups. */
-   if (st->thread_finish)
-      st->thread_finish(st);
+   _mesa_glthread_finish(st->ctx);
 
    obj = _mesa_lookup_texture(ctx, texture);
    if (!obj || obj->Target != target) {

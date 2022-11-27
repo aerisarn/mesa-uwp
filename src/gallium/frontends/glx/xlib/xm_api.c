@@ -76,6 +76,7 @@
 #include <GL/glx.h>
 
 #include "state_tracker/st_context.h"
+#include "main/context.h"
 
 extern struct pipe_screen *
 xlib_create_screen(Display *display);
@@ -1014,7 +1015,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
    c->st->frontend_context = (void *) c;
 
    c->hud = hud_create(c->st->cso_context, NULL, c->st,
-                       (void*)c->st->invalidate_state);
+                       (void*)st_context_invalidate_state);
 
    return c;
 
@@ -1033,7 +1034,7 @@ void XMesaDestroyContext( XMesaContext c )
       hud_destroy(c->hud, NULL);
    }
 
-   c->st->destroy(c->st);
+   st_destroy_context(c->st);
 
    /* FIXME: We should destroy the screen here, but if we do so, surfaces may
     * outlive it, causing segfaults
@@ -1343,13 +1344,13 @@ void XMesaSwapBuffers( XMesaBuffer b )
    }
 
    if (xmctx && xmctx->xm_buffer == b) {
-      xmctx->st->flush( xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+      st_context_flush(xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
    }
 
    xmesa_swap_st_framebuffer(b->stfb);
 
    /* TODO: remove this if the framebuffer state doesn't change. */
-   xmctx->st->invalidate_state(xmctx->st, ST_INVALIDATE_FB_STATE);
+   st_context_invalidate_state(xmctx->st, ST_INVALIDATE_FB_STATE);
 }
 
 
@@ -1361,7 +1362,7 @@ void XMesaCopySubBuffer( XMesaBuffer b, int x, int y, int width, int height )
 {
    XMesaContext xmctx = XMesaGetCurrentContext();
 
-   xmctx->st->flush( xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
+   st_context_flush(xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
 
    xmesa_copy_st_framebuffer(b->stfb,
          ST_ATTACHMENT_BACK_LEFT, ST_ATTACHMENT_FRONT_LEFT,
@@ -1376,7 +1377,7 @@ void XMesaFlush( XMesaContext c )
       XMesaDisplay xmdpy = xmesa_init_display(c->xm_visual->display);
       struct pipe_fence_handle *fence = NULL;
 
-      c->st->flush(c->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
+      st_context_flush(c->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
       if (fence) {
          xmdpy->screen->fence_finish(xmdpy->screen, NULL, fence,
                                      PIPE_TIMEOUT_INFINITE);
@@ -1523,12 +1524,8 @@ XMesaBindTexImage(Display *dpy, XMesaBuffer drawable, int buffer,
 
       pipe_texture_unmap(pipe, tex_xfer);
 
-      st->teximage(st,
-                   ST_TEXTURE_2D,
-                   0,    /* level */
-                   internal_format,
-                   res,
-                   FALSE /* no mipmap */);
+      st_context_teximage(st, ST_TEXTURE_2D, 0 /* level */, internal_format,
+                          res, FALSE /* no mipmap */);
 
    }
 }
@@ -1544,6 +1541,5 @@ XMesaReleaseTexImage(Display *dpy, XMesaBuffer drawable, int buffer)
 void
 XMesaCopyContext(XMesaContext src, XMesaContext dst, unsigned long mask)
 {
-   if (dst->st->copy)
-      dst->st->copy(dst->st, src->st, mask);
+   _mesa_copy_context(src->st->ctx, dst->st->ctx, mask);
 }

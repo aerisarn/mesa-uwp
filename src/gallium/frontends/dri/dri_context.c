@@ -201,15 +201,14 @@ dri_create_context(struct dri_screen *screen,
 
    if (ctx->st->cso_context) {
       ctx->pp = pp_init(ctx->st->pipe, screen->pp_enabled, ctx->st->cso_context,
-                        ctx->st, (void*)ctx->st->invalidate_state);
+                        ctx->st, (void*)st_context_invalidate_state);
       ctx->hud = hud_create(ctx->st->cso_context,
                             share_ctx ? share_ctx->hud : NULL,
-                            ctx->st, (void*)ctx->st->invalidate_state);
+                            ctx->st, (void*)st_context_invalidate_state);
    }
 
    /* Do this last. */
-   if (ctx->st->start_thread &&
-       driQueryOptionb(&screen->dev->option_cache, "mesa_glthread")) {
+   if (driQueryOptionb(&screen->dev->option_cache, "mesa_glthread")) {
       bool safe = true;
 
       /* This is only needed by X11/DRI2, which can be unsafe. */
@@ -220,7 +219,7 @@ dri_create_context(struct dri_screen *screen,
          safe = false;
 
       if (safe)
-         ctx->st->start_thread(ctx->st);
+         _mesa_glthread_init(ctx->st->ctx);
    }
 
    *error = __DRI_CTX_ERROR_SUCCESS;
@@ -228,7 +227,7 @@ dri_create_context(struct dri_screen *screen,
 
  fail:
    if (ctx && ctx->st)
-      ctx->st->destroy(ctx->st);
+      st_destroy_context(ctx->st);
 
    free(ctx);
    return NULL;
@@ -240,8 +239,7 @@ dri_destroy_context(struct dri_context *ctx)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    if (ctx->hud) {
       hud_destroy(ctx->hud, ctx->st->cso_context);
@@ -255,8 +253,8 @@ dri_destroy_context(struct dri_context *ctx)
     * to avoid having to add code elsewhere to cope with flushing a
     * partially destroyed context.
     */
-   ctx->st->flush(ctx->st, 0, NULL, NULL, NULL);
-   ctx->st->destroy(ctx->st);
+   st_context_flush(ctx->st, 0, NULL, NULL, NULL);
+   st_destroy_context(ctx->st);
    free(ctx);
 }
 
@@ -268,8 +266,7 @@ dri_unbind_context(struct dri_context *ctx)
    struct st_context *st = ctx->st;
 
    if (st == st_api_get_current()) {
-      if (st->thread_finish)
-         st->thread_finish(st);
+      _mesa_glthread_finish(st->ctx);
 
       /* Record HUD queries for the duration the context was "current". */
       if (ctx->hud)
@@ -310,8 +307,7 @@ dri_make_current(struct dri_context *ctx,
    /* Wait for glthread to finish because we can't use st_context from
     * multiple threads.
     */
-   if (ctx->st->thread_finish)
-      ctx->st->thread_finish(ctx->st);
+   _mesa_glthread_finish(ctx->st->ctx);
 
    /* There are 2 cases that can occur here. Either we bind drawables, or we
     * bind NULL for configless and surfaceless contexts.
