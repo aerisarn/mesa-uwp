@@ -35,16 +35,13 @@ struct st_context;
  * \file API for communication between gallium frontends and supporting
  * frontends such as DRI.
  *
- * This file defines an API to be implemented by both gallium frontends and
- * their managers.
+ * This file defines the API that the GL frontend uses to talk to
+ * the DRI/GLX/WGL frontends.
  */
 
 
 /**
- * New context flags for GL 3.0 and beyond.
- *
- * Profile information (core vs. compatibilty for OpenGL 3.2+) is communicated
- * through the \c st_profile_type, not through flags.
+ * Context flags.
  */
 #define ST_CONTEXT_FLAG_DEBUG               (1 << 0)
 #define ST_CONTEXT_FLAG_FORWARD_COMPATIBLE  (1 << 1)
@@ -93,7 +90,7 @@ enum st_attachment_type {
 #define ST_FLUSH_FENCE_FD                 (1 << 3)
 
 /**
- * State invalidation flags to notify frontends that states have been changed
+ * State invalidation flags to notify st_context that states have been changed
  * behind their back.
  */
 #define ST_INVALIDATE_FS_SAMPLER_VIEWS    (1 << 0)
@@ -103,7 +100,7 @@ enum st_attachment_type {
 #define ST_INVALIDATE_FB_STATE            (1 << 4)
 
 /**
- * Value to st_manager->get_param function.
+ * Value to pipe_frontend_streen::get_param function.
  */
 enum st_manager_param {
    /**
@@ -116,13 +113,11 @@ enum st_manager_param {
    ST_MANAGER_BROKEN_INVALIDATE
 };
 
-struct pipe_context;
 struct pipe_resource;
-struct pipe_fence_handle;
 struct util_queue_monitoring;
 
 /**
- * Used in st_manager_iface->get_egl_image.
+ * Used in pipe_frontend_screen::get_egl_image.
  */
 struct st_egl_image
 {
@@ -212,21 +207,15 @@ struct pipe_frontend_screen;
 /**
  * Represent a windowing system drawable.
  *
- * The framebuffer is implemented by the frontend manager and
- * used by gallium frontends.
+ * This is inherited by the drawable implementation of the DRI/GLX/WGL
+ * frontends, e.g. this is the first field in dri_drawable.
  *
- * Instead of the winsys poking into the frontend context to figure
- * out what buffers that might be needed in the future by the frontend
- * context, it calls into the framebuffer to get the textures.
+ * st_context uses the callbacks to invoke one of the DRI/GLX/WGL-specific
+ * functions.
  *
- * This structure along with the notify_invalid_framebuffer
- * allows framebuffers to be shared between different threads
- * but at the same make the API context free from thread
- * synchronization primitves, with the exception of a small
- * atomic flag used for notification of framebuffer dirty status.
- *
- * The thread synchronization is put inside the framebuffer
- * and only called once the framebuffer has become dirty.
+ * This drawable can be shared between different threads. The atomic stamp
+ * is used to communicate that the drawable has been changed, and
+ * the framebuffer state should be updated.
  */
 struct st_framebuffer_iface
 {
@@ -241,12 +230,12 @@ struct st_framebuffer_iface
    uint32_t ID;
 
    /**
-    * The frontend manager that manages this object.
+    * The frontend screen for DRI/GLX/WGL.  This is e.g. dri_screen.
     */
    struct pipe_frontend_screen *fscreen;
 
    /**
-    * The visual of a framebuffer.
+    * The visual of the framebuffer.
     */
    const struct st_visual *visual;
 
@@ -263,7 +252,7 @@ struct st_framebuffer_iface
                        enum st_attachment_type statt);
 
    /**
-    * the gallium frontend asks for the textures it needs.
+    * The GL frontend asks for the framebuffer attachments it needs.
     *
     * It should try to only ask for attachments that it currently renders
     * to, thus allowing the winsys to delay the allocation of textures not
@@ -276,14 +265,14 @@ struct st_framebuffer_iface
     * The returned textures are owned by the caller.  They should be
     * unreferenced when no longer used.  If this function is called multiple
     * times with different sets of attachments, those buffers not included in
-    * the last call might be destroyed.  This behavior might change in the
-    * future.
+    * the last call might be destroyed.
     */
    bool (*validate)(struct st_context *st,
                     struct st_framebuffer_iface *stfbi,
                     const enum st_attachment_type *statts,
                     unsigned count,
                     struct pipe_resource **out);
+
    bool (*flush_swapbuffers)(struct st_context *st,
                              struct st_framebuffer_iface *stfbi);
 };
@@ -304,8 +293,7 @@ struct pipe_frontend_screen
     * function call and the information needed to access this is returned
     * in the given struct out.
     *
-    * @fscreen: manager owning the caller context
-    * @stctx: caller context
+    * @fscreen: the screen
     * @egl_image: EGLImage that caller recived
     * @out: return struct filled out with access information.
     *
@@ -322,7 +310,7 @@ struct pipe_frontend_screen
                               void *egl_image);
 
    /**
-    * Query an manager param.
+    * Query a feature or property from the DRI/GLX/WGL frontend.
     */
    int (*get_param)(struct pipe_frontend_screen *fscreen,
                     enum st_manager_param param);
@@ -335,7 +323,7 @@ struct pipe_frontend_screen
                                   struct util_queue_monitoring *queue_info);
 
    /**
-    * Destroy any private data used by the frontend manager.
+    * Destroy st_screen.
     */
    void (*destroy)(struct pipe_frontend_screen *fscreen);
 
