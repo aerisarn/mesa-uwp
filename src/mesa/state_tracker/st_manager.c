@@ -945,7 +945,6 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    struct gl_config mode, *mode_ptr = &mode;
    gl_api api;
    bool no_error = false;
-   unsigned ctx_flags = PIPE_CONTEXT_PREFER_THREADED;
 
    if (!(ST_PROFILE_ALL_MASK & (1 << attribs->profile)))
       return NULL;
@@ -985,24 +984,12 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
       fscreen->destroy = st_manager_destroy;
    }
 
-   if (attribs->flags & ST_CONTEXT_FLAG_ROBUST_ACCESS)
-      ctx_flags |= PIPE_CONTEXT_ROBUST_BUFFER_ACCESS;
-
    if (attribs->flags & ST_CONTEXT_FLAG_NO_ERROR)
       no_error = true;
 
-   if (attribs->flags & ST_CONTEXT_FLAG_LOW_PRIORITY)
-      ctx_flags |= PIPE_CONTEXT_LOW_PRIORITY;
-   else if (attribs->flags & ST_CONTEXT_FLAG_HIGH_PRIORITY)
-      ctx_flags |= PIPE_CONTEXT_HIGH_PRIORITY;
-
-   if (attribs->flags & ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED)
-      ctx_flags |= PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET;
-
-   if (attribs->flags & ST_CONTEXT_FLAG_PROTECTED)
-      ctx_flags |= PIPE_CONTEXT_PROTECTED;
-
-   pipe = fscreen->screen->context_create(fscreen->screen, NULL, ctx_flags);
+   pipe = fscreen->screen->context_create(fscreen->screen, NULL,
+                                          PIPE_CONTEXT_PREFER_THREADED |
+                                          attribs->context_flags);
    if (!pipe) {
       *error = ST_CONTEXT_ERROR_NO_MEMORY;
       return NULL;
@@ -1035,11 +1022,13 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
 
    if (attribs->flags & ST_CONTEXT_FLAG_FORWARD_COMPATIBLE)
       st->ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT;
-   if (attribs->flags & ST_CONTEXT_FLAG_ROBUST_ACCESS) {
+
+   if (attribs->context_flags & PIPE_CONTEXT_ROBUST_BUFFER_ACCESS) {
       st->ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_ROBUST_ACCESS_BIT_ARB;
       st->ctx->Const.RobustAccess = GL_TRUE;
    }
-   if (attribs->flags & ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED) {
+
+   if (attribs->context_flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET) {
       st->ctx->Const.ResetStrategy = GL_LOSE_CONTEXT_ON_RESET_ARB;
       st_install_device_reset_callback(st);
    }

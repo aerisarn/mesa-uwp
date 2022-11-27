@@ -113,11 +113,11 @@ dri_create_context(struct dri_screen *screen,
       attribs.flags |= ST_CONTEXT_FLAG_DEBUG;
 
    if (ctx_config->flags & __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS)
-      attribs.flags |= ST_CONTEXT_FLAG_ROBUST_ACCESS;
+      attribs.context_flags |= PIPE_CONTEXT_ROBUST_BUFFER_ACCESS;
 
    if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_RESET_STRATEGY)
       if (ctx_config->reset_strategy != __DRI_CTX_RESET_NO_NOTIFICATION)
-         attribs.flags |= ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED;
+         attribs.context_flags |= PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET;
 
    if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_NO_ERROR)
       attribs.flags |= ctx_config->no_error ? ST_CONTEXT_FLAG_NO_ERROR : 0;
@@ -125,10 +125,10 @@ dri_create_context(struct dri_screen *screen,
    if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_PRIORITY) {
       switch (ctx_config->priority) {
       case __DRI_CTX_PRIORITY_LOW:
-         attribs.flags |= ST_CONTEXT_FLAG_LOW_PRIORITY;
+         attribs.context_flags |= PIPE_CONTEXT_LOW_PRIORITY;
          break;
       case __DRI_CTX_PRIORITY_HIGH:
-         attribs.flags |= ST_CONTEXT_FLAG_HIGH_PRIORITY;
+         attribs.context_flags |= PIPE_CONTEXT_HIGH_PRIORITY;
          break;
       default:
          break;
@@ -140,7 +140,7 @@ dri_create_context(struct dri_screen *screen,
       attribs.flags |= ST_CONTEXT_FLAG_RELEASE_NONE;
 
    if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_PROTECTED)
-      attribs.flags |= ST_CONTEXT_FLAG_PROTECTED;
+      attribs.context_flags |= PIPE_CONTEXT_PROTECTED;
 
    struct dri_context *share_ctx = NULL;
    if (sharedContextPrivate) {

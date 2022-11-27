@@ -959,7 +959,7 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
    if (contextFlags & GLX_CONTEXT_DEBUG_BIT_ARB)
       attribs.flags |= ST_CONTEXT_FLAG_DEBUG;
    if (contextFlags & GLX_CONTEXT_ROBUST_ACCESS_BIT_ARB)
-      attribs.flags |= ST_CONTEXT_FLAG_ROBUST_ACCESS;
+      attribs.context_flags |= PIPE_CONTEXT_ROBUST_BUFFER_ACCESS;
 
    switch (profileMask) {
    case GLX_CONTEXT_CORE_PROFILE_BIT_ARB:

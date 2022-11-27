@@ -68,13 +68,9 @@ enum st_profile_type
  */
 #define ST_CONTEXT_FLAG_DEBUG               (1 << 0)
 #define ST_CONTEXT_FLAG_FORWARD_COMPATIBLE  (1 << 1)
-#define ST_CONTEXT_FLAG_ROBUST_ACCESS       (1 << 2)
-#define ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED (1 << 3)
-#define ST_CONTEXT_FLAG_NO_ERROR            (1 << 4)
-#define ST_CONTEXT_FLAG_RELEASE_NONE	    (1 << 5)
-#define ST_CONTEXT_FLAG_HIGH_PRIORITY       (1 << 6)
-#define ST_CONTEXT_FLAG_LOW_PRIORITY        (1 << 7)
-#define ST_CONTEXT_FLAG_PROTECTED           (1 << 8)
+#define ST_CONTEXT_FLAG_NO_ERROR            (1 << 2)
+#define ST_CONTEXT_FLAG_RELEASE_NONE        (1 << 3)
+
 
 /**
  * Reasons that context creation might fail.
@@ -251,6 +247,9 @@ struct st_context_attribs
 
    /** Mask of ST_CONTEXT_FLAG_x bits */
    unsigned flags;
+
+   /** Mask of PIPE_CONTEXT_x bits */
+   unsigned context_flags;
 
    /**
     * The visual of the framebuffers the context will be bound to.

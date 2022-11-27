@@ -193,9 +193,9 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    if (contextFlags & WGL_CONTEXT_DEBUG_BIT_ARB)
       attribs.flags |= ST_CONTEXT_FLAG_DEBUG;
    if (contextFlags & WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB)
-      attribs.flags |= ST_CONTEXT_FLAG_ROBUST_ACCESS;
+      attribs.context_flags |= PIPE_CONTEXT_ROBUST_BUFFER_ACCESS;
    if (resetStrategy != WGL_NO_RESET_NOTIFICATION_ARB)
-      attribs.flags |= ST_CONTEXT_FLAG_RESET_NOTIFICATION_ENABLED;
+      attribs.context_flags |= PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET;
 
    switch (profileMask) {
    case WGL_CONTEXT_CORE_PROFILE_BIT_ARB:
