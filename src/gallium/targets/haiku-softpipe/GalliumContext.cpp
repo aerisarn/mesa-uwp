@@ -191,20 +191,8 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 			case ST_CONTEXT_ERROR_NO_MEMORY:
 				ERROR("%s: State tracker error: NO_MEMORY\n", __func__);
 				break;
-			case ST_CONTEXT_ERROR_BAD_API:
-				ERROR("%s: State tracker error: BAD_API\n", __func__);
-				break;
 			case ST_CONTEXT_ERROR_BAD_VERSION:
 				ERROR("%s: State tracker error: BAD_VERSION\n", __func__);
-				break;
-			case ST_CONTEXT_ERROR_BAD_FLAG:
-				ERROR("%s: State tracker error: BAD_FLAG\n", __func__);
-				break;
-			case ST_CONTEXT_ERROR_UNKNOWN_ATTRIBUTE:
-				ERROR("%s: State tracker error: BAD_ATTRIBUTE\n", __func__);
-				break;
-			case ST_CONTEXT_ERROR_UNKNOWN_FLAG:
-				ERROR("%s: State tracker error: UNKNOWN_FLAG\n", __func__);
 				break;
 		}
 

@@ -179,20 +179,8 @@ dri_create_context(struct dri_screen *screen,
       case ST_CONTEXT_ERROR_NO_MEMORY:
 	 *error = __DRI_CTX_ERROR_NO_MEMORY;
 	 break;
-      case ST_CONTEXT_ERROR_BAD_API:
-	 *error = __DRI_CTX_ERROR_BAD_API;
-	 break;
       case ST_CONTEXT_ERROR_BAD_VERSION:
 	 *error = __DRI_CTX_ERROR_BAD_VERSION;
-	 break;
-      case ST_CONTEXT_ERROR_BAD_FLAG:
-	 *error = __DRI_CTX_ERROR_BAD_FLAG;
-	 break;
-      case ST_CONTEXT_ERROR_UNKNOWN_ATTRIBUTE:
-	 *error = __DRI_CTX_ERROR_UNKNOWN_ATTRIBUTE;
-	 break;
-      case ST_CONTEXT_ERROR_UNKNOWN_FLAG:
-	 *error = __DRI_CTX_ERROR_UNKNOWN_FLAG;
 	 break;
       }
       goto fail;
