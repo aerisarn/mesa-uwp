@@ -83,7 +83,7 @@ osmesa_create_screen(void);
 
 struct osmesa_buffer
 {
-   struct st_framebuffer_iface *stfb;
+   struct pipe_frontend_drawable *drawable;
    struct st_visual visual;
    unsigned width, height;
 
@@ -327,12 +327,12 @@ osmesa_init_st_visual(struct st_visual *vis,
 
 
 /**
- * Return the osmesa_buffer that corresponds to an st_framebuffer_iface.
+ * Return the osmesa_buffer that corresponds to an pipe_frontend_drawable.
  */
 static inline struct osmesa_buffer *
-stfbi_to_osbuffer(struct st_framebuffer_iface *stfbi)
+drawable_to_osbuffer(struct pipe_frontend_drawable *drawable)
 {
-   return (struct osmesa_buffer *)stfbi;
+   return (struct osmesa_buffer *)drawable;
 }
 
 
@@ -342,11 +342,11 @@ stfbi_to_osbuffer(struct st_framebuffer_iface *stfbi)
  */
 static bool
 osmesa_st_framebuffer_flush_front(struct st_context *st,
-                                  struct st_framebuffer_iface *stfbi,
+                                  struct pipe_frontend_drawable *drawable,
                                   enum st_attachment_type statt)
 {
    OSMesaContext osmesa = OSMesaGetCurrentContext();
-   struct osmesa_buffer *osbuffer = stfbi_to_osbuffer(stfbi);
+   struct osmesa_buffer *osbuffer = drawable_to_osbuffer(drawable);
    struct pipe_resource *res = osbuffer->textures[statt];
    unsigned bpp;
    int dst_stride;
@@ -401,14 +401,14 @@ osmesa_st_framebuffer_flush_front(struct st_context *st,
  */
 static bool
 osmesa_st_framebuffer_validate(struct st_context *st,
-                               struct st_framebuffer_iface *stfbi,
+                               struct pipe_frontend_drawable *drawable,
                                const enum st_attachment_type *statts,
                                unsigned count,
                                struct pipe_resource **out)
 {
    struct pipe_screen *screen = get_st_manager()->screen;
    enum st_attachment_type i;
-   struct osmesa_buffer *osbuffer = stfbi_to_osbuffer(stfbi);
+   struct osmesa_buffer *osbuffer = drawable_to_osbuffer(drawable);
    struct pipe_resource templat;
 
    memset(&templat, 0, sizeof(templat));
@@ -461,18 +461,18 @@ osmesa_st_framebuffer_validate(struct st_context *st,
 
 static uint32_t osmesa_fb_ID = 0;
 
-static struct st_framebuffer_iface *
+static struct pipe_frontend_drawable *
 osmesa_create_st_framebuffer(void)
 {
-   struct st_framebuffer_iface *stfbi = CALLOC_STRUCT(st_framebuffer_iface);
-   if (stfbi) {
-      stfbi->flush_front = osmesa_st_framebuffer_flush_front;
-      stfbi->validate = osmesa_st_framebuffer_validate;
-      p_atomic_set(&stfbi->stamp, 1);
-      stfbi->ID = p_atomic_inc_return(&osmesa_fb_ID);
-      stfbi->fscreen = get_st_manager();
+   struct pipe_frontend_drawable *drawable = CALLOC_STRUCT(pipe_frontend_drawable);
+   if (drawable) {
+      drawable->flush_front = osmesa_st_framebuffer_flush_front;
+      drawable->validate = osmesa_st_framebuffer_validate;
+      p_atomic_set(&drawable->stamp, 1);
+      drawable->ID = p_atomic_inc_return(&osmesa_fb_ID);
+      drawable->fscreen = get_st_manager();
    }
-   return stfbi;
+   return drawable;
 }
 
 
@@ -486,8 +486,8 @@ osmesa_create_buffer(enum pipe_format color_format,
 {
    struct osmesa_buffer *osbuffer = CALLOC_STRUCT(osmesa_buffer);
    if (osbuffer) {
-      osbuffer->stfb = osmesa_create_st_framebuffer();
-      osbuffer->stfb->visual = &osbuffer->visual;
+      osbuffer->drawable = osmesa_create_st_framebuffer();
+      osbuffer->drawable->visual = &osbuffer->visual;
 
       osmesa_init_st_visual(&osbuffer->visual, color_format,
                             ds_format, accum_format);
@@ -504,9 +504,9 @@ osmesa_destroy_buffer(struct osmesa_buffer *osbuffer)
     * Notify the state manager that the associated framebuffer interface
     * is no longer valid.
     */
-   st_api_destroy_drawable(osbuffer->stfb);
+   st_api_destroy_drawable(osbuffer->drawable);
 
-   FREE(osbuffer->stfb);
+   FREE(osbuffer->drawable);
    FREE(osbuffer);
 }
 
@@ -783,7 +783,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 
    osmesa->type = type;
 
-   st_api_make_current(osmesa->st, osbuffer->stfb, osbuffer->stfb);
+   st_api_make_current(osmesa->st, osbuffer->drawable, osbuffer->drawable);
 
    /* XXX: We should probably load the current color value into the buffer here
     * to match classic swrast behavior (context's fb starts with the contents of

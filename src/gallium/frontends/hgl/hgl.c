@@ -45,11 +45,11 @@ hgl_st_context(struct st_context *st)
 // Perform a safe void to hgl_buffer cast
 //static inline struct hgl_buffer*
 struct hgl_buffer*
-hgl_st_framebuffer(struct st_framebuffer_iface *stfbi)
+hgl_st_framebuffer(struct pipe_frontend_drawable *drawable)
 {
 	struct hgl_buffer* buffer;
-	assert(stfbi);
-	buffer = (struct hgl_buffer*)stfbi;
+	assert(drawable);
+	buffer = (struct hgl_buffer*)drawable;
 	assert(buffer);
 	return buffer;
 }
@@ -57,11 +57,11 @@ hgl_st_framebuffer(struct st_framebuffer_iface *stfbi)
 
 static bool
 hgl_st_framebuffer_flush_front(struct st_context *st,
-	struct st_framebuffer_iface* stfbi, enum st_attachment_type statt)
+	struct pipe_frontend_drawable* drawable, enum st_attachment_type statt)
 {
 	CALLED();
 
-	struct hgl_buffer* buffer = hgl_st_framebuffer(stfbi);
+	struct hgl_buffer* buffer = hgl_st_framebuffer(drawable);
 	struct pipe_resource* ptex = buffer->textures[statt];
 
 	if (statt != ST_ATTACHMENT_FRONT_LEFT)
@@ -79,7 +79,7 @@ hgl_st_framebuffer_flush_front(struct st_context *st,
 
 
 static bool
-hgl_st_framebuffer_validate_textures(struct st_framebuffer_iface *stfbi,
+hgl_st_framebuffer_validate_textures(struct pipe_frontend_drawable *drawable,
 	unsigned width, unsigned height, unsigned mask)
 {
 	struct hgl_buffer* buffer;
@@ -88,7 +88,7 @@ hgl_st_framebuffer_validate_textures(struct st_framebuffer_iface *stfbi,
 
 	CALLED();
 
-	buffer = hgl_st_framebuffer(stfbi);
+	buffer = hgl_st_framebuffer(drawable);
 
 	if (buffer->width != width || buffer->height != height) {
 		TRACE("validate_textures: size changed: %d, %d -> %d, %d\n",
@@ -154,7 +154,7 @@ hgl_st_framebuffer_validate_textures(struct st_framebuffer_iface *stfbi,
  */
 static bool
 hgl_st_framebuffer_validate(struct st_context *st,
-	struct st_framebuffer_iface *stfbi, const enum st_attachment_type *statts,
+	struct pipe_frontend_drawable *drawable, const enum st_attachment_type *statts,
 	unsigned count, struct pipe_resource **out)
 {
 	struct hgl_context* context;
@@ -166,7 +166,7 @@ hgl_st_framebuffer_validate(struct st_context *st,
 	CALLED();
 
 	context = hgl_st_context(st);
-	buffer = hgl_st_framebuffer(stfbi);
+	buffer = hgl_st_framebuffer(drawable);
 
 	// Build mask of current attachments
 	stAttachmentMask = 0;
@@ -183,7 +183,7 @@ hgl_st_framebuffer_validate(struct st_context *st,
 		TRACE("%s: resize event. old:  %d x %d; new: %d x %d\n", __func__,
 			buffer->width, buffer->height, context->width, context->height);
 
-		ret = hgl_st_framebuffer_validate_textures(stfbi, 
+		ret = hgl_st_framebuffer_validate_textures(drawable,
 			context->width, context->height, stAttachmentMask);
 
 		if (!ret)
@@ -231,8 +231,8 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 	assert(buffer);
 
 	// calloc and configure our st_framebuffer interface
-	buffer->stfbi = CALLOC_STRUCT(st_framebuffer_iface);
-	assert(buffer->stfbi);
+	buffer->drawable = CALLOC_STRUCT(pipe_frontend_drawable);
+	assert(buffer->drawable);
 
 	// Prepare our buffer
 	buffer->visual = context->stVisual;
@@ -245,13 +245,13 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 		buffer->target = PIPE_TEXTURE_RECT;
 
 	// Prepare our frontend interface
-	buffer->stfbi->flush_front = hgl_st_framebuffer_flush_front;
-	buffer->stfbi->validate = hgl_st_framebuffer_validate;
-	buffer->stfbi->visual = context->stVisual;
+	buffer->drawable->flush_front = hgl_st_framebuffer_flush_front;
+	buffer->drawable->validate = hgl_st_framebuffer_validate;
+	buffer->drawable->visual = context->stVisual;
 
-	p_atomic_set(&buffer->stfbi->stamp, 1);
-	buffer->stfbi->ID = p_atomic_inc_return(&hgl_fb_ID);
-	buffer->stfbi->fscreen = context->display->fscreen;
+	p_atomic_set(&buffer->drawable->stamp, 1);
+	buffer->drawable->ID = p_atomic_inc_return(&hgl_fb_ID);
+	buffer->drawable->fscreen = context->display->fscreen;
 
 	return buffer;
 }
@@ -266,7 +266,7 @@ hgl_destroy_st_framebuffer(struct hgl_buffer *buffer)
 	for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
 		pipe_resource_reference(&buffer->textures[i], NULL);
 
-	FREE(buffer->stfbi);
+	FREE(buffer->drawable);
 	FREE(buffer);
 }
 

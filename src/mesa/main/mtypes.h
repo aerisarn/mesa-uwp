@@ -2769,12 +2769,12 @@ struct gl_framebuffer
    /** Delete this framebuffer */
    void (*Delete)(struct gl_framebuffer *fb);
 
-   struct st_framebuffer_iface *iface;
+   struct pipe_frontend_drawable *drawable;
    enum st_attachment_type statts[ST_ATTACHMENT_COUNT];
    unsigned num_statts;
    int32_t stamp;
-   int32_t iface_stamp;
-   uint32_t iface_ID;
+   int32_t drawable_stamp;
+   uint32_t drawable_ID;
 
    /* list of framebuffer objects */
    struct list_head head;

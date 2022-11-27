@@ -215,7 +215,7 @@ drisw_copy_to_front(struct pipe_context *pipe,
 }
 
 /*
- * Backend functions for st_framebuffer interface and swap_buffers.
+ * Backend functions for pipe_frontend_drawable and swap_buffers.
  */
 
 static void

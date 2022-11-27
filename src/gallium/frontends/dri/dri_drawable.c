@@ -44,13 +44,13 @@ static uint32_t drifb_ID = 0;
 
 static bool
 dri_st_framebuffer_validate(struct st_context *st,
-                            struct st_framebuffer_iface *stfbi,
+                            struct pipe_frontend_drawable *pdrawable,
                             const enum st_attachment_type *statts,
                             unsigned count,
                             struct pipe_resource **out)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
+   struct dri_drawable *drawable = (struct dri_drawable *)pdrawable;
    struct dri_screen *screen = drawable->screen;
    unsigned statt_mask, new_mask;
    bool new_stamp;
@@ -112,11 +112,11 @@ dri_st_framebuffer_validate(struct st_context *st,
 
 static bool
 dri_st_framebuffer_flush_front(struct st_context *st,
-                               struct st_framebuffer_iface *stfbi,
+                               struct pipe_frontend_drawable *pdrawable,
                                enum st_attachment_type statt)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
+   struct dri_drawable *drawable = (struct dri_drawable *)pdrawable;
 
    /* XXX remove this and just set the correct one on the framebuffer */
    return drawable->flush_frontbuffer(ctx, drawable, statt);
@@ -127,10 +127,10 @@ dri_st_framebuffer_flush_front(struct st_context *st,
  */
 static bool
 dri_st_framebuffer_flush_swapbuffers(struct st_context *st,
-                                     struct st_framebuffer_iface *stfbi)
+                                     struct pipe_frontend_drawable *pdrawable)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;
-   struct dri_drawable *drawable = (struct dri_drawable *)stfbi;
+   struct dri_drawable *drawable = (struct dri_drawable *)pdrawable;
 
    if (drawable->flush_swapbuffers)
       drawable->flush_swapbuffers(ctx, drawable);
@@ -162,7 +162,7 @@ dri_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
 
    dri_fill_st_visual(&drawable->stvis, screen, visual);
 
-   /* setup the st_framebuffer_iface */
+   /* setup the pipe_frontend_drawable */
    drawable->base.visual = &drawable->stvis;
    drawable->base.flush_front = dri_st_framebuffer_flush_front;
    drawable->base.validate = dri_st_framebuffer_validate;

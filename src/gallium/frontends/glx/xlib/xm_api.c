@@ -541,7 +541,7 @@ create_xmesa_buffer(Drawable d, BufferType type,
    /*
     * Create framebuffer, but we'll plug in our own renderbuffers below.
     */
-   b->stfb = xmesa_create_st_framebuffer(xmdpy, b);
+   b->drawable = xmesa_create_st_framebuffer(xmdpy, b);
 
    /* GLX_EXT_texture_from_pixmap */
    b->TextureTarget = 0;
@@ -599,12 +599,12 @@ xmesa_free_buffer(XMesaBuffer buffer)
          /* Notify the st manager that the associated framebuffer interface
           * object is no longer valid.
           */
-         st_api_destroy_drawable(buffer->stfb);
+         st_api_destroy_drawable(buffer->drawable);
 
          /* XXX we should move the buffer to a delete-pending list and destroy
           * the buffer until it is no longer current.
           */
-         xmesa_destroy_st_framebuffer(buffer->stfb);
+         xmesa_destroy_st_framebuffer(buffer->drawable);
 
          free(buffer);
 
@@ -1231,7 +1231,7 @@ XMesaDestroyBuffer(XMesaBuffer b)
 void
 xmesa_notify_invalid_buffer(XMesaBuffer b)
 {
-   p_atomic_inc(&b->stfb->stamp);
+   p_atomic_inc(&b->drawable->stamp);
 }
 
 
@@ -1292,8 +1292,8 @@ GLboolean XMesaMakeCurrent2( XMesaContext c, XMesaBuffer drawBuffer,
       c->xm_read_buffer = readBuffer;
 
       st_api_make_current(c->st,
-                          drawBuffer ? drawBuffer->stfb : NULL,
-                          readBuffer ? readBuffer->stfb : NULL);
+                          drawBuffer ? drawBuffer->drawable : NULL,
+                          readBuffer ? readBuffer->drawable : NULL);
 
       /* Solution to Stephane Rehel's problem with glXReleaseBuffersMESA(): */
       if (drawBuffer)
@@ -1338,7 +1338,7 @@ void XMesaSwapBuffers( XMesaBuffer b )
    /* Need to draw HUD before flushing */
    if (xmctx && xmctx->hud) {
       struct pipe_resource *back =
-         xmesa_get_framebuffer_resource(b->stfb, ST_ATTACHMENT_BACK_LEFT);
+         xmesa_get_framebuffer_resource(b->drawable, ST_ATTACHMENT_BACK_LEFT);
       hud_run(xmctx->hud, NULL, back);
    }
 
@@ -1346,7 +1346,7 @@ void XMesaSwapBuffers( XMesaBuffer b )
       st_context_flush(xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
    }
 
-   xmesa_swap_st_framebuffer(b->stfb);
+   xmesa_swap_st_framebuffer(b->drawable);
 
    /* TODO: remove this if the framebuffer state doesn't change. */
    st_context_invalidate_state(xmctx->st, ST_INVALIDATE_FB_STATE);
@@ -1363,7 +1363,7 @@ void XMesaCopySubBuffer( XMesaBuffer b, int x, int y, int width, int height )
 
    st_context_flush(xmctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
 
-   xmesa_copy_st_framebuffer(b->stfb,
+   xmesa_copy_st_framebuffer(b->drawable,
          ST_ATTACHMENT_BACK_LEFT, ST_ATTACHMENT_FRONT_LEFT,
          x, b->height - y - height, width, height);
 }
@@ -1467,7 +1467,7 @@ XMesaBindTexImage(Display *dpy, XMesaBuffer drawable, int buffer,
                   const int *attrib_list)
 {
    struct st_context *st = st_api_get_current();
-   struct st_framebuffer_iface* stfbi = drawable->stfb;
+   struct pipe_frontend_drawable* pdrawable = drawable->drawable;
    struct pipe_resource *res;
    int x, y, w, h;
    enum st_attachment_type st_attachment = xmesa_attachment_type(buffer);
@@ -1479,11 +1479,11 @@ XMesaBindTexImage(Display *dpy, XMesaBuffer drawable, int buffer,
 
    /* We need to validate our attachments before using them,
     * in case the texture doesn't exist yet. */
-   xmesa_st_framebuffer_validate_textures(stfbi, w, h, 1 << st_attachment);
-   res = xmesa_get_attachment(stfbi, st_attachment);
+   xmesa_st_framebuffer_validate_textures(pdrawable, w, h, 1 << st_attachment);
+   res = xmesa_get_attachment(pdrawable, st_attachment);
 
    if (res) {
-      struct pipe_context* pipe = xmesa_get_context(stfbi);
+      struct pipe_context* pipe = xmesa_get_context(pdrawable);
       enum pipe_format internal_format = res->format;
       struct pipe_transfer *tex_xfer;
       char *map;

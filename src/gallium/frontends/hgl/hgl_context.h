@@ -31,7 +31,7 @@ typedef int64 context_id;
 
 struct hgl_buffer
 {
-	struct st_framebuffer_iface *stfbi;
+	struct pipe_frontend_drawable *drawable;
 	struct st_visual* visual;
 
 	unsigned width;
@@ -76,7 +76,7 @@ struct hgl_context
 };
 
 // hgl_buffer from statetracker interface
-struct hgl_buffer* hgl_st_framebuffer(struct st_framebuffer_iface *stfbi);
+struct hgl_buffer* hgl_st_framebuffer(struct pipe_frontend_drawable *drawable);
 
 // hgl framebuffer
 struct hgl_buffer* hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext);

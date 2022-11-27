@@ -329,7 +329,7 @@ typedef enum {
  * Basically corresponds to a GLXDrawable.
  */
 struct xmesa_buffer {
-   struct st_framebuffer_iface *stfb;
+   struct pipe_frontend_drawable *drawable;
    struct xlib_drawable ws;
 
    GLboolean wasCurrent;	/* was ever the current buffer? */

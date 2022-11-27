@@ -217,7 +217,7 @@ struct pipe_frontend_screen;
  * is used to communicate that the drawable has been changed, and
  * the framebuffer state should be updated.
  */
-struct st_framebuffer_iface
+struct pipe_frontend_drawable
 {
    /**
     * Atomic stamp which changes when framebuffers need to be updated.
@@ -248,7 +248,7 @@ struct st_framebuffer_iface
     * @att is one of the front buffer attachments.
     */
    bool (*flush_front)(struct st_context *st,
-                       struct st_framebuffer_iface *stfbi,
+                       struct pipe_frontend_drawable *drawable,
                        enum st_attachment_type statt);
 
    /**
@@ -268,13 +268,13 @@ struct st_framebuffer_iface
     * the last call might be destroyed.
     */
    bool (*validate)(struct st_context *st,
-                    struct st_framebuffer_iface *stfbi,
+                    struct pipe_frontend_drawable *drawable,
                     const enum st_attachment_type *statts,
                     unsigned count,
                     struct pipe_resource **out);
 
    bool (*flush_swapbuffers)(struct st_context *st,
-                             struct st_framebuffer_iface *stfbi);
+                             struct pipe_frontend_drawable *drawable);
 };
 
 

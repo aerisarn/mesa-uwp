@@ -733,7 +733,7 @@ wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
    if (!_eglBindTexImage(disp, surf, buffer))
       return EGL_FALSE;
 
-   struct pipe_resource *pres = stw_get_framebuffer_resource(wgl_surf->fb->stfb, ST_ATTACHMENT_FRONT_LEFT);
+   struct pipe_resource *pres = stw_get_framebuffer_resource(wgl_surf->fb->drawable, ST_ATTACHMENT_FRONT_LEFT);
    enum pipe_format format = pres->format;
 
    switch (surf->TextureFormat) {

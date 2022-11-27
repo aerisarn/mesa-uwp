@@ -117,7 +117,7 @@ stw_framebuffer_release_locked(struct stw_framebuffer *fb,
    if (fb->winsys_framebuffer)
       fb->winsys_framebuffer->destroy(fb->winsys_framebuffer, st ? st->pipe : NULL);
 
-   stw_st_destroy_framebuffer_locked(fb->stfb);
+   stw_st_destroy_framebuffer_locked(fb->drawable);
 
    stw_framebuffer_unlock(fb);
 
@@ -295,8 +295,8 @@ stw_framebuffer_create(HWND hWnd, const struct stw_pixelformat_info *pfi, enum s
    fb->owner = owner;
 
    fb->pfi = pfi;
-   fb->stfb = stw_st_create_framebuffer( fb, fscreen );
-   if (!fb->stfb) {
+   fb->drawable = stw_st_create_framebuffer( fb, fscreen );
+   if (!fb->drawable) {
       FREE( fb );
       return NULL;
    }
@@ -373,7 +373,7 @@ stw_framebuffer_unlock(struct stw_framebuffer *fb)
 void
 stw_framebuffer_update(struct stw_framebuffer *fb)
 {
-   assert(fb->stfb);
+   assert(fb->drawable);
    assert(fb->height);
    assert(fb->width);
 
@@ -699,7 +699,7 @@ stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb)
       if (ctx->hud) {
          /* Display the HUD */
          struct pipe_resource *back =
-            stw_get_framebuffer_resource(fb->stfb, ST_ATTACHMENT_BACK_LEFT);
+            stw_get_framebuffer_resource(fb->drawable, ST_ATTACHMENT_BACK_LEFT);
          if (back) {
             hud_run(ctx->hud, NULL, back);
          }
@@ -707,7 +707,7 @@ stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb)
 
       if (ctx->current_framebuffer == fb) {
          /* flush current context */
-         stw_st_flush(ctx->st, fb->stfb, ST_FLUSH_END_OF_FRAME);
+         stw_st_flush(ctx->st, fb->drawable, ST_FLUSH_END_OF_FRAME);
       }
    }
 
@@ -716,7 +716,7 @@ stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb)
       wait_swap_interval(fb, interval);
    }
 
-   return stw_st_swap_framebuffer_locked(hdc, ctx->st, fb->stfb);
+   return stw_st_swap_framebuffer_locked(hdc, ctx->st, fb->drawable);
 }
 
 BOOL APIENTRY

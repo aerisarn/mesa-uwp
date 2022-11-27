@@ -38,7 +38,7 @@
 
 
 struct pipe_resource;
-struct st_framebuffer_iface;
+struct pipe_frontend_drawable;
 struct stw_pixelformat_info;
 struct pipe_frontend_screen;
 
@@ -90,7 +90,7 @@ struct stw_framebuffer
    int iDisplayablePixelFormat;
    enum stw_framebuffer_owner owner;
 
-   struct st_framebuffer_iface *stfb;
+   struct pipe_frontend_drawable *drawable;
 
    /*
     * Mutable members. 
@@ -228,9 +228,9 @@ stw_framebuffer_cleanup(void);
 
 
 static inline struct stw_st_framebuffer *
-stw_st_framebuffer(struct st_framebuffer_iface *stfb)
+stw_st_framebuffer(struct pipe_frontend_drawable *drawable)
 {
-   return (struct stw_st_framebuffer *) stfb;
+   return (struct stw_st_framebuffer *) drawable;
 }
 
 

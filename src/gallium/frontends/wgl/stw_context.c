@@ -444,7 +444,7 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
       } else {
          if (old_ctx->shared) {
             if (old_ctx->current_framebuffer) {
-               stw_st_flush(old_ctx->st, old_ctx->current_framebuffer->stfb,
+               stw_st_flush(old_ctx->st, old_ctx->current_framebuffer->drawable,
                             ST_FLUSH_FRONT | ST_FLUSH_WAIT);
             } else {
                struct pipe_fence_handle *fence = NULL;
@@ -454,7 +454,7 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
             }
          } else {
             if (old_ctx->current_framebuffer)
-               stw_st_flush(old_ctx->st, old_ctx->current_framebuffer->stfb,
+               stw_st_flush(old_ctx->st, old_ctx->current_framebuffer->drawable,
                             ST_FLUSH_FRONT);
             else
                st_context_flush(old_ctx->st, ST_FLUSH_FRONT, NULL, NULL, NULL);
@@ -492,8 +492,8 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
       ctx->current_read_framebuffer = fbRead;
 
       ret = st_api_make_current(ctx->st,
-                                fb ? fb->stfb : NULL,
-                                fbRead ? fbRead->stfb : NULL);
+                                fb ? fb->drawable : NULL,
+                                fbRead ? fbRead->drawable : NULL);
 
       /* Release the old framebuffers from this context. */
       release_old_framebuffers(old_fb, old_fbRead, ctx);
@@ -614,7 +614,7 @@ stw_make_current_by_handles(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
 void
 stw_notify_current_locked( struct stw_framebuffer *fb )
 {
-   p_atomic_inc(&fb->stfb->stamp);
+   p_atomic_inc(&fb->drawable->stamp);
 }
 
 

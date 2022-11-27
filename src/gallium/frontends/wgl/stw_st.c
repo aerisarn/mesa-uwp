@@ -44,7 +44,7 @@
 #endif
 
 struct stw_st_framebuffer {
-   struct st_framebuffer_iface base;
+   struct pipe_frontend_drawable base;
 
    struct stw_framebuffer *fb;
    struct st_visual stvis;
@@ -148,11 +148,11 @@ stw_st_fill_private_loader_data(struct stw_st_framebuffer *stwfb, struct kopper_
  */
 static void
 stw_st_framebuffer_validate_locked(struct st_context *st,
-                                   struct st_framebuffer_iface *stfb,
+                                   struct pipe_frontend_drawable *drawable,
                                    unsigned width, unsigned height,
                                    unsigned mask)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    struct pipe_resource templ;
    unsigned i;
 
@@ -318,12 +318,12 @@ stw_st_framebuffer_validate_locked(struct st_context *st,
 
 static bool
 stw_st_framebuffer_validate(struct st_context *st,
-                            struct st_framebuffer_iface *stfb,
+                            struct pipe_frontend_drawable *drawable,
                             const enum st_attachment_type *statts,
                             unsigned count,
                             struct pipe_resource **out)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    unsigned statt_mask, i;
 
    statt_mask = 0x0;
@@ -394,10 +394,10 @@ notify_before_flush_cb(void* _args)
 
 void
 stw_st_flush(struct st_context *st,
-             struct st_framebuffer_iface *stfb,
+             struct pipe_frontend_drawable *drawable,
              unsigned flags)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    struct notify_before_flush_cb_args args;
    struct pipe_fence_handle **pfence = NULL;
    struct pipe_fence_handle *fence = NULL;
@@ -423,10 +423,10 @@ stw_st_flush(struct st_context *st,
 static bool
 stw_st_framebuffer_present_locked(HDC hdc,
                                   struct st_context *st,
-                                  struct st_framebuffer_iface *stfb,
+                                  struct pipe_frontend_drawable *drawable,
                                   enum st_attachment_type statt)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    struct pipe_resource *resource;
 
    assert(stw_own_mutex(&stwfb->fb->mutex));
@@ -446,10 +446,10 @@ stw_st_framebuffer_present_locked(HDC hdc,
 
 static bool
 stw_st_framebuffer_flush_front(struct st_context *st,
-                               struct st_framebuffer_iface *stfb,
+                               struct pipe_frontend_drawable *drawable,
                                enum st_attachment_type statt)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    struct pipe_context *pipe = st->pipe;
    bool ret;
    HDC hDC;
@@ -502,7 +502,7 @@ stw_st_framebuffer_flush_front(struct st_context *st,
 /**
  * Create a framebuffer interface.
  */
-struct st_framebuffer_iface *
+struct pipe_frontend_drawable *
 stw_st_create_framebuffer(struct stw_framebuffer *fb, struct pipe_frontend_screen *fscreen)
 {
    struct stw_st_framebuffer *stwfb;
@@ -528,9 +528,9 @@ stw_st_create_framebuffer(struct stw_framebuffer *fb, struct pipe_frontend_scree
  * Destroy a framebuffer interface.
  */
 void
-stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb)
+stw_st_destroy_framebuffer_locked(struct pipe_frontend_drawable *drawable)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    int i;
 
    for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
@@ -552,9 +552,9 @@ stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb)
  */
 bool
 stw_st_swap_framebuffer_locked(HDC hdc, struct st_context *st,
-                               struct st_framebuffer_iface *stfb)
+                               struct pipe_frontend_drawable *drawable)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    unsigned front = ST_ATTACHMENT_FRONT_LEFT, back = ST_ATTACHMENT_BACK_LEFT;
    struct pipe_resource *ptex;
    unsigned mask;
@@ -595,9 +595,9 @@ stw_st_swap_framebuffer_locked(HDC hdc, struct st_context *st,
  * Return the pipe_resource that correspond to given buffer.
  */
 struct pipe_resource *
-stw_get_framebuffer_resource(struct st_framebuffer_iface *stfb,
+stw_get_framebuffer_resource(struct pipe_frontend_drawable *drawable,
                              enum st_attachment_type att)
 {
-   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(stfb);
+   struct stw_st_framebuffer *stwfb = stw_st_framebuffer(drawable);
    return stwfb->textures[att];
 }

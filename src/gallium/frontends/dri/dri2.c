@@ -455,7 +455,7 @@ handle_in_fence(struct dri_context *ctx, __DRIimage *img)
 }
 
 /*
- * Backend functions for st_framebuffer interface.
+ * Backend functions for pipe_frontend_drawable.
  */
 
 static void

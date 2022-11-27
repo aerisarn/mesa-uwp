@@ -501,14 +501,14 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
 
 bool
 st_api_make_current(struct st_context *st,
-                    struct st_framebuffer_iface *stdrawi,
-                    struct st_framebuffer_iface *streadi);
+                    struct pipe_frontend_drawable *stdrawi,
+                    struct pipe_frontend_drawable *streadi);
 
 struct st_context *
 st_api_get_current(void);
 
 void
-st_api_destroy_drawable(struct st_framebuffer_iface *stfbi);
+st_api_destroy_drawable(struct pipe_frontend_drawable *drawable);
 
 void
 st_screen_destroy(struct pipe_frontend_screen *fscreen);
