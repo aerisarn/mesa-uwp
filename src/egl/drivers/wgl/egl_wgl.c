@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "state_tracker/st_context.h"
+
 #include <egldriver.h>
 #include <egllog.h>
 #include <eglcurrent.h>
@@ -978,7 +980,7 @@ wgl_create_sync_khr(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_lis
    struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
    struct wgl_egl_sync *wgl_sync;
 
-   struct st_context_iface *st_ctx = wgl_ctx ? wgl_ctx->ctx->st : NULL;
+   struct st_context *st = wgl_ctx ? wgl_ctx->ctx->st : NULL;
 
    wgl_sync = calloc(1, sizeof(struct wgl_egl_sync));
    if (!wgl_sync) {
@@ -993,7 +995,7 @@ wgl_create_sync_khr(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_lis
 
    switch (type) {
    case EGL_SYNC_FENCE_KHR:
-      st_ctx->flush(st_ctx, 0, &wgl_sync->fence, NULL, NULL);
+      st->flush(st, 0, &wgl_sync->fence, NULL, NULL);
       if (!wgl_sync->fence) {
          _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
          free(wgl_sync);

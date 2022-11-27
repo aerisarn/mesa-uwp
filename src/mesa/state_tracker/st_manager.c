@@ -233,7 +233,7 @@ st_framebuffer_validate(struct gl_framebuffer *stfb,
 
    /* validate the fb */
    do {
-      if (!stfb->iface->validate(&st->iface, stfb->iface, stfb->statts,
+      if (!stfb->iface->validate(st, stfb->iface, stfb->statts,
                                  stfb->num_statts, textures))
          return;
 
@@ -762,8 +762,7 @@ st_api_destroy_drawable(struct st_framebuffer_iface *stfbi)
 static void
 st_framebuffers_purge(struct st_context *st)
 {
-   struct st_context_iface *st_iface = &st->iface;
-   struct pipe_frontend_screen *fscreen = st_iface->frontend_screen;
+   struct pipe_frontend_screen *fscreen = st->frontend_screen;
    struct gl_framebuffer *stfb, *next;
 
    assert(fscreen);
@@ -788,12 +787,11 @@ st_framebuffers_purge(struct st_context *st)
 
 
 static void
-st_context_flush(struct st_context_iface *stctxi, unsigned flags,
+st_context_flush(struct st_context *st, unsigned flags,
                  struct pipe_fence_handle **fence,
                  void (*before_flush_cb) (void*),
                  void* args)
 {
-   struct st_context *st = (struct st_context *) stctxi;
    unsigned pipe_flags = 0;
 
    if (flags & ST_FLUSH_END_OF_FRAME)
@@ -826,12 +824,11 @@ st_context_flush(struct st_context_iface *stctxi, unsigned flags,
  * in EGL and WGL.
  */
 static bool
-st_context_teximage(struct st_context_iface *stctxi,
+st_context_teximage(struct st_context *st,
                     enum st_texture_type tex_type,
                     int level, enum pipe_format pipe_format,
                     struct pipe_resource *tex, bool mipmap)
 {
-   struct st_context *st = (struct st_context *) stctxi;
    struct gl_context *ctx = st->ctx;
    struct gl_texture_object *texObj;
    struct gl_texture_image *texImage;
@@ -916,59 +913,46 @@ st_context_teximage(struct st_context_iface *stctxi,
 
 
 static void
-st_context_copy(struct st_context_iface *stctxi,
-                struct st_context_iface *stsrci, unsigned mask)
+st_context_copy(struct st_context *st,
+                struct st_context *src, unsigned mask)
 {
-   struct st_context *st = (struct st_context *) stctxi;
-   struct st_context *src = (struct st_context *) stsrci;
-
    _mesa_copy_context(src->ctx, st->ctx, mask);
 }
 
 
 static bool
-st_context_share(struct st_context_iface *stctxi,
-                 struct st_context_iface *stsrci)
+st_context_share(struct st_context *st,
+                 struct st_context *src)
 {
-   struct st_context *st = (struct st_context *) stctxi;
-   struct st_context *src = (struct st_context *) stsrci;
-
    return _mesa_share_state(st->ctx, src->ctx);
 }
 
 
 static void
-st_context_destroy(struct st_context_iface *stctxi)
+st_context_destroy(struct st_context *st)
 {
-   struct st_context *st = (struct st_context *) stctxi;
    st_destroy_context(st);
 }
 
 
 static void
-st_start_thread(struct st_context_iface *stctxi)
+st_start_thread(struct st_context *st)
 {
-   struct st_context *st = (struct st_context *) stctxi;
-
    _mesa_glthread_init(st->ctx);
 }
 
 
 static void
-st_thread_finish(struct st_context_iface *stctxi)
+st_thread_finish(struct st_context *st)
 {
-   struct st_context *st = (struct st_context *) stctxi;
-
    _mesa_glthread_finish(st->ctx);
 }
 
 
 static void
-st_context_invalidate_state(struct st_context_iface *stctxi,
+st_context_invalidate_state(struct st_context *st,
                             unsigned flags)
 {
-   struct st_context *st = (struct st_context *) stctxi;
-
    if (flags & ST_INVALIDATE_FS_SAMPLER_VIEWS)
       st->dirty |= ST_NEW_FS_SAMPLER_VIEWS;
    if (flags & ST_INVALIDATE_FS_CONSTBUF0)
@@ -998,13 +982,12 @@ st_manager_destroy(struct pipe_frontend_screen *fscreen)
 }
 
 
-struct st_context_iface *
+struct st_context *
 st_api_create_context(struct pipe_frontend_screen *fscreen,
                       const struct st_context_attribs *attribs,
                       enum st_context_error *error,
-                      struct st_context_iface *shared_stctxi)
+                      struct st_context *shared_ctx)
 {
-   struct st_context *shared_ctx = (struct st_context *) shared_stctxi;
    struct st_context *st;
    struct pipe_context *pipe;
    struct gl_config mode, *mode_ptr = &mode;
@@ -1128,34 +1111,33 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    st->ctx->invalidate_on_gl_viewport =
       fscreen->get_param(fscreen, ST_MANAGER_BROKEN_INVALIDATE);
 
-   st->iface.destroy = st_context_destroy;
-   st->iface.flush = st_context_flush;
-   st->iface.teximage = st_context_teximage;
-   st->iface.copy = st_context_copy;
-   st->iface.share = st_context_share;
-   st->iface.start_thread = st_start_thread;
-   st->iface.thread_finish = st_thread_finish;
-   st->iface.invalidate_state = st_context_invalidate_state;
-   st->iface.cso_context = st->cso_context;
-   st->iface.pipe = st->pipe;
-   st->iface.frontend_screen = fscreen;
+   st->destroy = st_context_destroy;
+   st->flush = st_context_flush;
+   st->teximage = st_context_teximage;
+   st->copy = st_context_copy;
+   st->share = st_context_share;
+   st->start_thread = st_start_thread;
+   st->thread_finish = st_thread_finish;
+   st->invalidate_state = st_context_invalidate_state;
+   st->cso_context = st->cso_context;
+   st->pipe = st->pipe;
+   st->frontend_screen = fscreen;
 
    if (st->ctx->IntelBlackholeRender &&
        st->screen->get_param(st->screen, PIPE_CAP_FRONTEND_NOOP))
       st->pipe->set_frontend_noop(st->pipe, st->ctx->IntelBlackholeRender);
 
    *error = ST_CONTEXT_SUCCESS;
-   return &st->iface;
+   return st;
 }
 
 
-struct st_context_iface *
+struct st_context *
 st_api_get_current(void)
 {
    GET_CURRENT_CONTEXT(ctx);
-   struct st_context *st = ctx ? ctx->st : NULL;
 
-   return st ? &st->iface : NULL;
+   return ctx ? ctx->st : NULL;
 }
 
 
@@ -1204,11 +1186,10 @@ st_framebuffer_reuse_or_create(struct st_context *st,
 
 
 bool
-st_api_make_current(struct st_context_iface *stctxi,
+st_api_make_current(struct st_context *st,
                     struct st_framebuffer_iface *stdrawi,
                     struct st_framebuffer_iface *streadi)
 {
-   struct st_context *st = (struct st_context *) stctxi;
    struct gl_framebuffer *stdraw, *stread;
    bool ret;
 
@@ -1309,7 +1290,7 @@ st_manager_flush_frontbuffer(struct st_context *st)
     * frontbuffer flush?
     */
    if (rb && rb->defined &&
-       stfb->iface->flush_front(&st->iface, stfb->iface, statt)) {
+       stfb->iface->flush_front(st, stfb->iface, statt)) {
       rb->defined = GL_FALSE;
 
       /* Trigger an update of rb->defined on next draw */
@@ -1353,7 +1334,7 @@ st_manager_flush_swapbuffers(void)
    if (!stfb || !stfb->iface->flush_swapbuffers)
       return;
 
-   stfb->iface->flush_swapbuffers(&st->iface, stfb->iface);
+   stfb->iface->flush_swapbuffers(st, stfb->iface);
 }
 
 

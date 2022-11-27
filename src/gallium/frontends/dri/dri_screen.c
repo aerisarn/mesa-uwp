@@ -43,6 +43,8 @@
 #include "util/u_driconf.h"
 #include "util/format/u_format_s3tc.h"
 
+#include "state_tracker/st_context.h"
+
 #define MSAA_VISUAL_MAX_SAMPLES 32
 
 #undef false
@@ -808,7 +810,7 @@ dri_postprocessing_init(struct dri_screen *screen)
 }
 
 static void
-dri_set_background_context(struct st_context_iface *st,
+dri_set_background_context(struct st_context *st,
                            struct util_queue_monitoring *queue_info)
 {
    struct dri_context *ctx = (struct dri_context *)st->frontend_context;

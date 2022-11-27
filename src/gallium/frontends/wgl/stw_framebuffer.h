@@ -171,7 +171,7 @@ stw_framebuffer_reference_locked(struct stw_framebuffer *fb);
 
 void
 stw_framebuffer_release_locked(struct stw_framebuffer *fb,
-                               struct st_context_iface *stctx);
+                               struct st_context *st);
 
 /**
  * Search a framebuffer with a matching HWND.

@@ -775,10 +775,10 @@ st_set_background_context(struct gl_context *ctx,
                           struct util_queue_monitoring *queue_info)
 {
    struct st_context *st = ctx->st;
-   struct pipe_frontend_screen *fscreen = st->iface.frontend_screen;
+   struct pipe_frontend_screen *fscreen = st->frontend_screen;
 
    assert(fscreen->set_background_context);
-   fscreen->set_background_context(&st->iface, queue_info);
+   fscreen->set_background_context(st, queue_info);
 }
 
 static void

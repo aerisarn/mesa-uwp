@@ -91,7 +91,7 @@ static void *
 dri2_create_fence(__DRIcontext *_ctx)
 {
    struct dri_context *ctx = dri_context(_ctx);
-   struct st_context_iface *stapi = ctx->st;
+   struct st_context *st = ctx->st;
    struct dri2_fence *fence = CALLOC_STRUCT(dri2_fence);
 
    if (!fence)
@@ -100,10 +100,10 @@ dri2_create_fence(__DRIcontext *_ctx)
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (stapi->thread_finish)
-      stapi->thread_finish(stapi);
+   if (st->thread_finish)
+      st->thread_finish(st);
 
-   stapi->flush(stapi, 0, &fence->pipe_fence, NULL, NULL);
+   st->flush(st, 0, &fence->pipe_fence, NULL, NULL);
 
    if (!fence->pipe_fence) {
       FREE(fence);
@@ -118,19 +118,19 @@ static void *
 dri2_create_fence_fd(__DRIcontext *_ctx, int fd)
 {
    struct dri_context *dri_ctx = dri_context(_ctx);
-   struct st_context_iface *stapi = dri_ctx->st;
-   struct pipe_context *ctx = stapi->pipe;
+   struct st_context *st = dri_ctx->st;
+   struct pipe_context *ctx = st->pipe;
    struct dri2_fence *fence = CALLOC_STRUCT(dri2_fence);
 
    /* Wait for glthread to finish because we can't use pipe_context from
     * multiple threads.
     */
-   if (stapi->thread_finish)
-      stapi->thread_finish(stapi);
+   if (st->thread_finish)
+      st->thread_finish(st);
 
    if (fd == -1) {
       /* exporting driver created fence, flush: */
-      stapi->flush(stapi, ST_FLUSH_FENCE_FD, &fence->pipe_fence, NULL, NULL);
+      st->flush(st, ST_FLUSH_FENCE_FD, &fence->pipe_fence, NULL, NULL);
    } else {
       /* importing a foreign fence fd: */
       ctx->create_fence_fd(ctx, &fence->pipe_fence, fd, PIPE_FD_TYPE_NATIVE_SYNC);
@@ -225,7 +225,7 @@ dri2_client_wait_sync(__DRIcontext *_ctx, void *_fence, unsigned flags,
 static void
 dri2_server_wait_sync(__DRIcontext *_ctx, void *_fence, unsigned flags)
 {
-   struct st_context_iface *st = dri_context(_ctx)->st;
+   struct st_context *st = dri_context(_ctx)->st;
    struct pipe_context *ctx = st->pipe;
    struct dri2_fence *fence = (struct dri2_fence*)_fence;
 
@@ -295,10 +295,9 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
                                      unsigned *error)
 {
    struct dri_context *dri_ctx = dri_context(context);
-   struct st_context_iface *st = dri_ctx->st;
-   struct st_context *st_ctx = (struct st_context *)st;
-   struct gl_context *ctx = st_ctx->ctx;
-   struct pipe_context *p_ctx = st_ctx->pipe;
+   struct st_context *st = dri_ctx->st;
+   struct gl_context *ctx = st->ctx;
+   struct pipe_context *p_ctx = st->pipe;
    struct gl_renderbuffer *rb;
    struct pipe_resource *tex;
    __DRIimage *img;
@@ -397,10 +396,9 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
 {
    __DRIimage *img;
    struct dri_context *dri_ctx = dri_context(context);
-   struct st_context_iface *st = dri_ctx->st;
-   struct st_context *st_ctx = (struct st_context *)st;
-   struct gl_context *ctx = st_ctx->ctx;
-   struct pipe_context *p_ctx = st_ctx->pipe;
+   struct st_context *st = dri_ctx->st;
+   struct gl_context *ctx = st->ctx;
+   struct pipe_context *p_ctx = st->pipe;
    struct gl_texture_object *obj;
    struct pipe_resource *tex;
    GLuint face = 0;

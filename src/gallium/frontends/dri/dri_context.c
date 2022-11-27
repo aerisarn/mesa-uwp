@@ -50,7 +50,7 @@ dri_create_context(struct dri_screen *screen,
                    void *loaderPrivate)
 {
    struct dri_context *ctx = NULL;
-   struct st_context_iface *st_share = NULL;
+   struct st_context *st_share = NULL;
    struct st_context_attribs attribs;
    enum st_context_error ctx_err = 0;
    unsigned allowed_flags = __DRI_CTX_FLAG_DEBUG |
@@ -265,7 +265,7 @@ GLboolean
 dri_unbind_context(struct dri_context *ctx)
 {
    /* dri_util.c ensures cPriv is not null */
-   struct st_context_iface *st = ctx->st;
+   struct st_context *st = ctx->st;
 
    if (st == st_api_get_current()) {
       if (st->thread_finish)
@@ -344,7 +344,7 @@ dri_make_current(struct dri_context *ctx,
 struct dri_context *
 dri_get_current(void)
 {
-   struct st_context_iface *st = st_api_get_current();
+   struct st_context *st = st_api_get_current();
 
    return (struct dri_context *) st ? st->frontend_context : NULL;
 }

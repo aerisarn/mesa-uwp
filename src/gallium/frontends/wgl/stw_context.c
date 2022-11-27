@@ -25,6 +25,8 @@
  *
  **************************************************************************/
 
+#include "state_tracker/st_context.h"
+
 #include <windows.h>
 
 #define WGL_WGLEXT_PROTOTYPES
@@ -48,11 +50,12 @@
 #include "stw_context.h"
 #include "stw_tls.h"
 
+#include "main/context.h"
 
 struct stw_context *
 stw_current_context(void)
 {
-   struct st_context_iface *st;
+   struct st_context *st;
 
    st = (stw_dev) ? st_api_get_current() : NULL;
 

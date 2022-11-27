@@ -25,6 +25,8 @@
  *
  **************************************************************************/
 
+#include "state_tracker/st_context.h"
+
 #include <windows.h>
 
 #include "pipe/p_screen.h"
@@ -83,7 +85,7 @@ stw_framebuffer_from_hwnd_locked(HWND hwnd)
  */
 void
 stw_framebuffer_release_locked(struct stw_framebuffer *fb,
-                               struct st_context_iface *stctx)
+                               struct st_context *st)
 {
    struct stw_framebuffer **link;
 
@@ -113,7 +115,7 @@ stw_framebuffer_release_locked(struct stw_framebuffer *fb,
                                                 fb->shared_surface);
 
    if (fb->winsys_framebuffer)
-      fb->winsys_framebuffer->destroy(fb->winsys_framebuffer, stctx ? stctx->pipe : NULL);
+      fb->winsys_framebuffer->destroy(fb->winsys_framebuffer, st ? st->pipe : NULL);
 
    stw_st_destroy_framebuffer_locked(fb->stfb);
 
@@ -251,9 +253,9 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
          fb = stw_framebuffer_from_hwnd_locked( pParams->hwnd );
          if (fb) {
             struct stw_context *current_context = stw_current_context();
-            struct st_context_iface *ctx_iface = current_context &&
+            struct st_context *st = current_context &&
                current_context->current_framebuffer == fb ? current_context->st : NULL;
-            stw_framebuffer_release_locked(fb, ctx_iface);
+            stw_framebuffer_release_locked(fb, st);
          }
          stw_unlock_framebuffers(stw_dev);
       }

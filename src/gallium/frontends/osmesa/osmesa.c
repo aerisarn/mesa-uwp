@@ -51,6 +51,9 @@
 
 #include <stdio.h>
 #include <c11/threads.h>
+
+#include "state_tracker/st_context.h"
+
 #include "GL/osmesa.h"
 
 #include "glapi/glapi.h"  /* for OSMesaGetProcAddress below */
@@ -94,7 +97,7 @@ struct osmesa_buffer
 
 struct osmesa_context
 {
-   struct st_context_iface *stctx;
+   struct st_context *st;
 
    boolean ever_used;     /*< Has this context ever been current? */
 
@@ -176,7 +179,7 @@ static void
 osmesa_read_buffer(OSMesaContext osmesa, struct pipe_resource *res, void *dst,
                    int dst_stride, bool y_up)
 {
-   struct pipe_context *pipe = osmesa->stctx->pipe;
+   struct pipe_context *pipe = osmesa->st->pipe;
 
    struct pipe_box box;
    u_box_2d(0, 0, res->width0, res->height0, &box);
@@ -338,7 +341,7 @@ stfbi_to_osbuffer(struct st_framebuffer_iface *stfbi)
  * of the driver's color buffer into the user-specified buffer.
  */
 static bool
-osmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
+osmesa_st_framebuffer_flush_front(struct st_context *st,
                                   struct st_framebuffer_iface *stfbi,
                                   enum st_attachment_type statt)
 {
@@ -397,7 +400,7 @@ osmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
  * its resources).
  */
 static bool
-osmesa_st_framebuffer_validate(struct st_context_iface *stctx,
+osmesa_st_framebuffer_validate(struct st_context *st,
                                struct st_framebuffer_iface *stfbi,
                                const enum st_attachment_type *statts,
                                unsigned count,
@@ -566,7 +569,7 @@ GLAPI OSMesaContext GLAPIENTRY
 OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
 {
    OSMesaContext osmesa;
-   struct st_context_iface *st_shared;
+   struct st_context *st_shared;
    enum st_context_error st_error = 0;
    struct st_context_attribs attribs;
    GLenum format = GL_RGBA;
@@ -575,7 +578,7 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
    int i;
 
    if (sharelist) {
-      st_shared = sharelist->stctx;
+      st_shared = sharelist->st;
    }
    else {
       st_shared = NULL;
@@ -679,14 +682,14 @@ OSMesaCreateContextAttribs(const int *attribList, OSMesaContext sharelist)
                          osmesa->depth_stencil_format,
                          osmesa->accum_format);
 
-   osmesa->stctx = st_api_create_context(get_st_manager(),
+   osmesa->st = st_api_create_context(get_st_manager(),
                                          &attribs, &st_error, st_shared);
-   if (!osmesa->stctx) {
+   if (!osmesa->st) {
       FREE(osmesa);
       return NULL;
    }
 
-   osmesa->stctx->frontend_context = osmesa;
+   osmesa->st->frontend_context = osmesa;
 
    osmesa->format = format;
    osmesa->user_row_length = 0;
@@ -707,7 +710,7 @@ OSMesaDestroyContext(OSMesaContext osmesa)
 {
    if (osmesa) {
       pp_free(osmesa->pp);
-      osmesa->stctx->destroy(osmesa->stctx);
+      osmesa->st->destroy(osmesa->st);
       free(osmesa->zs);
       FREE(osmesa);
    }
@@ -782,7 +785,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 
    osmesa->type = type;
 
-   st_api_make_current(osmesa->stctx, osbuffer->stfb, osbuffer->stfb);
+   st_api_make_current(osmesa->st, osbuffer->stfb, osbuffer->stfb);
 
    /* XXX: We should probably load the current color value into the buffer here
     * to match classic swrast behavior (context's fb starts with the contents of
@@ -802,11 +805,11 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
       }
 
       if (any_pp_enabled) {
-         osmesa->pp = pp_init(osmesa->stctx->pipe,
+         osmesa->pp = pp_init(osmesa->st->pipe,
                               osmesa->pp_enabled,
-                              osmesa->stctx->cso_context,
-                              osmesa->stctx,
-                              (void*)osmesa->stctx->invalidate_state);
+                              osmesa->st->cso_context,
+                              osmesa->st,
+                              (void*)osmesa->st->invalidate_state);
 
          pp_init_fbos(osmesa->pp, width, height);
       }
@@ -822,7 +825,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 GLAPI OSMesaContext GLAPIENTRY
 OSMesaGetCurrentContext(void)
 {
-   struct st_context_iface *st = st_api_get_current();
+   struct st_context *st = st_api_get_current();
    return st ? (OSMesaContext) st->frontend_context : NULL;
 }
 

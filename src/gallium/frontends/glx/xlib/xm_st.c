@@ -32,6 +32,8 @@
 #include "util/u_atomic.h"
 #include "util/u_memory.h"
 
+#include "state_tracker/st_context.h"
+
 struct xmesa_st_framebuffer {
    XMesaDisplay display;
    XMesaBuffer buffer;
@@ -59,14 +61,14 @@ xmesa_st_framebuffer(struct st_framebuffer_iface *stfbi)
  */
 static bool
 xmesa_st_framebuffer_display(struct st_framebuffer_iface *stfbi,
-                             struct st_context_iface *stctx,
+                             struct st_context *st,
                              enum st_attachment_type statt,
                              struct pipe_box *box)
 {
    struct xmesa_st_framebuffer *xstfb = xmesa_st_framebuffer(stfbi);
    struct pipe_resource *ptex = xstfb->textures[statt];
    struct pipe_resource *pres;
-   struct pipe_context *pctx = stctx ? stctx->pipe : NULL;
+   struct pipe_context *pctx = st ? st->pipe : NULL;
 
    if (!ptex)
       return true;
@@ -200,7 +202,7 @@ xmesa_st_framebuffer_validate_textures(struct st_framebuffer_iface *stfbi,
  * \param out  returns resources for each of the attachments
  */
 static bool
-xmesa_st_framebuffer_validate(struct st_context_iface *stctx,
+xmesa_st_framebuffer_validate(struct st_context *st,
                               struct st_framebuffer_iface *stfbi,
                               const enum st_attachment_type *statts,
                               unsigned count,
@@ -261,7 +263,7 @@ xmesa_st_framebuffer_validate(struct st_context_iface *stctx,
  * Called via st_framebuffer_iface::flush_front()
  */
 static bool
-xmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
+xmesa_st_framebuffer_flush_front(struct st_context *st,
                                  struct st_framebuffer_iface *stfbi,
                                  enum st_attachment_type statt)
 {
@@ -271,7 +273,7 @@ xmesa_st_framebuffer_flush_front(struct st_context_iface *stctx,
    if (statt != ST_ATTACHMENT_FRONT_LEFT)
       return false;
 
-   ret = xmesa_st_framebuffer_display(stfbi, stctx, statt, NULL);
+   ret = xmesa_st_framebuffer_display(stfbi, st, statt, NULL);
 
    if (ret && xmesa_strict_invalidate())
       xmesa_check_buffer_size(xstfb->buffer);

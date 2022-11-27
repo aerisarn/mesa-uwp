@@ -29,6 +29,8 @@
 
 #include "util/format/u_formats.h"
 
+struct st_context;
+
 /**
  * \file API for communication between gallium frontends and supporting
  * frontends such as DRI.
@@ -88,7 +90,7 @@ enum st_context_error {
 };
 
 /**
- * Used in st_context_iface->teximage.
+ * Used in st_context_teximage.
  */
 enum st_texture_type {
    ST_TEXTURE_1D,
@@ -271,7 +273,6 @@ struct st_context_attribs
    struct st_config_options options;
 };
 
-struct st_context_iface;
 struct pipe_frontend_screen;
 
 /**
@@ -328,7 +329,7 @@ struct st_framebuffer_iface
     *
     * @att is one of the front buffer attachments.
     */
-   bool (*flush_front)(struct st_context_iface *stctx,
+   bool (*flush_front)(struct st_context *st,
                        struct st_framebuffer_iface *stfbi,
                        enum st_attachment_type statt);
 
@@ -349,96 +350,13 @@ struct st_framebuffer_iface
     * the last call might be destroyed.  This behavior might change in the
     * future.
     */
-   bool (*validate)(struct st_context_iface *stctx,
+   bool (*validate)(struct st_context *st,
                     struct st_framebuffer_iface *stfbi,
                     const enum st_attachment_type *statts,
                     unsigned count,
                     struct pipe_resource **out);
-   bool (*flush_swapbuffers) (struct st_context_iface *stctx,
-                              struct st_framebuffer_iface *stfbi);
-};
-
-/**
- * Represent a rendering context.
- *
- * This entity is created from st_api and used by the frontend manager.
- */
-struct st_context_iface
-{
-   /**
-    * The frontend context. (such as dri_context)
-    */
-   void *frontend_context;
-
-   /**
-    * The frontend screen. (such as dri_screen)
-    */
-   struct pipe_frontend_screen *frontend_screen;
-
-   /**
-    * The CSO context associated with this context in case we need to draw
-    * something before swap buffers.
-    */
-   struct cso_context *cso_context;
-
-   /**
-    * The gallium context.
-    */
-   struct pipe_context *pipe;
-
-   /**
-    * Destroy the context.
-    */
-   void (*destroy)(struct st_context_iface *stctxi);
-
-   /**
-    * Flush all drawing from context to the pipe also flushes the pipe.
-    */
-   void (*flush)(struct st_context_iface *stctxi, unsigned flags,
-                 struct pipe_fence_handle **fence,
-                 void (*notify_before_flush_cb) (void*),
-                 void* notify_before_flush_cb_args);
-
-   /**
-    * Replace the texture image of a texture object at the specified level.
-    *
-    * This function is optional.
-    */
-   bool (*teximage)(struct st_context_iface *stctxi,
-                    enum st_texture_type target,
-                    int level, enum pipe_format internal_format,
-                    struct pipe_resource *tex, bool mipmap);
-
-   /**
-    * Used to implement glXCopyContext.
-    */
-   void (*copy)(struct st_context_iface *stctxi,
-                struct st_context_iface *stsrci, unsigned mask);
-
-   /**
-    * Used to implement wglShareLists.
-    */
-   bool (*share)(struct st_context_iface *stctxi,
-                 struct st_context_iface *stsrci);
-
-   /**
-    * Start the thread if the API has a worker thread.
-    * Called after the context has been created and fully initialized on both
-    * sides (e.g. st/mesa and st/dri).
-    */
-   void (*start_thread)(struct st_context_iface *stctxi);
-
-   /**
-    * If the API is multithreaded, wait for all queued commands to complete.
-    * Called from the main thread.
-    */
-   void (*thread_finish)(struct st_context_iface *stctxi);
-
-   /**
-    * Invalidate states to notify the frontend that states have been changed
-    * behind its back.
-    */
-   void (*invalidate_state)(struct st_context_iface *stctxi, unsigned flags);
+   bool (*flush_swapbuffers)(struct st_context *st,
+                             struct st_framebuffer_iface *stfbi);
 };
 
 
@@ -484,7 +402,7 @@ struct pipe_frontend_screen
     * Call the loader function setBackgroundContext. Called from the worker
     * thread.
     */
-   void (*set_background_context)(struct st_context_iface *stctxi,
+   void (*set_background_context)(struct st_context *st,
                                   struct util_queue_monitoring *queue_info);
 
    /**
@@ -519,11 +437,11 @@ st_api_query_versions(struct pipe_frontend_screen *fscreen,
 /**
  * Create a rendering context.
  */
-struct st_context_iface *
+struct st_context *
 st_api_create_context(struct pipe_frontend_screen *fscreen,
                       const struct st_context_attribs *attribs,
                       enum st_context_error *error,
-                      struct st_context_iface *stsharei);
+                      struct st_context *shared_ctx);
 
 /**
  * Bind the context to the calling thread with draw and read as drawables.
@@ -532,14 +450,14 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
  * context does.
  */
 bool
-st_api_make_current(struct st_context_iface *stctxi,
+st_api_make_current(struct st_context *st,
                     struct st_framebuffer_iface *stdrawi,
                     struct st_framebuffer_iface *streadi);
 
 /**
  * Get the currently bound context in the calling thread.
  */
-struct st_context_iface *
+struct st_context *
 st_api_get_current(void);
 
 /**

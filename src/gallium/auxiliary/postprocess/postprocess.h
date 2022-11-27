@@ -35,7 +35,6 @@ extern "C" {
 #endif
 
 struct cso_context;
-struct st_context_iface;
 
 struct pp_queue_t;              /* Forward definition */
 struct pp_program;

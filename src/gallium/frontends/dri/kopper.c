@@ -705,8 +705,9 @@ kopper_flush_frontbuffer(struct dri_context *ctx,
    if (ptex) {
       ctx->st->pipe->flush_resource(ctx->st->pipe, drawable->textures[ST_ATTACHMENT_FRONT_LEFT]);
       struct pipe_screen *screen = drawable->screen->base.screen;
-      struct st_context_iface *st;
+      struct st_context *st;
       struct pipe_fence_handle *new_fence = NULL;
+
       st = ctx->st;
       if (st->thread_finish)
          st->thread_finish(st);

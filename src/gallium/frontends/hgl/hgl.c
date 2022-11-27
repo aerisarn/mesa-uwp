@@ -32,11 +32,11 @@
 
 // Perform a safe void to hgl_context cast
 static inline struct hgl_context*
-hgl_st_context(struct st_context_iface *stctxi)
+hgl_st_context(struct st_context *st)
 {
 	struct hgl_context* context;
-	assert(stctxi);
-	context = (struct hgl_context*)stctxi->frontend_context;
+	assert(st);
+	context = (struct hgl_context*)st->frontend_context;
 	assert(context);
 	return context;
 }
@@ -56,7 +56,7 @@ hgl_st_framebuffer(struct st_framebuffer_iface *stfbi)
 
 
 static bool
-hgl_st_framebuffer_flush_front(struct st_context_iface* stctxi,
+hgl_st_framebuffer_flush_front(struct st_context *st,
 	struct st_framebuffer_iface* stfbi, enum st_attachment_type statt)
 {
 	CALLED();
@@ -153,7 +153,7 @@ hgl_st_framebuffer_validate_textures(struct st_framebuffer_iface *stfbi,
  * its resources).
  */
 static bool
-hgl_st_framebuffer_validate(struct st_context_iface *stctxi,
+hgl_st_framebuffer_validate(struct st_context *st,
 	struct st_framebuffer_iface *stfbi, const enum st_attachment_type *statts,
 	unsigned count, struct pipe_resource **out)
 {
@@ -165,7 +165,7 @@ hgl_st_framebuffer_validate(struct st_context_iface *stctxi,
 
 	CALLED();
 
-	context = hgl_st_context(stctxi);
+	context = hgl_st_context(st);
 	buffer = hgl_st_framebuffer(stfbi);
 
 	// Build mask of current attachments

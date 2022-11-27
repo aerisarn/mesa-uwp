@@ -169,7 +169,7 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	attribs.minor = 0;
 	//attribs.flags |= ST_CONTEXT_FLAG_DEBUG;
 
-	struct st_context_iface* shared = NULL;
+	struct st_context *shared = NULL;
 
 	if (fOptions & BGL_SHARE_CONTEXT) {
 		shared = st_api_get_current();
@@ -221,8 +221,8 @@ GalliumContext::CreateContext(HGLWinsysContext *wsContext)
 	// Init Gallium3D Post Processing
 	// TODO: no pp filters are enabled yet through postProcessEnable
 	context->postProcess = pp_init(stContext->pipe, context->postProcessEnable,
-		stContext->cso_context, &stContext->iface,
-                (void*)stContext->iface.invalidate_state);
+		stContext->cso_context, stContext,
+                (void*)stContext->invalidate_state);
 
 	context_id contextNext = -1;
 	Lock();

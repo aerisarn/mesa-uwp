@@ -32,6 +32,7 @@
 
 #include "frontend/api.h"
 
+struct st_context;
 struct stw_framebuffer;
 
 bool
@@ -44,11 +45,11 @@ void
 stw_st_destroy_framebuffer_locked(struct st_framebuffer_iface *stfb);
 
 void
-stw_st_flush(struct st_context_iface *st, struct st_framebuffer_iface *stfb,
+stw_st_flush(struct st_context *st, struct st_framebuffer_iface *stfb,
              unsigned flags);
 
 bool
-stw_st_swap_framebuffer_locked(HDC hdc, struct st_context_iface *stctx,
+stw_st_swap_framebuffer_locked(HDC hdc, struct st_context *st,
                                struct st_framebuffer_iface *stfb);
 
 struct pipe_resource *

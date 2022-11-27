@@ -59,7 +59,7 @@ struct hgl_display
 struct hgl_context
 {
 	struct hgl_display* display;
-	struct st_context_iface* st;
+	struct st_context* st;
 	struct st_visual* stVisual;
 
 	// Post processing

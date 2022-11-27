@@ -123,12 +123,13 @@ struct st_zombie_shader_node
 
 struct st_context
 {
-   struct st_context_iface iface;
-
    struct gl_context *ctx;
    struct pipe_screen *screen;
    struct pipe_context *pipe;
    struct cso_context *cso_context;
+
+   struct pipe_frontend_screen *frontend_screen; /* e.g. dri_screen */
+   void *frontend_context; /* e.g. dri_context */
 
    struct draw_context *draw;  /**< For selection/feedback/rastpos only */
    struct draw_stage *feedback_stage;  /**< For GL_FEEDBACK rendermode */
@@ -392,6 +393,62 @@ struct st_context
    } zombie_shaders;
 
    struct hash_table *hw_select_shaders;
+
+   /* TODO: Burn these callbacks to the ground: */
+
+   /**
+    * Destroy the context.
+    */
+   void (*destroy)(struct st_context *st);
+
+   /**
+    * Flush all drawing from context to the pipe also flushes the pipe.
+    */
+   void (*flush)(struct st_context *st, unsigned flags,
+                 struct pipe_fence_handle **fence,
+                 void (*notify_before_flush_cb) (void*),
+                 void* notify_before_flush_cb_args);
+
+   /**
+    * Replace the texture image of a texture object at the specified level.
+    *
+    * This function is optional.
+    */
+   bool (*teximage)(struct st_context *st,
+                    enum st_texture_type target,
+                    int level, enum pipe_format internal_format,
+                    struct pipe_resource *tex, bool mipmap);
+
+   /**
+    * Used to implement glXCopyContext.
+    */
+   void (*copy)(struct st_context *st,
+                struct st_context *src, unsigned mask);
+
+   /**
+    * Used to implement wglShareLists.
+    */
+   bool (*share)(struct st_context *st,
+                 struct st_context *src);
+
+   /**
+    * Start the thread if the API has a worker thread.
+    * Called after the context has been created and fully initialized on both
+    * sides (e.g. st/mesa and st/dri).
+    */
+   void (*start_thread)(struct st_context *st);
+
+   /**
+    * If the API is multithreaded, wait for all queued commands to complete.
+    * Called from the main thread.
+    */
+   void (*thread_finish)(struct st_context *st);
+
+   /**
+    * Invalidate states to notify the frontend that states have been changed
+    * behind its back.
+    */
+   void (*invalidate_state)(struct st_context *st, unsigned flags);
 };
 
 

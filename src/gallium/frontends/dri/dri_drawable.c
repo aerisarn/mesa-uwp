@@ -38,16 +38,18 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 
+#include "state_tracker/st_context.h"
+
 static uint32_t drifb_ID = 0;
 
 static bool
-dri_st_framebuffer_validate(struct st_context_iface *stctx,
+dri_st_framebuffer_validate(struct st_context *st,
                             struct st_framebuffer_iface *stfbi,
                             const enum st_attachment_type *statts,
                             unsigned count,
                             struct pipe_resource **out)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
+   struct dri_context *ctx = (struct dri_context *)st->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
    struct dri_screen *screen = drawable->screen;
@@ -110,11 +112,11 @@ dri_st_framebuffer_validate(struct st_context_iface *stctx,
 }
 
 static bool
-dri_st_framebuffer_flush_front(struct st_context_iface *stctx,
+dri_st_framebuffer_flush_front(struct st_context *st,
                                struct st_framebuffer_iface *stfbi,
                                enum st_attachment_type statt)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
+   struct dri_context *ctx = (struct dri_context *)st->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
 
@@ -126,10 +128,10 @@ dri_st_framebuffer_flush_front(struct st_context_iface *stctx,
  * The gallium frontend framebuffer interface flush_swapbuffers callback
  */
 static bool
-dri_st_framebuffer_flush_swapbuffers(struct st_context_iface *stctx,
+dri_st_framebuffer_flush_swapbuffers(struct st_context *st,
                                      struct st_framebuffer_iface *stfbi)
 {
-   struct dri_context *ctx = (struct dri_context *)stctx->frontend_context;
+   struct dri_context *ctx = (struct dri_context *)st->frontend_context;
    struct dri_drawable *drawable =
       (struct dri_drawable *) stfbi->st_manager_private;
 
@@ -252,7 +254,7 @@ dri_set_tex_buffer2(__DRIcontext *pDRICtx, GLint target,
                     GLint format, __DRIdrawable *dPriv)
 {
    struct dri_context *ctx = dri_context(pDRICtx);
-   struct st_context_iface *st = ctx->st;
+   struct st_context *st = ctx->st;
    struct dri_drawable *drawable = dri_drawable(dPriv);
    struct pipe_resource *pt;
 
@@ -418,7 +420,7 @@ static void
 notify_before_flush_cb(void* _args)
 {
    struct notify_before_flush_cb_args *args = (struct notify_before_flush_cb_args *) _args;
-   struct st_context_iface *st = args->ctx->st;
+   struct st_context *st = args->ctx->st;
    struct pipe_context *pipe = st->pipe;
 
    /* Wait for glthread to finish because we can't use pipe_context from
@@ -478,7 +480,7 @@ dri_flush(__DRIcontext *cPriv,
 {
    struct dri_context *ctx = dri_context(cPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
-   struct st_context_iface *st;
+   struct st_context *st;
    unsigned flush_flags;
    struct notify_before_flush_cb_args args = { 0 };
 
