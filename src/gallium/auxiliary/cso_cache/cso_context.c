@@ -259,7 +259,9 @@ cso_init_vbuf(struct cso_context *cso, unsigned flags)
    if (caps.fallback_always ||
        (uses_user_vertex_buffers &&
         caps.fallback_only_for_user_vbuffers)) {
+      assert(!cso->pipe->vbuf);
       cso->vbuf = u_vbuf_create(cso->pipe, &caps);
+      cso->pipe->vbuf = cso->vbuf;
       cso->always_use_vbuf = caps.fallback_always;
       cso->vbuf_current = caps.fallback_always ? cso->vbuf : NULL;
    }
@@ -451,6 +453,8 @@ cso_destroy_context(struct cso_context *ctx)
 
    if (ctx->vbuf)
       u_vbuf_destroy(ctx->vbuf);
+
+   ctx->pipe->vbuf = NULL;
    FREE(ctx);
 }
 
