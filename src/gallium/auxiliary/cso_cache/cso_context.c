@@ -50,6 +50,7 @@
 #include "cso_cache/cso_hash.h"
 #include "cso_context.h"
 #include "driver_trace/tr_dump.h"
+#include "util/u_threaded_context.h"
 
 /**
  * Per-shader sampler information.
@@ -260,6 +261,19 @@ cso_init_vbuf(struct cso_context *cso, unsigned flags)
    }
 }
 
+static void
+cso_draw_vbo_default(struct pipe_context *pipe,
+                     const struct pipe_draw_info *info,
+                     unsigned drawid_offset,
+                     const struct pipe_draw_indirect_info *indirect,
+                     const struct pipe_draw_start_count_bias *draws,
+                     unsigned num_draws)
+{
+   if (pipe->vbuf)
+      u_vbuf_draw_vbo(pipe, info, drawid_offset, indirect, draws, num_draws);
+   else
+      pipe->draw_vbo(pipe, info, drawid_offset, indirect, draws, num_draws);
+}
 
 struct cso_context *
 cso_create_context(struct pipe_context *pipe, unsigned flags)
@@ -276,6 +290,21 @@ cso_create_context(struct pipe_context *pipe, unsigned flags)
 
    if (!(flags & CSO_NO_VBUF))
       cso_init_vbuf(ctx, flags);
+
+   /* Only drivers using u_threaded_context benefit from the direct call.
+    * This is because drivers can change draw_vbo, but u_threaded_context
+    * never changes it.
+    */
+   if (pipe->draw_vbo == tc_draw_vbo) {
+      if (ctx->vbuf_current)
+         ctx->base.draw_vbo = u_vbuf_draw_vbo;
+      else
+         ctx->base.draw_vbo = pipe->draw_vbo;
+   } else if (ctx->always_use_vbuf) {
+      ctx->base.draw_vbo = u_vbuf_draw_vbo;
+   } else {
+      ctx->base.draw_vbo = cso_draw_vbo_default;
+   }
 
    /* Enable for testing: */
    if (0) cso_set_maximum_cache_size(&ctx->cache, 4);
@@ -1268,7 +1297,9 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
 
          /* Unset this to make sure the CSO is re-bound on the next use. */
          ctx->velements = NULL;
-         ctx->vbuf_current = vbuf;
+         ctx->vbuf_current = pipe->vbuf = vbuf;
+         if (pipe->draw_vbo == tc_draw_vbo)
+            ctx->base.draw_vbo = u_vbuf_draw_vbo;
          unbind_trailing_vb_count = 0;
       }
 
@@ -1289,7 +1320,9 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
 
       /* Unset this to make sure the CSO is re-bound on the next use. */
       u_vbuf_unset_vertex_elements(vbuf);
-      ctx->vbuf_current = NULL;
+      ctx->vbuf_current = pipe->vbuf = NULL;
+      if (pipe->draw_vbo == tc_draw_vbo)
+         ctx->base.draw_vbo = pipe->draw_vbo;
       unbind_trailing_vb_count = 0;
    }
 
@@ -1731,37 +1764,6 @@ cso_restore_compute_state(struct cso_context *cso)
 
 
 /* drawing */
-
-void
-cso_draw_vbo(struct cso_context *cso,
-             struct pipe_draw_info *info,
-             unsigned drawid_offset,
-             const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count_bias *draws,
-             unsigned num_draws)
-{
-   /* We can't have both indirect drawing and SO-vertex-count drawing */
-   assert(!indirect ||
-          indirect->buffer == NULL ||
-          indirect->count_from_stream_output == NULL);
-
-   /* We can't have SO-vertex-count drawing with an index buffer */
-   assert(info->index_size == 0 ||
-          !indirect ||
-          indirect->count_from_stream_output == NULL);
-
-   /* Indirect only uses indirect->draw_count, not num_draws. */
-   assert(!indirect || num_draws == 1);
-
-   struct pipe_context *pipe = cso->base.pipe;
-
-   if (cso->vbuf_current) {
-      u_vbuf_draw_vbo(pipe, info, drawid_offset, indirect, draws, num_draws);
-   } else {
-      pipe->draw_vbo(pipe, info, drawid_offset, indirect, draws, num_draws);
-   }
-}
-
 
 void
 cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
