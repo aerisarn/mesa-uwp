@@ -50,15 +50,6 @@ enum st_profile_type
    ST_PROFILE_OPENGL_ES2		/**< OpenGL ES 2.0 */
 };
 
-/* for profile_mask in st_api */
-#define ST_PROFILE_DEFAULT_MASK      (1 << ST_PROFILE_DEFAULT)
-#define ST_PROFILE_OPENGL_CORE_MASK  (1 << ST_PROFILE_OPENGL_CORE)
-#define ST_PROFILE_OPENGL_ES1_MASK   (1 << ST_PROFILE_OPENGL_ES1)
-#define ST_PROFILE_OPENGL_ES2_MASK   (1 << ST_PROFILE_OPENGL_ES2)
-#define ST_PROFILE_ALL_MASK          (ST_PROFILE_DEFAULT_MASK | \
-                                      ST_PROFILE_OPENGL_CORE_MASK | \
-                                      ST_PROFILE_OPENGL_ES1_MASK | \
-                                      ST_PROFILE_OPENGL_ES2_MASK)
 
 /**
  * New context flags for GL 3.0 and beyond.

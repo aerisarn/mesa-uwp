@@ -946,9 +946,6 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    gl_api api;
    bool no_error = false;
 
-   if (!(ST_PROFILE_ALL_MASK & (1 << attribs->profile)))
-      return NULL;
-
    switch (attribs->profile) {
    case ST_PROFILE_DEFAULT:
       api = API_OPENGL_COMPAT;
