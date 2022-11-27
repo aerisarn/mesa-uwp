@@ -368,7 +368,6 @@ struct st_context_iface
    /**
     * Available for the gallium frontend and the manager to use.
     */
-   void *st_context_private;
    void *st_manager_private;
 
    /**

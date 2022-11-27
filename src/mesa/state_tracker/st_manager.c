@@ -1136,7 +1136,6 @@ st_api_create_context(struct pipe_frontend_screen *fscreen,
    st->iface.start_thread = st_start_thread;
    st->iface.thread_finish = st_thread_finish;
    st->iface.invalidate_state = st_context_invalidate_state;
-   st->iface.st_context_private = (void *) fscreen;
    st->iface.cso_context = st->cso_context;
    st->iface.pipe = st->pipe;
    st->iface.frontend_screen = fscreen;

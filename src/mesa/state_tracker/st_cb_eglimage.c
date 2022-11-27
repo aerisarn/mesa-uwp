@@ -171,8 +171,7 @@ st_get_egl_image(struct gl_context *ctx, GLeglImageOES image_handle,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
-   struct pipe_frontend_screen *fscreen =
-      (struct pipe_frontend_screen *) st->iface.st_context_private;
+   struct pipe_frontend_screen *fscreen = st->iface.frontend_screen;
 
    if (!fscreen || !fscreen->get_egl_image)
       return false;
@@ -422,8 +421,7 @@ static GLboolean
 st_validate_egl_image(struct gl_context *ctx, GLeglImageOES image_handle)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_frontend_screen *fscreen =
-      (struct pipe_frontend_screen *) st->iface.st_context_private;
+   struct pipe_frontend_screen *fscreen = st->iface.frontend_screen;
 
    return fscreen->validate_egl_image(fscreen, (void *)image_handle);
 }
