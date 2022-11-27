@@ -202,8 +202,9 @@ dri_create_context(struct dri_screen *screen,
    if (ctx->st->cso_context) {
       ctx->pp = pp_init(ctx->st->pipe, screen->pp_enabled, ctx->st->cso_context,
                         ctx->st);
-      ctx->hud = hud_create(ctx->st->cso_context, ctx->st,
-                            share_ctx ? share_ctx->hud : NULL);
+      ctx->hud = hud_create(ctx->st->cso_context,
+                            share_ctx ? share_ctx->hud : NULL,
+                            ctx->st, (void*)ctx->st->invalidate_state);
    }
 
    /* Do this last. */

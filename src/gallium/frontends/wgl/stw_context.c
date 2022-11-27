@@ -249,7 +249,8 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    ctx->st->frontend_context = (void *) ctx;
 
    if (ctx->st->cso_context) {
-      ctx->hud = hud_create(ctx->st->cso_context, ctx->st, NULL);
+      ctx->hud = hud_create(ctx->st->cso_context, NULL, ctx->st,
+                            (void*)ctx->st->invalidate_state);
    }
 
    return ctx;

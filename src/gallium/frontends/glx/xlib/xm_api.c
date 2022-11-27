@@ -1011,7 +1011,8 @@ XMesaContext XMesaCreateContext( XMesaVisual v, XMesaContext share_list,
 
    c->st->frontend_context = (void *) c;
 
-   c->hud = hud_create(c->st->cso_context, c->st, NULL);
+   c->hud = hud_create(c->st->cso_context, NULL, c->st,
+                       (void*)c->st->invalidate_state);
 
    return c;
 
