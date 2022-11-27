@@ -42,6 +42,10 @@ extern "C" {
 struct cso_context;
 struct u_vbuf;
 
+struct cso_context_base {
+   struct pipe_context *pipe;
+};
+
 #define CSO_NO_USER_VERTEX_BUFFERS (1 << 0)
 #define CSO_NO_64B_VERTEX_BUFFERS  (1 << 1)
 #define CSO_NO_VBUF  (1 << 2)
@@ -54,9 +58,6 @@ cso_unbind_context(struct cso_context *ctx);
 
 void
 cso_destroy_context(struct cso_context *cso);
-
-struct pipe_context *
-cso_get_pipe_context(struct cso_context *cso);
 
 enum pipe_error
 cso_set_blend(struct cso_context *cso, const struct pipe_blend_state *blend);
@@ -224,6 +225,16 @@ cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
 
 void
 cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count);
+
+/* Inline functions. */
+
+static inline struct pipe_context *
+cso_get_pipe_context(struct cso_context *cso)
+{
+   struct cso_context_base *cso_base = (struct cso_context_base *)cso;
+
+   return cso_base->pipe;
+}
 
 #ifdef __cplusplus
 }
