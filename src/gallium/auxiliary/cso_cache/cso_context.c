@@ -1746,8 +1746,6 @@ cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias draw)
 {
-   struct u_vbuf *vbuf = cso->vbuf_current;
-
    /* We can't have both indirect drawing and SO-vertex-count drawing */
    assert(!indirect ||
           indirect->buffer == NULL ||
@@ -1758,10 +1756,11 @@ cso_draw_vbo(struct cso_context *cso,
           !indirect ||
           indirect->count_from_stream_output == NULL);
 
-   if (vbuf) {
-      u_vbuf_draw_vbo(vbuf, info, drawid_offset, indirect, &draw, 1);
+   struct pipe_context *pipe = cso->pipe;
+
+   if (cso->vbuf_current) {
+      u_vbuf_draw_vbo(pipe, info, drawid_offset, indirect, &draw, 1);
    } else {
-      struct pipe_context *pipe = cso->pipe;
       pipe->draw_vbo(pipe, info, drawid_offset, indirect, &draw, 1);
    }
 }
@@ -1774,13 +1773,11 @@ cso_multi_draw(struct cso_context *cso,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
-   struct u_vbuf *vbuf = cso->vbuf_current;
+   struct pipe_context *pipe = cso->pipe;
 
-   if (vbuf) {
-      u_vbuf_draw_vbo(vbuf, info, drawid_offset, NULL, draws, num_draws);
+   if (cso->vbuf_current) {
+      u_vbuf_draw_vbo(pipe, info, drawid_offset, NULL, draws, num_draws);
    } else {
-      struct pipe_context *pipe = cso->pipe;
-
       pipe->draw_vbo(pipe, info, drawid_offset, NULL, draws, num_draws);
    }
 }
