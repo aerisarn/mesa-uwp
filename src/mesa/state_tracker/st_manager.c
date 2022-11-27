@@ -826,8 +826,7 @@ st_context_flush(struct st_context *st, unsigned flags,
  * in EGL and WGL.
  */
 bool
-st_context_teximage(struct st_context *st,
-                    enum st_texture_type tex_type,
+st_context_teximage(struct st_context *st, GLenum target,
                     int level, enum pipe_format pipe_format,
                     struct pipe_resource *tex, bool mipmap)
 {
@@ -836,24 +835,6 @@ st_context_teximage(struct st_context *st,
    struct gl_texture_image *texImage;
    GLenum internalFormat;
    GLuint width, height, depth;
-   GLenum target;
-
-   switch (tex_type) {
-   case ST_TEXTURE_1D:
-      target = GL_TEXTURE_1D;
-      break;
-   case ST_TEXTURE_2D:
-      target = GL_TEXTURE_2D;
-      break;
-   case ST_TEXTURE_3D:
-      target = GL_TEXTURE_3D;
-      break;
-   case ST_TEXTURE_RECT:
-      target = GL_TEXTURE_RECTANGLE_ARB;
-      break;
-   default:
-      return FALSE;
-   }
 
    texObj = _mesa_get_current_tex_object(ctx, target);
 

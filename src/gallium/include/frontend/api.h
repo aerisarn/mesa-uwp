@@ -90,16 +90,6 @@ enum st_context_error {
 };
 
 /**
- * Used in st_context_teximage.
- */
-enum st_texture_type {
-   ST_TEXTURE_1D,
-   ST_TEXTURE_2D,
-   ST_TEXTURE_3D,
-   ST_TEXTURE_RECT
-};
-
-/**
  * Available attachments of framebuffer.
  */
 enum st_attachment_type {

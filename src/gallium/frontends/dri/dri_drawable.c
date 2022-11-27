@@ -293,9 +293,7 @@ dri_set_tex_buffer2(__DRIcontext *pDRICtx, GLint target,
 
       drawable->update_tex_buffer(drawable, ctx, pt);
 
-      st_context_teximage(ctx->st,
-            (target == GL_TEXTURE_2D) ? ST_TEXTURE_2D : ST_TEXTURE_RECT,
-            0, internal_format, pt, false);
+      st_context_teximage(ctx->st, target, 0, internal_format, pt, false);
    }
 }
 

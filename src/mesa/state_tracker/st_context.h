@@ -422,8 +422,7 @@ st_context_flush(struct st_context *st, unsigned flags,
                  void (*before_flush_cb) (void*), void* args);
 
 extern bool
-st_context_teximage(struct st_context *st,
-                    enum st_texture_type tex_type,
+st_context_teximage(struct st_context *st, GLenum target,
                     int level, enum pipe_format pipe_format,
                     struct pipe_resource *tex, bool mipmap);
 

@@ -726,7 +726,6 @@ static EGLBoolean
 wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 {
    struct wgl_egl_surface *wgl_surf = wgl_egl_surface(surf);
-   enum st_attachment_type target = ST_TEXTURE_2D;
 
    _EGLContext *ctx = _eglGetCurrentContext();
    struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
@@ -772,7 +771,8 @@ wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
       assert(!"Unexpected texture target in wgl_bind_tex_image()");
    }
 
-   st_context_teximage(wgl_ctx->ctx->st, target, 0, format, pres, false);
+   st_context_teximage(wgl_ctx->ctx->st, GL_TEXTURE_2D, 0, format, pres,
+                       false);
 
    return EGL_TRUE;
 }
