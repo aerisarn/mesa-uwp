@@ -57,43 +57,37 @@ anv_nir_lower_mesh_ext_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_set_vertex_and_primitive_count)
+      return false;
+
    struct lower_mesh_ext_state *state = data;
+   /* this intrinsic should show up only once */
+   assert(state->primitive_count == NULL);
 
-   switch (intrin->intrinsic) {
-   case nir_intrinsic_set_vertex_and_primitive_count: {
-      /* this intrinsic should show up only once */
-      assert(state->primitive_count == NULL);
+   state->primitive_count =
+         nir_variable_create(b->shader,
+                             nir_var_shader_out,
+                             glsl_uint_type(),
+                             "gl_PrimitiveCountNV");
+   state->primitive_count->data.location = VARYING_SLOT_PRIMITIVE_COUNT;
+   state->primitive_count->data.interpolation = INTERP_MODE_NONE;
 
-      state->primitive_count =
-            nir_variable_create(b->shader,
-                                nir_var_shader_out,
-                                glsl_uint_type(),
-                                "gl_PrimitiveCountNV");
-      state->primitive_count->data.location = VARYING_SLOT_PRIMITIVE_COUNT;
-      state->primitive_count->data.interpolation = INTERP_MODE_NONE;
+   b->cursor = nir_before_instr(&intrin->instr);
 
-      b->cursor = nir_before_instr(&intrin->instr);
+   nir_ssa_def *local_invocation_index = nir_build_load_local_invocation_index(b);
 
-      nir_ssa_def *local_invocation_index = nir_build_load_local_invocation_index(b);
-
-      nir_ssa_def *cmp = nir_ieq(b, local_invocation_index,
-                                     nir_imm_int(b, 0));
-      nir_if *if_stmt = nir_push_if(b, cmp);
-      {
-         nir_deref_instr *prim_count_deref = nir_build_deref_var(b, state->primitive_count);
-         nir_store_deref(b, prim_count_deref, intrin->src[1].ssa, 1);
-      }
-      nir_pop_if(b, if_stmt);
-
-      nir_instr_remove(instr);
-
-      return true;
+   nir_ssa_def *cmp = nir_ieq(b, local_invocation_index,
+                                  nir_imm_int(b, 0));
+   nir_if *if_stmt = nir_push_if(b, cmp);
+   {
+      nir_deref_instr *prim_count_deref = nir_build_deref_var(b, state->primitive_count);
+      nir_store_deref(b, prim_count_deref, intrin->src[1].ssa, 1);
    }
+   nir_pop_if(b, if_stmt);
 
-   default:
-      break;
-   }
-   return false;
+   nir_instr_remove(instr);
+
+   return true;
 }
 
 static bool
