@@ -722,7 +722,7 @@ static const struct dri2_extension_match dri2_driver_extensions[] = {
 static const struct dri2_extension_match dri2_core_extensions[] = {
    { __DRI2_FLUSH, 1, offsetof(struct dri2_egl_display, flush) },
    { __DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer) },
-   { __DRI_IMAGE, 1, offsetof(struct dri2_egl_display, image) },
+   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image) },
    { NULL, 0, 0 }
 };
 
@@ -749,7 +749,7 @@ static const struct dri2_extension_match optional_core_extensions[] = {
    { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage) },
    { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery) },
    { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop) },
-   { __DRI_IMAGE, 1, offsetof(struct dri2_egl_display, image) },
+   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image) },
    { __DRI2_FLUSH_CONTROL, 1, offsetof(struct dri2_egl_display, flush_control) },
    { __DRI2_BLOB, 1, offsetof(struct dri2_egl_display, blob) },
    { __DRI_MUTABLE_RENDER_BUFFER_DRIVER, 1, offsetof(struct dri2_egl_display, mutable_render_buffer) },
@@ -997,15 +997,12 @@ dri2_setup_screen(_EGLDisplay *disp)
 
       disp->Extensions.KHR_image_base = EGL_TRUE;
       disp->Extensions.KHR_gl_renderbuffer_image = EGL_TRUE;
-      if (dri2_dpy->image->base.version >= 5 &&
-          dri2_dpy->image->createImageFromTexture) {
-         disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
-         disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
+      disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
+      disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
 
-         if (dri2_renderer_query_integer(dri2_dpy,
-                                         __DRI2_RENDERER_HAS_TEXTURE_3D))
-             disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
-      }
+      if (dri2_renderer_query_integer(dri2_dpy,
+                                       __DRI2_RENDERER_HAS_TEXTURE_3D))
+            disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
 #ifdef HAVE_LIBDRM
       if (dri2_dpy->image->base.version >= 8 &&
           dri2_dpy->image->createImageFromDmaBufs) {

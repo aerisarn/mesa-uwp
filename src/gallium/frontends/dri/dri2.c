@@ -835,7 +835,7 @@ dri2_flush_swapbuffers(struct dri_context *ctx,
 {
    const __DRIimageLoaderExtension *image = drawable->screen->image.loader;
 
-   if (image && image->base.version >= 3 && image->flushSwapBuffers) {
+   if (image && image->flushSwapBuffers) {
       image->flushSwapBuffers(opaque_dri_drawable(drawable),
                               drawable->loaderPrivate);
    }
