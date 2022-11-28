@@ -556,7 +556,7 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
          assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED ||
                 rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED);
 
-         cfg.unk_tiled = true;
+         cfg.page_aligned_layers = rsrc->layout.page_aligned_layers;
       }
    }
 }
@@ -887,7 +887,7 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
          cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
          cfg.levels = 1;
       } else {
-         cfg.unk_tiled = true;
+         cfg.page_aligned_layers = tex->layout.page_aligned_layers;
          cfg.levels = tex->base.last_level + 1;
       }
    };
