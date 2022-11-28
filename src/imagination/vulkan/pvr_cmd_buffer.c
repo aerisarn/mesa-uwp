@@ -906,6 +906,46 @@ pvr_pass_get_pixel_output_width(const struct pvr_render_pass *pass,
    return util_next_power_of_two(width);
 }
 
+/**
+ * \brief If depth and/or stencil attachment dimensions are not tile-aligned,
+ * then we may need to insert some additional transfer subcommands.
+ *
+ * It's worth noting that we check whether the dimensions are smaller than a
+ * tile here, rather than checking whether they're tile-aligned - this relies
+ * on the assumption that we can safely use any attachment with dimensions
+ * larger than a tile. If the attachment is twiddled, it will be over-allocated
+ * to the nearest power-of-two (which will be tile-aligned). If the attachment
+ * is not twiddled, we don't need to worry about tile-alignment at all.
+ */
+static void
+pvr_sub_cmd_gfx_align_zls_subtiles(const struct pvr_device_info *dev_info,
+                                   const struct pvr_render_job *job,
+                                   const struct pvr_image *image)
+{
+   uint32_t zls_tile_size_x;
+   uint32_t zls_tile_size_y;
+
+   rogue_get_zls_tile_size_xy(dev_info, &zls_tile_size_x, &zls_tile_size_y);
+
+   if (image->physical_extent.width >= zls_tile_size_x &&
+       image->physical_extent.height >= zls_tile_size_y) {
+      return;
+   }
+
+   if (PVR_HAS_FEATURE(dev_info, zls_subtile) &&
+       image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       (job->has_stencil_attachment || !job->has_depth_attachment)) {
+      return;
+   }
+
+   pvr_finishme("Unaligned ZLS subtile");
+   mesa_logd("Image: %ux%u   ZLS tile: %ux%u\n",
+             image->physical_extent.width,
+             image->physical_extent.height,
+             zls_tile_size_x,
+             zls_tile_size_y);
+}
+
 static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_sub_cmd_gfx *sub_cmd)
@@ -1067,6 +1107,8 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
          job->ds.vk_format = iview->vk.format;
          job->ds.memlayout = image->memlayout;
       }
+
+      pvr_sub_cmd_gfx_align_zls_subtiles(dev_info, job, image);
    } else {
       job->has_depth_attachment = false;
       job->has_stencil_attachment = false;
