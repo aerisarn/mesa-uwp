@@ -900,8 +900,8 @@ accel_struct_entry_cmp(const void *a, const void *b)
 {
    struct hash_entry *entry_a = *(struct hash_entry *const *)a;
    struct hash_entry *entry_b = *(struct hash_entry *const *)b;
-   const struct radv_acceleration_structure *s_a = entry_a->key;
-   const struct radv_acceleration_structure *s_b = entry_b->key;
+   const struct radv_rra_accel_struct_data *s_a = entry_a->data;
+   const struct radv_rra_accel_struct_data *s_b = entry_b->data;
 
    return s_a->va > s_b->va ? 1 : s_a->va < s_b->va ? -1 : 0;
 }

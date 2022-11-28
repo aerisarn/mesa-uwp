@@ -806,6 +806,7 @@ struct radv_rra_accel_struct_data {
    VkBuffer buffer;
    VkDeviceMemory memory;
    VkAccelerationStructureTypeKHR type;
+   bool is_dead;
 };
 
 void radv_destroy_rra_accel_struct_data(VkDevice device, struct radv_rra_accel_struct_data *data);

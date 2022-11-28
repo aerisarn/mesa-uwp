@@ -97,6 +97,18 @@ rra_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
 
    radv_rra_handle_trace(_queue);
 
+   RADV_FROM_HANDLE(radv_queue, queue, _queue);
+   struct hash_table *accel_structs = queue->device->rra_trace.accel_structs;
+
+   hash_table_foreach (accel_structs, entry) {
+      struct radv_rra_accel_struct_data *data = entry->data;
+      if (!data->is_dead)
+         continue;
+
+      radv_destroy_rra_accel_struct_data(radv_device_to_handle(queue->device), data);
+      _mesa_hash_table_remove(accel_structs, entry);
+   }
+
    return VK_SUCCESS;
 }
 
@@ -186,6 +198,7 @@ rra_CreateAccelerationStructureKHR(VkDevice _device,
    data->va = structure->va;
    data->size = structure->size;
    data->type = pCreateInfo->type;
+   data->is_dead = false;
 
    VkEventCreateInfo eventCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO,
@@ -345,11 +358,8 @@ rra_DestroyAccelerationStructureKHR(VkDevice _device, VkAccelerationStructureKHR
 
    assert(entry);
    struct radv_rra_accel_struct_data *data = entry->data;
+   data->is_dead = true;
 
-   radv_destroy_rra_accel_struct_data(_device, data);
-
-   _mesa_hash_table_remove(device->rra_trace.accel_structs, entry);
-   _mesa_hash_table_u64_remove(device->rra_trace.accel_struct_vas, structure->va);
    simple_mtx_unlock(&device->rra_trace.data_mtx);
 
    radv_DestroyAccelerationStructureKHR(_device, _structure, pAllocator);
