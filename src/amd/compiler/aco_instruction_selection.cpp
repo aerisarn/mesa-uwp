@@ -7862,9 +7862,9 @@ emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp sr
       return src;
    }
    if (op == nir_op_iand && cluster_size == 4) {
-      /* subgroupClusteredAnd(val, 4) -> ~wqm(exec & ~val) */
-      Temp tmp =
-         bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
+      /* subgroupClusteredAnd(val, 4) -> ~wqm(~val & exec) */
+      Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
+      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm));
       return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc),
                       bld.sop1(Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc), tmp));
    } else if (op == nir_op_ior && cluster_size == 4) {
@@ -7873,11 +7873,11 @@ emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp sr
          Builder::s_wqm, bld.def(bld.lm), bld.def(s1, scc),
          bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm)));
    } else if (op == nir_op_iand && cluster_size == ctx->program->wave_size) {
-      /* subgroupAnd(val) -> (exec & ~val) == 0 */
-      Temp tmp =
-         bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src)
-            .def(1)
-            .getTemp();
+      /* subgroupAnd(val) -> (~val & exec) == 0 */
+      Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
+      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm))
+               .def(1)
+               .getTemp();
       Temp cond = bool_to_vector_condition(ctx, emit_wqm(bld, tmp));
       return bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), cond);
    } else if (op == nir_op_ior && cluster_size == ctx->program->wave_size) {
@@ -7952,16 +7952,15 @@ emit_boolean_exclusive_scan(isel_context* ctx, nir_op op, Temp src)
    Builder bld(ctx->program, ctx->block);
    assert(src.regClass() == bld.lm);
 
-   /* subgroupExclusiveAnd(val) -> mbcnt(exec & ~val) == 0
+   /* subgroupExclusiveAnd(val) -> mbcnt(~val & exec) == 0
     * subgroupExclusiveOr(val) -> mbcnt(val & exec) != 0
     * subgroupExclusiveXor(val) -> mbcnt(val & exec) & 1 != 0
     */
-   Temp tmp;
    if (op == nir_op_iand)
-      tmp =
-         bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
-   else
-      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      src = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
+
+   Temp tmp =
+      bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
 
    Temp mbcnt = emit_mbcnt(ctx, bld.tmp(v1), Operand(tmp));
 
@@ -8708,10 +8707,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       assert(src.regClass() == bld.lm);
       assert(dst.regClass() == bld.lm);
 
-      Temp tmp =
-         bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src)
-            .def(1)
-            .getTemp();
+      Temp tmp = bld.sop1(Builder::s_not, bld.def(bld.lm), bld.def(s1, scc), src);
+      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), tmp, Operand(exec, bld.lm))
+               .def(1)
+               .getTemp();
       Temp cond = bool_to_vector_condition(ctx, emit_wqm(bld, tmp));
       bld.sop1(Builder::s_not, Definition(dst), bld.def(s1, scc), cond);
       break;
