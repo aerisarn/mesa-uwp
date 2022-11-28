@@ -745,7 +745,7 @@ static const struct dri2_extension_match optional_driver_extensions[] = {
 static const struct dri2_extension_match optional_core_extensions[] = {
    { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness) },
    { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config) },
-   { __DRI2_FENCE, 1, offsetof(struct dri2_egl_display, fence) },
+   { __DRI2_FENCE, 2, offsetof(struct dri2_egl_display, fence) },
    { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage) },
    { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery) },
    { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop) },
@@ -968,13 +968,10 @@ dri2_setup_screen(_EGLDisplay *disp)
       disp->Extensions.KHR_wait_sync = EGL_TRUE;
       if (dri2_dpy->fence->get_fence_from_cl_event)
          disp->Extensions.KHR_cl_event2 = EGL_TRUE;
-      if (dri2_dpy->fence->base.version >= 2 &&
-          dri2_dpy->fence->get_capabilities) {
-         unsigned capabilities =
-            dri2_dpy->fence->get_capabilities(dri2_dpy->dri_screen);
-         disp->Extensions.ANDROID_native_fence_sync =
-            (capabilities & __DRI_FENCE_CAP_NATIVE_FD) != 0;
-      }
+      unsigned capabilities =
+         dri2_dpy->fence->get_capabilities(dri2_dpy->dri_screen);
+      disp->Extensions.ANDROID_native_fence_sync =
+         (capabilities & __DRI_FENCE_CAP_NATIVE_FD) != 0;
    }
 
    if (dri2_dpy->blob)
@@ -1694,8 +1691,7 @@ dri2_init_surface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
 
    dri2_surf->out_fence_fd = -1;
    dri2_surf->enable_out_fence = false;
-   if (dri2_dpy->fence && dri2_dpy->fence->base.version >= 2 &&
-       dri2_dpy->fence->get_capabilities &&
+   if (dri2_dpy->fence &&
        (dri2_dpy->fence->get_capabilities(dri2_dpy->dri_screen) &
         __DRI_FENCE_CAP_NATIVE_FD)) {
       dri2_surf->enable_out_fence = enable_out_fence;
