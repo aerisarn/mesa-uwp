@@ -1103,25 +1103,16 @@ dri2CreateScreen(int screen, struct glx_display * priv)
 	 psc->dri2 = (__DRIdri2Extension *) extensions[i];
    }
 
-   if (psc->core == NULL || psc->dri2 == NULL || psc->dri2->base.version < 3) {
+   if (psc->core == NULL || psc->dri2 == NULL || psc->dri2->base.version < 4) {
       ErrorMessageF("core dri or dri2 extension not found\n");
       goto handle_error;
    }
 
-   if (psc->dri2->base.version >= 4) {
-      psc->driScreen =
-         psc->dri2->createNewScreen2(screen, psc->fd,
-                                     (const __DRIextension **)
-                                     &pdp->loader_extensions[0],
-                                     extensions,
-                                     &driver_configs, psc);
-   } else {
-      psc->driScreen =
-         psc->dri2->createNewScreen(screen, psc->fd,
-                                    (const __DRIextension **)
-                                    &pdp->loader_extensions[0],
-                                    &driver_configs, psc);
-   }
+   psc->driScreen =
+       psc->dri2->createNewScreen2(screen, psc->fd,
+                                   (const __DRIextension **)&pdp->loader_extensions[0],
+                                   extensions,
+                                   &driver_configs, psc);
 
    if (psc->driScreen == NULL) {
       ErrorMessageF("glx: failed to create dri2 screen\n");
