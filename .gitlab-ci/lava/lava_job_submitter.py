@@ -147,8 +147,13 @@ def generate_lava_yaml(args):
     #   - fetch and unpack per-job environment from lava-submit.sh
     #   - exec .gitlab-ci/common/init-stage2.sh
 
-    with open(args.first_stage_init, 'r') as init_sh:
-      run_steps += [ x.rstrip() for x in init_sh if not x.startswith('#') and x.rstrip() ]
+    with open(args.first_stage_init, "r") as init_sh:
+        run_steps += [
+            x.rstrip() for x in init_sh if not x.startswith("#") and x.rstrip()
+        ]
+        run_steps.append(
+            f"wget -S --progress=dot:giga -O- {args.job_rootfs_overlay_url} | tar -xz -C /",
+        )
 
     if args.jwt_file:
         with open(args.jwt_file) as jwt_file:
@@ -167,7 +172,6 @@ def generate_lava_yaml(args):
     run_steps += [
       'mkdir -p {}'.format(args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar --zstd -x -C {}'.format(args.build_url, args.ci_project_dir),
-      'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
 
       # Sleep a bit to give time for bash to dump shell xtrace messages into
       # console which may cause interleaving with LAVA_SIGNAL_STARTTC in some
