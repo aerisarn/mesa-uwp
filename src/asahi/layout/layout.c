@@ -189,8 +189,8 @@ ail_initialize_compression(struct ail_layout *layout)
 
    layout->metadata_offset_B = layout->size_B;
 
-   unsigned width_px = layout->width_px;
-   unsigned height_px = layout->height_px;
+   unsigned width_px = ALIGN_POT(layout->width_px, 16);
+   unsigned height_px = ALIGN_POT(layout->height_px, 16);
 
    unsigned compbuf_B = 0;
 
@@ -198,15 +198,13 @@ ail_initialize_compression(struct ail_layout *layout)
       if (width_px < 16 && height_px < 16)
          break;
 
-      /* The compression buffer seems to have one byte per 8 x 4
-       * pixel block.
-       */
-      unsigned cmpw_el = DIV_ROUND_UP(util_next_power_of_two(width_px), 8);
-      unsigned cmph_el = DIV_ROUND_UP(util_next_power_of_two(height_px), 4);
-      compbuf_B += ALIGN_POT(cmpw_el * cmph_el, AIL_CACHELINE);
+      /* The compression buffer seems to have 8 bytes per 16 x 16 pixel block. */
+      unsigned cmpw_el = DIV_ROUND_UP(util_next_power_of_two(width_px), 16);
+      unsigned cmph_el = DIV_ROUND_UP(util_next_power_of_two(height_px), 16);
+      compbuf_B += ALIGN_POT(cmpw_el * cmph_el * 8, AIL_CACHELINE);
 
-      width_px = u_minify(width_px, 1);
-      height_px = u_minify(height_px, 1);
+      width_px = DIV_ROUND_UP(width_px, 2);
+      height_px = DIV_ROUND_UP(height_px, 2);
    }
 
    layout->size_B += compbuf_B * layout->depth_px;
