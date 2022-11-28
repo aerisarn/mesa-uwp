@@ -803,8 +803,12 @@ struct radv_rra_accel_struct_data {
    VkEvent build_event;
    uint64_t va;
    uint64_t size;
+   VkBuffer buffer;
+   VkDeviceMemory memory;
    VkAccelerationStructureTypeKHR type;
 };
+
+void radv_destroy_rra_accel_struct_data(VkDevice device, struct radv_rra_accel_struct_data *data);
 
 struct radv_rra_trace_data {
    int elapsed_frames;
