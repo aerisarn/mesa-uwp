@@ -1670,16 +1670,41 @@ nir_opt_sort_and_pack_stack(nir_shader *shader,
    return true;
 }
 
+static unsigned
+nir_block_loop_depth(nir_block *block)
+{
+   nir_cf_node *node = &block->cf_node;
+   unsigned loop_depth = 0;
+
+   while (node != NULL) {
+      if (node->type == nir_cf_node_loop)
+         loop_depth++;
+      node = node->parent;
+   }
+
+   return loop_depth;
+}
+
 /* Find the last block dominating all the uses of a SSA value. */
 static nir_block *
 find_last_dominant_use_block(nir_function_impl *impl, nir_ssa_def *value)
 {
+   nir_block *old_block = value->parent_instr->block;
+   unsigned old_block_loop_depth = nir_block_loop_depth(old_block);
+
    nir_foreach_block_reverse_safe(block, impl) {
       bool fits = true;
 
       /* Store on the current block of the value */
-      if (block == value->parent_instr->block)
+      if (block == old_block)
          return block;
+
+      /* Don't move instructions deeper into loops, this would generate more
+       * memory traffic.
+       */
+      unsigned block_loop_depth = nir_block_loop_depth(block);
+      if (block_loop_depth > old_block_loop_depth)
+         continue;
 
       nir_foreach_if_use(src, value) {
          nir_block *block_before_if =
