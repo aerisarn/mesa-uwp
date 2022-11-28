@@ -432,7 +432,7 @@ rra_validation_fail(struct rra_validation_context *ctx, const char *message, ...
 }
 
 static bool
-rra_validate_header(struct radv_acceleration_structure *accel_struct,
+rra_validate_header(struct radv_rra_accel_struct_data *accel_struct,
                     const struct radv_accel_struct_header *header)
 {
    struct rra_validation_context ctx = {
@@ -706,7 +706,7 @@ rra_gather_bvh_info(const uint8_t *bvh, uint32_t node_id, struct rra_bvh_info *d
 }
 
 struct rra_copied_accel_struct {
-   VkAccelerationStructureKHR handle;
+   struct radv_rra_accel_struct_data *accel_struct;
    uint8_t *data;
 };
 
@@ -715,10 +715,9 @@ rra_dump_acceleration_structure(struct rra_copied_accel_struct *copied_struct,
                                 struct hash_table_u64 *accel_struct_vas, bool should_validate,
                                 FILE *output)
 {
-   VkAccelerationStructureKHR structure = copied_struct->handle;
+   struct radv_rra_accel_struct_data *accel_struct = copied_struct->accel_struct;
    uint8_t *data = copied_struct->data;
 
-   RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, structure);
    struct radv_accel_struct_header *header = (struct radv_accel_struct_header *)data;
 
    bool is_tlas = header->instance_count > 0;
@@ -886,6 +885,10 @@ radv_rra_trace_init(struct radv_device *device)
 void
 radv_rra_trace_finish(VkDevice vk_device, struct radv_rra_trace_data *data)
 {
+   if (data->accel_structs)
+      hash_table_foreach (data->accel_structs, entry)
+         free(entry->data);
+
    simple_mtx_destroy(&data->data_mtx);
    _mesa_hash_table_destroy(data->accel_structs, NULL);
    _mesa_hash_table_u64_destroy(data->accel_struct_vas);
@@ -1029,8 +1032,9 @@ rra_copy_acceleration_structures(VkQueue vk_queue, struct rra_accel_struct_copy 
    uint64_t dst_offset = 0;
    for (uint32_t i = 0; i < count; i++) {
       struct hash_entry *entry = entries[i];
+      struct radv_rra_accel_struct_data *data = entry->data;
 
-      VkResult event_result = radv_GetEventStatus(vk_device, radv_event_to_handle(entry->data));
+      VkResult event_result = radv_GetEventStatus(vk_device, data->build_event);
       if (event_result != VK_EVENT_SET) {
          continue;
       }
@@ -1056,7 +1060,7 @@ rra_copy_acceleration_structures(VkQueue vk_queue, struct rra_accel_struct_copy 
 
       radv_buffer_finish(&tmp_buffer);
 
-      dst->copied_structures[*copied_structure_count].handle = structure;
+      dst->copied_structures[*copied_structure_count].accel_struct = data;
       dst->copied_structures[*copied_structure_count].data = dst->map_data + dst_offset;
 
       dst_offset += accel_struct->size;

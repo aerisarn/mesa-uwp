@@ -799,6 +799,13 @@ struct radv_notifier {
    thrd_t thread;
 };
 
+struct radv_rra_accel_struct_data {
+   VkEvent build_event;
+   uint64_t va;
+   uint64_t size;
+   VkAccelerationStructureTypeKHR type;
+};
+
 struct radv_rra_trace_data {
    int elapsed_frames;
    int trace_frame;
