@@ -356,16 +356,17 @@ def find_lava_error(job) -> None:
     job.status = "fail"
 
 
-def show_job_data(job):
+def show_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREEN']}"):
     with GitlabSection(
         "job_data",
         "LAVA job info",
         type=LogSectionType.LAVA_POST_PROCESSING,
         start_collapsed=True,
+        colour=colour,
     ):
         show = _call_proxy(job.proxy.scheduler.jobs.show, job.job_id)
         for field, value in show.items():
-            print("{}\t: {}".format(field, value))
+            print(f"{field:<15}: {value}")
 
 
 def fetch_logs(job, max_idle_time, log_follower) -> None:
@@ -441,8 +442,6 @@ def follow_job_execution(job):
         while not job.is_finished:
             fetch_logs(job, max_idle_time, lf)
 
-    show_job_data(job)
-
     # Mesa Developers expect to have a simple pass/fail job result.
     # If this does not happen, it probably means a LAVA infrastructure error
     # happened.
@@ -461,6 +460,7 @@ def print_job_final_status(job):
         f"{CONSOLE_LOG['RESET']}"
     )
 
+    show_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{color}")
 
 def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     retry_count = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
