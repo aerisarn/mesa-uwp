@@ -910,6 +910,11 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_sub_cmd_gfx *sub_cmd)
 {
+   static const VkClearDepthStencilValue default_ds_clear_value = {
+      .depth = 1.0f,
+      .stencil = 0xFFFFFFFF,
+   };
+
    const struct vk_dynamic_graphics_state *dynamic_state =
       &cmd_buffer->vk.dynamic_graphics_state;
    struct pvr_render_pass_info *render_pass_info =
@@ -1028,64 +1033,44 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
          render_pass_info->attachments[hw_render->ds_attach_idx];
       const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
 
-      if (vk_format_has_depth(image->vk.format)) {
+      job->has_depth_attachment = vk_format_has_depth(image->vk.format);
+      job->has_stencil_attachment = vk_format_has_stencil(image->vk.format);
+
+      if (job->has_depth_attachment || job->has_stencil_attachment) {
          uint32_t level_pitch =
             image->mip_levels[iview->vk.base_mip_level].pitch;
 
-         /* FIXME: Is this sufficient for depth buffers? */
-         job->depth_addr = image->dev_addr;
+         job->ds.addr = image->dev_addr;
 
-         job->depth_stride =
-            pvr_stride_from_pitch(level_pitch, iview->vk.format);
-         job->depth_height = iview->vk.extent.height;
-         job->depth_physical_width =
+         job->ds.stride = pvr_stride_from_pitch(level_pitch, iview->vk.format);
+         job->ds.height = iview->vk.extent.height;
+         job->ds.physical_width =
             u_minify(image->physical_extent.width, iview->vk.base_mip_level);
-         job->depth_physical_height =
+         job->ds.physical_height =
             u_minify(image->physical_extent.height, iview->vk.base_mip_level);
-         job->depth_layer_size = image->layer_size;
+         job->ds.layer_size = image->layer_size;
+
+         job->ds_clear_value = default_ds_clear_value;
 
          if (hw_render->ds_attach_idx < render_pass_info->clear_value_count) {
-            VkClearValue *clear_values =
-               &render_pass_info->clear_values[hw_render->ds_attach_idx];
+            const VkClearDepthStencilValue *const clear_values =
+               &render_pass_info->clear_values[hw_render->ds_attach_idx]
+                   .depthStencil;
 
-            job->depth_clear_value = clear_values->depthStencil.depth;
-         } else {
-            job->depth_clear_value = 1.0f;
+            if (job->has_depth_attachment)
+               job->ds_clear_value.depth = clear_values->depth;
+
+            if (job->has_stencil_attachment)
+               job->ds_clear_value.stencil = clear_values->stencil;
          }
 
-         job->depth_vk_format = iview->vk.format;
-
-         job->depth_memlayout = image->memlayout;
-      } else {
-         job->depth_addr = PVR_DEV_ADDR_INVALID;
-         job->depth_stride = 0;
-         job->depth_height = 0;
-         job->depth_physical_width = 0;
-         job->depth_physical_height = 0;
-         job->depth_layer_size = 0;
-         job->depth_clear_value = 1.0f;
-         job->depth_vk_format = VK_FORMAT_UNDEFINED;
-         job->depth_memlayout = PVR_MEMLAYOUT_LINEAR;
-      }
-
-      if (vk_format_has_stencil(image->vk.format)) {
-         /* FIXME: Is this sufficient for stencil buffers? */
-         job->stencil_addr = image->dev_addr;
-      } else {
-         job->stencil_addr = PVR_DEV_ADDR_INVALID;
+         job->ds.vk_format = iview->vk.format;
+         job->ds.memlayout = image->memlayout;
       }
    } else {
-      job->depth_addr = PVR_DEV_ADDR_INVALID;
-      job->depth_stride = 0;
-      job->depth_height = 0;
-      job->depth_physical_width = 0;
-      job->depth_physical_height = 0;
-      job->depth_layer_size = 0;
-      job->depth_clear_value = 1.0f;
-      job->depth_vk_format = VK_FORMAT_UNDEFINED;
-      job->depth_memlayout = PVR_MEMLAYOUT_LINEAR;
-
-      job->stencil_addr = PVR_DEV_ADDR_INVALID;
+      job->has_depth_attachment = false;
+      job->has_stencil_attachment = false;
+      job->ds_clear_value = default_ds_clear_value;
    }
 
    if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
