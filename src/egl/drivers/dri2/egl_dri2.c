@@ -738,7 +738,7 @@ static const struct dri2_extension_match swrast_core_extensions[] = {
 };
 
 static const struct dri2_extension_match optional_driver_extensions[] = {
-   { __DRI_CONFIG_OPTIONS, 1, offsetof(struct dri2_egl_display, configOptions) },
+   { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions) },
    { NULL, 0, 0 }
 };
 
@@ -876,14 +876,9 @@ static char *
 dri2_query_driver_config(_EGLDisplay *disp)
 {
     struct dri2_egl_display *dri2_dpy = dri2_egl_display_lock(disp);
-    const __DRIconfigOptionsExtension *ext = dri2_dpy->configOptions;
     char *ret;
 
-    if (ext->base.version >= 2) {
-        ret = ext->getXml(dri2_dpy->driver_name);
-    } else {
-       ret = strdup(ext->xml);
-    }
+    ret = dri2_dpy->configOptions->getXml(dri2_dpy->driver_name);
 
     mtx_unlock(&dri2_dpy->lock);
 
