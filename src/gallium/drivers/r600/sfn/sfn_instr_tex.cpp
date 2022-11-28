@@ -423,7 +423,7 @@ TexInstr::replace_source(PRegister old_src, PVirtualValue new_src)
 }
 
 uint8_t
-TexInstr::allowed_dest_chan_mask() const
+TexInstr::allowed_src_chan_mask() const
 {
    return m_src.free_chan_mask();
 }
