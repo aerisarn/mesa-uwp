@@ -39,6 +39,7 @@ if with_tests
       'asahi_layout_tests',
       files(
         'tests/test-layout.cpp',
+        'tests/test-miptree.cpp',
         'tests/test-comp-twiddled.cpp',
         'tests/test-uncomp-twiddled.cpp',
       ),

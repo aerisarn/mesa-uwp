@@ -10,7 +10,7 @@
  * Test compressed texture sizes. All test cases in this file are extracted from
  * texture structure dumps in Metal.
  */
-struct comptest {
+struct sizetest {
    enum pipe_format format;
    uint32_t width, height, depth;
    uint8_t levels;
@@ -18,7 +18,7 @@ struct comptest {
 };
 
 /* Sort: `sort -t"," -k1,1 -k2,5n | uniq` */
-static struct comptest comptests[] = {
+static struct sizetest comptests[] = {
    { PIPE_FORMAT_R16G16B16A16_UNORM, 16, 16, 1, 1, 0x880 },
    { PIPE_FORMAT_R16G16B16A16_UNORM, 16, 24, 1, 1, 0x1080 },
    { PIPE_FORMAT_R16G16B16A16_UNORM, 16, 32, 1, 1, 0x1080 },
@@ -14313,7 +14313,7 @@ static struct comptest comptests[] = {
 TEST(CompTwiddled, SizeTests)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(comptests); ++i) {
-      struct comptest test = comptests[i];
+      struct sizetest test = comptests[i];
 
       struct ail_layout layout = {
          .width_px = test.width,
