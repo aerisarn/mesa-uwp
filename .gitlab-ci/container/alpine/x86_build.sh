@@ -34,7 +34,6 @@ apk add \
     linux-headers \
     llvm15-dev \
     meson \
-    mold \
     expat-dev \
     elfutils-dev \
     libselinux-dev \
