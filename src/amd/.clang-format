@@ -24,6 +24,7 @@ ForEachMacros:
   - LIST_FOR_EACH_ENTRY_SAFE
   - foreach_list_typed
   - util_dynarray_foreach
+  - hash_table_foreach
   - nir_foreach_variable
   - nir_foreach_variable_safe
   - nir_foreach_register
