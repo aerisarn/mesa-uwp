@@ -295,7 +295,7 @@ struct dri_extension_match {
 
 static struct dri_extension_match dri_core_extensions[] = {
    { __DRI2_FLUSH, 1, offsetof(struct gbm_dri_device, flush), false },
-   { __DRI_IMAGE, 1, offsetof(struct gbm_dri_device, image), false },
+   { __DRI_IMAGE, 6, offsetof(struct gbm_dri_device, image), false },
    { __DRI2_FENCE, 1, offsetof(struct gbm_dri_device, fence), true },
 };
 
@@ -980,8 +980,7 @@ gbm_dri_bo_import(struct gbm_device *gbm,
    unsigned dri_use = 0;
    int gbm_format;
 
-   /* Required for query image WIDTH & HEIGHT */
-   if (dri->image == NULL || dri->image->base.version < 4) {
+   if (dri->image == NULL) {
       errno = ENOSYS;
       return NULL;
    }
@@ -1112,8 +1111,7 @@ gbm_dri_bo_import(struct gbm_device *gbm,
       dri_use |= __DRI_IMAGE_USE_SCANOUT;
    if (usage & GBM_BO_USE_CURSOR)
       dri_use |= __DRI_IMAGE_USE_CURSOR;
-   if (dri->image->base.version >= 2 &&
-       !dri->image->validateUsage(bo->image, dri_use)) {
+   if (!dri->image->validateUsage(bo->image, dri_use)) {
       errno = EINVAL;
       dri->image->destroyImage(bo->image);
       free(bo);
