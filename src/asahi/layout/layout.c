@@ -163,12 +163,12 @@ ail_initialize_twiddled(struct ail_layout *layout)
       poth_el = u_minify(poth_el, 1);
    }
 
-   /* Arrays and cubemaps have the entire miptree duplicated and page aligned,
-    * but only when mipmaps are enabled and the layer is larger than one page.
-    */
-   if ((layout->levels != 1 && layout->depth_px != 1 && offset_B > AIL_PAGESIZE)
-        || layout->tiling != AIL_TILING_TWIDDLED_COMPRESSED)
-      layout->page_aligned_layers = true;
+   /* Align layer size if we have mipmaps and one miptree is larger than one page */
+   layout->page_aligned_layers = layout->levels != 1 && offset_B > AIL_PAGESIZE;
+
+   /* Single-layer images are not padded unless they are Z/S */
+   if (layout->depth_px == 1 && !util_format_is_depth_or_stencil(layout->format))
+      layout->page_aligned_layers = false;
 
    if (layout->page_aligned_layers)
       layout->layer_stride_B = ALIGN_POT(offset_B, AIL_PAGESIZE);
