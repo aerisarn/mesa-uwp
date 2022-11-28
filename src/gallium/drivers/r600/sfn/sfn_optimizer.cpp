@@ -448,6 +448,11 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
             sel = src->sel();
          else if (sel != src->sel())
             return;
+         for (auto p : src->parents()) {
+            auto alu = p->as_alu();
+            if (alu && !(alu->allowed_dest_chan_mask() & (1 << i)))
+               return;
+         }
          new_src[i] = src;
       }
    }
