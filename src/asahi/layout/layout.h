@@ -100,6 +100,12 @@ struct ail_layout {
    uint32_t layer_stride_B;
 
    /**
+    * Whether the layer stride is aligned to the page size or not. The hardware
+    * needs this flag to compute the implicit layer stride.
+    */
+   bool page_aligned_layers;
+
+   /**
     * Offsets of mip levels within a layer.
     */
    uint32_t level_offsets_B[AIL_MAX_MIP_LEVELS];

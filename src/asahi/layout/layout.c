@@ -168,6 +168,9 @@ ail_initialize_twiddled(struct ail_layout *layout)
     */
    if ((layout->levels != 1 && layout->depth_px != 1 && offset_B > AIL_PAGESIZE)
         || layout->tiling != AIL_TILING_TWIDDLED_COMPRESSED)
+      layout->page_aligned_layers = true;
+
+   if (layout->page_aligned_layers)
       layout->layer_stride_B = ALIGN_POT(offset_B, AIL_PAGESIZE);
    else
       layout->layer_stride_B = offset_B;
