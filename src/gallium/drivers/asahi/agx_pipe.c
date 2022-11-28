@@ -229,11 +229,13 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
 
    ail_make_miptree(&rsc->layout);
 
+#ifndef __APPLE__
    if (dev->ro) {
             rsc->scanout =
                   renderonly_create_gpu_import_for_resource(prsc, dev->ro, NULL);
             /* failure is expected in some cases.. */
    }
+#endif
 
    return prsc;
 }
@@ -603,8 +605,10 @@ agx_resource_destroy(struct pipe_screen *screen,
       winsys->displaytarget_destroy(winsys, rsrc->dt);
    }
 
+#ifndef __APPLE__
    if (rsrc->scanout)
       renderonly_scanout_destroy(rsrc->scanout, agx_screen->dev.ro);
+#endif
 
    agx_bo_unreference(rsrc->bo);
    FREE(rsrc);

@@ -291,7 +291,7 @@ agx_bo_cache_put_locked(struct agx_bo *bo)
    dev->bo_cache.size += bo->size;
 
    if (0) {
-      printf("BO cache: %zu KiB (+%zu KiB from %s, hit/miss %zu/%zu)\n",
+      printf("BO cache: %zu KiB (+%zu KiB from %s, hit/miss %" PRIu64 "/%" PRIu64 ")\n",
              DIV_ROUND_UP(dev->bo_cache.size, 1024),
              DIV_ROUND_UP(bo->size, 1024),
              bo->label,
