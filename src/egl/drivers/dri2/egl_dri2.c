@@ -728,7 +728,7 @@ static const struct dri2_extension_match dri2_core_extensions[] = {
 
 static const struct dri2_extension_match swrast_driver_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core) },
-   { __DRI_SWRAST, 2, offsetof(struct dri2_egl_display, swrast) },
+   { __DRI_SWRAST, 4, offsetof(struct dri2_egl_display, swrast) },
    { NULL, 0, 0 }
 };
 
@@ -927,6 +927,7 @@ dri2_setup_screen(_EGLDisplay *disp)
       disp->ClientAPIs |= EGL_OPENGL_ES3_BIT_KHR;
 
    assert(dri2_dpy->image_driver || dri2_dpy->dri2 || dri2_dpy->swrast);
+   disp->Extensions.KHR_create_context = EGL_TRUE;
    disp->Extensions.KHR_no_config_context = EGL_TRUE;
    disp->Extensions.KHR_surfaceless_context = EGL_TRUE;
 
@@ -945,14 +946,8 @@ dri2_setup_screen(_EGLDisplay *disp)
                                    __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB))
       disp->Extensions.KHR_gl_colorspace = EGL_TRUE;
 
-   if (dri2_dpy->image_driver ||
-       dri2_dpy->dri2 ||
-       (dri2_dpy->swrast && dri2_dpy->swrast->base.version >= 3)) {
-      disp->Extensions.KHR_create_context = EGL_TRUE;
-
-      if (dri2_dpy->robustness)
-         disp->Extensions.EXT_create_context_robustness = EGL_TRUE;
-   }
+   if (dri2_dpy->robustness)
+      disp->Extensions.EXT_create_context_robustness = EGL_TRUE;
 
    if (dri2_renderer_query_integer(dri2_dpy,
                                    __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT))
@@ -1079,16 +1074,10 @@ dri2_create_screen(_EGLDisplay *disp)
                                           &dri2_dpy->driver_configs, disp);
    } else {
       assert(dri2_dpy->swrast);
-      if (dri2_dpy->swrast->base.version >= 4) {
-         dri2_dpy->dri_screen =
-            dri2_dpy->swrast->createNewScreen2(0, dri2_dpy->loader_extensions,
-                                               dri2_dpy->driver_extensions,
-                                               &dri2_dpy->driver_configs, disp);
-      } else {
-         dri2_dpy->dri_screen =
-            dri2_dpy->swrast->createNewScreen(0, dri2_dpy->loader_extensions,
-                                              &dri2_dpy->driver_configs, disp);
-      }
+      dri2_dpy->dri_screen =
+         dri2_dpy->swrast->createNewScreen2(0, dri2_dpy->loader_extensions,
+                                             dri2_dpy->driver_extensions,
+                                             &dri2_dpy->driver_configs, disp);
    }
 
    if (dri2_dpy->dri_screen == NULL) {
@@ -1606,25 +1595,16 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
       dri2_create_context_attribs_error(error);
    } else {
       assert(dri2_dpy->swrast);
-      if (dri2_dpy->swrast->base.version >= 3) {
-         dri2_ctx->dri_context =
-            dri2_dpy->swrast->createContextAttribs(dri2_dpy->dri_screen,
-                                                   api,
-                                                   dri_config,
-                                                   shared,
-                                                   num_attribs / 2,
-                                                   ctx_attribs,
-                                                   & error,
-                                                   dri2_ctx);
-         dri2_create_context_attribs_error(error);
-      } else {
-         dri2_ctx->dri_context =
-            dri2_dpy->swrast->createNewContextForAPI(dri2_dpy->dri_screen,
-                                                     api,
-                                                     dri_config,
-                                                     shared,
-                                                     dri2_ctx);
-      }
+      dri2_ctx->dri_context =
+         dri2_dpy->swrast->createContextAttribs(dri2_dpy->dri_screen,
+                                                api,
+                                                dri_config,
+                                                shared,
+                                                num_attribs / 2,
+                                                ctx_attribs,
+                                                & error,
+                                                dri2_ctx);
+      dri2_create_context_attribs_error(error);
    }
 
    if (!dri2_ctx->dri_context)
