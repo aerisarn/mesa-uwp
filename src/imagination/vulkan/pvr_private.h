@@ -659,6 +659,9 @@ struct pvr_sub_cmd_gfx {
    /* Control stream builder object */
    struct pvr_csb control_stream;
 
+   /* Required iff pvr_sub_cmd_gfx_requires_split_submit() returns true. */
+   struct pvr_bo *terminate_ctrl_stream;
+
    uint32_t hw_render_idx;
 
    uint32_t max_tiles_in_flight;
@@ -1546,6 +1549,12 @@ pvr_stage_mask_dst(VkPipelineStageFlags2KHR stage_mask)
       return PVR_PIPELINE_STAGE_ALL_BITS;
 
    return pvr_stage_mask(stage_mask);
+}
+
+static inline bool pvr_sub_cmd_gfx_requires_split_submit(
+   const struct pvr_sub_cmd_gfx *const sub_cmd)
+{
+   return sub_cmd->job.run_frag && sub_cmd->framebuffer->layers > 1;
 }
 
 VkResult pvr_pds_fragment_program_create_and_upload(
