@@ -878,6 +878,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
    static const struct dri_extension_match exts[] = {
        { __DRI_CORE, 1, offsetof(struct dri3_screen, core), false },
        { __DRI_IMAGE_DRIVER, 1, offsetof(struct dri3_screen, image_driver), false },
+       { __DRI_MESA, 1, offsetof(struct dri3_screen, mesa), false },
    };
    if (!loader_bind_extensions(psc, exts, ARRAY_SIZE(exts), extensions))
       goto handle_error;

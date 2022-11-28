@@ -21,6 +21,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "GL/internal/mesa_interface.h"
+#include "git_sha1.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -954,8 +956,14 @@ static const struct __DRIBackendVtableExtensionRec galliumvk_vtable = {
    .InitScreen = kopper_init_screen,
 };
 
+static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
+   .base = { __DRI_MESA, 1 },
+   .version_string = MESA_INTERFACE_VERSION_STRING,
+};
+
 const __DRIextension *galliumvk_driver_extensions[] = {
    &driCoreExtension.base,
+   &mesaCoreExtension.base,
    &driSWRastExtension.base,
    &driDRI2Extension.base,
    &driImageDriverExtension.base,

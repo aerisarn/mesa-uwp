@@ -26,6 +26,8 @@
  *
  **************************************************************************/
 
+#include "GL/internal/mesa_interface.h"
+#include "git_sha1.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -631,9 +633,15 @@ const __DRIcopySubBufferExtension driSWCopySubBufferExtension = {
    .copySubBuffer               = driswCopySubBuffer,
 };
 
+static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
+   .base = { __DRI_MESA, 1 },
+   .version_string = MESA_INTERFACE_VERSION_STRING,
+};
+
 /* This is the table of extensions that the loader will dlsym() for. */
 const __DRIextension *galliumsw_driver_extensions[] = {
     &driCoreExtension.base,
+    &mesaCoreExtension.base,
     &driSWRastExtension.base,
     &driSWCopySubBufferExtension.base,
     &gallium_config_options.base,

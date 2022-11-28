@@ -960,6 +960,7 @@ driswCreateScreenDriver(int screen, struct glx_display *priv,
        { __DRI_SWRAST, 4, offsetof(struct drisw_screen, swrast), false },
        { __DRI_KOPPER, 1, offsetof(struct drisw_screen, kopper), true },
        { __DRI_COPY_SUB_BUFFER, 1, offsetof(struct drisw_screen, copySubBuffer), true },
+       { __DRI_MESA, 1, offsetof(struct drisw_screen, mesa), false },
    };
    if (!loader_bind_extensions(psc, exts, ARRAY_SIZE(exts), extensions))
       goto handle_error;

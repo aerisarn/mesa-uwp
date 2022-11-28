@@ -1092,6 +1092,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
    static const struct dri_extension_match exts[] = {
        { __DRI_CORE, 1, offsetof(struct dri2_screen, core), false },
        { __DRI_DRI2, 4, offsetof(struct dri2_screen, dri2), false },
+       { __DRI_MESA, 1, offsetof(struct dri2_screen, mesa), false },
    };
    if (!loader_bind_extensions(psc, exts, ARRAY_SIZE(exts), extensions))
       goto handle_error;

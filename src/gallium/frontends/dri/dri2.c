@@ -29,7 +29,9 @@
  */
 
 #include <xf86drm.h>
+#include "git_sha1.h"
 #include "GL/mesa_glinterop.h"
+#include "GL/internal/mesa_interface.h"
 #include "util/disk_cache.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -2405,9 +2407,15 @@ static const struct __DRIBackendVtableExtensionRec galliumdrm_vtable = {
    .InitScreen = dri2_init_screen,
 };
 
+static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
+   .base = { __DRI_MESA, 1 },
+   .version_string = MESA_INTERFACE_VERSION_STRING,
+};
+
 /* This is the table of extensions that the loader will dlsym() for. */
 const __DRIextension *galliumdrm_driver_extensions[] = {
     &driCoreExtension.base,
+    &mesaCoreExtension.base,
     &driImageDriverExtension.base,
     &driDRI2Extension.base,
     &gallium_config_options.base,
@@ -2429,6 +2437,7 @@ static const struct __DRIBackendVtableExtensionRec dri_swrast_kms_vtable = {
 
 const __DRIextension *dri_swrast_kms_driver_extensions[] = {
     &driCoreExtension.base,
+    &mesaCoreExtension.base,
     &driImageDriverExtension.base,
     &swkmsDRI2Extension.base,
     &gallium_config_options.base,

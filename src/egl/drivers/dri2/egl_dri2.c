@@ -704,12 +704,14 @@ const __DRIimageLookupExtension image_lookup_extension = {
 
 static const struct dri_extension_match dri3_driver_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_MESA, 1, offsetof(struct dri2_egl_display, mesa), false },
    { __DRI_IMAGE_DRIVER, 1, offsetof(struct dri2_egl_display, image_driver), false },
    { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
 
 static const struct dri_extension_match dri2_driver_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_MESA, 1, offsetof(struct dri2_egl_display, mesa), false },
    { __DRI_DRI2, 4, offsetof(struct dri2_egl_display, dri2), false },
    { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
@@ -722,6 +724,7 @@ static const struct dri_extension_match dri2_core_extensions[] = {
 
 static const struct dri_extension_match swrast_driver_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_MESA, 1, offsetof(struct dri2_egl_display, mesa), false },
    { __DRI_SWRAST, 4, offsetof(struct dri2_egl_display, swrast), false },
    { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
