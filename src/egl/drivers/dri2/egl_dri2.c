@@ -1581,7 +1581,6 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
                                                       ctx_attribs,
                                                       & error,
                                                       dri2_ctx);
-      dri2_create_context_attribs_error(error);
    } else if (dri2_dpy->dri2) {
       dri2_ctx->dri_context =
          dri2_dpy->dri2->createContextAttribs(dri2_dpy->dri_screen,
@@ -1592,7 +1591,6 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
                                                 ctx_attribs,
                                                 & error,
                                                 dri2_ctx);
-      dri2_create_context_attribs_error(error);
    } else {
       assert(dri2_dpy->swrast);
       dri2_ctx->dri_context =
@@ -1604,8 +1602,8 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
                                                 ctx_attribs,
                                                 & error,
                                                 dri2_ctx);
-      dri2_create_context_attribs_error(error);
    }
+   dri2_create_context_attribs_error(error);
 
    if (!dri2_ctx->dri_context)
       goto cleanup;
