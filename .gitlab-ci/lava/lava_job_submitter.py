@@ -272,8 +272,12 @@ class LAVAJob:
 
     def _load_log_from_data(self, data) -> list[str]:
         lines = []
+        if isinstance(data, xmlrpc.client.Binary):
+            # We are dealing with xmlrpc.client.Binary
+            # Let's extract the data
+            data = data.data
         # When there is no new log data, the YAML is empty
-        if loaded_lines := yaml.load(str(data), Loader=loader(False)):
+        if loaded_lines := yaml.load(data, Loader=loader(False)):
             lines = loaded_lines
             self.last_log_line += len(lines)
         return lines
