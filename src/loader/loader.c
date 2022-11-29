@@ -609,24 +609,23 @@ loader_bind_extensions(void *data,
                        const __DRIextension **extensions)
 {
    bool ret = true;
-   void *field;
-
-   for (size_t i = 0; extensions[i]; i++) {
-      for (size_t j = 0; j < num_matches; j++) {
-         if (strcmp(extensions[i]->name, matches[j].name) == 0 &&
-             extensions[i]->version >= matches[j].version) {
-            field = ((char *) data + matches[j].offset);
-            *(const __DRIextension **) field = extensions[i];
-         }
-      }
-   }
 
    for (size_t j = 0; j < num_matches; j++) {
-      field = ((char *) data + matches[j].offset);
-      if ((*(const __DRIextension **) field == NULL) && !matches[j].optional) {
-         log_(_LOADER_FATAL, "did not find extension %s version %d\n",
-              matches[j].name, matches[j].version);
-         ret = false;
+      const struct dri_extension_match *match = &matches[j];
+      const __DRIextension **field = (const __DRIextension **)((char *)data + matches[j].offset);
+      for (size_t i = 0; extensions[i]; i++) {
+         if (strcmp(extensions[i]->name, match->name) == 0 &&
+             extensions[i]->version >= match->version) {
+            *field = extensions[i];
+            break;
+         }
+      }
+
+      if (!*field) {
+         log_(match->optional ? _LOADER_DEBUG : _LOADER_FATAL, "did not find extension %s version %d\n",
+               match->name, match->version);
+         if (!match->optional)
+            ret = false;
       }
    }
 
