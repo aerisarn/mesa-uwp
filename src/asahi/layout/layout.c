@@ -156,7 +156,8 @@ ail_initialize_twiddled(struct ail_layout *layout)
       layout->level_offsets_B[l] = offset_B;
       offset_B = ALIGN_POT(offset_B + (blocksize_B * size_el), AIL_CACHELINE);
 
-      unsigned tilesize_el = MIN2(potw_el, poth_el);
+      /* The tilesize is based on the true mipmap level size, not the POT rounded size */
+      unsigned tilesize_el = util_next_power_of_two(u_minify(MIN2(w_el, h_el), l));
       layout->tilesize_el[l] = (struct ail_tile) { tilesize_el, tilesize_el };
 
       potw_el = u_minify(potw_el, 1);
