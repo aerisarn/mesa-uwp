@@ -109,11 +109,6 @@ rustfmt:
   variables:
     DEQP_VER: vk
 
-.skqp-test:
-  variables:
-    HWCI_START_XORG: 1
-    HWCI_TEST_SCRIPT: "/install/skqp-runner.sh"
-
 .fossilize-test:
   script:
     - ./install/fossilize-runner.sh
