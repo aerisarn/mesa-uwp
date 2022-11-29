@@ -5034,6 +5034,9 @@ bool nir_lower_subgroups(nir_shader *shader,
 
 bool nir_lower_system_values(nir_shader *shader);
 
+nir_ssa_def *
+nir_build_lowered_load_helper_invocation(struct nir_builder *b);
+
 typedef struct nir_lower_compute_system_values_options {
    bool has_base_global_invocation_id:1;
    bool has_base_workgroup_id:1;
