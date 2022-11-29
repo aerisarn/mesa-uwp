@@ -1851,6 +1851,33 @@ nir_split_stack_components(nir_shader *shader)
                                        NULL);
 }
 
+struct stack_op_vectorizer_state {
+   nir_should_vectorize_mem_func     driver_callback;
+   void                             *driver_data;
+};
+
+static bool
+should_vectorize(unsigned align_mul,
+                 unsigned align_offset,
+                 unsigned bit_size,
+                 unsigned num_components,
+                 nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                 void *data)
+{
+   /* We only care about those intrinsics */
+   if ((low->intrinsic != nir_intrinsic_load_stack &&
+        low->intrinsic != nir_intrinsic_store_stack) ||
+       (high->intrinsic != nir_intrinsic_load_stack &&
+        high->intrinsic != nir_intrinsic_store_stack))
+      return false;
+
+   struct stack_op_vectorizer_state *state = data;
+
+   return state->driver_callback(align_mul, align_offset,
+                                 bit_size, num_components,
+                                 low, high, state->driver_data);
+}
+
 /** Lower shader call instructions to split shaders.
  *
  * Shader calls can be split into an initial shader and a series of "resume"
@@ -1959,9 +1986,27 @@ nir_lower_shader_calls(nir_shader *shader,
          NIR_PASS_V(resume_shaders[i], nir_opt_stack_loads);
    }
 
+   struct stack_op_vectorizer_state vectorizer_state = {
+      .driver_callback = options->vectorizer_callback,
+      .driver_data     = options->vectorizer_data,
+   };
+   nir_load_store_vectorize_options vect_opts = {
+      .modes = nir_var_shader_temp,
+      .callback = should_vectorize,
+      .cb_data = &vectorizer_state,
+   };
+
+   if (options->vectorizer_callback != NULL) {
+      NIR_PASS_V(shader, nir_split_stack_components);
+      NIR_PASS_V(shader, nir_opt_load_store_vectorize, &vect_opts);
+   }
    NIR_PASS_V(shader, nir_lower_stack_to_scratch, options->address_format);
    nir_opt_cse(shader);
    for (unsigned i = 0; i < num_calls; i++) {
+      if (options->vectorizer_callback != NULL) {
+         NIR_PASS_V(shader, nir_split_stack_components);
+         NIR_PASS_V(shader, nir_opt_load_store_vectorize, &vect_opts);
+      }
       NIR_PASS_V(resume_shaders[i], nir_lower_stack_to_scratch,
                  options->address_format);
       nir_opt_cse(resume_shaders[i]);

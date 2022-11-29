@@ -154,6 +154,8 @@ case nir_intrinsic_##op: {\
    ATOMIC(nir_var_mem_task_payload, task_payload, fmin, -1, 0, -1, 1)
    ATOMIC(nir_var_mem_task_payload, task_payload, fmax, -1, 0, -1, 1)
    ATOMIC(nir_var_mem_task_payload, task_payload, fcomp_swap, -1, 0, -1, 1)
+   LOAD(nir_var_shader_temp, stack, -1, -1, -1)
+   STORE(nir_var_shader_temp, stack, -1, -1, -1, 0)
    default:
       break;
 #undef ATOMIC
