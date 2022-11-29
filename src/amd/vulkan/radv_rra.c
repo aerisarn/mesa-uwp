@@ -228,10 +228,10 @@ struct rra_accel_struct_header {
    uint32_t unused1;
    uint32_t geometry_description_count;
    VkGeometryTypeKHR geometry_type;
-   uint32_t internal_node_data_start;
-   uint32_t internal_node_data_end;
-   uint32_t leaf_node_data_start;
-   uint32_t leaf_node_data_end;
+   uint32_t internal_nodes_offset;
+   uint32_t leaf_nodes_offset;
+   uint32_t geometry_infos_offset;
+   uint32_t leaf_ids_offset;
    uint32_t interior_fp32_node_count;
    uint32_t interior_fp16_node_count;
    uint32_t leaf_node_count;
@@ -288,10 +288,12 @@ rra_fill_accel_struct_header_common(struct radv_accel_struct_header *header,
    result.file_size = result.metadata_size + sizeof(struct rra_accel_struct_header) +
                       internal_node_data_size + leaf_node_data_size;
 
-   result.internal_node_data_start = sizeof(struct rra_accel_struct_metadata);
-   result.internal_node_data_end = result.internal_node_data_start + internal_node_data_size;
-   result.leaf_node_data_start = result.internal_node_data_end;
-   result.leaf_node_data_end = result.leaf_node_data_start + leaf_node_data_size;
+   result.internal_nodes_offset = sizeof(struct rra_accel_struct_metadata);
+   result.leaf_nodes_offset = result.internal_nodes_offset + internal_node_data_size;
+   result.geometry_infos_offset = result.leaf_nodes_offset + leaf_node_data_size;
+   result.leaf_ids_offset = result.geometry_infos_offset;
+   if (!header->instance_count)
+      result.leaf_ids_offset += header->geometry_count * sizeof(struct rra_geometry_info);
 
    return result;
 }
@@ -379,11 +381,6 @@ rra_dump_blas_header(struct radv_accel_struct_header *header, size_t parent_id_t
    file_header.post_build_info.bvh_type = RRA_BVH_TYPE_BLAS;
    file_header.geometry_type =
       header->geometry_count ? geometry_infos->type : VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-   /*
-    * In BLASes in RRA, this seems to correspond to the start offset of the
-    * geometry info instead of leaf node data.
-    */
-   file_header.leaf_node_data_start += leaf_node_data_size;
 
    fwrite(&file_header, sizeof(struct rra_accel_struct_header), 1, output);
 }
