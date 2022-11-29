@@ -1012,7 +1012,7 @@ iris_can_sample_mcs_with_clear(const struct intel_device_info *devinfo,
 }
 
 static bool
-isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
+formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
 {
    /* On gfx8 and earlier, the hardware was only capable of handling 0/1 clear
     * values so sRGB curve application was a no-op for all fast-clearable
@@ -1048,7 +1048,7 @@ iris_resource_prepare_texture(struct iris_context *ice,
     * the sampler.  If we have a texture view, we would have to perform the
     * clear color conversion manually.  Just disable clear color.
     */
-   if (!isl_formats_are_fast_clear_compatible(res->surf.format, view_format))
+   if (!formats_are_fast_clear_compatible(res->surf.format, view_format))
       clear_supported = false;
 
    if (isl_aux_usage_has_mcs(aux_usage) &&
