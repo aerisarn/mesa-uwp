@@ -441,9 +441,9 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    if (stage == MESA_SHADER_FRAGMENT)
       lvp_lower_input_attachments(nir, false);
+   NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_is_helper_invocation);
    NIR_PASS_V(nir, lower_demote);
-   NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
