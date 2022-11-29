@@ -445,6 +445,8 @@ nir_type_convert(nir_builder *b,
 
    nir_op opcode =
       nir_type_conversion_op(src_type, dest_type, nir_rounding_mode_undef);
+   if (opcode == nir_op_mov)
+      return src;
 
    return nir_build_alu(b, opcode, src, NULL, NULL, NULL);
 }
