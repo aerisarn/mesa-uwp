@@ -2238,6 +2238,10 @@ void radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct
 void radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice,
                                       struct radeon_cmdbuf *cs, const struct radv_shader *shader);
 
+bool radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned bit_size,
+                                 unsigned num_components, nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                                 void *data);
+
 void radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
                                 const struct radv_pipeline_layout *layout);
 

@@ -2981,10 +2981,10 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
    }
 }
 
-static bool
-mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned bit_size,
-                       unsigned num_components, nir_intrinsic_instr *low, nir_intrinsic_instr *high,
-                       void *data)
+bool
+radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned bit_size,
+                            unsigned num_components, nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                            void *data)
 {
    if (num_components > 4)
       return false;
@@ -3805,7 +3805,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    nir_load_store_vectorize_options vectorize_opts = {
       .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const |
                nir_var_mem_shared | nir_var_mem_global,
-      .callback = mem_vectorize_callback,
+      .callback = radv_mem_vectorize_callback,
       .robust_modes = 0,
       /* On GFX6, read2/write2 is out-of-bounds if the offset register is negative, even if
        * the final offset is not.
