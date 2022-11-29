@@ -72,6 +72,7 @@
 #include "util/bitscan.h"
 #include "util/driconf.h"
 #include "util/u_math.h"
+#include "pipe/p_screen.h"
 
 #define NUM_ATTRIBS 12
 
@@ -835,6 +836,13 @@ dri2_query_driver_config(_EGLDisplay *disp)
     return ret;
 }
 
+static int
+get_screen_param(_EGLDisplay *disp, enum pipe_cap param)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct dri_screen *screen = dri_screen(dri2_dpy->dri_screen);
+   return screen->base.screen->get_param(screen->base.screen, param);
+}
 
 void
 dri2_setup_screen(_EGLDisplay *disp)
@@ -875,9 +883,7 @@ dri2_setup_screen(_EGLDisplay *disp)
    }
 
    /* Report back to EGL the bitmask of priorities supported */
-   disp->Extensions.IMG_context_priority =
-      dri2_renderer_query_integer(dri2_dpy,
-                                  __DRI2_RENDERER_HAS_CONTEXT_PRIORITY);
+   disp->Extensions.IMG_context_priority = get_screen_param(disp, PIPE_CAP_CONTEXT_PRIORITY_MASK);
 
    disp->Extensions.EXT_pixel_format_float = EGL_TRUE;
 
@@ -929,9 +935,9 @@ dri2_setup_screen(_EGLDisplay *disp)
       disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
       disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
 
-      if (dri2_renderer_query_integer(dri2_dpy,
-                                       __DRI2_RENDERER_HAS_TEXTURE_3D))
-            disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
+      if (get_screen_param(disp, PIPE_CAP_MAX_TEXTURE_3D_LEVELS) != 0)
+         disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
+
 #ifdef HAVE_LIBDRM
       if (dri2_dpy->image->base.version >= 8 &&
           dri2_dpy->image->createImageFromDmaBufs) {
@@ -948,11 +954,9 @@ dri2_setup_screen(_EGLDisplay *disp)
       disp->Extensions.KHR_partial_update = EGL_TRUE;
 
    disp->Extensions.EXT_protected_surface =
-      dri2_renderer_query_integer(dri2_dpy,
-                                  __DRI2_RENDERER_HAS_PROTECTED_SURFACE);
+      get_screen_param(disp, PIPE_CAP_DEVICE_PROTECTED_SURFACE) != 0;
    disp->Extensions.EXT_protected_content =
-      dri2_renderer_query_integer(dri2_dpy,
-                                  __DRI2_RENDERER_HAS_PROTECTED_CONTEXT);
+      get_screen_param(disp, PIPE_CAP_DEVICE_PROTECTED_CONTEXT) != 0;
 }
 
 void
