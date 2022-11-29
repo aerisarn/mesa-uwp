@@ -701,101 +701,48 @@ const __DRIimageLookupExtension image_lookup_extension = {
    .lookupEGLImageValidated = dri2_lookup_egl_image_validated,
 };
 
-struct dri2_extension_match {
-   const char *name;
-   int version;
-   int offset;
+
+static const struct dri_extension_match dri3_driver_extensions[] = {
+   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_IMAGE_DRIVER, 1, offsetof(struct dri2_egl_display, image_driver), false },
+   { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
 
-static const struct dri2_extension_match dri3_driver_extensions[] = {
-   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core) },
-   { __DRI_IMAGE_DRIVER, 1, offsetof(struct dri2_egl_display, image_driver) },
-   { NULL, 0, 0 }
+static const struct dri_extension_match dri2_driver_extensions[] = {
+   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_DRI2, 4, offsetof(struct dri2_egl_display, dri2), false },
+   { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
 
-static const struct dri2_extension_match dri2_driver_extensions[] = {
-   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core) },
-   { __DRI_DRI2, 4, offsetof(struct dri2_egl_display, dri2) },
-   { NULL, 0, 0 }
+static const struct dri_extension_match dri2_core_extensions[] = {
+   { __DRI2_FLUSH, 1, offsetof(struct dri2_egl_display, flush), false },
+   { __DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer), false },
+   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image), false },
 };
 
-static const struct dri2_extension_match dri2_core_extensions[] = {
-   { __DRI2_FLUSH, 1, offsetof(struct dri2_egl_display, flush) },
-   { __DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer) },
-   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image) },
-   { NULL, 0, 0 }
+static const struct dri_extension_match swrast_driver_extensions[] = {
+   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core), false },
+   { __DRI_SWRAST, 4, offsetof(struct dri2_egl_display, swrast), false },
+   { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions), true },
 };
 
-static const struct dri2_extension_match swrast_driver_extensions[] = {
-   { __DRI_CORE, 1, offsetof(struct dri2_egl_display, core) },
-   { __DRI_SWRAST, 4, offsetof(struct dri2_egl_display, swrast) },
-   { NULL, 0, 0 }
+static const struct dri_extension_match swrast_core_extensions[] = {
+   { __DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer), false },
 };
 
-static const struct dri2_extension_match swrast_core_extensions[] = {
-   { __DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer) },
-   { NULL, 0, 0 }
+static const struct dri_extension_match optional_core_extensions[] = {
+   { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness), true },
+   { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config), true },
+   { __DRI2_FENCE, 2, offsetof(struct dri2_egl_display, fence), true },
+   { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage), true },
+   { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery), true },
+   { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop), true },
+   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image), true },
+   { __DRI2_FLUSH_CONTROL, 1, offsetof(struct dri2_egl_display, flush_control), true },
+   { __DRI2_BLOB, 1, offsetof(struct dri2_egl_display, blob), true },
+   { __DRI_MUTABLE_RENDER_BUFFER_DRIVER, 1, offsetof(struct dri2_egl_display, mutable_render_buffer), true },
+   { __DRI_KOPPER, 1, offsetof(struct dri2_egl_display, kopper), true },
 };
-
-static const struct dri2_extension_match optional_driver_extensions[] = {
-   { __DRI_CONFIG_OPTIONS, 2, offsetof(struct dri2_egl_display, configOptions) },
-   { NULL, 0, 0 }
-};
-
-static const struct dri2_extension_match optional_core_extensions[] = {
-   { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness) },
-   { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config) },
-   { __DRI2_FENCE, 2, offsetof(struct dri2_egl_display, fence) },
-   { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage) },
-   { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery) },
-   { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop) },
-   { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image) },
-   { __DRI2_FLUSH_CONTROL, 1, offsetof(struct dri2_egl_display, flush_control) },
-   { __DRI2_BLOB, 1, offsetof(struct dri2_egl_display, blob) },
-   { __DRI_MUTABLE_RENDER_BUFFER_DRIVER, 1, offsetof(struct dri2_egl_display, mutable_render_buffer) },
-   { __DRI_KOPPER, 1, offsetof(struct dri2_egl_display, kopper) },
-   { NULL, 0, 0 }
-};
-
-static EGLBoolean
-dri2_bind_extensions(struct dri2_egl_display *dri2_dpy,
-                     const struct dri2_extension_match *matches,
-                     const __DRIextension **extensions,
-                     bool optional)
-{
-   int ret = EGL_TRUE;
-   void *field;
-
-   for (int i = 0; extensions[i]; i++) {
-      _eglLog(_EGL_DEBUG, "found extension `%s'", extensions[i]->name);
-      for (int j = 0; matches[j].name; j++) {
-         if (strcmp(extensions[i]->name, matches[j].name) == 0 &&
-             extensions[i]->version >= matches[j].version) {
-            field = ((char *) dri2_dpy + matches[j].offset);
-            *(const __DRIextension **) field = extensions[i];
-            _eglLog(_EGL_INFO, "found extension %s version %d",
-                    extensions[i]->name, extensions[i]->version);
-            break;
-         }
-      }
-   }
-
-   for (int j = 0; matches[j].name; j++) {
-      field = ((char *) dri2_dpy + matches[j].offset);
-      if (*(const __DRIextension **) field == NULL) {
-         if (optional) {
-            _eglLog(_EGL_DEBUG, "did not find optional extension %s version %d",
-                    matches[j].name, matches[j].version);
-         } else {
-            _eglLog(_EGL_WARNING, "did not find extension %s version %d",
-                    matches[j].name, matches[j].version);
-            ret = EGL_FALSE;
-         }
-      }
-   }
-
-   return ret;
-}
 
 static const __DRIextension **
 dri2_open_driver(_EGLDisplay *disp)
@@ -813,7 +760,8 @@ dri2_open_driver(_EGLDisplay *disp)
 
 static EGLBoolean
 dri2_load_driver_common(_EGLDisplay *disp,
-                        const struct dri2_extension_match *driver_extensions)
+                        const struct dri_extension_match *driver_extensions,
+                        int num_matches)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const __DRIextension **extensions;
@@ -822,14 +770,12 @@ dri2_load_driver_common(_EGLDisplay *disp,
    if (!extensions)
       return EGL_FALSE;
 
-   if (!dri2_bind_extensions(dri2_dpy, driver_extensions, extensions, false)) {
+   if (!loader_bind_extensions(dri2_dpy, driver_extensions, num_matches, extensions)) {
       dlclose(dri2_dpy->driver);
       dri2_dpy->driver = NULL;
       return EGL_FALSE;
    }
    dri2_dpy->driver_extensions = extensions;
-
-   dri2_bind_extensions(dri2_dpy, optional_driver_extensions, extensions, true);
 
    return EGL_TRUE;
 }
@@ -837,19 +783,19 @@ dri2_load_driver_common(_EGLDisplay *disp,
 EGLBoolean
 dri2_load_driver(_EGLDisplay *disp)
 {
-   return dri2_load_driver_common(disp, dri2_driver_extensions);
+   return dri2_load_driver_common(disp, dri2_driver_extensions, ARRAY_SIZE(dri2_driver_extensions));
 }
 
 EGLBoolean
 dri2_load_driver_dri3(_EGLDisplay *disp)
 {
-   return dri2_load_driver_common(disp, dri3_driver_extensions);
+   return dri2_load_driver_common(disp, dri3_driver_extensions, ARRAY_SIZE(dri3_driver_extensions));
 }
 
 EGLBoolean
 dri2_load_driver_swrast(_EGLDisplay *disp)
 {
-   return dri2_load_driver_common(disp, swrast_driver_extensions);
+   return dri2_load_driver_common(disp, swrast_driver_extensions, ARRAY_SIZE(swrast_driver_extensions));
 }
 
 static unsigned
@@ -1093,18 +1039,17 @@ EGLBoolean
 dri2_setup_extensions(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   const struct dri2_extension_match *mandatory_core_extensions;
    const __DRIextension **extensions;
 
    extensions = dri2_dpy->core->getExtensions(dri2_dpy->dri_screen);
 
-   if (dri2_dpy->image_driver || dri2_dpy->dri2)
-      mandatory_core_extensions = dri2_core_extensions;
-   else
-      mandatory_core_extensions = swrast_core_extensions;
-
-   if (!dri2_bind_extensions(dri2_dpy, mandatory_core_extensions, extensions, false))
-      return EGL_FALSE;
+   if (dri2_dpy->image_driver || dri2_dpy->dri2) {
+      if (!loader_bind_extensions(dri2_dpy, dri2_core_extensions, ARRAY_SIZE(dri2_core_extensions), extensions))
+         return EGL_FALSE;
+   } else {
+      if (!loader_bind_extensions(dri2_dpy, swrast_core_extensions, ARRAY_SIZE(swrast_core_extensions), extensions))
+         return EGL_FALSE;
+   }
 
 #ifdef HAVE_DRI3_MODIFIERS
    dri2_dpy->multibuffers_available =
@@ -1115,7 +1060,7 @@ dri2_setup_extensions(_EGLDisplay *disp)
       (dri2_dpy->image && dri2_dpy->image->base.version >= 15);
 #endif
 
-   dri2_bind_extensions(dri2_dpy, optional_core_extensions, extensions, true);
+   loader_bind_extensions(dri2_dpy, optional_core_extensions, ARRAY_SIZE(optional_core_extensions), extensions);
    return EGL_TRUE;
 }
 
