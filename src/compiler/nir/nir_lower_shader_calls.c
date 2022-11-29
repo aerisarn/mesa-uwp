@@ -1785,6 +1785,72 @@ nir_opt_stack_loads(nir_shader *shader)
    return progress;
 }
 
+static bool
+split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_stack &&
+       intrin->intrinsic != nir_intrinsic_store_stack)
+      return false;
+
+   if (intrin->intrinsic == nir_intrinsic_load_stack &&
+       intrin->dest.ssa.num_components == 1)
+      return false;
+
+   if (intrin->intrinsic == nir_intrinsic_store_stack &&
+       intrin->src[0].ssa->num_components == 1)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   if (intrin->intrinsic == nir_intrinsic_load_stack) {
+      nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS] = { 0, };
+      for (unsigned c = 0; c < intrin->dest.ssa.num_components; c++) {
+         components[c] = nir_load_stack(b, 1, intrin->dest.ssa.bit_size,
+                                        .base = nir_intrinsic_base(intrin) +
+                                                c * intrin->dest.ssa.bit_size / 8,
+                                        .call_idx = nir_intrinsic_call_idx(intrin),
+                                        .value_id = nir_intrinsic_value_id(intrin),
+                                        .align_mul = nir_intrinsic_align_mul(intrin));
+      }
+
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                               nir_vec(b, components,
+                                       intrin->dest.ssa.num_components));
+   } else {
+      assert(intrin->intrinsic == nir_intrinsic_store_stack);
+      for (unsigned c = 0; c < intrin->src[0].ssa->num_components; c++) {
+         nir_store_stack(b, nir_channel(b, intrin->src[0].ssa, c),
+                         .base = nir_intrinsic_base(intrin) +
+                                 c * intrin->src[0].ssa->bit_size / 8,
+                         .call_idx = nir_intrinsic_call_idx(intrin),
+                         .align_mul = nir_intrinsic_align_mul(intrin),
+                         .value_id = nir_intrinsic_value_id(intrin),
+                         .write_mask = 0x1);
+      }
+   }
+
+   nir_instr_remove(instr);
+
+   return true;
+}
+
+/* Break the load_stack/store_stack intrinsics into single compoments. This
+ * helps the vectorizer to pack components.
+ */
+static bool
+nir_split_stack_components(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader,
+                                       split_stack_components_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
+}
+
 /** Lower shader call instructions to split shaders.
  *
  * Shader calls can be split into an initial shader and a series of "resume"
