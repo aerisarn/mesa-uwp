@@ -624,11 +624,19 @@ agx_create_sampler_view(struct pipe_context *pctx,
    struct pipe_resource *texture = orig_texture;
    enum pipe_format format = state->format;
 
-   /* Use stencil attachment, separate stencil always used on G13 */
-   if (rsrc->separate_stencil) {
-      rsrc = rsrc->separate_stencil;
-      texture = &rsrc->base;
-      format = texture->format;
+   const struct util_format_description *desc = util_format_description(format);
+
+   /* Separate stencil always used on G13, so we need to fix up for Z32S8 */
+   if (util_format_has_stencil(desc) && rsrc->separate_stencil) {
+      if (util_format_has_depth(desc)) {
+         /* Reinterpret as the depth-only part */
+         format = util_format_get_depth_only(format);
+      } else {
+         /* Use the stencil-only-part */
+         rsrc = rsrc->separate_stencil;
+         texture = &rsrc->base;
+         format = texture->format;
+      }
    }
 
    /* Save off the resource that we actually use, with the stencil fixed up */
