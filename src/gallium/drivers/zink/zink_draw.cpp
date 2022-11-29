@@ -550,7 +550,7 @@ zink_draw(struct pipe_context *pctx,
 
    if (lines_changed || rast_state_changed ||
        ctx->gfx_pipeline_state.modules_changed)
-      zink_set_line_stipple_keys(ctx);
+      zink_set_primitive_emulation_keys(ctx);
 
    if (index_size) {
       const VkIndexType index_type[3] = {

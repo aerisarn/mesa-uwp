@@ -1836,7 +1836,7 @@ zink_driver_thread_add_job(struct pipe_screen *pscreen, void *data,
 }
 
 void
-zink_set_line_stipple_keys(struct zink_context *ctx)
+zink_set_primitive_emulation_keys(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool lower_line_stipple = ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES &&
