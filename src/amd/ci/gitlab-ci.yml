@@ -96,15 +96,14 @@ radeonsi-stoney-traces:amd64:
     DRIVER_NAME: radeonsi
     GPU_VERSION: amd-raven
     VK_DRIVER: radeon
+    HWCI_START_XORG: 1
 
 amd-raven-skqp:amd64:
   extends:
     - .lava-test:amd64
     - .amd-raven-test:amd64
-    - .skqp-test
   variables:
-    # Possible skqp backends: gl, gles, unitTest and vk
-    SKQP_BACKENDS: gl gles vk unitTest  # space separated values
+    DEQP_SUITE: amd-raven-skqp
 
 .radv-traces:
   extends:
