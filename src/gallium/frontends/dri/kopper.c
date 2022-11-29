@@ -951,15 +951,11 @@ const __DRIkopperExtension driKopperExtension = {
    .queryBufferAge             = kopperQueryBufferAge,
 };
 
-static const struct __DRIBackendVtableExtensionRec galliumvk_vtable = {
-   .base = { __DRI_BACKEND_VTABLE, 1 },
-   .InitScreen = kopper_init_screen,
-};
-
 static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
    .createNewScreen = driCreateNewScreen2,
+   .initScreen = kopper_init_screen,
 };
 
 const __DRIextension *galliumvk_driver_extensions[] = {
@@ -970,7 +966,6 @@ const __DRIextension *galliumvk_driver_extensions[] = {
    &driImageDriverExtension.base,
    &driKopperExtension.base,
    &gallium_config_options.base,
-   &galliumvk_vtable.base,
    NULL
 };
 

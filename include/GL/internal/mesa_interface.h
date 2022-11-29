@@ -35,6 +35,8 @@ typedef struct __DRImesaCoreExtensionRec __DRImesaCoreExtension;
 #define __DRI_MESA "DRI_Mesa"
 #define __DRI_MESA_VERSION 1
 
+struct dri_screen;
+
 /**  Core struct that appears alongside __DRI_CORE for Mesa-internal usage.
  * Implemented in the top-level dri/drisw/kopper extension list.
  */
@@ -54,6 +56,9 @@ struct __DRImesaCoreExtensionRec {
     * be -1.
     */
    __DRIcreateNewScreen2Func createNewScreen;
+
+   /* driver function for finishing initialization inside createNewScreen(). */
+   const __DRIconfig **(*initScreen)(struct dri_screen *screen);
 };
 
 #endif /* MESA_INTERFACE_H */

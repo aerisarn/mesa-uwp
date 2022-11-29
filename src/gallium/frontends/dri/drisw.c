@@ -605,16 +605,6 @@ fail:
    return NULL;
 }
 
-/**
- * DRI driver virtual function table.
- *
- * DRI versions differ in their implementation of init_screen and swap_buffers.
- */
-static const struct __DRIBackendVtableExtensionRec galliumsw_vtable = {
-   .base = { __DRI_BACKEND_VTABLE, 1 },
-   .InitScreen = drisw_init_screen,
-};
-
 /* swrast copy sub buffer entrypoint. */
 static void driswCopySubBuffer(__DRIdrawable *pdp, int x, int y,
                                int w, int h)
@@ -637,6 +627,7 @@ static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
    .createNewScreen = driCreateNewScreen2,
+   .initScreen = drisw_init_screen,
 };
 
 /* This is the table of extensions that the loader will dlsym() for. */
@@ -646,7 +637,6 @@ const __DRIextension *galliumsw_driver_extensions[] = {
     &driSWRastExtension.base,
     &driSWCopySubBufferExtension.base,
     &gallium_config_options.base,
-    &galliumsw_vtable.base,
     NULL
 };
 

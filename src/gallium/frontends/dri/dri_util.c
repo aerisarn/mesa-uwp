@@ -52,6 +52,7 @@
 #include "main/debug_output.h"
 #include "main/errors.h"
 #include "loader/loader.h"
+#include "GL/internal/mesa_interface.h"
 
 driOptionDescription __dri2ConfigOptions[] = {
       DRI_CONF_SECTION_DEBUG
@@ -102,7 +103,7 @@ driCreateNewScreen2(int scrn, int fd,
 {
     static const __DRIextension *emptyExtensionList[] = { NULL };
     struct dri_screen *screen;
-    const struct __DRIBackendVtableExtensionRec *backend = NULL;
+    const __DRImesaCoreExtension *mesa = NULL;
 
     screen = CALLOC_STRUCT(dri_screen);
     if (!screen)
@@ -110,8 +111,8 @@ driCreateNewScreen2(int scrn, int fd,
 
     assert(driver_extensions);
     for (int i = 0; driver_extensions[i]; i++) {
-       if (strcmp(driver_extensions[i]->name, __DRI_BACKEND_VTABLE) == 0) {
-          backend = (__DRIBackendVtableExtension *)driver_extensions[i];
+       if (strcmp(driver_extensions[i]->name, __DRI_MESA) == 0) {
+          mesa = (__DRImesaCoreExtension *)driver_extensions[i];
        }
     }
 
@@ -124,7 +125,7 @@ driCreateNewScreen2(int scrn, int fd,
 
     screen->loaderPrivate = data;
 
-    /* This will be filled in by backend->InitScreen(). */
+    /* This will be filled in by mesa->initScreen(). */
     screen->extensions = emptyExtensionList;
     screen->fd = fd;
     screen->myNum = scrn;
@@ -135,7 +136,7 @@ driCreateNewScreen2(int scrn, int fd,
     driParseConfigFiles(&screen->optionCache, &screen->optionInfo, screen->myNum,
                         "dri2", NULL, NULL, NULL, 0, NULL, 0);
 
-    *driver_configs = backend->InitScreen(screen);
+    *driver_configs = mesa->initScreen(screen);
     if (*driver_configs == NULL) {
         free(screen);
         return NULL;

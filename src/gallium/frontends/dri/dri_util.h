@@ -47,11 +47,6 @@ struct dri_screen;
 
 #define __DRI_BACKEND_VTABLE "DRI_DriverVtable"
 
-typedef struct __DRIBackendVtableExtensionRec {
-    __DRIextension base;
-    const __DRIconfig **(*InitScreen)(struct dri_screen *screen);
-} __DRIBackendVtableExtension;
-
 struct __DRIconfigRec {
     struct gl_config modes;
 };

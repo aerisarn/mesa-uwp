@@ -2397,20 +2397,11 @@ release_pipe:
    return NULL;
 }
 
-/**
- * DRI driver virtual function table.
- *
- * DRI versions differ in their implementation of init_screen and swap_buffers.
- */
-static const struct __DRIBackendVtableExtensionRec galliumdrm_vtable = {
-   .base = { __DRI_BACKEND_VTABLE, 1 },
-   .InitScreen = dri2_init_screen,
-};
-
 static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
    .createNewScreen = driCreateNewScreen2,
+   .initScreen = dri2_init_screen,
 };
 
 /* This is the table of extensions that the loader will dlsym() for. */
@@ -2420,29 +2411,22 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
     &driImageDriverExtension.base,
     &driDRI2Extension.base,
     &gallium_config_options.base,
-    &galliumdrm_vtable.base,
     NULL
 };
 
-/**
- * DRI driver virtual function table.
- *
- * KMS/DRM version of the DriverAPI above sporting a different InitScreen
- * hook. The latter is used to explicitly initialise the kms_swrast driver
- * rather than selecting the approapriate driver as suggested by the loader.
- */
-static const struct __DRIBackendVtableExtensionRec dri_swrast_kms_vtable = {
-   .base = { __DRI_BACKEND_VTABLE, 1 },
-   .InitScreen = dri_swrast_kms_init_screen,
+static const struct __DRImesaCoreExtensionRec swkmsMesaCoreExtension = {
+   .base = { __DRI_MESA, 1 },
+   .version_string = MESA_INTERFACE_VERSION_STRING,
+   .createNewScreen = driCreateNewScreen2,
+   .initScreen = dri_swrast_kms_init_screen,
 };
 
 const __DRIextension *dri_swrast_kms_driver_extensions[] = {
     &driCoreExtension.base,
-    &mesaCoreExtension.base,
+    &swkmsMesaCoreExtension.base,
     &driImageDriverExtension.base,
     &swkmsDRI2Extension.base,
     &gallium_config_options.base,
-    &dri_swrast_kms_vtable.base,
     NULL
 };
 
