@@ -583,7 +583,9 @@ SOFTWARE.
     <field name="downscale" start="56" end="56" type="bool"/>
     <field name="size_z" start="52" end="55" type="SIZE"/>
     <field name="rotation" start="50" end="51" type="ROTATION_TYPE"/>
-    <field name="linestride" start="34" end="49" type="uint"/>
+    <field name="linestride" start="34" end="49" type="uint">
+      <define name="ALIGNMENT" value="2"/>
+    </field>
     <field name="memlayout" start="32" end="33" type="MEMLAYOUT"/>
     <field name="swiz_chan3" start="29" end="31" type="SWIZ"/>
     <field name="swiz_chan2" start="26" end="28" type="SWIZ"/>

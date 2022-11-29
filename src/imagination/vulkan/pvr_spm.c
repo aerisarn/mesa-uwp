@@ -69,6 +69,38 @@ void pvr_spm_finish_scratch_buffer_store(struct pvr_device *device)
    }
 }
 
+uint64_t
+pvr_spm_scratch_buffer_calc_required_size(const struct pvr_render_pass *pass,
+                                          uint32_t framebuffer_width,
+                                          uint32_t framebuffer_height)
+{
+   uint64_t dwords_per_pixel;
+   uint64_t buffer_size;
+
+   /* If we're allocating an SPM scratch buffer we'll have a minimum of 1 output
+    * reg and/or tile_buffer.
+    */
+   uint32_t nr_tile_buffers = 1;
+   uint32_t nr_output_regs = 1;
+
+   for (uint32_t i = 0; i < pass->hw_setup->render_count; i++) {
+      const struct pvr_renderpass_hwsetup_render *hw_render =
+         &pass->hw_setup->renders[i];
+
+      nr_tile_buffers = MAX2(nr_tile_buffers, hw_render->tile_buffers_count);
+      nr_output_regs = MAX2(nr_output_regs, hw_render->output_regs_count);
+   }
+
+   dwords_per_pixel =
+      (uint64_t)pass->max_sample_count * nr_output_regs * nr_tile_buffers;
+
+   buffer_size = ALIGN_POT((uint64_t)framebuffer_width,
+                           PVRX(CR_PBE_WORD0_MRT0_LINESTRIDE_ALIGNMENT));
+   buffer_size *= (uint64_t)framebuffer_height * dwords_per_pixel * 4;
+
+   return buffer_size;
+}
+
 static VkResult
 pvr_spm_scratch_buffer_alloc(struct pvr_device *device,
                              uint64_t size,

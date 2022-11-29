@@ -2621,11 +2621,13 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
                                const VkAllocationCallbacks *pAllocator,
                                VkFramebuffer *pFramebuffer)
 {
+   PVR_FROM_HANDLE(pvr_render_pass, pass, pCreateInfo->renderPass);
    PVR_FROM_HANDLE(pvr_device, device, _device);
    struct pvr_render_target *render_targets;
    struct pvr_framebuffer *framebuffer;
    struct pvr_image_view **attachments;
    uint32_t render_targets_count;
+   uint64_t scratch_buffer_size;
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
@@ -2677,9 +2679,23 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
       goto err_free_ppp_state_bo;
    }
 
+   scratch_buffer_size =
+      pvr_spm_scratch_buffer_calc_required_size(pass,
+                                                framebuffer->width,
+                                                framebuffer->height);
+
+   result = pvr_spm_scratch_buffer_get_buffer(device,
+                                              scratch_buffer_size,
+                                              &framebuffer->scratch_buffer);
+   if (result != VK_SUCCESS)
+      goto err_finish_render_targets;
+
    *pFramebuffer = pvr_framebuffer_to_handle(framebuffer);
 
    return VK_SUCCESS;
+
+err_finish_render_targets:
+   pvr_render_targets_fini(framebuffer->render_targets, render_targets_count);
 
 err_free_ppp_state_bo:
    pvr_bo_free(device, framebuffer->ppp_state_bo);
@@ -2695,12 +2711,13 @@ void pvr_DestroyFramebuffer(VkDevice _device,
                             VkFramebuffer _fb,
                             const VkAllocationCallbacks *pAllocator)
 {
-   PVR_FROM_HANDLE(pvr_device, device, _device);
    PVR_FROM_HANDLE(pvr_framebuffer, framebuffer, _fb);
+   PVR_FROM_HANDLE(pvr_device, device, _device);
 
    if (!framebuffer)
       return;
 
+   pvr_spm_scratch_buffer_release(device, framebuffer->scratch_buffer);
    pvr_render_targets_fini(framebuffer->render_targets,
                            framebuffer->render_targets_count);
    pvr_bo_free(device, framebuffer->ppp_state_bo);

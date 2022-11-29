@@ -45,6 +45,7 @@
 #include "util/simple_mtx.h"
 
 struct pvr_device;
+struct pvr_render_pass;
 struct pvr_spm_scratch_buffer;
 
 struct pvr_spm_scratch_buffer_store {
@@ -63,6 +64,10 @@ void pvr_spm_finish_scratch_buffer_store(struct pvr_device *device);
  *    VK_ATTACHMENT_STORE_OP_NONE, not currently supported) or lazily allocated
  *    attachments with no backing.
  */
+uint64_t
+pvr_spm_scratch_buffer_calc_required_size(const struct pvr_render_pass *pass,
+                                          uint32_t framebuffer_width,
+                                          uint32_t framebuffer_height);
 VkResult pvr_spm_scratch_buffer_get_buffer(
    struct pvr_device *device,
    uint64_t size,

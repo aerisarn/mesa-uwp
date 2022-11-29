@@ -1294,6 +1294,8 @@ struct pvr_framebuffer {
 
    uint32_t render_targets_count;
    struct pvr_render_target *render_targets;
+
+   struct pvr_spm_scratch_buffer *scratch_buffer;
 };
 
 struct pvr_render_pass_attachment {
