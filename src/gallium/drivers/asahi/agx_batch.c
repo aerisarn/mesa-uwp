@@ -220,6 +220,20 @@ agx_flush_writer_except(struct agx_context *ctx,
    }
 }
 
+bool
+agx_any_batch_uses_resource(struct agx_context *ctx, struct agx_resource *rsrc)
+{
+   unsigned idx;
+   foreach_batch(ctx, idx) {
+      struct agx_batch *batch = &ctx->batches.slots[idx];
+
+      if (agx_batch_uses_bo(batch, rsrc->bo))
+         return true;
+   }
+
+   return false;
+}
+
 void
 agx_flush_readers(struct agx_context *ctx, struct agx_resource *rsrc, const char *reason)
 {

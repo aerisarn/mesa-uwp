@@ -441,6 +441,8 @@ void agx_flush_writer(struct agx_context *ctx, struct agx_resource *rsrc, const 
 void agx_batch_reads(struct agx_batch *batch, struct agx_resource *rsrc);
 void agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc);
 
+bool agx_any_batch_uses_resource(struct agx_context *ctx, struct agx_resource *rsrc);
+
 struct agx_batch *agx_get_batch(struct agx_context *ctx);
 void agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch);
 

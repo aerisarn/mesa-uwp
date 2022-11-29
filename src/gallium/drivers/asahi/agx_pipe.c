@@ -679,16 +679,25 @@ agx_prepare_for_map(struct agx_context *ctx,
    if (usage & PIPE_MAP_UNSYNCHRONIZED)
       return;
 
+   /* Both writing and reading need writers flushed */
    agx_flush_writer(ctx, rsrc, "Unsynchronized transfer");
 
-   if (usage & PIPE_MAP_WRITE) {
-      /* Try to shadow the resource to avoid a flush */
-      if ((usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) && agx_shadow(ctx, rsrc))
-         return;
+   /* Additionally, writing needs readers flushed */
+   if (!(usage & PIPE_MAP_WRITE))
+      return;
 
-      /* Otherwise, we need to flush */
-      agx_flush_readers(ctx, rsrc, "Unsynchronized write");
-   }
+   /* If there are no readers, we're done. We check at the start to
+    * avoid expensive shadowing paths or duplicated checks in this hapyp path.
+    */
+   if (!agx_any_batch_uses_resource(ctx, rsrc))
+      return;
+
+   /* There are readers. Try to shadow the resource to avoid a flush */
+   if ((usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) && agx_shadow(ctx, rsrc))
+      return;
+
+   /* Otherwise, we need to flush */
+   agx_flush_readers(ctx, rsrc, "Unsynchronized write");
 }
 
 
