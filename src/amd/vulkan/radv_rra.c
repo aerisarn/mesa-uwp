@@ -811,11 +811,6 @@ rra_dump_acceleration_structure(struct radv_rra_accel_struct_data *accel_struct,
    fwrite(&chunk_header, sizeof(struct rra_accel_struct_chunk_header), 1, output);
    fwrite(&rra_metadata, sizeof(struct rra_accel_struct_metadata), 1, output);
 
-   /*
-    * See the meta shader source for the memory layout of the
-    * acceleration structure.
-    */
-
    /* Write node parent id data */
    fwrite(node_parent_table, 1, node_parent_table_size, output);
 
