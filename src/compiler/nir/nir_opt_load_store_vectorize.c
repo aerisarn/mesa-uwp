@@ -848,8 +848,8 @@ vectorize_stores(nir_builder *b, struct vectorize_ctx *ctx,
    /* convert booleans */
    nir_ssa_def *low_val = low->intrin->src[low->info->value_src].ssa;
    nir_ssa_def *high_val = high->intrin->src[high->info->value_src].ssa;
-   low_val = low_val->bit_size == 1 ? nir_b2i(b, low_val, 32) : low_val;
-   high_val = high_val->bit_size == 1 ? nir_b2i(b, high_val, 32) : high_val;
+   low_val = low_val->bit_size == 1 ? nir_b2iN(b, low_val, 32) : low_val;
+   high_val = high_val->bit_size == 1 ? nir_b2iN(b, high_val, 32) : high_val;
 
    /* combine the data */
    nir_ssa_def *data_channels[NIR_MAX_VEC_COMPONENTS];

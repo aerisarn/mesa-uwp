@@ -405,6 +405,32 @@ nir_f2fN(nir_builder *b, nir_ssa_def *src, unsigned bit_size)
 }
 
 static inline nir_ssa_def *
+nir_f2b(nir_builder *b, nir_ssa_def *src)
+{
+   return nir_type_convert(b, src, nir_type_float, nir_type_bool1);
+}
+
+static inline nir_ssa_def *
+nir_i2b(nir_builder *b, nir_ssa_def *src)
+{
+   return nir_type_convert(b, src, nir_type_int, nir_type_bool1);
+}
+
+static inline nir_ssa_def *
+nir_b2iN(nir_builder *b, nir_ssa_def *src, uint32_t bit_size)
+{
+   return nir_type_convert(b, src, nir_type_bool,
+         (nir_alu_type) (nir_type_int | bit_size));
+}
+
+static inline nir_ssa_def *
+nir_b2fN(nir_builder *b, nir_ssa_def *src, uint32_t bit_size)
+{
+   return nir_type_convert(b, src, nir_type_bool,
+         (nir_alu_type) (nir_type_float | bit_size));
+}
+
+static inline nir_ssa_def *
 nir_i2fN(nir_builder *b, nir_ssa_def *src, unsigned bit_size)
 {
    return nir_type_convert(b, src, nir_type_int,
@@ -1595,42 +1621,6 @@ nir_mask(nir_builder *b, nir_ssa_def *bits, unsigned dst_bit_size)
                       nir_isub_imm(b, dst_bit_size, nir_u2u32(b, bits)));
 }
 
-static inline nir_ssa_def *
-nir_f2b(nir_builder *build, nir_ssa_def *f)
-{
-   return nir_f2b1(build, f);
-}
-
-static inline nir_ssa_def *
-nir_i2b(nir_builder *build, nir_ssa_def *i)
-{
-   return nir_i2b1(build, i);
-}
-
-static inline nir_ssa_def *
-nir_b2f(nir_builder *build, nir_ssa_def *b, uint32_t bit_size)
-{
-   switch (bit_size) {
-   case 64: return nir_b2f64(build, b);
-   case 32: return nir_b2f32(build, b);
-   case 16: return nir_b2f16(build, b);
-   default:
-      unreachable("Invalid bit-size");
-   };
-}
-
-static inline nir_ssa_def *
-nir_b2i(nir_builder *build, nir_ssa_def *b, uint32_t bit_size)
-{
-   switch (bit_size) {
-   case 64: return nir_b2i64(build, b);
-   case 32: return nir_b2i32(build, b);
-   case 16: return nir_b2i16(build, b);
-   case 8:  return nir_b2i8(build, b);
-   default:
-      unreachable("Invalid bit-size");
-   };
-}
 static inline nir_ssa_def *
 nir_load_barycentric(nir_builder *build, nir_intrinsic_op op,
                      unsigned interp_mode)

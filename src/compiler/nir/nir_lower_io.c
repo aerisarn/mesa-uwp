@@ -1702,7 +1702,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
           mode == nir_var_function_temp)
          value = nir_b2b32(b, value);
       else
-         value = nir_b2i(b, value, 32);
+         value = nir_b2iN(b, value, 32);
    }
 
    store->src[0] = nir_src_for_ssa(value);
