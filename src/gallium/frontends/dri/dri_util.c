@@ -433,7 +433,7 @@ validate_context_version(struct dri_screen *screen,
 /*****************************************************************/
 /*@{*/
 
-static __DRIcontext *
+__DRIcontext *
 driCreateContextAttribs(__DRIscreen *psp, int api,
                         const __DRIconfig *config,
                         __DRIcontext *shared,

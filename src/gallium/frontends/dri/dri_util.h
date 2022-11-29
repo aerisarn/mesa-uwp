@@ -108,6 +108,14 @@ driCreateNewScreen2(int scrn, int fd,
                     const __DRIextension **loader_extensions,
                     const __DRIextension **driver_extensions,
                     const __DRIconfig ***driver_configs, void *data);
+__DRIcontext *
+driCreateContextAttribs(__DRIscreen *psp, int api,
+                        const __DRIconfig *config,
+                        __DRIcontext *shared,
+                        unsigned num_attribs,
+                        const uint32_t *attribs,
+                        unsigned *error,
+                        void *data);
 
 extern uint32_t
 driGLFormatToImageFormat(mesa_format format);

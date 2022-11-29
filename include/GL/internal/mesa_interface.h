@@ -57,6 +57,8 @@ struct __DRImesaCoreExtensionRec {
     */
    __DRIcreateNewScreen2Func createNewScreen;
 
+   __DRIcreateContextAttribsFunc createContext;
+
    /* driver function for finishing initialization inside createNewScreen(). */
    const __DRIconfig **(*initScreen)(struct dri_screen *screen);
 };

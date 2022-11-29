@@ -2401,6 +2401,7 @@ static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
    .createNewScreen = driCreateNewScreen2,
+   .createContext = driCreateContextAttribs,
    .initScreen = dri2_init_screen,
 };
 
@@ -2418,6 +2419,7 @@ static const struct __DRImesaCoreExtensionRec swkmsMesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
    .createNewScreen = driCreateNewScreen2,
+   .createContext = driCreateContextAttribs,
    .initScreen = dri_swrast_kms_init_screen,
 };
 

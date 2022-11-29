@@ -1505,38 +1505,15 @@ dri2_create_context(_EGLDisplay *disp, _EGLConfig *conf,
                                   &num_attribs))
       goto cleanup;
 
-   if (dri2_dpy->image_driver) {
-      dri2_ctx->dri_context =
-         dri2_dpy->image_driver->createContextAttribs(dri2_dpy->dri_screen,
-                                                      api,
-                                                      dri_config,
-                                                      shared,
-                                                      num_attribs / 2,
-                                                      ctx_attribs,
-                                                      & error,
-                                                      dri2_ctx);
-   } else if (dri2_dpy->dri2) {
-      dri2_ctx->dri_context =
-         dri2_dpy->dri2->createContextAttribs(dri2_dpy->dri_screen,
-                                                api,
-                                                dri_config,
-                                                shared,
-                                                num_attribs / 2,
-                                                ctx_attribs,
-                                                & error,
-                                                dri2_ctx);
-   } else {
-      assert(dri2_dpy->swrast);
-      dri2_ctx->dri_context =
-         dri2_dpy->swrast->createContextAttribs(dri2_dpy->dri_screen,
-                                                api,
-                                                dri_config,
-                                                shared,
-                                                num_attribs / 2,
-                                                ctx_attribs,
-                                                & error,
-                                                dri2_ctx);
-   }
+   dri2_ctx->dri_context =
+       dri2_dpy->mesa->createContext(dri2_dpy->dri_screen,
+                                     api,
+                                     dri_config,
+                                     shared,
+                                     num_attribs / 2,
+                                     ctx_attribs,
+                                     &error,
+                                     dri2_ctx);
    dri2_create_context_attribs_error(error);
 
    if (!dri2_ctx->dri_context)
