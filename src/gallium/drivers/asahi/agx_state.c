@@ -1373,21 +1373,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       struct asahi_fs_shader_key *key = &key_->fs;
 
-      nir_lower_blend_options opts = {
-         .scalar_blend_const = true,
-         .logicop_enable = key->blend.logicop_enable,
-         .logicop_func = key->blend.logicop_func,
-      };
-
-      static_assert(ARRAY_SIZE(opts.format) == PIPE_MAX_COLOR_BUFS,
-                    "max RTs out of sync");
-
-      for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i)
-         opts.format[i] = key->rt_formats[i];
-
-      memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
-      NIR_PASS_V(nir, nir_lower_blend, &opts);
-
       if (key->clip_plane_enable) {
          NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
       }
@@ -1404,6 +1389,21 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
       struct agx_tilebuffer_layout tib =
          agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
+
+      nir_lower_blend_options opts = {
+         .scalar_blend_const = true,
+         .logicop_enable = key->blend.logicop_enable,
+         .logicop_func = key->blend.logicop_func,
+      };
+
+      static_assert(ARRAY_SIZE(opts.format) == PIPE_MAX_COLOR_BUFS,
+                    "max RTs out of sync");
+
+      for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i)
+         opts.format[i] = key->rt_formats[i];
+
+      memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
+      NIR_PASS_V(nir, nir_lower_blend, &opts);
 
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib);
 
