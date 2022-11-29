@@ -329,60 +329,37 @@ dri_open_driver(struct gbm_dri_device *dri)
 }
 
 static int
-dri_load_driver(struct gbm_dri_device *dri)
+dri_screen_create_for_driver(struct gbm_dri_device *dri, char *driver_name)
 {
-   const __DRIextension **extensions;
-
-   extensions = dri_open_driver(dri);
-   if (!extensions)
-      return -1;
-
-   if (!loader_bind_extensions(dri, gbm_dri_device_extensions,
-                               ARRAY_SIZE(gbm_dri_device_extensions),
-                               extensions)) {
-      dlclose(dri->driver);
-      fprintf(stderr, "failed to bind extensions\n");
-      return -1;
-   }
-
-   dri->driver_extensions = extensions;
-
-   return 0;
-}
-
-static int
-dri_load_driver_swrast(struct gbm_dri_device *dri)
-{
-   const __DRIextension **extensions;
-
-   extensions = dri_open_driver(dri);
-   if (!extensions)
-      return -1;
-
-   if (!loader_bind_extensions(dri, gbm_swrast_device_extensions,
-                               ARRAY_SIZE(gbm_swrast_device_extensions),
-                               extensions)) {
-      dlclose(dri->driver);
-      fprintf(stderr, "failed to bind extensions\n");
-      return -1;
-   }
-
-   dri->driver_extensions = extensions;
-
-   return 0;
-}
-
-static int
-dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
-{
-   const __DRIextension **extensions;
+   bool swrast = driver_name == NULL; /* If it's pure swrast, not just swkms. */
    int ret = 0;
 
-   dri->driver_name = driver_name;
+   dri->driver_name = swrast ? strdup("swrast") : driver_name;
    if (dri->driver_name == NULL)
       return -1;
 
-   ret = dri_load_driver(dri);
+   const __DRIextension **extensions = dri_open_driver(dri);
+   if (!extensions)
+      return -1;
+
+   bool bind_ok;
+   if (!swrast) {
+      bind_ok = loader_bind_extensions(dri, gbm_dri_device_extensions,
+                                       ARRAY_SIZE(gbm_dri_device_extensions),
+                                       extensions);
+   } else {
+      bind_ok = loader_bind_extensions(dri, gbm_swrast_device_extensions,
+                                       ARRAY_SIZE(gbm_swrast_device_extensions),
+                                       extensions);
+   }
+   if (!bind_ok) {
+      dlclose(dri->driver);
+      fprintf(stderr, "failed to bind extensions\n");
+      return -1;
+   }
+
+   dri->driver_extensions = extensions;
+
    if (ret) {
       fprintf(stderr, "failed to load driver: %s\n", dri->driver_name);
       return ret;
@@ -390,19 +367,27 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
 
    dri->loader_extensions = gbm_dri_screen_extensions;
 
-   dri->screen = dri->dri2->createNewScreen2(0, dri->base.v0.fd,
-                                             dri->loader_extensions,
-                                             dri->driver_extensions,
-                                             &dri->driver_configs, dri);
-   if (dri->screen == NULL)
-      return -1;
+   if (!swrast) {
+      dri->screen = dri->dri2->createNewScreen2(0, dri->base.v0.fd,
+                                                dri->loader_extensions,
+                                                dri->driver_extensions,
+                                                &dri->driver_configs, dri);
+      if (dri->screen == NULL)
+         return -1;
 
-   extensions = dri->core->getExtensions(dri->screen);
-   if (!loader_bind_extensions(dri, dri_core_extensions,
-                               ARRAY_SIZE(dri_core_extensions),
-                               extensions)) {
-      ret = -1;
-      goto free_screen;
+      extensions = dri->core->getExtensions(dri->screen);
+      if (!loader_bind_extensions(dri, dri_core_extensions,
+                                  ARRAY_SIZE(dri_core_extensions),
+                                  extensions)) {
+         ret = -1;
+         goto free_screen;
+      }
+   } else {
+      dri->screen = dri->swrast->createNewScreen2(0, dri->loader_extensions,
+                                                  dri->driver_extensions,
+                                                  &dri->driver_configs, dri);
+      if (dri->screen == NULL)
+         return -1;
    }
 
    dri->lookup_image = NULL;
@@ -417,35 +402,6 @@ free_screen:
 }
 
 static int
-dri_screen_create_swrast(struct gbm_dri_device *dri)
-{
-   int ret;
-
-   dri->driver_name = strdup("swrast");
-   if (dri->driver_name == NULL)
-      return -1;
-
-   ret = dri_load_driver_swrast(dri);
-   if (ret) {
-      fprintf(stderr, "failed to load swrast driver\n");
-      return ret;
-   }
-
-   dri->loader_extensions = gbm_dri_screen_extensions;
-
-   dri->screen = dri->swrast->createNewScreen2(0, dri->loader_extensions,
-                                               dri->driver_extensions,
-                                               &dri->driver_configs, dri);
-   if (dri->screen == NULL)
-      return -1;
-
-   dri->lookup_image = NULL;
-   dri->lookup_user_data = NULL;
-
-   return 0;
-}
-
-static int
 dri_screen_create(struct gbm_dri_device *dri)
 {
    char *driver_name;
@@ -454,7 +410,7 @@ dri_screen_create(struct gbm_dri_device *dri)
    if (!driver_name)
       return -1;
 
-   return dri_screen_create_dri2(dri, driver_name);
+   return dri_screen_create_for_driver(dri, driver_name);
 }
 
 static int
@@ -467,15 +423,15 @@ dri_screen_create_sw(struct gbm_dri_device *dri)
    if (!driver_name)
       return -errno;
 
-   ret = dri_screen_create_dri2(dri, driver_name);
+   ret = dri_screen_create_for_driver(dri, driver_name);
    if (ret != 0) {
       driver_name = strdup("kms_swrast");
       if (!driver_name)
          return -errno;
 
-      ret = dri_screen_create_dri2(dri, driver_name);
+      ret = dri_screen_create_for_driver(dri, driver_name);
       if (ret != 0)
-         ret = dri_screen_create_swrast(dri);
+         ret = dri_screen_create_for_driver(dri, NULL);
       if (ret != 0)
          return ret;
    }
