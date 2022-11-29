@@ -94,7 +94,7 @@ setupLoaderExtensions(struct dri_screen *screen,
  * It's used to create global state for the driver across contexts on the same
  * Display.
  */
-static __DRIscreen *
+__DRIscreen *
 driCreateNewScreen2(int scrn, int fd,
                     const __DRIextension **loader_extensions,
                     const __DRIextension **driver_extensions,

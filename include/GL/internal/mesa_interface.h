@@ -46,6 +46,14 @@ struct __DRImesaCoreExtensionRec {
     */
 #define MESA_INTERFACE_VERSION_STRING PACKAGE_VERSION MESA_GIT_SHA1
    const char *version_string;
+
+   /* Screen creation function regardless of DRI2, image, or swrast backend.
+    * (Nothing uses the old __DRI_CORE screen create).
+    *
+    * If not associated with a DRM fd (non-swkms swrast), the fd argument should
+    * be -1.
+    */
+   __DRIcreateNewScreen2Func createNewScreen;
 };
 
 #endif /* MESA_INTERFACE_H */

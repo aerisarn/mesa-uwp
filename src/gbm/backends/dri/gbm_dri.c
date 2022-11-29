@@ -368,15 +368,14 @@ dri_screen_create_for_driver(struct gbm_dri_device *dri, char *driver_name)
    }
 
    dri->loader_extensions = gbm_dri_screen_extensions;
+   dri->screen = dri->mesa->createNewScreen(0, swrast ? -1 : dri->base.v0.fd,
+                                            dri->loader_extensions,
+                                            dri->driver_extensions,
+                                            &dri->driver_configs, dri);
+   if (dri->screen == NULL)
+      return -1;
 
    if (!swrast) {
-      dri->screen = dri->dri2->createNewScreen2(0, dri->base.v0.fd,
-                                                dri->loader_extensions,
-                                                dri->driver_extensions,
-                                                &dri->driver_configs, dri);
-      if (dri->screen == NULL)
-         return -1;
-
       extensions = dri->core->getExtensions(dri->screen);
       if (!loader_bind_extensions(dri, dri_core_extensions,
                                   ARRAY_SIZE(dri_core_extensions),
@@ -384,12 +383,6 @@ dri_screen_create_for_driver(struct gbm_dri_device *dri, char *driver_name)
          ret = -1;
          goto free_screen;
       }
-   } else {
-      dri->screen = dri->swrast->createNewScreen2(0, dri->loader_extensions,
-                                                  dri->driver_extensions,
-                                                  &dri->driver_configs, dri);
-      if (dri->screen == NULL)
-         return -1;
    }
 
    dri->lookup_image = NULL;

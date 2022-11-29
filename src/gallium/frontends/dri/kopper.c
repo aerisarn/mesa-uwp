@@ -959,6 +959,7 @@ static const struct __DRIBackendVtableExtensionRec galliumvk_vtable = {
 static const struct __DRImesaCoreExtensionRec mesaCoreExtension = {
    .base = { __DRI_MESA, 1 },
    .version_string = MESA_INTERFACE_VERSION_STRING,
+   .createNewScreen = driCreateNewScreen2,
 };
 
 const __DRIextension *galliumvk_driver_extensions[] = {

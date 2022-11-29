@@ -1008,26 +1008,12 @@ dri2_create_screen(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
-   if (dri2_dpy->image_driver) {
-      dri2_dpy->dri_screen =
-         dri2_dpy->image_driver->createNewScreen2(0, dri2_dpy->fd,
-                                                  dri2_dpy->loader_extensions,
-                                                  dri2_dpy->driver_extensions,
-                                                  &dri2_dpy->driver_configs,
-                                                  disp);
-   } else if (dri2_dpy->dri2) {
-      dri2_dpy->dri_screen =
-         dri2_dpy->dri2->createNewScreen2(0, dri2_dpy->fd,
-                                          dri2_dpy->loader_extensions,
-                                          dri2_dpy->driver_extensions,
-                                          &dri2_dpy->driver_configs, disp);
-   } else {
-      assert(dri2_dpy->swrast);
-      dri2_dpy->dri_screen =
-         dri2_dpy->swrast->createNewScreen2(0, dri2_dpy->loader_extensions,
-                                             dri2_dpy->driver_extensions,
-                                             &dri2_dpy->driver_configs, disp);
-   }
+   int screen_fd = dri2_dpy->swrast ? -1 : dri2_dpy->fd;
+   dri2_dpy->dri_screen = dri2_dpy->mesa->createNewScreen(0, screen_fd,
+                                                          dri2_dpy->loader_extensions,
+                                                          dri2_dpy->driver_extensions,
+                                                          &dri2_dpy->driver_configs,
+                                                          disp);
 
    if (dri2_dpy->dri_screen == NULL) {
       _eglLog(_EGL_WARNING, "egl: failed to create dri2 screen");
