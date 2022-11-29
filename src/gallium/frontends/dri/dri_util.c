@@ -51,6 +51,7 @@
 #include "main/version.h"
 #include "main/debug_output.h"
 #include "main/errors.h"
+#include "loader/loader.h"
 
 driOptionDescription __dri2ConfigOptions[] = {
       DRI_CONF_SECTION_DEBUG
@@ -73,26 +74,17 @@ static void
 setupLoaderExtensions(struct dri_screen *screen,
                       const __DRIextension **extensions)
 {
-    int i;
-
-    for (i = 0; extensions[i]; i++) {
-        if (strcmp(extensions[i]->name, __DRI_DRI2_LOADER) == 0)
-            screen->dri2.loader = (__DRIdri2LoaderExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_IMAGE_LOOKUP) == 0)
-            screen->dri2.image = (__DRIimageLookupExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_USE_INVALIDATE) == 0)
-            screen->dri2.useInvalidate = (__DRIuseInvalidateExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_BACKGROUND_CALLABLE) == 0)
-            screen->dri2.backgroundCallable = (__DRIbackgroundCallableExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_SWRAST_LOADER) == 0)
-            screen->swrast_loader = (__DRIswrastLoaderExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_IMAGE_LOADER) == 0)
-           screen->image.loader = (__DRIimageLoaderExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_MUTABLE_RENDER_BUFFER_LOADER) == 0)
-           screen->mutableRenderBuffer.loader = (__DRImutableRenderBufferLoaderExtension *) extensions[i];
-        if (strcmp(extensions[i]->name, __DRI_KOPPER_LOADER) == 0)
-            screen->kopper_loader = (__DRIkopperLoaderExtension *) extensions[i];
-    }
+   static const struct dri_extension_match matches[] = {
+       {__DRI_DRI2_LOADER, 1, offsetof(struct dri_screen, dri2.loader), true},
+       {__DRI_IMAGE_LOOKUP, 1, offsetof(struct dri_screen, dri2.image), true},
+       {__DRI_USE_INVALIDATE, 1, offsetof(struct dri_screen, dri2.useInvalidate), true},
+       {__DRI_BACKGROUND_CALLABLE, 1, offsetof(struct dri_screen, dri2.backgroundCallable), true},
+       {__DRI_SWRAST_LOADER, 1, offsetof(struct dri_screen, swrast_loader), true},
+       {__DRI_IMAGE_LOADER, 1, offsetof(struct dri_screen, image.loader), true},
+       {__DRI_MUTABLE_RENDER_BUFFER_LOADER, 1, offsetof(struct dri_screen, mutableRenderBuffer.loader), true},
+       {__DRI_KOPPER_LOADER, 1, offsetof(struct dri_screen, kopper_loader), true},
+   };
+   loader_bind_extensions(screen, matches, ARRAY_SIZE(matches), extensions);
 }
 
 /**
