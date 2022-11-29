@@ -60,6 +60,7 @@ struct zink_gs_key {
    struct zink_vs_key_base base;
    uint8_t pad;
    bool lower_line_stipple : 1;
+   bool lower_gl_point : 1;
    // not hashed
    unsigned size;
 };

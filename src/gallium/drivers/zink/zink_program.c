@@ -1851,7 +1851,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
       zink_set_gs_key(ctx)->lower_line_stipple = lower_line_stipple;
    }
 
-   if (lower_line_stipple) {
+   if (lower_line_stipple || zink_get_gs_key(ctx)->lower_gl_point) {
       enum pipe_shader_type prev_vertex_stage =
          ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
             MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
@@ -1863,7 +1863,9 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             nir_shader *nir = nir_create_passthrough_gs(
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
-               SHADER_PRIM_LINE_STRIP, 2);
+               lower_line_stipple ? SHADER_PRIM_LINE_STRIP :  SHADER_PRIM_POINTS,
+               lower_line_stipple ? 2 : 1);
+            NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs = shader;

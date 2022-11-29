@@ -2551,6 +2551,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
                NIR_PASS_V(nir, nir_lower_var_copies);
                need_optimize = true;
             }
+            if (zink_gs_key(key)->lower_gl_point) {
+               NIR_PASS_V(nir, lower_gl_point_gs);
+               need_optimize = true;
+            }
             break;
 
          default:
