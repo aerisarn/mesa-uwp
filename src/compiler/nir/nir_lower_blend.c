@@ -512,11 +512,10 @@ nir_lower_blend_store(nir_builder *b, nir_intrinsic_instr *store,
    blended = nir_trim_vector(b, blended, num_components);
 
    /* Grow or shrink the store destination as needed */
-   assert(nir_intrinsic_write_mask(store) ==
-          nir_component_mask(store->num_components));
    store->num_components = num_components;
    store->dest.ssa.num_components = num_components;
-   nir_intrinsic_set_write_mask(store, nir_component_mask(num_components));
+   nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(store) &
+                                       nir_component_mask(num_components));
 
    /* Write out the final color instead of the input */
    nir_instr_rewrite_src_ssa(&store->instr, &store->src[1], blended);
