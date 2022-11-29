@@ -507,7 +507,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_external_semaphore = true,
       .KHR_external_semaphore_fd = true,
       .KHR_format_feature_flags2 = true,
-      .KHR_fragment_shading_rate = device->rad_info.gfx_level >= GFX10_3,
+      .KHR_fragment_shading_rate = device->rad_info.gfx_level == GFX10_3,
       .KHR_get_memory_requirements2 = true,
       .KHR_global_priority = true,
       .KHR_image_format_list = true,
@@ -3904,7 +3904,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       }
    }
 
-   if (device->physical_device->rad_info.gfx_level >= GFX10_3) {
+   if (device->physical_device->rad_info.gfx_level == GFX10_3) {
       if (getenv("RADV_FORCE_VRS_CONFIG_FILE")) {
          const char *file = radv_get_force_vrs_config_file();
 
