@@ -553,10 +553,10 @@ lower_vulkan_resource_index(nir_builder *b,
  * sampler object
  */
 static uint8_t
-lower_tex_src_to_offset(nir_builder *b,
-                        nir_tex_instr *instr,
-                        unsigned src_idx,
-                        struct lower_pipeline_layout_state *state)
+lower_tex_src(nir_builder *b,
+              nir_tex_instr *instr,
+              unsigned src_idx,
+              struct lower_pipeline_layout_state *state)
 {
    nir_ssa_def *index = NULL;
    unsigned base_index = 0;
@@ -669,13 +669,13 @@ lower_sampler(nir_builder *b,
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
 
    if (texture_idx >= 0)
-      return_size = lower_tex_src_to_offset(b, instr, texture_idx, state);
+      return_size = lower_tex_src(b, instr, texture_idx, state);
 
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
 
    if (sampler_idx >= 0)
-      lower_tex_src_to_offset(b, instr, sampler_idx, state);
+      lower_tex_src(b, instr, sampler_idx, state);
 
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
@@ -692,7 +692,7 @@ lower_sampler(nir_builder *b,
    return true;
 }
 
-/* FIXME: really similar to lower_tex_src_to_offset, perhaps refactor? */
+/* FIXME: really similar to lower_tex_src, perhaps refactor? */
 static void
 lower_image_deref(nir_builder *b,
                   nir_intrinsic_instr *instr,
