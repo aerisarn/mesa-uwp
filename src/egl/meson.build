@@ -97,6 +97,10 @@ if with_dri2
   deps_for_egl += idep_xmlconfig
   link_for_egl += libloader
   incs_for_egl += inc_loader
+  incs_for_egl += inc_gallium
+  incs_for_egl += inc_gallium_aux
+  incs_for_egl += inc_mesa
+  incs_for_egl += inc_st_dri
 
   files_egl += files(
     'drivers/dri2/platform_device.c',

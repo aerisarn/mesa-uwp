@@ -46,6 +46,7 @@
 #include <GL/internal/dri_interface.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "dri_screen.h"
 
 #ifdef HAVE_WAYLAND_PLATFORM
 #include <wayland-client.h>
@@ -839,7 +840,8 @@ void
 dri2_setup_screen(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   unsigned int api_mask;
+   struct dri_screen *screen = dri_screen(dri2_dpy->dri_screen);
+   unsigned int api_mask = screen->api_mask;
 
    /*
     * EGL 1.5 specification defines the default value to 1. Moreover,
@@ -852,18 +854,6 @@ dri2_setup_screen(_EGLDisplay *disp)
    dri2_dpy->min_swap_interval = 1;
    dri2_dpy->max_swap_interval = 1;
    dri2_dpy->default_swap_interval = 1;
-
-   if (dri2_dpy->image_driver) {
-      api_mask = dri2_dpy->image_driver->getAPIMask(dri2_dpy->dri_screen);
-   } else if (dri2_dpy->dri2) {
-      api_mask = dri2_dpy->dri2->getAPIMask(dri2_dpy->dri_screen);
-   } else {
-      assert(dri2_dpy->swrast);
-      api_mask = 1 << __DRI_API_OPENGL |
-                 1 << __DRI_API_GLES |
-                 1 << __DRI_API_GLES2 |
-                 1 << __DRI_API_GLES3;
-   }
 
    disp->ClientAPIs = 0;
    if ((api_mask & (1 <<__DRI_API_OPENGL)) && _eglIsApiValid(EGL_OPENGL_API))
