@@ -2087,6 +2087,9 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       descriptors_state->sets[idx] = set;
 
+      if (!set)
+         continue;
+
       if (set->layout->has_inline_uniforms)
          cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
 
