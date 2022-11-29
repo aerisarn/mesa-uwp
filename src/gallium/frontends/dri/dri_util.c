@@ -96,7 +96,7 @@ setupLoaderExtensions(struct dri_screen *screen,
  */
 static __DRIscreen *
 driCreateNewScreen2(int scrn, int fd,
-                    const __DRIextension **extensions,
+                    const __DRIextension **loader_extensions,
                     const __DRIextension **driver_extensions,
                     const __DRIconfig ***driver_configs, void *data)
 {
@@ -115,7 +115,7 @@ driCreateNewScreen2(int scrn, int fd,
        }
     }
 
-    setupLoaderExtensions(screen, extensions);
+    setupLoaderExtensions(screen, loader_extensions);
     // dri2 drivers require working invalidate
     if (fd != -1 && !screen->dri2.useInvalidate) {
        free(screen);
@@ -124,6 +124,7 @@ driCreateNewScreen2(int scrn, int fd,
 
     screen->loaderPrivate = data;
 
+    /* This will be filled in by backend->InitScreen(). */
     screen->extensions = emptyExtensionList;
     screen->fd = fd;
     screen->myNum = scrn;
