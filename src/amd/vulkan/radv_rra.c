@@ -269,29 +269,31 @@ rra_fill_accel_struct_header_common(struct radv_accel_struct_header *header,
                                     size_t parent_id_table_size, size_t leaf_node_data_size,
                                     size_t internal_node_data_size, uint64_t primitive_count)
 {
-   return (struct rra_accel_struct_header){
+   struct rra_accel_struct_header result = {
       .post_build_info =
          {
             .build_flags = header->build_flags,
             /* Seems to be no compression */
             .tri_compression_mode = 0,
          },
-      .metadata_size = sizeof(struct rra_accel_struct_metadata) + parent_id_table_size,
-      .file_size = sizeof(struct rra_accel_struct_metadata) + parent_id_table_size +
-                   sizeof(struct rra_accel_struct_header) + internal_node_data_size +
-                   leaf_node_data_size,
       .primitive_count = primitive_count,
       /* TODO: calculate active primitives */
       .active_primitive_count = primitive_count,
       .geometry_description_count = header->geometry_count,
-      .internal_node_data_start = sizeof(struct rra_accel_struct_metadata),
-      .internal_node_data_end = sizeof(struct rra_accel_struct_metadata) + internal_node_data_size,
-      .leaf_node_data_start = sizeof(struct rra_accel_struct_metadata) + internal_node_data_size,
-      .leaf_node_data_end =
-         sizeof(struct rra_accel_struct_metadata) + internal_node_data_size + leaf_node_data_size,
       .interior_fp32_node_count = internal_node_data_size / sizeof(struct radv_bvh_box32_node),
       .leaf_node_count = primitive_count,
    };
+
+   result.metadata_size = sizeof(struct rra_accel_struct_metadata) + parent_id_table_size;
+   result.file_size = result.metadata_size + sizeof(struct rra_accel_struct_header) +
+                      internal_node_data_size + leaf_node_data_size;
+
+   result.internal_node_data_start = sizeof(struct rra_accel_struct_metadata);
+   result.internal_node_data_end = result.internal_node_data_start + internal_node_data_size;
+   result.leaf_node_data_start = result.internal_node_data_end;
+   result.leaf_node_data_end = result.leaf_node_data_start + leaf_node_data_size;
+
+   return result;
 }
 
 struct rra_box32_node {
