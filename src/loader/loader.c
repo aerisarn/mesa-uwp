@@ -603,6 +603,35 @@ loader_get_extensions_name(const char *driver_name)
    return name;
 }
 
+bool
+loader_bind_extensions(void *data,
+                       const struct dri_extension_match *matches, size_t num_matches,
+                       const __DRIextension **extensions)
+{
+   bool ret = true;
+   void *field;
+
+   for (size_t i = 0; extensions[i]; i++) {
+      for (size_t j = 0; j < num_matches; j++) {
+         if (strcmp(extensions[i]->name, matches[j].name) == 0 &&
+             extensions[i]->version >= matches[j].version) {
+            field = ((char *) data + matches[j].offset);
+            *(const __DRIextension **) field = extensions[i];
+         }
+      }
+   }
+
+   for (size_t j = 0; j < num_matches; j++) {
+      field = ((char *) data + matches[j].offset);
+      if ((*(const __DRIextension **) field == NULL) && !matches[j].optional) {
+         log_(_LOADER_FATAL, "did not find extension %s version %d\n",
+              matches[j].name, matches[j].version);
+         ret = false;
+      }
+   }
+
+   return ret;
+}
 /**
  * Opens a driver or backend using its name, returning the library handle.
  *
