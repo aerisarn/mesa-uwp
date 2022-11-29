@@ -1882,9 +1882,9 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
        */
       if (deref->arr.in_bounds && deref->deref_type == nir_deref_type_array) {
          index = nir_u2u32(b, index);
-         offset = nir_u2u(b, nir_amul_imm(b, index, stride), offset_bit_size);
+         offset = nir_u2uN(b, nir_amul_imm(b, index, stride), offset_bit_size);
       } else {
-         index = nir_i2i(b, index, offset_bit_size);
+         index = nir_i2iN(b, index, offset_bit_size);
          offset = nir_amul_imm(b, index, stride);
       }
 
