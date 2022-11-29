@@ -1947,10 +1947,10 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
    uint64_t output_mask32 = 0;
    nir_ssa_def *outputs32[VARYING_SLOT_MAX][4] = {0};
 
-   unsigned output_mask_lo = 0;
-   unsigned output_mask_hi = 0;
-   nir_ssa_def *outputs_lo[16][4];
-   nir_ssa_def *outputs_hi[16][4];
+   unsigned output_mask16_lo = 0;
+   unsigned output_mask16_hi = 0;
+   nir_ssa_def *outputs16_lo[16][4];
+   nir_ssa_def *outputs16_hi[16][4];
 
    /* Assume:
     * - the shader used nir_lower_io_to_temporaries
@@ -1981,17 +1981,17 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
             unsigned comp = nir_intrinsic_component(intrin) + i;
             nir_ssa_def *chan = nir_channel(b, intrin->src[0].ssa, i);
             if (is_16bit && is_hi)
-               outputs_hi[slot - VARYING_SLOT_VAR0_16BIT][comp] = chan;
+               outputs16_hi[slot - VARYING_SLOT_VAR0_16BIT][comp] = chan;
             else if (is_16bit)
-               outputs_lo[slot - VARYING_SLOT_VAR0_16BIT][comp] = chan;
+               outputs16_lo[slot - VARYING_SLOT_VAR0_16BIT][comp] = chan;
             else
                outputs32[slot][comp] = chan;
          }
 
          if (is_16bit && is_hi)
-            output_mask_hi |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
+            output_mask16_hi |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
          else if (is_16bit)
-            output_mask_lo |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
+            output_mask16_lo |= BITFIELD_BIT(slot - VARYING_SLOT_VAR0_16BIT);
          else
             output_mask32 |= BITFIELD64_BIT(slot);
 
@@ -2011,15 +2011,15 @@ gather_vs_outputs(nir_builder *b, struct exec_list *cf_list, vs_output *outputs,
       num_outputs++;
    }
 
-   if (output_mask_lo | output_mask_hi) {
+   if (output_mask16_lo | output_mask16_hi) {
       nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
-      u_foreach_bit (i, output_mask_lo | output_mask_hi) {
+      u_foreach_bit (i, output_mask16_lo | output_mask16_hi) {
          vs_output *output = &outputs[num_outputs++];
 
          output->slot = i + VARYING_SLOT_VAR0_16BIT;
          for (unsigned j = 0; j < 4; j++) {
-            nir_ssa_def *lo = output_mask_lo & BITFIELD_BIT(i) ? outputs_lo[i][j] : NULL;
-            nir_ssa_def *hi = output_mask_hi & BITFIELD_BIT(i) ? outputs_hi[i][j] : NULL;
+            nir_ssa_def *lo = output_mask16_lo & BITFIELD_BIT(i) ? outputs16_lo[i][j] : NULL;
+            nir_ssa_def *hi = output_mask16_hi & BITFIELD_BIT(i) ? outputs16_hi[i][j] : NULL;
             if (lo || hi)
                output->chan[j] = nir_pack_32_2x16_split(b, lo ? lo : undef, hi ? hi : undef);
             else
