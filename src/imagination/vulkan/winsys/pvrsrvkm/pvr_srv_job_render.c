@@ -766,6 +766,12 @@ VkResult pvr_srv_winsys_render_submit(
    sync_prim->value++;
 
    do {
+      /* The fw allows the ZS and MSAA scratch buffers to be lazily allocated in
+       * which case we need to provide a status update (i.e. if they are
+       * physically backed or not) to the fw. In our case they will always be
+       * physically backed so no need to inform the fw about their status and
+       * pass in anything. We'll just pass in NULL.
+       */
       result = pvr_srv_rgx_kick_render2(srv_ws->render_fd,
                                         srv_ctx->handle,
                                         0,
@@ -808,9 +814,7 @@ VkResult pvr_srv_winsys_render_submit(
                                         false,
                                         0,
                                         rt_data_handle,
-                                        /* Currently no support for PRs. */
                                         NULL,
-                                        /* Currently no support for PRs. */
                                         NULL,
                                         0,
                                         NULL,
