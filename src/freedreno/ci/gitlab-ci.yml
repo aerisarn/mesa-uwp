@@ -306,13 +306,13 @@ a630_vk_asan:
 
 a630_piglit:
   extends:
-    - .piglit-test
+    - .baremetal-deqp-test
     - .a630-test
     # Note that piglit has GL+VK integration testing.
     - .freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
-    PIGLIT_PROFILES: gpu
+    DEQP_SUITE: freedreno-a630-piglit
 
 a630-traces:
   extends:
