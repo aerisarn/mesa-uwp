@@ -1123,7 +1123,7 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    }
 }
 
-static bool
+bool
 brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
                              unsigned bit_size,
                              unsigned num_components,
