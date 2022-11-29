@@ -2623,7 +2623,9 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->shaderGroupHandleSize = RADV_RT_HANDLE_SIZE;
          props->maxRayRecursionDepth = 31;    /* Minimum allowed for DXR. */
          props->maxShaderGroupStride = 16384; /* dummy */
-         props->shaderGroupBaseAlignment = 16;
+         /* This isn't strictly necessary, but Doom Eternal breaks if the
+          * alignment is any lower. */
+         props->shaderGroupBaseAlignment = RADV_RT_HANDLE_SIZE;
          props->shaderGroupHandleCaptureReplaySize = RADV_RT_HANDLE_SIZE;
          props->maxRayDispatchInvocationCount = 1024 * 1024 * 64;
          props->shaderGroupHandleAlignment = 16;
