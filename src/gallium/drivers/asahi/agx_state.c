@@ -1265,8 +1265,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
       NIR_PASS_V(nir, nir_lower_blend, &opts);
 
-      NIR_PASS_V(nir, nir_lower_fragcolor, key->nr_cbufs);
-
       if (key->sprite_coord_enable) {
          NIR_PASS_V(nir, nir_lower_texcoord_replace, key->sprite_coord_enable,
                     false /* point coord is sysval */, false /* Y-invert */);
