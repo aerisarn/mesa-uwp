@@ -897,8 +897,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
                      !(device->instance->debug_flags & RADV_DEBUG_NO_NGG)) ||
                      device->rad_info.gfx_level >= GFX11;
 
+   /* TODO: Investigate if NGG culling helps on GFX11. */
    device->use_ngg_culling = device->use_ngg && device->rad_info.max_render_backends > 1 &&
-                             (device->rad_info.gfx_level >= GFX10_3 ||
+                             (device->rad_info.gfx_level == GFX10_3 ||
                               (device->instance->perftest_flags & RADV_PERFTEST_NGGC)) &&
                              !(device->instance->debug_flags & RADV_DEBUG_NO_NGGC);
 
