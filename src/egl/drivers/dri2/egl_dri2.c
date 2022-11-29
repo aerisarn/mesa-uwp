@@ -875,6 +875,7 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    assert(dri2_dpy->image_driver || dri2_dpy->dri2 || dri2_dpy->swrast);
    disp->Extensions.KHR_create_context = EGL_TRUE;
+   disp->Extensions.KHR_create_context_no_error = EGL_TRUE;
    disp->Extensions.KHR_no_config_context = EGL_TRUE;
    disp->Extensions.KHR_surfaceless_context = EGL_TRUE;
 
@@ -893,10 +894,6 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    if (dri2_dpy->robustness)
       disp->Extensions.EXT_create_context_robustness = EGL_TRUE;
-
-   if (dri2_renderer_query_integer(dri2_dpy,
-                                   __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT))
-      disp->Extensions.KHR_create_context_no_error = EGL_TRUE;
 
    if (dri2_dpy->fence) {
       disp->Extensions.KHR_fence_sync = EGL_TRUE;

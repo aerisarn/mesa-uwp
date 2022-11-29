@@ -1847,8 +1847,8 @@ struct __DRIrobustnessExtensionRec {
  * Existence of this extension means the driver can accept the
  * __DRI_CTX_FLAG_NO_ERROR flag.
  *
- * This extension is deprecated, and modern loaders will not use it. Please
- * use __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT instead.
+ * This extension is deprecated, and modern Mesa knows that it's always
+ * supported.
  *
  * Not used by the X server.
  */
@@ -1932,7 +1932,6 @@ typedef struct __DRIconfigOptionsExtensionRec {
 #define __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB                  0x000c
 
 #define __DRI2_RENDERER_PREFER_BACK_BUFFER_REUSE              0x000f
-#define __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT                  0x0010
 
 typedef struct __DRI2rendererQueryExtensionRec __DRI2rendererQueryExtension;
 struct __DRI2rendererQueryExtensionRec {

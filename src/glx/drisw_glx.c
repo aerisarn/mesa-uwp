@@ -811,6 +811,7 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
    __glXEnableDirectExtension(&psc->base, "GLX_SGI_make_current_read");
    __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context");
    __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_profile");
+   __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_no_error");
    __glXEnableDirectExtension(&psc->base, "GLX_EXT_no_config_context");
 
    /* DRISW version >= 2 implies support for OpenGL ES. */
@@ -848,13 +849,6 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
 
    if (psc->rendererQuery) {
       __glXEnableDirectExtension(&psc->base, "GLX_MESA_query_renderer");
-      unsigned int no_error = 0;
-      if (psc->rendererQuery->queryInteger(psc->driScreen,
-                                             __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT,
-                                             &no_error) == 0 && no_error) {
-            __glXEnableDirectExtension(&psc->base,
-                                       "GLX_ARB_create_context_no_error");
-      }
    }
 
    if (psc->kopper) {

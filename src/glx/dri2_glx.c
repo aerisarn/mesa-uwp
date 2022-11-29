@@ -965,6 +965,7 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
 
    __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context");
    __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_profile");
+   __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_no_error");
    __glXEnableDirectExtension(&psc->base, "GLX_EXT_no_config_context");
 
    if ((mask & ((1 << __DRI_API_GLES) |
@@ -1000,15 +1001,8 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
    if (psc->texBuffer)
       __glXEnableDirectExtension(&psc->base, "GLX_EXT_texture_from_pixmap");
 
-   if (psc->rendererQuery) {
+   if (psc->rendererQuery)
       __glXEnableDirectExtension(&psc->base, "GLX_MESA_query_renderer");
-      unsigned int no_error = 0;
-      if (psc->rendererQuery->queryInteger(psc->driScreen,
-                                           __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT,
-                                           &no_error) == 0 && no_error)
-            __glXEnableDirectExtension(&psc->base,
-                                       "GLX_ARB_create_context_no_error");
-   }
 }
 
 static char *
