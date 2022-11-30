@@ -3438,7 +3438,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
    }
 
    si_write_guardband(cmd_buffer->cs, d->viewport.count, d->viewport.viewports, rast_prim,
-                      d->line_width);
+                      d->polygon_mode, d->line_width);
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_GUARDBAND;
 }
@@ -6554,8 +6554,13 @@ radv_CmdSetPolygonModeEXT(VkCommandBuffer commandBuffer, VkPolygonMode polygonMo
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
+   unsigned polygon_mode = si_translate_fill(polygonMode);
 
-   state->dynamic.polygon_mode = si_translate_fill(polygonMode);
+   if (radv_polygon_mode_is_points_or_lines(state->dynamic.polygon_mode) !=
+       radv_polygon_mode_is_points_or_lines(polygon_mode))
+      state->dirty |= RADV_CMD_DIRTY_GUARDBAND;
+
+   state->dynamic.polygon_mode = polygon_mode;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE;
 }
