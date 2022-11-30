@@ -172,6 +172,10 @@ files_mesa_util = files(
 
 files_drirc = files('00-mesa-defaults.conf')
 
+if with_amd_vk
+  files_drirc += files('00-radv-defaults.conf')
+endif
+
 if with_tests
   prog_xmllint = find_program('xmllint', required : false, native : true)
   if prog_xmllint.found()
