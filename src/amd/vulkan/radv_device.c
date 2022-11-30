@@ -471,6 +471,7 @@ static const struct vk_instance_extension_table radv_instance_extensions_support
    .KHR_get_surface_capabilities2 = true,
    .KHR_surface = true,
    .KHR_surface_protected_capabilities = true,
+   .EXT_surface_maintenance1 = true,
    .EXT_swapchain_colorspace = true,
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
@@ -657,6 +658,9 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_shader_subgroup_vote = true,
       .EXT_shader_viewport_index_layer = true,
       .EXT_subgroup_size_control = true,
+#ifdef RADV_USE_WSI_PLATFORM
+      .EXT_swapchain_maintenance1 = true,
+#endif
       .EXT_texel_buffer_alignment = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
@@ -2022,6 +2026,14 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->imageSlicedViewOf3D = true;
          break;
       }
+#ifdef RADV_USE_WSI_PLATFORM
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT: {
+         VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT *features =
+               (VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT *)ext;
+         features->swapchainMaintenance1 = true;
+         break;
+      }
+#endif
       default:
          break;
       }
