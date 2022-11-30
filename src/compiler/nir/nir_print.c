@@ -1812,7 +1812,7 @@ print_nz_unsigned(FILE *fp, const char *label, unsigned value) {
 static void
 print_nz_bool(FILE *fp, const char *label, bool value) {
    if (value)
-      fprintf(fp, "%s\n", label);
+      fprintf(fp, "%s: true\n", label);
 }
 
 static void
