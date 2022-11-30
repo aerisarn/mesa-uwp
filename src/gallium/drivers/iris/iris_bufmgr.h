@@ -525,8 +525,6 @@ struct iris_bo *iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd);
 int iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
                                          uint32_t *out_handle);
 
-uint32_t iris_bo_export_gem_handle(struct iris_bo *bo);
-
 /**
  * Returns the BO's address relative to the appropriate base address.
  *

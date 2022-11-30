@@ -2019,7 +2019,7 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
    return 0;
 }
 
-uint32_t
+static uint32_t
 iris_bo_export_gem_handle(struct iris_bo *bo)
 {
    /* We cannot export suballocated BOs. */
