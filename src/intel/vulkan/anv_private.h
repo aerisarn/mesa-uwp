@@ -2123,6 +2123,24 @@ enum anv_pipe_bits {
    ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
 
+/* PIPE_CONTROL bits that should be set only in 3D RCS mode.
+ * For more details see genX(emit_apply_pipe_flushes).
+ */
+#define ANV_PIPE_GFX_BITS ( \
+   ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | \
+   ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | \
+   ANV_PIPE_TILE_CACHE_FLUSH_BIT | \
+   ANV_PIPE_DEPTH_STALL_BIT | \
+   ANV_PIPE_STALL_AT_SCOREBOARD_BIT | \
+   (GFX_VERx10 >= 125 ? ANV_PIPE_PSS_STALL_SYNC_BIT : 0) | \
+   ANV_PIPE_VF_CACHE_INVALIDATE_BIT)
+
+/* PIPE_CONTROL bits that should be set only in Media/GPGPU RCS mode.
+ * For more details see genX(emit_apply_pipe_flushes).
+ */
+#define ANV_PIPE_GPGPU_BITS ( \
+   (GFX_VERx10 >= 125 ? ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT : 0))
+
 enum intel_ds_stall_flag
 anv_pipe_flush_bit_to_ds_stall_flag(enum anv_pipe_bits bits);
 

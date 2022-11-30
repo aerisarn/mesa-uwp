@@ -1808,6 +1808,45 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               uint32_t current_pipeline,
                               enum anv_pipe_bits bits)
 {
+#if GFX_VER >= 12
+   /* From the TGL PRM, Volume 2a, "PIPE_CONTROL":
+    *
+    *     "SW must follow below programming restrictions when programming
+    *      PIPE_CONTROL command [for ComputeCS]:
+    *      ...
+    *      Following bits must not be set when programmed for ComputeCS:
+    *      - "Render Target Cache Flush Enable", "Depth Cache Flush Enable"
+    *         and "Tile Cache Flush Enable"
+    *      - "Depth Stall Enable", Stall at Pixel Scoreboard and
+    *         "PSD Sync Enable".
+    *      - "OVR Tile 0 Flush", "TBIMR Force Batch Closure",
+    *         "AMFS Flush Enable", "VF Cache Invalidation Enable" and
+    *         "Global Snapshot Count Reset"."
+    *
+    * XXX: According to spec this should not be a concern for a regular
+    * RCS in GPGPU mode, but during testing it was found that at least
+    * "VF Cache Invalidation Enable" bit is ignored in such case.
+    * This can cause us to miss some important invalidations
+    * (e.g. from CmdPipelineBarriers) and have incoherent data.
+    *
+    * There is also a Wa_1606932921 "RCS is not waking up fixed function clock
+    * when specific 3d related bits are programmed in pipecontrol in
+    * compute mode" that suggests us not to use "RT Cache Flush" in GPGPU mode.
+    *
+    * The other bits are not confirmed to cause problems, but included here
+    * just to be safe, as they're also not really relevant in the GPGPU mode,
+    * and having them doesn't seem to cause any regressions.
+    *
+    * So if we're currently in GPGPU mode, we hide some bits from
+    * this flush, and will flush them only when we'll be able to.
+    * Similar thing with GPGPU-only bits.
+    */
+   enum anv_pipe_bits defer_bits = bits &
+      (current_pipeline == GPGPU ? ANV_PIPE_GFX_BITS: ANV_PIPE_GPGPU_BITS);
+
+   bits &= ~defer_bits;
+#endif
+
    /*
     * From Sandybridge PRM, volume 2, "1.7.2 End-of-Pipe Synchronization":
     *
@@ -2070,6 +2109,10 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
 
       bits &= ~ANV_PIPE_INVALIDATE_BITS;
    }
+
+#if GFX_VER >= 12
+   bits |= defer_bits;
+#endif
 
    return bits;
 }
