@@ -1188,7 +1188,7 @@ agx_compile_variant(struct agx_device *dev,
       struct agx_tilebuffer_layout tib =
          agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
 
-      agx_nir_lower_tilebuffer(nir, &tib);
+      NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib);
    }
 
    agx_compile_shader_nir(nir, &key->base, debug, &binary, &compiled->info);
