@@ -563,6 +563,7 @@ static const struct intel_device_info intel_device_info_chv = {
    .gt = 1,                                        \
    .has_llc = false,                               \
    .has_sample_with_hiz = true,                    \
+   .has_illegal_ccs_values = true,                 \
    .num_slices = 1,                                \
    .num_thread_per_eu = 6,                         \
    .max_vs_threads = 112,                          \
@@ -614,7 +615,8 @@ static const struct intel_device_info intel_device_info_chv = {
 #define GFX9_FEATURES                               \
    GFX8_FEATURES,                                   \
    GFX9_HW_INFO,                                    \
-   .has_sample_with_hiz = true
+   .has_sample_with_hiz = true,                     \
+   .has_illegal_ccs_values = true
 
 static const struct intel_device_info intel_device_info_skl_gt1 = {
    GFX9_FEATURES, .gt = 1,
@@ -837,6 +839,7 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
    .has_64bit_int = false,                            \
    .has_integer_dword_mul = false,                    \
    .has_sample_with_hiz = false,                      \
+   .has_illegal_ccs_values = true,                    \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3, \
    .num_subslices = _subslices,                       \
    .max_eus_per_subslice = 8
@@ -890,6 +893,7 @@ static const struct intel_device_info intel_device_info_icl_gt0_5 = {
       GFX11_URB_MIN_MAX_ENTRIES,                    \
    },                                               \
    .disable_ccs_repack = true,                      \
+   .has_illegal_ccs_values = true,                  \
    .simulator_id = 28
 
 static const struct intel_device_info intel_device_info_ehl_4x8 = {
