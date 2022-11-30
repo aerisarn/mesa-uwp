@@ -2214,7 +2214,8 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
    if (trace_flush) {
-      trace_intel_end_stall(&cmd_buffer->trace, bits,
+      trace_intel_end_stall(&cmd_buffer->trace,
+                            bits & ~cmd_buffer->state.pending_pipe_bits,
                             anv_pipe_flush_bit_to_ds_stall_flag, NULL);
    }
 }
