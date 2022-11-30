@@ -187,9 +187,6 @@ struct panfrost_batch {
          */
         struct pan_tristate sprite_coord_origin;
         struct pan_tristate first_provoking_vertex;
-
-        /* Referenced resources, holds a pipe_reference. */
-        struct set *resources;
 };
 
 /* Functions for managing the above */
@@ -215,10 +212,13 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
                           struct panfrost_resource *rsrc,
                           enum pipe_shader_type stage);
 
-void
-panfrost_resource_swap_bo(struct panfrost_context *ctx,
-                          struct panfrost_resource *rsrc,
-                          struct panfrost_bo *newbo);
+bool
+panfrost_any_batch_reads_rsrc(struct panfrost_context *ctx,
+                              struct panfrost_resource *rsrc);
+
+bool
+panfrost_any_batch_writes_rsrc(struct panfrost_context *ctx,
+                               struct panfrost_resource *rsrc);
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,

@@ -50,17 +50,6 @@ struct panfrost_resource {
                 } tile_map;
         } damage;
 
-        struct {
-                /** Number of batches accessing this resource. Used to check if
-                 * a resource is in use. */
-                _Atomic unsigned nr_users;
-
-                /** Number of batches writing this resource. Note that only one
-                 * batch per context may write a resource, so this is the
-                 * number of contexts that have an active writer. */
-                _Atomic unsigned nr_writers;
-        } track;
-
         struct renderonly_scanout *scanout;
 
         struct panfrost_resource *separate_stencil;

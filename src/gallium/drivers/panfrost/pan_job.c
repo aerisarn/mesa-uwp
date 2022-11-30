@@ -78,8 +78,6 @@ panfrost_batch_init(struct panfrost_context *ctx,
         batch->maxx = batch->maxy = 0;
 
         util_copy_framebuffer_state(&batch->key, key);
-        batch->resources =_mesa_set_create(NULL, _mesa_hash_pointer,
-                                          _mesa_key_pointer_equal);
 
         /* Preallocate the main pool, since every batch has at least one job
          * structure so it will be used */
@@ -97,74 +95,6 @@ panfrost_batch_init(struct panfrost_context *ctx,
         panfrost_batch_add_surface(batch, batch->key.zsbuf);
 
         screen->vtbl.init_batch(batch);
-}
-
-/*
- * Safe helpers for manipulating batch->resources follow. In addition to
- * wrapping the underlying set operations, these update the required
- * bookkeeping for resource tracking and reference counting.
- */
-static bool
-panfrost_batch_uses_resource(struct panfrost_batch *batch,
-                             struct panfrost_resource *rsrc)
-{
-        return _mesa_set_search(batch->resources, rsrc) != NULL;
-}
-
-static void
-panfrost_batch_add_resource(struct panfrost_batch *batch,
-                            struct panfrost_resource *rsrc)
-{
-        bool found = false;
-        _mesa_set_search_or_add(batch->resources, rsrc, &found);
-
-        if (!found) {
-                /* Cache number of batches accessing a resource */
-                rsrc->track.nr_users++;
-
-                /* Reference the resource on the batch */
-                pipe_reference(NULL, &rsrc->base.reference);
-        }
-}
-
-static void
-panfrost_batch_remove_resource_internal(struct panfrost_context *ctx,
-                                        struct panfrost_resource *rsrc)
-{
-        struct hash_entry *writer = _mesa_hash_table_search(ctx->writers, rsrc);
-        if (writer) {
-                _mesa_hash_table_remove(ctx->writers, writer);
-                rsrc->track.nr_writers--;
-        }
-
-        rsrc->track.nr_users--;
-        pipe_resource_reference((struct pipe_resource **) &rsrc, NULL);
-}
-
-static void
-panfrost_batch_remove_resource_if_present(struct panfrost_context *ctx,
-                                          struct panfrost_batch *batch,
-                                          struct panfrost_resource *rsrc)
-{
-        struct set_entry *ent = _mesa_set_search(batch->resources, rsrc);
-
-        if (ent != NULL) {
-                panfrost_batch_remove_resource_internal(ctx, rsrc);
-                _mesa_set_remove(batch->resources, ent);
-        }
-}
-
-static void
-panfrost_batch_destroy_resources(struct panfrost_context *ctx,
-                                 struct panfrost_batch *batch)
-{
-        set_foreach(batch->resources, entry) {
-                struct panfrost_resource *rsrc = (void *) entry->key;
-
-                panfrost_batch_remove_resource_internal(ctx, rsrc);
-        }
-
-        _mesa_set_destroy(batch->resources, NULL);
 }
 
 static void
@@ -190,7 +120,12 @@ panfrost_batch_cleanup(struct panfrost_context *ctx, struct panfrost_batch *batc
                 panfrost_bo_unreference(bo);
         }
 
-        panfrost_batch_destroy_resources(ctx, batch);
+        /* There is no more writer for anything we wrote */
+        hash_table_foreach(ctx->writers, ent) {
+                if (ent->data == batch)
+                        _mesa_hash_table_remove(ctx->writers, ent);
+        }
+
         panfrost_pool_cleanup(&batch->pool);
         panfrost_pool_cleanup(&batch->invisible_pool);
 
@@ -286,6 +221,10 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx, const char *reaso
         return batch;
 }
 
+static bool
+panfrost_batch_uses_resource(struct panfrost_batch *batch,
+                             struct panfrost_resource *rsrc);
+
 static void
 panfrost_batch_update_access(struct panfrost_batch *batch,
                              struct panfrost_resource *rsrc, bool writes)
@@ -294,8 +233,6 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
         uint32_t batch_idx = panfrost_batch_idx(batch);
         struct hash_entry *entry = _mesa_hash_table_search(ctx->writers, rsrc);
         struct panfrost_batch *writer = entry ? entry->data : NULL;
-
-        panfrost_batch_add_resource(batch, rsrc);
 
         /* Flush users if required */
         if (writes || ((writer != NULL) && (writer != batch))) {
@@ -315,7 +252,6 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
 
         if (writes) {
                 _mesa_hash_table_insert(ctx->writers, rsrc, batch);
-                rsrc->track.nr_writers++;
         }
 }
 
@@ -332,6 +268,22 @@ panfrost_batch_get_bo_access(struct panfrost_batch *batch, unsigned handle)
         }
 
         return util_dynarray_element(&batch->bos, pan_bo_access, handle);
+}
+
+static bool
+panfrost_batch_uses_resource(struct panfrost_batch *batch,
+                             struct panfrost_resource *rsrc)
+{
+        /* A resource is used iff its current BO is used */
+        uint32_t handle = rsrc->image.data.bo->gem_handle;
+        unsigned size = util_dynarray_num_elements(&batch->bos, pan_bo_access);
+
+        /* If out of bounds, certainly not used */
+        if (handle >= size)
+                return false;
+
+        /* Otherwise check if nonzero access */
+        return !!(*util_dynarray_element(&batch->bos, pan_bo_access, handle));
 }
 
 static void
@@ -402,28 +354,6 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
 
         panfrost_batch_update_access(batch, rsrc, true);
-}
-
-void
-panfrost_resource_swap_bo(struct panfrost_context *ctx,
-                          struct panfrost_resource *rsrc,
-                          struct panfrost_bo *newbo)
-{
-        /* Likewise, any batch reading this resource is reading the old BO, and
-         * after swapping will not be reading this resource.
-         */
-        unsigned i;
-        foreach_batch(ctx, i) {
-                struct panfrost_batch *batch = &ctx->batches.slots[i];
-
-                panfrost_batch_remove_resource_if_present(ctx, batch, rsrc);
-        }
-
-        /* Swap the pointers, dropping a reference to the old BO which is no
-         * long referenced from the resource
-         */
-        panfrost_bo_unreference(rsrc->image.data.bo);
-        rsrc->image.data.bo = newbo;
 }
 
 struct panfrost_bo *
@@ -940,6 +870,28 @@ panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
                 perf_debug_ctx(ctx, "Flushing user due to: %s", reason);
                 panfrost_batch_submit(ctx, batch);
         }
+}
+
+bool
+panfrost_any_batch_reads_rsrc(struct panfrost_context *ctx,
+                              struct panfrost_resource *rsrc)
+{
+        unsigned i;
+        foreach_batch(ctx, i) {
+                struct panfrost_batch *batch = &ctx->batches.slots[i];
+
+                if (panfrost_batch_uses_resource(batch, rsrc))
+                        return true;
+        }
+
+        return false;
+}
+
+bool
+panfrost_any_batch_writes_rsrc(struct panfrost_context *ctx,
+                               struct panfrost_resource *rsrc)
+{
+        return _mesa_hash_table_search(ctx->writers, rsrc) != NULL;
 }
 
 void

@@ -1013,7 +1013,8 @@ panfrost_ptr_map(struct pipe_context *pctx,
 
                 bool valid = BITSET_TEST(rsrc->valid.data, level);
 
-                if ((usage & PIPE_MAP_READ) && (valid || rsrc->track.nr_writers > 0)) {
+                if ((usage & PIPE_MAP_READ) &&
+                    (valid || panfrost_any_batch_writes_rsrc(ctx, rsrc))) {
                         pan_blit_to_staging(pctx, transfer);
                         panfrost_flush_writer(ctx, staging, "AFBC read staging blit");
                         panfrost_bo_wait(staging->image.data.bo, INT64_MAX, false);
@@ -1056,8 +1057,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
             !(usage & PIPE_MAP_UNSYNCHRONIZED) &&
             !(resource->flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
             (usage & PIPE_MAP_WRITE) &&
-            rsrc->track.nr_users > 0) {
-
+            panfrost_any_batch_reads_rsrc(ctx, rsrc)) {
                 /* When a resource to be modified is already being used by a
                  * pending batch, it is often faster to copy the whole BO than
                  * to flush and split the frame in two.
@@ -1086,7 +1086,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * not ready yet (still accessed by one of the already flushed
                  * batches), we try to allocate a new one to avoid waiting.
                  */
-                if (rsrc->track.nr_users > 0 ||
+                if (panfrost_any_batch_reads_rsrc(ctx, rsrc) ||
                     !panfrost_bo_wait(bo, 0, true)) {
                         /* We want the BO to be MMAPed. */
                         uint32_t flags = bo->flags & ~PAN_BO_DELAY_MMAP;
@@ -1105,7 +1105,12 @@ panfrost_ptr_map(struct pipe_context *pctx,
                                 if (copy_resource)
                                         memcpy(newbo->ptr.cpu, rsrc->image.data.bo->ptr.cpu, bo->size);
 
-                                panfrost_resource_swap_bo(ctx, rsrc, newbo);
+                                /* Swap the pointers, dropping a reference to
+                                 * the old BO which is no long referenced from
+                                 * the resource.
+                                 */
+                                panfrost_bo_unreference(rsrc->image.data.bo);
+                                rsrc->image.data.bo = newbo;
 
 	                        if (!copy_resource &&
                                     drm_is_afbc(rsrc->image.layout.modifier))
