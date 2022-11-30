@@ -739,7 +739,6 @@ static const struct dri_extension_match optional_core_extensions[] = {
    { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config), true },
    { __DRI2_FENCE, 2, offsetof(struct dri2_egl_display, fence), true },
    { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage), true },
-   { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery), true },
    { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop), true },
    { __DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image), true },
    { __DRI2_FLUSH_CONTROL, 1, offsetof(struct dri2_egl_display, flush_control), true },
@@ -802,19 +801,6 @@ dri2_load_driver_swrast(_EGLDisplay *disp)
    return dri2_load_driver_common(disp, swrast_driver_extensions, ARRAY_SIZE(swrast_driver_extensions));
 }
 
-static unsigned
-dri2_renderer_query_integer(struct dri2_egl_display *dri2_dpy, int param)
-{
-   const __DRI2rendererQueryExtension *rendererQuery = dri2_dpy->rendererQuery;
-   unsigned int value = 0;
-
-   if (!rendererQuery ||
-       rendererQuery->queryInteger(dri2_dpy->dri_screen, param, &value) == -1)
-      return 0;
-
-   return value;
-}
-
 static const char *
 dri2_query_driver_name(_EGLDisplay *disp)
 {
@@ -848,6 +834,7 @@ dri2_setup_screen(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri_screen *screen = dri_screen(dri2_dpy->dri_screen);
+   struct pipe_screen *pscreen = screen->base.screen;
    unsigned int api_mask = screen->api_mask;
 
    /*
@@ -887,9 +874,12 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    disp->Extensions.EXT_pixel_format_float = EGL_TRUE;
 
-   if (dri2_renderer_query_integer(dri2_dpy,
-                                   __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB))
+   if (pscreen->is_format_supported(pscreen,
+                                    PIPE_FORMAT_B8G8R8A8_SRGB,
+                                    PIPE_TEXTURE_2D, 0, 0,
+                                    PIPE_BIND_RENDER_TARGET)) {
       disp->Extensions.KHR_gl_colorspace = EGL_TRUE;
+   }
 
    disp->Extensions.EXT_create_context_robustness = get_screen_param(disp, PIPE_CAP_DEVICE_RESET_STATUS_QUERY);
 

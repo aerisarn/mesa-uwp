@@ -1926,10 +1926,6 @@ typedef struct __DRIconfigOptionsExtensionRec {
 #define __DRI2_RENDERER_OPENGL_COMPATIBILITY_PROFILE_VERSION  0x0008
 #define __DRI2_RENDERER_OPENGL_ES_PROFILE_VERSION             0x0009
 #define __DRI2_RENDERER_OPENGL_ES2_PROFILE_VERSION            0x000a
-/* Whether there is an sRGB format support for every supported 32-bit UNORM
- * color format.
- */
-#define __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB                  0x000c
 
 #define __DRI2_RENDERER_PREFER_BACK_BUFFER_REUSE              0x000f
 
