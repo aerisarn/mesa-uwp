@@ -521,6 +521,9 @@ iris_bo_busy(struct iris_bo *bo)
       else
          busy = iris_bo_busy_syncobj(bo);
       break;
+   case INTEL_KMD_TYPE_XE:
+      busy = iris_bo_busy_syncobj(bo);
+      break;
    default:
       unreachable("missing");
       busy = true;
@@ -1626,6 +1629,9 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
          ret = iris_i915_bo_wait_gem(bo, timeout_ns);
       else
          ret = iris_bo_wait_syncobj(bo, timeout_ns);
+      break;
+   case INTEL_KMD_TYPE_XE:
+      ret = iris_bo_wait_syncobj(bo, timeout_ns);
       break;
    default:
       unreachable("missing");
