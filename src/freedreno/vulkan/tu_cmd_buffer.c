@@ -4454,7 +4454,7 @@ tu6_user_consts_size(const struct tu_pipeline *pipeline,
       dwords += 4 + num_units;
    }
 
-   dwords += 4 * link->tu_const_state.num_inline_ubos;
+   dwords += 8 * link->tu_const_state.num_inline_ubos;
 
    return dwords;
 }
@@ -4492,22 +4492,19 @@ tu6_emit_user_consts(struct tu_cs *cs,
    for (unsigned i = 0; i < link->tu_const_state.num_inline_ubos; i++) {
       const struct tu_inline_ubo *ubo = &link->tu_const_state.ubos[i];
 
-      /* With variable-count inline uniform blocks, we allocate constant space
-       * based on the maximum size specified in the descriptor set layout, but
-       * the actual size may be smaller. In that case we have to avoid
-       * fetching out-of-bounds of the buffer that contains the descriptor
-       * set to avoid faults.
-       */
-      unsigned num_units = MIN2(ubo->size_vec4,
-                                (descriptors->sets[ubo->base]->size - ubo->offset) / 16);
-
-      if (num_units > 0) {
-         tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
-         tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(ubo->const_offset_vec4) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-               CP_LOAD_STATE6_0_NUM_UNIT(num_units));
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), ubo->push_address ? 7 : 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(ubo->const_offset_vec4) |
+            CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+            CP_LOAD_STATE6_0_STATE_SRC(ubo->push_address ? SS6_DIRECT : SS6_INDIRECT) |
+            CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
+            CP_LOAD_STATE6_0_NUM_UNIT(ubo->size_vec4));
+      if (ubo->push_address) {
+         tu_cs_emit(cs, 0);
+         tu_cs_emit(cs, 0);
+         tu_cs_emit_qw(cs, descriptors->sets[ubo->base]->va + ubo->offset);
+         tu_cs_emit(cs, 0);
+         tu_cs_emit(cs, 0);
+      } else {
          tu_cs_emit_qw(cs, descriptors->sets[ubo->base]->va + ubo->offset);
       }
    }

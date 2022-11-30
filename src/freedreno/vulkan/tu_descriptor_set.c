@@ -399,6 +399,8 @@ static void
 sha1_update_descriptor_set_layout(struct mesa_sha1 *ctx,
                                   const struct tu_descriptor_set_layout *layout)
 {
+   SHA1_UPDATE_VALUE(ctx, layout->has_variable_descriptors);
+
    for (uint16_t i = 0; i < layout->binding_count; i++)
       sha1_update_descriptor_set_binding_layout(ctx, &layout->binding[i],
                                                 layout);
