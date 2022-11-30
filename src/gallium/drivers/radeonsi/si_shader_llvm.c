@@ -902,10 +902,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
           shader->key.ge.as_ngg && !shader->key.ge.as_es && !shader->key.ge.opt.ngg_culling)
          ac_build_s_barrier(&ctx->ac, ctx->stage);
 
-      /* NGG GS: handle GS_STATE_PIPELINE_STATS_EMU */
-      if (ctx->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)
-         gfx10_ngg_gs_emit_begin(ctx);
-
       LLVMValueRef thread_enabled = NULL;
 
       if ((ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) ||

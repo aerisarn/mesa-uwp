@@ -2469,6 +2469,8 @@ ngg_gs_shader_query(nir_builder *b, lower_ngg_gs_state *s)
 
             if (count)
                nir_atomic_add_gs_emit_prim_count_amd(b, count);
+
+            nir_atomic_add_gs_invocation_count_amd(b, num_active_threads);
          }
          nir_pop_if(b, if_pipeline_query);
       }
