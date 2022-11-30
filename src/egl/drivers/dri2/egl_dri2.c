@@ -339,24 +339,10 @@ dri2_get_shifts_and_sizes(const __DRIcoreExtension *core,
                           const __DRIconfig *config, int *shifts,
 		          unsigned int *sizes)
 {
-   unsigned int mask;
-
-   if (core->getConfigAttrib(config, __DRI_ATTRIB_RED_SHIFT, (unsigned int *)&shifts[0])) {
-      core->getConfigAttrib(config, __DRI_ATTRIB_GREEN_SHIFT, (unsigned int *)&shifts[1]);
-      core->getConfigAttrib(config, __DRI_ATTRIB_BLUE_SHIFT, (unsigned int *)&shifts[2]);
-      core->getConfigAttrib(config, __DRI_ATTRIB_ALPHA_SHIFT, (unsigned int *)&shifts[3]);
-   } else {
-      /* Driver isn't exposing shifts, so convert masks to shifts */
-      core->getConfigAttrib(config, __DRI_ATTRIB_RED_MASK, &mask);
-      shifts[0] = ffs(mask) - 1;
-      core->getConfigAttrib(config, __DRI_ATTRIB_GREEN_MASK, &mask);
-      shifts[1] = ffs(mask) - 1;
-      core->getConfigAttrib(config, __DRI_ATTRIB_BLUE_MASK, &mask);
-      shifts[2] = ffs(mask) - 1;
-      core->getConfigAttrib(config, __DRI_ATTRIB_ALPHA_MASK, &mask);
-      shifts[3] = ffs(mask) - 1;
-   }
-
+   core->getConfigAttrib(config, __DRI_ATTRIB_RED_SHIFT, (unsigned int *)&shifts[0]);
+   core->getConfigAttrib(config, __DRI_ATTRIB_GREEN_SHIFT, (unsigned int *)&shifts[1]);
+   core->getConfigAttrib(config, __DRI_ATTRIB_BLUE_SHIFT, (unsigned int *)&shifts[2]);
+   core->getConfigAttrib(config, __DRI_ATTRIB_ALPHA_SHIFT, (unsigned int *)&shifts[3]);
    core->getConfigAttrib(config, __DRI_ATTRIB_RED_SIZE, &sizes[0]);
    core->getConfigAttrib(config, __DRI_ATTRIB_GREEN_SIZE, &sizes[1]);
    core->getConfigAttrib(config, __DRI_ATTRIB_BLUE_SIZE, &sizes[2]);
