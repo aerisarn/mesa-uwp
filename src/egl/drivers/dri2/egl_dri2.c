@@ -736,7 +736,6 @@ static const struct dri_extension_match swrast_core_extensions[] = {
 };
 
 static const struct dri_extension_match optional_core_extensions[] = {
-   { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness), true },
    { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config), true },
    { __DRI2_FENCE, 2, offsetof(struct dri2_egl_display, fence), true },
    { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage), true },
@@ -892,8 +891,7 @@ dri2_setup_screen(_EGLDisplay *disp)
                                    __DRI2_RENDERER_HAS_FRAMEBUFFER_SRGB))
       disp->Extensions.KHR_gl_colorspace = EGL_TRUE;
 
-   if (dri2_dpy->robustness)
-      disp->Extensions.EXT_create_context_robustness = EGL_TRUE;
+   disp->Extensions.EXT_create_context_robustness = get_screen_param(disp, PIPE_CAP_DEVICE_RESET_STATUS_QUERY);
 
    if (dri2_dpy->fence) {
       disp->Extensions.KHR_fence_sync = EGL_TRUE;
