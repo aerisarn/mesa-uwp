@@ -774,6 +774,9 @@ r600_finalize_nir(pipe_screen *screen, void *shader)
    NIR_PASS_V(nir, r600_lower_shared_io);
    NIR_PASS_V(nir, r600_nir_lower_atomics);
 
+   if (rs->b.gfx_level == CAYMAN)
+      NIR_PASS_V(nir, r600_legalize_image_load_store);
+
    while (optimize_once(nir))
       ;
 
