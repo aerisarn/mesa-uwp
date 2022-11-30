@@ -136,6 +136,11 @@ ValueFactory::allocate_registers(const exec_list *registers)
    return has_arrays;
 }
 
+int ValueFactory::new_register_index()
+{
+   return m_next_register_index++;
+}
+
 PRegister
 ValueFactory::allocate_pinned_register(int sel, int chan)
 {

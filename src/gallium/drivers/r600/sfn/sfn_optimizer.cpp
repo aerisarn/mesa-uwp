@@ -34,6 +34,8 @@
 #include "sfn_instr_lds.h"
 #include "sfn_instr_tex.h"
 #include "sfn_peephole.h"
+#include "sfn_valuefactory.h"
+#include "sfn_virtualvalues.h"
 
 #include <sstream>
 
@@ -235,7 +237,7 @@ DCEVisitor::visit(Block *block)
 
 class CopyPropFwdVisitor : public InstrVisitor {
 public:
-   CopyPropFwdVisitor();
+   CopyPropFwdVisitor(ValueFactory& vf);
 
    void visit(AluInstr *instr) override;
    void visit(AluGroup *instr) override;
@@ -258,7 +260,9 @@ public:
    void visit(LDSReadInstr *instr) override { (void)instr; };
 
    void propagate_to(RegisterVec4& src, Instr *instr);
+   bool assigned_in_block_and_direct(PRegister reg, int block_id);
 
+   ValueFactory& value_factory;
    bool progress;
 };
 
@@ -291,7 +295,7 @@ bool
 copy_propagation_fwd(Shader& shader)
 {
    auto& root = shader.func();
-   CopyPropFwdVisitor copy_prop;
+   CopyPropFwdVisitor copy_prop(shader.value_factory());
 
    do {
       copy_prop.progress = false;
@@ -330,8 +334,9 @@ copy_propagation_backward(Shader& shader)
    return copy_prop.progress;
 }
 
-CopyPropFwdVisitor::CopyPropFwdVisitor():
-    progress(false)
+CopyPropFwdVisitor::CopyPropFwdVisitor(ValueFactory& vf):
+   value_factory(vf),
+   progress(false)
 {
 }
 
@@ -413,6 +418,19 @@ CopyPropFwdVisitor::visit(ExportInstr *instr)
    propagate_to(instr->value(), instr);
 }
 
+static bool register_sel_can_change(Pin pin)
+{
+   return pin == pin_free || pin == pin_none;
+}
+
+static bool register_chan_is_pinned(Pin pin)
+{
+   return pin == pin_chan ||
+         pin == pin_fully ||
+         pin == pin_chgr;
+}
+
+
 void
 CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
 {
@@ -429,37 +447,75 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
    }
    PRegister new_src[4] = {0};
 
-   int sel = -1;
+   uint8_t mask = 0;
+   int new_sel = -1;
+   bool all_sel_can_change = true;
+
+   bool is_ssa = true;
+   int new_chan[4] = {0,0,0,0};
+
    for (int i = 0; i < 4; ++i) {
+      unsigned allowed_mask = 0xf & ~mask;
       if (!parents[i])
          continue;
       if ((parents[i]->opcode() != op1_mov) || parents[i]->has_alu_flag(alu_src0_neg) ||
           parents[i]->has_alu_flag(alu_src0_abs) ||
           parents[i]->has_alu_flag(alu_dst_clamp) ||
-          parents[i]->has_alu_flag(alu_src0_rel)) {
+          parents[i]->has_alu_flag(alu_src0_rel) ||
+          std::get<0>(parents[i]->indirect_addr())) {
          return;
       } else {
          auto src = parents[i]->src(0).as_register();
          if (!src)
             return;
-         else if (!src->has_flag(Register::ssa))
+         if (src->pin() == pin_array)
             return;
-         else if (sel < 0)
-            sel = src->sel();
-         else if (sel != src->sel())
+         if (!src->has_flag(Register::ssa) &&
+             !assigned_in_block_and_direct(src, instr->block_id())) {
             return;
+         }
+         if (register_chan_is_pinned(src->pin())) {
+            allowed_mask = 1 << src->chan();
+         }
+         new_chan[i] = src->chan();
+
          for (auto p : src->parents()) {
             auto alu = p->as_alu();
-            if (alu && !(alu->allowed_dest_chan_mask() & (1 << i)))
+            if (alu)
+               allowed_mask &= alu->allowed_dest_chan_mask();
+         }
+         if (!allowed_mask) {
+            return;
+         }
+
+         if (new_sel < 0) {
+            new_sel = src->sel();
+            is_ssa = src->has_flag(Register::ssa);
+            new_chan[i] = src->chan();
+         } else if (new_sel != src->sel()) {
+            if (all_sel_can_change &&
+                register_sel_can_change(src->pin()) &&
+                (is_ssa == src->has_flag(Register::ssa))) {
+               new_chan[i] = u_bit_scan(&allowed_mask);
+               new_sel = value_factory.new_register_index();
+            } else
                return;
          }
+
          new_src[i] = src;
+         mask |= 1 << new_chan[i];
+         if (!register_sel_can_change(src->pin()))
+            all_sel_can_change = false;
       }
    }
 
    for (int i = 0; i < 4; ++i) {
       if (parents[i]) {
          src.del_use(instr);
+         new_src[i]->set_sel(new_sel);
+         if (is_ssa)
+            new_src[i]->set_flag(Register::ssa);
+         new_src[i]->set_chan(new_chan[i]);
          src.set_value(i, new_src[i]);
          if (new_src[i]->pin() != pin_fully) {
             if (new_src[i]->pin() == pin_chan)
@@ -473,6 +529,22 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
    }
    if (progress)
       src.validate();
+}
+
+bool CopyPropFwdVisitor::assigned_in_block_and_direct(PRegister reg, int block_id)
+{
+   for (auto p: reg->parents()) {
+      if (p->as_alu())  {
+          auto [addr, is_regoffs, is_index] = p->as_alu()->indirect_addr();
+          if (addr) {
+             return false;
+          }
+      }
+
+      if (p->block_id() == block_id)
+         return true;
+   }
+   return false;
 }
 
 void
