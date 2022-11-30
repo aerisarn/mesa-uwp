@@ -1232,11 +1232,17 @@ wsi_common_queue_present(const struct wsi_device *wsi,
       vk_find_struct_const(pPresentInfo->pNext, PRESENT_ID_KHR);
    const VkSwapchainPresentFenceInfoEXT *present_fence_info =
       vk_find_struct_const(pPresentInfo->pNext, SWAPCHAIN_PRESENT_FENCE_INFO_EXT);
+   const VkSwapchainPresentModeInfoEXT *present_mode_info =
+      vk_find_struct_const(pPresentInfo->pNext, SWAPCHAIN_PRESENT_MODE_INFO_EXT);
 
    for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
       VK_FROM_HANDLE(wsi_swapchain, swapchain, pPresentInfo->pSwapchains[i]);
       uint32_t image_index = pPresentInfo->pImageIndices[i];
       VkResult result;
+
+      /* Update the present mode for this present and any subsequent present. */
+      if (present_mode_info && present_mode_info->pPresentModes && swapchain->set_present_mode)
+         swapchain->set_present_mode(swapchain, present_mode_info->pPresentModes[i]);
 
       if (swapchain->fences[image_index] == VK_NULL_HANDLE) {
          const VkFenceCreateInfo fence_info = {
