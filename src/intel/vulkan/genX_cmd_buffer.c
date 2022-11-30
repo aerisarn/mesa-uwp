@@ -1101,7 +1101,42 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        * data.
        */
       must_init_fast_clear_state = true;
-      must_init_aux_surface = true;
+
+      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_MCS ||
+          devinfo->has_illegal_ccs_values) {
+
+         must_init_aux_surface = true;
+
+      } else {
+         assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
+
+         /* We can start using the CCS immediately without ambiguating. The
+          * two conditions that enable this are:
+          *
+          * 1) The device treats all possible CCS values as legal. In other
+          *    words, we can't confuse the hardware with random bits in the
+          *    CCS.
+          *
+          * 2) We enable compression on all writable image layouts. The CCS
+          *    will receive all writes and will therefore always be in sync
+          *    with the main surface.
+          *
+          *    If we were to disable compression on some writable layouts, the
+          *    CCS could get out of sync with the main surface and the app
+          *    could lose the data it wrote previously. For example, this
+          *    could happen if an app: transitions from UNDEFINED w/o
+          *    ambiguating -> renders with AUX_NONE -> samples with AUX_CCS.
+          *
+          * The second condition is asserted below, but could be moved
+          * elsewhere for more coverage (we're only checking transitions from
+          * an undefined layout).
+          */
+         assert(vk_image_layout_is_read_only(final_layout, aspect) ||
+                (final_aux_usage != ISL_AUX_USAGE_NONE));
+
+         must_init_aux_surface = false;
+      }
+
    } else if (private_binding_acquire) {
       /* The fast clear state lives in a driver-private bo, and therefore the
        * external/foreign queue is unaware of it.
