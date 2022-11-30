@@ -198,6 +198,15 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
 void
 ac_nir_lower_legacy_vs(nir_shader *nir, int primitive_id_location, bool disable_streamout);
 
+bool
+ac_nir_gs_shader_query(nir_builder *b,
+                       bool has_gen_prim_query,
+                       bool has_pipeline_stats_query,
+                       unsigned num_vertices_per_primitive,
+                       unsigned wave_size,
+                       nir_ssa_def *vertex_count[4],
+                       nir_ssa_def *primitive_count[4]);
+
 #ifdef __cplusplus
 }
 #endif
