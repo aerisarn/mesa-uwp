@@ -185,10 +185,6 @@ rra_CreateAccelerationStructureKHR(VkDevice _device,
    RADV_FROM_HANDLE(radv_acceleration_structure, structure, *pAccelerationStructure);
    simple_mtx_lock(&device->rra_trace.data_mtx);
 
-   if (_mesa_hash_table_u64_search(device->rra_trace.accel_struct_vas, structure->va) != NULL)
-      fprintf(stderr, "radv: Memory aliasing between acceleration structures detected. RRA "
-                      "captures might not work correctly.\n");
-
    struct radv_rra_accel_struct_data *data = malloc(sizeof(struct radv_rra_accel_struct_data));
    if (!data) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
