@@ -3487,7 +3487,8 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlus
             radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
          }
       }
-      db_count_control = S_028004_ZPASS_INCREMENT_DISABLE(1);
+      db_count_control =
+         S_028004_ZPASS_INCREMENT_DISABLE(cmd_buffer->device->physical_device->rad_info.gfx_level < GFX11);
    } else {
       uint32_t sample_rate = util_logbase2(cmd_buffer->state.render.max_samples);
       bool gfx10_perfect =
