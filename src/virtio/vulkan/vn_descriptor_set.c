@@ -341,7 +341,7 @@ vn_CreateDescriptorPool(VkDevice device,
 
       assert(type_index < VN_NUM_DESCRIPTOR_TYPES);
 
-      if (type_index == VN_DESCRIPTOR_TYPE_MUTABLE_EXT) {
+      if (pool_size->type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          struct vn_descriptor_pool_state_mutable *mutable_state = NULL;
          BITSET_DECLARE(mutable_types, VN_NUM_DESCRIPTOR_TYPES);
          if (!mutable_descriptor_info ||
