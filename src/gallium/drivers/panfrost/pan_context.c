@@ -47,6 +47,7 @@
 #include "util/u_math.h"
 #include "util/u_debug_cb.h"
 
+#include "pan_fence.h"
 #include "pan_screen.h"
 #include "pan_util.h"
 #include "decode.h"
