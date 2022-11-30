@@ -914,6 +914,10 @@ wsi_CreateSwapchainKHR(VkDevice _device,
    else
      alloc = &device->alloc;
 
+   /* Ignore DEFERRED_MEMORY_ALLOCATION_BIT. Would require deep plumbing to be able to take advantage of it.
+    * bool deferred_allocation = pCreateInfo->flags & VK_SWAPCHAIN_CREATE_DEFERRED_MEMORY_ALLOCATION_BIT_EXT;
+    */
+
    VkResult result = iface->create_swapchain(surface, _device, wsi_device,
                                              pCreateInfo, alloc,
                                              &swapchain);
