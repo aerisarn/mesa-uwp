@@ -1319,30 +1319,11 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
    ctx_attribs[pos++] = dri2_ctx->base.ClientMinorVersion;
 
    if (dri2_ctx->base.Flags != 0) {
-      /* If the implementation doesn't support the __DRI2_ROBUSTNESS
-       * extension, don't even try to send it the robust-access flag.
-       * It may explode.  Instead, generate the required EGL error here.
-       */
-      if ((dri2_ctx->base.Flags & EGL_CONTEXT_OPENGL_ROBUST_ACCESS_BIT_KHR) != 0
-            && !dri2_dpy->robustness) {
-         _eglError(EGL_BAD_MATCH, "eglCreateContext");
-         return false;
-      }
-
       ctx_attribs[pos++] = __DRI_CTX_ATTRIB_FLAGS;
       ctx_attribs[pos++] = dri2_ctx->base.Flags;
    }
 
    if (dri2_ctx->base.ResetNotificationStrategy != EGL_NO_RESET_NOTIFICATION_KHR) {
-      /* If the implementation doesn't support the __DRI2_ROBUSTNESS
-       * extension, don't even try to send it a reset strategy.  It may
-       * explode.  Instead, generate the required EGL error here.
-       */
-      if (!dri2_dpy->robustness) {
-         _eglError(EGL_BAD_CONFIG, "eglCreateContext");
-         return false;
-      }
-
       ctx_attribs[pos++] = __DRI_CTX_ATTRIB_RESET_STRATEGY;
       ctx_attribs[pos++] = __DRI_CTX_RESET_LOSE_CONTEXT;
    }
