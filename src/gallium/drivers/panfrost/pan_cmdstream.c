@@ -1311,11 +1311,12 @@ panfrost_xfb_offset(unsigned stride, struct pipe_stream_output_target *target)
 
 static void
 panfrost_upload_sysvals(struct panfrost_batch *batch,
-                        const struct panfrost_ptr *ptr,
+                        void *ptr_cpu,
+                        mali_ptr ptr_gpu,
                         struct panfrost_compiled_shader *ss,
                         enum pipe_shader_type st)
 {
-        struct sysval_uniform *uniforms = ptr->cpu;
+        struct sysval_uniform *uniforms = ptr_cpu;
 
         for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
                 int sysval = ss->info.sysvals.sysvals[i];
@@ -1377,7 +1378,7 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                 case PAN_SYSVAL_NUM_WORK_GROUPS:
                         for (unsigned j = 0; j < 3; j++) {
                                 batch->num_wg_sysval[j] =
-                                        ptr->gpu + (i * sizeof(*uniforms)) + (j * 4);
+                                        ptr_gpu + (i * sizeof(*uniforms)) + (j * 4);
                         }
                         panfrost_upload_num_work_groups_sysval(batch,
                                                                &uniforms[i]);
@@ -1497,7 +1498,9 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 pan_pool_alloc_aligned(&batch->pool.base, sys_size, 16);
 
         /* Upload sysvals requested by the shader */
-        panfrost_upload_sysvals(batch, &transfer, ss, stage);
+        uint8_t *sysvals = alloca(sys_size);
+        panfrost_upload_sysvals(batch, sysvals, transfer.gpu, ss, stage);
+        memcpy(transfer.cpu, sysvals, sys_size);
 
         /* Next up, attach UBOs. UBO count includes gaps but no sysval UBO */
         struct panfrost_compiled_shader *shader = ctx->prog[stage];
@@ -1563,12 +1566,10 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                         if (sysval_type == PAN_SYSVAL_NUM_WORK_GROUPS)
                                 batch->num_wg_sysval[sysval_comp] = ptr;
                 }
-                /* Map the UBO, this should be cheap. However this is reading
-                 * from write-combine memory which is _very_ slow. It might pay
-                 * off to upload sysvals to a staging buffer on the CPU on the
-                 * assumption sysvals will get pushed (TODO) */
-
-                const void *mapped_ubo = (src.ubo == sysval_ubo) ? transfer.cpu :
+                /* Map the UBO, this should be cheap. For some buffers this may
+                 * read from write-combine memory which is slow, though :-(
+                 */
+                const void *mapped_ubo = (src.ubo == sysval_ubo) ? sysvals :
                         panfrost_map_constant_buffer_cpu(ctx, buf, src.ubo);
 
                 /* TODO: Is there any benefit to combining ranges */
