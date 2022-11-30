@@ -1804,6 +1804,9 @@ struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_graphics
                                                       bool disable_mrt_compaction);
 
 void radv_cmd_buffer_reset_rendering(struct radv_cmd_buffer *cmd_buffer);
+bool radv_cmd_buffer_upload_alloc_aligned(struct radv_cmd_buffer *cmd_buffer, unsigned size,
+                                          unsigned alignment,
+                                          unsigned *out_offset, void **ptr);
 bool radv_cmd_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer, unsigned size,
                                   unsigned *out_offset, void **ptr);
 bool radv_cmd_buffer_upload_data(struct radv_cmd_buffer *cmd_buffer, unsigned size,
