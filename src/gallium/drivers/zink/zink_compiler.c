@@ -273,6 +273,114 @@ lower_drawid(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_drawid_instr, nir_metadata_dominance, NULL);
 }
 
+struct lower_gl_point_state {
+   nir_variable *gl_pos_out;
+   nir_variable *gl_point_size;
+};
+
+static bool
+lower_gl_point_gs_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct lower_gl_point_state *state = data;
+   nir_ssa_def *vp_scale, *pos;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_emit_vertex_with_counter &&
+       intrin->intrinsic != nir_intrinsic_emit_vertex)
+      return false;
+
+   if (nir_intrinsic_stream_id(intrin) != 0)
+      return false;
+
+   if (intrin->intrinsic == nir_intrinsic_end_primitive_with_counter ||
+         intrin->intrinsic == nir_intrinsic_end_primitive) {
+      nir_instr_remove(&intrin->instr);
+      return true;
+   }
+
+   b->cursor = nir_before_instr(instr);
+
+   // viewport-map endpoints
+   nir_ssa_def *vp_const_pos = nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE);
+   vp_scale = nir_load_push_constant(b, 2, 32, vp_const_pos, .base = 1, .range = 2);
+
+   // Load point info values
+   nir_ssa_def *point_size = nir_load_var(b, state->gl_point_size);
+   nir_ssa_def *point_pos = nir_load_var(b, state->gl_pos_out);
+
+   // w_delta = gl_point_size / width_viewport_size_scale * gl_Position.w
+   nir_ssa_def *w_delta = nir_fdiv(b, point_size, nir_channel(b, vp_scale, 0));
+   w_delta = nir_fmul(b, w_delta, nir_channel(b, point_pos, 3));
+   // halt_w_delta = w_delta / 2
+   nir_ssa_def *half_w_delta = nir_fmul(b, w_delta, nir_imm_float(b, 0.5));
+
+   // h_delta = gl_point_size / height_viewport_size_scale * gl_Position.w
+   nir_ssa_def *h_delta = nir_fdiv(b, point_size, nir_channel(b, vp_scale, 1));
+   h_delta = nir_fmul(b, h_delta, nir_channel(b, point_pos, 3));
+   // halt_h_delta = h_delta / 2
+   nir_ssa_def *half_h_delta = nir_fmul(b, h_delta, nir_imm_float(b, 0.5));
+
+   nir_ssa_def *point_dir[4][2] = {
+      { nir_imm_float(b, -1), nir_imm_float(b, -1) },
+      { nir_imm_float(b, -1), nir_imm_float(b, 1) },
+      { nir_imm_float(b, 1), nir_imm_float(b, -1) },
+      { nir_imm_float(b, 1), nir_imm_float(b, 1) }
+   };
+
+   nir_ssa_def *point_pos_x = nir_channel(b, point_pos, 0);
+   nir_ssa_def *point_pos_y = nir_channel(b, point_pos, 1);
+
+   for (size_t i = 0; i < 4; i++) {
+      pos = nir_vec4(b,
+                     nir_ffma(b, half_w_delta, point_dir[i][0], point_pos_x),
+                     nir_ffma(b, half_h_delta, point_dir[i][1], point_pos_y),
+                     nir_channel(b, point_pos, 2),
+                     nir_channel(b, point_pos, 3));
+
+      nir_store_var(b, state->gl_pos_out, pos, 0xf);
+
+      nir_emit_vertex(b);
+   }
+
+   nir_end_primitive(b);
+
+   nir_instr_remove(&intrin->instr);
+
+   return true;
+}
+
+static bool
+lower_gl_point_gs(nir_shader *shader)
+{
+   struct lower_gl_point_state state;
+   nir_builder b;
+
+   shader->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
+   shader->info.gs.vertices_out *= 4;
+
+   // Gets the gl_Position in and out
+   state.gl_pos_out =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      VARYING_SLOT_POS);
+   state.gl_point_size =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      VARYING_SLOT_PSIZ);
+
+   // if position in or gl_PointSize aren't written, we have nothing to do
+   if (!state.gl_pos_out || !state.gl_point_size)
+      return false;
+
+   nir_function_impl *entry = nir_shader_get_entrypoint(shader);
+   nir_builder_init(&b, entry);
+   b.cursor = nir_before_cf_list(&entry->body);
+
+   return nir_shader_instructions_pass(shader, lower_gl_point_gs_instr,
+                                       nir_metadata_dominance, &state);
+}
+
 struct lower_line_stipple_state {
    nir_variable *pos_out;
    nir_variable *stipple_out;
