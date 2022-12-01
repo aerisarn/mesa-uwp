@@ -8059,9 +8059,10 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
    if (num_views > 1)
       ace_predication_size += num_views * 3; /* SET_SH_REG size (view index SGPR) */
 
-   if (count_va) {
+   if (count_va)
       radv_cs_add_buffer(ws, cmd_buffer->ace_internal.cs, info->count_buffer->bo);
 
+   if (cmd_buffer->device->physical_device->rad_info.has_taskmesh_indirect0_bug && count_va) {
       /* MEC firmware bug workaround.
        * When the count buffer contains zero, DISPATCH_TASKMESH_INDIRECT_MULTI_ACE hangs.
        * - We must ensure that DISPATCH_TASKMESH_INDIRECT_MULTI_ACE
