@@ -118,6 +118,7 @@ struct radeon_info {
    bool discardable_allows_big_page;
    bool has_export_conflict_bug;
    bool has_vrs_ds_export_bug;
+   bool has_taskmesh_indirect0_bug;
 
    /* Display features. */
    /* There are 2 display DCC codepaths, because display expects unaligned DCC. */

@@ -1133,6 +1133,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
                                  (info->gfx_level == GFX9 &&
                                   info->me_fw_feature >= 52);
 
+   /* Firmware bug with DISPATCH_TASKMESH_INDIRECT_MULTI_ACE packets.
+    * On old MEC FW versions, it hangs the GPU when indirect count is zero.
+    */
+   info->has_taskmesh_indirect0_bug = info->gfx_level == GFX10_3 &&
+                                      info->mec_fw_version < 100;
+
    info->has_export_conflict_bug = info->gfx_level == GFX11;
 
    /* Get the number of good compute units. */
@@ -1483,6 +1489,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_sqtt_auto_flush_mode_bug = %i\n", info->has_sqtt_auto_flush_mode_bug);
    fprintf(f, "    never_send_perfcounter_stop = %i\n", info->never_send_perfcounter_stop);
    fprintf(f, "    discardable_allows_big_page = %i\n", info->discardable_allows_big_page);
+   fprintf(f, "    has_taskmesh_indirect0_bug = %i\n", info->has_taskmesh_indirect0_bug);
 
    fprintf(f, "Display features:\n");
    fprintf(f, "    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
