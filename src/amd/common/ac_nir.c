@@ -174,13 +174,8 @@ emit_streamout(nir_builder *b, unsigned stream, nir_xfb_info *info,
 nir_shader *
 ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
                              bool disable_streamout,
-                             size_t num_outputs,
-                             const uint8_t *output_usage_mask,
-                             const uint8_t *output_streams,
-                             const uint8_t *output_semantics)
+                             ac_nir_gs_output_info *output_info)
 {
-   assert(num_outputs <= 64);
-
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_VERTEX, gs_nir->options, "gs_copy");
 
@@ -205,45 +200,37 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
          nir_push_if(&b, nir_ieq_imm(&b, stream_id, stream));
 
       uint32_t offset = 0;
-      uint64_t output_mask = 0;
       nir_ssa_def *outputs[64][4] = {{0}};
-      for (unsigned i = 0; i < num_outputs; i++) {
-         unsigned mask = output_usage_mask[i];
-         if (!mask)
-            continue;
-
-         gl_varying_slot location = output_semantics ? output_semantics[i] : i;
-
-         u_foreach_bit (j, mask) {
-            if (((output_streams[i] >> (j * 2)) & 0x3) != stream)
+      u_foreach_bit64 (i, gs_nir->info.outputs_written) {
+         u_foreach_bit (j, output_info->usage_mask[i]) {
+            if (((output_info->streams[i] >> (j * 2)) & 0x3) != stream)
                continue;
 
-            outputs[location][j] =
+            outputs[i][j] =
                nir_load_buffer_amd(&b, 1, 32, gsvs_ring, vtx_offset, zero, zero,
                                    .base = offset,
                                    .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
 
             offset += gs_nir->info.gs.vertices_out * 16 * 4;
          }
-
-         output_mask |= 1ull << i;
       }
 
       if (stream_id)
          emit_streamout(&b, stream, info, outputs);
 
       if (stream == 0) {
-         u_foreach_bit64 (i, output_mask) {
-            gl_varying_slot location = output_semantics ? output_semantics[i] : i;
+         u_foreach_bit64 (i, gs_nir->info.outputs_written) {
+            unsigned location = output_info->slot_to_location ?
+               output_info->slot_to_location[i] : i;
 
             for (unsigned j = 0; j < 4; j++) {
-               if (outputs[location][j]) {
-                  nir_store_output(&b, outputs[location][j], zero,
-                                   .base = i,
+               if (outputs[i][j]) {
+                  nir_store_output(&b, outputs[i][j], zero,
+                                   .base = location,
                                    .component = j,
                                    .write_mask = 1,
                                    .src_type = nir_type_uint32,
-                                   .io_semantics = {.location = location, .num_slots = 1});
+                                   .io_semantics = {.location = i, .num_slots = 1});
                }
             }
          }

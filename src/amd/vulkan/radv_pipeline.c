@@ -3473,9 +3473,12 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    struct radv_device *device = pipeline->device;
 
    const struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
+   ac_nir_gs_output_info output_info = {
+      .streams = gs_info->gs.output_streams,
+      .usage_mask = gs_info->gs.output_usage_mask,
+   };
    nir_shader *nir =
-      ac_nir_create_gs_copy_shader(stages[MESA_SHADER_GEOMETRY].nir, false, VARYING_SLOT_MAX,
-                                   gs_info->gs.output_usage_mask, gs_info->gs.output_streams, NULL);
+      ac_nir_create_gs_copy_shader(stages[MESA_SHADER_GEOMETRY].nir, false, &output_info);
    nir_validate_shader(nir, "after ac_nir_create_gs_copy_shader");
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
