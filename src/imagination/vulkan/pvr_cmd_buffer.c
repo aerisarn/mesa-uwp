@@ -1472,19 +1472,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
          assert(gfx_sub_cmd->query_pool);
 
          if (secondary_cont) {
-            void *buff;
-
-            buff =
-               util_dynarray_grow_bytes(&state->query_indices,
-                                        1,
-                                        gfx_sub_cmd->sec_query_indices.size);
-            if (!buff) {
-               state->status =
-                  vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-               return state->status;
-            }
-
-            memcpy(buff, state->query_indices.data, state->query_indices.size);
+            util_dynarray_append_dynarray(&state->query_indices,
+                                          &gfx_sub_cmd->sec_query_indices);
          } else {
             const void *data = util_dynarray_begin(&state->query_indices);
 
@@ -5657,11 +5646,6 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
    const uint32_t prim_scissor_elems =
       util_dynarray_num_elements(&cmd_buffer->scissor_array,
                                  struct pvr_scissor_words);
-   const uint32_t sec_db_size =
-      util_dynarray_num_elements(&sec_cmd_buffer->depth_bias_array, char);
-   const uint32_t sec_scissor_size =
-      util_dynarray_num_elements(&sec_cmd_buffer->scissor_array, char);
-   uint32_t *addr;
 
    util_dynarray_foreach (&sec_cmd_buffer->deferred_csb_commands,
                           struct pvr_deferred_cs_command,
@@ -5712,9 +5696,10 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
          const uint32_t db_idx =
             prim_db_elems + cmd->dbsc2.state.depthbias_index;
 
-         assert(cmd->dbsc2.ppp_cs_bo->bo->map);
+         uint32_t *const addr =
+            cmd->dbsc2.ppp_cs_bo->bo->map + cmd->dbsc2.patch_offset;
 
-         addr = cmd->dbsc2.ppp_cs_bo->bo->map + cmd->dbsc2.patch_offset;
+         assert(cmd->dbsc2.ppp_cs_bo->bo->map);
 
          pvr_csb_pack (addr, TA_STATE_ISPDBSC, ispdbsc) {
             ispdbsc.dbindex = db_idx;
@@ -5730,17 +5715,11 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
       }
    }
 
-   addr =
-      util_dynarray_grow_bytes(&cmd_buffer->depth_bias_array, 1, sec_db_size);
-   memcpy(addr,
-          util_dynarray_begin(&sec_cmd_buffer->depth_bias_array),
-          sec_db_size);
+   util_dynarray_append_dynarray(&cmd_buffer->depth_bias_array,
+                                 &sec_cmd_buffer->depth_bias_array);
 
-   addr =
-      util_dynarray_grow_bytes(&cmd_buffer->scissor_array, 1, sec_scissor_size);
-   memcpy(addr,
-          util_dynarray_begin(&sec_cmd_buffer->scissor_array),
-          sec_scissor_size);
+   util_dynarray_append_dynarray(&cmd_buffer->scissor_array,
+                                 &sec_cmd_buffer->scissor_array);
 
    BITSET_SET(dynamic_state->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS);
    cmd_buffer->scissor_words = (struct pvr_scissor_words){ 0 };
@@ -5850,22 +5829,10 @@ pvr_execute_graphics_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
          primary_sub_cmd->gfx.empty_cmd = false;
 
       if (sec_sub_cmd->gfx.query_pool) {
-         void *buff;
-
          primary_sub_cmd->gfx.query_pool = sec_sub_cmd->gfx.query_pool;
 
-         buff =
-            util_dynarray_grow_bytes(&state->query_indices,
-                                     1,
-                                     sec_sub_cmd->gfx.sec_query_indices.size);
-         if (!buff) {
-            state->status = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-            return state->status;
-         }
-
-         memcpy(buff,
-                sec_sub_cmd->gfx.sec_query_indices.data,
-                sec_sub_cmd->gfx.sec_query_indices.size);
+         util_dynarray_append_dynarray(&state->query_indices,
+                                       &sec_sub_cmd->gfx.sec_query_indices);
       }
 
       if (pvr_cmd_uses_deferred_cs_cmds(sec_cmd_buffer)) {
