@@ -1767,8 +1767,11 @@ static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
    si_nir_assign_param_offsets(nir, shader, slot_remap);
 }
 
-struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_args *args,
-                                     bool *free_nir, uint64_t tcs_vgpr_only_inputs)
+struct nir_shader *si_get_nir_shader(struct si_shader *shader,
+                                     struct si_shader_args *args,
+                                     bool *free_nir,
+                                     uint64_t tcs_vgpr_only_inputs,
+                                     ac_nir_gs_output_info *output_info)
 {
    struct si_shader_selector *sel = shader->selector;
    const union si_shader_key *key = &shader->key;
@@ -1915,6 +1918,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_
                     key->ge.opt.remove_streamout);
       }
    }
+
+   if (sel->stage == MESA_SHADER_GEOMETRY && !key->ge.as_ngg)
+      NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);
 
    NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
 
@@ -2111,7 +2117,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    si_init_shader_args(shader, &args);
 
    bool free_nir;
-   struct nir_shader *nir = si_get_nir_shader(shader, &args, &free_nir, 0);
+   struct nir_shader *nir =
+      si_get_nir_shader(shader, &args, &free_nir, 0, &legacy_gs_output_info.info);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */

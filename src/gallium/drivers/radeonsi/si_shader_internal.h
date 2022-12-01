@@ -147,14 +147,15 @@ struct si_shader_context {
    LLVMValueRef gs_ngg_emit;
    struct ac_llvm_pointer gs_ngg_scratch;
    LLVMValueRef return_value;
-
-   LLVMValueRef gs_emitted_vertices;
 };
 
 static inline struct si_shader_context *si_shader_context_from_abi(struct ac_shader_abi *abi)
 {
    return container_of(abi, struct si_shader_context, abi);
 }
+
+struct ac_nir_gs_output_info;
+typedef struct ac_nir_gs_output_info ac_nir_gs_output_info;
 
 /* si_shader.c */
 bool si_is_multi_part_shader(struct si_shader *shader);
@@ -169,7 +170,8 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
                           const struct si_vs_prolog_bits *prolog_key,
                           struct si_shader *shader_out, union si_shader_part_key *key);
 struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_args *args,
-                                     bool *free_nir, uint64_t tcs_vgpr_only_inputs);
+                                     bool *free_nir, uint64_t tcs_vgpr_only_inputs,
+                                     ac_nir_gs_output_info *output_info);
 void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,

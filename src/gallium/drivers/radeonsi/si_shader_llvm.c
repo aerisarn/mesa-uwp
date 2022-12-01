@@ -849,8 +849,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          LLVMSetAlignment(ctx->gs_ngg_emit, 4);
       } else {
          si_preload_gs_rings(ctx);
-
-         ctx->gs_emitted_vertices = LLVMConstInt(ctx->ac.i32, 0, false);
       }
       break;
 
@@ -1172,7 +1170,8 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_init_shader_args(&shader_ls, ctx.args);
 
          bool free_nir;
-         nir = si_get_nir_shader(&shader_ls, ctx.args, &free_nir, sel->info.tcs_vgpr_only_inputs);
+         nir = si_get_nir_shader(&shader_ls, ctx.args, &free_nir,
+                                 sel->info.tcs_vgpr_only_inputs, NULL);
          si_update_shader_binary_info(shader, nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_ls, nir, free_nir)) {
@@ -1246,7 +1245,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_init_shader_args(&shader_es, ctx.args);
 
          bool free_nir;
-         nir = si_get_nir_shader(&shader_es, ctx.args, &free_nir, 0);
+         nir = si_get_nir_shader(&shader_es, ctx.args, &free_nir, 0, NULL);
          si_update_shader_binary_info(shader, nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_es, nir, free_nir)) {

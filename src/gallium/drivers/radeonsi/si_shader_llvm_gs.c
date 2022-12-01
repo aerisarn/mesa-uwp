@@ -105,56 +105,8 @@ static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
 
 void si_llvm_gs_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_info UNUSED *info = &ctx->shader->selector->info;
-
-   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
-
    if (ctx->screen->info.gfx_level >= GFX10)
       ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
-
-   if (ctx->screen->use_ngg) {
-      /* Implement PIPE_STAT_QUERY_GS_PRIMITIVES for non-ngg draws because we can't
-       * use pipeline statistics (they would be correct but when screen->use_ngg, we
-       * can't know when the query is started if the next draw(s) will use ngg or not).
-       */
-      LLVMValueRef tmp = GET_FIELD(ctx, GS_STATE_PIPELINE_STATS_EMU);
-      tmp = LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i1, "");
-      ac_build_ifcc(&ctx->ac, tmp, 5229); /* if (GS_PIPELINE_STATS_EMU) */
-      {
-         LLVMValueRef prim = ctx->ac.i32_0;
-         switch (ctx->shader->selector->info.base.gs.output_primitive) {
-         case SHADER_PRIM_POINTS:
-            prim = ctx->gs_emitted_vertices;
-            break;
-         case SHADER_PRIM_LINE_STRIP:
-            prim = LLVMBuildSub(ctx->ac.builder, ctx->gs_emitted_vertices, ctx->ac.i32_1, "");
-            prim = ac_build_imax(&ctx->ac, prim, ctx->ac.i32_0);
-            break;
-         case SHADER_PRIM_TRIANGLE_STRIP:
-            prim = LLVMBuildSub(ctx->ac.builder, ctx->gs_emitted_vertices, LLVMConstInt(ctx->ac.i32, 2, 0), "");
-            prim = ac_build_imax(&ctx->ac, prim, ctx->ac.i32_0);
-            break;
-         }
-
-         LLVMValueRef args[] = {
-            prim,
-            ngg_get_emulated_counters_buf(ctx),
-            LLVMConstInt(ctx->ac.i32,
-                         si_query_pipestat_end_dw_offset(ctx->screen, PIPE_STAT_QUERY_GS_PRIMITIVES) * 4,
-                         false),
-            ctx->ac.i32_0,                            /* soffset */
-            ctx->ac.i32_0,                            /* cachepolicy */
-         };
-         ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32", ctx->ac.i32, args, 5, 0);
-
-         args[0] = ctx->ac.i32_1;
-         args[2] = LLVMConstInt(ctx->ac.i32,
-                                si_query_pipestat_end_dw_offset(ctx->screen, PIPE_STAT_QUERY_GS_INVOCATIONS) * 4,
-                                false);
-         ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32", ctx->ac.i32, args, 5, 0);
-      }
-      ac_build_endif(&ctx->ac, 5229);
-   }
 
    ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, si_get_gs_wave_id(ctx));
 
@@ -170,40 +122,9 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream,
 
    assert(!ctx->shader->key.ge.as_ngg);
 
-   struct si_shader_info *info = &ctx->shader->selector->info;
-   struct si_shader *shader = ctx->shader;
-   LLVMValueRef soffset = ac_get_arg(&ctx->ac, ctx->args->ac.gs2vs_offset);
-
-   unsigned offset = 0;
-   for (unsigned i = 0; i < info->num_outputs; i++) {
-      for (unsigned chan = 0; chan < 4; chan++) {
-         if (!(info->output_usagemask[i] & (1 << chan)) ||
-             ((info->output_streams[i] >> (2 * chan)) & 3) != stream)
-            continue;
-
-         LLVMValueRef out_val = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + chan], "");
-         LLVMValueRef voffset =
-            LLVMConstInt(ctx->ac.i32, offset * shader->selector->info.base.gs.vertices_out, 0);
-         offset++;
-
-         voffset = LLVMBuildAdd(ctx->ac.builder, voffset, vertexidx, "");
-         voffset = LLVMBuildMul(ctx->ac.builder, voffset, LLVMConstInt(ctx->ac.i32, 4, 0), "");
-
-         out_val = ac_to_integer(&ctx->ac, out_val);
-
-         ac_build_buffer_store_dword(&ctx->ac, ctx->gsvs_ring[stream], out_val, NULL,
-                                     voffset, soffset, ac_glc | ac_slc | ac_swizzled);
-      }
-   }
-
-   /* Signal vertex emission if vertex data was written. */
-   if (offset) {
-      ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8),
-                       si_get_gs_wave_id(ctx));
-
-      ctx->gs_emitted_vertices = LLVMBuildAdd(ctx->ac.builder, ctx->gs_emitted_vertices,
-                                              ctx->ac.i32_1, "vert");
-   }
+   /* Signal vertex emission */
+   ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8),
+                    si_get_gs_wave_id(ctx));
 }
 
 /* Cut one primitive from the geometry shader */
