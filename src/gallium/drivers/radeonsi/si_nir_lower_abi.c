@@ -295,6 +295,9 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_ishl_imm(b, offset, 9);
       break;
    }
+   case nir_intrinsic_load_ring_gs2vs_offset_amd:
+      replacement = ac_nir_load_arg(b, &args->ac, args->ac.gs2vs_offset);
+      break;
    default:
       return false;
    }
