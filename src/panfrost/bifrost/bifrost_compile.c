@@ -3780,8 +3780,12 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         image_src = bi_lshift_or_i32(b, sampler, image_src, bi_imm_u8(0));
         image_src = bi_lshift_or_i32(b, texture, image_src, bi_imm_u8(16));
 
-        unsigned mask = BI_WRITE_MASK_RGBA;
-        unsigned res_size = nir_dest_bit_size(instr->dest) == 16 ? 2 : 4;
+
+        /* Only write the components that we actually read */
+        unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
+        unsigned comps_per_reg = nir_dest_bit_size(instr->dest) == 16 ? 2 : 1;
+        unsigned res_size = DIV_ROUND_UP(util_bitcount(mask), comps_per_reg);
+
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(instr->dest_type);
         enum bi_dimension dim = valhall_tex_dimension(instr->sampler_dim);
         bi_index dest = bi_temp(b->shader);
@@ -3810,10 +3814,32 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
                 unreachable("Unhandled Valhall texture op");
         }
 
-        bi_index w[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
-        bi_emit_split_i32(b, w, dest, res_size);
-        bi_emit_collect_to(b, bi_dest_index(&instr->dest), w,
-                        DIV_ROUND_UP(nir_dest_num_components(instr->dest) * res_size, 4));
+        /* The hardware will write only what we read, and it will into
+         * contiguous registers without gaps (different from Bifrost). NIR
+         * expects the gaps, so fill in the holes (they'll be copypropped and
+         * DCE'd away later).
+         */
+        bi_index unpacked[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
+
+        bi_emit_cached_split_i32(b, dest, res_size);
+
+        /* Index into the packed component array */
+        unsigned j = 0;
+        unsigned comps[4] = { 0 };
+        unsigned nr_components = nir_dest_num_components(instr->dest);
+
+        for (unsigned i = 0; i < nr_components; ++i) {
+                if (mask & BITFIELD_BIT(i)) {
+                        unpacked[i] = dest;
+                        comps[i] = j++;
+                } else {
+                        unpacked[i] = bi_zero();
+                }
+        }
+
+        bi_make_vec_to(b, bi_dest_index(&instr->dest), unpacked,
+                        comps, nir_dest_num_components(instr->dest),
+                        nir_dest_bit_size(instr->dest));
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
