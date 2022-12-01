@@ -252,6 +252,7 @@ typedef enum {
    nir_ray_query_value_flags,
    nir_ray_query_value_world_ray_direction,
    nir_ray_query_value_world_ray_origin,
+   nir_ray_query_value_intersection_triangle_vertex_positions
 } nir_ray_query_value;
 
 typedef union {

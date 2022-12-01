@@ -1182,6 +1182,10 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_FRAG_INVOCATION_COUNT;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInHitTriangleVertexPositionsKHR:
+      *location = SYSTEM_VALUE_RAY_TRIANGLE_VERTEX_POSITIONS;
+      set_mode_system_value(b, mode);
+      break;
 
    default:
       vtn_fail("Unsupported builtin: %s (%u)",

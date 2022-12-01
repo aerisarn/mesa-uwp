@@ -697,6 +697,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_report_ray_intersection:
    case nir_intrinsic_rq_proceed:
    case nir_intrinsic_rq_load:
+   case nir_intrinsic_load_ray_triangle_vertex_positions:
       is_divergent = true;
       break;
 

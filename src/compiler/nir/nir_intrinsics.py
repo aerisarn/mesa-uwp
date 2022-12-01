@@ -893,6 +893,7 @@ system_value("ray_geometry_index", 1)
 system_value("ray_instance_custom_index", 1)
 system_value("shader_record_ptr", 1, bit_sizes=[64])
 system_value("cull_mask", 1)
+system_value("ray_triangle_vertex_positions", 3, indices=[COLUMN])
 
 # Driver-specific viewport scale/offset parameters.
 #

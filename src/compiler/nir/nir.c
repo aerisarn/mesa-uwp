@@ -2486,6 +2486,8 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_ray_instance_custom_index;
    case SYSTEM_VALUE_CULL_MASK:
       return nir_intrinsic_load_cull_mask;
+   case SYSTEM_VALUE_RAY_TRIANGLE_VERTEX_POSITIONS:
+      return nir_intrinsic_load_ray_triangle_vertex_positions;
    case SYSTEM_VALUE_MESH_VIEW_COUNT:
       return nir_intrinsic_load_mesh_view_count;
    case SYSTEM_VALUE_FRAG_SHADING_RATE:
@@ -2639,6 +2641,8 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_RAY_INSTANCE_CUSTOM_INDEX;
    case nir_intrinsic_load_cull_mask:
       return SYSTEM_VALUE_CULL_MASK;
+   case nir_intrinsic_load_ray_triangle_vertex_positions:
+      return SYSTEM_VALUE_RAY_TRIANGLE_VERTEX_POSITIONS;
    case nir_intrinsic_load_frag_shading_rate:
       return SYSTEM_VALUE_FRAG_SHADING_RATE;
    case nir_intrinsic_load_mesh_view_count:
