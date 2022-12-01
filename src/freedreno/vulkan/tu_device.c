@@ -1179,9 +1179,9 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
    p->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
 
    p->storageTexelBufferOffsetAlignmentBytes = 64;
-   p->storageTexelBufferOffsetSingleTexelAlignment = false;
+   p->storageTexelBufferOffsetSingleTexelAlignment = true;
    p->uniformTexelBufferOffsetAlignmentBytes = 64;
-   p->uniformTexelBufferOffsetSingleTexelAlignment = false;
+   p->uniformTexelBufferOffsetSingleTexelAlignment = true;
 
    /* The address space is 4GB for current kernels, so there's no point
     * allowing a larger buffer. Our buffer sizes are 64-bit though, so
