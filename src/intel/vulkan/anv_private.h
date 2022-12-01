@@ -351,19 +351,6 @@ anv_minify(uint32_t n, uint32_t levels)
       return MAX2(n >> levels, 1);
 }
 
-static inline float
-anv_clamp_f(float f, float min, float max)
-{
-   assert(min < max);
-
-   if (f > max)
-      return max;
-   else if (f < min)
-      return min;
-   else
-      return f;
-}
-
 static inline union isl_color_value
 vk_to_isl_color(VkClearColorValue color)
 {

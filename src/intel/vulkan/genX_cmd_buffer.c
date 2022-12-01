@@ -3047,17 +3047,6 @@ cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
-static int64_t
-clamp_int64(int64_t x, int64_t min, int64_t max)
-{
-   if (x < min)
-      return min;
-   else if (x < max)
-      return x;
-   else
-      return max;
-}
-
 static void
 cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3103,19 +3092,19 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
       int64_t x_max = MIN2(s->offset.x + s->extent.width - 1,
                        vp->x + vp->width - 1);
 
-      y_max = clamp_int64(y_max, 0, INT16_MAX >> 1);
-      x_max = clamp_int64(x_max, 0, INT16_MAX >> 1);
+      y_max = CLAMP(y_max, 0, INT16_MAX >> 1);
+      x_max = CLAMP(x_max, 0, INT16_MAX >> 1);
 
       /* Do this math using int64_t so overflow gets clamped correctly. */
       if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-         y_min = clamp_int64((uint64_t) y_min, gfx->render_area.offset.y, max);
-         x_min = clamp_int64((uint64_t) x_min, gfx->render_area.offset.x, max);
-         y_max = clamp_int64((uint64_t) y_max, 0,
-                             gfx->render_area.offset.y +
-                             gfx->render_area.extent.height - 1);
-         x_max = clamp_int64((uint64_t) x_max, 0,
-                             gfx->render_area.offset.x +
-                             gfx->render_area.extent.width - 1);
+         y_min = CLAMP((uint64_t) y_min, gfx->render_area.offset.y, max);
+         x_min = CLAMP((uint64_t) x_min, gfx->render_area.offset.x, max);
+         y_max = CLAMP((uint64_t) y_max, 0,
+                       gfx->render_area.offset.y +
+                       gfx->render_area.extent.height - 1);
+         x_max = CLAMP((uint64_t) x_max, 0,
+                       gfx->render_area.offset.x +
+                       gfx->render_area.extent.width - 1);
       }
 
       const struct GENX(SCISSOR_RECT) scissor = {
