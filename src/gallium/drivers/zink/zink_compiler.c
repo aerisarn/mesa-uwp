@@ -2635,7 +2635,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       }
    }
    if (screen->driconf.inline_uniforms) {
-      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_global | nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access, zs);
       need_optimize = true;
@@ -3754,7 +3754,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, unbreak_bos, ret, needs_size);
    /* run in compile if there could be inlined uniforms */
    if (!screen->driconf.inline_uniforms) {
-      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_global | nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access, ret);
    }
