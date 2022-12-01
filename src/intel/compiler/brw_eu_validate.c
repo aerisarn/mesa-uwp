@@ -2316,6 +2316,43 @@ instruction_restrictions(const struct brw_isa_info *isa,
                "O, R, and U conditional modifiers should not be used.");
    }
 
+   if (brw_inst_opcode(isa, inst) == BRW_OPCODE_BFI2) {
+      ERROR_IF(brw_inst_cond_modifier(devinfo, inst) != BRW_CONDITIONAL_NONE,
+               "BFI2 cannot have conditional modifier");
+
+      ERROR_IF(brw_inst_saturate(devinfo, inst),
+               "BFI2 cannot have saturate modifier");
+
+      enum brw_reg_type dst_type;
+
+      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1)
+         dst_type = brw_inst_3src_a1_dst_type(devinfo, inst);
+      else
+         dst_type = brw_inst_3src_a16_dst_type(devinfo, inst);
+
+      ERROR_IF(dst_type != BRW_REGISTER_TYPE_D &&
+               dst_type != BRW_REGISTER_TYPE_UD,
+               "BFI2 destination type must be D or UD");
+
+      for (unsigned s = 0; s < 3; s++) {
+         enum brw_reg_type src_type;
+
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            switch (s) {
+            case 0: src_type = brw_inst_3src_a1_src0_type(devinfo, inst); break;
+            case 1: src_type = brw_inst_3src_a1_src1_type(devinfo, inst); break;
+            case 2: src_type = brw_inst_3src_a1_src2_type(devinfo, inst); break;
+            default: unreachable("invalid src");
+            }
+         } else {
+            src_type = brw_inst_3src_a16_src_type(devinfo, inst);
+         }
+
+         ERROR_IF(src_type != dst_type,
+                  "BFI2 source type must match destination type");
+      }
+   }
+
    return error_msg;
 }
 
