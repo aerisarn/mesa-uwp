@@ -2928,10 +2928,9 @@ VkResult anv_CreateDevice(
 
    device->workaround_address = (struct anv_address) {
       .bo = device->workaround_bo,
-      .offset = align_u32(
-         intel_debug_write_identifiers(device->workaround_bo->map,
-                                       device->workaround_bo->size,
-                                       "Anv") + 8, 8),
+      .offset = align(intel_debug_write_identifiers(device->workaround_bo->map,
+                                                    device->workaround_bo->size,
+                                                    "Anv") + 8, 8),
    };
 
    device->workarounds.doom64_images = NULL;

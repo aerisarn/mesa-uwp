@@ -566,8 +566,8 @@ VkResult anv_CreateDescriptorSetLayout(
          /* Inline uniform blocks are specified to use the descriptor array
           * size as the size in bytes of the block.
           */
-         descriptor_buffer_size = align_u32(descriptor_buffer_size,
-                                            ANV_UBO_ALIGNMENT);
+         descriptor_buffer_size = align(descriptor_buffer_size,
+                                        ANV_UBO_ALIGNMENT);
          set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
          descriptor_buffer_size += binding->descriptorCount;
       } else {

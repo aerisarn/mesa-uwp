@@ -3545,10 +3545,9 @@ VkResult anv_CreateDevice(
 
    device->workaround_address = (struct anv_address) {
       .bo = device->workaround_bo,
-      .offset = align_u32(
-         intel_debug_write_identifiers(device->workaround_bo->map,
-                                       device->workaround_bo->size,
-                                       "Anv") + 8, 8),
+      .offset = align(intel_debug_write_identifiers(device->workaround_bo->map,
+                                                    device->workaround_bo->size,
+                                                    "Anv") + 8, 8),
    };
 
    device->workarounds.doom64_images = NULL;
@@ -3565,7 +3564,7 @@ VkResult anv_CreateDevice(
 
    if (device->vk.enabled_extensions.KHR_ray_query) {
       uint32_t ray_queries_size =
-         align_u32(brw_rt_ray_queries_hw_stacks_size(device->info), 4096);
+         align(brw_rt_ray_queries_hw_stacks_size(device->info), 4096);
 
       result = anv_device_alloc_bo(device, "ray queries",
                                    ray_queries_size,
