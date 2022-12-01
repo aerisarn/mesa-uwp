@@ -45,6 +45,26 @@ radv-stoney-vkcts:x86_64:
   variables:
     DEQP_FRACTION: 11
 
+radv-stoney-angle:
+  extends:
+    - .lava-test-deqp:x86_64
+    - .radv-stoney-test:x86_64
+    - .radeonsi+radv-rules # Note: Xorg uses radeonsi, so depend on both gl and vulkan
+  variables:
+    DEQP_SUITE: radv-stoney-angle
+    USE_ANGLE: 1
+    HWCI_START_XORG: 1
+    GPU_VERSION: angle-radv-stoney-aco
+
+radv-stoney-angle-full:
+  extends:
+    - radv-stoney-angle
+    - .radv-valve-manual-rules
+  parallel: 2
+  variables:
+    DEQP_SUITE: radv-stoney-angle-full
+    JOB_TIMEOUT: 60
+
 radeonsi-stoney-gl:x86_64:
   extends:
     - .lava-test-deqp:x86_64
