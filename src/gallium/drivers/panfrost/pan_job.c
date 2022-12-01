@@ -234,8 +234,12 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
         struct hash_entry *entry = _mesa_hash_table_search(ctx->writers, rsrc);
         struct panfrost_batch *writer = entry ? entry->data : NULL;
 
-        /* Flush users if required */
-        if (writes || ((writer != NULL) && (writer != batch))) {
+        /* Both reads and writes flush the existing writer */
+        if (writer != NULL && writer != batch)
+                panfrost_batch_submit(ctx, writer);
+
+        /* Writes (only) flush readers too */
+        if (writes) {
                 unsigned i;
                 foreach_batch(ctx, i) {
                         struct panfrost_batch *batch = &ctx->batches.slots[i];
