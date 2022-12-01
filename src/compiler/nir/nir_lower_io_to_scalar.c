@@ -245,6 +245,7 @@ nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
 
    if ((intr->intrinsic == nir_intrinsic_load_ubo && (mask & nir_var_mem_ubo)) ||
        (intr->intrinsic == nir_intrinsic_load_ssbo && (mask & nir_var_mem_ssbo)) ||
+       (intr->intrinsic == nir_intrinsic_load_global && (mask & nir_var_mem_global)) ||
        (intr->intrinsic == nir_intrinsic_load_shared && (mask & nir_var_mem_shared))) {
       lower_load_to_scalar(b, intr);
       return true;
@@ -258,6 +259,7 @@ nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
    }
 
    if ((intr->intrinsic == nir_intrinsic_store_ssbo && (mask & nir_var_mem_ssbo)) ||
+       (intr->intrinsic == nir_intrinsic_store_global && (mask & nir_var_mem_global)) ||
        (intr->intrinsic == nir_intrinsic_store_shared && (mask & nir_var_mem_shared))) {
       lower_store_to_scalar(b, intr);
       return true;
