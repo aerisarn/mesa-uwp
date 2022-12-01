@@ -749,14 +749,8 @@
 .radeonsi+radv-rules:
   stage: amd
   rules:
-    - !reference [.collabora-farm-rules, rules]
-    - !reference [.gl-rules, rules]
-    - changes:
-        *radeonsi_file_list
-      when: on_success
-    - changes:
-        *radv_file_list
-      when: on_success
+    - !reference [.radeonsi-rules, rules]
+    - !reference [.radv-rules, rules]
 
 .radeonsi-vaapi-rules:
   stage: amd
