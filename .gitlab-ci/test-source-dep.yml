@@ -924,6 +924,12 @@
     - !reference [.iris-rules, rules]
     - !reference [.anv-rules, rules]
 
+.intel-manual-rules:
+  stage: intel
+  rules:
+    - !reference [.iris-manual-rules, rules]
+    - !reference [.anv-manual-rules, rules]
+
 .virgl-rules:
   stage: layered-backends
   rules:
