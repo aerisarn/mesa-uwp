@@ -49,7 +49,7 @@ device_alloc_image(struct dri2_egl_display *dri2_dpy,
                    struct dri2_egl_surface *dri2_surf)
 {
    return dri2_dpy->image->createImage(
-            dri2_dpy->dri_screen,
+            dri2_dpy->dri_screen_render_gpu,
             dri2_surf->base.Width,
             dri2_surf->base.Height,
             dri2_surf->visual,
@@ -279,11 +279,11 @@ device_probe_device(_EGLDisplay *disp)
    if (request_software)
       _eglLog(_EGL_WARNING, "Not allowed to force software rendering when "
                             "API explicitly selects a hardware device.");
-   dri2_dpy->fd = device_get_fd(disp, disp->Device);
-   if (dri2_dpy->fd < 0)
+   dri2_dpy->fd_render_gpu = device_get_fd(disp, disp->Device);
+   if (dri2_dpy->fd_render_gpu < 0)
       return false;
 
-   dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
+   dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd_render_gpu);
    if (!dri2_dpy->driver_name)
       goto err_name;
 
@@ -310,8 +310,8 @@ err_load:
    dri2_dpy->driver_name = NULL;
 
 err_name:
-   close(dri2_dpy->fd);
-   dri2_dpy->fd = -1;
+   close(dri2_dpy->fd_render_gpu);
+   dri2_dpy->fd_render_gpu = -1;
    return false;
 
 }
@@ -321,7 +321,7 @@ device_probe_device_sw(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
-   dri2_dpy->fd = -1;
+   dri2_dpy->fd_render_gpu = -1;
    dri2_dpy->driver_name = strdup(disp->Options.Zink ? "zink" : "swrast");
    if (!dri2_dpy->driver_name)
       return false;
@@ -351,7 +351,7 @@ dri2_initialize_device(_EGLDisplay *disp)
    /* Extension requires a PlatformDisplay - the EGLDevice. */
    dev = disp->PlatformDisplay;
 
-   dri2_dpy->fd = -1;
+   dri2_dpy->fd_render_gpu = -1;
    dri2_dpy->fd_display_gpu = -1;
    disp->Device = dev;
    disp->DriverData = (void *) dri2_dpy;
@@ -379,7 +379,7 @@ dri2_initialize_device(_EGLDisplay *disp)
 
    dri2_setup_screen(disp);
 #ifdef HAVE_WAYLAND_PLATFORM
-   dri2_dpy->device_name = loader_get_device_name_for_fd(dri2_dpy->fd);
+   dri2_dpy->device_name = loader_get_device_name_for_fd(dri2_dpy->fd_render_gpu);
 #endif
    dri2_set_WL_bind_wayland_display(disp);
 
