@@ -463,7 +463,7 @@ lower_line_stipple_gs(nir_shader *shader)
                                            "__stipple");
    state.stipple_out->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
    state.stipple_out->data.driver_location = shader->num_outputs++;
-   state.stipple_out->data.location = MIN2(util_last_bit64(shader->info.outputs_written) + 1, VARYING_SLOT_VAR0);
+   state.stipple_out->data.location = MAX2(util_last_bit64(shader->info.outputs_written), VARYING_SLOT_VAR0);
    shader->info.outputs_written |= BITFIELD64_BIT(state.stipple_out->data.location);
 
    // create temp variables
@@ -501,7 +501,7 @@ lower_line_stipple_fs(nir_shader *shader)
                                                "__stipple");
    stipple->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
    stipple->data.driver_location = shader->num_inputs++;
-   stipple->data.location = MIN2(util_last_bit64(shader->info.inputs_read) + 1, VARYING_SLOT_VAR0);
+   stipple->data.location = MAX2(util_last_bit64(shader->info.inputs_read), VARYING_SLOT_VAR0);
    shader->info.inputs_read |= BITFIELD64_BIT(stipple->data.location);
 
    nir_variable *sample_mask_out =
