@@ -342,13 +342,13 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
-                  nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
+                  nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
-               nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16),
-                             1);
+               nir_store_var(
+                  &b_shader, vars->stack_ptr,
+                  nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16), 1);
                load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, SBT_GENERAL_IDX);
 
                nir_store_var(&b_shader, vars->arg,
@@ -363,13 +363,13 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
-                  nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
+                  nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
-               nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16),
-                             1);
+               nir_store_var(
+                  &b_shader, vars->stack_ptr,
+                  nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16), 1);
 
                nir_store_var(&b_shader, vars->idx, nir_imm_int(&b_shader, 1), 1);
                nir_store_var(&b_shader, vars->arg,
@@ -413,13 +413,15 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             case nir_intrinsic_load_scratch: {
                nir_instr_rewrite_src_ssa(
                   instr, &intr->src[0],
-                  nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[0].ssa));
+                  nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
+                               intr->src[0].ssa));
                continue;
             }
             case nir_intrinsic_store_scratch: {
                nir_instr_rewrite_src_ssa(
                   instr, &intr->src[1],
-                  nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), intr->src[1].ssa));
+                  nir_iadd_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
+                               intr->src[1].ssa));
                continue;
             }
             case nir_intrinsic_load_rt_arg_scratch_offset_amd: {
@@ -1022,7 +1024,7 @@ handle_candidate_triangle(nir_builder *b, struct radv_triangle_intersection *int
       nir_bcsel(b, intersection->frontface, nir_imm_int(b, 0xFE), nir_imm_int(b, 0xFF));
 
    nir_ssa_def *barycentrics_addr =
-      nir_iadd_imm(b, nir_load_var(b, data->vars->stack_ptr), RADV_HIT_ATTRIB_OFFSET);
+      nir_iadd_imm_nuw(b, nir_load_var(b, data->vars->stack_ptr), RADV_HIT_ATTRIB_OFFSET);
    nir_ssa_def *prev_barycentrics = nir_load_scratch(b, 2, 32, barycentrics_addr, .align_mul = 16);
    nir_store_scratch(b, intersection->barycentrics, barycentrics_addr, .align_mul = 16);
 
