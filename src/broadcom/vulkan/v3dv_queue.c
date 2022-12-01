@@ -414,23 +414,18 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
 }
 
 static VkResult
-process_waits(struct v3dv_queue *queue,
-              uint32_t count, struct vk_sync_wait *waits)
+process_singlesync_waits(struct v3dv_queue *queue,
+                         uint32_t count, struct vk_sync_wait *waits)
 {
    struct v3dv_device *device = queue->device;
-   VkResult result = VK_SUCCESS;
-   int err = 0;
+   assert(!device->pdevice->caps.multisync);
 
    if (count == 0)
       return VK_SUCCESS;
 
-   /* If multisync is supported, we wait on semaphores in the first job
-    * submitted to each of the individual queues.  We don't need to
-    * pre-populate the syncobjs.
-    */
-   if (queue->device->pdevice->caps.multisync)
-      return VK_SUCCESS;
+   VkResult result = VK_SUCCESS;
 
+   int err = 0;
    int fd = -1;
    err = drmSyncobjExportSyncFile(device->pdevice->render_fd,
                                   queue->last_job_syncs.syncs[V3DV_QUEUE_ANY],
@@ -475,19 +470,17 @@ fail:
    return result;
 }
 
+/**
+ * This handles signaling for the single-sync path by importing the QUEUE_ANY
+ * syncobj into all syncs to be signaled.
+ */
 static VkResult
-process_signals(struct v3dv_queue *queue,
-                uint32_t count, struct vk_sync_signal *signals)
+process_singlesync_signals(struct v3dv_queue *queue,
+                           uint32_t count, struct vk_sync_signal *signals)
 {
    struct v3dv_device *device = queue->device;
+   assert(!device->pdevice->caps.multisync && count > 0);
 
-   if (count == 0)
-      return VK_SUCCESS;
-
-   /* If multisync is supported, we are signalling semaphores in the last job
-    * of the last command buffer and, therefore, we do not need to process any
-    * semaphores here.
-    */
    if (device->pdevice->caps.multisync)
       return VK_SUCCESS;
 
@@ -1033,9 +1026,16 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
    for (int i = 0; i < V3DV_QUEUE_COUNT; i++)
       queue->last_job_syncs.first[i] = true;
 
-   result = process_waits(queue, sync_info.wait_count, sync_info.waits);
-   if (result != VK_SUCCESS)
-      return result;
+   /* If we do not have multisync we need to ensure we accumulate any wait
+    * semaphores into our QUEUE_ANY syncobj so we can handle waiting on
+    * external semaphores.
+    */
+   if (!queue->device->pdevice->caps.multisync) {
+      result =
+         process_singlesync_waits(queue, sync_info.wait_count, sync_info.waits);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
    for (uint32_t i = 0; i < submit->command_buffer_count; i++) {
       struct v3dv_cmd_buffer *cmd_buffer =
@@ -1062,19 +1062,21 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
       }
    }
 
-   /* Finish by submitting a no-op job that synchronizes across all queues.
-    * This will ensure that the signal semaphores don't get triggered until
-    * all work on any queue completes. See Vulkan's signal operation order
-    * requirements.
-    */
+   /* Handle signaling now */
    if (submit->signal_count > 0) {
-      result = queue_submit_noop_job(queue, submit->perf_pass_index,
-                                     &sync_info, true);
-      if (result != VK_SUCCESS)
-         return result;
+      if (queue->device->pdevice->caps.multisync) {
+         /* Finish by submitting a no-op job that synchronizes across all queues.
+          * This will ensure that the signal semaphores don't get triggered until
+          * all work on any queue completes. See Vulkan's signal operation order
+          * requirements.
+          */
+         return queue_submit_noop_job(queue, submit->perf_pass_index,
+                                      &sync_info, true);
+      } else {
+         return process_singlesync_signals(queue, sync_info.signal_count,
+                                           sync_info.signals);
+      }
    }
-
-   process_signals(queue, sync_info.signal_count, sync_info.signals);
 
    return VK_SUCCESS;
 }
