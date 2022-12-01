@@ -31,5 +31,6 @@ endian = 'little'
 
 [properties]
 needs_exe_wrapper = true
+pkg_config_libdir = '/usr/local/lib/${arch2}/pkgconfig/:/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${arch2}/pkgconfig/'
 
 EOF
