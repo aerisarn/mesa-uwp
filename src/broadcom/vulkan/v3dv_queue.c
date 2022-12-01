@@ -413,6 +413,12 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
    return VK_SUCCESS;
 }
 
+/**
+ * This handles semaphore waits for the single sync path by accumulating
+ * wait semaphores into the QUEUE_ANY syncobj. Notice this is only required
+ * to ensure we accumulate any *external* semaphores (since for anything else
+ * we are already accumulating out syncs with each submission to the kernel).
+ */
 static VkResult
 process_singlesync_waits(struct v3dv_queue *queue,
                          uint32_t count, struct vk_sync_wait *waits)
@@ -677,6 +683,43 @@ fail:
    return;
 }
 
+/* This must be called after every submission in the single-sync path to
+ * accumulate the out_sync into the QUEUE_ANY sync so we can serialize
+ * jobs by waiting on the QUEUE_ANY sync.
+ */
+static int
+update_any_queue_sync(struct v3dv_queue *queue, uint32_t out_sync)
+{
+   struct v3dv_device *device = queue->device;
+   assert(!device->pdevice->caps.multisync);
+
+   int render_fd = device->pdevice->render_fd;
+   int fd_any = -1, fd_out_sync = -1;
+   int err;
+   err  = drmSyncobjExportSyncFile(render_fd,
+                                   queue->last_job_syncs.syncs[V3DV_QUEUE_ANY],
+                                   &fd_any);
+   if (err)
+      goto fail;
+
+   err = drmSyncobjExportSyncFile(render_fd, out_sync, &fd_out_sync);
+   if (err)
+      goto fail;
+
+   err = sync_accumulate("v3dv", &fd_any, fd_out_sync);
+   if (err)
+      goto fail;
+
+   err = drmSyncobjImportSyncFile(render_fd,
+                                  queue->last_job_syncs.syncs[V3DV_QUEUE_ANY],
+                                  fd_any);
+
+fail:
+   close(fd_any);
+   close(fd_out_sync);
+   return err;
+}
+
 static VkResult
 handle_cl_job(struct v3dv_queue *queue,
               struct v3dv_job *job,
@@ -793,7 +836,7 @@ handle_cl_job(struct v3dv_queue *queue,
       uint32_t last_job_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_ANY];
       submit.in_sync_bcl = needs_bcl_sync ? last_job_sync : 0;
       submit.in_sync_rcl = needs_rcl_sync ? last_job_sync : 0;
-      submit.out_sync = last_job_sync;
+      submit.out_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_CL];
    }
 
    v3dv_clif_dump(device, job, &submit);
@@ -806,6 +849,9 @@ handle_cl_job(struct v3dv_queue *queue,
               strerror(errno));
       warned = true;
    }
+
+   if (!device->pdevice->caps.multisync && ret == 0)
+      ret = update_any_queue_sync(queue, submit.out_sync);
 
    free(bo_handles);
    multisync_free(device, &ms);
@@ -846,10 +892,13 @@ handle_tfu_job(struct v3dv_queue *queue,
    } else {
       uint32_t last_job_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_ANY];
       job->tfu.in_sync = needs_sync ? last_job_sync : 0;
-      job->tfu.out_sync = last_job_sync;
+      job->tfu.out_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_TFU];
    }
    int ret = v3dv_ioctl(device->pdevice->render_fd,
                         DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
+
+   if (!device->pdevice->caps.multisync && ret == 0)
+      ret = update_any_queue_sync(queue, job->tfu.out_sync);
 
    multisync_free(device, &ms);
    queue->last_job_syncs.first[V3DV_QUEUE_TFU] = false;
@@ -913,7 +962,7 @@ handle_csd_job(struct v3dv_queue *queue,
    } else {
       uint32_t last_job_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_ANY];
       submit->in_sync = needs_sync ? last_job_sync : 0;
-      submit->out_sync = last_job_sync;
+      submit->out_sync = queue->last_job_syncs.syncs[V3DV_QUEUE_CSD];
    }
    submit->perfmon_id = job->perf ?
       job->perf->kperfmon_ids[counter_pass_idx] : 0;
@@ -927,6 +976,9 @@ handle_csd_job(struct v3dv_queue *queue,
               strerror(errno));
       warned = true;
    }
+
+   if (!device->pdevice->caps.multisync && ret == 0)
+      ret = update_any_queue_sync(queue, submit->out_sync);
 
    free(bo_handles);
 
