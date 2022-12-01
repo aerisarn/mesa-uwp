@@ -1274,13 +1274,13 @@ var_fill_const_array(struct ntd_context *ctx, const struct nir_constant *c,
                                                  offset);
    } else if (glsl_type_is_array(type)) {
       assert(!glsl_type_is_unsized_array(type));
-      const struct glsl_type *without = glsl_without_array(type);
-      unsigned stride = glsl_get_explicit_stride(without);
+      const struct glsl_type *without = glsl_get_array_element(type);
+      unsigned stride = glsl_get_explicit_stride(type);
 
       for (unsigned elt = 0; elt < glsl_get_length(type); elt++) {
          var_fill_const_array(ctx, c->elements[elt], without,
-                              const_vals, offset + (elt * stride));
-         offset += glsl_get_cl_size(without);
+                              const_vals, offset);
+         offset += stride;
       }
    } else if (glsl_type_is_struct(type)) {
       for (unsigned int elt = 0; elt < glsl_get_length(type); elt++) {
