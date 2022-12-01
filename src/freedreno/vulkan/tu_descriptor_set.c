@@ -1046,7 +1046,7 @@ write_buffer_descriptor_addr(const struct tu_device *device,
          dst[1] = DIV_ROUND_UP(range, 4);
       }
       dst[2] =
-         A6XX_TEX_CONST_2_BUFFER | A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
+         A6XX_TEX_CONST_2_STRUCTSIZETEXELS(1) | A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
       dst[3] = 0;
       dst[4] = A6XX_TEX_CONST_4_BASE_LO(va);
       dst[5] = A6XX_TEX_CONST_5_BASE_HI(va >> 32);

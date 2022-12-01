@@ -449,7 +449,7 @@ fdl6_buffer_view_init(uint32_t *descriptor, enum pipe_format format,
       COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB);
    descriptor[1] = A6XX_TEX_CONST_1_WIDTH(elements & ((1 << 15) - 1)) |
                    A6XX_TEX_CONST_1_HEIGHT(elements >> 15);
-   descriptor[2] = A6XX_TEX_CONST_2_BUFFER |
+   descriptor[2] = A6XX_TEX_CONST_2_STRUCTSIZETEXELS(1) |
                    A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
    descriptor[4] = iova;
    descriptor[5] = iova >> 32;
