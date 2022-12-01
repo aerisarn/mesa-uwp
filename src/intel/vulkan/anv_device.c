@@ -253,6 +253,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_ray_query                         = rt_enabled,
       .KHR_ray_tracing_maintenance1          = rt_enabled,
       .KHR_ray_tracing_pipeline              = rt_enabled,
+      .KHR_ray_tracing_position_fetch        = rt_enabled,
       .KHR_relaxed_block_layout              = true,
       .KHR_sampler_mirror_clamp_to_edge      = true,
       .KHR_sampler_ycbcr_conversion          = true,
@@ -796,6 +797,9 @@ get_features(const struct anv_physical_device *pdevice,
 
       /* VK_EXT_vertex_input_dynamic_state */
       .vertexInputDynamicState = true,
+
+      /* VK_KHR_ray_tracing_position_fetch */
+      .rayTracingPositionFetch = rt_enabled,
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
