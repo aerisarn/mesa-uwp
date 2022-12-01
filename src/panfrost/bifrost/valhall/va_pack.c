@@ -811,7 +811,7 @@ va_pack_instr(const bi_instr *I)
          hex |= ((uint64_t) I->fetch_component) << 14;
       }
 
-      hex |= (VA_WRITE_MASK_RGBA << 22);
+      hex |= (I->write_mask << 22);
       hex |= ((uint64_t) va_pack_register_type(I)) << 26;
       hex |= ((uint64_t) I->dimension) << 28;
 
