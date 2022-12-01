@@ -30,6 +30,16 @@
 #include "brw_fs.h"
 #include "brw_cfg.h"
 
+#define fsv_assert(assertion)                                           \
+   {                                                                    \
+      if (!(assertion)) {                                               \
+         fprintf(stderr, "ASSERT: Scalar %s validation failed!\n", stage_abbrev); \
+         dump_instruction(inst, stderr);                                \
+         fprintf(stderr, "%s:%d: '%s' failed\n", __FILE__, __LINE__, #assertion);  \
+         abort();                                                       \
+      }                                                                 \
+   }
+
 #define fsv_assert_eq(first, second)                                    \
    {                                                                    \
       unsigned f = (first);                                             \
@@ -75,6 +85,20 @@ fs_visitor::validate()
          }
 
          fsv_assert_eq(header_size + data_size, inst->mlen);
+      }
+
+      if (inst->is_3src(compiler)) {
+         const unsigned integer_sources =
+            brw_reg_type_is_integer(inst->src[0].type) +
+            brw_reg_type_is_integer(inst->src[1].type) +
+            brw_reg_type_is_integer(inst->src[2].type);
+         const unsigned float_sources =
+            brw_reg_type_is_floating_point(inst->src[0].type) +
+            brw_reg_type_is_floating_point(inst->src[1].type) +
+            brw_reg_type_is_floating_point(inst->src[2].type);
+
+         fsv_assert((integer_sources == 3 && float_sources == 0) ||
+                    (integer_sources == 0 && float_sources == 3));
       }
 
       if (inst->dst.file == VGRF) {
