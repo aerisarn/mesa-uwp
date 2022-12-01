@@ -1267,7 +1267,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .minMemoryMapAlignment = 4096, /* A page */
       .minTexelBufferOffsetAlignment = 64,
       .minUniformBufferOffsetAlignment = 64,
-      .minStorageBufferOffsetAlignment = 64,
+      .minStorageBufferOffsetAlignment = 4,
       .minTexelOffset = -16,
       .maxTexelOffset = 15,
       .minTexelGatherOffset = -32,

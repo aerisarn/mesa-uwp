@@ -2189,9 +2189,28 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                        i++, dst_desc += A6XX_TEX_CONST_DWORDS) {
                      /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
                      uint64_t va = dst_desc[4] | ((uint64_t)dst_desc[5] << 32);
+                     uint32_t desc_offset =
+                        (dst_desc[2] &
+                         A6XX_TEX_CONST_2_STARTOFFSETTEXELS__MASK) >>
+                        A6XX_TEX_CONST_2_STARTOFFSETTEXELS__SHIFT;
+
+                     /* Without the ability to cast 16-bit as 32-bit, there is
+                      * only one descriptor whose texels are 32 bits (4
+                      * bytes). With casting, there are two descriptors, the
+                      * first being 16-bit and the second being 32-bit.
+                      */
+                     unsigned offset_shift =
+                        binding->size == 4 * A6XX_TEX_CONST_DWORDS || i == 1 ? 2 : 1;
+
+                     va += desc_offset << offset_shift;
                      va += offset;
+                     unsigned new_offset = (va & 0x3f) >> offset_shift;
+                     va &= ~0x3full;
                      dst_desc[4] = va;
                      dst_desc[5] = va >> 32;
+                     dst_desc[2] =
+                        (dst_desc[2] & ~A6XX_TEX_CONST_2_STARTOFFSETTEXELS__MASK) |
+                        A6XX_TEX_CONST_2_STARTOFFSETTEXELS(new_offset);
                   }
                }
 
