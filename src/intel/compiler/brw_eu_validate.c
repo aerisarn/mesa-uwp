@@ -2353,6 +2353,55 @@ instruction_restrictions(const struct brw_isa_info *isa,
       }
    }
 
+   if (brw_inst_opcode(isa, inst) == BRW_OPCODE_CSEL) {
+      ERROR_IF(brw_inst_pred_control(devinfo, inst) != BRW_PREDICATE_NONE,
+               "CSEL cannot be predicated");
+
+      /* CSEL is CMP and SEL fused into one. The condition modifier, which
+       * does not actually modify the flags, controls the built-in comparison.
+       */
+      ERROR_IF(brw_inst_cond_modifier(devinfo, inst) == BRW_CONDITIONAL_NONE,
+               "CSEL must have a condition.");
+
+      enum brw_reg_type dst_type;
+
+      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1)
+         dst_type = brw_inst_3src_a1_dst_type(devinfo, inst);
+      else
+         dst_type = brw_inst_3src_a16_dst_type(devinfo, inst);
+
+      if (devinfo->ver < 8) {
+         ERROR_IF(devinfo->ver < 8, "CSEL not supported before Gfx8");
+      } else if (devinfo->ver <= 9) {
+         ERROR_IF(dst_type != BRW_REGISTER_TYPE_F,
+                  "CSEL destination type must be F");
+      } else {
+         ERROR_IF(dst_type != BRW_REGISTER_TYPE_F &&
+                  dst_type != BRW_REGISTER_TYPE_HF &&
+                  dst_type != BRW_REGISTER_TYPE_D &&
+                  dst_type != BRW_REGISTER_TYPE_W,
+                  "CSEL destination type must be F, HF, D, or W");
+      }
+
+      for (unsigned s = 0; s < 3; s++) {
+         enum brw_reg_type src_type;
+
+         if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
+            switch (s) {
+            case 0: src_type = brw_inst_3src_a1_src0_type(devinfo, inst); break;
+            case 1: src_type = brw_inst_3src_a1_src1_type(devinfo, inst); break;
+            case 2: src_type = brw_inst_3src_a1_src2_type(devinfo, inst); break;
+            default: unreachable("invalid src");
+            }
+         } else {
+            src_type = brw_inst_3src_a16_src_type(devinfo, inst);
+         }
+
+         ERROR_IF(src_type != dst_type,
+                  "CSEL source type must match destination type");
+      }
+   }
+
    return error_msg;
 }
 
