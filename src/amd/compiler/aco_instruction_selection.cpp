@@ -1873,7 +1873,10 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       Temp src0 = get_alu_src(ctx, instr->src[0]);
       Temp src1 = get_alu_src(ctx, instr->src[1]);
       if (dst.type() == RegType::vgpr && dst.bytes() <= 4) {
-         bld.vadd32(Definition(dst), Operand(src0), Operand(src1));
+         if (instr->no_unsigned_wrap)
+            bld.nuw().vadd32(Definition(dst), Operand(src0), Operand(src1));
+         else
+            bld.vadd32(Definition(dst), Operand(src0), Operand(src1));
          break;
       }
 
