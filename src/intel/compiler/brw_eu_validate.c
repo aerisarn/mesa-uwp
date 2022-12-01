@@ -2263,6 +2263,59 @@ instruction_restrictions(const struct brw_isa_info *isa,
 
    }
 
+   if (brw_inst_opcode(isa, inst) == BRW_OPCODE_OR ||
+       brw_inst_opcode(isa, inst) == BRW_OPCODE_AND ||
+       brw_inst_opcode(isa, inst) == BRW_OPCODE_XOR ||
+       brw_inst_opcode(isa, inst) == BRW_OPCODE_NOT) {
+      if (devinfo->ver >= 8) {
+         /* While the behavior of the negate source modifier is defined as
+          * logical not, the behavior of abs source modifier is not
+          * defined. Disallow it to be safe.
+          */
+         ERROR_IF(brw_inst_src0_abs(devinfo, inst),
+                  "Behavior of abs source modifier in logic ops is undefined.");
+         ERROR_IF(brw_inst_opcode(isa, inst) != BRW_OPCODE_NOT &&
+                  brw_inst_src1_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE &&
+                  brw_inst_src1_abs(devinfo, inst),
+                  "Behavior of abs source modifier in logic ops is undefined.");
+
+         /* Page 479 (page 495 of the PDF) of the Broadwell PRM volume 2a says:
+          *
+          *    Source modifier is not allowed if source is an accumulator.
+          *
+          * The same text also appears for OR, NOT, and XOR instructions.
+          */
+         ERROR_IF((brw_inst_src0_abs(devinfo, inst) ||
+                   brw_inst_src0_negate(devinfo, inst)) &&
+                  src0_is_acc(devinfo, inst),
+                  "Source modifier is not allowed if source is an accumulator.");
+         ERROR_IF(brw_num_sources_from_inst(isa, inst) > 1 &&
+                  (brw_inst_src1_abs(devinfo, inst) ||
+                   brw_inst_src1_negate(devinfo, inst)) &&
+                  src1_is_acc(devinfo, inst),
+                  "Source modifier is not allowed if source is an accumulator.");
+      }
+
+      /* Page 479 (page 495 of the PDF) of the Broadwell PRM volume 2a says:
+       *
+       *    This operation does not produce sign or overflow conditions. Only
+       *    the .e/.z or .ne/.nz conditional modifiers should be used.
+       *
+       * The same text also appears for OR, NOT, and XOR instructions.
+       *
+       * Per the comment around nir_op_imod in brw_fs_nir.cpp, we have
+       * determined this to not be true. The only conditions that seem
+       * absolutely sketchy are O, R, and U.  Some OpenGL shaders from Doom
+       * 2016 have been observed to generate and.g and operate correctly.
+       */
+      const enum brw_conditional_mod cmod =
+         brw_inst_cond_modifier(devinfo, inst);
+      ERROR_IF(cmod == BRW_CONDITIONAL_O ||
+               cmod == BRW_CONDITIONAL_R ||
+               cmod == BRW_CONDITIONAL_U,
+               "O, R, and U conditional modifiers should not be used.");
+   }
+
    return error_msg;
 }
 
