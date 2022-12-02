@@ -455,13 +455,14 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
       agx_writeout(b, 0x000C);
    }
 
-   if (b->shader->nir->info.fs.uses_discard) {
+   if (b->shader->nir->info.fs.uses_discard && !b->shader->did_sample_mask) {
       /* If the shader uses discard, the sample mask must be written by the
        * shader on all exeuction paths. If we've reached the end of the shader,
        * we are therefore still active and need to write a full sample mask.
        * TODO: interactions with MSAA and gl_SampleMask writes
        */
       agx_sample_mask(b, agx_immediate(1));
+      b->shader->did_sample_mask = true;
    }
 
    /* Compact the registers according to the mask */

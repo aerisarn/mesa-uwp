@@ -408,7 +408,7 @@ typedef struct {
    unsigned alloc;
 
    /* I don't really understand how writeout ops work yet */
-   bool did_writeout;
+   bool did_writeout, did_sample_mask;
 
    /* Has r0l been zeroed yet due to control flow? */
    bool any_cf;
