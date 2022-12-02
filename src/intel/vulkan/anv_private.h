@@ -329,15 +329,6 @@ anv_is_aligned(uintmax_t n, uintmax_t a)
    return (n & (a - 1)) == 0;
 }
 
-static inline uint32_t
-anv_minify(uint32_t n, uint32_t levels)
-{
-   if (unlikely(n == 0))
-      return 0;
-   else
-      return u_minify(n, levels);
-}
-
 static inline union isl_color_value
 vk_to_isl_color(VkClearColorValue color)
 {
@@ -3697,7 +3688,7 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
 
    if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
       for (uint32_t l = 0; l < level; l++)
-         offset += anv_minify(image->vk.extent.depth, l) * 4;
+         offset += u_minify(image->vk.extent.depth, l) * 4;
    } else {
       offset += level * image->vk.array_layers * 4;
    }

@@ -514,7 +514,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
              * higher the LOD.
              */
             assert(layer < image->vk.extent.depth);
-            if (layer >= anv_minify(image->vk.extent.depth, level))
+            if (layer >= u_minify(image->vk.extent.depth, level))
                break;
             logical_z_offset_px = layer;
          } else {
@@ -676,8 +676,8 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
          const VkRect2D clear_rect = {
             .offset.x = 0,
             .offset.y = 0,
-            .extent.width = anv_minify(image->vk.extent.width, level),
-            .extent.height = anv_minify(image->vk.extent.height, level),
+            .extent.width = u_minify(image->vk.extent.width, level),
+            .extent.height = u_minify(image->vk.extent.height, level),
          };
 
          uint32_t aux_layers =
@@ -1016,7 +1016,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
           layer_count != VK_REMAINING_ARRAY_LAYERS);
    /* Ensure the subresource range is valid. */
    UNUSED uint64_t last_level_num = base_level + level_count;
-   const uint32_t max_depth = anv_minify(image->vk.extent.depth, base_level);
+   const uint32_t max_depth = u_minify(image->vk.extent.depth, base_level);
    UNUSED const uint32_t image_layers = MAX2(image->vk.array_layers, max_depth);
    assert((uint64_t)base_layer + layer_count  <= image_layers);
    assert(last_level_num <= image->vk.mip_levels);
@@ -3870,7 +3870,7 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
       uint32_t base_layer, layer_count;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
          base_layer = 0;
-         layer_count = anv_minify(image->vk.extent.depth, range->baseMipLevel);
+         layer_count = u_minify(image->vk.extent.depth, range->baseMipLevel);
       } else {
          base_layer = range->baseArrayLayer;
          layer_count = vk_image_subresource_layer_count(&image->vk, range);

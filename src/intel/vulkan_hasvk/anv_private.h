@@ -313,15 +313,6 @@ anv_is_aligned(uintmax_t n, uintmax_t a)
    return (n & (a - 1)) == 0;
 }
 
-static inline uint32_t
-anv_minify(uint32_t n, uint32_t levels)
-{
-   if (unlikely(n == 0))
-      return 0;
-   else
-      return MAX2(n >> levels, 1);
-}
-
 static inline union isl_color_value
 vk_to_isl_color(VkClearColorValue color)
 {
