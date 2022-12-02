@@ -891,9 +891,6 @@ agx_transfer_unmap(struct pipe_context *pctx,
    struct pipe_resource *prsrc = transfer->resource;
    struct agx_resource *rsrc = (struct agx_resource *) prsrc;
 
-   if (transfer->usage & PIPE_MAP_WRITE)
-      BITSET_SET(rsrc->data_valid, transfer->level);
-
    if (trans->staging.rsrc && (transfer->usage & PIPE_MAP_WRITE)) {
          agx_blit_from_staging(pctx, trans);
          agx_flush_readers(agx_context(pctx), agx_resource(trans->staging.rsrc),
@@ -913,6 +910,12 @@ agx_transfer_unmap(struct pipe_context *pctx,
                   transfer->box.width, transfer->box.height);
       }
    }
+
+   /* The level we wrote is now initialized. We do this at the end so
+    * blit_from_staging can avoid reloading existing contents.
+    */
+   if (transfer->usage & PIPE_MAP_WRITE)
+      BITSET_SET(rsrc->data_valid, transfer->level);
 
    /* Free the transfer */
    free(trans->map);
