@@ -11144,7 +11144,7 @@ export_fs_mrt_z(isel_context* ctx)
 
       if (writes_mrt0_alpha) {
          assert(ctx->program->gfx_level >= GFX11);
-         values[3] = Operand(ctx->outputs.temps[FRAG_RESULT_DATA0 + 3u]);
+         values[3] = Operand(ctx->outputs.temps[FRAG_RESULT_DATA0 * 4u + 3u]);
          enabled_channels |= 0x8;
       }
    }
