@@ -204,16 +204,25 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
 
       case nir_intrinsic_load_local_invocation_index:
       case nir_intrinsic_load_local_invocation_id: {
-         if (nir->info.stage == MESA_SHADER_TASK ||
-             nir->info.stage == MESA_SHADER_MESH) {
-            /* Will be lowered by nir_emit_task_mesh_intrinsic() using
-             * information from the payload.
-             */
-            continue;
+         if (!local_index && !nir->info.workgroup_size_variable) {
+            const uint16_t *ws = nir->info.workgroup_size;
+            if (ws[0] * ws[1] * ws[2] == 1) {
+               nir_ssa_def *zero = nir_imm_int(b, 0);
+               local_index = zero;
+               local_id = nir_vec3(b, zero, zero, zero);
+            }
          }
 
-         /* First time we are using those, so let's calculate them. */
          if (!local_index) {
+            if (nir->info.stage == MESA_SHADER_TASK ||
+                nir->info.stage == MESA_SHADER_MESH) {
+               /* Will be lowered by nir_emit_task_mesh_intrinsic() using
+                * information from the payload.
+                */
+               continue;
+            }
+
+            /* First time we are using those, so let's calculate them. */
             assert(!local_id);
             compute_local_index_id(b, nir, &local_index, &local_id);
          }
