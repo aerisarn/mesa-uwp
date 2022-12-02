@@ -202,6 +202,23 @@ agx_vec2(agx_builder *b, agx_index s0, agx_index s1)
    return dst;
 }
 
+/*
+ * Extract the lower or upper N-bits from a (2*N)-bit quantity. We use a split
+ * without null destinations to let us CSE (and coalesce) the splits when both x
+ * and y are split.
+ */
+static agx_instr *
+agx_subdivide_to(agx_builder *b, agx_index dst, agx_index s0, unsigned comp)
+{
+   assert((s0.size == (dst.size + 1)) && "only 2x subdivide handled");
+   assert((comp == 0 || comp == 1) && "too many components");
+
+   agx_instr *split = agx_split(b, 2, s0);
+   split->dest[comp] = dst;
+   split->dest[1 - comp] = agx_temp(b->shader, dst.size);
+   return split;
+}
+
 static void
 agx_block_add_successor(agx_block *block, agx_block *successor)
 {
@@ -869,7 +886,6 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    UNOP(fddy_fine, dfdy);
 
    UNOP(mov, mov);
-   UNOP(u2u16, mov);
    UNOP(u2u32, mov);
    UNOP(bitfield_reverse, bitrev);
    UNOP(bit_count, popcount);
@@ -943,8 +959,16 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
          return agx_asr_to(b, dst, ishl16, agx_immediate(8));
       } else {
          assert (s0.size == AGX_SIZE_32 && "other conversions lowered");
-         return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+         return agx_subdivide_to(b, dst, s0, 0);
       }
+   }
+
+   case nir_op_u2u16:
+   {
+      if (s0.size == AGX_SIZE_32)
+         return agx_subdivide_to(b, dst, s0, 0);
+      else
+         return agx_mov_to(b, dst, s0);
    }
 
    case nir_op_iadd_sat:
@@ -1039,18 +1063,11 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_emit_collect_to(b, dst, 2, idx);
    }
 
-   /* Split a 64-bit word into 32-bit parts. Do not use null destinations to
-    * let us CSE (and coalesce) the splits when both x and y are split.
-    */
    case nir_op_unpack_64_2x32_split_x:
+      return agx_subdivide_to(b, dst, s0, 0);
+
    case nir_op_unpack_64_2x32_split_y:
-   {
-      agx_instr *split = agx_split(b, 2, s0);
-      unsigned comp = instr->op == nir_op_unpack_64_2x32_split_y ? 1 : 0;
-      split->dest[comp] = dst;
-      split->dest[1 - comp] = agx_temp(b->shader, dst.size);
-      return split;
-   }
+      return agx_subdivide_to(b, dst, s0, 1);
 
    case nir_op_vec2:
    case nir_op_vec3:
