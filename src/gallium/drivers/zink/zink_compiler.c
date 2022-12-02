@@ -810,10 +810,37 @@ lower_line_smooth_gs(nir_shader *shader)
 }
 
 static bool
-lower_line_smooth_fs(nir_shader *shader)
+lower_line_smooth_fs(nir_shader *shader, bool lower_stipple)
 {
    int dummy;
-   nir_lower_aaline_fs(shader, &dummy, NULL, NULL);
+   nir_builder b;
+
+   nir_variable *stipple_counter = NULL, *stipple_pattern = NULL;
+   if (lower_stipple) {
+      stipple_counter = nir_variable_create(shader, nir_var_shader_in,
+                                            glsl_float_type(),
+                                            "__stipple");
+      stipple_counter->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
+      stipple_counter->data.driver_location = shader->num_inputs++;
+      stipple_counter->data.location =
+         MAX2(util_last_bit64(shader->info.inputs_read), VARYING_SLOT_VAR0);
+      shader->info.inputs_read |= BITFIELD64_BIT(stipple_counter->data.location);
+
+      stipple_pattern = nir_variable_create(shader, nir_var_shader_temp,
+                                            glsl_uint_type(),
+                                            "stipple_pattern");
+
+      // initialize stipple_pattern
+      nir_function_impl *entry = nir_shader_get_entrypoint(shader);
+      nir_builder_init(&b, entry);
+      b.cursor = nir_before_cf_list(&entry->body);
+      nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
+                                                   nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
+                                                   .base = 1);
+      nir_store_var(&b, stipple_pattern, pattern, 1);
+   }
+
+   nir_lower_aaline_fs(shader, &dummy, stipple_counter, stipple_pattern);
    return true;
 }
 
@@ -2844,13 +2871,12 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          }
          break;
       case MESA_SHADER_FRAGMENT:
-         if (zink_fs_key(key)->lower_line_stipple)
-            NIR_PASS_V(nir, lower_line_stipple_fs);
-
          if (zink_fs_key(key)->lower_line_smooth) {
-            NIR_PASS_V(nir, lower_line_smooth_fs);
+            NIR_PASS_V(nir, lower_line_smooth_fs,
+                       zink_fs_key(key)->lower_line_stipple);
             need_optimize = true;
-         }
+         } else if (zink_fs_key(key)->lower_line_stipple)
+               NIR_PASS_V(nir, lower_line_stipple_fs);
 
          if (!zink_fs_key_base(key)->samples &&
             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
