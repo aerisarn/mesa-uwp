@@ -471,6 +471,13 @@ lower_ray_query_intrinsic(nir_builder *b,
          sysval = world_ray_in.orig;
          break;
 
+      case nir_ray_query_value_intersection_triangle_vertex_positions: {
+         struct brw_nir_rt_bvh_primitive_leaf_positions_defs pos;
+         brw_nir_rt_load_bvh_primitive_leaf_positions(b, &pos, hit_in.prim_leaf_ptr);
+         sysval = pos.positions[nir_intrinsic_column(intrin)];
+         break;
+      }
+
       default:
          unreachable("Invalid ray query");
       }

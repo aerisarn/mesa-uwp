@@ -904,6 +904,21 @@ brw_nir_rt_load_bvh_primitive_leaf(nir_builder *b,
                             nir_imm_int(b, 31), nir_imm_int(b, 30));
 }
 
+struct brw_nir_rt_bvh_primitive_leaf_positions_defs {
+   nir_ssa_def *positions[3];
+};
+
+static inline void
+brw_nir_rt_load_bvh_primitive_leaf_positions(nir_builder *b,
+                                             struct brw_nir_rt_bvh_primitive_leaf_positions_defs *defs,
+                                             nir_ssa_def *leaf_addr)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(defs->positions); i++) {
+      defs->positions[i] =
+         brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 16 + i * 4 * 3), 4, 3, 32);
+   }
+}
+
 static inline nir_ssa_def *
 brw_nir_rt_load_primitive_id_from_hit(nir_builder *b,
                                       nir_ssa_def *is_procedural,
