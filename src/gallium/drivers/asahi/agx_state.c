@@ -309,6 +309,8 @@ agx_create_rs_state(struct pipe_context *ctx,
       cfg.front_face_ccw = cso->front_ccw;
       cfg.depth_clip = cso->depth_clip_near;
       cfg.depth_clamp = !cso->depth_clip_near;
+      cfg.flat_shading_vertex = cso->flatshade_first ?
+                                AGX_PPP_VERTEX_0 : AGX_PPP_VERTEX_2;
    };
 
    /* Two-sided polygon mode doesn't seem to work on G13. Apple's OpenGL
@@ -1821,6 +1823,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       out += AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH;
 
       agx_pack(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
+         cfg.flat_shading_control = ctx->rast->base.flatshade_first ?
+                                    AGX_VDM_VERTEX_0 : AGX_VDM_VERTEX_2;
       }
       out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
