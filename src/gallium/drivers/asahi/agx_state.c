@@ -1821,8 +1821,6 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       out += AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH;
 
       agx_pack(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
-         /* XXX: This is probably wrong */
-         cfg.unknown = tex_count >= 4;
       }
       out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
