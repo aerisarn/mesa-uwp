@@ -196,8 +196,13 @@ typedef struct ac_nir_gs_output_info {
    const uint8_t *usage_mask_16bit_lo;
    const uint8_t *usage_mask_16bit_hi;
 
+   /* type for each 16bit slot component */
+   nir_alu_type (*types_16bit_lo)[4];
+   nir_alu_type (*types_16bit_hi)[4];
+
    /* map varying slot to driver location */
    const uint8_t *slot_to_location;
+   const uint8_t *slot_to_location_16bit;
 } ac_nir_gs_output_info;
 
 nir_shader *
