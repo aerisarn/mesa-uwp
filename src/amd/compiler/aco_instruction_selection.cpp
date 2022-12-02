@@ -11106,8 +11106,11 @@ export_fs_mrt_z(isel_context* ctx)
       values[i] = Operand(v1);
    }
 
+   bool writes_mrt0_alpha =
+      ctx->options->key.ps.alpha_to_coverage_via_mrtz && (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8);
+
    /* Both stencil and sample mask only need 16-bits. */
-   if (!ctx->program->info.ps.writes_z &&
+   if (!ctx->program->info.ps.writes_z && !writes_mrt0_alpha &&
        (ctx->program->info.ps.writes_stencil || ctx->program->info.ps.writes_sample_mask)) {
       compr = ctx->program->gfx_level < GFX11; /* COMPR flag */
 
@@ -11122,23 +11125,6 @@ export_fs_mrt_z(isel_context* ctx)
          /* SampleMask should be in Y[15:0]. */
          values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
          enabled_channels |= ctx->program->gfx_level >= GFX11 ? 0x2 : 0xc;
-      }
-
-      if (ctx->options->key.ps.alpha_to_coverage_via_mrtz &&
-          (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8)) {
-         /* MRT0 alpha should be in Y[31:16] if alpha-to-coverage is enabled and MRTZ is present. */
-         assert(ctx->program->gfx_level >= GFX11);
-         Operand mrtz_alpha = Operand(ctx->outputs.temps[FRAG_RESULT_DATA0 + 3u]);
-         mrtz_alpha =
-            bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u), mrtz_alpha);
-         if (ctx->program->info.ps.writes_sample_mask) {
-            /* Ignore the high 16 bits of the sample mask. */
-            values[1] = bld.vop3(aco_opcode::v_and_or_b32, bld.def(v1), values[1],
-                                 Operand::c32(0x0000ffffu), mrtz_alpha);
-         } else {
-            values[1] = mrtz_alpha;
-         }
-         enabled_channels |= 0x2;
       }
    } else {
       if (ctx->program->info.ps.writes_z) {
@@ -11156,8 +11142,7 @@ export_fs_mrt_z(isel_context* ctx)
          enabled_channels |= 0x4;
       }
 
-      if (ctx->options->key.ps.alpha_to_coverage_via_mrtz &&
-          (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8)) {
+      if (writes_mrt0_alpha) {
          assert(ctx->program->gfx_level >= GFX11);
          values[3] = Operand(ctx->outputs.temps[FRAG_RESULT_DATA0 + 3u]);
          enabled_channels |= 0x8;
