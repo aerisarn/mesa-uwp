@@ -4867,7 +4867,7 @@ radv_pipeline_emit_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_c
    radeon_set_context_reg(
       ctx_cs, R_028710_SPI_SHADER_Z_FORMAT,
       ac_get_spi_shader_z_format(ps->info.ps.writes_z, ps->info.ps.writes_stencil,
-                                 ps->info.ps.writes_sample_mask, false));
+                                 ps->info.ps.writes_sample_mask, ps->info.ps.writes_mrt0_alpha));
 
    struct radv_userdata_info *loc =
       radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_FRAGMENT, AC_UD_PS_NUM_SAMPLES);

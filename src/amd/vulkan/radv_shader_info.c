@@ -78,8 +78,12 @@ gather_intrinsic_store_output_info(const nir_shader *nir, const nir_intrinsic_in
       output_usage_mask = info->gs.output_usage_mask;
       break;
    case MESA_SHADER_FRAGMENT:
-      if (idx >= FRAG_RESULT_DATA0)
+      if (idx >= FRAG_RESULT_DATA0) {
          info->ps.colors_written |= 0xf << (4 * (idx - FRAG_RESULT_DATA0));
+
+         if (idx == FRAG_RESULT_DATA0)
+            info->ps.color0_written = write_mask;
+      }
       break;
    default:
       break;
@@ -562,6 +566,10 @@ gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pip
    info->ps.spi_ps_input = radv_compute_spi_ps_input(pipeline_key, info);
 
    info->ps.has_epilog = pipeline_key->ps.has_epilog;
+
+   info->ps.writes_mrt0_alpha =
+      (pipeline_key->ps.alpha_to_coverage_via_mrtz && (info->ps.color0_written & 0x8)) &&
+      (info->ps.writes_z || info->ps.writes_stencil || info->ps.writes_sample_mask);
 
    nir_foreach_shader_in_variable(var, nir) {
       unsigned attrib_count = glsl_count_attribute_slots(var->type, false);

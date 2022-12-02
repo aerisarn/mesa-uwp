@@ -300,6 +300,7 @@ struct radv_shader_info {
       bool writes_z;
       bool writes_stencil;
       bool writes_sample_mask;
+      bool writes_mrt0_alpha;
       bool has_pcoord;
       bool prim_id_input;
       bool layer_input;
@@ -333,6 +334,7 @@ struct radv_shader_info {
       bool has_epilog;
       unsigned spi_ps_input;
       unsigned colors_written;
+      uint8_t color0_written;
    } ps;
    struct {
       bool uses_grid_size;
