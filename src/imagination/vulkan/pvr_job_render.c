@@ -42,6 +42,7 @@
 #include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "util/compiler.h"
+#include "util/format/format_utils.h"
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "vk_alloc.h"
@@ -1344,6 +1345,7 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
       isp_aa_mode = pvr_cr_isp_aa_mode_type(job->samples);
 
    uint32_t *stream_ptr = (uint32_t *)state->fw_stream;
+   enum PVRX(CR_ZLOADFORMAT_TYPE) zload_format;
    uint32_t pixel_ctl;
    uint32_t isp_ctl;
 
@@ -1396,13 +1398,30 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
             value.storetwiddled = true;
          }
 
-      /* FIXME: This is suitable for the single depth format the driver
-       * currently supports, but may need updating to handle other depth
-       * formats.
-       */
-      assert(job->ds.vk_format == VK_FORMAT_D32_SFLOAT);
-      value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
-      value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_F32Z);
+         switch (job->ds.vk_format) {
+         case VK_FORMAT_D16_UNORM:
+            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_16BITINT);
+            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_16BITINT);
+            break;
+
+         case VK_FORMAT_D32_SFLOAT:
+            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
+            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_F32Z);
+            break;
+
+         case VK_FORMAT_D24_UNORM_S8_UINT:
+            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_24BITINT);
+            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_24BITINT);
+            break;
+
+         default:
+            unreachable("Unsupported depth format");
+         }
+
+         zload_format = value.zloadformat;
+      } else {
+         zload_format = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
+      }
    }
    stream_ptr += pvr_cmd_length(CR_ISP_ZLSCTL);
 
@@ -1460,11 +1479,28 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    stream_ptr++;
 
    pvr_csb_pack (stream_ptr, CR_ISP_BGOBJDEPTH, value) {
-      /* FIXME: This is suitable for the single depth format the driver
-       * currently supports, but may need updating to handle other depth
-       * formats.
+      const float depth_clear = job->ds_clear_value.depth;
+
+      /* This is valid even when we don't have a depth attachment because:
+       *  - zload_format is set to a sensible default above, and
+       *  - job->depth_clear_value is set to a sensible default in that case.
        */
-      value.value = fui(job->ds_clear_value.depth);
+      switch (zload_format) {
+      case PVRX(CR_ZLOADFORMAT_TYPE_F32Z):
+         value.value = fui(depth_clear);
+         break;
+
+      case PVRX(CR_ZLOADFORMAT_TYPE_16BITINT):
+         value.value = _mesa_float_to_unorm(depth_clear, 16);
+         break;
+
+      case PVRX(CR_ZLOADFORMAT_TYPE_24BITINT):
+         value.value = _mesa_float_to_unorm(depth_clear, 24);
+         break;
+
+      default:
+         unreachable("Unsupported depth format");
+      }
    }
    stream_ptr += pvr_cmd_length(CR_ISP_BGOBJDEPTH);
 
