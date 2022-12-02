@@ -335,7 +335,7 @@ anv_minify(uint32_t n, uint32_t levels)
    if (unlikely(n == 0))
       return 0;
    else
-      return MAX2(n >> levels, 1);
+      return u_minify(n, levels);
 }
 
 static inline union isl_color_value
