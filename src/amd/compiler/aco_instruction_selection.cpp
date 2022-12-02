@@ -11192,7 +11192,7 @@ export_mrt(isel_context* ctx, const struct aco_export_mrt* mrt)
 }
 
 static bool
-export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export* out, bool is_ps_epilog,
+export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export* out,
                     struct aco_export_mrt* mrt)
 {
    Builder bld(ctx->program, ctx->block);
@@ -11206,11 +11206,12 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export* out, bool 
    unsigned enabled_channels = 0;
    aco_opcode compr_op = aco_opcode::num_opcodes;
    bool compr = false;
+   bool is_16bit = values[0].regClass() == v2b;
 
    target = V_008DFC_SQ_EXP_MRT + out->slot;
 
    /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */
-   if (out->enable_mrt_output_nan_fixup &&
+   if (out->enable_mrt_output_nan_fixup && !is_16bit &&
        (out->col_format == V_028714_SPI_SHADER_32_R || out->col_format == V_028714_SPI_SHADER_32_GR ||
         out->col_format == V_028714_SPI_SHADER_32_AR || out->col_format == V_028714_SPI_SHADER_32_ABGR ||
         out->col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
@@ -11239,90 +11240,90 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export* out, bool 
       break;
 
    case V_028714_SPI_SHADER_FP16_ABGR:
-      if (is_ps_epilog) {
-         for (int i = 0; i < 2; i++) {
-            bool enabled = (out->write_mask >> (i * 2)) & 0x3;
-            if (enabled) {
-               enabled_channels |= 0x3 << (i * 2);
-               if (ctx->options->gfx_level == GFX8 || ctx->options->gfx_level == GFX9) {
-                  values[i] =
-                     bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, bld.def(v1),
-                              values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
-                              values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
-               } else {
-                  values[i] =
-                     bld.vop2(aco_opcode::v_cvt_pkrtz_f16_f32, bld.def(v1),
-                              values[i * 2].isUndefined() ? values[i * 2 + 1] : values[i * 2],
-                              values[i * 2 + 1].isUndefined() ? values[i * 2] : values[i * 2 + 1]);
-               }
+      for (int i = 0; i < 2; i++) {
+         bool enabled = (out->write_mask >> (i * 2)) & 0x3;
+         if (enabled) {
+            enabled_channels |= 0x3 << (i * 2);
+            if (is_16bit) {
+               values[i] =
+                  bld.pseudo(aco_opcode::p_create_vector, bld.def(v1),
+                             values[i * 2].isUndefined() ? Operand(v2b) : values[i * 2],
+                             values[i * 2 + 1].isUndefined() ? Operand(v2b) : values[i * 2 + 1]);
+            } else if (ctx->options->gfx_level == GFX8 || ctx->options->gfx_level == GFX9) {
+               values[i] =
+                  bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, bld.def(v1),
+                           values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
+                           values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
             } else {
-               values[i] = Operand(v1);
+               values[i] =
+                  bld.vop2(aco_opcode::v_cvt_pkrtz_f16_f32, bld.def(v1),
+                           values[i * 2].isUndefined() ? values[i * 2 + 1] : values[i * 2],
+                           values[i * 2 + 1].isUndefined() ? values[i * 2] : values[i * 2 + 1]);
             }
+         } else {
+            values[i] = Operand(v1);
          }
-         values[2] = Operand(v1);
-         values[3] = Operand(v1);
-      } else {
-         enabled_channels = util_widen_mask(out->write_mask, 2);
       }
+      values[2] = Operand(v1);
+      values[3] = Operand(v1);
       compr = true;
       break;
 
    case V_028714_SPI_SHADER_UNORM16_ABGR:
-      if (is_ps_epilog) {
-         compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
+      if (is_16bit && ctx->options->gfx_level >= GFX9) {
+         compr_op = aco_opcode::v_cvt_pknorm_u16_f16;
       } else {
-         enabled_channels = util_widen_mask(out->write_mask, 2);
-         compr = true;
+         compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
       }
       break;
 
+
    case V_028714_SPI_SHADER_SNORM16_ABGR:
-      if (is_ps_epilog) {
-         compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
+      if (is_16bit && ctx->options->gfx_level >= GFX9) {
+         compr_op = aco_opcode::v_cvt_pknorm_i16_f16;
       } else {
-         enabled_channels = util_widen_mask(out->write_mask, 2);
-         compr = true;
+         compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
       }
       break;
 
    case V_028714_SPI_SHADER_UINT16_ABGR:
-      if (is_ps_epilog) {
-         compr_op = aco_opcode::v_cvt_pk_u16_u32;
-         if (out->is_int8 || out->is_int10) {
-            /* clamp */
-            uint32_t max_rgb = out->is_int8 ? 255 : out->is_int10 ? 1023 : 0;
+      compr_op = aco_opcode::v_cvt_pk_u16_u32;
+      if (out->is_int8 || out->is_int10) {
+         /* clamp */
+         uint32_t max_rgb = out->is_int8 ? 255 : out->is_int10 ? 1023 : 0;
 
-            u_foreach_bit(i, out->write_mask) {
-               uint32_t max = i == 3 && out->is_int10 ? 3 : max_rgb;
+         u_foreach_bit(i, out->write_mask) {
+            uint32_t max = i == 3 && out->is_int10 ? 3 : max_rgb;
 
-               values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1), Operand::c32(max), values[i]);
-            }
+            values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1), Operand::c32(max), values[i]);
          }
-      } else {
-         enabled_channels = util_widen_mask(out->write_mask, 2);
-         compr = true;
+      } else if (is_16bit) {
+         u_foreach_bit(i, out->write_mask) {
+            Temp tmp = convert_int(ctx, bld, values[i].getTemp(), 16, 32, false);
+            values[i] = Operand(tmp);
+         }
       }
       break;
 
    case V_028714_SPI_SHADER_SINT16_ABGR:
-      if (is_ps_epilog) {
-         compr_op = aco_opcode::v_cvt_pk_i16_i32;
-         if (out->is_int8 || out->is_int10) {
-            /* clamp */
-            uint32_t max_rgb = out->is_int8 ? 127 : out->is_int10 ? 511 : 0;
-            uint32_t min_rgb = out->is_int8 ? -128 : out->is_int10 ? -512 : 0;
+      compr_op = aco_opcode::v_cvt_pk_i16_i32;
+      if (out->is_int8 || out->is_int10) {
+         /* clamp */
+         uint32_t max_rgb = out->is_int8 ? 127 : out->is_int10 ? 511 : 0;
+         uint32_t min_rgb = out->is_int8 ? -128 : out->is_int10 ? -512 : 0;
 
-            u_foreach_bit(i, out->write_mask) {
-               uint32_t max = i == 3 && out->is_int10 ? 1 : max_rgb;
-               uint32_t min = i == 3 && out->is_int10 ? -2u : min_rgb;
+         u_foreach_bit(i, out->write_mask) {
+            uint32_t max = i == 3 && out->is_int10 ? 1 : max_rgb;
+            uint32_t min = i == 3 && out->is_int10 ? -2u : min_rgb;
 
-               values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1), Operand::c32(max), values[i]);
-               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1), Operand::c32(min), values[i]);
-            }
+            values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1), Operand::c32(max), values[i]);
+            values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1), Operand::c32(min), values[i]);
          }
-      } else {
-         enabled_channels = util_widen_mask(out->write_mask, 2);
-         compr = true;
+      } else if (is_16bit) {
+         u_foreach_bit(i, out->write_mask) {
+            Temp tmp = convert_int(ctx, bld, values[i].getTemp(), 16, 32, true);
+            values[i] = Operand(tmp);
+         }
       }
       break;
 
@@ -11512,7 +11513,7 @@ create_fs_exports(isel_context* ctx)
             }
          }
 
-         if (export_fs_mrt_color(ctx, &out, false, &mrts[compacted_mrt_index])) {
+         if (export_fs_mrt_color(ctx, &out, &mrts[compacted_mrt_index])) {
             compacted_mrt_index++;
             exported = true;
          }
@@ -12449,7 +12450,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
          out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
       }
 
-      if (export_fs_mrt_color(&ctx, &out, true, &mrts[i])) {
+      if (export_fs_mrt_color(&ctx, &out, &mrts[i])) {
          exported_mrts |= 1 << i;
       }
    }
