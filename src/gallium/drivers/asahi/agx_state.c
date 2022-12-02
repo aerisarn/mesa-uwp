@@ -1605,6 +1605,8 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
    struct agx_usc_builder b =
       agx_alloc_usc_control(&batch->pipeline_pool, 1 + PIPE_MAX_COLOR_BUFS);
 
+   bool needs_sampler = false;
+
    for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
       if (key.op[rt] == AGX_META_OP_LOAD) {
          /* Each reloaded render target is textured */
@@ -1637,6 +1639,8 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
             cfg.count = 1;
             cfg.buffer = texture.gpu;
          }
+
+         needs_sampler = true;
       } else if (key.op[rt] == AGX_META_OP_CLEAR) {
          assert(batch->uploaded_clear_color[rt] && "set when cleared");
          agx_usc_uniform(&b, 8 * rt, 8, batch->uploaded_clear_color[rt]);
@@ -1650,24 +1654,26 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
    }
 
    /* All render targets share a sampler */
-   struct agx_ptr sampler = agx_pool_alloc_aligned(&batch->pool, AGX_SAMPLER_LENGTH, 64);
+   if (needs_sampler) {
+      struct agx_ptr sampler = agx_pool_alloc_aligned(&batch->pool, AGX_SAMPLER_LENGTH, 64);
 
-   agx_pack(sampler.cpu, SAMPLER, cfg) {
-      cfg.magnify_linear = true;
-      cfg.minify_linear = false;
-      cfg.mip_filter = AGX_MIP_FILTER_NONE;
-      cfg.wrap_s = AGX_WRAP_CLAMP_TO_EDGE;
-      cfg.wrap_t = AGX_WRAP_CLAMP_TO_EDGE;
-      cfg.wrap_r = AGX_WRAP_CLAMP_TO_EDGE;
-      cfg.pixel_coordinates = true;
-      cfg.compare_func = AGX_COMPARE_FUNC_ALWAYS;
-      cfg.unk_3 = 0;
-   }
+      agx_pack(sampler.cpu, SAMPLER, cfg) {
+         cfg.magnify_linear = true;
+         cfg.minify_linear = false;
+         cfg.mip_filter = AGX_MIP_FILTER_NONE;
+         cfg.wrap_s = AGX_WRAP_CLAMP_TO_EDGE;
+         cfg.wrap_t = AGX_WRAP_CLAMP_TO_EDGE;
+         cfg.wrap_r = AGX_WRAP_CLAMP_TO_EDGE;
+         cfg.pixel_coordinates = true;
+         cfg.compare_func = AGX_COMPARE_FUNC_ALWAYS;
+         cfg.unk_3 = 0;
+      }
 
-   agx_usc_pack(&b, SAMPLER, cfg) {
-      cfg.start = 0;
-      cfg.count = 1;
-      cfg.buffer = sampler.gpu;
+      agx_usc_pack(&b, SAMPLER, cfg) {
+         cfg.start = 0;
+         cfg.count = 1;
+         cfg.buffer = sampler.gpu;
+      }
    }
 
    agx_usc_tilebuffer(&b, &batch->tilebuffer_layout);
