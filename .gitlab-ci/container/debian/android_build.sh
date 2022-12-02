@@ -12,23 +12,23 @@ EPHEMERAL="\
 apt-get install -y --no-remove $EPHEMERAL
 
 # Fetch the NDK and extract just the toolchain we want.
-ndk=android-ndk-r21d
+ndk=$ANDROID_NDK
 curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
   -o $ndk.zip https://dl.google.com/android/repository/$ndk-linux-x86_64.zip
 unzip -d / $ndk.zip "$ndk/toolchains/llvm/*"
 rm $ndk.zip
 # Since it was packed as a zip file, symlinks/hardlinks got turned into
 # duplicate files.  Turn them into hardlinks to save on container space.
-rdfind -makehardlinks true -makeresultsfile false /android-ndk-r21d/
+rdfind -makehardlinks true -makeresultsfile false /${ndk}/
 # Drop some large tools we won't use in this build.
-find /android-ndk-r21d/ -type f | grep -E -i "clang-check|clang-tidy|lldb" | xargs rm -f
+find /${ndk}/ -type f | grep -E -i "clang-check|clang-tidy|lldb" | xargs rm -f
 
-sh .gitlab-ci/container/create-android-ndk-pc.sh /$ndk zlib.pc "" "-lz" "1.2.3"
+sh .gitlab-ci/container/create-android-ndk-pc.sh /$ndk zlib.pc "" "-lz" "1.2.3" $ANDROID_SDK_VERSION
 
-sh .gitlab-ci/container/create-android-cross-file.sh /$ndk x86_64-linux-android x86_64 x86_64
-sh .gitlab-ci/container/create-android-cross-file.sh /$ndk i686-linux-android x86 x86
-sh .gitlab-ci/container/create-android-cross-file.sh /$ndk aarch64-linux-android arm armv8
-sh .gitlab-ci/container/create-android-cross-file.sh /$ndk arm-linux-androideabi arm armv7hl armv7a-linux-androideabi
+sh .gitlab-ci/container/create-android-cross-file.sh /$ndk x86_64-linux-android x86_64 x86_64 $ANDROID_SDK_VERSION
+sh .gitlab-ci/container/create-android-cross-file.sh /$ndk i686-linux-android x86 x86 $ANDROID_SDK_VERSION
+sh .gitlab-ci/container/create-android-cross-file.sh /$ndk aarch64-linux-android arm armv8 $ANDROID_SDK_VERSION
+sh .gitlab-ci/container/create-android-cross-file.sh /$ndk arm-linux-androideabi arm armv7hl $ANDROID_SDK_VERSION armv7a-linux-androideabi
 
 # Not using build-libdrm.sh because we don't want its cleanup after building
 # each arch.  Fetch and extract now.
@@ -90,11 +90,11 @@ for arch in \
        ccarch=armv7a-linux-androideabi
     fi
 
-    export CC=/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ar
-    export CC=/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}29-clang
-    export CXX=/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}29-clang++
-    export LD=/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ld
-    export RANLIB=/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ranlib
+    export CC=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ar
+    export CC=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}${ANDROID_SDK_VERSION}-clang
+    export CXX=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${ccarch}${ANDROID_SDK_VERSION}-clang++
+    export LD=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ld
+    export RANLIB=/${ndk}/toolchains/llvm/prebuilt/linux-x86_64/bin/${arch}-ranlib
 
     # The configure script doesn't know about android, but doesn't really use the host anyway it
     # seems
