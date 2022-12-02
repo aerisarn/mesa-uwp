@@ -3277,8 +3277,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    int i;
    bool disable_constant_encode_ac01 = false;
    unsigned color_invalid = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
-                            ? G_028C70_FORMAT_GFX11(V_028C70_COLOR_INVALID)
-                            : G_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID);
+                            ? S_028C70_FORMAT_GFX11(V_028C70_COLOR_INVALID)
+                            : S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID);
 
    for (i = 0; i < render->color_att_count; ++i) {
       struct radv_image_view *iview = render->color_att[i].iview;
