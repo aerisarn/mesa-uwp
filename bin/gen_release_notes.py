@@ -287,7 +287,7 @@ def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
             print("WARNING: new features being introduced in a point release", file=sys.stderr)
         with p.open('rt') as f:
             for line in f:
-                yield line
+                yield line.rstrip()
             else:
                 yield "None"
         p.unlink()
