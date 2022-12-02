@@ -1558,7 +1558,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
     */
    if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
        type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-      bind_range = align_u64(bind_range, ANV_UBO_ALIGNMENT);
+      bind_range = align64(bind_range, ANV_UBO_ALIGNMENT);
 
    if (data & ANV_DESCRIPTOR_ADDRESS_RANGE) {
       struct anv_address_range_descriptor desc_data = {

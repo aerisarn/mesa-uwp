@@ -314,12 +314,6 @@ align_down_u64(uint64_t v, uint64_t a)
    return v & ~(a - 1);
 }
 
-static inline uint64_t
-align_u64(uint64_t v, uint64_t a)
-{
-   return align_down_u64(v + a - 1, a);
-}
-
 static inline int32_t
 align_i32(int32_t v, int32_t a)
 {
@@ -2491,7 +2485,7 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
 
    /* Align everything to a cache line */
    bound->start &= ~(64ull - 1ull);
-   bound->end = align_u64(bound->end, 64);
+   bound->end = align64(bound->end, 64);
 
    /* Compute the dirty range */
    dirty->start = MIN2(dirty->start, bound->start);

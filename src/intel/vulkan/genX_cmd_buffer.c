@@ -536,7 +536,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
       /* Aux operates 64K at a time */
       start_offset_B = align_down_u64(start_offset_B, 64 * 1024);
-      end_offset_B = align_u64(end_offset_B, 64 * 1024);
+      end_offset_B = align64(end_offset_B, 64 * 1024);
 
       for (uint64_t offset = start_offset_B;
            offset < end_offset_B; offset += 64 * 1024) {

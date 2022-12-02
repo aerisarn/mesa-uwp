@@ -1589,7 +1589,7 @@ anv_device_alloc_bo(struct anv_device *device,
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
    /* The kernel is going to give us whole pages anyway */
-   size = align_u64(size, 4096);
+   size = align64(size, 4096);
 
    uint32_t gem_handle = anv_gem_create(device, size);
    if (gem_handle == 0)
