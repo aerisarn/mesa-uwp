@@ -1581,14 +1581,19 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          /* TODO: Suppress stores to discarded render targets */
          key.op[rt] = AGX_META_OP_STORE;
       } else {
-         bool load = !(batch->clear & (PIPE_CLEAR_COLOR0 << rt));
+         struct agx_resource *rsrc = agx_resource(surf->texture);
+         bool valid = BITSET_TEST(rsrc->data_valid, surf->u.tex.level);
+         bool clear = (batch->clear & (PIPE_CLEAR_COLOR0 << rt));
+         bool load = valid && !clear;
 
          /* The background program used for partial renders must always load
           * whatever was stored in the mid-frame end-of-tile program.
           */
          load |= partial_render;
 
-         key.op[rt] = load ? AGX_META_OP_LOAD : AGX_META_OP_CLEAR;
+         key.op[rt] = load  ? AGX_META_OP_LOAD :
+                      clear ? AGX_META_OP_CLEAR :
+                              AGX_META_OP_NONE;
       }
    }
 
