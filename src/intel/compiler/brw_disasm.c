@@ -1827,7 +1827,7 @@ swsb(FILE *file, const struct brw_isa_info *isa, const brw_inst *inst)
    const bool is_unordered =
       opcode == BRW_OPCODE_SEND || opcode == BRW_OPCODE_SENDC ||
       opcode == BRW_OPCODE_MATH ||
-      (intel_device_info_is_mtl(devinfo) &&
+      (devinfo->has_64bit_float_via_math_pipe &&
        inst_has_type(isa, inst, BRW_REGISTER_TYPE_DF));
    const struct tgl_swsb swsb = tgl_swsb_decode(devinfo, is_unordered, x);
    if (swsb.regdist)

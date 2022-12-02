@@ -75,7 +75,7 @@ namespace {
    {
       if (devinfo->verx10 >= 125) {
          bool has_int_src = false, has_long_src = false;
-         const bool has_long_pipe = !intel_device_info_is_mtl(devinfo);
+         const bool has_long_pipe = !devinfo->has_64bit_float_via_math_pipe;
 
          if (is_send(inst))
             return TGL_PIPE_NONE;
@@ -1016,7 +1016,7 @@ namespace {
       const bool is_ordered = ordered_unit(devinfo, inst, IDX(TGL_PIPE_ALL));
       const bool uses_math_pipe =
          inst->is_math() ||
-         (intel_device_info_is_mtl(devinfo) &&
+         (devinfo->has_64bit_float_via_math_pipe &&
           (get_exec_type(inst) == BRW_REGISTER_TYPE_DF ||
            inst->dst.type == BRW_REGISTER_TYPE_DF));
 

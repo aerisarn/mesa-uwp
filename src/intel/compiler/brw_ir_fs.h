@@ -549,7 +549,7 @@ static inline bool
 is_unordered(const intel_device_info *devinfo, const fs_inst *inst)
 {
    return is_send(inst) || inst->is_math() ||
-          (intel_device_info_is_mtl(devinfo) &&
+          (devinfo->has_64bit_float_via_math_pipe &&
            (get_exec_type(inst) == BRW_REGISTER_TYPE_DF ||
             inst->dst.type == BRW_REGISTER_TYPE_DF));
 }
