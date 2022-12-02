@@ -813,7 +813,7 @@ static bool
 lower_line_smooth_fs(nir_shader *shader)
 {
    int dummy;
-   nir_lower_aaline_fs(shader, &dummy);
+   nir_lower_aaline_fs(shader, &dummy, NULL, NULL);
    return true;
 }
 

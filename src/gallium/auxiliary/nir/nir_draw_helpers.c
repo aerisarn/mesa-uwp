@@ -148,6 +148,8 @@ nir_lower_pstipple_fs(struct nir_shader *shader,
 
 typedef struct {
    nir_variable *line_width_input;
+   nir_variable *stipple_counter;
+   nir_variable *stipple_pattern;
 } lower_aaline;
 
 static bool
@@ -176,8 +178,43 @@ lower_aaline_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *tmp = nir_fsat(b, nir_fadd(b, nir_channels(b, lw, 0xa),
                                              nir_fneg(b, nir_fabs(b, nir_channels(b, lw, 0x5)))));
 
+   nir_ssa_def *max = len;
+   if (state->stipple_counter) {
+      assert(state->stipple_pattern);
+
+      nir_ssa_def *counter = nir_load_var(b, state->stipple_counter);
+      nir_ssa_def *pattern = nir_load_var(b, state->stipple_pattern);
+      nir_ssa_def *factor = nir_i2f32(b, nir_ishr_imm(b, pattern, 16));
+      pattern = nir_iand_imm(b, pattern, 0xffff);
+
+      nir_ssa_def *stipple_pos = nir_vec2(b, nir_fadd_imm(b, counter, -0.5),
+                                             nir_fadd_imm(b, counter, 0.5));
+
+      stipple_pos = nir_frem(b, nir_fdiv(b, stipple_pos, factor),
+                                 nir_imm_float(b, 16.0));
+
+      nir_ssa_def *p = nir_f2i32(b, stipple_pos);
+      nir_ssa_def *one = nir_imm_float(b, 1.0);
+
+      // float t = 1.0 - min((1.0 - fract(stipple_pos.x)) * factor, 1.0);
+      nir_ssa_def *t = nir_ffract(b, nir_channel(b, stipple_pos, 0));
+      t = nir_fsub(b, one,
+                     nir_fmin(b, nir_fmul(b, factor,
+                                          nir_fsub(b, one, t)), one));
+
+      // vec2 a = vec2((uvec2(pattern) >> p) & uvec2(1u));
+      nir_ssa_def *a = nir_i2f32(b,
+         nir_iand(b, nir_ishr(b, nir_vec2(b, pattern, pattern), p),
+                  nir_imm_ivec2(b, 1, 1)));
+
+      // float cov = mix(a.x, a.y, t);
+      nir_ssa_def *cov = nir_flrp(b, nir_channel(b, a, 0), nir_channel(b, a, 1), t);
+
+      max = nir_fmin(b, len, cov);
+   }
+
    tmp = nir_fmul(b, nir_channel(b, tmp, 0),
-                  nir_fmin(b, nir_channel(b, tmp, 1), len));
+                  nir_fmin(b, nir_channel(b, tmp, 1), max));
    tmp = nir_fmul(b, nir_channel(b, out_input, 3), tmp);
 
    nir_ssa_def *out = nir_vec4(b, nir_channel(b, out_input, 0),
@@ -189,9 +226,14 @@ lower_aaline_instr(nir_builder *b, nir_instr *instr, void *data)
 }
 
 void
-nir_lower_aaline_fs(struct nir_shader *shader, int *varying)
+nir_lower_aaline_fs(struct nir_shader *shader, int *varying,
+                    nir_variable *stipple_counter,
+                    nir_variable *stipple_pattern)
 {
-   lower_aaline state;
+   lower_aaline state = {
+      .stipple_counter = stipple_counter,
+      .stipple_pattern = stipple_pattern,
+   };
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
    int highest_location = -1, highest_drv_location = -1;
