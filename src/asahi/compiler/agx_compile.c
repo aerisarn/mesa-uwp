@@ -776,6 +776,16 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_load_compute_dimension(
          b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
+   case nir_intrinsic_memory_barrier_buffer:
+      return agx_memory_barrier(b);
+
+   case nir_intrinsic_control_barrier:
+      return agx_threadgroup_barrier(b);
+
+   case nir_intrinsic_memory_barrier_shared:
+      /* Always seen with a control_barrier */
+      return NULL;
+
    default:
       fprintf(stderr, "Unhandled intrinsic %s\n",
               nir_intrinsic_infos[instr->intrinsic].name);

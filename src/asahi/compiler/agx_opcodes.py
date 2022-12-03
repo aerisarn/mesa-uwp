@@ -308,6 +308,12 @@ op("writeout", (0x48, 0xFF, 4, _), dests = 0, imms = [WRITEOUT], can_eliminate =
 op("block_image_store", (0xB1, 0xFF, 10, _), dests = 0, srcs = 2,
    imms = [FORMAT, DIM], can_eliminate = False)
 
+# Barriers
+op("threadgroup_barrier", (0x0068, 0xFFFF, 2, _), dests = 0, srcs = 0,
+   can_eliminate = False)
+op("memory_barrier", (0x96F5, 0xFFFF, 2, _), dests = 0, srcs = 0,
+   can_eliminate = False)
+
 # Convenient aliases.
 op("mov", _, srcs = 1)
 op("not", _, srcs = 1)
