@@ -671,6 +671,23 @@ agx_emit_discard(agx_builder *b)
 }
 
 static agx_instr *
+agx_load_compute_dimension(agx_builder *b, agx_index dst,
+                           nir_intrinsic_instr *instr, enum agx_sr base)
+{
+   unsigned dim = nir_dest_num_components(instr->dest);
+   unsigned size = nir_dest_bit_size(instr->dest);
+   assert(size == 16 || size == 32);
+
+   agx_index srcs[] = {
+      agx_get_sr(b, size, base + 0),
+      agx_get_sr(b, size, base + 1),
+      agx_get_sr(b, size, base + 2),
+   };
+
+   return agx_emit_collect_to(b, dst, dim, srcs);
+}
+
+static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
    agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest
@@ -746,6 +763,18 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_block_image_store_agx:
       return agx_emit_block_image_store(b, instr);
+
+   case nir_intrinsic_load_workgroup_id:
+      return agx_load_compute_dimension(b, dst, instr,
+                                        AGX_SR_THREADGROUP_POSITION_IN_GRID_X);
+
+   case nir_intrinsic_load_global_invocation_id:
+      return agx_load_compute_dimension(b, dst, instr,
+                                        AGX_SR_THREAD_POSITION_IN_GRID_X);
+
+   case nir_intrinsic_load_local_invocation_id:
+      return agx_load_compute_dimension(
+         b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
    default:
       fprintf(stderr, "Unhandled intrinsic %s\n",
