@@ -66,6 +66,12 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_load_blend_const_color_a_float:
       ptr = &u->fs.blend_constant[3];
       break;
+   case nir_intrinsic_load_ssbo_address:
+      ptr = &u->ssbo_base[nir_src_as_uint(intr->src[0])];
+      break;
+   case nir_intrinsic_get_ssbo_size:
+      ptr = &u->ssbo_size[nir_src_as_uint(intr->src[0])];
+      break;
    default:
       return false;
    }
