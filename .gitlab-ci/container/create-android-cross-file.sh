@@ -24,7 +24,7 @@ strip = '$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/$arch-strip'
 pkgconfig = ['/usr/bin/pkg-config']
 
 [host_machine]
-system = 'linux'
+system = 'android'
 cpu_family = '$cpu_family'
 cpu = '$cpu'
 endian = 'little'
