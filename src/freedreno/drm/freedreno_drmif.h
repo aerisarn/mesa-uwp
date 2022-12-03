@@ -290,7 +290,6 @@ void *fd_bo_map(struct fd_bo *bo);
 void fd_bo_upload(struct fd_bo *bo, void *src, unsigned off, unsigned len);
 bool fd_bo_prefer_upload(struct fd_bo *bo, unsigned len);
 int fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op);
-void fd_bo_cpu_fini(struct fd_bo *bo);
 bool fd_bo_is_cached(struct fd_bo *bo);
 
 #ifdef __cplusplus

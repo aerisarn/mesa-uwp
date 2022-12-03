@@ -725,8 +725,6 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
    if (trans->upload_ptr) {
       fd_bo_upload(rsc->bo, trans->upload_ptr, ptrans->box.x, ptrans->box.width);
       free(trans->upload_ptr);
-   } else if (!(ptrans->usage & PIPE_MAP_UNSYNCHRONIZED)) {
-      fd_bo_cpu_fini(rsc->bo);
    }
 
    util_range_add(&rsc->b.b, &rsc->valid_buffer_range, ptrans->box.x,

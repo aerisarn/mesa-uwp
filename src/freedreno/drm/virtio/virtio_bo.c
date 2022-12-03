@@ -138,12 +138,6 @@ out:
    return ret;
 }
 
-static void
-virtio_bo_cpu_fini(struct fd_bo *bo)
-{
-   /* no-op */
-}
-
 static int
 virtio_bo_madvise(struct fd_bo *bo, int willneed)
 {
@@ -288,7 +282,6 @@ virtio_bo_destroy(struct fd_bo *bo)
 static const struct fd_bo_funcs funcs = {
    .offset = virtio_bo_offset,
    .cpu_prep = virtio_bo_cpu_prep,
-   .cpu_fini = virtio_bo_cpu_fini,
    .madvise = virtio_bo_madvise,
    .iova = virtio_bo_iova,
    .set_name = virtio_bo_set_name,

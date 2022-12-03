@@ -317,7 +317,6 @@ fd_dev_count_deferred_cmds(struct fd_device *dev)
 struct fd_bo_funcs {
    int (*offset)(struct fd_bo *bo, uint64_t *offset);
    int (*cpu_prep)(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op);
-   void (*cpu_fini)(struct fd_bo *bo);
    int (*madvise)(struct fd_bo *bo, int willneed);
    uint64_t (*iova)(struct fd_bo *bo);
    void (*set_name)(struct fd_bo *bo, const char *fmt, va_list ap);

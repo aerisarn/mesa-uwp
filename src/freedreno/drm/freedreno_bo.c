@@ -586,15 +586,6 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 }
 
 void
-fd_bo_cpu_fini(struct fd_bo *bo)
-{
-// TODO until we have cached buffers, the kernel side ioctl does nothing,
-//      so just skip it.  When we have cached buffers, we can make the
-//      ioctl conditional
-//   bo->funcs->cpu_fini(bo);
-}
-
-void
 fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
 {
    simple_mtx_assert_locked(&table_lock);
