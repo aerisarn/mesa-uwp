@@ -505,9 +505,11 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
    }
 
    case AGX_OPCODE_DEVICE_LOAD:
+   case AGX_OPCODE_DEVICE_STORE:
    case AGX_OPCODE_UNIFORM_STORE: {
+      bool is_device_store = I->op == AGX_OPCODE_DEVICE_STORE;
       bool is_uniform_store = I->op == AGX_OPCODE_UNIFORM_STORE;
-      bool is_store = is_uniform_store;
+      bool is_store = is_device_store || is_uniform_store;
       bool has_base = !is_uniform_store;
 
       /* Uniform stores internally packed as 16-bit. Fix up the format, mask,
@@ -523,11 +525,13 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          reg.size = AGX_SIZE_16;
       }
 
+      unsigned offset_src = (has_base ? 1 : 0) + (is_store ? 1 : 0);
+
       bool Rt, At = false, Ot;
       unsigned R = agx_pack_memory_reg(reg, &Rt);
-      unsigned A = has_base ? agx_pack_memory_base(I->src[0], &At) : 0;
-      unsigned O = agx_pack_memory_index(
-         I->src[(has_base ? 1 : 0) + (is_store ? 1 : 0)], &Ot);
+      unsigned A =
+         has_base ? agx_pack_memory_base(I->src[is_store ? 1 : 0], &At) : 0;
+      unsigned O = agx_pack_memory_index(I->src[offset_src], &Ot);
       unsigned u1 = is_uniform_store ? 0 : 1; // XXX
       unsigned u3 = 0;
       unsigned u4 = is_uniform_store ? 0 : 4; // XXX
@@ -541,7 +545,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          agx_opcodes_info[I->op].encoding.exact |
          ((format & BITFIELD_MASK(3)) << 7) | ((R & BITFIELD_MASK(6)) << 10) |
          ((A & BITFIELD_MASK(4)) << 16) | ((O & BITFIELD_MASK(4)) << 20) |
-         (Ot ? (1 << 24) : 0) | (I->src[1].abs ? (1 << 25) : 0) |
+         (Ot ? (1 << 24) : 0) | (I->src[offset_src].abs ? (1 << 25) : 0) |
          (is_uniform_store ? (2 << 25) : 0) | (u1 << 26) | (At << 27) |
          (u3 << 28) | (I->scoreboard << 30) |
          (((uint64_t)((O >> 4) & BITFIELD_MASK(4))) << 32) |

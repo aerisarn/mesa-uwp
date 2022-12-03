@@ -239,6 +239,12 @@ op("device_load",
       encoding_32 = (0x05, 0x7F, 6, 8),
       srcs = 2, imms = [FORMAT, MASK, SHIFT, SCOREBOARD], can_reorder = False)
 
+# sources are value, base, index
+# TODO: Consider permitting the short form
+op("device_store",
+      encoding_32 = (0x45 | (1 << 47), 0, 8, _),
+      dests = 0, srcs = 3, imms = [FORMAT, MASK, SHIFT, SCOREBOARD], can_eliminate = False)
+
 # sources are value, index
 # TODO: Consider permitting the short form
 op("uniform_store",
