@@ -655,6 +655,10 @@ agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
    DUMP_UNPACKED(IOGPU_COMPUTE, cs, "Compute\n");
 
    agxdecode_stateful(encoder, "Encoder", agxdecode_cdm, verbose, NULL);
+
+   fprintf(agxdecode_dump_stream, "Context switch program:\n");
+   agx_disassemble(agxdecode_fetch_gpu_mem(cs.context_switch_program, 1024),
+                   1024, agxdecode_dump_stream);
 }
 
 static void

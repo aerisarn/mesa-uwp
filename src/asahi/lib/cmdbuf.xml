@@ -798,6 +798,7 @@
     <field name="Local size X" size="32" start="5:0" type="uint"/>
     <field name="Local size Y" size="32" start="6:0" type="uint"/>
     <field name="Local size Z" size="32" start="7:0" type="uint"/>
+    <!-- Might be its own command, block type = 3? -->
     <field name="Unk 2" size="32" start="8:0" type="hex" default="0x60000160"/>
   </struct>
 
@@ -897,12 +898,17 @@
     <field name="Unk 40" start="40:0" size="32" default="0x1c" type="hex"/>
     <field name="Encoder ID" start="41:0" size="32" type="hex"/>
     <field name="Unk 44" start="44:0" size="32" default="0xffffffff" type="hex"/>
-    <field name="Unk 48" start="48:0" size="32" default="0x40" type="hex"/>
-    <field name="Unk 56" start="56:0" size="32" default="6" type="hex"/>
+    <field name="Context switch program" start="48:0" size="32" type="address"/>
+
+    <!-- An enum that's purely macOS defined UAPI. Doesn't matter for us.
+    More info at https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/21062#note_1754715 -->
+    <field name="Context switch block size" start="56:0" size="4" default="2" type="hex"/>
     <field name="Spilling unk 1" start="57:3" size="1" type="bool"/>
-    <field name="Unk 58" start="58:0" size="32" default="0x62" type="hex"/>
+    <!-- Depends on grid size, as well as other factors. TODO: Decode. -->
+    <field name="Number of context switch buffers" start="58:0" size="32" default="1" type="uint"/>
     <field name="Spill Buffer Histogram" start="60:0" size="480" type="Spill Buffer Histogram"/>
-    <field name="Unk 75" start="75:0" size="32" default="0x10000" type="hex"/>
+    <!-- Lina's guess at the meaning -->
+    <field name="Enable context switching" start="75:16" size="1" default="true" type="bool"/>
     <field name="Unk 94" start="94:0" size="32" default="0xffffffff" type="hex"/>
     <field name="Unk 95" start="95:0" size="32" default="0xffffffff" type="hex"/>
   </struct>
