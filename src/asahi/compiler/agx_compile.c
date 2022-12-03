@@ -539,6 +539,24 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
 }
 
+static void
+agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   agx_index value = agx_src_index(&instr->src[0]);
+   agx_index addr = agx_src_index(&instr->src[1]);
+   agx_index offset = agx_src_index(&instr->src[2]);
+   enum agx_format fmt = agx_format_for_pipe(nir_intrinsic_format(instr));
+   unsigned shift = nir_intrinsic_base(instr);
+
+   /* Zero-extend offset if we're not sign-extending */
+   if (!nir_intrinsic_sign_extend(instr))
+      offset = agx_abs(offset);
+
+   agx_device_store(b, value, addr, offset, fmt,
+                    BITFIELD_MASK(nir_src_num_components(instr->src[0])), shift,
+                    0);
+}
+
 /* Preambles write directly to uniform registers, so move from uniform to GPR */
 static agx_instr *
 agx_emit_load_preamble(agx_builder *b, agx_index dst,
@@ -696,6 +714,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_store_output:
       assert(stage == MESA_SHADER_VERTEX);
       return agx_emit_store_vary(b, instr);
+
+   case nir_intrinsic_store_agx:
+      agx_emit_store(b, instr);
+      return NULL;
 
    case nir_intrinsic_store_zs_agx:
       assert(stage == MESA_SHADER_FRAGMENT);
