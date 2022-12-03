@@ -155,7 +155,8 @@ namespace {
             return t;
 
       case SHADER_OPCODE_SEL_EXEC:
-         if (!has_64bit && type_sz(t) > 4)
+         if ((!has_64bit || intel_device_info_is_mtl(devinfo)) &&
+             type_sz(t) > 4)
             return BRW_REGISTER_TYPE_UD;
          else
             return t;
