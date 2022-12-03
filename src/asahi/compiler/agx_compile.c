@@ -1709,6 +1709,9 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
    } while (progress);
 
+   NIR_PASS_V(nir, agx_nir_lower_address);
+   NIR_PASS_V(nir, nir_lower_int64);
+
    NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
    NIR_PASS_V(nir, nir_opt_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
