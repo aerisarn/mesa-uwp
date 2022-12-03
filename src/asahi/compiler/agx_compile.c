@@ -521,34 +521,6 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    agx_emit_cached_split(b, dest, nr_comps);
 }
 
-static enum agx_format
-agx_format_for_bits(unsigned bits)
-{
-   switch (bits) {
-   case 8:
-      return AGX_FORMAT_I8;
-   case 16:
-      return AGX_FORMAT_I16;
-   case 32:
-      return AGX_FORMAT_I32;
-   default:
-      unreachable("Invalid bit size for load/store");
-   }
-}
-
-static void
-agx_emit_load_global(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
-{
-   agx_index addr = agx_src_index(&instr->src[0]);
-   agx_index offset = agx_immediate(0);
-   enum agx_format fmt = agx_format_for_bits(nir_dest_bit_size(instr->dest));
-
-   agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(nir_dest_num_components(instr->dest)), 0,
-                      0);
-   agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
-}
-
 static void
 agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -714,11 +686,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_input:
       assert(stage == MESA_SHADER_FRAGMENT && "vertex loads lowered");
       agx_emit_load_vary_flat(b, dst, instr);
-      return NULL;
-
-   case nir_intrinsic_load_global:
-   case nir_intrinsic_load_global_constant:
-      agx_emit_load_global(b, dst, instr);
       return NULL;
 
    case nir_intrinsic_load_agx:
