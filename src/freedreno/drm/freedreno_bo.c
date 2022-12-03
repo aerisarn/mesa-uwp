@@ -114,6 +114,13 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
 {
    struct fd_bo *bo = NULL;
 
+   if (size < FD_BO_HEAP_BLOCK_SIZE) {
+      if ((flags == 0) && dev->default_heap)
+         return fd_bo_heap_alloc(dev->default_heap, size);
+      if ((flags == RING_FLAGS) && dev->ring_heap)
+         return fd_bo_heap_alloc(dev->ring_heap, size);
+   }
+
    /* demote cached-coherent to WC if not supported: */
    if ((flags & FD_BO_CACHED_COHERENT) && !dev->has_cached_coherent)
       flags &= ~FD_BO_CACHED_COHERENT;
@@ -278,13 +285,16 @@ bo_del_or_recycle(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
 
-   if ((bo->bo_reuse == BO_CACHE) &&
-       (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
-      return 0;
+   /* No point in BO cache for suballocated buffers: */
+   if (!suballoc_bo(bo)) {
+      if ((bo->bo_reuse == BO_CACHE) &&
+          (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
+         return 0;
 
-   if ((bo->bo_reuse == RING_CACHE) &&
-       (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
-      return 0;
+      if ((bo->bo_reuse == RING_CACHE) &&
+          (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
+         return 0;
+   }
 
    return bo_del(bo);
 }
@@ -355,6 +365,16 @@ fd_bo_del_list_nocache(struct list_head *list)
    close_handles(dev, handles, cnt);
 }
 
+void
+fd_bo_fini_fences(struct fd_bo *bo)
+{
+   for (int i = 0; i < bo->nr_fences; i++)
+      fd_fence_del(bo->fences[i]);
+
+   if (bo->fences != &bo->_inline_fence)
+      free(bo->fences);
+}
+
 /**
  * Helper called by backends bo->funcs->destroy()
  *
@@ -371,11 +391,7 @@ fd_bo_fini_common(struct fd_bo *bo)
 
    VG_BO_FREE(bo);
 
-   for (int i = 0; i < bo->nr_fences; i++)
-      fd_fence_del(bo->fences[i]);
-
-   if (bo->fences != &bo->_inline_fence)
-      free(bo->fences);
+   fd_bo_fini_fences(bo);
 
    if (bo->map)
       os_munmap(bo->map, bo->size);

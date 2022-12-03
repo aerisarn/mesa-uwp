@@ -46,6 +46,7 @@
 #include "util/u_atomic.h"
 #include "util/u_debug.h"
 #include "util/u_math.h"
+#include "util/vma.h"
 
 #include "freedreno_dev_info.h"
 #include "freedreno_drmif.h"
@@ -126,6 +127,77 @@ struct fd_bo_cache {
    time_t time;
 };
 
+/* Probably good for the block size to be a multiple of an available
+ * large-page size.  For overlap of what both the MMU (with 4kb granule)
+ * and SMMU support, 2MB is that overlap.  (Well, 4kb is as well, but
+ * too small to be practical ;-))
+ */
+#define FD_BO_HEAP_BLOCK_SIZE (4 * 1024 * 1024)
+
+/* Zero is an invalid handle, use it to indicate buffers that have been sub-
+ * allocated from a larger backing heap block buffer.
+ */
+#define FD_BO_SUBALLOC_HANDLE 0
+
+static inline bool
+suballoc_bo(struct fd_bo *bo)
+{
+   return bo->handle == FD_BO_SUBALLOC_HANDLE;
+}
+
+/**
+ * A heap is a virtual range of memory that is backed by N physical buffers,
+ * from which buffers can be suballocated.  This requires kernel support for
+ * userspace allocated iova.
+ */
+struct fd_bo_heap {
+   struct fd_device *dev;
+
+   int cnt;
+
+   /**
+    * Buffer allocation flags for buffers allocated from this heap.
+    */
+   uint32_t flags;
+
+   simple_mtx_t lock;
+
+   /**
+    * Ranges of the backing buffer are allocated at a granularity of
+    * SUBALLOC_ALIGNMENT
+    */
+   struct util_vma_heap heap;
+
+   /**
+    * List of recently freed suballocated BOs from this allocator until they
+    * become idle.  Backend should periodically call fd_bo_suballoc_clean()
+    * to check for newly idle entries on the freelist, so that the memory can
+    * be returned to the free heap.
+    */
+   struct list_head freelist;
+
+   /**
+    * The backing buffers.  Maximum total heap size is:
+    *   FD_BO_HEAP_BLOCK_SIZE * ARRAY_SIZE(heap->blocks)
+    */
+   struct fd_bo *blocks[256];
+};
+
+struct fd_bo_heap *fd_bo_heap_new(struct fd_device *dev, uint32_t flags);
+void fd_bo_heap_destroy(struct fd_bo_heap *heap);
+
+struct fd_bo *fd_bo_heap_block(struct fd_bo *bo);
+struct fd_bo *fd_bo_heap_alloc(struct fd_bo_heap *heap, uint32_t size);
+
+static inline uint32_t
+submit_offset(struct fd_bo *bo, uint32_t offset)
+{
+   if (suballoc_bo(bo)) {
+      offset += bo->iova - fd_bo_heap_block(bo)->iova;
+   }
+   return offset;
+}
+
 struct fd_device {
    int fd;
    enum fd_version version;
@@ -146,6 +218,16 @@ struct fd_device {
 
    struct fd_bo_cache bo_cache;
    struct fd_bo_cache ring_cache;
+
+   /**
+    * Heap for mappable + cached-coherent + gpu-readonly (ie. cmdstream)
+    */
+   struct fd_bo_heap *ring_heap;
+
+   /**
+    * Heap for mappable (ie. majority of small buffer allocations, etc)
+    */
+   struct fd_bo_heap *default_heap;
 
    bool has_cached_coherent;
 
@@ -352,6 +434,7 @@ enum fd_bo_state {
 enum fd_bo_state fd_bo_state(struct fd_bo *bo);
 
 void fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev);
+void fd_bo_fini_fences(struct fd_bo *bo);
 void fd_bo_fini_common(struct fd_bo *bo);
 
 struct fd_bo *fd_bo_new_ring(struct fd_device *dev, uint32_t size);

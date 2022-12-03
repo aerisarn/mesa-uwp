@@ -43,6 +43,7 @@ fd_device_new(int fd)
 {
    struct fd_device *dev = NULL;
    drmVersionPtr version;
+   bool use_heap = false;
 
    /* figure out if we are kgsl or msm drm driver: */
    version = drmGetVersion(fd);
@@ -64,6 +65,10 @@ fd_device_new(int fd)
    } else if (!strcmp(version->name, "virtio_gpu")) {
       DEBUG_MSG("virtio_gpu DRM device");
       dev = virtio_device_new(fd, version);
+      /* Only devices that support a hypervisor are a6xx+, so avoid the
+       * extra guest<->host round trips associated with pipe creation:
+       */
+      use_heap = true;
 #endif
 #if HAVE_FREEDRENO_KGSL
    } else if (!strcmp(version->name, "kgsl")) {
@@ -95,6 +100,23 @@ out:
    list_inithead(&dev->deferred_submits);
    simple_mtx_init(&dev->submit_lock, mtx_plain);
    simple_mtx_init(&dev->suballoc_lock, mtx_plain);
+
+   if (!use_heap) {
+      struct fd_pipe *pipe = fd_pipe_new(dev, FD_PIPE_3D);
+
+      /* Userspace fences don't appear to be reliable enough (missing some
+       * cache flushes?) on older gens, so limit sub-alloc heaps to a6xx+
+       * for now:
+       */
+      use_heap = fd_dev_gen(&pipe->dev_id) >= 6;
+
+      fd_pipe_del(pipe);
+   }
+
+   if (use_heap) {
+      dev->ring_heap = fd_bo_heap_new(dev, RING_FLAGS);
+      dev->default_heap = fd_bo_heap_new(dev, 0);
+   }
 
    return dev;
 }
@@ -157,6 +179,12 @@ fd_device_del(struct fd_device *dev)
 
    if (dev->suballoc_bo)
       fd_bo_del(dev->suballoc_bo);
+
+   if (dev->ring_heap)
+      fd_bo_heap_destroy(dev->ring_heap);
+
+   if (dev->default_heap)
+      fd_bo_heap_destroy(dev->default_heap);
 
    fd_bo_cache_cleanup(&dev->bo_cache, 0);
    fd_bo_cache_cleanup(&dev->ring_cache, 0);

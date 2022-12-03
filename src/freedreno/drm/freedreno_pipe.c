@@ -286,3 +286,9 @@ fd_fence_flush(struct fd_fence *f)
    fd_pipe_flush(f->pipe, f->ufence);
    util_queue_fence_wait(&f->ready);
 }
+
+int
+fd_fence_wait(struct fd_fence *f)
+{
+   return fd_pipe_wait(f->pipe, f);
+}

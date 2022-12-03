@@ -314,7 +314,7 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 
          cmds[i].type = MSM_SUBMIT_CMD_IB_TARGET_BUF;
          cmds[i].submit_idx = append_bo(msm_submit, msm_ring->ring_bo);
-         cmds[i].submit_offset = msm_ring->offset;
+         cmds[i].submit_offset = submit_offset(msm_ring->ring_bo, msm_ring->offset);
          cmds[i].size = offset_bytes(ring->cur, ring->start);
          cmds[i].pad = 0;
          cmds[i].nr_relocs = msm_ring->cmd->nr_relocs;
@@ -328,9 +328,9 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
             } else {
                cmds[i].type = MSM_SUBMIT_CMD_IB_TARGET_BUF;
             }
-            cmds[i].submit_idx =
-               append_bo(msm_submit, msm_ring->u.cmds[j]->ring_bo);
-            cmds[i].submit_offset = msm_ring->offset;
+            struct fd_bo *ring_bo = msm_ring->u.cmds[j]->ring_bo;
+            cmds[i].submit_idx = append_bo(msm_submit, ring_bo);
+            cmds[i].submit_offset = submit_offset(ring_bo, msm_ring->offset);
             cmds[i].size = msm_ring->u.cmds[j]->size;
             cmds[i].pad = 0;
             cmds[i].nr_relocs = msm_ring->u.cmds[j]->nr_relocs;

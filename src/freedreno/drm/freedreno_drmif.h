@@ -130,6 +130,7 @@ struct fd_fence *fd_fence_ref_locked(struct fd_fence *f);
 void fd_fence_del(struct fd_fence *f);
 void fd_fence_del_locked(struct fd_fence *f);
 void fd_fence_flush(struct fd_fence *f);
+int fd_fence_wait(struct fd_fence *f);
 
 /*
  * bo flags:

@@ -52,17 +52,46 @@ static struct fd_ringbuffer *
 fd_ringbuffer_sp_init(struct fd_ringbuffer_sp *fd_ring, uint32_t size,
                       enum fd_ringbuffer_flags flags);
 
+
+static void
+append_suballoc_bo(struct fd_submit_sp *submit, struct fd_bo *bo)
+{
+   uint32_t idx = READ_ONCE(bo->idx);
+
+   if (unlikely((idx >= submit->nr_suballoc_bos) ||
+       (submit->suballoc_bos[idx] != bo))) {
+      uint32_t hash = _mesa_hash_pointer(bo);
+      struct hash_entry *entry;
+
+      entry = _mesa_hash_table_search_pre_hashed(
+            submit->suballoc_bo_table, hash, bo);
+      if (entry) {
+         /* found */
+         idx = (uint32_t)(uintptr_t)entry->data;
+      } else {
+         idx = APPEND(submit, suballoc_bos, fd_bo_ref(bo));
+
+         _mesa_hash_table_insert_pre_hashed(
+               submit->suballoc_bo_table, hash, bo, (void *)(uintptr_t)idx);
+      }
+      bo->idx = idx;
+   }
+}
+
 /* add (if needed) bo to submit and return index: */
 uint32_t
 fd_submit_append_bo(struct fd_submit_sp *submit, struct fd_bo *bo)
 {
-   uint32_t idx;
+   if (suballoc_bo(bo)) {
+      append_suballoc_bo(submit, bo);
+      bo = fd_bo_heap_block(bo);
+   }
 
    /* NOTE: it is legal to use the same bo on different threads for
     * different submits.  But it is not legal to use the same submit
     * from different threads.
     */
-   idx = READ_ONCE(bo->idx);
+   uint32_t idx = READ_ONCE(bo->idx);
 
    if (unlikely((idx >= submit->nr_bos) || (submit->bos[idx] != bo))) {
       uint32_t hash = _mesa_hash_pointer(bo);
@@ -186,6 +215,9 @@ fd_submit_sp_flush_prep(struct fd_submit *submit, int in_fence_fd,
    for (unsigned i = 0; i < fd_submit->nr_bos; i++) {
       fd_bo_add_fence(fd_submit->bos[i], out_fence);
       has_shared |= fd_submit->bos[i]->alloc_flags & FD_BO_SHARED;
+   }
+   for (unsigned i = 0; i < fd_submit->nr_suballoc_bos; i++) {
+      fd_bo_add_fence(fd_submit->suballoc_bos[i], out_fence);
    }
    simple_mtx_unlock(&fence_lock);
 
@@ -385,6 +417,7 @@ fd_submit_sp_destroy(struct fd_submit *submit)
       fd_ringbuffer_del(fd_submit->suballoc_ring);
 
    _mesa_hash_table_destroy(fd_submit->bo_table, NULL);
+   _mesa_hash_table_destroy(fd_submit->suballoc_bo_table, NULL);
 
    // TODO it would be nice to have a way to assert() if all
    // rb's haven't been free'd back to the slab, because that is
@@ -392,11 +425,14 @@ fd_submit_sp_destroy(struct fd_submit *submit)
    slab_destroy_child(&fd_submit->ring_pool);
 
    fd_bo_del_array(fd_submit->bos, fd_submit->nr_bos);
+   free(fd_submit->bos);
+
+   fd_bo_del_array(fd_submit->suballoc_bos, fd_submit->nr_suballoc_bos);
+   free(fd_submit->suballoc_bos);
 
    if (fd_submit->out_fence)
       fd_fence_del(fd_submit->out_fence);
 
-   free(fd_submit->bos);
    free(fd_submit);
 }
 
@@ -412,8 +448,8 @@ fd_submit_sp_new(struct fd_pipe *pipe, flush_submit_list_fn flush_submit_list)
    struct fd_submit_sp *fd_submit = calloc(1, sizeof(*fd_submit));
    struct fd_submit *submit;
 
-   fd_submit->bo_table = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                                 _mesa_key_pointer_equal);
+   fd_submit->bo_table = _mesa_pointer_hash_table_create(NULL);
+   fd_submit->suballoc_bo_table = _mesa_pointer_hash_table_create(NULL);
 
    slab_create_child(&fd_submit->ring_pool, &pipe->ring_pool);
 
