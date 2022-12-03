@@ -37,7 +37,8 @@ static int
 flush_submit_list(struct list_head *submit_list)
 {
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(last_submit(submit_list));
-   struct msm_pipe *msm_pipe = to_msm_pipe(fd_submit->base.pipe);
+   struct fd_pipe *pipe = fd_submit->base.pipe;
+   struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
    struct drm_msm_gem_submit req = {
       .flags = msm_pipe->pipe,
       .queueid = msm_pipe->queue_id,
@@ -104,10 +105,10 @@ flush_submit_list(struct list_head *submit_list)
    if (fd_submit->in_fence_fd != -1) {
       req.flags |= MSM_SUBMIT_FENCE_FD_IN;
       req.fence_fd = fd_submit->in_fence_fd;
-      msm_pipe->no_implicit_sync = true;
+      pipe->no_implicit_sync = true;
    }
 
-   if (msm_pipe->no_implicit_sync) {
+   if (pipe->no_implicit_sync) {
       req.flags |= MSM_SUBMIT_NO_IMPLICIT;
    }
 

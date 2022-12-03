@@ -263,6 +263,12 @@ struct fd_pipe {
 
    uint32_t last_enqueue_fence;   /* just for debugging */
 
+   /**
+    * If we *ever* see an in-fence-fd, assume that userspace is
+    * not relying on implicit fences.
+    */
+   bool no_implicit_sync;
+
    struct fd_bo *control_mem;
    volatile struct fd_pipe_control *control;
 

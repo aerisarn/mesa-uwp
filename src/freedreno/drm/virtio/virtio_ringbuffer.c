@@ -54,7 +54,8 @@ flush_submit_list(struct list_head *submit_list)
 {
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(last_submit(submit_list));
    struct virtio_pipe *virtio_pipe = to_virtio_pipe(fd_submit->base.pipe);
-   struct fd_device *dev = virtio_pipe->base.dev;
+   struct fd_pipe *pipe = &virtio_pipe->base;
+   struct fd_device *dev = pipe->dev;
 
    unsigned nr_cmds = 0;
 
@@ -194,10 +195,10 @@ flush_submit_list(struct list_head *submit_list)
    }
 
    if (fd_submit->in_fence_fd != -1) {
-      virtio_pipe->no_implicit_sync = true;
+      pipe->no_implicit_sync = true;
    }
 
-   if (virtio_pipe->no_implicit_sync) {
+   if (pipe->no_implicit_sync) {
       req->flags |= MSM_SUBMIT_NO_IMPLICIT;
    }
 

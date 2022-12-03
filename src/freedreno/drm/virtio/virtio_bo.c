@@ -113,7 +113,7 @@ virtio_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
    /* If buffer is shared, but we are using explicit sync, no
     * need to fallback to implicit sync in host:
     */
-   if (pipe && to_virtio_pipe(pipe)->no_implicit_sync)
+   if (pipe && pipe->no_implicit_sync)
       goto out;
 
    struct msm_ccmd_gem_cpu_prep_req req = {
