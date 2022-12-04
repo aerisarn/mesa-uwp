@@ -3751,8 +3751,8 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
    struct radeon_cmdbuf *ctx_cs = &pipeline->base.ctx_cs;
    struct radeon_cmdbuf *cs = &pipeline->base.cs;
 
-   cs->max_dw = 64;
-   ctx_cs->max_dw = 256;
+   cs->reserved_dw = cs->max_dw = 64;
+   ctx_cs->reserved_dw = ctx_cs->max_dw = 256;
    cs->buf = malloc(4 * (cs->max_dw + ctx_cs->max_dw));
    ctx_cs->buf = cs->buf + cs->max_dw;
 

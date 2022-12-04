@@ -114,6 +114,7 @@ struct radeon_cmdbuf {
     * store and reload them between buf writes. */
    uint64_t cdw;    /* Number of used dwords. */
    uint64_t max_dw; /* Maximum number of dwords. */
+   uint64_t reserved_dw; /* Number of dwords reserved through radeon_check_space() */
    uint32_t *buf;   /* The base pointer of the chunk. */
 };
 

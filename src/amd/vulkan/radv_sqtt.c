@@ -687,6 +687,8 @@ radv_begin_sqtt(struct radv_queue *queue)
    if (!cs)
       return false;
 
+   radeon_check_space(ws, cs, 256);
+
    switch (family) {
    case RADV_QUEUE_GENERAL:
       radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
@@ -755,6 +757,8 @@ radv_end_sqtt(struct radv_queue *queue)
    cs = ws->cs_create(ws, radv_queue_ring(queue), false);
    if (!cs)
       return false;
+
+   radeon_check_space(ws, cs, 256);
 
    switch (family) {
    case RADV_QUEUE_GENERAL:

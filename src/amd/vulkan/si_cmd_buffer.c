@@ -657,6 +657,8 @@ cik_create_gfx_config(struct radv_device *device)
    if (!cs)
       return;
 
+   radeon_check_space(device->ws, cs, 512);
+
    si_emit_graphics(device, cs);
 
    while (cs->cdw & 7) {

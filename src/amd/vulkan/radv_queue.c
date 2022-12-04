@@ -1064,6 +1064,7 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
          goto fail;
       }
 
+      radeon_check_space(ws, cs, 512);
       dest_cs[i] = cs;
 
       if (scratch_bo)
