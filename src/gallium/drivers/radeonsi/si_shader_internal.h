@@ -118,7 +118,6 @@ struct si_shader_context {
    struct ac_llvm_context ac;
    struct si_shader *shader;
    struct si_screen *screen;
-   struct pipe_stream_output_info so;
 
    gl_shader_stage stage;
 
@@ -259,12 +258,6 @@ void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 /* si_shader_llvm_vs.c */
 void si_llvm_clipvertex_to_clipdist(struct si_shader_context *ctx,
                                     struct ac_export_args clipdist[2], LLVMValueRef clipvertex[4]);
-void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef const *so_buffers,
-                                    LLVMValueRef const *so_write_offsets,
-                                    struct pipe_stream_output *stream_out,
-                                    struct si_shader_output_values *shader_out);
-void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_output_values *outputs,
-                            unsigned noutput, unsigned stream);
 void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                               struct si_shader_output_values *outputs, unsigned noutput);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
