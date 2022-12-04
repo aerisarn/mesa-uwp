@@ -781,7 +781,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    const struct si_shader_info *info = &sel->info;
 
    ctx->shader = shader;
-   ctx->stage = sel->stage;
+   ctx->stage = shader->is_gs_copy_shader ? MESA_SHADER_VERTEX : sel->stage;
 
    ctx->num_const_buffers = info->base.num_ubos;
    ctx->num_shader_buffers = info->base.num_ssbos;
@@ -810,6 +810,15 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          ctx->instance_divisor_constbuf =
             ac_build_load_to_sgpr(
                &ctx->ac, buf, LLVMConstInt(ctx->ac.i32, SI_VS_CONST_INSTANCE_DIVISORS, 0));
+      }
+
+      /* preload GSVS ring for GS copy shader */
+      if (shader->is_gs_copy_shader) {
+         ctx->gsvs_ring[0] =
+            ac_build_load_to_sgpr(
+               &ctx->ac,
+               ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings),
+               LLVMConstInt(ctx->ac.i32, SI_RING_GSVS, 0));
       }
       break;
 
@@ -1042,7 +1051,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    if (!ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args->ac, nir))
       return false;
 
-   switch (sel->stage) {
+   switch (ctx->stage) {
    case MESA_SHADER_VERTEX:
       if (shader->key.ge.as_ls)
          si_llvm_ls_build_end(ctx);

@@ -71,7 +71,7 @@ bool si_is_multi_part_shader(struct si_shader *shader)
 /** Whether the shader runs on a merged HW stage (LSHS or ESGS) */
 bool si_is_merged_shader(struct si_shader *shader)
 {
-   if (shader->selector->stage > MESA_SHADER_GEOMETRY)
+   if (shader->selector->stage > MESA_SHADER_GEOMETRY || shader->is_gs_copy_shader)
       return false;
 
    return shader->key.ge.as_ngg || si_is_multi_part_shader(shader);
@@ -2173,11 +2173,9 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* The GS copy shader is compiled next. */
    if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
-      struct pipe_stream_output_info so = {};
-      if (si_shader_uses_streamout(shader))
-         nir_gather_stream_output_info(nir, &so);
-
-      shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, &so, debug);
+      shader->gs_copy_shader =
+         si_nir_generate_gs_copy_shader(sscreen, compiler, shader, nir, debug,
+                                        &legacy_gs_output_info.info);
       if (!shader->gs_copy_shader) {
          fprintf(stderr, "radeonsi: can't create GS copy shader\n");
          ret = false;
