@@ -138,9 +138,6 @@ static const char *attr_to_str(enum lp_func_attr attr)
    case LP_FUNC_ATTR_INREG: return "inreg";
    case LP_FUNC_ATTR_NOALIAS: return "noalias";
    case LP_FUNC_ATTR_NOUNWIND: return "nounwind";
-   case LP_FUNC_ATTR_READNONE: return "readnone";
-   case LP_FUNC_ATTR_READONLY: return "readonly";
-   case LP_FUNC_ATTR_WRITEONLY: return "writeonly";
    case LP_FUNC_ATTR_CONVERGENT: return "convergent";
    case LP_FUNC_ATTR_PRESPLITCORO: return "presplitcoroutine";
    default:

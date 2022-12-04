@@ -53,11 +53,8 @@ enum lp_func_attr {
    LP_FUNC_ATTR_INREG        = (1 << 2),
    LP_FUNC_ATTR_NOALIAS      = (1 << 3),
    LP_FUNC_ATTR_NOUNWIND     = (1 << 4),
-   LP_FUNC_ATTR_READNONE     = (1 << 5),
-   LP_FUNC_ATTR_READONLY     = (1 << 6),
-   LP_FUNC_ATTR_WRITEONLY    = (1 << 7),
-   LP_FUNC_ATTR_CONVERGENT   = (1 << 8),
-   LP_FUNC_ATTR_PRESPLITCORO = (1 << 9),
+   LP_FUNC_ATTR_CONVERGENT   = (1 << 5),
+   LP_FUNC_ATTR_PRESPLITCORO = (1 << 6),
 };
 
 void
