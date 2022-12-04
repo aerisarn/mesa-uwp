@@ -192,49 +192,60 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       return false;
 
    unsigned mask = nir_ssa_def_components_read(def);
-   unsigned last_bit = util_last_bit(mask);
-   unsigned num_components = util_bitcount(mask);
-
-   unsigned rounded = round_up_components(num_components);
-   assert(rounded <= def->num_components);
-   num_components = rounded;
-
    /* return, if there is nothing to do */
-   if (mask == 0 || num_components == def->num_components)
+   if (mask == 0)
       return false;
 
-   const bool is_bitfield_mask = last_bit == num_components;
-   if (is_bitfield_mask) {
-      /* just reduce the number of components and return */
-      def->num_components = num_components;
-      instr->dest.write_mask = mask;
-      return true;
-   }
-
    uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
-   unsigned index = 0;
-   for (unsigned i = 0; i < last_bit; i++) {
+   unsigned num_components = 0;
+   bool progress = false;
+   for (unsigned i = 0; i < def->num_components; i++) {
       /* skip unused components */
       if (!((mask >> i) & 0x1))
          continue;
 
-      /* reswizzle the sources */
-      for (int k = 0; k < nir_op_infos[instr->op].num_inputs; k++) {
-         instr->src[k].swizzle[index] = instr->src[k].swizzle[i];
-         reswizzle[i] = index;
+      /* Try reuse a component with the same swizzles */
+      unsigned j;
+      for (j = 0; j < num_components; j++) {
+         bool duplicate_channel = true;
+         for (unsigned k = 0; k < nir_op_infos[instr->op].num_inputs; k++) {
+            if (nir_op_infos[instr->op].input_sizes[k] != 0 ||
+                instr->src[k].swizzle[i] != instr->src[k].swizzle[j]) {
+               duplicate_channel = false;
+               break;
+            }
+         }
+
+         if (duplicate_channel) {
+            reswizzle[i] = j;
+            progress = true;
+            break;
+         }
       }
-      index++;
+
+      /* Otherwise, just append the value */
+      if (j == num_components) {
+         for (int k = 0; k < nir_op_infos[instr->op].num_inputs; k++) {
+            instr->src[k].swizzle[num_components] = instr->src[k].swizzle[i];
+         }
+         if (i != num_components)
+            progress = true;
+         reswizzle[i] = num_components++;
+      }
    }
-   assert(index == num_components);
+
+   unsigned rounded = round_up_components(num_components);
+   assert(rounded <= def->num_components);
 
    /* update dest */
-   def->num_components = num_components;
-   instr->dest.write_mask = BITFIELD_MASK(num_components);
+   def->num_components = rounded;
+   instr->dest.write_mask = BITFIELD_MASK(rounded);
 
    /* update uses */
-   reswizzle_alu_uses(def, reswizzle);
+   if (progress)
+      reswizzle_alu_uses(def, reswizzle);
 
-   return true;
+   return progress;
 }
 
 static bool
