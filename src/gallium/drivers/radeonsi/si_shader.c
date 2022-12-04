@@ -2042,11 +2042,70 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
    return shader;
 }
 
+struct si_gs_output_info {
+   uint8_t streams[64];
+   uint8_t streams_16bit_lo[16];
+   uint8_t streams_16bit_hi[16];
+
+   uint8_t usage_mask[64];
+   uint8_t usage_mask_16bit_lo[16];
+   uint8_t usage_mask_16bit_hi[16];
+
+   uint8_t slot_to_location[64];
+   uint8_t slot_to_location_16bit[16];
+
+   ac_nir_gs_output_info info;
+};
+
+static void
+si_init_gs_output_info(struct si_shader_info *info, struct si_gs_output_info *out_info)
+{
+   for (int i = 0; i < info->num_outputs; i++) {
+      unsigned slot = info->output_semantic[i];
+      if (slot < VARYING_SLOT_VAR0_16BIT) {
+         out_info->streams[slot] = info->output_streams[i];
+         out_info->usage_mask[slot] = info->output_usagemask[i];
+         out_info->slot_to_location[slot] = i;
+      } else {
+         unsigned index = slot - VARYING_SLOT_VAR0_16BIT;
+         /* TODO: 16bit need separated fields for lo/hi part. */
+         out_info->streams_16bit_lo[index] = info->output_streams[i];
+         out_info->streams_16bit_hi[index] = info->output_streams[i];
+         out_info->usage_mask_16bit_lo[index] = info->output_usagemask[i];
+         out_info->usage_mask_16bit_hi[index] = info->output_usagemask[i];
+         out_info->slot_to_location_16bit[index] = i;
+      }
+   }
+
+   ac_nir_gs_output_info *ac_info = &out_info->info;
+
+   ac_info->streams = out_info->streams;
+   ac_info->streams_16bit_lo = out_info->streams_16bit_lo;
+   ac_info->streams_16bit_hi = out_info->streams_16bit_hi;
+
+   ac_info->usage_mask = out_info->usage_mask;
+   ac_info->usage_mask_16bit_lo = out_info->usage_mask_16bit_lo;
+   ac_info->usage_mask_16bit_hi = out_info->usage_mask_16bit_hi;
+
+   /* TODO: construct 16bit slot per component store type. */
+   ac_info->types_16bit_lo = ac_info->types_16bit_hi = NULL;
+
+   ac_info->slot_to_location = out_info->slot_to_location;
+   ac_info->slot_to_location_16bit = out_info->slot_to_location_16bit;
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
    bool ret = true;
    struct si_shader_selector *sel = shader->selector;
+
+   /* We need this info only when legacy GS. */
+   struct si_gs_output_info legacy_gs_output_info;
+   if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+      memset(&legacy_gs_output_info, 0, sizeof(legacy_gs_output_info));
+      si_init_gs_output_info(&sel->info, &legacy_gs_output_info);
+   }
 
    struct si_shader_args args;
    si_init_shader_args(shader, &args);
