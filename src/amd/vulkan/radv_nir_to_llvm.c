@@ -175,8 +175,7 @@ create_function(struct radv_shader_context *ctx, gl_shader_stage stage, bool has
                            ctx->max_workgroup_size, ctx->options);
 
    ctx->ring_offsets = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.implicit.buffer.ptr",
-                                          LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST), NULL, 0,
-                                          AC_FUNC_ATTR_READNONE);
+                                          LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_CONST), NULL, 0, 0);
    ctx->ring_offsets = LLVMBuildBitCast(ctx->ac.builder, ctx->ring_offsets,
                                         ac_array_in_const_addr_space(ctx->ac.v4i32), "");
 
@@ -657,7 +656,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
             LLVMValueRef class_args[2] = {values[i],
                                           LLVMConstInt(ctx->ac.i32, S_NAN | Q_NAN, false)};
             LLVMValueRef isnan = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.class.f32", ctx->ac.i1,
-                                                    class_args, 2, AC_FUNC_ATTR_READNONE);
+                                                    class_args, 2, 0);
             values[i] = LLVMBuildSelect(ctx->ac.builder, isnan, ctx->ac.f32_0, values[i], "");
          }
       }
