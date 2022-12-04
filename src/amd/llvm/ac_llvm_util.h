@@ -42,12 +42,14 @@ struct ac_llvm_context;
 
 enum ac_func_attr
 {
+   /* Function and parameter attributes. */
    AC_FUNC_ATTR_ALWAYSINLINE = (1 << 0),
-   AC_FUNC_ATTR_INREG = (1 << 2),
-   AC_FUNC_ATTR_NOALIAS = (1 << 3),
-   AC_FUNC_ATTR_NOUNWIND = (1 << 4),
-   AC_FUNC_ATTR_READNONE = (1 << 5),
-   AC_FUNC_ATTR_CONVERGENT = (1 << 8),
+   AC_FUNC_ATTR_INREG = (1 << 1),
+   AC_FUNC_ATTR_NOALIAS = (1 << 2),
+
+   /* Call attributes. */
+   AC_FUNC_ATTR_READNONE = (1 << 3),
+   AC_FUNC_ATTR_CONVERGENT = (1 << 4),
 };
 
 enum ac_target_machine_options
@@ -87,9 +89,9 @@ void ac_reset_llvm_all_options_occurences();
 void ac_add_attr_dereferenceable(LLVMValueRef val, uint64_t bytes);
 void ac_add_attr_alignment(LLVMValueRef val, uint64_t bytes);
 bool ac_is_sgpr_param(LLVMValueRef param);
+LLVMAttributeRef ac_get_llvm_attribute(LLVMContextRef ctx, const char *str);
 void ac_add_function_attr(LLVMContextRef ctx, LLVMValueRef function, int attr_idx,
                           enum ac_func_attr attr);
-void ac_add_func_attributes(LLVMContextRef ctx, LLVMValueRef function, unsigned attrib_mask);
 void ac_dump_module(LLVMModuleRef module);
 LLVMModuleRef ac_create_module(LLVMTargetMachineRef tm, LLVMContextRef ctx);
 LLVMBuilderRef ac_create_builder(LLVMContextRef ctx, enum ac_float_mode float_mode);

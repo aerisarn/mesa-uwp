@@ -3081,7 +3081,7 @@ static LLVMValueRef visit_first_invocation(struct ac_nir_context *ctx)
    /* The second argument is whether cttz(0) should be defined, but we do not care. */
    LLVMValueRef args[] = {active_set, ctx->ac.i1false};
    LLVMValueRef result = ac_build_intrinsic(&ctx->ac, intr, ctx->ac.iN_wavemask, args, 2,
-                                            AC_FUNC_ATTR_NOUNWIND | AC_FUNC_ATTR_READNONE);
+                                            AC_FUNC_ATTR_READNONE);
 
    return LLVMBuildTrunc(ctx->ac.builder, result, ctx->ac.i32, "");
 }

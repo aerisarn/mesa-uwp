@@ -257,39 +257,22 @@ static const char *attr_to_str(enum ac_func_attr attr)
       return "inreg";
    case AC_FUNC_ATTR_NOALIAS:
       return "noalias";
-   case AC_FUNC_ATTR_NOUNWIND:
-      return "nounwind";
-   case AC_FUNC_ATTR_READNONE:
-      return "readnone";
-   case AC_FUNC_ATTR_CONVERGENT:
-      return "convergent";
    default:
       fprintf(stderr, "Unhandled function attribute: %x\n", attr);
       return 0;
    }
 }
 
+LLVMAttributeRef ac_get_llvm_attribute(LLVMContextRef ctx, const char *str)
+{
+   return LLVMCreateEnumAttribute(ctx, LLVMGetEnumAttributeKindForName(str, strlen(str)), 0);
+}
+
 void ac_add_function_attr(LLVMContextRef ctx, LLVMValueRef function, int attr_idx,
                           enum ac_func_attr attr)
 {
-   const char *attr_name = attr_to_str(attr);
-   unsigned kind_id = LLVMGetEnumAttributeKindForName(attr_name, strlen(attr_name));
-   LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(ctx, kind_id, 0);
-
-   if (LLVMIsAFunction(function))
-      LLVMAddAttributeAtIndex(function, attr_idx, llvm_attr);
-   else
-      LLVMAddCallSiteAttribute(function, attr_idx, llvm_attr);
-}
-
-void ac_add_func_attributes(LLVMContextRef ctx, LLVMValueRef function, unsigned attrib_mask)
-{
-   attrib_mask |= AC_FUNC_ATTR_NOUNWIND;
-
-   while (attrib_mask) {
-      enum ac_func_attr attr = 1u << u_bit_scan(&attrib_mask);
-      ac_add_function_attr(ctx, function, -1, attr);
-   }
+   assert(LLVMIsAFunction(function));
+   LLVMAddAttributeAtIndex(function, attr_idx, ac_get_llvm_attribute(ctx, attr_to_str(attr)));
 }
 
 void ac_dump_module(LLVMModuleRef module)

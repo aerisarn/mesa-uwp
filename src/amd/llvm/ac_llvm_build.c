@@ -308,7 +308,14 @@ LLVMValueRef ac_build_intrinsic(struct ac_llvm_context *ctx, const char *name,
    }
 
    call = LLVMBuildCall2(ctx->builder, function_type, function, params, param_count, "");
-   ac_add_func_attributes(ctx->context, call, attrib_mask);
+
+   if (attrib_mask & AC_FUNC_ATTR_READNONE)
+      LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "readnone"));
+
+   if (attrib_mask & AC_FUNC_ATTR_CONVERGENT)
+      LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "convergent"));
+
+   LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "nounwind"));
    return call;
 }
 
@@ -505,7 +512,7 @@ LLVMValueRef ac_build_ballot(struct ac_llvm_context *ctx, LLVMValueRef value)
 
    return ac_build_intrinsic(
       ctx, name, ctx->iN_wavemask, args, 3,
-      AC_FUNC_ATTR_NOUNWIND | AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+      AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
 }
 
 LLVMValueRef ac_get_i1_sgpr_mask(struct ac_llvm_context *ctx, LLVMValueRef value)
@@ -525,7 +532,7 @@ LLVMValueRef ac_get_i1_sgpr_mask(struct ac_llvm_context *ctx, LLVMValueRef value
 
    return ac_build_intrinsic(
       ctx, name, ctx->iN_wavemask, args, 3,
-      AC_FUNC_ATTR_NOUNWIND | AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+      AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
 }
 
 LLVMValueRef ac_build_vote_all(struct ac_llvm_context *ctx, LLVMValueRef value)
