@@ -289,7 +289,6 @@ void ac_add_function_attr(LLVMContextRef ctx, LLVMValueRef function, int attr_id
 void ac_add_func_attributes(LLVMContextRef ctx, LLVMValueRef function, unsigned attrib_mask)
 {
    attrib_mask |= AC_FUNC_ATTR_NOUNWIND;
-   attrib_mask &= ~AC_FUNC_ATTR_LEGACY;
 
    while (attrib_mask) {
       enum ac_func_attr attr = 1u << u_bit_scan(&attrib_mask);

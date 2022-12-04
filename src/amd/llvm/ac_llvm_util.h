@@ -50,12 +50,6 @@ enum ac_func_attr
    AC_FUNC_ATTR_READONLY = (1 << 6),
    AC_FUNC_ATTR_WRITEONLY = (1 << 7),
    AC_FUNC_ATTR_CONVERGENT = (1 << 8),
-
-   /* Legacy intrinsic that needs attributes on function declarations
-    * and they must match the internal LLVM definition exactly, otherwise
-    * intrinsic selection fails.
-    */
-   AC_FUNC_ATTR_LEGACY = (1u << 31),
 };
 
 enum ac_target_machine_options

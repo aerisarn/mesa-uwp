@@ -289,7 +289,6 @@ LLVMValueRef ac_build_intrinsic(struct ac_llvm_context *ctx, const char *name,
                                 unsigned attrib_mask)
 {
    LLVMValueRef call;
-   bool set_callsite_attrs = !(attrib_mask & AC_FUNC_ATTR_LEGACY);
 
    LLVMTypeRef param_types[32];
    assert(param_count <= 32);
@@ -306,14 +305,10 @@ LLVMValueRef ac_build_intrinsic(struct ac_llvm_context *ctx, const char *name,
 
       LLVMSetFunctionCallConv(function, LLVMCCallConv);
       LLVMSetLinkage(function, LLVMExternalLinkage);
-
-      if (!set_callsite_attrs)
-         ac_add_func_attributes(ctx->context, function, attrib_mask);
    }
 
    call = LLVMBuildCall2(ctx->builder, function_type, function, params, param_count, "");
-   if (set_callsite_attrs)
-      ac_add_func_attributes(ctx->context, call, attrib_mask);
+   ac_add_func_attributes(ctx->context, call, attrib_mask);
    return call;
 }
 
