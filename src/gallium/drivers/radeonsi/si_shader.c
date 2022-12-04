@@ -28,7 +28,6 @@
 #include "nir_builder.h"
 #include "nir_serialize.h"
 #include "nir_xfb_info.h"
-#include "nir/nir_helpers.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
