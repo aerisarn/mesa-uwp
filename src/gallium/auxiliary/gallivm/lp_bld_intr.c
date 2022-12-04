@@ -181,7 +181,6 @@ lp_add_func_attributes(LLVMValueRef function, unsigned attrib_mask)
     * Set it for all intrinsics.
     */
    attrib_mask |= LP_FUNC_ATTR_NOUNWIND;
-   attrib_mask &= ~LP_FUNC_ATTR_LEGACY;
 
    while (attrib_mask) {
       enum lp_func_attr attr = 1u << u_bit_scan(&attrib_mask);
@@ -199,7 +198,6 @@ lp_build_intrinsic(LLVMBuilderRef builder,
 {
    LLVMModuleRef module = LLVMGetGlobalParent(LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder)));
    LLVMValueRef function, call;
-   bool set_callsite_attrs = !(attr_mask & LP_FUNC_ATTR_LEGACY);
 
    LLVMTypeRef arg_types[LP_MAX_FUNC_ARGS];
 
@@ -228,17 +226,13 @@ lp_build_intrinsic(LLVMBuilderRef builder,
          abort();
       }
 
-      if (!set_callsite_attrs)
-         lp_add_func_attributes(function, attr_mask);
-
       if (gallivm_debug & GALLIVM_DEBUG_IR) {
          lp_debug_dump_value(function);
       }
    }
 
    call = LLVMBuildCall2(builder, function_type, function, args, num_args, "");
-   if (set_callsite_attrs)
-      lp_add_func_attributes(call, attr_mask);
+   lp_add_func_attributes(call, attr_mask);
    return call;
 }
 

@@ -58,12 +58,6 @@ enum lp_func_attr {
    LP_FUNC_ATTR_WRITEONLY    = (1 << 7),
    LP_FUNC_ATTR_CONVERGENT   = (1 << 8),
    LP_FUNC_ATTR_PRESPLITCORO = (1 << 9),
-
-   /* Legacy intrinsic that needs attributes on function declarations
-    * and they must match the internal LLVM definition exactly, otherwise
-    * intrinsic selection fails.
-    */
-   LP_FUNC_ATTR_LEGACY       = (1u << 31),
 };
 
 void
