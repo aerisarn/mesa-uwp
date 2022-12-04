@@ -1957,6 +1957,91 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
 }
 
+/* Generate code for the hardware VS shader stage to go with a geometry shader */
+static struct si_shader *
+si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
+                               struct ac_llvm_compiler *compiler,
+                               struct si_shader *gs_shader,
+                               nir_shader *gs_nir,
+                               struct util_debug_callback *debug,
+                               ac_nir_gs_output_info *output_info)
+{
+   struct si_shader *shader;
+   struct si_shader_selector *gs_selector = gs_shader->selector;
+   struct si_shader_info *gsinfo = &gs_selector->info;
+   union si_shader_key *gskey = &gs_shader->key;
+
+   shader = CALLOC_STRUCT(si_shader);
+   if (!shader)
+      return NULL;
+
+   /* We can leave the fence as permanently signaled because the GS copy
+    * shader only becomes visible globally after it has been compiled. */
+   util_queue_fence_init(&shader->ready);
+
+   shader->selector = gs_selector;
+   shader->is_gs_copy_shader = true;
+   shader->wave_size = si_determine_wave_size(sscreen, shader);
+
+   STATIC_ASSERT(sizeof(shader->info.vs_output_param_offset[0]) == 1);
+   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
+          sizeof(shader->info.vs_output_param_offset));
+
+   for (unsigned i = 0; i < gsinfo->num_outputs; i++) {
+      unsigned semantic = gsinfo->output_semantic[i];
+
+      /* Skip if no channel writes to stream 0. */
+      if (!nir_slot_is_varying(semantic) ||
+          (gsinfo->output_streams[i] & 0x03 &&
+           gsinfo->output_streams[i] & 0x0c &&
+           gsinfo->output_streams[i] & 0x30 &&
+           gsinfo->output_streams[i] & 0xc0))
+         continue;
+
+      shader->info.vs_output_param_offset[semantic] = shader->info.nr_param_exports++;
+      shader->info.vs_output_param_mask |= BITFIELD64_BIT(i);
+   }
+
+   nir_shader *nir =
+      ac_nir_create_gs_copy_shader(gs_nir,
+                                   gskey->ge.opt.remove_streamout,
+                                   output_info);
+
+   /* used in si_nir_clamp_vertex_color */
+   nir->info.outputs_written = gsinfo->base.outputs_written;
+   nir->info.outputs_written_16bit = gsinfo->base.outputs_written_16bit;
+   NIR_PASS_V(nir, si_nir_clamp_vertex_color);
+
+   struct si_shader_args args;
+   si_init_shader_args(shader, &args);
+
+   NIR_PASS_V(nir, si_nir_lower_abi, shader, &args);
+
+   si_nir_opts(gs_selector->screen, nir, false);
+
+   if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY)) {
+      fprintf(stderr, "GS Copy Shader:\n");
+      if (!(sscreen->debug_flags & DBG(NO_NIR)))
+         nir_print_shader(nir, stderr);
+   }
+
+   bool ok = false;
+   if (si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir)) {
+      assert(!shader->config.scratch_bytes_per_wave);
+      ok = si_shader_binary_upload(sscreen, shader, 0);
+      si_shader_dump(sscreen, shader, debug, stderr, true);
+   }
+   ralloc_free(nir);
+
+   if (!ok) {
+      FREE(shader);
+      shader = NULL;
+   } else {
+      si_fix_resource_usage(sscreen, shader);
+   }
+   return shader;
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
