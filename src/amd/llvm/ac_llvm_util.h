@@ -96,11 +96,6 @@ void ac_llvm_add_target_dep_function_attr(LLVMValueRef F, const char *name, unsi
 void ac_llvm_set_workgroup_size(LLVMValueRef F, unsigned size);
 void ac_llvm_set_target_features(LLVMValueRef F, struct ac_llvm_context *ctx);
 
-static inline unsigned ac_get_load_intr_attribs(bool can_speculate)
-{
-   return can_speculate ? AC_ATTR_INVARIANT_LOAD : 0;
-}
-
 LLVMTargetLibraryInfoRef ac_create_target_library_info(const char *triple);
 void ac_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info);
 PUBLIC void ac_init_shared_llvm_once(void); /* Do not use directly, use ac_init_llvm_once */
