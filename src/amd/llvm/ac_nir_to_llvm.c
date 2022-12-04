@@ -4073,7 +4073,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
 
          result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.readlane", ctx->ac.i32,
                                      (LLVMValueRef[]){src, index_val}, 2,
-                                     AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+                                     AC_FUNC_ATTR_READNONE);
 
          result = LLVMBuildTrunc(ctx->ac.builder, result, type, "");
 
@@ -4355,7 +4355,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                                    get_src(ctx, instr->src[2]),
                                                    ctx->ac.i1false,
                                                    ctx->ac.i1false},
-                                  6, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+                                  6, AC_FUNC_ATTR_READNONE);
       break;
    case nir_intrinsic_load_force_vrs_rates_amd:
       result = ac_get_arg(&ctx->ac, ctx->args->force_vrs_rates);

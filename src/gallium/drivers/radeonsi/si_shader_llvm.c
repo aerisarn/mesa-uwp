@@ -346,8 +346,7 @@ static void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg
       ac_get_arg(&ctx->ac, param),
       LLVMConstInt(ctx->ac.i32, bitoffset, 0),
    };
-   ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.init.exec.from.input", ctx->ac.voidt, args, 2,
-                      AC_FUNC_ATTR_CONVERGENT);
+   ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.init.exec.from.input", ctx->ac.voidt, args, 2, 0);
 }
 
 /**
