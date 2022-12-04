@@ -49,8 +49,7 @@ enum ac_func_attr
    AC_FUNC_ATTR_READNONE = (1 << 5),
    AC_FUNC_ATTR_READONLY = (1 << 6),
    AC_FUNC_ATTR_WRITEONLY = (1 << 7),
-   AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY = (1 << 8),
-   AC_FUNC_ATTR_CONVERGENT = (1 << 9),
+   AC_FUNC_ATTR_CONVERGENT = (1 << 8),
 
    /* Legacy intrinsic that needs attributes on function declarations
     * and they must match the internal LLVM definition exactly, otherwise

@@ -1250,7 +1250,7 @@ static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueR
       snprintf(name, sizeof(name), "llvm.amdgcn.%s.buffer.store.%s", indexing_kind, type_name);
    }
 
-   ac_build_intrinsic(ctx, name, ctx->voidt, args, idx, AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY);
+   ac_build_intrinsic(ctx, name, ctx->voidt, args, idx, 0);
 }
 
 void ac_build_buffer_store_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef data,
@@ -4349,7 +4349,7 @@ LLVMValueRef ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
 
    if (LLVM_VERSION_MAJOR >= 13) {
       result = ac_build_intrinsic(ctx, "llvm.amdgcn.live.mask", ctx->i1, NULL, 0,
-                                  AC_FUNC_ATTR_READONLY | AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY);
+                                  AC_FUNC_ATTR_READONLY);
    } else {
       result = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live", ctx->i1, NULL, 0,
                                   AC_FUNC_ATTR_READNONE);
