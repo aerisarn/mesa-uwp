@@ -261,10 +261,6 @@ static const char *attr_to_str(enum ac_func_attr attr)
       return "nounwind";
    case AC_FUNC_ATTR_READNONE:
       return "readnone";
-   case AC_FUNC_ATTR_READONLY:
-      return "readonly";
-   case AC_FUNC_ATTR_WRITEONLY:
-      return "writeonly";
    case AC_FUNC_ATTR_CONVERGENT:
       return "convergent";
    default:

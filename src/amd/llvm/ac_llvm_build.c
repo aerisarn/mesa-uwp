@@ -4343,8 +4343,7 @@ LLVMValueRef ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
    LLVMValueRef result;
 
    if (LLVM_VERSION_MAJOR >= 13) {
-      result = ac_build_intrinsic(ctx, "llvm.amdgcn.live.mask", ctx->i1, NULL, 0,
-                                  AC_FUNC_ATTR_READONLY);
+      result = ac_build_intrinsic(ctx, "llvm.amdgcn.live.mask", ctx->i1, NULL, 0, 0);
    } else {
       result = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live", ctx->i1, NULL, 0,
                                   AC_FUNC_ATTR_READNONE);

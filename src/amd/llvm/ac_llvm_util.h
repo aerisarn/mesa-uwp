@@ -47,8 +47,6 @@ enum ac_func_attr
    AC_FUNC_ATTR_NOALIAS = (1 << 3),
    AC_FUNC_ATTR_NOUNWIND = (1 << 4),
    AC_FUNC_ATTR_READNONE = (1 << 5),
-   AC_FUNC_ATTR_READONLY = (1 << 6),
-   AC_FUNC_ATTR_WRITEONLY = (1 << 7),
    AC_FUNC_ATTR_CONVERGENT = (1 << 8),
 };
 
@@ -104,9 +102,7 @@ void ac_llvm_set_target_features(LLVMValueRef F, struct ac_llvm_context *ctx);
 
 static inline unsigned ac_get_load_intr_attribs(bool can_speculate)
 {
-   /* READNONE means writes can't affect it, while READONLY means that
-    * writes can affect it. */
-   return can_speculate ? AC_FUNC_ATTR_READNONE : AC_FUNC_ATTR_READONLY;
+   return can_speculate ? AC_FUNC_ATTR_READNONE : 0;
 }
 
 LLVMTargetLibraryInfoRef ac_create_target_library_info(const char *triple);

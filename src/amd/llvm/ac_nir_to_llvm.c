@@ -2667,7 +2667,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       if (!level_zero)
          args.lod = get_src(ctx, instr->src[3]);
       args.dmask = 15;
-      args.attributes = AC_FUNC_ATTR_READONLY;
+      args.attributes = 0;
 
       assert(instr->dest.is_ssa);
       args.d16 = instr->dest.ssa.bit_size == 16;
