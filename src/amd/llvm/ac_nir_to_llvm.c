@@ -1497,7 +1497,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, struct ac
       resinfo.dmask = 0xf;
       resinfo.lod = ctx->i32_0;
       resinfo.resource = args->resource;
-      resinfo.attributes = AC_FUNC_ATTR_READNONE;
+      resinfo.attributes = AC_ATTR_INVARIANT_LOAD;
       LLVMValueRef size = ac_build_image_opcode(ctx, &resinfo);
 
       /* Compute -0.5 / size. */
@@ -1526,7 +1526,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, struct ac
       args->coords[c] = LLVMBuildFAdd(ctx->builder, tmp, half_texel[c], "");
    }
 
-   args->attributes = AC_FUNC_ATTR_READNONE;
+   args->attributes = AC_ATTR_INVARIANT_LOAD;
    result = ac_build_image_opcode(ctx, args);
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
@@ -1627,7 +1627,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       }
    }
 
-   args->attributes = AC_FUNC_ATTR_READNONE;
+   args->attributes = AC_ATTR_INVARIANT_LOAD;
    bool cs_derivs =
       ctx->stage == MESA_SHADER_COMPUTE && ctx->info->cs.derivative_group != DERIVATIVE_GROUP_NONE;
    if (ctx->stage == MESA_SHADER_FRAGMENT || cs_derivs) {
@@ -1637,7 +1637,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       case nir_texop_tex:
       case nir_texop_txb:
       case nir_texop_lod:
-         args->attributes |= AC_FUNC_ATTR_CONVERGENT;
+         args->attributes |= AC_ATTR_CONVERGENT;
          break;
       default:
          break;
@@ -2648,7 +2648,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       get_image_coords(ctx, instr, dynamic_index, &args, GLSL_SAMPLER_DIM_2D, is_array);
       args.dmask = 0xf;
       args.dim = is_array ? ac_image_2darray : ac_image_2d;
-      args.attributes = AC_FUNC_ATTR_READNONE;
+      args.attributes = AC_ATTR_INVARIANT_LOAD;
       args.a16 = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.coords[0])) == 16;
 
       res = ac_build_image_opcode(&ctx->ac, &args);

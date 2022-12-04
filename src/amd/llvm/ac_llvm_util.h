@@ -40,11 +40,10 @@ extern "C" {
 struct ac_compiler_passes;
 struct ac_llvm_context;
 
-enum ac_func_attr
-{
-   /* Call attributes. */
-   AC_FUNC_ATTR_READNONE = (1 << 3),
-   AC_FUNC_ATTR_CONVERGENT = (1 << 4),
+/* Attributes at call sites of intrinsics. */
+enum ac_call_site_attr {
+   AC_ATTR_INVARIANT_LOAD = 1 << 0,
+   AC_ATTR_CONVERGENT = 1 << 1,
 };
 
 enum ac_target_machine_options
@@ -99,7 +98,7 @@ void ac_llvm_set_target_features(LLVMValueRef F, struct ac_llvm_context *ctx);
 
 static inline unsigned ac_get_load_intr_attribs(bool can_speculate)
 {
-   return can_speculate ? AC_FUNC_ATTR_READNONE : 0;
+   return can_speculate ? AC_ATTR_INVARIANT_LOAD : 0;
 }
 
 LLVMTargetLibraryInfoRef ac_create_target_library_info(const char *triple);

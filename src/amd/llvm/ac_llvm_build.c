@@ -309,14 +309,14 @@ LLVMValueRef ac_build_intrinsic(struct ac_llvm_context *ctx, const char *name,
 
    call = LLVMBuildCall2(ctx->builder, function_type, function, params, param_count, "");
 
-   if (attrib_mask & AC_FUNC_ATTR_READNONE) {
+   if (attrib_mask & AC_ATTR_INVARIANT_LOAD) {
       if (LLVM_VERSION_MAJOR >= 15)
          LLVMSetMetadata(call, ctx->invariant_load_md_kind, ctx->empty_md);
       else
          LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "readnone"));
    }
 
-   if (attrib_mask & AC_FUNC_ATTR_CONVERGENT)
+   if (attrib_mask & AC_ATTR_CONVERGENT)
       LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "convergent"));
 
    LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "nounwind"));
@@ -1350,7 +1350,7 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
             LLVMConstInt(ctx->i32, get_load_cache_policy(ctx, cache_policy), 0),
          };
          result[i] = ac_build_intrinsic(ctx, "llvm.amdgcn.s.buffer.load.f32", ctx->f32, args, 3,
-                                        AC_FUNC_ATTR_READNONE);
+                                        AC_ATTR_INVARIANT_LOAD);
       }
       if (num_channels == 1)
          return result[0];
@@ -3150,7 +3150,7 @@ void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask, LL
    fmask_load.resource = fmask;
    fmask_load.dmask = 0xf;
    fmask_load.dim = is_array_tex ? ac_image_2darray : ac_image_2d;
-   fmask_load.attributes = AC_FUNC_ATTR_READNONE;
+   fmask_load.attributes = AC_ATTR_INVARIANT_LOAD;
 
    fmask_load.coords[0] = addr[0];
    fmask_load.coords[1] = addr[1];

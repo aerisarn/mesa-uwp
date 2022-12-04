@@ -99,7 +99,7 @@ static LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
    args.opcode = ac_image_load;
    args.resource = image;
    args.dmask = 0xf;
-   args.attributes = AC_FUNC_ATTR_READNONE;
+   args.attributes = AC_ATTR_INVARIANT_LOAD;
 
    if (ctx->shader->key.ps.mono.fbfetch_msaa)
       args.dim =
