@@ -706,7 +706,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
          (T & BITFIELD_MASK(6)) |
          (Tt << 2) |
          (unk2 << 9) |
-         ((R >> 6) << 28);
+         ((R >> 6) << 24);
 
       uint32_t word2 =
          (F >> 1) |
