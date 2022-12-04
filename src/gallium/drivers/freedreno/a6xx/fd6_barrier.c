@@ -114,9 +114,18 @@ static void
 add_flushes(struct pipe_context *pctx, unsigned flushes)
    assert_dt
 {
+   struct fd_context *ctx = fd_context(pctx);
    struct fd_batch *batch = NULL;
 
-   fd_batch_reference(&batch, fd_context(pctx)->batch);
+   /* If there is an active compute/nondraw batch, that is the one
+    * we want to add the flushes to.  Ie. last op was a launch_grid,
+    * if the next one is a launch_grid then the barriers should come
+    * between them.  If the next op is a draw_vbo then the batch
+    * switch is a sufficient barrier so it doesn't really matter.
+    */
+   fd_batch_reference(&batch, ctx->batch_nondraw);
+   if (!batch)
+      fd_batch_reference(&batch, ctx->batch);
 
    /* A batch flush is already a sufficient barrier: */
    if (!batch)

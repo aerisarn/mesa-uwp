@@ -235,6 +235,8 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    OUT_WFI5(ring);
 
    fd6_cache_flush(ctx->batch, ring);
+
+   fd_context_all_clean(ctx);
 }
 
 void
