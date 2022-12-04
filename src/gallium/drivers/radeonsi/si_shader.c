@@ -210,16 +210,16 @@ static void declare_streamout_params(struct si_shader_args *args, struct si_shad
    if (si_shader_uses_streamout(shader)) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_config);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_write_index);
+
+      /* A streamout buffer offset is loaded if the stride is non-zero. */
+      for (int i = 0; i < 4; i++) {
+         if (!sel->info.base.xfb_stride[i])
+            continue;
+
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_offset[i]);
+      }
    } else if (sel->stage == MESA_SHADER_TESS_EVAL) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
-   }
-
-   /* A streamout buffer offset is loaded if the stride is non-zero. */
-   for (int i = 0; i < 4; i++) {
-      if (!sel->info.base.xfb_stride[i])
-         continue;
-
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.streamout_offset[i]);
    }
 }
 
