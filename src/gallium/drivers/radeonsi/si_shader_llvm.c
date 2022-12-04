@@ -446,7 +446,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
    memset(ctx->args, 0, sizeof(*ctx->args));
 
    for (unsigned i = 0; i < num_parts; ++i) {
-      ac_add_function_attr(ctx->ac.context, parts[i].value, -1, AC_FUNC_ATTR_ALWAYSINLINE);
+      ac_add_function_attr(ctx->ac.context, parts[i].value, -1, "alwaysinline");
       LLVMSetLinkage(parts[i].value, LLVMPrivateLinkage);
    }
 
@@ -601,7 +601,7 @@ void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_poi
          is_sgpr = ac_is_sgpr_param(param);
 
          if (is_sgpr) {
-            ac_add_function_attr(ctx->ac.context, parts[part].value, param_idx + 1, AC_FUNC_ATTR_INREG);
+            ac_add_function_attr(ctx->ac.context, parts[part].value, param_idx + 1, "inreg");
          } else if (out_idx < num_out_sgpr) {
             /* Skip returned SGPRs the current part doesn't
              * declare on the input. */

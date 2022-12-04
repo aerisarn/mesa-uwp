@@ -248,31 +248,16 @@ static LLVMPassManagerRef ac_create_passmgr(LLVMTargetLibraryInfoRef target_libr
    return passmgr;
 }
 
-static const char *attr_to_str(enum ac_func_attr attr)
-{
-   switch (attr) {
-   case AC_FUNC_ATTR_ALWAYSINLINE:
-      return "alwaysinline";
-   case AC_FUNC_ATTR_INREG:
-      return "inreg";
-   case AC_FUNC_ATTR_NOALIAS:
-      return "noalias";
-   default:
-      fprintf(stderr, "Unhandled function attribute: %x\n", attr);
-      return 0;
-   }
-}
-
 LLVMAttributeRef ac_get_llvm_attribute(LLVMContextRef ctx, const char *str)
 {
    return LLVMCreateEnumAttribute(ctx, LLVMGetEnumAttributeKindForName(str, strlen(str)), 0);
 }
 
 void ac_add_function_attr(LLVMContextRef ctx, LLVMValueRef function, int attr_idx,
-                          enum ac_func_attr attr)
+                          const char *attr)
 {
    assert(LLVMIsAFunction(function));
-   LLVMAddAttributeAtIndex(function, attr_idx, ac_get_llvm_attribute(ctx, attr_to_str(attr)));
+   LLVMAddAttributeAtIndex(function, attr_idx, ac_get_llvm_attribute(ctx, attr));
 }
 
 void ac_dump_module(LLVMModuleRef module)
