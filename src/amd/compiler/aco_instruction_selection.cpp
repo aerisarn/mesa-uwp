@@ -11504,6 +11504,9 @@ create_fs_exports(isel_context* ctx)
          out.slot = compacted_mrt_index;
          out.write_mask = ctx->outputs.mask[i];
          out.col_format = (ctx->options->key.ps.col_format >> (4 * idx)) & 0xf;
+         out.is_int8 = (ctx->options->key.ps.is_int8 >> idx) & 1;
+         out.is_int10 = (ctx->options->key.ps.is_int10 >> idx) & 1;
+         out.enable_mrt_output_nan_fixup = (ctx->options->key.ps.enable_mrt_output_nan_fixup >> idx) & 1;
 
          for (unsigned c = 0; c < 4; ++c) {
             if (out.write_mask & (1 << c)) {
