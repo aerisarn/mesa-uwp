@@ -112,6 +112,7 @@ struct fd_fence {
 
 /* internal bo flags: */
 #define _FD_BO_VIRTIO_SHM         BITSET_BIT(6)
+#define _FD_BO_NOSYNC             BITSET_BIT(7) /* Avoid userspace fencing on control buffers */
 
 /*
  * bo access flags: (keep aligned to MSM_PREP_x)
@@ -200,18 +201,6 @@ struct fd_bo {
       BO_CACHE = 1,
       RING_CACHE = 2,
    } bo_reuse : 2;
-
-   /* Buffers that are shared (imported or exported) may be used in
-    * other processes, so we need to fallback to kernel to determine
-    * busyness.
-    */
-   bool shared : 1;
-
-   /* We need to be able to disable userspace fence synchronization for
-    * special internal buffers, namely the pipe->control buffer, to avoid
-    * a circular reference loop.
-    */
-   bool nosync : 1;
 
    /* Most recent index in submit's bo table, used to optimize the common
     * case where a bo is used many times in the same submit.

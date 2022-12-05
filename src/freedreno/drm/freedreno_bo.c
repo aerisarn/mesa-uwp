@@ -85,7 +85,7 @@ fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev)
 
 /* allocate a new buffer object, call w/ table_lock held */
 static struct fd_bo *
-bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
+import_bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
 {
    struct fd_bo *bo;
 
@@ -99,6 +99,8 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
       drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
       return NULL;
    }
+
+   bo->alloc_flags |= FD_BO_SHARED;
 
    /* add ourself into the handle table: */
    _mesa_hash_table_insert(dev->handle_table, &bo->handle, bo);
@@ -177,7 +179,7 @@ fd_bo_from_handle(struct fd_device *dev, uint32_t handle, uint32_t size)
    if (bo)
       goto out_unlock;
 
-   bo = bo_from_handle(dev, size, handle);
+   bo = import_bo_from_handle(dev, size, handle);
 
    VG_BO_ALLOC(bo);
 
@@ -209,7 +211,7 @@ fd_bo_from_dmabuf(struct fd_device *dev, int fd)
    size = lseek(fd, 0, SEEK_END);
    lseek(fd, 0, SEEK_CUR);
 
-   bo = bo_from_handle(dev, size, handle);
+   bo = import_bo_from_handle(dev, size, handle);
 
    VG_BO_ALLOC(bo);
 
@@ -243,7 +245,7 @@ fd_bo_from_name(struct fd_device *dev, uint32_t name)
    if (bo)
       goto out_unlock;
 
-   bo = bo_from_handle(dev, req.size, req.handle);
+   bo = import_bo_from_handle(dev, req.size, req.handle);
    if (bo) {
       set_name(bo, name);
       VG_BO_ALLOC(bo);
@@ -442,7 +444,7 @@ fd_bo_get_name(struct fd_bo *bo, uint32_t *name)
       set_name(bo, req.name);
       simple_mtx_unlock(&table_lock);
       bo->bo_reuse = NO_CACHE;
-      bo->shared = true;
+      bo->alloc_flags |= FD_BO_SHARED;
       bo_flush(bo);
    }
 
@@ -455,7 +457,7 @@ uint32_t
 fd_bo_handle(struct fd_bo *bo)
 {
    bo->bo_reuse = NO_CACHE;
-   bo->shared = true;
+   bo->alloc_flags |= FD_BO_SHARED;
    bo_flush(bo);
    return bo->handle;
 }
@@ -473,7 +475,7 @@ fd_bo_dmabuf(struct fd_bo *bo)
    }
 
    bo->bo_reuse = NO_CACHE;
-   bo->shared = true;
+   bo->alloc_flags |= FD_BO_SHARED;
    bo_flush(bo);
 
    return prime_fd;
@@ -620,7 +622,7 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
 {
    simple_mtx_assert_locked(&fence_lock);
 
-   if (bo->nosync)
+   if (bo->alloc_flags & _FD_BO_NOSYNC)
       return;
 
    /* The common case is bo re-used on the same pipe it had previously
@@ -662,7 +664,7 @@ fd_bo_state(struct fd_bo *bo)
     * The pipe's control buffer is specifically nosync to avoid recursive
     * lock problems here.
     */
-   if (bo->shared || bo->nosync)
+   if (bo->alloc_flags & (FD_BO_SHARED | _FD_BO_NOSYNC))
       return FD_BO_STATE_UNKNOWN;
 
    simple_mtx_lock(&fence_lock);

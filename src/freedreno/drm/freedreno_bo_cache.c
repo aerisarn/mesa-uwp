@@ -280,7 +280,7 @@ retry:
 int
 fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo)
 {
-   if (bo->nosync || bo->shared)
+   if (bo->alloc_flags & (FD_BO_SHARED | _FD_BO_NOSYNC))
       return -1;
 
    struct fd_bo_bucket *bucket = get_bucket(cache, bo->size);

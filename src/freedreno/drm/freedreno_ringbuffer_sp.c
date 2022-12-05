@@ -182,7 +182,7 @@ fd_submit_sp_flush_prep(struct fd_submit *submit, int in_fence_fd,
    simple_mtx_lock(&fence_lock);
    for (unsigned i = 0; i < fd_submit->nr_bos; i++) {
       fd_bo_add_fence(fd_submit->bos[i], submit->pipe, submit->fence);
-      has_shared |= fd_submit->bos[i]->shared;
+      has_shared |= fd_submit->bos[i]->alloc_flags & FD_BO_SHARED;
    }
    simple_mtx_unlock(&fence_lock);
 

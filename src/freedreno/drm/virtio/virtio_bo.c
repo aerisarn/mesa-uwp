@@ -107,7 +107,7 @@ virtio_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
    /* If buffer is not shared, then it is not shared with host,
     * so we don't need to worry about implicit sync in host:
     */
-   if (!bo->shared)
+   if (!(bo->alloc_flags & FD_BO_SHARED))
       goto out;
 
    /* If buffer is shared, but we are using explicit sync, no
