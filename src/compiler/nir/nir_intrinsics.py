@@ -1373,7 +1373,7 @@ system_value("gs_vertex_offset_amd", 1, [BASE])
 system_value("rasterization_samples_amd", 1)
 
 # Descriptor where GS outputs are stored for GS copy shader to read on GFX6-9
-system_value("ring_gsvs_amd", 4)
+system_value("ring_gsvs_amd", 4, indices=[STREAM_ID])
 # Write offset in gsvs ring for legacy GS shader
 system_value("ring_gs2vs_offset_amd", 1)
 
