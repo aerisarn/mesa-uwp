@@ -363,27 +363,6 @@ CreateContext(Display *dpy, int generic_id, struct glx_config *config,
       break;
    }
 
-   case X_GLXvop_CreateContextWithConfigSGIX: {
-      xGLXVendorPrivateWithReplyReq *vpreq;
-      xGLXCreateContextWithConfigSGIXReq *req;
-
-      /* Send the glXCreateNewContext request */
-      GetReqExtra(GLXVendorPrivateWithReply,
-		  sz_xGLXCreateContextWithConfigSGIXReq -
-		  sz_xGLXVendorPrivateWithReplyReq, vpreq);
-      req = (xGLXCreateContextWithConfigSGIXReq *) vpreq;
-      req->reqType = gc->majorOpcode;
-      req->glxCode = X_GLXVendorPrivateWithReply;
-      req->vendorCode = X_GLXvop_CreateContextWithConfigSGIX;
-      req->context = gc->xid = XAllocID(dpy);
-      req->fbconfig = generic_id;
-      req->screen = config->screen;
-      req->renderType = renderType;
-      req->shareList = shareList ? shareList->xid : None;
-      req->isDirect = gc->isDirect;
-      break;
-   }
-
    default:
       /* What to do here?  This case is the sign of an internal error.  It
        * should never be reachable.
@@ -1423,28 +1402,12 @@ glXImportContextEXT(Display *dpy, GLXContextID contextID)
    /* Send the glXQueryContextInfoEXT request */
    LockDisplay(dpy);
 
-   if (priv->minorVersion >= 3) {
-      xGLXQueryContextReq *req;
+   xGLXQueryContextReq *req;
+   GetReq(GLXQueryContext, req);
 
-      GetReq(GLXQueryContext, req);
-
-      req->reqType = opcode;
-      req->glxCode = X_GLXQueryContext;
-      req->context = contextID;
-   }
-   else {
-      xGLXVendorPrivateReq *vpreq;
-      xGLXQueryContextInfoEXTReq *req;
-
-      GetReqExtra(GLXVendorPrivate,
-		  sz_xGLXQueryContextInfoEXTReq - sz_xGLXVendorPrivateReq,
-		  vpreq);
-      req = (xGLXQueryContextInfoEXTReq *) vpreq;
-      req->reqType = opcode;
-      req->glxCode = X_GLXVendorPrivateWithReply;
-      req->vendorCode = X_GLXvop_QueryContextInfoEXT;
-      req->context = contextID;
-   }
+   req->reqType = opcode;
+   req->glxCode = X_GLXQueryContext;
+   req->context = contextID;
 
    if (_XReply(dpy, (xReply *) & reply, 0, False) &&
        reply.n < (INT32_MAX / 2)) {
@@ -1954,94 +1917,23 @@ glXCreateGLXPixmapWithConfigSGIX(Display * dpy,
                                  GLXFBConfigSGIX fbconfig,
                                  Pixmap pixmap)
 {
-#ifndef GLX_USE_APPLEGL
-   xGLXVendorPrivateWithReplyReq *vpreq;
-   xGLXCreateGLXPixmapWithConfigSGIXReq *req;
-   GLXPixmap xid = None;
-   CARD8 opcode;
-   struct glx_screen *psc;
-#endif
-   struct glx_config *config = (struct glx_config *) fbconfig;
-
-
-   if ((dpy == NULL) || (config == NULL)) {
-      return None;
-   }
-#ifdef GLX_USE_APPLEGL
-   if(apple_glx_pixmap_create(dpy, config->screen, pixmap, config))
-      return None;
-   return pixmap;
-#else
-
-   psc = GetGLXScreenConfigs(dpy, config->screen);
-   if ((psc != NULL)
-       && __glXExtensionBitIsEnabled(psc, SGIX_fbconfig_bit)) {
-      opcode = __glXSetupForCommand(dpy);
-      if (!opcode) {
-         return None;
-      }
-
-      /* Send the glXCreateGLXPixmapWithConfigSGIX request */
-      LockDisplay(dpy);
-      GetReqExtra(GLXVendorPrivateWithReply,
-                  sz_xGLXCreateGLXPixmapWithConfigSGIXReq -
-                  sz_xGLXVendorPrivateWithReplyReq, vpreq);
-      req = (xGLXCreateGLXPixmapWithConfigSGIXReq *) vpreq;
-      req->reqType = opcode;
-      req->glxCode = X_GLXVendorPrivateWithReply;
-      req->vendorCode = X_GLXvop_CreateGLXPixmapWithConfigSGIX;
-      req->screen = config->screen;
-      req->fbconfig = config->fbconfigID;
-      req->pixmap = pixmap;
-      req->glxpixmap = xid = XAllocID(dpy);
-      UnlockDisplay(dpy);
-      SyncHandle();
-   }
-
-   return xid;
-#endif
+   return glXCreatePixmap(dpy, fbconfig, pixmap, NULL);
 }
 
-_GLX_PUBLIC GLXContext
-glXCreateContextWithConfigSGIX(Display * dpy,
-                               GLXFBConfigSGIX fbconfig, int renderType,
-                               GLXContext shareList, Bool allowDirect)
-{
-   GLXContext gc = NULL;
-   struct glx_config *config = (struct glx_config *) fbconfig;
-   struct glx_screen *psc;
-
-
-   if ((dpy == NULL) || (config == NULL)) {
-      return None;
-   }
-
-   psc = GetGLXScreenConfigs(dpy, config->screen);
-   if ((psc != NULL)
-       && __glXExtensionBitIsEnabled(psc, SGIX_fbconfig_bit)) {
-      gc = CreateContext(dpy, config->fbconfigID, config, shareList,
-                         allowDirect,
-			 X_GLXvop_CreateContextWithConfigSGIX, renderType);
-   }
-
-   return gc;
-}
-
+_GLX_PUBLIC GLX_ALIAS(GLXContext, glXCreateContextWithConfigSGIX,
+                      (Display *dpy, GLXFBConfigSGIX fbconfig,
+                       int renderType, GLXContext shareList, Bool direct),
+                      (dpy, config, renderType, shareList, direct),
+                      glXCreateNewContext)
 
 _GLX_PUBLIC GLXFBConfigSGIX
 glXGetFBConfigFromVisualSGIX(Display * dpy, XVisualInfo * vis)
 {
-   struct glx_display *priv;
-   struct glx_screen *psc = NULL;
+   int attrib_list[] = { GLX_VISUAL_ID, vis->visualid, None };
+   int nconfigs = 0;
 
-   if ((GetGLXPrivScreenConfig(dpy, vis->screen, &priv, &psc) == Success)
-       && __glXExtensionBitIsEnabled(psc, SGIX_fbconfig_bit)
-       && (psc->configs->fbconfigID != (int) GLX_DONT_CARE)) {
-      return (GLXFBConfigSGIX) glx_config_find_visual(psc->configs,
-						      vis->visualid);
-   }
-
-   return NULL;
+   return (GLXFBConfigSGIX)
+      glXChooseFBConfig(dpy, vis->screen, attrib_list, &nconfigs);
 }
 
 #ifndef GLX_USE_APPLEGL

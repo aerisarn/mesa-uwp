@@ -707,8 +707,6 @@ static GLboolean
 getFBConfigs(struct glx_screen *psc, struct glx_display *priv, int screen)
 {
    xGLXGetFBConfigsReq *fb_req;
-   xGLXGetFBConfigsSGIXReq *sgi_req;
-   xGLXVendorPrivateWithReplyReq *vpreq;
    xGLXGetFBConfigsReply reply;
    Display *dpy = priv->dpy;
 
@@ -721,24 +719,10 @@ getFBConfigs(struct glx_screen *psc, struct glx_display *priv, int screen)
    LockDisplay(dpy);
 
    psc->configs = NULL;
-   if (priv->minorVersion >= 3) {
-      GetReq(GLXGetFBConfigs, fb_req);
-      fb_req->reqType = priv->codes.major_opcode;
-      fb_req->glxCode = X_GLXGetFBConfigs;
-      fb_req->screen = screen;
-   }
-   else if (strstr(psc->serverGLXexts, "GLX_SGIX_fbconfig") != NULL) {
-      GetReqExtra(GLXVendorPrivateWithReply,
-                  sz_xGLXGetFBConfigsSGIXReq -
-                  sz_xGLXVendorPrivateWithReplyReq, vpreq);
-      sgi_req = (xGLXGetFBConfigsSGIXReq *) vpreq;
-      sgi_req->reqType = priv->codes.major_opcode;
-      sgi_req->glxCode = X_GLXVendorPrivateWithReply;
-      sgi_req->vendorCode = X_GLXvop_GetFBConfigsSGIX;
-      sgi_req->screen = screen;
-   }
-   else
-      goto out;
+   GetReq(GLXGetFBConfigs, fb_req);
+   fb_req->reqType = priv->codes.major_opcode;
+   fb_req->glxCode = X_GLXGetFBConfigs;
+   fb_req->screen = screen;
 
    if (!_XReply(dpy, (xReply *) & reply, 0, False))
       goto out;
@@ -876,13 +860,11 @@ __glXInitialize(Display * dpy)
    dpyPriv->codes = *codes;
    dpyPriv->dpy = dpy;
 
-   /* This GLX implementation requires X_GLXQueryExtensionsString
-    * and X_GLXQueryServerString, which are new in GLX 1.1.
-    */
+   /* This GLX implementation requires GLX 1.3 */
    if (!QueryVersion(dpy, dpyPriv->codes.major_opcode,
 		     &majorVersion, &dpyPriv->minorVersion)
        || (majorVersion != 1)
-       || (majorVersion == 1 && dpyPriv->minorVersion < 1)) {
+       || (majorVersion == 1 && dpyPriv->minorVersion < 3)) {
       free(dpyPriv);
       return NULL;
    }

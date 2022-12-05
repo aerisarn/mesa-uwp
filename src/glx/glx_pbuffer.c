@@ -54,10 +54,6 @@
  *
  * This function is used to implement \c glXSelectEvent and
  * \c glXSelectEventSGIX.
- *
- * \note
- * This function dynamically determines whether to use the SGIX_pbuffer
- * version of the protocol or the GLX 1.3 version of the protocol.
  */
 static void
 ChangeDrawableAttribute(Display * dpy, GLXDrawable drawable,
@@ -77,31 +73,14 @@ ChangeDrawableAttribute(Display * dpy, GLXDrawable drawable,
 
    LockDisplay(dpy);
 
-   if (priv->minorVersion >= 3) {
-      xGLXChangeDrawableAttributesReq *req;
+   xGLXChangeDrawableAttributesReq *req;
+   GetReqExtra(GLXChangeDrawableAttributes, 8 * num_attribs, req);
+   output = (CARD32 *) (req + 1);
 
-      GetReqExtra(GLXChangeDrawableAttributes, 8 * num_attribs, req);
-      output = (CARD32 *) (req + 1);
-
-      req->reqType = opcode;
-      req->glxCode = X_GLXChangeDrawableAttributes;
-      req->drawable = drawable;
-      req->numAttribs = (CARD32) num_attribs;
-   }
-   else {
-      xGLXVendorPrivateWithReplyReq *vpreq;
-
-      GetReqExtra(GLXVendorPrivateWithReply, 8 + (8 * num_attribs), vpreq);
-      output = (CARD32 *) (vpreq + 1);
-
-      vpreq->reqType = opcode;
-      vpreq->glxCode = X_GLXVendorPrivateWithReply;
-      vpreq->vendorCode = X_GLXvop_ChangeDrawableAttributesSGIX;
-
-      output[0] = (CARD32) drawable;
-      output[1] = num_attribs;
-      output += 2;
-   }
+   req->reqType = opcode;
+   req->glxCode = X_GLXChangeDrawableAttributes;
+   req->drawable = drawable;
+   req->numAttribs = (CARD32) num_attribs;
 
    (void) memcpy(output, attribs, sizeof(CARD32) * 2 * num_attribs);
 
@@ -209,10 +188,6 @@ DestroyDRIDrawable(Display *dpy, GLXDrawable drawable)
  * This function is used to implement \c glXGetSelectedEvent and
  * \c glXGetSelectedEventSGIX.
  *
- * \note
- * This function dynamically determines whether to use the SGIX_pbuffer
- * version of the protocol or the GLX 1.3 version of the protocol.
- *
  * \todo
  * The number of attributes returned is likely to be small, probably less than
  * 10.  Given that, this routine should try to use an array on the stack to
@@ -304,25 +279,11 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
 
    LockDisplay(dpy);
 
-   if (priv->minorVersion >= 3) {
-      xGLXGetDrawableAttributesReq *req;
-
-      GetReq(GLXGetDrawableAttributes, req);
-      req->reqType = opcode;
-      req->glxCode = X_GLXGetDrawableAttributes;
-      req->drawable = drawable;
-   }
-   else {
-      xGLXVendorPrivateWithReplyReq *vpreq;
-
-      GetReqExtra(GLXVendorPrivateWithReply, 4, vpreq);
-      data = (CARD32 *) (vpreq + 1);
-      data[0] = (CARD32) drawable;
-
-      vpreq->reqType = opcode;
-      vpreq->glxCode = X_GLXVendorPrivateWithReply;
-      vpreq->vendorCode = X_GLXvop_GetDrawableAttributesSGIX;
-   }
+   xGLXGetDrawableAttributesReq *req;
+   GetReq(GLXGetDrawableAttributes, req);
+   req->reqType = opcode;
+   req->glxCode = X_GLXGetDrawableAttributes;
+   req->drawable = drawable;
 
    _XReply(dpy, (xReply *) & reply, 0, False);
 
@@ -334,7 +295,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
 
    length = reply.length;
    if (length) {
-      num_attributes = (priv->minorVersion > 2) ? reply.numAttribs : length / 2;
+      num_attributes = reply.numAttribs;
       data = malloc(length * sizeof(CARD32));
       if (data == NULL) {
          /* Throw data on the floor */
@@ -533,10 +494,6 @@ DestroyDrawable(Display * dpy, GLXDrawable drawable, CARD32 glxCode)
  *
  * This function is used to implement \c glXCreatePbuffer and
  * \c glXCreateGLXPbufferSGIX.
- *
- * \note
- * This function dynamically determines whether to use the SGIX_pbuffer
- * version of the protocol or the GLX 1.3 version of the protocol.
  */
 static GLXDrawable
 CreatePbuffer(Display * dpy, struct glx_config *config,
@@ -548,7 +505,6 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    CARD32 *data;
    CARD8 opcode;
    unsigned int i;
-   GLboolean glx_1_3 = GL_FALSE;
 
    if (priv == NULL)
       return None;
@@ -566,46 +522,24 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    LockDisplay(dpy);
    id = XAllocID(dpy);
 
-   if (priv->minorVersion >= 3) {
-      xGLXCreatePbufferReq *req;
-      unsigned int extra = (size_in_attribs) ? 0 : 2;
+   xGLXCreatePbufferReq *req;
+   unsigned int extra = (size_in_attribs) ? 0 : 2;
+   GetReqExtra(GLXCreatePbuffer, (8 * (i + extra)), req);
+   data = (CARD32 *) (req + 1);
 
-      glx_1_3 = GL_TRUE;
+   req->reqType = opcode;
+   req->glxCode = X_GLXCreatePbuffer;
+   req->screen = config->screen;
+   req->fbconfig = config->fbconfigID;
+   req->pbuffer = id;
+   req->numAttribs = i + extra;
 
-      GetReqExtra(GLXCreatePbuffer, (8 * (i + extra)), req);
-      data = (CARD32 *) (req + 1);
-
-      req->reqType = opcode;
-      req->glxCode = X_GLXCreatePbuffer;
-      req->screen = config->screen;
-      req->fbconfig = config->fbconfigID;
-      req->pbuffer = id;
-      req->numAttribs = i + extra;
-
-      if (!size_in_attribs) {
-         data[(2 * i) + 0] = GLX_PBUFFER_WIDTH;
-         data[(2 * i) + 1] = width;
-         data[(2 * i) + 2] = GLX_PBUFFER_HEIGHT;
-         data[(2 * i) + 3] = height;
-         data += 4;
-      }
-   }
-   else {
-      xGLXVendorPrivateReq *vpreq;
-
-      GetReqExtra(GLXVendorPrivate, 20 + (8 * i), vpreq);
-      data = (CARD32 *) (vpreq + 1);
-
-      vpreq->reqType = opcode;
-      vpreq->glxCode = X_GLXVendorPrivate;
-      vpreq->vendorCode = X_GLXvop_CreateGLXPbufferSGIX;
-
-      data[0] = config->screen;
-      data[1] = config->fbconfigID;
-      data[2] = id;
-      data[3] = width;
-      data[4] = height;
-      data += 5;
+   if (!size_in_attribs) {
+      data[(2 * i) + 0] = GLX_PBUFFER_WIDTH;
+      data[(2 * i) + 1] = width;
+      data[(2 * i) + 2] = GLX_PBUFFER_HEIGHT;
+      data[(2 * i) + 3] = height;
+      data += 4;
    }
 
    (void) memcpy(data, attrib_list, sizeof(CARD32) * 2 * i);
@@ -615,8 +549,7 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
 
    /* xserver created a pixmap with the same id as pbuffer */
    if (!CreateDRIDrawable(dpy, config, id, id, GLX_PBUFFER_BIT, attrib_list, i)) {
-      CARD32 o = glx_1_3 ? X_GLXDestroyPbuffer : X_GLXvop_DestroyGLXPbufferSGIX;
-      protocolDestroyDrawable(dpy, id, o);
+      protocolDestroyDrawable(dpy, id, X_GLXDestroyPbuffer);
       id = None;
    }
 
@@ -628,10 +561,6 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
  *
  * This function is used to implement \c glXDestroyPbuffer and
  * \c glXDestroyGLXPbufferSGIX.
- *
- * \note
- * This function dynamically determines whether to use the SGIX_pbuffer
- * version of the protocol or the GLX 1.3 version of the protocol.
  */
 static void
 DestroyPbuffer(Display * dpy, GLXDrawable drawable)
@@ -649,27 +578,11 @@ DestroyPbuffer(Display * dpy, GLXDrawable drawable)
 
    LockDisplay(dpy);
 
-   if (priv->minorVersion >= 3) {
-      xGLXDestroyPbufferReq *req;
-
-      GetReq(GLXDestroyPbuffer, req);
-      req->reqType = opcode;
-      req->glxCode = X_GLXDestroyPbuffer;
-      req->pbuffer = (GLXPbuffer) drawable;
-   }
-   else {
-      xGLXVendorPrivateWithReplyReq *vpreq;
-      CARD32 *data;
-
-      GetReqExtra(GLXVendorPrivateWithReply, 4, vpreq);
-      data = (CARD32 *) (vpreq + 1);
-
-      data[0] = (CARD32) drawable;
-
-      vpreq->reqType = opcode;
-      vpreq->glxCode = X_GLXVendorPrivateWithReply;
-      vpreq->vendorCode = X_GLXvop_DestroyGLXPbufferSGIX;
-   }
+   xGLXDestroyPbufferReq *req;
+   GetReq(GLXDestroyPbuffer, req);
+   req->reqType = opcode;
+   req->glxCode = X_GLXDestroyPbuffer;
+   req->pbuffer = (GLXPbuffer) drawable;
 
    UnlockDisplay(dpy);
    SyncHandle();

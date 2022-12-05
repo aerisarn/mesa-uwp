@@ -294,22 +294,14 @@ glX_send_client_info_test::common_protocol_expected_true_test(unsigned major,
    EXPECT_TRUE(*value);
 }
 
-TEST_F(glX_send_client_info_test, doesnt_send_ClientInfo_for_1_0)
-{
-   /* The glXClientInfo protocol was added in GLX 1.1.  Verify that no
-    * glXClientInfo is sent to a GLX server that only has GLX 1.0.
-    */
-   common_protocol_expected_false_test(1, 0, "", &ClientInfo_was_sent);
-}
-
-TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfoARB_for_1_0)
+TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfoARB_for_1_3)
 {
    /* The glXSetClientInfoARB protocol was added in GLX 1.4 with the
     * GLX_ARB_create_context extension.  Verify that no glXSetClientInfoARB is
-    * sent to a GLX server that only has GLX 1.0 regardless of the extension
+    * sent to a GLX server that only has GLX 1.3 regardless of the extension
     * setting.
     */
-   common_protocol_expected_false_test(1, 0,
+   common_protocol_expected_false_test(1, 3,
 				       "GLX_ARB_create_context",
 				       &SetClientInfoARB_was_sent);
 }
@@ -318,10 +310,10 @@ TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfoARB_for_1_1)
 {
    /* The glXSetClientInfoARB protocol was added in GLX 1.4 with the
     * GLX_ARB_create_context extension.  Verify that no glXSetClientInfoARB is
-    * sent to a GLX server that only has GLX 1.0 regardless of the extension
+    * sent to a GLX server that only has GLX 1.3 regardless of the extension
     * setting.
     */
-   common_protocol_expected_false_test(1, 1,
+   common_protocol_expected_false_test(1, 3,
 				       "GLX_ARB_create_context",
 				       &SetClientInfoARB_was_sent);
 }
@@ -379,14 +371,14 @@ TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfoARB_for_1_4_with_prof
 				       &SetClientInfoARB_was_sent);
 }
 
-TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfo2ARB_for_1_0)
+TEST_F(glX_send_client_info_test, doesnt_send_SetClientInfo2ARB_for_1_3)
 {
    /* The glXSetClientInfo2ARB protocol was added in GLX 1.4 with the
     * GLX_ARB_create_context_profile extension.  Verify that no
-    * glXSetClientInfo2ARB is sent to a GLX server that only has GLX 1.0
+    * glXSetClientInfo2ARB is sent to a GLX server that only has GLX 1.3
     * regardless of the extension setting.
     */
-   common_protocol_expected_false_test(1, 0,
+   common_protocol_expected_false_test(1, 3,
 				       "GLX_ARB_create_context_profile",
 				       &SetClientInfo2ARB_was_sent);
 }
