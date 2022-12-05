@@ -10702,6 +10702,8 @@ radv_CmdBeginConditionalRenderingEXT(
 
       pred_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + pred_offset;
 
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 8);
+
       radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
       radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
                          COPY_DATA_WR_CONFIRM);

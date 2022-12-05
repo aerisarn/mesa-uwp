@@ -1571,6 +1571,8 @@ si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw_visi
 {
    uint32_t op = 0;
 
+   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
+
    if (va) {
       assert(pred_op == PREDICATION_OP_BOOL32 || pred_op == PREDICATION_OP_BOOL64);
 
