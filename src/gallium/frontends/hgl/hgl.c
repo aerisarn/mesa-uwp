@@ -230,10 +230,6 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 	buffer = CALLOC_STRUCT(hgl_buffer);
 	assert(buffer);
 
-	// calloc and configure our st_framebuffer interface
-	buffer->drawable = CALLOC_STRUCT(pipe_frontend_drawable);
-	assert(buffer->drawable);
-
 	// Prepare our buffer
 	buffer->visual = context->stVisual;
 	buffer->screen = context->display->fscreen->screen;
@@ -245,13 +241,13 @@ hgl_create_st_framebuffer(struct hgl_context* context, void *winsysContext)
 		buffer->target = PIPE_TEXTURE_RECT;
 
 	// Prepare our frontend interface
-	buffer->drawable->flush_front = hgl_st_framebuffer_flush_front;
-	buffer->drawable->validate = hgl_st_framebuffer_validate;
-	buffer->drawable->visual = context->stVisual;
+	buffer->base.flush_front = hgl_st_framebuffer_flush_front;
+	buffer->base.validate = hgl_st_framebuffer_validate;
+	buffer->base.visual = context->stVisual;
 
-	p_atomic_set(&buffer->drawable->stamp, 1);
-	buffer->drawable->ID = p_atomic_inc_return(&hgl_fb_ID);
-	buffer->drawable->fscreen = context->display->fscreen;
+	p_atomic_set(&buffer->base.stamp, 1);
+	buffer->base.ID = p_atomic_inc_return(&hgl_fb_ID);
+	buffer->base.fscreen = context->display->fscreen;
 
 	return buffer;
 }
@@ -266,7 +262,6 @@ hgl_destroy_st_framebuffer(struct hgl_buffer *buffer)
 	for (i = 0; i < ST_ATTACHMENT_COUNT; i++)
 		pipe_resource_reference(&buffer->textures[i], NULL);
 
-	FREE(buffer->drawable);
 	FREE(buffer);
 }
 

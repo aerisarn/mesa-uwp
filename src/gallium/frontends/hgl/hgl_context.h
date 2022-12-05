@@ -31,7 +31,7 @@ typedef int64 context_id;
 
 struct hgl_buffer
 {
-	struct pipe_frontend_drawable *drawable;
+	struct pipe_frontend_drawable base;
 	struct st_visual* visual;
 
 	unsigned width;

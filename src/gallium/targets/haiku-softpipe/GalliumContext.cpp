@@ -303,8 +303,8 @@ GalliumContext::SetCurrentContext(bool set, context_id contextID)
 	}
 
 	// We need to lock and unlock framebuffers before accessing them
-	st_api_make_current(context->st, context->buffer->drawable,
-		context->buffer->drawable);
+	st_api_make_current(context->st, &context->buffer->base,
+		&context->buffer->base);
 	Unlock();
 
 	return B_OK;
@@ -335,7 +335,7 @@ GalliumContext::SwapBuffers(context_id contextID)
 		buffer->screen->flush_frontbuffer(buffer->screen, NULL, buffer->textures[ST_ATTACHMENT_BACK_LEFT],
 			0, 0, buffer->winsysContext, NULL);
 		std::swap(buffer->textures[ST_ATTACHMENT_FRONT_LEFT], buffer->textures[ST_ATTACHMENT_BACK_LEFT]);
-		p_atomic_inc(&buffer->drawable->stamp);
+		p_atomic_inc(&buffer->base.stamp);
 	}
 
         /* TODO: remove this if the framebuffer state doesn't change. */
@@ -395,7 +395,7 @@ GalliumContext::Invalidate(uint32 width, uint32 height)
 	fContext[fCurrentContext]->height = height + 1;
 
 	// Is this the best way to invalidate?
-	p_atomic_inc(&fContext[fCurrentContext]->buffer->drawable->stamp);
+	p_atomic_inc(&fContext[fCurrentContext]->buffer->base.stamp);
 }
 
 
