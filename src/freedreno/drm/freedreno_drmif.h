@@ -98,21 +98,24 @@ struct fd_fence {
    uint32_t ufence;     /* userspace fence */
 };
 
-/* bo flags: */
+/*
+ * bo flags:
+ */
+
+#define FD_BO_CACHED_COHERENT     BITSET_BIT(0) /* Default caching is WRITECOMBINE */
 #define FD_BO_GPUREADONLY         BITSET_BIT(1)
-#define FD_BO_SCANOUT             BITSET_BIT(2)
-/* Default caching is WRITECOMBINE: */
-#define FD_BO_CACHED_COHERENT     BITSET_BIT(3)
-/* Hint that the bo will not be mmap'd: */
-#define FD_BO_NOMAP               BITSET_BIT(4)
+#define FD_BO_NOMAP               BITSET_BIT(2) /* Hint that the bo will not be mmap'd */
+
 /* Hint that the bo will be exported/shared: */
-#define FD_BO_SHARED              BITSET_BIT(5)
+#define FD_BO_SHARED              BITSET_BIT(4)
+#define FD_BO_SCANOUT             BITSET_BIT(5)
 
 /* internal bo flags: */
 #define _FD_BO_VIRTIO_SHM         BITSET_BIT(6)
-#define _FD_BO_RING               BITSET_BIT(7)
 
-/* bo access flags: (keep aligned to MSM_PREP_x) */
+/*
+ * bo access flags: (keep aligned to MSM_PREP_x)
+ */
 #define FD_BO_PREP_READ   BITSET_BIT(0)
 #define FD_BO_PREP_WRITE  BITSET_BIT(1)
 #define FD_BO_PREP_NOSYNC BITSET_BIT(2)
