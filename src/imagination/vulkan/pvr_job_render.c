@@ -1261,6 +1261,21 @@ pvr_geom_state_stream_ext_init(struct pvr_render_ctx *ctx,
       state->fw_ext_stream_len = 0;
 }
 
+static void pvr_geom_state_flags_init(const struct pvr_render_job *const job,
+                                      uint32_t *const flags)
+{
+   *flags = 0;
+
+   if (!job->rt_dataset->need_frag)
+      *flags |= PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY;
+
+   if (job->geometry_terminate)
+      *flags |= PVR_WINSYS_GEOM_FLAG_LAST_GEOMETRY;
+
+   if (job->frag_uses_atomic_ops)
+      *flags |= PVR_WINSYS_GEOM_FLAG_SINGLE_CORE;
+}
+
 static void
 pvr_render_job_ws_geometry_state_init(struct pvr_render_ctx *ctx,
                                       struct pvr_render_job *job,
@@ -1268,17 +1283,7 @@ pvr_render_job_ws_geometry_state_init(struct pvr_render_ctx *ctx,
 {
    pvr_geom_state_stream_init(ctx, job, state);
    pvr_geom_state_stream_ext_init(ctx, job, state);
-
-   state->flags = 0;
-
-   if (!job->rt_dataset->need_frag)
-      state->flags |= PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY;
-
-   if (job->geometry_terminate)
-      state->flags |= PVR_WINSYS_GEOM_FLAG_LAST_GEOMETRY;
-
-   if (job->frag_uses_atomic_ops)
-      state->flags |= PVR_WINSYS_GEOM_FLAG_SINGLE_CORE;
+   pvr_geom_state_flags_init(job, &state->flags);
 }
 
 static inline void
@@ -1655,6 +1660,27 @@ pvr_frag_state_stream_ext_init(struct pvr_render_ctx *ctx,
       state->fw_ext_stream_len = 0;
 }
 
+static void pvr_frag_state_flags_init(const struct pvr_render_job *const job,
+                                      uint32_t *const flags)
+{
+   *flags = 0;
+
+   if (job->has_depth_attachment)
+      *flags |= PVR_WINSYS_FRAG_FLAG_DEPTH_BUFFER_PRESENT;
+
+   if (job->has_stencil_attachment)
+      *flags |= PVR_WINSYS_FRAG_FLAG_STENCIL_BUFFER_PRESENT;
+
+   if (job->disable_compute_overlap)
+      *flags |= PVR_WINSYS_FRAG_FLAG_PREVENT_CDM_OVERLAP;
+
+   if (job->frag_uses_atomic_ops)
+      *flags |= PVR_WINSYS_FRAG_FLAG_SINGLE_CORE;
+
+   if (job->get_vis_results)
+      *flags |= PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS;
+}
+
 static void
 pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
                                       struct pvr_render_job *job,
@@ -1664,24 +1690,7 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
 
    pvr_frag_state_stream_init(ctx, job, state);
    pvr_frag_state_stream_ext_init(ctx, job, state);
-
-   /* FIXME: move to its own function? */
-   state->flags = 0;
-
-   if (job->has_depth_attachment)
-      state->flags |= PVR_WINSYS_FRAG_FLAG_DEPTH_BUFFER_PRESENT;
-
-   if (job->has_stencil_attachment)
-      state->flags |= PVR_WINSYS_FRAG_FLAG_STENCIL_BUFFER_PRESENT;
-
-   if (job->disable_compute_overlap)
-      state->flags |= PVR_WINSYS_FRAG_FLAG_PREVENT_CDM_OVERLAP;
-
-   if (job->frag_uses_atomic_ops)
-      state->flags |= PVR_WINSYS_FRAG_FLAG_SINGLE_CORE;
-
-   if (job->get_vis_results)
-      state->flags |= PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS;
+   pvr_frag_state_flags_init(job, &state->flags);
 }
 
 static void pvr_render_job_ws_submit_info_init(
