@@ -1612,7 +1612,8 @@ clamp_layer_output_instr(nir_builder *b, nir_instr *instr, void *data)
    switch (instr->type) {
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      if (intr->intrinsic != nir_intrinsic_emit_vertex_with_counter)
+      if (intr->intrinsic != nir_intrinsic_emit_vertex_with_counter &&
+          intr->intrinsic != nir_intrinsic_emit_vertex)
          return false;
       b->cursor = nir_before_instr(instr);
       clamp_layer_output_emit(b, state);
@@ -3812,8 +3813,6 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    if (!screen->info.feats.features.shaderImageGatherExtended)
       tex_opts.lower_tg4_offsets = true;
    NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
-   if (nir->info.stage == MESA_SHADER_GEOMETRY)
-      NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    optimize_nir(nir, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (screen->driconf.inline_uniforms)

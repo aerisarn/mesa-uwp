@@ -3292,7 +3292,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_load_uint_input(ctx, intr, &ctx->sample_mask_in_var, "gl_SampleMaskIn", SpvBuiltInSampleMask);
       break;
 
-   case nir_intrinsic_emit_vertex_with_counter:
+   case nir_intrinsic_emit_vertex:
       /* geometry shader emits copied xfb outputs just prior to EmitVertex(),
        * since that's the end of the shader
        */
@@ -3303,11 +3303,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                    ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
       break;
 
-   case nir_intrinsic_set_vertex_and_primitive_count:
-      /* do nothing */
-      break;
-
-   case nir_intrinsic_end_primitive_with_counter:
+   case nir_intrinsic_end_primitive:
       spirv_builder_end_primitive(&ctx->builder, nir_intrinsic_stream_id(intr),
                                   ctx->nir->info.stage == MESA_SHADER_GEOMETRY && util_bitcount(ctx->nir->info.gs.active_stream_mask) > 1);
       break;
