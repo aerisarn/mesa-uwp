@@ -7607,26 +7607,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
       }
    }
 
-   if (prog_data->persample_dispatch) {
-      /* Starting with SandyBridge (where we first get MSAA), the different
-       * pixel dispatch combinations are grouped into classifications A
-       * through F (SNB PRM Vol. 2 Part 1 Section 7.7.1).  On most hardware
-       * generations, the only configurations supporting persample dispatch
-       * are those in which only one dispatch width is enabled.
-       *
-       * The Gfx12 hardware spec has a similar dispatch grouping table, but
-       * the following conflicting restriction applies (from the page on
-       * "Structure_3DSTATE_PS_BODY"), so we need to keep the SIMD16 shader:
-       *
-       *  "SIMD32 may only be enabled if SIMD16 or (dual)SIMD8 is also
-       *   enabled."
-       */
-      if (simd32_cfg || simd16_cfg)
-         simd8_cfg = NULL;
-      if (simd32_cfg && devinfo->ver < 12)
-         simd16_cfg = NULL;
-   }
-
    fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
