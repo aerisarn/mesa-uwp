@@ -72,6 +72,9 @@ struct pvr_render_job {
     * has_stencil_attachment are false, the contents are undefined.
     */
    struct pvr_ds_attachment {
+      bool load;
+      bool store;
+
       pvr_dev_addr_t addr;
       uint32_t stride;
       uint32_t height;

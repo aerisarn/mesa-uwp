@@ -1384,9 +1384,6 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    }
    stream_ptr += pvr_cmd_length(CR_ISP_OCLQRY_BASE);
 
-   /* FIXME: Some additional set up needed to support depth/stencil load/store
-    * operations.
-    */
    pvr_csb_pack ((uint64_t *)stream_ptr, CR_ISP_ZLSCTL, value) {
       if (job->has_depth_attachment) {
          uint32_t aligned_width =
@@ -1428,9 +1425,23 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
             unreachable("Unsupported depth format");
          }
 
+         value.zloaden = job->ds.load;
+         value.forcezload = job->ds.load;
+
+         value.zstoreen = job->ds.store;
+         value.forcezstore = job->ds.store;
+
          zload_format = value.zloadformat;
       } else {
          zload_format = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
+      }
+
+      if (job->has_stencil_attachment) {
+         value.sstoreen = job->ds.store;
+         value.forcezstore = job->ds.store;
+
+         value.sloaden = job->ds.load;
+         value.forcezload = job->ds.load;
       }
    }
    stream_ptr += pvr_cmd_length(CR_ISP_ZLSCTL);
@@ -1539,10 +1550,6 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
 
    pvr_csb_pack (stream_ptr, CR_ISP_CTL, value) {
       value.sample_pos = true;
-
-      /* FIXME: There are a number of things that cause this to be set, this
-       * is just one of them.
-       */
       value.process_empty_tiles = job->process_empty_tiles;
 
       /* For integer depth formats we'll convert the specified floating point

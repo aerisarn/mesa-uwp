@@ -1184,6 +1184,18 @@ pvr_setup_emit_state(const struct pvr_device_info *dev_info,
    }
 }
 
+static inline bool
+pvr_is_render_area_tile_aligned(const struct pvr_cmd_buffer *cmd_buffer,
+                                const struct pvr_image_view *iview)
+{
+   const VkRect2D *render_area =
+      &cmd_buffer->state.render_pass_info.render_area;
+
+   return render_area->offset.x == 0 && render_area->offset.y == 0 &&
+          render_area->extent.height == iview->vk.extent.height &&
+          render_area->extent.width == iview->vk.extent.width;
+}
+
 static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                                          struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_sub_cmd_gfx *sub_cmd)
@@ -1236,6 +1248,8 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    } else if (render_pass_info->enable_bg_tag) {
       const struct pvr_load_op *load_op = hw_render->load_op;
       struct pvr_pds_upload load_op_program;
+
+      /* Recalculate Background Object(s). */
 
       /* FIXME: Should we free the PDS pixel event data or let it be freed
        * when the pool gets emptied?
@@ -1299,6 +1313,11 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
       if (job->has_depth_attachment || job->has_stencil_attachment) {
          uint32_t level_pitch =
             image->mip_levels[iview->vk.base_mip_level].pitch;
+         const bool render_area_is_tile_aligned =
+            pvr_is_render_area_tile_aligned(cmd_buffer, iview);
+         bool store_was_optimised_out = false;
+         bool d_store = false, s_store = false;
+         bool d_load = false, s_load = false;
 
          job->ds.addr = image->dev_addr;
 
@@ -1326,6 +1345,68 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
          job->ds.vk_format = iview->vk.format;
          job->ds.memlayout = image->memlayout;
+
+         if (job->has_depth_attachment) {
+            if (hw_render->depth_store || sub_cmd->barrier_store) {
+               const bool depth_init_is_clear = hw_render->depth_init ==
+                                                VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+               d_store = true;
+
+               if (hw_render->depth_store && render_area_is_tile_aligned &&
+                   !(sub_cmd->modifies_depth || depth_init_is_clear)) {
+                  d_store = false;
+                  store_was_optimised_out = true;
+               }
+            }
+
+            if (d_store && !render_area_is_tile_aligned) {
+               d_load = true;
+            } else if (hw_render->depth_init == VK_ATTACHMENT_LOAD_OP_LOAD) {
+               enum pvr_depth_stencil_usage depth_usage = sub_cmd->depth_usage;
+
+               assert(depth_usage != PVR_DEPTH_STENCIL_USAGE_UNDEFINED);
+               d_load = (depth_usage != PVR_DEPTH_STENCIL_USAGE_NEVER);
+            } else {
+               d_load = sub_cmd->barrier_load;
+            }
+         }
+
+         if (job->has_stencil_attachment) {
+            if (hw_render->stencil_store || sub_cmd->barrier_store) {
+               const bool stencil_init_is_clear = hw_render->stencil_init ==
+                                                  VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+               s_store = true;
+
+               if (hw_render->stencil_store && render_area_is_tile_aligned &&
+                   !(sub_cmd->modifies_stencil || stencil_init_is_clear)) {
+                  s_store = false;
+                  store_was_optimised_out = true;
+               }
+            }
+
+            if (s_store && !render_area_is_tile_aligned) {
+               s_load = true;
+            } else if (hw_render->stencil_init == VK_ATTACHMENT_LOAD_OP_LOAD) {
+               enum pvr_depth_stencil_usage stencil_usage =
+                  sub_cmd->stencil_usage;
+
+               assert(stencil_usage != PVR_DEPTH_STENCIL_USAGE_UNDEFINED);
+               s_load = (stencil_usage != PVR_DEPTH_STENCIL_USAGE_NEVER);
+            } else {
+               s_load = sub_cmd->barrier_load;
+            }
+         }
+
+         if (job->has_depth_attachment && job->has_stencil_attachment)
+            assert(d_store == s_store && d_load == s_load);
+
+         job->ds.store = d_store || s_store;
+         job->ds.load = d_load || s_load;
+
+         if (job->ds.load || job->ds.store || store_was_optimised_out)
+            job->process_empty_tiles = true;
       }
 
       pvr_sub_cmd_gfx_align_zls_subtiles(dev_info, job, image);
@@ -7277,7 +7358,8 @@ pvr_cmd_buffer_insert_mid_frag_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
 
    cmd_buffer->state.current_sub_cmd->gfx.empty_cmd = false;
 
-   pvr_finishme("Handle mid frag barrier stencil store.");
+   /* Submit graphics job to store stencil. */
+   cmd_buffer->state.current_sub_cmd->gfx.barrier_store = true;
 
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
@@ -7295,6 +7377,10 @@ pvr_cmd_buffer_insert_mid_frag_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
    pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
 
    pvr_finishme("Handle mid frag barrier color attachment load.");
+
+   /* Use existing render setup, but load color attachments from HW BGOBJ */
+   cmd_buffer->state.current_sub_cmd->gfx.barrier_load = true;
+   cmd_buffer->state.current_sub_cmd->gfx.barrier_store = false;
 
    return VK_SUCCESS;
 }
