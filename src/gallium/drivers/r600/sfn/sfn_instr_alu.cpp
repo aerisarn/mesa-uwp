@@ -326,6 +326,7 @@ AluInstr::can_propagate_src() const
 
    if (m_dest->pin() == pin_chan)
       return src_reg->pin() == pin_none ||
+             src_reg->pin() == pin_free ||
              (src_reg->pin() == pin_chan && src_reg->chan() == m_dest->chan());
 
    return m_dest->pin() == pin_none || m_dest->pin() == pin_free;
