@@ -999,6 +999,14 @@ brw_fs_get_dispatch_enables(const struct intel_device_info *devinfo,
    *enable_32 = prog_data->dispatch_32;
 
    if (prog_data->persample_dispatch) {
+      /* TGL PRMs, Volume 2d: Command Reference: Structures:
+       *    3DSTATE_PS_BODY::32 Pixel Dispatch Enable:
+       *
+       *    "Must not be enabled when dispatch rate is sample AND NUM_MULTISAMPLES > 1."
+       */
+      if (devinfo->ver >= 12 && rasterization_samples > 1)
+         *enable_32 = false;
+
       /* Starting with SandyBridge (where we first get MSAA), the different
        * pixel dispatch combinations are grouped into classifications A
        * through F (SNB PRM Vol. 2 Part 1 Section 7.7.1).  On most hardware
