@@ -32,6 +32,7 @@
 #include "sfn_instr_export.h"
 #include "sfn_instr_fetch.h"
 #include "sfn_instr_lds.h"
+#include "sfn_instr_mem.h"
 #include "sfn_instr_tex.h"
 #include "sfn_peephole.h"
 #include "sfn_valuefactory.h"
@@ -251,7 +252,7 @@ public:
    void visit(StreamOutInstr *instr) override { (void)instr; }
    void visit(MemRingOutInstr *instr) override { (void)instr; }
    void visit(EmitVertexInstr *instr) override { (void)instr; }
-   void visit(GDSInstr *instr) override { (void)instr; };
+   void visit(GDSInstr *instr) override;
    void visit(WriteTFInstr *instr) override { (void)instr; };
    void visit(RatInstr *instr) override { (void)instr; };
 
@@ -408,6 +409,11 @@ CopyPropFwdVisitor::visit(AluGroup *instr)
 
 void
 CopyPropFwdVisitor::visit(TexInstr *instr)
+{
+   propagate_to(instr->src(), instr);
+}
+
+void CopyPropFwdVisitor::visit(GDSInstr *instr)
 {
    propagate_to(instr->src(), instr);
 }

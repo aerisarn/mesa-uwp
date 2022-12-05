@@ -47,7 +47,8 @@ public:
    bool do_ready() const override;
 
    auto opcode() const { return m_op; }
-   auto src() const { return m_src; }
+   auto& src() { return m_src; }
+   auto& src() const { return m_src; }
 
    const auto& dest() const { return m_dest; }
    auto& dest() { return m_dest; }
