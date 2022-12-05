@@ -10789,6 +10789,8 @@ radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t enabled_stream_buffers_mask = 0;
 
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
+
    if (cmd_buffer->state.last_vgt_shader) {
       enabled_stream_buffers_mask = cmd_buffer->state.last_vgt_shader->info.so.enabled_stream_buffers_mask;
    }
@@ -10801,6 +10803,8 @@ radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cs, so->hw_enabled_mask & enabled_stream_buffers_mask);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
+
+   assert(cs->cdw <= cdw_max);
 }
 
 static void
@@ -10835,6 +10839,8 @@ radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned reg_strmout_cntl;
 
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 14);
+
    /* The register is at different places on different ASICs. */
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
       reg_strmout_cntl = R_0300FC_CP_STRMOUT_CNTL;
@@ -10862,6 +10868,8 @@ radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cs, S_0084FC_OFFSET_UPDATE_DONE(1)); /* reference value */
    radeon_emit(cs, S_0084FC_OFFSET_UPDATE_DONE(1)); /* mask */
    radeon_emit(cs, 4);                              /* poll interval */
+
+   assert(cs->cdw <= cdw_max);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -10888,6 +10896,9 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
    } else {
       radv_flush_vgt_streamout(cmd_buffer);
    }
+
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SO_BUFFERS * 10);
 
    u_foreach_bit(i, so->enabled_mask)
    {
@@ -10953,6 +10964,8 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
       }
    }
 
+   assert(cs->cdw <= cdw_max);
+
    radv_set_streamout_enable(cmd_buffer, true);
 }
 
@@ -10969,6 +10982,9 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
 
    if (!cmd_buffer->device->physical_device->use_ngg_streamout)
       radv_flush_vgt_streamout(cmd_buffer);
+
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SO_BUFFERS * 12);
 
    u_foreach_bit(i, so->enabled_mask)
    {
@@ -11021,6 +11037,8 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
          cmd_buffer->state.context_roll_without_scissor_emitted = true;
       }
    }
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
 
    radv_set_streamout_enable(cmd_buffer, false);
 }
