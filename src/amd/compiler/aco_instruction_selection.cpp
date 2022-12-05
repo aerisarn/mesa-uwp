@@ -7760,102 +7760,6 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
-void
-visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   unsigned stream = nir_intrinsic_stream_id(instr);
-   Temp next_vertex = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   next_vertex = bld.v_mul_imm(bld.def(v1), next_vertex, 4u);
-   nir_const_value* next_vertex_cv = nir_src_as_const_value(instr->src[0]);
-
-   /* get GSVS ring */
-   Temp gsvs_ring =
-      bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer,
-               Operand::c32(RING_GSVS_GS * 16u));
-
-   unsigned num_components = ctx->program->info.gs.num_stream_output_components[stream];
-
-   unsigned stride = 4u * num_components * ctx->shader->info.gs.vertices_out;
-   unsigned stream_offset = 0;
-   for (unsigned i = 0; i < stream; i++) {
-      unsigned prev_stride = 4u * ctx->program->info.gs.num_stream_output_components[i] *
-                             ctx->shader->info.gs.vertices_out;
-      stream_offset += prev_stride * ctx->program->wave_size;
-   }
-
-   /* Limit on the stride field for <= GFX7. */
-   assert(stride < (1 << 14));
-
-   Temp gsvs_dwords[4];
-   for (unsigned i = 0; i < 4; i++)
-      gsvs_dwords[i] = bld.tmp(s1);
-   bld.pseudo(aco_opcode::p_split_vector, Definition(gsvs_dwords[0]), Definition(gsvs_dwords[1]),
-              Definition(gsvs_dwords[2]), Definition(gsvs_dwords[3]), gsvs_ring);
-
-   if (stream_offset) {
-      Temp stream_offset_tmp = bld.copy(bld.def(s1), Operand::c32(stream_offset));
-
-      Temp carry = bld.tmp(s1);
-      gsvs_dwords[0] = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.scc(Definition(carry)),
-                                gsvs_dwords[0], stream_offset_tmp);
-      gsvs_dwords[1] = bld.sop2(aco_opcode::s_addc_u32, bld.def(s1), bld.def(s1, scc),
-                                gsvs_dwords[1], Operand::zero(), bld.scc(carry));
-   }
-
-   gsvs_dwords[1] = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), gsvs_dwords[1],
-                             Operand::c32(S_008F04_STRIDE(stride)));
-   gsvs_dwords[2] = bld.copy(bld.def(s1), Operand::c32(ctx->program->wave_size));
-
-   gsvs_ring = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), gsvs_dwords[0], gsvs_dwords[1],
-                          gsvs_dwords[2], gsvs_dwords[3]);
-
-   unsigned offset = 0;
-   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; i++) {
-      for (unsigned j = 0; j < 4; j++) {
-         if (((ctx->program->info.gs.output_streams[i] >> (j * 2)) & 0x3) != stream)
-            continue;
-         if (!(ctx->program->info.gs.output_usage_mask[i] & (1 << j)))
-            continue;
-
-         if (ctx->outputs.mask[i] & (1 << j)) {
-            Operand vaddr_offset = next_vertex_cv ? Operand(v1) : Operand(next_vertex);
-            unsigned const_offset = (offset + (next_vertex_cv ? next_vertex_cv->u32 : 0u)) * 4u;
-            if (const_offset >= 4096u) {
-               if (vaddr_offset.isUndefined())
-                  vaddr_offset = bld.copy(bld.def(v1), Operand::c32(const_offset / 4096u * 4096u));
-               else
-                  vaddr_offset = bld.vadd32(bld.def(v1), Operand::c32(const_offset / 4096u * 4096u),
-                                            vaddr_offset);
-               const_offset %= 4096u;
-            }
-
-            aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(
-               aco_opcode::buffer_store_dword, Format::MUBUF, 4, 0)};
-            mubuf->operands[0] = Operand(gsvs_ring);
-            mubuf->operands[1] = vaddr_offset;
-            mubuf->operands[2] = Operand(get_arg(ctx, ctx->args->ac.gs2vs_offset));
-            mubuf->operands[3] = Operand(ctx->outputs.temps[i * 4u + j]);
-            mubuf->offen = !vaddr_offset.isUndefined();
-            mubuf->offset = const_offset;
-            mubuf->glc = ctx->program->gfx_level < GFX11;
-            mubuf->slc = true;
-            mubuf->sync = memory_sync_info(storage_vmem_output, semantic_can_reorder);
-            bld.insert(std::move(mubuf));
-         }
-
-         offset += ctx->shader->info.gs.vertices_out;
-      }
-
-      /* outputs for the next vertex are undefined and keeping them around can
-       * create invalid IR with control flow */
-      ctx->outputs.mask[i] = 0;
-   }
-
-   bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(false, true, stream));
-}
-
 Temp
 emit_boolean_reduce(isel_context* ctx, nir_op op, unsigned cluster_size, Temp src)
 {
@@ -9170,7 +9074,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_emit_vertex_with_counter: {
       assert(ctx->stage.hw == HWStage::GS);
-      visit_emit_vertex_with_counter(ctx, instr);
+      unsigned stream = nir_intrinsic_stream_id(instr);
+      bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(false, true, stream));
       break;
    }
    case nir_intrinsic_end_primitive_with_counter: {
@@ -9179,11 +9084,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1,
                   sendmsg_gs(true, false, stream));
       }
-      break;
-   }
-   case nir_intrinsic_set_vertex_and_primitive_count: {
-      assert(ctx->stage.hw == HWStage::GS);
-      /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
    }
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
