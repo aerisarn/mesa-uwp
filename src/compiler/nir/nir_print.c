@@ -1730,17 +1730,20 @@ primitive_name(unsigned primitive)
 }
 
 static void
-print_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
+print_bitset(FILE *fp, const char *label, const unsigned *words, int size)
+{
    fprintf(fp, "%s: ", label);
-   for (int i = 0; i < size; ++i) {
-      fprintf(fp, i ? "'%08x" : "0x%08x", words[i]);
+   /* Iterate back-to-front to get proper digit order (most significant first). */
+   for (int i = size - 1; i >= 0; --i) {
+      fprintf(fp, (i == size - 1) ? "0x%08x" : "'%08x", words[i]);
    }
    fprintf(fp, "\n");
 }
 
 /* Print bitset, only if some bits are set */
 static void
-print_nz_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
+print_nz_bitset(FILE *fp, const char *label, const unsigned *words, int size)
+{
    bool is_all_zero = true;
    for (int i = 0; i < size; ++i) {
       if (words[i]) {
@@ -1758,7 +1761,8 @@ print_nz_bitset(FILE *fp, const char *label, const unsigned *words, int size) {
  * E.g. inputs_read: 0,15-17
  */
 static void
-print_nz_x64(FILE *fp, const char *label, uint64_t value) {
+print_nz_x64(FILE *fp, const char *label, uint64_t value)
+{
    if (value) {
       char acc[256] = {0};
       char buf[32];
@@ -1782,41 +1786,47 @@ print_nz_x64(FILE *fp, const char *label, uint64_t value) {
 
 /* Print uint32_t value in hex, only if non-zero */
 static void
-print_nz_x32(FILE *fp, const char *label, uint32_t value) {
+print_nz_x32(FILE *fp, const char *label, uint32_t value)
+{
    if (value)
       fprintf(fp, "%s: 0x%08" PRIx32 "\n", label, value);
 }
 
 /* Print uint16_t value in hex, only if non-zero */
 static void
-print_nz_x16(FILE *fp, const char *label, uint16_t value) {
+print_nz_x16(FILE *fp, const char *label, uint16_t value)
+{
    if (value)
       fprintf(fp, "%s: 0x%04x\n", label, value);
 }
 
 /* Print uint8_t value in hex, only if non-zero */
 static void
-print_nz_x8(FILE *fp, const char *label, uint8_t value) {
+print_nz_x8(FILE *fp, const char *label, uint8_t value)
+{
    if (value)
       fprintf(fp, "%s: 0x%02x\n", label, value);
 }
 
 /* Print unsigned value in decimal, only if non-zero */
 static void
-print_nz_unsigned(FILE *fp, const char *label, unsigned value) {
+print_nz_unsigned(FILE *fp, const char *label, unsigned value)
+{
    if (value)
       fprintf(fp, "%s: %u\n", label, value);
 }
 
 /* Print bool only if set */
 static void
-print_nz_bool(FILE *fp, const char *label, bool value) {
+print_nz_bool(FILE *fp, const char *label, bool value)
+{
    if (value)
       fprintf(fp, "%s: true\n", label);
 }
 
 static void
-print_shader_info(const struct shader_info *info, FILE *fp) {
+print_shader_info(const struct shader_info *info, FILE *fp)
+{
    fprintf(fp, "shader: %s\n", gl_shader_stage_name(info->stage));
 
    fprintf(fp, "source_sha1: {");
