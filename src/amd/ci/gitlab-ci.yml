@@ -9,6 +9,7 @@
     HWCI_FREQ_MAX: "true"
     HWCI_KERNEL_MODULES: amdgpu
     KERNEL_IMAGE_TYPE: ""
+    FLAKES_CHANNEL: "#amd-ci"
 
 .radeonsi-stoney-test:x86_64:
   extends:
