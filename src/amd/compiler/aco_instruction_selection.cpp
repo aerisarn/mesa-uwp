@@ -7308,7 +7308,11 @@ visit_store_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    unsigned elem_size_bytes = intrin->src[0].ssa->bit_size / 8u;
 
    nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
-   memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode));
+   /* GS outputs are only written once. */
+   const bool written_once =
+      mem_mode == nir_var_shader_out && ctx->shader->info.stage == MESA_SHADER_GEOMETRY;
+   memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode),
+                         written_once ? semantic_can_reorder : semantic_none);
 
    store_vmem_mubuf(ctx, store_src, descriptor, v_offset, s_offset, idx, const_offset, elem_size_bytes,
                     write_mask, swizzled, sync, glc, slc);
