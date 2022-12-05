@@ -238,6 +238,37 @@ brw_nir_adjust_payload(nir_shader *shader, const struct brw_compiler *compiler)
       NIR_PASS(_, shader, nir_opt_constant_folding);
 }
 
+static bool
+brw_nir_align_launch_mesh_workgroups_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_launch_mesh_workgroups)
+      return false;
+
+   /* nir_lower_task_shader uses "range" as task payload size. */
+   unsigned range = nir_intrinsic_range(intrin);
+   /* This will avoid special case in nir_lower_task_shader dealing with
+    * not vec4-aligned payload when payload_in_shared workaround is enabled.
+    */
+   nir_intrinsic_set_range(intrin, ALIGN(range, 16));
+
+   return true;
+}
+
+static bool
+brw_nir_align_launch_mesh_workgroups(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir,
+                                       brw_nir_align_launch_mesh_workgroups_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
+}
+
 const unsigned *
 brw_compile_task(const struct brw_compiler *compiler,
                  void *mem_ctx,
@@ -249,6 +280,8 @@ brw_compile_task(const struct brw_compiler *compiler,
    const bool debug_enabled = INTEL_DEBUG(DEBUG_TASK);
 
    brw_nir_lower_tue_outputs(nir, &prog_data->map);
+
+   NIR_PASS(_, nir, brw_nir_align_launch_mesh_workgroups);
 
    nir_lower_task_shader_options lower_ts_opt = {
       .payload_to_shared_for_atomics = true,
