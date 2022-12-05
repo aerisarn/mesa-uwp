@@ -3997,6 +3997,17 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                                   uint32_t layer_count);
 
 void
+anv_cmd_buffer_mark_image_fast_cleared(struct anv_cmd_buffer *cmd_buffer,
+                                       const struct anv_image *image,
+                                       const enum isl_format format,
+                                       union isl_color_value clear_color);
+
+void
+anv_cmd_buffer_load_clear_color_from_image(struct anv_cmd_buffer *cmd_buffer,
+                                           struct anv_state state,
+                                           const struct anv_image *image);
+
+void
 anv_image_clear_color(struct anv_cmd_buffer *cmd_buffer,
                       const struct anv_image *image,
                       VkImageAspectFlagBits aspect,
