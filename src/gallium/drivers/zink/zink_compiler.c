@@ -637,23 +637,31 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
    tangent = nir_pad_vector_imm_int(b, tangent, 0, 4);
    dir = nir_fmul_imm(b, nir_fmul(b, dir, vp_scale_rcp), 0.5);
 
-   nir_ssa_def *line_offets[4] = {
+   nir_ssa_def *line_offets[8] = {
       nir_fadd(b, tangent, nir_fneg(b, dir)),
       nir_fadd(b, nir_fneg(b, tangent), nir_fneg(b, dir)),
+      tangent,
+      nir_fneg(b, tangent),
+      tangent,
+      nir_fneg(b, tangent),
       nir_fadd(b, tangent, dir),
       nir_fadd(b, nir_fneg(b, tangent), dir),
    };
    nir_ssa_def *line_coord =
       nir_vec4(b, half_width, half_width, half_length, half_length);
-   nir_ssa_def *line_coords[4] = {
+   nir_ssa_def *line_coords[8] = {
       nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,  -1,  1)),
       nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,  -1,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,   0,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,   0,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,   0,  1)),
+      nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,   0,  1)),
       nir_fmul(b, line_coord, nir_imm_vec4(b, -1,  1,   1,  1)),
       nir_fmul(b, line_coord, nir_imm_vec4(b,  1,  1,   1,  1)),
    };
 
-   /* emit first two vertices */
-   for (int i = 0; i < 2; ++i) {
+   /* emit first end-cap, and start line */
+   for (int i = 0; i < 4; ++i) {
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
          if (state->prev_varyings[location])
@@ -666,8 +674,8 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
       nir_emit_vertex(b);
    }
 
-   /* emit last two vertices */
-   for (int i = 2; i < 4; ++i) {
+   /* finish line and emit last end-cap */
+   for (int i = 4; i < 8; ++i) {
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
          if (state->varyings[location])
@@ -794,7 +802,7 @@ lower_line_smooth_gs(nir_shader *shader)
    b.cursor = nir_before_cf_list(&entry->body);
    nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
 
-   shader->info.gs.vertices_out = 2 * shader->info.gs.vertices_out;
+   shader->info.gs.vertices_out = 8 * shader->info.gs.vertices_out;
    shader->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
 
    return nir_shader_instructions_pass(shader, lower_line_smooth_gs_instr,
