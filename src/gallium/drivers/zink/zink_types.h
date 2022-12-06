@@ -1284,6 +1284,7 @@ struct zink_screen {
       bool needs_sanitised_layer;
       bool track_renderpasses;
       bool no_linestipple;
+      bool no_linesmooth;
       bool no_hw_gl_point;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;

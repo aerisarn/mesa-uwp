@@ -2349,6 +2349,12 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.no_linestipple = true;
    }
 
+   if (screen->info.driver_props.driverID ==
+       VK_DRIVER_ID_IMAGINATION_PROPRIETARY) {
+      assert(screen->info.feats.features.geometryShader);
+      screen->driver_workarounds.no_linesmooth = true;
+   }
+
    /* This is a workarround for the lack of
     * gl_PointSize + glPolygonMode(..., GL_LINE), in the imagination
     * proprietary driver.
@@ -2731,6 +2737,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                           screen->info.have_EXT_non_seamless_cube_map &&
                           !screen->driconf.inline_uniforms &&
                           !screen->driver_workarounds.no_linestipple &&
+                          !screen->driver_workarounds.no_linesmooth &&
                           !screen->driver_workarounds.no_hw_gl_point;
    if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;

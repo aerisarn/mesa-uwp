@@ -2801,6 +2801,13 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
                NIR_PASS_V(nir, nir_lower_var_copies);
                need_optimize = true;
             }
+
+            if (zink_gs_key(key)->lower_line_smooth) {
+               NIR_PASS_V(nir, lower_line_smooth_gs);
+               NIR_PASS_V(nir, nir_lower_var_copies);
+               need_optimize = true;
+            }
+
             if (zink_gs_key(key)->lower_gl_point) {
                NIR_PASS_V(nir, lower_gl_point_gs);
                need_optimize = true;
@@ -2831,6 +2838,12 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       case MESA_SHADER_FRAGMENT:
          if (zink_fs_key(key)->lower_line_stipple)
             NIR_PASS_V(nir, lower_line_stipple_fs);
+
+         if (zink_fs_key(key)->lower_line_smooth) {
+            NIR_PASS_V(nir, lower_line_smooth_fs);
+            need_optimize = true;
+         }
+
          if (!zink_fs_key(key)->samples &&
             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
             /* VK will always use gl_SampleMask[] values even if sample count is 0,
