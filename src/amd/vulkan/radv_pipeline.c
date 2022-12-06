@@ -2305,6 +2305,15 @@ radv_graphics_pipeline_link(const struct radv_pipeline *pipeline,
    }
 }
 
+static bool
+radv_pipeline_has_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
+{
+   /* These dynamic states need to compile PS epilogs on-demand. */
+   return pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
+                                      RADV_DYNAMIC_COLOR_WRITE_MASK |
+                                      RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
+}
+
 struct radv_pipeline_key
 radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreateFlags flags)
 {
@@ -2327,19 +2336,7 @@ radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreat
    return key;
 }
 
-struct radv_ps_epilog_state
-{
-   uint8_t color_attachment_count;
-   VkFormat color_attachment_formats[MAX_RTS];
-
-   uint32_t color_write_mask;
-   uint32_t color_blend_enable;
-
-   bool mrt0_is_dual_src;
-   uint8_t need_src_alpha;
-};
-
-static struct radv_ps_epilog_key
+struct radv_ps_epilog_key
 radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
                             const struct radv_ps_epilog_state *state,
                             bool disable_mrt_compaction)
@@ -2404,6 +2401,7 @@ radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
    key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
    key.enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup ? is_float32 : 0;
    key.mrt0_is_dual_src = state->mrt0_is_dual_src;
+   key.need_src_alpha = state->need_src_alpha;
 
    return key;
 }
@@ -3920,7 +3918,7 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
                                const struct radv_graphics_pipeline *pipeline,
                                const struct radv_blend_state *blend)
 {
-   if (pipeline->ps_epilog)
+   if (pipeline->ps_epilog || radv_pipeline_has_dynamic_ps_epilog(pipeline))
       return;
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
@@ -5189,6 +5187,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
 
    pipeline->mrt0_is_dual_src = key.ps.epilog.mrt0_is_dual_src;
+   pipeline->need_src_alpha = key.ps.epilog.need_src_alpha;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;

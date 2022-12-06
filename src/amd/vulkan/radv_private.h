@@ -1712,6 +1712,22 @@ bool radv_cmp_vs_prolog(const void *a_, const void *b_);
 uint32_t radv_hash_ps_epilog(const void *key_);
 bool radv_cmp_ps_epilog(const void *a_, const void *b_);
 
+struct radv_ps_epilog_state
+{
+   uint8_t color_attachment_count;
+   VkFormat color_attachment_formats[MAX_RTS];
+
+   uint32_t color_write_mask;
+   uint32_t color_blend_enable;
+
+   bool mrt0_is_dual_src;
+   uint8_t need_src_alpha;
+};
+
+struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
+                                                      const struct radv_ps_epilog_state *state,
+                                                      bool disable_mrt_compaction);
+
 void radv_cmd_buffer_reset_rendering(struct radv_cmd_buffer *cmd_buffer);
 bool radv_cmd_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer, unsigned size,
                                   unsigned *out_offset, void **ptr);
@@ -2044,6 +2060,7 @@ struct radv_graphics_pipeline {
    uint32_t col_format_non_compacted;
 
    bool mrt0_is_dual_src;
+   uint8_t need_src_alpha;
 
    bool uses_drawid;
    bool uses_baseinstance;

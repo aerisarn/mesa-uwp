@@ -4099,6 +4099,68 @@ radv_cmp_ps_epilog(const void *a_, const void *b_)
    return memcmp(a, b, sizeof(*a)) == 0;
 }
 
+static struct radv_shader_part *
+lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   struct radv_device *device = cmd_buffer->device;
+   struct radv_shader_part *epilog = NULL;
+   struct radv_ps_epilog_state state = {0};
+
+   state.color_attachment_count = render->color_att_count;
+   for (unsigned i = 0; i < render->color_att_count; ++i) {
+      state.color_attachment_formats[i] = render->color_att[i].format;
+   }
+
+   for (unsigned i = 0; i < MAX_RTS; i++) {
+      state.color_write_mask |= d->vk.cb.attachments[i].write_mask << (4 * i);
+      state.color_blend_enable |= d->vk.cb.attachments[i].blend_enable << (4 * i);
+   }
+
+   state.mrt0_is_dual_src = pipeline->mrt0_is_dual_src;
+
+   state.need_src_alpha = pipeline->need_src_alpha;
+   if (d->vk.ms.alpha_to_coverage_enable) {
+      /* Select a color export format with alpha when alpha to coverage is enabled. */
+      state.need_src_alpha |= 0x1;
+   }
+
+   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(pipeline, &state, true);
+   uint32_t hash = radv_hash_ps_epilog(&key);
+
+   u_rwlock_rdlock(&device->ps_epilogs_lock);
+   struct hash_entry *epilog_entry =
+      _mesa_hash_table_search_pre_hashed(device->ps_epilogs, hash, &key);
+   u_rwlock_rdunlock(&device->ps_epilogs_lock);
+
+   if (!epilog_entry) {
+      u_rwlock_wrlock(&device->ps_epilogs_lock);
+      epilog_entry = _mesa_hash_table_search_pre_hashed(device->ps_epilogs, hash, &key);
+      if (epilog_entry) {
+         u_rwlock_wrunlock(&device->ps_epilogs_lock);
+         return epilog_entry->data;
+      }
+
+      epilog = radv_create_ps_epilog(device, &key);
+      struct radv_ps_epilog_key *key2 = malloc(sizeof(*key2));
+      if (!epilog || !key2) {
+         radv_shader_part_unref(device, epilog);
+         free(key2);
+         u_rwlock_wrunlock(&device->ps_epilogs_lock);
+         return NULL;
+      }
+      memcpy(key2, &key, sizeof(*key2));
+      _mesa_hash_table_insert_pre_hashed(device->ps_epilogs, hash, key2, epilog);
+
+      u_rwlock_wrunlock(&device->ps_epilogs_lock);
+      return epilog;
+   }
+
+   return epilog_entry->data;
+}
+
 static void
 radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 {
@@ -8457,9 +8519,28 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    const struct radv_device *device = cmd_buffer->device;
    bool late_scissor_emission;
 
-   if (cmd_buffer->state.graphics_pipeline->ps_epilog)
-      radv_emit_ps_epilog_state(cmd_buffer, cmd_buffer->state.graphics_pipeline->ps_epilog,
-                                pipeline_is_dirty);
+   if (cmd_buffer->state.graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
+      struct radv_shader_part *ps_epilog = NULL;
+
+      if (cmd_buffer->state.graphics_pipeline->ps_epilog) {
+         ps_epilog = cmd_buffer->state.graphics_pipeline->ps_epilog;
+      } else if ((cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline ||
+                 (cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
+                                             RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE |
+                                             RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE)))) {
+         ps_epilog = lookup_ps_epilog(cmd_buffer);
+         if (!ps_epilog) {
+            vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+            return;
+         }
+
+         cmd_buffer->state.col_format_non_compacted = ps_epilog->spi_shader_col_format;
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
+      }
+
+      if (ps_epilog)
+         radv_emit_ps_epilog_state(cmd_buffer, ps_epilog, pipeline_is_dirty);
+   }
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
