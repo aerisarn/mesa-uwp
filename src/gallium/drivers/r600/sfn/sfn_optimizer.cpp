@@ -261,7 +261,7 @@ public:
    void visit(LDSReadInstr *instr) override { (void)instr; };
 
    void propagate_to(RegisterVec4& src, Instr *instr);
-   bool assigned_in_block_and_direct(PRegister reg, int block_id);
+   bool assigned_register_direct(PRegister reg);
 
    ValueFactory& value_factory;
    bool progress;
@@ -477,7 +477,7 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
          if (src->pin() == pin_array)
             return;
          if (!src->has_flag(Register::ssa) &&
-             !assigned_in_block_and_direct(src, instr->block_id())) {
+             !assigned_register_direct(src)) {
             return;
          }
          if (register_chan_is_pinned(src->pin())) {
@@ -537,20 +537,16 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& src, Instr *instr)
       src.validate();
 }
 
-bool CopyPropFwdVisitor::assigned_in_block_and_direct(PRegister reg, int block_id)
+bool CopyPropFwdVisitor::assigned_register_direct(PRegister reg)
 {
    for (auto p: reg->parents()) {
       if (p->as_alu())  {
           auto [addr, is_regoffs, is_index] = p->as_alu()->indirect_addr();
-          if (addr) {
+          if (addr)
              return false;
-          }
       }
-
-      if (p->block_id() == block_id)
-         return true;
    }
-   return false;
+   return true;
 }
 
 void
