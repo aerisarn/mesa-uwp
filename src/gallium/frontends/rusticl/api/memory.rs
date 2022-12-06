@@ -452,7 +452,7 @@ fn validate_image_desc(
         let p = p.get_arc()?;
         if !match desc.image_type {
             CL_MEM_OBJECT_IMAGE1D_BUFFER => p.is_buffer(),
-            CL_MEM_OBJECT_IMAGE2D => !p.is_buffer(),
+            CL_MEM_OBJECT_IMAGE2D => true,
             _ => false,
         } {
             return Err(CL_INVALID_OPERATION);
