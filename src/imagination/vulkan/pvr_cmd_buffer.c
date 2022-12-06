@@ -37,6 +37,7 @@
 #include "pvr_device_info.h"
 #include "pvr_end_of_tile.h"
 #include "pvr_formats.h"
+#include "pvr_hardcode.h"
 #include "pvr_hw_pass.h"
 #include "pvr_job_common.h"
 #include "pvr_job_render.h"
@@ -2968,7 +2969,7 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-static VkResult pvr_setup_descriptor_mappings(
+static VkResult pvr_setup_descriptor_mappings_old(
    struct pvr_cmd_buffer *const cmd_buffer,
    enum pvr_stage_allocation stage,
    const struct pvr_stage_allocation_descriptor_state *descriptor_state,
@@ -3203,6 +3204,37 @@ static VkResult pvr_setup_descriptor_mappings(
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
    return VK_SUCCESS;
+}
+
+static VkResult
+pvr_setup_descriptor_mappings_new(uint32_t *const descriptor_data_offset_out)
+{
+   *descriptor_data_offset_out = ~0;
+
+   pvr_finishme("Implement new desc set path.");
+
+   return VK_ERROR_UNKNOWN;
+}
+
+static VkResult pvr_setup_descriptor_mappings(
+   struct pvr_cmd_buffer *const cmd_buffer,
+   enum pvr_stage_allocation stage,
+   const struct pvr_stage_allocation_descriptor_state *descriptor_state,
+   const pvr_dev_addr_t *const num_worgroups_buff_addr,
+   uint32_t *const descriptor_data_offset_out)
+{
+   const bool old_path =
+      pvr_hard_code_shader_required(&cmd_buffer->device->pdevice->dev_info);
+
+   if (old_path) {
+      return pvr_setup_descriptor_mappings_old(cmd_buffer,
+                                               stage,
+                                               descriptor_state,
+                                               num_worgroups_buff_addr,
+                                               descriptor_data_offset_out);
+   }
+
+   return pvr_setup_descriptor_mappings_new(descriptor_data_offset_out);
 }
 
 static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,

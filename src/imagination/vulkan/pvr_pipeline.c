@@ -656,52 +656,60 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
    uint32_t *staging_buffer;
    VkResult result;
 
+   const bool old_path =
+      pvr_hard_code_shader_required(&device->pdevice->dev_info);
+
    assert(stage != PVR_STAGE_ALLOCATION_COUNT);
 
    *pds_info = (struct pvr_pds_info){ 0 };
 
-   result = pvr_pds_descriptor_program_setup_buffers(
-      device,
-      device->features.robustBufferAccess,
-      compile_time_consts_data,
-      ubo_data,
-      &program.buffers,
-      &program.buffer_count,
-      &descriptor_state->static_consts);
-   if (result != VK_SUCCESS)
-      return result;
+   if (old_path) {
+      result = pvr_pds_descriptor_program_setup_buffers(
+         device,
+         device->features.robustBufferAccess,
+         compile_time_consts_data,
+         ubo_data,
+         &program.buffers,
+         &program.buffer_count,
+         &descriptor_state->static_consts);
+      if (result != VK_SUCCESS)
+         return result;
 
-   if (layout->per_stage_reg_info[stage].primary_dynamic_size_in_dwords)
-      assert(!"Unimplemented");
+      if (layout->per_stage_reg_info[stage].primary_dynamic_size_in_dwords)
+         assert(!"Unimplemented");
 
-   for (uint32_t set_num = 0; set_num < layout->set_count; set_num++) {
-      const struct pvr_descriptor_set_layout_mem_layout *const reg_layout =
-         &layout->register_layout_in_dwords_per_stage[stage][set_num];
-      const uint32_t start_offset = explicit_const_usage->start_offset;
+      for (uint32_t set_num = 0; set_num < layout->set_count; set_num++) {
+         const struct pvr_descriptor_set_layout_mem_layout *const reg_layout =
+            &layout->register_layout_in_dwords_per_stage[stage][set_num];
+         const uint32_t start_offset = explicit_const_usage->start_offset;
 
-      /* TODO: Use compiler usage info to optimize this? */
+         /* TODO: Use compiler usage info to optimize this? */
 
-      /* Only dma primaries if they are actually required. */
-      if (reg_layout->primary_size) {
+         /* Only dma primaries if they are actually required. */
+         if (reg_layout->primary_size) {
+            program.descriptor_sets[program.descriptor_set_count++] =
+               (struct pvr_pds_descriptor_set){
+                  .descriptor_set = set_num,
+                  .size_in_dwords = reg_layout->primary_size,
+                  .destination = reg_layout->primary_offset + start_offset,
+                  .primary = true,
+               };
+         }
+
+         /* Only dma secondaries if they are actually required. */
+         if (!reg_layout->secondary_size)
+            continue;
+
          program.descriptor_sets[program.descriptor_set_count++] =
             (struct pvr_pds_descriptor_set){
                .descriptor_set = set_num,
-               .size_in_dwords = reg_layout->primary_size,
-               .destination = reg_layout->primary_offset + start_offset,
-               .primary = true,
+               .size_in_dwords = reg_layout->secondary_size,
+               .destination = reg_layout->secondary_offset + start_offset,
             };
       }
-
-      /* Only dma secondaries if they are actually required. */
-      if (!reg_layout->secondary_size)
-         continue;
-
-      program.descriptor_sets[program.descriptor_set_count++] =
-         (struct pvr_pds_descriptor_set){
-            .descriptor_set = set_num,
-            .size_in_dwords = reg_layout->secondary_size,
-            .destination = reg_layout->secondary_offset + start_offset,
-         };
+   } else {
+      pvr_finishme("Implement new desc set path.");
+      return VK_ERROR_UNKNOWN;
    }
 
    entries_buffer = vk_alloc2(&device->vk.alloc,
