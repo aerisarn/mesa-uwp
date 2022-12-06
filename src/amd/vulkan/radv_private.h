@@ -963,6 +963,10 @@ struct radv_device {
    struct radv_shader_part *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
    struct radv_shader_part *instance_rate_vs_prologs[816];
 
+   /* PS epilogs */
+   struct u_rwlock ps_epilogs_lock;
+   struct hash_table *ps_epilogs;
+
    simple_mtx_t trace_mtx;
 
    /* Whether per-vertex VRS is forced. */
@@ -1700,6 +1704,9 @@ uint32_t radv_get_vgt_index_size(uint32_t type);
 unsigned radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_inputs);
 uint32_t radv_hash_vs_prolog(const void *key_);
 bool radv_cmp_vs_prolog(const void *a_, const void *b_);
+
+uint32_t radv_hash_ps_epilog(const void *key_);
+bool radv_cmp_ps_epilog(const void *a_, const void *b_);
 
 void radv_cmd_buffer_reset_rendering(struct radv_cmd_buffer *cmd_buffer);
 bool radv_cmd_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer, unsigned size,

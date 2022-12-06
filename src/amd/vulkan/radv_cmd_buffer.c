@@ -4080,6 +4080,21 @@ radv_emit_color_blend_enable(struct radv_cmd_buffer *cmd_buffer)
    }
 }
 
+uint32_t
+radv_hash_ps_epilog(const void *key_)
+{
+   const struct radv_ps_epilog_key *key = key_;
+   return _mesa_hash_data(key, sizeof(*key));
+}
+
+bool
+radv_cmp_ps_epilog(const void *a_, const void *b_)
+{
+   const struct radv_ps_epilog_key *a = a_;
+   const struct radv_ps_epilog_key *b = b_;
+   return memcmp(a, b, sizeof(*a)) == 0;
+}
+
 static void
 radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 {

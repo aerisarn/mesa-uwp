@@ -3318,6 +3318,31 @@ radv_device_finish_vs_prologs(struct radv_device *device)
    }
 }
 
+static VkResult
+radv_device_init_ps_epilogs(struct radv_device *device)
+{
+   u_rwlock_init(&device->ps_epilogs_lock);
+
+   device->ps_epilogs = _mesa_hash_table_create(NULL, &radv_hash_ps_epilog, &radv_cmp_ps_epilog);
+   if (!device->ps_epilogs)
+      return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   return VK_SUCCESS;
+}
+
+static void
+radv_device_finish_ps_epilogs(struct radv_device *device)
+{
+   if (device->ps_epilogs) {
+      hash_table_foreach(device->ps_epilogs, entry)
+      {
+         free((void *)entry->key);
+         radv_shader_part_unref(device, entry->data);
+      }
+      _mesa_hash_table_destroy(device->ps_epilogs, NULL);
+   }
+}
+
 VkResult
 radv_device_init_vrs_state(struct radv_device *device)
 {
@@ -3635,6 +3660,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool attachment_vrs_enabled = false;
    bool image_float32_atomics = false;
    bool vs_prologs = false;
+   bool ps_epilogs = false;
    bool global_bo_list = false;
    bool image_2d_view_of_3d = false;
    bool primitives_generated_query = false;
@@ -3991,6 +4017,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          goto fail;
    }
 
+   if (ps_epilogs) {
+      result = radv_device_init_ps_epilogs(device);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
    if (device->physical_device->rad_info.gfx_level >= GFX7)
       cik_create_gfx_config(device);
 
@@ -4062,6 +4094,7 @@ fail:
 
    radv_device_finish_notifier(device);
    radv_device_finish_vs_prologs(device);
+   radv_device_finish_ps_epilogs(device);
    radv_device_finish_border_color(device);
 
    for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
@@ -4102,6 +4135,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    radv_device_finish_notifier(device);
    radv_device_finish_vs_prologs(device);
+   radv_device_finish_ps_epilogs(device);
    radv_device_finish_border_color(device);
    radv_device_finish_vrs_image(device);
 
