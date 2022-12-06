@@ -732,6 +732,12 @@ rra_dump_acceleration_structure(struct radv_rra_accel_struct_data *accel_struct,
       }
    }
 
+   VkResult result = VK_SUCCESS;
+
+   uint32_t *node_parent_table = NULL;
+   uint32_t *leaf_node_ids = NULL;
+   uint8_t *dst_structure_data = NULL;
+
    struct rra_bvh_info bvh_info = {0};
    rra_gather_bvh_info(data + header->bvh_offset, RADV_BVH_ROOT_NODE, &bvh_info);
 
@@ -746,22 +752,22 @@ rra_dump_acceleration_structure(struct radv_rra_accel_struct_data *accel_struct,
    uint32_t node_parent_table_size =
       ((bvh_info.leaf_nodes_size + bvh_info.internal_nodes_size) / 64) * sizeof(uint32_t);
 
-   uint32_t *node_parent_table = calloc(node_parent_table_size, 1);
+   node_parent_table = calloc(node_parent_table_size, 1);
    if (!node_parent_table) {
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto exit;
    }
 
-   uint32_t *leaf_node_ids = calloc(primitive_count, sizeof(uint32_t));
+   leaf_node_ids = calloc(primitive_count, sizeof(uint32_t));
    if (!leaf_node_ids) {
-      free(node_parent_table);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto exit;
    }
-   uint8_t *dst_structure_data =
+   dst_structure_data =
       calloc(RRA_ROOT_NODE_OFFSET + bvh_info.internal_nodes_size + bvh_info.leaf_nodes_size, 1);
    if (!dst_structure_data) {
-      free(node_parent_table);
-      free(leaf_node_ids);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto exit;
    }
 
    struct rra_transcoding_context ctx = {
@@ -832,11 +838,12 @@ rra_dump_acceleration_structure(struct radv_rra_accel_struct_data *accel_struct,
    uint32_t leaf_node_list_size = primitive_count * sizeof(uint32_t);
    fwrite(leaf_node_ids, 1, leaf_node_list_size, output);
 
+exit:
    free(dst_structure_data);
    free(node_parent_table);
    free(leaf_node_ids);
 
-   return VK_SUCCESS;
+   return result;
 }
 
 int
