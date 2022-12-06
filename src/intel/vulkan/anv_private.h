@@ -453,6 +453,12 @@ enum anv_bo_alloc_flags {
 struct anv_bo {
    const char *name;
 
+   /* The VMA heap in anv_device from which this BO takes its offset.
+    *
+    * This can only be NULL when has_fixed_address is true.
+    */
+   struct util_vma_heap *vma_heap;
+
    uint32_t gem_handle;
 
    uint32_t refcount;
@@ -1370,8 +1376,10 @@ int anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle, uint32_t
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,
                        enum anv_bo_alloc_flags alloc_flags,
-                       uint64_t client_address);
+                       uint64_t client_address,
+                       struct util_vma_heap **out_vma_heap);
 void anv_vma_free(struct anv_device *device,
+                  struct util_vma_heap *vma_heap,
                   uint64_t address, uint64_t size);
 
 struct anv_reloc_list {

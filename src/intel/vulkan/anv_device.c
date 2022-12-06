@@ -3611,24 +3611,39 @@ anv_device_wait(struct anv_device *device, struct anv_bo *bo,
    }
 }
 
+static struct util_vma_heap *
+anv_vma_heap_for_flags(struct anv_device *device,
+                       enum anv_bo_alloc_flags alloc_flags)
+{
+   if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS)
+      return &device->vma_cva;
+
+   if (alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS)
+      return &device->vma_lo;
+
+   return &device->vma_hi;
+}
+
 uint64_t
 anv_vma_alloc(struct anv_device *device,
               uint64_t size, uint64_t align,
               enum anv_bo_alloc_flags alloc_flags,
-              uint64_t client_address)
+              uint64_t client_address,
+              struct util_vma_heap **out_vma_heap)
 {
    pthread_mutex_lock(&device->vma_mutex);
 
    uint64_t addr = 0;
+   *out_vma_heap = anv_vma_heap_for_flags(device, alloc_flags);
 
    if (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) {
       if (client_address) {
-         if (util_vma_heap_alloc_addr(&device->vma_cva,
+         if (util_vma_heap_alloc_addr(*out_vma_heap,
                                       client_address, size)) {
             addr = client_address;
          }
       } else {
-         addr = util_vma_heap_alloc(&device->vma_cva, size, align);
+         addr = util_vma_heap_alloc(*out_vma_heap, size, align);
       }
       /* We don't want to fall back to other heaps */
       goto done;
@@ -3636,11 +3651,7 @@ anv_vma_alloc(struct anv_device *device,
 
    assert(client_address == 0);
 
-   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS))
-      addr = util_vma_heap_alloc(&device->vma_hi, size, align);
-
-   if (addr == 0)
-      addr = util_vma_heap_alloc(&device->vma_lo, size, align);
+   addr = util_vma_heap_alloc(*out_vma_heap, size, align);
 
 done:
    pthread_mutex_unlock(&device->vma_mutex);
@@ -3651,22 +3662,18 @@ done:
 
 void
 anv_vma_free(struct anv_device *device,
+             struct util_vma_heap *vma_heap,
              uint64_t address, uint64_t size)
 {
+   assert(vma_heap == &device->vma_lo ||
+          vma_heap == &device->vma_cva ||
+          vma_heap == &device->vma_hi);
+
    const uint64_t addr_48b = intel_48b_address(address);
 
    pthread_mutex_lock(&device->vma_mutex);
 
-   if (addr_48b >= LOW_HEAP_MIN_ADDRESS &&
-       addr_48b <= LOW_HEAP_MAX_ADDRESS) {
-      util_vma_heap_free(&device->vma_lo, addr_48b, size);
-   } else if (addr_48b >= CLIENT_VISIBLE_HEAP_MIN_ADDRESS &&
-              addr_48b <= CLIENT_VISIBLE_HEAP_MAX_ADDRESS) {
-      util_vma_heap_free(&device->vma_cva, addr_48b, size);
-   } else {
-      assert(addr_48b >= HIGH_HEAP_MIN_ADDRESS);
-      util_vma_heap_free(&device->vma_hi, addr_48b, size);
-   }
+   util_vma_heap_free(vma_heap, addr_48b, size);
 
    pthread_mutex_unlock(&device->vma_mutex);
 }

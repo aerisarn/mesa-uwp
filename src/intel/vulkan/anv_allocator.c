@@ -1380,10 +1380,14 @@ anv_bo_unmap_close(struct anv_device *device, struct anv_bo *bo)
    device->kmd_backend->gem_close(device, bo->gem_handle);
 }
 
-static void anv_bo_vma_free(struct anv_device *device, struct anv_bo *bo)
+static void
+anv_bo_vma_free(struct anv_device *device, struct anv_bo *bo)
 {
-   if (bo->offset != 0 && !bo->has_fixed_address)
-      anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
+   if (bo->offset != 0 && !bo->has_fixed_address) {
+      assert(bo->vma_heap != NULL);
+      anv_vma_free(device, bo->vma_heap, bo->offset, bo->size + bo->_ccs_size);
+   }
+   bo->vma_heap = NULL;
 }
 
 static void
@@ -1402,6 +1406,7 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
                           enum anv_bo_alloc_flags alloc_flags,
                           uint64_t explicit_address)
 {
+   assert(bo->vma_heap == NULL);
    assert(explicit_address == intel_48b_address(explicit_address));
 
    uint32_t align = device->physical->info.mem_alignment;
@@ -1415,7 +1420,8 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
       bo->offset = explicit_address;
    } else {
       bo->offset = anv_vma_alloc(device, bo->size + bo->_ccs_size,
-                                 align, alloc_flags, explicit_address);
+                                 align, alloc_flags, explicit_address,
+                                 &bo->vma_heap);
       if (bo->offset == 0) {
          anv_bo_unmap_close(device, bo);
          return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
