@@ -1885,14 +1885,19 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
+radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *ps_epilog,
+                          bool pipeline_is_dirty)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_shader *ps_shader = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
 
-   if (!ps_epilog)
+   if (cmd_buffer->state.emitted_ps_epilog == ps_epilog && !pipeline_is_dirty)
       return;
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028714_SPI_SHADER_COL_FORMAT,
+                          ps_epilog->spi_shader_col_format);
+   radeon_set_context_reg(cmd_buffer->cs, R_02823C_CB_SHADER_MASK,
+                          ac_get_cb_shader_mask(ps_epilog->spi_shader_col_format));
 
    /* The main shader must not use less VGPRs than the epilog, otherwise shared vgprs might not
     * work.
@@ -1910,6 +1915,8 @@ radv_emit_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    assert(loc->num_sgprs == 1);
    radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
                             ps_epilog->va, false);
+
+   cmd_buffer->state.emitted_ps_epilog = ps_epilog;
 }
 
 static void
@@ -1980,8 +1987,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
          radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
       }
    }
-
-   radv_emit_ps_epilog(cmd_buffer);
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
 
@@ -8451,6 +8456,10 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 {
    const struct radv_device *device = cmd_buffer->device;
    bool late_scissor_emission;
+
+   if (cmd_buffer->state.graphics_pipeline->ps_epilog)
+      radv_emit_ps_epilog_state(cmd_buffer, cmd_buffer->state.graphics_pipeline->ps_epilog,
+                                pipeline_is_dirty);
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
