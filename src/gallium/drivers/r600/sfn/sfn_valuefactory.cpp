@@ -515,7 +515,7 @@ ValueFactory::dest_vec(const nir_dest& dst, int num_components)
    std::vector<PRegister, Allocator<PRegister>> retval;
    retval.reserve(num_components);
    for (int i = 0; i < num_components; ++i)
-      retval.push_back(dest(dst, i, num_components > 1 ? pin_chan : pin_free));
+      retval.push_back(dest(dst, i, num_components > 1 ? pin_none : pin_free));
    return retval;
 }
 
