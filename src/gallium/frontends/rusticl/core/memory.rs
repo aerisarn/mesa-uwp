@@ -762,12 +762,11 @@ impl Mem {
         assert!(!self.is_buffer());
 
         let res = self.get_res()?.get(&q.device).unwrap();
-        let bx = create_box(origin, region, self.mem_type)?;
         // make sure we allocate multiples of 4 bytes so drivers don't read out of bounds or
         // unaligned.
         // TODO: use div_ceil once it's available
-        let size = align(self.pixel_size().unwrap() as usize, size_of::<u32>());
-        let mut new_pattern: Vec<u32> = vec![0; size / size_of::<u32>()];
+        let pixel_size = align(self.pixel_size().unwrap() as usize, size_of::<u32>());
+        let mut new_pattern: Vec<u32> = vec![0; pixel_size / size_of::<u32>()];
 
         // we don't support CL_DEPTH for now
         assert!(pattern.len() == 4);
@@ -787,7 +786,18 @@ impl Mem {
             );
         }
 
-        ctx.clear_texture(res, &new_pattern, &bx);
+        // If image is created from a buffer, use clear_image_buffer instead
+        // for each row
+        if self.is_parent_buffer() {
+            let strides = (
+                self.image_desc.row_pitch()? as usize,
+                self.image_desc.slice_pitch()? as usize,
+            );
+            ctx.clear_image_buffer(res, &new_pattern, origin, region, strides, pixel_size);
+        } else {
+            let bx = create_box(origin, region, self.mem_type)?;
+            ctx.clear_texture(res, &new_pattern, &bx);
+        }
 
         Ok(())
     }
