@@ -1136,6 +1136,43 @@ binding_table_for_surface_state(struct anv_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
+static bool
+can_fast_clear_color_att(struct anv_cmd_buffer *cmd_buffer,
+                         struct blorp_batch *batch,
+                         const struct anv_attachment *att,
+                         const union isl_color_value clear_color,
+                         const VkClearAttachment *attachment,
+                         uint32_t rectCount, const VkClearRect *pRects)
+{
+   /* We don't support fast clearing with conditional rendering at the
+    * moment. All the tracking done around fast clears (clear color updates
+    * and fast-clear type updates) happens unconditionally.
+    */
+   if (batch->flags & BLORP_BATCH_PREDICATE_ENABLE)
+      return false;
+
+   if (rectCount > 1) {
+      anv_perf_warn(VK_LOG_OBJS(&cmd_buffer->device->vk.base),
+                    "Fast clears for vkCmdClearAttachments supported only for rectCount == 1");
+      return false;
+   }
+
+   /* We only support fast-clears on the first layer */
+   if (pRects[0].layerCount > 1 || pRects[0].baseArrayLayer > 0)
+      return false;
+
+   bool is_multiview = cmd_buffer->state.gfx.view_mask != 0;
+   if (is_multiview && (cmd_buffer->state.gfx.view_mask != 1))
+      return false;
+
+   return anv_can_fast_clear_color_view(cmd_buffer->device,
+                                        (struct anv_image_view *)att->iview,
+                                        att->layout,
+                                        clear_color,
+                                        pRects->layerCount,
+                                        pRects->rect);
+}
+
 static void
 exec_ccs_op(struct anv_cmd_buffer *cmd_buffer,
             struct blorp_batch *batch,
@@ -1342,15 +1379,44 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
    if (att->vk_format == VK_FORMAT_UNDEFINED)
       return;
 
+   union isl_color_value clear_color =
+      vk_to_isl_color(attachment->clearValue.color);
+
+   const struct anv_image_view *iview = att->iview;
+   if (iview &&
+       can_fast_clear_color_att(cmd_buffer, batch, att, clear_color,
+                                attachment, rectCount, pRects)) {
+      if (iview->image->vk.samples == 1) {
+         exec_ccs_op(cmd_buffer, batch, iview->image,
+                     iview->planes[0].isl.format,
+                     iview->planes[0].isl.swizzle,
+                     VK_IMAGE_ASPECT_COLOR_BIT,
+                     0, 0, 1, ISL_AUX_OP_FAST_CLEAR,
+                     &clear_color);
+      } else {
+         exec_mcs_op(cmd_buffer, batch, iview->image,
+                     iview->planes[0].isl.format,
+                     iview->planes[0].isl.swizzle,
+                     VK_IMAGE_ASPECT_COLOR_BIT,
+                     0, 1, ISL_AUX_OP_FAST_CLEAR,
+                     &clear_color);
+      }
+
+      anv_cmd_buffer_mark_image_fast_cleared(cmd_buffer, iview->image,
+                                             iview->planes[0].isl.format,
+                                             clear_color);
+      anv_cmd_buffer_load_clear_color_from_image(cmd_buffer,
+                                                 att->surface_state.state,
+                                                 iview->image);
+      return;
+   }
+
    uint32_t binding_table;
    VkResult result =
       binding_table_for_surface_state(cmd_buffer, att->surface_state.state,
                                       &binding_table);
    if (result != VK_SUCCESS)
       return;
-
-   union isl_color_value clear_color =
-      vk_to_isl_color(attachment->clearValue.color);
 
    /* If multiview is enabled we ignore baseArrayLayer and layerCount */
    if (gfx->view_mask) {
