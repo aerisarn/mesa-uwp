@@ -512,12 +512,8 @@ struct pvr_descriptor_set_layout_binding {
    /* Index into the flattened descriptor set */
    uint16_t descriptor_index;
 
-   VkShaderStageFlags shader_stages;
-   /* Mask composed by shifted PVR_STAGE_ALLOCATION_...
-    * Makes it easier to check active shader stages by just shifting and
-    * ANDing instead of using VkShaderStageFlags and match the PVR_STAGE_...
-    */
-   uint32_t shader_stage_mask;
+   /* Mask of enum pvr_stage_allocation. */
+   uint8_t shader_stage_mask;
 
    struct {
       uint32_t primary;
@@ -559,7 +555,8 @@ struct pvr_descriptor_set_layout {
    const struct pvr_sampler **immutable_samplers;
 
    /* Shader stages requiring access to descriptors in this set. */
-   VkShaderStageFlags shader_stages;
+   /* Mask of enum pvr_stage_allocation. */
+   uint8_t shader_stage_mask;
 
    /* Count of each VkDescriptorType per shader stage. Dynamically allocated
     * arrays per stage as to not hard code the max descriptor type here.
@@ -1037,7 +1034,8 @@ struct pvr_pipeline_layout {
 
    VkShaderStageFlags push_constants_shader_stages;
 
-   VkShaderStageFlags shader_stages;
+   /* Mask of enum pvr_stage_allocation. */
+   uint8_t shader_stage_mask;
 
    /* Per stage masks indicating which set in the layout contains any
     * descriptor of the appropriate types: VK..._{SAMPLER, SAMPLED_IMAGE,
