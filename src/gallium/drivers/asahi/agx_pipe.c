@@ -781,7 +781,7 @@ agx_transfer_map(struct pipe_context *pctx,
 
       assert(transfer->staging.rsrc != NULL);
 
-      if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
+      if ((usage & PIPE_MAP_READ) && agx_resource_valid(rsrc, level)) {
             agx_blit_to_staging(pctx, transfer);
             agx_flush_writer(ctx, staging, "GPU read staging blit");
       }
@@ -799,7 +799,7 @@ agx_transfer_map(struct pipe_context *pctx,
 
       transfer->map = calloc(transfer->base.layer_stride, box->depth);
 
-      if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
+      if ((usage & PIPE_MAP_READ) && agx_resource_valid(rsrc, level)) {
          for (unsigned z = 0; z < box->depth; ++z) {
             uint8_t *map = agx_map_texture_cpu(rsrc, level, box->z + z);
             uint8_t *dst = (uint8_t *) transfer->map +

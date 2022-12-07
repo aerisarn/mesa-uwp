@@ -1589,7 +1589,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          key.op[rt] = AGX_META_OP_STORE;
       } else {
          struct agx_resource *rsrc = agx_resource(surf->texture);
-         bool valid = BITSET_TEST(rsrc->data_valid, surf->u.tex.level);
+         bool valid = agx_resource_valid(rsrc, surf->u.tex.level);
          bool clear = (batch->clear & (PIPE_CLEAR_COLOR0 << rt));
          bool load = valid && !clear;
 

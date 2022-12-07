@@ -370,6 +370,18 @@ agx_resource(struct pipe_resource *pctx)
    return (struct agx_resource *) pctx;
 }
 
+static inline bool
+agx_resource_valid(struct agx_resource *rsrc, int level)
+{
+   /* Shared BOs can always be potentially valid */
+   if (rsrc->bo && rsrc->bo->flags & AGX_BO_SHARED) {
+      assert(level == 0);
+      return true;
+   }
+
+   return BITSET_TEST(rsrc->data_valid, level);
+}
+
 static inline void *
 agx_map_texture_cpu(struct agx_resource *rsrc, unsigned level, unsigned z)
 {
