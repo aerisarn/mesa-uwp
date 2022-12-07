@@ -231,7 +231,7 @@ ail_make_miptree(struct ail_layout *layout)
       assert(layout->linear_stride_B == 0 && "Invalid nonlinear layout");
       assert(layout->depth_px >= 1 && "Invalid dimensions");
       assert(layout->levels >= 1 && "Invalid dimensions");
-      assert(layout->sample_count_sa >= 1 && "Invalid samplt count");
+      assert(layout->sample_count_sa >= 1 && "Invalid sample count");
    }
 
    /* Hardware strides are based on the maximum number of levels, so always
