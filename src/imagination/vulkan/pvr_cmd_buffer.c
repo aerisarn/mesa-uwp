@@ -3207,13 +3207,208 @@ static VkResult pvr_setup_descriptor_mappings_old(
 }
 
 static VkResult
-pvr_setup_descriptor_mappings_new(uint32_t *const descriptor_data_offset_out)
+pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
+                                     enum pvr_stage_allocation stage,
+                                     pvr_dev_addr_t *addr_out)
 {
-   *descriptor_data_offset_out = ~0;
+   uint64_t bound_desc_sets[PVR_MAX_DESCRIPTOR_SETS];
+   const struct pvr_descriptor_state *desc_state;
+   struct pvr_bo *bo;
+   VkResult result;
 
-   pvr_finishme("Implement new desc set path.");
+   switch (stage) {
+   case PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY:
+   case PVR_STAGE_ALLOCATION_FRAGMENT:
+      desc_state = &cmd_buffer->state.gfx_desc_state;
+      break;
 
-   return VK_ERROR_UNKNOWN;
+   case PVR_STAGE_ALLOCATION_COMPUTE:
+      desc_state = &cmd_buffer->state.compute_desc_state;
+      break;
+
+   default:
+      unreachable("Unsupported stage.");
+      break;
+   }
+
+   for (uint32_t set = 0; set < ARRAY_SIZE(bound_desc_sets); set++) {
+      if (!(desc_state->valid_mask & BITFIELD_BIT(set))) {
+         bound_desc_sets[set] = PVR_DEV_ADDR_INVALID.addr;
+      } else {
+         bound_desc_sets[set] =
+            desc_state->descriptor_sets[set]->pvr_bo->vma->dev_addr.addr;
+      }
+   }
+
+   result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                          bound_desc_sets,
+                                          sizeof(bound_desc_sets),
+                                          &bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *addr_out = bo->vma->dev_addr;
+   return VK_SUCCESS;
+}
+
+static VkResult
+pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
+                         enum pvr_pds_addr_literal_type addr_literal_type,
+                         enum pvr_stage_allocation stage,
+                         pvr_dev_addr_t *addr_out)
+{
+   VkResult result;
+
+   switch (addr_literal_type) {
+   case PVR_PDS_ADDR_LITERAL_DESC_SET_ADDRS_TABLE: {
+      /* TODO: Maybe we want to free pvr_bo? And only when the data
+       * section is written successfully we link all bos to the command
+       * buffer.
+       */
+      result =
+         pvr_cmd_buffer_upload_desc_set_table(cmd_buffer, stage, addr_out);
+      if (result != VK_SUCCESS)
+         return result;
+
+      break;
+   }
+
+   default:
+      unreachable("Invalid add literal type.");
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult pvr_setup_descriptor_mappings_new(
+   struct pvr_cmd_buffer *const cmd_buffer,
+   enum pvr_stage_allocation stage,
+   const struct pvr_stage_allocation_descriptor_state *descriptor_state,
+   uint32_t *const descriptor_data_offset_out)
+{
+   const struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
+   const uint8_t *entries;
+   uint32_t *dword_buffer;
+   uint64_t *qword_buffer;
+   struct pvr_bo *pvr_bo;
+   VkResult result;
+
+   if (!pds_info->data_size_in_dwords)
+      return VK_SUCCESS;
+
+   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                     cmd_buffer->device->heaps.pds_heap,
+                                     pds_info->data_size_in_dwords << 2,
+                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                     &pvr_bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   dword_buffer = (uint32_t *)pvr_bo->bo->map;
+   qword_buffer = (uint64_t *)pvr_bo->bo->map;
+
+   entries = (uint8_t *)pds_info->entries;
+
+   switch (stage) {
+   case PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY:
+   case PVR_STAGE_ALLOCATION_FRAGMENT:
+   case PVR_STAGE_ALLOCATION_COMPUTE:
+      break;
+
+   default:
+      unreachable("Unsupported stage.");
+      break;
+   }
+
+   for (uint32_t i = 0; i < pds_info->entry_count; i++) {
+      const struct pvr_const_map_entry *const entry_header =
+         (struct pvr_const_map_entry *)entries;
+
+      switch (entry_header->type) {
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_LITERAL32: {
+         const struct pvr_const_map_entry_literal32 *const literal =
+            (struct pvr_const_map_entry_literal32 *)entries;
+
+         PVR_WRITE(dword_buffer,
+                   literal->literal_value,
+                   literal->const_offset,
+                   pds_info->data_size_in_dwords);
+
+         entries += sizeof(*literal);
+         break;
+      }
+
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_ADDR_LITERAL_BUFFER: {
+         const struct pvr_pds_const_map_entry_addr_literal_buffer
+            *const addr_literal_buffer_entry =
+               (struct pvr_pds_const_map_entry_addr_literal_buffer *)entries;
+         struct pvr_device *device = cmd_buffer->device;
+         struct pvr_bo *addr_literal_buffer_bo;
+         uint32_t addr_literal_count = 0;
+         uint64_t *addr_literal_buffer;
+
+         result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                           device->heaps.general_heap,
+                                           addr_literal_buffer_entry->size,
+                                           PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                           &addr_literal_buffer_bo);
+         if (result != VK_SUCCESS)
+            return result;
+
+         addr_literal_buffer = (uint64_t *)addr_literal_buffer_bo->bo->map;
+
+         entries += sizeof(*addr_literal_buffer_entry);
+
+         PVR_WRITE(qword_buffer,
+                   addr_literal_buffer_bo->vma->dev_addr.addr,
+                   addr_literal_buffer_entry->const_offset,
+                   pds_info->data_size_in_dwords);
+
+         for (uint32_t j = i + 1; j < pds_info->entry_count; j++) {
+            const struct pvr_const_map_entry *const entry_header =
+               (struct pvr_const_map_entry *)entries;
+            const struct pvr_pds_const_map_entry_addr_literal *addr_literal;
+            pvr_dev_addr_t dev_addr;
+
+            if (entry_header->type != PVR_PDS_CONST_MAP_ENTRY_TYPE_ADDR_LITERAL)
+               break;
+
+            addr_literal =
+               (struct pvr_pds_const_map_entry_addr_literal *)entries;
+
+            result = pvr_process_addr_literal(cmd_buffer,
+                                              addr_literal->addr_type,
+                                              stage,
+                                              &dev_addr);
+            if (result != VK_SUCCESS)
+               return result;
+
+            addr_literal_buffer[addr_literal_count++] = dev_addr.addr;
+
+            entries += sizeof(*addr_literal);
+         }
+
+         assert(addr_literal_count * sizeof(uint64_t) ==
+                addr_literal_buffer_entry->size);
+
+         i += addr_literal_count;
+
+         pvr_bo_cpu_unmap(device, addr_literal_buffer_bo);
+         break;
+      }
+
+      default:
+         unreachable("Unsupported map entry type.");
+      }
+   }
+
+   pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
+
+   *descriptor_data_offset_out =
+      pvr_bo->vma->dev_addr.addr -
+      cmd_buffer->device->heaps.pds_heap->base_addr.addr;
+
+   return VK_SUCCESS;
 }
 
 static VkResult pvr_setup_descriptor_mappings(
@@ -3234,7 +3429,10 @@ static VkResult pvr_setup_descriptor_mappings(
                                                descriptor_data_offset_out);
    }
 
-   return pvr_setup_descriptor_mappings_new(descriptor_data_offset_out);
+   return pvr_setup_descriptor_mappings_new(cmd_buffer,
+                                            stage,
+                                            descriptor_state,
+                                            descriptor_data_offset_out);
 }
 
 static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,

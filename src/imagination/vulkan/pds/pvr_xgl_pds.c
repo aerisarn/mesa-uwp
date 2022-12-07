@@ -1514,6 +1514,13 @@ void pvr_pds_generate_descriptor_upload_program(
    num_consts64 = input_program->descriptor_set_count;
    total_dma_count = input_program->descriptor_set_count;
 
+   /* 1 DOUTD for buffer containing address literals. */
+   if (input_program->addr_literal_count > 0) {
+      num_consts32++;
+      num_consts64++;
+      total_dma_count++;
+   }
+
    pvr_init_pds_const_map_entry_write_state(info, &entry_write_state);
 
    for (unsigned int index = 0; index < input_program->buffer_count; index++) {
@@ -1542,6 +1549,67 @@ void pvr_pds_generate_descriptor_upload_program(
    /* Start counting constants. */
    next_const64 = 0;
    next_const32 = num_consts64 * 2;
+
+   if (input_program->addr_literal_count > 0) {
+      bool last_dma = (++running_dma_count == total_dma_count);
+      bool halt = last_dma && !input_program->secondary_program_present;
+
+      unsigned int size_in_dwords = input_program->addr_literal_count *
+                                    sizeof(uint64_t) / sizeof(uint32_t);
+      unsigned int destination = input_program->addr_literals[0].destination;
+
+      struct pvr_pds_const_map_entry_addr_literal_buffer
+         *addr_literal_buffer_entry;
+
+      addr_literal_buffer_entry = pvr_prepare_next_pds_const_map_entry(
+         &entry_write_state,
+         sizeof(*addr_literal_buffer_entry));
+
+      addr_literal_buffer_entry->type =
+         PVR_PDS_CONST_MAP_ENTRY_TYPE_ADDR_LITERAL_BUFFER;
+      addr_literal_buffer_entry->size = size_in_dwords * sizeof(uint32_t);
+      addr_literal_buffer_entry->const_offset = next_const64 * 2;
+
+      for (unsigned int i = 0; i < input_program->addr_literal_count; i++) {
+         struct pvr_pds_const_map_entry_addr_literal *addr_literal_entry;
+
+         /* Check that the destinations for the addr literals are contiguous.
+          * Not supporting non contiguous ranges as that would either require a
+          * single large buffer with wasted memory for DMA, or multiple buffers
+          * to DMA.
+          */
+         if (i > 0) {
+            const uint32_t current_addr_literal_destination =
+               input_program->addr_literals[i].destination;
+            const uint32_t previous_addr_literal_destination =
+               input_program->addr_literals[i - 1].destination;
+
+            /* 2 regs to store 64 bits address. */
+            assert(current_addr_literal_destination ==
+                   previous_addr_literal_destination + 2);
+         }
+
+         addr_literal_entry =
+            pvr_prepare_next_pds_const_map_entry(&entry_write_state,
+                                                 sizeof(*addr_literal_entry));
+
+         addr_literal_entry->type = PVR_PDS_CONST_MAP_ENTRY_TYPE_ADDR_LITERAL;
+         addr_literal_entry->addr_type = input_program->addr_literals[i].type;
+      }
+
+      PVR_PDS_MODE_TOGGLE(code_section,
+                          instruction,
+                          pvr_encode_burst_cs(&entry_write_state,
+                                              last_dma,
+                                              halt,
+                                              next_const32,
+                                              next_const64,
+                                              size_in_dwords,
+                                              destination));
+
+      next_const64++;
+      next_const32++;
+   }
 
    /* For each descriptor set perform a DOUTD. */
    for (unsigned int descriptor_index = 0;
