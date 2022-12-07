@@ -6646,8 +6646,6 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    struct anv_device *device = cmd_buffer->device;
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
-   /* FIXME: Width and Height are wrong */
-
    uint32_t *dw = anv_batch_emit_dwords(&cmd_buffer->batch,
                                         device->isl_dev.ds.size / 4);
    if (dw == NULL)
