@@ -74,7 +74,7 @@ unsigned
 iris_batch_num_fences(struct iris_batch *batch)
 {
    return util_dynarray_num_elements(&batch->exec_fences,
-                                     struct drm_i915_gem_exec_fence);
+                                     struct iris_batch_fence);
 }
 
 /**
@@ -85,12 +85,11 @@ iris_dump_fence_list(struct iris_batch *batch)
 {
    fprintf(stderr, "Fence list (length %u):      ", iris_batch_num_fences(batch));
 
-   util_dynarray_foreach(&batch->exec_fences,
-                         struct drm_i915_gem_exec_fence, f) {
+   util_dynarray_foreach(&batch->exec_fences, struct iris_batch_fence, f) {
       fprintf(stderr, "%s%u%s ",
-              (f->flags & I915_EXEC_FENCE_WAIT) ? "..." : "",
+              (f->flags & IRIS_BATCH_FENCE_WAIT) ? "..." : "",
               f->handle,
-              (f->flags & I915_EXEC_FENCE_SIGNAL) ? "!" : "");
+              (f->flags & IRIS_BATCH_FENCE_SIGNAL) ? "!" : "");
    }
 
    fprintf(stderr, "\n");
@@ -541,7 +540,7 @@ iris_batch_reset(struct iris_batch *batch)
           sizeof(BITSET_WORD) * BITSET_WORDS(batch->exec_array_size));
 
    struct iris_syncobj *syncobj = iris_create_syncobj(bufmgr);
-   iris_batch_add_syncobj(batch, syncobj, I915_EXEC_FENCE_SIGNAL);
+   iris_batch_add_syncobj(batch, syncobj, IRIS_BATCH_FENCE_SIGNAL);
    iris_syncobj_reference(bufmgr, &syncobj, NULL);
 
    assert(!batch->sync_region_depth);
@@ -796,7 +795,7 @@ iris_batch_check_for_reset(struct iris_batch *batch)
 static void
 move_syncobj_to_batch(struct iris_batch *batch,
                       struct iris_syncobj **p_syncobj,
-                      unsigned flags)
+                      uint32_t flags)
 {
    struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
 
@@ -857,12 +856,12 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
       /* If the bo is being written to by others, wait for them. */
       if (bo_deps->write_syncobjs[i])
          move_syncobj_to_batch(batch, &bo_deps->write_syncobjs[i],
-                               I915_EXEC_FENCE_WAIT);
+                               IRIS_BATCH_FENCE_WAIT);
 
       /* If we're writing to the bo, wait on the reads from other batches. */
       if (write)
          move_syncobj_to_batch(batch, &bo_deps->read_syncobjs[i],
-                               I915_EXEC_FENCE_WAIT);
+                               IRIS_BATCH_FENCE_WAIT);
    }
 
    struct iris_syncobj *batch_syncobj =

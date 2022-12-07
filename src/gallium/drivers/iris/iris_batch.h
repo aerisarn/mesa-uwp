@@ -60,6 +60,17 @@ enum iris_batch_name {
    IRIS_BATCH_BLITTER,
 };
 
+/* Same definition as drm_i915_gem_exec_fence so drm_i915_gem_execbuffer2
+ * can directly use exec_fences without extra memory allocation
+ */
+struct iris_batch_fence {
+   uint32_t handle;
+
+#define IRIS_BATCH_FENCE_WAIT (1 << 0)
+#define IRIS_BATCH_FENCE_SIGNAL (1 << 1)
+   uint32_t flags;
+};
+
 struct iris_batch {
    struct iris_context *ice;
    struct iris_screen *screen;
@@ -112,7 +123,7 @@ struct iris_batch {
     */
    struct util_dynarray syncobjs;
 
-   /** A list of drm_i915_exec_fences to have execbuf signal or wait on */
+   /** A list of iris_batch_fences to have execbuf signal or wait on */
    struct util_dynarray exec_fences;
 
    /** The amount of aperture space (in bytes) used by all exec_bos */
