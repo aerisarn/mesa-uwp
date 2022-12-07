@@ -545,7 +545,9 @@ vn_submit_info2_has_external_signal_semaphore(uint32_t submit_count,
 }
 
 static VkResult
-vn_queue_submit2_import_semaphores(struct vn_device *dev, uint32_t submit_count, const VkSubmitInfo2 *submits)
+vn_queue_submit2_import_semaphores(struct vn_device *dev,
+                                   uint32_t submit_count,
+                                   const VkSubmitInfo2 *submits)
 {
    struct vn_instance *instance = dev->instance;
    VkDevice dev_h = vn_device_to_handle(dev);
@@ -573,7 +575,8 @@ vn_queue_submit2_import_semaphores(struct vn_device *dev, uint32_t submit_count,
             .resourceId = 0,
          };
 
-         vn_async_vkImportSemaphoreResource100000MESA(instance, dev_h, &res_info);
+         vn_async_vkImportSemaphoreResource100000MESA(instance, dev_h,
+                                                      &res_info);
       }
    }
 
@@ -644,8 +647,10 @@ vn_QueueSubmit2(VkQueue queue_h,
           VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT);
 
    const struct wsi_memory_signal_submit_info *wsi_info = NULL;
-   if (submitCount == 1)
-         wsi_info = vk_find_struct_const(pSubmits[0].pNext, WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
+   if (submitCount == 1) {
+      wsi_info = vk_find_struct_const(pSubmits[0].pNext,
+                                      WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
+   }
 
    const bool has_external_fence = fence && fence->is_external;
    const bool has_feedback_fence = fence && fence->feedback.slot;
