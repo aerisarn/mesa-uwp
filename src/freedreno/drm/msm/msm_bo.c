@@ -140,6 +140,7 @@ static void
 msm_bo_destroy(struct fd_bo *bo)
 {
    struct msm_bo *msm_bo = to_msm_bo(bo);
+   fd_bo_fini_common(bo);
    free(msm_bo);
 }
 

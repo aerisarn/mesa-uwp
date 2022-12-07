@@ -354,10 +354,15 @@ fd_bo_del_list_nocache(struct list_head *list)
 }
 
 /**
- * The returned handle must be closed via a call to close_handles()
+ * Helper called by backends bo->funcs->destroy()
+ *
+ * Called under table_lock, bo_del_flush() *must* be called before
+ * table_lock is released (but bo->funcs->destroy() can be called
+ * multiple times before bo_del_flush(), as long as table_lock is
+ * held the entire time)
  */
-static uint32_t
-bo_del(struct fd_bo *bo)
+void
+fd_bo_fini_common(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
    uint32_t handle = bo->handle;
@@ -380,9 +385,16 @@ bo_del(struct fd_bo *bo)
          _mesa_hash_table_remove_key(dev->name_table, &bo->name);
       simple_mtx_unlock(&table_lock);
    }
+}
 
+/**
+ * The returned handle must be closed via a call to close_handles()
+ */
+static uint32_t
+bo_del(struct fd_bo *bo)
+{
+   uint32_t handle = bo->handle;
    bo->funcs->destroy(bo);
-
    return handle;
 }
 

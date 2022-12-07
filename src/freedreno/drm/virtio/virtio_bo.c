@@ -276,6 +276,8 @@ virtio_bo_destroy(struct fd_bo *bo)
       virtio_dev_free_iova(bo->dev, bo->iova, bo->size);
    }
 
+   fd_bo_fini_common(bo);
+
    free(virtio_bo);
 }
 
