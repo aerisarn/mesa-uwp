@@ -1152,12 +1152,17 @@ impl Mem {
 
         let mut lock = self.maps.lock().unwrap();
 
-        // we might have a host_ptr shadow buffer
-        let ptr = if self.has_user_shadow_buffer(&q.device)? {
+        // we might have a host_ptr shadow buffer or image created from buffer
+        let ptr = if self.has_user_shadow_buffer(&q.device)? || self.is_parent_buffer() {
             *row_pitch = self.image_desc.image_row_pitch;
             *slice_pitch = self.image_desc.image_slice_pitch;
 
-            self.host_ptr
+            if let Some(src) = &self.parent {
+                let tx = src.map(q, &mut lock, RWFlags::RW)?;
+                tx.ptr()
+            } else {
+                self.host_ptr
+            }
         } else {
             let tx = self.map(q, &mut lock, RWFlags::RW)?;
 
