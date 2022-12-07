@@ -1372,6 +1372,7 @@ static bool
 should_move_rt_instruction(nir_intrinsic_op intrinsic)
 {
    switch (intrinsic) {
+   case nir_intrinsic_load_hit_attrib_amd:
    case nir_intrinsic_load_rt_arg_scratch_offset_amd:
    case nir_intrinsic_load_ray_flags:
    case nir_intrinsic_load_ray_object_origin:
