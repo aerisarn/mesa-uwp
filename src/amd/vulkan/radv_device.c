@@ -2713,7 +2713,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT: {
          VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *props =
             (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *)ext;
-         props->graphicsPipelineLibraryFastLinking = false;
+         props->graphicsPipelineLibraryFastLinking = true;
          props->graphicsPipelineLibraryIndependentInterpolationDecoration = false;
          break;
       }
