@@ -3764,6 +3764,14 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             vs_prologs = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+         const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features = (const void *)ext;
+         if (features->extendedDynamicState3ColorBlendEnable ||
+             features->extendedDynamicState3ColorWriteMask ||
+             features->extendedDynamicState3AlphaToCoverageEnable)
+            ps_epilogs = true;
+         break;
+      }
       default:
          break;
       }
