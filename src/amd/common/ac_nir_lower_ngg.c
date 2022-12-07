@@ -129,11 +129,11 @@ typedef struct
    bool output_compile_time_known;
    bool streamout_enabled;
    /* 32 bit outputs */
-   nir_variable *output_vars[VARYING_SLOT_MAX][4];
+   nir_ssa_def *outputs[VARYING_SLOT_MAX][4];
    gs_output_info output_info[VARYING_SLOT_MAX];
    /* 16 bit outputs */
-   nir_variable *output_vars_16bit_hi[16][4];
-   nir_variable *output_vars_16bit_lo[16][4];
+   nir_ssa_def *outputs_16bit_hi[16][4];
+   nir_ssa_def *outputs_16bit_lo[16][4];
    gs_output_info output_info_16bit_hi[16];
    gs_output_info output_info_16bit_lo[16];
    /* output types for both 32bit and 16bit */
@@ -2406,7 +2406,6 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
    nir_ssa_def *store_val = intrin->src[0].ssa;
    nir_alu_type src_type = nir_intrinsic_src_type(intrin);
-   enum glsl_base_type val_type = nir_get_glsl_base_type_for_nir_type(src_type);
 
    /* Small bitsize components consume the same amount of space as 32-bit components,
     * but 64-bit ones consume twice as many. (Vulkan spec 15.1.5)
@@ -2414,10 +2413,10 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
     * 64-bit IO has been lowered to multi 32-bit IO.
     */
    assert(store_val->bit_size <= 32);
-   assert(glsl_base_type_get_bit_size(val_type) == store_val->bit_size);
+   assert(nir_alu_type_get_type_size(src_type) == store_val->bit_size);
 
    /* Get corresponding output variable and usage info. */
-   nir_variable **var;
+   nir_ssa_def **output;
    nir_alu_type *type;
    gs_output_info *info;
    if (location >= VARYING_SLOT_VAR0_16BIT) {
@@ -2425,17 +2424,17 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       assert(index < 16);
 
       if (io_sem.high_16bits) {
-         var = s->output_vars_16bit_hi[index];
+         output = s->outputs_16bit_hi[index];
          type = s->output_types.types_16bit_hi[index];
          info = s->output_info_16bit_hi + index;
       } else {
-         var = s->output_vars_16bit_lo[index];
+         output = s->outputs_16bit_lo[index];
          type = s->output_types.types_16bit_lo[index];
          info = s->output_info_16bit_lo + index;
       }
    } else {
       assert(location < VARYING_SLOT_MAX);
-      var = s->output_vars[location];
+      output = s->outputs[location];
       type = s->output_types.types[location];
       info = s->output_info + location;
    }
@@ -2466,15 +2465,14 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       info->no_varying = io_sem.no_varying;
       info->no_sysval_output = io_sem.no_sysval_output;
 
+      /* If type is set multiple times, the value must be same. */
+      assert(type[component] == nir_type_invalid || type[component] == src_type);
       type[component] = src_type;
 
-      if (!var[component]) {
-         var[component] =
-            nir_local_variable_create(s->impl, glsl_scalar_type(val_type), "output");
-      }
-      assert(glsl_get_base_type(var[component]->type) == val_type);
-
-      nir_store_var(b, var[component], nir_channel(b, store_val, comp), 0x1u);
+      /* Assume we have called nir_lower_io_to_temporaries which store output in the
+       * same block as EmitVertex, so we don't need to use nir_variable for outputs.
+       */
+      output[component] = nir_channel(b, store_val, comp);
    }
 
    nir_instr_remove(&intrin->instr);
@@ -2515,6 +2513,7 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
    u_foreach_bit64(slot, b->shader->info.outputs_written) {
       unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
       gs_output_info *info = &s->output_info[slot];
+      nir_ssa_def **output = s->outputs[slot];
 
       unsigned mask = gs_output_component_mask_with_stream(info, stream);
       if (!mask)
@@ -2525,21 +2524,17 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
          u_bit_scan_consecutive_range(&mask, &start, &count);
          nir_ssa_def *values[4] = {0};
          for (int c = start; c < start + count; ++c) {
-            nir_variable *var = s->output_vars[slot][c];
-            if (!var) {
+            if (!output[c]) {
                /* no one write to this output before */
                values[c - start] = nir_ssa_undef(b, 1, 32);
                continue;
             }
 
-            /* Load output from variable. */
-            nir_ssa_def *val = nir_load_var(b, var);
-
             /* extend 8/16 bit to 32 bit, 64 bit has been lowered */
-            values[c - start] = nir_u2uN(b, val, 32);
+            values[c - start] = nir_u2uN(b, output[c], 32);
 
-            /* Clear the variable (it is undefined after emit_vertex) */
-            nir_store_var(b, s->output_vars[slot][c], nir_ssa_undef(b, 1, val->bit_size), 0x1);
+            /* Clear the output (it is undefined after emit_vertex) */
+            output[c] = NULL;
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
@@ -2561,6 +2556,8 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
       if (!mask)
          continue;
 
+      nir_ssa_def **output_lo = s->outputs_16bit_lo[slot];
+      nir_ssa_def **output_hi = s->outputs_16bit_hi[slot];
       nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
 
       while (mask) {
@@ -2568,23 +2565,14 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
          u_bit_scan_consecutive_range(&mask, &start, &count);
          nir_ssa_def *values[4] = {0};
          for (int c = start; c < start + count; ++c) {
-            /* Load and reset the low half var. */
-            nir_ssa_def *lo = undef;
-            nir_variable *var_lo = s->output_vars_16bit_lo[slot][c];
-            if (var_lo) {
-               lo = nir_load_var(b, var_lo);
-               nir_store_var(b, var_lo, undef, 1);
-            }
-
-            /* Load and reset the high half var.*/
-            nir_ssa_def *hi = undef;
-            nir_variable *var_hi = s->output_vars_16bit_hi[slot][c];
-            if (var_hi) {
-               hi = nir_load_var(b, var_hi);
-               nir_store_var(b, var_hi, undef, 1);
-            }
+            nir_ssa_def *lo = output_lo[c] ? output_lo[c] : undef;
+            nir_ssa_def *hi = output_hi[c] ? output_hi[c] : undef;
 
             values[c - start] = nir_pack_32_2x16_split(b, lo, hi);
+
+            /* Reset outputs. */
+            output_lo[c] = NULL;
+            output_hi[c] = NULL;
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
