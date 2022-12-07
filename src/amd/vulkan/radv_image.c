@@ -1833,7 +1833,7 @@ radv_select_modifier(const struct radv_device *dev, VkFormat format,
 
 VkResult
 radv_image_create(VkDevice _device, const struct radv_image_create_info *create_info,
-                  const VkAllocationCallbacks *alloc, VkImage *pImage)
+                  const VkAllocationCallbacks *alloc, VkImage *pImage, bool is_internal)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
@@ -2428,7 +2428,7 @@ radv_CreateImage(VkDevice device, const VkImageCreateInfo *pCreateInfo,
                                .scanout = scanout,
                                .prime_blit_src = prime_blit_src,
                             },
-                            pAllocator, pImage);
+                            pAllocator, pImage, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL

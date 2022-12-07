@@ -3371,8 +3371,9 @@ radv_device_init_vrs_state(struct radv_device *device)
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
    };
 
-   result = radv_CreateImage(radv_device_to_handle(device), &image_create_info,
-                             &device->meta_state.alloc, &image);
+   result = radv_image_create(radv_device_to_handle(device),
+                              &(struct radv_image_create_info){.vk_info = &image_create_info},
+                              &device->meta_state.alloc, &image, true);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3383,8 +3384,8 @@ radv_device_init_vrs_state(struct radv_device *device)
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
 
-   result = radv_CreateBuffer(radv_device_to_handle(device), &buffer_create_info,
-                              &device->meta_state.alloc, &buffer);
+   result =
+      radv_create_buffer(device, &buffer_create_info, &device->meta_state.alloc, &buffer, true);
    if (result != VK_SUCCESS)
       goto fail_create;
 
@@ -3402,8 +3403,7 @@ radv_device_init_vrs_state(struct radv_device *device)
       .allocationSize = mem_req.memoryRequirements.size,
    };
 
-   result = radv_AllocateMemory(radv_device_to_handle(device), &alloc_info,
-                                &device->meta_state.alloc, &mem);
+   result = radv_alloc_memory(device, &alloc_info, &device->meta_state.alloc, &mem, true);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -5949,9 +5949,9 @@ radv_free_memory(struct radv_device *device, const VkAllocationCallbacks *pAlloc
    vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
-static VkResult
+VkResult
 radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAllocateInfo,
-                  const VkAllocationCallbacks *pAllocator, VkDeviceMemory *pMem)
+                  const VkAllocationCallbacks *pAllocator, VkDeviceMemory *pMem, bool is_internal)
 {
    struct radv_device_memory *mem;
    VkResult result;
@@ -6164,7 +6164,7 @@ radv_AllocateMemory(VkDevice _device, const VkMemoryAllocateInfo *pAllocateInfo,
                     const VkAllocationCallbacks *pAllocator, VkDeviceMemory *pMem)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   return radv_alloc_memory(device, pAllocateInfo, pAllocator, pMem);
+   return radv_alloc_memory(device, pAllocateInfo, pAllocator, pMem, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -6345,7 +6345,8 @@ radv_GetDeviceImageMemoryRequirements(VkDevice device,
     * creating an image.
     * TODO: Avoid creating an image.
     */
-   result = radv_CreateImage(device, pInfo->pCreateInfo, NULL, &image);
+   result = radv_image_create(
+      device, &(struct radv_image_create_info){.vk_info = pInfo->pCreateInfo}, NULL, &image, true);
    assert(result == VK_SUCCESS);
 
    VkImageMemoryRequirementsInfo2 info2 = {
@@ -6464,11 +6465,10 @@ radv_destroy_event(struct radv_device *device, const VkAllocationCallbacks *pAll
    vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
-                 const VkAllocationCallbacks *pAllocator, VkEvent *pEvent)
+VkResult
+radv_create_event(struct radv_device *device, const VkEventCreateInfo *pCreateInfo,
+                  const VkAllocationCallbacks *pAllocator, VkEvent *pEvent, bool is_internal)
 {
-   RADV_FROM_HANDLE(radv_device, device, _device);
    enum radeon_bo_domain bo_domain;
    enum radeon_bo_flag bo_flags;
    struct radv_event *event;
@@ -6507,6 +6507,18 @@ radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
    }
 
    *pEvent = radv_event_to_handle(event);
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator, VkEvent *pEvent)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   VkResult result = radv_create_event(device, pCreateInfo, pAllocator, pEvent, false);
+   if (result != VK_SUCCESS)
+      return result;
 
    return VK_SUCCESS;
 }
@@ -6588,11 +6600,10 @@ radv_destroy_buffer(struct radv_device *device, const VkAllocationCallbacks *pAl
    vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
-                  const VkAllocationCallbacks *pAllocator, VkBuffer *pBuffer)
+VkResult
+radv_create_buffer(struct radv_device *device, const VkBufferCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator, VkBuffer *pBuffer, bool is_internal)
 {
-   RADV_FROM_HANDLE(radv_device, device, _device);
    struct radv_buffer *buffer;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
@@ -6629,6 +6640,14 @@ radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
    *pBuffer = radv_buffer_to_handle(buffer);
 
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
+                  const VkAllocationCallbacks *pAllocator, VkBuffer *pBuffer)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return radv_create_buffer(device, pCreateInfo, pAllocator, pBuffer, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL

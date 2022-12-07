@@ -162,7 +162,7 @@ create_pipeline(struct radv_device *device, uint32_t samples,
          .renderPass = VK_NULL_HANDLE,
          .subpass = 0,
       },
-      extra, alloc, pipeline);
+      extra, alloc, pipeline, true);
 
    ralloc_free(vs_nir);
    ralloc_free(fs_nir);
@@ -953,9 +953,9 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
       .layout = state->clear_htile_mask_p_layout,
    };
 
-   result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        state->cache, 1,
-                                        &pipeline_info, NULL, &state->clear_htile_mask_pipeline);
+   result =
+      radv_compute_pipeline_create(radv_device_to_handle(device), state->cache, &pipeline_info,
+                                   NULL, &state->clear_htile_mask_pipeline, true);
 
 fail:
    ralloc_free(cs);
@@ -1033,9 +1033,8 @@ create_dcc_comp_to_single_pipeline(struct radv_device *device, bool is_msaa, VkP
       .layout = state->clear_dcc_comp_to_single_p_layout,
    };
 
-   result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        state->cache, 1,
-                                        &pipeline_info, NULL, pipeline);
+   result = radv_compute_pipeline_create(radv_device_to_handle(device), state->cache,
+                                         &pipeline_info, NULL, pipeline, true);
 
    ralloc_free(cs);
    return result;

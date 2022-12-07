@@ -2216,12 +2216,13 @@ void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeli
 VkResult radv_graphics_pipeline_create(VkDevice device, VkPipelineCache cache,
                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                        const struct radv_graphics_pipeline_create_info *extra,
-                                       const VkAllocationCallbacks *alloc, VkPipeline *pPipeline);
+                                       const VkAllocationCallbacks *alloc, VkPipeline *pPipeline,
+                                       bool is_internal);
 
 VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkComputePipelineCreateInfo *pCreateInfo,
                                       const VkAllocationCallbacks *pAllocator,
-                                      VkPipeline *pPipeline);
+                                      VkPipeline *pPipeline, bool is_internal);
 
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
@@ -2616,7 +2617,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
                          struct radv_image *image);
 
 VkResult radv_image_create(VkDevice _device, const struct radv_image_create_info *info,
-                           const VkAllocationCallbacks *alloc, VkImage *pImage);
+                           const VkAllocationCallbacks *alloc, VkImage *pImage, bool is_internal);
 
 bool radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, const void *pNext,
                                      VkFormat format, VkImageCreateFlags flags,
@@ -2828,6 +2829,24 @@ void radv_rra_trace_finish(VkDevice vk_device, struct radv_rra_trace_data *data)
 
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                           struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
+
+VkResult radv_create_buffer(struct radv_device *device, const VkBufferCreateInfo *pCreateInfo,
+                            const VkAllocationCallbacks *pAllocator, VkBuffer *pBuffer,
+                            bool is_internal);
+VkResult radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAllocateInfo,
+                           const VkAllocationCallbacks *pAllocator, VkDeviceMemory *pMem,
+                           bool is_internal);
+VkResult radv_create_query_pool(struct radv_device *device,
+                                const VkQueryPoolCreateInfo *pCreateInfo,
+                                const VkAllocationCallbacks *pAllocator, VkQueryPool *pQueryPool,
+                                bool is_internal);
+VkResult radv_create_descriptor_pool(struct radv_device *device,
+                                     const VkDescriptorPoolCreateInfo *pCreateInfo,
+                                     const VkAllocationCallbacks *pAllocator,
+                                     VkDescriptorPool *pDescriptorPool, bool is_internal);
+VkResult radv_create_event(struct radv_device *device, const VkEventCreateInfo *pCreateInfo,
+                           const VkAllocationCallbacks *pAllocator, VkEvent *pEvent,
+                           bool is_internal);
 
 /* radv_sqtt_layer_.c */
 struct radv_barrier_data {

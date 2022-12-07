@@ -5269,8 +5269,8 @@ VkResult
 radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
                               const struct radv_graphics_pipeline_create_info *extra,
-                              const VkAllocationCallbacks *pAllocator,
-                              VkPipeline *pPipeline)
+                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline,
+                              bool is_internal)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5431,7 +5431,7 @@ radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
                                                pAllocator, &pPipelines[i]);
       } else {
          r = radv_graphics_pipeline_create(_device, pipelineCache, &pCreateInfos[i], NULL,
-                                           pAllocator, &pPipelines[i]);
+                                           pAllocator, &pPipelines[i], false);
       }
       if (r != VK_SUCCESS) {
          result = r;
@@ -5557,7 +5557,8 @@ radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
 VkResult
 radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                              const VkComputePipelineCreateInfo *pCreateInfo,
-                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
+                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline,
+                             bool is_internal)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5594,10 +5595,10 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
-                            const VkComputePipelineCreateInfo *pCreateInfos,
-                            const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
+static VkResult
+radv_create_compute_pipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
+                              const VkComputePipelineCreateInfo *pCreateInfos,
+                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
 {
    VkResult result = VK_SUCCESS;
 
@@ -5605,7 +5606,7 @@ radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
    for (; i < count; i++) {
       VkResult r;
       r = radv_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i], pAllocator,
-                                       &pPipelines[i]);
+                                       &pPipelines[i], false);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
@@ -5619,6 +5620,15 @@ radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
       pPipelines[i] = VK_NULL_HANDLE;
 
    return result;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
+                            const VkComputePipelineCreateInfo *pCreateInfos,
+                            const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
+{
+   return radv_create_compute_pipelines(_device, pipelineCache, count, pCreateInfos, pAllocator,
+                                        pPipelines);
 }
 
 static uint32_t

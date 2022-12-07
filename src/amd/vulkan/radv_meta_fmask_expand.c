@@ -214,9 +214,8 @@ create_fmask_expand_pipeline(struct radv_device *device, int samples, VkPipeline
       .layout = state->fmask_expand.p_layout,
    };
 
-   result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        state->cache, 1,
-                                        &vk_pipeline_info, NULL, pipeline);
+   result = radv_compute_pipeline_create(radv_device_to_handle(device), state->cache,
+                                         &vk_pipeline_info, NULL, pipeline, true);
 
    ralloc_free(cs);
    return result;
