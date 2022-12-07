@@ -59,6 +59,13 @@ typedef struct
 
 typedef struct
 {
+   nir_alu_type types[VARYING_SLOT_MAX][4];
+   nir_alu_type types_16bit_lo[16][4];
+   nir_alu_type types_16bit_hi[16][4];
+} shader_output_types;
+
+typedef struct
+{
    const ac_nir_lower_ngg_options *options;
 
    nir_variable *position_value_var;
@@ -129,6 +136,8 @@ typedef struct
    nir_variable *output_vars_16bit_lo[16][4];
    gs_output_info output_info_16bit_hi[16];
    gs_output_info output_info_16bit_lo[16];
+   /* output types for both 32bit and 16bit */
+   shader_output_types output_types;
    /* Count per stream. */
    nir_ssa_def *vertex_count[4];
    nir_ssa_def *primitive_count[4];
@@ -2409,6 +2418,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
    /* Get corresponding output variable and usage info. */
    nir_variable **var;
+   nir_alu_type *type;
    gs_output_info *info;
    if (location >= VARYING_SLOT_VAR0_16BIT) {
       unsigned index = location - VARYING_SLOT_VAR0_16BIT;
@@ -2416,14 +2426,17 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
       if (io_sem.high_16bits) {
          var = s->output_vars_16bit_hi[index];
+         type = s->output_types.types_16bit_hi[index];
          info = s->output_info_16bit_hi + index;
       } else {
          var = s->output_vars_16bit_lo[index];
+         type = s->output_types.types_16bit_lo[index];
          info = s->output_info_16bit_lo + index;
       }
    } else {
       assert(location < VARYING_SLOT_MAX);
       var = s->output_vars[location];
+      type = s->output_types.types[location];
       info = s->output_info + location;
    }
 
@@ -2452,6 +2465,8 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       info->components_mask |= BITFIELD_BIT(component);
       info->no_varying = io_sem.no_varying;
       info->no_sysval_output = io_sem.no_sysval_output;
+
+      type[component] = src_type;
 
       if (!var[component]) {
          var[component] =
@@ -2756,6 +2771,8 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
          memset(output->chan, 0, sizeof(output->chan));
       }
 
+      nir_alu_type *types = s->output_types.types[slot];
+
       while (mask) {
          int start, count;
          u_bit_scan_consecutive_range(&mask, &start, &count);
@@ -2765,14 +2782,14 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                             .align_mul = 4);
 
          for (int i = 0; i < count; i++) {
-            nir_variable *var = s->output_vars[slot][start + i];
-            assert(var);
-
             nir_ssa_def *val = nir_channel(b, load, i);
 
             if (s->options->gfx_level < GFX11 || is_pos) {
+               nir_alu_type type = types[start + i];
+               assert(type != nir_type_invalid);
+
                /* Convert to the expected bit size of the output variable. */
-               unsigned bit_size = glsl_base_type_bit_size(glsl_get_base_type(var->type));
+               unsigned bit_size = nir_alu_type_get_type_size(type);
                val = nir_u2uN(b, val, bit_size);
 
                nir_store_output(b, val, nir_imm_int(b, 0), .base = info->base,
