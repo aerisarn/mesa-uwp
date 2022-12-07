@@ -1535,7 +1535,8 @@ static void
 radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
                                   struct vk_graphics_pipeline_state *state,
                                   struct radv_pipeline_layout *layout,
-                                  struct radv_graphics_lib_pipeline *lib)
+                                  struct radv_graphics_lib_pipeline *lib,
+                                  bool link_optimize)
 {
    /* There should be no common blocks between a lib we import and the current
     * pipeline we're building.
@@ -1555,35 +1556,37 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
       pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
    }
 
-   /* Import the compiled shaders. */
-   for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
-      if (!lib->base.base.shaders[s])
-         continue;
+   if (!link_optimize) {
+      /* Import the compiled shaders. */
+      for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
+         if (!lib->base.base.shaders[s])
+            continue;
 
-      pipeline->base.shaders[s] = radv_shader_ref(lib->base.base.shaders[s]);
+         pipeline->base.shaders[s] = radv_shader_ref(lib->base.base.shaders[s]);
 
-      /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
-      pipeline->base.shaders[s]->bo = lib->base.base.slab_bo;
-   }
+         /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
+         pipeline->base.shaders[s]->bo = lib->base.base.slab_bo;
+      }
 
-   /* Import the GS copy shader if present. */
-   if (lib->base.base.gs_copy_shader) {
-      assert(!pipeline->base.gs_copy_shader);
-      pipeline->base.gs_copy_shader = radv_shader_ref(lib->base.base.gs_copy_shader);
+      /* Import the GS copy shader if present. */
+      if (lib->base.base.gs_copy_shader) {
+         assert(!pipeline->base.gs_copy_shader);
+         pipeline->base.gs_copy_shader = radv_shader_ref(lib->base.base.gs_copy_shader);
 
-      /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
-      pipeline->base.gs_copy_shader->bo = lib->base.base.slab_bo;
-   }
+         /* Hold a pointer to the slab BO to indicate the shader is already uploaded. */
+         pipeline->base.gs_copy_shader->bo = lib->base.base.slab_bo;
+      }
 
-   /* Refcount the slab BO to make sure it's not freed when the library is destroyed. */
-   if (lib->base.base.slab) {
-      p_atomic_inc(&lib->base.base.slab->ref_count);
-   }
+      /* Refcount the slab BO to make sure it's not freed when the library is destroyed. */
+      if (lib->base.base.slab) {
+         p_atomic_inc(&lib->base.base.slab->ref_count);
+      }
 
-   /* Import the PS epilog if present. */
-   if (lib->base.ps_epilog) {
-      assert(!pipeline->ps_epilog);
-      pipeline->ps_epilog = radv_shader_part_ref(lib->base.ps_epilog);
+      /* Import the PS epilog if present. */
+      if (lib->base.ps_epilog) {
+         assert(!pipeline->ps_epilog);
+         pipeline->ps_epilog = radv_shader_part_ref(lib->base.ps_epilog);
+      }
    }
 
    /* Import the pipeline layout. */
@@ -5387,7 +5390,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    /* If we have libraries, import them first. */
    if (libs_info) {
-      ASSERTED const bool link_optimize =
+      const bool link_optimize =
          (pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) != 0;
 
       for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
@@ -5402,7 +5405,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
           */
          assert(!link_optimize || gfx_pipeline_lib->base.base.retain_shaders);
 
-         radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib);
+         radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib,
+                                           link_optimize);
 
          imported_flags |= gfx_pipeline_lib->lib_flags;
       }
@@ -5588,13 +5592,16 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
 
    /* If we have libraries, import them first. */
    if (libs_info) {
+      const bool link_optimize =
+         (pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) != 0;
+
       for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
          RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
          struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
             radv_pipeline_to_graphics_lib(pipeline_lib);
 
          radv_graphics_pipeline_import_lib(&pipeline->base, state, pipeline_layout,
-                                           gfx_pipeline_lib);
+                                           gfx_pipeline_lib, link_optimize);
 
          pipeline->lib_flags |= gfx_pipeline_lib->lib_flags;
 
