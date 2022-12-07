@@ -720,6 +720,11 @@ etna_try_rs_blit(struct pipe_context *pctx,
        width & (w_align - 1) || height & (h_align - 1))
       goto manual;
 
+   /* Flush destination, as the blit will invalidate any pending TS changes. */
+   if (dst != src && etna_resource_level_needs_flush(dst_lev))
+      etna_copy_resource(pctx, &dst->base, &dst->base,
+                         blit_info->dst.level, blit_info->dst.level);
+
    /* Always flush color and depth cache together before resolving. This makes
     * sure that all previous cache content written by the PE is flushed out
     * before RS uses the pixel pipes, which invalidates those caches. */

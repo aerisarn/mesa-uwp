@@ -475,6 +475,11 @@ etna_try_blt_blit(struct pipe_context *pctx,
          return true;
    }
 
+   /* Flush destination, as the blit will invalidate any pending TS changes. */
+   if (dst != src && etna_resource_level_needs_flush(dst_lev))
+      etna_copy_resource(pctx, &dst->base, &dst->base,
+                         blit_info->dst.level, blit_info->dst.level);
+
    /* Kick off BLT here */
    if (src == dst && src_lev->ts_compress_fmt < 0) {
       /* Resolve-in-place */
