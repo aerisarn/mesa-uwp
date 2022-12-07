@@ -51,6 +51,7 @@ ForEachMacros:
   - nir_foreach_shader_in_variable
   - nir_foreach_shader_out_variable_safe
   - nir_foreach_variable_in_list
+  - nir_foreach_variable_with_modes
   - nir_foreach_src
   - foreach_two_lists
   - u_foreach_bit
