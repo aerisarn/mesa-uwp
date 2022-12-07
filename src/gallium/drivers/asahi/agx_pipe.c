@@ -845,7 +845,6 @@ agx_transfer_unmap(struct pipe_context *pctx,
          agx_blit_from_staging(pctx, trans);
          agx_flush_readers(agx_context(pctx), agx_resource(trans->staging.rsrc),
                            "GPU write staging blit");
-         pipe_resource_reference(&trans->staging.rsrc, NULL);
    } else if (trans->map && (transfer->usage & PIPE_MAP_WRITE)) {
       assert(rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED);
 
@@ -869,6 +868,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
 
    /* Free the transfer */
    free(trans->map);
+   pipe_resource_reference(&trans->staging.rsrc, NULL);
    pipe_resource_reference(&transfer->resource, NULL);
    FREE(transfer);
 }
