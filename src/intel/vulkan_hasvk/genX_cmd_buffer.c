@@ -5506,6 +5506,9 @@ cmd_buffer_mark_attachment_written(struct anv_cmd_buffer *cmd_buffer,
    struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
    const struct anv_image_view *iview = att->iview;
 
+   if (iview == NULL)
+      return;
+
    if (gfx->view_mask == 0) {
       genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
                                           aspect, att->aux_usage,
@@ -5620,9 +5623,6 @@ void genX(CmdEndRendering)(
 
    bool has_color_resolve = false;
    for (uint32_t i = 0; i < gfx->color_att_count; i++) {
-      if (gfx->color_att[i].iview == NULL)
-         continue;
-
       cmd_buffer_mark_attachment_written(cmd_buffer, &gfx->color_att[i],
                                          VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -5632,15 +5632,11 @@ void genX(CmdEndRendering)(
          has_color_resolve = true;
    }
 
-   if (gfx->depth_att.iview != NULL) {
-      cmd_buffer_mark_attachment_written(cmd_buffer, &gfx->depth_att,
-                                         VK_IMAGE_ASPECT_DEPTH_BIT);
-   }
+   cmd_buffer_mark_attachment_written(cmd_buffer, &gfx->depth_att,
+                                      VK_IMAGE_ASPECT_DEPTH_BIT);
 
-   if (gfx->stencil_att.iview != NULL) {
-      cmd_buffer_mark_attachment_written(cmd_buffer, &gfx->stencil_att,
-                                         VK_IMAGE_ASPECT_STENCIL_BIT);
-   }
+   cmd_buffer_mark_attachment_written(cmd_buffer, &gfx->stencil_att,
+                                      VK_IMAGE_ASPECT_STENCIL_BIT);
 
    if (has_color_resolve) {
       /* We are about to do some MSAA resolves.  We need to flush so that the
