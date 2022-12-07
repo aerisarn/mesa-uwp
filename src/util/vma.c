@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+#include "util/macros.h"
 #include "util/u_math.h"
 #include "util/vma.h"
 
@@ -52,6 +53,9 @@ util_vma_heap_init(struct util_vma_heap *heap,
 
    /* Default to using high addresses */
    heap->alloc_high = true;
+
+   /* Default to not having a nospan alignment */
+   heap->nospan_shift = 0;
 }
 
 void
@@ -158,6 +162,14 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
 
    util_vma_heap_validate(heap);
 
+   /* The requested alignment should not be stronger than the block/nospan
+    * alignment.
+    */
+   if (heap->nospan_shift) {
+      assert(ALIGN(BITFIELD64_BIT(heap->nospan_shift), alignment) ==
+            BITFIELD64_BIT(heap->nospan_shift));
+   }
+
    if (heap->alloc_high) {
       util_vma_foreach_hole_safe(hole, heap) {
          if (size > hole->size)
@@ -170,6 +182,18 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
           * hole->size + hole->offset can only overflow to 0 and size > 0.
           */
          uint64_t offset = (hole->size - size) + hole->offset;
+
+         if (heap->nospan_shift) {
+            uint64_t end = offset + size - 1;
+            if ((end >> heap->nospan_shift) != (offset >> heap->nospan_shift)) {
+               /* can we shift the offset down and still fit in the current hole? */
+               end &= ~BITFIELD64_MASK(heap->nospan_shift);
+               assert(end >= size);
+               offset -= size;
+               if (offset < hole->offset)
+                  continue;
+            }
+         }
 
          /* Align the offset.  We align down and not up because we are
           * allocating from the top of the hole and not the bottom.
@@ -198,6 +222,16 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
                continue;
 
             offset += pad;
+         }
+
+         if (heap->nospan_shift) {
+            uint64_t end = offset + size - 1;
+            if ((end >> heap->nospan_shift) != (offset >> heap->nospan_shift)) {
+               /* can we shift the offset up and still fit in the current hole? */
+               offset = end & ~BITFIELD64_MASK(heap->nospan_shift);
+               if ((offset + size) > (hole->offset + hole->size))
+                  continue;
+            }
          }
 
          util_vma_hole_alloc(heap, hole, offset, size);
@@ -325,7 +359,7 @@ util_vma_heap_print(struct util_vma_heap *heap, FILE *fp,
 
    uint64_t total_free = 0;
    util_vma_foreach_hole(hole, heap) {
-      fprintf(fp, "%s    hole: offset = %"PRIu64" (0x%"PRIx64", "
+      fprintf(fp, "%s    hole: offset = %"PRIu64" (0x%"PRIx64"), "
               "size = %"PRIu64" (0x%"PRIx64")\n",
               tab, hole->offset, hole->offset, hole->size, hole->size);
       total_free += hole->size;
