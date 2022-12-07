@@ -2344,7 +2344,7 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    LLVMValueRef texture_unit_offset = NULL;
    LLVMValueRef texel[NIR_MAX_VEC_COMPONENTS];
    unsigned lod_src = 0;
-   LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.int_vec_type);
+   LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.vec_type);
    unsigned coord_vals = is_aos(bld_base) ? 1 : instr->coord_components;
    memset(&params, 0, sizeof(params));
    enum lp_sampler_lod_property lod_property = LP_SAMPLER_LOD_SCALAR;
