@@ -75,6 +75,11 @@ agx_push_location_direct(struct agx_batch *batch, struct agx_push push,
       struct pipe_vertex_buffer vb = ctx->vertex_buffers[push.vbo];
       assert(!vb.is_user_buffer);
 
+      if (!vb.buffer.resource) {
+         *address = 0;
+         return ptr.gpu;
+      }
+
       struct agx_resource *rsrc = agx_resource(vb.buffer.resource);
       agx_batch_reads(batch, rsrc);
 
