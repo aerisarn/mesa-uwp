@@ -241,8 +241,14 @@ fn sw_copy(
         for y in 0..region[1] {
             unsafe {
                 ptr::copy_nonoverlapping(
-                    src.add((*src_origin + [0, y, z]) * [1, src_row_pitch, src_slice_pitch]),
-                    dst.add((*dst_origin + [0, y, z]) * [1, dst_row_pitch, dst_slice_pitch]),
+                    src.add(
+                        (*src_origin + [0, y, z])
+                            * [pixel_size as usize, src_row_pitch, src_slice_pitch],
+                    ),
+                    dst.add(
+                        (*dst_origin + [0, y, z])
+                            * [pixel_size as usize, dst_row_pitch, dst_slice_pitch],
+                    ),
                     region[0] * pixel_size as usize,
                 )
             };
@@ -662,19 +668,76 @@ impl Mem {
         mut dst_origin: CLVec<usize>,
         region: &CLVec<usize>,
     ) -> CLResult<()> {
+        let dst_base = dst;
         let src = self.to_parent(&mut src_origin[0]);
         let dst = dst.to_parent(&mut dst_origin[0]);
 
         let src_res = src.get_res()?.get(&q.device).unwrap();
         let dst_res = dst.get_res()?.get(&q.device).unwrap();
 
-        if self.is_buffer() && !dst.is_buffer() || !self.is_buffer() && dst.is_buffer() {
+        // We just want to use sw_copy if mem objects have different types
+        // or if copy can have custom strides (image2d from buff/images)
+        if self.is_buffer() != dst_base.is_buffer()
+            || !self.is_buffer() && self.parent.is_some()
+            || !dst_base.is_buffer() && dst_base.parent.is_some()
+        {
             let tx_src;
             let tx_dst;
+            let mut src_pitch = [0, 0, 0];
+            let mut dst_pitch = [0, 0, 0];
+            let mut new_src_origin = &CLVec::default();
+            let mut new_dst_origin = &CLVec::default();
 
-            if self.is_buffer() {
-                let bpp = dst.pixel_size().unwrap() as usize;
-                tx_src = self.tx(q, ctx, src_origin[0], region.pixels() * bpp, RWFlags::RD)?;
+            let bpp = if !self.is_buffer() {
+                self.pixel_size().unwrap() as usize
+            } else {
+                dst_base.pixel_size().unwrap() as usize
+            };
+
+            if src.is_buffer() {
+                // If image is created from a buffer, use image's slice and row pitch instead
+                src_pitch[0] = bpp;
+                if self.is_image_from_buffer() {
+                    src_pitch[1] = self.image_desc.row_pitch()? as usize;
+                    src_pitch[2] = self.image_desc.slice_pitch()? as usize;
+                } else {
+                    src_pitch[1] = region[0] * bpp;
+                    src_pitch[2] = region[0] * region[1] * bpp;
+                }
+
+                // We should use original origin vector if it's not an image
+                new_src_origin = &src_origin;
+                tx_src = src.tx(q, ctx, 0, *region * src_pitch, RWFlags::RD)?;
+            } else {
+                tx_src = src.tx_image(
+                    q,
+                    ctx,
+                    &create_box(&src_origin, region, src.mem_type)?,
+                    RWFlags::RD,
+                )?;
+
+                src_pitch = [
+                    1,
+                    tx_src.row_pitch() as usize,
+                    tx_src.slice_pitch() as usize,
+                ];
+            }
+
+            if dst.is_buffer() {
+                // If image is created from a buffer, use image's slice and row pitch instead
+                dst_pitch[0] = bpp;
+                if dst_base.is_image_from_buffer() {
+                    dst_pitch[1] = dst_base.image_desc.row_pitch()? as usize;
+                    dst_pitch[2] = dst_base.image_desc.slice_pitch()? as usize;
+                } else {
+                    dst_pitch[1] = region[0] * bpp;
+                    dst_pitch[2] = region[0] * region[1] * bpp;
+                }
+
+                // We should use original origin vector if it's not an image
+                new_dst_origin = &dst_origin;
+                tx_dst = dst.tx(q, ctx, 0, *region * dst_pitch, RWFlags::WR)?;
+            } else {
                 tx_dst = dst.tx_image(
                     q,
                     ctx,
@@ -682,46 +745,34 @@ impl Mem {
                     RWFlags::WR,
                 )?;
 
-                sw_copy(
-                    tx_src.ptr(),
-                    tx_dst.ptr(),
-                    region,
-                    &CLVec::default(),
-                    region[0] * bpp,
-                    region[0] * region[1] * bpp,
-                    &CLVec::default(),
+                dst_pitch = [
+                    1,
                     tx_dst.row_pitch() as usize,
                     tx_dst.slice_pitch() as usize,
-                    bpp as u8,
-                )
-            } else {
-                let bpp = self.pixel_size().unwrap() as usize;
-                tx_src = self.tx_image(
-                    q,
-                    ctx,
-                    &create_box(&src_origin, region, self.mem_type)?,
-                    RWFlags::RD,
-                )?;
-                tx_dst = dst.tx(q, ctx, dst_origin[0], region.pixels() * bpp, RWFlags::WR)?;
-
-                sw_copy(
-                    tx_src.ptr(),
-                    tx_dst.ptr(),
-                    region,
-                    &CLVec::default(),
-                    tx_src.row_pitch() as usize,
-                    tx_src.slice_pitch() as usize,
-                    &CLVec::default(),
-                    region[0] * bpp,
-                    region[0] * region[1] * bpp,
-                    bpp as u8,
-                )
+                ];
             }
+
+            // Those pitch values cannot have 0 value in its coordinates
+            assert!(src_pitch[0] != 0 && src_pitch[1] != 0 && src_pitch[2] != 0);
+            assert!(dst_pitch[0] != 0 && dst_pitch[1] != 0 && dst_pitch[2] != 0);
+
+            sw_copy(
+                tx_src.ptr(),
+                tx_dst.ptr(),
+                region,
+                new_src_origin,
+                src_pitch[1],
+                src_pitch[2],
+                new_dst_origin,
+                dst_pitch[1],
+                dst_pitch[2],
+                bpp as u8,
+            )
         } else {
-            let bx = create_box(&src_origin, region, self.mem_type)?;
+            let bx = create_box(&src_origin, region, src.mem_type)?;
             let mut dst_origin: [u32; 3] = dst_origin.try_into()?;
 
-            if self.mem_type == CL_MEM_OBJECT_IMAGE1D_ARRAY {
+            if src.mem_type == CL_MEM_OBJECT_IMAGE1D_ARRAY {
                 (dst_origin[1], dst_origin[2]) = (dst_origin[2], dst_origin[1]);
             }
 
