@@ -787,6 +787,17 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       break;
    }
 
+   case nir_intrinsic_store_buffer_amd:
+      if (nir_intrinsic_access(instr) & ACCESS_USES_FORMAT_AMD) {
+         unsigned writemask = nir_intrinsic_write_mask(instr);
+
+         /* Make sure the writemask is derived from the component count. */
+         validate_assert(state,
+                         writemask ==
+                         BITFIELD_MASK(nir_src_num_components(instr->src[0])));
+      }
+      break;
+
    default:
       break;
    }
