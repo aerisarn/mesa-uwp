@@ -1900,7 +1900,7 @@ struct anv_descriptor_pool {
 
 size_t
 anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
-                               uint32_t var_desc_count);
+                               bool host_only, uint32_t var_desc_count);
 
 uint32_t
 anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
