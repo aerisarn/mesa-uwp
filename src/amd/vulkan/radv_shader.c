@@ -1612,6 +1612,7 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
       RADV_BO_PRIORITY_SHADER, 0, &arena->bo);
    if (result != VK_SUCCESS)
       goto fail;
+   radv_rmv_log_bo_allocate(device, arena->bo, arena_size, true);
 
    list_inithead(&arena->entries);
 
@@ -1649,8 +1650,10 @@ fail:
    mtx_unlock(&device->shader_arena_mutex);
    free(alloc);
    free(hole);
-   if (arena && arena->bo)
+   if (arena && arena->bo) {
+      radv_rmv_log_bo_destroy(device, arena->bo);
       device->ws->buffer_destroy(device->ws, arena->bo);
+   }
    free(arena);
    return NULL;
 }
@@ -1702,6 +1705,7 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
       struct radv_shader_arena *arena = hole->arena;
       free_block_obj(device, hole);
 
+      radv_rmv_log_bo_destroy(device, arena->bo);
       device->ws->buffer_destroy(device->ws, arena->bo);
       list_del(&arena->list);
       free(arena);
@@ -1733,6 +1737,7 @@ radv_destroy_shader_arenas(struct radv_device *device)
 
    list_for_each_entry_safe(struct radv_shader_arena, arena, &device->shader_arenas, list)
    {
+      radv_rmv_log_bo_destroy(device, arena->bo);
       device->ws->buffer_destroy(device->ws, arena->bo);
       free(arena);
    }

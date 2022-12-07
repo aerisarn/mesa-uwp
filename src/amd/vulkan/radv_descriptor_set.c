@@ -772,11 +772,14 @@ radv_destroy_descriptor_pool(struct radv_device *device, const VkAllocationCallb
       }
    }
 
-   if (pool->bo)
+   if (pool->bo) {
+      radv_rmv_log_bo_destroy(device, pool->bo);
       device->ws->buffer_destroy(device->ws, pool->bo);
+   }
    if (pool->host_bo)
       vk_free2(&device->vk.alloc, pAllocator, pool->host_bo);
 
+   radv_rmv_log_resource_destroy(device, (uint64_t)radv_descriptor_pool_to_handle(pool));
    vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
@@ -924,6 +927,7 @@ radv_create_descriptor_pool(struct radv_device *device,
    pool->max_entry_count = pCreateInfo->maxSets;
 
    *pDescriptorPool = radv_descriptor_pool_to_handle(pool);
+   radv_rmv_log_descriptor_pool_create(device, pCreateInfo, *pDescriptorPool, is_internal);
    return VK_SUCCESS;
 }
 

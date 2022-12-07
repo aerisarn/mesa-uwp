@@ -1060,8 +1060,12 @@ radv_destroy_query_pool(struct radv_device *device, const VkAllocationCallbacks 
    if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR)
       radv_pc_deinit_query_pool((struct radv_pc_query_pool *)pool);
 
-   if (pool->bo)
+   if (pool->bo) {
+      radv_rmv_log_bo_destroy(device, pool->bo);
       device->ws->buffer_destroy(device->ws, pool->bo);
+   }
+
+   radv_rmv_log_resource_destroy(device, (uint64_t)radv_query_pool_to_handle(pool));
    vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
@@ -1162,6 +1166,7 @@ radv_create_query_pool(struct radv_device *device, const VkQueryPoolCreateInfo *
    }
 
    *pQueryPool = radv_query_pool_to_handle(pool);
+   radv_rmv_log_query_pool_create(device, *pQueryPool, is_internal);
    return VK_SUCCESS;
 }
 

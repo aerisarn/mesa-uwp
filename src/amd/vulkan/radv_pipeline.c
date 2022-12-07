@@ -201,6 +201,7 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    if (pipeline->cs.buf)
       free(pipeline->cs.buf);
 
+   radv_rmv_log_resource_destroy(device, (uint64_t)radv_pipeline_to_handle(pipeline));
    vk_object_base_finish(&pipeline->base);
    vk_free2(&device->vk.alloc, allocator, pipeline);
 }
@@ -5291,7 +5292,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    }
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
-
+   radv_rmv_log_graphics_pipeline_create(device, pCreateInfo->flags, &pipeline->base, is_internal);
    return VK_SUCCESS;
 }
 
@@ -5591,7 +5592,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_compute_pipeline_init(pipeline, pipeline_layout);
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
-
+   radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base, is_internal);
    return VK_SUCCESS;
 }
 

@@ -394,13 +394,16 @@ radv_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
 
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
+      radv_rmv_log_command_buffer_bo_destroy(cmd_buffer->device, up->upload_bo);
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
       list_del(&up->list);
       free(up);
    }
 
-   if (cmd_buffer->upload.upload_bo)
+   if (cmd_buffer->upload.upload_bo) {
+      radv_rmv_log_command_buffer_bo_destroy(cmd_buffer->device, cmd_buffer->upload.upload_bo);
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, cmd_buffer->upload.upload_bo);
+   }
 
    if (cmd_buffer->cs)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
@@ -487,6 +490,7 @@ radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
 
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
+      radv_rmv_log_command_buffer_bo_destroy(cmd_buffer->device, up->upload_bo);
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
       list_del(&up->list);
       free(up);
@@ -575,6 +579,8 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t m
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return false;
    }
+   radv_rmv_log_command_buffer_bo_create(device, cmd_buffer->upload.upload_bo, 0,
+                                         cmd_buffer->upload.size, 0);
 
    return true;
 }
