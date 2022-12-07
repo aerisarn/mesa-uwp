@@ -44,8 +44,6 @@
 #include "iris_kmd_backend.h"
 #include "iris_utrace.h"
 
-#include "drm-uapi/i915_drm.h"
-
 #include "common/intel_aux_map.h"
 #include "intel/common/intel_gem.h"
 #include "intel/ds/intel_tracepoints.h"

@@ -31,7 +31,6 @@
 #include "util/u_dynarray.h"
 #include "util/perf/u_trace.h"
 
-#include "drm-uapi/i915_drm.h"
 #include "common/intel_decoder.h"
 #include "ds/intel_driver_ds.h"
 #include "ds/intel_tracepoints.h"
@@ -221,8 +220,6 @@ void _iris_batch_flush(struct iris_batch *batch, const char *file, int line);
 bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 
 bool iris_batch_prepare_noop(struct iris_batch *batch, bool noop_enable);
-
-#define RELOC_WRITE EXEC_OBJECT_WRITE
 
 void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo,
                         bool writable, enum iris_domain access);
