@@ -8435,7 +8435,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    const struct radv_device *device = cmd_buffer->device;
    bool late_scissor_emission;
 
-   if ((cmd_buffer->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER) ||
+   if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_FRAMEBUFFER |
+                                   RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK)) ||
        cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
       radv_emit_rbplus_state(cmd_buffer);
 
