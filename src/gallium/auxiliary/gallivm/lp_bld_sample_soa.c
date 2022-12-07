@@ -2590,11 +2590,11 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
        * too or do some other tricks to make it work).
        */
       const struct util_format_description *format_desc = bld->format_desc;
-      unsigned chan_type;
       /* not entirely sure we couldn't end up with non-valid swizzle here */
-      chan_type = format_desc->swizzle[0] <= PIPE_SWIZZLE_W ?
-                     format_desc->channel[format_desc->swizzle[0]].type :
-                     UTIL_FORMAT_TYPE_FLOAT;
+      const enum util_format_type chan_type =
+         format_desc->swizzle[0] <= PIPE_SWIZZLE_W
+           ? format_desc->channel[format_desc->swizzle[0]].type
+           : UTIL_FORMAT_TYPE_FLOAT;
       if (chan_type != UTIL_FORMAT_TYPE_FLOAT) {
          coords[4] = lp_build_clamp(&bld->coord_bld, coords[4],
                                     bld->coord_bld.zero, bld->coord_bld.one);
