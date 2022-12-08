@@ -157,8 +157,8 @@ struct aco_stage_input {
 
    struct {
       uint32_t spi_shader_col_format;
-      uint32_t color_is_int8;
-      uint32_t color_is_int10;
+      uint8_t color_is_int8;
+      uint8_t color_is_int10;
       uint8_t enable_mrt_output_nan_fixup;
 
       /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
