@@ -200,6 +200,14 @@ struct fd_device {
 #define last_submit(list) \
    list_last_entry(list, struct fd_submit, node)
 
+#define foreach_bo(name, list) \
+   list_for_each_entry(struct fd_bo, name, list, node)
+#define foreach_bo_safe(name, list) \
+   list_for_each_entry_safe(struct fd_bo, name, list, node)
+#define first_bo(list) \
+   list_first_entry(list, struct fd_bo, node)
+
+
 void fd_bo_cache_init(struct fd_bo_cache *cache, int coarse, const char *name);
 void fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time);
 struct fd_bo *fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size,

@@ -451,9 +451,9 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
        * latency hit of waiting for the host to catch up.
        */
       simple_mtx_lock(&virtio_dev->eb_lock);
-      list_addtail(&bo->list, &virtio_dev->prealloc_list);
-      bo = list_first_entry(&virtio_dev->prealloc_list, struct fd_bo, list);
-      list_delinit(&bo->list);
+      list_addtail(&bo->node, &virtio_dev->prealloc_list);
+      bo = first_bo(&virtio_dev->prealloc_list);
+      list_delinit(&bo->node);
       simple_mtx_unlock(&virtio_dev->eb_lock);
    }
 
@@ -468,6 +468,6 @@ void virtio_bo_setup_prealloc(struct fd_device *dev)
       struct fd_bo *bo = virtio_bo_new_impl(dev, SUBALLOC_SIZE, RING_FLAGS);
       if (!bo)
          break;
-      list_addtail(&bo->list, &virtio_dev->prealloc_list);
+      list_addtail(&bo->node, &virtio_dev->prealloc_list);
    }
 }

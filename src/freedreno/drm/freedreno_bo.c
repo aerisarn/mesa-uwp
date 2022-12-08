@@ -52,13 +52,13 @@ lookup_bo(struct hash_table *tbl, uint32_t key)
       /* found, incr refcnt and return: */
       bo = fd_bo_ref(entry->data);
 
-      if (!list_is_empty(&bo->list)) {
+      if (!list_is_empty(&bo->node)) {
          mesa_logw("bo was in cache, size=%u, alloc_flags=0x%x\n",
                    bo->size, bo->alloc_flags);
       }
 
       /* don't break the bucket if this bo was found in one */
-      list_delinit(&bo->list);
+      list_delinit(&bo->node);
    }
    return bo;
 }
@@ -75,7 +75,7 @@ fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev)
    bo->reloc_flags = FD_RELOC_FLAGS_INIT;
 
    p_atomic_set(&bo->refcnt, 1);
-   list_inithead(&bo->list);
+   list_inithead(&bo->node);
 }
 
 /* allocate a new buffer object, call w/ table_lock held */

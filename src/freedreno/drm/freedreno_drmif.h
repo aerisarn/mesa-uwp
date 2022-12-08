@@ -215,7 +215,7 @@ struct fd_bo {
     */
    uint32_t idx;
 
-   struct list_head list; /* bucket-list entry */
+   struct list_head node; /* bucket-list entry */
    time_t free_time;      /* time when added to bucket-list */
 
    unsigned short nr_fences, max_fences;

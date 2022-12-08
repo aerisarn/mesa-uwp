@@ -42,7 +42,7 @@ extern simple_mtx_t table_lock;
 static void
 bo_remove_from_bucket(struct fd_bo_bucket *bucket, struct fd_bo *bo)
 {
-   list_delinit(&bo->list);
+   list_delinit(&bo->node);
    bucket->count--;
 }
 
@@ -69,7 +69,7 @@ dump_cache_stats(struct fd_bo_cache *cache)
       struct fd_bo_bucket *bucket = &cache->cache_bucket[i];
 
       if (bucket->count > 0) {
-         struct fd_bo *bo = list_first_entry(&bucket->list, struct fd_bo, list);
+         struct fd_bo *bo = first_bo(&bucket->list);
          if (fd_bo_state(bo) == FD_BO_STATE_IDLE)
             state = " (idle)";
       }
@@ -158,7 +158,7 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
       struct fd_bo *bo;
 
       while (!list_is_empty(&bucket->list)) {
-         bo = list_entry(bucket->list.next, struct fd_bo, list);
+         bo = first_bo(&bucket->list);
 
          /* keep things in cache for at least 1 second: */
          if (time && ((time - bo->free_time) <= 1))
@@ -225,7 +225,7 @@ find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
     * (MRU, since likely to be in GPU cache), rather than head (LRU)..
     */
    simple_mtx_lock(&table_lock);
-   list_for_each_entry (struct fd_bo, entry, &bucket->list, list) {
+   foreach_bo (entry, &bucket->list) {
       if (fd_bo_state(entry) != FD_BO_STATE_IDLE) {
          break;
       }
@@ -301,7 +301,7 @@ fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo)
 
       bo->free_time = time.tv_sec;
       VG_BO_RELEASE(bo);
-      list_addtail(&bo->list, &bucket->list);
+      list_addtail(&bo->node, &bucket->list);
 
       bucket->count++;
 
