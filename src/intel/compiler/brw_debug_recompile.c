@@ -63,7 +63,6 @@ debug_sampler_recompile(const struct brw_compiler *c, void *log,
    bool found = false;
 
    found |= check("gather channel quirk", gather_channel_quirk_mask);
-   found |= check("16x msaa", msaa_16);
    found |= check("y_uv image bound", y_uv_image_mask);
    found |= check("y_u_v image bound", y_u_v_image_mask);
    found |= check("yx_xuxv image bound", yx_xuxv_image_mask);

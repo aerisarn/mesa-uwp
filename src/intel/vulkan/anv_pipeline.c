@@ -416,16 +416,6 @@ static void
 populate_sampler_prog_key(const struct intel_device_info *devinfo,
                           struct brw_sampler_prog_key_data *key)
 {
-   /* SkyLake added support for 16x MSAA.  With this came a new message for
-    * reading from a 16x MSAA surface with compression.  The new message was
-    * needed because now the MCS data is 64 bits instead of 32 or lower as is
-    * the case for 8x, 4x, and 2x.  The key->msaa_16 bit-field controls which
-    * message we use.  Fortunately, the 16x message works for 8x, 4x, and 2x
-    * so we can just use it unconditionally.  This may not be quite as
-    * efficient but it saves us from recompiling.
-    */
-   key->msaa_16 = ~0;
-
    for (int i = 0; i < BRW_MAX_SAMPLERS; i++) {
       /* Assume color sampler, no swizzling. (Works for BDW+) */
       key->swizzles[i] = SWIZZLE_XYZW;
