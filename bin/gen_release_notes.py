@@ -282,14 +282,12 @@ def calculate_previous_version(version: str, is_point: bool) -> str:
 
 def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
     p = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes' / 'new_features.txt'
-    if p.exists():
+    if p.exists() and p.stat().st_size > 0:
         if is_point_release:
             print("WARNING: new features being introduced in a point release", file=sys.stderr)
         with p.open('rt') as f:
             for line in f:
                 yield line.rstrip()
-            else:
-                yield "None"
         p.unlink()
     else:
         yield "None"
