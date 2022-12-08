@@ -992,6 +992,8 @@ to upconvert to 32b float internally?
 	<reg64 offset="0x0830" name="CP_SQE_INSTR_BASE"/>
 	<reg32 offset="0x0840" name="CP_MISC_CNTL"/>
 	<reg32 offset="0x0844" name="CP_APRIV_CNTL"/>
+	<!-- Preemptions taking longer than this threshold increment PERF_CP_LONG_PREEMPTIONS: -->
+	<reg32 offset="0x08C0" name="CP_PREEMPT_THRESHOLD"/>
 	<!-- all the threshold values seem to be in units of quad-dwords: -->
 	<reg32 offset="0x08C1" name="CP_ROQ_THRESHOLDS_1">
 		<doc>
