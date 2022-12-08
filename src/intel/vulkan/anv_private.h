@@ -1891,21 +1891,28 @@ anv_descriptor_set_address(struct anv_descriptor_set *set)
 struct anv_descriptor_pool {
    struct vk_object_base base;
 
-   uint32_t size;
-   uint32_t next;
-   uint32_t free_list;
-
    struct anv_bo *bo;
    struct util_vma_heap bo_heap;
 
    struct anv_state_stream surface_state_stream;
    void *surface_state_free_list;
 
+   /** List of anv_descriptor_set. */
    struct list_head desc_sets;
 
+   /** Heap over host_mem */
+   struct util_vma_heap host_heap;
+
+   /** Allocated size of host_mem */
+   uint32_t host_mem_size;
+
+   /**
+    * VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT. If set, then
+    * surface_state_stream is unused.
+    */
    bool host_only;
 
-   char data[0];
+   char host_mem[0];
 };
 
 size_t
