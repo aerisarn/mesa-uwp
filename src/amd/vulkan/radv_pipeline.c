@@ -2207,6 +2207,10 @@ radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shad
 {
    bool fixup_derefs = false;
 
+   /* Do not remove color exports when a PS epilog is used because the format isn't known. */
+   if (pipeline_key->ps.has_epilog)
+      return;
+
    /* Do not remove color exports when the write mask is dynamic. */
    if (pipeline_key->dynamic_color_write_mask)
       return;
@@ -2607,10 +2611,7 @@ radv_pipeline_link_fs(struct radv_pipeline_stage *fs_stage,
 {
    assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   if (!pipeline_key->ps.has_epilog) {
-      /* Only remove color exports when the format is known. */
-      radv_remove_color_exports(pipeline_key, fs_stage->nir);
-   }
+   radv_remove_color_exports(pipeline_key, fs_stage->nir);
 
    nir_foreach_shader_out_variable(var, fs_stage->nir) {
       var->data.driver_location = var->data.location + var->data.index;
