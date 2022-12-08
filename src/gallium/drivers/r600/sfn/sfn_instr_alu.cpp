@@ -2593,7 +2593,7 @@ emit_create_vec(const nir_alu_instr& instr, unsigned nc, Shader& shader)
    for (unsigned i = 0; i < nc; ++i) {
       if (instr.dest.write_mask & (1 << i)) {
          auto src = value_factory.src(instr.src[i].src, instr.src[i].swizzle[0]);
-         auto dst = value_factory.dest(instr.dest.dest, i, pin_chan);
+         auto dst = value_factory.dest(instr.dest.dest, i, pin_none);
          ir = new AluInstr(op1_mov, dst, src, {alu_write});
 
          if (instr.dest.saturate)
