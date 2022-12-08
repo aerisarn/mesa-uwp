@@ -57,6 +57,7 @@ public:
 
    static bool emit_atomic_counter(nir_intrinsic_instr *intr, Shader& shader);
    uint32_t slots() const override { return 1; };
+   uint8_t allowed_src_chan_mask() const override;
 
 private:
    static bool emit_atomic_read(nir_intrinsic_instr *intr, Shader& shader);
