@@ -199,10 +199,7 @@ struct brw_sampler_prog_key_data {
     */
    uint32_t gather_channel_quirk_mask;
 
-   /**
-    * Whether this sampler uses the compressed multisample surface layout.
-    */
-   uint32_t compressed_multisample_layout_mask;
+   uint32_t padding;
 
    /**
     * Whether this sampler is using 16x multisampling. If so fetching from

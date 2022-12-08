@@ -55,7 +55,6 @@
    .base.program_string_id = prog_id,                      \
    .base.limit_trig_input_range = limit_trig_input,        \
    .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688, \
-   .base.tex.compressed_multisample_layout_mask = ~0,      \
    .base.tex.msaa_16 = (gen >= 9 ? ~0 : 0)
 
 struct iris_threaded_compile_job {

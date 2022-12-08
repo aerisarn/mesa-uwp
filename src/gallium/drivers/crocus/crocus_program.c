@@ -49,8 +49,7 @@
 #include "nir/tgsi_to_nir.h"
 
 #define KEY_INIT_NO_ID()                              \
-   .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688,   \
-   .base.tex.compressed_multisample_layout_mask = ~0
+   .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688
 #define KEY_INIT()                                                        \
    .base.program_string_id = ish->program_id,                             \
    .base.limit_trig_input_range = screen->driconf.limit_trig_input_range, \

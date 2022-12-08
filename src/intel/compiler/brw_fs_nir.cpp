@@ -6397,8 +6397,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (srcs[TEX_LOGICAL_SRC_MCS].file == BAD_FILE &&
        (instr->op == nir_texop_txf_ms ||
         instr->op == nir_texop_samples_identical)) {
-      if (devinfo->ver >= 7 &&
-          key_tex->compressed_multisample_layout_mask & (1 << texture)) {
+      if (devinfo->ver >= 7) {
          srcs[TEX_LOGICAL_SRC_MCS] =
             emit_mcs_fetch(srcs[TEX_LOGICAL_SRC_COORDINATE],
                            instr->coord_components,
