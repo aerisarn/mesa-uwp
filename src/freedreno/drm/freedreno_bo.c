@@ -30,6 +30,7 @@
 #include "freedreno_priv.h"
 
 simple_mtx_t table_lock = SIMPLE_MTX_INITIALIZER;
+simple_mtx_t fence_lock = SIMPLE_MTX_INITIALIZER;
 void bo_del(struct fd_bo *bo);
 void bo_del_flush(struct fd_device *dev);
 
@@ -347,7 +348,7 @@ bo_del(struct fd_bo *bo)
    simple_mtx_assert_locked(&table_lock);
 
    for (int i = 0; i < bo->nr_fences; i++)
-      fd_pipe_del_locked(bo->fences[i].pipe);
+      fd_pipe_del(bo->fences[i].pipe);
 
    if (bo->fences != &bo->_inline_fence)
       free(bo->fences);
@@ -524,9 +525,7 @@ fd_bo_prefer_upload(struct fd_bo *bo, unsigned len)
 int
 fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 {
-   simple_mtx_lock(&table_lock);
    enum fd_bo_state state = fd_bo_state(bo);
-   simple_mtx_unlock(&table_lock);
 
    if (state == FD_BO_STATE_IDLE)
       return 0;
@@ -570,7 +569,7 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 static void
 cleanup_fences(struct fd_bo *bo)
 {
-   simple_mtx_assert_locked(&table_lock);
+   simple_mtx_assert_locked(&fence_lock);
 
    for (int i = 0; i < bo->nr_fences; i++) {
       struct fd_bo_fence *f = &bo->fences[i];
@@ -595,7 +594,7 @@ cleanup_fences(struct fd_bo *bo)
 void
 fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
 {
-   simple_mtx_assert_locked(&table_lock);
+   simple_mtx_assert_locked(&fence_lock);
 
    if (bo->nosync)
       return;
@@ -634,12 +633,17 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
 enum fd_bo_state
 fd_bo_state(struct fd_bo *bo)
 {
-   simple_mtx_assert_locked(&table_lock);
-
-   cleanup_fences(bo);
-
+   /* NOTE: check the nosync case before touching fence_lock in case we end
+    * up here recursively from dropping pipe reference in cleanup_fences().
+    * The pipe's control buffer is specifically nosync to avoid recursive
+    * lock problems here.
+    */
    if (bo->shared || bo->nosync)
       return FD_BO_STATE_UNKNOWN;
+
+   simple_mtx_lock(&fence_lock);
+   cleanup_fences(bo);
+   simple_mtx_unlock(&fence_lock);
 
    if (!bo->nr_fences)
       return FD_BO_STATE_IDLE;

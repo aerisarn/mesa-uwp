@@ -179,12 +179,12 @@ fd_submit_sp_flush_prep(struct fd_submit *submit, int in_fence_fd,
    for (unsigned i = 0; i < primary->u.nr_cmds; i++)
       fd_submit_append_bo(fd_submit, primary->u.cmds[i].ring_bo);
 
-   simple_mtx_lock(&table_lock);
+   simple_mtx_lock(&fence_lock);
    for (unsigned i = 0; i < fd_submit->nr_bos; i++) {
       fd_bo_add_fence(fd_submit->bos[i], submit->pipe, submit->fence);
       has_shared |= fd_submit->bos[i]->shared;
    }
-   simple_mtx_unlock(&table_lock);
+   simple_mtx_unlock(&fence_lock);
 
    fd_submit->out_fence   = out_fence;
    fd_submit->in_fence_fd = (in_fence_fd == -1) ?

@@ -94,46 +94,38 @@ fd_pipe_new(struct fd_device *dev, enum fd_pipe_id id)
 struct fd_pipe *
 fd_pipe_ref(struct fd_pipe *pipe)
 {
-   simple_mtx_lock(&table_lock);
+   simple_mtx_lock(&fence_lock);
    fd_pipe_ref_locked(pipe);
-   simple_mtx_unlock(&table_lock);
+   simple_mtx_unlock(&fence_lock);
    return pipe;
 }
 
 struct fd_pipe *
 fd_pipe_ref_locked(struct fd_pipe *pipe)
 {
-   simple_mtx_assert_locked(&table_lock);
+   simple_mtx_assert_locked(&fence_lock);
    pipe->refcnt++;
    return pipe;
-}
-
-
-static void
-pipe_del_locked(struct fd_pipe *pipe)
-{
-   fd_bo_del_locked(pipe->control_mem);
-   fd_device_del_locked(pipe->dev);
-   pipe->funcs->destroy(pipe);
 }
 
 void
 fd_pipe_del(struct fd_pipe *pipe)
 {
-   if (!p_atomic_dec_zero(&pipe->refcnt))
-      return;
-   simple_mtx_lock(&table_lock);
-   pipe_del_locked(pipe);
-   simple_mtx_unlock(&table_lock);
+   simple_mtx_lock(&fence_lock);
+   fd_pipe_del_locked(pipe);
+   simple_mtx_unlock(&fence_lock);
 }
 
 void
 fd_pipe_del_locked(struct fd_pipe *pipe)
 {
-   simple_mtx_assert_locked(&table_lock);
-   if (!p_atomic_dec_zero(&pipe->refcnt))
+   simple_mtx_assert_locked(&fence_lock);
+   if (--pipe->refcnt)
       return;
-   pipe_del_locked(pipe);
+
+   fd_bo_del(pipe->control_mem);
+   fd_device_del(pipe->dev);
+   pipe->funcs->destroy(pipe);
 }
 
 /**

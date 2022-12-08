@@ -37,7 +37,6 @@
 
 void bo_del(struct fd_bo *bo);
 void bo_del_flush(struct fd_device *dev);
-extern simple_mtx_t table_lock;
 
 static void
 bo_remove_from_bucket(struct fd_bo_bucket *bucket, struct fd_bo *bo)
@@ -116,6 +115,7 @@ fd_bo_cache_init(struct fd_bo_cache *cache, int coarse, const char *name)
    unsigned long size, cache_max_size = 64 * 1024 * 1024;
 
    cache->name = name;
+   simple_mtx_init(&cache->lock, mtx_plain);
 
    /* OK, so power of two buckets was too wasteful of memory.
     * Give 3 other sizes between each power of two, to hopefully
@@ -153,6 +153,11 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
    if (cache->time == time)
       return;
 
+   struct list_head freelist;
+
+   list_inithead(&freelist);
+
+   simple_mtx_lock(&cache->lock);
    for (i = 0; i < cache->num_buckets; i++) {
       struct fd_bo_bucket *bucket = &cache->cache_bucket[i];
       struct fd_bo *bo;
@@ -174,10 +179,16 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
          VG_BO_OBTAIN(bo);
          bo_remove_from_bucket(bucket, bo);
          bucket->expired++;
-         bo_del(bo);
+         list_addtail(&bo->node, &freelist);
 
          cnt++;
       }
+   }
+   simple_mtx_unlock(&cache->lock);
+
+   foreach_bo_safe (bo, &freelist) {
+      list_del(&bo->node);
+      bo_del(bo);
    }
 
    /* Note: when called in bo_del_or_recycle() -> fd_bo_cache_free() path,
@@ -224,7 +235,6 @@ find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
     * NOTE that intel takes ALLOC_FOR_RENDER bo's from the list tail
     * (MRU, since likely to be in GPU cache), rather than head (LRU)..
     */
-   simple_mtx_lock(&table_lock);
    foreach_bo (entry, &bucket->list) {
       if (fd_bo_state(entry) != FD_BO_STATE_IDLE) {
          break;
@@ -235,7 +245,6 @@ find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
          break;
       }
    }
-   simple_mtx_unlock(&table_lock);
 
    return bo;
 }
@@ -254,7 +263,9 @@ fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size, uint32_t flags)
 retry:
    if (bucket) {
       *size = bucket->size;
+      simple_mtx_lock(&cache->lock);
       bo = find_in_bucket(bucket, flags);
+      simple_mtx_unlock(&cache->lock);
       if (bo) {
          VG_BO_OBTAIN(bo);
          if (bo->funcs->madvise(bo, true) <= 0) {
@@ -301,9 +312,11 @@ fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo)
 
       bo->free_time = time.tv_sec;
       VG_BO_RELEASE(bo);
-      list_addtail(&bo->node, &bucket->list);
 
+      simple_mtx_lock(&cache->lock);
+      list_addtail(&bo->node, &bucket->list);
       bucket->count++;
+      simple_mtx_unlock(&cache->lock);
 
       fd_bo_cache_cleanup(cache, time.tv_sec);
 

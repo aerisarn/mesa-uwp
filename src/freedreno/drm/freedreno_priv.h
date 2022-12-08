@@ -52,6 +52,7 @@
 #include "freedreno_ringbuffer.h"
 
 extern simple_mtx_t table_lock;
+extern simple_mtx_t fence_lock;
 
 #define SUBALLOC_SIZE (32 * 1024)
 /* Maximum known alignment requirement is a6xx's TEX_CONST at 16 dwords */
@@ -119,6 +120,7 @@ struct fd_bo_bucket {
 
 struct fd_bo_cache {
    const char *name;
+   simple_mtx_t lock;
    struct fd_bo_bucket cache_bucket[14 * 4];
    int num_buckets;
    time_t time;
@@ -216,7 +218,7 @@ int fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo);
 
 /* for where @table_lock is already held: */
 void fd_bo_del_locked(struct fd_bo *bo);
-void fd_device_del_locked(struct fd_device *dev);
+/* for where @fence_lock is already held: */
 void fd_pipe_del_locked(struct fd_pipe *pipe);
 
 struct fd_pipe_funcs {
@@ -251,8 +253,8 @@ struct fd_pipe {
    struct fd_dev_id dev_id;
 
    /**
-    * Note refcnt is *not* atomic, but protected by table_lock, since the
-    * table_lock is held in fd_bo_add_fence(), which is the hotpath.
+    * Note refcnt is *not* atomic, but protected by fence_lock, since the
+    * fence_lock is held in fd_bo_add_fence(), which is the hotpath.
     */
    int32_t refcnt;
 

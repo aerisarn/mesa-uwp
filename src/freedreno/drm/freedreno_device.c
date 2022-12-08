@@ -179,14 +179,6 @@ fd_device_del_impl(struct fd_device *dev)
 }
 
 void
-fd_device_del_locked(struct fd_device *dev)
-{
-   if (!p_atomic_dec_zero(&dev->refcnt))
-      return;
-   fd_device_del_impl(dev);
-}
-
-void
 fd_device_del(struct fd_device *dev)
 {
    if (!p_atomic_dec_zero(&dev->refcnt))
