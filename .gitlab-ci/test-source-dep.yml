@@ -168,6 +168,7 @@
     # so only enable automatic testing when running in the context of Mesa to
     # prevent failures in forks.
     - if: '$CI_PROJECT_NAMESPACE != "mesa"'
+      when: never
 
 .austriancoder-farm-rules:
   rules:
