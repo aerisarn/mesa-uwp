@@ -2215,7 +2215,7 @@ radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shad
       if (idx < 0)
          continue;
 
-      unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
+      unsigned col_format = (pipeline_key->ps.spi_shader_col_format >> (4 * idx)) & 0xf;
       unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
 
       if (col_format == V_028714_SPI_SHADER_ZERO ||
@@ -2750,12 +2750,12 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       }
    }
 
-   key.ps.col_format = blend->spi_shader_col_format;
+   key.ps.spi_shader_col_format = blend->spi_shader_col_format;
    key.ps.cb_target_mask = blend->cb_target_mask;
    key.ps.mrt0_is_dual_src = blend->mrt0_is_dual_src;
    if (device->physical_device->rad_info.gfx_level < GFX8) {
-      key.ps.is_int8 = blend->col_format_is_int8;
-      key.ps.is_int10 = blend->col_format_is_int10;
+      key.ps.color_is_int8 = blend->col_format_is_int8;
+      key.ps.color_is_int10 = blend->col_format_is_int10;
    }
    if (device->physical_device->rad_info.gfx_level >= GFX11 && state->ms) {
       key.ps.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
@@ -3753,9 +3753,9 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog) {
       struct radv_ps_epilog_key epilog_key = {
-         .spi_shader_col_format = pipeline_key->ps.col_format,
-         .color_is_int8 = pipeline_key->ps.is_int8,
-         .color_is_int10 = pipeline_key->ps.is_int10,
+         .spi_shader_col_format = pipeline_key->ps.spi_shader_col_format,
+         .color_is_int8 = pipeline_key->ps.color_is_int8,
+         .color_is_int10 = pipeline_key->ps.color_is_int10,
          .enable_mrt_output_nan_fixup = pipeline_key->ps.enable_mrt_output_nan_fixup,
          .mrt0_is_dual_src = pipeline_key->ps.mrt0_is_dual_src,
       };

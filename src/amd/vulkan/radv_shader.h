@@ -85,9 +85,9 @@ struct radv_pipeline_key {
    } tcs;
 
    struct {
-      uint32_t col_format;
-      uint32_t is_int8;
-      uint32_t is_int10;
+      uint32_t spi_shader_col_format;
+      uint32_t color_is_int8;
+      uint32_t color_is_int10;
       uint32_t cb_target_mask;
       uint8_t num_samples;
       bool sample_shading_enable;
