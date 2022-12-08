@@ -326,6 +326,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_physical_device_drm               = true,
       .EXT_pipeline_creation_cache_control   = true,
       .EXT_pipeline_creation_feedback        = true,
+      .EXT_pipeline_library_group_handles    = true,
       .EXT_post_depth_coverage               = true,
       .EXT_primitives_generated_query        = true,
       .EXT_primitive_topology_list_restart   = true,
@@ -1570,6 +1571,13 @@ void anv_GetPhysicalDeviceFeatures2(
          features->primitivesGeneratedQuery = true;
          features->primitivesGeneratedQueryWithRasterizerDiscard = false;
          features->primitivesGeneratedQueryWithNonZeroStreams = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_LIBRARY_GROUP_HANDLES_FEATURES_EXT: {
+         VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT *features =
+            (VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT *)ext;
+         features->pipelineLibraryGroupHandles = true;
          break;
       }
 
