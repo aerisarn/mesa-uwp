@@ -2497,6 +2497,7 @@ prune_io(nir_shader *nir)
       if (!find_var_deref(nir, var))
          var->data.mode = nir_var_shader_temp;
    }
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
 }
 
 VkShaderModule
