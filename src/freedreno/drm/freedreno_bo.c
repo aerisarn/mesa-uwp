@@ -331,38 +331,6 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
    simple_mtx_unlock(&table_lock);
 }
 
-/**
- * Cleanup fences, dropping pipe references.  If 'expired' is true, only
- * cleanup expired fences.
- *
- * Normally we expect at most a single fence, the exception being bo's
- * shared between contexts
- */
-static void
-cleanup_fences(struct fd_bo *bo, bool expired)
-{
-   simple_mtx_assert_locked(&table_lock);
-
-   for (int i = 0; i < bo->nr_fences; i++) {
-      struct fd_bo_fence *f = &bo->fences[i];
-
-      if (expired && fd_fence_before(f->pipe->control->fence, f->fence))
-         continue;
-
-      struct fd_pipe *pipe = f->pipe;
-
-      bo->nr_fences--;
-
-      if (bo->nr_fences > 0) {
-         /* Shuffle up the last entry to replace the current slot: */
-         bo->fences[i] = bo->fences[bo->nr_fences];
-         i--;
-      }
-
-      fd_pipe_del_locked(pipe);
-   }
-}
-
 /* Called under table_lock, bo_del_flush() *must* be called before
  * table_lock is released (but bo_del() can be called multiple times
  * before bo_del_flush(), as long as table_lock is held the entire
@@ -378,7 +346,9 @@ bo_del(struct fd_bo *bo)
 
    simple_mtx_assert_locked(&table_lock);
 
-   cleanup_fences(bo, false);
+   for (int i = 0; i < bo->nr_fences; i++)
+      fd_pipe_del_locked(bo->fences[i].pipe);
+
    if (bo->fences != &bo->_inline_fence)
       free(bo->fences);
 
@@ -590,6 +560,38 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
    return bo->funcs->cpu_prep(bo, pipe, op);
 }
 
+/**
+ * Cleanup fences, dropping pipe references.  If 'expired' is true, only
+ * cleanup expired fences.
+ *
+ * Normally we expect at most a single fence, the exception being bo's
+ * shared between contexts
+ */
+static void
+cleanup_fences(struct fd_bo *bo)
+{
+   simple_mtx_assert_locked(&table_lock);
+
+   for (int i = 0; i < bo->nr_fences; i++) {
+      struct fd_bo_fence *f = &bo->fences[i];
+
+      if (fd_fence_before(f->pipe->control->fence, f->fence))
+         continue;
+
+      struct fd_pipe *pipe = f->pipe;
+
+      bo->nr_fences--;
+
+      if (bo->nr_fences > 0) {
+         /* Shuffle up the last entry to replace the current slot: */
+         bo->fences[i] = bo->fences[bo->nr_fences];
+         i--;
+      }
+
+      fd_pipe_del_locked(pipe);
+   }
+}
+
 void
 fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
 {
@@ -610,7 +612,7 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
       }
    }
 
-   cleanup_fences(bo, true);
+   cleanup_fences(bo);
 
    /* The first time we grow past a single fence, we need some special
     * handling, as we've been using the embedded _inline_fence to avoid
@@ -634,7 +636,7 @@ fd_bo_state(struct fd_bo *bo)
 {
    simple_mtx_assert_locked(&table_lock);
 
-   cleanup_fences(bo, true);
+   cleanup_fences(bo);
 
    if (bo->shared || bo->nosync)
       return FD_BO_STATE_UNKNOWN;
