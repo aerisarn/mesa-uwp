@@ -246,6 +246,8 @@ public:
 
    static auto from_string(std::istream& is, ValueFactory& vf) -> Pointer;
 
+   uint8_t allowed_src_chan_mask() const override;
+
 private:
    bool do_ready() const override;
    void do_print(std::ostream& os) const override;
