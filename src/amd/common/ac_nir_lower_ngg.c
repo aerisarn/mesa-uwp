@@ -1626,13 +1626,17 @@ do_ngg_nogs_store_output_to_lds(nir_builder *b, nir_instr *instr, void *state)
    if (intrin->intrinsic != nir_intrinsic_store_output)
       return false;
 
+   /* no indirect output */
+   assert(nir_src_is_const(intrin->src[1]) && !nir_src_as_uint(intrin->src[1]));
+
    b->cursor = nir_before_instr(instr);
 
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
    unsigned component = nir_intrinsic_component(intrin);
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
    nir_ssa_def *store_val = intrin->src[0].ssa;
 
-   if (nir_intrinsic_io_semantics(intrin).location == VARYING_SLOT_EDGE) {
+   if (sem.location == VARYING_SLOT_EDGE) {
       if (st->has_user_edgeflags) {
          /* clamp user edge flag to 1 for latter bit operations */
          store_val = nir_umin(b, store_val, nir_imm_int(b, 1));
@@ -1652,10 +1656,8 @@ do_ngg_nogs_store_output_to_lds(nir_builder *b, nir_instr *instr, void *state)
    /* user edge flag is stored at the beginning of a vertex if streamout is not enabled */
    unsigned offset = 0;
    if (st->streamout_enabled) {
-      unsigned base_offset = nir_src_as_uint(intrin->src[1]);
-      unsigned location = nir_intrinsic_io_semantics(intrin).location + base_offset;
       unsigned packed_location =
-         util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(location));
+         util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(sem.location));
       offset = packed_location * 16 + component * 4;
    }
 
@@ -2392,17 +2394,15 @@ ngg_gs_clear_primflags(nir_builder *b, nir_ssa_def *num_vertices, unsigned strea
 static bool
 lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg_gs_state *s)
 {
-   assert(nir_src_is_const(intrin->src[1]));
+   assert(nir_src_is_const(intrin->src[1]) && !nir_src_as_uint(intrin->src[1]));
    b->cursor = nir_before_instr(&intrin->instr);
 
    unsigned base = nir_intrinsic_base(intrin);
    unsigned writemask = nir_intrinsic_write_mask(intrin);
    unsigned component_offset = nir_intrinsic_component(intrin);
-   unsigned base_offset = nir_src_as_uint(intrin->src[1]);
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
 
-   unsigned location = io_sem.location + base_offset;
-   unsigned base_index = base + base_offset;
+   unsigned location = io_sem.location;
 
    nir_ssa_def *store_val = intrin->src[0].ssa;
    nir_alu_type src_type = nir_intrinsic_src_type(intrin);
@@ -2449,7 +2449,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       unsigned component = component_offset + comp;
 
       /* The same output should always belong to the same base. */
-      assert(!info->components_mask || info->base == base_index);
+      assert(!info->components_mask || info->base == base);
       /* The same output should always have same kill state. */
       assert(!info->components_mask ||
              (info->no_varying == io_sem.no_varying &&
@@ -2458,7 +2458,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       assert(!(info->components_mask & (1 << component)) ||
              ((info->stream >> (component * 2)) & 3) == stream);
 
-      info->base = base_index;
+      info->base = base;
       /* Components of the same output slot may belong to different streams. */
       info->stream |= stream << (component * 2);
       info->components_mask |= BITFIELD_BIT(component);
