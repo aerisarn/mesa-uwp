@@ -2643,7 +2643,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
                                   device->instance->debug_flags & RADV_DEBUG_HANG, false);
 
    struct radv_shader_info info = {0};
-   info.wave_size = key->wave32 ? 32 : 64;
+   info.wave_size = device->physical_device->ps_wave_size;
    info.workgroup_size = 64;
 
    radv_declare_ps_epilog_args(device->physical_device->rad_info.gfx_level, key, &args);
