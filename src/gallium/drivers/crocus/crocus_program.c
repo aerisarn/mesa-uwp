@@ -160,7 +160,6 @@ crocus_populate_sampler_prog_key_data(struct crocus_context *ice,
 
       struct crocus_sampler_view *texture = ice->state.shaders[stage].textures[s];
       key->swizzles[s] = SWIZZLE_NOOP;
-      key->scale_factors[s] = 0.0f;
 
       if (!texture)
          continue;
