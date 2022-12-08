@@ -149,6 +149,7 @@ ValueFactory::allocate_pinned_register(int sel, int chan)
 
    auto reg = new Register(sel, chan, pin_fully);
    reg->set_flag(Register::pin_start);
+   reg->set_flag(Register::ssa);
    m_pinned_registers.push_back(reg);
    return reg;
 }
@@ -162,6 +163,7 @@ ValueFactory::allocate_pinned_vec4(int sel, bool is_ssa)
    RegisterVec4 retval(sel, is_ssa, {0, 1, 2, 3}, pin_fully);
    for (int i = 0; i < 4; ++i) {
       retval[i]->set_flag(Register::pin_start);
+      retval[i]->set_flag(Register::ssa);
       m_pinned_registers.push_back(retval[i]);
    }
    return retval;
