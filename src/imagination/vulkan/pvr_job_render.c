@@ -1686,8 +1686,6 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
                                       struct pvr_render_job *job,
                                       struct pvr_winsys_fragment_state *state)
 {
-   /* FIXME: what to do when job->run_frag is false? */
-
    pvr_frag_state_stream_init(ctx, job, state);
    pvr_frag_state_stream_ext_init(ctx, job, state);
    pvr_frag_state_flags_init(job, &state->flags);
@@ -1711,17 +1709,20 @@ static void pvr_render_job_ws_submit_info_init(
    submit_info->frame_num = ctx->device->global_queue_present_count;
    submit_info->job_num = ctx->device->global_queue_job_count;
 
-   submit_info->run_frag = job->run_frag;
-
    submit_info->barrier_geom = barrier_geom;
-   submit_info->barrier_frag = barrier_frag;
 
    submit_info->waits = waits;
    submit_info->wait_count = wait_count;
    submit_info->stage_flags = stage_flags;
 
    pvr_render_job_ws_geometry_state_init(ctx, job, &submit_info->geometry);
-   pvr_render_job_ws_fragment_state_init(ctx, job, &submit_info->fragment);
+
+   if (job->run_frag) {
+      submit_info->run_frag = true;
+      submit_info->barrier_frag = barrier_frag;
+
+      pvr_render_job_ws_fragment_state_init(ctx, job, &submit_info->fragment);
+   }
 }
 
 VkResult pvr_render_job_submit(struct pvr_render_ctx *ctx,
