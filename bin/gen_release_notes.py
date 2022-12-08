@@ -195,7 +195,11 @@ async def parse_issues(commits: str) -> typing.List[str]:
         for line in reversed(out):
             if line.startswith('Closes:'):
                 bug = line.lstrip('Closes:').strip()
-                if bug.startswith('https://gitlab.freedesktop.org/mesa/mesa'):
+                if (bug.startswith('https://gitlab.freedesktop.org/mesa/mesa')
+                    # Avoid parsing "merge_requests" URL. Note that a valid issue
+                    # URL may or may not contain the "/-/" text, so we check if
+                    # the word "issues" is contained in URL.
+                    and '/issues' in bug):
                     # This means we have a bug in the form "Closes: https://..."
                     issues.append(os.path.basename(urllib.parse.urlparse(bug).path))
                 elif ',' in bug:

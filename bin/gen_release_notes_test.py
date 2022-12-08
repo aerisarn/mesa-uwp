@@ -148,6 +148,22 @@ async def test_gather_commits():
             ''',
             ['3456', '3457', '3458'],
         ),
+        (
+            '''\
+            Without /-/
+
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/issues/36
+            ''',
+            ['36'],
+        ),
+        (
+            '''\
+            Ignore merge_requests
+
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/20241
+            ''',
+            [],
+        ),
     ])
 async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
     mock_com = mock.AsyncMock(return_value=(textwrap.dedent(content).encode(), ''))
