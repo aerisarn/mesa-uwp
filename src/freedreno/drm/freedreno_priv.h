@@ -184,15 +184,6 @@ struct fd_device {
    simple_mtx_t suballoc_lock;
 
    struct util_queue submit_queue;
-
-   /**
-    * GEM handles can be queued/batched for freeing in cases where many
-    * buffers are freed together under table_lock.  This enables the
-    * virtio backend to batch messages to the host to avoid quickly
-    * depleting the virtqueue ringbuffer slots.
-    */
-   uint32_t deferred_handles[64];
-   uint32_t num_deferred_handles;
 };
 
 #define foreach_submit(name, list) \

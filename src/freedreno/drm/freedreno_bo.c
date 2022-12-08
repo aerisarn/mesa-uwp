@@ -31,8 +31,6 @@
 
 simple_mtx_t table_lock = SIMPLE_MTX_INITIALIZER;
 simple_mtx_t fence_lock = SIMPLE_MTX_INITIALIZER;
-void bo_del(struct fd_bo *bo);
-void bo_del_flush(struct fd_device *dev);
 
 /* set buffer name, and add to table, call w/ table_lock held: */
 static void
@@ -268,7 +266,10 @@ fd_bo_ref(struct fd_bo *bo)
    return bo;
 }
 
-static void
+static uint32_t bo_del(struct fd_bo *bo);
+static void close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt);
+
+static uint32_t
 bo_del_or_recycle(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
@@ -277,13 +278,13 @@ bo_del_or_recycle(struct fd_bo *bo)
 
    if ((bo->bo_reuse == BO_CACHE) &&
        (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
-      return;
+      return 0;
 
    if ((bo->bo_reuse == RING_CACHE) &&
        (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
-      return;
+      return 0;
 
-   bo_del(bo);
+   return bo_del(bo);
 }
 
 void
@@ -296,8 +297,9 @@ fd_bo_del_locked(struct fd_bo *bo)
 
    struct fd_device *dev = bo->dev;
 
-   bo_del_or_recycle(bo);
-   bo_del_flush(dev);
+   uint32_t handle = bo_del_or_recycle(bo);
+   if (handle)
+      close_handles(dev, &handle, 1);
 }
 
 void
@@ -309,8 +311,9 @@ fd_bo_del(struct fd_bo *bo)
    struct fd_device *dev = bo->dev;
 
    simple_mtx_lock(&table_lock);
-   bo_del_or_recycle(bo);
-   bo_del_flush(dev);
+   uint32_t handle = bo_del_or_recycle(bo);
+   if (handle)
+      close_handles(dev, &handle, 1);
    simple_mtx_unlock(&table_lock);
 }
 
@@ -321,23 +324,62 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
       return;
 
    struct fd_device *dev = bos[0]->dev;
+   uint32_t handles[64];
+   unsigned cnt = 0;
 
    simple_mtx_lock(&table_lock);
    for (unsigned i = 0; i < count; i++) {
       if (!p_atomic_dec_zero(&bos[i]->refcnt))
          continue;
-      bo_del_or_recycle(bos[i]);
+      if (cnt == ARRAY_SIZE(handles)) {
+         close_handles(dev, handles, cnt);
+         cnt = 0;
+      }
+      handles[cnt] = bo_del_or_recycle(bos[i]);
+      if (handles[cnt])
+         cnt++;
    }
-   bo_del_flush(dev);
+   close_handles(dev, handles, cnt);
    simple_mtx_unlock(&table_lock);
 }
 
-/* Called under table_lock, bo_del_flush() *must* be called before
- * table_lock is released (but bo_del() can be called multiple times
- * before bo_del_flush(), as long as table_lock is held the entire
- * time)
+/**
+ * Special interface for fd_bo_cache to batch delete a list of handles.
+ * Similar to fd_bo_del_array() but bypasses the BO cache (since it is
+ * called from the BO cache to expire a list of BOs).
  */
 void
+fd_bo_del_list_nocache(struct list_head *list)
+{
+   simple_mtx_assert_locked(&table_lock);
+
+   if (list_is_empty(list))
+      return;
+
+   struct fd_device *dev = first_bo(list)->dev;
+   uint32_t handles[64];
+   unsigned cnt = 0;
+
+   foreach_bo_safe (bo, list) {
+      assert(bo->refcnt == 0);
+      if (cnt == ARRAY_SIZE(handles)) {
+         close_handles(dev, handles, cnt);
+         cnt = 0;
+      }
+      handles[cnt] = bo_del(bo);
+      if (handles[cnt])
+         cnt++;
+   }
+
+   close_handles(dev, handles, cnt);
+}
+
+/**
+ * The returned handle must be closed via a call to close_handles()
+ *
+ * Called under table_lock
+ */
+static uint32_t
 bo_del(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
@@ -364,31 +406,24 @@ bo_del(struct fd_bo *bo)
 
    bo->funcs->destroy(bo);
 
-   if (handle) {
-      if (dev->num_deferred_handles == ARRAY_SIZE(dev->deferred_handles))
-         bo_del_flush(dev);
-      dev->deferred_handles[dev->num_deferred_handles++] = handle;
-   }
+   return handle;
 }
 
-/* Called under table_lock */
-void
-bo_del_flush(struct fd_device *dev)
+static void
+close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt)
 {
-   if (!dev->num_deferred_handles)
+   if (!cnt)
       return;
 
    if (dev->funcs->flush)
       dev->funcs->flush(dev);
 
-   for (unsigned i = 0; i < dev->num_deferred_handles; i++) {
+   for (unsigned i = 0; i < cnt; i++) {
       struct drm_gem_close req = {
-         .handle = dev->deferred_handles[i],
+         .handle = handles[i],
       };
       drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
    }
-
-   dev->num_deferred_handles = 0;
 }
 
 static void

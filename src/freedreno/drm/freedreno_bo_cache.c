@@ -35,9 +35,6 @@
       }                                                         \
    } while (0)
 
-void bo_del(struct fd_bo *bo);
-void bo_del_flush(struct fd_device *dev);
-
 static void
 bo_remove_from_bucket(struct fd_bo_bucket *bucket, struct fd_bo *bo)
 {
@@ -145,7 +142,6 @@ fd_bo_cache_init(struct fd_bo_cache *cache, int coarse, const char *name)
 void
 fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
 {
-   struct fd_device *dev = NULL;
    int i, cnt = 0;
 
    simple_mtx_assert_locked(&table_lock);
@@ -169,8 +165,6 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
          if (time && ((time - bo->free_time) <= 1))
             break;
 
-         dev = bo->dev;
-
          if (cnt == 0) {
             BO_CACHE_LOG(cache, "cache cleanup");
             dump_cache_stats(cache);
@@ -186,16 +180,7 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
    }
    simple_mtx_unlock(&cache->lock);
 
-   foreach_bo_safe (bo, &freelist) {
-      list_del(&bo->node);
-      bo_del(bo);
-   }
-
-   /* Note: when called in bo_del_or_recycle() -> fd_bo_cache_free() path,
-    * the caller will handle bo_del_flush().
-    */
-   if (time && dev)
-      bo_del_flush(dev);
+   fd_bo_del_list_nocache(&freelist);
 
    if (cnt > 0) {
       BO_CACHE_LOG(cache, "cache cleaned %u BOs", cnt);
@@ -259,6 +244,10 @@ fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size, uint32_t flags)
    *size = align(*size, 4096);
    bucket = get_bucket(cache, *size);
 
+   struct list_head freelist;
+
+   list_inithead(&freelist);
+
    /* see if we can be green and recycle: */
 retry:
    if (bucket) {
@@ -270,11 +259,7 @@ retry:
          VG_BO_OBTAIN(bo);
          if (bo->funcs->madvise(bo, true) <= 0) {
             /* we've lost the backing pages, delete and try again: */
-            struct fd_device *dev = bo->dev;
-            simple_mtx_lock(&table_lock);
-            bo_del(bo);
-            bo_del_flush(dev);
-            simple_mtx_unlock(&table_lock);
+            list_addtail(&bo->node, &freelist);
             goto retry;
          }
          p_atomic_set(&bo->refcnt, 1);
@@ -284,6 +269,10 @@ retry:
       }
       bucket->misses++;
    }
+
+   simple_mtx_lock(&table_lock);
+   fd_bo_del_list_nocache(&freelist);
+   simple_mtx_unlock(&table_lock);
 
    BO_CACHE_LOG(cache, "miss on size=%u, flags=0x%x, bucket=%u", *size, flags,
                 bucket ? bucket->size : 0);
