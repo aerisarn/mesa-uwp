@@ -227,7 +227,12 @@ async def get_bug(session: aiohttp.ClientSession, bug_id: str) -> str:
     params = {'iids[]': bug_id}
     async with session.get(url, params=params) as response:
         content = await response.json()
-    return content[0]['title']
+    if not content:
+        # issues marked as "confidential" look like "404" page for
+        # unauthorized users
+        return f'Confidential issue #{bug_id}'
+    else:
+        return content[0]['title']
 
 
 async def get_shortlog(version: str) -> str:
