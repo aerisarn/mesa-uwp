@@ -390,6 +390,31 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
                                             VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                                             WSI_WL_FMT_OPAQUE, modifier);
       break;
+
+   /* Vulkan 16-bits-per-channel formats have an inverted channel order
+    * compared to DRM formats, just like the 8-bits-per-channel ones.
+    * On little endian systems the memory representation of each channel
+    * matches the DRM formats'. */
+   case DRM_FORMAT_ABGR16161616:
+      wsi_wl_display_add_vk_format_modifier(display, formats,
+                                            VK_FORMAT_R16G16B16A16_UNORM,
+                                            WSI_WL_FMT_ALPHA, modifier);
+      break;
+   case DRM_FORMAT_XBGR16161616:
+      wsi_wl_display_add_vk_format_modifier(display, formats,
+                                            VK_FORMAT_R16G16B16A16_UNORM,
+                                            WSI_WL_FMT_OPAQUE, modifier);
+      break;
+   case DRM_FORMAT_ABGR16161616F:
+      wsi_wl_display_add_vk_format_modifier(display, formats,
+                                            VK_FORMAT_R16G16B16A16_SFLOAT,
+                                            WSI_WL_FMT_ALPHA, modifier);
+      break;
+   case DRM_FORMAT_XBGR16161616F:
+      wsi_wl_display_add_vk_format_modifier(display, formats,
+                                            VK_FORMAT_R16G16B16A16_SFLOAT,
+                                            WSI_WL_FMT_OPAQUE, modifier);
+      break;
 #endif
 
    /* Non-packed 8-bit formats have an inverted channel order compared to the
@@ -507,6 +532,10 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
       return alpha ? DRM_FORMAT_ARGB2101010 : DRM_FORMAT_XRGB2101010;
    case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
       return alpha ? DRM_FORMAT_ABGR2101010 : DRM_FORMAT_XBGR2101010;
+   case VK_FORMAT_R16G16B16A16_UNORM:
+      return alpha ? DRM_FORMAT_ABGR16161616 : DRM_FORMAT_XBGR16161616;
+   case VK_FORMAT_R16G16B16A16_SFLOAT:
+      return alpha ? DRM_FORMAT_ABGR16161616F : DRM_FORMAT_XBGR16161616F;
 #endif
    case VK_FORMAT_R8G8B8_UNORM:
    case VK_FORMAT_R8G8B8_SRGB:
