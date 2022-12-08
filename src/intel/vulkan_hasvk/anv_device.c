@@ -1880,7 +1880,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->shaderSignedZeroInfNanPreserveFloat16  = true;
 
    p->shaderDenormFlushToZeroFloat32         = true;
-   p->shaderDenormPreserveFloat32            = true;
+   p->shaderDenormPreserveFloat32            = pdevice->info.ver >= 8;
    p->shaderRoundingModeRTEFloat32           = true;
    p->shaderRoundingModeRTZFloat32           = true;
    p->shaderSignedZeroInfNanPreserveFloat32  = true;
