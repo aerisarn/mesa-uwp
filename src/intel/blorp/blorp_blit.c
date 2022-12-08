@@ -1527,7 +1527,7 @@ brw_blorp_get_blit_kernel_fs(struct blorp_batch *batch,
 
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
-   wm_key.base.tex.msaa_16 = key->tex_samples == 16;
+   wm_key.base.tex.msaa_16 = blorp->isl_dev->info->ver >= 9;
    wm_key.multisample_fbo = key->rt_samples > 1;
 
    program = blorp_compile_fs(blorp, mem_ctx, nir, &wm_key, false,
@@ -1567,7 +1567,7 @@ brw_blorp_get_blit_kernel_cs(struct blorp_batch *batch,
 
    struct brw_cs_prog_key cs_key;
    brw_blorp_init_cs_prog_key(&cs_key);
-   cs_key.base.tex.msaa_16 = prog_key->tex_samples == 16;
+   cs_key.base.tex.msaa_16 = blorp->isl_dev->info->ver >= 9;
    assert(prog_key->rt_samples == 1);
 
    program = blorp_compile_cs(blorp, mem_ctx, nir, &cs_key, &prog_data);

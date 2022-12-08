@@ -1371,7 +1371,7 @@ blorp_params_get_mcs_partial_resolve_kernel(struct blorp_batch *batch,
 
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
-   wm_key.base.tex.msaa_16 = blorp_key.num_samples == 16;
+   wm_key.base.tex.msaa_16 = blorp->isl_dev->info->ver >= 9;
    wm_key.multisample_fbo = true;
 
    struct brw_wm_prog_data prog_data;
