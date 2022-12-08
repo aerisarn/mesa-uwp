@@ -274,8 +274,6 @@ bo_del_or_recycle(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
 
-   simple_mtx_assert_locked(&table_lock);
-
    if ((bo->bo_reuse == BO_CACHE) &&
        (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
       return 0;
@@ -288,21 +286,6 @@ bo_del_or_recycle(struct fd_bo *bo)
 }
 
 void
-fd_bo_del_locked(struct fd_bo *bo)
-{
-   simple_mtx_assert_locked(&table_lock);
-
-   if (!p_atomic_dec_zero(&bo->refcnt))
-      return;
-
-   struct fd_device *dev = bo->dev;
-
-   uint32_t handle = bo_del_or_recycle(bo);
-   if (handle)
-      close_handles(dev, &handle, 1);
-}
-
-void
 fd_bo_del(struct fd_bo *bo)
 {
    if (!p_atomic_dec_zero(&bo->refcnt))
@@ -310,11 +293,9 @@ fd_bo_del(struct fd_bo *bo)
 
    struct fd_device *dev = bo->dev;
 
-   simple_mtx_lock(&table_lock);
    uint32_t handle = bo_del_or_recycle(bo);
    if (handle)
       close_handles(dev, &handle, 1);
-   simple_mtx_unlock(&table_lock);
 }
 
 void
@@ -327,7 +308,6 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
    uint32_t handles[64];
    unsigned cnt = 0;
 
-   simple_mtx_lock(&table_lock);
    for (unsigned i = 0; i < count; i++) {
       if (!p_atomic_dec_zero(&bos[i]->refcnt))
          continue;
@@ -340,7 +320,6 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
          cnt++;
    }
    close_handles(dev, handles, cnt);
-   simple_mtx_unlock(&table_lock);
 }
 
 /**
@@ -351,8 +330,6 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
 void
 fd_bo_del_list_nocache(struct list_head *list)
 {
-   simple_mtx_assert_locked(&table_lock);
-
    if (list_is_empty(list))
       return;
 
@@ -376,8 +353,6 @@ fd_bo_del_list_nocache(struct list_head *list)
 
 /**
  * The returned handle must be closed via a call to close_handles()
- *
- * Called under table_lock
  */
 static uint32_t
 bo_del(struct fd_bo *bo)
@@ -386,8 +361,6 @@ bo_del(struct fd_bo *bo)
    uint32_t handle = bo->handle;
 
    VG_BO_FREE(bo);
-
-   simple_mtx_assert_locked(&table_lock);
 
    for (int i = 0; i < bo->nr_fences; i++)
       fd_pipe_del(bo->fences[i].pipe);
@@ -399,9 +372,11 @@ bo_del(struct fd_bo *bo)
       os_munmap(bo->map, bo->size);
 
    if (handle) {
+      simple_mtx_lock(&table_lock);
       _mesa_hash_table_remove_key(dev->handle_table, &handle);
       if (bo->name)
          _mesa_hash_table_remove_key(dev->name_table, &bo->name);
+      simple_mtx_unlock(&table_lock);
    }
 
    bo->funcs->destroy(bo);

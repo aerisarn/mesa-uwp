@@ -142,21 +142,20 @@ fd_device_ref(struct fd_device *dev)
 void
 fd_device_purge(struct fd_device *dev)
 {
-   simple_mtx_lock(&table_lock);
    fd_bo_cache_cleanup(&dev->bo_cache, 0);
    fd_bo_cache_cleanup(&dev->ring_cache, 0);
-   simple_mtx_unlock(&table_lock);
 }
 
-static void
-fd_device_del_impl(struct fd_device *dev)
+void
+fd_device_del(struct fd_device *dev)
 {
-   simple_mtx_assert_locked(&table_lock);
+   if (!p_atomic_dec_zero(&dev->refcnt))
+      return;
 
    assert(list_is_empty(&dev->deferred_submits));
 
    if (dev->suballoc_bo)
-      fd_bo_del_locked(dev->suballoc_bo);
+      fd_bo_del(dev->suballoc_bo);
 
    fd_bo_cache_cleanup(&dev->bo_cache, 0);
    fd_bo_cache_cleanup(&dev->ring_cache, 0);
@@ -176,16 +175,6 @@ fd_device_del_impl(struct fd_device *dev)
       close(dev->fd);
 
    free(dev);
-}
-
-void
-fd_device_del(struct fd_device *dev)
-{
-   if (!p_atomic_dec_zero(&dev->refcnt))
-      return;
-   simple_mtx_lock(&table_lock);
-   fd_device_del_impl(dev);
-   simple_mtx_unlock(&table_lock);
 }
 
 int

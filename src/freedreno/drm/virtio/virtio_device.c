@@ -35,7 +35,7 @@ virtio_device_destroy(struct fd_device *dev)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
 
-   fd_bo_del_locked(virtio_dev->shmem_bo);
+   fd_bo_del(virtio_dev->shmem_bo);
    util_vma_heap_finish(&virtio_dev->address_space);
 }
 

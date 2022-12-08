@@ -144,8 +144,6 @@ fd_bo_cache_cleanup(struct fd_bo_cache *cache, time_t time)
 {
    int i, cnt = 0;
 
-   simple_mtx_assert_locked(&table_lock);
-
    if (cache->time == time)
       return;
 
@@ -270,9 +268,7 @@ retry:
       bucket->misses++;
    }
 
-   simple_mtx_lock(&table_lock);
    fd_bo_del_list_nocache(&freelist);
-   simple_mtx_unlock(&table_lock);
 
    BO_CACHE_LOG(cache, "miss on size=%u, flags=0x%x, bucket=%u", *size, flags,
                 bucket ? bucket->size : 0);
@@ -284,8 +280,6 @@ retry:
 int
 fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo)
 {
-   simple_mtx_assert_locked(&table_lock);
-
    if (bo->nosync || bo->shared)
       return -1;
 

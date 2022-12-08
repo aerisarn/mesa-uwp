@@ -207,8 +207,6 @@ struct fd_bo *fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size,
                                 uint32_t flags);
 int fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo);
 
-/* for where @table_lock is already held: */
-void fd_bo_del_locked(struct fd_bo *bo);
 /* for where @fence_lock is already held: */
 void fd_pipe_del_locked(struct fd_pipe *pipe);
 
