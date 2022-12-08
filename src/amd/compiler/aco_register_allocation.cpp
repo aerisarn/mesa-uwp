@@ -1075,7 +1075,8 @@ get_reg_for_create_vector_copy(ra_ctx& ctx, RegisterFile& reg_file,
       reg.reg_b += instr->operands[i].bytes();
    }
 
-   if (ctx.program->gfx_level <= GFX8)
+   /* GFX9+ has a VGPR swap instruction. */
+   if (ctx.program->gfx_level <= GFX8 || info.rc.type() == RegType::sgpr)
       return {};
 
    /* check if the previous position was in vector */
