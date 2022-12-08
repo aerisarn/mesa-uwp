@@ -567,10 +567,12 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
 
    bool is_16bit = ac_get_type_size(LLVMTypeOf(values[0])) == 2;
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      unsigned col_format = (ctx->options->key.ps.spi_shader_col_format >> (4 * index)) & 0xf;
-      bool is_int8 = (ctx->options->key.ps.color_is_int8 >> index) & 1;
-      bool is_int10 = (ctx->options->key.ps.color_is_int10 >> index) & 1;
-      bool enable_mrt_output_nan_fixup = (ctx->options->key.ps.enable_mrt_output_nan_fixup >> index) & 1;
+      unsigned col_format =
+         (ctx->options->key.ps.epilog.spi_shader_col_format >> (4 * index)) & 0xf;
+      bool is_int8 = (ctx->options->key.ps.epilog.color_is_int8 >> index) & 1;
+      bool is_int10 = (ctx->options->key.ps.epilog.color_is_int10 >> index) & 1;
+      bool enable_mrt_output_nan_fixup =
+         (ctx->options->key.ps.epilog.enable_mrt_output_nan_fixup >> index) & 1;
 
       LLVMValueRef (*packf)(struct ac_llvm_context * ctx, LLVMValueRef args[2]) = NULL;
       LLVMValueRef (*packi)(struct ac_llvm_context * ctx, LLVMValueRef args[2], unsigned bits,
@@ -937,7 +939,7 @@ si_export_mrt_color(struct radv_shader_context *ctx, LLVMValueRef *color, unsign
 {
    unsigned mrt_target = V_008DFC_SQ_EXP_MRT + target;
 
-   if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.mrt0_is_dual_src &&
+   if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.epilog.mrt0_is_dual_src &&
        (target == 0 || target == 1)) {
       mrt_target += 21;
    }
@@ -1006,7 +1008,7 @@ handle_fs_outputs_post(struct radv_shader_context *ctx)
       color_args[last].valid_mask = 1; /* whether the EXEC mask is valid */
       color_args[last].done = 1;       /* DONE bit */
 
-      if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.mrt0_is_dual_src) {
+      if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.epilog.mrt0_is_dual_src) {
          ac_build_dual_src_blend_swizzle(&ctx->ac, &color_args[0], &color_args[1]);
       }
    }

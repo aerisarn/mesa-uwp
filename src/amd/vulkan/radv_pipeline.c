@@ -2215,12 +2215,12 @@ radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shad
       if (idx < 0)
          continue;
 
-      unsigned col_format = (pipeline_key->ps.spi_shader_col_format >> (4 * idx)) & 0xf;
+      unsigned col_format = (pipeline_key->ps.epilog.spi_shader_col_format >> (4 * idx)) & 0xf;
       unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
 
       if (col_format == V_028714_SPI_SHADER_ZERO ||
           (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
-           !pipeline_key->ps.mrt0_is_dual_src)) {
+           !pipeline_key->ps.epilog.mrt0_is_dual_src)) {
          /* Remove the color export if it's unused or in presence of holes. */
          nir->info.outputs_written &= ~BITFIELD64_BIT(var->data.location);
          var->data.location = 0;
@@ -2750,12 +2750,12 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       }
    }
 
-   key.ps.spi_shader_col_format = blend->spi_shader_col_format;
+   key.ps.epilog.spi_shader_col_format = blend->spi_shader_col_format;
    key.ps.cb_target_mask = blend->cb_target_mask;
-   key.ps.mrt0_is_dual_src = blend->mrt0_is_dual_src;
+   key.ps.epilog.mrt0_is_dual_src = blend->mrt0_is_dual_src;
    if (device->physical_device->rad_info.gfx_level < GFX8) {
-      key.ps.color_is_int8 = blend->col_format_is_int8;
-      key.ps.color_is_int10 = blend->col_format_is_int10;
+      key.ps.epilog.color_is_int8 = blend->col_format_is_int8;
+      key.ps.epilog.color_is_int10 = blend->col_format_is_int10;
    }
    if (device->physical_device->rad_info.gfx_level >= GFX11 && state->ms) {
       key.ps.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
@@ -2774,8 +2774,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.ps.lower_discard_to_demote = true;
 
    if (device->instance->enable_mrt_output_nan_fixup)
-      key.ps.enable_mrt_output_nan_fixup = blend->col_format_is_float32;
-
+      key.ps.epilog.enable_mrt_output_nan_fixup = blend->col_format_is_float32;
 
    key.ps.force_vrs_enabled = device->force_vrs_enabled;
 
@@ -3752,15 +3751,7 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
 
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog) {
-      struct radv_ps_epilog_key epilog_key = {
-         .spi_shader_col_format = pipeline_key->ps.spi_shader_col_format,
-         .color_is_int8 = pipeline_key->ps.color_is_int8,
-         .color_is_int10 = pipeline_key->ps.color_is_int10,
-         .enable_mrt_output_nan_fixup = pipeline_key->ps.enable_mrt_output_nan_fixup,
-         .mrt0_is_dual_src = pipeline_key->ps.mrt0_is_dual_src,
-      };
-
-      pipeline->ps_epilog = radv_create_ps_epilog(device, &epilog_key);
+      pipeline->ps_epilog = radv_create_ps_epilog(device, &pipeline_key->ps.epilog);
       if (!pipeline->ps_epilog)
          return false;
    }
@@ -5601,15 +5592,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
       struct radv_pipeline_key key =
          radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
 
-      struct radv_ps_epilog_key epilog_key = {
-         .spi_shader_col_format = blend.spi_shader_col_format,
-         .color_is_int8 = blend.col_format_is_int8,
-         .color_is_int10 = blend.col_format_is_int10,
-         .enable_mrt_output_nan_fixup = key.ps.enable_mrt_output_nan_fixup,
-         .mrt0_is_dual_src = blend.mrt0_is_dual_src,
-      };
-
-      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &epilog_key);
+      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key.ps.epilog);
       if (!pipeline->base.ps_epilog)
          goto fail_layout;
    }

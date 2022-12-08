@@ -2370,7 +2370,7 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options,
    options->address32_hi = device->physical_device->rad_info.address32_hi;
    options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
    options->enable_mrt_output_nan_fixup =
-      !is_meta_shader && options->key.ps.enable_mrt_output_nan_fixup;
+      !is_meta_shader && options->key.ps.epilog.enable_mrt_output_nan_fixup;
 }
 
 static struct radv_shader *
