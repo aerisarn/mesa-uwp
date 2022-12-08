@@ -929,7 +929,7 @@ __glXInitialize(Display * dpy)
       return NULL;
    }
 
-   __glX_send_client_info(dpyPriv);
+   glxSendClientInfo(dpyPriv, -1);
 
    /* Grab the lock again and add the dispay private, unless somebody
     * beat us to initializing on this display in the meantime. */

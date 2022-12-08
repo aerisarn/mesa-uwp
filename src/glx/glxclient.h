@@ -706,8 +706,7 @@ extern void __glEmptyImage(struct glx_context *, GLint, GLint, GLint, GLint, GLe
 extern void __glXInitVertexArrayState(struct glx_context *);
 extern void __glXFreeVertexArrayState(struct glx_context *);
 
-_X_HIDDEN void
-__glX_send_client_info(struct glx_display *glx_dpy);
+extern void glxSendClientInfo(struct glx_display *glx_dpy, int screen);
 
 /************************************************************************/
 

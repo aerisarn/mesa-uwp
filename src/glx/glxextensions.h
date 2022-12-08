@@ -270,7 +270,7 @@ extern void __IndirectGlParseExtensionOverride(struct glx_screen *psc,
                                                const char *override);
 extern void __glXCalculateUsableGLExtensions(struct glx_context *gc,
                                              const char *server_string);
-extern char *__glXGetClientGLExtensionString(void);
+extern char *__glXGetClientGLExtensionString(int screen);
 
 extern GLboolean __glExtensionBitIsEnabled(struct glx_context *gc,
                                            unsigned bit);

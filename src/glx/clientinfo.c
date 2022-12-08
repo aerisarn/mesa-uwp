@@ -28,8 +28,8 @@
 #include <xcb/glx.h>
 #include <X11/Xlib-xcb.h>
 
-_X_HIDDEN void
-__glX_send_client_info(struct glx_display *glx_dpy)
+void
+glxSendClientInfo(struct glx_display *glx_dpy, int screen)
 {
    const unsigned ext_length = strlen("GLX_ARB_create_context");
    const unsigned prof_length = strlen("_profile");
@@ -152,11 +152,7 @@ __glX_send_client_info(struct glx_display *glx_dpy)
       }
    }
 
-   gl_extension_string = __glXGetClientGLExtensionString();
-   if (gl_extension_string == NULL) {
-      return;
-   }
-
+   gl_extension_string = __glXGetClientGLExtensionString(screen);
    gl_extension_length = strlen(gl_extension_string) + 1;
 
    c = XGetXCBConnection(glx_dpy->dpy);

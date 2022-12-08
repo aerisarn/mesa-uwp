@@ -763,7 +763,10 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
  * supported by the client to the server.
  */
 char *
-__glXGetClientGLExtensionString(void)
+__glXGetClientGLExtensionString(int screen)
 {
+   if (screen < 0)
+      return strdup("");
+
    return __glXGetStringFromTable(known_gl_extensions, NULL);
 }
