@@ -3597,7 +3597,9 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    assert(stage->info.wave_size && stage->info.workgroup_size);
 
    if (stage->stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS(_, stage->nir, nir_opt_cse);
+      if (!pipeline_key->optimisations_disabled) {
+         NIR_PASS(_, stage->nir, nir_opt_cse);
+      }
       NIR_PASS(_, stage->nir, radv_lower_fs_intrinsics, stage, pipeline_key);
    }
 
@@ -3611,7 +3613,9 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
     * thus a cheaper and likely to fail check is run first.
     */
    if (nir_has_non_uniform_access(stage->nir, lower_non_uniform_access_types)) {
-      NIR_PASS(_, stage->nir, nir_opt_non_uniform_access);
+      if (!pipeline_key->optimisations_disabled) {
+         NIR_PASS(_, stage->nir, nir_opt_non_uniform_access);
+      }
 
       if (!radv_use_llvm_for_stage(device, stage->stage)) {
          nir_lower_non_uniform_access_options options = {
@@ -3640,15 +3644,17 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
          nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_push_const;
    }
 
-   bool progress = false;
-   NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
-   if (progress) {
-      NIR_PASS(_, stage->nir, nir_copy_prop);
-      NIR_PASS(_, stage->nir, nir_opt_shrink_stores,
-               !device->instance->disable_shrink_image_store);
+   if (!pipeline_key->optimisations_disabled) {
+      bool progress = false;
+      NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
+      if (progress) {
+         NIR_PASS(_, stage->nir, nir_copy_prop);
+         NIR_PASS(_, stage->nir, nir_opt_shrink_stores,
+                  !device->instance->disable_shrink_image_store);
 
-      /* Gather info again, to update whether 8/16-bit are used. */
-      nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
+         /* Gather info again, to update whether 8/16-bit are used. */
+         nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
+      }
    }
 
    NIR_PASS(_, stage->nir, radv_nir_lower_ycbcr_textures, pipeline_layout);
@@ -3659,7 +3665,9 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, pipeline_layout,
               &stage->info, &stage->args);
 
-   NIR_PASS(_, stage->nir, nir_opt_shrink_vectors);
+   if (!pipeline_key->optimisations_disabled) {
+      NIR_PASS(_, stage->nir, nir_opt_shrink_vectors);
+   }
 
    NIR_PASS(_, stage->nir, nir_lower_alu_width, opt_vectorize_callback, device);
 
@@ -3667,12 +3675,15 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    NIR_PASS(_, stage->nir, nir_lower_int64);
 
    nir_move_options sink_opts = nir_move_const_undef | nir_move_copies;
-   if (stage->stage != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
-      sink_opts |= nir_move_load_input;
 
-   NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
-   NIR_PASS(_, stage->nir, nir_opt_move,
-            nir_move_load_input | nir_move_const_undef | nir_move_copies);
+   if (!pipeline_key->optimisations_disabled) {
+      if (stage->stage != MESA_SHADER_FRAGMENT || !pipeline_key->disable_sinking_load_input_fs)
+         sink_opts |= nir_move_load_input;
+
+      NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
+      NIR_PASS(_, stage->nir, nir_opt_move,
+               nir_move_load_input | nir_move_const_undef | nir_move_copies);
+   }
 
    /* Lower I/O intrinsics to memory instructions. */
    bool io_to_mem = radv_lower_io_to_mem(device, stage);
@@ -3739,7 +3750,9 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
       };
       NIR_PASS(_, stage->nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
-      NIR_PASS(_, stage->nir, nir_opt_vectorize, opt_vectorize_callback, device);
+      if (!pipeline_key->optimisations_disabled) {
+         NIR_PASS(_, stage->nir, nir_opt_vectorize, opt_vectorize_callback, device);
+      }
    }
 
    /* cleanup passes */
@@ -3748,12 +3761,14 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    NIR_PASS(_, stage->nir, nir_copy_prop);
    NIR_PASS(_, stage->nir, nir_opt_dce);
 
-   sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
-   NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
+   if (!pipeline_key->optimisations_disabled) {
+      sink_opts |= nir_move_comparisons | nir_move_load_ubo | nir_move_load_ssbo;
+      NIR_PASS(_, stage->nir, nir_opt_sink, sink_opts);
 
-   nir_move_options move_opts = nir_move_const_undef | nir_move_load_ubo |
-                                nir_move_load_input | nir_move_comparisons | nir_move_copies;
-   NIR_PASS(_, stage->nir, nir_opt_move, move_opts);
+      nir_move_options move_opts = nir_move_const_undef | nir_move_load_ubo |
+                                   nir_move_load_input | nir_move_comparisons | nir_move_copies;
+      NIR_PASS(_, stage->nir, nir_opt_move, move_opts);
+   }
 }
 
 static bool
