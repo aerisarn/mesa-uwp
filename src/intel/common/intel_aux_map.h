@@ -62,7 +62,8 @@ intel_aux_map_finish(struct intel_aux_map_context *ctx);
 uint32_t
 intel_aux_map_get_state_num(struct intel_aux_map_context *ctx);
 
-/** Returns the current number of buffers used by the aux-map tables
+/**
+ * Returns the current number of buffers used by the aux-map tables
  *
  * When preparing to execute a new batch, use this function to determine how
  * many buffers will be required. More buffers may be added by concurrent
@@ -86,7 +87,8 @@ intel_aux_get_meta_address_mask(struct intel_aux_map_context *ctx);
 uint64_t
 intel_aux_get_main_to_aux_ratio(struct intel_aux_map_context *ctx);
 
-/** Fill an array of exec_object2 with aux-map buffer handles
+/**
+ * Fill an array of exec_object2 with aux-map buffer handles
  *
  * The intel_aux_map_get_num_buffers call should be made, then the driver can
  * make sure the `obj` array is large enough before calling this function.
