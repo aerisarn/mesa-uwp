@@ -987,6 +987,29 @@ wsi_DestroySwapchainKHR(VkDevice _device,
    swapchain->destroy(swapchain, alloc);
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_ReleaseSwapchainImagesEXT(VkDevice _device,
+                              const VkReleaseSwapchainImagesInfoEXT *pReleaseInfo)
+{
+   VK_FROM_HANDLE(wsi_swapchain, swapchain, pReleaseInfo->swapchain);
+   VkResult result = swapchain->release_images(swapchain,
+                                               pReleaseInfo->imageIndexCount,
+                                               pReleaseInfo->pImageIndices);
+
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (swapchain->wsi->set_memory_ownership) {
+      for (uint32_t i = 0; i < pReleaseInfo->imageIndexCount; i++) {
+         uint32_t image_index = pReleaseInfo->pImageIndices[i];
+         VkDeviceMemory mem = swapchain->get_wsi_image(swapchain, image_index)->memory;
+         swapchain->wsi->set_memory_ownership(swapchain->device, mem, false);
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 wsi_common_get_images(VkSwapchainKHR _swapchain,
                       uint32_t *pSwapchainImageCount,

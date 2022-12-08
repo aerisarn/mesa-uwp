@@ -188,6 +188,9 @@ struct wsi_swapchain {
    VkResult (*wait_for_present)(struct wsi_swapchain *swap_chain,
                                 uint64_t present_id,
                                 uint64_t timeout);
+   VkResult (*release_images)(struct wsi_swapchain *swap_chain,
+                              uint32_t count,
+                              const uint32_t *indices);
 };
 
 bool
