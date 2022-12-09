@@ -28,8 +28,9 @@ struct nvk_root_descriptor_table {
          uint32_t _pad[5];
       } draw;
       struct {
+         uint32_t base_group[3];
          uint32_t group_count[3];
-         uint32_t _pad[5];
+         uint32_t _pad[2];
       } cs;
    };
 
