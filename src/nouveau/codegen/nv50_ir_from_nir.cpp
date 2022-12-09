@@ -3449,7 +3449,7 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
    op.optimize_sample_mask_in = false;
    op.lower_cs_local_index_to_id = true;
    op.lower_cs_local_id_to_index = false;
-   op.lower_device_index_to_zero = false; // TODO
+   op.lower_device_index_to_zero = true;
    op.lower_wpos_pntc = false; // TODO
    op.lower_hadd = true; // TODO
    op.lower_uadd_sat = true; // TODO
