@@ -742,6 +742,10 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
       return NULL;
 
+   /* Can't transfer out of bounds mip levels */
+   if (level >= rsrc->layout.levels)
+      return NULL;
+
    agx_prepare_for_map(ctx, rsrc, level, usage, box);
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
