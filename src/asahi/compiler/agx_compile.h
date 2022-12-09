@@ -176,6 +176,9 @@ struct agx_shader_info {
    /* Is colour output omitted? */
    bool no_colour_output;
 
+   /* Shader is incompatible with triangle merging */
+   bool disable_tri_merging;
+
    /* Number of 16-bit registers used by the main shader and preamble
     * respectively.
     */

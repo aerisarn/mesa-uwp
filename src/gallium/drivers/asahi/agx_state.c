@@ -1891,7 +1891,9 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
 
    if (IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG)) {
       agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
-         cfg.lines_or_points = (is_lines || is_points);
+         /* This avoids broken derivatives along primitive edges */
+         cfg.disable_tri_merging = (is_lines || is_points ||
+                                    ctx->fs->info.disable_tri_merging);
          cfg.no_colour_output = ctx->fs->info.no_colour_output;
          cfg.pass_type = agx_pass_type_for_shader(&ctx->fs->info);
       }
