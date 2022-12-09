@@ -109,6 +109,7 @@
 #include "iris_utrace.h"
 
 #include "iris_genx_macros.h"
+#include "intel/common/intel_genX_state.h"
 #include "intel/common/intel_guardband.h"
 #include "intel/common/intel_pixel_hash.h"
 
@@ -6228,11 +6229,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
             uint32_t ps_state[GENX(3DSTATE_PS_length)] = {0};
             _iris_pack_command(batch, GENX(3DSTATE_PS), ps_state, ps) {
-               brw_fs_get_dispatch_enables(&screen->devinfo, wm_prog_data,
-                                           cso_fb->samples,
-                                           &ps._8PixelDispatchEnable,
-                                           &ps._16PixelDispatchEnable,
-                                           &ps._32PixelDispatchEnable);
+               intel_set_ps_dispatch_state(&ps, &batch->screen->devinfo,
+                                           wm_prog_data, cso_fb->samples);
 
                ps.DispatchGRFStartRegisterForConstantSetupData0 =
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
