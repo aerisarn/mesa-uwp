@@ -64,9 +64,6 @@ gather_intrinsic_store_output_info(const nir_shader *nir, const nir_intrinsic_in
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    uint8_t *output_usage_mask = NULL;
 
-   if (instr->src[0].ssa->bit_size == 64)
-      write_mask = util_widen_mask(write_mask, 2);
-
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
       output_usage_mask = info->vs.output_usage_mask;
