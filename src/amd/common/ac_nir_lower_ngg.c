@@ -2832,10 +2832,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
             nir_ssa_def *val = nir_channel(b, load, i);
             unsigned comp = start + i;
 
-            if (output) {
-               /* low and high varyings have been packed when LDS store */
-               output->chan[comp] = val;
-            } else {
+            if (s->options->gfx_level < GFX11) {
                if (mask_lo & BITFIELD_BIT(comp)) {
                   nir_store_output(b, nir_unpack_32_2x16_split_x(b, val),
                                    nir_imm_int(b, 0),
@@ -2854,6 +2851,10 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                                    .write_mask = 1);
                }
             }
+
+            /* low and high varyings have been packed when LDS store */
+            if (output)
+               output->chan[comp] = val;
          }
       }
    }
