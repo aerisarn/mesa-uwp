@@ -471,7 +471,7 @@ static const char *node_type_names[8] = {
 
 static bool
 rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *node,
-                  uint32_t root_node_offset, uint32_t size, bool is_bottom_level)
+                  uint32_t geometry_count, uint32_t size, bool is_bottom_level)
 {
    struct rra_validation_context ctx = {0};
 
@@ -498,23 +498,30 @@ rra_validate_node(struct hash_table_u64 *accel_struct_vas, uint8_t *data, void *
          continue;
       }
 
+      struct rra_validation_context child_ctx = {0};
+      snprintf(child_ctx.location, sizeof(child_ctx.location), "%s node (offset=%u)",
+               node_type_names[type], offset);
+
       if (is_internal_node(type)) {
-         ctx.failed |= rra_validate_node(accel_struct_vas, data, data + offset, root_node_offset,
+         ctx.failed |= rra_validate_node(accel_struct_vas, data, data + offset, geometry_count,
                                          size, is_bottom_level);
       } else if (type == radv_bvh_node_instance) {
-         struct rra_validation_context instance_ctx = {0};
-         snprintf(instance_ctx.location, sizeof(instance_ctx.location), "instance node (offset=%u)",
-                  offset);
-
          struct radv_bvh_instance_node *src = (struct radv_bvh_instance_node *)(data + offset);
          uint64_t blas_va = node_to_addr(src->bvh_ptr) - src->bvh_offset;
          if (!_mesa_hash_table_u64_search(accel_struct_vas, blas_va))
-            rra_validation_fail(&instance_ctx,
-                                "Invalid instance node pointer 0x%llx (offset: 0x%x)",
+            rra_validation_fail(&child_ctx, "Invalid instance node pointer 0x%llx (offset: 0x%x)",
                                 (unsigned long long)src->bvh_ptr, src->bvh_offset);
-
-         ctx.failed |= instance_ctx.failed;
+      } else if (type == radv_bvh_node_aabb) {
+         struct radv_bvh_aabb_node *src = (struct radv_bvh_aabb_node *)(data + offset);
+         if ((src->geometry_id_and_flags & 0xFFFFFFF) >= geometry_count)
+            rra_validation_fail(&ctx, "geometry_id >= geometry_count");
+      } else {
+         struct radv_bvh_triangle_node *src = (struct radv_bvh_triangle_node *)(data + offset);
+         if ((src->geometry_id_and_flags & 0xFFFFFFF) >= geometry_count)
+            rra_validation_fail(&ctx, "geometry_id >= geometry_count");
       }
+
+      ctx.failed |= child_ctx.failed;
    }
    return ctx.failed;
 }
@@ -726,7 +733,7 @@ rra_dump_acceleration_structure(struct radv_rra_accel_struct_data *accel_struct,
          return VK_ERROR_VALIDATION_FAILED_EXT;
       }
       if (rra_validate_node(accel_struct_vas, data + header->bvh_offset,
-                            data + header->bvh_offset + src_root_offset, src_root_offset,
+                            data + header->bvh_offset + src_root_offset, header->geometry_count,
                             accel_struct->size, !is_tlas)) {
          return VK_ERROR_VALIDATION_FAILED_EXT;
       }
