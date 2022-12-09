@@ -292,7 +292,6 @@ struct dzn_device_memory {
 
    ID3D12Heap *heap;
    VkDeviceSize size;
-   D3D12_RESOURCE_STATES initial_state; /* initial state for this memory type */
 
    /* A buffer-resource spanning the entire heap, used for mapping memory */
    ID3D12Resource *map_res;

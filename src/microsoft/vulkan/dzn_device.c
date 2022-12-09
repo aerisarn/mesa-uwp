@@ -2447,7 +2447,6 @@ dzn_device_memory_create(struct dzn_device *device,
                                                       pAllocateInfo->memoryTypeIndex);
 
    /* TODO: Unsure about this logic??? */
-   mem->initial_state = D3D12_RESOURCE_STATE_COMMON;
    heap_desc.Properties.Type = D3D12_HEAP_TYPE_CUSTOM;
    heap_desc.Properties.MemoryPoolPreference =
       ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
@@ -2483,7 +2482,7 @@ dzn_device_memory_create(struct dzn_device *device,
       res_desc.Flags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
       res_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
       HRESULT hr = ID3D12Device1_CreatePlacedResource(device->dev, mem->heap, 0, &res_desc,
-                                                      mem->initial_state,
+                                                      D3D12_RESOURCE_STATE_COMMON,
                                                       NULL,
                                                       &IID_ID3D12Resource,
                                                       (void **)&mem->map_res);
@@ -2833,7 +2832,7 @@ dzn_BindBufferMemory2(VkDevice _device,
       if (FAILED(ID3D12Device1_CreatePlacedResource(device->dev, mem->heap,
                                                    pBindInfos[i].memoryOffset,
                                                    &buffer->desc,
-                                                   mem->initial_state,
+                                                   D3D12_RESOURCE_STATE_COMMON,
                                                    NULL,
                                                    &IID_ID3D12Resource,
                                                    (void **)&buffer->res)))

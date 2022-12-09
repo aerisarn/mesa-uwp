@@ -207,7 +207,7 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
       D3D12_RESOURCE_STATES before =
          (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
           old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) ?
-         image->mem->initial_state :
+         D3D12_RESOURCE_STATE_COMMON :
          dzn_image_layout_to_state(image, old_layout, aspect);
 
       uint32_t layer_count = dzn_get_layer_count(image, range);
