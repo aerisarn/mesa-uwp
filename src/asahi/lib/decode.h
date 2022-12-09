@@ -42,4 +42,4 @@ void agxdecode_dump_mappings(unsigned map_index);
 
 void agxdecode_track_free(struct agx_bo *bo);
 
-#endif /* __MMAP_TRACE_H__ */
+#endif /* __AGX_DECODE_H__ */
