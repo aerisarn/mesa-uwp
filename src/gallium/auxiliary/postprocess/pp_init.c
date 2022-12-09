@@ -40,8 +40,8 @@
 /** Initialize the post-processing queue. */
 struct pp_queue_t *
 pp_init(struct pipe_context *pipe, const unsigned int *enabled,
-        struct cso_context *cso, void *st,
-        void (*st_invalidate_state)(void *st, unsigned flags))
+        struct cso_context *cso, struct st_context *st,
+        pp_st_invalidate_state_func st_invalidate_state)
 {
    unsigned int num_filters = 0;
    unsigned int curpos = 0, i, tmp_req = 0;
