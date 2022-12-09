@@ -2818,6 +2818,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
           s->options->vs_output_param_offset[slot] <= AC_EXP_PARAM_OFFSET_31) {
          output = &outputs[num_outputs++];
          output->slot = slot;
+         memset(output->chan, 0, sizeof(output->chan));
       }
 
       while (mask) {
