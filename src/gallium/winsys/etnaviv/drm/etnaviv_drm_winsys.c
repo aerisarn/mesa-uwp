@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 
 #include "util/os_file.h"
+#include "util/simple_mtx.h"
 #include "util/u_hash_table.h"
 #include "util/u_pointer.h"
 
@@ -128,7 +129,7 @@ screen_create(int gpu_fd, struct renderonly *ro)
 
 static struct hash_table *fd_tab = NULL;
 
-static mtx_t etna_screen_mutex = _MTX_INITIALIZER_NP;
+static simple_mtx_t etna_screen_mutex = SIMPLE_MTX_INITIALIZER;
 
 static void
 etna_drm_screen_destroy(struct pipe_screen *pscreen)
@@ -136,7 +137,7 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
    struct etna_screen *screen = etna_screen(pscreen);
    boolean destroy;
 
-   mtx_lock(&etna_screen_mutex);
+   simple_mtx_lock(&etna_screen_mutex);
    destroy = --screen->refcnt == 0;
    if (destroy) {
       int fd = etna_device_fd(screen->dev);
@@ -147,7 +148,7 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
          fd_tab = NULL;
       }
    }
-   mtx_unlock(&etna_screen_mutex);
+   simple_mtx_unlock(&etna_screen_mutex);
 
    if (destroy) {
       pscreen->destroy = screen->winsys_priv;
@@ -160,7 +161,7 @@ etna_lookup_or_create_screen(int gpu_fd, struct renderonly *ro)
 {
    struct pipe_screen *pscreen = NULL;
 
-   mtx_lock(&etna_screen_mutex);
+   simple_mtx_lock(&etna_screen_mutex);
    if (!fd_tab) {
       fd_tab = hash_table_create_file_description_keys();
       if (!fd_tab)
@@ -185,7 +186,7 @@ etna_lookup_or_create_screen(int gpu_fd, struct renderonly *ro)
    }
 
 unlock:
-   mtx_unlock(&etna_screen_mutex);
+   simple_mtx_unlock(&etna_screen_mutex);
    return pscreen;
 }
 
