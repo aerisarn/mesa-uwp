@@ -1022,7 +1022,7 @@ agx_create_vertex_elements(struct pipe_context *ctx,
                            unsigned count,
                            const struct pipe_vertex_element *state)
 {
-   assert(count < AGX_MAX_ATTRIBS);
+   assert(count <= AGX_MAX_ATTRIBS);
 
    struct agx_attribute *attribs = calloc(sizeof(*attribs), AGX_MAX_ATTRIBS);
    for (unsigned i = 0; i < count; ++i) {
