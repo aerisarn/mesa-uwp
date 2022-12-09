@@ -82,8 +82,9 @@ struct agx_push {
    };
 };
 
+/* All possible push types except VBO, plus up to 16 VBOs */
+#define AGX_MAX_PUSH_RANGES (AGX_PUSH_NUM_TYPES - 1 + 16)
 /* Arbitrary */
-#define AGX_MAX_PUSH_RANGES (16)
 #define AGX_MAX_VARYINGS (32)
 
 struct agx_varyings_vs {
