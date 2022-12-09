@@ -5958,9 +5958,9 @@ allocate_sysvalues(struct ntd_context *ctx)
 {
    unsigned driver_location = 0;
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in)
-      driver_location++;
+      driver_location = MAX2(driver_location, var->data.driver_location + 1);
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_system_value)
-      driver_location++;
+      driver_location = MAX2(driver_location, var->data.driver_location + 1);
 
    if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT &&
        ctx->shader->info.inputs_read &&
