@@ -52,6 +52,28 @@
 #include "decode.h"
 
 static void
+panfrost_clear_depth_stencil(struct pipe_context *pipe,
+                             struct pipe_surface *dst,
+                             unsigned clear_flags,
+                             double depth,
+                             unsigned stencil,
+                             unsigned dstx, unsigned dsty,
+                             unsigned width, unsigned height,
+                             bool render_condition_enabled)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+
+        if (render_condition_enabled &&
+            !panfrost_render_condition_check(ctx))
+                return;
+
+        panfrost_blitter_save(ctx, render_condition_enabled);
+        util_blitter_clear_depth_stencil(ctx->blitter, dst,
+                                 clear_flags, depth, stencil,
+                                 dstx, dsty, width, height);
+}
+
+static void
 panfrost_clear_render_target(struct pipe_context *pipe,
                              struct pipe_surface *dst,
                              const union pipe_color_union *color,
@@ -1515,4 +1537,5 @@ panfrost_resource_context_init(struct pipe_context *pctx)
         pctx->texture_subdata = u_default_texture_subdata;
         pctx->clear_buffer = u_default_clear_buffer;
         pctx->clear_render_target = panfrost_clear_render_target;
+        pctx->clear_depth_stencil = panfrost_clear_depth_stencil;
 }
