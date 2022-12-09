@@ -691,6 +691,15 @@ radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
          if (cb->attachments[i].write_mask && cb->attachments[i].blend_enable)
             return true;
       }
+   } else {
+      const uint64_t cb_dynamic_states =
+         RADV_DYNAMIC_LOGIC_OP_ENABLE | RADV_DYNAMIC_LOGIC_OP | RADV_DYNAMIC_COLOR_WRITE_ENABLE |
+         RADV_DYNAMIC_COLOR_WRITE_MASK | RADV_DYNAMIC_COLOR_BLEND_ENABLE |
+         RADV_DYNAMIC_COLOR_BLEND_EQUATION | RADV_DYNAMIC_BLEND_CONSTANTS;
+
+      /* When all color blend states are dynamic, it's allowed to be NULL. */
+      if ((pipeline->dynamic_states & cb_dynamic_states) == cb_dynamic_states)
+         return true;
    }
 
    return false;
