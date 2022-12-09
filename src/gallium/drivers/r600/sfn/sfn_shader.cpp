@@ -903,6 +903,8 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
       return emit_load_scratch(intr);
    case nir_intrinsic_store_local_shared_r600:
       return emit_local_store(intr);
+   case nir_intrinsic_load_global:
+      return emit_load_global(intr);
    case nir_intrinsic_load_local_shared_r600:
       return emit_local_load(intr);
    case nir_intrinsic_load_tcs_in_param_base_r600:
@@ -1127,6 +1129,25 @@ Shader::emit_load_scratch(nir_intrinsic_instr *intr)
 
    m_flags.set(sh_needs_scratch_space);
 
+   return true;
+}
+
+bool Shader::emit_load_global(nir_intrinsic_instr *intr)
+{
+   auto dest = value_factory().dest_vec4(intr->dest, pin_group);
+
+   auto src_value = value_factory().src(intr->src[0], 0);
+   auto src = src_value->as_register();
+   if (!src) {
+      src = value_factory().temp_register();
+      emit_instruction(new AluInstr(op1_mov, src, src_value, AluInstr::last_write));
+   }
+   auto load = new LoadFromBuffer(dest, {0,7,7,7}, src, 0, 1, NULL, fmt_32);
+   load->set_mfc(4);
+   load->set_num_format(vtx_nf_int);
+   load->reset_fetch_flag(FetchInstr::format_comp_signed);
+
+   emit_instruction(load);
    return true;
 }
 
