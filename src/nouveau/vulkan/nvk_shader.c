@@ -282,6 +282,7 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    }
 
    nir_lower_compute_system_values_options csv_options = {
+      .has_base_workgroup_id = true,
    };
    NIR_PASS(_, nir, nir_lower_compute_system_values, &csv_options);
 

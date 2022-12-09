@@ -152,6 +152,27 @@ lower_num_workgroups(nir_builder *b, nir_intrinsic_instr *load,
 }
 
 static bool
+lower_load_base_workgroup_id(nir_builder *b, nir_intrinsic_instr *load,
+                             const struct lower_descriptors_ctx *ctx)
+{
+   const uint32_t root_table_offset =
+      nvk_root_descriptor_offset(cs.base_group);
+
+   b->cursor = nir_instr_remove(&load->instr);
+
+   nir_ssa_def *val = nir_load_ubo(b, 3, 32,
+                                   nir_imm_int(b, 0),
+                                   nir_imm_int(b, root_table_offset),
+                                   .align_mul = 4,
+                                   .align_offset = 0,
+                                   .range = root_table_offset + 3 * 4);
+
+   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+
+   return true;
+}
+
+static bool
 lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
                          const struct lower_descriptors_ctx *ctx)
 {
@@ -245,6 +266,9 @@ lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 
    case nir_intrinsic_load_num_workgroups:
       return lower_num_workgroups(b, intrin, ctx);
+
+   case nir_intrinsic_load_base_workgroup_id:
+      return lower_load_base_workgroup_id(b, intrin, ctx);
 
    case nir_intrinsic_load_push_constant:
       return lower_load_push_constant(b, intrin, ctx);
