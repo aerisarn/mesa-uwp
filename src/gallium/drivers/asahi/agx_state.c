@@ -2039,6 +2039,17 @@ agx_scissor_culls_everything(struct agx_context *ctx)
 static void
 agx_ensure_cmdbuf_has_space(struct agx_batch *batch, size_t space)
 {
+   /* Assert that we have space for a link tag */
+   assert((batch->encoder_current + AGX_VDM_STREAM_LINK_LENGTH) <=
+          batch->encoder_end && "Encoder overflowed");
+
+   /* Always leave room for a link tag, in case we run out of space later,
+    * plus padding because VDM apparently overreads?
+    *
+    * 0x200 is not enough. 0x400 seems to work. 0x800 for safety.
+    */
+   space += AGX_VDM_STREAM_LINK_LENGTH + 0x800;
+
    /* If there is room in the command buffer, we're done */
    if (likely((batch->encoder_end - batch->encoder_current) >= space))
       return;
@@ -2204,7 +2215,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    batch->encoder_current = out;
-   assert(batch->encoder_current <= batch->encoder_end &&
+   assert((batch->encoder_current + AGX_VDM_STREAM_LINK_LENGTH) <=
+          batch->encoder_end &&
           "Failed to reserve sufficient space in encoder");
    ctx->dirty = 0;
 
