@@ -27,6 +27,7 @@ static const struct vk_instance_extension_table instance_extensions = {
 #ifdef VK_USE_PLATFORM_XLIB_XRANDR_EXT
    .EXT_acquire_xlib_display = true,
 #endif
+   .KHR_device_group_creation = true,
    .KHR_get_physical_device_properties2 = true,
    .EXT_debug_report = true,
    .EXT_debug_utils = true,
