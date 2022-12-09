@@ -192,7 +192,7 @@ dri_create_context(struct dri_screen *screen,
                         ctx->st, (void*)st_context_invalidate_state);
       ctx->hud = hud_create(ctx->st->cso_context,
                             share_ctx ? share_ctx->hud : NULL,
-                            ctx->st, (void*)st_context_invalidate_state);
+                            ctx->st, st_context_invalidate_state);
    }
 
    /* Do this last. */
