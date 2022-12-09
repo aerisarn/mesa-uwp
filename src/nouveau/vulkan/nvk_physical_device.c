@@ -465,6 +465,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
 #endif
       .KHR_uniform_buffer_standard_layout = true,
       .KHR_variable_pointers = true,
+      .EXT_4444_formats = true,
       .EXT_border_color_swizzle = true,
       .EXT_buffer_device_address = true,
       .EXT_custom_border_color = true,
