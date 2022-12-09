@@ -196,14 +196,20 @@ nvk_mme_add_cs_invocations(struct nvk_device *dev, struct mme_builder *b)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdDispatch(VkCommandBuffer commandBuffer,
-                uint32_t groupCountX,
-                uint32_t groupCountY,
-                uint32_t groupCountZ)
+nvk_CmdDispatchBase(VkCommandBuffer commandBuffer,
+                    uint32_t baseGroupX,
+                    uint32_t baseGroupY,
+                    uint32_t baseGroupZ,
+                    uint32_t groupCountX,
+                    uint32_t groupCountY,
+                    uint32_t groupCountZ)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
 
+   desc->root.cs.base_group[0] = baseGroupX;
+   desc->root.cs.base_group[1] = baseGroupY;
+   desc->root.cs.base_group[2] = baseGroupZ;
    desc->root.cs.group_count[0] = groupCountX;
    desc->root.cs.group_count[1] = groupCountY;
    desc->root.cs.group_count[2] = groupCountZ;
@@ -304,6 +310,11 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
+
+   desc->root.cs.base_group[0] = 0;
+   desc->root.cs.base_group[1] = 0;
+   desc->root.cs.base_group[2] = 0;
 
    uint64_t dispatch_addr = nvk_buffer_address(buffer, offset);
 
