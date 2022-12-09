@@ -401,10 +401,10 @@ fs_generator::fire_fb_write(fs_inst *inst,
 void
 fs_generator::generate_fb_write(fs_inst *inst, struct brw_reg payload)
 {
-   if (devinfo->verx10 <= 70) {
-      brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
-      brw_set_default_flag_reg(p, 0, 0);
-   }
+   assert(devinfo->ver < 7);
+
+   brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+   brw_set_default_flag_reg(p, 0, 0);
 
    const struct brw_reg implied_header =
       devinfo->ver < 6 ? payload : brw_null_reg();
