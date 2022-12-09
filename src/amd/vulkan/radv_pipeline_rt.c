@@ -418,8 +418,9 @@ radv_CreateRayTracingPipelinesKHR(VkDevice _device, VkDeferredOperationKHR defer
    for (; i < count; ++i)
       pPipelines[i] = VK_NULL_HANDLE;
 
+   /* Work around Portal RTX not handling VK_OPERATION_NOT_DEFERRED_KHR correctly. */
    if (result == VK_SUCCESS && deferredOperation != VK_NULL_HANDLE)
-      return VK_OPERATION_NOT_DEFERRED_KHR;
+      return VK_OPERATION_DEFERRED_KHR;
 
    return result;
 }
