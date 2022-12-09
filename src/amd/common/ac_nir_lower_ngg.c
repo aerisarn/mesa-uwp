@@ -2516,9 +2516,6 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
       nir_ssa_def **output = s->outputs[slot];
 
       unsigned mask = gs_output_component_mask_with_stream(info, stream);
-      if (!mask)
-         continue;
-
       while (mask) {
          int start, count;
          u_bit_scan_consecutive_range(&mask, &start, &count);
@@ -2532,9 +2529,6 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
 
             /* extend 8/16 bit to 32 bit, 64 bit has been lowered */
             values[c - start] = nir_u2uN(b, output[c], 32);
-
-            /* Clear the output (it is undefined after emit_vertex) */
-            output[c] = NULL;
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
@@ -2542,6 +2536,9 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
                           .base = packed_location * 16 + start * 4,
                           .align_mul = 4);
       }
+
+      /* Clear all outputs (they are undefined after emit_vertex) */
+      memset(s->outputs[slot], 0, sizeof(s->outputs[slot]));
    }
 
    /* Store 16bit outputs to LDS. */
@@ -2553,8 +2550,6 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
       unsigned mask_lo = gs_output_component_mask_with_stream(s->output_info_16bit_lo + slot, stream);
       unsigned mask_hi = gs_output_component_mask_with_stream(s->output_info_16bit_hi + slot, stream);
       unsigned mask = mask_lo | mask_hi;
-      if (!mask)
-         continue;
 
       nir_ssa_def **output_lo = s->outputs_16bit_lo[slot];
       nir_ssa_def **output_hi = s->outputs_16bit_hi[slot];
@@ -2569,10 +2564,6 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
             nir_ssa_def *hi = output_hi[c] ? output_hi[c] : undef;
 
             values[c - start] = nir_pack_32_2x16_split(b, lo, hi);
-
-            /* Reset outputs. */
-            output_lo[c] = NULL;
-            output_hi[c] = NULL;
          }
 
          nir_ssa_def *store_val = nir_vec(b, values, (unsigned)count);
@@ -2580,6 +2571,10 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
                           .base = packed_location * 16 + start * 4,
                           .align_mul = 4);
       }
+
+      /* Clear all outputs (they are undefined after emit_vertex) */
+      memset(s->outputs_16bit_lo[slot], 0, sizeof(s->outputs_16bit_lo[slot]));
+      memset(s->outputs_16bit_hi[slot], 0, sizeof(s->outputs_16bit_hi[slot]));
    }
 
    /* Calculate and store per-vertex primitive flags based on vertex counts:
