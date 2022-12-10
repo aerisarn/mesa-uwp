@@ -366,7 +366,8 @@ zink_init_zs_attachment(struct zink_context *ctx, struct zink_rt_attrib *rt)
    needs_write_z |= transient || rt->clear_color ||
                     (zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) && (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH));
 
-   bool needs_write_s = rt->clear_stencil || (outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) ||
+   bool needs_write_s = (ctx->dsa_state && (util_writes_stencil(&ctx->dsa_state->base.stencil[0]) || util_writes_stencil(&ctx->dsa_state->base.stencil[1]))) || 
+				            rt->clear_stencil || (outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) ||
                         (zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS) && (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL));
    rt->needs_write = needs_write_z | needs_write_s;
    rt->invalid = !zsbuf->valid;
