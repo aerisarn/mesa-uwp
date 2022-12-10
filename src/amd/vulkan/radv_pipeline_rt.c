@@ -272,7 +272,6 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       goto fail;
    }
 
-   radv_hash_rt_shaders(hash, &local_create_info, radv_get_hash_flags(device, keep_statistic_info));
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
    VkPipelineShaderStageCreateInfo stage = {
@@ -300,6 +299,9 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    struct radv_pipeline_key key = radv_generate_rt_pipeline_key(rt_pipeline, pCreateInfo->flags);
    UNUSED gl_shader_stage last_vgt_api_stage = MESA_SHADER_NONE;
+
+   radv_hash_rt_shaders(hash, &local_create_info, &key,
+                        radv_get_hash_flags(device, keep_statistic_info));
 
    /* First check if we can get things from the cache before we take the expensive step of
     * generating the nir. */

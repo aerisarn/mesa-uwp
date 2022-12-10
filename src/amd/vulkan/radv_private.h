@@ -1965,7 +1965,7 @@ void radv_hash_shaders(unsigned char *hash, const struct radv_pipeline_stage *st
                        const struct radv_pipeline_key *key, uint32_t flags);
 
 void radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                          uint32_t flags);
+                          const struct radv_pipeline_key *key, uint32_t flags);
 
 uint32_t radv_get_hash_flags(const struct radv_device *device, bool stats);
 
