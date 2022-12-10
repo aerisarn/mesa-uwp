@@ -2674,6 +2674,8 @@ radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreat
    key.image_2d_view_of_3d = device->image_2d_view_of_3d &&
                              device->physical_device->rad_info.gfx_level == GFX9;
 
+   key.tex_non_uniform = device->instance->tex_non_uniform;
+
    return key;
 }
 

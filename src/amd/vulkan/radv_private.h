@@ -369,6 +369,7 @@ struct radv_instance {
    bool disable_sinking_load_input_fs;
    bool flush_before_query_copy;
    bool enable_unified_heap_on_apu;
+   bool tex_non_uniform;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);

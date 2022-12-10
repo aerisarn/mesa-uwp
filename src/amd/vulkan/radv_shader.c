@@ -834,6 +834,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                .func = radv_spirv_nir_debug,
                .private_data = &spirv_debug_data,
             },
+         .force_tex_non_uniform = key->tex_non_uniform,
       };
       nir = spirv_to_nir(spirv, stage->spirv.size / 4, spec_entries, num_spec_entries, stage->stage,
                          stage->entrypoint, &spirv_options,
