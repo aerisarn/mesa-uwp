@@ -361,8 +361,8 @@ fail:
 }
 
 /* allocate a buffer object: */
-static struct fd_bo *
-virtio_bo_new_impl(struct fd_device *dev, uint32_t size, uint32_t flags)
+struct fd_bo *
+virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
    struct drm_virtgpu_resource_create_blob args = {
@@ -437,39 +437,4 @@ fail:
       virtio_dev_free_iova(dev, req.iova, size);
    }
    return NULL;
-}
-
-struct fd_bo *
-virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
-{
-   struct fd_bo *bo = virtio_bo_new_impl(dev, size, flags);
-
-   if (bo && (flags == RING_FLAGS) && (size == SUBALLOC_SIZE)) {
-      struct virtio_device *virtio_dev = to_virtio_device(dev);
-
-      /*
-       * Swap the bo with an earlier pre-allocated one, since we know
-       * this one will be immediately mmap'd and want to avoid the
-       * latency hit of waiting for the host to catch up.
-       */
-      simple_mtx_lock(&virtio_dev->eb_lock);
-      list_addtail(&bo->node, &virtio_dev->prealloc_list);
-      bo = first_bo(&virtio_dev->prealloc_list);
-      list_delinit(&bo->node);
-      simple_mtx_unlock(&virtio_dev->eb_lock);
-   }
-
-   return bo;
-}
-
-void virtio_bo_setup_prealloc(struct fd_device *dev)
-{
-   struct virtio_device *virtio_dev = to_virtio_device(dev);
-
-   for (int i = 0; i < 16; i++) {
-      struct fd_bo *bo = virtio_bo_new_impl(dev, SUBALLOC_SIZE, RING_FLAGS);
-      if (!bo)
-         break;
-      list_addtail(&bo->node, &virtio_dev->prealloc_list);
-   }
 }
