@@ -53,7 +53,7 @@ fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
       return NULL;
    }
 
-   pipe->dev = fd_device_ref(dev);
+   pipe->dev = dev;
    pipe->id = id;
    p_atomic_set(&pipe->refcnt, 1);
 
@@ -124,7 +124,6 @@ fd_pipe_del_locked(struct fd_pipe *pipe)
       return;
 
    fd_bo_del(pipe->control_mem);
-   fd_device_del(pipe->dev);
    pipe->funcs->destroy(pipe);
 }
 
