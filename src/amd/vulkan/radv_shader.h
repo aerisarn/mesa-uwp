@@ -754,6 +754,7 @@ bool radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage 
 
 nir_shader *create_rt_shader(struct radv_device *device,
                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                             struct radv_pipeline_shader_stack_size *stack_sizes);
+                             struct radv_pipeline_shader_stack_size *stack_sizes,
+                             const struct radv_pipeline_key *key);
 
 #endif

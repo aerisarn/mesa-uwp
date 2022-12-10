@@ -321,7 +321,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
          goto pipeline_fail;
       }
 
-      shader = create_rt_shader(device, &local_create_info, rt_pipeline->stack_sizes);
+      shader = create_rt_shader(device, &local_create_info, rt_pipeline->stack_sizes, &key);
       module.nir = shader;
       result = radv_create_shaders(&rt_pipeline->base.base, pipeline_layout, device, cache, &key,
                                    &stage, 1, pCreateInfo->flags, hash, creation_feedback,
