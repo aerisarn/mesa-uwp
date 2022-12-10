@@ -68,6 +68,7 @@ fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev)
    /* Backend should have initialized these: */
    assert(bo->size);
    assert(bo->handle);
+   assert(bo->funcs);
 
    bo->dev = dev;
    bo->iova = bo->funcs->iova(bo);
@@ -75,6 +76,11 @@ fd_bo_init_common(struct fd_bo *bo, struct fd_device *dev)
 
    p_atomic_set(&bo->refcnt, 1);
    list_inithead(&bo->node);
+
+   bo->max_fences = 1;
+   bo->fences = &bo->_inline_fence;
+
+   VG_BO_ALLOC(bo);
 }
 
 /* allocate a new buffer object, call w/ table_lock held */
@@ -124,10 +130,6 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
    simple_mtx_unlock(&table_lock);
 
    bo->alloc_flags = flags;
-   bo->max_fences = 1;
-   bo->fences = &bo->_inline_fence;
-
-   VG_BO_ALLOC(bo);
 
    return bo;
 }
