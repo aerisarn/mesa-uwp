@@ -391,10 +391,11 @@ __OUT_IB5(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
    }
 }
 
-/* CP_SCRATCH_REG4 is used to hold base address for query results: */
-// XXX annoyingly scratch regs move on a5xx.. and additionally different
-// packet types.. so freedreno_query_hw is going to need a bit of
-// rework..
+/* CP_SCRATCH_REG4 is used to hold base address for query results:
+ * Note the scratch register move on a5xx+ but this is only used
+ * for pre-a5xx hw queries where we cannot allocate the query buf
+ * until the # of tiles is known.
+ */
 #define HW_QUERY_BASE_REG REG_AXXX_CP_SCRATCH_REG4
 
 #ifdef DEBUG
