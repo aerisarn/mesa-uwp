@@ -232,13 +232,27 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       break;
    }
 
+   assert(st->has_multi_draw_indirect || !indirect_draw_count);
+
    if (info.index_size) {
       struct gl_buffer_object *bufobj = ctx->Array.VAO->IndexBufferObj;
 
       /* indices are always in a real VBO */
       assert(bufobj);
 
-      info.index.resource = bufobj->buffer;
+      if (st->pipe->draw_vbo == tc_draw_vbo &&
+          (draw_count == 1 || st->has_multi_draw_indirect)) {
+         /* Fast path for u_threaded_context to eliminate atomics. */
+         info.index.resource = _mesa_get_bufferobj_reference(ctx, bufobj);
+         info.take_index_buffer_ownership = true;
+      } else {
+         info.index.resource = bufobj->buffer;
+      }
+
+      /* No index buffer storage allocated - nothing to do. */
+      if (!info.index.resource)
+         return;
+
       draw.start = 0;
 
       unsigned index_size_shift = util_logbase2(info.index_size);
@@ -257,7 +271,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    if (!st->has_multi_draw_indirect) {
       int i;
 
-      assert(!indirect_draw_count);
       indirect.draw_count = 1;
       for (i = 0; i < draw_count; i++) {
          cso_draw_vbo(st->cso_context, &info, i, &indirect, &draw, 1);
