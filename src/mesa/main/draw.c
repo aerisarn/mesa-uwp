@@ -45,6 +45,7 @@
 
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_draw.h"
+#include "util/u_threaded_context.h"
 
 typedef struct {
    GLuint count;
@@ -1636,14 +1637,23 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
       draw.start = 0;
    } else {
       uintptr_t start = (uintptr_t) indices;
-      if (unlikely(index_bo->Size < start)) {
+      if (unlikely(index_bo->Size < start || !index_bo->buffer)) {
          _mesa_warning(ctx, "Invalid indices offset 0x%" PRIxPTR
-                            " (indices buffer size is %ld bytes)."
-                            " Draw skipped.", start, index_bo->Size);
+                            " (indices buffer size is %ld bytes)"
+                            " or unallocated buffer (%u). Draw skipped.",
+                            start, index_bo->Size, !!index_bo->buffer);
          return;
       }
-      info.index.gl_bo = index_bo;
+
       draw.start = start >> index_size_shift;
+
+      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+         /* Fast path for u_threaded_context to eliminate atomics. */
+         info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
+         info.take_index_buffer_ownership = true;
+      } else {
+         info.index.resource = index_bo->buffer;
+      }
    }
    draw.index_bias = basevertex;
 
@@ -2004,10 +2014,21 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    info.view_mask = 0;
    info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
-   if (info.has_user_indices)
+   if (info.has_user_indices) {
       info.index.user = (void*)min_index_ptr;
-   else
-      info.index.gl_bo = index_bo;
+   } else {
+      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+         /* Fast path for u_threaded_context to eliminate atomics. */
+         info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
+         info.take_index_buffer_ownership = true;
+      } else {
+         info.index.resource = index_bo->buffer;
+      }
+
+      /* No index buffer storage allocated - nothing to do. */
+      if (!info.index.resource)
+         return;
+   }
 
    if (!fallback &&
        (!info.has_user_indices ||
@@ -2429,11 +2450,24 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
       /* Packed section end. */
       info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
+      struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
+
+      if (ctx->st->pipe->draw_vbo == tc_draw_vbo) {
+         /* Fast path for u_threaded_context to eliminate atomics. */
+         info.index.resource = _mesa_get_bufferobj_reference(ctx, index_bo);
+         info.take_index_buffer_ownership = true;
+      } else {
+         info.index.resource = index_bo->buffer;
+      }
+
+      /* No index buffer storage allocated - nothing to do. */
+      if (!info.index.resource)
+         return;
+
       const uint8_t *ptr = (const uint8_t *) indirect;
       for (unsigned i = 0; i < primcount; i++) {
          DrawElementsIndirectCommand *cmd = (DrawElementsIndirectCommand*)ptr;
 
-         info.index.gl_bo = ctx->Array.VAO->IndexBufferObj;
          info.start_instance = cmd->baseInstance;
          info.instance_count = cmd->primCount;
 

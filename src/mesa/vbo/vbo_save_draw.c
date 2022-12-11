@@ -343,7 +343,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
    assert(ctx->NewState == 0);
 
    struct pipe_draw_info *info = (struct pipe_draw_info *) &node->cold->info;
-   void *gl_bo = info->index.gl_bo;
+
    if (node->modes) {
       ctx->Driver.DrawGalliumMultiMode(ctx, info,
                                        node->start_counts,
@@ -355,7 +355,6 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
       ctx->Driver.DrawGallium(ctx, info, 0, node->start_counts,
                               node->num_draws);
    }
-   info->index.gl_bo = gl_bo;
 
    _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
 

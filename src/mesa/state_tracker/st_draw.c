@@ -127,26 +127,6 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
 
          info->index_bounds_valid = true;
       }
-
-      if (!info->has_user_indices) {
-         if (st->pipe->draw_vbo == tc_draw_vbo) {
-            /* Fast path for u_threaded_context. This eliminates the atomic
-             * increment for the index buffer refcount when adding it into
-             * the threaded batch buffer.
-             */
-            info->index.resource =
-               _mesa_get_bufferobj_reference(ctx, info->index.gl_bo);
-            info->take_index_buffer_ownership = true;
-         } else {
-            info->index.resource = info->index.gl_bo->buffer;
-         }
-
-         /* Return if the bound element array buffer doesn't have any backing
-          * storage. (nothing to do)
-          */
-         if (unlikely(!info->index.resource))
-            return false;
-      }
    }
    return true;
 }
