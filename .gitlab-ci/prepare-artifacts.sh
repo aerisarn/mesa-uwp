@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+section_switch prepare-artifacts "artifacts: prepare"
 
 set -e
 set -o xtrace
@@ -56,3 +58,5 @@ if [ -n "$MINIO_ARTIFACT_NAME" ]; then
     zstd artifacts/install.tar -o ${MINIO_ARTIFACT_NAME}
     ci-fairy s3cp --token-file "${CI_JOB_JWT_FILE}" ${MINIO_ARTIFACT_NAME} https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}
 fi
+
+section_end prepare-artifacts
