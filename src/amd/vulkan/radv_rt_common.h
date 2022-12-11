@@ -113,11 +113,12 @@ struct radv_ray_traversal_vars {
    nir_deref_instr *bvh_base;
 
    /* stack is the current stack pointer/index. top_stack is the pointer/index that marks the end of
-    * traversal for the current BLAS/TLAS. stack_base is the low watermark of the short stack.
+    * traversal for the current BLAS/TLAS. stack_low_watermark is the low watermark of the short
+    * stack.
     */
    nir_deref_instr *stack;
    nir_deref_instr *top_stack;
-   nir_deref_instr *stack_base;
+   nir_deref_instr *stack_low_watermark;
 
    nir_deref_instr *current_node;
 
