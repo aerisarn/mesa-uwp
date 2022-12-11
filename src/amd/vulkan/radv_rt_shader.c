@@ -1371,6 +1371,7 @@ build_traversal_shader(struct radv_device *device,
          .vars = trav_vars_args,
          .stack_stride = device->physical_device->rt_wave_size * sizeof(uint32_t),
          .stack_entries = MAX_STACK_ENTRY_COUNT,
+         .stack_base = 0,
          .stack_store_cb = store_stack_entry,
          .stack_load_cb = load_stack_entry,
          .aabb_cb = (pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR)

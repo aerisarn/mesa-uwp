@@ -665,12 +665,14 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
    if (vars->stack) {
       args.stack_stride = 1;
       args.stack_entries = MAX_SCRATCH_STACK_ENTRY_COUNT;
+      args.stack_base = 0;
    } else {
       uint32_t workgroup_size = b->shader->info.workgroup_size[0] *
                                 b->shader->info.workgroup_size[1] *
                                 b->shader->info.workgroup_size[2];
       args.stack_stride = workgroup_size * 4;
       args.stack_entries = MAX_SHARED_STACK_ENTRY_COUNT;
+      args.stack_base = vars->shared_base;
    }
 
    nir_push_if(b, rq_load_var(b, index, vars->incomplete));
