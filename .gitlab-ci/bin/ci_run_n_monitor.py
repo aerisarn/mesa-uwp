@@ -214,7 +214,7 @@ def print_log(project, job_id) -> None:
         job = project.jobs.get(job_id)
 
         # GitLab's REST API doesn't offer pagination for logs, so we have to refetch it all
-        lines = job.trace().decode("unicode_escape").splitlines()
+        lines = job.trace().decode("raw_unicode_escape").splitlines()
         for line in lines[printed_lines:]:
             print(line)
         printed_lines = len(lines)
