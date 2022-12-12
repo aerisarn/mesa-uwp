@@ -651,12 +651,12 @@ _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
                         GLboolean doubles)
 {
    assert(size <= 4);
-   vertex_format->Type = type;
-   vertex_format->Bgra = format == GL_BGRA;
-   vertex_format->Size = size;
-   vertex_format->Normalized = normalized;
-   vertex_format->Integer = integer;
-   vertex_format->Doubles = doubles;
+   vertex_format->User.Type = type;
+   vertex_format->User.Bgra = format == GL_BGRA;
+   vertex_format->User.Size = size;
+   vertex_format->User.Normalized = normalized;
+   vertex_format->User.Integer = integer;
+   vertex_format->User.Doubles = doubles;
    vertex_format->_ElementSize = _mesa_bytes_per_vertex_attrib(size, type);
    assert(vertex_format->_ElementSize <= 4*sizeof(double));
    vertex_format->_PipeFormat =
@@ -2300,13 +2300,13 @@ get_vertex_array_attrib(struct gl_context *ctx,
    case GL_VERTEX_ATTRIB_ARRAY_ENABLED_ARB:
       return !!(vao->Enabled & VERT_BIT_GENERIC(index));
    case GL_VERTEX_ATTRIB_ARRAY_SIZE_ARB:
-      return array->Format.Bgra ? GL_BGRA : array->Format.Size;
+      return array->Format.User.Bgra ? GL_BGRA : array->Format.User.Size;
    case GL_VERTEX_ATTRIB_ARRAY_STRIDE_ARB:
       return array->Stride;
    case GL_VERTEX_ATTRIB_ARRAY_TYPE_ARB:
-      return array->Format.Type;
+      return array->Format.User.Type;
    case GL_VERTEX_ATTRIB_ARRAY_NORMALIZED_ARB:
-      return array->Format.Normalized;
+      return array->Format.User.Normalized;
    case GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING_ARB:
       buf = vao->BufferBinding[array->BufferBindingIndex].BufferObj;
       return buf ? buf->Name : 0;
@@ -2314,12 +2314,12 @@ get_vertex_array_attrib(struct gl_context *ctx,
       if ((_mesa_is_desktop_gl(ctx)
            && (ctx->Version >= 30 || ctx->Extensions.EXT_gpu_shader4))
           || _mesa_is_gles3(ctx)) {
-         return array->Format.Integer;
+         return array->Format.User.Integer;
       }
       goto error;
    case GL_VERTEX_ATTRIB_ARRAY_LONG:
       if (_mesa_is_desktop_gl(ctx)) {
-         return array->Format.Doubles;
+         return array->Format.User.Doubles;
       }
       goto error;
    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR_ARB:
@@ -4012,8 +4012,8 @@ _mesa_print_arrays(struct gl_context *ctx)
       fprintf(stderr, "  %s: Ptr=%p, Type=%s, Size=%d, ElemSize=%u, "
               "Stride=%d, Buffer=%u(Size %lu)\n",
               gl_vert_attrib_name((gl_vert_attrib)i),
-              array->Ptr, _mesa_enum_to_string(array->Format.Type),
-              array->Format.Size,
+              array->Ptr, _mesa_enum_to_string(array->Format.User.Type),
+              array->Format.User.Size,
               array->Format._ElementSize, binding->Stride, bo ? bo->Name : 0,
               (unsigned long)(bo ? bo->Size : 0));
    }
@@ -4154,10 +4154,10 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = GL_TEXTURE0_ARB + ctx->Array.ActiveTexture;
          break;
       case GL_VERTEX_ARRAY_SIZE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.Size;
+         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.User.Size;
          break;
       case GL_VERTEX_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_POS].Format.User.Type;
          break;
       case GL_VERTEX_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_POS].Stride;
@@ -4167,10 +4167,10 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_COLOR_ARRAY_SIZE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.Size;
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.User.Size;
          break;
       case GL_COLOR_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Format.User.Type;
          break;
       case GL_COLOR_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_COLOR0].Stride;
@@ -4187,7 +4187,7 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_INDEX_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX].Format.User.Type;
          break;
       case GL_INDEX_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_COLOR_INDEX].Stride;
@@ -4197,7 +4197,7 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_NORMAL_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_NORMAL].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_NORMAL].Format.User.Type;
          break;
       case GL_NORMAL_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_NORMAL].Stride;
@@ -4207,10 +4207,10 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_TEXTURE_COORD_ARRAY_SIZE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.Size;
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.User.Size;
          break;
       case GL_TEXTURE_COORD_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Format.User.Type;
          break;
       case GL_TEXTURE_COORD_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_TEX(ctx->Array.ActiveTexture)].Stride;
@@ -4220,7 +4220,7 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_FOG_COORD_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_FOG].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_FOG].Format.User.Type;
          break;
       case GL_FOG_COORD_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_FOG].Stride;
@@ -4230,10 +4230,10 @@ _mesa_GetVertexArrayIntegervEXT(GLuint vaobj, GLenum pname, GLint *param)
          *param = buf ? buf->Name : 0;
          break;
       case GL_SECONDARY_COLOR_ARRAY_SIZE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.Size;
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.User.Size;
          break;
       case GL_SECONDARY_COLOR_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Format.User.Type;
          break;
       case GL_SECONDARY_COLOR_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_COLOR1].Stride;
@@ -4351,10 +4351,10 @@ _mesa_GetVertexArrayIntegeri_vEXT(GLuint vaobj, GLuint index, GLenum pname, GLin
          *param = !!(vao->Enabled & VERT_BIT_TEX(index));
          break;
       case GL_TEXTURE_COORD_ARRAY_SIZE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.Size;
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.User.Size;
          break;
       case GL_TEXTURE_COORD_ARRAY_TYPE:
-         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.Type;
+         *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Format.User.Type;
          break;
       case GL_TEXTURE_COORD_ARRAY_STRIDE:
          *param = vao->VertexAttrib[VERT_ATTRIB_TEX(index)].Stride;

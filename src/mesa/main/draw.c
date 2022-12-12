@@ -990,18 +990,18 @@ check_array_data(struct gl_context *ctx, struct gl_vertex_array_object *vao,
          data = ADD_POINTERS(_mesa_vertex_attrib_address(array, binding),
                              bo->Mappings[MAP_INTERNAL].Pointer);
       }
-      switch (array->Format.Type) {
+      switch (array->Format.User.Type) {
       case GL_FLOAT:
          {
             GLfloat *f = (GLfloat *) ((GLubyte *) data + binding->Stride * j);
             GLint k;
-            for (k = 0; k < array->Format.Size; k++) {
+            for (k = 0; k < array->Format.User.Size; k++) {
                if (util_is_inf_or_nan(f[k]) || f[k] >= 1.0e20F || f[k] <= -1.0e10F) {
                   printf("Bad array data:\n");
                   printf("  Element[%u].%u = %f\n", j, k, f[k]);
                   printf("  Array %u at %p\n", attrib, (void *) array);
                   printf("  Type 0x%x, Size %d, Stride %d\n",
-                         array->Format.Type, array->Format.Size,
+                         array->Format.User.Type, array->Format.User.Size,
                          binding->Stride);
                   printf("  Address/offset %p in Buffer Object %u\n",
                          array->Ptr, bo ? bo->Name : 0);
@@ -1115,7 +1115,7 @@ print_draw_arrays(struct gl_context *ctx,
       printf("attr %s: size %d stride %d  "
              "ptr %p  Bufobj %u\n",
              gl_vert_attrib_name((gl_vert_attrib) i),
-             array->Format.Size, binding->Stride,
+             array->Format.User.Size, binding->Stride,
              array->Ptr, bufObj ? bufObj->Name : 0);
 
       if (bufObj) {
@@ -1124,7 +1124,7 @@ print_draw_arrays(struct gl_context *ctx,
             _mesa_vertex_attrib_address(array, binding);
 
          unsigned multiplier;
-         switch (array->Format.Type) {
+         switch (array->Format.User.Type) {
          case GL_DOUBLE:
          case GL_INT64_ARB:
          case GL_UNSIGNED_INT64_ARB:
@@ -1138,7 +1138,7 @@ print_draw_arrays(struct gl_context *ctx,
          int *k = (int *) f;
          int i = 0;
          int n = (count - 1) * (binding->Stride / (4 * multiplier))
-            + array->Format.Size;
+            + array->Format.User.Size;
          if (n > 32)
             n = 32;
          printf("  Data at offset %d:\n", offset);

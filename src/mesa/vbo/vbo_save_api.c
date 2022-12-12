@@ -318,14 +318,14 @@ compare_vao(gl_vertex_processing_mode mode,
       const struct gl_array_attributes *attrib = &vao->VertexAttrib[attr];
       if (attrib->RelativeOffset + vao->BufferBinding[0].Offset != off)
          return false;
-      if (attrib->Format.Type != tp)
+      if (attrib->Format.User.Type != tp)
          return false;
-      if (attrib->Format.Size != size[vbo_attr])
+      if (attrib->Format.User.Size != size[vbo_attr])
          return false;
-      assert(!attrib->Format.Bgra);
-      assert(attrib->Format.Normalized == GL_FALSE);
-      assert(attrib->Format.Integer == vbo_attrtype_to_integer_flag(tp));
-      assert(attrib->Format.Doubles == vbo_attrtype_to_double_flag(tp));
+      assert(!attrib->Format.User.Bgra);
+      assert(attrib->Format.User.Normalized == GL_FALSE);
+      assert(attrib->Format.User.Integer == vbo_attrtype_to_integer_flag(tp));
+      assert(attrib->Format.User.Doubles == vbo_attrtype_to_double_flag(tp));
       assert(attrib->BufferBindingIndex == 0);
    }
 
