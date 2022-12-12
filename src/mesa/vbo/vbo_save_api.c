@@ -322,7 +322,7 @@ compare_vao(gl_vertex_processing_mode mode,
          return false;
       if (attrib->Format.Size != size[vbo_attr])
          return false;
-      assert(attrib->Format.Format == GL_RGBA);
+      assert(!attrib->Format.Bgra);
       assert(attrib->Format.Normalized == GL_FALSE);
       assert(attrib->Format.Integer == vbo_attrtype_to_integer_flag(tp));
       assert(attrib->Format.Doubles == vbo_attrtype_to_double_flag(tp));

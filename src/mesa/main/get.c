@@ -1053,11 +1053,11 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
    /* ARB_vertex_array_bgra */
    case GL_COLOR_ARRAY_SIZE:
       array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_COLOR0];
-      v->value_int = array->Format.Format == GL_BGRA ? GL_BGRA : array->Format.Size;
+      v->value_int = array->Format.Bgra ? GL_BGRA : array->Format.Size;
       break;
    case GL_SECONDARY_COLOR_ARRAY_SIZE:
       array = &ctx->Array.VAO->VertexAttrib[VERT_ATTRIB_COLOR1];
-      v->value_int = array->Format.Format == GL_BGRA ? GL_BGRA : array->Format.Size;
+      v->value_int = array->Format.Bgra ? GL_BGRA : array->Format.Size;
       break;
 
    /* ARB_copy_buffer */

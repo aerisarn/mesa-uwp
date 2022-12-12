@@ -652,7 +652,7 @@ _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
 {
    assert(size <= 4);
    vertex_format->Type = type;
-   vertex_format->Format = format;
+   vertex_format->Bgra = format == GL_BGRA;
    vertex_format->Size = size;
    vertex_format->Normalized = normalized;
    vertex_format->Integer = integer;
@@ -2300,7 +2300,7 @@ get_vertex_array_attrib(struct gl_context *ctx,
    case GL_VERTEX_ATTRIB_ARRAY_ENABLED_ARB:
       return !!(vao->Enabled & VERT_BIT_GENERIC(index));
    case GL_VERTEX_ATTRIB_ARRAY_SIZE_ARB:
-      return (array->Format.Format == GL_BGRA) ? GL_BGRA : array->Format.Size;
+      return array->Format.Bgra ? GL_BGRA : array->Format.Size;
    case GL_VERTEX_ATTRIB_ARRAY_STRIDE_ARB:
       return array->Stride;
    case GL_VERTEX_ATTRIB_ARRAY_TYPE_ARB:
