@@ -2272,56 +2272,6 @@ glXWaitForSbcOML(Display *dpy, GLXDrawable drawable, int64_t target_sbc,
 
 
 /**
- * Mesa extension stubs.  These will help reduce portability problems.
- */
-/*@{*/
-
-/**
- * Release all buffers associated with the specified GLX drawable.
- *
- * \todo
- * This function was intended for stand-alone Mesa.  The issue there is that
- * the library doesn't get any notification when a window is closed.  In
- * DRI there is a similar but slightly different issue.  When GLX 1.3 is
- * supported, there are 3 different functions to destroy a drawable.  It
- * should be possible to create GLX protocol (or have it determine which
- * protocol to use based on the type of the drawable) to have one function
- * do the work of 3.  For the direct-rendering case, this function could
- * just call the driver's \c __DRIdrawableRec::destroyDrawable function.
- * This would reduce the frequency with which \c __driGarbageCollectDrawables
- * would need to be used.  This really should be done as part of the new DRI
- * interface work.
- *
- * \sa http://oss.sgi.com/projects/ogl-sample/registry/MESA/release_buffers.txt
- *     __driGarbageCollectDrawables
- *     glXDestroyGLXPixmap
- *     glXDestroyPbuffer glXDestroyPixmap glXDestroyWindow
- *     glXDestroyGLXPbufferSGIX glXDestroyGLXVideoSourceSGIX
- */
-_X_HIDDEN Bool
-glXReleaseBuffersMESA(Display * dpy, GLXDrawable d)
-{
-   (void) dpy;
-   (void) d;
-   return False;
-}
-
-
-_GLX_PUBLIC GLXPixmap
-glXCreateGLXPixmapMESA(Display * dpy, XVisualInfo * visual,
-                       Pixmap pixmap, Colormap cmap)
-{
-   (void) dpy;
-   (void) visual;
-   (void) pixmap;
-   (void) cmap;
-   return 0;
-}
-
-/*@}*/
-
-
-/**
  * GLX_MESA_copy_sub_buffer
  */
 #define X_GLXvop_CopySubBufferMESA 5154 /* temporary */
@@ -2599,12 +2549,6 @@ static const struct name_address_pair GLX_functions[] = {
 
    /*** GLX_MESA_copy_sub_buffer ***/
    GLX_FUNCTION(glXCopySubBufferMESA),
-
-   /*** GLX_MESA_pixmap_colormap ***/
-   GLX_FUNCTION(glXCreateGLXPixmapMESA),
-
-   /*** GLX_MESA_release_buffers ***/
-   GLX_FUNCTION(glXReleaseBuffersMESA),
 
    /*** GLX_MESA_swap_control ***/
    GLX_FUNCTION(glXSwapIntervalMESA),
