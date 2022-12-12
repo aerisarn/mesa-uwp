@@ -176,6 +176,17 @@ async def test_gather_commits():
             ''',
             ['36', '37'],
         ),
+        (
+            '''\
+            Parse Fixes/Closes in weird cases
+
+            fixes: https://gitlab.freedesktop.org/mesa/mesa/issues/36
+            fiXES: https://gitlab.freedesktop.org/mesa/mesa/issues/37
+            closes: https://gitlab.freedesktop.org/mesa/mesa/issues/38
+            cloSES: https://gitlab.freedesktop.org/mesa/mesa/issues/39
+            ''',
+            ['36', '37', '38', '39'],
+        ),
     ])
 async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
     mock_com = mock.AsyncMock(return_value=(textwrap.dedent(content).encode(), ''))

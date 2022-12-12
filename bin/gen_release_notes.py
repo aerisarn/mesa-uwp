@@ -175,7 +175,7 @@ inliner = Inliner();
 
 async def gather_commits(version: str) -> str:
     p = await asyncio.create_subprocess_exec(
-        'git', 'log', '--oneline', f'mesa-{version}..', '--grep', r'\(Closes\|Fixes\): \(https\|#\).*',
+        'git', 'log', '--oneline', f'mesa-{version}..', '-i', '--grep', r'\(Closes\|Fixes\): \(https\|#\).*',
         stdout=asyncio.subprocess.PIPE)
     out, _ = await p.communicate()
     assert p.returncode == 0, f"git log didn't work: {version}"
@@ -193,7 +193,7 @@ async def parse_issues(commits: str) -> typing.List[str]:
         out = _out.decode().split('\n')
 
         for line in reversed(out):
-            if not line.startswith(('Closes:', 'Fixes:')):
+            if not line.lower().startswith(('closes:', 'fixes:')):
                 continue
             bug = line.split(':', 1)[1].strip()
             if (bug.startswith('https://gitlab.freedesktop.org/mesa/mesa')
