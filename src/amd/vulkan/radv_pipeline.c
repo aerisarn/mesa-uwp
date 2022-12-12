@@ -859,8 +859,8 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
        * RESOLVE.
        */
       if (blend.mrt0_is_dual_src ||
-          (state->cb && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) && state->cb->logic_op_enable) ||
-          (device->physical_device->rad_info.gfx_level >= GFX11 && blend.blend_enable_4bit))
+          (state->cb && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) &&
+           state->cb->logic_op_enable))
          disable_dual_quad = true;
    }
 
@@ -1886,8 +1886,9 @@ radv_pipeline_uses_ds_feedback_loop(const VkGraphicsPipelineCreateInfo *pCreateI
 
 static uint32_t
 radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
-                                const struct vk_graphics_pipeline_state *state,
-                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                               const struct vk_graphics_pipeline_state *state,
+                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                               const struct radv_blend_state *blend)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    bool uses_ds_feedback_loop = radv_pipeline_uses_ds_feedback_loop(pCreateInfo, state);
@@ -1916,6 +1917,12 @@ radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
     */
    bool mask_export_enable = ps->info.ps.writes_sample_mask;
 
+   bool export_conflict_wa =
+      pipeline->base.device->physical_device->rad_info.has_export_conflict_bug &&
+      blend->blend_enable_4bit &&
+      (!state->ms || state->ms->rasterization_samples <= 1 ||
+       (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES));
+
    return S_02880C_Z_EXPORT_ENABLE(ps->info.ps.writes_z) |
           S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.ps.writes_stencil) |
           S_02880C_KILL_ENABLE(!!ps->info.ps.can_discard) |
@@ -1925,17 +1932,20 @@ radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
           S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.ps.post_depth_coverage) |
           S_02880C_EXEC_ON_HIER_FAIL(ps->info.ps.writes_memory) |
           S_02880C_EXEC_ON_NOOP(ps->info.ps.writes_memory) |
-          S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);
+          S_02880C_DUAL_QUAD_DISABLE(disable_rbplus) |
+          S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(export_conflict_wa) |
+          S_02880C_OVERRIDE_INTRINSIC_RATE(export_conflict_wa ? 2 : 0);
 }
 
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
                                        const struct vk_graphics_pipeline_state *state,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                       const struct radv_blend_state *blend)
 {
    struct radv_depth_stencil_state ds_state = {0};
 
-   ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo);
+   ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo, blend);
 
    return ds_state;
 }
@@ -5418,7 +5428,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_dynamic_state(pipeline, &state);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, &state, pCreateInfo);
+      radv_pipeline_init_depth_stencil_state(pipeline, &state, pCreateInfo, &blend);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
