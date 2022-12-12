@@ -339,6 +339,14 @@ struct pvr_sh_reg_layout {
       bool present;
       uint32_t offset;
    } descriptor_set_addrs_table;
+
+   /* If this is present, it will always take up 2 sh regs in size and contain
+    * the device address of the push constants buffer.
+    */
+   struct {
+      bool present;
+      uint32_t offset;
+   } push_consts;
 };
 
 struct pvr_pipeline_layout {
@@ -349,6 +357,9 @@ struct pvr_pipeline_layout {
    struct pvr_descriptor_set_layout *set_layout[PVR_MAX_DESCRIPTOR_SETS];
 
    VkShaderStageFlags push_constants_shader_stages;
+   uint32_t vert_push_constants_offset;
+   uint32_t frag_push_constants_offset;
+   uint32_t compute_push_constants_offset;
 
    /* Mask of enum pvr_stage_allocation. */
    uint8_t shader_stage_mask;

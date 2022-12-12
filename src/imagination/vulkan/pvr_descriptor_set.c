@@ -985,10 +985,25 @@ VkResult pvr_CreatePipelineLayout(VkDevice _device,
    }
 
    layout->push_constants_shader_stages = 0;
-   for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; ++i) {
+   for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
       const VkPushConstantRange *range = &pCreateInfo->pPushConstantRanges[i];
 
       layout->push_constants_shader_stages |= range->stageFlags;
+
+      /* From the Vulkan spec. 1.3.237
+       * VUID-VkPipelineLayoutCreateInfo-pPushConstantRanges-00292 :
+       *
+       *    "Any two elements of pPushConstantRanges must not include the same
+       *     stage in stageFlags"
+       */
+      if (range->stageFlags & VK_SHADER_STAGE_VERTEX_BIT)
+         layout->vert_push_constants_offset = range->offset;
+
+      if (range->stageFlags & VK_SHADER_STAGE_FRAGMENT_BIT)
+         layout->frag_push_constants_offset = range->offset;
+
+      if (range->stageFlags & VK_SHADER_STAGE_COMPUTE_BIT)
+         layout->compute_push_constants_offset = range->offset;
    }
 
 #if defined(DEBUG)

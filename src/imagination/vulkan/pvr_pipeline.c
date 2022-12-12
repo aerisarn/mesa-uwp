@@ -730,9 +730,13 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
          addr_literals++;
       }
 
-      /* TODO: Add support for other allocation types. E.g. blend constants
-       * and push constants.
-       */
+      if (sh_reg_layout->push_consts.present) {
+         program.addr_literals[addr_literals] = (struct pvr_pds_addr_literal){
+            .type = PVR_PDS_ADDR_LITERAL_PUSH_CONSTS,
+            .destination = sh_reg_layout->push_consts.offset,
+         };
+         addr_literals++;
+      }
 
       program.addr_literal_count = addr_literals;
    }
@@ -1105,9 +1109,13 @@ pvr_pipeline_alloc_shareds(const struct pvr_device *device,
       next_free_sh_reg += PVR_DEV_ADDR_SIZE_IN_SH_REGS;
    }
 
-   /* TODO: Add allocation for blend constants, push constants, and other buffer
-    * types.
-    */
+   reg_layout.push_consts.present =
+      !!(layout->push_constants_shader_stages & BITFIELD_BIT(stage));
+
+   if (reg_layout.push_consts.present) {
+      reg_layout.push_consts.offset = next_free_sh_reg;
+      next_free_sh_reg += PVR_DEV_ADDR_SIZE_IN_SH_REGS;
+   }
 
    *sh_reg_layout_out = reg_layout;
 

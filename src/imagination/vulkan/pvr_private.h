@@ -637,6 +637,12 @@ struct pvr_cmd_buffer_state {
    struct {
       uint8_t data[PVR_MAX_PUSH_CONSTANTS_SIZE];
       VkShaderStageFlags dirty_stages;
+      /* Indicates if the whole push constants buffer was uploaded. This avoids
+       * having to upload the same stuff twice when the push constant range
+       * covers both gfx and compute.
+       */
+      bool uploaded;
+      pvr_dev_addr_t dev_addr;
    } push_constants;
 
    /* Array size of barriers_needed is based on number of sync pipeline

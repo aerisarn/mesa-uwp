@@ -2308,6 +2308,7 @@ void pvr_CmdPushConstants(VkCommandBuffer commandBuffer,
    memcpy(&state->push_constants.data[offset], pValues, size);
 
    state->push_constants.dirty_stages |= stageFlags;
+   state->push_constants.uploaded = false;
 }
 
 static VkResult
@@ -3278,6 +3279,21 @@ pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
       break;
    }
 
+   case PVR_PDS_ADDR_LITERAL_PUSH_CONSTS: {
+      const struct pvr_pipeline_layout *layout =
+         PVR_SELECT(cmd_buffer->state.gfx_pipeline->base.layout,
+                    cmd_buffer->state.gfx_pipeline->base.layout,
+                    cmd_buffer->state.compute_pipeline->base.layout);
+      const uint32_t push_constants_offset =
+         PVR_SELECT(layout->vert_push_constants_offset,
+                    layout->frag_push_constants_offset,
+                    layout->compute_push_constants_offset);
+
+      *addr_out = PVR_DEV_ADDR_OFFSET(cmd_buffer->state.push_constants.dev_addr,
+                                      push_constants_offset);
+      break;
+   }
+
    default:
       unreachable("Invalid add literal type.");
    }
@@ -3751,6 +3767,49 @@ static void pvr_compute_update_kernel(
    pvr_compute_generate_control_stream(csb, sub_cmd, &info);
 }
 
+static VkResult pvr_cmd_upload_push_consts(struct pvr_cmd_buffer *cmd_buffer)
+{
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   struct pvr_bo *bo;
+   VkResult result;
+
+   /* TODO: Here are some possible optimizations/things to consider:
+    *
+    *    - Currently we upload maxPushConstantsSize. The application might only
+    *      be using a portion of that so we might end up with unused memory.
+    *      Should we be smarter about this. If we intend to upload the push
+    *      consts into shareds, we definitely want to do avoid reserving unused
+    *      regs.
+    *
+    *    - For now we have to upload to a new buffer each time since the shaders
+    *      access the push constants from memory. If we were to reuse the same
+    *      buffer we might update the contents out of sync with job submission
+    *      and the shaders will see the updated contents while the command
+    *      buffer was still being recorded and not yet submitted.
+    *      If we were to upload the push constants directly to shared regs we
+    *      could reuse the same buffer (avoiding extra allocation overhead)
+    *      since the contents will be DMAed only on job submission when the
+    *      control stream is processed and the PDS program is executed. This
+    *      approach would also allow us to avoid regenerating the PDS data
+    *      section in some cases since the buffer address will be constants.
+    */
+
+   if (cmd_buffer->state.push_constants.uploaded)
+      return VK_SUCCESS;
+
+   result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                          state->push_constants.data,
+                                          sizeof(state->push_constants.data),
+                                          &bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cmd_buffer->state.push_constants.dev_addr = bo->vma->dev_addr;
+   cmd_buffer->state.push_constants.uploaded = true;
+
+   return VK_SUCCESS;
+}
+
 static void pvr_cmd_dispatch(
    struct pvr_cmd_buffer *const cmd_buffer,
    const pvr_dev_addr_t indirect_addr,
@@ -3759,8 +3818,6 @@ static void pvr_cmd_dispatch(
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    const struct pvr_compute_pipeline *compute_pipeline =
       state->compute_pipeline;
-   const VkShaderStageFlags push_consts_stage_mask =
-      compute_pipeline->base.layout->push_constants_shader_stages;
    struct pvr_sub_cmd_compute *sub_cmd;
    VkResult result;
 
@@ -3770,11 +3827,15 @@ static void pvr_cmd_dispatch(
    sub_cmd->uses_atomic_ops |= compute_pipeline->shader_state.uses_atomic_ops;
    sub_cmd->uses_barrier |= compute_pipeline->shader_state.uses_barrier;
 
-   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
-      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
-       * check for dirty compute stage.
-       */
-      pvr_finishme("Add support for push constants.");
+   if (state->push_constants.dirty_stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+      result = pvr_cmd_upload_push_consts(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return;
+
+      /* Regenerate the PDS program to use the new push consts buffer. */
+      state->dirty.compute_desc_dirty = true;
+
+      state->push_constants.dirty_stages &= ~VK_SHADER_STAGE_COMPUTE_BIT;
    }
 
    if (compute_pipeline->shader_state.uses_num_workgroups) {
@@ -5042,6 +5103,11 @@ pvr_ppp_state_update_required(const struct pvr_cmd_buffer *cmd_buffer)
    const struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct PVRX(TA_STATE_HEADER) *const header = &state->emit_header;
 
+   /* For push constants we only need to worry if they are updated for the
+    * fragment stage since we're only updating the pds programs used in the
+    * fragment stage.
+    */
+
    return header->pres_ppp_ctrl || header->pres_ispctl ||
           header->pres_ispctl_fb || header->pres_ispctl_ba ||
           header->pres_ispctl_bb || header->pres_ispctl_dbsc ||
@@ -5053,6 +5119,7 @@ pvr_ppp_state_update_required(const struct pvr_cmd_buffer *cmd_buffer)
           header->pres_varying_word2 || header->pres_stream_out_program ||
           state->dirty.fragment_descriptors ||
           state->dirty.gfx_pipeline_binding || state->dirty.isp_userpass ||
+          state->push_constants.dirty_stages & VK_SHADER_STAGE_FRAGMENT_BIT ||
           BITSET_TEST(dynamic_dirty, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK) ||
           BITSET_TEST(dynamic_dirty, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK) ||
           BITSET_TEST(dynamic_dirty, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE) ||
@@ -5451,7 +5518,11 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
       pvr_setup_vertex_buffers(cmd_buffer, gfx_pipeline);
    }
 
-   /* TODO: Check for dirty push constants */
+   if (state->push_constants.dirty_stages & VK_SHADER_STAGE_ALL_GRAPHICS) {
+      result = pvr_cmd_upload_push_consts(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return result;
+   }
 
    state->dirty.vertex_descriptors = state->dirty.gfx_pipeline_binding;
    state->dirty.fragment_descriptors = state->dirty.vertex_descriptors;
@@ -5467,6 +5538,12 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
 
    if (BITSET_TEST(dynamic_state->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS))
       state->dirty.fragment_descriptors = true;
+
+   state->dirty.vertex_descriptors |=
+      state->push_constants.dirty_stages &
+      (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT);
+   state->dirty.fragment_descriptors |= state->push_constants.dirty_stages &
+                                        VK_SHADER_STAGE_FRAGMENT_BIT;
 
    if (state->dirty.fragment_descriptors) {
       result = pvr_setup_descriptor_mappings(
@@ -5512,6 +5589,8 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
    state->dirty.isp_userpass = false;
    state->dirty.vertex_bindings = false;
    state->dirty.vis_test = false;
+
+   state->push_constants.dirty_stages &= ~VK_SHADER_STAGE_ALL_GRAPHICS;
 
    return VK_SUCCESS;
 }
