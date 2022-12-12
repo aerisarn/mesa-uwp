@@ -644,19 +644,27 @@ vertex_format_to_pipe_format(GLubyte size, GLenum16 type, GLenum16 format,
    return pipe_format;
 }
 
-void
-_mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
-                        GLubyte size, GLenum16 type, GLenum16 format,
-                        GLboolean normalized, GLboolean integer,
-                        GLboolean doubles)
+static void
+set_vertex_format_user(union gl_vertex_format_user *vertex_format,
+                       GLubyte size, GLenum16 type, GLenum16 format,
+                       GLboolean normalized, GLboolean integer,
+                       GLboolean doubles)
 {
    assert(size <= 4);
-   vertex_format->User.Type = type;
-   vertex_format->User.Bgra = format == GL_BGRA;
-   vertex_format->User.Size = size;
-   vertex_format->User.Normalized = normalized;
-   vertex_format->User.Integer = integer;
-   vertex_format->User.Doubles = doubles;
+   vertex_format->Type = type;
+   vertex_format->Bgra = format == GL_BGRA;
+   vertex_format->Size = size;
+   vertex_format->Normalized = normalized;
+   vertex_format->Integer = integer;
+   vertex_format->Doubles = doubles;
+}
+
+static void
+recompute_vertex_format_fields(struct gl_vertex_format *vertex_format,
+                               GLubyte size, GLenum16 type, GLenum16 format,
+                               GLboolean normalized, GLboolean integer,
+                               GLboolean doubles)
+{
    vertex_format->_ElementSize = _mesa_bytes_per_vertex_attrib(size, type);
    assert(vertex_format->_ElementSize <= 4*sizeof(double));
    vertex_format->_PipeFormat =
@@ -664,6 +672,18 @@ _mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
                                    doubles);
    /* pipe_vertex_element::src_format has only 8 bits, assuming a signed enum */
    assert(vertex_format->_PipeFormat <= 255);
+}
+
+void
+_mesa_set_vertex_format(struct gl_vertex_format *vertex_format,
+                        GLubyte size, GLenum16 type, GLenum16 format,
+                        GLboolean normalized, GLboolean integer,
+                        GLboolean doubles)
+{
+   set_vertex_format_user(&vertex_format->User, size, type, format,
+                          normalized, integer, doubles);
+   recompute_vertex_format_fields(vertex_format, size, type, format,
+                                  normalized, integer, doubles);
 }
 
 
@@ -754,20 +774,22 @@ _mesa_update_array_format(struct gl_context *ctx,
                           GLuint relativeOffset)
 {
    struct gl_array_attributes *const array = &vao->VertexAttrib[attrib];
-   struct gl_vertex_format new_format;
+   union gl_vertex_format_user new_format;
 
    assert(!vao->SharedAndImmutable);
    assert(size <= 4);
 
-   _mesa_set_vertex_format(&new_format, size, type, format,
-                           normalized, integer, doubles);
+   set_vertex_format_user(&new_format, size, type, format,
+                          normalized, integer, doubles);
 
-   if ((array->RelativeOffset == relativeOffset) &&
-       !memcmp(&new_format, &array->Format, sizeof(new_format)))
+   if (array->RelativeOffset == relativeOffset &&
+       array->Format.User.All == new_format.All)
       return;
 
    array->RelativeOffset = relativeOffset;
-   array->Format = new_format;
+   array->Format.User = new_format;
+   recompute_vertex_format_fields(&array->Format, size, type, format,
+                                  normalized, integer, doubles);
 
    if (vao->Enabled & VERT_BIT(attrib)) {
       ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
