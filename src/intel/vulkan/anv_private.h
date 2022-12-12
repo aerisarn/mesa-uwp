@@ -1394,7 +1394,6 @@ void anv_vma_free(struct anv_device *device,
                   uint64_t address, uint64_t size);
 
 struct anv_reloc_list {
-   uint32_t                                     num_relocs;
    uint32_t                                     array_length;
    struct anv_bo **                             reloc_bos;
    uint32_t                                     dep_words;

@@ -66,22 +66,8 @@ anv_reloc_list_init_clone(struct anv_reloc_list *list,
                           const VkAllocationCallbacks *alloc,
                           const struct anv_reloc_list *other_list)
 {
-   list->num_relocs = other_list->num_relocs;
    list->array_length = other_list->array_length;
-
-   if (list->num_relocs > 0) {
-      list->reloc_bos =
-         vk_alloc(alloc, list->array_length * sizeof(*list->reloc_bos), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (list->reloc_bos == NULL)
-         return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      memcpy(list->reloc_bos, other_list->reloc_bos,
-             list->array_length * sizeof(*list->reloc_bos));
-   } else {
-      list->reloc_bos = NULL;
-   }
-
+   list->reloc_bos = NULL;
    list->dep_words = other_list->dep_words;
 
    if (list->dep_words > 0) {
@@ -110,11 +96,11 @@ anv_reloc_list_grow(struct anv_reloc_list *list,
                     const VkAllocationCallbacks *alloc,
                     size_t num_additional_relocs)
 {
-   if (list->num_relocs + num_additional_relocs <= list->array_length)
+   if (num_additional_relocs <= list->array_length)
       return VK_SUCCESS;
 
    size_t new_length = MAX2(16, list->array_length * 2);
-   while (new_length < list->num_relocs + num_additional_relocs)
+   while (new_length < num_additional_relocs)
       new_length *= 2;
 
    struct anv_bo **new_reloc_bos =
@@ -178,7 +164,6 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list,
 static void
 anv_reloc_list_clear(struct anv_reloc_list *list)
 {
-   list->num_relocs = 0;
    if (list->dep_words > 0)
       memset(list->deps, 0, list->dep_words * sizeof(BITSET_WORD));
 }
@@ -188,16 +173,9 @@ anv_reloc_list_append(struct anv_reloc_list *list,
                       const VkAllocationCallbacks *alloc,
                       struct anv_reloc_list *other)
 {
-   VkResult result = anv_reloc_list_grow(list, alloc, other->num_relocs);
+   VkResult result = anv_reloc_list_grow(list, alloc, 0);
    if (result != VK_SUCCESS)
       return result;
-
-   if (other->num_relocs > 0) {
-      memcpy(&list->reloc_bos[list->num_relocs], &other->reloc_bos[0],
-             other->num_relocs * sizeof(other->reloc_bos[0]));
-
-      list->num_relocs += other->num_relocs;
-   }
 
    anv_reloc_list_grow_deps(list, alloc, other->dep_words);
    for (uint32_t w = 0; w < other->dep_words; w++)
@@ -1245,14 +1223,6 @@ anv_execbuf_add_bo(struct anv_device *device,
    }
 
    if (relocs != NULL) {
-      for (size_t i = 0; i < relocs->num_relocs; i++) {
-         VkResult result =
-            anv_execbuf_add_bo(device, exec, relocs->reloc_bos[i],
-                               NULL, extra_flags);
-         if (result != VK_SUCCESS)
-            return result;
-      }
-
       return anv_execbuf_add_bo_bitset(device, exec, relocs->dep_words,
                                        relocs->deps, extra_flags);
    }
