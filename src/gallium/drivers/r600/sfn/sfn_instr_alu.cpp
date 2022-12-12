@@ -480,7 +480,7 @@ uint8_t AluInstr::allowed_src_chan_mask() const
    }
    /* Each channel can only be loaded in one of three cycles,
     * so if a channel is already used three times, we can't
-    * add another source with this channel.
+    * add another source withthis channel.
     * Since we want to move away from one channel to another, it
     * is not important to know which is the old channel that will
     * be freed by the channel switch.*/
