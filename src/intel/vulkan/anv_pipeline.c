@@ -84,6 +84,14 @@ anv_nir_lower_set_vtx_and_prim_count_instr(nir_builder *b, nir_instr *instr, voi
    if (intrin->intrinsic != nir_intrinsic_set_vertex_and_primitive_count)
       return false;
 
+   /* Detect some cases of invalid primitive count. They might lead to URB
+    * memory corruption, where workgroups overwrite each other output memory.
+    */
+   if (nir_src_is_const(intrin->src[1]) &&
+         nir_src_as_uint(intrin->src[1]) > b->shader->info.mesh.max_primitives_out) {
+      assert(!"number of primitives bigger than max specified");
+   }
+
    struct lower_set_vtx_and_prim_count_state *state = data;
    /* this intrinsic should show up only once */
    assert(state->primitive_count == NULL);
