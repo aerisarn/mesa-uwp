@@ -1395,7 +1395,6 @@ void anv_vma_free(struct anv_device *device,
 
 struct anv_reloc_list {
    uint32_t                                     array_length;
-   struct anv_bo **                             reloc_bos;
    uint32_t                                     dep_words;
    BITSET_WORD *                                deps;
 };
