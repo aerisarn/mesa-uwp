@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <stdint.h>
+
 struct pipe_screen;
 enum pipe_cap;
 
