@@ -78,6 +78,7 @@ struct radv_pipeline_key {
    uint32_t dynamic_color_write_mask : 1;
    uint32_t dynamic_provoking_vtx_mode : 1;
    uint32_t tex_non_uniform : 1;
+   uint32_t enable_remove_point_size : 1;
 
    struct {
       uint32_t instance_rate_inputs;

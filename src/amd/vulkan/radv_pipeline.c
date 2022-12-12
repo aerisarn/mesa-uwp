@@ -2179,16 +2179,9 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key,
    if (producer->xfb_info)
       return;
 
-   /* Do not remove PSIZ for vertex shaders when the topology is unknown. */
-   if (producer->info.stage == MESA_SHADER_VERTEX &&
-       pipeline_key->vs.topology == V_008958_DI_PT_NONE)
-      return;
-
    /* Do not remove PSIZ if the rasterization primitive uses points. */
    if (consumer->info.stage == MESA_SHADER_FRAGMENT &&
-       ((producer->info.stage == MESA_SHADER_VERTEX &&
-         pipeline_key->vs.topology == V_008958_DI_PT_POINTLIST) ||
-        (producer->info.stage == MESA_SHADER_TESS_EVAL && producer->info.tess.point_mode) ||
+       ((producer->info.stage == MESA_SHADER_TESS_EVAL && producer->info.tess.point_mode) ||
         (producer->info.stage == MESA_SHADER_GEOMETRY &&
          producer->info.gs.output_primitive == SHADER_PRIM_POINTS) ||
        (producer->info.stage == MESA_SHADER_MESH &&
@@ -2361,7 +2354,8 @@ radv_pipeline_link_shaders(const struct radv_device *device,
    /* Remove PSIZ from shaders when it's not needed.
     * This is typically produced by translation layers like Zink or D9VK.
     */
-   radv_remove_point_size(pipeline_key, producer, consumer);
+   if (pipeline_key->enable_remove_point_size)
+      radv_remove_point_size(pipeline_key, producer, consumer);
 
    if (nir_link_opt_varyings(producer, consumer)) {
       nir_validate_shader(producer, "after nir_link_opt_varyings");
@@ -2833,6 +2827,13 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       key.dynamic_provoking_vtx_mode =
          !!(pipeline->dynamic_states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) &&
          (ngg_stage == VK_SHADER_STAGE_VERTEX_BIT || ngg_stage == VK_SHADER_STAGE_GEOMETRY_BIT);
+   }
+
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) &&
+       state->ia && state->ia->primitive_topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST &&
+       !(pipeline->dynamic_states & RADV_DYNAMIC_POLYGON_MODE) &&
+       state->rs && state->rs->polygon_mode != VK_POLYGON_MODE_POINT) {
+      key.enable_remove_point_size = true;
    }
 
    return key;
