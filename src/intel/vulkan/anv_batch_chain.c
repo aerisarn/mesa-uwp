@@ -1133,11 +1133,6 @@ struct anv_execbuf {
    struct drm_i915_gem_exec_fence *          syncobjs;
    uint64_t *                                syncobj_values;
 
-   /* List of relocations for surface states, only used with platforms not
-    * using softpin.
-    */
-   void *                                    surface_states_relocs;
-
    uint32_t                                  cmd_buffer_count;
    struct anv_query_pool                     *perf_query_pool;
 
@@ -1152,7 +1147,6 @@ anv_execbuf_finish(struct anv_execbuf *exec)
 {
    vk_free(exec->alloc, exec->syncobjs);
    vk_free(exec->alloc, exec->syncobj_values);
-   vk_free(exec->alloc, exec->surface_states_relocs);
    vk_free(exec->alloc, exec->objects);
    vk_free(exec->alloc, exec->bos);
 }
