@@ -468,7 +468,27 @@ AluInstr::set_sources(SrcValues src)
 
 uint8_t AluInstr::allowed_src_chan_mask() const
 {
-   return 0xf;
+   if (m_alu_slots < 2)
+       return 0xf;
+   int chan_use_count[4] = {0};
+
+   for (auto s : m_src) {
+       auto r = s->as_register();
+       if (r)
+           ++chan_use_count[r->chan()];
+   }
+   /* Each channel can only be loaded in one of three cycles,
+    * so if a channel is already used three times, we can't
+    * add another source with this channel.
+    * Since we want to move away from one channel to another, it
+    * is not important to know which is the old channel that will
+    * be freed by the channel switch.*/
+   int mask = 0;
+   for (int i = 0; i < 4; ++i) {
+       if (chan_use_count[i] < 3)
+           mask |= 1 << i;
+   }
+   return mask;
 }
 
 uint8_t
