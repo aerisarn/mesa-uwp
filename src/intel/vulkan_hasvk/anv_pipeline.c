@@ -160,7 +160,9 @@ anv_shader_stage_to_nir(struct anv_device *device,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
-   brw_preprocess_nir(compiler, nir, NULL);
+   struct brw_nir_compiler_opts opts = {};
+
+   brw_preprocess_nir(compiler, nir, &opts);
 
    return nir;
 }
