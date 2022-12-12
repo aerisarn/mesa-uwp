@@ -714,7 +714,18 @@ AluInstr::split(ValueFactory& vf)
 
    m_dest->del_parent(this);
 
-   for (int s = 0; s < m_alu_slots; ++s) {
+   int start_slot = 0;
+   bool is_dot = m_opcode == op2_dot || opcode() == op2_dot_ieee;
+   auto last_opcode = m_opcode;
+
+   if (is_dot) {
+      start_slot = m_dest->chan();
+      last_opcode = m_opcode == op2_dot ? op2_mul : op2_mul_ieee;
+   }
+
+
+   for (int k = 0; k < m_alu_slots; ++k) {
+      int s = k + start_slot;
 
       PRegister dst = m_dest->chan() == s ? m_dest : vf.dummy_dest(s);
       if (dst->pin() != pin_chgr) {
@@ -740,7 +751,10 @@ AluInstr::split(ValueFactory& vf)
          src.push_back(old_src);
       }
 
-      auto instr = new AluInstr(m_opcode, dst, src, {}, 1);
+      auto opcode = k < m_alu_slots -1 ? m_opcode : last_opcode;
+
+
+      auto instr = new AluInstr(opcode, dst, src, {}, 1);
       instr->set_blockid(block_id(), index());
 
       if (s == 0 || !m_alu_flags.test(alu_64bit_op)) {
