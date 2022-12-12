@@ -92,31 +92,6 @@ anv_reloc_list_finish(struct anv_reloc_list *list,
 }
 
 static VkResult
-anv_reloc_list_grow(struct anv_reloc_list *list,
-                    const VkAllocationCallbacks *alloc,
-                    size_t num_additional_relocs)
-{
-   if (num_additional_relocs <= list->array_length)
-      return VK_SUCCESS;
-
-   size_t new_length = MAX2(16, list->array_length * 2);
-   while (new_length < num_additional_relocs)
-      new_length *= 2;
-
-   struct anv_bo **new_reloc_bos =
-      vk_realloc(alloc, list->reloc_bos,
-                 new_length * sizeof(*list->reloc_bos), 8,
-                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (new_reloc_bos == NULL)
-      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-   list->reloc_bos = new_reloc_bos;
-
-   list->array_length = new_length;
-
-   return VK_SUCCESS;
-}
-
-static VkResult
 anv_reloc_list_grow_deps(struct anv_reloc_list *list,
                          const VkAllocationCallbacks *alloc,
                          uint32_t min_num_words)
@@ -173,10 +148,6 @@ anv_reloc_list_append(struct anv_reloc_list *list,
                       const VkAllocationCallbacks *alloc,
                       struct anv_reloc_list *other)
 {
-   VkResult result = anv_reloc_list_grow(list, alloc, 0);
-   if (result != VK_SUCCESS)
-      return result;
-
    anv_reloc_list_grow_deps(list, alloc, other->dep_words);
    for (uint32_t w = 0; w < other->dep_words; w++)
       list->deps[w] |= other->deps[w];
