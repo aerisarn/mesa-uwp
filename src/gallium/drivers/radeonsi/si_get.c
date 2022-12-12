@@ -870,6 +870,13 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
       }
    }
 
+   /* support 10 bit input for encoding on some of the chips with vcn 2.0 and up */
+   if (profile == PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH &&
+       entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE &&
+       sscreen->info.family >= CHIP_RENOIR) {
+      return (format == PIPE_FORMAT_P010 || format == PIPE_FORMAT_NV12);
+   }
+
    /* we can only handle this one with UVD */
    if (profile != PIPE_VIDEO_PROFILE_UNKNOWN)
       return format == PIPE_FORMAT_NV12;
