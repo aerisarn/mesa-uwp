@@ -224,6 +224,9 @@ anv_shader_stage_to_nir(struct anv_device *device,
 
    struct brw_nir_compiler_opts opts = {
       .softfp64 = device->fp64_nir,
+      .robust_image_access =
+         device->vk.enabled_features.robustImageAccess ||
+         device->vk.enabled_features.robustImageAccess2,
    };
    brw_preprocess_nir(compiler, nir, &opts);
 
