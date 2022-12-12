@@ -2425,7 +2425,15 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_color_write(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_device *device = cmd_buffer->device;
+   const struct radv_binning_settings *settings = &device->physical_device->binning_settings;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   if (device->pbb_allowed && settings->context_states_per_bin > 1) {
+      /* Flush DFSM on CB_TARGET_MASK changes. */
+      radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
+   }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028238_CB_TARGET_MASK,
                           d->color_write_mask & d->color_write_enable);
@@ -8488,18 +8496,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
           * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
           */
          cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
-      }
-   }
-
-   if (device->pbb_allowed) {
-      struct radv_binning_settings *settings = &device->physical_device->binning_settings;
-
-      if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE |
-                                      RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK)) &&
-          settings->context_states_per_bin > 1) {
-         /* Break the batch on CB_TARGET_MASK changes. */
-         radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-         radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
       }
    }
 
