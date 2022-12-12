@@ -32,4 +32,20 @@ st_init_texcompress_compute(struct st_context *st);
 void
 st_destroy_texcompress_compute(struct st_context *st);
 
+/**
+ * When this function returns true, the destination image will contain the
+ * contents of astc_data but transcoded to DXT5/BC3.
+ *
+ * Note that this function will internally create compute programs by using
+ * glCreateShaderProgramv with the application's GL context.
+ */
+bool
+st_compute_transcode_astc_to_dxt5(struct st_context *st,
+                                  uint8_t *astc_data,
+                                  unsigned astc_stride,
+                                  mesa_format astc_format,
+                                  struct pipe_resource *dxt5_tex,
+                                  unsigned dxt5_level,
+                                  unsigned dxt5_layer);
+
 #endif /* ST_TEXCOMPRESS_COMPUTE_H */
