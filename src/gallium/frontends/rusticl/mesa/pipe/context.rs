@@ -409,14 +409,18 @@ impl PipeContext {
         &self,
         res: &PipeResource,
         format: pipe_format,
+        app_img_info: Option<&AppImgInfo>,
     ) -> *mut pipe_sampler_view {
-        let template = res.pipe_sampler_view_template(format);
+        let template = res.pipe_sampler_view_template(format, app_img_info);
+
         unsafe {
-            self.pipe.as_ref().create_sampler_view.unwrap()(
+            let s_view = self.pipe.as_ref().create_sampler_view.unwrap()(
                 self.pipe.as_ptr(),
                 res.pipe(),
                 &template,
-            )
+            );
+
+            s_view
         }
     }
 
