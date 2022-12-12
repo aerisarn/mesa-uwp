@@ -66,7 +66,6 @@ anv_reloc_list_init_clone(struct anv_reloc_list *list,
                           const VkAllocationCallbacks *alloc,
                           const struct anv_reloc_list *other_list)
 {
-   list->array_length = other_list->array_length;
    list->dep_words = other_list->dep_words;
 
    if (list->dep_words > 0) {
