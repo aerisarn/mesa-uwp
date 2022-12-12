@@ -192,7 +192,6 @@ static const struct extension_info known_gl_extensions[] = {
    { GL(EXT_texture_lod),                 N, N },
    { GL(EXT_texture_lod_bias),            N, N },
    { GL(EXT_texture_mirror_clamp),        N, N },
-   { GL(EXT_texture_object),              N, N },
    { GL(EXT_texture_rectangle),           N, N },
    { GL(EXT_vertex_array),                N, N },
    { GL(3DFX_texture_compression_FXT1),   N, N },

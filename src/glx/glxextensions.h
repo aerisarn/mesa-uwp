@@ -161,7 +161,6 @@ enum
    GL_EXT_texture_lod_bit,
    GL_EXT_texture_lod_bias_bit,
    GL_EXT_texture_mirror_clamp_bit,
-   GL_EXT_texture_object_bit,
    GL_EXT_vertex_array_bit,
    GL_3DFX_texture_compression_FXT1_bit,
    GL_APPLE_packed_pixels_bit,
