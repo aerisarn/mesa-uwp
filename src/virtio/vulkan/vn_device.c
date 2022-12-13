@@ -314,6 +314,11 @@ vn_device_fix_create_info(const struct vn_device *dev,
       block_exts[block_count++] = VK_EXT_TOOLING_INFO_EXTENSION_NAME;
    }
 
+   if (app_exts->EXT_pci_bus_info) {
+      /* always filter for simplicity */
+      block_exts[block_count++] = VK_EXT_PCI_BUS_INFO_EXTENSION_NAME;
+   }
+
    assert(extra_count <= ARRAY_SIZE(extra_exts));
    assert(block_count <= ARRAY_SIZE(block_exts));
 

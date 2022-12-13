@@ -520,6 +520,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_PNEXT_EXT(props2, CUSTOM_BORDER_COLOR_PROPERTIES_EXT, props->custom_border_color, exts->EXT_custom_border_color);
    VN_ADD_PNEXT_EXT(props2, LINE_RASTERIZATION_PROPERTIES_EXT, props->line_rasterization, exts->EXT_line_rasterization);
    VN_ADD_PNEXT_EXT(props2, MULTI_DRAW_PROPERTIES_EXT, props->multi_draw, exts->EXT_multi_draw);
+   VN_ADD_PNEXT_EXT(props2, PCI_BUS_INFO_PROPERTIES_EXT, props->pci_bus_info, exts->EXT_pci_bus_info);
    VN_ADD_PNEXT_EXT(props2, PROVOKING_VERTEX_PROPERTIES_EXT, props->provoking_vertex, exts->EXT_provoking_vertex);
    VN_ADD_PNEXT_EXT(props2, ROBUSTNESS_2_PROPERTIES_EXT, props->robustness_2, exts->EXT_robustness2);
    VN_ADD_PNEXT_EXT(props2, TRANSFORM_FEEDBACK_PROPERTIES_EXT, props->transform_feedback, exts->EXT_transform_feedback);
@@ -982,6 +983,16 @@ vn_physical_device_get_native_extensions(
       exts->KHR_swapchain = true;
       exts->KHR_swapchain_mutable_format = true;
    }
+
+   /* VK_EXT_pci_bus_info is required by common wsi to decide whether native
+    * image or prime blit is used. Meanwhile, venus must stay on native image
+    * path for proper fencing.
+    * - For virtgpu, VK_EXT_pci_bus_info is natively supported.
+    * - For vtest, pci bus info must be queried from the renderer side physical
+    *   device to be compared against the render node opened by common wsi.
+    */
+   exts->EXT_pci_bus_info =
+      !VN_DEBUG(VTEST) || renderer_exts->EXT_pci_bus_info;
 #endif
 
    exts->EXT_physical_device_drm = true;
@@ -1810,6 +1821,8 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* this is used by WSI */
          if (physical_dev->instance->renderer->info.pci.has_bus_info) {
+            assert(!VN_DEBUG(VTEST));
+
             VkPhysicalDevicePCIBusInfoPropertiesEXT *out_props = (void *)out;
             const struct vn_renderer_info *info =
                &physical_dev->instance->renderer->info;
@@ -1818,6 +1831,10 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             out_props->pciBus = info->pci.bus;
             out_props->pciDevice = info->pci.device;
             out_props->pciFunction = info->pci.function;
+         } else {
+            vk_copy_struct_guts(out,
+                                (VkBaseInStructure *)&in_props->pci_bus_info,
+                                sizeof(in_props->pci_bus_info));
          }
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID: {
