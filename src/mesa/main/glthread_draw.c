@@ -519,8 +519,9 @@ multi_draw_arrays_async(struct gl_context *ctx, GLenum mode,
                         GLsizei draw_count, unsigned user_buffer_mask,
                         const struct glthread_attrib_binding *buffers)
 {
-   int first_size = sizeof(GLint) * draw_count;
-   int count_size = sizeof(GLsizei) * draw_count;
+   int real_draw_count = MAX2(draw_count, 0);
+   int first_size = sizeof(GLint) * real_draw_count;
+   int count_size = sizeof(GLsizei) * real_draw_count;
    int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
    int cmd_size = sizeof(struct marshal_cmd_MultiDrawArraysUserBuf) +
                   first_size + count_size + buffers_size;
@@ -557,20 +558,22 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
+   unsigned user_buffer_mask =
+      draw_count <= 0 ? 0 : vao->UserPointerMask & vao->BufferEnabled;
 
    if (ctx->GLThread.ListMode)
       goto sync;
 
-   if (draw_count >= 0 &&
-       (ctx->API == API_OPENGL_CORE || !user_buffer_mask) &&
+   if ((ctx->API == API_OPENGL_CORE || !user_buffer_mask) &&
        multi_draw_arrays_async(ctx, mode, first, count, draw_count, 0, NULL)) {
       return;
    }
 
-   /* If the draw count is too high or negative, the queue can't be used. */
+   assert(draw_count > 0);
+
+   /* If the draw count is too high, the queue can't be used. */
    if (!ctx->GLThread.SupportsBufferUploads ||
-       draw_count < 0 || draw_count > MARSHAL_MAX_CMD_SIZE / 16)
+       draw_count > MARSHAL_MAX_CMD_SIZE / 16)
       goto sync;
 
    unsigned min_index = ~0;
