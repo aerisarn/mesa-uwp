@@ -738,6 +738,14 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
          addr_literals++;
       }
 
+      if (sh_reg_layout->blend_consts.present) {
+         program.addr_literals[addr_literals] = (struct pvr_pds_addr_literal){
+            .type = PVR_PDS_ADDR_LITERAL_BLEND_CONSTANTS,
+            .destination = sh_reg_layout->blend_consts.offset,
+         };
+         addr_literals++;
+      }
+
       program.addr_literal_count = addr_literals;
    }
 
@@ -1127,8 +1135,6 @@ pvr_pipeline_alloc_shareds(const struct pvr_device *device,
    return next_free_sh_reg;
 }
 
-#undef PVR_DEV_ADDR_SIZE_IN_SH_REGS
-
 /******************************************************************************
    Compute pipeline functions
  ******************************************************************************/
@@ -1497,6 +1503,119 @@ pvr_fragment_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
    fragment_state->pass_type = PVRX(TA_PASSTYPE_OPAQUE);
    fragment_state->entry_offset = 0;
 }
+
+static bool pvr_blend_factor_requires_consts(VkBlendFactor factor)
+{
+   switch (factor) {
+   case VK_BLEND_FACTOR_CONSTANT_COLOR:
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+   case VK_BLEND_FACTOR_CONSTANT_ALPHA:
+   case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
+/**
+ * \brief Indicates whether dynamic blend constants are needed.
+ *
+ * If the user has specified the blend constants to be dynamic, they might not
+ * necessarily be using them. This function makes sure that they are being used
+ * in order to determine whether we need to upload them later on for the shader
+ * to access them.
+ */
+static bool pvr_graphics_pipeline_requires_dynamic_blend_consts(
+   const struct pvr_graphics_pipeline *gfx_pipeline)
+{
+   const bool has_dynamic_blend_consts =
+      BITSET_TEST(gfx_pipeline->dynamic_state.set,
+                  MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS);
+
+   if (!has_dynamic_blend_consts)
+      return false;
+
+   for (uint32_t i = 0; i < gfx_pipeline->dynamic_state.cb.attachment_count;
+        i++) {
+      const struct vk_color_blend_attachment_state *attachment =
+         &gfx_pipeline->dynamic_state.cb.attachments[i];
+
+      const bool has_color_write =
+         attachment->write_mask &
+         (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+          VK_COLOR_COMPONENT_B_BIT);
+      const bool has_alpha_write = attachment->write_mask &
+                                   VK_COLOR_COMPONENT_A_BIT;
+
+      if (!attachment->blend_enable || attachment->write_mask == 0)
+         continue;
+
+      if (has_color_write) {
+         const uint8_t src_color_blend_factor =
+            attachment->src_color_blend_factor;
+         const uint8_t dst_color_blend_factor =
+            attachment->dst_color_blend_factor;
+
+         if (pvr_blend_factor_requires_consts(src_color_blend_factor) ||
+             pvr_blend_factor_requires_consts(dst_color_blend_factor)) {
+            return true;
+         }
+      }
+
+      if (has_alpha_write) {
+         const uint8_t src_alpha_blend_factor =
+            attachment->src_alpha_blend_factor;
+         const uint8_t dst_alpha_blend_factor =
+            attachment->dst_alpha_blend_factor;
+
+         if (pvr_blend_factor_requires_consts(src_alpha_blend_factor) ||
+             pvr_blend_factor_requires_consts(dst_alpha_blend_factor)) {
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+static uint32_t pvr_graphics_pipeline_alloc_shareds(
+   const struct pvr_device *device,
+   const struct pvr_graphics_pipeline *gfx_pipeline,
+   enum pvr_stage_allocation stage,
+   struct pvr_sh_reg_layout *const sh_reg_layout_out)
+{
+   ASSERTED const uint64_t reserved_shared_size =
+      device->pdevice->dev_runtime_info.reserved_shared_size;
+   ASSERTED const uint64_t max_coeff =
+      device->pdevice->dev_runtime_info.max_coeffs;
+
+   const struct pvr_pipeline_layout *layout = gfx_pipeline->base.layout;
+   struct pvr_sh_reg_layout reg_layout = { 0 };
+   uint32_t next_free_sh_reg = 0;
+
+   next_free_sh_reg =
+      pvr_pipeline_alloc_shareds(device, layout, stage, &reg_layout);
+
+   reg_layout.blend_consts.present =
+      (stage == PVR_STAGE_ALLOCATION_FRAGMENT &&
+       pvr_graphics_pipeline_requires_dynamic_blend_consts(gfx_pipeline));
+   if (reg_layout.blend_consts.present) {
+      reg_layout.blend_consts.offset = next_free_sh_reg;
+      next_free_sh_reg += PVR_DEV_ADDR_SIZE_IN_SH_REGS;
+   }
+
+   *sh_reg_layout_out = reg_layout;
+
+   /* FIXME: We might need to take more things into consideration.
+    * See pvr_calc_fscommon_size_and_tiles_in_flight().
+    */
+   assert(next_free_sh_reg <= reserved_shared_size - max_coeff);
+
+   return next_free_sh_reg;
+}
+
+#undef PVR_DEV_ADDR_SIZE_IN_SH_REGS
 
 /* Compiles and uploads shaders and PDS programs. */
 static VkResult

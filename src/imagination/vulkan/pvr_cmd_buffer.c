@@ -3565,6 +3565,25 @@ pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
       break;
    }
 
+   case PVR_PDS_ADDR_LITERAL_BLEND_CONSTANTS: {
+      float *blend_consts =
+         cmd_buffer->vk.dynamic_graphics_state.cb.blend_constants;
+      size_t size =
+         sizeof(cmd_buffer->vk.dynamic_graphics_state.cb.blend_constants);
+      struct pvr_bo *blend_consts_bo;
+
+      result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                             blend_consts,
+                                             size,
+                                             &blend_consts_bo);
+      if (result != VK_SUCCESS)
+         return result;
+
+      *addr_out = blend_consts_bo->vma->dev_addr;
+
+      break;
+   }
+
    default:
       unreachable("Invalid add literal type.");
    }

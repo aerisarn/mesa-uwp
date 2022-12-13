@@ -357,6 +357,14 @@ struct pvr_sh_reg_layout {
       bool present;
       uint32_t offset;
    } push_consts;
+
+   /* If this is present, it will always take up 2 sh regs in size and contain
+    * the device address of the blend constants buffer.
+    */
+   struct {
+      bool present;
+      uint32_t offset;
+   } blend_consts;
 };
 
 struct pvr_pipeline_layout {
