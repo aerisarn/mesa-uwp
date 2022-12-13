@@ -219,12 +219,17 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
       input_data.setLateKill(true);
       same_half.setLateKill(true);
 
-      /* We need one pair of shared VGPRs:
-       * Note, that these have twice the allocation granularity of normal VGPRs */
-      ctx->program->config->num_shared_vgprs = 2 * ctx->program->dev.vgpr_alloc_granule;
+      if (ctx->options->gfx_level <= GFX10_3) {
+         /* We need one pair of shared VGPRs:
+          * Note, that these have twice the allocation granularity of normal VGPRs
+          */
+         ctx->program->config->num_shared_vgprs = 2 * ctx->program->dev.vgpr_alloc_granule;
 
-      return bld.pseudo(aco_opcode::p_bpermute_gfx10w64, bld.def(v1), bld.def(s2), bld.def(s1, scc),
-                        index_x4, input_data, same_half);
+         return bld.pseudo(aco_opcode::p_bpermute_gfx10w64, bld.def(v1), bld.def(s2),
+                           bld.def(s1, scc), index_x4, input_data, same_half);
+      } else {
+         unreachable("emit_bpermute does not yet support GFX11+");
+      }
    } else {
       /* GFX8-9 or GFX10 wave32: bpermute works normally */
       Temp index_x4 = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(2u), index);

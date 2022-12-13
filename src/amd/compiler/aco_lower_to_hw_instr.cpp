@@ -848,7 +848,7 @@ emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builde
     * manually swap the data between the two halves using two shared VGPRs.
     */
 
-   assert(program->gfx_level >= GFX10);
+   assert(program->gfx_level >= GFX10 && program->gfx_level <= GFX10_3);
    assert(program->wave_size == 64);
 
    unsigned shared_vgpr_reg_0 = align(program->config->num_vgprs, 4) + 256;
@@ -907,8 +907,9 @@ emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builde
    /* Restore saved EXEC */
    bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(tmp_exec.physReg(), s2));
 
-   /* RA assumes that the result is always in the low part of the register, so we have to shift, if
-    * it's not there already */
+   /* RA assumes that the result is always in the low part of the register, so we have to shift,
+    * if it's not there already.
+    */
    if (input_data.physReg().byte()) {
       unsigned right_shift = input_data.physReg().byte() * 8;
       bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
