@@ -448,12 +448,17 @@ uint64_t
 intel_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
                           uint8_t plane)
 {
+   /* gfx12.5+ uses tile-4 rather than y-tiling, and gfx12.5+ also uses
+    * compression info from the surface state and ignores the aux-map format
+    * bits metadata.
+    */
+   if (!isl_tiling_is_any_y(tiling))
+      return 0;
+
    if (aux_map_debug)
       fprintf(stderr, "AUX-MAP entry %s, bpp_enc=%d\n",
               isl_format_get_name(format),
               isl_format_get_aux_map_encoding(format));
-
-   assert(isl_tiling_is_any_y(tiling));
 
    uint64_t format_bits =
       ((uint64_t)isl_format_get_aux_map_encoding(format) << 58) |
