@@ -1365,6 +1365,9 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    if (bo->address == 0ull)
       goto err_free;
 
+   if (!iris_bo_set_prime_fd(bo))
+      goto err_vm_alloc;
+
    if (!bufmgr->kmd_backend->gem_vm_bind(bo))
       goto err_vm_alloc;
 
