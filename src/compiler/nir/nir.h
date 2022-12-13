@@ -5480,6 +5480,7 @@ typedef struct nir_input_attachment_options {
    bool use_fragcoord_sysval;
    bool use_layer_id_sysval;
    bool use_view_id_for_layer;
+   uint32_t unscaled_input_attachment_ir3;
 } nir_input_attachment_options;
 
 bool nir_lower_input_attachments(nir_shader *shader,

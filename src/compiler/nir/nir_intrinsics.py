@@ -1193,6 +1193,10 @@ system_value("rel_patch_id_ir3", 1)
 # System values for freedreno compute shaders.
 system_value("subgroup_id_shift_ir3", 1)
 
+# System values for freedreno fragment shaders.
+intrinsic("load_frag_coord_unscaled_ir3", dest_comp=4,
+          flags=[CAN_ELIMINATE, CAN_REORDER], bit_sizes=[32])
+
 # IR3-specific intrinsics for tessellation control shaders.  cond_end_ir3 end
 # the shader when src0 is false and is used to narrow down the TCS shader to
 # just thread 0 before writing out tessellation levels.

@@ -2092,6 +2092,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       emit_intrinsic_copy_ubo_to_uniform(ctx, intr);
       break;
    case nir_intrinsic_load_frag_coord:
+   case nir_intrinsic_load_frag_coord_unscaled_ir3:
       ir3_split_dest(b, dst, get_frag_coord(ctx, intr), 0, 4);
       break;
    case nir_intrinsic_load_sample_pos_from_id: {
