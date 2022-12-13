@@ -105,7 +105,6 @@ flush_submit_list(struct list_head *submit_list)
    if (fd_submit->in_fence_fd != -1) {
       req.flags |= MSM_SUBMIT_FENCE_FD_IN;
       req.fence_fd = fd_submit->in_fence_fd;
-      pipe->no_implicit_sync = true;
    }
 
    if (pipe->no_implicit_sync) {

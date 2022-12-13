@@ -183,10 +183,6 @@ flush_submit_list(struct list_head *submit_list)
     */
    out_fence->use_fence_fd = true;
 
-   if (fd_submit->in_fence_fd != -1) {
-      pipe->no_implicit_sync = true;
-   }
-
    if (pipe->no_implicit_sync) {
       req->flags |= MSM_SUBMIT_NO_IMPLICIT;
    }

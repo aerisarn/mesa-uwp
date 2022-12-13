@@ -302,6 +302,9 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 
    bool has_shared = fd_submit_sp_flush_prep(submit, in_fence_fd, out_fence);
 
+   if ((in_fence_fd != -1) || out_fence->use_fence_fd)
+      pipe->no_implicit_sync = true;
+
    /* The rule about skipping submit merging with shared buffers is only
     * needed for implicit-sync.
     */
