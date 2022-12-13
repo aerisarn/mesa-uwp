@@ -2193,13 +2193,12 @@ lower_to_hw_instr(Program* program)
                }
                break;
             }
-            case aco_opcode::p_bpermute: {
-               if (ctx.program->gfx_level <= GFX7)
-                  emit_gfx6_bpermute(program, instr, bld);
-               else if (ctx.program->gfx_level >= GFX10 && ctx.program->wave_size == 64)
-                  emit_gfx10_wave64_bpermute(program, instr, bld);
-               else
-                  unreachable("Current hardware supports ds_bpermute, don't emit p_bpermute.");
+            case aco_opcode::p_bpermute_gfx6: {
+               emit_gfx6_bpermute(program, instr, bld);
+               break;
+            }
+            case aco_opcode::p_bpermute_gfx10w64: {
+               emit_gfx10_wave64_bpermute(program, instr, bld);
                break;
             }
             case aco_opcode::p_constaddr: {

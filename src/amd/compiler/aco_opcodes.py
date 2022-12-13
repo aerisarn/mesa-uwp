@@ -315,8 +315,15 @@ opcode("p_demote_to_helper")
 opcode("p_is_helper")
 opcode("p_exit_early_if")
 
-# simulates proper bpermute behavior when it's unsupported, eg. GFX10 wave64
-opcode("p_bpermute")
+# simulates proper bpermute behavior on GFX6
+# definitions: result VGPR, temp EXEC, clobbered VCC
+# operands: index, input data
+opcode("p_bpermute_gfx6")
+
+# simulates proper bpermute behavior on GFX10
+# definitions: result VGPR, temp EXEC, clobbered SCC
+# operands: index * 4, input data, same half (bool)
+opcode("p_bpermute_gfx10w64")
 
 # creates a lane mask where only the first active lane is selected
 opcode("p_elect")
