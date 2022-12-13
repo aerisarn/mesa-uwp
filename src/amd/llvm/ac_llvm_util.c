@@ -239,6 +239,8 @@ static LLVMPassManagerRef ac_create_passmgr(LLVMTargetLibraryInfoRef target_libr
    /* This pass should eliminate all the load and store instructions. */
    LLVMAddPromoteMemoryToRegisterPass(passmgr);
    LLVMAddScalarReplAggregatesPass(passmgr);
+   if (LLVM_VERSION_MAJOR >= 16)
+      ac_add_sinking_pass(passmgr);
    LLVMAddLICMPass(passmgr);
    LLVMAddAggressiveDCEPass(passmgr);
    LLVMAddCFGSimplificationPass(passmgr);

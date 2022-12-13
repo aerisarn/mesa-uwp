@@ -31,6 +31,7 @@
 #include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/Scalar.h>
 
 #include <cstring>
 
@@ -44,6 +45,8 @@
 #include "ac_llvm_util.h"
 #include "ac_llvm_build.h"
 #include "util/macros.h"
+
+using namespace llvm;
 
 bool ac_is_llvm_processor_supported(LLVMTargetMachineRef tm, const char *processor)
 {
@@ -325,4 +328,9 @@ LLVMValueRef ac_build_atomic_cmp_xchg(struct ac_llvm_context *ctx, LLVMValueRef 
 #endif
                                               llvm::AtomicOrdering::SequentiallyConsistent,
                                               llvm::AtomicOrdering::SequentiallyConsistent, SSID));
+}
+
+void ac_add_sinking_pass(LLVMPassManagerRef PM)
+{
+  unwrap(PM)->add(createLoopSinkPass());
 }
