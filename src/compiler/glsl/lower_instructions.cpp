@@ -60,7 +60,6 @@
 #define LDEXP_TO_ARITH     0x80
 #define DOPS_TO_DFRAC      0x800
 #define DFREXP_DLDEXP_TO_ARITH    0x1000
-#define BIT_COUNT_TO_MATH         0x02000
 #define FIND_LSB_TO_FLOAT_CAST    0x20000
 #define FIND_MSB_TO_FLOAT_CAST    0x40000
 #define IMUL_HIGH_TO_MUL          0x80000
@@ -93,7 +92,6 @@ private:
    void dround_even_to_dfrac(ir_expression *);
    void dtrunc_to_dfrac(ir_expression *);
    void dsign_to_csel(ir_expression *);
-   void bit_count_to_math(ir_expression *);
    void find_lsb_to_float_cast(ir_expression *ir);
    void find_msb_to_float_cast(ir_expression *ir);
    void imul_high_to_mul(ir_expression *ir);
@@ -128,8 +126,7 @@ lower_instructions(exec_list *instructions, bool have_ldexp, bool have_dfrexp,
        * extended integer functions need lowering.  It may be necessary to add
        * some caps for individual instructions.
        */
-      (!have_gpu_shader5 ? BIT_COUNT_TO_MATH |
-                           FIND_LSB_TO_FLOAT_CAST |
+      (!have_gpu_shader5 ? FIND_LSB_TO_FLOAT_CAST |
                            FIND_MSB_TO_FLOAT_CAST |
                            IMUL_HIGH_TO_MUL : 0);
 
@@ -760,53 +757,6 @@ lower_instructions_visitor::dsign_to_csel(ir_expression *ir)
 }
 
 void
-lower_instructions_visitor::bit_count_to_math(ir_expression *ir)
-{
-   /* For more details, see:
-    *
-    * http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetPaallel
-    */
-   const unsigned elements = ir->operands[0]->type->vector_elements;
-   ir_variable *temp = new(ir) ir_variable(glsl_type::uvec(elements), "temp",
-                                           ir_var_temporary);
-   ir_constant *c55555555 = new(ir) ir_constant(0x55555555u);
-   ir_constant *c33333333 = new(ir) ir_constant(0x33333333u);
-   ir_constant *c0F0F0F0F = new(ir) ir_constant(0x0F0F0F0Fu);
-   ir_constant *c01010101 = new(ir) ir_constant(0x01010101u);
-   ir_constant *c1 = new(ir) ir_constant(1u);
-   ir_constant *c2 = new(ir) ir_constant(2u);
-   ir_constant *c4 = new(ir) ir_constant(4u);
-   ir_constant *c24 = new(ir) ir_constant(24u);
-
-   base_ir->insert_before(temp);
-
-   if (ir->operands[0]->type->base_type == GLSL_TYPE_UINT) {
-      base_ir->insert_before(assign(temp, ir->operands[0]));
-   } else {
-      assert(ir->operands[0]->type->base_type == GLSL_TYPE_INT);
-      base_ir->insert_before(assign(temp, i2u(ir->operands[0])));
-   }
-
-   /* temp = temp - ((temp >> 1) & 0x55555555u); */
-   base_ir->insert_before(assign(temp, sub(temp, bit_and(rshift(temp, c1),
-                                                         c55555555))));
-
-   /* temp = (temp & 0x33333333u) + ((temp >> 2) & 0x33333333u); */
-   base_ir->insert_before(assign(temp, add(bit_and(temp, c33333333),
-                                           bit_and(rshift(temp, c2),
-                                                   c33333333->clone(ir, NULL)))));
-
-   /* int(((temp + (temp >> 4) & 0xF0F0F0Fu) * 0x1010101u) >> 24); */
-   ir->operation = ir_unop_u2i;
-   ir->init_num_operands();
-   ir->operands[0] = rshift(mul(bit_and(add(temp, rshift(temp, c4)), c0F0F0F0F),
-                                c01010101),
-                            c24);
-
-   this->progress = true;
-}
-
-void
 lower_instructions_visitor::find_lsb_to_float_cast(ir_expression *ir)
 {
    /* For more details, see:
@@ -1200,11 +1150,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_unop_sign:
       if (lowering(DOPS_TO_DFRAC) && ir->type->is_double())
          dsign_to_csel(ir);
-      break;
-
-   case ir_unop_bit_count:
-      if (lowering(BIT_COUNT_TO_MATH))
-         bit_count_to_math(ir);
       break;
 
    case ir_unop_find_lsb:
