@@ -61,7 +61,6 @@
 #define DOPS_TO_DFRAC      0x800
 #define DFREXP_DLDEXP_TO_ARITH    0x1000
 #define BIT_COUNT_TO_MATH         0x02000
-#define REVERSE_TO_SHIFTS         0x10000
 #define FIND_LSB_TO_FLOAT_CAST    0x20000
 #define FIND_MSB_TO_FLOAT_CAST    0x40000
 #define IMUL_HIGH_TO_MUL          0x80000
@@ -95,7 +94,6 @@ private:
    void dtrunc_to_dfrac(ir_expression *);
    void dsign_to_csel(ir_expression *);
    void bit_count_to_math(ir_expression *);
-   void reverse_to_shifts(ir_expression *ir);
    void find_lsb_to_float_cast(ir_expression *ir);
    void find_msb_to_float_cast(ir_expression *ir);
    void imul_high_to_mul(ir_expression *ir);
@@ -131,7 +129,6 @@ lower_instructions(exec_list *instructions, bool have_ldexp, bool have_dfrexp,
        * some caps for individual instructions.
        */
       (!have_gpu_shader5 ? BIT_COUNT_TO_MATH |
-                           REVERSE_TO_SHIFTS |
                            FIND_LSB_TO_FLOAT_CAST |
                            FIND_MSB_TO_FLOAT_CAST |
                            IMUL_HIGH_TO_MUL : 0);
@@ -810,94 +807,6 @@ lower_instructions_visitor::bit_count_to_math(ir_expression *ir)
 }
 
 void
-lower_instructions_visitor::reverse_to_shifts(ir_expression *ir)
-{
-   /* For more details, see:
-    *
-    * http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel
-    */
-   ir_constant *c1 =
-      new(ir) ir_constant(1u, ir->operands[0]->type->vector_elements);
-   ir_constant *c2 =
-      new(ir) ir_constant(2u, ir->operands[0]->type->vector_elements);
-   ir_constant *c4 =
-      new(ir) ir_constant(4u, ir->operands[0]->type->vector_elements);
-   ir_constant *c8 =
-      new(ir) ir_constant(8u, ir->operands[0]->type->vector_elements);
-   ir_constant *c16 =
-      new(ir) ir_constant(16u, ir->operands[0]->type->vector_elements);
-   ir_constant *c33333333 =
-      new(ir) ir_constant(0x33333333u, ir->operands[0]->type->vector_elements);
-   ir_constant *c55555555 =
-      new(ir) ir_constant(0x55555555u, ir->operands[0]->type->vector_elements);
-   ir_constant *c0F0F0F0F =
-      new(ir) ir_constant(0x0F0F0F0Fu, ir->operands[0]->type->vector_elements);
-   ir_constant *c00FF00FF =
-      new(ir) ir_constant(0x00FF00FFu, ir->operands[0]->type->vector_elements);
-   ir_variable *temp =
-      new(ir) ir_variable(glsl_type::uvec(ir->operands[0]->type->vector_elements),
-                          "temp", ir_var_temporary);
-   ir_instruction &i = *base_ir;
-
-   i.insert_before(temp);
-
-   if (ir->operands[0]->type->base_type == GLSL_TYPE_UINT) {
-      i.insert_before(assign(temp, ir->operands[0]));
-   } else {
-      assert(ir->operands[0]->type->base_type == GLSL_TYPE_INT);
-      i.insert_before(assign(temp, i2u(ir->operands[0])));
-   }
-
-   /* Swap odd and even bits.
-    *
-    * temp = ((temp >> 1) & 0x55555555u) | ((temp & 0x55555555u) << 1);
-    */
-   i.insert_before(assign(temp, bit_or(bit_and(rshift(temp, c1), c55555555),
-                                       lshift(bit_and(temp, c55555555->clone(ir, NULL)),
-                                              c1->clone(ir, NULL)))));
-   /* Swap consecutive pairs.
-    *
-    * temp = ((temp >> 2) & 0x33333333u) | ((temp & 0x33333333u) << 2);
-    */
-   i.insert_before(assign(temp, bit_or(bit_and(rshift(temp, c2), c33333333),
-                                       lshift(bit_and(temp, c33333333->clone(ir, NULL)),
-                                              c2->clone(ir, NULL)))));
-
-   /* Swap nibbles.
-    *
-    * temp = ((temp >> 4) & 0x0F0F0F0Fu) | ((temp & 0x0F0F0F0Fu) << 4);
-    */
-   i.insert_before(assign(temp, bit_or(bit_and(rshift(temp, c4), c0F0F0F0F),
-                                       lshift(bit_and(temp, c0F0F0F0F->clone(ir, NULL)),
-                                              c4->clone(ir, NULL)))));
-
-   /* The last step is, basically, bswap.  Swap the bytes, then swap the
-    * words.  When this code is run through GCC on x86, it does generate a
-    * bswap instruction.
-    *
-    * temp = ((temp >> 8) & 0x00FF00FFu) | ((temp & 0x00FF00FFu) << 8);
-    * temp = ( temp >> 16              ) | ( temp                << 16);
-    */
-   i.insert_before(assign(temp, bit_or(bit_and(rshift(temp, c8), c00FF00FF),
-                                       lshift(bit_and(temp, c00FF00FF->clone(ir, NULL)),
-                                              c8->clone(ir, NULL)))));
-
-   if (ir->operands[0]->type->base_type == GLSL_TYPE_UINT) {
-      ir->operation = ir_binop_bit_or;
-      ir->init_num_operands();
-      ir->operands[0] = rshift(temp, c16);
-      ir->operands[1] = lshift(temp, c16->clone(ir, NULL));
-   } else {
-      ir->operation = ir_unop_u2i;
-      ir->init_num_operands();
-      ir->operands[0] = bit_or(rshift(temp, c16),
-                               lshift(temp, c16->clone(ir, NULL)));
-   }
-
-   this->progress = true;
-}
-
-void
 lower_instructions_visitor::find_lsb_to_float_cast(ir_expression *ir)
 {
    /* For more details, see:
@@ -1296,11 +1205,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_unop_bit_count:
       if (lowering(BIT_COUNT_TO_MATH))
          bit_count_to_math(ir);
-      break;
-
-   case ir_unop_bitfield_reverse:
-      if (lowering(REVERSE_TO_SHIFTS))
-         reverse_to_shifts(ir);
       break;
 
    case ir_unop_find_lsb:
