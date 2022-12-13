@@ -29,6 +29,7 @@
 #include <pthread.h>
 
 #include "util/hash_table.h"
+#include "util/libsync.h"
 #include "util/os_file.h"
 #include "util/slab.h"
 
@@ -230,10 +231,25 @@ flush_deferred_submits(struct fd_device *dev)
 
    struct fd_submit *submit = last_submit(&dev->deferred_submits);
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(submit);
-
    list_replace(&dev->deferred_submits, &fd_submit->submit_list);
    list_inithead(&dev->deferred_submits);
    dev->deferred_cmds = 0;
+
+   /* If we have multiple submits with in-fence-fd's then merge them: */
+   foreach_submit (submit, &fd_submit->submit_list) {
+      struct fd_submit_sp *fd_deferred_submit = to_fd_submit_sp(submit);
+
+      if (fd_deferred_submit == fd_submit)
+         break;
+
+      if (fd_deferred_submit->in_fence_fd != -1) {
+         sync_accumulate("freedreno",
+                         &fd_submit->in_fence_fd,
+                         fd_deferred_submit->in_fence_fd);
+         close(fd_deferred_submit->in_fence_fd);
+         fd_deferred_submit->in_fence_fd = -1;
+      }
+   }
 
    fd_fence_del(dev->deferred_submits_fence);
    dev->deferred_submits_fence = NULL;
@@ -320,7 +336,7 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
     * reference to the fd, and merged all the in-fence-fd's when we flush the
     * deferred submits
     */
-   if ((in_fence_fd == -1) && !use_fence_fd && !has_shared && should_defer(submit)) {
+   if (!use_fence_fd && !has_shared && should_defer(submit)) {
       DEBUG_MSG("defer: %u", submit->fence);
       dev->deferred_cmds += fd_ringbuffer_cmd_count(submit->primary);
       assert(dev->deferred_cmds == fd_dev_count_deferred_cmds(dev));
