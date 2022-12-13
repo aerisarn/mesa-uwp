@@ -1291,58 +1291,6 @@ pvr_render_job_ws_geometry_state_init(struct pvr_render_ctx *ctx,
    pvr_geom_state_flags_init(job, &state->flags);
 }
 
-static inline void
-pvr_get_isp_num_tiles_xy(const struct pvr_device_info *dev_info,
-                         uint32_t samples,
-                         uint32_t width,
-                         uint32_t height,
-                         uint32_t *const x_out,
-                         uint32_t *const y_out)
-{
-   uint32_t tile_samples_x;
-   uint32_t tile_samples_y;
-   uint32_t scale_x;
-   uint32_t scale_y;
-
-   rogue_get_isp_samples_per_tile_xy(dev_info,
-                                     samples,
-                                     &tile_samples_x,
-                                     &tile_samples_y);
-
-   switch (samples) {
-   case 1:
-      scale_x = 1;
-      scale_y = 1;
-      break;
-   case 2:
-      scale_x = 1;
-      scale_y = 2;
-      break;
-   case 4:
-      scale_x = 2;
-      scale_y = 2;
-      break;
-   case 8:
-      scale_x = 2;
-      scale_y = 4;
-      break;
-   default:
-      unreachable("Unsupported number of samples");
-   }
-
-   *x_out = DIV_ROUND_UP(width * scale_x, tile_samples_x);
-   *y_out = DIV_ROUND_UP(height * scale_y, tile_samples_y);
-
-   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
-      assert(PVR_GET_FEATURE_VALUE(dev_info,
-                                   simple_parameter_format_version,
-                                   0U) == 2U);
-      /* Align to a 2x2 tile block. */
-      *x_out = ALIGN_POT(*x_out, 2);
-      *y_out = ALIGN_POT(*y_out, 2);
-   }
-}
-
 static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
                                        struct pvr_render_job *job,
                                        struct pvr_winsys_fragment_state *state)
@@ -1397,12 +1345,12 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
          uint32_t aligned_height =
             ALIGN_POT(job->ds.physical_height, ROGUE_IPF_TILE_SIZE_PIXELS);
 
-         pvr_get_isp_num_tiles_xy(dev_info,
-                                  job->samples,
-                                  aligned_width,
-                                  aligned_height,
-                                  &value.zlsextent_x_z,
-                                  &value.zlsextent_y_z);
+         rogue_get_isp_num_tiles_xy(dev_info,
+                                    job->samples,
+                                    aligned_width,
+                                    aligned_height,
+                                    &value.zlsextent_x_z,
+                                    &value.zlsextent_y_z);
          value.zlsextent_x_z -= 1;
          value.zlsextent_y_z -= 1;
 
