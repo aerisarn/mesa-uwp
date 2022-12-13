@@ -497,6 +497,8 @@ struct pvr_sub_cmd_gfx {
    bool frag_uses_texture_rw;
 
    bool has_occlusion_query;
+
+   bool wait_on_previous_transfer;
 };
 
 struct pvr_sub_cmd_compute {

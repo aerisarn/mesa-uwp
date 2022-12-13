@@ -712,6 +712,19 @@ static VkResult pvr_process_cmd_buffer(struct pvr_device *device,
                break;
          }
 
+         if (sub_cmd->gfx.wait_on_previous_transfer) {
+            struct pvr_sub_cmd_event_barrier transfer_to_frag_barrier = {
+               .wait_for_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
+               .wait_at_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
+            };
+
+            result = pvr_process_event_cmd_barrier(device,
+                                                   queue,
+                                                   &transfer_to_frag_barrier);
+            if (result != VK_SUCCESS)
+               break;
+         }
+
          result =
             pvr_process_graphics_cmd(device, queue, cmd_buffer, &sub_cmd->gfx);
          break;
