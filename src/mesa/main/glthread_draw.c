@@ -1074,7 +1074,7 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
    return cmd->cmd_base.cmd_size;
 }
 
-static ALWAYS_INLINE bool
+static void
 multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
                           const GLsizei *count, GLenum type,
                           const GLvoid *const *indices, GLsizei draw_count,
@@ -1092,33 +1092,61 @@ multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
    struct marshal_cmd_MultiDrawElementsUserBuf *cmd;
 
    /* Make sure cmd can fit the queue buffer */
-   if (cmd_size > MARSHAL_MAX_CMD_SIZE) {
-      return false;
+   if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawElementsUserBuf, cmd_size);
+      cmd->mode = MIN2(mode, 0xff); /* primitive types go from 0 to 14 */
+      cmd->type = MIN2(type, 0xffff);
+      cmd->draw_count = draw_count;
+      cmd->user_buffer_mask = user_buffer_mask;
+      cmd->index_buffer = index_buffer;
+      cmd->has_base_vertex = basevertex != NULL;
+
+      char *variable_data = (char*)(cmd + 1);
+      memcpy(variable_data, count, count_size);
+      variable_data += count_size;
+      memcpy(variable_data, indices, indices_size);
+      variable_data += indices_size;
+
+      if (basevertex) {
+         memcpy(variable_data, basevertex, basevertex_size);
+         variable_data += basevertex_size;
+      }
+
+      if (user_buffer_mask)
+         memcpy(variable_data, buffers, buffers_size);
+   } else {
+      /* The call is too large, so sync and execute the unmarshal code here. */
+      _mesa_glthread_finish_before(ctx, "DrawElements");
+
+      /* Bind uploaded buffers if needed. */
+      if (user_buffer_mask) {
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
+                                         false);
+      }
+      if (index_buffer) {
+         _mesa_InternalBindElementBuffer(ctx, index_buffer);
+      }
+
+      /* Draw. */
+      if (basevertex != NULL) {
+         CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
+                                          (mode, count, type, indices, draw_count,
+                                           basevertex));
+      } else {
+         CALL_MultiDrawElements(ctx->CurrentServerDispatch,
+                                (mode, count, type, indices, draw_count));
+      }
+
+      /* Restore states. */
+      /* TODO: remove this after glthread takes over all uploading */
+      if (index_buffer) {
+         _mesa_InternalBindElementBuffer(ctx, NULL);
+      }
+      if (user_buffer_mask) {
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
+                                         true);
+      }
    }
-
-   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawElementsUserBuf, cmd_size);
-   cmd->mode = MIN2(mode, 0xff); /* primitive types go from 0 to 14 */
-   cmd->type = MIN2(type, 0xffff);
-   cmd->draw_count = draw_count;
-   cmd->user_buffer_mask = user_buffer_mask;
-   cmd->index_buffer = index_buffer;
-   cmd->has_base_vertex = basevertex != NULL;
-
-   char *variable_data = (char*)(cmd + 1);
-   memcpy(variable_data, count, count_size);
-   variable_data += count_size;
-   memcpy(variable_data, indices, indices_size);
-   variable_data += indices_size;
-
-   if (basevertex) {
-      memcpy(variable_data, basevertex, basevertex_size);
-      variable_data += basevertex_size;
-   }
-
-   if (user_buffer_mask)
-      memcpy(variable_data, buffers, buffers_size);
-
-   return true;
 }
 
 void GLAPIENTRY
@@ -1142,21 +1170,20 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
        (ctx->API == API_OPENGL_CORE ||
         !is_index_type_valid(type) ||
         (!user_buffer_mask && !has_user_indices))) {
-      if (multi_draw_elements_async(ctx, mode, count, type, indices,
-                              draw_count, basevertex, NULL, 0, NULL))
-         return;
+      multi_draw_elements_async(ctx, mode, count, type, indices,
+                                draw_count, basevertex, NULL, 0, NULL);
+      return;
    }
 
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
 
-   /* If the draw count is too high or negative, the queue can't be used.
+   /* If the draw count is negative, the queue can't be used.
     *
     * Sync if indices come from a buffer and vertices come from memory
     * and index bounds are not valid. We would have to map the indices
     * to compute the index bounds, and for that we would have to sync anyway.
     */
-   if (!ctx->GLThread.SupportsBufferUploads ||
-       draw_count < 0 || draw_count > MARSHAL_MAX_CMD_SIZE / 32 ||
+   if (!ctx->GLThread.SupportsBufferUploads || draw_count < 0 ||
        (need_index_bounds && !has_user_indices))
       goto sync;
 
