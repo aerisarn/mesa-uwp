@@ -839,6 +839,67 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
 }
 
 void
+emit_gfx11_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
+{
+   /* Emulates proper bpermute on GFX11 in wave64 mode.
+    *
+    * Similar to emit_gfx10_wave64_bpermute, but uses the new
+    * v_permlane64_b32 instruction to swap data between lo and hi halves.
+    */
+
+   assert(program->gfx_level >= GFX11);
+   assert(program->wave_size == 64);
+
+   Definition dst = instr->definitions[0];
+   Definition tmp_exec = instr->definitions[1];
+   Definition clobber_scc = instr->definitions[2];
+   Operand tmp_op = instr->operands[0];
+   Operand index_x4 = instr->operands[1];
+   Operand input_data = instr->operands[2];
+   Operand same_half = instr->operands[3];
+
+   assert(dst.regClass() == v1);
+   assert(tmp_exec.regClass() == bld.lm);
+   assert(clobber_scc.isFixed() && clobber_scc.physReg() == scc);
+   assert(same_half.regClass() == bld.lm);
+   assert(tmp_op.regClass() == v1.as_linear());
+   assert(index_x4.regClass() == v1);
+   assert(input_data.regClass().type() == RegType::vgpr);
+   assert(input_data.bytes() <= 4);
+
+   Definition tmp_def(tmp_op.physReg(), tmp_op.regClass());
+
+   /* Permute the input within the same half-wave. */
+   bld.ds(aco_opcode::ds_bpermute_b32, dst, index_x4, input_data);
+
+   /* Save EXEC and enable all lanes. */
+   bld.sop1(aco_opcode::s_or_saveexec_b64, tmp_exec, clobber_scc, Definition(exec, s2),
+            Operand::c32(-1u), Operand(exec, s2));
+
+   /* Copy input data from other half to current half's linear VGPR. */
+   bld.vop1(aco_opcode::v_permlane64_b32, tmp_def, input_data);
+
+   /* Permute the input from the other half-wave, write to linear VGPR. */
+   bld.ds(aco_opcode::ds_bpermute_b32, tmp_def, index_x4, tmp_op);
+
+   /* Restore saved EXEC. */
+   bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(tmp_exec.physReg(), s2));
+
+   /* Select correct permute result. */
+   bld.vop2_e64(aco_opcode::v_cndmask_b32, dst, tmp_op, Operand(dst.physReg(), dst.regClass()),
+                same_half);
+
+   /* RA assumes that the result is always in the low part of the register, so we have to shift,
+    * if it's not there already.
+    */
+   if (input_data.physReg().byte()) {
+      unsigned right_shift = input_data.physReg().byte() * 8;
+      bld.vop2(aco_opcode::v_lshrrev_b32, dst, Operand::c32(right_shift),
+               Operand(dst.physReg(), dst.regClass()));
+   }
+}
+
+void
 emit_gfx10_wave64_bpermute(Program* program, aco_ptr<Instruction>& instr, Builder& bld)
 {
    /* Emulates proper bpermute on GFX10 in wave64 mode.
@@ -2200,6 +2261,10 @@ lower_to_hw_instr(Program* program)
             }
             case aco_opcode::p_bpermute_gfx10w64: {
                emit_gfx10_wave64_bpermute(program, instr, bld);
+               break;
+            }
+            case aco_opcode::p_bpermute_gfx11w64: {
+               emit_gfx11_wave64_bpermute(program, instr, bld);
                break;
             }
             case aco_opcode::p_constaddr: {

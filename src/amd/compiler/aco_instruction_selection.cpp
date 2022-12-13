@@ -228,7 +228,9 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
          return bld.pseudo(aco_opcode::p_bpermute_gfx10w64, bld.def(v1), bld.def(s2),
                            bld.def(s1, scc), index_x4, input_data, same_half);
       } else {
-         unreachable("emit_bpermute does not yet support GFX11+");
+         return bld.pseudo(aco_opcode::p_bpermute_gfx11w64, bld.def(v1), bld.def(s2),
+                           bld.def(s1, scc), Operand(v1.as_linear()), index_x4, input_data,
+                           same_half);
       }
    } else {
       /* GFX8-9 or GFX10 wave32: bpermute works normally */

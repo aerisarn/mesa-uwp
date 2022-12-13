@@ -325,6 +325,11 @@ opcode("p_bpermute_gfx6")
 # operands: index * 4, input data, same half (bool)
 opcode("p_bpermute_gfx10w64")
 
+# simulates proper bpermute behavior on GFX11
+# definitions: result VGPR, temp EXEC, clobbered SCC
+# operands: linear VGPR, index * 4, input data, same half (bool)
+opcode("p_bpermute_gfx11w64")
+
 # creates a lane mask where only the first active lane is selected
 opcode("p_elect")
 
