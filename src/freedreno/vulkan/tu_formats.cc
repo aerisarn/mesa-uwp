@@ -465,6 +465,12 @@ tu_get_image_format_properties(
       const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *drm_info =
          vk_find_struct_const(info->pNext, PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
 
+      /* Subsampled format isn't stable yet, so don't allow
+       * importing/exporting with modifiers yet.
+       */
+      if (info->flags & VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
       switch (drm_info->drmFormatModifier) {
       case DRM_FORMAT_MOD_QCOM_COMPRESSED:
          /* falling back to linear/non-UBWC isn't possible with explicit modifier */
