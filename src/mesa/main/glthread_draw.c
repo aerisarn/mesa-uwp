@@ -1084,9 +1084,10 @@ multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
                           unsigned user_buffer_mask,
                           const struct glthread_attrib_binding *buffers)
 {
-   int count_size = sizeof(GLsizei) * draw_count;
-   int indices_size = sizeof(indices[0]) * draw_count;
-   int basevertex_size = basevertex ? sizeof(GLsizei) * draw_count : 0;
+   int real_draw_count = MAX2(draw_count, 0);
+   int count_size = sizeof(GLsizei) * real_draw_count;
+   int indices_size = sizeof(indices[0]) * real_draw_count;
+   int basevertex_size = basevertex ? sizeof(GLsizei) * real_draw_count : 0;
    int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
    int cmd_size = sizeof(struct marshal_cmd_MultiDrawElementsUserBuf) +
                   count_size + indices_size + basevertex_size + buffers_size;
@@ -1159,28 +1160,29 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 {
    GET_CURRENT_CONTEXT(ctx);
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
-   bool has_user_indices = vao->CurrentElementBufferName == 0;
+   unsigned user_buffer_mask = 0;
+   bool has_user_indices = false;
+
+   /* Non-VBO vertex arrays are used only if this is true.
+    * When nothing needs to be uploaded or the draw is no-op or generates
+    * a GL error, we don't upload anything.
+    */
+   if (draw_count > 0 && is_index_type_valid(type)) {
+      user_buffer_mask = ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
+      has_user_indices = vao->CurrentElementBufferName == 0;
+   }
 
    if (ctx->GLThread.ListMode)
       goto sync;
 
-   /* Fast path when nothing needs to be done. */
-   if (draw_count >= 0 &&
-       (!is_index_type_valid(type) ||
-        (!user_buffer_mask && !has_user_indices))) {
+   /* Fast path when we don't need to upload anything. */
+   if (!user_buffer_mask && !has_user_indices) {
       multi_draw_elements_async(ctx, mode, count, type, indices,
                                 draw_count, basevertex, NULL, 0, NULL);
       return;
    }
 
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
-
-   /* If the draw count is negative, the queue can't be used. */
-   if (draw_count < 0)
-      goto sync;
-
    unsigned index_size = get_index_size(type);
    unsigned min_index = ~0;
    unsigned max_index = 0;
