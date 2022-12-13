@@ -2708,6 +2708,7 @@ struct gl_framebuffer
 
    GLbitfield _IntegerBuffers;  /**< Which color buffers are integer valued */
    GLbitfield _BlendForceAlphaToOne;  /**< Which color buffers need blend factor adjustment */
+   GLbitfield _IsRGB;  /**< Which color buffers have an RGB base format? */
    GLbitfield _FP32Buffers; /**< Which color buffers are FP32 */
 
    /* ARB_color_buffer_float */
