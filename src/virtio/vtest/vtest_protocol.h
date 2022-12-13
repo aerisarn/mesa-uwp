@@ -232,7 +232,6 @@ struct vcmd_submit_cmd2_batch {
 
    /* ignored unless VCMD_SUBMIT_CMD2_FLAG_SYNC_QUEUE is set */
    uint32_t sync_queue_index;
-   uint64_t sync_queue_id;
 };
 #define VCMD_SUBMIT_CMD2_BATCH_COUNT 0
 #define VCMD_SUBMIT_CMD2_BATCH_FLAGS(n)            (1 + 8 * (n) + 0)
@@ -241,8 +240,6 @@ struct vcmd_submit_cmd2_batch {
 #define VCMD_SUBMIT_CMD2_BATCH_SYNC_OFFSET(n)      (1 + 8 * (n) + 3)
 #define VCMD_SUBMIT_CMD2_BATCH_SYNC_COUNT(n)       (1 + 8 * (n) + 4)
 #define VCMD_SUBMIT_CMD2_BATCH_SYNC_QUEUE_INDEX(n) (1 + 8 * (n) + 5)
-#define VCMD_SUBMIT_CMD2_BATCH_SYNC_QUEUE_ID_LO(n) (1 + 8 * (n) + 6)
-#define VCMD_SUBMIT_CMD2_BATCH_SYNC_QUEUE_ID_HI(n) (1 + 8 * (n) + 7)
 
 #endif /* VIRGL_RENDERER_UNSTABLE_APIS */
 

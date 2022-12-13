@@ -97,9 +97,6 @@ struct vn_renderer_submit_batch {
     */
    uint32_t ring_idx;
 
-   // TODO remove once vtest supports multiple timelines
-   vn_object_id vk_queue_id;
-
    /* syncs to update when the virtual sync queue is signaled */
    struct vn_renderer_sync *const *syncs;
    /* TODO allow NULL when syncs are all binary? */

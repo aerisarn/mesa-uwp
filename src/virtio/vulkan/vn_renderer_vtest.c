@@ -543,7 +543,6 @@ vtest_vcmd_submit_cmd2(struct vtest *vtest,
       if (vtest->base.info.supports_multiple_timelines) {
          dst.flags = VCMD_SUBMIT_CMD2_FLAG_SYNC_QUEUE;
          dst.sync_queue_index = batch->ring_idx;
-         dst.sync_queue_id = batch->vk_queue_id;
       }
       vtest_write(vtest, &dst, sizeof(dst));
 
@@ -942,8 +941,6 @@ vtest_init_renderer_info(struct vtest *vtest)
    info->has_external_sync = false;
    info->has_implicit_fencing = false;
 
-   info->max_sync_queue_count = vtest->max_sync_queue_count;
-
    const struct virgl_renderer_capset_venus *capset = &vtest->capset.data;
    info->wire_format_version = capset->wire_format_version;
    info->vk_xml_version = capset->vk_xml_version;
@@ -960,6 +957,9 @@ vtest_init_renderer_info(struct vtest *vtest)
           sizeof(capset->vk_extension_mask1));
 
    info->allow_vk_wait_syncs = capset->allow_vk_wait_syncs;
+
+   info->supports_multiple_timelines = capset->supports_multiple_timelines;
+   info->max_sync_queue_count = vtest->max_sync_queue_count;
 }
 
 static void
