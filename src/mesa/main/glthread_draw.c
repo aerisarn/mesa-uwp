@@ -524,44 +524,6 @@ _mesa_unmarshal_MultiDrawArraysUserBuf(struct gl_context *ctx,
    return cmd->cmd_base.cmd_size;
 }
 
-static ALWAYS_INLINE bool
-multi_draw_arrays_async(struct gl_context *ctx, GLenum mode,
-                        const GLint *first, const GLsizei *count,
-                        GLsizei draw_count, unsigned user_buffer_mask,
-                        const struct glthread_attrib_binding *buffers)
-{
-   int real_draw_count = MAX2(draw_count, 0);
-   int first_size = sizeof(GLint) * real_draw_count;
-   int count_size = sizeof(GLsizei) * real_draw_count;
-   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
-   int cmd_size = sizeof(struct marshal_cmd_MultiDrawArraysUserBuf) +
-                  first_size + count_size + buffers_size;
-   struct marshal_cmd_MultiDrawArraysUserBuf *cmd;
-
-   /* Make sure cmd can fit the queue buffer */
-   if (cmd_size > MARSHAL_MAX_CMD_SIZE) {
-      return false;
-   }
-
-   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawArraysUserBuf,
-                                         cmd_size);
-   cmd->mode = mode;
-   cmd->draw_count = draw_count;
-   cmd->user_buffer_mask = user_buffer_mask;
-
-   char *variable_data = (char*)(cmd + 1);
-   memcpy(variable_data, first, first_size);
-   variable_data += first_size;
-   memcpy(variable_data, count, count_size);
-
-   if (user_buffer_mask) {
-      variable_data += count_size;
-      memcpy(variable_data, buffers, buffers_size);
-   }
-
-   return true;
-}
-
 void GLAPIENTRY
 _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
                               const GLsizei *count, GLsizei draw_count)
@@ -571,59 +533,92 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
       ctx->API == API_OPENGL_CORE || draw_count <= 0 ?
             0 : get_user_buffer_mask(ctx);
 
-   if (ctx->GLThread.ListMode)
-      goto sync;
-
-   if (!user_buffer_mask &&
-       multi_draw_arrays_async(ctx, mode, first, count, draw_count, 0, NULL)) {
+   if (ctx->GLThread.ListMode) {
+      _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
+      CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
+                           (mode, first, count, draw_count));
       return;
    }
 
-   assert(draw_count > 0);
-
-   /* If the draw count is too high, the queue can't be used. */
-   if (draw_count > MARSHAL_MAX_CMD_SIZE / 16)
-      goto sync;
-
-   unsigned min_index = ~0;
-   unsigned max_index_exclusive = 0;
-
-   for (unsigned i = 0; i < draw_count; i++) {
-      GLsizei vertex_count = count[i];
-
-      if (vertex_count < 0) {
-         /* Just call the driver to set the error. */
-         multi_draw_arrays_async(ctx, mode, first, count, draw_count, 0, NULL);
-         return;
-      }
-      if (vertex_count == 0)
-         continue;
-
-      min_index = MIN2(min_index, first[i]);
-      max_index_exclusive = MAX2(max_index_exclusive, first[i] + vertex_count);
-   }
-
-   unsigned num_vertices = max_index_exclusive - min_index;
-   if (num_vertices == 0) {
-      /* Nothing to do, but call the driver to set possible GL errors. */
-      multi_draw_arrays_async(ctx, mode, first, count, draw_count, 0, NULL);
-      return;
-   }
-
-   /* Upload and draw. */
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (!upload_vertices(ctx, user_buffer_mask, min_index, num_vertices,
-                        0, 1, buffers))
-      return; /* the error is set by upload_vertices */
 
-   multi_draw_arrays_async(ctx, mode, first, count, draw_count,
-                           user_buffer_mask, buffers);
-   return;
+   if (user_buffer_mask) {
+      unsigned min_index = ~0;
+      unsigned max_index_exclusive = 0;
 
-sync:
-   _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
-   CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
-                        (mode, first, count, draw_count));
+      for (int i = 0; i < draw_count; i++) {
+         GLsizei vertex_count = count[i];
+
+         if (vertex_count < 0) {
+            /* This will just call the driver to set the GL error. */
+            min_index = ~0;
+            break;
+         }
+         if (vertex_count == 0)
+            continue;
+
+         min_index = MIN2(min_index, first[i]);
+         max_index_exclusive = MAX2(max_index_exclusive, first[i] + vertex_count);
+      }
+
+      if (min_index >= max_index_exclusive) {
+         /* Nothing to do, but call the driver to set possible GL errors. */
+         user_buffer_mask = 0;
+      } else {
+         /* Upload. */
+         unsigned num_vertices = max_index_exclusive - min_index;
+
+         if (!upload_vertices(ctx, user_buffer_mask, min_index, num_vertices,
+                              0, 1, buffers))
+            return; /* the error is set by upload_vertices */
+      }
+   }
+
+   /* Add the call into the batch buffer. */
+   int real_draw_count = MAX2(draw_count, 0);
+   int first_size = sizeof(GLint) * real_draw_count;
+   int count_size = sizeof(GLsizei) * real_draw_count;
+   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
+   int cmd_size = sizeof(struct marshal_cmd_MultiDrawArraysUserBuf) +
+                  first_size + count_size + buffers_size;
+   struct marshal_cmd_MultiDrawArraysUserBuf *cmd;
+
+   /* Make sure cmd can fit in the batch buffer */
+   if (cmd_size <= MARSHAL_MAX_CMD_SIZE) {
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawArraysUserBuf,
+                                            cmd_size);
+      cmd->mode = mode;
+      cmd->draw_count = draw_count;
+      cmd->user_buffer_mask = user_buffer_mask;
+
+      char *variable_data = (char*)(cmd + 1);
+      memcpy(variable_data, first, first_size);
+      variable_data += first_size;
+      memcpy(variable_data, count, count_size);
+
+      if (user_buffer_mask) {
+         variable_data += count_size;
+         memcpy(variable_data, buffers, buffers_size);
+      }
+   } else {
+      /* The call is too large, so sync and execute the unmarshal code here. */
+      _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
+
+      if (user_buffer_mask) {
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
+                                         false);
+      }
+
+      CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
+                           (mode, first, count, draw_count));
+
+      /* Restore states. */
+      if (user_buffer_mask) {
+         /* TODO: remove this after glthread takes over all uploading */
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
+                                         true);
+      }
+   }
 }
 
 /* DrawElementsInstanced without user buffers. */
