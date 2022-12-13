@@ -394,6 +394,9 @@ debian-armhf:
       -D llvm=disabled
       -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-armhf
+    # The strip command segfaults, failing to strip the binary and leaving
+    # tempfiles in our artifacts.
+    ARTIFACTS_DEBUG_SYMBOLS: 1
   script:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
