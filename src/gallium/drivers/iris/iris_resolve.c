@@ -1129,6 +1129,13 @@ iris_render_formats_color_compatible(enum isl_format a, enum isl_format b,
       return true;
    }
 
+   /* Both formats may interpret the clear color as zero. */
+   if (!clear_color_unknown &&
+       isl_color_value_is_zero(color, a) &&
+       isl_color_value_is_zero(color, b)) {
+      return true;
+   }
+
    return false;
 }
 
