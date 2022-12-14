@@ -951,13 +951,12 @@ AssamblerVisitor::visit(const GDSInstr& instr)
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
 
    gds.op = ds_opcode_map.at(instr.opcode());
-   gds.dst_gpr = instr.dest()->sel();
    gds.uav_id = instr.resource_base();
    gds.uav_index_mode = indirect ? bim_one : bim_none;
    gds.src_gpr = instr.src().sel();
 
    gds.src_sel_x = instr.src()[0]->chan() < 7 ? instr.src()[0]->chan() : 4;
-   gds.src_sel_y = instr.src()[1]->chan();
+   gds.src_sel_y = instr.src()[1]->chan() < 7 ? instr.src()[1]->chan() : 4;
    gds.src_sel_z = instr.src()[2]->chan() < 7 ? instr.src()[2]->chan() : 4;
 
    gds.dst_sel_x = 7;
@@ -965,18 +964,21 @@ AssamblerVisitor::visit(const GDSInstr& instr)
    gds.dst_sel_z = 7;
    gds.dst_sel_w = 7;
 
-   switch (instr.dest()->chan()) {
-   case 0:
-      gds.dst_sel_x = 0;
-      break;
-   case 1:
-      gds.dst_sel_y = 0;
-      break;
-   case 2:
-      gds.dst_sel_z = 0;
-      break;
-   case 3:
-      gds.dst_sel_w = 0;
+   if (instr.dest()) {
+      gds.dst_gpr = instr.dest()->sel();
+      switch (instr.dest()->chan()) {
+      case 0:
+         gds.dst_sel_x = 0;
+         break;
+      case 1:
+         gds.dst_sel_y = 0;
+         break;
+      case 2:
+         gds.dst_sel_z = 0;
+         break;
+      case 3:
+         gds.dst_sel_w = 0;
+      }
    }
 
    gds.src_gpr2 = 0;
