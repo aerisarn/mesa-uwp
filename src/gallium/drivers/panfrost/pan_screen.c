@@ -765,7 +765,6 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_screen *screen = pan_screen(pscreen);
 
         panfrost_resource_screen_destroy(pscreen);
-        panfrost_pool_cleanup(&screen->indirect_draw.bin_pool);
         panfrost_pool_cleanup(&screen->blitter.bin_pool);
         panfrost_pool_cleanup(&screen->blitter.desc_pool);
         pan_blend_shaders_cleanup(dev);
@@ -868,9 +867,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         panfrost_disk_cache_init(screen);
 
-        panfrost_pool_init(&screen->indirect_draw.bin_pool, NULL, dev,
-                           PAN_BO_EXECUTE, 65536, "Indirect draw shaders",
-                           false, true);
         panfrost_pool_init(&screen->blitter.bin_pool, NULL, dev, PAN_BO_EXECUTE,
                            4096, "Blitter shaders", false, true);
         panfrost_pool_init(&screen->blitter.desc_pool, NULL, dev, 0, 65536,

@@ -158,10 +158,6 @@ struct panfrost_batch {
         /* Tiler context */
         struct pan_tiler_context tiler_ctx;
 
-        /* Indirect draw data */
-        struct panfrost_ptr indirect_draw_ctx;
-        unsigned indirect_draw_job_id;
-
         /* Keep the num_work_groups sysval around for indirect dispatch */
         mali_ptr num_wg_sysval[3];
 

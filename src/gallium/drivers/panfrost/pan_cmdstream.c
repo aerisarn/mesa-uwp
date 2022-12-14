@@ -44,7 +44,6 @@
 #include "pan_shader.h"
 #include "pan_texture.h"
 #include "pan_util.h"
-#include "pan_indirect_draw.h"
 #include "pan_indirect_dispatch.h"
 #include "pan_blitter.h"
 
@@ -1416,13 +1415,6 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                         break;
 #endif
                 case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
-                        batch->ctx->first_vertex_sysval_ptr =
-                                ptr->gpu + (i * sizeof(*uniforms));
-                        batch->ctx->base_vertex_sysval_ptr =
-                                batch->ctx->first_vertex_sysval_ptr + 4;
-                        batch->ctx->base_instance_sysval_ptr =
-                                batch->ctx->first_vertex_sysval_ptr + 8;
-
                         uniforms[i].u[0] = batch->ctx->offset_start;
                         uniforms[i].u[1] = batch->ctx->base_vertex;
                         uniforms[i].u[2] = batch->ctx->base_instance;
@@ -1568,33 +1560,8 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                         unsigned sysval_type = PAN_SYSVAL_TYPE(ss->info.sysvals.sysvals[sysval_idx]);
                         mali_ptr ptr = push_transfer.gpu + (4 * i);
 
-                        switch (sysval_type) {
-                        case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
-                                switch (sysval_comp) {
-                                case 0:
-                                        batch->ctx->first_vertex_sysval_ptr = ptr;
-                                        break;
-                                case 1:
-                                        batch->ctx->base_vertex_sysval_ptr = ptr;
-                                        break;
-                                case 2:
-                                        batch->ctx->base_instance_sysval_ptr = ptr;
-                                        break;
-                                case 3:
-                                        /* Spurious (Midgard doesn't pack) */
-                                        break;
-                                default:
-                                        unreachable("Invalid vertex/instance offset component\n");
-                                }
-                                break;
-
-                        case PAN_SYSVAL_NUM_WORK_GROUPS:
+                        if (sysval_type == PAN_SYSVAL_NUM_WORK_GROUPS)
                                 batch->num_wg_sysval[sysval_comp] = ptr;
-                                break;
-
-                        default:
-                                break;
-                        }
                 }
                 /* Map the UBO, this should be cheap. However this is reading
                  * from write-combine memory which is _very_ slow. It might pay
@@ -2025,7 +1992,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_vertex_state *so = ctx->vertex;
         struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
-        bool instanced = ctx->indirect_draw || ctx->instance_count > 1;
+        bool instanced = ctx->instance_count > 1;
         uint32_t image_mask = ctx->image_mask[PIPE_SHADER_VERTEX];
         unsigned nr_images = util_last_bit(image_mask);
 
@@ -2103,33 +2070,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 /* When there is a divisor, the hardware-level divisor is
                  * the product of the instance divisor and the padded count */
                 unsigned stride = buf->stride;
-
-                if (ctx->indirect_draw) {
-                        /* We allocated 2 records for each attribute buffer */
-                        assert((k & 1) == 0);
-
-                        /* With indirect draws we can't guess the vertex_count.
-                         * Pre-set the address, stride and size fields, the
-                         * compute shader do the rest.
-                         */
-                        pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
-                                cfg.type = MALI_ATTRIBUTE_TYPE_1D;
-                                cfg.pointer = addr;
-                                cfg.stride = stride;
-                                cfg.size = size;
-                        }
-
-                        /* We store the unmodified divisor in the continuation
-                         * slot so the compute shader can retrieve it.
-                         */
-                        pan_pack(bufs + k + 1, ATTRIBUTE_BUFFER_CONTINUATION_NPOT, cfg) {
-                                cfg.divisor = divisor;
-                        }
-
-                        k += 2;
-                        continue;
-                }
-
                 unsigned hw_divisor = ctx->padded_count * divisor;
 
                 if (ctx->instance_count <= 1) {
@@ -2273,7 +2213,6 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
 {
         unsigned size = stride * count;
         mali_ptr ptr =
-                batch->ctx->indirect_draw ? 0 :
                 pan_pool_alloc_aligned(&batch->invisible_pool.base, size, 64).gpu;
 
         pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
@@ -2677,13 +2616,9 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 const struct panfrost_ptr *vertex_job,
                                 const struct panfrost_ptr *tiler_job)
 {
-        struct panfrost_context *ctx = batch->ctx;
-
         unsigned vertex = panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                                            MALI_JOB_TYPE_VERTEX, false, false,
-                                           ctx->indirect_draw ?
-                                           batch->indirect_draw_job_id : 0,
-                                           0, vertex_job, false);
+                                           0, 0, vertex_job, false);
 
         panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                          MALI_JOB_TYPE_TILER, false, false,
@@ -3136,9 +3071,8 @@ panfrost_emit_primitive(struct panfrost_context *ctx,
                 assert(!cfg.primitive_restart || panfrost_is_implicit_prim_restart(info));
 #endif
 
-                cfg.index_count = ctx->indirect_draw ? 1 : draw->count;
+                cfg.index_count = draw->count;
                 cfg.index_type = panfrost_translate_index_size(info->index_size);
-
 
                 if (PAN_ARCH >= 9) {
                         /* Base vertex offset on Valhall is used for both
@@ -3653,7 +3587,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         }
 
         /* Take into account a negative bias */
-        ctx->indirect_draw = false;
         ctx->vertex_count = draw->count + (info->index_size ? abs(draw->index_bias) : 0);
         ctx->instance_count = info->instance_count;
         ctx->base_vertex = info->index_size ? draw->index_bias : 0;
@@ -3803,172 +3736,6 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 #endif
 }
 
-#if PAN_GPU_INDIRECTS
-static void
-panfrost_indirect_draw(struct panfrost_batch *batch,
-                       const struct pipe_draw_info *info,
-                       unsigned drawid_offset,
-                       const struct pipe_draw_indirect_info *indirect,
-                       const struct pipe_draw_start_count_bias *draw)
-{
-        /* Indirect draw count and multi-draw not supported. */
-        assert(indirect->draw_count == 1 && !indirect->indirect_draw_count);
-
-        struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
-
-        perf_debug(dev, "Emulating indirect draw on the GPU");
-
-        /* TODO: update statistics (see panfrost_statistics_record()) */
-        /* TODO: Increment transform feedback offsets */
-        assert(ctx->streamout.num_targets == 0);
-
-        ctx->active_prim = info->mode;
-        ctx->drawid = drawid_offset;
-        ctx->indirect_draw = true;
-
-        struct panfrost_compiled_shader *vs = ctx->prog[PIPE_SHADER_VERTEX];
-
-        bool idvs = vs->info.vs.idvs;
-        bool secondary_shader = vs->info.vs.secondary_enable;
-
-        struct panfrost_ptr tiler = { 0 }, vertex = { 0 };
-
-        if (idvs) {
-#if PAN_ARCH >= 6
-                tiler = pan_pool_alloc_desc(&batch->pool.base, INDEXED_VERTEX_JOB);
-#else
-                unreachable("IDVS is unsupported on Midgard");
-#endif
-        } else {
-                vertex = pan_pool_alloc_desc(&batch->pool.base, COMPUTE_JOB);
-                tiler = pan_pool_alloc_desc(&batch->pool.base, TILER_JOB);
-        }
-
-        struct panfrost_bo *index_buf = NULL;
-
-        if (info->index_size) {
-                assert(!info->has_user_indices);
-                struct panfrost_resource *rsrc = pan_resource(info->index.resource);
-                index_buf = rsrc->image.data.bo;
-                panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
-        }
-
-        mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
-        unsigned varying_buf_count;
-
-        /* We want to create templates, set all count fields to 0 to reflect
-         * that.
-         */
-        ctx->instance_count = ctx->vertex_count = ctx->padded_count = 0;
-        ctx->offset_start = 0;
-
-        /* Set the {first,base}_vertex sysvals to NULL. Will be updated if the
-         * vertex shader uses gl_VertexID or gl_BaseVertex.
-         */
-        ctx->first_vertex_sysval_ptr = 0;
-        ctx->base_vertex_sysval_ptr = 0;
-        ctx->base_instance_sysval_ptr = 0;
-
-        panfrost_update_state_3d(batch);
-        panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
-        panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
-        panfrost_clean_state_3d(ctx);
-
-        bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
-
-        panfrost_emit_varying_descriptor(batch, 0,
-                                         &vs_vary, &fs_vary, &varyings,
-                                         &varying_buf_count, &pos, &psiz,
-                                         point_coord_replace);
-
-        mali_ptr attribs, attrib_bufs;
-        attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
-
-        /* Zero-ed invocation, the compute job will update it. */
-        static struct mali_invocation_packed invocation;
-
-        /* Fire off the draw itself */
-        panfrost_draw_emit_tiler(batch, info, draw, &invocation,
-                                 index_buf ? index_buf->ptr.gpu : 0,
-                                 fs_vary, varyings, pos, psiz, secondary_shader,
-                                 tiler.cpu);
-        if (idvs) {
-#if PAN_ARCH >= 6
-                panfrost_draw_emit_vertex_section(batch,
-                                  vs_vary, varyings,
-                                  attribs, attrib_bufs,
-                                  pan_section_ptr(tiler.cpu, INDEXED_VERTEX_JOB, VERTEX_DRAW));
-#endif
-        } else {
-                panfrost_draw_emit_vertex(batch, info, &invocation,
-                                          vs_vary, varyings, attribs, attrib_bufs, vertex.cpu);
-        }
-
-        /* Add the varying heap BO to the batch if we're allocating varyings. */
-        if (varyings) {
-                panfrost_batch_add_bo(batch,
-                                      dev->indirect_draw_shaders.varying_heap,
-                                      PIPE_SHADER_VERTEX);
-        }
-
-        assert(indirect->buffer);
-
-        struct panfrost_resource *draw_buf = pan_resource(indirect->buffer);
-
-        /* Don't count images: those attributes don't need to be patched. */
-        unsigned attrib_count =
-                vs->info.attribute_count -
-                util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
-
-        panfrost_batch_read_rsrc(batch, draw_buf, PIPE_SHADER_VERTEX);
-
-        struct pan_indirect_draw_info draw_info = {
-                .last_indirect_draw = batch->indirect_draw_job_id,
-                .draw_buf = draw_buf->image.data.bo->ptr.gpu + indirect->offset,
-                .index_buf = index_buf ? index_buf->ptr.gpu : 0,
-                .first_vertex_sysval = ctx->first_vertex_sysval_ptr,
-                .base_vertex_sysval = ctx->base_vertex_sysval_ptr,
-                .base_instance_sysval = ctx->base_instance_sysval_ptr,
-                .vertex_job = vertex.gpu,
-                .tiler_job = tiler.gpu,
-                .attrib_bufs = attrib_bufs,
-                .attribs = attribs,
-                .attrib_count = attrib_count,
-                .varying_bufs = varyings,
-                .index_size = info->index_size,
-        };
-
-        if (panfrost_writes_point_size(ctx))
-                draw_info.flags |= PAN_INDIRECT_DRAW_UPDATE_PRIM_SIZE;
-
-        if (vs->info.vs.writes_point_size)
-                draw_info.flags |= PAN_INDIRECT_DRAW_HAS_PSIZ;
-
-        if (idvs)
-                draw_info.flags |= PAN_INDIRECT_DRAW_IDVS;
-
-        if (info->primitive_restart) {
-                draw_info.restart_index = info->restart_index;
-                draw_info.flags |= PAN_INDIRECT_DRAW_PRIMITIVE_RESTART;
-        }
-
-        batch->indirect_draw_job_id =
-                GENX(panfrost_emit_indirect_draw)(&batch->pool.base,
-                                                  &batch->scoreboard,
-                                                  &draw_info,
-                                                  &batch->indirect_draw_ctx);
-
-        if (idvs) {
-                panfrost_add_job(&batch->pool.base, &batch->scoreboard,
-                                 MALI_JOB_TYPE_INDEXED_VERTEX, false, false,
-                                 0, 0, &tiler, false);
-        } else {
-                panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
-        }
-}
-#endif
-
 static bool
 panfrost_compatible_batch_state(struct panfrost_batch *batch,
                                 bool points)
@@ -4008,8 +3775,8 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         ctx->draw_calls++;
 
-        /* Emulate indirect draws unless we're using the experimental path */
-        if ((!(dev->debug & PAN_DBG_INDIRECT) || !PAN_GPU_INDIRECTS) && indirect && indirect->buffer) {
+        /* Emulate indirect draws on JM */
+        if (indirect && indirect->buffer) {
                 assert(num_draws == 1);
                 util_draw_indirect(pipe, info, indirect);
                 perf_debug(dev, "Emulating indirect draw on the CPU");
@@ -4047,28 +3814,6 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         /* Conservatively assume draw parameters always change */
         ctx->dirty |= PAN_DIRTY_PARAMS | PAN_DIRTY_DRAWID;
-
-        if (indirect) {
-                assert(num_draws == 1);
-                assert(PAN_GPU_INDIRECTS);
-
-#if PAN_GPU_INDIRECTS
-                if (indirect->count_from_stream_output) {
-                        struct pipe_draw_start_count_bias tmp_draw = *draws;
-                        struct panfrost_streamout_target *so =
-                                pan_so_target(indirect->count_from_stream_output);
-
-                        tmp_draw.start = 0;
-                        tmp_draw.count = so->offset;
-                        tmp_draw.index_bias = 0;
-                        panfrost_direct_draw(batch, info, drawid_offset, &tmp_draw);
-                        return;
-                }
-
-                panfrost_indirect_draw(batch, info, drawid_offset, indirect, &draws[0]);
-                return;
-#endif
-        }
 
         struct pipe_draw_info tmp_info = *info;
         unsigned drawid = drawid_offset;
@@ -4692,9 +4437,7 @@ screen_destroy(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
         GENX(pan_blitter_cleanup)(dev);
-
 #if PAN_GPU_INDIRECTS
-        GENX(panfrost_cleanup_indirect_draw_shaders)(dev);
         GENX(pan_indirect_dispatch_cleanup)(dev);
 #endif
 }
@@ -4845,7 +4588,4 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
 
         GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
                                &screen->blitter.desc_pool.base);
-#if PAN_GPU_INDIRECTS
-        GENX(panfrost_init_indirect_draw_shaders)(dev, &screen->indirect_draw.bin_pool.base);
-#endif
 }

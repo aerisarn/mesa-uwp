@@ -79,59 +79,6 @@ struct pan_blend_shaders {
         pthread_mutex_t lock;
 };
 
-enum pan_indirect_draw_flags {
-        PAN_INDIRECT_DRAW_NO_INDEX = 0 << 0,
-        PAN_INDIRECT_DRAW_1B_INDEX = 1 << 0,
-        PAN_INDIRECT_DRAW_2B_INDEX = 2 << 0,
-        PAN_INDIRECT_DRAW_4B_INDEX = 3 << 0,
-        PAN_INDIRECT_DRAW_INDEX_SIZE_MASK = 3 << 0,
-        PAN_INDIRECT_DRAW_HAS_PSIZ = 1 << 2,
-        PAN_INDIRECT_DRAW_PRIMITIVE_RESTART = 1 << 3,
-        PAN_INDIRECT_DRAW_UPDATE_PRIM_SIZE = 1 << 4,
-        PAN_INDIRECT_DRAW_IDVS = 1 << 5,
-        PAN_INDIRECT_DRAW_LAST_FLAG = PAN_INDIRECT_DRAW_IDVS,
-        PAN_INDIRECT_DRAW_FLAGS_MASK = (PAN_INDIRECT_DRAW_LAST_FLAG << 1) - 1,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_1B_INDEX = PAN_INDIRECT_DRAW_LAST_FLAG << 1,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_2B_INDEX,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_4B_INDEX,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_1B_INDEX_PRIM_RESTART,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_2B_INDEX_PRIM_RESTART,
-        PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_3B_INDEX_PRIM_RESTART,
-        PAN_INDIRECT_DRAW_NUM_SHADERS,
-};
-
-struct pan_indirect_draw_shader {
-        struct panfrost_ubo_push push;
-        mali_ptr rsd;
-};
-
-struct pan_indirect_draw_shaders {
-        struct pan_indirect_draw_shader shaders[PAN_INDIRECT_DRAW_NUM_SHADERS];
-
-        /* Take the lock when initializing the draw shaders context or when
-         * allocating from the binary pool.
-         */
-        pthread_mutex_t lock;
-
-        /* A memory pool for shader binaries. We currently don't allocate a
-         * single BO for all shaders up-front because estimating shader size
-         * is not trivial, and changes to the compiler might influence this
-         * estimation.
-         */
-        struct pan_pool *bin_pool;
-
-        /* BO containing all renderer states attached to the compute shaders.
-         * Those are built at shader compilation time and re-used every time
-         * panfrost_emit_indirect_draw() is called.
-         */
-        struct panfrost_bo *states;
-
-        /* Varying memory is allocated dynamically by compute jobs from this
-         * heap.
-         */
-        struct panfrost_bo *varying_heap;
-};
-
 struct pan_indirect_dispatch {
         struct panfrost_ubo_push push;
         struct panfrost_bo *bin;
@@ -239,7 +186,6 @@ struct panfrost_device {
 
         struct pan_blitter blitter;
         struct pan_blend_shaders blend_shaders;
-        struct pan_indirect_draw_shaders indirect_draw_shaders;
         struct pan_indirect_dispatch indirect_dispatch;
 
         /* Tiler heap shared across all tiler jobs, allocated against the

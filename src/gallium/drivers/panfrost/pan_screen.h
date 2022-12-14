@@ -109,9 +109,6 @@ struct panfrost_screen {
                 struct panfrost_pool bin_pool;
                 struct panfrost_pool desc_pool;
         } blitter;
-        struct {
-                struct panfrost_pool bin_pool;
-        } indirect_draw;
 
         struct panfrost_vtable vtbl;
         struct disk_cache *disk_cache;
