@@ -1157,11 +1157,6 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
-                                            D3D12_RESOURCE_STATE_GENERIC_READ,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
-
    dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
                                                       layout,
                                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1291,11 +1286,6 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
          .Offset = 0,
       },
    };
-
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, src_res, 0, 1,
-                                            D3D12_RESOURCE_STATE_GENERIC_READ,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
 
    for (uint32_t r = 0; r < range_count; r++) {
       uint32_t level_count = dzn_get_level_count(image, &ranges[r]);
