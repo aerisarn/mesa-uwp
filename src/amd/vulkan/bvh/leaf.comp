@@ -191,6 +191,13 @@ build_triangle(inout radv_aabb bounds, VOID_REF dst_ptr, uint32_t global_id)
 
    triangle_vertices vertices = load_vertices(args.data, indices, args.vertex_format, args.stride);
 
+   /* An inactive triangle is one for which the first (X) component of any vertex is NaN. If any
+    * other vertex component is NaN, and the first is not, the behavior is undefined. If the vertex
+    * format does not have a NaN representation, then all triangles are considered active.
+    */
+   if (isnan(vertices.vertex[0].x) || isnan(vertices.vertex[1].x) || isnan(vertices.vertex[2].x))
+      return false;
+
    if (args.transform != NULL) {
       mat4 transform = mat4(1.0);
 
@@ -239,6 +246,12 @@ build_aabb(inout radv_aabb bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint32_t 
             bounds.max[comp] = coord;
       }
 
+   /* An inactive AABB is one for which the minimum X coordinate is NaN. If any other component is
+    * NaN, and the first is not, the behavior is undefined.
+    */
+   if (isnan(bounds.min.x))
+      return false;
+
    DEREF(node).base.aabb = bounds;
    DEREF(node).base.cost = 0.0;
    DEREF(node).primitive_id = global_id;
@@ -255,6 +268,7 @@ build_instance(inout radv_aabb bounds, VOID_REF src_ptr, VOID_REF dst_ptr, uint3
    AccelerationStructureInstance instance = DEREF(REF(AccelerationStructureInstance)(src_ptr));
    DEREF(node).base_ptr = instance.accelerationStructureReference;
 
+   /* An inactive instance is one whose acceleration structure handle is VK_NULL_HANDLE. */
    if (instance.accelerationStructureReference == 0)
       return false;
 
