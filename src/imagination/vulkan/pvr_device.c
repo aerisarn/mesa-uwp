@@ -909,9 +909,11 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       .maxDescriptorSetSamplers = 256U,
       .maxDescriptorSetUniformBuffers = 256U,
-      .maxDescriptorSetUniformBuffersDynamic = 8U,
+      .maxDescriptorSetUniformBuffersDynamic =
+         PVR_MAX_DESCRIPTOR_SET_UNIFORM_DYNAMIC_BUFFERS,
       .maxDescriptorSetStorageBuffers = 256U,
-      .maxDescriptorSetStorageBuffersDynamic = 8U,
+      .maxDescriptorSetStorageBuffersDynamic =
+         PVR_MAX_DESCRIPTOR_SET_STORAGE_DYNAMIC_BUFFERS,
       .maxDescriptorSetSampledImages = 256U,
       .maxDescriptorSetStorageImages = 256U,
       .maxDescriptorSetInputAttachments = 256U,

@@ -39,6 +39,7 @@
  * relevant for the driver/compiler interface (no Vulkan types).
  */
 
+#include "pvr_limits.h"
 #include "util/list.h"
 #include "vk_object.h"
 #include "vk_sync.h"
@@ -236,6 +237,7 @@ struct pvr_descriptor_set_layout {
 
    /* Count of dynamic buffers. */
    uint32_t dynamic_buffer_count;
+   uint32_t total_dynamic_size_in_dwords;
 
    uint32_t binding_count;
    struct pvr_descriptor_set_layout_binding *bindings;
@@ -285,7 +287,7 @@ struct pvr_descriptor {
          struct pvr_buffer_view *bview;
          pvr_dev_addr_t buffer_dev_addr;
          VkDeviceSize buffer_desc_range;
-         VkDeviceSize buffer_create_info_size;
+         VkDeviceSize buffer_whole_range;
       };
 
       struct {
@@ -319,10 +321,18 @@ struct pvr_event {
    struct vk_sync *sync;
 };
 
+#define PVR_MAX_DYNAMIC_BUFFERS                      \
+   (PVR_MAX_DESCRIPTOR_SET_UNIFORM_DYNAMIC_BUFFERS + \
+    PVR_MAX_DESCRIPTOR_SET_STORAGE_DYNAMIC_BUFFERS)
+
 struct pvr_descriptor_state {
    struct pvr_descriptor_set *descriptor_sets[PVR_MAX_DESCRIPTOR_SETS];
    uint32_t valid_mask;
+
+   uint32_t dynamic_offsets[PVR_MAX_DYNAMIC_BUFFERS];
 };
+
+#undef PVR_MAX_DYNAMIC_BUFFERS
 
 /**
  * \brief Indicates the layout of shared registers allocated by the driver.
