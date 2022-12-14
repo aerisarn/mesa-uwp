@@ -1854,7 +1854,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    else if (bits == 0)
       return;
 
-   bool trace_flush =
+   const bool trace_flush =
       (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS | ANV_PIPE_INVALIDATE_BITS)) != 0;
    if (trace_flush)
       trace_intel_begin_stall(&cmd_buffer->trace);
@@ -1931,7 +1931,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
 
    uint32_t kb_used = 0;
    for (int i = MESA_SHADER_VERTEX; i < MESA_SHADER_FRAGMENT; i++) {
-      unsigned push_size = (stages & (1 << i)) ? size_per_stage : 0;
+      const unsigned push_size = (stages & (1 << i)) ? size_per_stage : 0;
       anv_batch_emit(&cmd_buffer->batch,
                      GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
          alloc._3DCommandSubOpcode  = 18 + i;
@@ -2870,11 +2870,12 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
    /* Take dynamic primitive topology in to account with
     *    3DSTATE_CLIP::ViewportXYClipTestEnable
     */
-   VkPolygonMode dynamic_raster_mode =
+   const VkPolygonMode dynamic_raster_mode =
       genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
                                 dyn->rs.polygon_mode,
                                 dyn->ia.primitive_topology);
-   bool xy_clip_test_enable = (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
+   const bool xy_clip_test_enable =
+      (dynamic_raster_mode == VK_POLYGON_MODE_FILL);
 
    struct GENX(3DSTATE_CLIP) clip = {
       GENX(3DSTATE_CLIP_header),
@@ -2920,7 +2921,7 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
    struct anv_state sf_clip_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
 
-   float scale = dyn->vp.depth_clip_negative_one_to_one ? 0.5f : 1.0f;
+   const float scale = dyn->vp.depth_clip_negative_one_to_one ? 0.5f : 1.0f;
 
    for (uint32_t i = 0; i < count; i++) {
       const VkViewport *vp = &viewports[i];
@@ -3117,7 +3118,7 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
                              gfx->render_area.extent.width - 1);
       }
 
-      struct GENX(SCISSOR_RECT) scissor = {
+      const struct GENX(SCISSOR_RECT) scissor = {
          .ScissorRectangleYMin = y_min,
          .ScissorRectangleXMin = x_min,
          .ScissorRectangleYMax = y_max,
@@ -5476,9 +5477,9 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
                     uint32_t groupCountX, uint32_t groupCountY,
                     uint32_t groupCountZ)
 {
-   struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
+   const struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
    const struct anv_shader_bin *cs_bin = pipeline->cs;
-   bool predicate = cmd_buffer->state.conditional_render_enabled;
+   const bool predicate = cmd_buffer->state.conditional_render_enabled;
 
    const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct brw_cs_dispatch_info dispatch =
@@ -5525,7 +5526,7 @@ emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
                   uint32_t groupCountX, uint32_t groupCountY,
                   uint32_t groupCountZ)
 {
-   bool predicate = cmd_buffer->state.conditional_render_enabled;
+   const bool predicate = cmd_buffer->state.conditional_render_enabled;
 
    const struct intel_device_info *devinfo = pipeline->base.device->info;
    const struct brw_cs_dispatch_info dispatch =
@@ -5690,7 +5691,7 @@ genX(cmd_buffer_ray_query_globals)(struct anv_cmd_buffer *cmd_buffer)
    brw_rt_compute_scratch_layout(&layout, device->info,
                                  stack_ids_per_dss, 1 << 10);
 
-   struct GENX(RT_DISPATCH_GLOBALS) rtdg = {
+   const struct GENX(RT_DISPATCH_GLOBALS) rtdg = {
       .MemBaseAddress = (struct anv_address) {
          /* The ray query HW computes offsets from the top of the buffer, so
           * let the address at the end of the buffer.
