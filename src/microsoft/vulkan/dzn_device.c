@@ -2070,7 +2070,7 @@ dzn_device_query_init(struct dzn_device *device)
    if (FAILED(ID3D12Device1_CreateCommittedResource(device->dev, &hprops,
                                                    D3D12_HEAP_FLAG_NONE,
                                                    &rdesc,
-                                                   D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                   D3D12_RESOURCE_STATE_COMMON,
                                                    NULL,
                                                    &IID_ID3D12Resource,
                                                    (void **)&device->queries.refs)))
