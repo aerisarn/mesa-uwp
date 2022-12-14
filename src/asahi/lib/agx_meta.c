@@ -150,7 +150,8 @@ agx_get_meta_shader(struct agx_meta_cache *cache, struct agx_meta_key *key)
    if (!ret)
       ret = agx_build_background_shader(cache, key);
 
-   _mesa_hash_table_insert(cache->ht, key, ret);
+   ret->key = *key;
+   _mesa_hash_table_insert(cache->ht, &ret->key, ret);
    return ret;
 }
 

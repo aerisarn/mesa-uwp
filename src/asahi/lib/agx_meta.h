@@ -30,6 +30,7 @@ struct agx_meta_key {
 };
 
 struct agx_meta_shader {
+   struct agx_meta_key key;
    struct agx_shader_info info;
    struct agx_bo *bo;
    uint32_t ptr;
