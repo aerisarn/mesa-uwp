@@ -1298,11 +1298,6 @@ struct radv_streamout_state {
    bool streamout_enabled;
 };
 
-struct radv_discard_rectangle_state {
-   uint32_t count;
-   VkRect2D rectangles[MAX_DISCARD_RECTANGLES];
-};
-
 struct radv_sample_locations_state {
    VkSampleCountFlagBits per_pixel;
    VkExtent2D grid_size;
@@ -1371,8 +1366,6 @@ struct radv_dynamic_state {
       uint32_t front;
       uint32_t back;
    } stencil_reference;
-
-   struct radv_discard_rectangle_state discard_rectangle;
 
    struct radv_sample_locations_state sample_location;
 

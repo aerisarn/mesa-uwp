@@ -1637,10 +1637,9 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (needed_states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-      dynamic->discard_rectangle.count = state->dr->rectangle_count;
+      dynamic->vk.dr.rectangle_count = state->dr->rectangle_count;
       if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-         typed_memcpy(dynamic->discard_rectangle.rectangles, state->dr->rectangles,
-                     state->dr->rectangle_count);
+         typed_memcpy(dynamic->vk.dr.rectangles, state->dr->rectangles, state->dr->rectangle_count);
       }
    }
 

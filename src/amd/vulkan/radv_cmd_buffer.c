@@ -152,7 +152,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    uint64_t copy_mask = src->mask;
    uint64_t dest_mask = 0;
 
-   dest->discard_rectangle.count = src->discard_rectangle.count;
+   dest->vk.dr.rectangle_count = src->vk.dr.rectangle_count;
    dest->sample_location.count = src->sample_location.count;
 
    if (copy_mask & RADV_DYNAMIC_VIEWPORT) {
@@ -190,10 +190,9 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    }
 
    if (copy_mask & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-      if (memcmp(&dest->discard_rectangle.rectangles, &src->discard_rectangle.rectangles,
-                 src->discard_rectangle.count * sizeof(VkRect2D))) {
-         typed_memcpy(dest->discard_rectangle.rectangles, src->discard_rectangle.rectangles,
-                      src->discard_rectangle.count);
+      if (memcmp(&dest->vk.dr.rectangles, &src->vk.dr.rectangles,
+                 src->vk.dr.rectangle_count * sizeof(VkRect2D))) {
+         typed_memcpy(dest->vk.dr.rectangles, src->vk.dr.rectangles, src->vk.dr.rectangle_count);
          dest_mask |= RADV_DYNAMIC_DISCARD_RECTANGLE;
       }
    }
@@ -2079,13 +2078,13 @@ radv_emit_discard_rectangle(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   if (!d->discard_rectangle.count)
+   if (!d->vk.dr.rectangle_count)
       return;
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028210_PA_SC_CLIPRECT_0_TL,
-                              d->discard_rectangle.count * 2);
-   for (unsigned i = 0; i < d->discard_rectangle.count; ++i) {
-      VkRect2D rect = d->discard_rectangle.rectangles[i];
+                              d->vk.dr.rectangle_count * 2);
+   for (unsigned i = 0; i < d->vk.dr.rectangle_count; ++i) {
+      VkRect2D rect = d->vk.dr.rectangles[i];
       radeon_emit(cmd_buffer->cs, S_028210_TL_X(rect.offset.x) | S_028210_TL_Y(rect.offset.y));
       radeon_emit(cmd_buffer->cs, S_028214_BR_X(rect.offset.x + rect.extent.width) |
                                      S_028214_BR_Y(rect.offset.y + rect.extent.height));
@@ -6308,8 +6307,8 @@ radv_CmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer, uint32_t firstDisc
    assert(firstDiscardRectangle < MAX_DISCARD_RECTANGLES);
    assert(total_count >= 1 && total_count <= MAX_DISCARD_RECTANGLES);
 
-   typed_memcpy(&state->dynamic.discard_rectangle.rectangles[firstDiscardRectangle],
-                pDiscardRectangles, discardRectangleCount);
+   typed_memcpy(&state->dynamic.vk.dr.rectangles[firstDiscardRectangle], pDiscardRectangles,
+                discardRectangleCount);
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE;
 }
