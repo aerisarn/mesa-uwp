@@ -583,6 +583,7 @@ struct dzn_cmd_buffer {
       struct dzn_descriptor_heap_pool pool;
    } rtvs, dsvs;
 
+   bool enhanced_barriers;
    struct hash_table *transition_barriers;
 
    struct dzn_descriptor_heap_pool cbv_srv_uav_pool, sampler_pool;
@@ -932,6 +933,11 @@ D3D12_RESOURCE_STATES
 dzn_image_layout_to_state(const struct dzn_image *image,
                           VkImageLayout layout,
                           VkImageAspectFlagBits aspect);
+
+D3D12_BARRIER_LAYOUT
+dzn_vk_layout_to_d3d_layout(VkImageLayout layout,
+                            D3D12_COMMAND_LIST_TYPE type,
+                            VkImageAspectFlags aspect);
 
 uint32_t
 dzn_image_layers_get_subresource_index(const struct dzn_image *image,

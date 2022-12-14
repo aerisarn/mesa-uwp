@@ -34,6 +34,7 @@ dzn_cmd_buffer_exec_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
                                         D3D12_RESOURCE_BARRIER *barriers,
                                         uint32_t barrier_count)
 {
+   assert(!cmdbuf->enhanced_barriers);
    uint32_t flush_count = 0;
    for (uint32_t b = 0; b < barrier_count; b++) {
       assert(barriers[b].Transition.pResource);
@@ -65,6 +66,7 @@ dzn_cmd_buffer_flush_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
                                          uint32_t first_subres,
                                          uint32_t subres_count)
 {
+   assert(!cmdbuf->enhanced_barriers);
    struct hash_entry *he =
       _mesa_hash_table_search(cmdbuf->transition_barriers, res);
    D3D12_RESOURCE_BARRIER *barriers = he ? he->data : NULL;
@@ -89,6 +91,7 @@ dzn_cmd_buffer_queue_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
                                          D3D12_RESOURCE_STATES after,
                                          uint32_t flags)
 {
+   assert(!cmdbuf->enhanced_barriers);
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    struct hash_entry *he =
       _mesa_hash_table_search(cmdbuf->transition_barriers, res);
@@ -149,6 +152,7 @@ dzn_cmd_buffer_queue_image_range_state_transition(struct dzn_cmd_buffer *cmdbuf,
                                                   D3D12_RESOURCE_STATES after,
                                                   uint32_t flags)
 {
+   assert(!cmdbuf->enhanced_barriers);
    uint32_t first_barrier = 0, barrier_count = 0;
    VkResult ret = VK_SUCCESS;
 
@@ -195,6 +199,7 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
                                                    VkImageLayout new_layout,
                                                    uint32_t flags)
 {
+   assert(!cmdbuf->enhanced_barriers);
    uint32_t first_barrier = 0, barrier_count = 0;
    VkResult ret = VK_SUCCESS;
 
@@ -242,6 +247,133 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
    }
 
    return VK_SUCCESS;
+}
+
+static void
+dzn_cmd_buffer_global_barrier(struct dzn_cmd_buffer *cmdbuf,
+                              D3D12_BARRIER_SYNC sync_before,
+                              D3D12_BARRIER_SYNC sync_after,
+                              D3D12_BARRIER_ACCESS access_before,
+                              D3D12_BARRIER_ACCESS access_after)
+{
+   assert(cmdbuf->enhanced_barriers);
+   D3D12_GLOBAL_BARRIER global = {
+      .SyncBefore = sync_before,
+      .SyncAfter = sync_after,
+      .AccessBefore = access_before,
+      .AccessAfter = access_after,
+   };
+   D3D12_BARRIER_GROUP group = {
+      .Type = D3D12_BARRIER_TYPE_GLOBAL,
+      .NumBarriers = 1,
+      .pGlobalBarriers = &global,
+   };
+   ID3D12GraphicsCommandList8_Barrier(cmdbuf->cmdlist8, 1, &group);
+}
+
+static void
+dzn_cmd_buffer_buffer_barrier(struct dzn_cmd_buffer *cmdbuf,
+                              ID3D12Resource *buf,
+                              D3D12_BARRIER_SYNC sync_before,
+                              D3D12_BARRIER_SYNC sync_after,
+                              D3D12_BARRIER_ACCESS access_before,
+                              D3D12_BARRIER_ACCESS access_after)
+{
+   assert(cmdbuf->enhanced_barriers);
+   D3D12_BUFFER_BARRIER buffer = {
+      .SyncBefore = sync_before,
+      .SyncAfter = sync_after,
+      .AccessBefore = access_before,
+      .AccessAfter = access_after,
+      .pResource = buf,
+      .Offset = 0,
+      .Size = UINT64_MAX,
+   };
+   D3D12_BARRIER_GROUP group = {
+      .Type = D3D12_BARRIER_TYPE_BUFFER,
+      .NumBarriers = 1,
+      .pBufferBarriers = &buffer,
+   };
+   ID3D12GraphicsCommandList8_Barrier(cmdbuf->cmdlist8, 1, &group);
+}
+
+static void
+dzn_cmd_buffer_image_barrier(struct dzn_cmd_buffer *cmdbuf,
+                             const struct dzn_image *image,
+                             D3D12_BARRIER_SYNC sync_before,
+                             D3D12_BARRIER_SYNC sync_after,
+                             D3D12_BARRIER_ACCESS access_before,
+                             D3D12_BARRIER_ACCESS access_after,
+                             D3D12_BARRIER_LAYOUT layout_before,
+                             D3D12_BARRIER_LAYOUT layout_after,
+                             const VkImageSubresourceRange *range)
+{
+   assert(cmdbuf->enhanced_barriers);
+   uint32_t first_plane = (range->aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) ? 1 : 0;
+   uint32_t plane_count = first_plane == 0 && (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) ? 2 : 1;
+   D3D12_TEXTURE_BARRIER texture = {
+      .SyncBefore = sync_before,
+      .SyncAfter = sync_after,
+      .AccessBefore = access_before,
+      .AccessAfter = access_after,
+      .LayoutBefore = layout_before,
+      .LayoutAfter = layout_after,
+      .Subresources.FirstArraySlice = range->baseArrayLayer,
+      .Subresources.NumArraySlices = dzn_get_layer_count(image, range),
+      .Subresources.IndexOrFirstMipLevel = range->baseMipLevel,
+      .Subresources.NumMipLevels = dzn_get_level_count(image, range),
+      .Subresources.FirstPlane = first_plane,
+      .Subresources.NumPlanes = plane_count,
+      .pResource = image->res,
+   };
+   D3D12_BARRIER_GROUP group = {
+      .Type = D3D12_BARRIER_TYPE_TEXTURE,
+      .NumBarriers = 1,
+      .pTextureBarriers = &texture,
+   };
+   ID3D12GraphicsCommandList8_Barrier(cmdbuf->cmdlist8, 1, &group);
+}
+
+static D3D12_BARRIER_LAYOUT
+dzn_cmd_buffer_require_layout(struct dzn_cmd_buffer *cmdbuf,
+                              const struct dzn_image *image,
+                              VkImageLayout current_layout,
+                              D3D12_BARRIER_LAYOUT needed_layout,
+                              const VkImageSubresourceRange *range)
+{
+   assert(cmdbuf->enhanced_barriers);
+   /* We shouldn't need these fixups on a subresource range which includes depth and stencil,
+      where one is read-only and the other is writable */
+   if (range->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      assert(current_layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL &&
+             current_layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
+   }
+
+   D3D12_BARRIER_LAYOUT current_d3d_layout = dzn_vk_layout_to_d3d_layout(current_layout, cmdbuf->type, range->aspectMask);
+   if (current_d3d_layout != needed_layout) {
+      dzn_cmd_buffer_image_barrier(cmdbuf, image,
+                                   D3D12_BARRIER_SYNC_ALL, D3D12_BARRIER_SYNC_ALL,
+                                   D3D12_BARRIER_ACCESS_COMMON, D3D12_BARRIER_ACCESS_COMMON,
+                                   current_d3d_layout, needed_layout, range);
+   }
+   return current_d3d_layout;
+}
+
+static void
+dzn_cmd_buffer_restore_layout(struct dzn_cmd_buffer *cmdbuf,
+                              const struct dzn_image *image,
+                              D3D12_BARRIER_SYNC sync,
+                              D3D12_BARRIER_ACCESS access,
+                              D3D12_BARRIER_LAYOUT needed_layout,
+                              D3D12_BARRIER_LAYOUT restore_layout,
+                              const VkImageSubresourceRange *range)
+{
+   if (needed_layout != restore_layout) {
+      dzn_cmd_buffer_image_barrier(cmdbuf, image,
+                                   sync, D3D12_BARRIER_SYNC_COPY,
+                                   access, D3D12_BARRIER_ACCESS_COMMON,
+                                   needed_layout, restore_layout, range);
+   }
 }
 
 static void
@@ -748,7 +880,15 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
    if (result != VK_SUCCESS)
       return result;
 
-   dzn_cmd_buffer_flush_transition_barriers(cmdbuf, qpool->resolve_buffer, 0, 1);
+   if (cmdbuf->enhanced_barriers) {
+      /* A global barrier is used because both resolve_buffer and collect_buffer might have been
+       * copied from recently, and it's not worth the effort to track whether that's true. */
+      dzn_cmd_buffer_global_barrier(cmdbuf,
+                                    D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                    D3D12_BARRIER_ACCESS_COPY_SOURCE, D3D12_BARRIER_ACCESS_COPY_DEST);
+   } else {
+      dzn_cmd_buffer_flush_transition_barriers(cmdbuf, qpool->resolve_buffer, 0, 1);
+   }
 
    BITSET_WORD *collect =
       util_dynarray_element(&state->collect, BITSET_WORD, 0);
@@ -768,11 +908,18 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
    uint32_t offset = dzn_query_pool_get_result_offset(qpool, first_query);
    uint32_t size = dzn_query_pool_get_result_size(qpool, query_count);
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
-                                            0, 1,
-                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_buffer_barrier(cmdbuf,
+                                    qpool->resolve_buffer,
+                                    D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                    D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+   } else {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
+                                               0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
                                                qpool->collect_buffer, offset,
@@ -801,11 +948,13 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
       dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->collect, start, count);
    }
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
-                                            0, 1,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                            0);
+   if (!cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->resolve_buffer,
+                                               0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               0);
+   }
    return VK_SUCCESS;
 }
 
@@ -1157,10 +1306,12 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                      layout,
-                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   if (!cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                         layout,
+                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    assert(dzn_get_level_count(image, range) == 1);
    uint32_t layer_count = dzn_get_layer_count(image, range);
@@ -1202,10 +1353,12 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       }
    }
 
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                      layout,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   if (!cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                         layout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+   }
 }
 
 static VkClearColorValue
@@ -1291,10 +1444,12 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
       uint32_t level_count = dzn_get_level_count(image, &ranges[r]);
       uint32_t layer_count = dzn_get_layer_count(image, &ranges[r]);
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
-                                                         layout,
-                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (!cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
+                                                            layout,
+                                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
 
       dzn_foreach_aspect(aspect, ranges[r].aspectMask) {
          for (uint32_t lvl = 0; lvl < level_count; lvl++) {
@@ -1337,10 +1492,12 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
          }
       }
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
-                                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                         layout,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (!cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &ranges[r],
+                                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                            layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 }
 
@@ -1368,6 +1525,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
    };
 
    layer_count = vk_image_subresource_layer_count(&image->vk, &range);
+   D3D12_BARRIER_LAYOUT restore_layout = D3D12_BARRIER_LAYOUT_COMMON;
 
    if (vk_format_is_depth_or_stencil(view->vk.format)) {
       D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
@@ -1378,10 +1536,16 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
       if (flags != 0) {
-         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
-                                                            layout,
-                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         if (cmdbuf->enhanced_barriers) {
+            restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, image,
+                                                           layout, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE,
+                                                           &range);
+         } else {
+            dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
+                                                               layout,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                               DZN_QUEUE_TRANSITION_FLUSH);
+         }
 
          D3D12_DEPTH_STENCIL_VIEW_DESC desc = dzn_image_get_dsv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_dsv(cmdbuf, image, &desc);
@@ -1390,10 +1554,17 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                                 value->depthStencil.stencil,
                                                 rect_count, rects);
 
-         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
-                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                            layout,
-                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         if (cmdbuf->enhanced_barriers) {
+            dzn_cmd_buffer_restore_layout(cmdbuf, image,
+                                          D3D12_BARRIER_SYNC_DEPTH_STENCIL, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE,
+                                          D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, restore_layout,
+                                          &range);
+         } else {
+            dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
+                                                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                               layout,
+                                                               DZN_QUEUE_TRANSITION_FLUSH);
+         }
       }
    } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       VkClearColorValue color = adjust_clear_color(view->vk.format, &value->color);
@@ -1427,19 +1598,32 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                               &value->color,
                                               &range, rect_count, rects);
       } else {
-         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
-                                                            layout,
-                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         if (cmdbuf->enhanced_barriers) {
+            restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, image,
+                                                           layout, D3D12_BARRIER_LAYOUT_RENDER_TARGET,
+                                                           &range);
+         } else {
+            dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
+                                                               layout,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                               DZN_QUEUE_TRANSITION_FLUSH);
+         }
 
          D3D12_RENDER_TARGET_VIEW_DESC desc = dzn_image_get_rtv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_rtv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, vals, rect_count, rects);
 
-         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
-                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                            layout,
-                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         if (cmdbuf->enhanced_barriers) {
+            dzn_cmd_buffer_restore_layout(cmdbuf, image,
+                                          D3D12_BARRIER_SYNC_RENDER_TARGET, D3D12_BARRIER_ACCESS_RENDER_TARGET,
+                                          D3D12_BARRIER_LAYOUT_RENDER_TARGET, restore_layout,
+                                          &range);
+         } else {
+            dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
+                                                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                               layout,
+                                                               DZN_QUEUE_TRANSITION_FLUSH);
+         }
       }
    }
 }
@@ -1461,6 +1645,7 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
    float clear_vals[4];
 
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
+   D3D12_BARRIER_LAYOUT restore_layout = D3D12_BARRIER_LAYOUT_COMMON;
 
    if (util_format_is_pure_sint(pfmt)) {
       for (uint32_t c = 0; c < ARRAY_SIZE(clear_vals); c++) {
@@ -1486,10 +1671,17 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
       const VkImageSubresourceRange *range = &ranges[r];
       uint32_t level_count = dzn_get_level_count(image, range);
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                         layout,
-                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, image,
+                                                        layout, D3D12_BARRIER_LAYOUT_RENDER_TARGET,
+                                                        range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                            layout,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
+
       for (uint32_t lvl = 0; lvl < level_count; lvl++) {
          VkImageSubresourceRange view_range = *range;
 
@@ -1503,10 +1695,17 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, clear_vals, 0, NULL);
       }
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                         layout,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_restore_layout(cmdbuf, image,
+                                       D3D12_BARRIER_SYNC_RENDER_TARGET, D3D12_BARRIER_ACCESS_RENDER_TARGET,
+                                       D3D12_BARRIER_LAYOUT_RENDER_TARGET, restore_layout,
+                                       range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 }
 
@@ -1525,16 +1724,23 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
       uint32_t level_count = dzn_get_level_count(image, range);
 
       D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
+      D3D12_BARRIER_LAYOUT restore_layout = D3D12_BARRIER_LAYOUT_COMMON;
 
       if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
          flags |= D3D12_CLEAR_FLAG_DEPTH;
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                         layout,
-                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, image,
+                                                        layout, D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE,
+                                                        range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                            layout,
+                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
 
       for (uint32_t lvl = 0; lvl < level_count; lvl++) {
          D3D12_DEPTH_STENCIL_VIEW_DESC desc = dzn_image_get_dsv_desc(image, range, lvl);
@@ -1546,10 +1752,17 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
                                                           0, NULL);
       }
 
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                         layout,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_restore_layout(cmdbuf, image,
+                                       D3D12_BARRIER_SYNC_DEPTH_STENCIL, D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE,
+                                       D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE, restore_layout,
+                                       range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
+                                                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                            layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 }
 
@@ -1799,19 +2012,31 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    tmp_loc->PlacedFootprint.Footprint.Depth = depth;
 
    if (r > 0 || l > 0) {
-      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
-                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                               D3D12_RESOURCE_STATE_COPY_DEST,
-                                               DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_buffer_barrier(cmdbuf, tmp_loc->pResource,
+                                       D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                       D3D12_BARRIER_ACCESS_COPY_SOURCE, D3D12_BARRIER_ACCESS_COPY_DEST);
+      } else {
+         dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
+                                                  D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                                  D3D12_RESOURCE_STATE_COPY_DEST,
+                                                  DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 
    ID3D12GraphicsCommandList1_CopyTextureRegion(cmdlist, tmp_loc, 0, 0, 0, &src_loc, &src_box);
 
    if (r > 0 || l > 0) {
-      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
-                                               D3D12_RESOURCE_STATE_COPY_DEST,
-                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                               DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_buffer_barrier(cmdbuf, tmp_loc->pResource,
+                                       D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                       D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+      } else {
+         dzn_cmd_buffer_queue_transition_barriers(cmdbuf, tmp_loc->pResource, 0, 1,
+                                                  D3D12_RESOURCE_STATE_COPY_DEST,
+                                                  D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                                  DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 
    tmp_desc->Format =
@@ -2034,6 +2259,7 @@ dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
                                    struct dzn_image *dst, VkImageLayout dst_layout,
                                    const VkImageSubresourceLayers *dst_subres,
                                    VkImageAspectFlagBits aspect,
+                                   D3D12_BARRIER_LAYOUT *restore_dst_layout,
                                    bool post)
 {
    VkImageSubresourceRange src_range = {
@@ -2052,23 +2278,37 @@ dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
    };
 
    if (!post) {
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
-                                                         src_layout,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
-                                                         dst_layout,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         *restore_dst_layout = dzn_cmd_buffer_require_layout(cmdbuf, dst,
+                                                             dst_layout,
+                                                             D3D12_BARRIER_LAYOUT_RENDER_TARGET,
+                                                             &dst_range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
+                                                            src_layout,
+                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
+                                                            dst_layout,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
    } else {
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                         src_layout,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
-      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
-                                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                         dst_layout,
-                                                         DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_restore_layout(cmdbuf, dst,
+                                       D3D12_BARRIER_SYNC_RENDER_TARGET, D3D12_BARRIER_ACCESS_RENDER_TARGET,
+                                       D3D12_BARRIER_LAYOUT_RENDER_TARGET, *restore_dst_layout,
+                                       &dst_range);
+      } else {
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, src, &src_range,
+                                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                            src_layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+         dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, dst, &dst_range,
+                                                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                            dst_layout,
+                                                            DZN_QUEUE_TRANSITION_FLUSH);
+      }
    }
 }
 
@@ -2087,11 +2327,12 @@ dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
    bool dst_is_3d = dst->vk.image_type == VK_IMAGE_TYPE_3D;
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
+      D3D12_BARRIER_LAYOUT restore_dst_layout = D3D12_BARRIER_LAYOUT_COMMON;
       dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, info->filter, false);
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
-                                         aspect, false);
+                                         aspect, &restore_dst_layout, false);
       dzn_cmd_buffer_blit_prepare_src_view(cmdbuf, info->srcImage,
                                            aspect, &region->srcSubresource,
                                            heap, (*heap_slot)++);
@@ -2143,7 +2384,7 @@ dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
-                                         aspect, true);
+                                         aspect, &restore_dst_layout, true);
    }
 }
 
@@ -2160,11 +2401,12 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
    const VkImageResolve2 *region = &info->pRegions[r];
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
+      D3D12_BARRIER_LAYOUT restore_dst_layout = D3D12_BARRIER_LAYOUT_COMMON;
       dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, VK_FILTER_NEAREST, true);
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
-                                         aspect, false);
+                                         aspect, &restore_dst_layout, false);
       dzn_cmd_buffer_blit_prepare_src_view(cmdbuf, info->srcImage, aspect,
                                            &region->srcSubresource,
                                            heap, (*heap_slot)++);
@@ -2209,7 +2451,7 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
-                                         aspect, true);
+                                         aspect, &restore_dst_layout, true);
    }
 }
 
@@ -2593,10 +2835,16 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
    ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, 2, old_index_buf_gpu);
    ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, triangle_count, 1, 1);
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, new_index_buf, 0, 1,
-                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                            D3D12_RESOURCE_STATE_INDEX_BUFFER,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_buffer_barrier(cmdbuf, new_index_buf,
+                                    D3D12_BARRIER_SYNC_COMPUTE_SHADING, D3D12_BARRIER_SYNC_INPUT_ASSEMBLER,
+                                    D3D12_BARRIER_ACCESS_UNORDERED_ACCESS, D3D12_BARRIER_ACCESS_INDEX_BUFFER);
+   } else {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, new_index_buf, 0, 1,
+                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                               D3D12_RESOURCE_STATE_INDEX_BUFFER,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    /* We don't mess up with the driver state when executing our internal
     * compute shader, but we still change the D3D12 state, so let's mark
@@ -2813,6 +3061,12 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, max_draw_count, 1, 1);
 
    D3D12_INDEX_BUFFER_VIEW ib_view = { 0 };
+   D3D12_BUFFER_BARRIER buf_barriers[2];
+   D3D12_BARRIER_GROUP enhanced_barriers = {
+      .NumBarriers = 0,
+      .Type = D3D12_BARRIER_TYPE_BUFFER,
+      .pBufferBarriers = buf_barriers
+   };
 
    if (triangle_fan_exec_buf) {
       enum dzn_index_type index_type =
@@ -2828,10 +3082,16 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       assert(rewrite_index->pipeline_state);
       assert(rewrite_index->cmd_sig);
 
-      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_exec_buf, 0, 1,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                               D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-                                               DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_buffer_barrier(cmdbuf, triangle_fan_exec_buf,
+                                       D3D12_BARRIER_SYNC_COMPUTE_SHADING, D3D12_BARRIER_SYNC_EXECUTE_INDIRECT,
+                                       D3D12_BARRIER_ACCESS_UNORDERED_ACCESS, D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT);
+      } else {
+         dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_exec_buf, 0, 1,
+                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                  D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                                  DZN_QUEUE_TRANSITION_FLUSH);
+      }
 
       ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, rewrite_index->root_sig);
       ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, rewrite_index->pipeline_state);
@@ -2852,10 +3112,21 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
                                                  max_draw_count, triangle_fan_exec_buf, 0,
                                                  count_buf ? exec_buf : NULL, 0);
 
-      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_index_buf, 0, 1,
-                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                               D3D12_RESOURCE_STATE_INDEX_BUFFER,
-                                               DZN_QUEUE_TRANSITION_FLUSH);
+      if (cmdbuf->enhanced_barriers) {
+         buf_barriers[enhanced_barriers.NumBarriers++] = (D3D12_BUFFER_BARRIER){
+            .SyncBefore = D3D12_BARRIER_SYNC_COMPUTE_SHADING,
+            .SyncAfter = D3D12_BARRIER_SYNC_INPUT_ASSEMBLER,
+            .AccessBefore = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS,
+            .AccessAfter = D3D12_BARRIER_ACCESS_INDEX_BUFFER,
+            .pResource = triangle_fan_index_buf,
+            .Offset = 0, .Size = UINT64_MAX
+         };
+      } else {
+         dzn_cmd_buffer_queue_transition_barriers(cmdbuf, triangle_fan_index_buf, 0, 1,
+                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                  D3D12_RESOURCE_STATE_INDEX_BUFFER,
+                                                  DZN_QUEUE_TRANSITION_FLUSH);
+      }
 
       /* After our triangle-fan lowering the draw is indexed */
       indexed = true;
@@ -2866,10 +3137,22 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
    }
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
-                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      buf_barriers[enhanced_barriers.NumBarriers++] = (D3D12_BUFFER_BARRIER){
+         .SyncBefore = D3D12_BARRIER_SYNC_COMPUTE_SHADING,
+         .SyncAfter = D3D12_BARRIER_SYNC_EXECUTE_INDIRECT,
+         .AccessBefore = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS,
+         .AccessAfter = D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT,
+         .pResource = exec_buf,
+         .Offset = 0, .Size = UINT64_MAX
+      };
+      ID3D12GraphicsCommandList8_Barrier(cmdbuf->cmdlist8, 1, &enhanced_barriers);
+   } else {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
+                                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                               D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    /* We don't mess up with the driver state when executing our internal
     * compute shader, but we still change the D3D12 state, so let's mark
@@ -3417,9 +3700,7 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
    VkImageLayout src_layout = att->layout;
    VkImageLayout dst_layout = att->resolve.layout;
    struct dzn_image *src_img = container_of(src->vk.image, struct dzn_image, vk);
-   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect);
    struct dzn_image *dst_img = container_of(dst->vk.image, struct dzn_image, vk);
-   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect);
 
    VkImageSubresourceRange src_range = {
       .aspectMask = (VkImageAspectFlags)aspect,
@@ -3437,14 +3718,29 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
 
-   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
-                                                     src_state,
-                                                     D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-                                                     DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
-                                                     dst_state,
-                                                     D3D12_RESOURCE_STATE_RESOLVE_DEST,
-                                                     DZN_QUEUE_TRANSITION_FLUSH);
+   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect);
+   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect);
+   D3D12_BARRIER_LAYOUT src_restore_layout = D3D12_BARRIER_LAYOUT_COMMON,
+      src_needed_layout = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
+   D3D12_BARRIER_LAYOUT dst_restore_layout = D3D12_BARRIER_LAYOUT_COMMON,
+      dst_needed_layout = D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
+   if (cmdbuf->enhanced_barriers) {
+      src_restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, src_img,
+                                                         src_layout, src_needed_layout,
+                                                         &src_range);
+      dst_restore_layout = dzn_cmd_buffer_require_layout(cmdbuf, dst_img,
+                                                         dst_layout, dst_needed_layout,
+                                                         &dst_range);
+   } else {
+      dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
+                                                        src_state,
+                                                        D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                        DZN_QUEUE_TRANSITION_FLUSH);
+      dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
+                                                        dst_state,
+                                                        D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                        DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    for (uint32_t level = 0; level < src_range.levelCount; level++) {
       for (uint32_t layer = 0; layer < src_range.layerCount; layer++) {
@@ -3471,14 +3767,25 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       }
    }
 
-   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
-                                                     D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
-                                                     src_state,
-                                                     DZN_QUEUE_TRANSITION_FLUSH);
-   dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
-                                                     D3D12_RESOURCE_STATE_RESOLVE_DEST,
-                                                     dst_state,
-                                                     DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_restore_layout(cmdbuf, src_img,
+                                    D3D12_BARRIER_SYNC_RESOLVE, D3D12_BARRIER_ACCESS_RESOLVE_SOURCE,
+                                    src_needed_layout, src_restore_layout,
+                                    &src_range);
+      dzn_cmd_buffer_restore_layout(cmdbuf, dst_img,
+                                    D3D12_BARRIER_SYNC_RESOLVE, D3D12_BARRIER_ACCESS_RESOLVE_DEST,
+                                    dst_needed_layout, dst_restore_layout,
+                                    &dst_range);
+   } else {
+      dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, src_img, &src_range,
+                                                        D3D12_RESOURCE_STATE_RESOLVE_SOURCE,
+                                                        src_state,
+                                                        DZN_QUEUE_TRANSITION_FLUSH);
+      dzn_cmd_buffer_queue_image_range_state_transition(cmdbuf, dst_img, &dst_range,
+                                                        D3D12_RESOURCE_STATE_RESOLVE_DEST,
+                                                        dst_state,
+                                                        DZN_QUEUE_TRANSITION_FLUSH);
+   }
 }
 
 static void
@@ -3502,10 +3809,26 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
       .layerCount = iview->vk.layer_count,
    };
 
-   dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
-                                                      initial_layout->initialLayout,
-                                                      att->imageLayout,
-                                                      DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      D3D12_BARRIER_SYNC sync_before = D3D12_BARRIER_SYNC_ALL;
+      D3D12_BARRIER_ACCESS access_before = D3D12_BARRIER_ACCESS_COMMON;
+      if (initial_layout->initialLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+         sync_before = D3D12_BARRIER_SYNC_NONE;
+         access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
+      }
+
+      dzn_cmd_buffer_image_barrier(cmdbuf, image,
+                                   sync_before, D3D12_BARRIER_SYNC_DRAW,
+                                   access_before, D3D12_BARRIER_ACCESS_COMMON,
+                                   dzn_vk_layout_to_d3d_layout(initial_layout->initialLayout, cmdbuf->type, aspect),
+                                   dzn_vk_layout_to_d3d_layout(att->imageLayout, cmdbuf->type, aspect),
+                                   &range);
+   } else {
+      dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
+                                                         initial_layout->initialLayout,
+                                                         att->imageLayout,
+                                                         DZN_QUEUE_TRANSITION_FLUSH);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4173,13 +4496,19 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
    }
 
    if (flush_pipeline) {
-      D3D12_RESOURCE_BARRIER barrier = {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .UAV = { .pResource = NULL },
-      };
+      if (cmdbuf->enhanced_barriers) {
+         dzn_cmd_buffer_global_barrier(cmdbuf,
+                                       D3D12_BARRIER_SYNC_ALL, D3D12_BARRIER_SYNC_ALL,
+                                       D3D12_BARRIER_ACCESS_COMMON, D3D12_BARRIER_ACCESS_COMMON);
+      } else {
+         D3D12_RESOURCE_BARRIER barrier = {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_UAV,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .UAV = {.pResource = NULL },
+         };
 
-      ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+         ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+      }
    }
    cmdbuf->vk.base.device->dispatch_table.CmdPipelineBarrier(
       vk_command_buffer_to_handle(&cmdbuf->vk),
@@ -4348,10 +4677,17 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
       raw_copy = false;
 #undef ALL_STATS
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
-                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      /* TODO: Can this be skipped if WAIT isn't set? */
+      dzn_cmd_buffer_buffer_barrier(cmdbuf, qpool->collect_buffer,
+                                    D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                    D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+   } else {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    if (raw_copy) {
       ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset,
@@ -4394,10 +4730,12 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
       }
    }
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
-                                            D3D12_RESOURCE_STATE_COPY_SOURCE,
-                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                            0);
+   if (!cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_SOURCE,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               0);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4444,10 +4782,16 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                                      offset,
                                      sizeof(D3D12_DISPATCH_ARGUMENTS));
 
-   dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
-                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
-                                            DZN_QUEUE_TRANSITION_FLUSH);
+   if (cmdbuf->enhanced_barriers) {
+      dzn_cmd_buffer_buffer_barrier(cmdbuf, exec_buf,
+                                    D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_EXECUTE_INDIRECT,
+                                    D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT);
+   } else {
+      dzn_cmd_buffer_queue_transition_barriers(cmdbuf, exec_buf, 0, 1,
+                                               D3D12_RESOURCE_STATE_COPY_DEST,
+                                               D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,
+                                               DZN_QUEUE_TRANSITION_FLUSH);
+   }
 
    ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, cmdsig, 1, exec_buf, 0, NULL, 0);
 }
