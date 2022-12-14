@@ -40,17 +40,21 @@ dEQP-GLES2.functional.fbo.render.color.mix_tex2d_rgb
 dEQP-GLES2.functional.fbo.render.stencil.npot_tex2d_rgba_stencil_index8
 
 dEQP-GLES3.functional.dither.disabled.unicolored_quad_blue
-dEQP-GLES3.functional.fbo.invalidate.format.rgb10_a2ui
 dEQP-GLES3.functional.fbo.invalidate.default.sub_bind_stencil
+dEQP-GLES3.functional.fbo.invalidate.format.rgb10_a2ui
 dEQP-GLES3.functional.fbo.msaa.renderbuffer_resize.ms_to_ms
 dEQP-GLES3.functional.fbo.msaa.renderbuffer_resize.nonms_to_ms
+dEQP-GLES3.functional.multisample.fbo_8_samples.proportionality_alpha_to_coverage
+dEQP-GLES3.functional.multisample.fbo_max_samples.common_edge_viewport_quad
+dEQP-GLES3.functional.multisample.fbo_max_samples.proportionality_alpha_to_coverage
+dEQP-GLES3.functional.read_pixels.alignment.choose_8
 dEQP-GLES3.functional.shaders.derivate.fwidth.texture.msaa4.vec2_mediump
 dEQP-GLES3.functional.texture.compressed.astc.*
 dEQP-GLES3.functional.ubo.multi_nested_struct.per_block_buffer.shared_instance_array_fragment
 dEQP-GLES3.functional.ubo.random.all_shared_buffer.35
 dEQP-GLES3.functional.ubo.random.basic_types.21
-dEQP-GLES3.functional.ubo.single_struct.single_buffer.shared_instance_array_both
 dEQP-GLES3.functional.ubo.single_struct_array.single_buffer.shared_instance_array_both
+dEQP-GLES3.functional.ubo.single_struct.single_buffer.shared_instance_array_both
 dEQP-GLES31.functional.shaders.helper_invocation.derivate.*
 dEQP-GLES31.functional.shaders.helper_invocation.derivate.*_4_samples_fwidth
 dEQP-GLES31.functional.shaders.helper_invocation.value.*_4_samples
@@ -77,8 +81,3 @@ KHR-GLES31.core.texture_gather.plain-gather-float-cube-rgba
 KHR-GLES31.core.texture_gather.swizzle
 KHR-GLES31.core.texture_storage_multisample.FunctionalTests.verify_sample_masking_for_non_integer_color_renderable_internalformats
 KHR-GLES31.core.vertex_attrib_binding.*
-
-dEQP-GLES3.functional.multisample.fbo_8_samples.proportionality_alpha_to_coverage
-dEQP-GLES3.functional.multisample.fbo_max_samples.common_edge_viewport_quad
-dEQP-GLES3.functional.multisample.fbo_max_samples.proportionality_alpha_to_coverage
-dEQP-GLES3.functional.read_pixels.alignment.choose_8
