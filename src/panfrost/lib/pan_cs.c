@@ -435,18 +435,20 @@ pan_afbc_compression_mode(enum pipe_format format)
          * panfrost_afbc_format.
          */
         switch (panfrost_afbc_format(PAN_ARCH, format)) {
-        case PIPE_FORMAT_R8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8;
-        case PIPE_FORMAT_R8G8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8;
-        case PIPE_FORMAT_R5G6B5_UNORM: return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
-        case PIPE_FORMAT_R4G4B4A4_UNORM: return MALI_AFBC_COMPRESSION_MODE_R4G4B4A4;
-        case PIPE_FORMAT_R8G8B8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
-        case PIPE_FORMAT_R8G8B8A8_UNORM: return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
-        case PIPE_FORMAT_R10G10B10A2_UNORM: return MALI_AFBC_COMPRESSION_MODE_R10G10B10A2;
-        case PIPE_FORMAT_R11G11B10_FLOAT: return MALI_AFBC_COMPRESSION_MODE_R11G11B10;
-        case PIPE_FORMAT_S8_UINT: return MALI_AFBC_COMPRESSION_MODE_S8;
-        case PIPE_FORMAT_NONE: unreachable("invalid format for AFBC");
-        default: unreachable("unknown canonical AFBC format");
+        case PAN_AFBC_MODE_R8:          return MALI_AFBC_COMPRESSION_MODE_R8;
+        case PAN_AFBC_MODE_R8G8:        return MALI_AFBC_COMPRESSION_MODE_R8G8;
+        case PAN_AFBC_MODE_R5G6B5:      return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
+        case PAN_AFBC_MODE_R4G4B4A4:    return MALI_AFBC_COMPRESSION_MODE_R4G4B4A4;
+        case PAN_AFBC_MODE_R5G5B5A1:    return MALI_AFBC_COMPRESSION_MODE_R5G5B5A1;
+        case PAN_AFBC_MODE_R8G8B8:      return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
+        case PAN_AFBC_MODE_R8G8B8A8:    return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
+        case PAN_AFBC_MODE_R10G10B10A2: return MALI_AFBC_COMPRESSION_MODE_R10G10B10A2;
+        case PAN_AFBC_MODE_R11G11B10:   return MALI_AFBC_COMPRESSION_MODE_R11G11B10;
+        case PAN_AFBC_MODE_S8:          return MALI_AFBC_COMPRESSION_MODE_S8;
+        case PAN_AFBC_MODE_INVALID:     unreachable("Invalid AFBC format");
         }
+
+        unreachable("all AFBC formats handled");
 }
 #endif
 

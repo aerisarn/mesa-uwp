@@ -147,13 +147,32 @@ panfrost_compute_checksum_size(
         unsigned width,
         unsigned height);
 
-/* AFBC */
+/* AFBC format mode. The ordering is intended to match the Valhall hardware enum
+ * ("AFBC Compression Mode"), but this enum is required in software on older
+ * hardware for correct handling of texture views. Defining the enum lets us
+ * unify these code paths.
+ */
+enum pan_afbc_mode {
+        PAN_AFBC_MODE_R8,
+        PAN_AFBC_MODE_R8G8,
+        PAN_AFBC_MODE_R5G6B5,
+        PAN_AFBC_MODE_R4G4B4A4,
+        PAN_AFBC_MODE_R5G5B5A1,
+        PAN_AFBC_MODE_R8G8B8,
+        PAN_AFBC_MODE_R8G8B8A8,
+        PAN_AFBC_MODE_R10G10B10A2,
+        PAN_AFBC_MODE_R11G11B10,
+        PAN_AFBC_MODE_S8,
+
+        /* Sentintel signalling a format that cannot be compressed */
+        PAN_AFBC_MODE_INVALID
+};
 
 bool
 panfrost_format_supports_afbc(const struct panfrost_device *dev,
                 enum pipe_format format);
 
-enum pipe_format
+enum pan_afbc_mode
 panfrost_afbc_format(unsigned arch, enum pipe_format format);
 
 #define AFBC_HEADER_BYTES_PER_TILE 16
