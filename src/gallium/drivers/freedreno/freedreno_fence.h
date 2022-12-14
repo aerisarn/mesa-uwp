@@ -77,32 +77,32 @@ struct pipe_fence_handle {
    uint32_t syncobj;
 };
 
-void fd_fence_repopulate(struct pipe_fence_handle *fence,
-                         struct pipe_fence_handle *last_fence);
-void fd_fence_ref(struct pipe_fence_handle **ptr,
-                  struct pipe_fence_handle *pfence);
-bool fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *ctx,
-                     struct pipe_fence_handle *pfence, uint64_t timeout);
-void fd_create_fence_fd(struct pipe_context *pctx,
-                        struct pipe_fence_handle **pfence, int fd,
-                        enum pipe_fd_type type);
-void fd_fence_server_sync(struct pipe_context *pctx,
-                          struct pipe_fence_handle *fence);
-void fd_fence_server_signal(struct pipe_context *ctx,
-                            struct pipe_fence_handle *fence);
-int fd_fence_get_fd(struct pipe_screen *pscreen,
-                    struct pipe_fence_handle *pfence);
-bool fd_fence_is_fd(struct pipe_fence_handle *fence);
+void fd_pipe_fence_repopulate(struct pipe_fence_handle *fence,
+                              struct pipe_fence_handle *last_fence);
+void fd_pipe_fence_ref(struct pipe_fence_handle **ptr,
+                       struct pipe_fence_handle *pfence);
+bool fd_pipe_fence_finish(struct pipe_screen *pscreen, struct pipe_context *ctx,
+                          struct pipe_fence_handle *pfence, uint64_t timeout);
+void fd_create_pipe_fence_fd(struct pipe_context *pctx,
+                             struct pipe_fence_handle **pfence, int fd,
+                             enum pipe_fd_type type);
+void fd_pipe_fence_server_sync(struct pipe_context *pctx,
+                               struct pipe_fence_handle *fence);
+void fd_pipe_fence_server_signal(struct pipe_context *ctx,
+                                 struct pipe_fence_handle *fence);
+int fd_pipe_fence_get_fd(struct pipe_screen *pscreen,
+                         struct pipe_fence_handle *pfence);
+bool fd_pipe_fence_is_fd(struct pipe_fence_handle *fence);
 
 struct fd_batch;
-struct pipe_fence_handle *fd_fence_create(struct fd_batch *batch);
+struct pipe_fence_handle *fd_pipe_fence_create(struct fd_batch *batch);
 
-void fd_fence_set_batch(struct pipe_fence_handle *fence,
-                        struct fd_batch *batch);
+void fd_pipe_fence_set_batch(struct pipe_fence_handle *fence,
+                             struct fd_batch *batch);
 
 struct tc_unflushed_batch_token;
 struct pipe_fence_handle *
-fd_fence_create_unflushed(struct pipe_context *pctx,
-                          struct tc_unflushed_batch_token *tc_token);
+fd_pipe_fence_create_unflushed(struct pipe_context *pctx,
+                               struct tc_unflushed_batch_token *tc_token);
 
 #endif /* FREEDRENO_FENCE_H_ */

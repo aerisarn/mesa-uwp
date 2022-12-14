@@ -79,10 +79,11 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
 }
 
 void
-fd_fence_repopulate(struct pipe_fence_handle *fence, struct pipe_fence_handle *last_fence)
+fd_pipe_fence_repopulate(struct pipe_fence_handle *fence,
+                         struct pipe_fence_handle *last_fence)
 {
    if (last_fence->last_fence)
-      fd_fence_repopulate(fence, last_fence->last_fence);
+      fd_pipe_fence_repopulate(fence, last_fence->last_fence);
 
    /* The fence we are re-populating must not be an fd-fence (but last_fince
     * might have been)
@@ -90,18 +91,18 @@ fd_fence_repopulate(struct pipe_fence_handle *fence, struct pipe_fence_handle *l
    assert(!fence->submit_fence.use_fence_fd);
    assert(!last_fence->batch);
 
-   fd_fence_ref(&fence->last_fence, last_fence);
+   fd_pipe_fence_ref(&fence->last_fence, last_fence);
 
    /* We have nothing to flush, so nothing will clear the batch reference
     * (which is normally done when the batch is flushed), so do it now:
     */
-   fd_fence_set_batch(fence, NULL);
+   fd_pipe_fence_set_batch(fence, NULL);
 }
 
 static void
 fd_fence_destroy(struct pipe_fence_handle *fence)
 {
-   fd_fence_ref(&fence->last_fence, NULL);
+   fd_pipe_fence_ref(&fence->last_fence, NULL);
 
    tc_unflushed_batch_token_reference(&fence->tc_token, NULL);
 
@@ -120,7 +121,8 @@ fd_fence_destroy(struct pipe_fence_handle *fence)
 }
 
 void
-fd_fence_ref(struct pipe_fence_handle **ptr, struct pipe_fence_handle *pfence)
+fd_pipe_fence_ref(struct pipe_fence_handle **ptr,
+                  struct pipe_fence_handle *pfence)
 {
    if (pipe_reference(&(*ptr)->reference, &pfence->reference))
       fd_fence_destroy(*ptr);
@@ -129,8 +131,8 @@ fd_fence_ref(struct pipe_fence_handle **ptr, struct pipe_fence_handle *pfence)
 }
 
 bool
-fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
-                struct pipe_fence_handle *fence, uint64_t timeout)
+fd_pipe_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
+                     struct pipe_fence_handle *fence, uint64_t timeout)
 {
    /* Note: for TC deferred fence, pctx->flush() may not have been called
     * yet, so always do fence_flush() *first* before delegating to
@@ -140,7 +142,7 @@ fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
       return false;
 
    if (fence->last_fence)
-      return fd_fence_finish(pscreen, pctx, fence->last_fence, timeout);
+      return fd_pipe_fence_finish(pscreen, pctx, fence->last_fence, timeout);
 
    if (fence->last_fence)
       fence = fence->last_fence;
@@ -171,7 +173,7 @@ fence_create(struct fd_context *ctx, struct fd_batch *batch, int fence_fd,
    util_queue_fence_init(&fence->submit_fence.ready);
 
    fence->ctx = ctx;
-   fd_fence_set_batch(fence, batch);
+   fd_pipe_fence_set_batch(fence, batch);
    fence->pipe = fd_pipe_ref(ctx->pipe);
    fence->screen = ctx->screen;
    fence->submit_fence.fence_fd = fence_fd;
@@ -182,8 +184,8 @@ fence_create(struct fd_context *ctx, struct fd_batch *batch, int fence_fd,
 }
 
 void
-fd_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence,
-                   int fd, enum pipe_fd_type type)
+fd_create_pipe_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence,
+                        int fd, enum pipe_fd_type type)
 {
    struct fd_context *ctx = fd_context(pctx);
 
@@ -210,7 +212,7 @@ fd_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence,
 }
 
 void
-fd_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *fence)
+fd_pipe_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *fence)
 {
    struct fd_context *ctx = fd_context(pctx);
 
@@ -220,7 +222,7 @@ fd_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *fence)
    fence_flush(pctx, fence, 0);
 
    if (fence->last_fence) {
-      fd_fence_server_sync(pctx, fence->last_fence);
+      fd_pipe_fence_server_sync(pctx, fence->last_fence);
       return;
    }
 
@@ -234,8 +236,8 @@ fd_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *fence)
 }
 
 void
-fd_fence_server_signal(struct pipe_context *pctx,
-                       struct pipe_fence_handle *fence)
+fd_pipe_fence_server_signal(struct pipe_context *pctx,
+                            struct pipe_fence_handle *fence)
 {
    struct fd_context *ctx = fd_context(pctx);
 
@@ -245,7 +247,7 @@ fd_fence_server_signal(struct pipe_context *pctx,
 }
 
 int
-fd_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fence)
+fd_pipe_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fence)
 {
    /* We don't expect deferred flush to be combined with fence-fd: */
    assert(!fence->last_fence);
@@ -261,19 +263,19 @@ fd_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fence)
 }
 
 bool
-fd_fence_is_fd(struct pipe_fence_handle *fence)
+fd_pipe_fence_is_fd(struct pipe_fence_handle *fence)
 {
    return fence->submit_fence.use_fence_fd;
 }
 
 struct pipe_fence_handle *
-fd_fence_create(struct fd_batch *batch)
+fd_pipe_fence_create(struct fd_batch *batch)
 {
    return fence_create(batch->ctx, batch, -1, 0);
 }
 
 void
-fd_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
+fd_pipe_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
 {
    if (batch) {
       assert(!fence->batch);
@@ -293,8 +295,8 @@ fd_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
 }
 
 struct pipe_fence_handle *
-fd_fence_create_unflushed(struct pipe_context *pctx,
-                          struct tc_unflushed_batch_token *tc_token)
+fd_pipe_fence_create_unflushed(struct pipe_context *pctx,
+                               struct tc_unflushed_batch_token *tc_token)
 {
    struct pipe_fence_handle *fence =
       fence_create(fd_context(pctx), NULL, -1, 0);

@@ -675,7 +675,7 @@ flush_ring(struct fd_batch *batch)
                    batch->fence ? &batch->fence->submit_fence : NULL);
 
    if (batch->fence)
-      fd_fence_set_batch(batch->fence, NULL);
+      fd_pipe_fence_set_batch(batch->fence, NULL);
 }
 
 void
