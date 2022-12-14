@@ -118,6 +118,20 @@ unswizzled_format(enum pipe_format format)
 enum pipe_format
 panfrost_afbc_format(unsigned arch, enum pipe_format format)
 {
+        /* Luminance-alpha not supported for AFBC on v7+ */
+        switch (format) {
+        case PIPE_FORMAT_A8_UNORM:
+        case PIPE_FORMAT_L8_UNORM:
+        case PIPE_FORMAT_I8_UNORM:
+        case PIPE_FORMAT_L8A8_UNORM:
+                if (arch >= 7)
+                        return PIPE_FORMAT_NONE;
+                else
+                        break;
+        default:
+                break;
+        }
+
         /* sRGB does not change the pixel format itself, only the
          * interpretation. The interpretation is handled by conversion hardware
          * independent to the compression hardware, so we can compress sRGB
