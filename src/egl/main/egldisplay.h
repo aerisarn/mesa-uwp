@@ -203,6 +203,7 @@ struct _egl_display
    struct {
       EGLBoolean Zink; /**< Use kopper only */
       EGLBoolean ForceSoftware; /**< Use software path only */
+      EGLBoolean GalliumHud;    /**< Using gallium hud, disable buffer age */
       EGLAttrib *Attribs;     /**< Platform-specific options */
       int fd; /**< platform device specific, local fd */
    } Options;
