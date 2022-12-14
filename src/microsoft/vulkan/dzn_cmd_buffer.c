@@ -396,6 +396,43 @@ static const struct vk_command_buffer_ops cmd_buffer_ops = {
    .reset = dzn_cmd_buffer_reset,
 };
 
+static const D3D12_BARRIER_SYNC cmd_buffer_valid_sync[] = {
+   [D3D12_COMMAND_LIST_TYPE_DIRECT] = ~(D3D12_BARRIER_SYNC_VIDEO_DECODE |
+                                        D3D12_BARRIER_SYNC_VIDEO_PROCESS |
+                                        D3D12_BARRIER_SYNC_VIDEO_ENCODE),
+   [D3D12_COMMAND_LIST_TYPE_COMPUTE] = (D3D12_BARRIER_SYNC_ALL |
+                                        D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                                        D3D12_BARRIER_SYNC_RAYTRACING |
+                                        D3D12_BARRIER_SYNC_COPY |
+                                        D3D12_BARRIER_SYNC_EXECUTE_INDIRECT |
+                                        D3D12_BARRIER_SYNC_PREDICATION |
+                                        D3D12_BARRIER_SYNC_ALL_SHADING |
+                                        D3D12_BARRIER_SYNC_NON_PIXEL_SHADING |
+                                        D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO |
+                                        D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW |
+                                        D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE |
+                                        D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE),
+   [D3D12_COMMAND_LIST_TYPE_COPY] = D3D12_BARRIER_SYNC_ALL | D3D12_BARRIER_SYNC_COPY
+};
+static const D3D12_BARRIER_ACCESS cmd_buffer_valid_access[] = {
+   [D3D12_COMMAND_LIST_TYPE_DIRECT] = ~(D3D12_BARRIER_ACCESS_VIDEO_DECODE_READ |
+                                        D3D12_BARRIER_ACCESS_VIDEO_DECODE_WRITE |
+                                        D3D12_BARRIER_ACCESS_VIDEO_PROCESS_READ |
+                                        D3D12_BARRIER_ACCESS_VIDEO_PROCESS_WRITE |
+                                        D3D12_BARRIER_ACCESS_VIDEO_ENCODE_READ |
+                                        D3D12_BARRIER_ACCESS_VIDEO_ENCODE_WRITE),
+   [D3D12_COMMAND_LIST_TYPE_COMPUTE] = (D3D12_BARRIER_ACCESS_CONSTANT_BUFFER |
+                                        D3D12_BARRIER_ACCESS_UNORDERED_ACCESS |
+                                        D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+                                        D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
+                                        D3D12_BARRIER_ACCESS_PREDICATION |
+                                        D3D12_BARRIER_ACCESS_COPY_DEST |
+                                        D3D12_BARRIER_ACCESS_COPY_SOURCE |
+                                        D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ |
+                                        D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE),
+   [D3D12_COMMAND_LIST_TYPE_COPY] = D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST,
+};
+
 static VkResult
 dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
                       VkCommandBuffer *out)
@@ -481,6 +518,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    (void)ID3D12GraphicsCommandList_QueryInterface(cmdbuf->cmdlist, &IID_ID3D12GraphicsCommandList8, (void **)&cmdbuf->cmdlist8);
 
    cmdbuf->type = type;
+   cmdbuf->valid_sync = cmd_buffer_valid_sync[type];
+   cmdbuf->valid_access = cmd_buffer_valid_access[type];
 out:
    if (result != VK_SUCCESS)
       dzn_cmd_buffer_destroy(&cmdbuf->vk);

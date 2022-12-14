@@ -127,6 +127,8 @@ dzn_image_create(struct dzn_device *device,
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
 
+   image->valid_access = D3D12_BARRIER_ACCESS_COPY_SOURCE | D3D12_BARRIER_ACCESS_COPY_DEST;
+
    if (image->vk.tiling == VK_IMAGE_TILING_LINEAR) {
       /* Treat linear images as buffers: they should only be used as copy
        * src/dest, and CopyTextureResource() can manipulate buffers.
@@ -194,6 +196,9 @@ dzn_image_create(struct dzn_device *device,
       image->desc.MipLevels = pCreateInfo->mipLevels;
       image->desc.SampleDesc.Count = pCreateInfo->samples;
       image->desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+      image->valid_access |= D3D12_BARRIER_ACCESS_RESOLVE_DEST |
+         D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+         (pCreateInfo->samples > 1 ? D3D12_BARRIER_ACCESS_RESOLVE_SOURCE : 0);
    }
 
    if ((image->vk.create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
@@ -209,19 +214,27 @@ dzn_image_create(struct dzn_device *device,
 
    image->desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-   if (image->vk.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+   if (image->vk.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+      image->valid_access |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
+   }
 
    if (image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+      image->valid_access |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ |
+                             D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
 
       if (!(image->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                                VK_IMAGE_USAGE_STORAGE_BIT |
                                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT)))
+                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT))) {
          image->desc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-   } else if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)
+         image->valid_access &= ~D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+      }
+   } else if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+      image->valid_access |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   }
 
    /* Images with TRANSFER_DST can be cleared or passed as a blit/resolve
     * destination. Both operations require the RT or DS cap flags.
@@ -233,10 +246,13 @@ dzn_image_create(struct dzn_device *device,
          dzn_physical_device_get_format_support(pdev, pCreateInfo->format);
       if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) {
          image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+         image->valid_access |= D3D12_BARRIER_ACCESS_RENDER_TARGET;
       } else if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL) {
          image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+         image->valid_access |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
       } else if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) {
          image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+         image->valid_access |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
       }
    }
 

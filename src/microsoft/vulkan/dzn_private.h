@@ -595,6 +595,8 @@ struct dzn_cmd_buffer {
    ID3D12GraphicsCommandList8 *cmdlist8;
 
    D3D12_COMMAND_LIST_TYPE type;
+   D3D12_BARRIER_SYNC valid_sync;
+   D3D12_BARRIER_ACCESS valid_access;
 };
 
 struct dzn_descriptor_pool {
@@ -891,6 +893,8 @@ struct dzn_image {
    VkDeviceSize mem_offset;
    uint32_t castable_format_count;
    DXGI_FORMAT *castable_formats;
+
+   D3D12_BARRIER_ACCESS valid_access;
 };
 
 bool
@@ -972,6 +976,8 @@ struct dzn_buffer {
 
    VkBufferCreateFlags create_flags;
    VkBufferUsageFlags usage;
+
+   D3D12_BARRIER_ACCESS valid_access;
 };
 
 DXGI_FORMAT
