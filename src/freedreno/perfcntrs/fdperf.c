@@ -194,7 +194,7 @@ flush_ring(void)
    if (!dev.submit)
       return;
 
-   struct fd_submit_fence fence = {};
+   struct fd_fence fence = {};
    util_queue_fence_init(&fence.ready);
 
    ret = fd_submit_flush(dev.submit, -1, &fence);

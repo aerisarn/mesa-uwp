@@ -166,7 +166,7 @@ fd_submit_sp_new_ringbuffer(struct fd_submit *submit, uint32_t size,
  */
 static bool
 fd_submit_sp_flush_prep(struct fd_submit *submit, int in_fence_fd,
-                        struct fd_submit_fence *out_fence)
+                        struct fd_fence *out_fence)
 {
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(submit);
    bool has_shared = false;
@@ -268,7 +268,7 @@ should_defer(struct fd_submit *submit)
 
 static int
 fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
-                   struct fd_submit_fence *out_fence)
+                   struct fd_fence *out_fence)
 {
    struct fd_device *dev = submit->pipe->dev;
    struct fd_pipe *pipe = submit->pipe;

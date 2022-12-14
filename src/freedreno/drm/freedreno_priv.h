@@ -293,7 +293,7 @@ struct fd_submit_funcs {
                                            uint32_t size,
                                            enum fd_ringbuffer_flags flags);
    int (*flush)(struct fd_submit *submit, int in_fence_fd,
-                struct fd_submit_fence *out_fence);
+                struct fd_fence *out_fence);
    void (*destroy)(struct fd_submit *submit);
 };
 

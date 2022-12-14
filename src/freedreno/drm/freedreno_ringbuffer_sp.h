@@ -67,7 +67,7 @@ struct fd_submit_sp {
     * of submits to merge:
     */
    int in_fence_fd;
-   struct fd_submit_fence *out_fence;
+   struct fd_fence *out_fence;
 
    /* State for enqueued submits:
     */

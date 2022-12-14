@@ -412,7 +412,7 @@ FreedrenoDriver::configure_counters(bool reset, bool wait)
    for (const auto &countable : countables)
       countable.configure(ring, reset);
 
-   struct fd_submit_fence fence = {};
+   struct fd_fence fence = {};
    util_queue_fence_init(&fence.ready);
 
    fd_submit_flush(submit, -1, &fence);
@@ -423,7 +423,7 @@ FreedrenoDriver::configure_counters(bool reset, bool wait)
    fd_submit_del(submit);
 
    if (wait)
-      fd_pipe_wait(pipe, &fence.fence);
+      fd_pipe_wait(pipe, &fence);
 }
 
 /**

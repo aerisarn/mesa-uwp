@@ -174,12 +174,12 @@ flush_submit_list(struct list_head *submit_list)
    memcpy(req->payload, submit_bos, bos_len);
    memcpy(req->payload + bos_len, cmds, cmd_len);
 
-   struct fd_submit_fence *out_fence = fd_submit->out_fence;
+   struct fd_fence *out_fence = fd_submit->out_fence;
    int *out_fence_fd = NULL;
 
    if (out_fence) {
-      out_fence->fence.kfence = kfence;
-      out_fence->fence.ufence = fd_submit->base.fence;
+      out_fence->kfence = kfence;
+      out_fence->ufence = fd_submit->base.fence;
       /* Even if gallium driver hasn't requested a fence-fd, request one.
        * This way, if we have to block waiting for the fence, we can do
        * it in the guest, rather than in the single-threaded host.

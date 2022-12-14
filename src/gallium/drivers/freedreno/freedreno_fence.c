@@ -150,7 +150,7 @@ fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
       return ret == 0;
    }
 
-   if (fd_pipe_wait_timeout(fence->pipe, &fence->submit_fence.fence, timeout))
+   if (fd_pipe_wait_timeout(fence->pipe, &fence->submit_fence, timeout))
       return false;
 
    return true;

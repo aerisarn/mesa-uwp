@@ -267,7 +267,7 @@ handle_stateobj_relocs(struct msm_submit *submit, struct msm_ringbuffer *ring)
 
 static int
 msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
-                 struct fd_submit_fence *out_fence)
+                 struct fd_fence *out_fence)
 {
    struct msm_submit *msm_submit = to_msm_submit(submit);
    struct msm_pipe *msm_pipe = to_msm_pipe(submit->pipe);
@@ -370,8 +370,8 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
       ERROR_MSG("submit failed: %d (%s)", ret, strerror(errno));
       msm_dump_submit(&req);
    } else if (!ret && out_fence) {
-      out_fence->fence.kfence = req.fence;
-      out_fence->fence.ufence = submit->fence;
+      out_fence->kfence = req.fence;
+      out_fence->ufence = submit->fence;
       out_fence->fence_fd = req.fence_fd;
    }
 

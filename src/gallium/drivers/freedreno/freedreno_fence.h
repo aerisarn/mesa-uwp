@@ -73,7 +73,7 @@ struct pipe_fence_handle {
    struct fd_context *ctx;
    struct fd_pipe *pipe;
    struct fd_screen *screen;
-   struct fd_submit_fence submit_fence;
+   struct fd_fence submit_fence;
    uint32_t syncobj;
 };
 

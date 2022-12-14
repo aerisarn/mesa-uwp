@@ -151,8 +151,8 @@ flush_submit_list(struct list_head *submit_list)
       ERROR_MSG("submit failed: %d (%s)", ret, strerror(errno));
       msm_dump_submit(&req);
    } else if (!ret && fd_submit->out_fence) {
-      fd_submit->out_fence->fence.kfence = req.fence;
-      fd_submit->out_fence->fence.ufence = fd_submit->base.fence;
+      fd_submit->out_fence->kfence = req.fence;
+      fd_submit->out_fence->ufence = fd_submit->base.fence;
       fd_submit->out_fence->fence_fd = req.fence_fd;
    }
 

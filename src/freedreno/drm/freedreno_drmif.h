@@ -32,6 +32,7 @@
 #include "util/bitset.h"
 #include "util/list.h"
 #include "util/u_debug.h"
+#include "util/u_queue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,6 +84,10 @@ fd_fence_after(uint32_t a, uint32_t b)
 }
 
 /**
+ * Encapsulates submit out-fence(s), which consist of a 'timestamp' (per-
+ * pipe (submitqueue) sequence number) and optionally, if requested, an
+ * out-fence-fd
+ *
  * Per submit, there are actually two fences:
  *  1) The userspace maintained fence, which is used to optimistically
  *     avoid kernel ioctls to query if specific rendering is completed
@@ -94,8 +99,21 @@ fd_fence_after(uint32_t a, uint32_t b)
  * fd_pipe_wait().  So this struct encapsulates the two.
  */
 struct fd_fence {
+   /**
+    * The ready fence is signaled once the submit is actually flushed down
+    * to the kernel, and fence/fence_fd are populated.  You must wait for
+    * this fence to be signaled before reading fence/fence_fd.
+    */
+   struct util_queue_fence ready;
+
    uint32_t kfence;     /* kernel fence */
    uint32_t ufence;     /* userspace fence */
+
+   /**
+    * Optional dma_fence fd, returned by submit if use_fence_fd is true
+    */
+   int fence_fd;
+   bool use_fence_fd;
 };
 
 /*

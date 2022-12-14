@@ -281,7 +281,7 @@ main(int argc, char **argv)
 
    backend->emit_grid(kernel, grid, submit);
 
-   struct fd_submit_fence fence = {};
+   struct fd_fence fence = {};
    util_queue_fence_init(&fence.ready);
 
    fd_submit_flush(submit, -1, &fence);
