@@ -40,17 +40,22 @@ zink-lvp:
   script:
     - xvfb-run --server-args='-noreset' sh -c "GALLIUM_DRIVER=zink VK_DRIVER=lvp install/deqp-runner.sh"
 
-zink-anv-tgl:
+.zink-anv-test:
   extends:
     - .anv-tgl-test
     - .zink-anv-rules
     - .zink-test
   variables:
+    VK_DRIVER: intel
+    GPU_VERSION: zink-anv-tgl
+
+zink-anv-tgl:
+  extends:
+    - .zink-anv-test
+  variables:
     DEQP_SUITE: zink-anv-tgl
     PIGLIT_NO_WINDOW: 1
-    VK_DRIVER: intel
     HWCI_START_XORG: 1
-    GPU_VERSION: zink-anv-tgl
 
 # Manual full run when you want to double-check the full status.
 zink-anv-tgl-full:
@@ -63,6 +68,28 @@ zink-anv-tgl-full:
     HWCI_START_WESTON: 1
   timeout: 1h 30m
   parallel: 3
+
+zink-anv-tgl-traces:
+  extends:
+    - .lava-piglit-traces:amd64
+    - .zink-anv-test
+    - .zink-trace-test
+    # Add .lava-traces-base again to override .zink-anv-test setting the
+    # HWCI_TEST_SCRIPT, but .lava-piglit-traces having to come first to get
+    # dependencies right.
+    - .lava-traces-base
+  variables:
+    MESA_LOADER_DRIVER_OVERRIDE: zink
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-zink.yml"
+
+zink-anv-tgl-traces-restricted:
+  extends:
+    - zink-anv-tgl-traces
+    - .zink-anv-rules-restricted
+  variables:
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-zink-restricted.yml"
+    PIGLIT_REPLAY_EXTRA_ARGS: --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}
+  allow_failure: true
 
 zink-tu-a618:
   extends:
