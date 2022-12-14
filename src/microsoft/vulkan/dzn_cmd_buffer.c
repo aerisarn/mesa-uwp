@@ -2037,14 +2037,14 @@ dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
                                    bool post)
 {
    VkImageSubresourceRange src_range = {
-      .aspectMask = src_subres->aspectMask,
+      .aspectMask = aspect,
       .baseMipLevel = src_subres->mipLevel,
       .levelCount = 1,
       .baseArrayLayer = src_subres->baseArrayLayer,
       .layerCount = src_subres->layerCount,
    };
    VkImageSubresourceRange dst_range = {
-      .aspectMask = dst_subres->aspectMask,
+      .aspectMask = aspect,
       .baseMipLevel = dst_subres->mipLevel,
       .levelCount = 1,
       .baseArrayLayer = dst_subres->baseArrayLayer,
