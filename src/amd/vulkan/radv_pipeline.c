@@ -1584,55 +1584,55 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
     */
    if (needed_states && radv_pipeline_has_ds_attachments(state->rp)) {
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS) {
-         dynamic->depth_bounds.min = state->ds->depth.bounds_test.min;
-         dynamic->depth_bounds.max = state->ds->depth.bounds_test.max;
+         dynamic->vk.ds.depth.bounds_test.min = state->ds->depth.bounds_test.min;
+         dynamic->vk.ds.depth.bounds_test.max = state->ds->depth.bounds_test.max;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_COMPARE_MASK) {
-         dynamic->stencil_compare_mask.front = state->ds->stencil.front.compare_mask;
-         dynamic->stencil_compare_mask.back = state->ds->stencil.back.compare_mask;
+         dynamic->vk.ds.stencil.front.compare_mask = state->ds->stencil.front.compare_mask;
+         dynamic->vk.ds.stencil.back.compare_mask = state->ds->stencil.back.compare_mask;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_WRITE_MASK) {
-         dynamic->stencil_write_mask.front = state->ds->stencil.front.write_mask;
-         dynamic->stencil_write_mask.back = state->ds->stencil.back.write_mask;
+         dynamic->vk.ds.stencil.front.write_mask = state->ds->stencil.front.write_mask;
+         dynamic->vk.ds.stencil.back.write_mask = state->ds->stencil.back.write_mask;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_REFERENCE) {
-         dynamic->stencil_reference.front = state->ds->stencil.front.reference;
-         dynamic->stencil_reference.back = state->ds->stencil.back.reference;
+         dynamic->vk.ds.stencil.front.reference = state->ds->stencil.front.reference;
+         dynamic->vk.ds.stencil.back.reference = state->ds->stencil.back.reference;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_TEST_ENABLE) {
-         dynamic->depth_test_enable = state->ds->depth.test_enable;
+         dynamic->vk.ds.depth.test_enable = state->ds->depth.test_enable;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_WRITE_ENABLE) {
-         dynamic->depth_write_enable = state->ds->depth.write_enable;
+         dynamic->vk.ds.depth.write_enable = state->ds->depth.write_enable;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_COMPARE_OP) {
-         dynamic->depth_compare_op = state->ds->depth.compare_op;
+         dynamic->vk.ds.depth.compare_op = state->ds->depth.compare_op;
       }
 
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE) {
-         dynamic->depth_bounds_test_enable = state->ds->depth.bounds_test.enable;
+         dynamic->vk.ds.depth.bounds_test.enable = state->ds->depth.bounds_test.enable;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_TEST_ENABLE) {
-         dynamic->stencil_test_enable = state->ds->stencil.test_enable;
+         dynamic->vk.ds.stencil.test_enable = state->ds->stencil.test_enable;
       }
 
       if (states & RADV_DYNAMIC_STENCIL_OP) {
-         dynamic->stencil_op.front.compare_op = state->ds->stencil.front.op.compare;
-         dynamic->stencil_op.front.fail_op = state->ds->stencil.front.op.fail;
-         dynamic->stencil_op.front.pass_op = state->ds->stencil.front.op.pass;
-         dynamic->stencil_op.front.depth_fail_op = state->ds->stencil.front.op.depth_fail;
+         dynamic->vk.ds.stencil.front.op.compare = state->ds->stencil.front.op.compare;
+         dynamic->vk.ds.stencil.front.op.fail = state->ds->stencil.front.op.fail;
+         dynamic->vk.ds.stencil.front.op.pass = state->ds->stencil.front.op.pass;
+         dynamic->vk.ds.stencil.front.op.depth_fail = state->ds->stencil.front.op.depth_fail;
 
-         dynamic->stencil_op.back.compare_op = state->ds->stencil.back.op.compare;
-         dynamic->stencil_op.back.fail_op = state->ds->stencil.back.op.fail;
-         dynamic->stencil_op.back.pass_op = state->ds->stencil.back.op.pass;
-         dynamic->stencil_op.back.depth_fail_op = state->ds->stencil.back.op.depth_fail;
+         dynamic->vk.ds.stencil.back.op.compare = state->ds->stencil.back.op.compare;
+         dynamic->vk.ds.stencil.back.op.fail = state->ds->stencil.back.op.fail;
+         dynamic->vk.ds.stencil.back.op.pass = state->ds->stencil.back.op.pass;
+         dynamic->vk.ds.stencil.back.op.depth_fail = state->ds->stencil.back.op.depth_fail;
       }
    }
 

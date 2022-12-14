@@ -119,28 +119,34 @@ const struct radv_dynamic_state default_dynamic_state = {
                .combiner_ops = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
                                 VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
             },
+         .ds =
+            {
+               .depth =
+                  {
+                     .bounds_test =
+                        {
+                           .min = 0.0f,
+                           .max = 1.0f,
+                        },
+                  },
+               .stencil =
+                  {
+                     .front =
+                        {
+                           .reference = 0u,
+                           .compare_mask = ~0,
+                           .write_mask = ~0,
+                        },
+                     .back =
+                        {
+                           .reference = 0u,
+                           .compare_mask = ~0,
+                           .write_mask = ~0,
+                        },
+                  },
+            },
       },
    .blend_constants = {0.0f, 0.0f, 0.0f, 0.0f},
-   .depth_bounds =
-      {
-         .min = 0.0f,
-         .max = 1.0f,
-      },
-   .stencil_compare_mask =
-      {
-         .front = ~0u,
-         .back = ~0u,
-      },
-   .stencil_write_mask =
-      {
-         .front = ~0u,
-         .back = ~0u,
-      },
-   .stencil_reference =
-      {
-         .front = 0u,
-         .back = 0u,
-      },
    .logic_op_enable = 0u,
    .alpha_to_coverage_enable = 0u,
    .sample_mask = 0u,
@@ -229,17 +235,17 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.rs.depth_bias.clamp, RADV_DYNAMIC_DEPTH_BIAS);
    RADV_CMP_COPY(vk.rs.depth_bias.slope, RADV_DYNAMIC_DEPTH_BIAS);
 
-   RADV_CMP_COPY(depth_bounds.min, RADV_DYNAMIC_DEPTH_BOUNDS);
-   RADV_CMP_COPY(depth_bounds.max, RADV_DYNAMIC_DEPTH_BOUNDS);
+   RADV_CMP_COPY(vk.ds.depth.bounds_test.min, RADV_DYNAMIC_DEPTH_BOUNDS);
+   RADV_CMP_COPY(vk.ds.depth.bounds_test.max, RADV_DYNAMIC_DEPTH_BOUNDS);
 
-   RADV_CMP_COPY(stencil_compare_mask.front, RADV_DYNAMIC_STENCIL_COMPARE_MASK);
-   RADV_CMP_COPY(stencil_compare_mask.back, RADV_DYNAMIC_STENCIL_COMPARE_MASK);
+   RADV_CMP_COPY(vk.ds.stencil.front.compare_mask, RADV_DYNAMIC_STENCIL_COMPARE_MASK);
+   RADV_CMP_COPY(vk.ds.stencil.back.compare_mask, RADV_DYNAMIC_STENCIL_COMPARE_MASK);
 
-   RADV_CMP_COPY(stencil_write_mask.front, RADV_DYNAMIC_STENCIL_WRITE_MASK);
-   RADV_CMP_COPY(stencil_write_mask.back, RADV_DYNAMIC_STENCIL_WRITE_MASK);
+   RADV_CMP_COPY(vk.ds.stencil.front.write_mask, RADV_DYNAMIC_STENCIL_WRITE_MASK);
+   RADV_CMP_COPY(vk.ds.stencil.back.write_mask, RADV_DYNAMIC_STENCIL_WRITE_MASK);
 
-   RADV_CMP_COPY(stencil_reference.front, RADV_DYNAMIC_STENCIL_REFERENCE);
-   RADV_CMP_COPY(stencil_reference.back, RADV_DYNAMIC_STENCIL_REFERENCE);
+   RADV_CMP_COPY(vk.ds.stencil.front.reference, RADV_DYNAMIC_STENCIL_REFERENCE);
+   RADV_CMP_COPY(vk.ds.stencil.back.reference, RADV_DYNAMIC_STENCIL_REFERENCE);
 
    RADV_CMP_COPY(vk.rs.line.stipple.factor, RADV_DYNAMIC_LINE_STIPPLE);
    RADV_CMP_COPY(vk.rs.line.stipple.pattern, RADV_DYNAMIC_LINE_STIPPLE);
@@ -247,20 +253,20 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.rs.cull_mode, RADV_DYNAMIC_CULL_MODE);
    RADV_CMP_COPY(vk.rs.front_face, RADV_DYNAMIC_FRONT_FACE);
    RADV_CMP_COPY(vk.ia.primitive_topology, RADV_DYNAMIC_PRIMITIVE_TOPOLOGY);
-   RADV_CMP_COPY(depth_test_enable, RADV_DYNAMIC_DEPTH_TEST_ENABLE);
-   RADV_CMP_COPY(depth_write_enable, RADV_DYNAMIC_DEPTH_WRITE_ENABLE);
-   RADV_CMP_COPY(depth_compare_op, RADV_DYNAMIC_DEPTH_COMPARE_OP);
-   RADV_CMP_COPY(depth_bounds_test_enable, RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE);
-   RADV_CMP_COPY(stencil_test_enable, RADV_DYNAMIC_STENCIL_TEST_ENABLE);
+   RADV_CMP_COPY(vk.ds.depth.test_enable, RADV_DYNAMIC_DEPTH_TEST_ENABLE);
+   RADV_CMP_COPY(vk.ds.depth.write_enable, RADV_DYNAMIC_DEPTH_WRITE_ENABLE);
+   RADV_CMP_COPY(vk.ds.depth.compare_op, RADV_DYNAMIC_DEPTH_COMPARE_OP);
+   RADV_CMP_COPY(vk.ds.depth.bounds_test.enable, RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE);
+   RADV_CMP_COPY(vk.ds.stencil.test_enable, RADV_DYNAMIC_STENCIL_TEST_ENABLE);
 
-   RADV_CMP_COPY(stencil_op.front.fail_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.front.pass_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.front.depth_fail_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.front.compare_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.back.fail_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.back.pass_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.back.depth_fail_op, RADV_DYNAMIC_STENCIL_OP);
-   RADV_CMP_COPY(stencil_op.back.compare_op, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.front.op.fail, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.front.op.pass, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.front.op.depth_fail, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.front.op.compare, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.back.op.fail, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.back.op.pass, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.back.op.depth_fail, RADV_DYNAMIC_STENCIL_OP);
+   RADV_CMP_COPY(vk.ds.stencil.back.op.compare, RADV_DYNAMIC_STENCIL_OP);
 
    RADV_CMP_COPY(vk.fsr.fragment_size.width, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
    RADV_CMP_COPY(vk.fsr.fragment_size.height, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
@@ -2120,13 +2126,13 @@ radv_emit_stencil(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028430_DB_STENCILREFMASK, 2);
-   radeon_emit(cmd_buffer->cs, S_028430_STENCILTESTVAL(d->stencil_reference.front) |
-                                  S_028430_STENCILMASK(d->stencil_compare_mask.front) |
-                                  S_028430_STENCILWRITEMASK(d->stencil_write_mask.front) |
+   radeon_emit(cmd_buffer->cs, S_028430_STENCILTESTVAL(d->vk.ds.stencil.front.reference) |
+                                  S_028430_STENCILMASK(d->vk.ds.stencil.front.compare_mask) |
+                                  S_028430_STENCILWRITEMASK(d->vk.ds.stencil.front.write_mask) |
                                   S_028430_STENCILOPVAL(1));
-   radeon_emit(cmd_buffer->cs, S_028434_STENCILTESTVAL_BF(d->stencil_reference.back) |
-                                  S_028434_STENCILMASK_BF(d->stencil_compare_mask.back) |
-                                  S_028434_STENCILWRITEMASK_BF(d->stencil_write_mask.back) |
+   radeon_emit(cmd_buffer->cs, S_028434_STENCILTESTVAL_BF(d->vk.ds.stencil.back.reference) |
+                                  S_028434_STENCILMASK_BF(d->vk.ds.stencil.back.compare_mask) |
+                                  S_028434_STENCILWRITEMASK_BF(d->vk.ds.stencil.back.write_mask) |
                                   S_028434_STENCILOPVAL_BF(1));
 }
 
@@ -2136,8 +2142,8 @@ radv_emit_depth_bounds(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028020_DB_DEPTH_BOUNDS_MIN, 2);
-   radeon_emit(cmd_buffer->cs, fui(d->depth_bounds.min));
-   radeon_emit(cmd_buffer->cs, fui(d->depth_bounds.max));
+   radeon_emit(cmd_buffer->cs, fui(d->vk.ds.depth.bounds_test.min));
+   radeon_emit(cmd_buffer->cs, fui(d->vk.ds.depth.bounds_test.max));
 }
 
 static void
@@ -2252,15 +2258,16 @@ radv_emit_depth_control(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   radeon_set_context_reg(cmd_buffer->cs, R_028800_DB_DEPTH_CONTROL,
-                          S_028800_Z_ENABLE(d->depth_test_enable ? 1 : 0) |
-                          S_028800_Z_WRITE_ENABLE(d->depth_write_enable ? 1 : 0) |
-                          S_028800_ZFUNC(d->depth_compare_op) |
-                          S_028800_DEPTH_BOUNDS_ENABLE(d->depth_bounds_test_enable ? 1 : 0) |
-                          S_028800_STENCIL_ENABLE(d->stencil_test_enable ? 1 : 0) |
-                          S_028800_BACKFACE_ENABLE(d->stencil_test_enable ? 1 : 0) |
-                          S_028800_STENCILFUNC(d->stencil_op.front.compare_op) |
-                          S_028800_STENCILFUNC_BF(d->stencil_op.back.compare_op));
+   radeon_set_context_reg(
+      cmd_buffer->cs, R_028800_DB_DEPTH_CONTROL,
+      S_028800_Z_ENABLE(d->vk.ds.depth.test_enable ? 1 : 0) |
+         S_028800_Z_WRITE_ENABLE(d->vk.ds.depth.write_enable ? 1 : 0) |
+         S_028800_ZFUNC(d->vk.ds.depth.compare_op) |
+         S_028800_DEPTH_BOUNDS_ENABLE(d->vk.ds.depth.bounds_test.enable ? 1 : 0) |
+         S_028800_STENCIL_ENABLE(d->vk.ds.stencil.test_enable ? 1 : 0) |
+         S_028800_BACKFACE_ENABLE(d->vk.ds.stencil.test_enable ? 1 : 0) |
+         S_028800_STENCILFUNC(d->vk.ds.stencil.front.op.compare) |
+         S_028800_STENCILFUNC_BF(d->vk.ds.stencil.back.op.compare));
 }
 
 static void
@@ -2270,12 +2277,12 @@ radv_emit_stencil_control(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg(
       cmd_buffer->cs, R_02842C_DB_STENCIL_CONTROL,
-      S_02842C_STENCILFAIL(si_translate_stencil_op(d->stencil_op.front.fail_op)) |
-         S_02842C_STENCILZPASS(si_translate_stencil_op(d->stencil_op.front.pass_op)) |
-         S_02842C_STENCILZFAIL(si_translate_stencil_op(d->stencil_op.front.depth_fail_op)) |
-         S_02842C_STENCILFAIL_BF(si_translate_stencil_op(d->stencil_op.back.fail_op)) |
-         S_02842C_STENCILZPASS_BF(si_translate_stencil_op(d->stencil_op.back.pass_op)) |
-         S_02842C_STENCILZFAIL_BF(si_translate_stencil_op(d->stencil_op.back.depth_fail_op)));
+      S_02842C_STENCILFAIL(si_translate_stencil_op(d->vk.ds.stencil.front.op.fail)) |
+         S_02842C_STENCILZPASS(si_translate_stencil_op(d->vk.ds.stencil.front.op.pass)) |
+         S_02842C_STENCILZFAIL(si_translate_stencil_op(d->vk.ds.stencil.front.op.depth_fail)) |
+         S_02842C_STENCILFAIL_BF(si_translate_stencil_op(d->vk.ds.stencil.back.op.fail)) |
+         S_02842C_STENCILZPASS_BF(si_translate_stencil_op(d->vk.ds.stencil.back.op.pass)) |
+         S_02842C_STENCILZFAIL_BF(si_translate_stencil_op(d->vk.ds.stencil.back.op.depth_fail)));
 }
 
 static void
@@ -6252,8 +6259,8 @@ radv_CmdSetDepthBounds(VkCommandBuffer commandBuffer, float minDepthBounds, floa
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_bounds.min = minDepthBounds;
-   state->dynamic.depth_bounds.max = maxDepthBounds;
+   state->dynamic.vk.ds.depth.bounds_test.min = minDepthBounds;
+   state->dynamic.vk.ds.depth.bounds_test.max = maxDepthBounds;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
 }
@@ -6266,9 +6273,9 @@ radv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags 
    struct radv_cmd_state *state = &cmd_buffer->state;
 
    if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      state->dynamic.stencil_compare_mask.front = compareMask;
+      state->dynamic.vk.ds.stencil.front.compare_mask = compareMask;
    if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      state->dynamic.stencil_compare_mask.back = compareMask;
+      state->dynamic.vk.ds.stencil.back.compare_mask = compareMask;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
 }
@@ -6281,9 +6288,9 @@ radv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags fa
    struct radv_cmd_state *state = &cmd_buffer->state;
 
    if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      state->dynamic.stencil_write_mask.front = writeMask;
+      state->dynamic.vk.ds.stencil.front.write_mask = writeMask;
    if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      state->dynamic.stencil_write_mask.back = writeMask;
+      state->dynamic.vk.ds.stencil.back.write_mask = writeMask;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
 }
@@ -6296,9 +6303,9 @@ radv_CmdSetStencilReference(VkCommandBuffer commandBuffer, VkStencilFaceFlags fa
    struct radv_cmd_state *state = &cmd_buffer->state;
 
    if (faceMask & VK_STENCIL_FACE_FRONT_BIT)
-      state->dynamic.stencil_reference.front = reference;
+      state->dynamic.vk.ds.stencil.front.reference = reference;
    if (faceMask & VK_STENCIL_FACE_BACK_BIT)
-      state->dynamic.stencil_reference.back = reference;
+      state->dynamic.vk.ds.stencil.back.reference = reference;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
@@ -6414,7 +6421,7 @@ radv_CmdSetDepthTestEnable(VkCommandBuffer commandBuffer, VkBool32 depthTestEnab
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_test_enable = depthTestEnable;
+   state->dynamic.vk.ds.depth.test_enable = depthTestEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
 }
@@ -6425,7 +6432,7 @@ radv_CmdSetDepthWriteEnable(VkCommandBuffer commandBuffer, VkBool32 depthWriteEn
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_write_enable = depthWriteEnable;
+   state->dynamic.vk.ds.depth.write_enable = depthWriteEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
 }
@@ -6436,7 +6443,7 @@ radv_CmdSetDepthCompareOp(VkCommandBuffer commandBuffer, VkCompareOp depthCompar
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_compare_op = depthCompareOp;
+   state->dynamic.vk.ds.depth.compare_op = depthCompareOp;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
 }
@@ -6447,7 +6454,7 @@ radv_CmdSetDepthBoundsTestEnable(VkCommandBuffer commandBuffer, VkBool32 depthBo
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_bounds_test_enable = depthBoundsTestEnable;
+   state->dynamic.vk.ds.depth.bounds_test.enable = depthBoundsTestEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
 }
@@ -6458,7 +6465,7 @@ radv_CmdSetStencilTestEnable(VkCommandBuffer commandBuffer, VkBool32 stencilTest
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.stencil_test_enable = stencilTestEnable;
+   state->dynamic.vk.ds.stencil.test_enable = stencilTestEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
 }
@@ -6472,17 +6479,17 @@ radv_CmdSetStencilOp(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMask,
    struct radv_cmd_state *state = &cmd_buffer->state;
 
    if (faceMask & VK_STENCIL_FACE_FRONT_BIT) {
-      state->dynamic.stencil_op.front.fail_op = failOp;
-      state->dynamic.stencil_op.front.pass_op = passOp;
-      state->dynamic.stencil_op.front.depth_fail_op = depthFailOp;
-      state->dynamic.stencil_op.front.compare_op = compareOp;
+      state->dynamic.vk.ds.stencil.front.op.fail = failOp;
+      state->dynamic.vk.ds.stencil.front.op.pass = passOp;
+      state->dynamic.vk.ds.stencil.front.op.depth_fail = depthFailOp;
+      state->dynamic.vk.ds.stencil.front.op.compare = compareOp;
    }
 
    if (faceMask & VK_STENCIL_FACE_BACK_BIT) {
-      state->dynamic.stencil_op.back.fail_op = failOp;
-      state->dynamic.stencil_op.back.pass_op = passOp;
-      state->dynamic.stencil_op.back.depth_fail_op = depthFailOp;
-      state->dynamic.stencil_op.back.compare_op = compareOp;
+      state->dynamic.vk.ds.stencil.back.op.fail = failOp;
+      state->dynamic.vk.ds.stencil.back.op.pass = passOp;
+      state->dynamic.vk.ds.stencil.back.op.depth_fail = depthFailOp;
+      state->dynamic.vk.ds.stencil.back.op.compare = compareOp;
    }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;

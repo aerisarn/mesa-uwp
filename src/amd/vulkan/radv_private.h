@@ -1323,49 +1323,7 @@ struct radv_dynamic_state {
 
    float blend_constants[4];
 
-   struct {
-      float min;
-      float max;
-   } depth_bounds;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_compare_mask;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_write_mask;
-
-   struct {
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } front;
-
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } back;
-   } stencil_op;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_reference;
-
    struct radv_sample_locations_state sample_location;
-
-   bool depth_test_enable;
-   bool depth_write_enable;
-   VkCompareOp depth_compare_op;
-   bool depth_bounds_test_enable;
-   bool stencil_test_enable;
 
    unsigned logic_op;
 
