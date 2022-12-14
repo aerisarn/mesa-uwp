@@ -968,16 +968,36 @@ struct x11_swapchain {
    struct wsi_queue                             acquire_queue;
    pthread_t                                    queue_manager;
 
-   pthread_mutex_t                              present_id_mutex;
-   pthread_cond_t                               present_id_cond;
-   pthread_mutex_t                              present_id_poll_mutex;
+   /* Lock and condition variable that lets callers monitor forward progress in the swapchain.
+    * This includes:
+    * - Present ID completion updates (present_id).
+    * - Pending ID pending updates (present_id_pending).
+    * - Any errors happening while blocking on present progress updates (present_progress_error).
+    * - present_submitted_count.
+    */
+   pthread_mutex_t                              present_progress_mutex;
+   pthread_cond_t                               present_progress_cond;
+
+   /* Lock needs to be taken when waiting for and reading presentation events.
+    * Only relevant in non-FIFO modes where AcquireNextImage or WaitForPresentKHR may
+    * have to pump the XCB connection on its own. */
+   pthread_mutex_t                              present_poll_mutex;
+
+   /* For VK_KHR_present_wait. */
    uint64_t                                     present_id;
    uint64_t                                     present_id_pending;
-   VkResult                                     present_id_error;
+
+   /* When blocking on present progress, this can be set and progress_cond is signalled to unblock waiters. */
+   VkResult                                     present_progress_error;
 
    /* For handling wait_ready scenario where two different threads can pump the connection. */
+
+   /* Updated by presentation thread. Incremented when a present is submitted to X.
+    * Signals progress_cond when this happens. */
    uint64_t                                     present_submitted_count;
+   /* Total number of images ever pushed to a present queue. */
    uint64_t                                     present_queue_push_count;
+   /* Total number of images returned to application in AcquireNextImage. */
    uint64_t                                     present_poll_acquire_count;
 
    struct x11_image                             images[0];
@@ -989,12 +1009,12 @@ static void x11_present_complete(struct x11_swapchain *swapchain,
                                  struct x11_image *image)
 {
    if (image->present_id) {
-      pthread_mutex_lock(&swapchain->present_id_mutex);
+      pthread_mutex_lock(&swapchain->present_progress_mutex);
       if (image->present_id > swapchain->present_id) {
          swapchain->present_id = image->present_id;
-         pthread_cond_broadcast(&swapchain->present_id_cond);
+         pthread_cond_broadcast(&swapchain->present_progress_cond);
       }
-      pthread_mutex_unlock(&swapchain->present_id_mutex);
+      pthread_mutex_unlock(&swapchain->present_progress_mutex);
    }
 }
 
@@ -1002,7 +1022,7 @@ static void x11_notify_pending_present(struct x11_swapchain *swapchain,
                                        struct x11_image *image)
 {
    if (image->present_id || !swapchain->has_acquire_queue) {
-      pthread_mutex_lock(&swapchain->present_id_mutex);
+      pthread_mutex_lock(&swapchain->present_progress_mutex);
       if (image->present_id > swapchain->present_id_pending) {
          /* Unblock any thread waiting for a presentID out of order. */
          swapchain->present_id_pending = image->present_id;
@@ -1012,19 +1032,19 @@ static void x11_notify_pending_present(struct x11_swapchain *swapchain,
        * vkAcquireNextImageKHR call know that it is safe to poll for presentation events. */
       swapchain->present_submitted_count++;
 
-      pthread_cond_broadcast(&swapchain->present_id_cond);
-      pthread_mutex_unlock(&swapchain->present_id_mutex);
+      pthread_cond_broadcast(&swapchain->present_progress_cond);
+      pthread_mutex_unlock(&swapchain->present_progress_mutex);
    }
 }
 
 static void x11_swapchain_notify_error(struct x11_swapchain *swapchain, VkResult result)
 {
-   pthread_mutex_lock(&swapchain->present_id_mutex);
+   pthread_mutex_lock(&swapchain->present_progress_mutex);
    swapchain->present_id = UINT64_MAX;
    swapchain->present_id_pending = UINT64_MAX;
-   swapchain->present_id_error = result;
-   pthread_cond_broadcast(&swapchain->present_id_cond);
-   pthread_mutex_unlock(&swapchain->present_id_mutex);
+   swapchain->present_progress_error = result;
+   pthread_cond_broadcast(&swapchain->present_progress_cond);
+   pthread_mutex_unlock(&swapchain->present_progress_mutex);
 }
 
 /**
@@ -1237,7 +1257,7 @@ static bool
 x11_acquire_next_image_poll_has_forward_progress(struct x11_swapchain *chain)
 {
    /* We have forward progress in the sense that we just error out. */
-   if (chain->present_id_error != VK_SUCCESS)
+   if (chain->present_progress_error != VK_SUCCESS)
       return true;
 
    /* If we got here, there are no available images.
@@ -1326,7 +1346,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
        * we might need the present queue to complete
        * a request before we can guarantee forward progress in the poll loop below.
        * We take the poll_mutex, but so does the present queue. */
-      pthread_mutex_lock(&chain->present_id_mutex);
+      pthread_mutex_lock(&chain->present_progress_mutex);
 
       /* There must be at least one present in-flight that has been committed to X,
        * otherwise we can never satisfy the acquire operation if all images are busy,
@@ -1336,7 +1356,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
       result = VK_SUCCESS;
 
       while (!x11_acquire_next_image_poll_has_forward_progress(chain)) {
-         int ret = pthread_cond_timedwait(&chain->present_id_cond, &chain->present_id_mutex, &abs_timespec);
+         int ret = pthread_cond_timedwait(&chain->present_progress_cond, &chain->present_progress_mutex, &abs_timespec);
 
          if (ret == ETIMEDOUT) {
             result = x11_swapchain_result(chain, timeout == 0 ? VK_NOT_READY : VK_TIMEOUT);
@@ -1349,10 +1369,10 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
          }
       }
 
-      if (result == VK_SUCCESS && chain->present_id_error != VK_SUCCESS)
-         result = chain->present_id_error;
+      if (result == VK_SUCCESS && chain->present_progress_error != VK_SUCCESS)
+         result = chain->present_progress_error;
 
-      pthread_mutex_unlock(&chain->present_id_mutex);
+      pthread_mutex_unlock(&chain->present_progress_mutex);
 
       if (result != VK_SUCCESS)
          return result;
@@ -1360,9 +1380,9 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
 
    int ret;
    if (timeout == UINT64_MAX)
-      ret = pthread_mutex_lock(&chain->present_id_poll_mutex);
+      ret = pthread_mutex_lock(&chain->present_poll_mutex);
    else
-      ret = pthread_mutex_timedlock(&chain->present_id_poll_mutex, &abs_timespec_realtime);
+      ret = pthread_mutex_timedlock(&chain->present_poll_mutex, &abs_timespec_realtime);
 
    if (ret) {
       if (ret == ETIMEDOUT)
@@ -1409,7 +1429,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
    }
 
 out_unlock:
-   pthread_mutex_unlock(&chain->present_id_poll_mutex);
+   pthread_mutex_unlock(&chain->present_poll_mutex);
    return result;
 }
 
@@ -1694,9 +1714,9 @@ x11_queue_present(struct wsi_swapchain *anv_chain,
       return chain->status;
    } else {
       /* No present queue means immedate mode, so we present immediately. */
-      pthread_mutex_lock(&chain->present_id_poll_mutex);
+      pthread_mutex_lock(&chain->present_poll_mutex);
       VkResult result = x11_present_to_x11(chain, image_index, 0);
-      pthread_mutex_unlock(&chain->present_id_poll_mutex);
+      pthread_mutex_unlock(&chain->present_poll_mutex);
       return result;
    }
 }
@@ -1813,10 +1833,10 @@ x11_manage_fifo_queues(void *state)
        * WaitForPresentKHR will pump the message queue on its own unless
        * has_acquire_queue and has_present_queue are both true. */
       if (!chain->has_acquire_queue)
-         pthread_mutex_lock(&chain->present_id_poll_mutex);
+         pthread_mutex_lock(&chain->present_poll_mutex);
       result = x11_present_to_x11(chain, image_index, target_msc);
       if (!chain->has_acquire_queue)
-         pthread_mutex_unlock(&chain->present_id_poll_mutex);
+         pthread_mutex_unlock(&chain->present_poll_mutex);
 
       if (result < 0)
          goto fail;
@@ -2185,9 +2205,9 @@ x11_swapchain_destroy(struct wsi_swapchain *anv_chain,
                                              XCB_PRESENT_EVENT_MASK_NO_EVENT);
    xcb_discard_reply(chain->conn, cookie.sequence);
 
-   pthread_mutex_destroy(&chain->present_id_poll_mutex);
-   pthread_mutex_destroy(&chain->present_id_mutex);
-   pthread_cond_destroy(&chain->present_id_cond);
+   pthread_mutex_destroy(&chain->present_poll_mutex);
+   pthread_mutex_destroy(&chain->present_progress_mutex);
+   pthread_cond_destroy(&chain->present_progress_cond);
 
    wsi_swapchain_finish(&chain->base);
 
@@ -2240,10 +2260,10 @@ static VkResult x11_wait_for_present_queued(
 
    timespec_from_nsec(&abs_timespec, abs_timeout);
 
-   pthread_mutex_lock(&chain->present_id_mutex);
+   pthread_mutex_lock(&chain->present_progress_mutex);
    while (chain->present_id < waitValue) {
-      int ret = pthread_cond_timedwait(&chain->present_id_cond,
-                                       &chain->present_id_mutex,
+      int ret = pthread_cond_timedwait(&chain->present_progress_cond,
+                                       &chain->present_progress_mutex,
                                        &abs_timespec);
       if (ret == ETIMEDOUT) {
          result = VK_TIMEOUT;
@@ -2254,9 +2274,9 @@ static VkResult x11_wait_for_present_queued(
          break;
       }
    }
-   if (result == VK_SUCCESS && chain->present_id_error)
-      result = chain->present_id_error;
-   pthread_mutex_unlock(&chain->present_id_mutex);
+   if (result == VK_SUCCESS && chain->present_progress_error)
+      result = chain->present_progress_error;
+   pthread_mutex_unlock(&chain->present_progress_mutex);
    return result;
 }
 
@@ -2284,15 +2304,15 @@ static VkResult x11_wait_for_present_polled(
       return result;
 
    /* If we have satisfied the present ID right away, just return early. */
-   pthread_mutex_lock(&chain->present_id_mutex);
+   pthread_mutex_lock(&chain->present_progress_mutex);
    if (chain->present_id >= waitValue) {
-      result = chain->present_id_error;
+      result = chain->present_progress_error;
    } else {
       result = VK_TIMEOUT;
    }
 
    if (result != VK_TIMEOUT) {
-      pthread_mutex_unlock(&chain->present_id_mutex);
+      pthread_mutex_unlock(&chain->present_progress_mutex);
       return result;
    }
 
@@ -2304,21 +2324,21 @@ static VkResult x11_wait_for_present_polled(
     * where we have a present queue, but no acquire queue. We need to observe that the present queue
     * has actually submitted the present to XCB before we're guaranteed forward progress. */
    while (chain->present_id_pending < waitValue) {
-      int ret = pthread_cond_timedwait(&chain->present_id_cond,
-                                       &chain->present_id_mutex,
+      int ret = pthread_cond_timedwait(&chain->present_progress_cond,
+                                       &chain->present_progress_mutex,
                                        &abs_timespec_monotonic);
-      if (chain->present_id_error || ret == ETIMEDOUT || ret) {
-         pthread_mutex_unlock(&chain->present_id_mutex);
+      if (chain->present_progress_error || ret == ETIMEDOUT || ret) {
+         pthread_mutex_unlock(&chain->present_progress_mutex);
 
-         if (chain->present_id_error)
-            return chain->present_id_error;
+         if (chain->present_progress_error)
+            return chain->present_progress_error;
          else if (ret == ETIMEDOUT)
             return VK_TIMEOUT;
          else
             return VK_ERROR_DEVICE_LOST;
       }
    }
-   pthread_mutex_unlock(&chain->present_id_mutex);
+   pthread_mutex_unlock(&chain->present_progress_mutex);
 
    /* This scheme of taking the message queue lock is not optimal,
     * but it is only problematic in meaningless situations.
@@ -2330,9 +2350,9 @@ static VkResult x11_wait_for_present_polled(
     *   that present is processed. */
    int ret;
    if (timeout == UINT64_MAX)
-      ret = pthread_mutex_lock(&chain->present_id_poll_mutex);
+      ret = pthread_mutex_lock(&chain->present_poll_mutex);
    else
-      ret = pthread_mutex_timedlock(&chain->present_id_poll_mutex, &abs_timespec_realtime);
+      ret = pthread_mutex_timedlock(&chain->present_poll_mutex, &abs_timespec_realtime);
 
    if (ret) {
       if (ret == ETIMEDOUT)
@@ -2341,7 +2361,7 @@ static VkResult x11_wait_for_present_polled(
          return VK_ERROR_DEVICE_LOST;
    }
 
-   result = chain->present_id_error;
+   result = chain->present_progress_error;
 
    while (result == VK_SUCCESS && chain->present_id < waitValue) {
       xcb_generic_event_t *event;
@@ -2367,7 +2387,7 @@ static VkResult x11_wait_for_present_polled(
    }
 
 fail:
-   pthread_mutex_unlock(&chain->present_id_poll_mutex);
+   pthread_mutex_unlock(&chain->present_poll_mutex);
    return result;
 }
 
@@ -2457,23 +2477,23 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   int ret = pthread_mutex_init(&chain->present_id_mutex, NULL);
+   int ret = pthread_mutex_init(&chain->present_progress_mutex, NULL);
    if (ret != 0) {
       vk_free(pAllocator, chain);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   ret = pthread_mutex_init(&chain->present_id_poll_mutex, NULL);
+   ret = pthread_mutex_init(&chain->present_poll_mutex, NULL);
    if (ret != 0) {
-      pthread_mutex_destroy(&chain->present_id_mutex);
+      pthread_mutex_destroy(&chain->present_progress_mutex);
       vk_free(pAllocator, chain);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   bool bret = wsi_init_pthread_cond_monotonic(&chain->present_id_cond);
+   bool bret = wsi_init_pthread_cond_monotonic(&chain->present_progress_cond);
    if (!bret) {
-      pthread_mutex_destroy(&chain->present_id_mutex);
-      pthread_mutex_destroy(&chain->present_id_poll_mutex);
+      pthread_mutex_destroy(&chain->present_progress_mutex);
+      pthread_mutex_destroy(&chain->present_poll_mutex);
       vk_free(pAllocator, chain);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
