@@ -1397,7 +1397,6 @@ struct radv_dynamic_state {
 
    VkCullModeFlags cull_mode;
    VkFrontFace front_face;
-   unsigned primitive_topology;
 
    bool depth_test_enable;
    bool depth_write_enable;
@@ -1406,7 +1405,6 @@ struct radv_dynamic_state {
    bool stencil_test_enable;
 
    bool depth_bias_enable;
-   bool primitive_restart_enable;
    bool rasterizer_discard_enable;
 
    unsigned logic_op;

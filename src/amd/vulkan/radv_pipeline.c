@@ -1567,7 +1567,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-      dynamic->primitive_topology = si_translate_prim(state->ia->primitive_topology);
+      dynamic->vk.ia.primitive_topology = si_translate_prim(state->ia->primitive_topology);
    }
 
    /* If there is no depthstencil attachment, then don't read
@@ -1670,7 +1670,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
-      dynamic->primitive_restart_enable = state->ia->primitive_restart_enable;
+      dynamic->vk.ia.primitive_restart_enable = state->ia->primitive_restart_enable;
    }
 
    if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
@@ -5391,7 +5391,7 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
 
    if (extra->use_rectlist) {
       struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
-      dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
+      dynamic->vk.ia.primitive_topology = V_008958_DI_PT_RECTLIST;
 
       *vgt_gs_out_prim_type = V_028A6C_TRISTRIP;
       if (radv_pipeline_has_ngg(pipeline))

@@ -68,6 +68,11 @@ static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t 
 const struct radv_dynamic_state default_dynamic_state = {
    .vk =
       {
+         .ia =
+            {
+               .primitive_topology = 0u,
+               .primitive_restart_enable = 0u,
+            },
          .ts =
             {
                .patch_control_points = 0,
@@ -123,9 +128,7 @@ const struct radv_dynamic_state default_dynamic_state = {
       },
    .cull_mode = 0u,
    .front_face = 0u,
-   .primitive_topology = 0u,
    .depth_bias_enable = 0u,
-   .primitive_restart_enable = 0u,
    .rasterizer_discard_enable = 0u,
    .logic_op = 0u,
    .color_write_enable = 0u,
@@ -243,7 +246,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(cull_mode, RADV_DYNAMIC_CULL_MODE);
    RADV_CMP_COPY(front_face, RADV_DYNAMIC_FRONT_FACE);
-   RADV_CMP_COPY(primitive_topology, RADV_DYNAMIC_PRIMITIVE_TOPOLOGY);
+   RADV_CMP_COPY(vk.ia.primitive_topology, RADV_DYNAMIC_PRIMITIVE_TOPOLOGY);
    RADV_CMP_COPY(depth_test_enable, RADV_DYNAMIC_DEPTH_TEST_ENABLE);
    RADV_CMP_COPY(depth_write_enable, RADV_DYNAMIC_DEPTH_WRITE_ENABLE);
    RADV_CMP_COPY(depth_compare_op, RADV_DYNAMIC_DEPTH_COMPARE_OP);
@@ -266,7 +269,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(depth_bias_enable, RADV_DYNAMIC_DEPTH_BIAS_ENABLE);
 
-   RADV_CMP_COPY(primitive_restart_enable, RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE);
+   RADV_CMP_COPY(vk.ia.primitive_restart_enable, RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE);
 
    RADV_CMP_COPY(rasterizer_discard_enable, RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
 
@@ -2155,7 +2158,7 @@ radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    uint32_t auto_reset_cntl = 1;
 
-   if (d->primitive_topology == V_008958_DI_PT_LINESTRIP)
+   if (d->vk.ia.primitive_topology == V_008958_DI_PT_LINESTRIP)
       auto_reset_cntl = 2;
 
    radeon_set_context_reg(cmd_buffer->cs, R_028A0C_PA_SC_LINE_STIPPLE,
@@ -2213,7 +2216,7 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 
    if (d->provoking_vertex_mode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
       if (stage == MESA_SHADER_VERTEX) {
-         provoking_vtx = si_conv_prim_to_gs_out(d->primitive_topology);
+         provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology);
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
          struct radv_shader *gs = pipeline->base.shaders[stage];
@@ -2234,9 +2237,10 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
       radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device, cmd_buffer->cs,
-                                 R_030908_VGT_PRIMITIVE_TYPE, 1, d->primitive_topology);
+                                 R_030908_VGT_PRIMITIVE_TYPE, 1, d->vk.ia.primitive_topology);
    } else {
-      radeon_set_config_reg(cmd_buffer->cs, R_008958_VGT_PRIMITIVE_TYPE, d->primitive_topology);
+      radeon_set_config_reg(cmd_buffer->cs, R_008958_VGT_PRIMITIVE_TYPE,
+                            d->vk.ia.primitive_topology);
    }
 }
 
@@ -2342,13 +2346,13 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
       radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN,
-                             d->primitive_restart_enable);
+                             d->vk.ia.primitive_restart_enable);
    } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
       radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN,
-                             d->primitive_restart_enable);
+                             d->vk.ia.primitive_restart_enable);
    } else {
       radeon_set_context_reg(cmd_buffer->cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN,
-                             d->primitive_restart_enable);
+                             d->vk.ia.primitive_restart_enable);
    }
 }
 
@@ -3491,7 +3495,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
-      rast_prim = si_conv_prim_to_gs_out(d->primitive_topology);
+      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology);
    }
 
    si_write_guardband(cmd_buffer->cs, d->viewport.count, d->viewport.viewports, rast_prim,
@@ -4941,9 +4945,9 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
 {
    struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
-   unsigned topology = state->dynamic.primitive_topology;
-   bool prim_restart_enable = state->dynamic.primitive_restart_enable;
    unsigned patch_control_points = state->dynamic.vk.ts.patch_control_points;
+   unsigned topology = state->dynamic.vk.ia.primitive_topology;
+   bool prim_restart_enable = state->dynamic.vk.ia.primitive_restart_enable;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned ia_multi_vgt_param;
 
@@ -5009,7 +5013,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
    struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint32_t topology = state->dynamic.primitive_topology;
+   uint32_t topology = state->dynamic.vk.ia.primitive_topology;
    bool disable_instance_packing = false;
 
    /* Draw state. */
@@ -5021,7 +5025,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
                                  draw_info->indirect ? 0 : draw_info->count);
    }
 
-   if (state->dynamic.primitive_restart_enable) {
+   if (state->dynamic.vk.ia.primitive_restart_enable) {
       uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
 
       if (primitive_reset_index != state->last_primitive_reset_index) {
@@ -6372,15 +6376,15 @@ radv_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer, VkPrimitiveTopology 
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned primitive_topology = si_translate_prim(primitiveTopology);
 
-   if ((state->dynamic.primitive_topology == V_008958_DI_PT_LINESTRIP) !=
+   if ((state->dynamic.vk.ia.primitive_topology == V_008958_DI_PT_LINESTRIP) !=
        (primitive_topology == V_008958_DI_PT_LINESTRIP))
       state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 
-   if (radv_prim_is_points_or_lines(state->dynamic.primitive_topology) !=
+   if (radv_prim_is_points_or_lines(state->dynamic.vk.ia.primitive_topology) !=
        radv_prim_is_points_or_lines(primitive_topology))
       state->dirty |= RADV_CMD_DIRTY_GUARDBAND;
 
-   state->dynamic.primitive_topology = primitive_topology;
+   state->dynamic.vk.ia.primitive_topology = primitive_topology;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
 }
@@ -6511,7 +6515,7 @@ radv_CmdSetPrimitiveRestartEnable(VkCommandBuffer commandBuffer, VkBool32 primit
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.primitive_restart_enable = primitiveRestartEnable;
+   state->dynamic.vk.ia.primitive_restart_enable = primitiveRestartEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 }
@@ -8175,7 +8179,7 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 
    uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
 
-   if (info->indexed && state->dynamic.primitive_restart_enable &&
+   if (info->indexed && state->dynamic.vk.ia.primitive_restart_enable &&
        primitive_reset_index != state->last_primitive_reset_index)
       return true;
 
@@ -8205,7 +8209,7 @@ radv_skip_ngg_culling(struct radv_cmd_buffer *cmd_buffer,
     * the primitive topology at compile time, but we should still disable it dynamically for points
     * or lines.
     */
-   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->primitive_topology) + 1;
+   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1;
    if (num_vertices_per_prim != 3)
       return true;
 
