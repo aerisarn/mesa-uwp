@@ -52,6 +52,18 @@ zink-anv-tgl:
     HWCI_START_XORG: 1
     GPU_VERSION: zink-anv-tgl
 
+# Manual full run when you want to double-check the full status.
+zink-anv-tgl-full:
+  extends:
+    - zink-anv-tgl
+    - .test-manual-mr
+  variables:
+    DEQP_SUITE: zink-anv-tgl-full
+    JOB_TIMEOUT: 90
+    HWCI_START_WESTON: 1
+  timeout: 1h 30m
+  parallel: 3
+
 zink-tu-a618:
   extends:
     - .a618-test
