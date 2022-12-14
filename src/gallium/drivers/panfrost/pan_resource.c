@@ -854,14 +854,6 @@ pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
 static enum pipe_format
 pan_blit_format(enum pipe_format fmt)
 {
-        const struct util_format_description *desc;
-        desc = util_format_description(fmt);
-
-        /* This must be an emulated format (using u_transfer_helper) as if it
-         * was real RGTC we wouldn't have used AFBC and needed a blit. */
-        if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC)
-                fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
-
         return fmt;
 }
 
