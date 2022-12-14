@@ -480,6 +480,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
 
    (void)ID3D12GraphicsCommandList_QueryInterface(cmdbuf->cmdlist, &IID_ID3D12GraphicsCommandList8, (void **)&cmdbuf->cmdlist8);
 
+   cmdbuf->type = type;
 out:
    if (result != VK_SUCCESS)
       dzn_cmd_buffer_destroy(&cmdbuf->vk);

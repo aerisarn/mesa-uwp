@@ -593,6 +593,8 @@ struct dzn_cmd_buffer {
    ID3D12CommandAllocator *cmdalloc;
    ID3D12GraphicsCommandList1 *cmdlist;
    ID3D12GraphicsCommandList8 *cmdlist8;
+
+   D3D12_COMMAND_LIST_TYPE type;
 };
 
 struct dzn_descriptor_pool {
