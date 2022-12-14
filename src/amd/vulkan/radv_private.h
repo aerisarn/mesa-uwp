@@ -1321,19 +1321,7 @@ struct radv_dynamic_state {
       } xform[MAX_VIEWPORTS];
    } hw_vp;
 
-   float blend_constants[4];
-
    struct radv_sample_locations_state sample_location;
-
-   unsigned logic_op;
-
-   uint8_t color_write_enable;
-
-   bool logic_op_enable;
-
-   uint8_t color_write_mask[MAX_RTS];
-
-   uint32_t color_blend_enable[MAX_RTS];
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

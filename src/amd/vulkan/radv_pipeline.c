@@ -1555,7 +1555,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
     *    created against does not use any color attachments.
     */
    if (states & RADV_DYNAMIC_BLEND_CONSTANTS) {
-      typed_memcpy(dynamic->blend_constants, state->cb->blend_constants, 4);
+      typed_memcpy(dynamic->vk.cb.blend_constants, state->cb->blend_constants, 4);
    }
 
    if (states & RADV_DYNAMIC_CULL_MODE) {
@@ -1678,12 +1678,12 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP) {
       if ((pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) || state->cb->logic_op_enable) {
-         dynamic->logic_op = si_translate_blend_logic_op(state->cb->logic_op);
+         dynamic->vk.cb.logic_op = si_translate_blend_logic_op(state->cb->logic_op);
       }
    }
 
    if (states & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
-      dynamic->color_write_enable = state->cb->color_write_enables;
+      dynamic->vk.cb.color_write_enables = state->cb->color_write_enables;
    }
 
    if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
@@ -1699,7 +1699,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
-      dynamic->logic_op_enable = state->cb->logic_op_enable;
+      dynamic->vk.cb.logic_op_enable = state->cb->logic_op_enable;
    }
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
@@ -1737,13 +1737,13 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
-         dynamic->color_write_mask[i] = state->cb->attachments[i].write_mask;
+         dynamic->vk.cb.attachments[i].write_mask = state->cb->attachments[i].write_mask;
       }
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
-         dynamic->color_blend_enable[i] = state->cb->attachments[i].blend_enable;
+         dynamic->vk.cb.attachments[i].blend_enable = state->cb->attachments[i].blend_enable;
       }
    }
 
