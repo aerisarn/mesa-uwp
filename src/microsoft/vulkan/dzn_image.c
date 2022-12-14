@@ -256,6 +256,10 @@ dzn_image_create(struct dzn_device *device,
       }
    }
 
+   if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT &&
+       !(image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+
    *out = dzn_image_to_handle(image);
    return VK_SUCCESS;
 }
