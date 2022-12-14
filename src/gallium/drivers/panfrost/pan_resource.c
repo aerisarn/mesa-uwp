@@ -851,12 +851,6 @@ pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
         return pan_resource(pstaging);
 }
 
-static enum pipe_format
-pan_blit_format(enum pipe_format fmt)
-{
-        return fmt;
-}
-
 static void
 pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
 {
@@ -864,11 +858,11 @@ pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_transfer *trans
         struct pipe_blit_info blit = {0};
 
         blit.dst.resource = dst;
-        blit.dst.format   = pan_blit_format(dst->format);
+        blit.dst.format   = dst->format;
         blit.dst.level    = trans->base.level;
         blit.dst.box      = trans->base.box;
         blit.src.resource = trans->staging.rsrc;
-        blit.src.format   = pan_blit_format(trans->staging.rsrc->format);
+        blit.src.format   = trans->staging.rsrc->format;
         blit.src.level    = 0;
         blit.src.box      = trans->staging.box;
         blit.mask = util_format_get_mask(blit.src.format);
@@ -884,11 +878,11 @@ pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
         struct pipe_blit_info blit = {0};
 
         blit.src.resource = src;
-        blit.src.format   = pan_blit_format(src->format);
+        blit.src.format   = src->format;
         blit.src.level    = trans->base.level;
         blit.src.box      = trans->base.box;
         blit.dst.resource = trans->staging.rsrc;
-        blit.dst.format   = pan_blit_format(trans->staging.rsrc->format);
+        blit.dst.format   = trans->staging.rsrc->format;
         blit.dst.level    = 0;
         blit.dst.box      = trans->staging.box;
         blit.mask = util_format_get_mask(blit.dst.format);
@@ -1199,7 +1193,6 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
                 panfrost_resource_create_with_modifier(
                         ctx->base.screen, &rsrc->base, modifier);
         struct panfrost_resource *tmp_rsrc = pan_resource(tmp_prsrc);
-        enum pipe_format blit_fmt = pan_blit_format(tmp_rsrc->base.format);
 
         unsigned depth = rsrc->base.target == PIPE_TEXTURE_3D ?
                 rsrc->base.depth0 : rsrc->base.array_size;
@@ -1209,12 +1202,12 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
 
         struct pipe_blit_info blit = {
                 .dst.resource = &tmp_rsrc->base,
-                .dst.format   = blit_fmt,
+                .dst.format   = tmp_rsrc->base.format,
                 .dst.box      = box,
                 .src.resource = &rsrc->base,
-                .src.format   = pan_blit_format(rsrc->base.format),
+                .src.format   = rsrc->base.format,
                 .src.box      = box,
-                .mask         = util_format_get_mask(blit_fmt),
+                .mask         = util_format_get_mask(tmp_rsrc->base.format),
                 .filter       = PIPE_TEX_FILTER_NEAREST
         };
 
@@ -1249,8 +1242,8 @@ pan_legalize_afbc_format(struct panfrost_context *ctx,
         if (!drm_is_afbc(rsrc->image.layout.modifier))
                 return;
 
-        if (panfrost_afbc_format(dev->arch, pan_blit_format(rsrc->base.format)) ==
-            panfrost_afbc_format(dev->arch, pan_blit_format(format)))
+        if (panfrost_afbc_format(dev->arch, rsrc->base.format) ==
+            panfrost_afbc_format(dev->arch, format))
                 return;
 
         pan_resource_modifier_convert(ctx, rsrc,
