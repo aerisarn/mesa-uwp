@@ -1782,6 +1782,12 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .get_stencil = agx_resource_get_stencil,
 };
 
+static int
+agx_screen_get_fd(struct pipe_screen *pscreen)
+{
+   return agx_device(pscreen)->fd;
+}
+
 struct pipe_screen *
 agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
 {
@@ -1822,6 +1828,7 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
    }
 
    screen->destroy = agx_destroy_screen;
+   screen->get_screen_fd = agx_screen_get_fd;
    screen->get_name = agx_get_name;
    screen->get_vendor = agx_get_vendor;
    screen->get_device_vendor = agx_get_device_vendor;
