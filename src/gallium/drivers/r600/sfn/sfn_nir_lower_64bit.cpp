@@ -842,6 +842,8 @@ Lower64BitToVec2::filter(const nir_instr *instr) const
             return true;
          return (var->type->without_array()->components() != intr->num_components);
       }
+      case nir_intrinsic_store_global:
+         return nir_src_bit_size(intr->src[0]) == 64;
       default:
          return false;
       }
@@ -1082,6 +1084,7 @@ r600_nir_64_to_vec2(nir_shader *sh)
                   auto ir = nir_instr_as_intrinsic(instr);
                   switch (ir->intrinsic) {
                   case nir_intrinsic_store_output:
+                  case nir_intrinsic_store_global:
                   case nir_intrinsic_store_ssbo: {
                      bool success = false;
                      nir_foreach_src(instr, store_64bit_intr, &success);
