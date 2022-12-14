@@ -153,6 +153,7 @@ fd_device_del(struct fd_device *dev)
       return;
 
    assert(list_is_empty(&dev->deferred_submits));
+   assert(!dev->deferred_submits_fence);
 
    if (dev->suballoc_bo)
       fd_bo_del(dev->suballoc_bo);

@@ -219,13 +219,19 @@ fd_submit_sp_flush_cleanup(void *job, void *gdata, int thread_index)
 }
 
 static void
-enqueue_submit_list(struct list_head *submit_list)
+flush_deferred_submits(struct fd_device *dev)
 {
-   struct fd_submit *submit = last_submit(submit_list);
+   simple_mtx_assert_locked(&dev->submit_lock);
+
+   if (list_is_empty(&dev->deferred_submits))
+      return;
+
+   struct fd_submit *submit = last_submit(&dev->deferred_submits);
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(submit);
 
-   list_replace(submit_list, &fd_submit->submit_list);
-   list_inithead(submit_list);
+   list_replace(&dev->deferred_submits, &fd_submit->submit_list);
+   list_inithead(&dev->deferred_submits);
+   dev->deferred_cmds = 0;
 
    struct util_queue_fence *fence = &fd_submit->out_fence->ready;
 
@@ -275,13 +281,7 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
     */
    if (!list_is_empty(&dev->deferred_submits) &&
        (last_submit(&dev->deferred_submits)->pipe != submit->pipe)) {
-      struct list_head submit_list;
-
-      list_replace(&dev->deferred_submits, &submit_list);
-      list_inithead(&dev->deferred_submits);
-      dev->deferred_cmds = 0;
-
-      enqueue_submit_list(&submit_list);
+      flush_deferred_submits(dev);
    }
 
    list_addtail(&fd_submit_ref(submit)->node, &dev->deferred_submits);
@@ -314,15 +314,9 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
       return out_fence;
    }
 
-   struct list_head submit_list;
-
-   list_replace(&dev->deferred_submits, &submit_list);
-   list_inithead(&dev->deferred_submits);
-   dev->deferred_cmds = 0;
+   flush_deferred_submits(dev);
 
    simple_mtx_unlock(&dev->submit_lock);
-
-   enqueue_submit_list(&submit_list);
 
    return out_fence;
 }
@@ -331,42 +325,15 @@ void
 fd_pipe_sp_flush(struct fd_pipe *pipe, uint32_t fence)
 {
    struct fd_device *dev = pipe->dev;
-   struct list_head submit_list;
-
-   DEBUG_MSG("flush: %u", fence);
-
-   list_inithead(&submit_list);
 
    simple_mtx_lock(&dev->submit_lock);
 
    assert(!fd_fence_after(fence, pipe->last_enqueue_fence));
 
-   foreach_submit_safe (deferred_submit, &dev->deferred_submits) {
-      /* We should never have submits from multiple pipes in the deferred
-       * list.  If we did, we couldn't compare their fence to our fence,
-       * since each fd_pipe is an independent timeline.
-       */
-      if (deferred_submit->pipe != pipe)
-         break;
-
-      if (fd_fence_after(deferred_submit->fence, fence))
-         break;
-
-      list_del(&deferred_submit->node);
-      list_addtail(&deferred_submit->node, &submit_list);
-      dev->deferred_cmds -= fd_ringbuffer_cmd_count(deferred_submit->primary);
-   }
-
-   assert(dev->deferred_cmds == fd_dev_count_deferred_cmds(dev));
+   flush_deferred_submits(dev);
 
    simple_mtx_unlock(&dev->submit_lock);
 
-   if (list_is_empty(&submit_list))
-      goto flush_sync;
-
-   enqueue_submit_list(&submit_list);
-
-flush_sync:
    /* Once we are sure that we've enqueued at least up to the requested
     * submit, we need to be sure that submitq has caught up and flushed
     * them to the kernel
