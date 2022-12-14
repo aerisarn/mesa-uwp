@@ -1108,6 +1108,501 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
    }
 }
 
+/* A straightforward translation of the Vulkan sync flags to D3D sync flags */
+static D3D12_BARRIER_SYNC
+translate_sync(VkPipelineStageFlags2 flags, bool before)
+{
+   if (!before && (flags & VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT))
+      return D3D12_BARRIER_SYNC_ALL;
+   else if (before && (flags & VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT))
+      return D3D12_BARRIER_SYNC_ALL;
+
+   if (flags & (VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+                /* Theoretically transfer should be less, but it encompasses blit
+                 * (which can be draws) and clears, so bloat it up to everything. */
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
+                VK_PIPELINE_STAGE_2_BLIT_BIT))
+      return D3D12_BARRIER_SYNC_ALL;
+
+   D3D12_BARRIER_SYNC ret = D3D12_BARRIER_SYNC_NONE;
+   if (flags & (VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+                VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT))
+      ret |= D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+   if (flags & VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
+      ret |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
+   if (flags & (VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT |
+                VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+                VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT))
+      ret |= D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
+   if (flags & (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR))
+      ret |= D3D12_BARRIER_SYNC_PIXEL_SHADING;
+   if (flags & (VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT))
+      ret |= D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+   if (flags & VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
+      ret |= D3D12_BARRIER_SYNC_RENDER_TARGET;
+   if (flags & VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+      ret |= D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+   if (flags & VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+      ret |= D3D12_BARRIER_SYNC_DRAW;
+   if (flags & VK_PIPELINE_STAGE_2_COPY_BIT)
+      ret |= D3D12_BARRIER_SYNC_COPY;
+   if (flags & VK_PIPELINE_STAGE_2_RESOLVE_BIT)
+      ret |= D3D12_BARRIER_SYNC_RESOLVE;
+   if (flags & VK_PIPELINE_STAGE_2_CLEAR_BIT)
+      ret |= D3D12_BARRIER_SYNC_RENDER_TARGET |
+             D3D12_BARRIER_SYNC_DEPTH_STENCIL |
+             D3D12_BARRIER_SYNC_CLEAR_UNORDERED_ACCESS_VIEW;
+   if (flags & VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT)
+      ret |= D3D12_BARRIER_SYNC_PREDICATION;
+   if (flags & VK_PIPELINE_STAGE_2_COMMAND_PREPROCESS_BIT_NV)
+      ret |= D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+   if (flags & VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR)
+      ret |= D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+   if (flags & VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR)
+      ret |= D3D12_BARRIER_SYNC_RAYTRACING;
+   if (flags & VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_COPY_BIT_KHR)
+      ret |= D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
+
+   return ret;
+}
+
+/* A straightforward translation of Vulkan access to D3D access */
+static D3D12_BARRIER_ACCESS
+translate_access(VkAccessFlags2 flags)
+{
+   D3D12_BARRIER_ACCESS ret = D3D12_BARRIER_ACCESS_COMMON;
+   if (flags & VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT;
+   if (flags & VK_ACCESS_2_INDEX_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_INDEX_BUFFER;
+   if (flags & VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_VERTEX_BUFFER;
+   if (flags & VK_ACCESS_2_UNIFORM_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER;
+   if (flags & (VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT |
+                VK_ACCESS_2_SHADER_SAMPLED_READ_BIT))
+      ret |= D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+   if (flags & VK_ACCESS_2_SHADER_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_CONSTANT_BUFFER |
+             D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+             D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   if (flags & (VK_ACCESS_2_SHADER_WRITE_BIT |
+                VK_ACCESS_2_SHADER_STORAGE_READ_BIT |
+                VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT))
+      ret |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   if (flags & VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_RENDER_TARGET |
+             D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+   if (flags & VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)
+      ret |= D3D12_BARRIER_ACCESS_RENDER_TARGET |
+             D3D12_BARRIER_ACCESS_RESOLVE_DEST;
+   if (flags & VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+   if (flags & VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+      ret |= D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+   if (flags & VK_ACCESS_2_TRANSFER_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_COPY_SOURCE |
+             D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+   if (flags & VK_ACCESS_2_TRANSFER_WRITE_BIT)
+      ret |= D3D12_BARRIER_ACCESS_RENDER_TARGET |
+             D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE |
+             D3D12_BARRIER_ACCESS_UNORDERED_ACCESS |
+             D3D12_BARRIER_ACCESS_COPY_DEST |
+             D3D12_BARRIER_ACCESS_RESOLVE_DEST;
+   if (flags & VK_ACCESS_2_MEMORY_READ_BIT)
+      ret |= D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT |
+             D3D12_BARRIER_ACCESS_INDEX_BUFFER |
+             D3D12_BARRIER_ACCESS_VERTEX_BUFFER |
+             D3D12_BARRIER_ACCESS_CONSTANT_BUFFER |
+             D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+             D3D12_BARRIER_ACCESS_UNORDERED_ACCESS |
+             D3D12_BARRIER_ACCESS_RENDER_TARGET |
+             D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ |
+             D3D12_BARRIER_ACCESS_COPY_SOURCE |
+             D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+   if (flags & VK_ACCESS_2_MEMORY_WRITE_BIT)
+      ret |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS |
+             D3D12_BARRIER_ACCESS_RENDER_TARGET |
+             D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE |
+             D3D12_BARRIER_ACCESS_COPY_DEST |
+             D3D12_BARRIER_ACCESS_RESOLVE_DEST;
+   if (flags & (VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
+                VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
+                VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT))
+      ret |= D3D12_BARRIER_ACCESS_STREAM_OUTPUT;
+   if (flags & VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT)
+      ret |= D3D12_BARRIER_ACCESS_PREDICATION;
+   if (flags & VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR)
+      ret |= D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
+   if (flags & VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR)
+      ret |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ;
+   if (flags & VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR)
+      ret |= D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE;
+   return ret;
+}
+
+/* For texture barriers, D3D will validate that the access flags used are actually
+ * things that were valid for the specified layout. Use the mask returned from here
+ * to scope down the set of app-provided access flags to make validation happy. */
+static D3D12_BARRIER_ACCESS
+valid_access_for_layout(D3D12_BARRIER_LAYOUT layout)
+{
+   switch (layout) {
+   case D3D12_BARRIER_LAYOUT_UNDEFINED:
+      return D3D12_BARRIER_ACCESS_NO_ACCESS;
+   case D3D12_BARRIER_LAYOUT_COMMON:
+      return D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+             D3D12_BARRIER_ACCESS_COPY_SOURCE |
+             D3D12_BARRIER_ACCESS_COPY_DEST;
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON:
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON:
+      return D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+             D3D12_BARRIER_ACCESS_COPY_SOURCE |
+             D3D12_BARRIER_ACCESS_COPY_DEST |
+             D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   case D3D12_BARRIER_LAYOUT_GENERIC_READ:
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ:
+      return D3D12_BARRIER_ACCESS_SHADER_RESOURCE |
+             D3D12_BARRIER_ACCESS_COPY_SOURCE |
+             D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ |
+             D3D12_BARRIER_ACCESS_RESOLVE_SOURCE |
+             D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ:
+      return D3D12_BARRIER_ACCESS_SHADER_RESOURCE|
+             D3D12_BARRIER_ACCESS_COPY_SOURCE;
+   case D3D12_BARRIER_LAYOUT_RENDER_TARGET:
+      return D3D12_BARRIER_ACCESS_RENDER_TARGET;
+   case D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS:
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS:
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS:
+      return D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   case D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE:
+      return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+   case D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ:
+      return D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ;
+   case D3D12_BARRIER_LAYOUT_SHADER_RESOURCE:
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE:
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE:
+      return D3D12_BARRIER_ACCESS_SHADER_RESOURCE;
+   case D3D12_BARRIER_LAYOUT_COPY_SOURCE:
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE:
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE:
+      return D3D12_BARRIER_ACCESS_COPY_SOURCE;
+   case D3D12_BARRIER_LAYOUT_COPY_DEST:
+   case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST:
+   case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST:
+      return D3D12_BARRIER_ACCESS_COPY_DEST;
+   case D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE:
+      return D3D12_BARRIER_ACCESS_RESOLVE_SOURCE;
+   case D3D12_BARRIER_LAYOUT_RESOLVE_DEST:
+      return D3D12_BARRIER_ACCESS_RESOLVE_DEST;
+   case D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE:
+      return D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE;
+   default:
+      return D3D12_BARRIER_ACCESS_COMMON;
+   }
+}
+
+/* Similar to layout -> access, there's access -> sync validation too. D3D
+ * doesn't like over-synchronizing if you weren't accessing a resource through
+ * a relevant access bit. */
+static D3D12_BARRIER_SYNC
+adjust_sync_for_access(D3D12_BARRIER_SYNC in, D3D12_BARRIER_ACCESS access)
+{
+   /* NO_ACCESS must not add sync */
+   if (access == D3D12_BARRIER_ACCESS_NO_ACCESS)
+      return D3D12_BARRIER_SYNC_NONE;
+   /* SYNC_ALL can be used with any access bits */
+   if (in == D3D12_BARRIER_SYNC_ALL)
+      return in;
+   /* ACCESS_COMMON needs at least one sync bit */
+   if (access == D3D12_BARRIER_ACCESS_COMMON)
+      return in == D3D12_BARRIER_SYNC_NONE ? D3D12_BARRIER_SYNC_ALL : in;
+
+   D3D12_BARRIER_SYNC out = D3D12_BARRIER_SYNC_NONE;
+   if (access & D3D12_BARRIER_ACCESS_VERTEX_BUFFER)
+      out |= in & (D3D12_BARRIER_SYNC_VERTEX_SHADING |
+                   D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_CONSTANT_BUFFER)
+      out |= in & (D3D12_BARRIER_SYNC_VERTEX_SHADING |
+                   D3D12_BARRIER_SYNC_PIXEL_SHADING |
+                   D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                   D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_INDEX_BUFFER)
+      out |= in & D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+   if (access & D3D12_BARRIER_ACCESS_RENDER_TARGET)
+      out |= in & D3D12_BARRIER_SYNC_RENDER_TARGET;
+   if (access & D3D12_BARRIER_ACCESS_UNORDERED_ACCESS)
+      out |= in & (D3D12_BARRIER_SYNC_VERTEX_SHADING |
+                   D3D12_BARRIER_SYNC_PIXEL_SHADING |
+                   D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                   D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE)
+      out |= in & (D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_DEPTH_STENCIL);
+   if (access & D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ)
+      out |= in & (D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_DEPTH_STENCIL);
+   if (access & D3D12_BARRIER_ACCESS_SHADER_RESOURCE)
+      out |= in & (D3D12_BARRIER_SYNC_VERTEX_SHADING |
+                   D3D12_BARRIER_SYNC_PIXEL_SHADING |
+                   D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                   D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_STREAM_OUTPUT)
+      out |= in & (D3D12_BARRIER_SYNC_VERTEX_SHADING |
+                   D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_INDIRECT_ARGUMENT)
+      out |= in & (D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_EXECUTE_INDIRECT);
+   if (access & D3D12_BARRIER_ACCESS_PREDICATION)
+      out |= in & (D3D12_BARRIER_SYNC_DRAW |
+                   D3D12_BARRIER_SYNC_EXECUTE_INDIRECT);
+   if (access & (D3D12_BARRIER_ACCESS_COPY_DEST | D3D12_BARRIER_ACCESS_COPY_SOURCE))
+      out |= in & D3D12_BARRIER_SYNC_COPY;
+   if (access & (D3D12_BARRIER_ACCESS_RESOLVE_DEST | D3D12_BARRIER_ACCESS_RESOLVE_SOURCE))
+      out |= in & D3D12_BARRIER_SYNC_RESOLVE;
+   if (access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_READ)
+      out |= in & (D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                   D3D12_BARRIER_SYNC_RAYTRACING |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE |
+                   D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE |
+                   D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_RAYTRACING_ACCELERATION_STRUCTURE_WRITE)
+      out |= in & (D3D12_BARRIER_SYNC_COMPUTE_SHADING |
+                   D3D12_BARRIER_SYNC_RAYTRACING |
+                   D3D12_BARRIER_SYNC_ALL_SHADING |
+                   D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE |
+                   D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE |
+                   D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
+   if (access & D3D12_BARRIER_ACCESS_SHADING_RATE_SOURCE)
+      out |= in & (D3D12_BARRIER_SYNC_PIXEL_SHADING |
+                   D3D12_BARRIER_SYNC_ALL_SHADING);
+   /* SYNC_NONE means it won't be accessed, so if we can't express the app's original intent
+    * here, then be conservative and over-sync. */
+   return out ? out : D3D12_BARRIER_SYNC_ALL;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_CmdPipelineBarrier2_enhanced(VkCommandBuffer commandBuffer,
+                                 const VkDependencyInfo *info)
+{
+   VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+
+   uint32_t num_barrier_groups = 0;
+   D3D12_BARRIER_GROUP groups[3];
+
+   /* Some input image barriers will expand into 2 outputs, and some will turn into buffer barriers.
+    * Do a first pass and count how much we need to allocate. */
+   uint32_t num_image_barriers = 0;
+   uint32_t num_buffer_barriers = info->bufferMemoryBarrierCount;
+   for (uint32_t i = 0; i < info->imageMemoryBarrierCount; ++i) {
+      VK_FROM_HANDLE(dzn_image, image, info->pImageMemoryBarriers[i].image);
+      bool need_separate_aspect_barriers =
+         info->pImageMemoryBarriers[i].oldLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
+         info->pImageMemoryBarriers[i].oldLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
+         info->pImageMemoryBarriers[i].newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
+         info->pImageMemoryBarriers[i].newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+      if (image->vk.tiling == VK_IMAGE_TILING_LINEAR)
+         ++num_buffer_barriers;
+      else
+         num_image_barriers += need_separate_aspect_barriers ? 2 : 1;
+   }
+
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, D3D12_GLOBAL_BARRIER, global_barriers, info->memoryBarrierCount);
+   VK_MULTIALLOC_DECL(&ma, D3D12_BUFFER_BARRIER, buffer_barriers, num_buffer_barriers);
+   VK_MULTIALLOC_DECL(&ma, D3D12_TEXTURE_BARRIER, texture_barriers, num_image_barriers);
+
+   if (!vk_multialloc_alloc(&ma, &cmdbuf->vk.pool->alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)) {
+      vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return;
+   }
+
+   if (info->memoryBarrierCount) {
+      groups[num_barrier_groups].NumBarriers = info->memoryBarrierCount;
+      groups[num_barrier_groups].Type = D3D12_BARRIER_TYPE_GLOBAL;
+      groups[num_barrier_groups].pGlobalBarriers = global_barriers;
+      ++num_barrier_groups;
+      for (uint32_t i = 0; i < info->memoryBarrierCount; ++i) {
+         global_barriers[i].SyncBefore = translate_sync(info->pMemoryBarriers[i].srcStageMask, true) & cmdbuf->valid_sync;
+         global_barriers[i].SyncAfter = translate_sync(info->pMemoryBarriers[i].dstStageMask, false) & cmdbuf->valid_sync;
+         global_barriers[i].AccessBefore = global_barriers[i].SyncBefore == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pMemoryBarriers[i].srcAccessMask) & cmdbuf->valid_access;
+         global_barriers[i].AccessAfter = global_barriers[i].SyncAfter == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pMemoryBarriers[i].dstAccessMask) & cmdbuf->valid_access;
+
+         if ((global_barriers[i].AccessBefore & D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE) &&
+             (global_barriers[i].AccessAfter == D3D12_BARRIER_ACCESS_COMMON ||
+              global_barriers[i].AccessAfter & ~(D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE | D3D12_BARRIER_ACCESS_DEPTH_STENCIL_READ))) {
+            /* D3D validates against a global barrier attempting to transition from depth write to something other than depth write,
+             * but this is a D3D bug; it's absolutely valid to use a global barrier to transition *multiple* types of accesses.
+             * The validation does say that you'd need an image barrier to actually get that kind of transition, which is still correct,
+             * so just remove this bit under the assumption that a dedicated image barrier will be submitted to do any necessary work later. */
+            global_barriers[i].AccessBefore &= ~D3D12_BARRIER_ACCESS_DEPTH_STENCIL_WRITE;
+         }
+         if (global_barriers[i].AccessBefore == D3D12_BARRIER_ACCESS_COMMON)
+            global_barriers[i].AccessAfter = D3D12_BARRIER_ACCESS_COMMON;
+         global_barriers[i].SyncBefore = adjust_sync_for_access(global_barriers[i].SyncBefore, global_barriers[i].AccessBefore);
+         global_barriers[i].SyncAfter = adjust_sync_for_access(global_barriers[i].SyncAfter, global_barriers[i].AccessAfter);
+      }
+   }
+
+   if (num_buffer_barriers) {
+      groups[num_barrier_groups].NumBarriers = num_buffer_barriers;
+      groups[num_barrier_groups].Type = D3D12_BARRIER_TYPE_BUFFER;
+      groups[num_barrier_groups].pBufferBarriers = buffer_barriers;
+      ++num_barrier_groups;
+      for (uint32_t i = 0; i < info->bufferMemoryBarrierCount; ++i) {
+         VK_FROM_HANDLE(dzn_buffer, buf, info->pBufferMemoryBarriers[i].buffer);
+         buffer_barriers[i].SyncBefore = translate_sync(info->pBufferMemoryBarriers[i].srcStageMask, true) & cmdbuf->valid_sync;
+         buffer_barriers[i].SyncAfter = translate_sync(info->pBufferMemoryBarriers[i].dstStageMask, false) & cmdbuf->valid_sync;
+         buffer_barriers[i].AccessBefore = buffer_barriers[i].SyncBefore == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pBufferMemoryBarriers[i].srcAccessMask) & cmdbuf->valid_access & buf->valid_access;
+         buffer_barriers[i].AccessAfter = buffer_barriers[i].SyncAfter == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pBufferMemoryBarriers[i].dstAccessMask) & cmdbuf->valid_access & buf->valid_access;
+         buffer_barriers[i].SyncBefore = adjust_sync_for_access(buffer_barriers[i].SyncBefore, buffer_barriers[i].AccessBefore);
+         buffer_barriers[i].SyncAfter = adjust_sync_for_access(buffer_barriers[i].SyncAfter, buffer_barriers[i].AccessAfter);
+         buffer_barriers[i].pResource = buf->res;
+         buffer_barriers[i].Offset = 0;
+         buffer_barriers[i].Size = UINT64_MAX;
+      }
+   }
+
+   if (num_image_barriers) {
+      groups[num_barrier_groups].Type = D3D12_BARRIER_TYPE_TEXTURE;
+      groups[num_barrier_groups].pTextureBarriers = texture_barriers;
+      groups[num_barrier_groups].NumBarriers = num_image_barriers;
+      ++num_barrier_groups;
+   }
+
+   uint32_t tbar = 0;
+   uint32_t bbar = info->bufferMemoryBarrierCount;
+   for (uint32_t i = 0; i < info->imageMemoryBarrierCount; ++i) {
+      VK_FROM_HANDLE(dzn_image, image, info->pImageMemoryBarriers[i].image);
+
+      if (image->vk.tiling == VK_IMAGE_TILING_LINEAR) {
+         /* Barriers on linear images turn into buffer barriers */
+         buffer_barriers[bbar].SyncBefore = translate_sync(info->pImageMemoryBarriers[i].srcStageMask, true) & cmdbuf->valid_sync;
+         buffer_barriers[bbar].SyncAfter = translate_sync(info->pImageMemoryBarriers[i].dstStageMask, false) & cmdbuf->valid_sync;
+         buffer_barriers[bbar].AccessBefore = buffer_barriers[bbar].SyncBefore == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pImageMemoryBarriers[i].srcAccessMask) & cmdbuf->valid_access & image->valid_access;
+         buffer_barriers[bbar].AccessAfter = buffer_barriers[bbar].SyncAfter == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pImageMemoryBarriers[i].dstAccessMask) & cmdbuf->valid_access & image->valid_access;
+         buffer_barriers[bbar].SyncBefore = adjust_sync_for_access(buffer_barriers[bbar].SyncBefore, buffer_barriers[bbar].AccessBefore);
+         buffer_barriers[bbar].SyncAfter = adjust_sync_for_access(buffer_barriers[bbar].SyncAfter, buffer_barriers[bbar].AccessAfter);
+         buffer_barriers[bbar].pResource = image->res;
+         buffer_barriers[bbar].Offset = 0;
+         buffer_barriers[bbar].Size = UINT64_MAX;
+         ++bbar;
+         continue;
+      }
+
+      const VkImageSubresourceRange *range = &info->pImageMemoryBarriers[i].subresourceRange;
+      const bool simultaneous_access = image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+
+      bool need_separate_aspect_barriers =
+         info->pImageMemoryBarriers[i].oldLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
+         info->pImageMemoryBarriers[i].oldLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
+         info->pImageMemoryBarriers[i].newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
+         info->pImageMemoryBarriers[i].newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+      uint32_t num_aspects = need_separate_aspect_barriers ? 2 : 1;
+      VkImageAspectFlags aspect_0_mask = need_separate_aspect_barriers ?
+         (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT) : VK_IMAGE_ASPECT_FLAG_BITS_MAX_ENUM;
+      VkImageAspectFlags aspects[] = {
+         range->aspectMask & aspect_0_mask,
+         range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT,
+      };
+
+      for (uint32_t aspect_idx = 0; aspect_idx < num_aspects; ++aspect_idx) {
+         VkImageAspectFlags aspect = aspects[aspect_idx];
+         texture_barriers[tbar].SyncBefore = translate_sync(info->pImageMemoryBarriers[i].srcStageMask, true) & cmdbuf->valid_sync;
+         texture_barriers[tbar].SyncAfter = translate_sync(info->pImageMemoryBarriers[i].dstStageMask, false) & cmdbuf->valid_sync;
+         const bool queue_ownership_transfer = info->pImageMemoryBarriers[i].srcQueueFamilyIndex != info->pImageMemoryBarriers[i].dstQueueFamilyIndex;
+         D3D12_BARRIER_ACCESS layout_before_valid_access = ~0;
+         D3D12_BARRIER_ACCESS layout_after_valid_access = ~0;
+         if (simultaneous_access) {
+            /* Simultaneous access textures never perform layout transitions, and can do any type of access from COMMON layout */
+            texture_barriers[tbar].LayoutAfter = texture_barriers[tbar].LayoutBefore = D3D12_BARRIER_LAYOUT_COMMON;
+         } else if (queue_ownership_transfer) {
+            /* For an ownership transfer, force the foreign layout to COMMON and the matching sync/access to NONE */
+            assert(info->pImageMemoryBarriers[i].srcQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED);
+            assert(info->pImageMemoryBarriers[i].dstQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED);
+            const bool is_release = info->pImageMemoryBarriers[i].srcQueueFamilyIndex == cmdbuf->vk.pool->queue_family_index;
+            const bool is_acquire = info->pImageMemoryBarriers[i].dstQueueFamilyIndex == cmdbuf->vk.pool->queue_family_index;
+            assert(is_release ^ is_acquire);
+            texture_barriers[tbar].LayoutBefore = is_acquire ?
+               D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].oldLayout, cmdbuf->type, aspect);
+            texture_barriers[tbar].LayoutAfter = is_release ?
+               D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].newLayout, cmdbuf->type, aspect);
+            texture_barriers[tbar].SyncBefore = D3D12_BARRIER_SYNC_NONE;
+            texture_barriers[tbar].SyncAfter = D3D12_BARRIER_SYNC_NONE;
+         } else {
+            texture_barriers[tbar].LayoutBefore = dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].oldLayout, cmdbuf->type, aspect);
+            texture_barriers[tbar].LayoutAfter = simultaneous_access ?
+               D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].newLayout, cmdbuf->type, aspect);
+            layout_before_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutBefore);
+            layout_after_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutAfter);
+         }
+
+         texture_barriers[tbar].AccessBefore = texture_barriers[tbar].SyncBefore == D3D12_BARRIER_SYNC_NONE ||
+                                                texture_barriers[tbar].LayoutBefore == D3D12_BARRIER_LAYOUT_UNDEFINED ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pImageMemoryBarriers[i].srcAccessMask) &
+               cmdbuf->valid_access & image->valid_access & layout_before_valid_access;
+         texture_barriers[tbar].AccessAfter = texture_barriers[tbar].SyncAfter == D3D12_BARRIER_SYNC_NONE ?
+            D3D12_BARRIER_ACCESS_NO_ACCESS :
+            translate_access(info->pImageMemoryBarriers[i].dstAccessMask) &
+               cmdbuf->valid_access & image->valid_access & layout_after_valid_access;
+
+         texture_barriers[tbar].SyncBefore = adjust_sync_for_access(texture_barriers[tbar].SyncBefore, texture_barriers[tbar].AccessBefore);
+         texture_barriers[tbar].SyncAfter = adjust_sync_for_access(texture_barriers[tbar].SyncAfter, texture_barriers[tbar].AccessAfter);
+         texture_barriers[tbar].Subresources.FirstArraySlice = range->baseArrayLayer;
+         texture_barriers[tbar].Subresources.NumArraySlices = dzn_get_layer_count(image, range);
+         texture_barriers[tbar].Subresources.IndexOrFirstMipLevel = range->baseMipLevel;
+         texture_barriers[tbar].Subresources.NumMipLevels = dzn_get_level_count(image, range);
+         texture_barriers[tbar].Subresources.FirstPlane = aspect_idx;
+         texture_barriers[tbar].Subresources.NumPlanes = util_bitcount(aspect);
+         texture_barriers[tbar].pResource = image->res;
+         texture_barriers[tbar].Flags = D3D12_TEXTURE_BARRIER_FLAG_NONE;
+         if (texture_barriers[tbar].LayoutBefore == D3D12_BARRIER_LAYOUT_UNDEFINED)
+            texture_barriers[tbar].Flags |= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
+         ++tbar;
+      }
+   }
+   assert(bbar == num_buffer_barriers);
+   assert(tbar == num_image_barriers);
+
+   ID3D12GraphicsCommandList8_Barrier(cmdbuf->cmdlist8, num_barrier_groups, groups);
+
+   vk_free(&cmdbuf->vk.pool->alloc, global_barriers);
+}
+
 static D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_cmd_buffer_get_dsv(struct dzn_cmd_buffer *cmdbuf,
                        const struct dzn_image *image,
