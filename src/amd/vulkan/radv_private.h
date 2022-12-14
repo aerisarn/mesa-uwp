@@ -1301,10 +1301,6 @@ struct radv_streamout_state {
 struct radv_viewport_state {
    uint32_t count;
    VkViewport viewports[MAX_VIEWPORTS];
-   struct {
-      float scale[3];
-      float translate[3];
-   } xform[MAX_VIEWPORTS];
 };
 
 struct radv_scissor_state {
@@ -1330,6 +1326,13 @@ struct radv_dynamic_state {
     * Defines the set of saved dynamic state.
     */
    uint64_t mask;
+
+   struct {
+      struct {
+         float scale[3];
+         float translate[3];
+      } xform[MAX_VIEWPORTS];
+   } hw_vp;
 
    struct radv_viewport_state viewport;
 

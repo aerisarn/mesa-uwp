@@ -158,7 +158,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
                  src->viewport.count * sizeof(VkViewport))) {
          typed_memcpy(dest->viewport.viewports, src->viewport.viewports, src->viewport.count);
-         typed_memcpy(dest->viewport.xform, src->viewport.xform, src->viewport.count);
+         typed_memcpy(dest->hw_vp.xform, src->hw_vp.xform, src->viewport.count);
          dest_mask |= RADV_DYNAMIC_VIEWPORT;
       }
    }
@@ -2016,18 +2016,18 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg_seq(cmd_buffer->cs, R_02843C_PA_CL_VPORT_XSCALE, d->viewport.count * 6);
 
    for (unsigned i = 0; i < d->viewport.count; i++) {
-      radeon_emit(cmd_buffer->cs, fui(d->viewport.xform[i].scale[0]));
-      radeon_emit(cmd_buffer->cs, fui(d->viewport.xform[i].translate[0]));
-      radeon_emit(cmd_buffer->cs, fui(d->viewport.xform[i].scale[1]));
-      radeon_emit(cmd_buffer->cs, fui(d->viewport.xform[i].translate[1]));
+      radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].scale[0]));
+      radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].translate[0]));
+      radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].scale[1]));
+      radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].translate[1]));
 
       double scale_z, translate_z;
       if (d->depth_clip_negative_one_to_one) {
-         scale_z = d->viewport.xform[i].scale[2] * 0.5f;
-         translate_z = (d->viewport.xform[i].translate[2] + d->viewport.viewports[i].maxDepth) * 0.5f;
+         scale_z = d->hw_vp.xform[i].scale[2] * 0.5f;
+         translate_z = (d->hw_vp.xform[i].translate[2] + d->viewport.viewports[i].maxDepth) * 0.5f;
       } else {
-         scale_z = d->viewport.xform[i].scale[2];
-         translate_z = d->viewport.xform[i].translate[2];
+         scale_z = d->hw_vp.xform[i].scale[2];
+         translate_z = d->hw_vp.xform[i].translate[2];
 
       }
       radeon_emit(cmd_buffer->cs, fui(scale_z));
@@ -6169,8 +6169,8 @@ radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint3
           viewportCount * sizeof(*pViewports));
    for (unsigned i = 0; i < viewportCount; i++) {
       radv_get_viewport_xform(&pViewports[i],
-                              state->dynamic.viewport.xform[i + firstViewport].scale,
-                              state->dynamic.viewport.xform[i + firstViewport].translate);
+                              state->dynamic.hw_vp.xform[i + firstViewport].scale,
+                              state->dynamic.hw_vp.xform[i + firstViewport].translate);
    }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_GUARDBAND;
@@ -8301,8 +8301,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 
    /* Get viewport transform. */
    float vp_scale[2], vp_translate[2];
-   memcpy(vp_scale, cmd_buffer->state.dynamic.viewport.xform[0].scale, 2 * sizeof(float));
-   memcpy(vp_translate, cmd_buffer->state.dynamic.viewport.xform[0].translate, 2 * sizeof(float));
+   memcpy(vp_scale, cmd_buffer->state.dynamic.hw_vp.xform[0].scale, 2 * sizeof(float));
+   memcpy(vp_translate, cmd_buffer->state.dynamic.hw_vp.xform[0].translate, 2 * sizeof(float));
    bool vp_y_inverted = (-vp_scale[1] + vp_translate[1]) > (vp_scale[1] + vp_translate[1]);
 
    /* Get current culling settings. */

@@ -1527,7 +1527,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
          typed_memcpy(dynamic->viewport.viewports, state->vp->viewports, state->vp->viewport_count);
          for (unsigned i = 0; i < dynamic->viewport.count; i++)
             radv_get_viewport_xform(&dynamic->viewport.viewports[i],
-                                    dynamic->viewport.xform[i].scale, dynamic->viewport.xform[i].translate);
+                                    dynamic->hw_vp.xform[i].scale, dynamic->hw_vp.xform[i].translate);
       }
    }
 
