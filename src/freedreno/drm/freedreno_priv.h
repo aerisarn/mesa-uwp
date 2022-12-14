@@ -163,6 +163,7 @@ struct fd_device {
     * to preserve correct order of execution.
     */
    struct list_head deferred_submits;
+   struct fd_fence *deferred_submits_fence;
    unsigned deferred_cmds;
    simple_mtx_t submit_lock;
 

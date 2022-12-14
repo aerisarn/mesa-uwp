@@ -148,6 +148,11 @@ fd_pipe_purge(struct fd_pipe *pipe)
       dev->deferred_cmds -= fd_ringbuffer_cmd_count(deferred_submit->primary);
    }
 
+   if (list_is_empty(&dev->deferred_submits) && dev->deferred_submits_fence) {
+      fd_fence_del(dev->deferred_submits_fence);
+      dev->deferred_submits_fence = NULL;
+   }
+
    simple_mtx_unlock(&dev->submit_lock);
 
    foreach_submit_safe (deferred_submit, &deferred_submits) {

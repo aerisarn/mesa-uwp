@@ -233,6 +233,9 @@ flush_deferred_submits(struct fd_device *dev)
    list_inithead(&dev->deferred_submits);
    dev->deferred_cmds = 0;
 
+   fd_fence_del(dev->deferred_submits_fence);
+   dev->deferred_submits_fence = NULL;
+
    struct util_queue_fence *fence = &fd_submit->out_fence->ready;
 
    DEBUG_MSG("enqueue: %u", submit->fence);
@@ -286,7 +289,14 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 
    list_addtail(&fd_submit_ref(submit)->node, &dev->deferred_submits);
 
-   struct fd_fence *out_fence = fd_fence_new(submit->pipe, use_fence_fd);
+   if (!dev->deferred_submits_fence)
+      dev->deferred_submits_fence = fd_fence_new(submit->pipe, use_fence_fd);
+
+   struct fd_fence *out_fence = fd_fence_ref(dev->deferred_submits_fence);
+
+   /* upgrade the out_fence for the deferred submits, if needed: */
+   if (use_fence_fd)
+      out_fence->use_fence_fd = true;
 
    bool has_shared = fd_submit_sp_flush_prep(submit, in_fence_fd, out_fence);
 
@@ -305,7 +315,7 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
     * reference to the fd, and merged all the in-fence-fd's when we flush the
     * deferred submits
     */
-   if ((in_fence_fd == -1) && !out_fence && !has_shared && should_defer(submit)) {
+   if ((in_fence_fd == -1) && !use_fence_fd && !has_shared && should_defer(submit)) {
       DEBUG_MSG("defer: %u", submit->fence);
       dev->deferred_cmds += fd_ringbuffer_cmd_count(submit->primary);
       assert(dev->deferred_cmds == fd_dev_count_deferred_cmds(dev));
