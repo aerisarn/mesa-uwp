@@ -4181,6 +4181,12 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
 
       ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
    }
+   cmdbuf->vk.base.device->dispatch_table.CmdPipelineBarrier(
+      vk_command_buffer_to_handle(&cmdbuf->vk),
+      srcStageMask, dstStageMask, 0,
+      memoryBarrierCount, pMemoryBarriers,
+      bufferMemoryBarrierCount, pBufferMemoryBarriers,
+      imageMemoryBarrierCount, pImageMemoryBarriers);
 }
 
 VKAPI_ATTR void VKAPI_CALL
