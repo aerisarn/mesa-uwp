@@ -342,7 +342,7 @@ struct fd_bo_funcs {
    bool (*prefer_upload)(struct fd_bo *bo, unsigned len);
 };
 
-void fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence);
+void fd_bo_add_fence(struct fd_bo *bo, struct fd_fence *fence);
 
 enum fd_bo_state {
    FD_BO_STATE_IDLE,

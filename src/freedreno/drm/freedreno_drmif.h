@@ -208,15 +208,6 @@ int fd_pipe_wait_timeout(struct fd_pipe *pipe, const struct fd_fence *fence,
 /* buffer-object functions:
  */
 
-struct fd_bo_fence {
-   /* For non-shared buffers, track the last pipe the buffer was active
-    * on, and the per-pipe fence value that indicates when the buffer is
-    * idle:
-    */
-   uint32_t fence;
-   struct fd_pipe *pipe;
-};
-
 struct fd_bo {
    struct fd_device *dev;
    uint32_t size;
@@ -244,13 +235,13 @@ struct fd_bo {
    time_t free_time;      /* time when added to bucket-list */
 
    unsigned short nr_fences, max_fences;
-   struct fd_bo_fence *fences;
+   struct fd_fence **fences;
 
    /* In the common case, there is no more than one fence attached.
     * This provides storage for the fences table until it grows to
     * be larger than a single element.
     */
-   struct fd_bo_fence _inline_fence;
+   struct fd_fence *_inline_fence;
 };
 
 struct fd_bo *_fd_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags);

@@ -345,7 +345,7 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 
    simple_mtx_lock(&fence_lock);
    for (unsigned j = 0; j < msm_submit->nr_bos; j++) {
-      fd_bo_add_fence(msm_submit->bos[j], submit->pipe, submit->fence);
+      fd_bo_add_fence(msm_submit->bos[j], out_fence);
    }
    simple_mtx_unlock(&fence_lock);
 

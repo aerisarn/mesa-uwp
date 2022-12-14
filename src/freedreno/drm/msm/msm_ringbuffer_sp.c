@@ -152,7 +152,6 @@ flush_submit_list(struct list_head *submit_list)
       msm_dump_submit(&req);
    } else if (!ret) {
       fd_submit->out_fence->kfence = req.fence;
-      fd_submit->out_fence->ufence = fd_submit->base.fence;
       fd_submit->out_fence->fence_fd = req.fence_fd;
    }
 

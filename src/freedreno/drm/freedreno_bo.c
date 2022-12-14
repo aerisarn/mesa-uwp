@@ -372,7 +372,7 @@ fd_bo_fini_common(struct fd_bo *bo)
    VG_BO_FREE(bo);
 
    for (int i = 0; i < bo->nr_fences; i++)
-      fd_pipe_del(bo->fences[i].pipe);
+      fd_fence_del(bo->fences[i]);
 
    if (bo->fences != &bo->_inline_fence)
       free(bo->fences);
@@ -420,9 +420,16 @@ close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt)
 static void
 bo_flush(struct fd_bo *bo)
 {
-   for (int i = 0; i < bo->nr_fences; i++) {
-      struct fd_bo_fence *f = &bo->fences[i];
-      fd_pipe_flush(f->pipe, f->fence);
+   simple_mtx_lock(&fence_lock);
+   unsigned nr = bo->nr_fences;
+   struct fd_fence *fences[nr];
+   for (unsigned i = 0; i < nr; i++)
+      fences[i] = fd_fence_ref_locked(bo->fences[i]);
+   simple_mtx_unlock(&fence_lock);
+
+   for (unsigned i = 0; i < nr; i++) {
+      fd_fence_flush(bo->fences[i]);
+      fd_fence_del(fences[i]);
    }
 }
 
@@ -598,12 +605,10 @@ cleanup_fences(struct fd_bo *bo)
    simple_mtx_assert_locked(&fence_lock);
 
    for (int i = 0; i < bo->nr_fences; i++) {
-      struct fd_bo_fence *f = &bo->fences[i];
+      struct fd_fence *f = bo->fences[i];
 
-      if (fd_fence_before(f->pipe->control->fence, f->fence))
+      if (fd_fence_before(f->pipe->control->fence, f->ufence))
          continue;
-
-      struct fd_pipe *pipe = f->pipe;
 
       bo->nr_fences--;
 
@@ -613,12 +618,12 @@ cleanup_fences(struct fd_bo *bo)
          i--;
       }
 
-      fd_pipe_del_locked(pipe);
+      fd_fence_del_locked(f);
    }
 }
 
 void
-fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
+fd_bo_add_fence(struct fd_bo *bo, struct fd_fence *fence)
 {
    simple_mtx_assert_locked(&fence_lock);
 
@@ -626,13 +631,16 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
       return;
 
    /* The common case is bo re-used on the same pipe it had previously
-    * been used on:
+    * been used on, so just replace the previous fence.
     */
    for (int i = 0; i < bo->nr_fences; i++) {
-      struct fd_bo_fence *f = &bo->fences[i];
-      if (f->pipe == pipe) {
-         assert(fd_fence_before(f->fence, fence));
-         f->fence = fence;
+      struct fd_fence *f = bo->fences[i];
+      if (f == fence)
+         return;
+      if (f->pipe == fence->pipe) {
+         assert(fd_fence_before(f->ufence, fence->ufence));
+         fd_fence_del_locked(f);
+         bo->fences[i] = fd_fence_ref_locked(fence);
          return;
       }
    }
@@ -650,10 +658,7 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
       APPEND(bo, fences, bo->_inline_fence);
    }
 
-   APPEND(bo, fences, (struct fd_bo_fence){
-      .pipe = fd_pipe_ref_locked(pipe),
-      .fence = fence,
-   });
+   APPEND(bo, fences, fd_fence_ref_locked(fence));
 }
 
 enum fd_bo_state
