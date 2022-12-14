@@ -1662,9 +1662,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
-      dynamic->fragment_shading_rate.size = state->fsr->fragment_size;
-      for (int i = 0; i < 2; i++)
-         dynamic->fragment_shading_rate.combiner_ops[i] = state->fsr->combiner_ops[i];
+      dynamic->vk.fsr = *state->fsr;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {

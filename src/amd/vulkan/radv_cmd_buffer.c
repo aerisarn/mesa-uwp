@@ -66,6 +66,15 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size);
 
 const struct radv_dynamic_state default_dynamic_state = {
+   .vk =
+      {
+         .fsr =
+            {
+               .fragment_size = {1u, 1u},
+               .combiner_ops = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
+                                VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
+            },
+      },
    .viewport =
       {
          .count = 0,
@@ -110,12 +119,6 @@ const struct radv_dynamic_state default_dynamic_state = {
    .cull_mode = 0u,
    .front_face = 0u,
    .primitive_topology = 0u,
-   .fragment_shading_rate =
-      {
-         .size = {1u, 1u},
-         .combiner_ops = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
-                          VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
-      },
    .depth_bias_enable = 0u,
    .primitive_restart_enable = 0u,
    .rasterizer_discard_enable = 0u,
@@ -253,10 +256,10 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(stencil_op.back.depth_fail_op, RADV_DYNAMIC_STENCIL_OP);
    RADV_CMP_COPY(stencil_op.back.compare_op, RADV_DYNAMIC_STENCIL_OP);
 
-   RADV_CMP_COPY(fragment_shading_rate.size.width, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
-   RADV_CMP_COPY(fragment_shading_rate.size.height, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
-   RADV_CMP_COPY(fragment_shading_rate.combiner_ops[0], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
-   RADV_CMP_COPY(fragment_shading_rate.combiner_ops[1], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   RADV_CMP_COPY(vk.fsr.fragment_size.width, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   RADV_CMP_COPY(vk.fsr.fragment_size.height, RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   RADV_CMP_COPY(vk.fsr.combiner_ops[0], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   RADV_CMP_COPY(vk.fsr.combiner_ops[1], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
 
    RADV_CMP_COPY(depth_bias_enable, RADV_DYNAMIC_DEPTH_BIAS_ENABLE);
 
@@ -2270,11 +2273,11 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   uint32_t rate_x = MIN2(2, d->fragment_shading_rate.size.width) - 1;
-   uint32_t rate_y = MIN2(2, d->fragment_shading_rate.size.height) - 1;
+   uint32_t rate_x = MIN2(2, d->vk.fsr.fragment_size.width) - 1;
+   uint32_t rate_y = MIN2(2, d->vk.fsr.fragment_size.height) - 1;
    uint32_t pa_cl_vrs_cntl = pipeline->vrs.pa_cl_vrs_cntl;
-   uint32_t pipeline_comb_mode = d->fragment_shading_rate.combiner_ops[0];
-   uint32_t htile_comb_mode = d->fragment_shading_rate.combiner_ops[1];
+   uint32_t pipeline_comb_mode = d->vk.fsr.combiner_ops[0];
+   uint32_t htile_comb_mode = d->vk.fsr.combiner_ops[1];
 
    assert(cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10_3);
 
@@ -6481,9 +6484,9 @@ radv_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer, const VkExtent2
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.fragment_shading_rate.size = *pFragmentSize;
+   state->dynamic.vk.fsr.fragment_size = *pFragmentSize;
    for (unsigned i = 0; i < 2; i++)
-      state->dynamic.fragment_shading_rate.combiner_ops[i] = combinerOps[i];
+      state->dynamic.vk.fsr.combiner_ops[i] = combinerOps[i];
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 }
@@ -8428,10 +8431,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
 
       if ((dynamic_states & RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE) &&
-          d->fragment_shading_rate.size.width == 1 &&
-          d->fragment_shading_rate.size.height == 1 &&
-          d->fragment_shading_rate.combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
-          d->fragment_shading_rate.combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR) {
+          d->vk.fsr.fragment_size.width == 1 && d->vk.fsr.fragment_size.height == 1 &&
+          d->vk.fsr.combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
+          d->vk.fsr.combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR) {
          /* When per-vertex VRS is forced and the dynamic fragment shading rate is a no-op, ignore
           * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
           */

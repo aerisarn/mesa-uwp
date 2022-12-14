@@ -1321,6 +1321,8 @@ struct radv_sample_locations_state {
 };
 
 struct radv_dynamic_state {
+   struct vk_dynamic_graphics_state vk;
+
    /**
     * Bitmask of (1ull << VK_DYNAMIC_STATE_*).
     * Defines the set of saved dynamic state.
@@ -1402,11 +1404,6 @@ struct radv_dynamic_state {
    VkCompareOp depth_compare_op;
    bool depth_bounds_test_enable;
    bool stencil_test_enable;
-
-   struct {
-      VkExtent2D size;
-      VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
-   } fragment_shading_rate;
 
    bool depth_bias_enable;
    bool primitive_restart_enable;
