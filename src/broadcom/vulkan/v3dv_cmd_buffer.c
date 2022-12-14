@@ -2420,31 +2420,42 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
+   /* Attachment state.
+    *
+    * We store this state even if we are not currently in a subpass
+    * (subpass_idx != -1) because we may get here to implement subpass
+    * resolves via vkCmdResolveImage from
+    * cmd_buffer_subpass_handle_pending_resolves. In that scenario we pretend
+    * we are no longer in a subpass because Vulkan disallows image resolves
+    * via vkCmdResolveImage during subpasses, but we still need to preserve
+    * attachment state because we may have more subpasses to go through
+    * after processing resolves in the current subass.
+    */
+   const uint32_t attachment_state_item_size =
+      sizeof(struct v3dv_cmd_buffer_attachment_state);
+   const uint32_t attachment_state_total_size =
+      attachment_state_item_size * state->attachment_alloc_count;
+   if (state->meta.attachment_alloc_count < state->attachment_alloc_count) {
+      if (state->meta.attachment_alloc_count > 0)
+         vk_free(&cmd_buffer->device->vk.alloc, state->meta.attachments);
+
+      state->meta.attachments = vk_zalloc(&cmd_buffer->device->vk.alloc,
+                                          attachment_state_total_size, 8,
+                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      if (!state->meta.attachments) {
+         v3dv_flag_oom(cmd_buffer, NULL);
+         return;
+      }
+      state->meta.attachment_alloc_count = state->attachment_alloc_count;
+   }
+   state->meta.attachment_count = state->attachment_alloc_count;
+   memcpy(state->meta.attachments, state->attachments,
+          attachment_state_total_size);
+
    if (state->subpass_idx != -1) {
       state->meta.subpass_idx = state->subpass_idx;
       state->meta.framebuffer = v3dv_framebuffer_to_handle(state->framebuffer);
       state->meta.pass = v3dv_render_pass_to_handle(state->pass);
-
-      const uint32_t attachment_state_item_size =
-         sizeof(struct v3dv_cmd_buffer_attachment_state);
-      const uint32_t attachment_state_total_size =
-         attachment_state_item_size * state->attachment_alloc_count;
-      if (state->meta.attachment_alloc_count < state->attachment_alloc_count) {
-         if (state->meta.attachment_alloc_count > 0)
-            vk_free(&cmd_buffer->device->vk.alloc, state->meta.attachments);
-
-         state->meta.attachments = vk_zalloc(&cmd_buffer->device->vk.alloc,
-                                             attachment_state_total_size, 8,
-                                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-         if (!state->meta.attachments) {
-            v3dv_flag_oom(cmd_buffer, NULL);
-            return;
-         }
-         state->meta.attachment_alloc_count = state->attachment_alloc_count;
-      }
-      state->meta.attachment_count = state->attachment_alloc_count;
-      memcpy(state->meta.attachments, state->attachments,
-             attachment_state_total_size);
 
       state->meta.tile_aligned_render_area = state->tile_aligned_render_area;
       memcpy(&state->meta.render_area, &state->render_area, sizeof(VkRect2D));
@@ -2486,17 +2497,18 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
+   /* Attachment state */
+   assert(state->meta.attachment_count <= state->attachment_alloc_count);
+   const uint32_t attachment_state_item_size =
+      sizeof(struct v3dv_cmd_buffer_attachment_state);
+   const uint32_t attachment_state_total_size =
+      attachment_state_item_size * state->meta.attachment_count;
+   memcpy(state->attachments, state->meta.attachments,
+          attachment_state_total_size);
+
    if (state->meta.subpass_idx != -1) {
       state->pass = v3dv_render_pass_from_handle(state->meta.pass);
       state->framebuffer = v3dv_framebuffer_from_handle(state->meta.framebuffer);
-
-      assert(state->meta.attachment_count <= state->attachment_alloc_count);
-      const uint32_t attachment_state_item_size =
-         sizeof(struct v3dv_cmd_buffer_attachment_state);
-      const uint32_t attachment_state_total_size =
-         attachment_state_item_size * state->meta.attachment_count;
-      memcpy(state->attachments, state->meta.attachments,
-             attachment_state_total_size);
 
       state->tile_aligned_render_area = state->meta.tile_aligned_render_area;
       memcpy(&state->render_area, &state->meta.render_area, sizeof(VkRect2D));
