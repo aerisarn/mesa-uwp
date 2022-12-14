@@ -186,7 +186,7 @@ fd_submit_sp_flush_prep(struct fd_submit *submit, int in_fence_fd,
    }
    simple_mtx_unlock(&fence_lock);
 
-   fd_submit->out_fence   = out_fence;
+   fd_submit->out_fence   = fd_fence_ref(out_fence);
    fd_submit->in_fence_fd = (in_fence_fd == -1) ?
          -1 : os_dupfd_cloexec(in_fence_fd);
 
@@ -218,7 +218,7 @@ fd_submit_sp_flush_cleanup(void *job, void *gdata, int thread_index)
    fd_submit_del(submit);
 }
 
-static int
+static void
 enqueue_submit_list(struct list_head *submit_list)
 {
    struct fd_submit *submit = last_submit(submit_list);
@@ -227,13 +227,7 @@ enqueue_submit_list(struct list_head *submit_list)
    list_replace(submit_list, &fd_submit->submit_list);
    list_inithead(submit_list);
 
-   struct util_queue_fence *fence;
-   if (fd_submit->out_fence) {
-      fence = &fd_submit->out_fence->ready;
-   } else {
-      util_queue_fence_init(&fd_submit->fence);
-      fence = &fd_submit->fence;
-   }
+   struct util_queue_fence *fence = &fd_submit->out_fence->ready;
 
    DEBUG_MSG("enqueue: %u", submit->fence);
 
@@ -242,8 +236,6 @@ enqueue_submit_list(struct list_head *submit_list)
                       fd_submit_sp_flush_execute,
                       fd_submit_sp_flush_cleanup,
                       0);
-
-   return 0;
 }
 
 static bool
@@ -266,9 +258,8 @@ should_defer(struct fd_submit *submit)
    return true;
 }
 
-static int
-fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
-                   struct fd_fence *out_fence)
+static struct fd_fence *
+fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 {
    struct fd_device *dev = submit->pipe->dev;
    struct fd_pipe *pipe = submit->pipe;
@@ -295,6 +286,8 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
 
    list_addtail(&fd_submit_ref(submit)->node, &dev->deferred_submits);
 
+   struct fd_fence *out_fence = fd_fence_new(submit->pipe, use_fence_fd);
+
    bool has_shared = fd_submit_sp_flush_prep(submit, in_fence_fd, out_fence);
 
    /* The rule about skipping submit merging with shared buffers is only
@@ -318,7 +311,7 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
       assert(dev->deferred_cmds == fd_dev_count_deferred_cmds(dev));
       simple_mtx_unlock(&dev->submit_lock);
 
-      return 0;
+      return out_fence;
    }
 
    struct list_head submit_list;
@@ -329,7 +322,9 @@ fd_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
 
    simple_mtx_unlock(&dev->submit_lock);
 
-   return enqueue_submit_list(&submit_list);
+   enqueue_submit_list(&submit_list);
+
+   return out_fence;
 }
 
 void
@@ -399,6 +394,9 @@ fd_submit_sp_destroy(struct fd_submit *submit)
    slab_destroy_child(&fd_submit->ring_pool);
 
    fd_bo_del_array(fd_submit->bos, fd_submit->nr_bos);
+
+   if (fd_submit->out_fence)
+      fd_fence_del(fd_submit->out_fence);
 
    free(fd_submit->bos);
    free(fd_submit);

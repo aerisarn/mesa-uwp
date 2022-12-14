@@ -93,10 +93,10 @@ struct fd_ringbuffer *fd_submit_new_ringbuffer(struct fd_submit *submit,
                                                enum fd_ringbuffer_flags flags);
 
 /* in_fence_fd: -1 for no in-fence, else fence fd
- * out_fence can be NULL if no output fence is required
+ * if use_fence_fd is true the output fence will be dma_fence fd backed
  */
-int fd_submit_flush(struct fd_submit *submit, int in_fence_fd,
-                    struct fd_fence *out_fence);
+struct fd_fence *fd_submit_flush(struct fd_submit *submit, int in_fence_fd,
+                                 bool use_fence_fd);
 
 struct fd_ringbuffer;
 struct fd_reloc;

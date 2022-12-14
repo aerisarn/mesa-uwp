@@ -30,7 +30,7 @@
 #include "pipe/p_context.h"
 #include "util/u_queue.h"
 
-#include "drm/freedreno_ringbuffer.h"
+#include "drm/freedreno_drmif.h"
 
 struct pipe_fence_handle {
    struct pipe_reference reference;
@@ -73,7 +73,9 @@ struct pipe_fence_handle {
    struct fd_context *ctx;
    struct fd_pipe *pipe;
    struct fd_screen *screen;
-   struct fd_fence submit_fence;
+   struct fd_fence *fence;
+
+   bool use_fence_fd;
    uint32_t syncobj;
 };
 
@@ -99,6 +101,8 @@ struct pipe_fence_handle *fd_pipe_fence_create(struct fd_batch *batch);
 
 void fd_pipe_fence_set_batch(struct pipe_fence_handle *fence,
                              struct fd_batch *batch);
+void fd_pipe_fence_set_submit_fence(struct pipe_fence_handle *fence,
+                        struct fd_fence *submit_fence);
 
 struct tc_unflushed_batch_token;
 struct pipe_fence_handle *

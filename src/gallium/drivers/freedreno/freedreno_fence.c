@@ -59,7 +59,8 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
          }
       }
 
-      util_queue_fence_wait(&fence->submit_fence.ready);
+      if (fence->fence)
+         fd_fence_flush(fence->fence);
 
       /* We've already waited for batch to be flushed and fence->batch
        * to be cleared:
@@ -71,7 +72,8 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
    if (fence->batch)
       fd_batch_flush(fence->batch);
 
-   util_queue_fence_wait(&fence->submit_fence.ready);
+   if (fence->fence)
+      fd_fence_flush(fence->fence);
 
    assert(!fence->batch);
 
@@ -88,7 +90,7 @@ fd_pipe_fence_repopulate(struct pipe_fence_handle *fence,
    /* The fence we are re-populating must not be an fd-fence (but last_fince
     * might have been)
     */
-   assert(!fence->submit_fence.use_fence_fd);
+   assert(!fence->use_fence_fd);
    assert(!last_fence->batch);
 
    fd_pipe_fence_ref(&fence->last_fence, last_fence);
@@ -106,16 +108,11 @@ fd_fence_destroy(struct pipe_fence_handle *fence)
 
    tc_unflushed_batch_token_reference(&fence->tc_token, NULL);
 
-   /* If the submit is enqueued to the submit_queue, we need to wait until
-    * the fence_fd is valid before cleaning up.
-    */
-   util_queue_fence_wait(&fence->submit_fence.ready);
-
-   if (fence->submit_fence.use_fence_fd)
-      close(fence->submit_fence.fence_fd);
    if (fence->syncobj)
       drmSyncobjDestroy(fd_device_fd(fence->screen->dev), fence->syncobj);
    fd_pipe_del(fence->pipe);
+   if (fence->fence)
+      fd_fence_del(fence->fence);
 
    FREE(fence);
 }
@@ -147,12 +144,13 @@ fd_pipe_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
    if (fence->last_fence)
       fence = fence->last_fence;
 
-   if (fence->submit_fence.use_fence_fd) {
-      int ret = sync_wait(fence->submit_fence.fence_fd, timeout / 1000000);
+   if (fence->use_fence_fd) {
+      assert(fence->fence);
+      int ret = sync_wait(fence->fence->fence_fd, timeout / 1000000);
       return ret == 0;
    }
 
-   if (fd_pipe_wait_timeout(fence->pipe, &fence->submit_fence, timeout))
+   if (fd_pipe_wait_timeout(fence->pipe, fence->fence, timeout))
       return false;
 
    return true;
@@ -170,15 +168,18 @@ fence_create(struct fd_context *ctx, struct fd_batch *batch, int fence_fd,
 
    pipe_reference_init(&fence->reference, 1);
    util_queue_fence_init(&fence->ready);
-   util_queue_fence_init(&fence->submit_fence.ready);
 
    fence->ctx = ctx;
    fd_pipe_fence_set_batch(fence, batch);
    fence->pipe = fd_pipe_ref(ctx->pipe);
    fence->screen = ctx->screen;
-   fence->submit_fence.fence_fd = fence_fd;
-   fence->submit_fence.use_fence_fd = (fence_fd != -1);
+   fence->use_fence_fd = (fence_fd != -1);
    fence->syncobj = syncobj;
+
+   if (fence_fd != -1) {
+      fence->fence = fd_fence_new(fence->pipe, fence->use_fence_fd);
+      fence->fence->fence_fd = fence_fd;
+   }
 
    return fence;
 }
@@ -227,10 +228,11 @@ fd_pipe_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *f
    }
 
    /* if not an external fence, then nothing more to do without preemption: */
-   if (!fence->submit_fence.use_fence_fd)
+   if (!fence->use_fence_fd)
       return;
 
-   if (sync_accumulate("freedreno", &ctx->in_fence_fd, fence->submit_fence.fence_fd)) {
+   assert(fence->fence);
+   if (sync_accumulate("freedreno", &ctx->in_fence_fd, fence->fence->fence_fd)) {
       /* error */
    }
 }
@@ -252,20 +254,21 @@ fd_pipe_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fenc
    /* We don't expect deferred flush to be combined with fence-fd: */
    assert(!fence->last_fence);
 
-   assert(fence->submit_fence.use_fence_fd);
+   assert(fence->use_fence_fd);
 
    /* NOTE: in the deferred fence case, the pctx we want is the threaded-ctx
     * but if TC is not used, this will be null.  Which is fine, we won't call
     * threaded_context_flush() in that case
     */
    fence_flush(&fence->ctx->tc->base, fence, PIPE_TIMEOUT_INFINITE);
-   return os_dupfd_cloexec(fence->submit_fence.fence_fd);
+   assert(fence->fence);
+   return os_dupfd_cloexec(fence->fence->fence_fd);
 }
 
 bool
 fd_pipe_fence_is_fd(struct pipe_fence_handle *fence)
 {
-   return fence->submit_fence.use_fence_fd;
+   return fence->use_fence_fd;
 }
 
 struct pipe_fence_handle *
@@ -292,6 +295,16 @@ fd_pipe_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
          fence->needs_signal = false;
       }
    }
+}
+
+void
+fd_pipe_fence_set_submit_fence(struct pipe_fence_handle *fence,
+                               struct fd_fence *submit_fence)
+{
+   /* Take ownership of the drm fence after batch/submit is flushed: */
+   assert(!fence->fence);
+   fence->fence = submit_fence;
+   fd_pipe_fence_set_batch(fence, NULL);
 }
 
 struct pipe_fence_handle *

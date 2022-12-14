@@ -211,3 +211,73 @@ fd_pipe_emit_fence(struct fd_pipe *pipe, struct fd_ringbuffer *ring)
 
    return fence;
 }
+
+struct fd_fence *
+fd_fence_new(struct fd_pipe *pipe, bool use_fence_fd)
+{
+   struct fd_fence *f = calloc(1, sizeof(*f));
+
+   f->refcnt = 1;
+   f->pipe = fd_pipe_ref(pipe);
+   util_queue_fence_init(&f->ready);
+   f->use_fence_fd = use_fence_fd;
+   f->fence_fd = -1;
+
+   return f;
+}
+
+struct fd_fence *
+fd_fence_ref(struct fd_fence *f)
+{
+   simple_mtx_lock(&fence_lock);
+   fd_fence_ref_locked(f);
+   simple_mtx_unlock(&fence_lock);
+
+   return f;
+}
+
+struct fd_fence *
+fd_fence_ref_locked(struct fd_fence *f)
+{
+   simple_mtx_assert_locked(&fence_lock);
+   f->refcnt++;
+   return f;
+}
+
+void
+fd_fence_del(struct fd_fence *f)
+{
+   simple_mtx_lock(&fence_lock);
+   fd_fence_del_locked(f);
+   simple_mtx_unlock(&fence_lock);
+}
+
+void
+fd_fence_del_locked(struct fd_fence *f)
+{
+   simple_mtx_assert_locked(&fence_lock);
+
+   if (--f->refcnt)
+      return;
+
+   fd_pipe_del_locked(f->pipe);
+
+   if (f->use_fence_fd && (f->fence_fd != -1))
+      close(f->fence_fd);
+
+   free(f);
+}
+
+/**
+ * Wait until corresponding submit is flushed to kernel
+ */
+void
+fd_fence_flush(struct fd_fence *f)
+{
+   /*
+    * TODO we could simplify this to remove the flush_sync part of
+    * fd_pipe_sp_flush() and just rely on the util_queue_fence_wait()
+    */
+   fd_pipe_flush(f->pipe, f->ufence);
+   util_queue_fence_wait(&f->ready);
+}

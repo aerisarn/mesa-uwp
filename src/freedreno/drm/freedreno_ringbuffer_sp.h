@@ -73,11 +73,7 @@ struct fd_submit_sp {
     */
    struct list_head submit_list;   /* includes this submit as last element */
 
-   /* Used in case out_fence==NULL: */
-   struct util_queue_fence fence;
-
    /* Used by retire_queue, if used by backend: */
-   int out_fence_fd;
    struct util_queue_fence retire_fence;
 
    flush_submit_list_fn flush_submit_list;

@@ -38,8 +38,7 @@ retire_execute(void *job, void *gdata, int thread_index)
 
    MESA_TRACE_FUNC();
 
-   sync_wait(fd_submit->out_fence_fd, -1);
-   close(fd_submit->out_fence_fd);
+   fd_fence_wait(fd_submit->out_fence);
 }
 
 static void
@@ -175,24 +174,15 @@ flush_submit_list(struct list_head *submit_list)
    memcpy(req->payload + bos_len, cmds, cmd_len);
 
    struct fd_fence *out_fence = fd_submit->out_fence;
-   int *out_fence_fd = NULL;
 
-   if (out_fence) {
-      out_fence->kfence = kfence;
-      out_fence->ufence = fd_submit->base.fence;
-      /* Even if gallium driver hasn't requested a fence-fd, request one.
-       * This way, if we have to block waiting for the fence, we can do
-       * it in the guest, rather than in the single-threaded host.
-       */
-      out_fence->use_fence_fd = true;
-      out_fence_fd = &out_fence->fence_fd;
-   } else {
-      /* we are using retire_queue, so we need an out-fence for each
-       * submit.. we can just re-use fd_submit->out_fence_fd for temporary
-       * storage.
-       */
-      out_fence_fd = &fd_submit->out_fence_fd;
-   }
+   out_fence->kfence = kfence;
+   out_fence->ufence = fd_submit->base.fence;
+
+   /* Even if gallium driver hasn't requested a fence-fd, request one.
+    * This way, if we have to block waiting for the fence, we can do
+    * it in the guest, rather than in the single-threaded host.
+    */
+   out_fence->use_fence_fd = true;
 
    if (fd_submit->in_fence_fd != -1) {
       pipe->no_implicit_sync = true;
@@ -203,7 +193,7 @@ flush_submit_list(struct list_head *submit_list)
    }
 
    virtio_execbuf_fenced(dev, &req->hdr, guest_handles, req->nr_bos,
-                         fd_submit->in_fence_fd, out_fence_fd,
+                         fd_submit->in_fence_fd, &out_fence->fence_fd,
                          virtio_pipe->ring_idx);
 
    free(req);
@@ -215,9 +205,6 @@ flush_submit_list(struct list_head *submit_list)
 
    if (fd_submit->in_fence_fd != -1)
       close(fd_submit->in_fence_fd);
-
-   if (out_fence_fd != &fd_submit->out_fence_fd)
-      fd_submit->out_fence_fd = os_dupfd_cloexec(*out_fence_fd);
 
    fd_submit_ref(&fd_submit->base);
 

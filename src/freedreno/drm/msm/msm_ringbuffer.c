@@ -265,9 +265,8 @@ handle_stateobj_relocs(struct msm_submit *submit, struct msm_ringbuffer *ring)
    return relocs;
 }
 
-static int
-msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
-                 struct fd_fence *out_fence)
+static struct fd_fence *
+msm_submit_flush(struct fd_submit *submit, int in_fence_fd, bool use_fence_fd)
 {
    struct msm_submit *msm_submit = to_msm_submit(submit);
    struct msm_pipe *msm_pipe = to_msm_pipe(submit->pipe);
@@ -342,6 +341,8 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
       }
    }
 
+   struct fd_fence *out_fence = fd_fence_new(submit->pipe, use_fence_fd);
+
    simple_mtx_lock(&fence_lock);
    for (unsigned j = 0; j < msm_submit->nr_bos; j++) {
       fd_bo_add_fence(msm_submit->bos[j], submit->pipe, submit->fence);
@@ -353,7 +354,7 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
       req.fence_fd = in_fence_fd;
    }
 
-   if (out_fence && out_fence->use_fence_fd) {
+   if (out_fence->use_fence_fd) {
       req.flags |= MSM_SUBMIT_FENCE_FD_OUT;
    }
 
@@ -368,6 +369,8 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
                              sizeof(req));
    if (ret) {
       ERROR_MSG("submit failed: %d (%s)", ret, strerror(errno));
+      fd_fence_del(out_fence);
+      out_fence = NULL;
       msm_dump_submit(&req);
    } else if (!ret && out_fence) {
       out_fence->kfence = req.fence;
@@ -378,7 +381,7 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd,
    for (unsigned o = 0; o < nr_objs; o++)
       free(obj_relocs[o]);
 
-   return ret;
+   return out_fence;
 }
 
 static void

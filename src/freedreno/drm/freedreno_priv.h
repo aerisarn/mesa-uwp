@@ -292,8 +292,8 @@ struct fd_submit_funcs {
    struct fd_ringbuffer *(*new_ringbuffer)(struct fd_submit *submit,
                                            uint32_t size,
                                            enum fd_ringbuffer_flags flags);
-   int (*flush)(struct fd_submit *submit, int in_fence_fd,
-                struct fd_fence *out_fence);
+   struct fd_fence *(*flush)(struct fd_submit *submit, int in_fence_fd,
+                             bool use_fence_fd);
    void (*destroy)(struct fd_submit *submit);
 };
 

@@ -100,6 +100,14 @@ fd_fence_after(uint32_t a, uint32_t b)
  */
 struct fd_fence {
    /**
+    * Note refcnt is *not* atomic, but protected by fence_lock, since the
+    * fence_lock is held in fd_bo_add_fence(), which is the hotpath.
+    */
+   int32_t refcnt;
+
+   struct fd_pipe *pipe;
+
+   /**
     * The ready fence is signaled once the submit is actually flushed down
     * to the kernel, and fence/fence_fd are populated.  You must wait for
     * this fence to be signaled before reading fence/fence_fd.
@@ -115,6 +123,13 @@ struct fd_fence {
    int fence_fd;
    bool use_fence_fd;
 };
+
+struct fd_fence *fd_fence_new(struct fd_pipe *pipe, bool use_fence_fd);
+struct fd_fence *fd_fence_ref(struct fd_fence *f);
+struct fd_fence *fd_fence_ref_locked(struct fd_fence *f);
+void fd_fence_del(struct fd_fence *f);
+void fd_fence_del_locked(struct fd_fence *f);
+void fd_fence_flush(struct fd_fence *f);
 
 /*
  * bo flags:

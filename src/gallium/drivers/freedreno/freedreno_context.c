@@ -121,7 +121,7 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
    fd_pipe_fence_ref(&fence, batch->fence);
 
    if (flags & PIPE_FLUSH_FENCE_FD)
-      fence->submit_fence.use_fence_fd = true;
+      fence->use_fence_fd = true;
 
    fd_bc_dump(ctx, "%p: flushing %p<%u>, flags=0x%x, pending:\n", ctx,
               batch, batch->seqno, flags);
