@@ -145,14 +145,16 @@ const struct radv_dynamic_state default_dynamic_state = {
                         },
                   },
             },
+         .ms = {
+            .rasterization_samples = VK_SAMPLE_COUNT_1_BIT,
+            .alpha_to_coverage_enable = 0u,
+            .sample_mask = 0u,
+         },
       },
    .blend_constants = {0.0f, 0.0f, 0.0f, 0.0f},
    .logic_op_enable = 0u,
-   .alpha_to_coverage_enable = 0u,
-   .sample_mask = 0u,
    .color_write_mask = 0u,
    .color_blend_enable = 0u,
-   .rasterization_samples = VK_SAMPLE_COUNT_1_BIT,
 };
 
 static void
@@ -293,9 +295,9 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(vk.rs.line.stipple.enable, RADV_DYNAMIC_LINE_STIPPLE_ENABLE);
 
-   RADV_CMP_COPY(alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
+   RADV_CMP_COPY(vk.ms.alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
 
-   RADV_CMP_COPY(sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
+   RADV_CMP_COPY(vk.ms.sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
 
    RADV_CMP_COPY(vk.rs.depth_clip_enable, RADV_DYNAMIC_DEPTH_CLIP_ENABLE);
 
@@ -311,7 +313,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(color_blend_enable, RADV_DYNAMIC_COLOR_BLEND_ENABLE);
 
-   RADV_CMP_COPY(rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
+   RADV_CMP_COPY(vk.ms.rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
 
    RADV_CMP_COPY(vk.rs.line.mode, RADV_DYNAMIC_LINE_RASTERIZATION_MODE);
 
@@ -993,7 +995,7 @@ radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
       return 1;
    }
 
-   return MAX2(1, d->rasterization_samples);
+   return MAX2(1, d->vk.ms.rasterization_samples);
 }
 
 static ALWAYS_INLINE unsigned
@@ -3996,7 +3998,7 @@ radv_emit_alpha_to_coverage_enable(struct radv_cmd_buffer *cmd_buffer)
                          S_028B70_OFFSET_ROUND(1);
    }
 
-   db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(d->alpha_to_coverage_enable);
+   db_alpha_to_mask |= S_028B70_ALPHA_TO_MASK_ENABLE(d->vk.ms.alpha_to_coverage_enable);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028B70_DB_ALPHA_TO_MASK, db_alpha_to_mask);
 }
@@ -4007,8 +4009,8 @@ radv_emit_sample_mask(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028C38_PA_SC_AA_MASK_X0Y0_X1Y0, 2);
-   radeon_emit(cmd_buffer->cs, d->sample_mask | ((uint32_t)d->sample_mask << 16));
-   radeon_emit(cmd_buffer->cs, d->sample_mask | ((uint32_t)d->sample_mask << 16));
+   radeon_emit(cmd_buffer->cs, d->vk.ms.sample_mask | ((uint32_t)d->vk.ms.sample_mask << 16));
+   radeon_emit(cmd_buffer->cs, d->vk.ms.sample_mask | ((uint32_t)d->vk.ms.sample_mask << 16));
 }
 
 static void
@@ -6721,7 +6723,7 @@ radv_CmdSetAlphaToCoverageEnableEXT(VkCommandBuffer commandBuffer, VkBool32 alph
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.alpha_to_coverage_enable = alphaToCoverageEnable;
+   state->dynamic.vk.ms.alpha_to_coverage_enable = alphaToCoverageEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE;
 }
@@ -6733,7 +6735,7 @@ radv_CmdSetSampleMaskEXT(VkCommandBuffer commandBuffer, VkSampleCountFlagBits sa
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.sample_mask = pSampleMask[0] & 0xffff;
+   state->dynamic.vk.ms.sample_mask = pSampleMask[0] & 0xffff;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_MASK;
 }
@@ -6844,7 +6846,7 @@ radv_CmdSetRasterizationSamplesEXT(VkCommandBuffer commandBuffer,
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.rasterization_samples = rasterizationSamples;
+   state->dynamic.vk.ms.rasterization_samples = rasterizationSamples;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 }
@@ -8345,8 +8347,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 
       /* Correction for number of samples per pixel. */
       for (unsigned i = 0; i < 2; ++i) {
-         vp_scale[i] *= (float) cmd_buffer->state.dynamic.rasterization_samples;
-         vp_translate[i] *= (float) cmd_buffer->state.dynamic.rasterization_samples;
+         vp_scale[i] *= (float) cmd_buffer->state.dynamic.vk.ms.rasterization_samples;
+         vp_translate[i] *= (float) cmd_buffer->state.dynamic.vk.ms.rasterization_samples;
       }
 
       uint32_t vp_reg_values[4] = {fui(vp_scale[0]), fui(vp_scale[1]), fui(vp_translate[0]), fui(vp_translate[1])};

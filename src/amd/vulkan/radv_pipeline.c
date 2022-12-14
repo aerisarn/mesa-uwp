@@ -1709,11 +1709,11 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
-      dynamic->alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
+      dynamic->vk.ms.alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
    }
 
    if (states & RADV_DYNAMIC_SAMPLE_MASK) {
-      dynamic->sample_mask = state->ms->sample_mask & 0xffff;
+      dynamic->vk.ms.sample_mask = state->ms->sample_mask & 0xffff;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE) {
@@ -1753,7 +1753,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
-      dynamic->rasterization_samples = state->ms->rasterization_samples;
+      dynamic->vk.ms.rasterization_samples = state->ms->rasterization_samples;
    }
 
    if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {

@@ -1331,15 +1331,9 @@ struct radv_dynamic_state {
 
    bool logic_op_enable;
 
-   bool alpha_to_coverage_enable;
-
-   uint16_t sample_mask;
-
    uint32_t color_write_mask;
 
    uint32_t color_blend_enable;
-
-   VkSampleCountFlagBits rasterization_samples;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
