@@ -1298,16 +1298,6 @@ struct radv_streamout_state {
    bool streamout_enabled;
 };
 
-struct radv_viewport_state {
-   uint32_t count;
-   VkViewport viewports[MAX_VIEWPORTS];
-};
-
-struct radv_scissor_state {
-   uint32_t count;
-   VkRect2D scissors[MAX_SCISSORS];
-};
-
 struct radv_discard_rectangle_state {
    uint32_t count;
    VkRect2D rectangles[MAX_DISCARD_RECTANGLES];
@@ -1335,10 +1325,6 @@ struct radv_dynamic_state {
          float translate[3];
       } xform[MAX_VIEWPORTS];
    } hw_vp;
-
-   struct radv_viewport_state viewport;
-
-   struct radv_scissor_state scissor;
 
    float line_width;
 
@@ -1424,8 +1410,6 @@ struct radv_dynamic_state {
    bool depth_clip_enable;
 
    VkConservativeRasterizationModeEXT conservative_rast_mode;
-
-   bool depth_clip_negative_one_to_one;
 
    VkProvokingVertexModeEXT provoking_vertex_mode;
 

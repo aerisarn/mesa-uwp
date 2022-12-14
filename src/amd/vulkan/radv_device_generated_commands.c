@@ -1122,8 +1122,8 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    if (!layout->push_constant_mask)
       const_size = 0;
 
-   unsigned scissor_size = (8 + 2 * cmd_buffer->state.dynamic.scissor.count) * 4;
-   if (!layout->binds_state || !cmd_buffer->state.dynamic.scissor.count ||
+   unsigned scissor_size = (8 + 2 * cmd_buffer->state.dynamic.vk.vp.scissor_count) * 4;
+   if (!layout->binds_state || !cmd_buffer->state.dynamic.vk.vp.scissor_count ||
        !cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
       scissor_size = 0;
 

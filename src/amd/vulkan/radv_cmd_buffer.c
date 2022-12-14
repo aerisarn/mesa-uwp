@@ -73,6 +73,12 @@ const struct radv_dynamic_state default_dynamic_state = {
                .primitive_topology = 0u,
                .primitive_restart_enable = 0u,
             },
+         .vp =
+            {
+               .depth_clip_negative_one_to_one = 0u,
+               .viewport_count = 0,
+               .scissor_count = 0,
+            },
          .ts =
             {
                .patch_control_points = 0,
@@ -84,14 +90,6 @@ const struct radv_dynamic_state default_dynamic_state = {
                .combiner_ops = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
                                 VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
             },
-      },
-   .viewport =
-      {
-         .count = 0,
-      },
-   .scissor =
-      {
-         .count = 0,
       },
    .line_width = 1.0f,
    .depth_bias =
@@ -139,7 +137,6 @@ const struct radv_dynamic_state default_dynamic_state = {
    .sample_mask = 0u,
    .depth_clip_enable = 0u,
    .conservative_rast_mode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT,
-   .depth_clip_negative_one_to_one = 0u,
    .provoking_vertex_mode = VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT,
    .depth_clamp_enable = 0u,
    .color_write_mask = 0u,
@@ -159,28 +156,28 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    dest->sample_location.count = src->sample_location.count;
 
    if (copy_mask & RADV_DYNAMIC_VIEWPORT) {
-      if (dest->viewport.count != src->viewport.count) {
-         dest->viewport.count = src->viewport.count;
+      if (dest->vk.vp.viewport_count != src->vk.vp.viewport_count) {
+         dest->vk.vp.viewport_count = src->vk.vp.viewport_count;
          dest_mask |= RADV_DYNAMIC_VIEWPORT;
       }
 
-      if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
-                 src->viewport.count * sizeof(VkViewport))) {
-         typed_memcpy(dest->viewport.viewports, src->viewport.viewports, src->viewport.count);
-         typed_memcpy(dest->hw_vp.xform, src->hw_vp.xform, src->viewport.count);
+      if (memcmp(&dest->vk.vp.viewports, &src->vk.vp.viewports,
+                 src->vk.vp.viewport_count * sizeof(VkViewport))) {
+         typed_memcpy(dest->vk.vp.viewports, src->vk.vp.viewports, src->vk.vp.viewport_count);
+         typed_memcpy(dest->hw_vp.xform, src->hw_vp.xform, src->vk.vp.viewport_count);
          dest_mask |= RADV_DYNAMIC_VIEWPORT;
       }
    }
 
    if (copy_mask & RADV_DYNAMIC_SCISSOR) {
-      if (dest->scissor.count != src->scissor.count) {
-         dest->scissor.count = src->scissor.count;
+      if (dest->vk.vp.scissor_count != src->vk.vp.scissor_count) {
+         dest->vk.vp.scissor_count = src->vk.vp.scissor_count;
          dest_mask |= RADV_DYNAMIC_SCISSOR;
       }
 
-      if (memcmp(&dest->scissor.scissors, &src->scissor.scissors,
-                 src->scissor.count * sizeof(VkRect2D))) {
-         typed_memcpy(dest->scissor.scissors, src->scissor.scissors, src->scissor.count);
+      if (memcmp(&dest->vk.vp.scissors, &src->vk.vp.scissors,
+                 src->vk.vp.scissor_count * sizeof(VkRect2D))) {
+         typed_memcpy(dest->vk.vp.scissors, src->vk.vp.scissors, src->vk.vp.scissor_count);
          dest_mask |= RADV_DYNAMIC_SCISSOR;
       }
    }
@@ -295,7 +292,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(conservative_rast_mode, RADV_DYNAMIC_CONSERVATIVE_RAST_MODE);
 
-   RADV_CMP_COPY(depth_clip_negative_one_to_one, RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE);
+   RADV_CMP_COPY(vk.vp.depth_clip_negative_one_to_one, RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE);
 
    RADV_CMP_COPY(provoking_vertex_mode, RADV_DYNAMIC_PROVOKING_VERTEX_MODE);
 
@@ -2021,38 +2018,39 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    enum radv_depth_clamp_mode depth_clamp_mode = radv_get_depth_clamp_mode(cmd_buffer);
 
-   assert(d->viewport.count);
-   radeon_set_context_reg_seq(cmd_buffer->cs, R_02843C_PA_CL_VPORT_XSCALE, d->viewport.count * 6);
+   assert(d->vk.vp.viewport_count);
+   radeon_set_context_reg_seq(cmd_buffer->cs, R_02843C_PA_CL_VPORT_XSCALE,
+                              d->vk.vp.viewport_count * 6);
 
-   for (unsigned i = 0; i < d->viewport.count; i++) {
+   for (unsigned i = 0; i < d->vk.vp.viewport_count; i++) {
       radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].scale[0]));
       radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].translate[0]));
       radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].scale[1]));
       radeon_emit(cmd_buffer->cs, fui(d->hw_vp.xform[i].translate[1]));
 
       double scale_z, translate_z;
-      if (d->depth_clip_negative_one_to_one) {
+      if (d->vk.vp.depth_clip_negative_one_to_one) {
          scale_z = d->hw_vp.xform[i].scale[2] * 0.5f;
-         translate_z = (d->hw_vp.xform[i].translate[2] + d->viewport.viewports[i].maxDepth) * 0.5f;
+         translate_z = (d->hw_vp.xform[i].translate[2] + d->vk.vp.viewports[i].maxDepth) * 0.5f;
       } else {
          scale_z = d->hw_vp.xform[i].scale[2];
          translate_z = d->hw_vp.xform[i].translate[2];
-
       }
       radeon_emit(cmd_buffer->cs, fui(scale_z));
       radeon_emit(cmd_buffer->cs, fui(translate_z));
    }
 
-   radeon_set_context_reg_seq(cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0, d->viewport.count * 2);
-   for (unsigned i = 0; i < d->viewport.count; i++) {
+   radeon_set_context_reg_seq(cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0,
+                              d->vk.vp.viewport_count * 2);
+   for (unsigned i = 0; i < d->vk.vp.viewport_count; i++) {
       float zmin, zmax;
 
       if (depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE) {
          zmin = 0.0f;
          zmax = 1.0f;
       } else {
-         zmin = MIN2(d->viewport.viewports[i].minDepth, d->viewport.viewports[i].maxDepth);
-         zmax = MAX2(d->viewport.viewports[i].minDepth, d->viewport.viewports[i].maxDepth);
+         zmin = MIN2(d->vk.vp.viewports[i].minDepth, d->vk.vp.viewports[i].maxDepth);
+         zmax = MAX2(d->vk.vp.viewports[i].minDepth, d->vk.vp.viewports[i].maxDepth);
       }
 
       radeon_emit(cmd_buffer->cs, fui(zmin));
@@ -2065,7 +2063,7 @@ radv_write_scissors(struct radv_cmd_buffer *cmd_buffer, struct radeon_cmdbuf *cs
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   si_write_scissors(cs, d->scissor.count, d->scissor.scissors, d->viewport.viewports);
+   si_write_scissors(cs, d->vk.vp.scissor_count, d->vk.vp.scissors, d->vk.vp.viewports);
 }
 
 static void
@@ -2363,10 +2361,10 @@ radv_emit_clipping(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL,
                           S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable) |
-                          S_028810_ZCLIP_NEAR_DISABLE(!d->depth_clip_enable) |
-                          S_028810_ZCLIP_FAR_DISABLE(!d->depth_clip_enable) |
-                          S_028810_DX_CLIP_SPACE_DEF(!d->depth_clip_negative_one_to_one) |
-                          S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
+                             S_028810_ZCLIP_NEAR_DISABLE(!d->depth_clip_enable) |
+                             S_028810_ZCLIP_FAR_DISABLE(!d->depth_clip_enable) |
+                             S_028810_DX_CLIP_SPACE_DEF(!d->vk.vp.depth_clip_negative_one_to_one) |
+                             S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 }
 
 static void
@@ -3498,7 +3496,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
       rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology);
    }
 
-   si_write_guardband(cmd_buffer->cs, d->viewport.count, d->viewport.viewports, rast_prim,
+   si_write_guardband(cmd_buffer->cs, d->vk.vp.viewport_count, d->vk.vp.viewports, rast_prim,
                       d->polygon_mode, d->line_width);
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_GUARDBAND;
@@ -6172,10 +6170,10 @@ radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint3
    assert(firstViewport < MAX_VIEWPORTS);
    assert(total_count >= 1 && total_count <= MAX_VIEWPORTS);
 
-   if (state->dynamic.viewport.count < total_count)
-      state->dynamic.viewport.count = total_count;
+   if (state->dynamic.vk.vp.viewport_count < total_count)
+      state->dynamic.vk.vp.viewport_count = total_count;
 
-   memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
+   memcpy(state->dynamic.vk.vp.viewports + firstViewport, pViewports,
           viewportCount * sizeof(*pViewports));
    for (unsigned i = 0; i < viewportCount; i++) {
       radv_get_viewport_xform(&pViewports[i],
@@ -6197,10 +6195,10 @@ radv_CmdSetScissor(VkCommandBuffer commandBuffer, uint32_t firstScissor, uint32_
    assert(firstScissor < MAX_SCISSORS);
    assert(total_count >= 1 && total_count <= MAX_SCISSORS);
 
-   if (state->dynamic.scissor.count < total_count)
-      state->dynamic.scissor.count = total_count;
+   if (state->dynamic.vk.vp.scissor_count < total_count)
+      state->dynamic.vk.vp.scissor_count = total_count;
 
-   memcpy(state->dynamic.scissor.scissors + firstScissor, pScissors,
+   memcpy(state->dynamic.vk.vp.scissors + firstScissor, pScissors,
           scissorCount * sizeof(*pScissors));
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
@@ -6756,7 +6754,7 @@ radv_CmdSetDepthClipNegativeOneToOneEXT(VkCommandBuffer commandBuffer, VkBool32 
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.depth_clip_negative_one_to_one = negativeOneToOne;
+   state->dynamic.vk.vp.depth_clip_negative_one_to_one = negativeOneToOne;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE;
 }

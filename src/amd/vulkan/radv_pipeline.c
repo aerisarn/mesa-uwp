@@ -1522,19 +1522,19 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    if (needed_states & RADV_DYNAMIC_VIEWPORT) {
-      dynamic->viewport.count = state->vp->viewport_count;
+      dynamic->vk.vp.viewport_count = state->vp->viewport_count;
       if (states & RADV_DYNAMIC_VIEWPORT) {
-         typed_memcpy(dynamic->viewport.viewports, state->vp->viewports, state->vp->viewport_count);
-         for (unsigned i = 0; i < dynamic->viewport.count; i++)
-            radv_get_viewport_xform(&dynamic->viewport.viewports[i],
-                                    dynamic->hw_vp.xform[i].scale, dynamic->hw_vp.xform[i].translate);
+         typed_memcpy(dynamic->vk.vp.viewports, state->vp->viewports, state->vp->viewport_count);
+         for (unsigned i = 0; i < dynamic->vk.vp.viewport_count; i++)
+            radv_get_viewport_xform(&dynamic->vk.vp.viewports[i], dynamic->hw_vp.xform[i].scale,
+                                    dynamic->hw_vp.xform[i].translate);
       }
    }
 
    if (needed_states & RADV_DYNAMIC_SCISSOR) {
-      dynamic->scissor.count = state->vp->scissor_count;
+      dynamic->vk.vp.scissor_count = state->vp->scissor_count;
       if (states & RADV_DYNAMIC_SCISSOR) {
-         typed_memcpy(dynamic->scissor.scissors, state->vp->scissors, state->vp->scissor_count);
+         typed_memcpy(dynamic->vk.vp.scissors, state->vp->scissors, state->vp->scissor_count);
       }
    }
 
@@ -1726,7 +1726,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) {
-      dynamic->depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
+      dynamic->vk.vp.depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
    }
 
    if (states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) {
