@@ -2178,6 +2178,11 @@ dzn_device_create(struct dzn_physical_device *pdev,
                                              &vk_common_device_entrypoints,
                                              false);
 
+   /* Override entrypoints with alternatives based on supported features. */
+   if (pdev->options12.EnhancedBarriersSupported) {
+      device->cmd_dispatch.CmdPipelineBarrier2 = dzn_CmdPipelineBarrier2_enhanced;
+   }
+
    VkResult result =
       vk_device_init(&device->vk, &pdev->vk, &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {

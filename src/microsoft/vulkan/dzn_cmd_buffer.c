@@ -652,6 +652,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    cmdbuf->type = type;
    cmdbuf->valid_sync = cmd_buffer_valid_sync[type];
    cmdbuf->valid_access = cmd_buffer_valid_access[type];
+   cmdbuf->enhanced_barriers = pdev->options12.EnhancedBarriersSupported;
+
 out:
    if (result != VK_SUCCESS)
       dzn_cmd_buffer_destroy(&cmdbuf->vk);
