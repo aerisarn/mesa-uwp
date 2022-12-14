@@ -593,3 +593,55 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
 
 #endif
 };
+
+#if PAN_ARCH == 7
+/*
+ * Decompose a component ordering swizzle into a component ordering (applied
+ * first) and a swizzle (applied second). The output ordering "pre" is allowed
+ * with compression and the swizzle "post" is a bijection.
+ *
+ * These properties allow any component ordering to be used with compression, by
+ * using the output "pre" ordering, composing the API swizzle with the "post"
+ * ordering, and applying the inverse of the "post" ordering to the border
+ * colour to undo what we compose into the API swizzle.
+ *
+ * Note that "post" is a swizzle, not a component ordering, which means it is
+ * inverted from the ordering. E.g. ARGB ordering uses a GBAR (YZWX) swizzle.
+ */
+struct pan_decomposed_swizzle
+GENX(pan_decompose_swizzle)(enum mali_rgb_component_order order)
+{
+#define CASE(case_, pre_, R_, G_, B_, A_) \
+        case MALI_RGB_COMPONENT_ORDER_##case_: \
+                return (struct pan_decomposed_swizzle) { \
+                        MALI_RGB_COMPONENT_ORDER_##pre_, { \
+                                PIPE_SWIZZLE_##R_, PIPE_SWIZZLE_##G_, \
+                                PIPE_SWIZZLE_##B_, PIPE_SWIZZLE_##A_ \
+                        } \
+                };
+
+        switch (order) {
+        CASE(RGBA, RGBA, X, Y, Z, W);
+        CASE(GRBA, RGBA, Y, X, Z, W);
+        CASE(BGRA, RGBA, Z, Y, X, W);
+        CASE(ARGB, RGBA, Y, Z, W, X);
+        CASE(AGRB, RGBA, Z, Y, W, X);
+        CASE(ABGR, RGBA, W, Z, Y, X);
+        CASE(RGB1, RGB1, X, Y, Z, W);
+        CASE(GRB1, RGB1, Y, X, Z, W);
+        CASE(BGR1, RGB1, Z, Y, X, W);
+        CASE(1RGB, RGB1, Y, Z, W, X);
+        CASE(1GRB, RGB1, Z, Y, W, X);
+        CASE(1BGR, RGB1, W, Z, Y, X);
+        CASE(RRRR, RRRR, X, Y, Z, W);
+        CASE(RRR1, RRR1, X, Y, Z, W);
+        CASE(RRRA, RRRA, X, Y, Z, W);
+        CASE(000A, 000A, X, Y, Z, W);
+        CASE(0001, 0001, X, Y, Z, W);
+        CASE(0000, 0000, X, Y, Z, W);
+        default: unreachable("Invalid case for texturing");
+        }
+
+#undef CASE
+}
+#endif

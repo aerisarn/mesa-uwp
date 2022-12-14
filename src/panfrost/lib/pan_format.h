@@ -81,4 +81,17 @@ panfrost_get_default_swizzle(unsigned components)
         }
 }
 
+#if PAN_ARCH == 7
+struct pan_decomposed_swizzle {
+        /* Component ordering to apply first */
+        enum mali_rgb_component_order pre;
+
+        /* Bijective swizzle applied after */
+        unsigned char post[4];
+};
+
+struct pan_decomposed_swizzle
+GENX(pan_decompose_swizzle)(enum mali_rgb_component_order order);
+#endif
+
 #endif

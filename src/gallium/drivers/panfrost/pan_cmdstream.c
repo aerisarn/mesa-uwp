@@ -212,6 +212,25 @@ panfrost_create_sampler_state(
         struct panfrost_sampler_state *so = CALLOC_STRUCT(panfrost_sampler_state);
         so->base = *cso;
 
+#if PAN_ARCH == 7
+        /* On v7, pan_texture.c composes the API swizzle with a bijective
+         * swizzle derived from the format, to allow more formats than the
+         * hardware otherwise supports. When packing border colours, we need to
+         * undo this bijection, by swizzling with its inverse.
+         */
+        unsigned mali_format = panfrost_pipe_format_v7[cso->border_color_format].hw;
+        enum mali_rgb_component_order order = mali_format & BITFIELD_MASK(12);
+
+        unsigned char inverted_swizzle[4];
+        panfrost_invert_swizzle(GENX(pan_decompose_swizzle)(order).post,
+                                inverted_swizzle);
+
+        util_format_apply_color_swizzle(&so->base.border_color,
+                                        &cso->border_color,
+                                        inverted_swizzle,
+                                        false /* is_integer (irrelevant) */);
+#endif
+
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
 
         pan_pack(&so->hw, SAMPLER, cfg) {
@@ -231,10 +250,10 @@ panfrost_create_sampler_state(
                 cfg.compare_function = panfrost_sampler_compare_func(cso);
                 cfg.seamless_cube_map = cso->seamless_cube_map;
 
-                cfg.border_color_r = cso->border_color.ui[0];
-                cfg.border_color_g = cso->border_color.ui[1];
-                cfg.border_color_b = cso->border_color.ui[2];
-                cfg.border_color_a = cso->border_color.ui[3];
+                cfg.border_color_r = so->base.border_color.ui[0];
+                cfg.border_color_g = so->base.border_color.ui[1];
+                cfg.border_color_b = so->base.border_color.ui[2];
+                cfg.border_color_a = so->base.border_color.ui[3];
 
 #if PAN_ARCH >= 6
                 if (cso->max_anisotropy > 1) {

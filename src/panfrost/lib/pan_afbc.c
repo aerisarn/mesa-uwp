@@ -139,11 +139,7 @@ panfrost_afbc_format(unsigned arch, enum pipe_format format)
          */
         format = util_format_linear(format);
 
-        /* Don't allow swizzled formats on v7 */
-        if (arch == 7 && format != unswizzled_format(format))
-                return PAN_AFBC_MODE_INVALID;
-
-        /* Otherwise swizzling doesn't affect AFBC */
+        /* We handle swizzling orthogonally to AFBC */
         format = unswizzled_format(format);
 
         switch (format) {

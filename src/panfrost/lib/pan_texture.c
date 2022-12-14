@@ -535,7 +535,8 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
 {
         const struct pan_image_layout *layout = &iview->image->layout;
         enum pipe_format format = iview->format;
-        unsigned swizzle;
+        uint32_t mali_format = dev->formats[format].hw;
+        unsigned char swizzle[4];
 
         if (PAN_ARCH >= 7 && util_format_is_depth_or_stencil(format)) {
                 /* v7+ doesn't have an _RRRR component order, combine the
@@ -545,14 +546,31 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
                         PIPE_SWIZZLE_X, PIPE_SWIZZLE_X,
                         PIPE_SWIZZLE_X, PIPE_SWIZZLE_X,
                 };
-                unsigned char patched_swizzle[4];
 
                 util_format_compose_swizzles(replicate_x,
                                              iview->swizzle,
-                                             patched_swizzle);
-                swizzle = panfrost_translate_swizzle_4(patched_swizzle);
+                                             swizzle);
+        } else if (PAN_ARCH == 7) {
+#if PAN_ARCH == 7
+                /* v7 (only) restricts component orders when AFBC is in use.
+                 * Rather than restrict AFBC, we use an allowed component order
+                 * with an invertible swizzle composed.
+                 */
+                enum mali_rgb_component_order orig =
+                        mali_format & BITFIELD_MASK(12);
+                struct pan_decomposed_swizzle decomposed =
+                        GENX(pan_decompose_swizzle)(orig);
+
+                /* Apply the new component order */
+                mali_format = (mali_format & ~orig) | decomposed.pre;
+
+                /* Compose the new swizzle */
+                util_format_compose_swizzles(decomposed.post, iview->swizzle,
+                                             swizzle);
+#endif
         } else {
-                swizzle = panfrost_translate_swizzle_4(iview->swizzle);
+                STATIC_ASSERT(sizeof(swizzle) == sizeof(iview->swizzle));
+                memcpy(swizzle, iview->swizzle, sizeof(swizzle));
         }
 
         panfrost_emit_texture_payload(iview, format, payload->cpu);
@@ -581,14 +599,14 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
 
         pan_pack(out, TEXTURE, cfg) {
                 cfg.dimension = iview->dim;
-                cfg.format = dev->formats[format].hw;
+                cfg.format = mali_format;
                 cfg.width = width;
                 cfg.height = u_minify(layout->height, iview->first_level);
                 if (iview->dim == MALI_TEXTURE_DIMENSION_3D)
                         cfg.depth = u_minify(layout->depth, iview->first_level);
                 else
                         cfg.sample_count = layout->nr_samples;
-                cfg.swizzle = swizzle;
+                cfg.swizzle = panfrost_translate_swizzle_4(swizzle);
 #if PAN_ARCH >= 9
                 cfg.texel_interleave =
                         (layout->modifier != DRM_FORMAT_MOD_LINEAR) ||
