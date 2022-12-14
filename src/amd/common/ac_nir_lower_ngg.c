@@ -1547,8 +1547,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
          nir_ssa_def *num_live_vertices_in_wave = num_live_vertices_in_workgroup;
          if (nogs_state->max_num_waves > 1) {
             num_live_vertices_in_wave =
-               nir_isub(b, num_live_vertices_in_wave,
-                        nir_imul_imm(b, nir_load_subgroup_id(b), nogs_state->options->wave_size));
+               nir_usub_sat(b, num_live_vertices_in_wave,
+                            nir_imul_imm(b, nir_load_subgroup_id(b), nogs_state->options->wave_size));
             num_live_vertices_in_wave = nir_umin(b, num_live_vertices_in_wave,
                                                  nir_imm_int(b, nogs_state->options->wave_size));
          }
