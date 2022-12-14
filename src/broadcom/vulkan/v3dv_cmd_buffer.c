@@ -864,6 +864,53 @@ cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
    assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
 }
 
+
+static void
+cmd_buffer_emit_resolve(struct v3dv_cmd_buffer *cmd_buffer,
+                        uint32_t dst_attachment_idx,
+                        uint32_t src_attachment_idx,
+                        VkImageAspectFlagBits aspect)
+{
+   struct v3dv_image_view *src_iview =
+      cmd_buffer->state.attachments[src_attachment_idx].image_view;
+   struct v3dv_image_view *dst_iview =
+      cmd_buffer->state.attachments[dst_attachment_idx].image_view;
+
+   VkImageResolve2 region = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
+      .srcSubresource = {
+         aspect,
+         src_iview->vk.base_mip_level,
+         src_iview->vk.base_array_layer,
+         src_iview->vk.layer_count,
+      },
+      .srcOffset = { 0, 0, 0 },
+      .dstSubresource =  {
+         aspect,
+         dst_iview->vk.base_mip_level,
+         dst_iview->vk.base_array_layer,
+         dst_iview->vk.layer_count,
+      },
+      .dstOffset = { 0, 0, 0 },
+      .extent = src_iview->vk.image->extent,
+   };
+
+   struct v3dv_image *src_image = (struct v3dv_image *) src_iview->vk.image;
+   struct v3dv_image *dst_image = (struct v3dv_image *) dst_iview->vk.image;
+   VkResolveImageInfo2 resolve_info = {
+      .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2,
+      .srcImage = v3dv_image_to_handle(src_image),
+      .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .dstImage = v3dv_image_to_handle(dst_image),
+      .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .regionCount = 1,
+      .pRegions = &region,
+   };
+
+   VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
+   v3dv_CmdResolveImage2KHR(cmd_buffer_handle, &resolve_info);
+}
+
 static void
 cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -894,7 +941,6 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass_idx = -1;
 
-   VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       const uint32_t src_attachment_idx =
          subpass->color_attachments[i].attachment;
@@ -913,42 +959,24 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
          subpass->resolve_attachments[i].attachment;
       assert(dst_attachment_idx != VK_ATTACHMENT_UNUSED);
 
-      struct v3dv_image_view *src_iview =
-         cmd_buffer->state.attachments[src_attachment_idx].image_view;
-      struct v3dv_image_view *dst_iview =
-         cmd_buffer->state.attachments[dst_attachment_idx].image_view;
+      cmd_buffer_emit_resolve(cmd_buffer, dst_attachment_idx, src_attachment_idx,
+                              VK_IMAGE_ASPECT_COLOR_BIT);
+   }
 
-      VkImageResolve2 region = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
-         .srcSubresource = {
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            src_iview->vk.base_mip_level,
-            src_iview->vk.base_array_layer,
-            src_iview->vk.layer_count,
-         },
-         .srcOffset = { 0, 0, 0 },
-         .dstSubresource =  {
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            dst_iview->vk.base_mip_level,
-            dst_iview->vk.base_array_layer,
-            dst_iview->vk.layer_count,
-         },
-         .dstOffset = { 0, 0, 0 },
-         .extent = src_iview->vk.image->extent,
-      };
-
-      struct v3dv_image *src_image = (struct v3dv_image *) src_iview->vk.image;
-      struct v3dv_image *dst_image = (struct v3dv_image *) dst_iview->vk.image;
-      VkResolveImageInfo2 resolve_info = {
-         .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2,
-         .srcImage = v3dv_image_to_handle(src_image),
-         .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
-         .dstImage = v3dv_image_to_handle(dst_image),
-         .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
-         .regionCount = 1,
-         .pRegions = &region,
-      };
-      v3dv_CmdResolveImage2KHR(cmd_buffer_handle, &resolve_info);
+   const uint32_t ds_src_attachment_idx =
+      subpass->ds_attachment.attachment;
+   if (ds_src_attachment_idx != VK_ATTACHMENT_UNUSED &&
+       cmd_buffer->state.attachments[ds_src_attachment_idx].has_resolve &&
+       !cmd_buffer->state.attachments[ds_src_attachment_idx].use_tlb_resolve) {
+      assert(subpass->resolve_depth || subpass->resolve_stencil);
+      const VkImageAspectFlags ds_aspects =
+         (subpass->resolve_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
+         (subpass->resolve_stencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+      const uint32_t ds_dst_attachment_idx =
+         subpass->ds_resolve_attachment.attachment;
+      assert(ds_dst_attachment_idx != VK_ATTACHMENT_UNUSED);
+      cmd_buffer_emit_resolve(cmd_buffer, ds_dst_attachment_idx,
+                              ds_src_attachment_idx, ds_aspects);
    }
 
    cmd_buffer->state.framebuffer = restore_fb;
