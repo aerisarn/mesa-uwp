@@ -180,7 +180,7 @@ vn_instance_acquire_ring_idx(struct vn_instance *instance)
 {
    mtx_lock(&instance->ring_idx_mutex);
    int ring_idx = ffsll(~instance->ring_idx_used_mask) - 1;
-   if (ring_idx >= instance->renderer->info.max_sync_queue_count)
+   if (ring_idx >= instance->renderer->info.max_timeline_count)
       ring_idx = -1;
    if (ring_idx > 0)
       instance->ring_idx_used_mask |= (1ULL << (uint32_t)ring_idx);

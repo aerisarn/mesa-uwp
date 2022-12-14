@@ -67,7 +67,7 @@ struct vn_renderer_info {
    bool has_implicit_fencing;
    bool has_guest_vram;
 
-   uint32_t max_sync_queue_count;
+   uint32_t max_timeline_count;
 
    /* hw capset */
    uint32_t wire_format_version;
@@ -97,7 +97,7 @@ struct vn_renderer_submit_batch {
     */
    uint32_t ring_idx;
 
-   /* syncs to update when the virtual sync queue is signaled */
+   /* syncs to update when the timeline is signaled */
    struct vn_renderer_sync *const *syncs;
    /* TODO allow NULL when syncs are all binary? */
    const uint64_t *sync_values;

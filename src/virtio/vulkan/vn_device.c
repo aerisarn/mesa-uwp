@@ -47,8 +47,7 @@ vn_queue_init(struct vn_device *dev,
    if (renderer_info->supports_multiple_timelines) {
       int ring_idx = vn_instance_acquire_ring_idx(dev->instance);
       if (ring_idx < 0) {
-         vn_log(dev->instance,
-                "failed binding VkQueue to renderer sync queue");
+         vn_log(dev->instance, "failed binding VkQueue to renderer timeline");
          return VK_ERROR_INITIALIZATION_FAILED;
       }
       queue->ring_idx = (uint32_t)ring_idx;

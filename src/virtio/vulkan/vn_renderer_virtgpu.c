@@ -93,7 +93,7 @@ struct virtgpu {
    int bustype;
    drmPciBusInfo pci_bus_info;
 
-   uint32_t max_sync_queue_count;
+   uint32_t max_timeline_count;
 
    struct {
       enum virgl_renderer_capset id;
@@ -1398,7 +1398,7 @@ virtgpu_init_renderer_info(struct virtgpu *gpu)
    info->allow_vk_wait_syncs = capset->allow_vk_wait_syncs;
 
    info->supports_multiple_timelines = capset->supports_multiple_timelines;
-   info->max_sync_queue_count = gpu->max_sync_queue_count;
+   info->max_timeline_count = gpu->max_timeline_count;
 
    if (gpu->bo_blob_mem == VIRTGPU_BLOB_MEM_GUEST_VRAM)
       info->has_guest_vram = true;
@@ -1524,7 +1524,7 @@ virtgpu_init_params(struct virtgpu *gpu)
    }
 
    /* implied by CONTEXT_INIT uapi */
-   gpu->max_sync_queue_count = 64;
+   gpu->max_timeline_count = 64;
 
    return VK_SUCCESS;
 }
