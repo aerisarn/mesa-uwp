@@ -1321,14 +1321,6 @@ struct radv_dynamic_state {
       } xform[MAX_VIEWPORTS];
    } hw_vp;
 
-   float line_width;
-
-   struct {
-      float bias;
-      float clamp;
-      float slope;
-   } depth_bias;
-
    float blend_constants[4];
 
    struct {
@@ -1369,52 +1361,27 @@ struct radv_dynamic_state {
 
    struct radv_sample_locations_state sample_location;
 
-   struct {
-      uint32_t factor;
-      uint16_t pattern;
-   } line_stipple;
-
-   VkCullModeFlags cull_mode;
-   VkFrontFace front_face;
-
    bool depth_test_enable;
    bool depth_write_enable;
    VkCompareOp depth_compare_op;
    bool depth_bounds_test_enable;
    bool stencil_test_enable;
 
-   bool depth_bias_enable;
-   bool rasterizer_discard_enable;
-
    unsigned logic_op;
 
    uint32_t color_write_enable;
 
-   uint32_t polygon_mode;
-
    bool logic_op_enable;
-
-   bool stippled_line_enable;
 
    bool alpha_to_coverage_enable;
 
    uint16_t sample_mask;
-
-   bool depth_clip_enable;
-
-   VkConservativeRasterizationModeEXT conservative_rast_mode;
-
-   VkProvokingVertexModeEXT provoking_vertex_mode;
-
-   bool depth_clamp_enable;
 
    uint32_t color_write_mask;
 
    uint32_t color_blend_enable;
 
    VkSampleCountFlagBits rasterization_samples;
-
-   VkLineRasterizationModeEXT line_rasterization_mode;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

@@ -1539,13 +1539,13 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_LINE_WIDTH) {
-      dynamic->line_width = state->rs->line.width;
+      dynamic->vk.rs.line.width = state->rs->line.width;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS) {
-      dynamic->depth_bias.bias = state->rs->depth_bias.constant;
-      dynamic->depth_bias.clamp = state->rs->depth_bias.clamp;
-      dynamic->depth_bias.slope = state->rs->depth_bias.slope;
+      dynamic->vk.rs.depth_bias.constant = state->rs->depth_bias.constant;
+      dynamic->vk.rs.depth_bias.clamp = state->rs->depth_bias.clamp;
+      dynamic->vk.rs.depth_bias.slope = state->rs->depth_bias.slope;
    }
 
    /* Section 9.2 of the Vulkan 1.0.15 spec says:
@@ -1559,11 +1559,11 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_CULL_MODE) {
-      dynamic->cull_mode = state->rs->cull_mode;
+      dynamic->vk.rs.cull_mode = state->rs->cull_mode;
    }
 
    if (states & RADV_DYNAMIC_FRONT_FACE) {
-      dynamic->front_face = state->rs->front_face;
+      dynamic->vk.rs.front_face = state->rs->front_face;
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
@@ -1656,8 +1656,8 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE) {
-      dynamic->line_stipple.factor = state->rs->line.stipple.factor;
-      dynamic->line_stipple.pattern = state->rs->line.stipple.pattern;
+      dynamic->vk.rs.line.stipple.factor = state->rs->line.stipple.factor;
+      dynamic->vk.rs.line.stipple.pattern = state->rs->line.stipple.pattern;
    }
 
    if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
@@ -1665,7 +1665,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
-      dynamic->depth_bias_enable = state->rs->depth_bias.enable;
+      dynamic->vk.rs.depth_bias.enable = state->rs->depth_bias.enable;
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
@@ -1673,7 +1673,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
-      dynamic->rasterizer_discard_enable = state->rs->rasterizer_discard_enable;
+      dynamic->vk.rs.rasterizer_discard_enable = state->rs->rasterizer_discard_enable;
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP) {
@@ -1693,7 +1693,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_POLYGON_MODE) {
-      dynamic->polygon_mode = si_translate_fill(state->rs->polygon_mode);
+      dynamic->vk.rs.polygon_mode = si_translate_fill(state->rs->polygon_mode);
    }
 
    if (states & RADV_DYNAMIC_TESS_DOMAIN_ORIGIN) {
@@ -1705,7 +1705,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
-      dynamic->stippled_line_enable = state->rs->line.stipple.enable;
+      dynamic->vk.rs.line.stipple.enable = state->rs->line.stipple.enable;
    }
 
    if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
@@ -1717,11 +1717,12 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE) {
-      dynamic->depth_clip_enable = state->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
+      dynamic->vk.rs.depth_clip_enable =
+         state->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
    }
 
    if (states & RADV_DYNAMIC_CONSERVATIVE_RAST_MODE) {
-      dynamic->conservative_rast_mode = state->rs->conservative_mode;
+      dynamic->vk.rs.conservative_mode = state->rs->conservative_mode;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) {
@@ -1729,11 +1730,11 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) {
-      dynamic->provoking_vertex_mode = state->rs->provoking_vertex;
+      dynamic->vk.rs.provoking_vertex = state->rs->provoking_vertex;
    }
 
    if (states & RADV_DYNAMIC_DEPTH_CLAMP_ENABLE) {
-      dynamic->depth_clamp_enable = state->rs->depth_clamp_enable;
+      dynamic->vk.rs.depth_clamp_enable = state->rs->depth_clamp_enable;
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
@@ -1756,7 +1757,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
-      dynamic->line_rasterization_mode = state->rs->line.mode;
+      dynamic->vk.rs.line.mode = state->rs->line.mode;
    }
 
    pipeline->dynamic_state.mask = states;
