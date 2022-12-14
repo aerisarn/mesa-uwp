@@ -153,8 +153,8 @@ const struct radv_dynamic_state default_dynamic_state = {
       },
    .blend_constants = {0.0f, 0.0f, 0.0f, 0.0f},
    .logic_op_enable = 0u,
-   .color_write_mask = 0u,
-   .color_blend_enable = 0u,
+   .color_write_mask = {0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u},
+   .color_blend_enable = {0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u},
 };
 
 static void
@@ -220,6 +220,22 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
          typed_memcpy(dest->sample_location.locations, src->sample_location.locations,
                       src->sample_location.count);
          dest_mask |= RADV_DYNAMIC_SAMPLE_LOCATIONS;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_COLOR_WRITE_MASK) {
+      if (memcmp(&dest->color_write_mask, &src->color_write_mask,
+                 sizeof(src->color_write_mask))) {
+         typed_memcpy(dest->color_write_mask, src->color_write_mask, MAX_RTS);
+         dest_mask |= RADV_DYNAMIC_COLOR_WRITE_MASK;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
+      if (memcmp(&dest->color_blend_enable, &src->color_blend_enable,
+                 sizeof(src->color_blend_enable))) {
+         typed_memcpy(dest->color_blend_enable, src->color_blend_enable, MAX_RTS);
+         dest_mask |= RADV_DYNAMIC_COLOR_BLEND_ENABLE;
       }
    }
 
@@ -308,10 +324,6 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.rs.provoking_vertex, RADV_DYNAMIC_PROVOKING_VERTEX_MODE);
 
    RADV_CMP_COPY(vk.rs.depth_clamp_enable, RADV_DYNAMIC_DEPTH_CLAMP_ENABLE);
-
-   RADV_CMP_COPY(color_write_mask, RADV_DYNAMIC_COLOR_WRITE_MASK);
-
-   RADV_CMP_COPY(color_blend_enable, RADV_DYNAMIC_COLOR_BLEND_ENABLE);
 
    RADV_CMP_COPY(vk.ms.rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
 
@@ -1237,7 +1249,7 @@ radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
       if (!iview)
          continue;
 
-      if (!((d->color_write_mask >> (i * 4)) & 0xf))
+      if (!d->color_write_mask[i])
          continue;
 
       color_bytes_per_pixel += vk_format_get_blocksize(render->color_att[i].format);
@@ -1523,7 +1535,7 @@ radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
       if (!iview)
          continue;
 
-      if (!((d->color_write_mask >> (i * 4)) & 0xf))
+      if (!d->color_write_mask[i])
          continue;
 
       color_bytes_per_pixel += vk_format_get_blocksize(render->color_att[i].format);
@@ -1575,7 +1587,7 @@ radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
          if (!iview)
             continue;
 
-         if (!((d->color_write_mask >> (i * 4)) & 0xf))
+         if (!d->color_write_mask[i])
             continue;
 
          unsigned bytes = vk_format_get_blocksize(render->color_att[i].format);
@@ -1749,7 +1761,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
                      : !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
 
       uint32_t spi_format = (pipeline->col_format_non_compacted >> (i * 4)) & 0xf;
-      uint32_t colormask = (d->color_write_mask >> (i * 4)) & 0xf;
+      uint32_t colormask = d->color_write_mask[i];
 
       if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 || format == V_028C70_COLOR_32)
          has_rgb = !has_alpha;
@@ -2401,10 +2413,21 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 
    if (pipeline->custom_blend_mode) {
       cb_color_control |= S_028808_MODE(pipeline->custom_blend_mode);
-   } else if (d->color_write_mask) {
-      cb_color_control |= S_028808_MODE(V_028808_CB_NORMAL);
    } else {
-      cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
+      bool color_write_enabled = false;
+
+      for (unsigned i = 0; i < MAX_RTS; i++) {
+         if (d->color_write_mask[i]) {
+            color_write_enabled = true;
+            break;
+         }
+      }
+
+      if (color_write_enabled) {
+         cb_color_control |= S_028808_MODE(V_028808_CB_NORMAL);
+      } else {
+         cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
+      }
    }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028808_CB_COLOR_CONTROL, cb_color_control);
@@ -2416,6 +2439,15 @@ radv_emit_color_write(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_device *device = cmd_buffer->device;
    const struct radv_binning_settings *settings = &device->physical_device->binning_settings;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   uint32_t color_write_enable = 0, color_write_mask = 0;
+
+   u_foreach_bit(i, d->color_write_enable) {
+      color_write_enable |= 0xfu << (i * 4);
+   }
+
+   for (unsigned i = 0; i < MAX_RTS; i++) {
+      color_write_mask |= d->color_write_mask[i] << (4 * i);
+   }
 
    if (device->pbb_allowed && settings->context_states_per_bin > 1) {
       /* Flush DFSM on CB_TARGET_MASK changes. */
@@ -2424,7 +2456,7 @@ radv_emit_color_write(struct radv_cmd_buffer *cmd_buffer)
    }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028238_CB_TARGET_MASK,
-                          d->color_write_mask & d->color_write_enable);
+                          color_write_mask & color_write_enable);
 }
 
 static void
@@ -4022,7 +4054,7 @@ radv_emit_color_blend_enable(struct radv_cmd_buffer *cmd_buffer)
    unsigned cb_blend_control[MAX_RTS], sx_mrt_blend_opt[MAX_RTS];
 
    for (unsigned i = 0; i < MAX_RTS; i++) {
-      bool blend_enable = (d->color_blend_enable >> (i * 4)) & 0xf;
+      bool blend_enable = d->color_blend_enable[i];
 
       cb_blend_control[i] = pipeline->cb_blend_control[i];
       sx_mrt_blend_opt[i] = pipeline->sx_mrt_blend_opt[i];
@@ -6573,12 +6605,14 @@ radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmen
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
-   uint32_t color_write_enable = 0;
+   uint8_t color_write_enable = 0;
 
    assert(attachmentCount <= MAX_RTS);
 
    for (uint32_t i = 0; i < attachmentCount; i++) {
-      color_write_enable |= pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
+      if (pColorWriteEnables[i]) {
+         color_write_enable |= BITFIELD_BIT(i);
+      }
    }
 
    state->dynamic.color_write_enable = color_write_enable;
@@ -6803,17 +6837,11 @@ radv_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer, uint32_t firstAttach
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
-   uint32_t color_write_mask = 0;
 
    assert(firstAttachment + attachmentCount <= MAX_RTS);
 
-   for (unsigned i = 0; i < attachmentCount; i++) {
-      unsigned idx = firstAttachment + i;
-
-      color_write_mask |= pColorWriteMasks[i] << (4 * idx);
-   }
-
-   state->dynamic.color_write_mask = color_write_mask;
+   typed_memcpy(&state->dynamic.color_write_mask[firstAttachment], (uint8_t *)pColorWriteMasks,
+                attachmentCount);
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK;
 }
@@ -6824,17 +6852,11 @@ radv_CmdSetColorBlendEnableEXT(VkCommandBuffer commandBuffer, uint32_t firstAtta
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
-   uint32_t color_blend_enable = 0;
 
    assert(firstAttachment + attachmentCount <= MAX_RTS);
 
-   for (uint32_t i = 0; i < attachmentCount; i++) {
-      unsigned idx = firstAttachment + i;
-
-      color_blend_enable |= pColorBlendEnables[i] ? (0xfu << (idx * 4)) : 0;
-   }
-
-   state->dynamic.color_blend_enable = color_blend_enable;
+   typed_memcpy(&state->dynamic.color_blend_enable[firstAttachment], pColorBlendEnables,
+                attachmentCount);
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE;
 }

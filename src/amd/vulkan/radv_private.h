@@ -1327,13 +1327,13 @@ struct radv_dynamic_state {
 
    unsigned logic_op;
 
-   uint32_t color_write_enable;
+   uint8_t color_write_enable;
 
    bool logic_op_enable;
 
-   uint32_t color_write_mask;
+   uint8_t color_write_mask[MAX_RTS];
 
-   uint32_t color_blend_enable;
+   uint32_t color_blend_enable[MAX_RTS];
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

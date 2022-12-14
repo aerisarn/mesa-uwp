@@ -1683,9 +1683,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_COLOR_WRITE_ENABLE) {
-      u_foreach_bit(i, state->cb->color_write_enables) {
-         dynamic->color_write_enable |= 0xfu << (i * 4);
-      }
+      dynamic->color_write_enable = state->cb->color_write_enables;
    }
 
    if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
@@ -1739,16 +1737,13 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
-         dynamic->color_write_mask |= state->cb->attachments[i].write_mask << (4 * i);
+         dynamic->color_write_mask[i] = state->cb->attachments[i].write_mask;
       }
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
-         if (!state->cb->attachments[i].blend_enable)
-            continue;
-
-         dynamic->color_blend_enable |= 0xfu << (i * 4);
+         dynamic->color_blend_enable[i] = state->cb->attachments[i].blend_enable;
       }
    }
 
