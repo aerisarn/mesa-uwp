@@ -1690,7 +1690,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
-      dynamic->patch_control_points = state->ts->patch_control_points;
+      dynamic->vk.ts.patch_control_points = state->ts->patch_control_points;
    }
 
    if (states & RADV_DYNAMIC_POLYGON_MODE) {
@@ -1698,7 +1698,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_TESS_DOMAIN_ORIGIN) {
-      dynamic->tess_domain_origin = state->ts->domain_origin;
+      dynamic->vk.ts.domain_origin = state->ts->domain_origin;
    }
 
    if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {

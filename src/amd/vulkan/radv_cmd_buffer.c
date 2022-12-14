@@ -68,6 +68,11 @@ static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t 
 const struct radv_dynamic_state default_dynamic_state = {
    .vk =
       {
+         .ts =
+            {
+               .patch_control_points = 0,
+               .domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
+            },
          .fsr =
             {
                .fragment_size = {1u, 1u},
@@ -124,9 +129,7 @@ const struct radv_dynamic_state default_dynamic_state = {
    .rasterizer_discard_enable = 0u,
    .logic_op = 0u,
    .color_write_enable = 0u,
-   .patch_control_points = 0,
    .polygon_mode = 0,
-   .tess_domain_origin = VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT,
    .logic_op_enable = 0u,
    .stippled_line_enable = 0u,
    .alpha_to_coverage_enable = 0u,
@@ -271,11 +274,11 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 
    RADV_CMP_COPY(color_write_enable, RADV_DYNAMIC_COLOR_WRITE_ENABLE);
 
-   RADV_CMP_COPY(patch_control_points, RADV_DYNAMIC_PATCH_CONTROL_POINTS);
+   RADV_CMP_COPY(vk.ts.patch_control_points, RADV_DYNAMIC_PATCH_CONTROL_POINTS);
 
    RADV_CMP_COPY(polygon_mode, RADV_DYNAMIC_POLYGON_MODE);
 
-   RADV_CMP_COPY(tess_domain_origin, RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
+   RADV_CMP_COPY(vk.ts.domain_origin, RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
 
    RADV_CMP_COPY(logic_op_enable, RADV_DYNAMIC_LOGIC_OP_ENABLE);
 
@@ -2419,7 +2422,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    struct radv_userdata_info *loc;
 
    ls_hs_config = S_028B58_NUM_PATCHES(cmd_buffer->state.tess_num_patches) |
-                  S_028B58_HS_NUM_INPUT_CP(d->patch_control_points) |
+                  S_028B58_HS_NUM_INPUT_CP(d->vk.ts.patch_control_points) |
                   S_028B58_HS_NUM_OUTPUT_CP(tcs->info.tcs.tcs_vertices_out);
 
    if (pdevice->rad_info.gfx_level >= GFX7) {
@@ -2453,7 +2456,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
 
    base_reg = pipeline->base.user_data_0[MESA_SHADER_TESS_CTRL];
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
-                     (cmd_buffer->state.tess_num_patches << 6) | d->patch_control_points);
+                     (cmd_buffer->state.tess_num_patches << 6) | d->vk.ts.patch_control_points);
 
    loc = radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_TESS_EVAL, AC_UD_TES_NUM_PATCHES);
    assert(loc->sgpr_idx != -1 && loc->num_sgprs == 1);
@@ -3950,7 +3953,7 @@ radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
    } else {
       bool ccw = tes->info.tes.ccw;
 
-      if (d->tess_domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT) {
+      if (d->vk.ts.domain_origin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT) {
          ccw = !ccw;
       }
 
@@ -4940,7 +4943,7 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned topology = state->dynamic.primitive_topology;
    bool prim_restart_enable = state->dynamic.primitive_restart_enable;
-   unsigned patch_control_points = state->dynamic.patch_control_points;
+   unsigned patch_control_points = state->dynamic.vk.ts.patch_control_points;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned ia_multi_vgt_param;
 
@@ -6530,7 +6533,7 @@ radv_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer, uint32_t patchCo
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.patch_control_points = patchControlPoints;
+   state->dynamic.vk.ts.patch_control_points = patchControlPoints;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS;
 }
@@ -6670,7 +6673,7 @@ radv_CmdSetTessellationDomainOriginEXT(VkCommandBuffer commandBuffer,
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   state->dynamic.tess_domain_origin = domainOrigin;
+   state->dynamic.vk.ts.domain_origin = domainOrigin;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
 }
@@ -8455,20 +8458,18 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
          /* Compute the number of patches and emit the context register. */
-         cmd_buffer->state.tess_num_patches =
-            get_tcs_num_patches(d->patch_control_points, tcs->info.tcs.tcs_vertices_out,
-                                tcs->info.tcs.num_linked_inputs, tcs->info.tcs.num_linked_outputs,
-                                tcs->info.tcs.num_linked_patch_outputs,
-                                pdevice->hs.tess_offchip_block_dw_size, pdevice->rad_info.gfx_level,
-                                pdevice->rad_info.family);
+         cmd_buffer->state.tess_num_patches = get_tcs_num_patches(
+            d->vk.ts.patch_control_points, tcs->info.tcs.tcs_vertices_out,
+            tcs->info.tcs.num_linked_inputs, tcs->info.tcs.num_linked_outputs,
+            tcs->info.tcs.num_linked_patch_outputs, pdevice->hs.tess_offchip_block_dw_size,
+            pdevice->rad_info.gfx_level, pdevice->rad_info.family);
 
          /* Compute the LDS size and emit the shader register. */
-         cmd_buffer->state.tess_lds_size =
-            calculate_tess_lds_size(pdevice->rad_info.gfx_level, d->patch_control_points,
-                                    tcs->info.tcs.tcs_vertices_out, tcs->info.tcs.num_linked_inputs,
-                                    cmd_buffer->state.tess_num_patches,
-                                    tcs->info.tcs.num_linked_outputs,
-                                    tcs->info.tcs.num_linked_patch_outputs);
+         cmd_buffer->state.tess_lds_size = calculate_tess_lds_size(
+            pdevice->rad_info.gfx_level, d->vk.ts.patch_control_points,
+            tcs->info.tcs.tcs_vertices_out, tcs->info.tcs.num_linked_inputs,
+            cmd_buffer->state.tess_num_patches, tcs->info.tcs.num_linked_outputs,
+            tcs->info.tcs.num_linked_patch_outputs);
       }
    }
 

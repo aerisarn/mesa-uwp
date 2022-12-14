@@ -1413,11 +1413,7 @@ struct radv_dynamic_state {
 
    uint32_t color_write_enable;
 
-   uint32_t patch_control_points;
-
    uint32_t polygon_mode;
-
-   VkTessellationDomainOrigin tess_domain_origin;
 
    bool logic_op_enable;
 
