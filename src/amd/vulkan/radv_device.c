@@ -3103,6 +3103,7 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
    queue->priority = radv_get_queue_global_priority(global_priority);
    queue->hw_ctx = device->hw_ctx[queue->priority];
    queue->state.qf = vk_queue_to_radv(device->physical_device, create_info->queueFamilyIndex);
+   queue->gang_sem_bo = NULL;
 
    VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
@@ -3122,6 +3123,10 @@ radv_queue_state_finish(struct radv_queue_state *queue, struct radeon_winsys *ws
       ws->cs_destroy(queue->initial_preamble_cs);
    if (queue->continue_preamble_cs)
       ws->cs_destroy(queue->continue_preamble_cs);
+   if (queue->gang_wait_preamble_cs)
+      ws->cs_destroy(queue->gang_wait_preamble_cs);
+   if (queue->gang_wait_postamble_cs)
+      ws->cs_destroy(queue->gang_wait_postamble_cs);
    if (queue->descriptor_bo)
       ws->buffer_destroy(ws, queue->descriptor_bo);
    if (queue->scratch_bo)
@@ -3161,6 +3166,9 @@ radv_queue_finish(struct radv_queue *queue)
       radv_queue_state_finish(queue->ace_internal_state, queue->device->ws);
       free(queue->ace_internal_state);
    }
+
+   if (queue->gang_sem_bo)
+      queue->device->ws->buffer_destroy(queue->device->ws, queue->gang_sem_bo);
 
    radv_queue_state_finish(&queue->state, queue->device->ws);
    vk_queue_finish(&queue->vk);
@@ -5387,10 +5395,122 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
 }
 
 static VkResult
+radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
+{
+   if (queue->gang_sem_bo)
+      return VK_SUCCESS;
+
+   VkResult r = VK_SUCCESS;
+   struct radv_device *device = queue->device;
+   struct radeon_winsys *ws = device->ws;
+   const enum amd_ip_type leader_ip = radv_queue_family_to_ring(device->physical_device, queue->state.qf);
+   struct radeon_winsys_bo *gang_sem_bo = NULL;
+
+   /* Gang semaphores BO.
+    * DWORD 0: used in preambles, gang leader writes, gang members wait.
+    * DWORD 1: used in postambles, gang leader waits, gang members write.
+    */
+   r = ws->buffer_create(ws, 8, 4, RADEON_DOMAIN_VRAM,
+                         RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_ZERO_VRAM, RADV_BO_PRIORITY_SCRATCH,
+                         0, &gang_sem_bo);
+   if (r != VK_SUCCESS)
+      return r;
+
+   struct radeon_cmdbuf *leader_pre_cs = ws->cs_create(ws, leader_ip);
+   struct radeon_cmdbuf *leader_post_cs = ws->cs_create(ws, leader_ip);
+   struct radeon_cmdbuf *ace_pre_cs = ws->cs_create(ws, AMD_IP_COMPUTE);
+   struct radeon_cmdbuf *ace_post_cs = ws->cs_create(ws, AMD_IP_COMPUTE);
+
+   if (!leader_pre_cs || !leader_post_cs || !ace_pre_cs || !ace_post_cs)
+      goto fail;
+
+   radv_cs_add_buffer(ws, leader_pre_cs, gang_sem_bo);
+   radv_cs_add_buffer(ws, leader_post_cs, gang_sem_bo);
+   radv_cs_add_buffer(ws, ace_pre_cs, gang_sem_bo);
+   radv_cs_add_buffer(ws, ace_post_cs, gang_sem_bo);
+
+   const uint64_t ace_wait_va = radv_buffer_get_va(gang_sem_bo);
+   const uint64_t leader_wait_va = ace_wait_va + 4;
+
+   /* Preambles for gang submission.
+    * Make gang members wait until the gang leader starts.
+    * Userspace is required to emit this wait to make sure it behaves correctly
+    * in a multi-process environment, because task shader dispatches are not
+    * meant to be executed on multiple compute engines at the same time.
+    */
+   radv_cp_wait_mem(ace_pre_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, ace_wait_va, 1, 0xffffffff);
+   radeon_emit(ace_pre_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+   radeon_emit(ace_pre_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+   radeon_emit(ace_pre_cs, ace_wait_va);
+   radeon_emit(ace_pre_cs, ace_wait_va >> 32);
+   radeon_emit(ace_pre_cs, 0);
+   radeon_emit(leader_pre_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+   radeon_emit(leader_pre_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+   radeon_emit(leader_pre_cs, ace_wait_va);
+   radeon_emit(leader_pre_cs, ace_wait_va >> 32);
+   radeon_emit(leader_pre_cs, 1);
+
+   /* Create postambles for gang submission.
+    * This ensures that the gang leader waits for the whole gang,
+    * which is necessary because the kernel signals the userspace fence
+    * as soon as the gang leader is done, which may lead to bugs because the
+    * same command buffers could be submitted again while still being executed.
+    */
+   radv_cp_wait_mem(leader_post_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, leader_wait_va, 1, 0xffffffff);
+   radeon_emit(leader_post_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+   radeon_emit(leader_post_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+   radeon_emit(leader_post_cs, leader_wait_va);
+   radeon_emit(leader_post_cs, leader_wait_va >> 32);
+   radeon_emit(leader_post_cs, 0);
+   radeon_emit(ace_post_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+   radeon_emit(ace_post_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+   radeon_emit(ace_post_cs, leader_wait_va);
+   radeon_emit(ace_post_cs, leader_wait_va >> 32);
+   radeon_emit(ace_post_cs, 1);
+
+   r = ws->cs_finalize(leader_pre_cs);
+   if (r != VK_SUCCESS)
+      goto fail;
+   r = ws->cs_finalize(leader_post_cs);
+   if (r != VK_SUCCESS)
+      goto fail;
+   r = ws->cs_finalize(ace_pre_cs);
+   if (r != VK_SUCCESS)
+      goto fail;
+   r = ws->cs_finalize(ace_post_cs);
+   if (r != VK_SUCCESS)
+      goto fail;
+
+   queue->gang_sem_bo = gang_sem_bo;
+   queue->state.gang_wait_preamble_cs = leader_pre_cs;
+   queue->state.gang_wait_postamble_cs = leader_post_cs;
+   queue->ace_internal_state->gang_wait_preamble_cs = ace_pre_cs;
+   queue->ace_internal_state->gang_wait_postamble_cs = ace_post_cs;
+
+   return VK_SUCCESS;
+
+fail:
+   if (leader_pre_cs)
+      ws->cs_destroy(leader_pre_cs);
+   if (leader_post_cs)
+      ws->cs_destroy(leader_post_cs);
+   if (ace_pre_cs)
+      ws->cs_destroy(ace_pre_cs);
+   if (ace_post_cs)
+      ws->cs_destroy(ace_post_cs);
+   if (gang_sem_bo)
+      ws->buffer_destroy(ws, gang_sem_bo);
+
+   return r;
+}
+
+static VkResult
 radv_update_gang_preambles(struct radv_queue *queue)
 {
    if (!radv_queue_init_ace_internal_state(queue))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   VkResult r = VK_SUCCESS;
 
    /* Copy task rings state.
     * Task shaders that are submitted on the ACE queue need to share
@@ -5408,7 +5528,15 @@ radv_update_gang_preambles(struct radv_queue *queue)
    needs.compute_scratch_waves = queue->state.ring_info.scratch_waves;
    needs.task_rings = queue->state.ring_info.task_rings;
 
-   return radv_update_preamble_cs(queue->ace_internal_state, queue->device, &needs);
+   r = radv_update_preamble_cs(queue->ace_internal_state, queue->device, &needs);
+   if (r != VK_SUCCESS)
+      return r;
+
+   r = radv_create_gang_wait_preambles_postambles(queue);
+   if (r != VK_SUCCESS)
+      return r;
+
+   return VK_SUCCESS;
 }
 
 static bool
@@ -5479,10 +5607,11 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    }
 
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
+   const unsigned num_gang_wait_cs = use_ace ? 4 : 0;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cmd_buffer_count = submission->command_buffer_count;
    const unsigned cs_array_size =
-      (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count) + num_perfctr_cs;
+      (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count) + num_perfctr_cs + num_gang_wait_cs;
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cs_array_size);
    if (!cs_array)
@@ -5518,12 +5647,14 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
     */
    const bool need_wait = submission->wait_count > 0;
 
-   struct radeon_cmdbuf *preambles[2] = {
+   struct radeon_cmdbuf *preambles[4] = {
       need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs,
    };
 
    if (use_ace) {
-      preambles[1] = need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
+      preambles[1] = queue->state.gang_wait_preamble_cs;
+      preambles[2] = queue->ace_internal_state->gang_wait_preamble_cs;
+      preambles[3] = need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
                                : queue->ace_internal_state->initial_preamble_cs;
    }
 
@@ -5566,12 +5697,18 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          cs_array[num_submitted_cs++] = cmd_buffer->cs;
       }
 
+      /* Add gang wait postambles to make sure the gang leader waits for the whole gang. */
+      if (submit_ace) {
+         cs_array[num_submitted_cs++] = queue->ace_internal_state->gang_wait_postamble_cs;
+         cs_array[num_submitted_cs++] = queue->state.gang_wait_postamble_cs;
+      }
+
       /* Add perf counter unlock CS (GFX only) to the end of each submit. */
       if (use_perf_counters)
          cs_array[num_submitted_cs++] = perf_ctr_unlock_cs;
 
       submit.cs_count = num_submitted_cs;
-      submit.preamble_count = submit_ace ? 2 : 1;
+      submit.preamble_count = submit_ace ? 4 : 1;
 
       result = queue->device->ws->cs_submit(
          ctx, 1, &submit, j == 0 ? submission->wait_count : 0, submission->waits,

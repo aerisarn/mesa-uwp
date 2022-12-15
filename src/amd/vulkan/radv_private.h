@@ -761,6 +761,8 @@ struct radv_queue_state {
    struct radeon_cmdbuf *initial_preamble_cs;
    struct radeon_cmdbuf *initial_full_flush_preamble_cs;
    struct radeon_cmdbuf *continue_preamble_cs;
+   struct radeon_cmdbuf *gang_wait_preamble_cs;
+   struct radeon_cmdbuf *gang_wait_postamble_cs;
 };
 
 struct radv_queue {
@@ -770,6 +772,7 @@ struct radv_queue {
    enum radeon_ctx_priority priority;
    struct radv_queue_state state;
    struct radv_queue_state *ace_internal_state;
+   struct radeon_winsys_bo *gang_sem_bo;
 };
 
 #define RADV_BORDER_COLOR_COUNT       4096
