@@ -349,6 +349,7 @@ enum dxil_shader_model
 static VkResult
 dzn_pipeline_compile_shader(struct dzn_device *device,
                             nir_shader *nir,
+                            uint32_t input_clip_size,
                             D3D12_SHADER_BYTECODE *slot)
 {
    struct dzn_instance *instance =
@@ -358,6 +359,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
       .shader_model_max = dzn_get_shader_model(pdev),
+      .input_clip_size = input_clip_size,
 #ifdef _WIN32
       .validator_version_max = dxil_get_validator_version(instance->dxil_validator),
 #endif
@@ -848,6 +850,12 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
          if (stage == MESA_SHADER_FRAGMENT)
             _mesa_sha1_update(&dxil_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
+         else {
+            gl_shader_stage prev_stage = util_last_bit(active_stage_mask & BITFIELD_MASK(stage)) - 1;
+            uint32_t prev_stage_output_clip_size = prev_stage == MESA_SHADER_NONE ? 0 :
+               pipeline->templates.shaders[prev_stage].nir->info.clip_distance_array_size;
+            _mesa_sha1_update(&dxil_hash_ctx, &prev_stage_output_clip_size, sizeof(prev_stage_output_clip_size));
+         }
 
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
          _mesa_sha1_update(&dxil_hash_ctx, bindings_hash, sizeof(bindings_hash));
@@ -899,21 +907,24 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       if (pipeline->templates.shaders[stage].bc)
          continue;
 
+      gl_shader_stage prev_stage =
+         util_last_bit(active_stage_mask & BITFIELD_MASK(stage)) - 1;
+      uint32_t prev_stage_output_clip_size = 0;
       if (stage == MESA_SHADER_FRAGMENT) {
-         gl_shader_stage prev_stage =
-            util_last_bit(active_stage_mask & BITFIELD_MASK(MESA_SHADER_FRAGMENT)) - 1;
          /* Disable rasterization if the last geometry stage doesn't
           * write the position.
           */
          if (prev_stage == MESA_SHADER_NONE ||
              !(pipeline->templates.shaders[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
             continue;
+      } else if (prev_stage != MESA_SHADER_NONE) {
+         prev_stage_output_clip_size = pipeline->templates.shaders[prev_stage].nir->info.clip_distance_array_size;
       }
 
       D3D12_SHADER_BYTECODE *slot =
          dzn_pipeline_get_gfx_shader_slot(out, stage);
 
-      ret = dzn_pipeline_compile_shader(device, pipeline->templates.shaders[stage].nir, slot);
+      ret = dzn_pipeline_compile_shader(device, pipeline->templates.shaders[stage].nir, prev_stage_output_clip_size, slot);
       if (ret != VK_SUCCESS)
          return ret;
 
@@ -2142,7 +2153,7 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
       }
    }
 
-   ret = dzn_pipeline_compile_shader(device, nir, shader);
+   ret = dzn_pipeline_compile_shader(device, nir, 0, shader);
    if (ret != VK_SUCCESS)
       goto out;
 

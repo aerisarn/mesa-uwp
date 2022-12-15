@@ -571,6 +571,9 @@ dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir)
       prev_stage_nir->info.outputs_written =
          dxil_reassign_driver_locations(prev_stage_nir, nir_var_shader_out,
                                         nir->info.inputs_read);
+
+      if (nir->info.stage == MESA_SHADER_FRAGMENT)
+         nir->info.clip_distance_array_size = prev_stage_nir->info.clip_distance_array_size;
    }
 
    glsl_type_singleton_decref();
