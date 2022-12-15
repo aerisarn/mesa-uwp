@@ -655,7 +655,7 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
 
    /* Disable DCC for VRS rate images because the hw can't handle compression. */
    if (pCreateInfo->usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)
-      flags |= RADEON_SURF_DISABLE_DCC;
+      flags |= RADEON_SURF_VRS_RATE | RADEON_SURF_DISABLE_DCC;
 
    return flags;
 }
