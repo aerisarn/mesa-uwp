@@ -639,6 +639,60 @@ static int fill_vc1_picture_desc(const struct pipe_picture_desc *desc,
     return 0;
 }
 
+static int fill_mjpeg_picture_desc(const struct pipe_picture_desc *desc,
+                                   union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_mjpeg_picture_desc *vmjpeg = &vdsc->mjpeg;
+    struct pipe_mjpeg_picture_desc *mjpeg = (struct pipe_mjpeg_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vmjpeg->base);
+
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, picture_width);
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, picture_height);
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, crop_x);
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, crop_y);
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, crop_width);
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, crop_height);
+
+    ITEM_SET(&vmjpeg->picture_parameter, &mjpeg->picture_parameter, num_components);
+    for (i = 0; i < mjpeg->picture_parameter.num_components; ++i) {
+        ITEM_SET(&vmjpeg->picture_parameter.components[i], &mjpeg->picture_parameter.components[i], component_id);
+        ITEM_SET(&vmjpeg->picture_parameter.components[i], &mjpeg->picture_parameter.components[i], h_sampling_factor);
+        ITEM_SET(&vmjpeg->picture_parameter.components[i], &mjpeg->picture_parameter.components[i], v_sampling_factor);
+        ITEM_SET(&vmjpeg->picture_parameter.components[i], &mjpeg->picture_parameter.components[i], quantiser_table_selector);
+    }
+
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, slice_data_size);
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, slice_data_offset);
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, slice_data_flag);
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, slice_horizontal_position);
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, slice_vertical_position);
+
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, num_components);
+    for (i = 0; i < mjpeg->slice_parameter.num_components; ++i) {
+        ITEM_SET(&vmjpeg->slice_parameter.components[i], &mjpeg->slice_parameter.components[i], component_selector);
+        ITEM_SET(&vmjpeg->slice_parameter.components[i], &mjpeg->slice_parameter.components[i], dc_table_selector);
+        ITEM_SET(&vmjpeg->slice_parameter.components[i], &mjpeg->slice_parameter.components[i], ac_table_selector);
+    }
+    
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, restart_interval);
+    ITEM_SET(&vmjpeg->slice_parameter, &mjpeg->slice_parameter, num_mcus);
+
+    ITEM_CPY(&vmjpeg->quantization_table, &mjpeg->quantization_table, load_quantiser_table);
+    ITEM_CPY(&vmjpeg->quantization_table, &mjpeg->quantization_table, quantiser_table);
+
+    for (i = 0; i < 2; ++i) {
+        ITEM_SET(&vmjpeg->huffman_table, &mjpeg->huffman_table, load_huffman_table[i]);
+        ITEM_CPY(&vmjpeg->huffman_table.table[i], &mjpeg->huffman_table.table[i], num_dc_codes);
+        ITEM_CPY(&vmjpeg->huffman_table.table[i], &mjpeg->huffman_table.table[i], dc_values);
+        ITEM_CPY(&vmjpeg->huffman_table.table[i], &mjpeg->huffman_table.table[i], num_ac_codes);
+        ITEM_CPY(&vmjpeg->huffman_table.table[i], &mjpeg->huffman_table.table[i], ac_values);
+        ITEM_CPY(&vmjpeg->huffman_table.table[i], &mjpeg->huffman_table.table[i], pad);
+    }
+    return 0;
+}
+
 #undef ITEM_SET
 #undef ITEM_CPY
 
@@ -656,6 +710,8 @@ static int fill_picture_desc(const struct pipe_picture_desc *desc,
         return fill_mpeg12_picture_desc(desc, vdsc);
     case PIPE_VIDEO_FORMAT_VC1:
         return fill_vc1_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_JPEG:
+        return fill_mjpeg_picture_desc(desc, vdsc);
     default:
         return -1;
     }
@@ -910,7 +966,8 @@ virgl_video_create_codec(struct pipe_context *ctx,
         break;
     case PIPE_VIDEO_FORMAT_HEVC: 
     case PIPE_VIDEO_FORMAT_MPEG12: 
-    case PIPE_VIDEO_FORMAT_VC1: /* fall through */
+    case PIPE_VIDEO_FORMAT_VC1: 
+    case PIPE_VIDEO_FORMAT_JPEG: /* fall through */
     default:
         break;
     }
