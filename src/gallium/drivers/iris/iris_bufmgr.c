@@ -1000,7 +1000,8 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
       case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
          /* For vram allocations, still use system memory as a fallback. */
          regions[num_regions++] = bufmgr->vram.region;
-         regions[num_regions++] = bufmgr->sys.region;
+         if (!(flags & BO_ALLOC_SCANOUT))
+            regions[num_regions++] = bufmgr->sys.region;
          break;
       case IRIS_HEAP_DEVICE_LOCAL:
          regions[num_regions++] = bufmgr->vram.region;
