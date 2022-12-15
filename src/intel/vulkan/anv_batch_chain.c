@@ -433,17 +433,11 @@ emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
     * gens.
     */
 
-#define GFX7_MI_BATCH_BUFFER_START_length      2
-#define GFX7_MI_BATCH_BUFFER_START_length_bias      2
-
-   const uint32_t gfx7_length =
-      GFX7_MI_BATCH_BUFFER_START_length - GFX7_MI_BATCH_BUFFER_START_length_bias;
    const uint32_t gfx8_length =
       GFX8_MI_BATCH_BUFFER_START_length - GFX8_MI_BATCH_BUFFER_START_length_bias;
 
    anv_batch_emit(&cmd_buffer->batch, GFX8_MI_BATCH_BUFFER_START, bbs) {
-      bbs.DWordLength               = cmd_buffer->device->info->ver < 8 ?
-                                      gfx7_length : gfx8_length;
+      bbs.DWordLength               = gfx8_length;
       bbs.SecondLevelBatchBuffer    = Firstlevelbatch;
       bbs.AddressSpaceIndicator     = ASI_PPGTT;
       bbs.BatchBufferStartAddress   = (struct anv_address) { bo, offset };
