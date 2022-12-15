@@ -5387,7 +5387,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
 }
 
 static VkResult
-radv_update_ace_preambles(struct radv_queue *queue)
+radv_update_gang_preambles(struct radv_queue *queue)
 {
    if (!radv_queue_init_ace_internal_state(queue))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -5473,7 +5473,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       /* TODO: chaining with gang submit. */
       can_patch = false;
 
-      result = radv_update_ace_preambles(queue);
+      result = radv_update_gang_preambles(queue);
       if (result != VK_SUCCESS)
          return result;
    }
