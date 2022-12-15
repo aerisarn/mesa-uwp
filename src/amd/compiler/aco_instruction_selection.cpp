@@ -5415,8 +5415,7 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
 {
    Builder bld(ctx->program, ctx->block);
    if (ctx->options->gfx_level >= GFX11) {
-      // TODO: this ignores vertex_id
-      uint16_t dpp_ctrl = dpp_quad_perm(0, 0, 0, 0);
+      uint16_t dpp_ctrl = dpp_quad_perm(vertex_id, vertex_id, vertex_id, vertex_id);
       if (in_exec_divergent_or_in_loop(ctx)) {
          Operand prim_mask_op = bld.m0(prim_mask);
          prim_mask_op.setLateKill(true); /* we don't want the bld.lm definition to use m0 */
@@ -5435,7 +5434,7 @@ emit_interp_mov_instr(isel_context* ctx, unsigned idx, unsigned component, unsig
             emit_extract_vector(ctx, emit_wqm(bld, res, Temp(0, s1), true), 0, dst);
       }
    } else {
-      bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
+      bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32((vertex_id + 2) % 3),
                  bld.m0(prim_mask), idx, component);
    }
 }
@@ -5836,23 +5835,10 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
       unsigned idx = nir_intrinsic_base(instr);
       unsigned component = nir_intrinsic_component(instr);
-      unsigned vertex_id = 2; /* P0 */
+      unsigned vertex_id = 0; /* P0 */
 
-      if (instr->intrinsic == nir_intrinsic_load_input_vertex) {
-         nir_const_value* src0 = nir_src_as_const_value(instr->src[0]);
-         switch (src0->u32) {
-         case 0:
-            vertex_id = 2; /* P0 */
-            break;
-         case 1:
-            vertex_id = 0; /* P10 */
-            break;
-         case 2:
-            vertex_id = 1; /* P20 */
-            break;
-         default: unreachable("invalid vertex index");
-         }
-      }
+      if (instr->intrinsic == nir_intrinsic_load_input_vertex)
+         vertex_id = nir_src_as_uint(instr->src[0]);
 
       if (instr->dest.ssa.num_components == 1 &&
           instr->dest.ssa.bit_size != 64) {
