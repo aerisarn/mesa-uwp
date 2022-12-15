@@ -1685,6 +1685,7 @@ dxil_sort_ps_outputs(nir_shader* s)
 
 enum dxil_sysvalue_type {
    DXIL_NO_SYSVALUE = 0,
+   DXIL_USED_SYSVALUE,
    DXIL_SYSVALUE,
    DXIL_GENERATED_SYSVALUE
 };
@@ -1706,7 +1707,7 @@ nir_var_to_dxil_sysvalue_type(nir_variable *var, uint64_t other_stage_mask)
    case VARYING_SLOT_LAYER:
       if (!((1ull << var->data.location) & other_stage_mask))
          return DXIL_SYSVALUE;
-      FALLTHROUGH;
+      return DXIL_USED_SYSVALUE;
    default:
       return DXIL_NO_SYSVALUE;
    }
