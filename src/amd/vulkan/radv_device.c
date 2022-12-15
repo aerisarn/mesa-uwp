@@ -7025,8 +7025,8 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(1);
          }
 
-         va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset + 
-            surf->meta_offset;
+         va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset +
+              surf->meta_offset;
          ds->db_htile_data_base = va >> 8;
          ds->db_htile_surface = S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
 
