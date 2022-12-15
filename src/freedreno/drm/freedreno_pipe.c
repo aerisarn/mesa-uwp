@@ -279,6 +279,7 @@ fd_fence_del_locked(struct fd_fence *f)
 void
 fd_fence_flush(struct fd_fence *f)
 {
+   MESA_TRACE_FUNC();
    /*
     * TODO we could simplify this to remove the flush_sync part of
     * fd_pipe_sp_flush() and just rely on the util_queue_fence_wait()
@@ -290,5 +291,6 @@ fd_fence_flush(struct fd_fence *f)
 int
 fd_fence_wait(struct fd_fence *f)
 {
+   MESA_TRACE_FUNC();
    return fd_pipe_wait(f->pipe, f);
 }

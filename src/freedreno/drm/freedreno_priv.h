@@ -41,6 +41,7 @@
 #include "util/hash_table.h"
 #include "util/list.h"
 #include "util/log.h"
+#include "util/perf/cpu_trace.h"
 #include "util/simple_mtx.h"
 #include "util/slab.h"
 #include "util/u_atomic.h"

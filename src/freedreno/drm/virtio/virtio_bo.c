@@ -91,6 +91,7 @@ virtio_bo_cpu_prep_guest(struct fd_bo *bo)
 static int
 virtio_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 {
+   MESA_TRACE_FUNC();
    int ret;
 
    /*
@@ -193,6 +194,7 @@ virtio_bo_set_name(struct fd_bo *bo, const char *fmt, va_list ap)
 static void
 bo_upload(struct fd_bo *bo, unsigned off, void *src, unsigned len)
 {
+   MESA_TRACE_FUNC();
    unsigned req_len = sizeof(struct msm_ccmd_gem_upload_req) + align(len, 4);
    struct virtio_bo *virtio_bo = to_virtio_bo(bo);
 

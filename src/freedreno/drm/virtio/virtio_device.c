@@ -332,6 +332,7 @@ virtio_execbuf_flush(struct fd_device *dev)
 int
 virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync)
 {
+   MESA_TRACE_FUNC();
    struct virtio_device *virtio_dev = to_virtio_device(dev);
    int fence_fd, ret = 0;
 
@@ -388,6 +389,7 @@ virtio_host_sync(struct fd_device *dev, const struct msm_ccmd_req *req)
 int
 virtio_simple_ioctl(struct fd_device *dev, unsigned cmd, void *_req)
 {
+   MESA_TRACE_FUNC();
    unsigned req_len = sizeof(struct msm_ccmd_ioctl_simple_req);
    unsigned rsp_len = sizeof(struct msm_ccmd_ioctl_simple_rsp);
 
