@@ -275,6 +275,7 @@ static void
 radv_copy_thread_trace_info_regs(struct radv_device *device, struct radeon_cmdbuf *cs,
                                  unsigned se_index)
 {
+   const struct radv_physical_device *pdevice = device->physical_device;
    const uint32_t *thread_trace_info_regs = NULL;
 
    if (device->physical_device->rad_info.gfx_level >= GFX11) {
@@ -301,6 +302,31 @@ radv_copy_thread_trace_info_regs(struct radv_device *device, struct radeon_cmdbu
       radeon_emit(cs, 0); /* unused */
       radeon_emit(cs, (info_va + i * 4));
       radeon_emit(cs, (info_va + i * 4) >> 32);
+   }
+
+   if (pdevice->rad_info.gfx_level >= GFX11) {
+      /* On GFX11, SQ_THREAD_TRACE_WPTR is incremented from the "initial WPTR address" instead of 0.
+       * To get the number of bytes (in units of 32 bytes) written by SQTT, the workaround is to
+       * substract SQ_THREAD_TRACE_WPTR from the "initial WPTR address" as follow:
+       *
+       * 1) get the current buffer base address for this SE
+       * 2) shift right by 5 bits because SQ_THREAD_TRACE_WPTR is 32-byte aligned
+       * 3) mask off the higher 3 bits because WPTR.OFFSET is 29 bits
+       */
+      uint64_t data_va =
+         ac_thread_trace_get_data_va(&pdevice->rad_info, &device->thread_trace, va, se_index);
+      uint64_t shifted_data_va = (data_va >> 5);
+      uint32_t init_wptr_value = shifted_data_va & 0x1fffffff;
+
+      radeon_emit(cs, PKT3(PKT3_ATOMIC_MEM, 7, 0));
+      radeon_emit(cs, ATOMIC_OP(TC_OP_ATOMIC_SUB_32));
+      radeon_emit(cs, info_va);         /* addr lo */
+      radeon_emit(cs, info_va >> 32);   /* addr hi */
+      radeon_emit(cs, init_wptr_value); /* data lo */
+      radeon_emit(cs, 0);               /* data hi */
+      radeon_emit(cs, 0);               /* compare data lo */
+      radeon_emit(cs, 0);               /* compare data hi */
+      radeon_emit(cs, 0);               /* loop interval */
    }
 }
 
