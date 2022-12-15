@@ -653,8 +653,7 @@ u_pipe_screen_lookup_or_create(int gpu_fd,
       pscreen = screen_create(gpu_fd, config, ro);
       if (pscreen) {
          pscreen->refcnt = 1;
-         int fd = pscreen->get_screen_fd(pscreen);
-         _mesa_hash_table_insert(fd_tab, intptr_to_pointer(fd), pscreen);
+         _mesa_hash_table_insert(fd_tab, intptr_to_pointer(gpu_fd), pscreen);
 
          /* Bit of a hack, to avoid circular linkage dependency,
           * ie. pipe driver having to call in to winsys, we
