@@ -141,6 +141,8 @@ panfrost_disk_cache_retrieve(struct disk_cache *cache,
         blob_copy_bytes(&blob, ptr, binary_size);
         blob_copy_bytes(&blob, &binary->info, sizeof(binary->info));
 
+        free(buffer);
+
         return true;
 #else
         return false;
