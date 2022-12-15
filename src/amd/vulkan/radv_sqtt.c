@@ -38,6 +38,10 @@ radv_is_instruction_timing_enabled(void)
 static bool
 radv_se_is_disabled(struct radv_device *device, unsigned se)
 {
+   /* FIXME: SQTT only works on SE0 for some unknown reasons. */
+   if (device->physical_device->rad_info.gfx_level == GFX11 && se != 0)
+      return true;
+
    /* No active CU on the SE means it is disabled. */
    return device->physical_device->rad_info.cu_mask[se][0] == 0;
 }
