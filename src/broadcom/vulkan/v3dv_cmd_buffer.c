@@ -876,6 +876,8 @@ cmd_buffer_emit_resolve(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_image_view *dst_iview =
       cmd_buffer->state.attachments[dst_attachment_idx].image_view;
 
+   const VkRect2D *ra = &cmd_buffer->state.render_area;
+
    VkImageResolve2 region = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
       .srcSubresource = {
@@ -884,15 +886,15 @@ cmd_buffer_emit_resolve(struct v3dv_cmd_buffer *cmd_buffer,
          src_iview->vk.base_array_layer,
          src_iview->vk.layer_count,
       },
-      .srcOffset = { 0, 0, 0 },
+      .srcOffset = { ra->offset.x, ra->offset.y, 0 },
       .dstSubresource =  {
          aspect,
          dst_iview->vk.base_mip_level,
          dst_iview->vk.base_array_layer,
          dst_iview->vk.layer_count,
       },
-      .dstOffset = { 0, 0, 0 },
-      .extent = src_iview->vk.image->extent,
+      .dstOffset = { ra->offset.x, ra->offset.y, 0 },
+      .extent = { ra->extent.width, ra->extent.height, 1 },
    };
 
    struct v3dv_image *src_image = (struct v3dv_image *) src_iview->vk.image;
