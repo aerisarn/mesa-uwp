@@ -1054,7 +1054,7 @@ dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size)
 }
 
 struct dxil_nir_split_clip_cull_distance_params {
-   nir_variable *new_var;
+   nir_variable *new_var[2];
    nir_shader *shader;
 };
 
@@ -1072,7 +1072,6 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
                                         void *cb_data)
 {
    struct dxil_nir_split_clip_cull_distance_params *params = cb_data;
-   nir_variable *new_var = params->new_var;
 
    if (instr->type != nir_instr_type_deref)
       return false;
@@ -1084,6 +1083,9 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
        var->data.location > VARYING_SLOT_CULL_DIST1 ||
        !var->data.compact)
       return false;
+
+   unsigned new_var_idx = var->data.mode == nir_var_shader_in ? 0 : 1;
+   nir_variable *new_var = params->new_var[new_var_idx];
 
    /* The location should only be inside clip distance, because clip
     * and cull should've been merged by nir_lower_clip_cull_distance_arrays()
@@ -1129,7 +1131,7 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
       }
       new_var->data.location++;
       new_var->data.location_frac = 0;
-      params->new_var = new_var;
+      params->new_var[new_var_idx] = new_var;
    }
 
    /* Update the type for derefs of the old var */
@@ -1174,7 +1176,7 @@ bool
 dxil_nir_split_clip_cull_distance(nir_shader *shader)
 {
    struct dxil_nir_split_clip_cull_distance_params params = {
-      .new_var = NULL,
+      .new_var = { NULL, NULL },
       .shader = shader,
    };
    nir_shader_instructions_pass(shader,
@@ -1183,7 +1185,7 @@ dxil_nir_split_clip_cull_distance(nir_shader *shader)
                                 nir_metadata_dominance |
                                 nir_metadata_loop_analysis,
                                 &params);
-   return params.new_var != NULL;
+   return params.new_var[0] != NULL || params.new_var[1] != NULL;
 }
 
 static bool
