@@ -192,6 +192,9 @@ fd_pipe_wait_timeout(struct fd_pipe *pipe, const struct fd_fence *fence,
    if (!fd_fence_after(fence->ufence, pipe->control->fence))
       return 0;
 
+   if (!timeout)
+      return -ETIMEDOUT;
+
    fd_pipe_flush(pipe, fence->ufence);
 
    return pipe->funcs->wait(pipe, fence, timeout);
