@@ -932,6 +932,14 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 
       for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++)
          swz[i] = bgra4_remap[swz[i]];
+   } else if (iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      /* D3D puts stencil in G, not R. Requests for R should be routed to G and vice versa. */
+      for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++) {
+         if (swz[i] == D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0)
+            swz[i] = D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1;
+         else if (swz[i] == D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1)
+            swz[i] = D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0;
+      }
    }
 
    iview->srv_desc.Shader4ComponentMapping =

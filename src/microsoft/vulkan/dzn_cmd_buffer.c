@@ -1842,18 +1842,6 @@ dzn_cmd_buffer_blit_prepare_src_view(struct dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      iview_info.components.r = VK_COMPONENT_SWIZZLE_G;
-      iview_info.components.g = VK_COMPONENT_SWIZZLE_G;
-      iview_info.components.b = VK_COMPONENT_SWIZZLE_G;
-      iview_info.components.a = VK_COMPONENT_SWIZZLE_G;
-   } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      iview_info.components.r = VK_COMPONENT_SWIZZLE_R;
-      iview_info.components.g = VK_COMPONENT_SWIZZLE_R;
-      iview_info.components.b = VK_COMPONENT_SWIZZLE_R;
-      iview_info.components.a = VK_COMPONENT_SWIZZLE_R;
-   }
-
    switch (img->vk.image_type) {
    case VK_IMAGE_TYPE_1D:
       iview_info.viewType = img->vk.array_layers > 1 ?
