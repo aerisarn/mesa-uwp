@@ -47,7 +47,8 @@ gfx11_get_thread_trace_ctrl(struct radv_device *device, bool enable)
 {
    return S_0367B0_MODE(enable) | S_0367B0_HIWATER(5) | S_0367B0_UTIL_TIMER(1) |
           S_0367B0_RT_FREQ(2) | /* 4096 clk */
-          S_0367B0_DRAW_EVENT_EN(1) | S_0367B0_SPI_STALL_EN(1) | S_0367B0_SQ_STALL_EN(1);
+          S_0367B0_DRAW_EVENT_EN(1) | S_0367B0_SPI_STALL_EN(1) | S_0367B0_SQ_STALL_EN(1) |
+          S_0367B0_REG_AT_HWM(2);
 }
 
 static uint32_t
