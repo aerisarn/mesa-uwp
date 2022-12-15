@@ -13,6 +13,7 @@ and show the job(s) logs.
 
 import argparse
 import re
+from subprocess import check_output
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -235,7 +236,7 @@ def parse_args() -> None:
     )
     parser.add_argument("--target", metavar="target-job", help="Target job")
     parser.add_argument(
-        "--rev", metavar="revision", help="repository git revision", required=True
+        "--rev", metavar="revision", help="repository git revision (default: HEAD)"
     )
     parser.add_argument(
         "--token",
@@ -279,8 +280,11 @@ if __name__ == "__main__":
 
         cur_project = get_gitlab_project(gl, "mesa")
 
-        print(f"Revision: {args.rev}")
-        pipe = wait_for_pipeline(cur_project, args.rev)
+        REV: str = args.rev
+        if not REV:
+            REV = check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+        print(f"Revision: {REV}")
+        pipe = wait_for_pipeline(cur_project, REV)
         print(f"Pipeline: {pipe.web_url}")
         deps = set()
         if args.target:
