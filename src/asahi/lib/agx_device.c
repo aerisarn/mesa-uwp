@@ -111,10 +111,13 @@ agx_shmem_alloc(struct agx_device *dev, size_t size, bool cmdbuf)
 }
 
 static struct agx_bo *
-agx_bo_alloc(struct agx_device *dev, size_t size, uint32_t flags)
+agx_bo_alloc(struct agx_device *dev, size_t size, enum agx_bo_flags flags)
 {
    struct agx_bo *bo;
    unsigned handle = 0;
+
+   /* executable implies low va */
+   assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
 
 #if __APPLE__
    uint32_t mode = 0x430; // shared, ?
@@ -123,7 +126,9 @@ agx_bo_alloc(struct agx_device *dev, size_t size, uint32_t flags)
    args_in[4] = 0x4000101; // 0x1000101; // unk
    args_in[5] = mode;
    args_in[16] = size;
-   args_in[20] = flags;
+   args_in[20] = flags & AGX_BO_EXEC     ? AGX_MEMORY_TYPE_SHADER
+                 : flags & AGX_BO_LOW_VA ? AGX_MEMORY_TYPE_CMDBUF_32
+                                         : AGX_MEMORY_TYPE_FRAMEBUFFER;
 
    uint64_t out[10] = {0};
    size_t out_sz = sizeof(out);
@@ -153,7 +158,7 @@ agx_bo_alloc(struct agx_device *dev, size_t size, uint32_t flags)
    bo->dev = dev;
    bo->handle = handle;
 
-   ASSERTED bool lo = (flags & 0x08000000);
+   ASSERTED bool lo = (flags & AGX_BO_LOW_VA);
 
 #if __APPLE__
    bo->ptr.gpu = out[0];
@@ -383,7 +388,7 @@ agx_bo_export(struct agx_bo *bo)
 }
 
 struct agx_bo *
-agx_bo_create(struct agx_device *dev, unsigned size, unsigned flags,
+agx_bo_create(struct agx_device *dev, unsigned size, enum agx_bo_flags flags,
               const char *label)
 {
    struct agx_bo *bo;

@@ -1298,8 +1298,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);
 
    if (binary.size) {
-      compiled->bo =
-         agx_bo_create(dev, binary.size, AGX_MEMORY_TYPE_SHADER, "Executable");
+      compiled->bo = agx_bo_create(dev, binary.size,
+                                   AGX_BO_EXEC | AGX_BO_LOW_VA, "Executable");
+
       memcpy(compiled->bo->ptr.cpu, binary.data, binary.size);
    }
 

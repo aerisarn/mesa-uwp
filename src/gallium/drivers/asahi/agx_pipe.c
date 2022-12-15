@@ -528,8 +528,7 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
                        : (bind & PIPE_BIND_SHADER_IMAGE)    ? "Shader image"
                                                             : "Other resource";
 
-   nresource->bo = agx_bo_create(dev, nresource->layout.size_B,
-                                 AGX_MEMORY_TYPE_FRAMEBUFFER, label);
+   nresource->bo = agx_bo_create(dev, nresource->layout.size_B, 0, label);
 
    if (!nresource->bo) {
       FREE(nresource);
