@@ -2399,6 +2399,8 @@ prefer_cpu_access(const struct iris_resource *res,
 
    const bool write = usage & PIPE_MAP_WRITE;
    const bool read = usage & PIPE_MAP_READ;
+   const bool preserve =
+      res->base.b.target == PIPE_BUFFER && !(usage & PIPE_MAP_DISCARD_RANGE);
 
    /* We want to avoid uncached reads because they are slow. */
    if (read && mmap_mode != IRIS_MMAP_WB)
@@ -2407,8 +2409,14 @@ prefer_cpu_access(const struct iris_resource *res,
    /* We want to avoid stalling.  We can't avoid stalling for reads, though,
     * because the destination of a GPU staging copy would be busy and stall
     * in the exact same manner.  So don't consider it for those.
+    *
+    * For buffer maps which aren't invalidating the destination, the GPU
+    * staging copy path would have to read the existing buffer contents in
+    * order to preserve them, effectively making it a read.  But a direct
+    * mapping would be able to just write the necessary parts without the
+    * overhead of the copy.  It may stall, but we would anyway.
     */
-   if (map_would_stall && !read)
+   if (map_would_stall && !read && !preserve)
       return false;
 
    /* Use the GPU for writes if it would compress the data. */
