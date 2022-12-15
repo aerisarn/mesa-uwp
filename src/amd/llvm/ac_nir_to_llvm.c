@@ -3499,33 +3499,17 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
 
    /* Fragment shader inputs. */
    assert(ctx->stage == MESA_SHADER_FRAGMENT);
-   unsigned vertex_id = 2; /* P0 */
+   unsigned vertex_id = 0; /* P0 */
 
-   if (instr->intrinsic == nir_intrinsic_load_input_vertex) {
-      nir_const_value *src0 = nir_src_as_const_value(instr->src[0]);
-
-      switch (src0[0].i32) {
-      case 0:
-         vertex_id = 2;
-         break;
-      case 1:
-         vertex_id = 0;
-         break;
-      case 2:
-         vertex_id = 1;
-         break;
-      default:
-         unreachable("Invalid vertex index");
-      }
-   }
+   if (instr->intrinsic == nir_intrinsic_load_input_vertex)
+      vertex_id = nir_src_as_uint(instr->src[0]);
 
    LLVMValueRef attr_number = LLVMConstInt(ctx->ac.i32, base, false);
 
    for (unsigned chan = 0; chan < count; chan++) {
       LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, (component + chan) % 4, false);
-      values[chan] =
-         ac_build_fs_interp_mov(&ctx->ac, LLVMConstInt(ctx->ac.i32, vertex_id, false), llvm_chan,
-                                attr_number, ac_get_arg(&ctx->ac, ctx->args->prim_mask));
+      values[chan] = ac_build_fs_interp_mov(&ctx->ac, vertex_id, llvm_chan, attr_number,
+                                            ac_get_arg(&ctx->ac, ctx->args->prim_mask));
       values[chan] = LLVMBuildBitCast(ctx->ac.builder, values[chan], ctx->ac.i32, "");
       if (instr->dest.ssa.bit_size == 16 &&
           nir_intrinsic_io_semantics(instr).high_16bits)
