@@ -657,8 +657,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .AMD_shader_core_properties = true,
       .AMD_shader_core_properties2 = true,
       .AMD_shader_early_and_late_fragment_tests = true,
-      /* TODO: Figure out if it's possible to implement it on gfx11. */
-      .AMD_shader_explicit_vertex_parameter = device->rad_info.gfx_level < GFX11,
+      .AMD_shader_explicit_vertex_parameter = true,
       .AMD_shader_fragment_mask = device->use_fmask,
       .AMD_shader_image_load_store_lod = true,
       .AMD_shader_trinary_minmax = true,
