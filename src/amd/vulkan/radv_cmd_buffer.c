@@ -731,28 +731,27 @@ radv_ace_internal_finalize(struct radv_cmd_buffer *cmd_buffer)
    /* Emit pending cache flush. */
    radv_ace_internal_cache_flush(cmd_buffer);
 
-   /* Clear the ACE semaphore if it exists.
+   /* Clear the GFX<->ACE semaphores if they exist.
     * This is necessary in case the same cmd buffer is submitted again in the future.
     */
    if (cmd_buffer->ace_internal.sem.va) {
-      struct radeon_cmdbuf *main_cs = cmd_buffer->cs;
+      struct radeon_cmdbuf *cs = cmd_buffer->cs;
       uint64_t gfx2ace_va = cmd_buffer->ace_internal.sem.va;
       uint64_t ace2gfx_va = cmd_buffer->ace_internal.sem.va + 4;
 
-      /* ACE: write 1 to the ACE->GFX semaphore. */
-      si_cs_emit_write_event_eop(ace_cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
-                                 true, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM,
-                                 EOP_DATA_SEL_VALUE_32BIT, ace2gfx_va, 1,
-                                 cmd_buffer->gfx9_eop_bug_va);
+      /* ACE: write 0 to the GFX->ACE semaphore. */
+      radeon_emit(ace_cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+      radeon_emit(ace_cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+      radeon_emit(ace_cs, gfx2ace_va);
+      radeon_emit(ace_cs, gfx2ace_va >> 32);
+      radeon_emit(ace_cs, 0);
 
-      /* Wait for ACE to finish, otherwise we may risk writing 0 to the semaphore
-       * when ACE is still waiting for it. This may not happen in practice, but
-       * better safe than sorry.
-       */
-      radv_cp_wait_mem(main_cs, WAIT_REG_MEM_GREATER_OR_EQUAL, ace2gfx_va, 1, 0xffffffff);
-
-      /* GFX: clear GFX->ACE and ACE->GFX semaphores. */
-      radv_emit_clear_data(cmd_buffer, V_370_ME, gfx2ace_va, 8);
+      /* GFX: write 0 to the ACE->GFX semaphore. */
+      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+      radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_ME));
+      radeon_emit(cs, ace2gfx_va);
+      radeon_emit(cs, ace2gfx_va >> 32);
+      radeon_emit(cs, 0);
    }
 
    device->ws->cs_add_buffers(ace_cs, cmd_buffer->cs);
