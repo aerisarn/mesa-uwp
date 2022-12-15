@@ -336,6 +336,17 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
          S_030800_SE_INDEX(se) | S_030800_SH_INDEX(0) | S_030800_INSTANCE_BROADCAST_WRITES(1));
 
       if (device->physical_device->rad_info.gfx_level >= GFX11) {
+         /* Make sure to wait for the trace buffer. */
+         radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+         radeon_emit(
+            cs,
+            WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
+         radeon_emit(cs, R_0367D0_SQ_THREAD_TRACE_STATUS >> 2); /* register */
+         radeon_emit(cs, 0);
+         radeon_emit(cs, 0);                       /* reference value */
+         radeon_emit(cs, ~C_0367D0_FINISH_DONE);
+         radeon_emit(cs, 4);                       /* poll interval */
+
          /* Disable the thread trace mode. */
          radeon_set_uconfig_reg(cs, R_0367B0_SQ_THREAD_TRACE_CTRL,
                                 gfx11_get_thread_trace_ctrl(device, false));
