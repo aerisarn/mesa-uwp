@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include "util/libsync.h"
 #include "util/slab.h"
 
 #include "freedreno_ringbuffer_sp.h"
@@ -120,6 +121,10 @@ static int
 virtio_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence, uint64_t timeout)
 {
    MESA_TRACE_FUNC();
+
+   if (fence->use_fence_fd)
+      return sync_wait(fence->fence_fd, timeout / 1000000);
+
    struct msm_ccmd_wait_fence_req req = {
          .hdr = MSM_CCMD(WAIT_FENCE, sizeof(req)),
          .queue_id = to_virtio_pipe(pipe)->queue_id,
