@@ -2027,10 +2027,8 @@ current_init(struct gl_context *ctx)
    GLint i;
 
    for (i = VBO_ATTRIB_POS; i <= VBO_ATTRIB_EDGEFLAG; i++) {
-      const GLuint j = i - VBO_ATTRIB_POS;
-      assert(j < VERT_ATTRIB_MAX);
-      save->currentsz[i] = &ctx->ListState.ActiveAttribSize[j];
-      save->current[i] = (fi_type *) ctx->ListState.CurrentAttrib[j];
+      save->currentsz[i] = &ctx->ListState.ActiveAttribSize[i];
+      save->current[i] = (fi_type *) ctx->ListState.CurrentAttrib[i];
    }
 
    for (i = VBO_ATTRIB_FIRST_MATERIAL; i <= VBO_ATTRIB_LAST_MATERIAL; i++) {
