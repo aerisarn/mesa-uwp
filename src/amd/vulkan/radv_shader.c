@@ -2486,7 +2486,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
 
    info.wave_size = 64;
 
-   struct radv_shader_args args;
+   struct radv_shader_args args = {0};
    args.explicit_scratch_args = true;
    args.is_trap_handler_shader = true;
    radv_declare_shader_args(device->physical_device->rad_info.gfx_level, &key, &info, stage, false,
