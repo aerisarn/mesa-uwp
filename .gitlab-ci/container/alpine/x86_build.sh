@@ -22,9 +22,11 @@ EPHEMERAL="
         "
 
 apk add \
+    bash \
     bison \
     ccache \
     clang-dev \
+    coreutils \
     curl \
     flex \
     gcc \
