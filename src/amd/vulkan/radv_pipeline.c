@@ -52,20 +52,14 @@
 
 struct radv_blend_state {
    uint32_t blend_enable_4bit;
-   uint32_t need_src_alpha;
 
-   uint32_t cb_target_mask;
    uint32_t cb_target_enabled_4bit;
 
    uint32_t spi_shader_col_format;
-   uint32_t col_format_is_int8;
-   uint32_t col_format_is_int10;
-   uint32_t col_format_is_float32;
    uint32_t cb_shader_mask;
 
    uint32_t commutative_4bit;
 
-   bool mrt0_is_dual_src;
 };
 
 struct radv_depth_stencil_state {
@@ -556,79 +550,6 @@ radv_compact_spi_shader_col_format(const struct radv_shader *ps,
    return value;
 }
 
-static void
-radv_pipeline_compute_spi_color_formats(const struct radv_graphics_pipeline *pipeline,
-                                        struct radv_blend_state *blend,
-                                        const struct vk_graphics_pipeline_state *state,
-                                        bool has_ps_epilog)
-{
-   unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
-
-   for (unsigned i = 0; i < state->rp->color_attachment_count; ++i) {
-      unsigned cf;
-      VkFormat fmt = state->rp->color_attachment_formats[i];
-
-      if (fmt == VK_FORMAT_UNDEFINED ||
-          (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) &&
-           !(blend->cb_target_mask & (0xfu << (i * 4))))) {
-         cf = V_028714_SPI_SHADER_ZERO;
-      } else {
-         /* Assume blend is enabled when the state is dynamic. This might select a suboptimal format
-          * in some situations but changing color export formats dynamically is hard.
-          */
-         bool blend_enable = (pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) ||
-                             blend->blend_enable_4bit & (0xfu << (i * 4));
-
-         cf = radv_choose_spi_color_format(pipeline->base.device, fmt, blend_enable,
-                                           blend->need_src_alpha & (1 << i));
-
-         if (format_is_int8(fmt))
-            is_int8 |= 1 << i;
-         if (format_is_int10(fmt))
-            is_int10 |= 1 << i;
-         if (format_is_float32(fmt))
-            is_float32 |= 1 << i;
-      }
-
-      col_format |= cf << (4 * i);
-   }
-
-   if (!(col_format & 0xf) && blend->need_src_alpha & (1 << 0)) {
-      /* When a subpass doesn't have any color attachments, write the
-       * alpha channel of MRT0 when alpha coverage is enabled because
-       * the depth attachment needs it.
-       */
-      col_format |= V_028714_SPI_SHADER_32_AR;
-   }
-
-   if (has_ps_epilog) {
-      /* Do not compact MRTs when the pipeline uses a PS epilog because we can't detect color
-       * attachments without exports. Without compaction and if the i-th target format is set, all
-       * previous target formats must be non-zero to avoid hangs.
-       */
-      unsigned num_targets = (util_last_bit(col_format) + 3) / 4;
-      for (unsigned i = 0; i < num_targets; i++) {
-         if (!(col_format & (0xfu << (i * 4)))) {
-            col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
-         }
-      }
-   }
-
-   /* The output for dual source blending should have the same format as
-    * the first output.
-    */
-   if (blend->mrt0_is_dual_src) {
-      assert(!(col_format >> 4));
-      col_format |= (col_format & 0xf) << 4;
-   }
-
-   blend->cb_shader_mask = ac_get_cb_shader_mask(col_format);
-   blend->spi_shader_col_format = col_format;
-   blend->col_format_is_int8 = is_int8;
-   blend->col_format_is_int10 = is_int10;
-   blend->col_format_is_float32 = is_float32;
-}
-
 /*
  * Ordered so that for each i,
  * radv_format_meta_fs_key(radv_fs_key_format_exemplars[i]) == i.
@@ -722,7 +643,7 @@ radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att)
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                const struct vk_graphics_pipeline_state *state,
-                               bool has_ps_epilog)
+                               const struct radv_pipeline_key *key)
 {
    const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
@@ -730,16 +651,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
-   if (state->ms && ((pipeline->dynamic_states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) ||
-                     state->ms->alpha_to_coverage_enable)) {
-      /* When alpha to coverage is enabled, the driver needs to select a color export format with
-       * alpha. When this state is dynamic, always select a format with alpha because it's hard to
-       * change color export formats dynamically (note that it's suboptimal).
-       */
-      blend.need_src_alpha |= 0x1;
-   }
-
-   blend.cb_target_mask = 0;
    if (state->cb) {
       for (i = 0; i < state->cb->attachment_count; i++) {
          unsigned blend_cntl = 0;
@@ -758,19 +669,14 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          /* Ignore other blend targets if dual-source blending
           * is enabled to prevent wrong behaviour.
           */
-         if (blend.mrt0_is_dual_src)
+         if (i > 0 && key->ps.epilog.mrt0_is_dual_src)
             continue;
 
-         blend.cb_target_mask |= (unsigned)state->cb->attachments[i].write_mask << (4 * i);
          blend.cb_target_enabled_4bit |= 0xfu << (4 * i);
          if (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) &&
              !state->cb->attachments[i].blend_enable) {
             pipeline->cb_blend_control[i] = blend_cntl;
             continue;
-         }
-
-         if (i == 0 && radv_can_enable_dual_src(&state->cb->attachments[i])) {
-            blend.mrt0_is_dual_src = true;
          }
 
          if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
@@ -836,19 +742,12 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          pipeline->cb_blend_control[i] = blend_cntl;
 
          blend.blend_enable_4bit |= 0xfu << (i * 4);
-
-         if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA || dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-             srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-             dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
-             srcRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ||
-             dstRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
-            blend.need_src_alpha |= 1 << i;
       }
    }
 
    if (device->physical_device->rad_info.has_rbplus) {
       /* Disable RB+ blend optimizations for dual source blending. */
-      if (blend.mrt0_is_dual_src) {
+      if (key->ps.epilog.mrt0_is_dual_src) {
          for (i = 0; i < 8; i++) {
             pipeline->sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_NONE) |
                                             S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
@@ -858,14 +757,14 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
       /* RB+ doesn't work with dual source blending, logic op and
        * RESOLVE.
        */
-      if (blend.mrt0_is_dual_src ||
+      if (key->ps.epilog.mrt0_is_dual_src ||
           (state->cb && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) &&
            state->cb->logic_op_enable))
          disable_dual_quad = true;
    }
 
-   if (state->rp)
-      radv_pipeline_compute_spi_color_formats(pipeline, &blend, state, has_ps_epilog);
+   blend.cb_shader_mask = ac_get_cb_shader_mask(key->ps.epilog.spi_shader_col_format);
+   blend.spi_shader_col_format = key->ps.epilog.spi_shader_col_format;
 
    pipeline->disable_dual_quad = disable_dual_quad;
 
@@ -2684,11 +2583,171 @@ radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreat
    return key;
 }
 
+struct radv_ps_epilog_state
+{
+   uint8_t color_attachment_count;
+   VkFormat color_attachment_formats[MAX_RTS];
+
+   uint32_t color_write_mask;
+   uint32_t color_blend_enable;
+
+   bool mrt0_is_dual_src;
+   uint8_t need_src_alpha;
+};
+
+static struct radv_ps_epilog_key
+radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
+                            const struct radv_ps_epilog_state *state,
+                            bool disable_mrt_compaction)
+{
+   unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
+   struct radv_device *device = pipeline->base.device;
+   struct radv_ps_epilog_key key;
+
+   memset(&key, 0, sizeof(key));
+
+   for (unsigned i = 0; i < state->color_attachment_count; ++i) {
+      unsigned cf;
+      VkFormat fmt = state->color_attachment_formats[i];
+
+      if (fmt == VK_FORMAT_UNDEFINED || !(state->color_write_mask & (0xfu << (i * 4)))) {
+         cf = V_028714_SPI_SHADER_ZERO;
+      } else {
+         bool blend_enable = state->color_blend_enable & (0xfu << (i * 4));
+
+         cf = radv_choose_spi_color_format(pipeline->base.device, fmt, blend_enable,
+                                           state->need_src_alpha & (1 << i));
+
+         if (format_is_int8(fmt))
+            is_int8 |= 1 << i;
+         if (format_is_int10(fmt))
+            is_int10 |= 1 << i;
+         if (format_is_float32(fmt))
+            is_float32 |= 1 << i;
+      }
+
+      col_format |= cf << (4 * i);
+   }
+
+   if (!(col_format & 0xf) && state->need_src_alpha & (1 << 0)) {
+      /* When a subpass doesn't have any color attachments, write the alpha channel of MRT0 when
+       * alpha coverage is enabled because the depth attachment needs it.
+       */
+      col_format |= V_028714_SPI_SHADER_32_AR;
+   }
+
+   if (disable_mrt_compaction) {
+      /* Do not compact MRTs when the pipeline uses a PS epilog because we can't detect color
+       * attachments without exports. Without compaction and if the i-th target format is set, all
+       * previous target formats must be non-zero to avoid hangs.
+       */
+      unsigned num_targets = (util_last_bit(col_format) + 3) / 4;
+      for (unsigned i = 0; i < num_targets; i++) {
+         if (!(col_format & (0xfu << (i * 4)))) {
+            col_format |= V_028714_SPI_SHADER_32_R << (i * 4);
+         }
+      }
+   }
+
+   /* The output for dual source blending should have the same format as the first output. */
+   if (state->mrt0_is_dual_src) {
+      assert(!(col_format >> 4));
+      col_format |= (col_format & 0xf) << 4;
+   }
+
+   key.spi_shader_col_format = col_format;
+   key.color_is_int8 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int8 : 0;
+   key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
+   key.enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup ? is_float32 : 0;
+   key.mrt0_is_dual_src = state->mrt0_is_dual_src;
+
+   return key;
+}
+
+static struct radv_ps_epilog_key
+radv_pipeline_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
+                                     const struct vk_graphics_pipeline_state *state,
+                                     bool disable_mrt_compaction)
+{
+   struct radv_ps_epilog_state ps_epilog = {0};
+
+   if (state->ms && ((pipeline->dynamic_states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) ||
+                      state->ms->alpha_to_coverage_enable)) {
+      /* When alpha to coverage is enabled, the driver needs to select a color export format with
+       * alpha. When this state is dynamic, always select a format with alpha because it's hard to
+       * change color export formats dynamically (note that it's suboptimal).
+       */
+      ps_epilog.need_src_alpha |= 0x1;
+   }
+
+   if (state->cb) {
+      for (uint32_t i = 0; i < state->cb->attachment_count; i++) {
+         VkBlendOp eqRGB = state->cb->attachments[i].color_blend_op;
+         VkBlendFactor srcRGB = state->cb->attachments[i].src_color_blend_factor;
+         VkBlendFactor dstRGB = state->cb->attachments[i].dst_color_blend_factor;
+
+         /* Ignore other blend targets if dual-source blending is enabled to prevent wrong
+          * behaviour.
+          */
+         if (i > 0 && ps_epilog.mrt0_is_dual_src)
+            continue;
+
+         if (pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
+            /* Assume it's written when dynamic because it's hard to change color formats
+             * dynamically without PS epilogs on-demand.
+             */
+            ps_epilog.color_write_mask |= 0xfu << (i * 4);
+         } else {
+            ps_epilog.color_write_mask |= (unsigned)state->cb->attachments[i].write_mask << (4 * i);
+         }
+
+         if (!((ps_epilog.color_write_mask >> (i * 4)) & 0xf))
+            continue;
+
+         /* Assume blend is enabled when the state is dynamic. This might select a suboptimal format
+          * in some situations but changing color export formats dynamically is hard.
+          */
+         if ((pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) ||
+             state->cb->attachments[i].blend_enable) {
+            ps_epilog.color_blend_enable |= 0xfu << (i * 4);
+         }
+
+         if (!((ps_epilog.color_blend_enable >> (i * 4)) & 0xf))
+            continue;
+
+         if (i == 0 && radv_can_enable_dual_src(&state->cb->attachments[i])) {
+            ps_epilog.mrt0_is_dual_src = true;
+         }
+
+         if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
+            srcRGB = VK_BLEND_FACTOR_ONE;
+            dstRGB = VK_BLEND_FACTOR_ONE;
+         }
+
+         if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA || dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
+             srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
+             dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE ||
+             srcRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA ||
+             dstRGB == VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+            ps_epilog.need_src_alpha |= 1 << i;
+      }
+   }
+
+   if (state->rp) {
+      ps_epilog.color_attachment_count = state->rp->color_attachment_count;
+
+      for (uint32_t i = 0; i < ps_epilog.color_attachment_count; i++) {
+         ps_epilog.color_attachment_formats[i] = state->rp->color_attachment_formats[i];
+      }
+   }
+
+   return radv_generate_ps_epilog_key(pipeline, &ps_epilog, disable_mrt_compaction);
+}
+
 static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                    const struct vk_graphics_pipeline_state *state,
-                                    const struct radv_blend_state *blend)
+                                    const struct vk_graphics_pipeline_state *state)
 {
    struct radv_device *device = pipeline->base.device;
    const struct radv_physical_device *pdevice = device->physical_device;
@@ -2757,12 +2816,8 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
       }
    }
 
-   key.ps.epilog.spi_shader_col_format = blend->spi_shader_col_format;
-   key.ps.epilog.mrt0_is_dual_src = blend->mrt0_is_dual_src;
-   if (device->physical_device->rad_info.gfx_level < GFX8) {
-      key.ps.epilog.color_is_int8 = blend->col_format_is_int8;
-      key.ps.epilog.color_is_int10 = blend->col_format_is_int10;
-   }
+   key.ps.epilog = radv_pipeline_generate_ps_epilog_key(pipeline, state, pipeline->ps_epilog);
+
    if (device->physical_device->rad_info.gfx_level >= GFX11 && state->ms) {
       key.ps.alpha_to_coverage_via_mrtz = state->ms->alpha_to_coverage_enable;
    }
@@ -2778,9 +2833,6 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
 
    if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
       key.ps.lower_discard_to_demote = true;
-
-   if (device->instance->enable_mrt_output_nan_fixup)
-      key.ps.epilog.enable_mrt_output_nan_fixup = blend->col_format_is_float32;
 
    key.ps.force_vrs_enabled = device->force_vrs_enabled;
 
@@ -5418,14 +5470,12 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    radv_pipeline_layout_hash(&pipeline_layout);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state,
-                                                                  pipeline->ps_epilog);
-
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-   struct radv_pipeline_key key =
-      radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state, &blend);
+   struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state);
+
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state, &key);
 
    result = radv_create_shaders(&pipeline->base, &pipeline_layout, device, cache, &key, pCreateInfo->pStages,
                                 pCreateInfo->stageCount, pCreateInfo->flags, NULL,
@@ -5453,7 +5503,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   bool enable_mrt_compaction = !blend.mrt0_is_dual_src && !ps->info.ps.has_epilog;
+   bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
    }
@@ -5617,13 +5667,9 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
     */
    if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
        !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
-      struct radv_blend_state blend =
-         radv_pipeline_init_blend_state(&pipeline->base, state, true);
+      struct radv_ps_epilog_key key = radv_pipeline_generate_ps_epilog_key(&pipeline->base, state, true);
 
-      struct radv_pipeline_key key =
-         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
-
-      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key.ps.epilog);
+      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key);
       if (!pipeline->base.ps_epilog)
          goto fail_layout;
    }
@@ -5632,11 +5678,8 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
       const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
          vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-      struct radv_blend_state blend =
-         radv_pipeline_init_blend_state(&pipeline->base, state, pipeline->base.ps_epilog);
-
       struct radv_pipeline_key key =
-         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
+         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state);
 
       /* Compile the main FS only when the fragment shader output interface is missing. */
       if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
