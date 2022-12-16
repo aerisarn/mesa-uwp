@@ -4898,9 +4898,10 @@ dzn_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
 
    const struct dzn_graphics_pipeline *pipeline =
-      (const struct dzn_graphics_pipeline *)cmdbuf->state.pipeline;
+      (const struct dzn_graphics_pipeline *)cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
 
-   if (pipeline && dzn_graphics_pipeline_get_desc_template(pipeline, ib_strip_cut))
+   if (pipeline &&
+       dzn_graphics_pipeline_get_desc_template(pipeline, ib_strip_cut))
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
