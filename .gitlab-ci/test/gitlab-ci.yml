@@ -241,9 +241,14 @@ rustfmt:
     GENERATE_ENV_SCRIPT: "${CI_COMMON_SCRIPTS}/generate-env.sh"
     B2C_JOB_TEMPLATE: "${CI_B2C_ARTIFACTS}/b2c.yml.jinja2.jinja2"
     JOB_FOLDER: "job_folder"
+
   before_script:
     # We don't want the tarball unpacking of .test, but will take the JWT bits.
     - !reference [default, before_script]
+
+    # temporary overrides to allow others to use harbor.freedesktop.org
+    - export IMAGE_UNDER_TEST=${IMAGE_UNDER_TEST/harbor/registry}
+
     - |
       set -x
 
