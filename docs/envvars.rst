@@ -30,11 +30,6 @@ LibGL environment variables
    if set to ``true``, do not use DrawArrays GLX protocol (for
    debugging)
 
-.. envvar:: LIBGL_SHOW_FPS
-
-   print framerate to stdout based on the number of ``glXSwapBuffers``
-   calls per second.
-
 .. envvar:: LIBGL_DRI2_DISABLE
 
    disable DRI2 if set to ``true``.

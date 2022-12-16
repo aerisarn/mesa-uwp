@@ -654,29 +654,6 @@ unsigned dri2GetSwapEventType(Display* dpy, XID drawable)
       return glx_dpy->codes.first_event + GLX_BufferSwapComplete;
 }
 
-static void show_fps(struct dri2_drawable *draw)
-{
-   const int interval =
-      ((struct dri2_screen *) draw->base.psc)->show_fps_interval;
-   struct timeval tv;
-   uint64_t current_time;
-
-   gettimeofday(&tv, NULL);
-   current_time = (uint64_t)tv.tv_sec*1000000 + (uint64_t)tv.tv_usec;
-
-   draw->frames++;
-
-   if (draw->previous_time + interval * 1000000 <= current_time) {
-      if (draw->previous_time) {
-         fprintf(stderr, "libGL: FPS = %.2f\n",
-                 ((uint64_t)draw->frames * 1000000) /
-                 (double)(current_time - draw->previous_time));
-      }
-      draw->frames = 0;
-      draw->previous_time = current_time;
-   }
-}
-
 static int64_t
 dri2XcbSwapBuffers(Display *dpy,
                   __GLXDRIdrawable *pdraw,
@@ -743,10 +720,6 @@ dri2SwapBuffers(__GLXDRIdrawable *pdraw, int64_t target_msc, int64_t divisor,
 
     ret = dri2XcbSwapBuffers(pdraw->psc->dpy, pdraw,
                              target_msc, divisor, remainder);
-
-    if (psc->show_fps_interval) {
-       show_fps(priv);
-    }
 
     return ret;
 }

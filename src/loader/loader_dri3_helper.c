@@ -543,9 +543,6 @@ dri3_handle_present_event(struct loader_dri3_drawable *draw,
 #endif
          draw->last_present_mode = ce->mode;
 
-         if (draw->vtable->show_fps)
-            draw->vtable->show_fps(draw, ce->ust);
-
          draw->ust = ce->ust;
          draw->msc = ce->msc;
       } else if (ce->serial == draw->eid) {
