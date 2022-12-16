@@ -54,13 +54,14 @@ static const bool debug = false;
  */
 
 struct copies {
+   struct list_head node;
+
    /* Hash table of copies referenced by variables */
    struct hash_table ht;
 
    /* Array of derefs that can't be chased back to a variable */
    struct util_dynarray arr;
 };
-
 
 struct vars_written {
    nir_variable_mode modes;
@@ -109,6 +110,9 @@ struct copy_prop_var_state {
     * visiting each node.
     */
    struct hash_table *vars_written_map;
+
+   /* List of copy structures ready for reuse */
+   struct list_head unused_copy_structs_list;
 
    bool progress;
 };
@@ -1347,26 +1351,38 @@ clone_copies(struct copy_prop_var_state *state, struct copies *clones,
    util_dynarray_clone(&clones->arr, state->mem_ctx, &copies->arr);
 }
 
+/* Returns an existing struct for reuse or creates a new on if they are
+ * all in use. This greatly reduces the time spent allocating memory if we
+ * were to just creating a fresh one each time.
+ */
 static struct copies *
-create_copies_structure(struct copy_prop_var_state *state)
+get_copies_structure(struct copy_prop_var_state *state)
 {
-   struct copies *copies = ralloc(state->mem_ctx, struct copies);
+   struct copies *copies;
+   if (list_is_empty(&state->unused_copy_structs_list)) {
+      copies = ralloc(state->mem_ctx, struct copies);
 
-   _mesa_hash_table_init(&copies->ht, state->mem_ctx, _mesa_hash_pointer,
+      _mesa_hash_table_init(&copies->ht, state->mem_ctx, _mesa_hash_pointer,
                          _mesa_key_pointer_equal);
-   util_dynarray_init(&copies->arr, state->mem_ctx);
+      util_dynarray_init(&copies->arr, state->mem_ctx);
+   } else {
+      copies = list_entry(state->unused_copy_structs_list.next,
+                          struct copies, node);
+      list_del(&copies->node);
+   }
 
    return copies;
 }
 
 static void
-clear_copies_structure(struct copies *copies)
+clear_copies_structure(struct copy_prop_var_state *state,
+                       struct copies *copies)
 {
    hash_table_foreach(&copies->ht, entry) {
       util_dynarray_fini((struct util_dynarray *) entry->data);
    }
-   util_dynarray_fini(&copies->arr);
-   ralloc_free(copies);
+
+   list_add(&copies->node, &state->unused_copy_structs_list);
 }
 
 static void
@@ -1377,12 +1393,12 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
    case nir_cf_node_function: {
       nir_function_impl *impl = nir_cf_node_as_function(cf_node);
 
-      struct copies *impl_copies = create_copies_structure(state);
+      struct copies *impl_copies = get_copies_structure(state);
 
       foreach_list_typed_safe(nir_cf_node, cf_node, node, &impl->body)
          copy_prop_vars_cf_node(state, impl_copies, cf_node);
 
-      clear_copies_structure(impl_copies);
+      clear_copies_structure(state, impl_copies);
 
       break;
    }
@@ -1405,8 +1421,8 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
        * that they both see the same state of available copies, but do not
        * interfere to each other.
        */
-      struct copies *then_copies = create_copies_structure(state);
-      struct copies *else_copies = create_copies_structure(state);
+      struct copies *then_copies = get_copies_structure(state);
+      struct copies *else_copies = get_copies_structure(state);
 
       clone_copies(state, then_copies, copies);
       clone_copies(state, else_copies, copies);
@@ -1423,8 +1439,8 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
 
       invalidate_copies_for_cf_node(state, copies, cf_node);
 
-      clear_copies_structure(then_copies);
-      clear_copies_structure(else_copies);
+      clear_copies_structure(state, then_copies);
+      clear_copies_structure(state, else_copies);
 
       break;
    }
@@ -1438,14 +1454,13 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
 
       invalidate_copies_for_cf_node(state, copies, cf_node);
 
-
-      struct copies *loop_copies = create_copies_structure(state);
+      struct copies *loop_copies = get_copies_structure(state);
       clone_copies(state, loop_copies, copies);
 
       foreach_list_typed_safe(nir_cf_node, cf_node, node, &loop->body)
          copy_prop_vars_cf_node(state, loop_copies, cf_node);
 
-      clear_copies_structure(loop_copies);
+      clear_copies_structure(state, loop_copies);
 
       break;
    }
@@ -1472,6 +1487,7 @@ nir_copy_prop_vars_impl(nir_function_impl *impl)
 
       .vars_written_map = _mesa_pointer_hash_table_create(mem_ctx),
    };
+   list_inithead(&state.unused_copy_structs_list);
 
    gather_vars_written(&state, NULL, &impl->cf_node);
 
