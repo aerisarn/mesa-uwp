@@ -749,6 +749,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
    }
 
    bool force_sample_rate_shading =
+      !info->pRasterizationState->rasterizerDiscardEnable &&
       info->pMultisampleState &&
       info->pMultisampleState->sampleShadingEnable;
 
