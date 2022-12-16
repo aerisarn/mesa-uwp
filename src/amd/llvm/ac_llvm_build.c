@@ -2028,6 +2028,15 @@ void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a)
 
       ac_build_intrinsic(ctx, "llvm.amdgcn.exp.f32", ctx->voidt, args, 8, 0);
    }
+
+   if (LLVM_VERSION_MAJOR >= 15 && a->target == V_008DFC_SQ_EXP_MRTZ) {
+      LLVMAddTargetDependentFunctionAttr(ctx->main_function.value, "amdgpu-depth-export", "1");
+   } else if (LLVM_VERSION_MAJOR >= 15 && a->target <= V_008DFC_SQ_EXP_NULL) {
+      /* We need this attribute even for NULL targets, so that an export is created for full-wave
+       * discards on GFX10+.
+       */
+      LLVMAddTargetDependentFunctionAttr(ctx->main_function.value, "amdgpu-color-export", "1");
+   }
 }
 
 void ac_build_export_null(struct ac_llvm_context *ctx, bool uses_discard)
@@ -4619,6 +4628,12 @@ struct ac_llvm_pointer ac_build_main(const struct ac_shader_args *args, struct a
    /* Disable denormals for FP32: */
    LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math-f32",
                                       "preserve-sign,preserve-sign");
+
+   if (LLVM_VERSION_MAJOR >= 15 && convention == AC_LLVM_AMDGPU_PS) {
+      LLVMAddTargetDependentFunctionAttr(main_function, "amdgpu-depth-export", "0");
+      LLVMAddTargetDependentFunctionAttr(main_function, "amdgpu-color-export", "0");
+   }
+
    return ctx->main_function;
 }
 
