@@ -1783,12 +1783,117 @@ out:
    return ret;
 }
 
+static void
+mask_key_for_stencil_state(struct dzn_physical_device *pdev,
+                           struct dzn_graphics_pipeline *pipeline,
+                           const struct dzn_graphics_pipeline_variant_key *key,
+                           struct dzn_graphics_pipeline_variant_key *masked_key)
+{
+   if (pdev->options14.IndependentFrontAndBackStencilRefMaskSupported) {
+      const D3D12_DEPTH_STENCIL_DESC2 *ds_templ =
+         dzn_graphics_pipeline_get_desc_template(pipeline, ds);
+      if (ds_templ && ds_templ->StencilEnable) {
+         if (ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+             ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
+            masked_key->stencil_test.front.compare_mask = key->stencil_test.front.compare_mask;
+         if (ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+             ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
+            masked_key->stencil_test.back.compare_mask = key->stencil_test.back.compare_mask;
+         if (pipeline->zsa.stencil_test.dynamic_write_mask) {
+            masked_key->stencil_test.front.write_mask = key->stencil_test.front.write_mask;
+            masked_key->stencil_test.back.write_mask = key->stencil_test.back.write_mask;
+         }
+      }
+   } else {
+      const D3D12_DEPTH_STENCIL_DESC1 *ds_templ =
+         dzn_graphics_pipeline_get_desc_template(pipeline, ds);
+      if (ds_templ && ds_templ->StencilEnable) {
+         if (ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+             ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
+            masked_key->stencil_test.front.compare_mask = key->stencil_test.front.compare_mask;
+         if (ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+             ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
+            masked_key->stencil_test.back.compare_mask = key->stencil_test.back.compare_mask;
+         if (pipeline->zsa.stencil_test.dynamic_write_mask) {
+            masked_key->stencil_test.front.write_mask = key->stencil_test.front.write_mask;
+            masked_key->stencil_test.back.write_mask = key->stencil_test.back.write_mask;
+         }
+      }
+   }
+}
+
+static void
+update_stencil_state(struct dzn_physical_device *pdev,
+                     struct dzn_graphics_pipeline *pipeline,
+                     uintptr_t *stream_buf,
+                     const struct dzn_graphics_pipeline_variant_key *masked_key)
+{
+   if (pdev->options14.IndependentFrontAndBackStencilRefMaskSupported) {
+      D3D12_DEPTH_STENCIL_DESC2 *ds =
+         dzn_graphics_pipeline_get_desc(pipeline, stream_buf, ds);
+      if (ds && ds->StencilEnable) {
+         if (pipeline->zsa.stencil_test.dynamic_compare_mask) {
+            if (ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
+               ds->FrontFace.StencilReadMask = masked_key->stencil_test.front.compare_mask;
+            }
+
+            if (ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
+               ds->BackFace.StencilReadMask = masked_key->stencil_test.back.compare_mask;
+            }
+         }
+
+         if (pipeline->zsa.stencil_test.dynamic_write_mask) {
+            ds->FrontFace.StencilWriteMask = masked_key->stencil_test.front.write_mask;
+            ds->BackFace.StencilWriteMask = masked_key->stencil_test.back.write_mask;
+         }
+      }
+   } else {
+      D3D12_DEPTH_STENCIL_DESC1 *ds =
+         dzn_graphics_pipeline_get_desc(pipeline, stream_buf, ds);
+      if (ds && ds->StencilEnable) {
+         if (pipeline->zsa.stencil_test.dynamic_compare_mask) {
+            if (ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
+               ds->StencilReadMask = masked_key->stencil_test.front.compare_mask;
+            }
+
+            if (ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
+               ds->StencilReadMask = masked_key->stencil_test.back.compare_mask;
+            }
+
+            if (ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS &&
+                  ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
+                  ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
+               assert(masked_key->stencil_test.front.compare_mask == masked_key->stencil_test.back.compare_mask);
+         }
+
+         if (pipeline->zsa.stencil_test.dynamic_write_mask) {
+            assert(!masked_key->stencil_test.front.write_mask ||
+                     !masked_key->stencil_test.back.write_mask ||
+                     masked_key->stencil_test.front.write_mask == masked_key->stencil_test.back.write_mask);
+            ds->StencilWriteMask =
+               masked_key->stencil_test.front.write_mask |
+               masked_key->stencil_test.back.write_mask;
+         }
+      }
+   }
+}
+
 ID3D12PipelineState *
 dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
                                 const struct dzn_graphics_pipeline_variant_key *key)
 {
    if (!pipeline->variants)
       return pipeline->base.state;
+
+   struct dzn_device *device =
+      container_of(pipeline->base.base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    struct dzn_graphics_pipeline_variant_key masked_key = { 0 };
 
@@ -1799,23 +1904,8 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
        pipeline->zsa.dynamic_depth_bias)
       masked_key.depth_bias = key->depth_bias;
 
-   const D3D12_DEPTH_STENCIL_DESC1 *ds_templ =
-      dzn_graphics_pipeline_get_desc_template(pipeline, ds);
-   if (ds_templ && ds_templ->StencilEnable) {
-      if (ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-         ds_templ->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
-         masked_key.stencil_test.front.compare_mask = key->stencil_test.front.compare_mask;
-      if (ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-          ds_templ->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
-         masked_key.stencil_test.back.compare_mask = key->stencil_test.back.compare_mask;
-      if (pipeline->zsa.stencil_test.dynamic_write_mask) {
-         masked_key.stencil_test.front.write_mask = key->stencil_test.front.write_mask;
-         masked_key.stencil_test.back.write_mask = key->stencil_test.back.write_mask;
-      }
-   }
+   mask_key_for_stencil_state(pdev, pipeline, key, &masked_key);
 
-   struct dzn_device *device =
-      container_of(pipeline->base.base.device, struct dzn_device, vk);
    struct hash_entry *he =
       _mesa_hash_table_search(pipeline->variants, &masked_key);
 
@@ -1846,36 +1936,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
          rast->SlopeScaledDepthBias = masked_key.depth_bias.slope_factor;
       }
 
-      D3D12_DEPTH_STENCIL_DESC1 *ds =
-         dzn_graphics_pipeline_get_desc(pipeline, stream_buf, ds);
-      if (ds && ds->StencilEnable) {
-         if (pipeline->zsa.stencil_test.dynamic_compare_mask) {
-            if (ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-                ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
-               ds->StencilReadMask = masked_key.stencil_test.front.compare_mask;
-            }
-
-            if (ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-                ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS) {
-               ds->StencilReadMask = masked_key.stencil_test.back.compare_mask;
-            }
-
-            if (ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-                ds->FrontFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS &&
-                ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_NEVER &&
-                ds->BackFace.StencilFunc != D3D12_COMPARISON_FUNC_ALWAYS)
-               assert(masked_key.stencil_test.front.compare_mask == masked_key.stencil_test.back.compare_mask);
-         }
-
-         if (pipeline->zsa.stencil_test.dynamic_write_mask) {
-            assert(!masked_key.stencil_test.front.write_mask ||
-                   !masked_key.stencil_test.back.write_mask ||
-                   masked_key.stencil_test.front.write_mask == masked_key.stencil_test.back.write_mask);
-            ds->StencilWriteMask =
-               masked_key.stencil_test.front.write_mask |
-               masked_key.stencil_test.back.write_mask;
-         }
-      }
+      update_stencil_state(pdev, pipeline, stream_buf, &masked_key);
 
       ASSERTED HRESULT hres = ID3D12Device4_CreatePipelineState(device->dev, &stream_desc,
                                                                 &IID_ID3D12PipelineState,
