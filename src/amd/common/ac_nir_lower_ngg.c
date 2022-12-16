@@ -1866,7 +1866,8 @@ static void
 ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
                            unsigned stream, nir_ssa_def *so_buffer[4],
                            nir_ssa_def *buffer_offsets[4],
-                           nir_ssa_def *vtx_buffer_idx, nir_ssa_def *vtx_lds_addr)
+                           nir_ssa_def *vtx_buffer_idx, nir_ssa_def *vtx_lds_addr,
+                           shader_output_types *output_types)
 {
    nir_ssa_def *vtx_buffer_offsets[4];
    for (unsigned buffer = 0; buffer < 4; buffer++) {
@@ -1882,7 +1883,18 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
       if (!out->component_mask || info->buffer_to_stream[out->buffer] != stream)
          continue;
 
-      unsigned base = util_bitcount64(b->shader->info.outputs_written & BITFIELD64_MASK(out->location));
+      unsigned base;
+      if (out->location >= VARYING_SLOT_VAR0_16BIT) {
+         base =
+            util_bitcount64(b->shader->info.outputs_written) +
+            util_bitcount(b->shader->info.outputs_written_16bit &
+                          BITFIELD_MASK(out->location - VARYING_SLOT_VAR0_16BIT));
+      } else {
+         base =
+            util_bitcount64(b->shader->info.outputs_written &
+                            BITFIELD64_MASK(out->location));
+      }
+
       unsigned offset = (base * 4 + out->component_offset) * 4;
       unsigned count = util_bitcount(out->component_mask);
 
@@ -1890,6 +1902,37 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
 
       nir_ssa_def *out_data =
          nir_load_shared(b, count, 32, vtx_lds_addr, .base = offset);
+
+      /* Up-scaling 16bit outputs to 32bit.
+       *
+       * OpenGL ES will put 16bit medium precision varyings to VARYING_SLOT_VAR0_16BIT.
+       * We need to up-scaling them to 32bit when streamout to buffer.
+       *
+       * Vulkan does not allow 8/16bit varyings to be streamout.
+       */
+      if (out->location >= VARYING_SLOT_VAR0_16BIT) {
+         unsigned index = out->location - VARYING_SLOT_VAR0_16BIT;
+         nir_ssa_def *values[4];
+
+         for (int j = 0; j < count; j++) {
+            unsigned c = out->component_offset + j;
+            nir_ssa_def *v = nir_channel(b, out_data, j);
+            nir_alu_type t;
+
+            if (out->high_16bits) {
+               v = nir_unpack_32_2x16_split_y(b, v);
+               t = output_types->types_16bit_hi[index][c];
+            } else {
+               v = nir_unpack_32_2x16_split_x(b, v);
+               t = output_types->types_16bit_lo[index][c];
+            }
+
+            t = nir_alu_type_get_base_type(t);
+            values[j] = nir_convert_to_bit_size(b, v, t, 32);
+         }
+
+         out_data = nir_vec(b, values, count);
+      }
 
       nir_ssa_def *zero = nir_imm_int(b, 0);
       nir_store_buffer_amd(b, out_data, so_buffer[out->buffer],
@@ -1936,7 +1979,7 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
             nir_ssa_def *vtx_lds_addr = pervertex_lds_addr(b, vtx_lds_idx, vtx_lds_stride);
             ngg_build_streamout_vertex(b, info, 0, so_buffer, buffer_offsets,
                                        nir_iadd_imm(b, vtx_buffer_idx, i),
-                                       vtx_lds_addr);
+                                       vtx_lds_addr, &s->output_types);
          }
          nir_pop_if(b, if_valid_vertex);
       }
@@ -3199,7 +3242,8 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *st)
             ngg_build_streamout_vertex(b, info, stream, so_buffer,
                                        buffer_offsets,
                                        nir_iadd_imm(b, vtx_buffer_idx, i),
-                                       exported_vtx_lds_addr[i]);
+                                       exported_vtx_lds_addr[i],
+                                       &st->output_types);
          }
       }
       nir_pop_if(b, if_emit);
