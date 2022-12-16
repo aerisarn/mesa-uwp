@@ -984,6 +984,9 @@ hud_graph_add_value(struct hud_graph *gr, double value)
    value = value > gr->pane->ceiling ? gr->pane->ceiling : value;
 
    if (gr->fd) {
+      if (gr->fd == stdout) {
+         fprintf(gr->fd, "%s: ", gr->name);
+      }
       if (fabs(value - lround(value)) > FLT_EPSILON) {
          fprintf(gr->fd, "%f\n", value);
       }
@@ -1055,7 +1058,7 @@ static void strcat_without_spaces(char *dst, const char *src)
  * is a HUD variable such as "fps", or "cpu"
  */
 static void
-hud_graph_set_dump_file(struct hud_graph *gr, const char *hud_dump_dir)
+hud_graph_set_dump_file(struct hud_graph *gr, const char *hud_dump_dir, bool to_stdout)
 {
    if (hud_dump_dir) {
       char *dump_file = malloc(strlen(hud_dump_dir) + sizeof(PATH_SEP)
@@ -1065,12 +1068,15 @@ hud_graph_set_dump_file(struct hud_graph *gr, const char *hud_dump_dir)
          strcat(dump_file, PATH_SEP);
          strcat_without_spaces(dump_file, gr->name);
          gr->fd = fopen(dump_file, "w+");
-         if (gr->fd) {
-            /* flush output after each line is written */
-            setvbuf(gr->fd, NULL, _IOLBF, 0);
-         }
          free(dump_file);
       }
+   } else if (to_stdout) {
+      gr->fd = stdout;
+   }
+
+   if (gr->fd) {
+      /* flush output after each line is written */
+      setvbuf(gr->fd, NULL, _IOLBF, 0);
    }
 }
 
@@ -1210,6 +1216,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
    boolean dyn_ceiling = false;
    boolean reset_colors = false;
    boolean sort_items = false;
+   boolean to_stdout = false;
    const char *period_env;
 
    if (strncmp(env, "simple,", 7) == 0) {
@@ -1370,6 +1377,9 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
                                 PIPE_DRIVER_QUERY_RESULT_TYPE_AVERAGE,
                                 0);
       }
+      else if (strcmp(name, "stdout") == 0) {
+         to_stdout = true;
+      }
       else {
          boolean processed = FALSE;
 
@@ -1521,12 +1531,12 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
    }
 
    const char *hud_dump_dir = getenv("GALLIUM_HUD_DUMP_DIR");
-   if (hud_dump_dir && access(hud_dump_dir, W_OK) == 0) {
+   if ((hud_dump_dir && access(hud_dump_dir, W_OK) == 0) || to_stdout) {
       LIST_FOR_EACH_ENTRY(pane, &hud->pane_list, head) {
          struct hud_graph *gr;
 
          LIST_FOR_EACH_ENTRY(gr, &pane->graph_list, head) {
-            hud_graph_set_dump_file(gr, hud_dump_dir);
+            hud_graph_set_dump_file(gr, hud_dump_dir, to_stdout);
          }
       }
    }
@@ -1584,6 +1594,7 @@ print_help(struct pipe_screen *screen)
    puts("  Example: GALLIUM_HUD=\".w256.h64.x1600.y520.d.c1000fps+cpu,.datom-count\"");
    puts("");
    puts("  Available names:");
+   puts("    stdout (prints the counters value to stdout)");
    puts("    fps");
    puts("    frametime");
    puts("    cpu");
