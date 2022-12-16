@@ -206,7 +206,6 @@ try_find_d3d12core_next_to_self(char *path, size_t path_arr_size)
    }
 
    if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
-      mesa_logi("No D3D12Core.dll exists next to self\n");
       return NULL;
    }
 
