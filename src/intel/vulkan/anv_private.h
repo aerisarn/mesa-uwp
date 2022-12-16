@@ -4060,25 +4060,6 @@ void anv_fill_buffer_surface_state(struct anv_device *device,
                                    uint32_t range, uint32_t stride);
 
 
-/* Haswell border color is a bit of a disaster.  Float and unorm formats use a
- * straightforward 32-bit float color in the first 64 bytes.  Instead of using
- * a nice float/integer union like Gfx8+, Haswell specifies the integer border
- * color as a separate entry /after/ the float color.  The layout of this entry
- * also depends on the format's bpp (with extra hacks for RG32), and overlaps.
- *
- * Since we don't know the format/bpp, we can't make any of the border colors
- * containing '1' work for all formats, as it would be in the wrong place for
- * some of them.  We opt to make 32-bit integers work as this seems like the
- * most common option.  Fortunately, transparent black works regardless, as
- * all zeroes is the same in every bit-size.
- */
-struct hsw_border_color {
-   float float32[4];
-   uint32_t _pad0[12];
-   uint32_t uint32[4];
-   uint32_t _pad1[108];
-};
-
 struct gfx8_border_color {
    union {
       float float32[4];
