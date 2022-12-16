@@ -1055,11 +1055,9 @@ static void strcat_without_spaces(char *dst, const char *src)
  * is a HUD variable such as "fps", or "cpu"
  */
 static void
-hud_graph_set_dump_file(struct hud_graph *gr)
+hud_graph_set_dump_file(struct hud_graph *gr, const char *hud_dump_dir)
 {
-   const char *hud_dump_dir = getenv("GALLIUM_HUD_DUMP_DIR");
-
-   if (hud_dump_dir && access(hud_dump_dir, W_OK) == 0) {
+   if (hud_dump_dir) {
       char *dump_file = malloc(strlen(hud_dump_dir) + sizeof(PATH_SEP)
                                + sizeof(gr->name));
       if (dump_file) {
@@ -1522,11 +1520,14 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
       }
    }
 
-   LIST_FOR_EACH_ENTRY(pane, &hud->pane_list, head) {
-      struct hud_graph *gr;
+   const char *hud_dump_dir = getenv("GALLIUM_HUD_DUMP_DIR");
+   if (hud_dump_dir && access(hud_dump_dir, W_OK) == 0) {
+      LIST_FOR_EACH_ENTRY(pane, &hud->pane_list, head) {
+         struct hud_graph *gr;
 
-      LIST_FOR_EACH_ENTRY(gr, &pane->graph_list, head) {
-         hud_graph_set_dump_file(gr);
+         LIST_FOR_EACH_ENTRY(gr, &pane->graph_list, head) {
+            hud_graph_set_dump_file(gr, hud_dump_dir);
+         }
       }
    }
 }
