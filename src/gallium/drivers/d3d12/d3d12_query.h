@@ -65,6 +65,13 @@ struct d3d12_query {
    struct list_head active_list;
    struct d3d12_resource* predicate;
 
+   /* 
+   * Used to track if a query's results are ready to be read asynchronously
+   * 
+   * Initialized to 0, it is set to UINT64_MAX when the query is ended but before it is flushed
+   * At flush, it is set to the fence_value associated with the work it was
+   * submitted with
+   */
    uint64_t fence_value;
 };
 
