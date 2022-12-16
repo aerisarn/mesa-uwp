@@ -519,7 +519,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv, tu, v3dv)
   VK_KHR_pipeline_library                               DONE (lvp, radv)
   VK_KHR_present_wait                                   DONE (anv, radv, tu, x11/display)
-  VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu)
+  VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu, vn)
   VK_KHR_ray_query                                      DONE (radv/gfx10.3+)
   VK_KHR_ray_tracing_maintenance1                       DONE (radv/gfx10.3+)
   VK_KHR_ray_tracing_pipeline                           in progress
@@ -570,7 +570,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_multi_draw                                     DONE (anv, lvp, radv, tu, vn)
   VK_EXT_multisampled_render_to_single_sampled          DONE (lvp)
   VK_EXT_non_seamless_cube_map                          DONE (anv, lvp, radv, tu)
-  VK_EXT_pci_bus_info                                   DONE (anv, radv)
+  VK_EXT_pci_bus_info                                   DONE (anv, radv, vn)
   VK_EXT_physical_device_drm                            DONE (anv, radv, tu, v3dv, vn)
   VK_EXT_pipeline_robustness                            DONE (v3dv)
   VK_EXT_post_depth_coverage                            DONE (anv/gfx10+, lvp, radv/gfx10+)
