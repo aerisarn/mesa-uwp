@@ -273,7 +273,7 @@ anv_shader_stage_to_nir(struct anv_device *device,
 VkResult
 anv_pipeline_init(struct anv_pipeline *pipeline,
                   struct anv_device *device,
-                  enum anv_hw_pipeline_state type,
+                  enum anv_pipeline_type type,
                   VkPipelineCreateFlags flags,
                   const VkAllocationCallbacks *pAllocator)
 {
@@ -330,7 +330,7 @@ void anv_DestroyPipeline(
       return;
 
    switch (pipeline->type) {
-   case ANV_HW_PIPELINE_STATE_GRAPHICS: {
+   case ANV_PIPELINE_GRAPHICS: {
       struct anv_graphics_pipeline *gfx_pipeline =
          anv_pipeline_to_graphics(pipeline);
 
@@ -341,7 +341,7 @@ void anv_DestroyPipeline(
       break;
    }
 
-   case ANV_HW_PIPELINE_STATE_COMPUTE: {
+   case ANV_PIPELINE_COMPUTE: {
       struct anv_compute_pipeline *compute_pipeline =
          anv_pipeline_to_compute(pipeline);
 
@@ -351,7 +351,7 @@ void anv_DestroyPipeline(
       break;
    }
 
-   case ANV_HW_PIPELINE_STATE_RAY_TRACING: {
+   case ANV_PIPELINE_RAY_TRACING: {
       struct anv_ray_tracing_pipeline *rt_pipeline =
          anv_pipeline_to_ray_tracing(pipeline);
 
@@ -849,7 +849,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    NIR_PASS(_, nir, anv_nir_lower_ycbcr_textures, layout);
 
-   if (pipeline->type == ANV_HW_PIPELINE_STATE_GRAPHICS) {
+   if (pipeline->type == ANV_PIPELINE_GRAPHICS) {
       struct anv_graphics_pipeline *gfx_pipeline =
          anv_pipeline_to_graphics(pipeline);
       NIR_PASS(_, nir, anv_nir_lower_multiview, gfx_pipeline->view_mask,
@@ -2137,7 +2137,7 @@ anv_compute_pipeline_create(struct anv_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_pipeline_init(&pipeline->base, device,
-                              ANV_HW_PIPELINE_STATE_COMPUTE, pCreateInfo->flags,
+                              ANV_PIPELINE_COMPUTE, pCreateInfo->flags,
                               pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
@@ -2231,7 +2231,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    VkResult result;
 
    result = anv_pipeline_init(&pipeline->base, device,
-                              ANV_HW_PIPELINE_STATE_GRAPHICS, pCreateInfo->flags,
+                              ANV_PIPELINE_GRAPHICS, pCreateInfo->flags,
                               alloc);
    if (result != VK_SUCCESS)
       return result;
@@ -3079,7 +3079,7 @@ anv_ray_tracing_pipeline_create(
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_pipeline_init(&pipeline->base, device,
-                              ANV_HW_PIPELINE_STATE_RAY_TRACING, pCreateInfo->flags,
+                              ANV_PIPELINE_RAY_TRACING, pCreateInfo->flags,
                               pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
@@ -3286,15 +3286,15 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
 
    const struct brw_stage_prog_data *prog_data;
    switch (pipeline->type) {
-   case ANV_HW_PIPELINE_STATE_GRAPHICS: {
+   case ANV_PIPELINE_GRAPHICS: {
       prog_data = anv_pipeline_to_graphics(pipeline)->shaders[exe->stage]->prog_data;
       break;
    }
-   case ANV_HW_PIPELINE_STATE_COMPUTE: {
+   case ANV_PIPELINE_COMPUTE: {
       prog_data = anv_pipeline_to_compute(pipeline)->cs->prog_data;
       break;
    }
-   case ANV_HW_PIPELINE_STATE_RAY_TRACING: {
+   case ANV_PIPELINE_RAY_TRACING: {
       struct anv_shader_bin **shader =
          util_dynarray_element(&anv_pipeline_to_ray_tracing(pipeline)->shaders,
                                struct anv_shader_bin *,
@@ -3463,7 +3463,7 @@ anv_GetRayTracingShaderGroupHandlesKHR(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
 
-   if (pipeline->type != ANV_HW_PIPELINE_STATE_RAY_TRACING)
+   if (pipeline->type != ANV_PIPELINE_RAY_TRACING)
       return vk_error(device, VK_ERROR_FEATURE_NOT_PRESENT);
 
    struct anv_ray_tracing_pipeline *rt_pipeline =
@@ -3501,7 +3501,7 @@ anv_GetRayTracingShaderGroupStackSizeKHR(
     VkShaderGroupShaderKHR                      groupShader)
 {
    ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
-   assert(pipeline->type == ANV_HW_PIPELINE_STATE_RAY_TRACING);
+   assert(pipeline->type == ANV_PIPELINE_RAY_TRACING);
 
    struct anv_ray_tracing_pipeline *rt_pipeline =
       anv_pipeline_to_ray_tracing(pipeline);
