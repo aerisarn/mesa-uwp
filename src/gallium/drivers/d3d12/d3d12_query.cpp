@@ -34,31 +34,6 @@
 
 #include <dxguids/dxguids.h>
 
-constexpr unsigned MAX_SUBQUERIES = 3;
-
-struct d3d12_query_impl {
-   ID3D12QueryHeap *query_heap;
-   unsigned curr_query, num_queries;
-   size_t query_size;
-
-   D3D12_QUERY_TYPE d3d12qtype;
-
-   pipe_resource *buffer;
-   unsigned buffer_offset;
-
-   bool active;
-};
-
-struct d3d12_query {
-   struct threaded_query base;
-   enum pipe_query_type type;
-
-   struct d3d12_query_impl subqueries[MAX_SUBQUERIES];
-
-   struct list_head active_list;
-   struct d3d12_resource *predicate;
-};
-
 static unsigned
 num_sub_queries(unsigned query_type)
 {
