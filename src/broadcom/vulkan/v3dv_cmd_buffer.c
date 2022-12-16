@@ -2522,7 +2522,6 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
  */
 void
 v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
-                               uint32_t dirty_dynamic_state,
                                bool needs_subpass_resume)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
@@ -2565,10 +2564,9 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->gfx.pipeline = NULL;
    }
 
-   if (dirty_dynamic_state) {
-      memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
-      state->dirty |= dirty_dynamic_state;
-   }
+   /* Restore dynamic state */
+   memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
+   state->dirty = ~0;
 
    if (state->meta.has_descriptor_state) {
       if (state->meta.gfx.descriptor_state.valid != 0) {
