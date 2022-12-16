@@ -100,7 +100,6 @@ struct radv_pipeline_key {
    struct {
       struct radv_ps_epilog_key epilog;
 
-      uint32_t cb_target_mask;
       uint8_t num_samples;
       bool sample_shading_enable;
 

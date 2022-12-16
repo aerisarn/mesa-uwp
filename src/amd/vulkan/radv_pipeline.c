@@ -2226,11 +2226,8 @@ radv_remove_color_exports(const struct radv_pipeline_key *pipeline_key, nir_shad
          continue;
 
       unsigned col_format = (pipeline_key->ps.epilog.spi_shader_col_format >> (4 * idx)) & 0xf;
-      unsigned cb_target_mask = (pipeline_key->ps.cb_target_mask >> (4 * idx)) & 0xf;
 
-      if (col_format == V_028714_SPI_SHADER_ZERO ||
-          (col_format == V_028714_SPI_SHADER_32_R && !cb_target_mask &&
-           !pipeline_key->ps.epilog.mrt0_is_dual_src)) {
+      if (col_format == V_028714_SPI_SHADER_ZERO) {
          /* Remove the color export if it's unused or in presence of holes. */
          nir->info.outputs_written &= ~BITFIELD64_BIT(var->data.location);
          var->data.location = 0;
@@ -2761,7 +2758,6 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    }
 
    key.ps.epilog.spi_shader_col_format = blend->spi_shader_col_format;
-   key.ps.cb_target_mask = blend->cb_target_mask;
    key.ps.epilog.mrt0_is_dual_src = blend->mrt0_is_dual_src;
    if (device->physical_device->rad_info.gfx_level < GFX8) {
       key.ps.epilog.color_is_int8 = blend->col_format_is_int8;
