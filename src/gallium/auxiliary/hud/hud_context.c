@@ -1202,7 +1202,7 @@ has_pipeline_stats_query(struct pipe_screen *screen)
 
 static void
 hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
-                  const char *env)
+                  const char *env, unsigned period_ms)
 {
    unsigned num, i;
    char name_a[256], s[256];
@@ -1210,7 +1210,7 @@ hud_parse_env_var(struct hud_context *hud, struct pipe_screen *screen,
    struct hud_pane *pane = NULL;
    unsigned x = 10, y = 10, y_simple = 10;
    unsigned width = 251, height = 100;
-   unsigned period = 500 * 1000;  /* default period (1/2 second) */
+   unsigned period = period_ms * 1000;
    uint64_t ceiling = UINT64_MAX;
    unsigned column_width = 251;
    boolean dyn_ceiling = false;
@@ -1903,7 +1903,18 @@ hud_create(struct cso_context *cso, struct hud_context *share,
    struct pipe_screen *screen = cso_get_pipe_context(cso)->screen;
    struct hud_context *hud;
    unsigned i;
-   const char *env = debug_get_option("GALLIUM_HUD", NULL);
+   unsigned default_period_ms = 500;/* default period (1/2 second) */
+   const char *show_fps = getenv("LIBGL_SHOW_FPS");
+   bool emulate_libgl_show_fps = false;
+   if (show_fps) {
+      default_period_ms = atoi(show_fps) * 1000;
+      if (default_period_ms)
+         emulate_libgl_show_fps = true;
+      else
+         default_period_ms = 500;
+   }
+   const char *env = debug_get_option("GALLIUM_HUD",
+      emulate_libgl_show_fps ? "stdout,fps" : NULL);
 #if DETECT_OS_UNIX
    unsigned signo = debug_get_num_option("GALLIUM_HUD_TOGGLE_SIGNAL", 0);
    static boolean sig_handled = FALSE;
@@ -1911,7 +1922,7 @@ hud_create(struct cso_context *cso, struct hud_context *share,
 
    memset(&action, 0, sizeof(action));
 #endif
-   huds_visible = debug_get_bool_option("GALLIUM_HUD_VISIBLE", TRUE);
+   huds_visible = debug_get_bool_option("GALLIUM_HUD_VISIBLE", !emulate_libgl_show_fps);
    hud_scale = debug_get_num_option("GALLIUM_HUD_SCALE", 1);
    hud_rotate = debug_get_num_option("GALLIUM_HUD_ROTATION", 0) % 360;
    if (hud_rotate < 0) {
@@ -2019,7 +2030,7 @@ hud_create(struct cso_context *cso, struct hud_context *share,
    if (draw_ctx == 0)
       hud_set_draw_context(hud, cso, st, st_invalidate_state);
 
-   hud_parse_env_var(hud, screen, env);
+   hud_parse_env_var(hud, screen, env, default_period_ms);
    return hud;
 }
 
