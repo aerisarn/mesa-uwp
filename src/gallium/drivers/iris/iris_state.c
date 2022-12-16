@@ -5172,7 +5172,9 @@ iris_store_cs_state(const struct intel_device_info *devinfo,
       assert(cs_prog_data->push.per_thread.regs == 0);
       assert(cs_prog_data->push.cross_thread.regs == 0);
 #endif
+#if GFX_VERx10 <= 125
       desc.BarrierEnable = cs_prog_data->uses_barrier;
+#endif
       /* Typically set to 0 to avoid prefetching on every thread dispatch. */
       desc.BindingTableEntryCount = devinfo->verx10 == 125 ?
          0 : MIN2(shader->bt.size_bytes / 4, 31);
