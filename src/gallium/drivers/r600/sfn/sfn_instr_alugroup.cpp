@@ -138,7 +138,8 @@ AluGroup::add_trans_instructions(AluInstr *instr)
                return false;
          }
 
-         while ((!m_slots[used_slot] && used_slot >= 0) || !(free_mask & (1 << used_slot)))
+         while (used_slot >= 0 &&
+                (!m_slots[used_slot] || !(free_mask & (1 << used_slot))))
             --used_slot;
 
          // if we schedule a non-trans instr into the trans slot,
