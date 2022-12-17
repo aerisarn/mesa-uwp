@@ -395,6 +395,12 @@ agx_select_modifier_from_list(const struct agx_resource *pres,
 static uint64_t
 agx_select_best_modifier(const struct agx_resource *pres)
 {
+   /* Prefer linear for staging resources, which should be as fast as possible
+    * to write from the CPU.
+    */
+   if (agx_linear_allowed(pres) && pres->base.usage == PIPE_USAGE_STAGING)
+      return DRM_FORMAT_MOD_LINEAR;
+
    if (agx_twiddled_allowed(pres)) {
       if (agx_compression_allowed(pres))
          return DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED;
