@@ -290,7 +290,7 @@ if __name__ == "__main__":
         if args.target:
             print("🞋 job: " + Fore.BLUE + args.target + Style.RESET_ALL)
             deps = find_dependencies(
-                target_job=args.target, sha=args.rev, project_path=cur_project
+                target_job=args.target, sha=REV, project_path=cur_project
             )
         target_job_id, ret = monitor_pipeline(
             cur_project, pipe, args.target, deps, args.force_manual, args.stress
