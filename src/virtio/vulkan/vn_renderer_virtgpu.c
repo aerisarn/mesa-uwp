@@ -161,7 +161,11 @@ sim_syncobj_create(struct virtgpu *gpu, bool signaled)
       util_idalloc_init(&sim.ida, 32);
 
       struct drm_virtgpu_execbuffer args = {
-         .flags = VIRTGPU_EXECBUF_FENCE_FD_OUT,
+         .flags = VIRTGPU_EXECBUF_FENCE_FD_OUT |
+                  (gpu->base.info.supports_multiple_timelines
+                      ? VIRTGPU_EXECBUF_RING_IDX
+                      : 0),
+         .ring_idx = 0, /* CPU ring */
       };
       int ret = drmIoctl(gpu->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &args);
       if (ret || args.fence_fd < 0) {
