@@ -213,6 +213,7 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_SHADOW_MAP:
       return 1;
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+      return screen->specs.max_texture_size;
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS: /* TODO: verify */
       return screen->specs.halti >= 0 ? screen->specs.max_texture_size : 0;
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
