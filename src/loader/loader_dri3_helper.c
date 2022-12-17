@@ -379,7 +379,6 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
                           enum loader_dri3_drawable_type type,
                           __DRIscreen *dri_screen_render_gpu,
                           __DRIscreen *dri_screen_display_gpu,
-                          bool is_different_gpu,
                           bool multiplanes_available,
                           bool prefer_back_buffer_reuse,
                           const __DRIconfig *dri_config,
@@ -399,7 +398,6 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->region = 0;
    draw->dri_screen_render_gpu = dri_screen_render_gpu;
    draw->dri_screen_display_gpu = dri_screen_display_gpu;
-   draw->is_different_gpu = is_different_gpu;
    draw->multiplanes_available = multiplanes_available;
    draw->prefer_back_buffer_reuse = prefer_back_buffer_reuse;
    draw->queries_buffer_age = false;
@@ -852,7 +850,7 @@ loader_dri3_copy_sub_buffer(struct loader_dri3_drawable *draw,
 
    y = draw->height - y - height;
 
-   if (draw->is_different_gpu) {
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu) {
       /* Update the linear buffer part of the back buffer
        * for the dri3_copy_area operation
        */
@@ -880,7 +878,7 @@ loader_dri3_copy_sub_buffer(struct loader_dri3_drawable *draw,
                                back->image,
                                x, y, width, height,
                                x, y, __BLIT_FLAG_FLUSH) &&
-       !draw->is_different_gpu) {
+       draw->dri_screen_render_gpu == draw->dri_screen_display_gpu) {
       dri3_fence_reset(draw->conn, dri3_front_buffer(draw));
       dri3_copy_area(draw->conn,
                      back->pixmap,
@@ -932,7 +930,7 @@ loader_dri3_wait_x(struct loader_dri3_drawable *draw)
     * Copy back to the tiled buffer we use for rendering.
     * Note that we don't need flushing.
     */
-   if (draw->is_different_gpu)
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu)
       (void) loader_dri3_blit_image(draw,
                                     front->image,
                                     front->linear_buffer,
@@ -953,7 +951,7 @@ loader_dri3_wait_gl(struct loader_dri3_drawable *draw)
    /* In the psc->is_different_gpu case, we update the linear_buffer
     * before updating the real front.
     */
-   if (draw->is_different_gpu)
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu)
       (void) loader_dri3_blit_image(draw,
                                     front->linear_buffer,
                                     front->image,
@@ -1044,7 +1042,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
       draw->adaptive_sync_active = true;
    }
 
-   if (draw->is_different_gpu) {
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu) {
       /* Update the linear buffer before presenting the pixmap */
       (void) loader_dri3_blit_image(draw,
                                     back->linear_buffer,
@@ -1185,7 +1183,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
        * locally blit back buffer image to it is enough. Otherwise front buffer
        * is a fake one which needs to be synced with pixmap by xserver remotely.
        */
-      if (draw->is_different_gpu ||
+      if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu ||
           !loader_dri3_blit_image(draw,
                                   dri3_front_buffer(draw)->image,
                                   back->image,
@@ -1453,7 +1451,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
    if (!buffer->cpp)
       goto no_image;
 
-   if (!draw->is_different_gpu) {
+   if (draw->dri_screen_render_gpu == draw->dri_screen_display_gpu) {
 #ifdef HAVE_DRI3_MODIFIERS
       if (draw->multiplanes_available &&
           draw->ext->image->base.version >= 15 &&
@@ -1607,8 +1605,8 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
    if (!ret)
       buffer->modifier = DRM_FORMAT_MOD_INVALID;
 
-   if (draw->is_different_gpu && draw->dri_screen_display_gpu &&
-       linear_buffer_display_gpu) {
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu &&
+       draw->dri_screen_display_gpu && linear_buffer_display_gpu) {
       /* The linear buffer was created in the display GPU's vram, so we
        * need to make it visible to render GPU
        */
@@ -1693,7 +1691,7 @@ no_buffer_attrib:
    } while (--i >= 0);
    draw->ext->image->destroyImage(pixmap_buffer);
 no_linear_buffer:
-   if (draw->is_different_gpu)
+   if (draw->dri_screen_render_gpu != draw->dri_screen_display_gpu)
       draw->ext->image->destroyImage(buffer->image);
 no_image:
    free(buffer);
@@ -2246,7 +2244,8 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
        * content will get synced with the fake front
        * buffer.
        */
-      if (draw->type != LOADER_DRI3_DRAWABLE_WINDOW && !draw->is_different_gpu)
+      if (draw->type != LOADER_DRI3_DRAWABLE_WINDOW &&
+          draw->dri_screen_render_gpu == draw->dri_screen_display_gpu)
          front = dri3_get_pixmap_buffer(driDrawable,
                                                format,
                                                loader_dri3_buffer_front,
@@ -2283,7 +2282,7 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
       buffers->image_mask |= __DRI_IMAGE_BUFFER_FRONT;
       buffers->front = front->image;
       draw->have_fake_front =
-         draw->is_different_gpu ||
+         draw->dri_screen_render_gpu != draw->dri_screen_display_gpu ||
          draw->type == LOADER_DRI3_DRAWABLE_WINDOW;
    }
 
