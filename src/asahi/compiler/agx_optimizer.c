@@ -123,6 +123,7 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I,
       /* cmpselsrc takes integer immediates only */
       if (s >= 2 && I->op == AGX_OPCODE_FCMPSEL) float_src = false;
       if (I->op == AGX_OPCODE_ST_TILE && s == 0) continue;
+      if (I->op == AGX_OPCODE_ZS_EMIT && s != 0) continue;
 
       if (float_src) {
          bool fp16 = (def->dest[0].size == AGX_SIZE_16);
@@ -179,6 +180,7 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
            (I->op == AGX_OPCODE_DEVICE_LOAD &&
             (s != 0 || def->src[0].value >= 256)) ||
            I->op == AGX_OPCODE_PHI ||
+           I->op == AGX_OPCODE_ZS_EMIT ||
            I->op == AGX_OPCODE_ST_TILE ||
            I->op == AGX_OPCODE_LD_TILE ||
            I->op == AGX_OPCODE_BLOCK_IMAGE_STORE ||

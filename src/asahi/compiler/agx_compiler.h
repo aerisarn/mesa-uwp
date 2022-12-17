@@ -301,6 +301,7 @@ typedef struct {
       uint32_t channels;
       uint32_t bfi_mask;
       uint16_t pixel_offset;
+      uint16_t zs;
       enum agx_sr sr;
       enum agx_icond icond;
       enum agx_fcond fcond;
@@ -806,6 +807,7 @@ void agx_compute_liveness(agx_context *ctx);
 void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
 
 bool agx_lower_resinfo(nir_shader *s);
+bool agx_nir_lower_zs_emit(nir_shader *s);
 bool agx_nir_lower_array_texture(nir_shader *s);
 bool agx_nir_opt_preamble(nir_shader *s, unsigned *preamble_size);
 bool agx_nir_lower_load_mask(nir_shader *shader);

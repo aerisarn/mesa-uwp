@@ -173,6 +173,9 @@ struct agx_shader_info {
    /* Does the shader control the sample mask? */
    bool writes_sample_mask;
 
+   /* Depth layout, never equal to NONE */
+   enum gl_frag_depth_layout depth_layout;
+
    /* Is colour output omitted? */
    bool no_colour_output;
 

@@ -494,6 +494,32 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
                          nir_intrinsic_base(instr));
 }
 
+static agx_instr *
+agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unsigned base = nir_intrinsic_base(instr);
+   bool write_z = base & 1;
+   bool write_s = base & 2;
+
+   /* TODO: Handle better */
+   assert(!b->shader->key->fs.ignore_tib_dependencies && "not used");
+   agx_writeout(b, 0x0001);
+
+   agx_index z = agx_src_index(&instr->src[1]);
+   agx_index s = agx_src_index(&instr->src[2]);
+
+   agx_index zs = (write_z && write_s) ? agx_vec2(b, z, s) :
+                   write_z             ? z :
+                                         s;
+
+   /* Not necessarily a sample mask but overlapping hw mechanism... Should
+    * maybe rename this flag to something more general.
+    */
+   b->shader->out->writes_sample_mask = true;
+
+   return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
+}
+
 static void
 agx_emit_local_load_pixel(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -712,6 +738,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_store_output:
      assert(stage == MESA_SHADER_VERTEX);
      return agx_emit_store_vary(b, instr);
+
+  case nir_intrinsic_store_zs_agx:
+     assert(stage == MESA_SHADER_FRAGMENT);
+     return agx_emit_store_zs(b, instr);
 
   case nir_intrinsic_store_local_pixel_agx:
      assert(stage == MESA_SHADER_FRAGMENT);
@@ -1880,6 +1910,8 @@ agx_preprocess_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
          glsl_type_size, 0);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, agx_nir_lower_zs_emit);
+
       /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
        * exception, interpolate flat shaded at fp32. This works around a
        * hardware limitation. The resulting code (with an extra f2f16 at the end
@@ -1952,6 +1984,16 @@ agx_compile_shader_nir(nir_shader *nir,
       out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
       out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
                                  nir->info.fs.needs_quad_helper_invocations;
+
+      /* Report a canonical depth layout */
+      enum gl_frag_depth_layout layout = nir->info.fs.depth_layout;
+
+      if (!(nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DEPTH)))
+         out->depth_layout = FRAG_DEPTH_LAYOUT_UNCHANGED;
+      else if (layout == FRAG_DEPTH_LAYOUT_NONE)
+         out->depth_layout = FRAG_DEPTH_LAYOUT_ANY;
+      else
+         out->depth_layout = layout;
    }
 
    agx_optimize_nir(nir, &out->push_count);

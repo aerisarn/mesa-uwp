@@ -719,6 +719,32 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups, agx
       break;
    }
 
+   case AGX_OPCODE_ZS_EMIT:
+   {
+      agx_index S = I->src[0];
+      if (S.type == AGX_INDEX_IMMEDIATE)
+         assert(S.value < BITFIELD_BIT(8));
+      else
+         assert_register_is_aligned(S);
+
+      agx_index T = I->src[1];
+      assert_register_is_aligned(T);
+
+      assert(I->zs >= 1 && I->zs <= 3);
+
+      uint32_t word0 =
+         agx_opcodes_info[I->op].encoding.exact |
+         ((S.type == AGX_INDEX_IMMEDIATE) ? (1 << 8) : 0) |
+         ((S.value & BITFIELD_MASK(6)) << 9) |
+         ((T.value & BITFIELD_MASK(6)) << 16) |
+         ((T.value >> 6) << 26) |
+         ((S.value >> 6) << 24) |
+         (I->zs << 29);
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 4), &word0, 4);
+      break;
+   }
+
    case AGX_OPCODE_JMP_EXEC_ANY:
    case AGX_OPCODE_JMP_EXEC_NONE:
    {
