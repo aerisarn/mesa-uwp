@@ -1755,6 +1755,30 @@ agx_pass_type_for_shader(struct agx_shader_info *info)
       return AGX_PASS_TYPE_OPAQUE;
 }
 
+static enum agx_conservative_depth
+agx_translate_depth_layout(enum gl_frag_depth_layout layout)
+{
+   switch (layout) {
+   case FRAG_DEPTH_LAYOUT_ANY:       return AGX_CONSERVATIVE_DEPTH_ANY;
+   case FRAG_DEPTH_LAYOUT_LESS:      return AGX_CONSERVATIVE_DEPTH_LESS;
+   case FRAG_DEPTH_LAYOUT_GREATER:   return AGX_CONSERVATIVE_DEPTH_GREATER;
+   case FRAG_DEPTH_LAYOUT_UNCHANGED: return AGX_CONSERVATIVE_DEPTH_UNCHANGED;
+   default: unreachable("depth layout should have been canonicalized");
+   }
+}
+
+static void
+agx_ppp_fragment_face_2(struct agx_ppp_update *ppp,
+                        enum agx_object_type object_type,
+                        struct agx_shader_info *info)
+{
+      agx_ppp_push(ppp, FRAGMENT_FACE_2, cfg) {
+         cfg.object_type = object_type;
+         cfg.conservative_depth =
+            agx_translate_depth_layout(info->depth_layout);
+      }
+}
+
 #define MAX_PPP_UPDATES 2
 
 static uint8_t *
@@ -1853,10 +1877,10 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       .fragment_control = fragment_control_dirty,
       .fragment_control_2 = IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG),
       .fragment_front_face = fragment_face_dirty,
-      .fragment_front_face_2 = object_type_dirty,
+      .fragment_front_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
       .fragment_front_stencil = IS_DIRTY(ZS),
       .fragment_back_face = fragment_face_dirty,
-      .fragment_back_face_2 = object_type_dirty,
+      .fragment_back_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
       .fragment_back_stencil = IS_DIRTY(ZS),
       .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
       .varying_word_0 = IS_DIRTY(VS_PROG),
@@ -1921,8 +1945,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
       agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
    }
 
-   if (object_type_dirty)
-      agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+   if (object_type_dirty || IS_DIRTY(FS_PROG))
+      agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
 
    if (IS_DIRTY(ZS))
       agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque, FRAGMENT_STENCIL);
@@ -1930,8 +1954,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out,
    if (fragment_face_dirty)
       agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
 
-   if (object_type_dirty)
-      agx_ppp_push(&ppp, FRAGMENT_FACE_2, cfg) cfg.object_type = object_type;
+   if (object_type_dirty || IS_DIRTY(FS_PROG))
+      agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
 
    if (IS_DIRTY(ZS))
       agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
