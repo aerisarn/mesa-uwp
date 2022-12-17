@@ -982,7 +982,7 @@ dri2_create_screen(_EGLDisplay *disp)
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    char *driver_name_display_gpu;
 
-   if (dri2_dpy->fd_display_gpu >= 0) {
+   if (dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu) {
       driver_name_display_gpu = loader_get_driver_for_fd(dri2_dpy->fd_display_gpu);
       if (driver_name_display_gpu) {
          /* check if driver name is matching so that non mesa drivers
@@ -1012,6 +1012,9 @@ dri2_create_screen(_EGLDisplay *disp)
       _eglLog(_EGL_WARNING, "egl: failed to create dri2 screen");
       return EGL_FALSE;
    }
+
+   if (dri2_dpy->fd_render_gpu == dri2_dpy->fd_display_gpu)
+      dri2_dpy->dri_screen_display_gpu = dri2_dpy->dri_screen_render_gpu;
 
    dri2_dpy->own_dri_screen = true;
    return EGL_TRUE;
@@ -1146,13 +1149,14 @@ dri2_display_destroy(_EGLDisplay *disp)
 
       dri2_dpy->core->destroyScreen(dri2_dpy->dri_screen_render_gpu);
 
-      if (dri2_dpy->dri_screen_display_gpu)
+      if (dri2_dpy->dri_screen_display_gpu &&
+          dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu)
          dri2_dpy->core->destroyScreen(dri2_dpy->dri_screen_display_gpu);
    }
+   if (dri2_dpy->fd_display_gpu >= 0 &&dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu)
+      close(dri2_dpy->fd_display_gpu);
    if (dri2_dpy->fd_render_gpu >= 0)
       close(dri2_dpy->fd_render_gpu);
-   if (dri2_dpy->fd_display_gpu >= 0)
-      close(dri2_dpy->fd_display_gpu);
 
    /* Don't dlclose the driver when building with the address sanitizer, so you
     * get good symbols from the leak reports.

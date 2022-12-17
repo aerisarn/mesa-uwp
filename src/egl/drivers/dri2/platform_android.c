@@ -1692,6 +1692,8 @@ dri2_initialize_android(_EGLDisplay *disp)
       goto cleanup;
    }
 
+   dri2_dpy->fd_display_gpu = dri2_dpy->fd_render_gpu;
+
    dev = _eglAddDevice(dri2_dpy->fd_render_gpu, false);
    if (!dev) {
       err = "DRI2: failed to find EGLDevice";

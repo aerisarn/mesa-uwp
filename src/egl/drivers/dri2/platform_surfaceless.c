@@ -351,6 +351,8 @@ dri2_initialize_surfaceless(_EGLDisplay *disp)
       goto cleanup;
    }
 
+   dri2_dpy->fd_display_gpu = dri2_dpy->fd_render_gpu;
+
    if (!dri2_create_screen(disp)) {
       err = "DRI2: failed to create screen";
       goto cleanup;

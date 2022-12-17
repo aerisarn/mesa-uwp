@@ -223,6 +223,12 @@ struct dri2_egl_display
    int dri2_major;
    int dri2_minor;
    __DRIscreen *dri_screen_render_gpu;
+   /* dri_screen_display_gpu holds display GPU in case of prime gpu offloading else
+    * dri_screen_render_gpu and dri_screen_display_gpu is same.
+    * In case of prime gpu offloading, if display and render driver names are different
+    * (potentially not compatible), dri_screen_display_gpu will be NULL but fd_display_gpu
+    * will still hold fd for display driver.
+    */
    __DRIscreen *dri_screen_display_gpu;
    bool own_dri_screen;
    const __DRIconfig **driver_configs;
@@ -244,7 +250,12 @@ struct dri2_egl_display
    const __DRI2interopExtension *interop;
    const __DRIconfigOptionsExtension *configOptions;
    const __DRImutableRenderBufferDriverExtension *mutable_render_buffer;
+   /* fd of the GPU used for rendering. */
    int fd_render_gpu;
+   /* fd of the GPU used for display. If the same GPU is used for display
+    * and rendering, then fd_render_gpu == fd_display_gpu (no need to use
+    * os_same_file_description).
+    */
    int fd_display_gpu;
 
    /* dri2_initialize/dri2_terminate increment/decrement this count, so does
@@ -304,7 +315,6 @@ struct dri2_egl_display
 #endif
 
    bool is_render_node;
-   bool is_different_gpu;
 };
 
 struct dri2_egl_context

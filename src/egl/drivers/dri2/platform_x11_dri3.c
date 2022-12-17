@@ -190,7 +190,7 @@ dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
                                  egl_to_loader_dri3_drawable_type(type),
                                  dri2_dpy->dri_screen_render_gpu,
                                  dri2_dpy->dri_screen_display_gpu,
-                                 dri2_dpy->is_different_gpu,
+                                 dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu,
                                  dri2_dpy->multibuffers_available,
                                  true,
                                  dri_config,
@@ -202,7 +202,7 @@ dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
    }
 
    if (dri3_surf->surf.base.ProtectedContent &&
-       dri2_dpy->is_different_gpu) {
+       dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu) {
       _eglError(EGL_BAD_ALLOC, "dri3_surface_create");
       goto cleanup_pixmap;
    }
@@ -635,8 +635,7 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
       return EGL_FALSE;
    }
 
-   dri2_dpy->is_different_gpu =
-      loader_get_user_preferred_fd(&dri2_dpy->fd_render_gpu, &dri2_dpy->fd_display_gpu);
+   loader_get_user_preferred_fd(&dri2_dpy->fd_render_gpu, &dri2_dpy->fd_display_gpu);
 
    dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd_render_gpu);
    if (!dri2_dpy->driver_name) {
