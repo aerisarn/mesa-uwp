@@ -6143,44 +6143,50 @@ static MIMG_instruction*
 emit_mimg(Builder& bld, aco_opcode op, Definition dst, Temp rsrc, Operand samp,
           std::vector<Temp> coords, unsigned wqm_mask = 0, Operand vdata = Operand(v1))
 {
-   /* Limit NSA instructions to 3 dwords on GFX10/11 to avoid stability/encoding issues. */
-   unsigned max_nsa_size = bld.program->gfx_level == GFX10_3 ? 13 : 5;
-   bool use_nsa = bld.program->gfx_level >= GFX10 && coords.size() <= max_nsa_size;
+   /* Limit NSA instructions to 3 dwords on GFX10 to avoid stability issues.
+    * On GFX11 the first 4 vaddr are single registers and the last contains the remaining
+    * vector.
+    */
+   size_t nsa_size = bld.program->gfx_level == GFX10     ? 5
+                     : bld.program->gfx_level == GFX10_3 ? 13
+                     : bld.program->gfx_level >= GFX11   ? 4
+                                                         : 0;
+   nsa_size = bld.program->gfx_level >= GFX11 || coords.size() <= nsa_size ? nsa_size : 0;
 
-   if (!use_nsa) {
-      Temp coord = coords[0];
-      if (coords.size() > 1) {
-         coord = bld.tmp(RegType::vgpr, coords.size());
+   for (unsigned i = 0; i < std::min(coords.size(), nsa_size); i++) {
+      coords[i] = as_vgpr(bld, coords[i]);
+      if (wqm_mask & (1u << i))
+         coords[i] = emit_wqm(bld, coords[i], bld.tmp(coords[i].regClass()), true);
+   }
 
+   if (nsa_size < coords.size()) {
+      Temp coord = coords[nsa_size];
+      if (coords.size() - nsa_size > 1) {
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
-            aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
-         for (unsigned i = 0; i < coords.size(); i++)
-            vec->operands[i] = Operand(coords[i]);
+            aco_opcode::p_create_vector, Format::PSEUDO, coords.size() - nsa_size, 1)};
+
+         unsigned coord_size = 0;
+         for (unsigned i = nsa_size; i < coords.size(); i++) {
+            vec->operands[i - nsa_size] = Operand(coords[i]);
+            coord_size += coords[i].size();
+         }
+
+         coord = bld.tmp(RegType::vgpr, coord_size);
          vec->definitions[0] = Definition(coord);
          bld.insert(std::move(vec));
-      } else if (coord.type() == RegType::sgpr) {
-         coord = bld.copy(bld.def(v1), coord);
+      } else {
+         coord = as_vgpr(bld, coord);
       }
 
-      if (wqm_mask) {
+      if (wqm_mask >> nsa_size) {
          /* We don't need the bias, sample index, compare value or offset to be
           * computed in WQM but if the p_create_vector copies the coordinates, then it
           * needs to be in WQM. */
          coord = emit_wqm(bld, coord, bld.tmp(coord.regClass()), true);
       }
 
-      coords[0] = coord;
-      coords.resize(1);
-   } else {
-      for (unsigned i = 0; i < coords.size(); i++) {
-         if (wqm_mask & (1u << i))
-            coords[i] = emit_wqm(bld, coords[i], bld.tmp(coords[i].regClass()), true);
-      }
-
-      for (Temp& coord : coords) {
-         if (coord.type() == RegType::sgpr)
-            coord = bld.copy(bld.def(v1), coord);
-      }
+      coords[nsa_size] = coord;
+      coords.resize(nsa_size + 1);
    }
 
    aco_ptr<MIMG_instruction> mimg{
@@ -6210,19 +6216,23 @@ visit_bvh64_intersect_ray_amd(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp dir = get_ssa_temp(ctx, instr->src[4].ssa);
    Temp inv_dir = get_ssa_temp(ctx, instr->src[5].ssa);
 
-   std::vector<Temp> args;
-   args.push_back(emit_extract_vector(ctx, node, 0, v1));
-   args.push_back(emit_extract_vector(ctx, node, 1, v1));
-   args.push_back(as_vgpr(ctx, tmax));
-   args.push_back(emit_extract_vector(ctx, origin, 0, v1));
-   args.push_back(emit_extract_vector(ctx, origin, 1, v1));
-   args.push_back(emit_extract_vector(ctx, origin, 2, v1));
-   args.push_back(emit_extract_vector(ctx, dir, 0, v1));
-   args.push_back(emit_extract_vector(ctx, dir, 1, v1));
-   args.push_back(emit_extract_vector(ctx, dir, 2, v1));
-   args.push_back(emit_extract_vector(ctx, inv_dir, 0, v1));
-   args.push_back(emit_extract_vector(ctx, inv_dir, 1, v1));
-   args.push_back(emit_extract_vector(ctx, inv_dir, 2, v1));
+   /* On GFX11 image_bvh64_intersect_ray has a special vaddr layout with NSA:
+    * There are five smaller vector groups:
+    * node_pointer, ray_extent, ray_origin, ray_dir, ray_inv_dir.
+    * These directly match the NIR intrinsic sources.
+    */
+   std::vector<Temp> args = {
+      node, tmax, origin, dir, inv_dir,
+   };
+
+   if (bld.program->gfx_level == GFX10_3) {
+      std::vector<Temp> scalar_args;
+      for (Temp tmp : args) {
+         for (unsigned i = 0; i < tmp.size(); i++)
+            scalar_args.push_back(emit_extract_vector(ctx, tmp, i, v1));
+      }
+      args = std::move(scalar_args);
+   }
 
    MIMG_instruction* mimg = emit_mimg(bld, aco_opcode::image_bvh64_intersect_ray, Definition(dst),
                                       resource, Operand(s4), args);
