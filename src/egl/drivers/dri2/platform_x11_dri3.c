@@ -635,13 +635,8 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
       return EGL_FALSE;
    }
 
-   dri2_dpy->fd_display_gpu = fcntl(dri2_dpy->fd_render_gpu, F_DUPFD_CLOEXEC, 3);
-   dri2_dpy->fd_render_gpu = loader_get_user_preferred_fd(dri2_dpy->fd_render_gpu,
-                                                          &dri2_dpy->is_different_gpu);
-   if (!dri2_dpy->is_different_gpu) {
-      close(dri2_dpy->fd_display_gpu);
-      dri2_dpy->fd_display_gpu = -1;
-   }
+   dri2_dpy->is_different_gpu =
+      loader_get_user_preferred_fd(&dri2_dpy->fd_render_gpu, &dri2_dpy->fd_display_gpu);
 
    dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd_render_gpu);
    if (!dri2_dpy->driver_name) {

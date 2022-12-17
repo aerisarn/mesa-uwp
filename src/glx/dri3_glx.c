@@ -821,12 +821,8 @@ dri3_create_screen(int screen, struct glx_display * priv)
       return NULL;
    }
 
-   psc->fd_display_gpu = fcntl(psc->fd_render_gpu, F_DUPFD_CLOEXEC, 3);
-   psc->fd_render_gpu = loader_get_user_preferred_fd(psc->fd_render_gpu, &psc->is_different_gpu);
-   if (!psc->is_different_gpu) {
-      close(psc->fd_display_gpu);
-      psc->fd_display_gpu = -1;
-   }
+   psc->is_different_gpu =
+      loader_get_user_preferred_fd(&psc->fd_render_gpu, &psc->fd_display_gpu);
 
    driverName = loader_get_driver_for_fd(psc->fd_render_gpu);
    if (!driverName) {

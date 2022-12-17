@@ -2229,13 +2229,8 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
          goto cleanup;
    }
 
-   dri2_dpy->fd_display_gpu = fcntl(dri2_dpy->fd_render_gpu, F_DUPFD_CLOEXEC, 3);
-   dri2_dpy->fd_render_gpu = loader_get_user_preferred_fd(dri2_dpy->fd_render_gpu,
-                                                          &dri2_dpy->is_different_gpu);
-   if (!dri2_dpy->is_different_gpu) {
-      close(dri2_dpy->fd_display_gpu);
-      dri2_dpy->fd_display_gpu = -1;
-   }
+   dri2_dpy->is_different_gpu =
+      loader_get_user_preferred_fd(&dri2_dpy->fd_render_gpu, &dri2_dpy->fd_display_gpu);
 
    dev = _eglAddDevice(dri2_dpy->fd_render_gpu, false);
    if (!dev) {
