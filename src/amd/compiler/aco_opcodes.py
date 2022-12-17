@@ -895,6 +895,7 @@ VOP1 = {
    (  -1,   -1,   -1,   -1,   -1, 0x69, "v_not_b16", False, False),
    (  -1,   -1,   -1,   -1,   -1, 0x6a, "v_cvt_i32_i16", False, False),
    (  -1,   -1,   -1,   -1,   -1, 0x6b, "v_cvt_u32_u16", False, False),
+   (  -1,   -1,   -1,   -1,   -1, 0x1c, "v_mov_b16", True, False),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, gfx11, name, in_mod, out_mod, cls) in default_class(VOP1, InstrClass.Valu32):
    opcode(name, gfx7, gfx9, gfx10, gfx11, Format.VOP1, cls, in_mod, out_mod)

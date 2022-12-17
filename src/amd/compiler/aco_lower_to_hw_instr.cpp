@@ -1102,6 +1102,33 @@ create_bperm(Builder& bld, uint8_t swiz[4], Definition dst, Operand src1,
 }
 
 void
+emit_v_mov_b16(Builder& bld, Definition dst, Operand op)
+{
+   /* v_mov_b16 uses 32bit inline constants. */
+   if (op.isConstant()) {
+      if (!op.isLiteral() && op.physReg() >= 240) {
+         /* v_add_f16 is smaller because it can use 16bit fp inline constants. */
+         Instruction* instr = bld.vop2_e64(aco_opcode::v_add_f16, dst, op, Operand::zero());
+         if (dst.physReg().byte() == 2)
+            instr->vop3().opsel = 0x8;
+         return;
+      }
+      op = Operand::c32((int32_t)(int16_t)op.constantValue());
+   }
+
+   if (!dst.physReg().byte() && !op.physReg().byte()) {
+      bld.vop1(aco_opcode::v_mov_b16, dst, op);
+   } else {
+      // TODO: this can use VOP1 for vgpr0-127 with assembler support
+      Instruction* instr = bld.vop1_e64(aco_opcode::v_mov_b16, dst, op);
+      if (op.physReg().byte() == 2)
+         instr->vop3().opsel |= 0x1;
+      if (dst.physReg().byte() == 2)
+         instr->vop3().opsel |= 0x8;
+   }
+}
+
+void
 copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
 {
    assert(op.bytes() == dst.bytes());
@@ -1166,6 +1193,8 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
          } else {
             bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op32);
          }
+      } else if (dst.regClass() == v2b && ctx->program->gfx_level >= GFX11) {
+         emit_v_mov_b16(bld, dst, op);
       } else if (dst.regClass() == v2b && use_sdwa && !op.isLiteral()) {
          if (op.constantValue() >= 0xfff0 || op.constantValue() <= 64) {
             /* use v_mov_b32 to avoid possible issues with denormal flushing or
@@ -1340,7 +1369,7 @@ do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool* pres
          swiz[def.physReg().byte()] = op.physReg().byte();
          create_bperm(bld, swiz, def, op);
       } else if (def.regClass() == v2b && ctx->program->gfx_level >= GFX11) {
-         addsub_subdword_gfx11(bld, def, op, Operand::zero(), false);
+         emit_v_mov_b16(bld, def, op);
       } else if (def.regClass().is_subdword()) {
          bld.vop1_sdwa(aco_opcode::v_mov_b32, def, op);
       } else {
@@ -1577,9 +1606,9 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
    /* either hi or lo are already placed correctly */
    if (ctx->program->gfx_level >= GFX11) {
       if (lo.physReg().reg() == def.physReg().reg())
-         addsub_subdword_gfx11(bld, def_hi, hi, Operand::zero(), false);
+         emit_v_mov_b16(bld, def_hi, hi);
       else
-         addsub_subdword_gfx11(bld, def_lo, lo, Operand::zero(), false);
+         emit_v_mov_b16(bld, def_lo, lo);
       return;
    } else if (ctx->program->gfx_level >= GFX8) {
       if (lo.physReg().reg() == def.physReg().reg())
