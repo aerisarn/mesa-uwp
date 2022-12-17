@@ -15,6 +15,7 @@ lima-mali450-deqp:arm64:
   extends:
     - .lava-meson-gxl-s805x-libretech-ac
   variables:
+    HWCI_START_WESTON: 1
     DEQP_SUITE: lima-mali450-deqp
 
 lima-mali450-piglit:arm64:
