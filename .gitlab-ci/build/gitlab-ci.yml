@@ -189,6 +189,7 @@ debian-build-testing:
     - .gitlab-ci/run-shellcheck.sh
     - .gitlab-ci/run-yamllint.sh
     - .gitlab-ci/meson/build.sh
+    - EXTRA_OPTION="${EXTRA_OPTION} -D b_lto=true" .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
 
 # Test a release build with -Werror so new warnings don't sneak in.
