@@ -68,7 +68,8 @@ get_mimg_nsa_dwords(const Instruction* instr)
 {
    unsigned addr_dwords = instr->operands.size() - 3;
    for (unsigned i = 1; i < addr_dwords; i++) {
-      if (instr->operands[3 + i].physReg() != instr->operands[3].physReg().advance(i * 4))
+      if (instr->operands[3 + i].physReg() !=
+          instr->operands[3 + (i - 1)].physReg().advance(instr->operands[3 + (i - 1)].bytes()))
          return DIV_ROUND_UP(addr_dwords - 1, 4);
    }
    return 0;
