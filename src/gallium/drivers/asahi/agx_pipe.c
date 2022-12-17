@@ -530,7 +530,19 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
                        : (bind & PIPE_BIND_SHADER_IMAGE)    ? "Shader image"
                                                             : "Other resource";
 
-   nresource->bo = agx_bo_create(dev, nresource->layout.size_B, 0, label);
+   uint32_t create_flags = 0;
+
+   /* Default to write-combine resources, but use writeback if that is expected
+    * to be beneficial.
+    */
+   if (nresource->base.usage == PIPE_USAGE_STAGING ||
+       (nresource->base.flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)) {
+
+      create_flags |= AGX_BO_WRITEBACK;
+   }
+
+   nresource->bo =
+      agx_bo_create(dev, nresource->layout.size_B, create_flags, label);
 
    if (!nresource->bo) {
       FREE(nresource);
