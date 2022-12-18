@@ -204,9 +204,6 @@ struct glthread_state
    unsigned upload_offset;
    int upload_buffer_private_refcount;
 
-   /** Caps. */
-   GLboolean SupportsBufferUploads;
-
    /** Primitive restart state. */
    bool PrimitiveRestart;
    bool PrimitiveRestartFixedIndex;

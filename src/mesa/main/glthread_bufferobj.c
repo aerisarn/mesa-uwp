@@ -32,8 +32,6 @@
 static struct gl_buffer_object *
 new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
 {
-   assert(ctx->GLThread.SupportsBufferUploads);
-
    struct gl_buffer_object *obj =
       _mesa_bufferobj_alloc(ctx, -1);
    if (!obj)
@@ -506,8 +504,7 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
     *       If offset == 0 and size == buffer_size, it's better to discard
     *       the buffer storage, but we don't know the buffer size in glthread.
     */
-   if (ctx->GLThread.SupportsBufferUploads &&
-       ctx->Const.AllowGLThreadBufferSubDataOpt &&
+   if (ctx->Const.AllowGLThreadBufferSubDataOpt &&
        data && offset > 0 && size > 0) {
       struct gl_buffer_object *upload_buffer = NULL;
       unsigned upload_offset = 0;

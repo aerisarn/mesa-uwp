@@ -455,13 +455,6 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
 
    /* Upload and draw. */
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (!ctx->GLThread.SupportsBufferUploads) {
-      _mesa_glthread_finish_before(ctx, "DrawArrays");
-      CALL_DrawArraysInstancedBaseInstance(ctx->CurrentServerDispatch,
-                                           (mode, first, count, instance_count,
-                                            baseinstance));
-      return;
-   }
 
    if (!upload_vertices(ctx, user_buffer_mask, first, count, baseinstance,
                         instance_count, buffers))
@@ -572,8 +565,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    assert(draw_count > 0);
 
    /* If the draw count is too high, the queue can't be used. */
-   if (!ctx->GLThread.SupportsBufferUploads ||
-       draw_count > MARSHAL_MAX_CMD_SIZE / 16)
+   if (draw_count > MARSHAL_MAX_CMD_SIZE / 16)
       goto sync;
 
    unsigned min_index = ~0;
@@ -927,9 +919,6 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
       return;
    }
 
-   if (!ctx->GLThread.SupportsBufferUploads)
-      goto sync;
-
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
    unsigned index_size = get_index_size(type);
 
@@ -1179,7 +1168,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
 
    /* If the draw count is negative, the queue can't be used. */
-   if (!ctx->GLThread.SupportsBufferUploads || draw_count < 0)
+   if (draw_count < 0)
       goto sync;
 
    unsigned index_size = get_index_size(type);
