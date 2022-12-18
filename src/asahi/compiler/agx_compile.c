@@ -1824,6 +1824,22 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
    varyings->nr_index = base;
 }
 
+static bool
+agx_gather_flat(nir_builder *b, nir_instr *instr, void *data)
+{
+   uint64_t *mask = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_input)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   *mask |= BITFIELD64_BIT(sem.location);
+   return false;
+}
+
 /*
  * Build a bit mask of varyings (by location) that are flatshaded. This
  * information is needed by lower_mediump_io.
@@ -1831,15 +1847,10 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
 static uint64_t
 agx_flat_varying_mask(nir_shader *nir)
 {
-   uint64_t mask = 0;
-
    assert(nir->info.stage == MESA_SHADER_FRAGMENT);
 
-   nir_foreach_shader_in_variable(var, nir) {
-      if (var->data.interpolation == INTERP_MODE_FLAT)
-         mask |= BITFIELD64_BIT(var->data.location);
-   }
-
+   uint64_t mask = 0;
+   nir_shader_instructions_pass(nir, agx_gather_flat, nir_metadata_all, &mask);
    return mask;
 }
 
