@@ -3136,6 +3136,8 @@ radv_queue_state_finish(struct radv_queue_state *queue, struct radeon_winsys *ws
       ws->buffer_destroy(ws, queue->tess_rings_bo);
    if (queue->task_rings_bo)
       ws->buffer_destroy(ws, queue->task_rings_bo);
+   if (queue->mesh_scratch_ring_bo)
+      ws->buffer_destroy(ws, queue->mesh_scratch_ring_bo);
    if (queue->attr_ring_bo)
       ws->buffer_destroy(ws, queue->attr_ring_bo);
    if (queue->gds_bo) {
