@@ -352,6 +352,8 @@ typedef struct {
    /* Output modifiers */
    bool saturate : 1;
    unsigned mask : 4;
+
+   unsigned padding : 11;
 } agx_instr;
 
 static inline void
