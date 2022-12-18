@@ -1365,8 +1365,8 @@ clone_copies(struct copy_prop_var_state *state, struct copies *clones,
 {
    hash_table_foreach(&copies->ht, entry) {
       struct copies_dynarray *cloned_copies = get_copies_dynarray(state);
-      util_dynarray_clone(&cloned_copies->arr, state->mem_ctx,
-                          &((struct copies_dynarray *) entry->data)->arr);
+      util_dynarray_append_dynarray(&cloned_copies->arr,
+                                    &((struct copies_dynarray *) entry->data)->arr);
       _mesa_hash_table_insert(&clones->ht, entry->key, cloned_copies);
    }
 
