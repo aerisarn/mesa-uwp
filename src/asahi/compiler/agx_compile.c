@@ -1689,24 +1689,15 @@ agx_lower_front_face(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    return true;
 }
 
+/*
+ * Standard NIR optimization loop. This is run in agx_preprocess_nir, then once
+ * again at shader variant compile time. Unless there was a complex shader key,
+ * the latter run should be almost a no-op.
+ */
 static void
-agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
+agx_optimize_loop_nir(nir_shader *nir)
 {
    bool progress;
-
-   nir_lower_idiv_options idiv_options = {
-      .allow_fp16 = true,
-   };
-
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-   NIR_PASS_V(nir, nir_lower_int64);
-   NIR_PASS_V(nir, nir_lower_idiv, &idiv_options);
-   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
-   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
-   NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false);
-   NIR_PASS_V(nir, agx_lower_sincos);
-   NIR_PASS_V(nir, nir_shader_instructions_pass, agx_lower_front_face,
-              nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    do {
       progress = false;
@@ -1730,6 +1721,12 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 
       NIR_PASS(progress, nir, nir_opt_loop_unroll);
    } while (progress);
+}
+
+static void
+agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
+{
+   agx_optimize_loop_nir(nir);
 
    NIR_PASS_V(nir, agx_nir_lower_address);
    NIR_PASS_V(nir, nir_lower_int64);
@@ -2003,6 +2000,17 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 /*
  * Preprocess NIR. In particular, this lowers I/O. Drivers should call this
  * as soon as they don't need unlowered I/O.
+ *
+ * This also lowers as much as possible. After preprocessing NIR, the following
+ * NIR passes are called by the GL driver:
+ *
+ *    - nir_lower_blend
+ *    - nir_lower_texcoord_replace_late
+ *    - agx_nir_lower_vbo
+ *    - agx_nir_lower_tilebuffer
+ *
+ * Unless an instruction is constructed by one of the above passes, it should be
+ * lowered here to avoid duplicate work with shader variants.
  */
 void
 agx_preprocess_nir(nir_shader *nir)
@@ -2042,9 +2050,6 @@ agx_preprocess_nir(nir_shader *nir)
                  ~agx_fp32_varying_mask(nir), false);
    }
 
-   NIR_PASS_V(nir, agx_nir_lower_ubo);
-   NIR_PASS_V(nir, nir_lower_ssbo);
-
    /* Varying output is scalar, other I/O is vector */
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
@@ -2054,7 +2059,39 @@ agx_preprocess_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, agx_nir_lower_texture);
 
+   nir_lower_idiv_options idiv_options = {
+      .allow_fp16 = true,
+   };
+
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+   NIR_PASS_V(nir, nir_lower_int64);
+   NIR_PASS_V(nir, nir_lower_idiv, &idiv_options);
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+   NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false);
+   NIR_PASS_V(nir, agx_lower_sincos);
+   NIR_PASS_V(nir, nir_shader_instructions_pass, agx_lower_front_face,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
+
+   /* After lowering, run through the standard suite of NIR optimizations. We
+    * will run through the loop later, once we have the shader key, but if we
+    * run now, that run will ideally be almost a no-op.
+    */
+   agx_optimize_loop_nir(nir);
+
+   /* We're lowered away all variables. Remove them all for smaller shaders. */
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_all, NULL);
    nir->info.io_lowered = true;
+
+   /* Move before lowering */
+   nir_move_options move_all = nir_move_const_undef | nir_move_load_ubo |
+                               nir_move_load_input | nir_move_comparisons |
+                               nir_move_copies | nir_move_load_ssbo;
+
+   NIR_PASS_V(nir, nir_opt_sink, move_all);
+   NIR_PASS_V(nir, nir_opt_move, move_all);
+   NIR_PASS_V(nir, agx_nir_lower_ubo);
+   NIR_PASS_V(nir, nir_lower_ssbo);
 }
 
 void
@@ -2089,6 +2126,13 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       else
          out->depth_layout = layout;
    }
+
+   /* Late blend lowering creates vectors */
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
+   /* Late VBO lowering creates constant udiv instructions */
+   NIR_PASS_V(nir, nir_opt_idiv_const, 16);
 
    out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);
