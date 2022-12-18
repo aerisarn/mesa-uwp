@@ -968,7 +968,6 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
 {
    const GLsizei draw_count = cmd->draw_count;
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
-   struct gl_buffer_object *index_buffer = cmd->index_buffer;
    const bool has_base_vertex = cmd->has_base_vertex;
 
    const char *variable_data = (const char *)(cmd + 1);
@@ -989,27 +988,18 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                       false);
    }
-   if (index_buffer) {
-      _mesa_InternalBindElementBuffer(ctx, index_buffer);
-   }
 
    /* Draw. */
    const GLenum mode = cmd->mode;
    const GLenum type = cmd->type;
+   struct gl_buffer_object *index_buffer = cmd->index_buffer;
 
-   if (has_base_vertex) {
-      CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
-                                       (mode, count, type, indices, draw_count,
-                                        basevertex));
-   } else {
-      CALL_MultiDrawElements(ctx->CurrentServerDispatch,
-                             (mode, count, type, indices, draw_count));
-   }
+   CALL_MultiDrawElementsUserBuf(ctx->CurrentServerDispatch,
+                                 ((GLintptr)index_buffer, mode, count, type,
+                                  indices, draw_count, basevertex));
+   _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
 
    /* Restore states. */
-   if (index_buffer) {
-      _mesa_InternalBindElementBuffer(ctx, NULL);
-   }
    if (user_buffer_mask) {
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                       true);
@@ -1067,25 +1057,15 @@ multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
          _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                          false);
       }
-      if (index_buffer) {
-         _mesa_InternalBindElementBuffer(ctx, index_buffer);
-      }
 
       /* Draw. */
-      if (basevertex != NULL) {
-         CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
-                                          (mode, count, type, indices, draw_count,
-                                           basevertex));
-      } else {
-         CALL_MultiDrawElements(ctx->CurrentServerDispatch,
-                                (mode, count, type, indices, draw_count));
-      }
+      CALL_MultiDrawElementsUserBuf(ctx->CurrentServerDispatch,
+                                    ((GLintptr)index_buffer, mode, count,
+                                     type, indices, draw_count, basevertex));
+      _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
 
       /* Restore states. */
       /* TODO: remove this after glthread takes over all uploading */
-      if (index_buffer) {
-         _mesa_InternalBindElementBuffer(ctx, NULL);
-      }
       if (user_buffer_mask) {
          _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                          true);
@@ -1438,7 +1418,11 @@ _mesa_marshal_MultiDrawArraysUserBuf(void)
 }
 
 void GLAPIENTRY
-_mesa_marshal_MultiDrawElementsUserBuf(void)
+_mesa_marshal_MultiDrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
+                                       const GLsizei *count, GLenum type,
+                                       const GLvoid * const *indices,
+                                       GLsizei primcount,
+                                       const GLint *basevertex)
 {
    unreachable("should never end up here");
 }
@@ -1451,12 +1435,6 @@ _mesa_DrawArraysUserBuf(void)
 
 void GLAPIENTRY
 _mesa_MultiDrawArraysUserBuf(void)
-{
-   unreachable("should never end up here");
-}
-
-void GLAPIENTRY
-_mesa_MultiDrawElementsUserBuf(void)
 {
    unreachable("should never end up here");
 }

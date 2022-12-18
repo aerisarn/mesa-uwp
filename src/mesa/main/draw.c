@@ -294,7 +294,8 @@ static GLboolean
 _mesa_validate_MultiDrawElements(struct gl_context *ctx,
                                  GLenum mode, const GLsizei *count,
                                  GLenum type, const GLvoid * const *indices,
-                                 GLsizei primcount)
+                                 GLsizei primcount,
+                                 struct gl_buffer_object *index_bo)
 {
    GLenum error;
 
@@ -336,7 +337,7 @@ _mesa_validate_MultiDrawElements(struct gl_context *ctx,
 
    /* Not using a VBO for indices, so avoid NULL pointer derefs later.
     */
-   if (!ctx->Array.VAO->IndexBufferObj) {
+   if (!index_bo) {
       for (int i = 0; i < primcount; i++) {
          if (!indices[i])
             return GL_FALSE;
@@ -1997,9 +1998,10 @@ _mesa_DrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
  * This does the actual rendering after we've checked array indexes, etc.
  */
 static void
-_mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
-                                  const GLsizei *count, GLenum type,
-                                  const GLvoid * const *indices,
+_mesa_validated_multidrawelements(struct gl_context *ctx,
+                                  struct gl_buffer_object *index_bo,
+                                  GLenum mode, const GLsizei *count,
+                                  GLenum type, const GLvoid * const *indices,
                                   GLsizei primcount, const GLint *basevertex)
 {
    uintptr_t min_index_ptr, max_index_ptr;
@@ -2038,7 +2040,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       }
    }
 
-   struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
    struct pipe_draw_info info;
 
    info.mode = mode;
@@ -2142,13 +2143,15 @@ _mesa_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
+   struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
+
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
-                                         primcount))
+                                         primcount, index_bo))
       return;
 
-   _mesa_validated_multidrawelements(ctx, mode, count, type, indices, primcount,
-                                     NULL);
+   _mesa_validated_multidrawelements(ctx, index_bo, mode, count, type,
+                                     indices, primcount, NULL);
 }
 
 
@@ -2165,13 +2168,46 @@ _mesa_MultiDrawElementsBaseVertex(GLenum mode,
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
+   struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
+
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
-                                         primcount))
+                                         primcount, index_bo))
       return;
 
-   _mesa_validated_multidrawelements(ctx, mode, count, type, indices, primcount,
-                                     basevertex);
+   _mesa_validated_multidrawelements(ctx, index_bo, mode, count, type,
+                                     indices, primcount, basevertex);
+}
+
+
+/**
+ * Same as glMultiDrawElementsBaseVertex, but the index buffer is set by
+ * the indexBuf parameter instead of using the bound GL_ELEMENT_ARRAY_BUFFER
+ * if indexBuf != NULL.
+ */
+void GLAPIENTRY
+_mesa_MultiDrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
+                               const GLsizei *count, GLenum type,
+                               const GLvoid * const * indices,
+                               GLsizei primcount, const GLint * basevertex)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   FLUSH_FOR_DRAW(ctx);
+
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   struct gl_buffer_object *index_bo =
+      indexBuf ? (struct gl_buffer_object*)indexBuf :
+                 ctx->Array.VAO->IndexBufferObj;
+
+   if (!_mesa_is_no_error_enabled(ctx) &&
+       !_mesa_validate_MultiDrawElements(ctx, mode, count, type, indices,
+                                         primcount, index_bo))
+      return;
+
+   _mesa_validated_multidrawelements(ctx, index_bo, mode, count, type,
+                                     indices, primcount, basevertex);
 }
 
 
