@@ -1178,14 +1178,8 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 
    bool need_index_bounds = user_buffer_mask & ~vao->NonZeroDivisorMask;
 
-   /* If the draw count is negative, the queue can't be used.
-    *
-    * Sync if indices come from a buffer and vertices come from memory
-    * and index bounds are not valid. We would have to map the indices
-    * to compute the index bounds, and for that we would have to sync anyway.
-    */
-   if (!ctx->GLThread.SupportsBufferUploads || draw_count < 0 ||
-       (need_index_bounds && !has_user_indices))
+   /* If the draw count is negative, the queue can't be used. */
+   if (!ctx->GLThread.SupportsBufferUploads || draw_count < 0)
       goto sync;
 
    unsigned index_size = get_index_size(type);
@@ -1198,6 +1192,8 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
     * uploaded.
     */
    if (need_index_bounds) {
+      bool synced = false;
+
       /* Compute the index bounds. */
       for (unsigned i = 0; i < draw_count; i++) {
          GLsizei vertex_count = count[i];
@@ -1212,10 +1208,23 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
             continue;
 
          unsigned min = ~0, max = 0;
-         vbo_get_minmax_index_mapped(vertex_count, index_size,
-                                     ctx->GLThread._RestartIndex[index_size - 1],
-                                     ctx->GLThread._PrimitiveRestart, indices[i],
-                                     &min, &max);
+         if (has_user_indices) {
+            vbo_get_minmax_index_mapped(vertex_count, index_size,
+                                        ctx->GLThread._RestartIndex[index_size - 1],
+                                        ctx->GLThread._PrimitiveRestart, indices[i],
+                                        &min, &max);
+         } else {
+            if (!synced) {
+               _mesa_glthread_finish_before(ctx, "MultiDrawElements - need index bounds");
+               synced = true;
+            }
+            vbo_get_minmax_index(ctx, ctx->Array.VAO->IndexBufferObj,
+                                 NULL, (intptr_t)indices[i], vertex_count,
+                                 index_size, ctx->GLThread._PrimitiveRestart,
+                                 ctx->GLThread._RestartIndex[index_size - 1],
+                                 &min, &max);
+         }
+
          if (basevertex) {
             min += basevertex[i];
             max += basevertex[i];
@@ -1287,7 +1296,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    return;
 
 sync:
-   _mesa_glthread_finish_before(ctx, "DrawElements");
+   _mesa_glthread_finish_before(ctx, "MultiDrawElements");
 
    if (basevertex) {
       CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
