@@ -205,6 +205,7 @@ files_libnir = files(
   'nir_lower_tex_shadow.c',
   'nir_lower_tex.c',
   'nir_lower_texcoord_replace.c',
+  'nir_lower_texcoord_replace_late.c',
   'nir_lower_to_source_mods.c',
   'nir_lower_two_sided_color.c',
   'nir_lower_undef_to_zero.c',
