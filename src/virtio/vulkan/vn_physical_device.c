@@ -991,8 +991,8 @@ vn_physical_device_get_native_extensions(
     * - For vtest, pci bus info must be queried from the renderer side physical
     *   device to be compared against the render node opened by common wsi.
     */
-   exts->EXT_pci_bus_info =
-      !VN_DEBUG(VTEST) || renderer_exts->EXT_pci_bus_info;
+   exts->EXT_pci_bus_info = instance->renderer->info.pci.has_bus_info ||
+                            renderer_exts->EXT_pci_bus_info;
 #endif
 
    exts->EXT_physical_device_drm = true;
@@ -1821,8 +1821,6 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* this is used by WSI */
          if (physical_dev->instance->renderer->info.pci.has_bus_info) {
-            assert(!VN_DEBUG(VTEST));
-
             VkPhysicalDevicePCIBusInfoPropertiesEXT *out_props = (void *)out;
             const struct vn_renderer_info *info =
                &physical_dev->instance->renderer->info;
@@ -1832,6 +1830,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             out_props->pciDevice = info->pci.device;
             out_props->pciFunction = info->pci.function;
          } else {
+            assert(VN_DEBUG(VTEST));
             vk_copy_struct_guts(out,
                                 (VkBaseInStructure *)&in_props->pci_bus_info,
                                 sizeof(in_props->pci_bus_info));
