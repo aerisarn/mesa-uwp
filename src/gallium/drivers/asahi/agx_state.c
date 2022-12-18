@@ -1265,11 +1265,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
       NIR_PASS_V(nir, nir_lower_blend, &opts);
 
-      if (key->sprite_coord_enable) {
-         NIR_PASS_V(nir, nir_lower_texcoord_replace, key->sprite_coord_enable,
-                    false /* point coord is sysval */, false /* Y-invert */);
-      }
-
       if (key->clip_plane_enable) {
          NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
       }
@@ -1288,6 +1283,12 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
 
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib);
+
+      if (key->sprite_coord_enable) {
+         NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
+                    key->sprite_coord_enable,
+                    false /* point coord is sysval */);
+      }
    }
 
    struct agx_shader_key base_key = {0};
