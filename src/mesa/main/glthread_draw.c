@@ -775,7 +775,6 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
                                     const struct marshal_cmd_DrawElementsUserBuf *cmd)
 {
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
-   struct gl_buffer_object *index_buffer = cmd->index_buffer;
    const struct glthread_attrib_binding *buffers =
       (const struct glthread_attrib_binding *)(cmd + 1);
 
@@ -783,9 +782,6 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
    if (user_buffer_mask) {
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                       false);
-   }
-   if (index_buffer) {
-      _mesa_InternalBindElementBuffer(ctx, index_buffer);
    }
 
    /* Draw. */
@@ -796,16 +792,15 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
    const GLsizei instance_count = cmd->instance_count;
    const GLint basevertex = cmd->basevertex;
    const GLuint baseinstance = cmd->baseinstance;
+   struct gl_buffer_object *index_buffer = cmd->index_buffer;
 
-   CALL_DrawElementsInstancedBaseVertexBaseInstance(ctx->CurrentServerDispatch,
-                                                    (mode, count, type, indices,
-                                                     instance_count, basevertex,
-                                                     baseinstance));
+   CALL_DrawElementsUserBuf(ctx->CurrentServerDispatch,
+                            ((GLintptr)index_buffer, mode, count, type,
+                             indices, instance_count, basevertex,
+                             baseinstance));
+   _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
 
    /* Restore states. */
-   if (index_buffer) {
-      _mesa_InternalBindElementBuffer(ctx, NULL);
-   }
    if (user_buffer_mask) {
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                       true);
@@ -1428,7 +1423,10 @@ _mesa_marshal_DrawArraysUserBuf(void)
 }
 
 void GLAPIENTRY
-_mesa_marshal_DrawElementsUserBuf(void)
+_mesa_marshal_DrawElementsUserBuf(GLintptr indexBuf, GLenum mode,
+                                  GLsizei count, GLenum type,
+                                  const GLvoid *indices, GLsizei numInstances,
+                                  GLint basevertex, GLuint baseInstance)
 {
    unreachable("should never end up here");
 }
@@ -1447,12 +1445,6 @@ _mesa_marshal_MultiDrawElementsUserBuf(void)
 
 void GLAPIENTRY
 _mesa_DrawArraysUserBuf(void)
-{
-   unreachable("should never end up here");
-}
-
-void GLAPIENTRY
-_mesa_DrawElementsUserBuf(void)
 {
    unreachable("should never end up here");
 }
