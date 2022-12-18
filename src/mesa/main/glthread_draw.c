@@ -376,11 +376,6 @@ uint32_t
 _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
                                   const struct marshal_cmd_DrawArraysUserBuf *cmd)
 {
-   const GLenum mode = cmd->mode;
-   const GLint first = cmd->first;
-   const GLsizei count = cmd->count;
-   const GLsizei instance_count = cmd->instance_count;
-   const GLuint baseinstance = cmd->baseinstance;
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
    const struct glthread_attrib_binding *buffers =
       (const struct glthread_attrib_binding *)(cmd + 1);
@@ -390,6 +385,12 @@ _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
       _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
                                       false);
    }
+
+   const GLenum mode = cmd->mode;
+   const GLint first = cmd->first;
+   const GLsizei count = cmd->count;
+   const GLsizei instance_count = cmd->instance_count;
+   const GLuint baseinstance = cmd->baseinstance;
 
    CALL_DrawArraysInstancedBaseInstance(ctx->CurrentServerDispatch,
                                         (mode, first, count, instance_count,
@@ -773,13 +774,6 @@ uint32_t
 _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
                                     const struct marshal_cmd_DrawElementsUserBuf *cmd)
 {
-   const GLenum mode = cmd->mode;
-   const GLsizei count = cmd->count;
-   const GLenum type = cmd->type;
-   const GLvoid *indices = cmd->indices;
-   const GLsizei instance_count = cmd->instance_count;
-   const GLint basevertex = cmd->basevertex;
-   const GLuint baseinstance = cmd->baseinstance;
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
    struct gl_buffer_object *index_buffer = cmd->index_buffer;
    const struct glthread_attrib_binding *buffers =
@@ -795,6 +789,14 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
    }
 
    /* Draw. */
+   const GLenum mode = cmd->mode;
+   const GLsizei count = cmd->count;
+   const GLenum type = cmd->type;
+   const GLvoid *indices = cmd->indices;
+   const GLsizei instance_count = cmd->instance_count;
+   const GLint basevertex = cmd->basevertex;
+   const GLuint baseinstance = cmd->baseinstance;
+
    CALL_DrawElementsInstancedBaseVertexBaseInstance(ctx->CurrentServerDispatch,
                                                     (mode, count, type, indices,
                                                      instance_count, basevertex,
@@ -969,8 +971,6 @@ uint32_t
 _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
                                          const struct marshal_cmd_MultiDrawElementsUserBuf *cmd)
 {
-   const GLenum mode = cmd->mode;
-   const GLenum type = cmd->type;
    const GLsizei draw_count = cmd->draw_count;
    const GLuint user_buffer_mask = cmd->user_buffer_mask;
    struct gl_buffer_object *index_buffer = cmd->index_buffer;
@@ -999,6 +999,9 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
    }
 
    /* Draw. */
+   const GLenum mode = cmd->mode;
+   const GLenum type = cmd->type;
+
    if (has_base_vertex) {
       CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
                                        (mode, count, type, indices, draw_count,
