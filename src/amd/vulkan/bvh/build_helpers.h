@@ -460,13 +460,13 @@ fetch_task(REF(radv_ir_header) header, bool did_work)
             atomicAdd(DEREF(header).sync_data.phase_index, 1);
             DEREF(header).sync_data.current_phase_start_counter =
                DEREF(header).sync_data.current_phase_end_counter;
-            atomicAdd(DEREF(header).sync_data.current_phase_end_counter,
-                      DIV_ROUND_UP(task_count(header), gl_WorkGroupSize.x));
             /* Ensure the changes to the phase index and start/end counter are visible for other
              * workgroup waiting in the loop. */
             memoryBarrier(
                gl_ScopeDevice, gl_StorageSemanticsBuffer,
                gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
+            atomicAdd(DEREF(header).sync_data.current_phase_end_counter,
+                      DIV_ROUND_UP(task_count(header), gl_WorkGroupSize.x));
             break;
          }
 
