@@ -934,22 +934,23 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    unsigned index_size = get_index_size(type);
 
    if (need_index_bounds && !index_bounds_valid) {
-      /* Sync if indices come from a buffer and vertices come from memory
-       * and index bounds are not valid.
-       *
-       * We would have to map the indices to compute the index bounds, and
-       * for that we would have to sync anyway.
-       */
-      if (!has_user_indices)
-         goto sync;
-
       /* Compute the index bounds. */
-      min_index = ~0;
-      max_index = 0;
-      vbo_get_minmax_index_mapped(count, index_size,
-                                  ctx->GLThread._RestartIndex[index_size - 1],
-                                  ctx->GLThread._PrimitiveRestart, indices,
-                                  &min_index, &max_index);
+      if (has_user_indices) {
+         min_index = ~0;
+         max_index = 0;
+         vbo_get_minmax_index_mapped(count, index_size,
+                                     ctx->GLThread._RestartIndex[index_size - 1],
+                                     ctx->GLThread._PrimitiveRestart, indices,
+                                     &min_index, &max_index);
+      } else {
+         /* Indices in a buffer. */
+         _mesa_glthread_finish_before(ctx, "DrawElements - need index bounds");
+         vbo_get_minmax_index(ctx, ctx->Array.VAO->IndexBufferObj,
+                              NULL, (intptr_t)indices, count, index_size,
+                              ctx->GLThread._PrimitiveRestart,
+                              ctx->GLThread._RestartIndex[index_size - 1],
+                              &min_index, &max_index);
+      }
       index_bounds_valid = true;
    }
 
