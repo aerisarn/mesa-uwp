@@ -503,8 +503,9 @@ nir_lower_blend_store(nir_builder *b, nir_intrinsic_instr *store,
       blended = nir_blend(b, options, rt, src, options->src1, dst);
    }
 
-   /* Apply a colormask */
-   blended = nir_color_mask(b, options->rt[rt].colormask, blended, dst);
+   /* Apply a colormask if necessary */
+   if (options->rt[rt].colormask != BITFIELD_MASK(4))
+      blended = nir_color_mask(b, options->rt[rt].colormask, blended, dst);
 
    const unsigned num_components = glsl_get_vector_elements(var->type);
 
