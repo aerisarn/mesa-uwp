@@ -5730,6 +5730,20 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       }
    }
 
+   /* From the Vulkan spec 1.3.238, section 15.8:
+    * When Sample Shading is enabled, the x and y components of FragCoord reflect the location 
+    * of one of the samples corresponding to the shader invocation.
+    * 
+    * In other words, if the fragment shader is executing per-sample, then the position variable
+    * should always be per-sample.
+    */
+   if (ctx->mod.info.has_per_sample_input &&
+       ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
+      nir_variable *pos_var = nir_find_variable_with_location(ctx->shader, nir_var_shader_in, VARYING_SLOT_POS);
+      if (pos_var)
+         pos_var->data.sample = true;
+   }
+
    unsigned input_clip_size = ctx->mod.shader_kind == DXIL_PIXEL_SHADER ?
       ctx->shader->info.clip_distance_array_size : ctx->opts->input_clip_size;
    preprocess_signatures(&ctx->mod, ctx->shader, input_clip_size);
