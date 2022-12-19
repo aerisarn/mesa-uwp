@@ -1218,7 +1218,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_MAX_RENDER_TARGETS:
-      return 1;
+   case PIPE_CAP_FBFETCH:
+   case PIPE_CAP_FBFETCH_COHERENT:
+      return 8;
 
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 0;
@@ -1417,7 +1419,7 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return 16;
 
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
-      return shader == PIPE_SHADER_FRAGMENT ? 4 : 16;
+      return shader == PIPE_SHADER_FRAGMENT ? 8 : 16;
 
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
