@@ -5735,13 +5735,18 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
     * of one of the samples corresponding to the shader invocation.
     * 
     * In other words, if the fragment shader is executing per-sample, then the position variable
-    * should always be per-sample.
+    * should always be per-sample, 
+    * 
+    * Also:
+    * The Centroid interpolation decoration is ignored, but allowed, on FragCoord.
     */
-   if (ctx->mod.info.has_per_sample_input &&
-       ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       nir_variable *pos_var = nir_find_variable_with_location(ctx->shader, nir_var_shader_in, VARYING_SLOT_POS);
-      if (pos_var)
-         pos_var->data.sample = true;
+      if (pos_var) {
+         if (ctx->mod.info.has_per_sample_input)
+            pos_var->data.sample = true;
+         pos_var->data.centroid = false;
+      }
    }
 
    unsigned input_clip_size = ctx->mod.shader_kind == DXIL_PIXEL_SHADER ?
