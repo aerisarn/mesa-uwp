@@ -466,6 +466,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
     */
    if (!user_buffer_mask || count <= 0 || instance_count <= 0 ||
        /* This will just generate GL_INVALID_OPERATION, as it should. */
+       ctx->GLThread.inside_begin_end ||
        (!compiled_into_dlist && ctx->GLThread.ListMode)) {
       draw_arrays_async(ctx, mode, first, count, instance_count, baseinstance);
       return;
@@ -530,7 +531,8 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
 {
    GET_CURRENT_CONTEXT(ctx);
    unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE || draw_count <= 0 ?
+      ctx->API == API_OPENGL_CORE || draw_count <= 0 ||
+      ctx->GLThread.inside_begin_end ?
             0 : get_user_buffer_mask(ctx);
 
    if (ctx->GLThread.ListMode) {
@@ -923,6 +925,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
        !is_index_type_valid(type) ||
        (!user_buffer_mask && !has_user_indices) ||
        /* This will just generate GL_INVALID_OPERATION, as it should. */
+       ctx->GLThread.inside_begin_end ||
        (!compiled_into_dlist && ctx->GLThread.ListMode)) {
       draw_elements_async(ctx, mode, count, type, indices, instance_count,
                           basevertex, baseinstance, index_bounds_valid,
@@ -1167,7 +1170,8 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
     * When nothing needs to be uploaded or the draw is no-op or generates
     * a GL error, we don't upload anything.
     */
-   if (draw_count > 0 && is_index_type_valid(type)) {
+   if (draw_count > 0 && is_index_type_valid(type) &&
+       !ctx->GLThread.inside_begin_end) {
       user_buffer_mask = ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
       has_user_indices = vao->CurrentElementBufferName == 0;
    }
