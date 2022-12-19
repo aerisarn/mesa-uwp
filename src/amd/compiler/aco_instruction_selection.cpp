@@ -9200,6 +9200,42 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
       break;
    }
+   case nir_intrinsic_export_amd: {
+      unsigned flags = nir_intrinsic_flags(instr);
+      unsigned target = nir_intrinsic_base(instr);
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+
+      /* Mark vertex export block. */
+      if (target == V_008DFC_SQ_EXP_POS)
+         ctx->block->kind |= block_kind_export_end;
+
+      aco_ptr<Export_instruction> exp{
+         create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
+
+      exp->dest = target;
+      exp->enabled_mask = write_mask;
+      exp->compressed = flags & AC_EXP_FLAG_COMPRESSED;
+      exp->valid_mask = flags & AC_EXP_FLAG_VALID_MASK;
+
+      /* ACO may reorder position export instructions, then mark done for last
+       * export instruction. So don't respect the nir AC_EXP_FLAG_DONE for position
+       * exports here and leave it to ACO.
+       */
+      if (target == V_008DFC_SQ_EXP_PRIM)
+         exp->done = flags & AC_EXP_FLAG_DONE;
+      else
+         exp->done = false;
+
+      Temp value = get_ssa_temp(ctx, instr->src[0].ssa);
+      for (unsigned i = 0; i < 4; i++) {
+         exp->operands[i] = write_mask & BITFIELD_BIT(i) ?
+            Operand(emit_extract_vector(ctx, value, i, v1)) :
+            Operand(v1);
+      }
+
+      ctx->block->instructions.emplace_back(std::move(exp));
+      break;
+   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();
