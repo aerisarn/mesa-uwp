@@ -275,6 +275,9 @@ index("unsigned", "value_id")
 # Whether to sign-extend offsets in address arithmatic (else zero extend)
 index("bool", "sign_extend")
 
+# Instruction specific flags
+index("unsigned", "flags")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -1545,6 +1548,12 @@ intrinsic("atomic_add_gs_invocation_count_amd", [1])
 system_value("lds_ngg_scratch_base_amd", 1)
 # LDS offset for NGG GS shader vertex emit
 system_value("lds_ngg_gs_out_vertex_base_amd", 1)
+
+# AMD GPU shader output export instruction
+# src[] = { export_value }
+# BASE = export target
+# FLAGS = AC_EXP_FLAG_*
+intrinsic("export_amd", [0], indices=[BASE, WRITE_MASK, FLAGS])
 
 # V3D-specific instrinc for tile buffer color reads.
 #
