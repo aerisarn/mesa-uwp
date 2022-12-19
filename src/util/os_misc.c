@@ -186,6 +186,7 @@ os_get_option(const char *name)
 }
 
 static struct hash_table *options_tbl;
+static bool options_tbl_exited = false;
 static simple_mtx_t options_tbl_mtx = SIMPLE_MTX_INITIALIZER;
 
 /**
@@ -195,14 +196,23 @@ static simple_mtx_t options_tbl_mtx = SIMPLE_MTX_INITIALIZER;
 static void
 options_tbl_fini(void)
 {
+   simple_mtx_lock(&options_tbl_mtx);
    _mesa_hash_table_destroy(options_tbl, NULL);
+   options_tbl = NULL;
+   options_tbl_exited = true;
+   simple_mtx_unlock(&options_tbl_mtx);
 }
 
 const char *
 os_get_option_cached(const char *name)
 {
-   char *opt = NULL;
+   const char *opt = NULL;
    simple_mtx_lock(&options_tbl_mtx);
+   if (options_tbl_exited) {
+      opt = os_get_option(name);
+      goto exit_mutex;
+   }
+
    if (!options_tbl) {
       options_tbl = _mesa_hash_table_create(NULL, _mesa_hash_string,
             _mesa_key_string_equal);
