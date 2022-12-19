@@ -2157,12 +2157,16 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *draws, unsigned num_draws)
 {
+   struct agx_context *ctx = agx_context(pctx);
+
+   if (unlikely(!agx_render_condition_check(ctx)))
+      return;
+
    if (num_draws > 1) {
       util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
-   struct agx_context *ctx = agx_context(pctx);
    struct agx_batch *batch = agx_get_batch(ctx);
 
 #ifndef NDEBUG

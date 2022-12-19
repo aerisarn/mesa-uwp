@@ -870,6 +870,9 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
    struct agx_context *ctx = agx_context(pctx);
    struct agx_batch *batch = agx_get_batch(ctx);
 
+   if (unlikely(!agx_render_condition_check(ctx)))
+      return;
+
    unsigned fastclear = buffers & ~(batch->draw | batch->load);
    unsigned slowclear = buffers & ~fastclear;
 
@@ -1239,6 +1242,8 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
    case PIPE_CAP_VS_INSTANCEID:
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+   case PIPE_CAP_CONDITIONAL_RENDER:
+   case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
       return 1;
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
