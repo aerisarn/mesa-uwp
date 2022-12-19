@@ -50,6 +50,12 @@ enum
    AC_EXP_PARAM_UNDEFINED = 255, /* deprecated, use AC_EXP_PARAM_DEFAULT_VAL_0000 instead */
 };
 
+enum {
+   AC_EXP_FLAG_COMPRESSED = (1 << 0),
+   AC_EXP_FLAG_DONE       = (1 << 1),
+   AC_EXP_FLAG_VALID_MASK = (1 << 2),
+};
+
 /* Maps I/O semantics to the actual location used by the lowering pass. */
 typedef unsigned (*ac_nir_map_io_driver_location)(unsigned semantic);
 
