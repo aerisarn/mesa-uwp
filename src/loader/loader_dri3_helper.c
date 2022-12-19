@@ -271,26 +271,12 @@ dri3_update_max_num_back(struct loader_dri3_drawable *draw)
 {
    switch (draw->last_present_mode) {
    case XCB_PRESENT_COMPLETE_MODE_FLIP: {
-      int new_max;
-
       if (draw->swap_interval == 0)
-         new_max = 4;
+         draw->max_num_back = 4;
       else
-         new_max = 3;
+         draw->max_num_back = 3;
 
-      assert(new_max <= LOADER_DRI3_MAX_BACK);
-
-      if (new_max != draw->max_num_back) {
-         /* On transition from swap interval == 0 to != 0, start with two
-          * buffers again. Otherwise keep the current number of buffers. Either
-          * way, more will be allocated if needed.
-          */
-         if (new_max < draw->max_num_back)
-            draw->cur_num_back = 2;
-
-         draw->max_num_back = new_max;
-      }
-
+      assert(draw->max_num_back <= LOADER_DRI3_MAX_BACK);
       break;
    }
 
@@ -298,12 +284,6 @@ dri3_update_max_num_back(struct loader_dri3_drawable *draw)
       break;
 
    default:
-      /* On transition from flips to copies, start with a single buffer again,
-       * a second one will be allocated if needed
-       */
-      if (draw->max_num_back != 2)
-         draw->cur_num_back = 1;
-
       draw->max_num_back = 2;
    }
 }
@@ -332,6 +312,9 @@ static void
 dri3_set_render_buffer(struct loader_dri3_drawable *draw, int buf_id,
                        struct loader_dri3_buffer *buffer)
 {
+   if (buf_id != LOADER_DRI3_FRONT_ID && !draw->buffers[buf_id])
+      draw->cur_num_back++;
+
    draw->buffers[buf_id] = buffer;
 }
 
@@ -359,6 +342,9 @@ dri3_free_render_buffer(struct loader_dri3_drawable *draw,
    free(buffer);
 
    draw->buffers[buf_id] = NULL;
+
+   if (buf_id != LOADER_DRI3_FRONT_ID)
+      draw->cur_num_back--;
 }
 
 void
@@ -721,7 +707,7 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
       max_num = 1;
       draw->cur_blit_source = -1;
    } else {
-      max_num = draw->max_num_back;
+      max_num = LOADER_DRI3_MAX_BACK;
    }
 
    /* In a DRI_PRIME situation, if prefer_a_different is true, we first try
@@ -735,9 +721,9 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
     */
    int current_back_id = draw->cur_back;
    do {
-      /* Find idle buffer with lowest buffer age, or first unallocated slot */
+      /* Find idle buffer with lowest buffer age, or an unallocated slot */
       for (b = 0; b < max_num; b++) {
-         int id = LOADER_DRI3_BACK_ID((b + draw->cur_back) % draw->max_num_back);
+         int id = LOADER_DRI3_BACK_ID((b + current_back_id) % LOADER_DRI3_MAX_BACK);
 
          buffer = draw->buffers[id];
          if (buffer) {
@@ -747,7 +733,8 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
                best_id = id;
                best_swap = buffer->last_swap;
             }
-         } else if (best_id == -1 || (!best_swap && id < best_id)) {
+         } else if (best_id == -1 &&
+                    draw->cur_num_back < draw->max_num_back) {
             best_id = id;
          }
       }
@@ -758,10 +745,8 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
          best_id = current_back_id;
    } while (best_id == -1 && dri3_wait_for_event_locked(draw, NULL));
 
-   if (best_id != -1) {
+   if (best_id != -1)
       draw->cur_back = best_id;
-      draw->cur_num_back = MAX2(draw->cur_num_back, best_id + 1);
-   }
 
 unlock:
    mtx_unlock(&draw->mtx);
@@ -2256,17 +2241,21 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
    buffers->front = NULL;
    buffers->back = NULL;
 
-   front = NULL;
-   back = NULL;
-
    if (!dri3_update_drawable(draw))
       return false;
 
    dri3_update_max_num_back(draw);
 
    /* Free no longer needed back buffers */
-   for (buf_id = draw->cur_num_back; buf_id < LOADER_DRI3_MAX_BACK; buf_id++) {
-      if (draw->cur_blit_source != buf_id)
+   for (buf_id = 0; buf_id < LOADER_DRI3_MAX_BACK; buf_id++) {
+      int buffer_age;
+
+      back = draw->buffers[buf_id];
+      if (!back || !back->last_swap || draw->cur_blit_source == buf_id)
+         continue;
+
+      buffer_age = draw->send_sbc - back->last_swap + 1;
+      if (buffer_age > 200)
          dri3_free_render_buffer(draw, buf_id);
    }
 
@@ -2302,6 +2291,7 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
    } else {
       dri3_free_buffers(driDrawable, loader_dri3_buffer_front, draw);
       draw->have_fake_front = 0;
+      front = NULL;
    }
 
    if (buffer_mask & __DRI_IMAGE_BUFFER_BACK) {
@@ -2315,6 +2305,7 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
    } else {
       dri3_free_buffers(driDrawable, loader_dri3_buffer_back, draw);
       draw->have_back = 0;
+      back = NULL;
    }
 
    if (front) {
