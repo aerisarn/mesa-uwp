@@ -1428,6 +1428,10 @@ if with_any_intel and ['x86', 'x86_64'].contains(host_machine.cpu_family())
   pre_args += '-DSUPPORT_INTEL_INTEGRATED_GPUS'
 endif
 
+if get_option('intel-xe-kmd').enabled()
+  pre_args += '-DINTEL_XE_KMD_SUPPORTED'
+endif
+
 # Determine whether or not the rt library is needed for time functions
 if host_machine.system() == 'windows' or cc.has_function('clock_gettime')
   dep_clock = null_dep
