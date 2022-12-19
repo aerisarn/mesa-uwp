@@ -3987,9 +3987,8 @@ dzn_CmdResolveImage2(VkCommandBuffer commandBuffer,
 
    ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-   uint32_t heap_offset = 0;
    for (uint32_t r = 0; r < info->regionCount; r++)
-      dzn_cmd_buffer_resolve_region(cmdbuf, info, heap, &heap_offset, r);
+      dzn_cmd_buffer_resolve_region(cmdbuf, info, heap, &heap_slot, r);
 
    cmdbuf->state.pipeline = NULL;
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_VIEWPORTS | DZN_CMD_DIRTY_SCISSORS;
