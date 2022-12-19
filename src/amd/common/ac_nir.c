@@ -22,6 +22,7 @@
  */
 
 #include "ac_nir.h"
+#include "sid.h"
 #include "nir_builder.h"
 #include "nir_xfb_info.h"
 
@@ -42,6 +43,17 @@ ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct a
 {
    nir_ssa_def *value = ac_nir_load_arg(b, ac_args, arg);
    return nir_ubfe_imm(b, value, rshift, bitwidth);
+}
+
+void
+ac_nir_export_primitive(nir_builder *b, nir_ssa_def *prim)
+{
+   unsigned write_mask = BITFIELD_MASK(prim->num_components);
+
+   nir_export_amd(b, nir_pad_vec4(b, prim),
+                  .base = V_008DFC_SQ_EXP_PRIM,
+                  .flags = AC_EXP_FLAG_DONE,
+                  .write_mask = write_mask);
 }
 
 /**

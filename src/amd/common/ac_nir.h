@@ -73,6 +73,9 @@ nir_ssa_def *
 ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg,
                   unsigned rshift, unsigned bitwidth);
 
+void
+ac_nir_export_primitive(nir_builder *b, nir_ssa_def *prim);
+
 nir_ssa_def *
 ac_nir_calc_io_offset(nir_builder *b,
                       nir_intrinsic_instr *intrin,

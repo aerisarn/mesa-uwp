@@ -545,7 +545,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
          nir_pop_if(b, if_shader_query);
       }
 
-      nir_export_primitive_amd(b, arg);
+      ac_nir_export_primitive(b, arg);
    }
    nir_pop_if(b, if_gs_thread);
 }
@@ -2840,7 +2840,7 @@ ngg_gs_export_primitives(nir_builder *b, nir_ssa_def *max_num_out_prims, nir_ssa
    }
 
    nir_ssa_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices, is_null_prim, false);
-   nir_export_primitive_amd(b, arg);
+   ac_nir_export_primitive(b, arg);
    nir_pop_if(b, if_prim_export_thread);
 }
 
