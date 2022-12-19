@@ -356,10 +356,7 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
    pdraw->base.psc = &psc->base;
 
 #ifdef HAVE_DRI3_MODIFIERS
-   if ((psc->image && psc->image->base.version >= 15) &&
-       (pdp->dri3Major > 1 || (pdp->dri3Major == 1 && pdp->dri3Minor >= 2)) &&
-       (pdp->presentMajor > 1 ||
-        (pdp->presentMajor == 1 && pdp->presentMinor >= 2)))
+   if (pdp->has_multibuffer && psc->image && psc->image->base.version >= 15)
       has_multibuffer = true;
 #endif
 
@@ -1095,7 +1092,7 @@ dri3_create_display(Display * dpy)
                                               PRESENT_SUPPORTED_MAJOR,
                                               PRESENT_SUPPORTED_MINOR);
 
-   pdp = malloc(sizeof *pdp);
+   pdp = calloc(1, sizeof *pdp);
    if (pdp == NULL)
       return NULL;
 
@@ -1105,8 +1102,8 @@ dri3_create_display(Display * dpy)
       goto no_extension;
    }
 
-   pdp->dri3Major = dri3_reply->major_version;
-   pdp->dri3Minor = dri3_reply->minor_version;
+   int dri3Major = dri3_reply->major_version;
+   int dri3Minor = dri3_reply->minor_version;
    free(dri3_reply);
 
    present_reply = xcb_present_query_version_reply(c, present_cookie, &error);
@@ -1114,9 +1111,15 @@ dri3_create_display(Display * dpy)
       free(error);
       goto no_extension;
    }
-   pdp->presentMajor = present_reply->major_version;
-   pdp->presentMinor = present_reply->minor_version;
+   int presentMajor = present_reply->major_version;
+   int presentMinor = present_reply->minor_version;
    free(present_reply);
+
+#ifdef HAVE_DRI3_MODIFIERS
+   if ((dri3Major > 1 || (dri3Major == 1 && dri3Minor >= 2)) &&
+       (presentMajor > 1 || (presentMajor == 1 && presentMinor >= 2)))
+      pdp->has_multibuffer = true;
+#endif
 
    pdp->base.destroyDisplay = dri3_destroy_display;
    pdp->base.createScreen = dri3_create_screen;
