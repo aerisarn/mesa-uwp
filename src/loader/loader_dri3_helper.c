@@ -328,6 +328,13 @@ loader_dri3_set_swap_interval(struct loader_dri3_drawable *draw, int interval)
    draw->swap_interval = interval;
 }
 
+static void
+dri3_set_render_buffer(struct loader_dri3_drawable *draw, int buf_id,
+                       struct loader_dri3_buffer *buffer)
+{
+   draw->buffers[buf_id] = buffer;
+}
+
 /** dri3_free_render_buffer
  *
  * Free everything associated with one render buffer including pixmap, fence
@@ -2051,7 +2058,7 @@ dri3_get_pixmap_buffer(__DRIdrawable *driDrawable, unsigned int format,
    buffer->shm_fence = shm_fence;
    buffer->sync_fence = sync_fence;
 
-   draw->buffers[buf_id] = buffer;
+   dri3_set_render_buffer(draw, buf_id, buffer);
 
    return buffer;
 
@@ -2159,7 +2166,7 @@ dri3_get_buffer(__DRIdrawable *driDrawable,
             fence_await = true;
       }
       buffer = new_buffer;
-      draw->buffers[buf_id] = buffer;
+      dri3_set_render_buffer(draw, buf_id, buffer);
    }
 
    if (fence_await)
@@ -2415,7 +2422,7 @@ dri3_find_back_alloc(struct loader_dri3_drawable *draw)
    if (!back)
       return NULL;
 
-   draw->buffers[id] = back;
+   dri3_set_render_buffer(draw, id, back);
 
    /* If necessary, prefill the back with data according to swap_method mode. */
    if (draw->cur_blit_source != -1 &&
