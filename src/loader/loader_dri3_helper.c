@@ -335,8 +335,13 @@ loader_dri3_set_swap_interval(struct loader_dri3_drawable *draw, int interval)
  */
 static void
 dri3_free_render_buffer(struct loader_dri3_drawable *draw,
-                        struct loader_dri3_buffer *buffer)
+                        int buf_id)
 {
+   struct loader_dri3_buffer *buffer = draw->buffers[buf_id];
+
+   if (!buffer)
+      return;
+
    if (buffer->own_pixmap)
       xcb_free_pixmap(draw->conn, buffer->pixmap);
    xcb_sync_destroy_fence(draw->conn, buffer->sync_fence);
@@ -345,6 +350,8 @@ dri3_free_render_buffer(struct loader_dri3_drawable *draw,
    if (buffer->linear_buffer)
       draw->ext->image->destroyImage(buffer->linear_buffer);
    free(buffer);
+
+   draw->buffers[buf_id] = NULL;
 }
 
 void
@@ -354,10 +361,8 @@ loader_dri3_drawable_fini(struct loader_dri3_drawable *draw)
 
    draw->ext->core->destroyDrawable(draw->dri_drawable);
 
-   for (i = 0; i < ARRAY_SIZE(draw->buffers); i++) {
-      if (draw->buffers[i])
-         dri3_free_render_buffer(draw, draw->buffers[i]);
-   }
+   for (i = 0; i < ARRAY_SIZE(draw->buffers); i++)
+      dri3_free_render_buffer(draw, i);
 
    if (draw->special_event) {
       xcb_void_cookie_t cookie =
@@ -2130,7 +2135,7 @@ dri3_get_buffer(__DRIdrawable *driDrawable,
             dri3_fence_trigger(draw->conn, new_buffer);
             fence_await = true;
          }
-         dri3_free_render_buffer(draw, buffer);
+         dri3_free_render_buffer(draw, buf_id);
       } else if (buffer_type == loader_dri3_buffer_front) {
          /* Fill the new fake front with data from a real front */
          loader_dri3_swapbuffer_barrier(draw);
@@ -2199,7 +2204,6 @@ dri3_free_buffers(__DRIdrawable *driDrawable,
                   enum loader_dri3_buffer_type buffer_type,
                   struct loader_dri3_drawable *draw)
 {
-   struct loader_dri3_buffer *buffer;
    int first_id;
    int n_id;
    int buf_id;
@@ -2219,13 +2223,8 @@ dri3_free_buffers(__DRIdrawable *driDrawable,
       unreachable("unhandled buffer_type");
    }
 
-   for (buf_id = first_id; buf_id < first_id + n_id; buf_id++) {
-      buffer = draw->buffers[buf_id];
-      if (buffer) {
-         dri3_free_render_buffer(draw, buffer);
-         draw->buffers[buf_id] = NULL;
-      }
-   }
+   for (buf_id = first_id; buf_id < first_id + n_id; buf_id++)
+      dri3_free_render_buffer(draw, buf_id);
 }
 
 /** loader_dri3_get_buffers
@@ -2260,10 +2259,8 @@ loader_dri3_get_buffers(__DRIdrawable *driDrawable,
 
    /* Free no longer needed back buffers */
    for (buf_id = draw->cur_num_back; buf_id < LOADER_DRI3_MAX_BACK; buf_id++) {
-      if (draw->cur_blit_source != buf_id && draw->buffers[buf_id]) {
-         dri3_free_render_buffer(draw, draw->buffers[buf_id]);
-         draw->buffers[buf_id] = NULL;
-      }
+      if (draw->cur_blit_source != buf_id)
+         dri3_free_render_buffer(draw, buf_id);
    }
 
    /* pixmaps always have front buffers.
