@@ -44,7 +44,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_ARB_color_buffer_float (Clamping controls)         DONE (v3d, vc4, lima, asahi)
   GL_ARB_texture_float (Float textures, renderbuffers)  DONE (v3d, asahi)
   GL_EXT_packed_float                                   DONE (v3d, asahi)
-  GL_EXT_texture_shared_exponent                        DONE (v3d)
+  GL_EXT_texture_shared_exponent                        DONE (v3d, asahi)
   GL_ARB_depth_buffer_float (Float depth buffers)       DONE (v3d, asahi)
   GL_ARB_framebuffer_object (Framebuffer objects)       DONE (v3d, vc4, asahi)
   GL_ARB_half_float_pixel                               DONE (all drivers)
@@ -61,7 +61,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   glGetStringi command                                  DONE
   glTexParameterI, glGetTexParameterI commands          DONE
   glVertexAttribI commands                              DONE
-  Depth format cube textures                            DONE ()
+  Depth format cube textures                            DONE (asahi)
   GLX_ARB_create_context (GLX 1.4 is required)          DONE (v3d, vc4, asahi)
   Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*)))
   8 draw buffers                                        DONE (panfrost/t760+)
