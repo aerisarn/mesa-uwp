@@ -270,10 +270,6 @@ struct glx_context
      */
    XID share_xid;
 
-    /**
-     * Screen number.
-     */
-   GLint screen;
    struct glx_screen *psc;
 
     /**

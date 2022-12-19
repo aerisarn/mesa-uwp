@@ -239,7 +239,6 @@ glx_context_init(struct glx_context *gc,
    if (!gc->majorOpcode)
       return False;
 
-   gc->screen = psc->scr;
    gc->psc = psc;
    gc->config = config;
    gc->isDirect = GL_TRUE;
@@ -1481,7 +1480,7 @@ glXQueryContext(Display * dpy, GLXContext ctx_user, int attribute, int *value)
       *value = ctx->config ? ctx->config->visualID : None;
       break;
    case GLX_SCREEN:
-      *value = ctx->screen;
+      *value = ctx->psc->scr;
       break;
    case GLX_FBCONFIG_ID:
       *value = ctx->config ? ctx->config->fbconfigID : None;
