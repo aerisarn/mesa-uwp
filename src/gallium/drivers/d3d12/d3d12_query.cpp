@@ -26,6 +26,7 @@
 #include "d3d12_context.h"
 #include "d3d12_resource.h"
 #include "d3d12_screen.h"
+#include "d3d12_fence.h"
 
 #include "util/u_dump.h"
 #include "util/u_inlines.h"
@@ -359,6 +360,12 @@ begin_subquery(struct d3d12_context *ctx, struct d3d12_query *q_parent, unsigned
    if (q->curr_query == q->num_queries) {
       union pipe_query_result result;
 
+      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, q_parent, false);
+      d3d12_foreach_submitted_batch(ctx, old_batch) {
+         if (old_batch->fence && old_batch->fence->value <= q_parent->fence_value)
+            d3d12_reset_batch(ctx, old_batch, PIPE_TIMEOUT_INFINITE);
+      }
+
       /* Accumulate current results and store in first slot */
       accumulate_subresult(ctx, q_parent, sub_query, &result, true);
       q->curr_query = 1;
@@ -399,7 +406,13 @@ begin_timer_query(struct d3d12_context *ctx, struct d3d12_query *q_parent, bool 
       union pipe_query_result result;
 
       /* Accumulate current results and store in first slot */
-      d3d12_flush_cmdlist_and_wait(ctx);
+
+      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, q_parent, false);
+      d3d12_foreach_submitted_batch(ctx, old_batch) {
+         if (old_batch->fence && old_batch->fence->value <= q_parent->fence_value)
+            d3d12_reset_batch(ctx, old_batch, PIPE_TIMEOUT_INFINITE);
+      }
+
       accumulate_subresult(ctx, q_parent, 0, &result, true);
       q->curr_query = 2;
    }
@@ -577,7 +590,13 @@ d3d12_render_condition(struct pipe_context *pctx,
                                                            PIPE_USAGE_DEFAULT, sizeof(uint64_t)));
 
    if (mode == PIPE_RENDER_COND_WAIT) {
-      d3d12_flush_cmdlist_and_wait(ctx);
+
+      query_ensure_ready(d3d12_screen(ctx->base.screen), ctx, query, false);
+      d3d12_foreach_submitted_batch(ctx, old_batch) {
+         if (old_batch->fence && old_batch->fence->value <= query->fence_value)
+            d3d12_reset_batch(ctx, old_batch, PIPE_TIMEOUT_INFINITE);
+      }
+
       union pipe_query_result result;
       accumulate_result(ctx, (d3d12_query *)pquery, &result, true);
    }
