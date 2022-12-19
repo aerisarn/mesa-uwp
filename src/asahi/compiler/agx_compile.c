@@ -1918,32 +1918,7 @@ agx_preprocess_nir(nir_shader *nir)
 
    /* Clean up deref gunk after lowering I/O */
    NIR_PASS_V(nir, nir_opt_dce);
-
-   nir_lower_tex_options lower_tex_options = {
-      .lower_txp = ~0,
-      .lower_invalid_implicit_lod = true,
-
-      /* XXX: Metal seems to handle just like 3D txd, so why doesn't it work?
-       * TODO: Stop using this lowering
-       */
-      .lower_txd_cube_map = true,
-   };
-
-   nir_tex_src_type_constraints tex_constraints = {
-      [nir_tex_src_lod] = {true, 16},
-      [nir_tex_src_bias] = {true, 16},
-      [nir_tex_src_ms_index] = {true, 16},
-   };
-
-   NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
-   NIR_PASS_V(nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
-
-   /* Lower texture sources after legalizing types (as the lowering depends on
-    * 16-bit multisample indices) but before lowering queries (as the lowering
-    * generates txs for array textures).
-    */
-   NIR_PASS_V(nir, agx_nir_lower_array_texture);
-   NIR_PASS_V(nir, agx_lower_resinfo);
+   NIR_PASS_V(nir, agx_nir_lower_texture);
 
    nir->info.io_lowered = true;
 }
