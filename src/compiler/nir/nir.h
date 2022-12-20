@@ -5491,7 +5491,7 @@ struct nir_fold_tex_srcs_options {
 
 struct nir_fold_16bit_tex_image_options {
    nir_rounding_mode rounding_mode;
-   bool fold_tex_dest;
+   nir_alu_type fold_tex_dest_types;
    bool fold_image_load_store_data;
    bool fold_image_srcs;
    unsigned fold_srcs_options_count;

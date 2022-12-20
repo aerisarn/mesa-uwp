@@ -3745,7 +3745,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
       };
       struct nir_fold_16bit_tex_image_options fold_16bit_options = {
          .rounding_mode = nir_rounding_mode_rtne,
-         .fold_tex_dest = true,
+         .fold_tex_dest_types = nir_type_float | nir_type_uint | nir_type_int,
          .fold_image_load_store_data = true,
          .fold_image_srcs = !radv_use_llvm_for_stage(device, stage->stage),
          .fold_srcs_options_count = separate_g16 ? 2 : 1,
