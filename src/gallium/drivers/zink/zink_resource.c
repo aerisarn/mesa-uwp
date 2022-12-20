@@ -1363,7 +1363,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
       if (screen->info.have_EXT_image_drm_format_modifier)
-         *value = util_format_get_num_planes(res->drm_format);
+         *value = screen->base.get_dmabuf_modifier_planes(&screen->base, obj->modifier, res->internal_format);
       else
          *value = 1;
       break;
@@ -1549,7 +1549,6 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
    struct pipe_resource *pres = resource_create(pscreen, &templ2, whandle, usage, &modifier, modifier_count, NULL);
    if (pres) {
       struct zink_resource *res = zink_resource(pres);
-      res->drm_format = whandle->format;
       if (pres->target != PIPE_BUFFER)
          res->valid = true;
       else
