@@ -971,30 +971,16 @@ if get_option('buildtype') == 'debug'
   pre_args += '-DDEBUG'
 endif
 
-with_shader_cache = false
-_shader_cache = get_option('shader-cache')
-if _shader_cache == 'true'
-  _shader_cache = 'enabled'
-  warning('shader_cache option "true" deprecated, please use "enabled" instead.')
-elif _shader_cache == 'false'
-  _shader_cache = 'disabled'
-  warning('shader_cache option "false" deprecated, please use "disabled" instead.')
-endif
-if _shader_cache != 'disabled'
-  if host_machine.system() == 'windows'
-    if _shader_cache == 'enabled'
-      error('Shader Cache does not currently work on Windows')
-    endif
-  else
-    pre_args += '-DENABLE_SHADER_CACHE'
-    if not get_option('shader-cache-default')
-      pre_args += '-DSHADER_CACHE_DISABLE_BY_DEFAULT'
-    endif
-    with_shader_cache = true
-  endif
-endif
+with_shader_cache = get_option('shader-cache') \
+  .require(host_machine.system() != 'windows', error_message : 'Shader Cache does not currently work on Windows') \
+  .allowed() 
 
 if with_shader_cache
+  pre_args += '-DENABLE_SHADER_CACHE'
+  if not get_option('shader-cache-default')
+    pre_args += '-DSHADER_CACHE_DISABLE_BY_DEFAULT'
+  endif
+
   shader_cache_max_size = get_option('shader-cache-max-size')
   if shader_cache_max_size != ''
     pre_args += '-DMESA_SHADER_CACHE_MAX_SIZE="@0@"'.format(shader_cache_max_size)
