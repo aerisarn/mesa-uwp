@@ -240,7 +240,9 @@ dzn_image_create(struct dzn_device *device,
     * destination. Both operations require the RT or DS cap flags.
     */
    if ((image->vk.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) &&
-       image->vk.tiling == VK_IMAGE_TILING_OPTIMAL) {
+       image->vk.tiling == VK_IMAGE_TILING_OPTIMAL &&
+       (image->desc.Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+                             D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) == D3D12_RESOURCE_FLAG_NONE) {
 
       D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info =
          dzn_physical_device_get_format_support(pdev, pCreateInfo->format);
