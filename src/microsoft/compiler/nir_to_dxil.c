@@ -4930,6 +4930,7 @@ emit_sample_cmp_level_zero(struct ntd_context *ctx, struct texop_parameters *par
 static const struct dxil_value *
 emit_sample_cmp_level(struct ntd_context *ctx, struct texop_parameters *params)
 {
+   ctx->mod.feats.advanced_texture_ops = true;
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.sampleCmpLevel", params->overload);
    if (!func)
       return NULL;
@@ -5068,6 +5069,10 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
                                        &instr->src[i],  nir_type_int);
          if (!offset_components)
             return false;
+
+         /* Dynamic offsets were only allowed with gather, until "advanced texture ops" in SM7 */
+         if (!nir_src_is_const(instr->src[i].src) && instr->op != nir_texop_tg4)
+            ctx->mod.feats.advanced_texture_ops = true;
          break;
 
       case nir_tex_src_bias:
