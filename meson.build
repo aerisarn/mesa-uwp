@@ -783,29 +783,11 @@ if va_drivers_path == ''
   va_drivers_path = join_paths(get_option('libdir'), 'dri')
 endif
 
-_xa = get_option('gallium-xa')
-if _xa == 'true'
-  _xa = 'enabled'
-  warning('gallium-xa option "true" deprecated, please use "enabled" instead.')
-elif _xa == 'false'
-  _xa = 'disabled'
-  warning('gallium-xa option "false" deprecated, please use "disabled" instead.')
-endif
-if not system_has_kms_drm
-  if _xa == 'enabled'
-    error('XA state tracker can only be built on unix-like OSes.')
-  else
-    _xa = 'disabled'
-  endif
-elif not (with_gallium_nouveau or with_gallium_freedreno or with_gallium_i915
-          or with_gallium_svga)
-  if _xa == 'enabled'
-    error('XA state tracker requires at least one of the following gallium drivers: nouveau, freedreno, i915, svga.')
-  else
-    _xa = 'disabled'
-  endif
-endif
-with_gallium_xa = _xa != 'disabled'
+with_gallium_xa = get_option('gallium-xa') \
+  .require(system_has_kms_drm, error_message : 'XA state tracker can only be built on unix-like OSes.') \
+  .require(with_gallium_nouveau or with_gallium_freedreno or with_gallium_i915 or with_gallium_svga,
+           error_message : 'XA state tracker requires at least one of the following gallium drivers: nouveau, freedreno, i915, svga.') \
+  .allowed()
 
 d3d_drivers_path = get_option('d3d-drivers-path')
 if d3d_drivers_path == ''

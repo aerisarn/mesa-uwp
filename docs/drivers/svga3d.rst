@@ -193,7 +193,7 @@ Building the Code
    ::
 
       cd $TOP/mesa
-      meson builddir --prefix=/usr --libdir=${LIBDIR} -Dgallium-drivers=svga -Dgallium-xa=true -Ddri3=disabled
+      meson builddir --prefix=/usr --libdir=${LIBDIR} -Dgallium-drivers=svga -Dgallium-xa=enabled -Ddri3=disabled
       ninja -C builddir
       sudo ninja -C builddir install
         
