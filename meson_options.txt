@@ -85,9 +85,7 @@ option(
 )
 option(
   'gallium-vdpau',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'enable gallium vdpau frontend.',
 )
 option(
