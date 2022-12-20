@@ -1894,8 +1894,12 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       agx_print_shader(ctx, stdout);
 
    if (likely(!(agx_debug & AGX_DBG_NOOPT))) {
+      /* Dead code eliminate before instruction combining so use counts are
+       * right */
+      agx_dce(ctx);
       agx_optimizer(ctx);
       agx_opt_cse(ctx);
+      /* Dead code eliminate after instruction combining to get the benefit */
       agx_dce(ctx);
       agx_validate(ctx, "Optimization");
 
