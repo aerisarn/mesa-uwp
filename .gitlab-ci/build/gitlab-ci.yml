@@ -82,7 +82,7 @@ debian-testing:
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
       -D spirv-to-dxil=true
-      -D valgrind=false
+      -D valgrind=disabled
       -D perfetto=true
     MINIO_ARTIFACT_NAME: mesa-amd64
     LLVM_VERSION: "13"
@@ -101,7 +101,7 @@ debian-testing-asan:
       -Wno-error=stringop-truncation
     EXTRA_OPTION: >
       -D b_sanitize=address
-      -D valgrind=false
+      -D valgrind=disabled
       -D tools=dlclose-skip
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
@@ -138,7 +138,7 @@ debian-testing-msan:
     GALLIUM_DRIVERS: "swrast"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
-      -D valgrind=false
+      -D valgrind=disabled
   script:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -332,7 +332,7 @@ debian-android:
       -D android-stub=true
       -D llvm=disabled
       -D platform-sdk-version=29
-      -D valgrind=false
+      -D valgrind=disabled
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -394,7 +394,7 @@ debian-armhf:
     CROSS: armhf
     EXTRA_OPTION: >
       -D llvm=disabled
-      -D valgrind=false
+      -D valgrind=disabled
     MINIO_ARTIFACT_NAME: mesa-armhf
     # The strip command segfaults, failing to strip the binary and leaving
     # tempfiles in our artifacts.
@@ -411,7 +411,7 @@ debian-arm64:
     VULKAN_DRIVERS: "freedreno,broadcom,panfrost,imagination-experimental"
     EXTRA_OPTION: >
       -D llvm=disabled
-      -D valgrind=false
+      -D valgrind=disabled
       -D imagination-srv=true
       -D perfetto=true
     MINIO_ARTIFACT_NAME: mesa-arm64
@@ -426,7 +426,7 @@ debian-arm64-asan:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D b_sanitize=address
-      -D valgrind=false
+      -D valgrind=disabled
       -D tools=dlclose-skip
     ARTIFACTS_DEBUG_SYMBOLS: 1
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
@@ -527,7 +527,7 @@ windows-vs2019:
       -D egl=disabled
       -D gbm=disabled
     EXTRA_OPTION: >
-      -D valgrind=false
+      -D valgrind=disabled
 
 debian-clover:
   extends: .debian-cl

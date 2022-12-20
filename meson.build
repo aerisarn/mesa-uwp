@@ -1826,21 +1826,9 @@ if with_glvnd
   pre_args += '-DUSE_LIBGLVND=1'
 endif
 
-_valgrind = get_option('valgrind')
-if _valgrind == 'true'
-  _valgrind = 'enabled'
-  warning('valgrind option "true" deprecated, please use "enabled" instead.')
-elif _valgrind == 'false'
-  _valgrind = 'disabled'
-  warning('valgrind option "false" deprecated, please use "disabled" instead.')
-endif
-if _valgrind != 'disabled'
-  dep_valgrind = dependency('valgrind', required : _valgrind == 'enabled')
-  if dep_valgrind.found()
-    pre_args += '-DHAVE_VALGRIND'
-  endif
-else
-  dep_valgrind = null_dep
+dep_valgrind = dependency('valgrind', required : get_option('valgrind'))
+if dep_valgrind.found()
+  pre_args += '-DHAVE_VALGRIND'
 endif
 
 # AddressSanitizer's leak reports need all the symbols to be present at exit to
