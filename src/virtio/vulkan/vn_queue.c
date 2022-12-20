@@ -1551,6 +1551,11 @@ vn_GetSemaphoreFdKHR(VkDevice device,
 
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
+   assert((dev->physical_device->renderer_sync_fd_semaphore_features &
+           VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT));
+   assert((dev->physical_device->renderer_sync_fd_semaphore_features &
+           VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT));
+
    int fd = -1;
    if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
       VkResult result = vn_create_sync_file(dev, sem->ring_idx, &fd);
@@ -1565,35 +1570,27 @@ vn_GetSemaphoreFdKHR(VkDevice device,
       payload->fd = -1;
    }
 
-   /* required sync_fd features for fixing the host semaphore payload */
-   static const VkExternalSemaphoreFeatureFlags req_sync_fd_feats =
-      VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
-      VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT;
-   if ((dev->physical_device->renderer_sync_fd_semaphore_features &
-        req_sync_fd_feats) == req_sync_fd_feats) {
-
-      /* When payload->type is VN_SYNC_TYPE_IMPORTED_SYNC_FD, the current
-       * payload is from a prior temporary sync_fd import. The permanent
-       * payload of the sempahore might be in signaled state. So we do an
-       * import here to ensure later wait operation is legit. With resourceId
-       * 0, renderer does a signaled sync_fd -1 payload import on the host
-       * semaphore.
-       */
-      if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD) {
-         const VkImportSemaphoreResourceInfo100000MESA res_info = {
-            .sType =
-               VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
-            .semaphore = pGetFdInfo->semaphore,
-            .resourceId = 0,
-         };
-         vn_async_vkImportSemaphoreResource100000MESA(dev->instance, device,
-                                                      &res_info);
-      }
-
-      /* perform wait operation on the host semaphore */
-      vn_async_vkWaitSemaphoreResource100000MESA(dev->instance, device,
-                                                 pGetFdInfo->semaphore);
+   /* When payload->type is VN_SYNC_TYPE_IMPORTED_SYNC_FD, the current
+    * payload is from a prior temporary sync_fd import. The permanent
+    * payload of the sempahore might be in signaled state. So we do an
+    * import here to ensure later wait operation is legit. With resourceId
+    * 0, renderer does a signaled sync_fd -1 payload import on the host
+    * semaphore.
+    */
+   if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD) {
+      const VkImportSemaphoreResourceInfo100000MESA res_info = {
+         .sType =
+            VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
+         .semaphore = pGetFdInfo->semaphore,
+         .resourceId = 0,
+      };
+      vn_async_vkImportSemaphoreResource100000MESA(dev->instance, device,
+                                                   &res_info);
    }
+
+   /* perform wait operation on the host semaphore */
+   vn_async_vkWaitSemaphoreResource100000MESA(dev->instance, device,
+                                              pGetFdInfo->semaphore);
 
    vn_sync_payload_release(dev, &sem->temporary);
    sem->payload = &sem->permanent;

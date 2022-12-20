@@ -965,7 +965,11 @@ vn_physical_device_get_native_extensions(
            VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT))
          exts->KHR_external_fence_fd = true;
 
-      exts->KHR_external_semaphore_fd = true;
+      if ((physical_dev->renderer_sync_fd_semaphore_features &
+           VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) &&
+          (physical_dev->renderer_sync_fd_semaphore_features &
+           VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT))
+         exts->KHR_external_semaphore_fd = true;
    }
 #endif
 
