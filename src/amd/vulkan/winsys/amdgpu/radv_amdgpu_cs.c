@@ -1193,9 +1193,9 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
 
       u_rwlock_rdlock(&aws->global_bo_list.lock);
 
-      result =
-         radv_amdgpu_get_bo_list(cs0->ws, &cs_array[i], cnt, (struct radv_amdgpu_winsys_bo **)bos,
-                                 number_of_ibs, &preamble_cs, 1, &num_handles, &handles);
+      result = radv_amdgpu_get_bo_list(cs0->ws, &cs_array[i], cnt,
+                                       (struct radv_amdgpu_winsys_bo **)bos, number_of_ibs,
+                                       &preamble_cs, preamble_cs ? 1 : 0, &num_handles, &handles);
       if (result != VK_SUCCESS) {
          free(ibs);
          free(bos);

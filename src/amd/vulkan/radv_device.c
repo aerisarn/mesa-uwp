@@ -5647,16 +5647,22 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
     * before starting the next cmdbuffer, so we need to do it here.
     */
    const bool need_wait = submission->wait_count > 0;
+   unsigned num_preambles = 0;
+   struct radeon_cmdbuf *preambles[4] = {0};
 
-   struct radeon_cmdbuf *preambles[4] = {
-      need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs,
-   };
+   if (queue->state.qf == RADV_QUEUE_GENERAL || queue->state.qf == RADV_QUEUE_COMPUTE) {
+      preambles[num_preambles++] =
+         need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs;
+   }
+
+   const unsigned num_1q_preambles = num_preambles;
 
    if (use_ace) {
-      preambles[1] = queue->state.gang_wait_preamble_cs;
-      preambles[2] = queue->ace_internal_state->gang_wait_preamble_cs;
-      preambles[3] = need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
-                               : queue->ace_internal_state->initial_preamble_cs;
+      preambles[num_preambles++] = queue->state.gang_wait_preamble_cs;
+      preambles[num_preambles++] = queue->ace_internal_state->gang_wait_preamble_cs;
+      preambles[num_preambles++] = need_wait
+                                      ? queue->ace_internal_state->initial_full_flush_preamble_cs
+                                      : queue->ace_internal_state->initial_preamble_cs;
    }
 
    struct radv_winsys_submit_info submit = {
@@ -5709,7 +5715,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          cs_array[num_submitted_cs++] = perf_ctr_unlock_cs;
 
       submit.cs_count = num_submitted_cs;
-      submit.preamble_count = submit_ace ? 4 : 1;
+      submit.preamble_count = submit_ace ? num_preambles : num_1q_preambles;
 
       result = queue->device->ws->cs_submit(
          ctx, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
