@@ -26,7 +26,6 @@
 #include "agx_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir_types.h"
-#include "util/fast_idiv_by_const.h"
 #include "util/glheader.h"
 #include "util/u_debug.h"
 #include "agx_builder.h"
@@ -315,48 +314,6 @@ agx_umul_high(agx_builder *b, agx_index P, agx_index Q)
    agx_index dst = agx_temp(b->shader, P.size);
    agx_umul_high_to(b, dst, P, Q);
    return dst;
-}
-
-/* Emit code dividing P by Q */
-static agx_index
-agx_udiv_const(agx_builder *b, agx_index P, uint32_t Q)
-{
-   /* P / 1 = P */
-   if (Q == 1) {
-      return P;
-   }
-
-   /* P / UINT32_MAX = 0, unless P = UINT32_MAX when it's one */
-   if (Q == UINT32_MAX) {
-      agx_index max = agx_mov_imm(b, 32, UINT32_MAX);
-      agx_index one = agx_mov_imm(b, 32, 1);
-      return agx_icmpsel(b, P, max, one, agx_zero(), AGX_ICOND_UEQ);
-   }
-
-   /* P / 2^N = P >> N */
-   if (util_is_power_of_two_or_zero(Q)) {
-      return agx_ushr(b, P, agx_mov_imm(b, 32, util_logbase2(Q)));
-   }
-
-   /* Fall back on multiplication by a magic number */
-   struct util_fast_udiv_info info = util_compute_fast_udiv_info(Q, 32, 32);
-   agx_index preshift = agx_mov_imm(b, 32, info.pre_shift);
-   agx_index increment = agx_mov_imm(b, 32, info.increment);
-   agx_index postshift = agx_mov_imm(b, 32, info.post_shift);
-   agx_index multiplier = agx_mov_imm(b, 32, info.multiplier);
-   agx_index n = P;
-
-   if (info.pre_shift != 0)
-      n = agx_ushr(b, n, preshift);
-   if (info.increment != 0)
-      n = agx_iadd(b, n, increment, 0);
-
-   n = agx_umul_high(b, n, multiplier);
-
-   if (info.post_shift != 0)
-      n = agx_ushr(b, n, postshift);
-
-   return n;
 }
 
 static enum agx_format
