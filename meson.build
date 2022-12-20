@@ -2064,21 +2064,9 @@ if get_option('gallium-extra-hud')
   pre_args += '-DHAVE_GALLIUM_EXTRA_HUD=1'
 endif
 
-_sensors = get_option('lmsensors')
-if _sensors == 'true'
-  _sensors = 'enabled'
-  warning('lmsensors option "true" deprecated, please use "enabled" instead.')
-elif _sensors == 'false'
-  _sensors = 'disabled'
-  warning('lmsensors option "false" deprecated, please use "disabled" instead.')
-endif
-if _sensors != 'disabled'
-  dep_lmsensors = cc.find_library('sensors', required : _sensors == 'enabled')
-  if dep_lmsensors.found()
-    pre_args += '-DHAVE_LIBSENSORS=1'
-  endif
-else
-  dep_lmsensors = null_dep
+dep_lmsensors = cc.find_library('sensors', required : get_option('lmsensors'))
+if dep_lmsensors.found()
+  pre_args += '-DHAVE_LIBSENSORS=1'
 endif
 
 _shader_replacement = get_option('custom-shader-replacement')
