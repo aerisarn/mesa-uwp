@@ -1618,6 +1618,10 @@ get_module_flags(struct ntd_context *ctx)
       flags |= (1 << 9);
    if (ctx->mod.feats.inner_coverage)
       flags |= (1 << 10);
+   if (ctx->mod.feats.stencil_ref)
+      flags |= (1 << 11);
+   if (ctx->mod.feats.tiled_resources)
+      flags |= (1 << 12);
    if (ctx->mod.feats.typed_uav_load_additional_formats)
       flags |= (1 << 13);
    if (ctx->mod.feats.use_64uavs)
@@ -1626,16 +1630,40 @@ get_module_flags(struct ntd_context *ctx)
       flags |= (1 << 16);
    if (ctx->mod.feats.cs_4x_raw_sb)
       flags |= (1 << 17);
+   if (ctx->mod.feats.rovs)
+      flags |= (1 << 18);
    if (ctx->mod.feats.wave_ops)
       flags |= (1 << 19);
    if (ctx->mod.feats.int64_ops)
       flags |= (1 << 20);
+   if (ctx->mod.feats.view_id)
+      flags |= (1 << 21);
    if (ctx->mod.feats.barycentrics)
       flags |= (1 << 22);
-   if (ctx->mod.feats.stencil_ref)
-      flags |= (1 << 11);
    if (ctx->mod.feats.native_low_precision)
       flags |= (1 << 23) | (1 << 5);
+   if (ctx->mod.feats.shading_rate)
+      flags |= (1 << 24);
+   if (ctx->mod.feats.raytracing_tier_1_1)
+      flags |= (1 << 25);
+   if (ctx->mod.feats.sampler_feedback)
+      flags |= (1 << 26);
+   if (ctx->mod.feats.atomic_int64_typed)
+      flags |= (1 << 27);
+   if (ctx->mod.feats.atomic_int64_tgsm)
+      flags |= (1 << 28);
+   if (ctx->mod.feats.derivatives_in_mesh_or_amp)
+      flags |= (1 << 29);
+   if (ctx->mod.feats.resource_descriptor_heap_indexing)
+      flags |= (1 << 30);
+   if (ctx->mod.feats.sampler_descriptor_heap_indexing)
+      flags |= (1 << 31);
+   if (ctx->mod.feats.atomic_int64_heap_resource)
+      flags |= (1ull << 32);
+   if (ctx->mod.feats.advanced_texture_ops)
+      flags |= (1ull << 34);
+   if (ctx->mod.feats.writable_msaa)
+      flags |= (1ull << 35);
 
    if (ctx->opts->disable_math_refactoring)
       flags |= (1 << 1);
