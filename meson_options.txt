@@ -262,9 +262,7 @@ option(
 )
 option(
   'gbm',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Build support for gbm platform'
 )
 option(

@@ -359,22 +359,10 @@ if not (with_dri or with_gallium or with_glx != 'disabled')
   with_shared_glapi = false
 endif
 
-_gbm = get_option('gbm')
-if _gbm == 'true'
-  _gbm = 'enabled'
-  warning('gbm option "true" deprecated, please use "enabled" instead.')
-elif _gbm == 'false'
-  _gbm = 'disabled'
-  warning('gbm option "false" deprecated, please use "disabled" instead.')
-endif
-if _gbm == 'auto'
-  with_gbm = system_has_kms_drm and with_dri
-else
-  with_gbm = _gbm == 'enabled'
-endif
-if with_gbm and not system_has_kms_drm
-  error('GBM only supports DRM/KMS platforms')
-endif
+with_gbm = get_option('gbm') \
+  .require(system_has_kms_drm, error_message : 'GBM only supports DRM/KMS platforms') \
+  .disable_auto_if(not with_dri) \
+  .allowed()
 
 _xlib_lease = get_option('xlib-lease')
 if _xlib_lease == 'true'
