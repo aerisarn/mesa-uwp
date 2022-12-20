@@ -961,7 +961,10 @@ vn_physical_device_get_native_extensions(
 
    /* we have a very poor implementation */
    if (instance->experimental.globalFencing) {
-      exts->KHR_external_fence_fd = true;
+      if ((physical_dev->renderer_sync_fd_fence_features &
+           VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT))
+         exts->KHR_external_fence_fd = true;
+
       exts->KHR_external_semaphore_fd = true;
    }
 #endif

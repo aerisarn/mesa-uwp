@@ -1241,18 +1241,17 @@ vn_GetFenceFdKHR(VkDevice device,
 
    assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
+   assert(dev->physical_device->renderer_sync_fd_fence_features &
+          VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT);
+
    int fd = -1;
    if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
       result = vn_create_sync_file(dev, fence->ring_idx, &fd);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
 
-      /* perform reset operation on the host fence */
-      if (dev->physical_device->renderer_sync_fd_fence_features &
-          VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT) {
-         vn_async_vkResetFenceResource100000MESA(dev->instance, device,
-                                                 pGetFdInfo->fence);
-      }
+      vn_async_vkResetFenceResource100000MESA(dev->instance, device,
+                                              pGetFdInfo->fence);
 
       vn_sync_payload_release(dev, &fence->temporary);
       fence->payload = &fence->permanent;
