@@ -107,51 +107,23 @@ if gbm_backends_path == ''
   gbm_backends_path = join_paths(get_option('prefix'), get_option('libdir'), 'gbm')
 endif
 
-with_gles2 = get_option('gles2')
-if with_gles2 == 'true'
-  with_gles2 = 'enabled'
-  warning('gles2 option "true" deprecated, please use "enabled" instead.')
-elif with_gles2 == 'false'
-  with_gles2 = 'disabled'
-  warning('gles2 option "false" deprecated, please use "disabled" instead.')
-endif
-if host_machine.system() == 'windows'
-  if with_gles1 == 'auto'
-    with_gles1 = 'disabled'
-  endif
-  if with_gles2 == 'auto'
-    with_gles2 = 'disabled'
-  endif
-endif
-with_opengl = get_option('opengl')
-
 # Default shared glapi off for windows, on elsewhere.
 with_shared_glapi = get_option('shared-glapi') \
   .disable_auto_if(host_machine.system() == 'windows') \
   .allowed()
+
+with_opengl = get_option('opengl')
 
 with_gles1 = get_option('gles1') \
   .require(with_shared_glapi, error_message : 'OpengGL ES 1.x requires shared-glapi') \
   .require(with_opengl, error_message : 'building OpenGL ES 1.x without OpenGL is not supported.') \
   .allowed()
 
-# shared-glapi is required if at least two OpenGL APIs are being built
-if not with_shared_glapi
-  if with_gles2 == 'enabled' and not with_opengl
-    error('shared-glapi required for building two or more of OpenGL, OpenGL ES 1.x, OpenGL ES 2.x')
-  endif
-  with_gles2 = 'disabled'
-endif
+with_gles2 = get_option('gles2') \
+  .require(with_shared_glapi, error_message : 'OpengGL ES 2.x requires shared-glapi') \
+  .require(with_opengl, error_message : 'building OpenGL ES 2.x without OpenGL is not supported.') \
+  .allowed()
 
-# We require OpenGL for OpenGL ES
-if not with_opengl
-  if with_gles2 == 'enabled' and not with_opengl
-    error('building OpenGL ES without OpenGL is not supported.')
-  endif
-  with_gles2 = 'disabled'
-endif
-
-with_gles2 = with_gles2 != 'disabled'
 with_any_opengl = with_opengl or with_gles1 or with_gles2
 # Only build shared_glapi if at least one OpenGL API is enabled
 with_shared_glapi = with_shared_glapi and with_any_opengl

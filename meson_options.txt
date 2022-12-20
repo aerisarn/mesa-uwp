@@ -251,9 +251,7 @@ option(
 )
 option(
   'gles2',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Build support for OpenGL ES 2.x and 3.x'
 )
 option(
