@@ -806,6 +806,7 @@ agx_validate(UNUSED agx_context *ctx, UNUSED const char *after_str)
 }
 #endif
 
+unsigned agx_read_registers(agx_instr *I, unsigned s);
 unsigned agx_write_registers(agx_instr *I, unsigned d);
 
 struct agx_copy {

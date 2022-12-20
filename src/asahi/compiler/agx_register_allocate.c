@@ -88,6 +88,92 @@ agx_split_width(const agx_instr *I)
    return width;
 }
 
+unsigned
+agx_read_registers(agx_instr *I, unsigned s)
+{
+   unsigned size = agx_size_align_16(I->src[s].size);
+
+   switch (I->op) {
+   case AGX_OPCODE_SPLIT:
+      return I->nr_dests * agx_size_align_16(agx_split_width(I));
+
+   case AGX_OPCODE_DEVICE_STORE:
+   case AGX_OPCODE_ST_TILE:
+      if (s == 0)
+         return util_bitcount(I->mask) * size;
+      else
+         return size;
+
+   case AGX_OPCODE_ZS_EMIT:
+      if (s == 1) {
+         /* Depth (bit 0) is fp32, stencil (bit 1) is u16 in the hw but we pad
+          * up to u32 for simplicity
+          */
+         return 2 * (!!(I->zs & 1) + !!(I->zs & 2));
+      } else {
+         return 1;
+      }
+
+   case AGX_OPCODE_TEXTURE_LOAD:
+   case AGX_OPCODE_TEXTURE_SAMPLE:
+      if (s == 0) {
+         /* Coordinates. We internally handle sample index as 32-bit */
+         switch (I->dim) {
+         case AGX_DIM_1D:
+            return 2 * 1;
+         case AGX_DIM_1D_ARRAY:
+            return 2 * 2;
+         case AGX_DIM_2D:
+            return 2 * 2;
+         case AGX_DIM_2D_ARRAY:
+            return 2 * 3;
+         case AGX_DIM_2D_MS:
+            return 2 * 3;
+         case AGX_DIM_3D:
+            return 2 * 3;
+         case AGX_DIM_CUBE:
+            return 2 * 3;
+         case AGX_DIM_CUBE_ARRAY:
+            return 2 * 4;
+         case AGX_DIM_2D_MS_ARRAY:
+            return 2 * 4;
+         }
+
+         unreachable("Invalid texture dimension");
+      } else if (s == 1) {
+         /* LOD */
+         if (I->lod_mode == AGX_LOD_MODE_LOD_GRAD) {
+            switch (I->dim) {
+            case AGX_DIM_1D:
+            case AGX_DIM_1D_ARRAY:
+               return 2 * 2 * 1;
+            case AGX_DIM_2D:
+            case AGX_DIM_2D_ARRAY:
+            case AGX_DIM_2D_MS_ARRAY:
+            case AGX_DIM_2D_MS:
+               return 2 * 2 * 2;
+            case AGX_DIM_CUBE:
+            case AGX_DIM_CUBE_ARRAY:
+            case AGX_DIM_3D:
+               return 2 * 2 * 3;
+            }
+
+            unreachable("Invalid texture dimension");
+         } else {
+            return 1;
+         }
+      } else if (s == 4) {
+         /* Compare/offset */
+         return 2 * ((!!I->shadow) + (!!I->offset));
+      } else {
+         return size;
+      }
+
+   default:
+      return size;
+   }
+}
+
 static unsigned
 find_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
 {
