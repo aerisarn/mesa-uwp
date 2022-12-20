@@ -327,10 +327,20 @@ copy_entry_create(struct util_dynarray *copies,
  */
 static void
 copy_entry_remove(struct util_dynarray *copies,
-                  struct copy_entry *entry)
+                  struct copy_entry *entry,
+                  struct copy_entry **relocated_entry)
 {
    const struct copy_entry *src =
       util_dynarray_pop_ptr(copies, struct copy_entry);
+
+   /* Because we're removing elements from an array, pointers to those
+    * elements are not stable as we modify the array.
+    * If relocated_entry != NULL, it's points to an entry we saved off earlier
+    * and want to keep pointing to the right spot.
+    */
+   if (relocated_entry && *relocated_entry == src)
+      *relocated_entry = entry;
+
    if (src != entry)
       *entry = *src;
 }
@@ -377,14 +387,14 @@ lookup_entry_and_kill_aliases(struct copy_prop_var_state *state,
 {
    /* TODO: Take into account the write_mask. */
 
-   nir_deref_instr *dst_match = NULL;
+   struct copy_entry *entry = NULL;
    util_dynarray_foreach_reverse(copies, struct copy_entry, iter) {
       if (!iter->src.is_ssa) {
          /* If this write aliases the source of some entry, get rid of it */
          nir_deref_compare_result result =
             nir_compare_derefs_and_paths(state->mem_ctx, &iter->src.deref, deref);
          if (result & nir_derefs_may_alias_bit) {
-            copy_entry_remove(copies, iter);
+            copy_entry_remove(copies, iter, &entry);
             continue;
          }
       }
@@ -393,26 +403,14 @@ lookup_entry_and_kill_aliases(struct copy_prop_var_state *state,
          nir_compare_derefs_and_paths(state->mem_ctx, &iter->dst, deref);
 
       if (comp & nir_derefs_equal_bit) {
-         /* Removing entries invalidate previous iter pointers, so we'll
-          * collect the matching entry later.  Just make sure it is unique.
-          */
-         assert(!dst_match);
-         dst_match = iter->dst.instr;
+         /* Make sure it is unique. */
+         assert(!entry);
+         entry = iter;
       } else if (comp & nir_derefs_may_alias_bit) {
-         copy_entry_remove(copies, iter);
+         copy_entry_remove(copies, iter, &entry);
       }
    }
 
-   struct copy_entry *entry = NULL;
-   if (dst_match) {
-      util_dynarray_foreach(copies, struct copy_entry, iter) {
-         if (iter->dst.instr == dst_match) {
-            entry = iter;
-            break;
-         }
-      }
-      assert(entry);
-   }
    return entry;
 }
 
@@ -427,7 +425,7 @@ kill_aliases(struct copy_prop_var_state *state,
    struct copy_entry *entry =
       lookup_entry_and_kill_aliases(state, copies, deref, write_mask);
    if (entry)
-      copy_entry_remove(copies, entry);
+      copy_entry_remove(copies, entry, NULL);
 }
 
 static struct copy_entry *
@@ -454,7 +452,7 @@ apply_barrier_for_modes(struct util_dynarray *copies,
    util_dynarray_foreach_reverse(copies, struct copy_entry, iter) {
       if (nir_deref_mode_may_be(iter->dst.instr, modes) ||
           (!iter->src.is_ssa && nir_deref_mode_may_be(iter->src.deref.instr, modes)))
-         copy_entry_remove(copies, iter);
+         copy_entry_remove(copies, iter, NULL);
    }
 }
 
@@ -754,7 +752,7 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
    if (written->modes) {
       util_dynarray_foreach_reverse(copies, struct copy_entry, entry) {
          if (nir_deref_mode_may_be(entry->dst.instr, written->modes))
-            copy_entry_remove(copies, entry);
+            copy_entry_remove(copies, entry, NULL);
       }
    }
 
