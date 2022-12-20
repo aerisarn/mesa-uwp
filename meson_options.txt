@@ -340,9 +340,7 @@ option(
 )
 option(
   'libunwind',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Use libunwind for stack-traces'
 )
 option(

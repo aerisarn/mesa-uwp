@@ -1901,25 +1901,15 @@ if get_option('execmem')
   pre_args += '-DMESA_EXECMEM'
 endif
 
-_libunwind = get_option('libunwind')
-if _libunwind == 'true'
-  _libunwind = 'enabled'
-  warning('libunwind option "true" deprecated, please use "enabled" instead.')
-elif _libunwind == 'false'
-  _libunwind = 'disabled'
-  warning('libunwind option "false" deprecated, please use "disabled" instead.')
-endif
-if _libunwind != 'disabled' and not with_platform_android
-  if host_machine.system() == 'darwin'
-    dep_unwind = meson.get_compiler('c').find_library('System')
-  else
-    dep_unwind = dependency('libunwind', required : _libunwind == 'enabled')
-  endif
-  if dep_unwind.found()
-    pre_args += '-DHAVE_LIBUNWIND'
-  endif
+_libunwind = get_option('libunwind') \
+  .require(not with_platform_android, error_message : 'Android requires the use of the backtrace library, not libunwind')
+if host_machine.system() == 'darwin'
+  dep_unwind = meson.get_compiler('c').find_library('System', required : _libunwind)
 else
-  dep_unwind = null_dep
+  dep_unwind = dependency('libunwind', required : _libunwind)
+endif
+if dep_unwind.found()
+  pre_args += '-DHAVE_LIBUNWIND'
 endif
 
 if with_osmesa
