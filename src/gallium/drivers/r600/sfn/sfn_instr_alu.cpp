@@ -26,6 +26,7 @@
 
 #include "sfn_instr_alu.h"
 
+#include "sfn_alu_defines.h"
 #include "sfn_debug.h"
 #include "sfn_instr_alugroup.h"
 #include "sfn_instr_tex.h"
@@ -495,8 +496,13 @@ uint8_t AluInstr::allowed_src_chan_mask() const
 uint8_t
 AluInstr::allowed_dest_chan_mask() const
 {
-   if (alu_slots() != 1 && has_alu_flag(alu_is_cayman_trans)) {
+   if (alu_slots() != 1) {
+      if (has_alu_flag(alu_is_cayman_trans))
          return (1 << alu_slots()) - 1;
+
+      if (m_opcode == op2_dot_ieee || m_opcode == op2_dot) {
+         return (1 << (4 - alu_slots())) - 1;
+      }
    }
    return 0xf;
 }
