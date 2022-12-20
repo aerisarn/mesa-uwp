@@ -596,7 +596,6 @@ agx_ra(agx_context *ctx)
       switch (I->op) {
       /* Pseudoinstructions for RA must be removed now */
       case AGX_OPCODE_PHI:
-      case AGX_OPCODE_LOGICAL_END:
       case AGX_OPCODE_PRELOAD:
          agx_remove_instruction(I);
          break;

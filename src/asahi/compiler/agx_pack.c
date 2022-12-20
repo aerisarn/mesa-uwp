@@ -727,6 +727,11 @@ agx_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    struct util_dynarray fixups;
    util_dynarray_init(&fixups, ctx);
 
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op == AGX_OPCODE_LOGICAL_END)
+         agx_remove_instruction(I);
+   }
+
    agx_foreach_block(ctx, block) {
       /* Relative to the start of the binary, the block begins at the current
        * number of bytes emitted */
