@@ -52,9 +52,12 @@ agx_write_registers(agx_instr *I, unsigned d)
       assert(1 <= I->channels && I->channels <= 4);
       return I->channels * size;
 
-   case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
+      /* Even when masked out, these clobber 4 registers */
+      return 4 * size;
+
+   case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_LD_TILE:
       return util_bitcount(I->mask) * size;
 
