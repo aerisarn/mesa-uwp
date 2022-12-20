@@ -46,9 +46,7 @@ option(
 
 option(
   'dri3',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'disabled', 'enabled'],
+  type : 'feature',
   description : 'enable support for dri3'
 )
 option(

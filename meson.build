@@ -606,19 +606,7 @@ endif
 # GNU/Hurd includes egl_dri2, without drm.
 with_dri2 = (with_dri or with_any_vk) and (with_dri_platform == 'drm' or
   host_machine.system() == 'gnu')
-_dri3 = get_option('dri3')
-if _dri3 == 'true'
-  _dri3 = 'enabled'
-  warning('dri3 option "true" deprecated, please use "enabled" instead.')
-elif _dri3 == 'false'
-  _dri3 = 'disabled'
-  warning('dri3 option "false" deprecated, please use "disabled" instead.')
-endif
-if _dri3 == 'auto'
-  with_dri3 = system_has_kms_drm and with_dri2
-else
-  with_dri3 = _dri3 == 'enabled'
-endif
+with_dri3 = get_option('dri3').disable_auto_if(not (system_has_kms_drm and with_dri2)).allowed()
 
 if with_any_vk and (with_platform_x11 and not with_dri3)
   error('Vulkan drivers require dri3 for X11 support')
