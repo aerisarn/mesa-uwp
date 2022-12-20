@@ -151,6 +151,18 @@ agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
    return components[channel];
 }
 
+static agx_index
+agx_extract_nir_src(agx_builder *b, nir_src src, unsigned channel)
+{
+   agx_index idx = agx_src_index(&src);
+
+   /* We only deal with scalars, extract a single scalar if needed */
+   if (nir_src_num_components(src) > 1)
+      return agx_emit_extract(b, idx, channel);
+   else
+      return idx;
+}
+
 static void
 agx_cache_collect(agx_builder *b, agx_index dst, unsigned nr_srcs,
                   agx_index *srcs)
@@ -451,11 +463,23 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
       agx_sample_mask(b, agx_immediate(1));
    }
 
+   /* Compact the registers according to the mask */
+   agx_index compacted[4] = {agx_null()};
+
+   unsigned compact_count = 0;
+   u_foreach_bit(i, nir_intrinsic_write_mask(instr)) {
+      compacted[compact_count++] = agx_extract_nir_src(b, instr->src[0], i);
+   }
+
+   agx_index src0 = agx_src_index(&instr->src[0]);
+   agx_index collected = agx_temp(b->shader, src0.size);
+   agx_emit_collect_to(b, collected, compact_count, compacted);
+
    b->shader->did_writeout = true;
-   return agx_st_tile(
-      b, agx_src_index(&instr->src[0]), agx_src_index(&instr->src[1]),
-      agx_format_for_pipe(nir_intrinsic_format(instr)),
-      nir_intrinsic_write_mask(instr), nir_intrinsic_base(instr));
+   return agx_st_tile(b, collected, agx_src_index(&instr->src[1]),
+                      agx_format_for_pipe(nir_intrinsic_format(instr)),
+                      nir_intrinsic_write_mask(instr),
+                      nir_intrinsic_base(instr));
 }
 
 static agx_instr *
@@ -791,13 +815,7 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
    assert(!(src.negate || src.abs));
    assert(channel < comps);
 
-   agx_index idx = agx_src_index(&src.src);
-
-   /* We only deal with scalars, extract a single scalar if needed */
-   if (comps > 1)
-      return agx_emit_extract(b, idx, channel);
-   else
-      return idx;
+   return agx_extract_nir_src(b, src.src, channel);
 }
 
 static agx_instr *
