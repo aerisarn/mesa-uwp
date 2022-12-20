@@ -677,6 +677,12 @@ handleVAEncSliceParameterBufferType(vlVaDriver *drv, vlVaContext *context, vlVaB
       status = vlVaHandleVAEncSliceParameterBufferTypeHEVC(drv, context, buf);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
+   case PIPE_VIDEO_FORMAT_AV1:
+      status = vlVaHandleVAEncSliceParameterBufferTypeAV1(drv, context, buf);
+      break;
+#endif
+
    default:
       break;
    }
