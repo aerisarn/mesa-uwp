@@ -524,7 +524,6 @@ agx_emit_load_global(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_device_load_to(b, dest, addr, offset, fmt,
                       BITFIELD_MASK(nir_dest_num_components(instr->dest)), 0,
                       0);
-   agx_wait(b, 0);
    agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
 }
 
@@ -543,7 +542,6 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_device_load_to(b, dest, addr, offset, fmt,
                       BITFIELD_MASK(nir_dest_num_components(instr->dest)),
                       shift, 0);
-   agx_wait(b, 0);
    agx_emit_cached_split(b, dest, nir_dest_num_components(instr->dest));
 }
 
@@ -1246,8 +1244,6 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;
 
-   agx_wait(b, 0);
-
    agx_index packed_channels[4] = {agx_null()};
    agx_index unpacked_channels[4] = {agx_null()};
 
@@ -1872,10 +1868,11 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    if (ctx->stage == MESA_SHADER_VERTEX)
       agx_set_st_vary_final(ctx);
 
+   agx_lower_pseudo(ctx);
+   agx_insert_waits(ctx);
+
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
-
-   agx_lower_pseudo(ctx);
 
    /* Pad binary */
    if (binary->size % AGX_CODE_ALIGN) {
