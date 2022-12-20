@@ -146,9 +146,13 @@ if [ -n "$HWCI_START_WESTON" ]; then
   export XDG_RUNTIME_DIR=/run/user
   mkdir -p $XDG_RUNTIME_DIR
 
+  # Xwayland to be used when HWCI_START_XORG is not set
+  export DISPLAY=:0
+  mkdir -p /tmp/.X11-unix
+
   env \
     VK_ICD_FILENAMES=/install/share/vulkan/icd.d/${VK_DRIVER}_icd.`uname -m`.json \
-    weston -Bheadless-backend.so --use-gl -Swayland-0 &
+    weston -Bheadless-backend.so --use-gl -Swayland-0 --xwayland &
   export WAYLAND_DISPLAY=wayland-0
   sleep 1
 fi
