@@ -590,7 +590,6 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned q2 = 0;   // XXX
       unsigned q3 = 12;  // XXX
       unsigned kill = 0; // helper invocation kill bit
-      unsigned q5 = 0;   // XXX
       unsigned q6 = 0;   // XXX
 
       uint32_t extend = ((U & BITFIELD_MASK(5)) << 0) | (kill << 5) |
@@ -600,7 +599,6 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
                         (I->offset << 27) | ((S >> 6) << 28) | ((O >> 6) << 30);
 
       bool L = (extend != 0);
-      assert(I->scoreboard == 0 && "todo");
 
       uint64_t raw =
          0x31 | ((I->op == AGX_OPCODE_TEXTURE_LOAD) ? (1 << 6) : 0) |
@@ -613,7 +611,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          (((uint64_t)q3) << 43) | (((uint64_t)I->mask) << 48) |
          (((uint64_t)I->lod_mode) << 52) |
          (((uint64_t)(S & BITFIELD_MASK(6))) << 56) | (((uint64_t)St) << 62) |
-         (((uint64_t)q5) << 63);
+         (((uint64_t)I->scoreboard) << 63);
 
       memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
       if (L)
