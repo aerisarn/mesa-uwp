@@ -317,9 +317,7 @@ option(
 )
 option(
   'llvm',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Build with LLVM support.'
 )
 option(

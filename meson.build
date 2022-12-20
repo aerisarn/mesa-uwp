@@ -1681,17 +1681,10 @@ else
   _shared_llvm = (_shared_llvm == 'enabled')
 endif
 _llvm = get_option('llvm')
-if _llvm == 'true'
-  _llvm = 'enabled'
-  warning('llvm option "true" deprecated, please use "enabled" instead.')
-elif _llvm == 'false'
-  _llvm = 'disabled'
-  warning('llvm option "false" deprecated, please use "disabled" instead.')
-endif
 
 dep_llvm = null_dep
 with_llvm = false
-if _llvm != 'disabled'
+if _llvm.allowed()
   dep_llvm = dependency(
     'llvm',
     version : _llvm_version,
@@ -1699,7 +1692,7 @@ if _llvm != 'disabled'
     optional_modules : llvm_optional_modules,
     required : (
       with_amd_vk or with_gallium_radeonsi or with_gallium_opencl or with_clc
-      or _llvm == 'enabled'
+      or _llvm.enabled()
     ),
     static : not _shared_llvm,
     fallback : ['llvm', 'dep_llvm'],
