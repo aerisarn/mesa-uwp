@@ -44,6 +44,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"internal",  AGX_DBG_INTERNAL,	"Dump even internal shaders"},
    {"novalidate",AGX_DBG_NOVALIDATE,"Skip IR validation in debug builds"},
    {"noopt",     AGX_DBG_NOOPT,     "Disable backend optimizations"},
+   {"wait",      AGX_DBG_WAIT,      "Wait after all async instructions"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
