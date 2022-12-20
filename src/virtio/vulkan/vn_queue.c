@@ -60,24 +60,11 @@ struct vn_queue_submission {
    bool synchronous;
    bool has_feedback_fence;
    const struct vn_device_memory *wsi_mem;
-   uint32_t wait_semaphore_count;
-   uint32_t wait_external_count;
-
-   struct {
-      void *storage;
-
-      union {
-         void *batches;
-         VkSubmitInfo *submit_batches;
-         VkBindSparseInfo *bind_sparse_batches;
-      };
-      VkSemaphore *semaphores;
-   } temp;
 };
 
 static VkResult
-vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
-                                           uint32_t batch_index)
+vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
+                                         uint32_t batch_index)
 {
    union {
       const VkSubmitInfo *submit_batch;
@@ -108,7 +95,6 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
       break;
    }
 
-   submit->wait_semaphore_count += wait_count;
    for (uint32_t i = 0; i < wait_count; i++) {
       struct vn_semaphore *sem = vn_semaphore_from_handle(wait_sems[i]);
       const struct vn_sync_payload *payload = sem->payload;
@@ -118,22 +104,20 @@ vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
 
       struct vn_queue *queue = vn_queue_from_handle(submit->queue);
       struct vn_device *dev = queue->device;
-      if (dev->physical_device->renderer_sync_fd_semaphore_features &
-          VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) {
-         if (!vn_semaphore_wait_external(dev, sem))
-            return VK_ERROR_DEVICE_LOST;
+      if (!vn_semaphore_wait_external(dev, sem))
+         return VK_ERROR_DEVICE_LOST;
 
-         const VkImportSemaphoreResourceInfo100000MESA res_info = {
-            .sType =
-               VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
-            .semaphore = wait_sems[i],
-            .resourceId = 0,
-         };
-         vn_async_vkImportSemaphoreResource100000MESA(
-            dev->instance, vn_device_to_handle(dev), &res_info);
-      } else {
-         submit->wait_external_count++;
-      }
+      assert(dev->physical_device->renderer_sync_fd_semaphore_features &
+             VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT);
+
+      const VkImportSemaphoreResourceInfo100000MESA res_info = {
+         .sType =
+            VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
+         .semaphore = wait_sems[i],
+         .resourceId = 0,
+      };
+      vn_async_vkImportSemaphoreResource100000MESA(
+         dev->instance, vn_device_to_handle(dev), &res_info);
    }
 
    for (uint32_t i = 0; i < signal_count; i++) {
@@ -178,175 +162,13 @@ vn_queue_submission_prepare(struct vn_queue_submission *submit)
     */
    submit->synchronous = has_external_fence || submit->wsi_mem;
 
-   submit->wait_semaphore_count = 0;
-   submit->wait_external_count = 0;
-
    for (uint32_t i = 0; i < submit->batch_count; i++) {
-      VkResult result = vn_queue_submission_count_batch_semaphores(submit, i);
+      VkResult result = vn_queue_submission_fix_batch_semaphores(submit, i);
       if (result != VK_SUCCESS)
          return result;
    }
 
    return VK_SUCCESS;
-}
-
-static VkResult
-vn_queue_submission_alloc_storage(struct vn_queue_submission *submit)
-{
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
-   const VkAllocationCallbacks *alloc = &queue->device->base.base.alloc;
-   size_t alloc_size = 0;
-   size_t semaphores_offset = 0;
-
-   /* we want to filter out VN_SYNC_TYPE_IMPORTED_SYNC_FD wait semaphores */
-   if (submit->wait_external_count) {
-      switch (submit->batch_type) {
-      case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-         alloc_size += sizeof(VkSubmitInfo) * submit->batch_count;
-         break;
-      case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-         alloc_size += sizeof(VkBindSparseInfo) * submit->batch_count;
-         break;
-      default:
-         unreachable("unexpected batch type");
-         break;
-      }
-
-      semaphores_offset = alloc_size;
-      alloc_size +=
-         sizeof(*submit->temp.semaphores) *
-         (submit->wait_semaphore_count - submit->wait_external_count);
-   }
-
-   if (!alloc_size) {
-      submit->temp.storage = NULL;
-      return VK_SUCCESS;
-   }
-
-   submit->temp.storage = vk_alloc(alloc, alloc_size, VN_DEFAULT_ALIGN,
-                                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!submit->temp.storage)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   submit->temp.batches = submit->temp.storage;
-   submit->temp.semaphores = submit->temp.storage + semaphores_offset;
-
-   return VK_SUCCESS;
-}
-
-static VkResult
-vn_queue_submission_filter_batch_external_semaphores(
-   struct vn_queue_submission *submit,
-   uint32_t batch_index,
-   uint32_t sem_base,
-   uint32_t *out_count)
-{
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
-
-   union {
-      VkSubmitInfo *submit_batch;
-      VkBindSparseInfo *bind_sparse_batch;
-   } u;
-   const VkSemaphore *src_sems;
-   uint32_t src_count;
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      u.submit_batch = &submit->temp.submit_batches[batch_index];
-      src_sems = u.submit_batch->pWaitSemaphores;
-      src_count = u.submit_batch->waitSemaphoreCount;
-      break;
-   case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-      u.bind_sparse_batch = &submit->temp.bind_sparse_batches[batch_index];
-      src_sems = u.bind_sparse_batch->pWaitSemaphores;
-      src_count = u.bind_sparse_batch->waitSemaphoreCount;
-      break;
-   default:
-      unreachable("unexpected batch type");
-      break;
-   }
-
-   VkSemaphore *dst_sems = &submit->temp.semaphores[sem_base];
-   uint32_t dst_count = 0;
-
-   /* filter out VN_SYNC_TYPE_IMPORTED_SYNC_FD wait semaphores */
-   for (uint32_t i = 0; i < src_count; i++) {
-      struct vn_semaphore *sem = vn_semaphore_from_handle(src_sems[i]);
-      const struct vn_sync_payload *payload = sem->payload;
-
-      if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD) {
-         if (!vn_semaphore_wait_external(queue->device, sem))
-            return VK_ERROR_DEVICE_LOST;
-      } else {
-         dst_sems[dst_count++] = src_sems[i];
-      }
-   }
-
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      u.submit_batch->pWaitSemaphores = dst_sems;
-      u.submit_batch->waitSemaphoreCount = dst_count;
-      break;
-   case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-      u.bind_sparse_batch->pWaitSemaphores = dst_sems;
-      u.bind_sparse_batch->waitSemaphoreCount = dst_count;
-      break;
-   default:
-      break;
-   }
-
-   *out_count = dst_count;
-   return VK_SUCCESS;
-}
-
-static VkResult
-vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
-{
-   if (!submit->temp.storage)
-      return VK_SUCCESS;
-
-   /* make a copy because we need to filter out external semaphores */
-   if (submit->wait_external_count) {
-      switch (submit->batch_type) {
-      case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-         memcpy(submit->temp.submit_batches, submit->submit_batches,
-                sizeof(submit->submit_batches[0]) * submit->batch_count);
-         submit->submit_batches = submit->temp.submit_batches;
-         break;
-      case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-         memcpy(submit->temp.bind_sparse_batches, submit->bind_sparse_batches,
-                sizeof(submit->bind_sparse_batches[0]) * submit->batch_count);
-         submit->bind_sparse_batches = submit->temp.bind_sparse_batches;
-         break;
-      default:
-         unreachable("unexpected batch type");
-         break;
-      }
-   }
-
-   VkResult result;
-   uint32_t wait_sem_base = 0;
-   for (uint32_t i = 0; i < submit->batch_count; i++) {
-      if (submit->wait_external_count) {
-         uint32_t wait_sem_count = 0;
-         result = vn_queue_submission_filter_batch_external_semaphores(
-            submit, i, wait_sem_base, &wait_sem_count);
-         if (result != VK_SUCCESS)
-            return result;
-
-         wait_sem_base += wait_sem_count;
-      }
-   }
-
-   return VK_SUCCESS;
-}
-
-static void
-vn_queue_submission_cleanup(struct vn_queue_submission *submit)
-{
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
-   const VkAllocationCallbacks *alloc = &queue->device->base.base.alloc;
-
-   vk_free(alloc, submit->temp.storage);
 }
 
 static VkResult
@@ -365,14 +187,6 @@ vn_queue_submission_prepare_submit(struct vn_queue_submission *submit,
    VkResult result = vn_queue_submission_prepare(submit);
    if (result != VK_SUCCESS)
       return result;
-
-   result = vn_queue_submission_alloc_storage(submit);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = vn_queue_submission_setup_batches(submit);
-   if (result != VK_SUCCESS)
-      vn_queue_submission_cleanup(submit);
 
    return result;
 }
@@ -394,14 +208,6 @@ vn_queue_submission_prepare_bind_sparse(
    VkResult result = vn_queue_submission_prepare(submit);
    if (result != VK_SUCCESS)
       return result;
-
-   result = vn_queue_submission_alloc_storage(submit);
-   if (result != VK_SUCCESS)
-      return result;
-
-   result = vn_queue_submission_setup_batches(submit);
-   if (result != VK_SUCCESS)
-      vn_queue_submission_cleanup(submit);
 
    return VK_SUCCESS;
 }
@@ -482,7 +288,6 @@ vn_QueueSubmit(VkQueue queue_h,
       submit.has_feedback_fence ? VK_NULL_HANDLE : submit.fence,
       !submit.has_feedback_fence && submit.synchronous);
    if (result != VK_SUCCESS) {
-      vn_queue_submission_cleanup(&submit);
       return vn_error(dev->instance, result);
    }
 
@@ -525,7 +330,6 @@ vn_QueueSubmit(VkQueue queue_h,
       result = vn_queue_submit(dev->instance, submit.queue, 1, &info,
                                submit.fence, submit.synchronous);
       if (result != VK_SUCCESS) {
-         vn_queue_submission_cleanup(&submit);
          return vn_error(dev->instance, result);
       }
    }
@@ -547,8 +351,6 @@ vn_QueueSubmit(VkQueue queue_h,
          vn_queue_wait_idle_before_present(queue);
       }
    }
-
-   vn_queue_submission_cleanup(&submit);
 
    return VK_SUCCESS;
 }
@@ -769,11 +571,8 @@ vn_QueueBindSparse(VkQueue _queue,
       dev->instance, submit.queue, submit.batch_count,
       submit.bind_sparse_batches, submit.fence);
    if (result != VK_SUCCESS) {
-      vn_queue_submission_cleanup(&submit);
       return vn_error(dev->instance, result);
    }
-
-   vn_queue_submission_cleanup(&submit);
 
    return VK_SUCCESS;
 }
