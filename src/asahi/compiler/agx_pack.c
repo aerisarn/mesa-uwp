@@ -445,6 +445,15 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       break;
    }
 
+   case AGX_OPCODE_WAIT: {
+      uint64_t raw =
+         agx_opcodes_info[I->op].encoding.exact | (I->scoreboard << 8);
+
+      unsigned size = 2;
+      memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
    case AGX_OPCODE_ITER:
    case AGX_OPCODE_LDCF: {
       bool flat = (I->op == AGX_OPCODE_LDCF);
