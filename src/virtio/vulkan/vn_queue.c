@@ -53,7 +53,6 @@ struct vn_queue_submission {
    union {
       const void *batches;
       const VkSubmitInfo *submit_batches;
-      const VkBindSparseInfo *bind_sparse_batches;
    };
    VkFence fence;
 
@@ -68,7 +67,6 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
 {
    union {
       const VkSubmitInfo *submit_batch;
-      const VkBindSparseInfo *bind_sparse_batch;
    } u;
    uint32_t wait_count;
    uint32_t signal_count;
@@ -82,13 +80,6 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
       wait_sems = u.submit_batch->pWaitSemaphores;
       signal_count = u.submit_batch->signalSemaphoreCount;
       signal_sems = u.submit_batch->pSignalSemaphores;
-      break;
-   case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-      u.bind_sparse_batch = &submit->bind_sparse_batches[batch_index];
-      wait_count = u.bind_sparse_batch->waitSemaphoreCount;
-      wait_sems = u.bind_sparse_batch->pWaitSemaphores;
-      signal_count = u.bind_sparse_batch->signalSemaphoreCount;
-      signal_sems = u.bind_sparse_batch->pSignalSemaphores;
       break;
    default:
       unreachable("unexpected batch type");
@@ -189,27 +180,6 @@ vn_queue_submission_prepare_submit(struct vn_queue_submission *submit,
       return result;
 
    return result;
-}
-
-static VkResult
-vn_queue_submission_prepare_bind_sparse(
-   struct vn_queue_submission *submit,
-   VkQueue queue,
-   uint32_t batch_count,
-   const VkBindSparseInfo *bind_sparse_batches,
-   VkFence fence)
-{
-   submit->batch_type = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
-   submit->queue = queue;
-   submit->batch_count = batch_count;
-   submit->bind_sparse_batches = bind_sparse_batches;
-   submit->fence = fence;
-
-   VkResult result = vn_queue_submission_prepare(submit);
-   if (result != VK_SUCCESS)
-      return result;
-
-   return VK_SUCCESS;
 }
 
 static const VkCommandBuffer
@@ -549,32 +519,12 @@ vn_QueueSubmit2(VkQueue queue_h,
 }
 
 VkResult
-vn_QueueBindSparse(VkQueue _queue,
-                   uint32_t bindInfoCount,
-                   const VkBindSparseInfo *pBindInfo,
-                   VkFence fence)
+vn_QueueBindSparse(UNUSED VkQueue _queue,
+                   UNUSED uint32_t bindInfoCount,
+                   UNUSED const VkBindSparseInfo *pBindInfo,
+                   UNUSED VkFence fence)
 {
-   VN_TRACE_FUNC();
-   struct vn_queue *queue = vn_queue_from_handle(_queue);
-   struct vn_device *dev = queue->device;
-
-   /* TODO allow sparse resource along with sync feedback */
-   assert(VN_PERF(NO_FENCE_FEEDBACK));
-
-   struct vn_queue_submission submit;
-   VkResult result = vn_queue_submission_prepare_bind_sparse(
-      &submit, _queue, bindInfoCount, pBindInfo, fence);
-   if (result != VK_SUCCESS)
-      return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   result = vn_call_vkQueueBindSparse(
-      dev->instance, submit.queue, submit.batch_count,
-      submit.bind_sparse_batches, submit.fence);
-   if (result != VK_SUCCESS) {
-      return vn_error(dev->instance, result);
-   }
-
-   return VK_SUCCESS;
+   return VK_ERROR_DEVICE_LOST;
 }
 
 VkResult

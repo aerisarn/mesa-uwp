@@ -218,9 +218,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 
    /* clang-format off */
 
-   /* TODO allow sparse resource along with sync feedback
-    *
-    * vkQueueBindSparse relies on explicit sync primitives. To intercept the
+   /* vkQueueBindSparse relies on explicit sync primitives. To intercept the
     * timeline semaphores within each bind info to write the feedback buffer,
     * we have to split the call into bindInfoCount number of calls while
     * inserting vkQueueSubmit to wait on the signal timeline semaphores before
@@ -230,17 +228,15 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
     * Those would make the code overly complex, so we disable sparse binding
     * for simplicity.
     */
-   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
-      VN_SET_CORE_VALUE(vk10_feats, sparseBinding, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyBuffer, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage2D, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage3D, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidency2Samples, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidency4Samples, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidency8Samples, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidency16Samples, false);
-      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
-   }
+   VN_SET_CORE_VALUE(vk10_feats, sparseBinding, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyBuffer, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage2D, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage3D, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidency2Samples, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidency4Samples, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidency8Samples, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidency16Samples, false);
+   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
 
    if (renderer_version < VK_API_VERSION_1_2) {
       /* Vulkan 1.1 */
@@ -540,11 +536,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
 
    /* clang-format off */
 
-   /* TODO allow sparse resource along with sync feedback */
-   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
-      VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
-      VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
-   }
+   VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
+   VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
+
    if (renderer_version < VK_API_VERSION_1_2) {
       /* Vulkan 1.1 */
       VN_SET_CORE_ARRAY(vk11_props, deviceUUID, local_props.id);
@@ -2122,24 +2116,13 @@ vn_GetPhysicalDeviceSparseImageFormatProperties2(
    uint32_t *pPropertyCount,
    VkSparseImageFormatProperties2 *pProperties)
 {
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
 
-   /* TODO allow sparse resource along with sync feedback
-    *
-    * If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given
+   /* If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given
     * arguments, pPropertyCount will be set to zero upon return, and no data
     * will be written to pProperties.
     */
-   if (!VN_PERF(NO_FENCE_FEEDBACK)) {
-      *pPropertyCount = 0;
-      return;
-   }
-
-   /* TODO per-device cache */
-   vn_call_vkGetPhysicalDeviceSparseImageFormatProperties2(
-      physical_dev->instance, physicalDevice, pFormatInfo, pPropertyCount,
-      pProperties);
+   *pPropertyCount = 0;
+   return;
 }
 
 void
