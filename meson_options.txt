@@ -109,9 +109,7 @@ option(
 )
 option(
   'gallium-va',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'enable gallium va frontend.',
 )
 option(

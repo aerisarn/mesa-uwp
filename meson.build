@@ -756,44 +756,27 @@ if with_gallium_omx != 'disabled'
   endif
 endif
 
-_va = get_option('gallium-va')
-if _va == 'true'
-  _va = 'enabled'
-  warning('gallium-va option "true" deprecated, please use "enabled" instead.')
-elif _va == 'false'
-  _va = 'disabled'
-  warning('gallium-va option "false" deprecated, please use "disabled" instead.')
-endif
-if not [
-         with_gallium_d3d12_video,
-         with_gallium_nouveau,
-         with_gallium_r600,
-         with_gallium_radeonsi,
-         with_gallium_virgl,
-       ].contains(true)
-  if _va == 'enabled'
-    error('VA state tracker requires at least one of the following gallium drivers: r600, radeonsi, nouveau, d3d12 (with option gallium-d3d12-video), virgl.')
-  else
-    _va = 'disabled'
+_va_drivers = [
+  with_gallium_d3d12_video,
+  with_gallium_nouveau,
+  with_gallium_r600,
+  with_gallium_radeonsi,
+  with_gallium_virgl,
+]
+
+_va = get_option('gallium-va') \
+  .require(_va_drivers.contains(true),
+           error_message : 'VA state tracker requires at least one of the following gallium drivers: r600, radeonsi, nouveau, d3d12 (with option gallium-d3d12-video), virgl.')
+_dep_va_name = host_machine.system() == 'windows' ? 'libva-win32' : 'libva'
+dep_va = dependency(_dep_va_name, version : '>= 1.8.0', required : _va)
+if dep_va.found()
+  dep_va_headers = dep_va.partial_dependency(compile_args : true)
+  if cc.has_header_symbol('va/va.h', 'VASurfaceAttribDRMFormatModifiers',
+                          dependencies: dep_va_headers)
+    pre_args += '-DHAVE_VA_SURFACE_ATTRIB_DRM_FORMAT_MODIFIERS'
   endif
 endif
-with_gallium_va = false
-dep_va = null_dep
-if _va != 'disabled'
-  _dep_va_name = 'libva'
-  if host_machine.system() == 'windows'
-    _dep_va_name = 'libva-win32'
-  endif
-  dep_va = dependency(_dep_va_name, version : '>= 1.8.0', required : _va == 'enabled')
-  if dep_va.found()
-    dep_va_headers = dep_va.partial_dependency(compile_args : true)
-    with_gallium_va = true
-    if cc.has_header_symbol('va/va.h', 'VASurfaceAttribDRMFormatModifiers',
-                            dependencies: dep_va_headers)
-      pre_args += '-DHAVE_VA_SURFACE_ATTRIB_DRM_FORMAT_MODIFIERS'
-    endif
-  endif
-endif
+with_gallium_va = dep_va.found()
 
 va_drivers_path = get_option('va-libs-path')
 if va_drivers_path == ''
