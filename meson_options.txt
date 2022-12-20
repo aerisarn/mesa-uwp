@@ -246,9 +246,7 @@ option(
 )
 option(
   'gles1',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Build support for OpenGL ES 1.x'
 )
 option(
