@@ -604,24 +604,163 @@ dxil_spirv_nir_kill_unused_outputs(nir_shader *shader,
    return progress;
 }
 
+struct lower_pntc_data {
+   const struct dxil_spirv_runtime_conf *conf;
+   nir_variable *pntc;
+};
+
+static bool
+write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
+{
+   struct lower_pntc_data *data = (struct lower_pntc_data *)_data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return false;
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (!var || var->data.location != VARYING_SLOT_POS)
+      return false;
+
+   nir_ssa_def *pos = intr->src[1].ssa;
+
+   unsigned offset =
+      offsetof(struct dxil_spirv_vertex_runtime_data, viewport_width) - 4;
+   static_assert(offsetof(struct dxil_spirv_vertex_runtime_data, viewport_width) % 16 == 4,
+                 "Doing vector unpacking with this assumption");
+   nir_address_format ubo_format = nir_address_format_32bit_index_offset;
+
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *index = nir_vulkan_resource_index(
+      b, nir_address_format_num_components(ubo_format),
+      nir_address_format_bit_size(ubo_format),
+      nir_imm_int(b, 0),
+      .desc_set = data->conf->runtime_data_cbv.register_space,
+      .binding = data->conf->runtime_data_cbv.base_shader_register,
+      .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+   nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+      b, nir_address_format_num_components(ubo_format),
+      nir_address_format_bit_size(ubo_format),
+      index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+   nir_ssa_def *transform = nir_channels(b,
+                                         build_load_ubo_dxil(b,
+                                                             nir_channel(b, load_desc, 0),
+                                                             nir_imm_int(b, offset), 4, 32),
+                                         0x6);
+   nir_ssa_def *point_center_in_clip = nir_fmul(b, nir_channels(b, pos, 0x3), nir_frcp(b, nir_channel(b, pos, 3)));
+   nir_ssa_def *point_center =
+      nir_fmul(b, nir_fadd_imm(b,
+                               nir_fmul(b, point_center_in_clip,
+                                        nir_vec2(b, nir_imm_float(b, 0.5), nir_imm_float(b, -0.5f))),
+                               0.5), transform);
+   nir_store_var(b, data->pntc, nir_pad_vec4(b, point_center), 0xf);
+   return true;
+}
+
+static void
+dxil_spirv_write_pntc(nir_shader *nir, const struct dxil_spirv_runtime_conf *conf)
+{
+   struct lower_pntc_data data = { .conf = conf };
+   data.pntc = nir_variable_create(nir, nir_var_shader_out, glsl_vec4_type(), "gl_PointCoord");
+   data.pntc->data.location = VARYING_SLOT_PNTC;
+   nir_shader_instructions_pass(nir, write_pntc_with_pos,
+                                nir_metadata_block_index |
+                                nir_metadata_dominance |
+                                nir_metadata_loop_analysis,
+                                &data);
+   nir->info.outputs_written |= VARYING_BIT_PNTC;
+
+   /* Add the runtime data var if it's not already there */
+   nir_binding binding = {
+      .binding = conf->runtime_data_cbv.base_shader_register,
+      .desc_set = conf->runtime_data_cbv.register_space,
+      .success = true,
+   };
+   nir_variable *ubo_var = nir_get_binding_variable(nir, binding);
+   if (!ubo_var)
+      add_runtime_data_var(nir, conf->runtime_data_cbv.register_space, conf->runtime_data_cbv.base_shader_register);
+}
+
+static bool
+lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (!var || var->data.location != VARYING_SLOT_PNTC)
+      return false;
+
+   nir_ssa_def *point_center = &intr->dest.ssa;
+   nir_variable *pos_var = (nir_variable *)data;
+
+   b->cursor = nir_after_instr(instr);
+
+   nir_ssa_def *pos;
+   if (var->data.sample == pos_var->data.sample)
+      pos = nir_load_var(b, pos_var);
+   else if (var->data.sample)
+      pos = nir_interp_deref_at_sample(b, 4, 32,
+                                       &nir_build_deref_var(b, pos_var)->dest.ssa,
+                                       nir_load_sample_id(b));
+   else
+      pos = nir_interp_deref_at_offset(b, 4, 32,
+                                       &nir_build_deref_var(b, pos_var)->dest.ssa,
+                                       nir_vec2(b, nir_imm_float(b, 0), nir_imm_float(b, 0)));
+
+   nir_ssa_def *pntc = nir_fadd_imm(b,
+                                    nir_fsub(b, nir_channels(b, pos, 0x3), nir_channels(b, point_center, 0x3)),
+                                    0.5);
+   nir_ssa_def_rewrite_uses_after(point_center, pntc, pntc->parent_instr);
+   return true;
+}
+
+static void
+dxil_spirv_compute_pntc(nir_shader *nir)
+{
+   nir_variable *pos = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_POS);
+   if (!pos) {
+      pos = nir_variable_create(nir, nir_var_shader_in, glsl_vec4_type(), "gl_FragCoord");
+      pos->data.location = VARYING_SLOT_POS;
+      pos->data.sample = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_PNTC)->data.sample;
+   }
+   nir_shader_instructions_pass(nir, lower_pntc_read,
+                                nir_metadata_block_index |
+                                nir_metadata_dominance |
+                                nir_metadata_loop_analysis,
+                                pos);
+}
+
 void
-dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir)
+dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
+                    const struct dxil_spirv_runtime_conf *conf)
 {
    glsl_type_singleton_init_or_ref();
 
    if (prev_stage_nir) {
+      if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+         nir->info.clip_distance_array_size = prev_stage_nir->info.clip_distance_array_size;
+
+         if (nir->info.inputs_read & VARYING_BIT_PNTC) {
+            NIR_PASS_V(prev_stage_nir, dxil_spirv_write_pntc, conf);
+            NIR_PASS_V(nir, dxil_spirv_compute_pntc);
+         }
+      }
+
       NIR_PASS_V(nir, dxil_spirv_nir_kill_undefined_varyings, prev_stage_nir);
       NIR_PASS_V(prev_stage_nir, dxil_spirv_nir_kill_unused_outputs, nir);
 
       nir->info.inputs_read =
          dxil_reassign_driver_locations(nir, nir_var_shader_in,
                                         prev_stage_nir->info.outputs_written);
+
       prev_stage_nir->info.outputs_written =
          dxil_reassign_driver_locations(prev_stage_nir, nir_var_shader_out,
                                         nir->info.inputs_read);
-
-      if (nir->info.stage == MESA_SHADER_FRAGMENT)
-         nir->info.clip_distance_array_size = prev_stage_nir->info.clip_distance_array_size;
    }
 
    glsl_type_singleton_decref();

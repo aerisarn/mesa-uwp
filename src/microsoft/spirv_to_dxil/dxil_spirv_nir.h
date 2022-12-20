@@ -32,7 +32,8 @@ void
 dxil_spirv_nir_prep(nir_shader *nir);
 
 void
-dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir);
+dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
+                    const struct dxil_spirv_runtime_conf *conf);
 
 void
 dxil_spirv_nir_passes(nir_shader *nir,

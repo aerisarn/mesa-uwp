@@ -823,10 +823,17 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       link_mask &= ~BITFIELD_BIT(stage);
       gl_shader_stage prev_stage = util_last_bit(link_mask) - 1;
 
+      struct dxil_spirv_runtime_conf conf = {
+         .runtime_data_cbv = {
+            .register_space = DZN_REGISTER_SPACE_SYSVALS,
+            .base_shader_register = 0,
+      }};
+
       assert(pipeline->templates.shaders[stage].nir);
       dxil_spirv_nir_link(pipeline->templates.shaders[stage].nir,
                           prev_stage != MESA_SHADER_NONE ?
-                          pipeline->templates.shaders[prev_stage].nir : NULL);
+                          pipeline->templates.shaders[prev_stage].nir : NULL,
+                          &conf);
    }
 
    u_foreach_bit(stage, active_stage_mask) {

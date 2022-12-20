@@ -4518,7 +4518,10 @@ dzn_CmdBindPipeline(VkCommandBuffer commandBuffer,
       if (!gfx->vp.dynamic) {
          memcpy(cmdbuf->state.viewports, gfx->vp.desc,
                 gfx->vp.count * sizeof(cmdbuf->state.viewports[0]));
+         cmdbuf->state.sysvals.gfx.viewport_width = cmdbuf->state.viewports[0].Width;
+         cmdbuf->state.sysvals.gfx.viewport_height = cmdbuf->state.viewports[0].Height;
          cmdbuf->state.dirty |= DZN_CMD_DIRTY_VIEWPORTS;
+         cmdbuf->state.bindpoint[pipelineBindPoint].dirty |= DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
       }
 
       if (!gfx->scissor.dynamic) {
@@ -4620,6 +4623,9 @@ dzn_CmdSetViewport(VkCommandBuffer commandBuffer,
       else
          cmdbuf->state.sysvals.gfx.yz_flip_mask &= ~BITFIELD_BIT(vp);
    }
+
+   cmdbuf->state.sysvals.gfx.viewport_width = cmdbuf->state.viewports[0].Width;
+   cmdbuf->state.sysvals.gfx.viewport_height = cmdbuf->state.viewports[0].Height;
 
    if (viewportCount) {
       cmdbuf->state.dirty |= DZN_CMD_DIRTY_VIEWPORTS;

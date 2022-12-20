@@ -80,7 +80,8 @@ enum dxil_shader_model shader_model = SHADER_MODEL_6_2;
 struct nir_shader_compiler_options nir_options;
 
 static bool
-compile_shader(const char *filename, gl_shader_stage shader_stage, struct shader *shader)
+compile_shader(const char *filename, gl_shader_stage shader_stage, struct shader *shader,
+               struct dxil_spirv_runtime_conf *conf)
 {
    size_t file_size;
    char *file_contents = os_read_file(filename, &file_size);
@@ -97,12 +98,6 @@ compile_shader(const char *filename, gl_shader_stage shader_stage, struct shader
    }
 
    size_t word_count = file_size / WORD_SIZE;
-
-   struct dxil_spirv_runtime_conf conf;
-   memset(&conf, 0, sizeof(conf));
-   conf.runtime_data_cbv.base_shader_register = 0;
-   conf.runtime_data_cbv.register_space = 31;
-   conf.zero_based_vertex_instance_id = true;
 
    struct spirv_to_nir_options spirv_opts = {
       .caps = {
@@ -135,7 +130,7 @@ compile_shader(const char *filename, gl_shader_stage shader_stage, struct shader
    dxil_spirv_nir_prep(shader->nir);
 
    bool requires_runtime_data;
-   dxil_spirv_nir_passes(shader->nir, &conf, &requires_runtime_data);
+   dxil_spirv_nir_passes(shader->nir, conf, &requires_runtime_data);
 
    if (debug)
       nir_print_shader(shader->nir, stderr);
@@ -200,6 +195,12 @@ main(int argc, char **argv)
    // have been already converted to zero-base.
    nir_options.lower_base_vertex = false;
 
+   struct dxil_spirv_runtime_conf conf;
+   memset(&conf, 0, sizeof(conf));
+   conf.runtime_data_cbv.base_shader_register = 0;
+   conf.runtime_data_cbv.register_space = 31;
+   conf.zero_based_vertex_instance_id = true;
+
    bool any_shaders = false;
    while ((ch = getopt_long(argc, argv, "-s:e:o:m:x:vd", long_options, NULL)) !=
             -1) {
@@ -232,7 +233,7 @@ main(int argc, char **argv)
          val_ver = DXIL_VALIDATOR_1_0 + atoi(optarg);
          break;
       case 1:
-         if (!compile_shader(optarg, shader_stage, &cur_shader))
+         if (!compile_shader(optarg, shader_stage, &cur_shader, &conf))
             return 1;
          shaders[shader_stage] = cur_shader;
          any_shaders = true;
@@ -254,7 +255,7 @@ main(int argc, char **argv)
       for (int32_t prev = cur - 1; prev >= MESA_SHADER_VERTEX; --prev) {
          if (!shaders[prev].nir)
             continue;
-         dxil_spirv_nir_link(shaders[cur].nir, shaders[prev].nir);
+         dxil_spirv_nir_link(shaders[cur].nir, shaders[prev].nir, &conf);
          break;
       }
    }
