@@ -1834,16 +1834,6 @@ elif _llvm == 'false'
   warning('llvm option "false" deprecated, please use "disabled" instead.')
 endif
 
-# the cmake method can only link statically, so don't attempt to use it if we
-# want to link dynamically. Before 0.54.0 meson will try cmake even when shared
-# linking is requested, so we need to force the config-tool method to be used
-# in that case, but in 0.54.0 meson won't try the cmake method if shared
-# linking is requested.
-_llvm_method = 'auto'
-if meson.version().version_compare('< 0.54.0') and _shared_llvm
-  _llvm_method = 'config-tool'
-endif
-
 dep_llvm = null_dep
 with_llvm = false
 if _llvm != 'disabled'
@@ -1857,7 +1847,6 @@ if _llvm != 'disabled'
       or _llvm == 'enabled'
     ),
     static : not _shared_llvm,
-    method : _llvm_method,
     fallback : ['llvm', 'dep_llvm'],
     include_type : 'system',
   )
