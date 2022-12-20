@@ -64,6 +64,7 @@ enum agx_index_type {
    AGX_INDEX_IMMEDIATE = 2,
    AGX_INDEX_UNIFORM = 3,
    AGX_INDEX_REGISTER = 4,
+   AGX_INDEX_UNDEF = 5,
 };
 
 enum agx_size { AGX_SIZE_16 = 0, AGX_SIZE_32 = 1, AGX_SIZE_64 = 2 };
@@ -145,6 +146,15 @@ agx_register(uint32_t imm, enum agx_size size)
       .value = imm,
       .size = size,
       .type = AGX_INDEX_REGISTER,
+   };
+}
+
+static inline agx_index
+agx_undef(enum agx_size size)
+{
+   return (agx_index){
+      .size = size,
+      .type = AGX_INDEX_UNDEF,
    };
 }
 

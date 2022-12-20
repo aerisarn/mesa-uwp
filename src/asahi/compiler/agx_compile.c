@@ -1275,20 +1275,36 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    else if (!agx_is_null(compare))
       compare_offset = compare;
 
-   unsigned channels = nir_dest_num_components(instr->dest);
+   unsigned nr_channels = nir_dest_num_components(instr->dest);
+   nir_component_mask_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
+
+   agx_index tmp = agx_temp(b->shader, dst.size);
 
    agx_instr *I = agx_texture_sample_to(
-      b, dst, coords, lod, texture, sampler, compare_offset,
+      b, tmp, coords, lod, texture, sampler, compare_offset,
       agx_tex_dim(instr->sampler_dim, instr->is_array),
-      agx_lod_mode_for_nir(instr->op),
-      BITFIELD_MASK(channels), /* TODO: wrmask */
-      0, !agx_is_null(packed_offset), !agx_is_null(compare));
+      agx_lod_mode_for_nir(instr->op), mask, 0, !agx_is_null(packed_offset),
+      !agx_is_null(compare));
 
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;
 
    agx_wait(b, 0);
-   agx_emit_cached_split(b, dst, channels);
+
+   agx_index packed_channels[4] = {agx_null()};
+   agx_index unpacked_channels[4] = {agx_null()};
+
+   /* Hardware writes the masked components contiguously, expand out for NIR */
+   agx_emit_split(b, packed_channels, tmp, 4 /* XXX: why not nr_channels */);
+
+   for (unsigned i = 0; i < nr_channels; ++i) {
+      unpacked_channels[i] =
+         (mask & BITFIELD_BIT(i))
+            ? packed_channels[util_bitcount(mask & BITFIELD_MASK(i))]
+            : agx_undef(tmp.size);
+   }
+
+   agx_emit_collect_to(b, dst, nr_channels, unpacked_channels);
 }
 
 /*

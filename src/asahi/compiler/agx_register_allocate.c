@@ -459,7 +459,7 @@ agx_ra(agx_context *ctx)
 
          /* Move the sources */
          agx_foreach_src(ins, i) {
-            if (agx_is_null(ins->src[i]))
+            if (agx_is_null(ins->src[i]) || ins->src[i].type == AGX_INDEX_UNDEF)
                continue;
             assert(ins->src[i].size == ins->src[0].size);
 
