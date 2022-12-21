@@ -766,14 +766,7 @@ if with_gallium_st_d3d10umd
   endif
 endif
 _power8 = get_option('power8')
-if _power8 == 'true'
-  _power8 = 'enabled'
-  warning('power8 option "true" deprecated, please use "enabled" instead.')
-elif _power8 == 'false'
-  _power8 = 'disabled'
-  warning('power8 option "false" deprecated, please use "disabled" instead.')
-endif
-if _power8 != 'disabled'
+if _power8.allowed()
   if host_machine.cpu_family() == 'ppc64' and host_machine.endian() == 'little'
     if cc.get_id() == 'gcc' and cc.version().version_compare('< 4.8')
       error('Altivec is not supported with gcc version < 4.8.')
@@ -789,7 +782,7 @@ if _power8 != 'disabled'
         args : '-mpower8-vector',
         name : 'POWER8 intrinsics')
       pre_args += ['-D_ARCH_PWR8', '-mpower8-vector']
-    elif get_option('power8') == 'enabled'
+    elif _power8.enabled()
       error('POWER8 intrinsic support required but not found.')
     endif
   endif

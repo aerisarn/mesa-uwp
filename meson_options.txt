@@ -407,9 +407,7 @@ option(
 )
 option(
   'power8',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Enable power8 optimizations.',
 )
 option(
