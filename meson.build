@@ -2326,12 +2326,12 @@ if host_machine.system() == 'windows'
   prog_dumpbin = find_program('dumpbin', required : false)
   with_symbols_check = prog_dumpbin.found() and with_tests
   if with_symbols_check
-    symbols_check_args = ['--dumpbin', prog_dumpbin.path()]
+    symbols_check_args = ['--dumpbin', prog_dumpbin.full_path()]
   endif
 else
   prog_nm = find_program('nm')
   with_symbols_check = with_tests
-  symbols_check_args = ['--nm', prog_nm.path()]
+  symbols_check_args = ['--nm', prog_nm.full_path()]
 endif
 
 # This quirk needs to be applied to sources with functions defined in assembly

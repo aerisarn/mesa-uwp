@@ -140,7 +140,7 @@ if meson.version().version_compare('>= 0.58')
 endif
 
 meson.add_install_script(
-  install_megadrivers_py.path(),
+  install_megadrivers_py.full_path(),
   libgallium_dri.full_path(),
   dri_drivers_path,
   gallium_dri_drivers,
