@@ -178,6 +178,9 @@ struct nil_view {
    uint32_t array_len;
 
    enum pipe_swizzle swizzle[4];
+
+   /* VK_EXT_image_view_min_lod */
+   float min_lod_clamp;
 };
 
 bool nil_image_init(struct nv_device_info *dev,

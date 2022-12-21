@@ -97,6 +97,7 @@ nvk_image_view_init(struct nvk_device *device,
          vk_swizzle_to_pipe(view->vk.swizzle.b),
          vk_swizzle_to_pipe(view->vk.swizzle.a),
       },
+      .min_lod_clamp = view->vk.min_lod,
    };
 
    if (nil_image.dim == NIL_IMAGE_DIM_3D &&

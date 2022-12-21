@@ -370,6 +370,9 @@ nv9097_nil_image_fill_tic(const struct nil_image *image,
    TH_NV9097_SET_U(th, 7, MULTI_SAMPLE_COUNT,
                    nil_to_nv9097_multi_sample_count(image->sample_layout));
 
+   TH_NV9097_SET_UF(th, 7, MIN_LOD_CLAMP,
+                    view->min_lod_clamp - view->base_level);
+
    memcpy(desc_out, th, sizeof(th));
 }
 
@@ -443,6 +446,9 @@ nvb097_nil_image_fill_tic(const struct nil_image *image,
 
    TH_NVB097_SET_U(th, BL, MULTI_SAMPLE_COUNT,
                    nil_to_nvb097_multi_sample_count(image->sample_layout));
+
+   TH_NVB097_SET_UF(th, BL, MIN_LOD_CLAMP,
+                    view->min_lod_clamp - view->base_level);
 
    memcpy(desc_out, th, sizeof(th));
 }
