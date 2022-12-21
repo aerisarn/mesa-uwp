@@ -612,7 +612,7 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
 
       if (ail_is_compressed(&rsrc->layout)) {
          cfg.compressed_1 = true;
-         cfg.compressed_2 = true;
+         cfg.extended = true;
       }
 
       if (include_bo) {
@@ -969,7 +969,7 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
 
       if (ail_is_compressed(&tex->layout)) {
          cfg.compressed_1 = true;
-         cfg.compressed_2 = true;
+         cfg.extended = true;
          cfg.acceleration_buffer = cfg.buffer + tex->layout.metadata_offset_B;
       }
 
