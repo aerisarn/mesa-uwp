@@ -1469,20 +1469,18 @@ if dep_thread.found()
 endif
 
 # We don't have expat on Android or Windows, which is a needed dep for xmlconfig
-supports_xmlconfig = not (with_platform_android or with_platform_windows)
-
-opt_xmlconfig = get_option('xmlconfig')
-if opt_xmlconfig.enabled() and not supports_xmlconfig
-   error('xmlconfig not available on Android or Windows')
-endif
-use_xmlconfig = supports_xmlconfig and not opt_xmlconfig.disabled()
+opt_xmlconfig = get_option('xmlconfig') \
+  .require(not (with_platform_android or with_platform_windows),
+           error_message : 'xmlconfig not available on Android or Windows')
 
 if host_machine.system() == 'darwin'
-  dep_expat = meson.get_compiler('c').find_library('expat')
+  dep_expat = meson.get_compiler('c').find_library('expat', required : opt_xmlconfig)
 else
   dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'],
-                         required: use_xmlconfig)
+                         required : opt_xmlconfig)
 endif
+use_xmlconfig = dep_expat.found()
+  
 # Predefined macros for windows
 if host_machine.system() == 'windows'
   pre_args += '-DWIN32_LEAN_AND_MEAN' # http://msdn2.microsoft.com/en-us/library/6dwk3a1z.aspx
