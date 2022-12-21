@@ -1923,7 +1923,6 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
                                       : is_lines ? AGX_OBJECT_TYPE_LINE
                                                  : AGX_OBJECT_TYPE_TRIANGLE;
 
-   /* For now, we re-emit almost all state every draw.  TODO: perf */
    struct agx_ppp_update ppp = agx_new_ppp_update(
       pool, (struct AGX_PPP_HEADER){
                .fragment_control = fragment_control_dirty,
