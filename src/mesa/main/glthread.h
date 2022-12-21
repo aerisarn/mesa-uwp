@@ -365,6 +365,9 @@ void _mesa_glthread_ClientAttribDefault(struct gl_context *ctx, GLbitfield mask)
 void _mesa_glthread_InterleavedArrays(struct gl_context *ctx, GLenum format,
                                       GLsizei stride, const GLvoid *pointer);
 void _mesa_glthread_ProgramChanged(struct gl_context *ctx);
+void _mesa_glthread_UnrollDrawElements(struct gl_context *ctx,
+                                       GLenum mode, GLsizei count, GLenum type,
+                                       const GLvoid *indices, GLint basevertex);
 
 #ifdef __cplusplus
 }

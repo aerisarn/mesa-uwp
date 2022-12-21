@@ -836,6 +836,23 @@ draw_elements_async_user(struct gl_context *ctx, GLenum mode, GLsizei count,
       memcpy(cmd + 1, buffers, buffers_size);
 }
 
+static inline bool
+should_convert_to_begin_end(struct gl_context *ctx, unsigned count,
+                            unsigned num_upload_vertices,
+                            unsigned instance_count, struct glthread_vao *vao)
+{
+   /* Some of these are limitations of _mesa_glthread_UnrollDrawElements.
+    * Others prevent syncing, such as disallowing buffer objects because we
+    * can't map them without syncing.
+    */
+   return util_is_vbo_upload_ratio_too_large(count, num_upload_vertices) &&
+          instance_count == 1 &&                /* no instancing */
+          vao->CurrentElementBufferName == 0 && /* only user indices */
+          !ctx->GLThread._PrimitiveRestart &&   /* no primitive restart */
+          vao->UserPointerMask == vao->BufferEnabled && /* no VBOs */
+          !(vao->NonZeroDivisorMask & vao->BufferEnabled); /* no instanced attribs */
+}
+
 static void
 draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
               GLsizei instance_count, GLint basevertex, GLuint baseinstance,
@@ -899,10 +916,20 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    unsigned start_vertex = min_index + basevertex;
    unsigned num_vertices = max_index + 1 - min_index;
 
-   /* If there is too much data to upload, sync and let the driver unroll
-    * indices. */
-   if (util_is_vbo_upload_ratio_too_large(count, num_vertices))
-      goto sync;
+   /* If the vertex range to upload is much greater than the vertex count (e.g.
+    * only 3 vertices with indices 0, 1, 999999), uploading the whole range
+    * would take too much time. If all buffers are user buffers, have glthread
+    * fetch all indices and vertices and convert the draw into glBegin/glEnd.
+    * For such pathological cases, it's the fastest way.
+    *
+    * The game Cogs benefits from this - its FPS increases from 0 to 197.
+    */
+   if (should_convert_to_begin_end(ctx, count, num_vertices, instance_count,
+                                   vao)) {
+      _mesa_glthread_UnrollDrawElements(ctx, mode, count, type, indices,
+                                        basevertex);
+      return;
+   }
 
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
    if (user_buffer_mask) {
