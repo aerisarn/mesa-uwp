@@ -36,7 +36,7 @@ traces:
       checksum: aef0b32ce99a3b25d35304ca08032833
   gputest/plot3d-v2.trace:
     gl-virgl:
-      checksum: 817a36e53edccdf946061315596e9cdd
+      checksum: 96f9fdf530e6041a4f56762b8378f22e
   gputest/tessmark-v2.trace:
     gl-virgl:
       label: [skip, slow]
