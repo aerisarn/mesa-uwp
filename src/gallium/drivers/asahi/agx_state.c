@@ -620,7 +620,8 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
 
          if (ail_is_compressed(&rsrc->layout)) {
             cfg.acceleration_buffer =
-               cfg.address + rsrc->layout.metadata_offset_B;
+               agx_map_texture_gpu(rsrc, 0) + rsrc->layout.metadata_offset_B +
+               (first_layer * rsrc->layout.compression_layer_stride_B);
          }
       }
 
@@ -970,7 +971,10 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
       if (ail_is_compressed(&tex->layout)) {
          cfg.compressed_1 = true;
          cfg.extended = true;
-         cfg.acceleration_buffer = cfg.buffer + tex->layout.metadata_offset_B;
+
+         cfg.acceleration_buffer =
+            agx_map_texture_gpu(tex, 0) + tex->layout.metadata_offset_B +
+            (layer * tex->layout.compression_layer_stride_B);
       }
 
       if (tex->base.nr_samples > 1)
