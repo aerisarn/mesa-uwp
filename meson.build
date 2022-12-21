@@ -1617,21 +1617,11 @@ else
   _llvm_version = '>= 5.0.0'
 endif
 
-_shared_llvm = get_option('shared-llvm')
-if _shared_llvm == 'true'
-  _shared_llvm = 'enabled'
-  warning('shared_llvm option "true" deprecated, please use "enabled" instead.')
-elif _shared_llvm == 'false'
-  _shared_llvm = 'disabled'
-  warning('shared_llvm option "false" deprecated, please use "disabled" instead.')
-endif
-if _shared_llvm == 'auto'
-  _shared_llvm = (host_machine.system() != 'windows')
-else
-  _shared_llvm = (_shared_llvm == 'enabled')
-endif
-_llvm = get_option('llvm')
+_shared_llvm = get_option('shared-llvm') \
+  .disable_auto_if(host_machine.system() == 'windows') \
+  .allowed()
 
+_llvm = get_option('llvm')
 dep_llvm = null_dep
 with_llvm = false
 if _llvm.allowed()
