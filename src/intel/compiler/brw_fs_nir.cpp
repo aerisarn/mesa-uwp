@@ -3489,7 +3489,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          assert(base != VARYING_SLOT_PRIMITIVE_INDICES);
          for (unsigned int i = 0; i < num_components; i++) {
             bld.MOV(offset(dest, bld, i),
-                    retype(component(per_primitive_reg(base), comp + i), dest.type));
+                    retype(per_primitive_reg(base, comp + i), dest.type));
          }
       } else {
          for (unsigned int i = 0; i < num_components; i++) {

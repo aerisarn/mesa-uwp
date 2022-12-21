@@ -1764,10 +1764,10 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
                     const nir_shader *nir,
                     const struct brw_mue_map *mue_map)
 {
-   memset(prog_data->urb_setup, -1,
-          sizeof(prog_data->urb_setup[0]) * VARYING_SLOT_MAX);
+   memset(prog_data->urb_setup, -1, sizeof(prog_data->urb_setup));
+   memset(prog_data->urb_setup_channel, 0, sizeof(prog_data->urb_setup_channel));
 
-   int urb_next = 0;
+   int urb_next = 0; /* in vec4s */
 
    const uint64_t inputs_read =
       nir->info.inputs_read & ~nir->info.per_primitive_inputs;
@@ -1782,6 +1782,9 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
          uint64_t per_prim_inputs_read =
                nir->info.inputs_read & nir->info.per_primitive_inputs;
 
+         unsigned per_prim_start_dw = mue_map->per_primitive_start_dw;
+         unsigned per_prim_size_dw = mue_map->per_primitive_pitch_dw;
+
          /* In Mesh, PRIMITIVE_SHADING_RATE, VIEWPORT and LAYER slots
           * are always at the beginning, because they come from MUE
           * Primitive Header, not Per-Primitive Attributes.
@@ -1789,8 +1792,9 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
          const uint64_t primitive_header_bits = VARYING_BIT_VIEWPORT |
                                                 VARYING_BIT_LAYER |
                                                 VARYING_BIT_PRIMITIVE_SHADING_RATE;
+         bool reads_header = (per_prim_inputs_read & primitive_header_bits) != 0;
 
-         if (per_prim_inputs_read & primitive_header_bits) {
+         if (reads_header) {
             /* Primitive Shading Rate, Layer and Viewport live in the same
              * 4-dwords slot (psr is dword 0, layer is dword 1, and viewport
              * is dword 2).
@@ -1804,23 +1808,30 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
             if (per_prim_inputs_read & VARYING_BIT_VIEWPORT)
                prog_data->urb_setup[VARYING_SLOT_VIEWPORT] = 0;
 
-            /* 3DSTATE_SBE_MESH.Per[Primitive|Vertex]URBEntryOutputRead[Offset|Length]
-             * are in full GRFs (8 dwords) and MUE Primitive Header is 8 dwords,
-             * so next per-primitive attribute must be placed in slot 2 (each slot
-             * is 4 dwords long).
-             */
-            urb_next = 2;
             per_prim_inputs_read &= ~primitive_header_bits;
+         } else {
+            /* If fs doesn't need primitive header, then it won't be made
+             * available through SBE_MESH, so we have to skip them when
+             * calculating offset from start of per-prim data.
+             */
+            per_prim_start_dw += mue_map->per_primitive_header_size_dw;
+            per_prim_size_dw -= mue_map->per_primitive_header_size_dw;
          }
 
-         for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
-            if (per_prim_inputs_read & BITFIELD64_BIT(i)) {
-               prog_data->urb_setup[i] = urb_next++;
-            }
+         u_foreach_bit64(i, per_prim_inputs_read) {
+            int start = mue_map->start_dw[i];
+
+            assert(start >= 0);
+            assert(mue_map->len_dw[i] > 0);
+
+            assert(unsigned(start) >= per_prim_start_dw);
+            unsigned pos_dw = unsigned(start) - per_prim_start_dw;
+
+            prog_data->urb_setup[i] = urb_next + pos_dw / 4;
+            prog_data->urb_setup_channel[i] = pos_dw % 4;
          }
 
-         /* The actual setup attributes later must be aligned to a full GRF. */
-         urb_next = ALIGN(urb_next, 2);
+         urb_next = per_prim_size_dw / 4;
 
          prog_data->num_per_primitive_inputs = urb_next;
       }
@@ -1835,21 +1846,43 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
          unique_fs_attrs &= ~clip_dist_bits;
       }
 
+      unsigned per_vertex_start_dw = mue_map->per_vertex_start_dw;
+      unsigned per_vertex_size_dw = mue_map->per_vertex_pitch_dw;
+
+      /* Per-Vertex header is never available to fragment shader. */
+      per_vertex_start_dw += 8;
+      per_vertex_size_dw -= 8;
+
       /* In Mesh, CLIP_DIST slots are always at the beginning, because
        * they come from MUE Vertex Header, not Per-Vertex Attributes.
        */
       if (inputs_read & clip_dist_bits) {
-         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST0] = urb_next++;
-         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST1] = urb_next++;
+         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST0] = urb_next;
+         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST1] = urb_next + 1;
+      } else if (mue_map->per_vertex_header_size_dw > 8) {
+         /* Clip distances are in MUE, but we are not reading them in FS. */
+         per_vertex_start_dw += 8;
+         per_vertex_size_dw -= 8;
       }
 
       /* Per-Vertex attributes are laid out ordered.  Because we always link
        * Mesh and Fragment shaders, the which slots are written and read by
        * each of them will match. */
-      for (unsigned int i = 0; i < VARYING_SLOT_MAX; i++) {
-         if (unique_fs_attrs & BITFIELD64_BIT(i))
-            prog_data->urb_setup[i] = urb_next++;
+
+      u_foreach_bit64(i, unique_fs_attrs) {
+         int start = mue_map->start_dw[i];
+
+         assert(start >= 0);
+         assert(mue_map->len_dw[i] > 0);
+
+         assert(unsigned(start) >= per_vertex_start_dw);
+         unsigned pos_dw = unsigned(start) - per_vertex_start_dw;
+
+         prog_data->urb_setup[i] = urb_next + pos_dw / 4;
+         prog_data->urb_setup_channel[i] = pos_dw % 4;
       }
+
+      urb_next += per_vertex_size_dw / 4;
    } else if (devinfo->ver >= 6) {
       uint64_t vue_header_bits =
          VARYING_BIT_PSIZ | VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT;
