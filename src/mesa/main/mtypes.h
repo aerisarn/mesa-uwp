@@ -319,18 +319,6 @@ struct gl_colorbuffer_attrib
    GLboolean sRGBEnabled;  /**< Framebuffer sRGB blending/updating requested */
 };
 
-union gl_vertex_format_user {
-   struct {
-      GLenum16 Type;        /**< datatype: GL_FLOAT, GL_INT, etc */
-      bool Bgra;            /**< true if GL_BGRA, else GL_RGBA */
-      GLubyte Size:5;       /**< components per element (1,2,3,4) */
-      GLubyte Normalized:1; /**< GL_ARB_vertex_program */
-      GLubyte Integer:1;    /**< Integer-valued? */
-      GLubyte Doubles:1;    /**< double values are not converted to floats */
-   };
-   uint32_t All;
-};
-
 /**
  * Vertex format to describe a vertex element.
  */

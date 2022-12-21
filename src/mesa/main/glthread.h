@@ -62,6 +62,19 @@ struct gl_buffer_object;
 struct _mesa_HashTable;
 struct _glapi_table;
 
+/* Used by both glthread and gl_context. */
+union gl_vertex_format_user {
+   struct {
+      GLenum16 Type;        /**< datatype: GL_FLOAT, GL_INT, etc */
+      bool Bgra;            /**< true if GL_BGRA, else GL_RGBA */
+      uint8_t Size:5;       /**< components per element (1,2,3,4) */
+      bool Normalized:1;    /**< GL_ARB_vertex_program */
+      bool Integer:1;       /**< Integer-valued? */
+      bool Doubles:1;       /**< double values are not converted to floats */
+   };
+   uint32_t All;
+};
+
 struct glthread_attrib_binding {
    struct gl_buffer_object *buffer; /**< where non-VBO data was uploaded */
    int offset;                      /**< offset to uploaded non-VBO data */
