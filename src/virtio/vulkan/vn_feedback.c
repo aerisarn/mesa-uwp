@@ -519,8 +519,7 @@ vn_feedback_cmd_pools_init(struct vn_device *dev)
       .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
    };
 
-   /* TODO will also condition on timeline semaphore feedback */
-   if (VN_PERF(NO_FENCE_FEEDBACK))
+   if (VN_PERF(NO_FENCE_FEEDBACK) && VN_PERF(NO_TIMELINE_SEM_FEEDBACK))
       return VK_SUCCESS;
 
    assert(dev->queue_family_count);
