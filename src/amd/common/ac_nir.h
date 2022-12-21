@@ -76,6 +76,14 @@ ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct a
 void
 ac_nir_export_primitive(nir_builder *b, nir_ssa_def *prim);
 
+void
+ac_nir_export_position(nir_builder *b,
+                       enum amd_gfx_level gfx_level,
+                       uint32_t clip_cull_mask,
+                       bool no_param_export,
+                       uint64_t outputs_written,
+                       nir_ssa_def *(*outputs)[4]);
+
 nir_ssa_def *
 ac_nir_calc_io_offset(nir_builder *b,
                       nir_intrinsic_instr *intrin,

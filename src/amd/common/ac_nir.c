@@ -56,6 +56,164 @@ ac_nir_export_primitive(nir_builder *b, nir_ssa_def *prim)
                   .write_mask = write_mask);
 }
 
+static nir_ssa_def *
+get_export_output(nir_builder *b, nir_ssa_def **output)
+{
+   nir_ssa_def *vec[4];
+   for (int i = 0; i < 4; i++) {
+      if (output[i])
+         vec[i] = nir_u2uN(b, output[i], 32);
+      else
+         vec[i] = nir_ssa_undef(b, 1, 32);
+   }
+
+   return nir_vec(b, vec, 4);
+}
+
+void
+ac_nir_export_position(nir_builder *b,
+                       enum amd_gfx_level gfx_level,
+                       uint32_t clip_cull_mask,
+                       bool no_param_export,
+                       uint64_t outputs_written,
+                       nir_ssa_def *(*outputs)[4])
+{
+   nir_intrinsic_instr *exp[4];
+   unsigned exp_num = 0;
+
+   nir_ssa_def *pos;
+   if (outputs_written & VARYING_BIT_POS) {
+      pos = get_export_output(b, outputs[VARYING_SLOT_POS]);
+   } else {
+      nir_ssa_def *zero = nir_imm_float(b, 0);
+      nir_ssa_def *one = nir_imm_float(b, 1);
+      pos = nir_vec4(b, zero, zero, zero, one);
+   }
+
+   /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+    * Setting valid_mask=1 prevents it and has no other effect.
+    */
+   unsigned pos_flags = gfx_level == GFX10 ? AC_EXP_FLAG_VALID_MASK : 0;
+
+   exp[exp_num] = nir_export_amd(
+      b, pos, .base = V_008DFC_SQ_EXP_POS + exp_num,
+      .flags = pos_flags, .write_mask = 0xf);
+   exp_num++;
+
+   uint64_t mask =
+      VARYING_BIT_PSIZ |
+      VARYING_BIT_EDGE |
+      VARYING_BIT_LAYER |
+      VARYING_BIT_VIEWPORT |
+      VARYING_BIT_PRIMITIVE_SHADING_RATE;
+
+   /* clear output mask if no one written */
+   if (!outputs[VARYING_SLOT_PSIZ][0])
+      outputs_written &= ~VARYING_BIT_PSIZ;
+   if (!outputs[VARYING_SLOT_EDGE][0])
+      outputs_written &= ~VARYING_BIT_EDGE;
+   if (!outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0])
+      outputs_written &= ~VARYING_BIT_PRIMITIVE_SHADING_RATE;
+   if (!outputs[VARYING_SLOT_LAYER][0])
+      outputs_written &= ~VARYING_BIT_LAYER;
+   if (!outputs[VARYING_SLOT_VIEWPORT][0])
+      outputs_written &= ~VARYING_BIT_VIEWPORT;
+
+   if (outputs_written & mask) {
+      nir_ssa_def *zero = nir_imm_float(b, 0);
+      nir_ssa_def *vec[4] = { zero, zero, zero, zero };
+      unsigned flags = 0;
+      unsigned write_mask = 0;
+
+      if (outputs_written & VARYING_BIT_PSIZ) {
+         vec[0] = outputs[VARYING_SLOT_PSIZ][0];
+         write_mask |= BITFIELD_BIT(0);
+      }
+
+      if (outputs_written & VARYING_BIT_EDGE) {
+         vec[1] = nir_umin(b, outputs[VARYING_SLOT_EDGE][0], nir_imm_int(b, 1));
+         write_mask |= BITFIELD_BIT(1);
+      }
+
+      if (outputs_written & VARYING_BIT_PRIMITIVE_SHADING_RATE) {
+         vec[1] = nir_ior(b, vec[1], outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0]);
+         write_mask |= BITFIELD_BIT(1);
+      }
+
+      if (outputs_written & VARYING_BIT_LAYER) {
+         vec[2] = outputs[VARYING_SLOT_LAYER][0];
+         write_mask |= BITFIELD_BIT(2);
+      }
+
+      if (outputs_written & VARYING_BIT_VIEWPORT) {
+         if (gfx_level >= GFX9) {
+            /* GFX9 has the layer in [10:0] and the viewport index in [19:16]. */
+            nir_ssa_def *v = nir_ishl_imm(b, outputs[VARYING_SLOT_VIEWPORT][0], 16);
+            vec[2] = nir_ior(b, vec[2], v);
+            write_mask |= BITFIELD_BIT(2);
+         } else {
+            vec[3] = outputs[VARYING_SLOT_VIEWPORT][0];
+            write_mask |= BITFIELD_BIT(3);
+         }
+      }
+
+      exp[exp_num] = nir_export_amd(
+         b, nir_vec(b, vec, 4),
+         .base = V_008DFC_SQ_EXP_POS + exp_num,
+         .flags = flags,
+         .write_mask = write_mask);
+      exp_num++;
+   }
+
+   for (int i = 0; i < 2; i++) {
+      if ((outputs_written & (VARYING_BIT_CLIP_DIST0 << i)) &&
+          (clip_cull_mask & BITFIELD_RANGE(i * 4, 4))) {
+         exp[exp_num] = nir_export_amd(
+            b, get_export_output(b, outputs[VARYING_SLOT_CLIP_DIST0 + i]),
+            .base = V_008DFC_SQ_EXP_POS + exp_num,
+            .write_mask = (clip_cull_mask >> (i * 4)) & 0xf);
+         exp_num++;
+      }
+   }
+
+   if (outputs_written & VARYING_BIT_CLIP_VERTEX) {
+      nir_ssa_def *vtx = get_export_output(b, outputs[VARYING_SLOT_CLIP_VERTEX]);
+
+      /* Clip distance for clip vertex to each user clip plane. */
+      nir_ssa_def *clip_dist[8] = {0};
+      u_foreach_bit (i, clip_cull_mask) {
+         nir_ssa_def *ucp = nir_load_user_clip_plane(b, .ucp_id = i);
+         clip_dist[i] = nir_fdot4(b, vtx, ucp);
+      }
+
+      for (int i = 0; i < 2; i++) {
+         if (clip_cull_mask & BITFIELD_RANGE(i * 4, 4)) {
+            exp[exp_num] = nir_export_amd(
+               b, get_export_output(b, clip_dist + i * 4),
+               .base = V_008DFC_SQ_EXP_POS + exp_num,
+               .write_mask = (clip_cull_mask >> (i * 4)) & 0xf);
+            exp_num++;
+         }
+      }
+   }
+
+   /* Specify that this is the last export */
+   nir_intrinsic_instr *final_exp = exp[exp_num - 1];
+   unsigned final_exp_flags = nir_intrinsic_flags(final_exp);
+   nir_intrinsic_set_flags(final_exp, final_exp_flags | AC_EXP_FLAG_DONE);
+
+   /* If a shader has no param exports, rasterization can start before
+    * the shader finishes and thus memory stores might not finish before
+    * the pixel shader starts.
+    */
+   if (gfx_level >= GFX10 && no_param_export && b->shader->info.writes_memory) {
+      nir_intrinsic_instr *wait_instr =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_memory_barrier_buffer);
+
+      nir_instr_insert_before(&final_exp->instr, &wait_instr->instr);
+   }
+}
+
 /**
  * This function takes an I/O intrinsic like load/store_input,
  * and emits a sequence that calculates the full offset of that instruction,
