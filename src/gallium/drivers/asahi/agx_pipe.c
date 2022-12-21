@@ -300,6 +300,7 @@ agx_linear_allowed(const struct agx_resource *pres)
     * works for 2D textures. Rectangle textures are a special case of 2D.
     */
    case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_RECT:
       break;
 

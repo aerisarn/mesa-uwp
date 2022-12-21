@@ -587,9 +587,8 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
 
    util_format_compose_swizzles(format_swizzle, view_swizzle, out_swizzle);
 
-   /* Must tile array textures */
-   assert((rsrc->layout.tiling != AIL_TILING_LINEAR) ||
-          (state->u.tex.last_layer == state->u.tex.first_layer));
+   unsigned first_layer =
+      (state->target == PIPE_BUFFER) ? 0 : state->u.tex.first_layer;
 
    /* Pack the descriptor into GPU memory */
    agx_pack(out, TEXTURE, cfg) {
@@ -635,7 +634,15 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
              (state->target == PIPE_TEXTURE_CUBE_ARRAY))
             layers /= 6;
 
-         cfg.depth = layers;
+         if (rsrc->layout.tiling == AIL_TILING_LINEAR &&
+             state->target == PIPE_TEXTURE_2D_ARRAY) {
+            cfg.depth_linear = layers;
+            cfg.layer_stride_linear = (rsrc->layout.layer_stride_B - 0x80);
+            cfg.extended = true;
+         } else {
+            assert((rsrc->layout.tiling != AIL_TILING_LINEAR) || (layers == 1));
+            cfg.depth = layers;
+         }
       }
 
       if (rsrc->base.nr_samples > 1)
