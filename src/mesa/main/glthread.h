@@ -81,6 +81,19 @@ struct glthread_attrib_binding {
    const void *original_pointer;    /**< restore this pointer after the draw */
 };
 
+struct glthread_attrib {
+   /* Per attrib: */
+   uint8_t ElementSize;       /**< max 32 */
+   uint8_t BufferIndex;       /**< Referring to Attrib[BufferIndex]. */
+   uint16_t RelativeOffset;   /**< max 0xffff in Mesa */
+
+   /* Per buffer binding: */
+   GLuint Divisor;
+   int16_t Stride;            /**< max 2048 */
+   int8_t EnabledAttribCount; /**< Number of enabled attribs using this buffer. */
+   const void *Pointer;
+};
+
 struct glthread_vao {
    GLuint Name;
    GLuint CurrentElementBufferName;
@@ -91,18 +104,7 @@ struct glthread_vao {
    GLbitfield UserPointerMask; /**< Bitmask of buffer bindings. */
    GLbitfield NonZeroDivisorMask; /**< Bitmask of buffer bindings. */
 
-   struct {
-      /* Per attrib: */
-      GLuint ElementSize;
-      GLuint RelativeOffset;
-      GLuint BufferIndex; /**< Referring to Attrib[BufferIndex]. */
-
-      /* Per buffer binding: */
-      GLsizei Stride;
-      GLuint Divisor;
-      int EnabledAttribCount; /**< Number of enabled attribs using this buffer. */
-      const void *Pointer;
-   } Attrib[VERT_ATTRIB_MAX];
+   struct glthread_attrib Attrib[VERT_ATTRIB_MAX];
 };
 
 /** A single batch of commands queued up for execution. */
