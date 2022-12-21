@@ -364,19 +364,9 @@ with_gbm = get_option('gbm') \
   .disable_auto_if(not with_dri) \
   .allowed()
 
-_xlib_lease = get_option('xlib-lease')
-if _xlib_lease == 'true'
-  _xlib_lease = 'enabled'
-  warning('xlib_lease option "true" deprecated, please use "enabled" instead.')
-elif _xlib_lease == 'false'
-  _xlib_lease = 'disabled'
-  warning('xlib_lease option "false" deprecated, please use "disabled" instead.')
-endif
-if _xlib_lease == 'auto'
-  with_xlib_lease = with_platform_x11 and system_has_kms_drm
-else
-  with_xlib_lease = _xlib_lease == 'enabled'
-endif
+with_xlib_lease = get_option('xlib-lease') \
+  .require(with_platform_x11 and system_has_kms_drm, error_message : 'xlib-lease requires X11 and KMS/DRM support') \
+  .allowed()
 
 if with_platform_wayland
   c_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
