@@ -220,7 +220,8 @@ ail_initialize_compression(struct ail_layout *layout)
       height_px = DIV_ROUND_UP(height_px, 2);
    }
 
-   layout->size_B += compbuf_B * layout->depth_px;
+   layout->compression_layer_stride_B = compbuf_B;
+   layout->size_B += layout->compression_layer_stride_B * layout->depth_px;
 }
 
 void

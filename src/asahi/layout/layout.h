@@ -125,6 +125,9 @@ struct ail_layout {
    /* Offset of the start of the compression metadata buffer */
    uint32_t metadata_offset_B;
 
+   /* Stride between subsequent layers in the compression metadata buffer */
+   uint32_t compression_layer_stride_B;
+
    /* Size of entire texture */
    uint32_t size_B;
 };
