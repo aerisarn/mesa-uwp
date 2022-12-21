@@ -1727,8 +1727,14 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    enum lsc_addr_surface_type surf_type;
    if (surface_handle.file != BAD_FILE) {
-      assert(surface.file == IMM && (surface.ud == 0 || surface.ud == GFX125_NON_BINDLESS));
-      surf_type = non_bindless ? LSC_ADDR_SURFTYPE_SS : LSC_ADDR_SURFTYPE_BSS;
+      if (surface.file == BAD_FILE) {
+         assert(!non_bindless);
+         surf_type = LSC_ADDR_SURFTYPE_BSS;
+      } else {
+         assert(surface.file == IMM &&
+                (surface.ud == 0 || surface.ud == GFX125_NON_BINDLESS));
+         surf_type = non_bindless ? LSC_ADDR_SURFTYPE_SS : LSC_ADDR_SURFTYPE_BSS;
+      }
    } else if (surface.file == IMM && surface.ud == GFX7_BTI_SLM)
       surf_type = LSC_ADDR_SURFTYPE_FLAT;
    else

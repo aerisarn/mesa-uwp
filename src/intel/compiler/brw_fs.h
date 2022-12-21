@@ -363,8 +363,8 @@ public:
                                      nir_intrinsic_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);
-   fs_reg get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
-                                       nir_intrinsic_instr *instr);
+   fs_reg get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
+                                         nir_intrinsic_instr *instr);
    fs_reg swizzle_nir_scratch_addr(const brw::fs_builder &bld,
                                    const fs_reg &addr,
                                    bool in_dwords);
