@@ -2778,3 +2778,118 @@ fs_visitor::lower_logical_sends()
 
    return progress;
 }
+
+/**
+ * Turns the generic expression-style uniform pull constant load instruction
+ * into a hardware-specific series of instructions for loading a pull
+ * constant.
+ *
+ * The expression style allows the CSE pass before this to optimize out
+ * repeated loads from the same offset, and gives the pre-register-allocation
+ * scheduling full flexibility, while the conversion to native instructions
+ * allows the post-register-allocation scheduler the best information
+ * possible.
+ *
+ * Note that execution masking for setting up pull constant loads is special:
+ * the channels that need to be written are unrelated to the current execution
+ * mask, since a later instruction will use one of the result channels as a
+ * source operand for all 8 or 16 of its channels.
+ */
+void
+fs_visitor::lower_uniform_pull_constant_loads()
+{
+   foreach_block_and_inst (block, fs_inst, inst, cfg) {
+      if (inst->opcode != FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD)
+         continue;
+
+      const fs_reg& surface = inst->src[PULL_UNIFORM_CONSTANT_SRC_SURFACE];
+      const fs_reg& offset_B = inst->src[PULL_UNIFORM_CONSTANT_SRC_OFFSET];
+      const fs_reg& size_B = inst->src[PULL_UNIFORM_CONSTANT_SRC_SIZE];
+      assert(offset_B.file == IMM);
+      assert(size_B.file == IMM);
+
+      if (devinfo->has_lsc) {
+         const fs_builder ubld =
+            fs_builder(this, block, inst).group(8, 0).exec_all();
+
+         const fs_reg payload = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.MOV(payload, offset_B);
+
+         inst->sfid = GFX12_SFID_UGM;
+         inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD,
+                                   1 /* simd_size */,
+                                   LSC_ADDR_SURFTYPE_BTI,
+                                   LSC_ADDR_SIZE_A32,
+                                   1 /* num_coordinates */,
+                                   LSC_DATA_SIZE_D32,
+                                   inst->size_written / 4,
+                                   true /* transpose */,
+                                   LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                   true /* has_dest */);
+
+         fs_reg ex_desc;
+         if (surface.file == IMM) {
+            ex_desc = brw_imm_ud(lsc_bti_ex_desc(devinfo, surface.ud));
+         } else {
+            /* We only need the first component for the payload so we can use
+             * one of the other components for the extended descriptor
+             */
+            ex_desc = component(payload, 1);
+            ubld.group(1, 0).SHL(ex_desc, surface, brw_imm_ud(24));
+         }
+
+         /* Update the original instruction. */
+         inst->opcode = SHADER_OPCODE_SEND;
+         inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+         inst->ex_mlen = 0;
+         inst->header_size = 0;
+         inst->send_has_side_effects = false;
+         inst->send_is_volatile = true;
+         inst->exec_size = 1;
+
+         /* Finally, the payload */
+         inst->resize_sources(3);
+         inst->src[0] = brw_imm_ud(0); /* desc */
+         inst->src[1] = ex_desc;
+         inst->src[2] = payload;
+
+         invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
+      } else if (devinfo->ver >= 7) {
+         const fs_builder ubld = fs_builder(this, block, inst).exec_all();
+         fs_reg header = bld.exec_all().group(8, 0).vgrf(BRW_REGISTER_TYPE_UD);
+
+         ubld.group(8, 0).MOV(header,
+                              retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
+         ubld.group(1, 0).MOV(component(header, 2),
+                              brw_imm_ud(offset_B.ud / 16));
+
+         inst->sfid = GFX6_SFID_DATAPORT_CONSTANT_CACHE;
+         inst->opcode = SHADER_OPCODE_SEND;
+         inst->header_size = 1;
+         inst->mlen = 1;
+
+         uint32_t desc =
+            brw_dp_oword_block_rw_desc(devinfo, true /* align_16B */,
+                                       size_B.ud / 4, false /* write */);
+
+         inst->resize_sources(4);
+
+         setup_surface_descriptors(ubld, inst, desc,
+                                   inst->src[PULL_UNIFORM_CONSTANT_SRC_SURFACE],
+                                   fs_reg() /* surface_handle */);
+
+         inst->src[2] = header;
+         inst->src[3] = fs_reg(); /* unused for reads */
+
+         invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
+      } else {
+         /* Before register allocation, we didn't tell the scheduler about the
+          * MRF we use.  We know it's safe to use this MRF because nothing
+          * else does except for register spill/unspill, which generates and
+          * uses its MRF within a single IR instruction.
+          */
+         inst->base_mrf = FIRST_PULL_LOAD_MRF(devinfo->ver) + 1;
+         inst->mlen = 1;
+      }
+   }
+}

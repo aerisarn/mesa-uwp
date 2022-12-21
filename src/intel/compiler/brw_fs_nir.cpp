@@ -4776,9 +4776,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             const unsigned count = MIN2(instr->num_components - c,
                                         (block_sz - base % block_sz) / type_size);
 
-            ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
-                      packed_consts, surf_index,
-                      brw_imm_ud(base & ~(block_sz - 1)));
+            fs_reg srcs[PULL_UNIFORM_CONSTANT_SRCS];
+            srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE] = surf_index;
+            srcs[PULL_UNIFORM_CONSTANT_SRC_OFFSET]  = brw_imm_ud(base & ~(block_sz - 1));
+            srcs[PULL_UNIFORM_CONSTANT_SRC_SIZE]    = brw_imm_ud(block_sz);
+
+            ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD, packed_consts,
+                      srcs, PULL_UNIFORM_CONSTANT_SRCS);
 
             const fs_reg consts =
                retype(byte_offset(packed_consts, base & (block_sz - 1)),

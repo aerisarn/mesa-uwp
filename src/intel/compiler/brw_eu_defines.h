@@ -559,7 +559,6 @@ enum opcode {
    FS_OPCODE_PIXEL_X,
    FS_OPCODE_PIXEL_Y,
    FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
-   FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7,
    FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4,
    FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL,
    FS_OPCODE_SET_SAMPLE_ID,
@@ -886,6 +885,17 @@ enum tex_logical_srcs {
    TEX_LOGICAL_SRC_GRAD_COMPONENTS,
 
    TEX_LOGICAL_NUM_SRCS,
+};
+
+enum pull_uniform_constant_srcs {
+   /** Surface binding table index */
+   PULL_UNIFORM_CONSTANT_SRC_SURFACE,
+   /** Surface offset */
+   PULL_UNIFORM_CONSTANT_SRC_OFFSET,
+   /** Pull size */
+   PULL_UNIFORM_CONSTANT_SRC_SIZE,
+
+   PULL_UNIFORM_CONSTANT_SRCS,
 };
 
 enum surface_logical_srcs {

@@ -430,8 +430,6 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
 
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return "uniform_pull_const";
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
-      return "uniform_pull_const_gfx7";
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
       return "varying_pull_const_gfx4";
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:
