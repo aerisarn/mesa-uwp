@@ -1794,7 +1794,7 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
                                                 VARYING_BIT_PRIMITIVE_SHADING_RATE;
          bool reads_header = (per_prim_inputs_read & primitive_header_bits) != 0;
 
-         if (reads_header) {
+         if (reads_header || mue_map->user_data_in_primitive_header) {
             /* Primitive Shading Rate, Layer and Viewport live in the same
              * 4-dwords slot (psr is dword 0, layer is dword 1, and viewport
              * is dword 2).
@@ -1849,9 +1849,13 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
       unsigned per_vertex_start_dw = mue_map->per_vertex_start_dw;
       unsigned per_vertex_size_dw = mue_map->per_vertex_pitch_dw;
 
-      /* Per-Vertex header is never available to fragment shader. */
-      per_vertex_start_dw += 8;
-      per_vertex_size_dw -= 8;
+      /* Per-Vertex header is available to fragment shader only if there's
+       * user data there.
+       */
+      if (!mue_map->user_data_in_vertex_header) {
+         per_vertex_start_dw += 8;
+         per_vertex_size_dw -= 8;
+      }
 
       /* In Mesh, CLIP_DIST slots are always at the beginning, because
        * they come from MUE Vertex Header, not Per-Vertex Attributes.
