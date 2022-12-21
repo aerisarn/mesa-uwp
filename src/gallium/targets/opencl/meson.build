@@ -50,7 +50,7 @@ clang_test_code = '''
     return found_pos == ::std::string::npos ? 1 : 0;
   }
 '''
-can_check_clang = (not meson.is_cross_build() or meson.has_exe_wrapper()) and cpp.has_link_argument(linker_rpath_arg)
+can_check_clang = (not meson.is_cross_build() or meson.can_run_host_binaries()) and cpp.has_link_argument(linker_rpath_arg)
 if can_check_clang
   test_run = cpp.run(clang_test_code, name : 'dep-clang-usable',
                      dependencies : [dep_llvm, dep_clang], args : linker_rpath_arg)

@@ -66,10 +66,7 @@ test(
 )
 
 # Meson can't auto-skip these on cross builds because of the python wrapper
-#
-# TODO: has_exe_wrapper() is deprecated and renamed to can_run_host_binaries()
-# starting with Meson 0.55.0
-if meson.has_exe_wrapper()
+if meson.can_run_host_binaries()
   test(
     'glsl compiler warnings',
     prog_python,
