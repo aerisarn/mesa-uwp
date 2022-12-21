@@ -214,6 +214,66 @@ ac_nir_export_position(nir_builder *b,
    }
 }
 
+void
+ac_nir_export_parameter(nir_builder *b,
+                        const uint8_t *param_offsets,
+                        uint64_t outputs_written,
+                        uint16_t outputs_written_16bit,
+                        nir_ssa_def *(*outputs)[4],
+                        nir_ssa_def *(*outputs_16bit_lo)[4],
+                        nir_ssa_def *(*outputs_16bit_hi)[4])
+{
+   u_foreach_bit64 (slot, outputs_written) {
+      unsigned offset = param_offsets[slot];
+      if (offset > AC_EXP_PARAM_OFFSET_31)
+         continue;
+
+      uint32_t write_mask = 0;
+      for (int i = 0; i < 4; i++) {
+         if (outputs[slot][i])
+            write_mask |= BITFIELD_BIT(i);
+      }
+
+      /* no one set this output slot, we can skip the param export */
+      if (!write_mask)
+         continue;
+
+      nir_export_amd(
+         b, get_export_output(b, outputs[slot]),
+         .base = V_008DFC_SQ_EXP_PARAM + offset,
+         .write_mask = write_mask);
+   }
+
+   u_foreach_bit (slot, outputs_written_16bit) {
+      unsigned offset = param_offsets[VARYING_SLOT_VAR0_16BIT + slot];
+      if (offset > AC_EXP_PARAM_OFFSET_31)
+         continue;
+
+      uint32_t write_mask = 0;
+      for (int i = 0; i < 4; i++) {
+         if (outputs_16bit_lo[slot][i] || outputs_16bit_hi[slot][i])
+            write_mask |= BITFIELD_BIT(i);
+      }
+
+      /* no one set this output slot, we can skip the param export */
+      if (!write_mask)
+         continue;
+
+      nir_ssa_def *vec[4];
+      nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
+      for (int i = 0; i < 4; i++) {
+         nir_ssa_def *lo = outputs_16bit_lo[slot][i] ? outputs_16bit_lo[slot][i] : undef;
+         nir_ssa_def *hi = outputs_16bit_hi[slot][i] ? outputs_16bit_hi[slot][i] : undef;
+         vec[i] = nir_pack_32_2x16_split(b, lo, hi);
+      }
+
+      nir_export_amd(
+         b, nir_vec(b, vec, 4),
+         .base = V_008DFC_SQ_EXP_PARAM + offset,
+         .write_mask = write_mask);
+   }
+}
+
 /**
  * This function takes an I/O intrinsic like load/store_input,
  * and emits a sequence that calculates the full offset of that instruction,
