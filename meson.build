@@ -1458,21 +1458,9 @@ if dep_zlib.found()
   pre_args += '-DHAVE_ZLIB'
 endif
 
-_zstd = get_option('zstd')
-if _zstd == 'true'
-  _zstd = 'enabled'
-  warning('zstd option "true" deprecated, please use "enabled" instead.')
-elif _zstd == 'false'
-  _zstd = 'disabled'
-  warning('zstd option "false" deprecated, please use "disabled" instead.')
-endif
-if _zstd != 'disabled'
-  dep_zstd = dependency('libzstd', required : _zstd == 'enabled')
-  if dep_zstd.found()
-    pre_args += '-DHAVE_ZSTD'
-  endif
-else
-  dep_zstd = null_dep
+dep_zstd = dependency('libzstd', required : get_option('zstd'))
+if dep_zstd.found()
+  pre_args += '-DHAVE_ZSTD'
 endif
 
 with_compression = dep_zlib.found() or dep_zstd.found()

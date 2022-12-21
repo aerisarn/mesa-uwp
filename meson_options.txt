@@ -442,9 +442,7 @@ option(
 )
 option(
   'zstd',
-  type : 'combo',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
-  value : 'auto',
+  type : 'feature',
   description : 'Use ZSTD instead of ZLIB in some cases.'
 )
 option(
