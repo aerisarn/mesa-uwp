@@ -75,6 +75,16 @@ union gl_vertex_format_user {
    uint32_t All;
 };
 
+#define MESA_PACK_VFORMAT(type, size, normalized, integer, doubles) \
+   (union gl_vertex_format_user){{ \
+      .Type = MIN2(type, 0xffff), /* 0xffff means invalid value */ \
+      .Bgra = size == GL_BGRA, \
+      .Size = size == GL_BGRA ? 4 : MIN2(size, 5), /* 5 means invalid value */ \
+      .Normalized = normalized, \
+      .Integer = integer, \
+      .Doubles = doubles \
+   }}
+
 struct glthread_attrib_binding {
    struct gl_buffer_object *buffer; /**< where non-VBO data was uploaded */
    int offset;                      /**< offset to uploaded non-VBO data */
@@ -86,6 +96,7 @@ struct glthread_attrib {
    uint8_t ElementSize;       /**< max 32 */
    uint8_t BufferIndex;       /**< Referring to Attrib[BufferIndex]. */
    uint16_t RelativeOffset;   /**< max 0xffff in Mesa */
+   union gl_vertex_format_user Format;
 
    /* Per buffer binding: */
    GLuint Divisor;
@@ -314,16 +325,18 @@ void _mesa_glthread_ClientState(struct gl_context *ctx, GLuint *vaobj,
 void _mesa_glthread_AttribDivisor(struct gl_context *ctx, const GLuint *vaobj,
                                   gl_vert_attrib attrib, GLuint divisor);
 void _mesa_glthread_AttribPointer(struct gl_context *ctx, gl_vert_attrib attrib,
-                                  GLint size, GLenum type, GLsizei stride,
-                                  const void *pointer);
+                                  union gl_vertex_format_user format,
+                                  GLsizei stride, const void *pointer);
 void _mesa_glthread_DSAAttribPointer(struct gl_context *ctx, GLuint vao,
                                      GLuint buffer, gl_vert_attrib attrib,
-                                     GLint size, GLenum type, GLsizei stride,
-                                     GLintptr offset);
+                                     union gl_vertex_format_user format,
+                                     GLsizei stride, GLintptr offset);
 void _mesa_glthread_AttribFormat(struct gl_context *ctx, GLuint attribindex,
-                                 GLint size, GLenum type,  GLuint relativeoffset);
+                                 union gl_vertex_format_user format,
+                                 GLuint relativeoffset);
 void _mesa_glthread_DSAAttribFormat(struct gl_context *ctx, GLuint vaobj,
-                                    GLuint attribindex, GLint size, GLenum type,
+                                    GLuint attribindex,
+                                    union gl_vertex_format_user format,
                                     GLuint relativeoffset);
 void _mesa_glthread_VertexBuffer(struct gl_context *ctx, GLuint bindingindex,
                                  GLuint buffer, GLintptr offset, GLsizei stride);
