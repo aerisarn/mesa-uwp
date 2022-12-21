@@ -561,7 +561,7 @@ enum pipe_resource_usage {
 /**
  * Primitive types:
  */
-enum pipe_prim_type {
+enum PACKED pipe_prim_type {
    PIPE_PRIM_POINTS,
    PIPE_PRIM_LINES,
    PIPE_PRIM_LINE_LOOP,
@@ -578,7 +578,7 @@ enum pipe_prim_type {
    PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY,
    PIPE_PRIM_PATCHES,
    PIPE_PRIM_MAX,
-} ENUM_PACKED;
+};
 
 /**
  * Tessellator spacing types
