@@ -208,7 +208,7 @@ with_dri = false
 if with_gallium and system_has_kms_drm
   _glx = get_option('glx')
   _egl = get_option('egl')
-  if _glx == 'dri' or _egl == 'enabled' or (_glx == 'disabled' and _egl != 'disabled')
+  if _glx == 'dri' or _egl.enabled() or (_glx == 'disabled' and _egl.allowed())
     with_dri = true
   endif
 endif
@@ -402,34 +402,13 @@ if host_machine.system() == 'darwin'
   cpp_args += '-DVK_USE_PLATFORM_METAL_EXT'
 endif
 
-_egl = get_option('egl')
-if _egl == 'true'
-  _egl = 'enabled'
-  warning('egl option "true" deprecated, please use "enabled" instead.')
-elif _egl == 'false'
-  _egl = 'disabled'
-  warning('egl option "false" deprecated, please use "disabled" instead.')
-endif
-if _egl == 'auto'
-  with_egl = (
-    host_machine.system() != 'darwin' and
-    (with_platform_windows or with_dri) and
-    with_shared_glapi
-  )
-elif _egl == 'enabled'
-  if not with_dri and not with_platform_haiku and not with_platform_windows
-    error('EGL requires dri, haiku, or windows')
-  elif not with_shared_glapi
-    error('EGL requires shared-glapi')
-  elif not ['disabled', 'dri'].contains(with_glx)
-    error('EGL requires dri, but a GLX is being built without dri')
-  elif host_machine.system() == 'darwin'
-    error('EGL is not available on MacOS')
-  endif
-  with_egl = true
-else
-  with_egl = false
-endif
+with_egl = get_option('egl') \
+  .require(host_machine.system() != 'darwin', error_message : 'EGL not supported on MacOS') \
+  .require(with_platform_windows or with_platform_haiku or with_dri, error_message : 'EGL requires DRI, Haiku, or Windows') \
+  .require(with_shared_glapi, error_message : 'EGL requires shared-glapi') \
+  .require(with_glx != 'xlib', error_message :'EGL requires DRI, but GLX is being built with xlib support') \
+  .disable_auto_if(with_platform_haiku) \
+  .allowed()
 
 if with_egl
   _platforms += 'surfaceless'

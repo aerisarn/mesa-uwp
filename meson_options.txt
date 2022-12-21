@@ -280,9 +280,7 @@ option(
 )
 option(
   'egl',
-  type : 'combo',
-  value : 'auto',
-  choices : ['auto', 'true', 'false', 'enabled', 'disabled'],
+  type : 'feature',
   description : 'Build support for EGL platform'
 )
 option(
