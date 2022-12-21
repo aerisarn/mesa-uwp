@@ -210,6 +210,9 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
       break;
 
    /* Intrinsics with divergence depending on shader stage and hardware */
+   case nir_intrinsic_load_shader_record_ptr:
+      is_divergent = !(options & nir_divergence_shader_record_ptr_uniform);
+      break;
    case nir_intrinsic_load_frag_shading_rate:
       is_divergent = !(options & nir_divergence_single_frag_shading_rate_per_subgroup);
       break;
