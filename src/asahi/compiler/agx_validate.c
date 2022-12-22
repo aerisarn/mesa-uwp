@@ -83,6 +83,7 @@ agx_validate_block_form(agx_block *block)
       case AGX_OPCODE_IF_FCMP:
       case AGX_OPCODE_ELSE_FCMP:
       case AGX_OPCODE_WHILE_FCMP:
+      case AGX_OPCODE_STOP:
          agx_validate_assert(state == AGX_BLOCK_STATE_CF);
          break;
       }

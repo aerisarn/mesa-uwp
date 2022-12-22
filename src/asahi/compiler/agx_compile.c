@@ -1860,6 +1860,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
+   agx_logical_end(&_b);
    agx_stop(&_b);
 
    /* Index blocks now that we're done emitting so the order is consistent */
