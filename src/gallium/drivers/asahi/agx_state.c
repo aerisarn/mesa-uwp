@@ -324,6 +324,7 @@ agx_create_rs_state(struct pipe_context *ctx,
       cfg.depth_clamp = !cso->depth_clip_near;
       cfg.flat_shading_vertex =
          cso->flatshade_first ? AGX_PPP_VERTEX_0 : AGX_PPP_VERTEX_2;
+      cfg.rasterizer_discard = cso->rasterizer_discard;
    };
 
    /* Two-sided polygon mode doesn't seem to work on G13. Apple's OpenGL
@@ -1908,6 +1909,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.flat_shading_control = ctx->rast->base.flatshade_first
                                        ? AGX_VDM_VERTEX_0
                                        : AGX_VDM_VERTEX_2;
+         cfg.unknown_4 = cfg.unknown_5 = ctx->rast->base.rasterizer_discard;
       }
       out += AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH;
 
@@ -1958,7 +1960,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    struct agx_ppp_update ppp = agx_new_ppp_update(
       pool, (struct AGX_PPP_HEADER){
                .fragment_control = fragment_control_dirty,
-               .fragment_control_2 = IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG),
+               .fragment_control_2 =
+                  IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS),
                .fragment_front_face = fragment_face_dirty,
                .fragment_front_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
                .fragment_front_stencil = IS_DIRTY(ZS),
@@ -1996,12 +1999,13 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG)) {
+   if (IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
       agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
          /* This avoids broken derivatives along primitive edges */
          cfg.disable_tri_merging =
             (is_lines || is_points || ctx->fs->info.disable_tri_merging);
-         cfg.no_colour_output = ctx->fs->info.no_colour_output;
+         cfg.no_colour_output = ctx->fs->info.no_colour_output ||
+                                ctx->rast->base.rasterizer_discard;
          cfg.pass_type = agx_pass_type_for_shader(&ctx->fs->info);
       }
    }
