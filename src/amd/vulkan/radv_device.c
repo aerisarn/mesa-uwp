@@ -4132,19 +4132,6 @@ radv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerPropertie
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount,
-                                    VkLayerProperties *pProperties)
-{
-   if (pProperties == NULL) {
-      *pPropertyCount = 0;
-      return VK_SUCCESS;
-   }
-
-   /* None supported at this time */
-   return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
-}
-
 static void
 radv_fill_shader_rings(struct radv_device *device, uint32_t *map, bool add_sample_positions,
                        uint32_t esgs_ring_size, struct radeon_winsys_bo *esgs_ring_bo,
