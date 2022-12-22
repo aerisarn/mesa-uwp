@@ -446,12 +446,14 @@
     <field name="Depth clip" size="1" start="10" type="bool"/>
     <field name="Depth clamp" size="1" start="11" type="bool"/>
     <field name="Front face CCW" size="1" start="16" type="bool"/>
+    <field name="Rasterizer discard" size="1" start="17" type="bool"/>
   </struct>
 
   <struct name="Cull 2" size="4">
-    <field name="Unknown 2" size="32" start="0" type="hex" default="0xa0"/>
+    <field name="Unknown 2" size="8" start="0" type="hex" default="0xa0"/>
     <field name="Draw clipped edges" size="1" start="9" type="bool"/>
     <field name="Primitive MSAA" size="1" start="15" type="bool"/>
+    <field name="Rasterizer discard" size="1" start="17" type="bool"/>
   </struct>
 
   <struct name="Varying 0" size="4">
@@ -689,6 +691,8 @@
 
   <struct name="VDM State Vertex Unknown" size="4">
     <field name="Flat shading control" start="0" size="2" type="VDM Vertex"/>
+    <field name="Unknown 4" size="1" start="4" type="bool"/>
+    <field name="Unknown 5" size="1" start="5" type="bool"/>
   </struct>
 
   <!--- Command to issue a direct non-indexed draw -->
