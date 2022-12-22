@@ -84,6 +84,12 @@ void anv_nir_compute_push_layout(nir_shader *nir,
 void anv_nir_validate_push_layout(struct brw_stage_prog_data *prog_data,
                                   struct anv_pipeline_bind_map *map);
 
+bool anv_nir_update_resource_intel_block(nir_shader *shader);
+
+bool anv_nir_lower_resource_intel(nir_shader *shader,
+                                  const struct anv_physical_device *device,
+                                  enum anv_descriptor_set_layout_type desc_type);
+
 bool anv_nir_add_base_work_group_id(nir_shader *shader);
 
 uint32_t anv_nir_compute_used_push_descriptors(nir_shader *shader,

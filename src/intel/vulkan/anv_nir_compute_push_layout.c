@@ -55,7 +55,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             switch (intrin->intrinsic) {
             case nir_intrinsic_load_ubo:
-               if (nir_src_is_const(intrin->src[0]) &&
+               if (brw_nir_ubo_surface_index_is_pushable(intrin->src[0]) &&
                    nir_src_is_const(intrin->src[1]))
                   has_const_ubo = true;
                break;

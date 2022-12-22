@@ -1025,7 +1025,13 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                   .types = lower_non_uniform_access_types,
                   .callback = NULL,
                });
+
+      NIR_PASS(_, nir, brw_nir_lower_non_uniform_resource_intel);
+      NIR_PASS(_, nir, brw_nir_cleanup_resource_intel);
+      NIR_PASS(_, nir, nir_opt_dce);
    }
+
+   NIR_PASS_V(nir, anv_nir_update_resource_intel_block);
 
    stage->dynamic_push_values = anv_nir_compute_dynamic_push_bits(nir);
 
@@ -1033,6 +1039,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
               pdevice, pipeline->device->robust_buffer_access,
               anv_graphics_pipeline_stage_fragment_dynamic(stage),
               prog_data, &stage->bind_map, mem_ctx);
+
+   NIR_PASS_V(nir, anv_nir_lower_resource_intel, pdevice,
+              pipeline->layout.type);
 
    if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
       if (!nir->info.shared_memory_explicit_layout) {

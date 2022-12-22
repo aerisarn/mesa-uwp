@@ -170,6 +170,7 @@ libanv_files = files(
   'anv_nir_lower_multiview.c',
   'anv_nir_lower_load_patch_vertices_in.c',
   'anv_nir_lower_ubo_loads.c',
+  'anv_nir_lower_resource_intel.c',
   'anv_nir_push_descriptor_analysis.c',
   'anv_perf.c',
   'anv_pipeline.c',
