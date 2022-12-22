@@ -1337,7 +1337,7 @@ struct tex_src_info {
  * to handle with the image_mapping table..
  */
 static struct tex_src_info
-get_image_ssbo_samp_tex_src(struct ir3_context *ctx, nir_src *src)
+get_image_ssbo_samp_tex_src(struct ir3_context *ctx, nir_src *src, bool image)
 {
    struct ir3_block *b = ctx->block;
    struct tex_src_info info = {0};
@@ -1382,8 +1382,12 @@ get_image_ssbo_samp_tex_src(struct ir3_context *ctx, nir_src *src)
    } else {
       info.flags |= IR3_INSTR_S2EN;
       unsigned slot = nir_src_as_uint(*src);
-      unsigned tex_idx = ir3_image_to_tex(&ctx->so->image_mapping, slot);
+      unsigned tex_idx = image ?
+            ir3_image_to_tex(&ctx->so->image_mapping, slot) :
+            ir3_ssbo_to_tex(&ctx->so->image_mapping, slot);
       struct ir3_instruction *texture, *sampler;
+
+      ctx->so->num_samp = MAX2(ctx->so->num_samp, tex_idx + 1);
 
       texture = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
       sampler = create_immed_typed(ctx->block, tex_idx, TYPE_U16);
@@ -1440,7 +1444,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    }
 
    struct ir3_block *b = ctx->block;
-   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0]);
+   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], true);
    struct ir3_instruction *sam;
    struct ir3_instruction *const *src0 = ir3_get_src(ctx, &intr->src[1]);
    struct ir3_instruction *coords[4];
@@ -1482,7 +1486,7 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx,
                               struct ir3_instruction **dst)
 {
    struct ir3_block *b = ctx->block;
-   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0]);
+   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], true);
    struct ir3_instruction *sam, *lod;
    unsigned flags, ncoords = ir3_get_image_coords(intr, &flags);
    type_t dst_type = nir_dest_bit_size(intr->dest) == 16 ? TYPE_U16 : TYPE_U32;
@@ -1526,7 +1530,6 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx,
 {
    /* Note: isam currently can't handle vectorized loads/stores */
    if (!(nir_intrinsic_access(intr) & ACCESS_CAN_REORDER) ||
-       !ir3_bindless_resource(intr->src[0]) ||
        intr->dest.ssa.num_components > 1) {
       ctx->funcs->emit_intrinsic_load_ssbo(ctx, intr, dst);
       return;
@@ -1535,7 +1538,7 @@ emit_intrinsic_load_ssbo(struct ir3_context *ctx,
    struct ir3_block *b = ctx->block;
    struct ir3_instruction *offset = ir3_get_src(ctx, &intr->src[2])[0];
    struct ir3_instruction *coords = ir3_collect(b, offset, create_immed(b, 0));
-   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0]);
+   struct tex_src_info info = get_image_ssbo_samp_tex_src(ctx, &intr->src[0], false);
 
    unsigned num_components = intr->dest.ssa.num_components;
    struct ir3_instruction *sam =
