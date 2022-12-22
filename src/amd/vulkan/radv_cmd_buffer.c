@@ -5503,7 +5503,6 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    vk_command_buffer_begin(&cmd_buffer->vk, pBeginInfo);
 
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
-   cmd_buffer->state.last_primitive_reset_en = -1;
    cmd_buffer->state.last_index_type = -1;
    cmd_buffer->state.last_num_instances = -1;
    cmd_buffer->state.last_vertex_offset = -1;
@@ -7010,11 +7009,6 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
        */
       if (secondary->state.emitted_compute_pipeline) {
          primary->state.emitted_compute_pipeline = secondary->state.emitted_compute_pipeline;
-      }
-
-      /* Only re-emit the draw packets when needed. */
-      if (secondary->state.last_primitive_reset_en != -1) {
-         primary->state.last_primitive_reset_en = secondary->state.last_primitive_reset_en;
       }
 
       if (secondary->state.last_primitive_reset_index) {
