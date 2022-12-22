@@ -255,6 +255,16 @@ typedef enum {
    nir_ray_query_value_intersection_triangle_vertex_positions
 } nir_ray_query_value;
 
+/**
+ * Intel resource flags
+ */
+typedef enum {
+   nir_resource_intel_bindless              = 1u << 0,
+   nir_resource_intel_pushable              = 1u << 1,
+   nir_resource_intel_sampler               = 1u << 2,
+   nir_resource_intel_non_uniform           = 1u << 3,
+} nir_resource_data_intel;
+
 typedef union {
    bool b;
    float f32;

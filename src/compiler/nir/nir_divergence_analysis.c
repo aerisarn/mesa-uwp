@@ -446,7 +446,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_desc_set_address_intel:
    case nir_intrinsic_load_desc_set_dynamic_index_intel:
    case nir_intrinsic_load_global_constant_bounded:
-   case nir_intrinsic_load_global_constant_offset: {
+   case nir_intrinsic_load_global_constant_offset:
+   case nir_intrinsic_resource_intel: {
       unsigned num_srcs = nir_intrinsic_infos[instr->intrinsic].num_srcs;
       for (unsigned i = 0; i < num_srcs; i++) {
          if (instr->src[i].ssa->divergent) {

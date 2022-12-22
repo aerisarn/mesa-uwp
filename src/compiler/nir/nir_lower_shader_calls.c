@@ -197,6 +197,9 @@ can_remat_instr(nir_instr *instr, struct sized_bitset *remat)
           */
          return true;
 
+      case nir_intrinsic_resource_intel:
+         return nir_foreach_src(instr, src_is_in_bitset, remat);
+
       default:
          return false;
       }

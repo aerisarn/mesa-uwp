@@ -285,6 +285,12 @@ index("unsigned", "flags")
 # Logical operation of an atomic intrinsic
 index("nir_atomic_op", "atomic_op")
 
+# Block identifier to push promotion
+index("unsigned", "resource_block_intel")
+
+# Various flags describing the resource access
+index("nir_resource_data_intel", "resource_access_intel")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -1730,6 +1736,22 @@ system_value("simd_width_intel", 1)
 # Load a relocatable 32-bit value
 intrinsic("load_reloc_const_intel", dest_comp=1, bit_sizes=[32],
           indices=[PARAM_IDX], flags=[CAN_ELIMINATE, CAN_REORDER])
+
+# 1 component 32bit surface index that can be used for bindless or BTI heaps
+#
+# This intrinsic is used to figure out what UBOs accesses could be promoted to
+# push constants. To allow promoting a load_ubo to push constants, we need to
+# know that the surface & offset are constants. If we want to use the bindless
+# heap for this we have to build the surface index with a pushed constant for
+# the descriptor set which prevents us from doing a nir_src_is_const() check.
+# With this intrinsic, we can just check the surface_index src with
+# nir_src_is_const() and ignore set_offset.
+#
+# src[] = { set_offset, surface_index, array_index }
+intrinsic("resource_intel", dest_comp=1, bit_sizes=[32],
+          src_comp=[1, 1, 1],
+          indices=[DESC_SET, BINDING, RESOURCE_ACCESS_INTEL, RESOURCE_BLOCK_INTEL],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # 64-bit global address for a Vulkan descriptor set
 # src[0] = { set }

@@ -1224,6 +1224,24 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
+      case NIR_INTRINSIC_RESOURCE_ACCESS_INTEL: {
+         fprintf(fp, "resource_intel=");
+         unsigned int modes = nir_intrinsic_resource_access_intel(instr);
+         while (modes) {
+            nir_resource_data_intel i = 1u << u_bit_scan(&modes);
+            switch (i) {
+            case nir_resource_intel_bindless: fprintf(fp, "bindless"); break;
+            case nir_resource_intel_pushable: fprintf(fp, "pushable"); break;
+            case nir_resource_intel_sampler:  fprintf(fp, "sampler"); break;
+            case nir_resource_intel_non_uniform:
+                                              fprintf(fp, "non-uniform"); break;
+            default:                          fprintf(fp, "unknown"); break;
+            }
+            fprintf(fp, "%s", modes ? "|" : "");
+         }
+         break;
+      }
+
       default: {
          unsigned off = info->index_map[idx] - 1;
          fprintf(fp, "%s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);
