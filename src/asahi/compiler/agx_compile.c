@@ -1608,6 +1608,11 @@ agx_set_st_vary_final(agx_context *ctx)
          return;
       }
    }
+
+   /* If we got here, there was no varying written. We need to mark that. */
+   agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
+   agx_builder _b = agx_init_builder(ctx, agx_after_block_logical(last_block));
+   agx_no_varyings(&_b);
 }
 
 static int
@@ -1885,7 +1890,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_ra(ctx);
    agx_lower_64bit_postra(ctx);
 
-   if (ctx->stage == MESA_SHADER_VERTEX)
+   if (ctx->stage == MESA_SHADER_VERTEX && !impl->function->is_preamble)
       agx_set_st_vary_final(ctx);
 
    agx_lower_pseudo(ctx);
