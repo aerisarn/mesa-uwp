@@ -2327,11 +2327,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
                  ~agx_fp32_varying_mask(nir), false);
    }
 
-   /* Varying output is scalar, other I/O is vector */
-   if (nir->info.stage == MESA_SHADER_VERTEX) {
-      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
-   }
-
    /* Clean up deref gunk after lowering I/O */
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, agx_nir_lower_texture, support_lod_bias);
@@ -2428,6 +2423,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    /* Late VBO lowering creates constant udiv instructions */
    NIR_PASS_V(nir, nir_opt_idiv_const, 16);
+
+   /* Varying output is scalar, other I/O is vector. Lowered late because
+    * transform feedback programs will use vector output.
+    */
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
 
    out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);
