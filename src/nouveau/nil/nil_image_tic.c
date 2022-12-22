@@ -18,6 +18,16 @@ __set_u32(uint32_t *o, uint32_t v, unsigned lo, unsigned hi)
    o[lo / 32] |= util_bitpack_uint(v, lo % 32, hi % 32);
 }
 
+#define FIXED_FRAC_BITS 8
+
+ALWAYS_INLINE static void
+__set_ufixed(uint32_t *o, float v, unsigned lo, unsigned hi)
+{
+   assert(lo <= hi && (lo / 32) == (hi / 32));
+   o[lo / 32] |= util_bitpack_ufixed_clamp(v, lo % 32, hi % 32,
+                                           FIXED_FRAC_BITS);
+}
+
 ALWAYS_INLINE static void
 __set_i32(uint32_t *o, int32_t v, unsigned lo, unsigned hi)
 {
@@ -38,6 +48,10 @@ __set_bool(uint32_t *o, bool b, unsigned lo, unsigned hi)
    __set_u32((o), (val), DRF_LO(NV##_TEXHEAD##VER##_##FIELD),\
                          DRF_HI(NV##_TEXHEAD##VER##_##FIELD))
 
+#define TH_SET_UF(o, NV, VER, FIELD, val) \
+   __set_ufixed((o), (val), DRF_LO(NV##_TEXHEAD##VER##_##FIELD),\
+                            DRF_HI(NV##_TEXHEAD##VER##_##FIELD))
+
 #define TH_SET_I(o, NV, VER, FIELD, val) \
    __set_i32((o), (val), DRF_LO(NV##_TEXHEAD##VER##_##FIELD),\
                          DRF_HI(NV##_TEXHEAD##VER##_##FIELD))
@@ -51,6 +65,8 @@ __set_bool(uint32_t *o, bool b, unsigned lo, unsigned hi)
 
 #define TH_NV9097_SET_U(o, IDX, FIELD, val) \
    TH_SET_U(&(o)[IDX], NV9097, V2_##IDX, FIELD, (val));
+#define TH_NV9097_SET_UF(o, IDX, FIELD, val) \
+   TH_SET_UF(&(o)[IDX], NV9097, V2_##IDX, FIELD, (val));
 #define TH_NV9097_SET_I(o, IDX, FIELD, val) \
    TH_SET_I(&(o)[IDX], NV9097, V2_##IDX, FIELD, (val));
 #define TH_NV9097_SET_B(o, IDX, FIELD, b) \
@@ -60,6 +76,8 @@ __set_bool(uint32_t *o, bool b, unsigned lo, unsigned hi)
 
 #define TH_NVB097_SET_U(o, VER, FIELD, val) \
    TH_SET_U((o), NVB097, _##VER, FIELD, (val));
+#define TH_NVB097_SET_UF(o, VER, FIELD, val) \
+   TH_SET_UF((o), NVB097, _##VER, FIELD, (val));
 #define TH_NVB097_SET_I(o, VER, FIELD, val) \
    TH_SET_I((o), NVB097, _##VER, FIELD, (val));
 #define TH_NVB097_SET_B(o, VER, FIELD, b) \
