@@ -68,6 +68,17 @@ AluInstr::AluInstr(EAluOp opcode,
       ASSERT_OR_THROW(dest, "Write flag is set, but no destination register is given");
 
    update_uses();
+
+   if (dest && slots > 1) {
+      switch (m_opcode) {
+      case op2_dot: m_allowed_desk_mask = (1 << (4 - slots)) - 1; break;
+      default:
+         if (has_alu_flag(alu_is_cayman_trans)) {
+            m_allowed_desk_mask = (1 << slots) - 1;
+         }
+      }
+   }
+   assert(!dest || (m_allowed_desk_mask & (1 << dest->chan())));
 }
 
 AluInstr::AluInstr(EAluOp opcode):
@@ -491,20 +502,6 @@ uint8_t AluInstr::allowed_src_chan_mask() const
            mask |= 1 << i;
    }
    return mask;
-}
-
-uint8_t
-AluInstr::allowed_dest_chan_mask() const
-{
-   if (alu_slots() != 1) {
-      if (has_alu_flag(alu_is_cayman_trans))
-         return (1 << alu_slots()) - 1;
-
-      if (m_opcode == op2_dot_ieee) {
-         return (1 << (4 - alu_slots())) - 1;
-      }
-   }
-   return 0xf;
 }
 
 bool
