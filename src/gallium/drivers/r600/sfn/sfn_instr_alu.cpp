@@ -500,7 +500,7 @@ AluInstr::allowed_dest_chan_mask() const
       if (has_alu_flag(alu_is_cayman_trans))
          return (1 << alu_slots()) - 1;
 
-      if (m_opcode == op2_dot_ieee || m_opcode == op2_dot) {
+      if (m_opcode == op2_dot_ieee) {
          return (1 << (4 - alu_slots())) - 1;
       }
    }
@@ -722,12 +722,12 @@ AluInstr::split(ValueFactory& vf)
    m_dest->del_parent(this);
 
    int start_slot = 0;
-   bool is_dot = m_opcode == op2_dot || opcode() == op2_dot_ieee;
+   bool is_dot = m_opcode == op2_dot_ieee;
    auto last_opcode = m_opcode;
 
    if (is_dot) {
       start_slot = m_dest->chan();
-      last_opcode = m_opcode == op2_dot ? op2_mul : op2_mul_ieee;
+      last_opcode = op2_mul_ieee;
    }
 
 
@@ -2515,9 +2515,7 @@ emit_dot(const nir_alu_instr& alu, int n, Shader& shader)
       srcs[2 * i + 1] = value_factory.src(src1, i);
    }
 
-   auto op =
-      unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ? op2_dot : op2_dot_ieee;
-   AluInstr *ir = new AluInstr(op, dest, srcs, AluInstr::last_write, n);
+   AluInstr *ir = new AluInstr(op2_dot_ieee, dest, srcs, AluInstr::last_write, n);
 
    if (src0.negate)
       ir->set_alu_flag(alu_src0_neg);
@@ -2556,9 +2554,7 @@ emit_dot4(const nir_alu_instr& alu, int nelm, Shader& shader)
        srcs[2 * i + 1] = value_factory.zero();
    }
 
-   auto op =
-      unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ? op2_dot4 : op2_dot4_ieee;
-   AluInstr *ir = new AluInstr(op, dest, srcs, AluInstr::last_write, 4);
+   AluInstr *ir = new AluInstr(op2_dot4_ieee, dest, srcs, AluInstr::last_write, 4);
 
    if (src0.negate)
       ir->set_alu_flag(alu_src0_neg);
@@ -2595,9 +2591,7 @@ emit_fdph(const nir_alu_instr& alu, Shader& shader)
    srcs[6] = value_factory.one();
    srcs[7] = value_factory.src(src1, 3);
 
-   auto op =
-      unlikely(shader.has_flag(Shader::sh_legacy_math_rules)) ? op2_dot4 : op2_dot4_ieee;
-   AluInstr *ir = new AluInstr(op, dest, srcs, AluInstr::last_write, 4);
+   AluInstr *ir = new AluInstr(op2_dot4_ieee, dest, srcs, AluInstr::last_write, 4);
 
    if (src0.negate)
       ir->set_alu_flag(alu_src0_neg);
