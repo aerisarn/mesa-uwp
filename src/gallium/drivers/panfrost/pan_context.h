@@ -303,7 +303,6 @@ struct panfrost_compiled_shader {
         struct pan_linkage linkage;
 
         struct pipe_stream_output_info stream_output;
-        uint64_t so_mask;
 
         struct panfrost_shader_key key;
 
