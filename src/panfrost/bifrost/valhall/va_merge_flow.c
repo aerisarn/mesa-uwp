@@ -21,9 +21,9 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall_enums.h"
-#include "bi_builder.h"
 
 /*
  * Merge NOPs with flow control with nearby instructions to eliminate the NOPs,
@@ -80,8 +80,10 @@ merge_end_reconverge(bi_block *block)
    bi_instr *last = list_last_entry(&block->instructions, bi_instr, link);
    bi_instr *penult = bi_prev_op(last);
 
-   if (last->op != BI_OPCODE_NOP) return;
-   if (last->flow != VA_FLOW_RECONVERGE && last->flow != VA_FLOW_END) return;
+   if (last->op != BI_OPCODE_NOP)
+      return;
+   if (last->flow != VA_FLOW_RECONVERGE && last->flow != VA_FLOW_END)
+      return;
 
    /* End implies all other flow control except for waiting on barriers (slot
     * #7, with VA_FLOW_WAIT), so remove blocking flow control.
@@ -99,7 +101,8 @@ merge_end_reconverge(bi_block *block)
    }
 
    /* If there is blocking flow control, we can't merge */
-   if (penult->flow != VA_FLOW_NONE) return;
+   if (penult->flow != VA_FLOW_NONE)
+      return;
 
    /* Else, merge */
    penult->flow = last->flow;
@@ -133,8 +136,8 @@ merge_waits(bi_block *block)
    bi_instr *last_free = NULL;
 
    bi_foreach_instr_in_block_safe(block, I) {
-      if (last_free != NULL &&
-          I->op == BI_OPCODE_NOP && va_flow_is_wait_or_none(I->flow)) {
+      if (last_free != NULL && I->op == BI_OPCODE_NOP &&
+          va_flow_is_wait_or_none(I->flow)) {
 
          /* Merge waits with compatible instructions */
          last_free->flow = union_waits(last_free->flow, I->flow);
@@ -212,8 +215,10 @@ va_merge_flow(bi_context *ctx)
 {
    bi_foreach_block(ctx, block) {
       /* If there are less than 2 instructions, there's nothing to merge */
-      if (list_is_empty(&block->instructions)) continue;
-      if (list_is_singular(&block->instructions)) continue;
+      if (list_is_empty(&block->instructions))
+         continue;
+      if (list_is_singular(&block->instructions))
+         continue;
 
       merge_end_reconverge(block);
       merge_waits(block);

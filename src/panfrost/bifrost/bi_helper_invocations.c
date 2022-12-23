@@ -64,20 +64,20 @@
 static bool
 bi_has_skip_bit(enum bi_opcode op)
 {
-        switch (op) {
-        case BI_OPCODE_TEX_SINGLE:
-        case BI_OPCODE_TEXC:
-        case BI_OPCODE_TEXC_DUAL:
-        case BI_OPCODE_TEXS_2D_F16:
-        case BI_OPCODE_TEXS_2D_F32:
-        case BI_OPCODE_TEXS_CUBE_F16:
-        case BI_OPCODE_TEXS_CUBE_F32:
-        case BI_OPCODE_VAR_TEX_F16:
-        case BI_OPCODE_VAR_TEX_F32:
-                return true;
-        default:
-                return false;
-        }
+   switch (op) {
+   case BI_OPCODE_TEX_SINGLE:
+   case BI_OPCODE_TEXC:
+   case BI_OPCODE_TEXC_DUAL:
+   case BI_OPCODE_TEXS_2D_F16:
+   case BI_OPCODE_TEXS_2D_F32:
+   case BI_OPCODE_TEXS_CUBE_F16:
+   case BI_OPCODE_TEXS_CUBE_F32:
+   case BI_OPCODE_VAR_TEX_F16:
+   case BI_OPCODE_VAR_TEX_F32:
+      return true;
+   default:
+      return false;
+   }
 }
 
 /* Does a given instruction require helper threads to be active (because it
@@ -87,52 +87,52 @@ bi_has_skip_bit(enum bi_opcode op)
 bool
 bi_instr_uses_helpers(bi_instr *I)
 {
-        switch (I->op) {
-        case BI_OPCODE_TEXC:
-        case BI_OPCODE_TEXC_DUAL:
-        case BI_OPCODE_TEXS_2D_F16:
-        case BI_OPCODE_TEXS_2D_F32:
-        case BI_OPCODE_TEXS_CUBE_F16:
-        case BI_OPCODE_TEXS_CUBE_F32:
-        case BI_OPCODE_VAR_TEX_F16:
-        case BI_OPCODE_VAR_TEX_F32:
-                return !I->lod_mode; /* set for zero, clear for computed */
-        case BI_OPCODE_TEX_SINGLE:
-                return (I->va_lod_mode == BI_VA_LOD_MODE_COMPUTED_LOD) ||
-                       (I->va_lod_mode == BI_VA_LOD_MODE_COMPUTED_BIAS);
-        case BI_OPCODE_CLPER_I32:
-        case BI_OPCODE_CLPER_OLD_I32:
-                /* Fragment shaders require helpers to implement derivatives.
-                 * Other shader stages don't have helpers at all */
-                return true;
-        default:
-                return false;
-        }
+   switch (I->op) {
+   case BI_OPCODE_TEXC:
+   case BI_OPCODE_TEXC_DUAL:
+   case BI_OPCODE_TEXS_2D_F16:
+   case BI_OPCODE_TEXS_2D_F32:
+   case BI_OPCODE_TEXS_CUBE_F16:
+   case BI_OPCODE_TEXS_CUBE_F32:
+   case BI_OPCODE_VAR_TEX_F16:
+   case BI_OPCODE_VAR_TEX_F32:
+      return !I->lod_mode; /* set for zero, clear for computed */
+   case BI_OPCODE_TEX_SINGLE:
+      return (I->va_lod_mode == BI_VA_LOD_MODE_COMPUTED_LOD) ||
+             (I->va_lod_mode == BI_VA_LOD_MODE_COMPUTED_BIAS);
+   case BI_OPCODE_CLPER_I32:
+   case BI_OPCODE_CLPER_OLD_I32:
+      /* Fragment shaders require helpers to implement derivatives.
+       * Other shader stages don't have helpers at all */
+      return true;
+   default:
+      return false;
+   }
 }
 
 /* Does a block use helpers directly */
 static bool
 bi_block_uses_helpers(bi_block *block)
 {
-        bi_foreach_instr_in_block(block, I) {
-                if (bi_instr_uses_helpers(I))
-                        return true;
-        }
+   bi_foreach_instr_in_block(block, I) {
+      if (bi_instr_uses_helpers(I))
+         return true;
+   }
 
-        return false;
+   return false;
 }
 
 bool
 bi_block_terminates_helpers(bi_block *block)
 {
-        /* Can't terminate if a successor needs helpers */
-        bi_foreach_successor(block, succ) {
-                if (succ->pass_flags & 1)
-                        return false;
-        }
+   /* Can't terminate if a successor needs helpers */
+   bi_foreach_successor(block, succ) {
+      if (succ->pass_flags & 1)
+         return false;
+   }
 
-        /* Otherwise we terminate */
-        return true;
+   /* Otherwise we terminate */
+   return true;
 }
 
 /*
@@ -142,128 +142,130 @@ bi_block_terminates_helpers(bi_block *block)
 static void
 bi_propagate_pass_flag(bi_block *block)
 {
-        block->pass_flags = 1;
+   block->pass_flags = 1;
 
-        bi_foreach_predecessor(block, pred) {
-                if ((*pred)->pass_flags == 0)
-                        bi_propagate_pass_flag(*pred);
-        }
+   bi_foreach_predecessor(block, pred) {
+      if ((*pred)->pass_flags == 0)
+         bi_propagate_pass_flag(*pred);
+   }
 }
 
 void
 bi_analyze_helper_terminate(bi_context *ctx)
 {
-        /* Other shader stages do not have a notion of helper threads, so we
-         * can skip the analysis. Don't run for blend shaders, either, since
-         * they run in the context of another shader that we don't see. */
-        if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
-                return;
+   /* Other shader stages do not have a notion of helper threads, so we
+    * can skip the analysis. Don't run for blend shaders, either, since
+    * they run in the context of another shader that we don't see. */
+   if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
+      return;
 
-        /* Clear flags */
-        bi_foreach_block(ctx, block)
-                block->pass_flags = 0;
+   /* Clear flags */
+   bi_foreach_block(ctx, block)
+      block->pass_flags = 0;
 
-        /* For each block, check if it uses helpers and propagate that fact if
-         * so. We walk in reverse order to minimize the number of blocks tested:
-         * if the (unique) last block uses helpers, only that block is tested.
-         */
-        bi_foreach_block_rev(ctx, block) {
-                if (block->pass_flags == 0 && bi_block_uses_helpers(block))
-                        bi_propagate_pass_flag(block);
-        }
+   /* For each block, check if it uses helpers and propagate that fact if
+    * so. We walk in reverse order to minimize the number of blocks tested:
+    * if the (unique) last block uses helpers, only that block is tested.
+    */
+   bi_foreach_block_rev(ctx, block) {
+      if (block->pass_flags == 0 && bi_block_uses_helpers(block))
+         bi_propagate_pass_flag(block);
+   }
 }
 
 void
 bi_mark_clauses_td(bi_context *ctx)
 {
-        if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
-                return;
+   if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
+      return;
 
-        /* Finally, mark clauses requiring helpers */
-        bi_foreach_block(ctx, block) {
-                /* At the end, there are helpers iff we don't terminate */
-                bool helpers = !bi_block_terminates_helpers(block);
+   /* Finally, mark clauses requiring helpers */
+   bi_foreach_block(ctx, block) {
+      /* At the end, there are helpers iff we don't terminate */
+      bool helpers = !bi_block_terminates_helpers(block);
 
-                bi_foreach_clause_in_block_rev(block, clause) {
-                        bi_foreach_instr_in_clause_rev(block, clause, I) {
-                                helpers |= bi_instr_uses_helpers(I);
-                        }
+      bi_foreach_clause_in_block_rev(block, clause) {
+         bi_foreach_instr_in_clause_rev(block, clause, I) {
+            helpers |= bi_instr_uses_helpers(I);
+         }
 
-                        clause->td = !helpers;
-                }
-        }
+         clause->td = !helpers;
+      }
+   }
 }
 
 static bool
 bi_helper_block_update(BITSET_WORD *deps, bi_block *block)
 {
-        bool progress = false;
+   bool progress = false;
 
-        bi_foreach_instr_in_block_rev(block, I) {
-                /* If a destination is required by helper invocation... */
-                bi_foreach_dest(I, d) {
-                        if (!BITSET_TEST(deps, I->dest[d].value))
-                                continue;
+   bi_foreach_instr_in_block_rev(block, I) {
+      /* If a destination is required by helper invocation... */
+      bi_foreach_dest(I, d) {
+         if (!BITSET_TEST(deps, I->dest[d].value))
+            continue;
 
-                        /* ...so are the sources */
-                        bi_foreach_ssa_src(I, s) {
-                                progress |= !BITSET_TEST(deps, I->src[s].value);
-                                BITSET_SET(deps, I->src[s].value);
-                        }
+         /* ...so are the sources */
+         bi_foreach_ssa_src(I, s) {
+            progress |= !BITSET_TEST(deps, I->src[s].value);
+            BITSET_SET(deps, I->src[s].value);
+         }
 
-                        break;
-                }
-        }
+         break;
+      }
+   }
 
-        return progress;
+   return progress;
 }
 
 void
 bi_analyze_helper_requirements(bi_context *ctx)
 {
-        BITSET_WORD *deps = calloc(sizeof(BITSET_WORD), ctx->ssa_alloc);
+   BITSET_WORD *deps = calloc(sizeof(BITSET_WORD), ctx->ssa_alloc);
 
-        /* Initialize with the sources of instructions consuming
-         * derivatives */
+   /* Initialize with the sources of instructions consuming
+    * derivatives */
 
-        bi_foreach_instr_global(ctx, I) {
-                if (!bi_instr_uses_helpers(I)) continue;
+   bi_foreach_instr_global(ctx, I) {
+      if (!bi_instr_uses_helpers(I))
+         continue;
 
-                bi_foreach_ssa_src(I, s)
-                        BITSET_SET(deps, I->src[s].value);
-        }
+      bi_foreach_ssa_src(I, s)
+         BITSET_SET(deps, I->src[s].value);
+   }
 
-        /* Propagate that up */
-        u_worklist worklist;
-        bi_worklist_init(ctx, &worklist);
+   /* Propagate that up */
+   u_worklist worklist;
+   bi_worklist_init(ctx, &worklist);
 
-        bi_foreach_block(ctx, block) {
-                bi_worklist_push_tail(&worklist, block);
-        }
+   bi_foreach_block(ctx, block) {
+      bi_worklist_push_tail(&worklist, block);
+   }
 
-        while (!u_worklist_is_empty(&worklist)) {
-                bi_block *blk = bi_worklist_pop_tail(&worklist);
+   while (!u_worklist_is_empty(&worklist)) {
+      bi_block *blk = bi_worklist_pop_tail(&worklist);
 
-                if (bi_helper_block_update(deps, blk)) {
-                        bi_foreach_predecessor(blk, pred)
-                                bi_worklist_push_head(&worklist, *pred);
-                }
-        }
+      if (bi_helper_block_update(deps, blk)) {
+         bi_foreach_predecessor(blk, pred)
+            bi_worklist_push_head(&worklist, *pred);
+      }
+   }
 
-        u_worklist_fini(&worklist);
+   u_worklist_fini(&worklist);
 
-        /* Set the execute bits */
+   /* Set the execute bits */
 
-        bi_foreach_instr_global(ctx, I) {
-                if (!bi_has_skip_bit(I->op)) continue;
+   bi_foreach_instr_global(ctx, I) {
+      if (!bi_has_skip_bit(I->op))
+         continue;
 
-                bool exec = false;
+      bool exec = false;
 
-                bi_foreach_dest(I, d)
-                        exec |= BITSET_TEST(deps, I->dest[d].value);
+      bi_foreach_dest(I, d)
+         exec |= BITSET_TEST(deps, I->dest[d].value);
 
-                I->skip = !exec;
-        }
+      I->skip = !exec;
+   }
 
-        free(deps);
+   free(deps);
 }

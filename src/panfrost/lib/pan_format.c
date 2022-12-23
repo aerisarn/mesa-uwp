@@ -24,86 +24,90 @@
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
-#include "genxml/gen_macros.h"
 #include "pan_format.h"
+#include "genxml/gen_macros.h"
 #include "util/format/u_format.h"
 
 /* Convenience */
 
-#define MALI_BLEND_AU_R8G8B8A8    (MALI_RGBA8_TB    << 12)
-#define MALI_BLEND_PU_R8G8B8A8    (MALI_RGBA8_TB    << 12)
+#define MALI_BLEND_AU_R8G8B8A8    (MALI_RGBA8_TB << 12)
+#define MALI_BLEND_PU_R8G8B8A8    (MALI_RGBA8_TB << 12)
 #define MALI_BLEND_AU_R10G10B10A2 (MALI_RGB10_A2_TB << 12)
 #define MALI_BLEND_PU_R10G10B10A2 (MALI_RGB10_A2_TB << 12)
-#define MALI_BLEND_AU_R8G8B8A2    (MALI_RGB8_A2_AU  << 12)
-#define MALI_BLEND_PU_R8G8B8A2    (MALI_RGB8_A2_PU  << 12)
-#define MALI_BLEND_AU_R4G4B4A4    (MALI_RGBA4_AU    << 12)
-#define MALI_BLEND_PU_R4G4B4A4    (MALI_RGBA4_PU    << 12)
-#define MALI_BLEND_AU_R5G6B5A0    (MALI_R5G6B5_AU   << 12)
-#define MALI_BLEND_PU_R5G6B5A0    (MALI_R5G6B5_PU   << 12)
-#define MALI_BLEND_AU_R5G5B5A1    (MALI_RGB5_A1_AU  << 12)
-#define MALI_BLEND_PU_R5G5B5A1    (MALI_RGB5_A1_PU  << 12)
+#define MALI_BLEND_AU_R8G8B8A2    (MALI_RGB8_A2_AU << 12)
+#define MALI_BLEND_PU_R8G8B8A2    (MALI_RGB8_A2_PU << 12)
+#define MALI_BLEND_AU_R4G4B4A4    (MALI_RGBA4_AU << 12)
+#define MALI_BLEND_PU_R4G4B4A4    (MALI_RGBA4_PU << 12)
+#define MALI_BLEND_AU_R5G6B5A0    (MALI_R5G6B5_AU << 12)
+#define MALI_BLEND_PU_R5G6B5A0    (MALI_R5G6B5_PU << 12)
+#define MALI_BLEND_AU_R5G5B5A1    (MALI_RGB5_A1_AU << 12)
+#define MALI_BLEND_PU_R5G5B5A1    (MALI_RGB5_A1_PU << 12)
 
 #if PAN_ARCH <= 6
-#define BFMT2(pipe, internal, writeback, srgb) \
-        [PIPE_FORMAT_##pipe] = { \
-                MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
-                MALI_COLOR_FORMAT_## writeback, \
-                { MALI_BLEND_PU_ ## internal | (srgb ? (1 << 20) : 0) | \
-                        PAN_V6_SWIZZLE(R, G, B, A), \
-                  MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0) | \
-                        PAN_V6_SWIZZLE(R, G, B, A), }, \
-        }
+#define BFMT2(pipe, internal, writeback, srgb)                                 \
+   [PIPE_FORMAT_##pipe] = {                                                    \
+      MALI_COLOR_BUFFER_INTERNAL_FORMAT_##internal,                            \
+      MALI_COLOR_FORMAT_##writeback,                                           \
+      {                                                                        \
+         MALI_BLEND_PU_##internal | (srgb ? (1 << 20) : 0) |                   \
+            PAN_V6_SWIZZLE(R, G, B, A),                                        \
+         MALI_BLEND_AU_##internal | (srgb ? (1 << 20) : 0) |                   \
+            PAN_V6_SWIZZLE(R, G, B, A),                                        \
+      },                                                                       \
+   }
 #else
-#define BFMT2(pipe, internal, writeback, srgb) \
-        [PIPE_FORMAT_##pipe] = { \
-                MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
-                MALI_COLOR_FORMAT_## writeback, \
-                { MALI_BLEND_PU_ ## internal | (srgb ? (1 << 20) : 0), \
-                  MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0), }, \
-        }
+#define BFMT2(pipe, internal, writeback, srgb)                                 \
+   [PIPE_FORMAT_##pipe] = {                                                    \
+      MALI_COLOR_BUFFER_INTERNAL_FORMAT_##internal,                            \
+      MALI_COLOR_FORMAT_##writeback,                                           \
+      {                                                                        \
+         MALI_BLEND_PU_##internal | (srgb ? (1 << 20) : 0),                    \
+         MALI_BLEND_AU_##internal | (srgb ? (1 << 20) : 0),                    \
+      },                                                                       \
+   }
 #endif
 
-#define BFMT(pipe, internal_and_writeback) \
-        BFMT2(pipe, internal_and_writeback, internal_and_writeback, 0)
+#define BFMT(pipe, internal_and_writeback)                                     \
+   BFMT2(pipe, internal_and_writeback, internal_and_writeback, 0)
 
-#define BFMT_SRGB(pipe, writeback) \
-        BFMT2(pipe ##_UNORM, R8G8B8A8, writeback, 0), \
-        BFMT2(pipe ##_SRGB, R8G8B8A8, writeback, 1)
+#define BFMT_SRGB(pipe, writeback)                                             \
+   BFMT2(pipe##_UNORM, R8G8B8A8, writeback, 0),                                \
+      BFMT2(pipe##_SRGB, R8G8B8A8, writeback, 1)
 
 const struct pan_blendable_format
-GENX(panfrost_blendable_formats)[PIPE_FORMAT_COUNT] = {
-        BFMT_SRGB(L8, R8),
-        BFMT_SRGB(L8A8, R8G8),
-        BFMT_SRGB(R8, R8),
-        BFMT_SRGB(R8G8, R8G8),
-        BFMT_SRGB(R8G8B8, R8G8B8),
+   GENX(panfrost_blendable_formats)[PIPE_FORMAT_COUNT] = {
+      BFMT_SRGB(L8, R8),
+      BFMT_SRGB(L8A8, R8G8),
+      BFMT_SRGB(R8, R8),
+      BFMT_SRGB(R8G8, R8G8),
+      BFMT_SRGB(R8G8B8, R8G8B8),
 
-        BFMT_SRGB(B8G8R8A8, R8G8B8A8),
-        BFMT_SRGB(B8G8R8X8, R8G8B8A8),
-        BFMT_SRGB(A8R8G8B8, R8G8B8A8),
-        BFMT_SRGB(X8R8G8B8, R8G8B8A8),
-        BFMT_SRGB(A8B8G8R8, R8G8B8A8),
-        BFMT_SRGB(X8B8G8R8, R8G8B8A8),
-        BFMT_SRGB(R8G8B8X8, R8G8B8A8),
-        BFMT_SRGB(R8G8B8A8, R8G8B8A8),
+      BFMT_SRGB(B8G8R8A8, R8G8B8A8),
+      BFMT_SRGB(B8G8R8X8, R8G8B8A8),
+      BFMT_SRGB(A8R8G8B8, R8G8B8A8),
+      BFMT_SRGB(X8R8G8B8, R8G8B8A8),
+      BFMT_SRGB(A8B8G8R8, R8G8B8A8),
+      BFMT_SRGB(X8B8G8R8, R8G8B8A8),
+      BFMT_SRGB(R8G8B8X8, R8G8B8A8),
+      BFMT_SRGB(R8G8B8A8, R8G8B8A8),
 
-        BFMT2(A8_UNORM, R8G8B8A8, R8, 0),
-        BFMT2(I8_UNORM, R8G8B8A8, R8, 0),
-        BFMT2(R5G6B5_UNORM, R5G6B5A0, R5G6B5, 0),
-        BFMT2(B5G6R5_UNORM, R5G6B5A0, R5G6B5, 0),
+      BFMT2(A8_UNORM, R8G8B8A8, R8, 0),
+      BFMT2(I8_UNORM, R8G8B8A8, R8, 0),
+      BFMT2(R5G6B5_UNORM, R5G6B5A0, R5G6B5, 0),
+      BFMT2(B5G6R5_UNORM, R5G6B5A0, R5G6B5, 0),
 
-        BFMT(A4B4G4R4_UNORM, R4G4B4A4),
-        BFMT(B4G4R4A4_UNORM, R4G4B4A4),
-        BFMT(R4G4B4A4_UNORM, R4G4B4A4),
+      BFMT(A4B4G4R4_UNORM, R4G4B4A4),
+      BFMT(B4G4R4A4_UNORM, R4G4B4A4),
+      BFMT(R4G4B4A4_UNORM, R4G4B4A4),
 
-        BFMT(R10G10B10A2_UNORM, R10G10B10A2),
-        BFMT(B10G10R10A2_UNORM, R10G10B10A2),
-        BFMT(R10G10B10X2_UNORM, R10G10B10A2),
-        BFMT(B10G10R10X2_UNORM, R10G10B10A2),
+      BFMT(R10G10B10A2_UNORM, R10G10B10A2),
+      BFMT(B10G10R10A2_UNORM, R10G10B10A2),
+      BFMT(R10G10B10X2_UNORM, R10G10B10A2),
+      BFMT(B10G10R10X2_UNORM, R10G10B10A2),
 
-        BFMT(B5G5R5A1_UNORM, R5G5B5A1),
-        BFMT(R5G5B5A1_UNORM, R5G5B5A1),
-        BFMT(B5G5R5X1_UNORM, R5G5B5A1),
+      BFMT(B5G5R5A1_UNORM, R5G5B5A1),
+      BFMT(R5G5B5A1_UNORM, R5G5B5A1),
+      BFMT(B5G5R5X1_UNORM, R5G5B5A1),
 };
 
 /* Convenience */
@@ -145,13 +149,11 @@ GENX(panfrost_blendable_formats)[PIPE_FORMAT_COUNT] = {
 #define V6_RRRR PAN_V6_SWIZZLE(R, R, R, R)
 #define V6_GGGG PAN_V6_SWIZZLE(G, G, G, G)
 
-#define FMT(pipe, mali, swizzle, srgb, flags) \
-        [PIPE_FORMAT_ ## pipe] = { \
-            .hw = ( V6_ ## swizzle ) | \
-                (( MALI_ ## mali ) << 12) | \
-                ((( SRGB_ ## srgb)) << 20), \
-            .bind = FLAGS_ ## flags, \
-        }
+#define FMT(pipe, mali, swizzle, srgb, flags)                                  \
+   [PIPE_FORMAT_##pipe] = {                                                    \
+      .hw = (V6_##swizzle) | ((MALI_##mali) << 12) | (((SRGB_##srgb)) << 20),  \
+      .bind = FLAGS_##flags,                                                   \
+   }
 #else
 
 #define MALI_RGB_COMPONENT_ORDER_R001 MALI_RGB_COMPONENT_ORDER_RGB1
@@ -160,13 +162,12 @@ GENX(panfrost_blendable_formats)[PIPE_FORMAT_COUNT] = {
 #define MALI_RGB_COMPONENT_ORDER_GBA1 MALI_RGB_COMPONENT_ORDER_1RGB
 #define MALI_RGB_COMPONENT_ORDER_ABG1 MALI_RGB_COMPONENT_ORDER_1BGR
 
-#define FMT(pipe, mali, swizzle, srgb, flags) \
-        [PIPE_FORMAT_ ## pipe] = { \
-            .hw = ( MALI_RGB_COMPONENT_ORDER_ ## swizzle ) | \
-                (( MALI_ ## mali ) << 12) | \
-                ((( SRGB_ ## srgb)) << 20), \
-            .bind = FLAGS_ ## flags, \
-        }
+#define FMT(pipe, mali, swizzle, srgb, flags)                                  \
+   [PIPE_FORMAT_##pipe] = {                                                    \
+      .hw = (MALI_RGB_COMPONENT_ORDER_##swizzle) | ((MALI_##mali) << 12) |     \
+            (((SRGB_##srgb)) << 20),                                           \
+      .bind = FLAGS_##flags,                                                   \
+   }
 #endif
 
 /* clang-format off */
@@ -613,36 +614,40 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
 struct pan_decomposed_swizzle
 GENX(pan_decompose_swizzle)(enum mali_rgb_component_order order)
 {
-#define CASE(case_, pre_, R_, G_, B_, A_) \
-        case MALI_RGB_COMPONENT_ORDER_##case_: \
-                return (struct pan_decomposed_swizzle) { \
-                        MALI_RGB_COMPONENT_ORDER_##pre_, { \
-                                PIPE_SWIZZLE_##R_, PIPE_SWIZZLE_##G_, \
-                                PIPE_SWIZZLE_##B_, PIPE_SWIZZLE_##A_, \
-                        }, \
-                };
+#define CASE(case_, pre_, R_, G_, B_, A_)                                      \
+   case MALI_RGB_COMPONENT_ORDER_##case_:                                      \
+      return (struct pan_decomposed_swizzle){                                  \
+         MALI_RGB_COMPONENT_ORDER_##pre_,                                      \
+         {                                                                     \
+            PIPE_SWIZZLE_##R_,                                                 \
+            PIPE_SWIZZLE_##G_,                                                 \
+            PIPE_SWIZZLE_##B_,                                                 \
+            PIPE_SWIZZLE_##A_,                                                 \
+         },                                                                    \
+      };
 
-        switch (order) {
-        CASE(RGBA, RGBA, X, Y, Z, W);
-        CASE(GRBA, RGBA, Y, X, Z, W);
-        CASE(BGRA, RGBA, Z, Y, X, W);
-        CASE(ARGB, RGBA, Y, Z, W, X);
-        CASE(AGRB, RGBA, Z, Y, W, X);
-        CASE(ABGR, RGBA, W, Z, Y, X);
-        CASE(RGB1, RGB1, X, Y, Z, W);
-        CASE(GRB1, RGB1, Y, X, Z, W);
-        CASE(BGR1, RGB1, Z, Y, X, W);
-        CASE(1RGB, RGB1, Y, Z, W, X);
-        CASE(1GRB, RGB1, Z, Y, W, X);
-        CASE(1BGR, RGB1, W, Z, Y, X);
-        CASE(RRRR, RRRR, X, Y, Z, W);
-        CASE(RRR1, RRR1, X, Y, Z, W);
-        CASE(RRRA, RRRA, X, Y, Z, W);
-        CASE(000A, 000A, X, Y, Z, W);
-        CASE(0001, 0001, X, Y, Z, W);
-        CASE(0000, 0000, X, Y, Z, W);
-        default: unreachable("Invalid case for texturing");
-        }
+   switch (order) {
+      CASE(RGBA, RGBA, X, Y, Z, W);
+      CASE(GRBA, RGBA, Y, X, Z, W);
+      CASE(BGRA, RGBA, Z, Y, X, W);
+      CASE(ARGB, RGBA, Y, Z, W, X);
+      CASE(AGRB, RGBA, Z, Y, W, X);
+      CASE(ABGR, RGBA, W, Z, Y, X);
+      CASE(RGB1, RGB1, X, Y, Z, W);
+      CASE(GRB1, RGB1, Y, X, Z, W);
+      CASE(BGR1, RGB1, Z, Y, X, W);
+      CASE(1RGB, RGB1, Y, Z, W, X);
+      CASE(1GRB, RGB1, Z, Y, W, X);
+      CASE(1BGR, RGB1, W, Z, Y, X);
+      CASE(RRRR, RRRR, X, Y, Z, W);
+      CASE(RRR1, RRR1, X, Y, Z, W);
+      CASE(RRRA, RRRA, X, Y, Z, W);
+      CASE(000A, 000A, X, Y, Z, W);
+      CASE(0001, 0001, X, Y, Z, W);
+      CASE(0000, 0000, X, Y, Z, W);
+   default:
+      unreachable("Invalid case for texturing");
+   }
 
 #undef CASE
 }

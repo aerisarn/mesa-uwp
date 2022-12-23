@@ -21,14 +21,14 @@
  * SOFTWARE.
  */
 
-#include "bi_test.h"
 #include "bi_builder.h"
+#include "bi_test.h"
 #include "va_compiler.h"
 #include "valhall_enums.h"
 
 #include <gtest/gtest.h>
 
-#define R(x) bi_register(x)
+#define R(x)  bi_register(x)
 #define DR(x) bi_discard(R(x))
 
 static void
@@ -40,105 +40,119 @@ strip_discard(bi_context *ctx)
    }
 }
 
-#define CASE(test) do { \
-   void *mem_ctx = ralloc_context(NULL); \
-   bi_builder *A = bit_builder(mem_ctx); \
-   bi_builder *B = bit_builder(mem_ctx); \
-   { \
-      UNUSED bi_builder *b = A; \
-      test; \
-   } \
-   strip_discard(A->shader); \
-   va_mark_last(A->shader); \
-   { \
-      UNUSED bi_builder *b = B; \
-      test; \
-   } \
-   ASSERT_SHADER_EQUAL(A->shader, B->shader); \
-   ralloc_free(mem_ctx); \
-} while(0)
+#define CASE(test)                                                             \
+   do {                                                                        \
+      void *mem_ctx = ralloc_context(NULL);                                    \
+      bi_builder *A = bit_builder(mem_ctx);                                    \
+      bi_builder *B = bit_builder(mem_ctx);                                    \
+      {                                                                        \
+         UNUSED bi_builder *b = A;                                             \
+         test;                                                                 \
+      }                                                                        \
+      strip_discard(A->shader);                                                \
+      va_mark_last(A->shader);                                                 \
+      {                                                                        \
+         UNUSED bi_builder *b = B;                                             \
+         test;                                                                 \
+      }                                                                        \
+      ASSERT_SHADER_EQUAL(A->shader, B->shader);                               \
+      ralloc_free(mem_ctx);                                                    \
+   } while (0)
 
-TEST(MarkLast, Simple) {
+TEST(MarkLast, Simple)
+{
    CASE(bi_fadd_f32_to(b, R(0), DR(0), DR(1)));
 
    CASE({
-        bi_fadd_f32_to(b, R(2), R(0), DR(1));
-        bi_fadd_f32_to(b, R(0), DR(0), DR(2));
+      bi_fadd_f32_to(b, R(2), R(0), DR(1));
+      bi_fadd_f32_to(b, R(0), DR(0), DR(2));
    });
 }
 
-TEST(MarkLast, SameSourceAndDestination) {
+TEST(MarkLast, SameSourceAndDestination)
+{
    CASE({
-         bi_fadd_f32_to(b, R(0), DR(0), DR(0));
-         bi_fadd_f32_to(b, R(0), DR(0), DR(0));
-         bi_fadd_f32_to(b, R(0), DR(0), DR(0));
+      bi_fadd_f32_to(b, R(0), DR(0), DR(0));
+      bi_fadd_f32_to(b, R(0), DR(0), DR(0));
+      bi_fadd_f32_to(b, R(0), DR(0), DR(0));
    });
 }
 
-TEST(MarkLast, StagingReadBefore) {
+TEST(MarkLast, StagingReadBefore)
+{
    CASE({
-         bi_fadd_f32_to(b, R(9), R(2), DR(7));
-         bi_st_tile(b, R(0), DR(4), DR(5), DR(6), BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4);
+      bi_fadd_f32_to(b, R(9), R(2), DR(7));
+      bi_st_tile(b, R(0), DR(4), DR(5), DR(6), BI_REGISTER_FORMAT_F32,
+                 BI_VECSIZE_V4);
    });
 }
 
-TEST(MarkLast, StagingReadAfter) {
+TEST(MarkLast, StagingReadAfter)
+{
    CASE({
-         bi_st_tile(b, R(0), DR(4), DR(5), DR(6), BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4);
-         bi_fadd_f32_to(b, R(9), R(2), DR(7));
+      bi_st_tile(b, R(0), DR(4), DR(5), DR(6), BI_REGISTER_FORMAT_F32,
+                 BI_VECSIZE_V4);
+      bi_fadd_f32_to(b, R(9), R(2), DR(7));
    });
 }
 
-TEST(MarkLast, NonstagingSourceToAsync) {
+TEST(MarkLast, NonstagingSourceToAsync)
+{
    CASE({
-         bi_st_tile(b, R(0), R(4), R(5), DR(6), BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4);
-         bi_fadd_f32_to(b, R(9), DR(4), DR(5));
+      bi_st_tile(b, R(0), R(4), R(5), DR(6), BI_REGISTER_FORMAT_F32,
+                 BI_VECSIZE_V4);
+      bi_fadd_f32_to(b, R(9), DR(4), DR(5));
    });
 }
 
-TEST(MarkLast, Both64) {
+TEST(MarkLast, Both64)
+{
    CASE(bi_load_i32_to(b, R(0), DR(8), DR(9), BI_SEG_NONE, 0));
 }
 
-TEST(MarkLast, Neither64ThenBoth) {
+TEST(MarkLast, Neither64ThenBoth)
+{
    CASE({
-         bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
-         bi_load_i32_to(b, R(1), DR(8), DR(9), BI_SEG_NONE, 8);
+      bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
+      bi_load_i32_to(b, R(1), DR(8), DR(9), BI_SEG_NONE, 8);
    });
 }
 
-TEST(MarkLast, Half64) {
+TEST(MarkLast, Half64)
+{
    CASE({
-         bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
-         bi_fadd_f32_to(b, R(8), DR(8), DR(8));
+      bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
+      bi_fadd_f32_to(b, R(8), DR(8), DR(8));
    });
 
    CASE({
-         bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
-         bi_fadd_f32_to(b, R(9), DR(9), DR(9));
-   });
-}
-
-TEST(MarkLast, RegisterBlendDescriptor) {
-   CASE({
-         bi_blend_to(b, R(48), R(0), DR(60), DR(4), DR(5), bi_null(),
-                     BI_REGISTER_FORMAT_F32, 4, 0);
-   });
-
-   CASE({
-         bi_blend_to(b, R(48), R(0), DR(60), R(4), R(5), bi_null(),
-                     BI_REGISTER_FORMAT_F32, 4, 0);
-         bi_fadd_f32_to(b, R(4), DR(4), DR(7));
-   });
-
-   CASE({
-         bi_blend_to(b, R(48), R(0), DR(60), R(4), R(5), bi_null(),
-                     BI_REGISTER_FORMAT_F32, 4, 0);
-         bi_fadd_f32_to(b, R(4), DR(5), DR(7));
+      bi_load_i32_to(b, R(0), R(8), R(9), BI_SEG_NONE, 0);
+      bi_fadd_f32_to(b, R(9), DR(9), DR(9));
    });
 }
 
-TEST(MarkLast, ControlFlowAllFeatures) {
+TEST(MarkLast, RegisterBlendDescriptor)
+{
+   CASE({
+      bi_blend_to(b, R(48), R(0), DR(60), DR(4), DR(5), bi_null(),
+                  BI_REGISTER_FORMAT_F32, 4, 0);
+   });
+
+   CASE({
+      bi_blend_to(b, R(48), R(0), DR(60), R(4), R(5), bi_null(),
+                  BI_REGISTER_FORMAT_F32, 4, 0);
+      bi_fadd_f32_to(b, R(4), DR(4), DR(7));
+   });
+
+   CASE({
+      bi_blend_to(b, R(48), R(0), DR(60), R(4), R(5), bi_null(),
+                  BI_REGISTER_FORMAT_F32, 4, 0);
+      bi_fadd_f32_to(b, R(4), DR(5), DR(7));
+   });
+}
+
+TEST(MarkLast, ControlFlowAllFeatures)
+{
    /*      A
     *     / \
     *    B   C
@@ -153,9 +167,8 @@ TEST(MarkLast, ControlFlowAllFeatures) {
 
       b->cursor = bi_after_block(A);
       {
-         bi_instr *I =
-            bi_st_tile(b, R(10), DR(14), DR(15), DR(16),
-                       BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4);
+         bi_instr *I = bi_st_tile(b, R(10), DR(14), DR(15), DR(16),
+                                  BI_REGISTER_FORMAT_F32, BI_VECSIZE_V4);
          I->slot = 2;
 
          bi_load_i32_to(b, R(20), R(28), R(29), BI_SEG_NONE, 0);

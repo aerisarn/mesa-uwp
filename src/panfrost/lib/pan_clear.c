@@ -26,11 +26,11 @@
 #include "genxml/gen_macros.h"
 
 #include <string.h>
-#include "pan_util.h"
-#include "pan_format.h"
 #include "gallium/auxiliary/util/u_pack_color.h"
-#include "util/rounding.h"
 #include "util/format_srgb.h"
+#include "util/rounding.h"
+#include "pan_format.h"
+#include "pan_util.h"
 
 /* Clear colours are packed as the internal format of the tilebuffer, looked up
  * in the blendable formats table given the render target format.
@@ -49,8 +49,8 @@
 static void
 pan_pack_color_32(uint32_t *packed, uint32_t v)
 {
-        for (unsigned i = 0; i < 4; ++i)
-                packed[i] = v;
+   for (unsigned i = 0; i < 4; ++i)
+      packed[i] = v;
 }
 
 /* For m integer bits and n fractional bits, calculate the conversion factor,
@@ -61,22 +61,22 @@ pan_pack_color_32(uint32_t *packed, uint32_t v)
 static inline uint32_t
 float_to_fixed(float f, unsigned bits_int, unsigned bits_frac, bool dither)
 {
-        uint32_t m = (1 << bits_int) - 1;
+   uint32_t m = (1 << bits_int) - 1;
 
-        if (dither) {
-                float factor = m << bits_frac;
-                return _mesa_roundevenf(f * factor);
-        } else {
-                uint32_t v = _mesa_roundevenf(f * (float) m);
-                return v << bits_frac;
-        }
+   if (dither) {
+      float factor = m << bits_frac;
+      return _mesa_roundevenf(f * factor);
+   } else {
+      uint32_t v = _mesa_roundevenf(f * (float)m);
+      return v << bits_frac;
+   }
 }
 
 struct mali_tib_layout {
-        unsigned int_r, frac_r;
-        unsigned int_g, frac_g;
-        unsigned int_b, frac_b;
-        unsigned int_a, frac_a;
+   unsigned int_r, frac_r;
+   unsigned int_g, frac_g;
+   unsigned int_b, frac_b;
+   unsigned int_a, frac_a;
 };
 
 /* clang-format off */
@@ -93,76 +93,77 @@ static const struct mali_tib_layout tib_layouts[] = {
 /* Raw values are stored as-is but replicated for multisampling */
 
 static void
-pan_pack_raw(uint32_t *packed, const union pipe_color_union *color, enum pipe_format format)
+pan_pack_raw(uint32_t *packed, const union pipe_color_union *color,
+             enum pipe_format format)
 {
-        union util_color out = { 0 };
-        unsigned size = util_format_get_blocksize(format);
-        assert(size <= 16);
+   union util_color out = {0};
+   unsigned size = util_format_get_blocksize(format);
+   assert(size <= 16);
 
-        util_pack_color(color->f, format, &out);
+   util_pack_color(color->f, format, &out);
 
-        if (size == 1) {
-                unsigned s = out.ui[0] | (out.ui[0] << 8);
-                pan_pack_color_32(packed, s | (s << 16));
-        } else if (size == 2)
-                pan_pack_color_32(packed, out.ui[0] | (out.ui[0] << 16));
-        else if (size <= 4)
-                pan_pack_color_32(packed, out.ui[0]);
-        else if (size <= 8) {
-                memcpy(packed + 0, out.ui, 8);
-                memcpy(packed + 2, out.ui, 8);
-        } else {
-                memcpy(packed, out.ui, 16);
-        }
+   if (size == 1) {
+      unsigned s = out.ui[0] | (out.ui[0] << 8);
+      pan_pack_color_32(packed, s | (s << 16));
+   } else if (size == 2)
+      pan_pack_color_32(packed, out.ui[0] | (out.ui[0] << 16));
+   else if (size <= 4)
+      pan_pack_color_32(packed, out.ui[0]);
+   else if (size <= 8) {
+      memcpy(packed + 0, out.ui, 8);
+      memcpy(packed + 2, out.ui, 8);
+   } else {
+      memcpy(packed, out.ui, 16);
+   }
 }
 
 void
 pan_pack_color(uint32_t *packed, const union pipe_color_union *color,
                enum pipe_format format, bool dithered)
 {
-        /* Set of blendable formats is common across versions. TODO: v9 */
-        enum mali_color_buffer_internal_format internal =
-                panfrost_blendable_formats_v7[format].internal;
+   /* Set of blendable formats is common across versions. TODO: v9 */
+   enum mali_color_buffer_internal_format internal =
+      panfrost_blendable_formats_v7[format].internal;
 
-        if (internal == MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW_VALUE) {
-                pan_pack_raw(packed, color, format);
-                return;
-        }
+   if (internal == MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW_VALUE) {
+      pan_pack_raw(packed, color, format);
+      return;
+   }
 
-        /* Saturate to [0, 1] by definition of UNORM. Prevents overflow. */
-        float r = SATURATE(color->f[0]);
-        float g = SATURATE(color->f[1]);
-        float b = SATURATE(color->f[2]);
-        float a = SATURATE(color->f[3]);
+   /* Saturate to [0, 1] by definition of UNORM. Prevents overflow. */
+   float r = SATURATE(color->f[0]);
+   float g = SATURATE(color->f[1]);
+   float b = SATURATE(color->f[2]);
+   float a = SATURATE(color->f[3]);
 
-        /* Fill in alpha = 1.0 by default */
-        if (!util_format_has_alpha(format))
-                a = 1.0;
+   /* Fill in alpha = 1.0 by default */
+   if (!util_format_has_alpha(format))
+      a = 1.0;
 
-        /* Convert colourspace while we still have floats */
-        if (util_format_is_srgb(format)) {
-                r = util_format_linear_to_srgb_float(r);
-                g = util_format_linear_to_srgb_float(g);
-                b = util_format_linear_to_srgb_float(b);
-        }
+   /* Convert colourspace while we still have floats */
+   if (util_format_is_srgb(format)) {
+      r = util_format_linear_to_srgb_float(r);
+      g = util_format_linear_to_srgb_float(g);
+      b = util_format_linear_to_srgb_float(b);
+   }
 
-        /* Look up the layout of the tilebuffer */
-        assert(internal < ARRAY_SIZE(tib_layouts));
-        struct mali_tib_layout l = tib_layouts[internal];
+   /* Look up the layout of the tilebuffer */
+   assert(internal < ARRAY_SIZE(tib_layouts));
+   struct mali_tib_layout l = tib_layouts[internal];
 
-        unsigned count_r = l.int_r + l.frac_r;
-        unsigned count_g = l.int_g + l.frac_g + count_r;
-        unsigned count_b = l.int_b + l.frac_b + count_g;
-        ASSERTED unsigned count_a = l.int_a + l.frac_a + count_b;
+   unsigned count_r = l.int_r + l.frac_r;
+   unsigned count_g = l.int_g + l.frac_g + count_r;
+   unsigned count_b = l.int_b + l.frac_b + count_g;
+   ASSERTED unsigned count_a = l.int_a + l.frac_a + count_b;
 
-        /* Must fill the word */
-        assert(count_a == 32);
+   /* Must fill the word */
+   assert(count_a == 32);
 
-        /* Convert the transformed float colour to the given layout */
-        uint32_t ur = float_to_fixed(r, l.int_r, l.frac_r, dithered) << 0;
-        uint32_t ug = float_to_fixed(g, l.int_g, l.frac_g, dithered) << count_r;
-        uint32_t ub = float_to_fixed(b, l.int_b, l.frac_b, dithered) << count_g;
-        uint32_t ua = float_to_fixed(a, l.int_a, l.frac_a, dithered) << count_b;
+   /* Convert the transformed float colour to the given layout */
+   uint32_t ur = float_to_fixed(r, l.int_r, l.frac_r, dithered) << 0;
+   uint32_t ug = float_to_fixed(g, l.int_g, l.frac_g, dithered) << count_r;
+   uint32_t ub = float_to_fixed(b, l.int_b, l.frac_b, dithered) << count_g;
+   uint32_t ua = float_to_fixed(a, l.int_a, l.frac_a, dithered) << count_b;
 
-        pan_pack_color_32(packed, ur | ug | ub | ua);
+   pan_pack_color_32(packed, ur | ug | ub | ua);
 }

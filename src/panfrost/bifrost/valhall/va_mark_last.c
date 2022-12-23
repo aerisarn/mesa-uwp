@@ -97,7 +97,7 @@ scoreboard_update(struct bi_scoreboard_state *st, const bi_instr *I)
    /* Unmark registers after they are waited on */
    for (unsigned i = 0; i < VA_NUM_GENERAL_SLOTS; ++i) {
       if (waits_on_slot(I->flow, i))
-            st->read[i] = 0;
+         st->read[i] = 0;
    }
 }
 
@@ -111,8 +111,8 @@ va_analyze_scoreboard_reads(bi_context *ctx)
       bi_worklist_push_tail(&worklist, block);
 
       /* Reset analysis from previous pass */
-      block->scoreboard_in = (struct bi_scoreboard_state){ 0 };
-      block->scoreboard_out = (struct bi_scoreboard_state){ 0 };
+      block->scoreboard_in = (struct bi_scoreboard_state){0};
+      block->scoreboard_out = (struct bi_scoreboard_state){0};
    }
 
    /* Perform forward data flow analysis to calculate dependencies */

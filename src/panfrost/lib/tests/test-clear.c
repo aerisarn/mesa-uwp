@@ -33,10 +33,22 @@ struct test {
    uint32_t packed[4];
 };
 
-#define RRRR(r) { r, r, r, r }
-#define RGRG(r, g) { r, g, r, g }
-#define F(r, g, b, a) { .f = { r, g, b, a } }
-#define UI(r, g, b, a) { .ui = { r, g, b, a } }
+#define RRRR(r)                                                                \
+   {                                                                           \
+      r, r, r, r                                                               \
+   }
+#define RGRG(r, g)                                                             \
+   {                                                                           \
+      r, g, r, g                                                               \
+   }
+#define F(r, g, b, a)                                                          \
+   {                                                                           \
+      .f = { r, g, b, a }                                                      \
+   }
+#define UI(r, g, b, a)                                                         \
+   {                                                                           \
+      .ui = { r, g, b, a }                                                     \
+   }
 #define D (true)
 #define _ (false)
 
@@ -140,17 +152,23 @@ static const struct test clear_tests[] = {
 };
 /* clang-format on */
 
-#define ASSERT_EQ(x, y) do { \
-   if ((x[0] == y[0]) && (x[1] == y[1]) && (x[2] == y[2]) && (x[3] == y[3])) { \
-      nr_pass++; \
-   } else { \
-      nr_fail++; \
-      fprintf(stderr, "%s%s: Assertion failed %s (%08X %08X %08X %08X) != %s (%08X %08X %08X %08X)\n", \
-            util_format_short_name(T.format), T.dithered ? " dithered" : "", #x, x[0], x[1], x[2], x[3], #y, y[0], y[1], y[2], y[3]); \
-   } \
-} while(0)
+#define ASSERT_EQ(x, y)                                                                      \
+   do {                                                                                      \
+      if ((x[0] == y[0]) && (x[1] == y[1]) && (x[2] == y[2]) &&                              \
+          (x[3] == y[3])) {                                                                  \
+         nr_pass++;                                                                          \
+      } else {                                                                               \
+         nr_fail++;                                                                          \
+         fprintf(                                                                            \
+            stderr,                                                                          \
+            "%s%s: Assertion failed %s (%08X %08X %08X %08X) != %s (%08X %08X %08X %08X)\n", \
+            util_format_short_name(T.format), T.dithered ? " dithered" : "",                 \
+            #x, x[0], x[1], x[2], x[3], #y, y[0], y[1], y[2], y[3]);                         \
+      }                                                                                      \
+   } while (0)
 
-int main(int argc, const char **argv)
+int
+main(int argc, const char **argv)
 {
    unsigned nr_pass = 0, nr_fail = 0;
 

@@ -21,9 +21,9 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall_enums.h"
-#include "bi_builder.h"
 
 /*
  * Insert flow control into a scheduled and register allocated shader.  This
@@ -176,7 +176,8 @@ bi_depend_on_writers(struct bi_scoreboard_state *st, uint64_t regmask)
 /* Sets the dependencies for a given clause, updating the model */
 
 static void
-bi_set_dependencies(bi_block *block, bi_instr *I, struct bi_scoreboard_state *st)
+bi_set_dependencies(bi_block *block, bi_instr *I,
+                    struct bi_scoreboard_state *st)
 {
    /* Depend on writers to handle read-after-write and write-after-write
     * dependencies. Write-after-read dependencies are handled in the hardware
@@ -482,7 +483,8 @@ va_insert_flow_control_nops(bi_context *ctx)
        */
       if (va_should_end(block) || block->needs_nop) {
          /* Don't bother adding a NOP into an unreachable block */
-         if (block == bi_start_block(&ctx->blocks) || bi_num_predecessors(block))
+         if (block == bi_start_block(&ctx->blocks) ||
+             bi_num_predecessors(block))
             bi_flow(ctx, bi_after_block(block), VA_FLOW_END);
       } else if (bi_reconverge_branches(block)) {
          /* TODO: Do we have ever need to reconverge from an empty block? */

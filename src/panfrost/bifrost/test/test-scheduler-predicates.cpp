@@ -21,23 +21,28 @@
  * SOFTWARE.
  */
 
-#include "compiler.h"
-#include "bi_test.h"
 #include "bi_builder.h"
+#include "bi_test.h"
+#include "compiler.h"
 
 #include <gtest/gtest.h>
 
 class SchedulerPredicates : public testing::Test {
-protected:
-   SchedulerPredicates() {
+ protected:
+   SchedulerPredicates()
+   {
       mem_ctx = ralloc_context(NULL);
       b = bit_builder(mem_ctx);
    }
-   ~SchedulerPredicates() {
+   ~SchedulerPredicates()
+   {
       ralloc_free(mem_ctx);
    }
 
-   bi_index TMP() { return bi_temp(b->shader); }
+   bi_index TMP()
+   {
+      return bi_temp(b->shader);
+   }
 
    void *mem_ctx;
    bi_builder *b;

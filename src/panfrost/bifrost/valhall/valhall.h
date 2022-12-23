@@ -73,43 +73,42 @@ enum va_unit {
 };
 
 struct va_src_info {
-   bool absneg : 1;
-   bool swizzle : 1;
-   bool notted : 1;
-   bool lane : 1;
-   bool lanes : 1;
-   bool halfswizzle : 1;
-   bool widen : 1;
-   bool combine : 1;
+   bool absneg       : 1;
+   bool swizzle      : 1;
+   bool notted       : 1;
+   bool lane         : 1;
+   bool lanes        : 1;
+   bool halfswizzle  : 1;
+   bool widen        : 1;
+   bool combine      : 1;
    enum va_size size : 2;
 } __attribute__((packed));
 
 struct va_opcode_info {
    uint64_t exact;
    struct va_src_info srcs[4];
-   uint8_t type_size : 8;
-   enum va_unit unit : 3;
-   unsigned nr_srcs : 3;
-   unsigned nr_staging_srcs : 2;
+   uint8_t type_size         : 8;
+   enum va_unit unit         : 3;
+   unsigned nr_srcs          : 3;
+   unsigned nr_staging_srcs  : 2;
    unsigned nr_staging_dests : 2;
-   bool has_dest : 1;
-   bool is_signed : 1;
-   bool clamp : 1;
-   bool saturate : 1;
-   bool rhadd : 1;
-   bool round_mode : 1;
-   bool condition : 1;
-   bool result_type : 1;
-   bool vecsize : 1;
-   bool register_format : 1;
-   bool slot : 1;
-   bool sr_count : 1;
-   bool sr_write_count : 1;
-   unsigned sr_control : 2;
+   bool has_dest             : 1;
+   bool is_signed            : 1;
+   bool clamp                : 1;
+   bool saturate             : 1;
+   bool rhadd                : 1;
+   bool round_mode           : 1;
+   bool condition            : 1;
+   bool result_type          : 1;
+   bool vecsize              : 1;
+   bool register_format      : 1;
+   bool slot                 : 1;
+   bool sr_count             : 1;
+   bool sr_write_count       : 1;
+   unsigned sr_control       : 2;
 };
 
-extern const struct va_opcode_info
-valhall_opcodes[BI_NUM_OPCODES];
+extern const struct va_opcode_info valhall_opcodes[BI_NUM_OPCODES];
 
 /* Bifrost specifies the source of bitwise operations as (A, B, shift), but
  * Valhall specifies (A, shift, B). We follow Bifrost conventions in the

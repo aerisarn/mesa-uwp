@@ -293,17 +293,19 @@ static const struct test blend_tests[] = {
 };
 /* clang-format on */
 
-#define ASSERT_EQ(x, y) do { \
-   if (x == y) { \
-      nr_pass++; \
-   } else { \
-      nr_fail++; \
-      fprintf(stderr, "%s: Assertion failed %s (%x) != %s (%x)\n", \
-            T.label, #x, x, #y, y); \
-   } \
-} while(0)
+#define ASSERT_EQ(x, y)                                                        \
+   do {                                                                        \
+      if (x == y) {                                                            \
+         nr_pass++;                                                            \
+      } else {                                                                 \
+         nr_fail++;                                                            \
+         fprintf(stderr, "%s: Assertion failed %s (%x) != %s (%x)\n", T.label, \
+                 #x, x, #y, y);                                                \
+      }                                                                        \
+   } while (0)
 
-int main(int argc, const char **argv)
+int
+main(int argc, const char **argv)
 {
    unsigned nr_pass = 0, nr_fail = 0;
 

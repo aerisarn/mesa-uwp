@@ -62,182 +62,187 @@ typedef uint16_t nodearray_value;
 typedef uint64_t nodearray_sparse;
 
 typedef struct {
-        union {
-                nodearray_sparse *sparse;
-                nodearray_value *dense;
-        };
-        unsigned size;
-        unsigned sparse_capacity;
+   union {
+      nodearray_sparse *sparse;
+      nodearray_value *dense;
+   };
+   unsigned size;
+   unsigned sparse_capacity;
 } nodearray;
 
 /* Align sizes to 16-bytes for SIMD purposes */
 #define NODEARRAY_DENSE_ALIGN(x) ALIGN_POT(x, 16)
 
-#define nodearray_sparse_foreach(buf, elem) \
-   for (nodearray_sparse *elem = (buf)->sparse; \
+#define nodearray_sparse_foreach(buf, elem)                                    \
+   for (nodearray_sparse *elem = (buf)->sparse;                                \
         elem < (buf)->sparse + (buf)->size; elem++)
 
-#define nodearray_dense_foreach(buf, elem) \
-   for (nodearray_value *elem = (buf)->dense; \
+#define nodearray_dense_foreach(buf, elem)                                     \
+   for (nodearray_value *elem = (buf)->dense;                                  \
         elem < (buf)->dense + (buf)->size; elem++)
 
-#define nodearray_dense_foreach_64(buf, elem) \
-   for (uint64_t *elem = (uint64_t *)(buf)->dense; \
+#define nodearray_dense_foreach_64(buf, elem)                                  \
+   for (uint64_t *elem = (uint64_t *)(buf)->dense;                             \
         (nodearray_value *)elem < (buf)->dense + (buf)->size; elem++)
 
 static inline bool
 nodearray_is_sparse(const nodearray *a)
 {
-        return a->sparse_capacity != ~0U;
+   return a->sparse_capacity != ~0U;
 }
 
 static inline void
 nodearray_init(nodearray *a)
 {
-        memset(a, 0, sizeof(nodearray));
+   memset(a, 0, sizeof(nodearray));
 }
 
 static inline void
 nodearray_reset(nodearray *a)
 {
-        free(a->sparse);
-        nodearray_init(a);
+   free(a->sparse);
+   nodearray_init(a);
 }
 
 static inline nodearray_sparse
 nodearray_encode(unsigned key, nodearray_value value)
 {
-        static_assert(sizeof(nodearray_value) == sizeof(uint16_t), "sizes mismatch");
-        return ((nodearray_sparse) key << 16) | value;
+   static_assert(sizeof(nodearray_value) == sizeof(uint16_t), "sizes mismatch");
+   return ((nodearray_sparse)key << 16) | value;
 }
 
 static inline unsigned
 nodearray_sparse_key(const nodearray_sparse *elem)
 {
-        static_assert(sizeof(nodearray_value) == sizeof(uint16_t), "sizes mismatch");
-        return *elem >> 16;
+   static_assert(sizeof(nodearray_value) == sizeof(uint16_t), "sizes mismatch");
+   return *elem >> 16;
 }
 
 static inline nodearray_value
 nodearray_sparse_value(const nodearray_sparse *elem)
 {
-        return *elem & NODEARRAY_MAX_VALUE;
+   return *elem & NODEARRAY_MAX_VALUE;
 }
 
 static inline unsigned
-nodearray_sparse_search(const nodearray *a, nodearray_sparse key, nodearray_sparse **elem)
+nodearray_sparse_search(const nodearray *a, nodearray_sparse key,
+                        nodearray_sparse **elem)
 {
-        assert(nodearray_is_sparse(a) && a->size);
+   assert(nodearray_is_sparse(a) && a->size);
 
-        nodearray_sparse *data = a->sparse;
+   nodearray_sparse *data = a->sparse;
 
-        /* Encode the key using the highest possible value, so that the
-         * matching node must be encoded lower than this
-         */
-        nodearray_sparse skey = nodearray_encode(key, NODEARRAY_MAX_VALUE);
+   /* Encode the key using the highest possible value, so that the
+    * matching node must be encoded lower than this
+    */
+   nodearray_sparse skey = nodearray_encode(key, NODEARRAY_MAX_VALUE);
 
-        unsigned left = 0;
-        unsigned right = a->size - 1;
+   unsigned left = 0;
+   unsigned right = a->size - 1;
 
-        if (data[right] <= skey)
-                left = right;
+   if (data[right] <= skey)
+      left = right;
 
-        while (left != right) {
-                /* No need to worry about overflow, we couldn't have more than
-                 * 2^24 elements */
-                unsigned probe = (left + right + 1) / 2;
+   while (left != right) {
+      /* No need to worry about overflow, we couldn't have more than
+       * 2^24 elements */
+      unsigned probe = (left + right + 1) / 2;
 
-                if (data[probe] > skey)
-                        right = probe - 1;
-                else
-                        left = probe;
-        }
+      if (data[probe] > skey)
+         right = probe - 1;
+      else
+         left = probe;
+   }
 
-        *elem = data + left;
-        return left;
+   *elem = data + left;
+   return left;
 }
 
 static inline void
 nodearray_orr(nodearray *a, unsigned key, nodearray_value value,
               unsigned max_sparse, unsigned max)
 {
-        assert(key < (1 << 24));
-        assert(key < max);
+   assert(key < (1 << 24));
+   assert(key < max);
 
-        if (!value)
-                return;
+   if (!value)
+      return;
 
-        if (nodearray_is_sparse(a)) {
-                unsigned size = a->size;
-                unsigned left = 0;
+   if (nodearray_is_sparse(a)) {
+      unsigned size = a->size;
+      unsigned left = 0;
 
-                if (size) {
-                        /* First, binary search for key */
-                        nodearray_sparse *elem;
-                        left = nodearray_sparse_search(a, key, &elem);
+      if (size) {
+         /* First, binary search for key */
+         nodearray_sparse *elem;
+         left = nodearray_sparse_search(a, key, &elem);
 
-                        if (nodearray_sparse_key(elem) == key) {
-                                *elem |= value;
-                                return;
-                        }
+         if (nodearray_sparse_key(elem) == key) {
+            *elem |= value;
+            return;
+         }
 
-                        /* We insert before `left`, so increment it if it's
-                         * out of order */
-                        if (nodearray_sparse_key(elem) < key)
-                                ++left;
-                }
+         /* We insert before `left`, so increment it if it's
+          * out of order */
+         if (nodearray_sparse_key(elem) < key)
+            ++left;
+      }
 
-                if (size < max_sparse && (size + 1) < max / 4) {
-                        /* We didn't find it, but we know where to insert it. */
+      if (size < max_sparse && (size + 1) < max / 4) {
+         /* We didn't find it, but we know where to insert it. */
 
-                        nodearray_sparse *data = a->sparse;
-                        nodearray_sparse *data_move = data + left;
+         nodearray_sparse *data = a->sparse;
+         nodearray_sparse *data_move = data + left;
 
-                        bool realloc = (++a->size) > a->sparse_capacity;
+         bool realloc = (++a->size) > a->sparse_capacity;
 
-                        if (realloc) {
-                                a->sparse_capacity = MIN2(MAX2(a->sparse_capacity * 2, 64), max / 4);
+         if (realloc) {
+            a->sparse_capacity =
+               MIN2(MAX2(a->sparse_capacity * 2, 64), max / 4);
 
-                                a->sparse = (nodearray_sparse *)malloc(a->sparse_capacity * sizeof(nodearray_sparse));
+            a->sparse = (nodearray_sparse *)malloc(a->sparse_capacity *
+                                                   sizeof(nodearray_sparse));
 
-                                if (left)
-                                        memcpy(a->sparse, data, left * sizeof(nodearray_sparse));
-                        }
+            if (left)
+               memcpy(a->sparse, data, left * sizeof(nodearray_sparse));
+         }
 
-                        nodearray_sparse *elem = a->sparse + left;
+         nodearray_sparse *elem = a->sparse + left;
 
-                        if (left != size)
-                                memmove(elem + 1, data_move, (size - left) * sizeof(nodearray_sparse));
+         if (left != size)
+            memmove(elem + 1, data_move,
+                    (size - left) * sizeof(nodearray_sparse));
 
-                        *elem = nodearray_encode(key, value);
+         *elem = nodearray_encode(key, value);
 
-                        if (realloc)
-                                free(data);
+         if (realloc)
+            free(data);
 
-                        return;
-                }
+         return;
+      }
 
-                /* There are too many elements, so convert to a dense array */
-                nodearray old = *a;
+      /* There are too many elements, so convert to a dense array */
+      nodearray old = *a;
 
-                a->dense = (nodearray_value *)calloc(NODEARRAY_DENSE_ALIGN(max), sizeof(nodearray_value));
-                a->size = max;
-                a->sparse_capacity = ~0U;
+      a->dense = (nodearray_value *)calloc(NODEARRAY_DENSE_ALIGN(max),
+                                           sizeof(nodearray_value));
+      a->size = max;
+      a->sparse_capacity = ~0U;
 
-                nodearray_value *data = a->dense;
+      nodearray_value *data = a->dense;
 
-                nodearray_sparse_foreach(&old, x) {
-                        unsigned key = nodearray_sparse_key(x);
-                        nodearray_value value = nodearray_sparse_value(x);
+      nodearray_sparse_foreach(&old, x) {
+         unsigned key = nodearray_sparse_key(x);
+         nodearray_value value = nodearray_sparse_value(x);
 
-                        assert(key < max);
-                        data[key] = value;
-                }
+         assert(key < max);
+         data[key] = value;
+      }
 
-                free(old.sparse);
-        }
+      free(old.sparse);
+   }
 
-        a->dense[key] |= value;
+   a->dense[key] |= value;
 }
 
 #ifdef __cplusplus

@@ -29,15 +29,21 @@ static enum bi_opcode
 va_op_add_imm(enum bi_opcode op)
 {
    switch (op) {
-   case BI_OPCODE_FADD_F32:   return BI_OPCODE_FADD_IMM_F32;
-   case BI_OPCODE_FADD_V2F16: return BI_OPCODE_FADD_IMM_V2F16;
+   case BI_OPCODE_FADD_F32:
+      return BI_OPCODE_FADD_IMM_F32;
+   case BI_OPCODE_FADD_V2F16:
+      return BI_OPCODE_FADD_IMM_V2F16;
    case BI_OPCODE_IADD_S32:
-   case BI_OPCODE_IADD_U32:   return BI_OPCODE_IADD_IMM_I32;
+   case BI_OPCODE_IADD_U32:
+      return BI_OPCODE_IADD_IMM_I32;
    case BI_OPCODE_IADD_V2S16:
-   case BI_OPCODE_IADD_V2U16: return BI_OPCODE_IADD_IMM_V2I16;
+   case BI_OPCODE_IADD_V2U16:
+      return BI_OPCODE_IADD_IMM_V2I16;
    case BI_OPCODE_IADD_V4S8:
-   case BI_OPCODE_IADD_V4U8:  return BI_OPCODE_IADD_IMM_V4I8;
-   default: return 0;
+   case BI_OPCODE_IADD_V4U8:
+      return BI_OPCODE_IADD_IMM_V4I8;
+   default:
+      return 0;
    }
 }
 
@@ -46,8 +52,8 @@ va_is_add_imm(bi_instr *I, unsigned s)
 {
    assert(s < I->nr_srcs);
 
-   return I->src[s].swizzle == BI_SWIZZLE_H01 &&
-          !I->src[s].abs && !I->src[s].neg && !I->clamp && !I->round;
+   return I->src[s].swizzle == BI_SWIZZLE_H01 && !I->src[s].abs &&
+          !I->src[s].neg && !I->clamp && !I->round;
 }
 
 static unsigned
@@ -83,11 +89,14 @@ va_fuse_add_imm(bi_instr *I)
    }
 
    enum bi_opcode op = va_op_add_imm(I->op);
-   if (!op) return;
+   if (!op)
+      return;
 
    unsigned s = va_choose_imm(I);
-   if (s > 1) return;
-   if (!va_is_add_imm(I, 1 - s)) return;
+   if (s > 1)
+      return;
+   if (!va_is_add_imm(I, 1 - s))
+      return;
 
    I->op = op;
    I->index = bi_apply_swizzle(I->src[s].value, I->src[s].swizzle);

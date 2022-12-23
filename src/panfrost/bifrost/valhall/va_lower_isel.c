@@ -21,9 +21,9 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall.h"
-#include "bi_builder.h"
 
 static bi_instr *
 lower(bi_builder *b, bi_instr *I)
@@ -38,45 +38,56 @@ lower(bi_builder *b, bi_instr *I)
       return bi_iadd_v4u8_to(b, I->dest[0], I->src[0], bi_zero(), false);
 
    case BI_OPCODE_ICMP_I32:
-      return bi_icmp_or_u32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_u32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                               I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V2I16:
-      return bi_icmp_or_v2u16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v2u16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                 I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V4I8:
-      return bi_icmp_or_v4u8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v4u8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_U32:
-      return bi_icmp_or_u32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_u32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                               I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V2U16:
-      return bi_icmp_or_v2u16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v2u16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                 I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V4U8:
-      return bi_icmp_or_v4u8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v4u8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_S32:
-      return bi_icmp_or_s32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_s32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                               I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V2S16:
-      return bi_icmp_or_v2s16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v2s16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                 I->cmpf, I->result_type);
 
    case BI_OPCODE_ICMP_V4S8:
-      return bi_icmp_or_v4s8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_icmp_or_v4s8_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                I->cmpf, I->result_type);
 
    case BI_OPCODE_FCMP_F32:
-      return bi_fcmp_or_f32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_fcmp_or_f32_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                               I->cmpf, I->result_type);
 
    case BI_OPCODE_FCMP_V2F16:
-      return bi_fcmp_or_v2f16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(), I->cmpf, I->result_type);
+      return bi_fcmp_or_v2f16_to(b, I->dest[0], I->src[0], I->src[1], bi_zero(),
+                                 I->cmpf, I->result_type);
 
    /* Integer CSEL must have a signedness */
    case BI_OPCODE_CSEL_I32:
    case BI_OPCODE_CSEL_V2I16:
       assert(I->cmpf == BI_CMPF_EQ || I->cmpf == BI_CMPF_NE);
 
-      I->op = (I->op == BI_OPCODE_CSEL_I32) ? BI_OPCODE_CSEL_U32 :
-              BI_OPCODE_CSEL_V2U16;
+      I->op = (I->op == BI_OPCODE_CSEL_I32) ? BI_OPCODE_CSEL_U32
+                                            : BI_OPCODE_CSEL_V2U16;
       return NULL;
 
    /* Jump -> conditional branch with condition tied to true. */
@@ -117,7 +128,7 @@ lower(bi_builder *b, bi_instr *I)
 
    case BI_OPCODE_FADD_RSCALE_F32:
       return bi_fma_rscale_f32_to(b, I->dest[0], I->src[0], bi_imm_f32(1.0),
-                                     I->src[1], I->src[2], I->special);
+                                  I->src[1], I->src[2], I->special);
 
    default:
       return NULL;

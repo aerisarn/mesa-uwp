@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include "bifrost.h"
 
-const char * bi_message_type_name(enum bifrost_message_type T);
-const char * bi_flow_control_name(enum bifrost_flow mode);
+const char *bi_message_type_name(enum bifrost_message_type T);
+const char *bi_flow_control_name(enum bifrost_flow mode);
 
 #endif

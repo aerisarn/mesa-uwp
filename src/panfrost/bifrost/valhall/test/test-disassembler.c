@@ -21,8 +21,8 @@
  * SOFTWARE.
  */
 
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include "disassemble.h"
 
 static inline uint8_t
@@ -39,7 +39,7 @@ parse_hex(const char *in)
 
    for (unsigned i = 0; i < 8; ++i) {
       uint8_t byte = (parse_nibble(in[0]) << 4) | parse_nibble(in[1]);
-      v |= ((uint64_t) byte) << (8 * i);
+      v |= ((uint64_t)byte) << (8 * i);
 
       /* Skip the space after the byte */
       in += 3;

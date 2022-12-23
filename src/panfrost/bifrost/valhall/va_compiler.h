@@ -79,7 +79,7 @@ va_select_fau_page(const bi_instr *I)
 {
    bi_foreach_src(I, s) {
       if (I->src[s].type == BI_INDEX_FAU)
-         return va_fau_page((enum bir_fau) I->src[s].value);
+         return va_fau_page((enum bir_fau)I->src[s].value);
    }
 
    return 0;
@@ -91,8 +91,7 @@ struct va_stats {
    unsigned fma, cvt, sfu, v, ls, t;
 };
 
-void
-va_count_instr_stats(bi_instr *I, struct va_stats *stats);
+void va_count_instr_stats(bi_instr *I, struct va_stats *stats);
 
 #ifdef __cplusplus
 } /* extern C */

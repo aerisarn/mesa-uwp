@@ -37,10 +37,8 @@
 bool
 bi_ec0_packed(unsigned tuple_count)
 {
-        return (tuple_count == 3) ||
-                (tuple_count == 5) ||
-                (tuple_count == 6) ||
-                (tuple_count == 8);
+   return (tuple_count == 3) || (tuple_count == 5) || (tuple_count == 6) ||
+          (tuple_count == 8);
 }
 
 /* Helper to calculate the number of quadwords in a clause. This is a function
@@ -60,7 +58,7 @@ bi_ec0_packed(unsigned tuple_count)
  *   6 | 5*
  *   7 | 5
  *   8 | 6*
- * 
+ *
  * Y = { X      if X <= 3
  *     { X - 1  if 4 <= X <= 6
  *     { X - 2  if 7 <= X <= 8
@@ -72,15 +70,15 @@ bi_ec0_packed(unsigned tuple_count)
 static unsigned
 bi_clause_quadwords(bi_clause *clause)
 {
-        unsigned X = clause->tuple_count;
-        unsigned Y = X - ((X >= 7) ? 2 : (X >= 4) ? 1 : 0);
+   unsigned X = clause->tuple_count;
+   unsigned Y = X - ((X >= 7) ? 2 : (X >= 4) ? 1 : 0);
 
-        unsigned constants = clause->constant_count;
+   unsigned constants = clause->constant_count;
 
-        if ((X != 4) && (X != 7) && (X >= 3) && constants)
-                constants--;
+   if ((X != 4) && (X != 7) && (X >= 3) && constants)
+      constants--;
 
-        return Y + DIV_ROUND_UP(constants, 2);
+   return Y + DIV_ROUND_UP(constants, 2);
 }
 
 /* Measures the number of quadwords a branch jumps. Bifrost relative offsets
@@ -90,62 +88,62 @@ bi_clause_quadwords(bi_clause *clause)
 signed
 bi_block_offset(bi_context *ctx, bi_clause *start, bi_block *target)
 {
-        /* Signed since we might jump backwards */
-        signed ret = 0;
+   /* Signed since we might jump backwards */
+   signed ret = 0;
 
-        /* Determine if the block we're branching to is strictly greater in
-         * source order */
-        bool forwards = target->index > start->block->index;
+   /* Determine if the block we're branching to is strictly greater in
+    * source order */
+   bool forwards = target->index > start->block->index;
 
-        if (forwards) {
-                /* We have to jump through this block from the start of this
-                 * clause to the end */
-                bi_foreach_clause_in_block_from(start->block, clause, start) {
-                        ret += bi_clause_quadwords(clause);
-                }
+   if (forwards) {
+      /* We have to jump through this block from the start of this
+       * clause to the end */
+      bi_foreach_clause_in_block_from(start->block, clause, start) {
+         ret += bi_clause_quadwords(clause);
+      }
 
-                /* We then need to jump through every clause of every following
-                 * block until the target */
-                bi_foreach_block_from(ctx, start->block, blk) {
-                        /* Don't double-count the first block */
-                        if (blk == start->block)
-                                continue;
+      /* We then need to jump through every clause of every following
+       * block until the target */
+      bi_foreach_block_from(ctx, start->block, blk) {
+         /* Don't double-count the first block */
+         if (blk == start->block)
+            continue;
 
-                        /* End just before the target */
-                        if (blk == target)
-                                break;
+         /* End just before the target */
+         if (blk == target)
+            break;
 
-                        /* Count every clause in the block */
-                        bi_foreach_clause_in_block(blk, clause) {
-                                ret += bi_clause_quadwords(clause);
-                        }
-                }
-        } else {
-                /* We start at the beginning of the clause but have to jump
-                 * through the clauses before us in the block */
-                bi_foreach_clause_in_block_from_rev(start->block, clause, start) {
-                        if (clause == start)
-                                continue;
+         /* Count every clause in the block */
+         bi_foreach_clause_in_block(blk, clause) {
+            ret += bi_clause_quadwords(clause);
+         }
+      }
+   } else {
+      /* We start at the beginning of the clause but have to jump
+       * through the clauses before us in the block */
+      bi_foreach_clause_in_block_from_rev(start->block, clause, start) {
+         if (clause == start)
+            continue;
 
-                        ret -= bi_clause_quadwords(clause);
-                }
+         ret -= bi_clause_quadwords(clause);
+      }
 
-                /* And jump back every clause of preceding blocks up through
-                 * and including the target to get to the beginning of the
-                 * target */
-                bi_foreach_block_from_rev(ctx, start->block, blk) {
-                        if (blk == start->block)
-                                continue;
+      /* And jump back every clause of preceding blocks up through
+       * and including the target to get to the beginning of the
+       * target */
+      bi_foreach_block_from_rev(ctx, start->block, blk) {
+         if (blk == start->block)
+            continue;
 
-                        bi_foreach_clause_in_block(blk, clause) {
-                                ret -= bi_clause_quadwords(clause);
-                        }
+         bi_foreach_clause_in_block(blk, clause) {
+            ret -= bi_clause_quadwords(clause);
+         }
 
-                        /* End just after the target */
-                        if (blk == target)
-                                break;
-                }
-        }
+         /* End just after the target */
+         if (blk == target)
+            break;
+      }
+   }
 
-        return ret;
+   return ret;
 }

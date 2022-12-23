@@ -21,8 +21,8 @@
  * SOFTWARE.
  */
 
-#include "va_compiler.h"
 #include "bi_builder.h"
+#include "va_compiler.h"
 
 /*
  * Bifrost uses split 64-bit addresses, specified as two consecutive sources.
@@ -38,8 +38,7 @@ lower_split_src(bi_context *ctx, bi_instr *I, unsigned s)
    bi_index offset_fau = I->src[s];
    offset_fau.offset++;
 
-   if (I->src[s].type == BI_INDEX_FAU &&
-       I->src[s].offset == 0 &&
+   if (I->src[s].type == BI_INDEX_FAU && I->src[s].offset == 0 &&
        bi_is_value_equiv(offset_fau, I->src[s + 1])) {
       return;
    }

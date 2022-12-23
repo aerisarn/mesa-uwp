@@ -21,15 +21,16 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall.h"
-#include "bi_builder.h"
 
 /* Valhall has limits on access to fast-access uniforms:
  *
  *   An instruction may access no more than a single 64-bit uniform slot.
- *   An instruction may access no more than 64-bits of combined uniforms and constants.
- *   An instruction may access no more than a single special immediate (e.g. lane_id).
+ *   An instruction may access no more than 64-bits of combined uniforms and
+ * constants. An instruction may access no more than a single special immediate
+ * (e.g. lane_id).
  *
  * We validate these constraints.
  *
@@ -114,7 +115,7 @@ bool
 va_validate_fau(bi_instr *I)
 {
    bool valid = true;
-   struct fau_state fau = { .uniform_slot = -1 };
+   struct fau_state fau = {.uniform_slot = -1};
    unsigned fau_page = va_select_fau_page(I);
 
    bi_foreach_src(I, s) {
@@ -127,7 +128,7 @@ va_validate_fau(bi_instr *I)
 void
 va_repair_fau(bi_builder *b, bi_instr *I)
 {
-   struct fau_state fau = { .uniform_slot = -1 };
+   struct fau_state fau = {.uniform_slot = -1};
    unsigned fau_page = va_select_fau_page(I);
 
    bi_foreach_src(I, s) {

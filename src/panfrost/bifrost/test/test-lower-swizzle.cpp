@@ -21,31 +21,34 @@
  * SOFTWARE.
  */
 
-#include "compiler.h"
-#include "bi_test.h"
 #include "bi_builder.h"
+#include "bi_test.h"
+#include "compiler.h"
 
 #include <gtest/gtest.h>
 
-#define CASE(instr, expected) INSTRUCTION_CASE(instr, expected, bi_lower_swizzle)
+#define CASE(instr, expected)                                                  \
+   INSTRUCTION_CASE(instr, expected, bi_lower_swizzle)
 #define NEGCASE(instr) CASE(instr, instr)
 
 class LowerSwizzle : public testing::Test {
-protected:
-   LowerSwizzle() {
+ protected:
+   LowerSwizzle()
+   {
       mem_ctx = ralloc_context(NULL);
 
-      reg     = bi_register(0);
-      x       = bi_register(1);
-      y       = bi_register(2);
-      z       = bi_register(3);
-      w       = bi_register(4);
+      reg = bi_register(0);
+      x = bi_register(1);
+      y = bi_register(2);
+      z = bi_register(3);
+      w = bi_register(4);
 
-      x3210   = x;
+      x3210 = x;
       x3210.swizzle = BI_SWIZZLE_B3210;
    }
 
-   ~LowerSwizzle() {
+   ~LowerSwizzle()
+   {
       ralloc_free(mem_ctx);
    }
 
@@ -58,7 +61,8 @@ protected:
 TEST_F(LowerSwizzle, Csel16)
 {
    CASE(bi_csel_v2f16_to(b, reg, bi_half(x, 0), y, z, w, BI_CMPF_NE),
-        bi_csel_v2f16_to(b, reg, bi_swz_v2i16(b, bi_half(x, 0)), y, z, w, BI_CMPF_NE));
+        bi_csel_v2f16_to(b, reg, bi_swz_v2i16(b, bi_half(x, 0)), y, z, w,
+                         BI_CMPF_NE));
 }
 
 TEST_F(LowerSwizzle, Fma16)
@@ -79,23 +83,22 @@ TEST_F(LowerSwizzle, ClzHadd8)
 TEST_F(LowerSwizzle, FirstShift8)
 {
    enum bi_opcode ops[] = {
-      BI_OPCODE_LSHIFT_AND_V4I8,
-      BI_OPCODE_LSHIFT_OR_V4I8,
-      BI_OPCODE_LSHIFT_XOR_V4I8,
-      BI_OPCODE_RSHIFT_AND_V4I8,
-      BI_OPCODE_RSHIFT_OR_V4I8,
-      BI_OPCODE_RSHIFT_XOR_V4I8,
+      BI_OPCODE_LSHIFT_AND_V4I8, BI_OPCODE_LSHIFT_OR_V4I8,
+      BI_OPCODE_LSHIFT_XOR_V4I8, BI_OPCODE_RSHIFT_AND_V4I8,
+      BI_OPCODE_RSHIFT_OR_V4I8,  BI_OPCODE_RSHIFT_XOR_V4I8,
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(ops); ++i) {
-      CASE({
+      CASE(
+         {
             bi_instr *I = bi_lshift_and_v4i8_to(b, reg, x3210, y, z);
             I->op = ops[i];
-      },
-      {
-            bi_instr *I = bi_lshift_and_v4i8_to(b, reg, bi_swz_v4i8(b, x3210), y, z);
+         },
+         {
+            bi_instr *I =
+               bi_lshift_and_v4i8_to(b, reg, bi_swz_v4i8(b, x3210), y, z);
             I->op = ops[i];
-      });
+         });
    }
 }
 

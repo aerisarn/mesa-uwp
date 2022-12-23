@@ -1,21 +1,21 @@
 #ifndef __DISASM_H
 #define __DISASM_H
 
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define BIT(b) (1ull << (b))
-#define MASK(count) ((1ull << (count)) - 1)
+#define BIT(b)         (1ull << (b))
+#define MASK(count)    ((1ull << (count)) - 1)
 #define SEXT(b, count) ((b ^ BIT(count - 1)) - BIT(count - 1))
-#define UNUSED __attribute__((unused))
+#define UNUSED         __attribute__((unused))
 
 #define VA_SRC_UNIFORM_TYPE 0x2
-#define VA_SRC_IMM_TYPE 0x3
+#define VA_SRC_IMM_TYPE     0x3
 
 static inline void
 va_print_dest(FILE *fp, uint8_t dest, bool can_mask)
@@ -51,7 +51,7 @@ disassemble_valhall(FILE *fp, const uint64_t *code, unsigned size, bool verbose)
       if (verbose) {
          /* Print byte pattern */
          for (unsigned j = 0; j < 8; ++j)
-            fprintf(fp, "%02x ", (uint8_t) (instr >> (j * 8)));
+            fprintf(fp, "%02x ", (uint8_t)(instr >> (j * 8)));
 
          fprintf(fp, "   ");
       } else {

@@ -44,15 +44,15 @@
 static inline unsigned
 bifrost_get_quirks(unsigned product_id)
 {
-        switch (product_id >> 8) {
-        case 0x60: /* G71 */
-                return BIFROST_NO_FP32_TRANSCENDENTALS | BIFROST_LIMITED_CLPER;
-        case 0x62: /* G72 */
-        case 0x70: /* G31 */
-                return BIFROST_LIMITED_CLPER;
-        default:
-                return 0;
-        }
+   switch (product_id >> 8) {
+   case 0x60: /* G71 */
+      return BIFROST_NO_FP32_TRANSCENDENTALS | BIFROST_LIMITED_CLPER;
+   case 0x62: /* G72 */
+   case 0x70: /* G31 */
+      return BIFROST_LIMITED_CLPER;
+   default:
+      return 0;
+   }
 }
 
 #endif

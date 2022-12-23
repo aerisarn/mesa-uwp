@@ -21,41 +21,44 @@
  * SOFTWARE.
  */
 
-#include "va_compiler.h"
-#include "bi_test.h"
 #include "bi_builder.h"
+#include "bi_test.h"
+#include "va_compiler.h"
 
 #include <gtest/gtest.h>
 
-#define CASE(instr, expected) do { \
-   if (va_validate_fau(instr) != expected) { \
-      fprintf(stderr, "Incorrect validation for:\n"); \
-      bi_print_instr(instr, stderr); \
-      fprintf(stderr, "\n"); \
-      ADD_FAILURE(); \
-   } \
-} while(0)
+#define CASE(instr, expected)                                                  \
+   do {                                                                        \
+      if (va_validate_fau(instr) != expected) {                                \
+         fprintf(stderr, "Incorrect validation for:\n");                       \
+         bi_print_instr(instr, stderr);                                        \
+         fprintf(stderr, "\n");                                                \
+         ADD_FAILURE();                                                        \
+      }                                                                        \
+   } while (0)
 
-#define VALID(instr) CASE(instr, true)
+#define VALID(instr)   CASE(instr, true)
 #define INVALID(instr) CASE(instr, false)
 
 class ValidateFau : public testing::Test {
-protected:
-   ValidateFau() {
+ protected:
+   ValidateFau()
+   {
       mem_ctx = ralloc_context(NULL);
       b = bit_builder(mem_ctx);
 
-      zero = bi_fau((enum bir_fau) (BIR_FAU_IMMEDIATE | 0), false);
-      imm1 = bi_fau((enum bir_fau) (BIR_FAU_IMMEDIATE | 1), false);
-      imm2 = bi_fau((enum bir_fau) (BIR_FAU_IMMEDIATE | 2), false);
-      unif = bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 5), false);
-      unif_hi = bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 5), true);
-      unif2 = bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 6), false);
+      zero = bi_fau((enum bir_fau)(BIR_FAU_IMMEDIATE | 0), false);
+      imm1 = bi_fau((enum bir_fau)(BIR_FAU_IMMEDIATE | 1), false);
+      imm2 = bi_fau((enum bir_fau)(BIR_FAU_IMMEDIATE | 2), false);
+      unif = bi_fau((enum bir_fau)(BIR_FAU_UNIFORM | 5), false);
+      unif_hi = bi_fau((enum bir_fau)(BIR_FAU_UNIFORM | 5), true);
+      unif2 = bi_fau((enum bir_fau)(BIR_FAU_UNIFORM | 6), false);
       core_id = bi_fau(BIR_FAU_CORE_ID, false);
       lane_id = bi_fau(BIR_FAU_LANE_ID, false);
    }
 
-   ~ValidateFau() {
+   ~ValidateFau()
+   {
       ralloc_free(mem_ctx);
    }
 
@@ -66,8 +69,8 @@ protected:
 
 TEST_F(ValidateFau, One64BitUniformSlot)
 {
-   VALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), bi_register(3),
-            unif));
+   VALID(
+      bi_fma_f32_to(b, bi_register(1), bi_register(2), bi_register(3), unif));
    VALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), unif_hi, unif));
    VALID(bi_fma_f32_to(b, bi_register(1), unif, unif, unif_hi));
    INVALID(bi_fma_f32_to(b, bi_register(1), unif, unif2, bi_register(1)));
@@ -77,8 +80,8 @@ TEST_F(ValidateFau, One64BitUniformSlot)
     * marked as valid in early versions of the validator.
     */
    INVALID(bi_fma_f32_to(b, bi_register(1), bi_register(2),
-                         bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 0), false),
-                         bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 1), true)));
+                         bi_fau((enum bir_fau)(BIR_FAU_UNIFORM | 0), false),
+                         bi_fau((enum bir_fau)(BIR_FAU_UNIFORM | 1), true)));
 }
 
 TEST_F(ValidateFau, Combined64BitUniformsConstants)
@@ -99,17 +102,16 @@ TEST_F(ValidateFau, UniformsOnlyInDefaultMode)
 TEST_F(ValidateFau, SingleSpecialImmediate)
 {
    VALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), bi_register(2),
-            lane_id));
+                       lane_id));
    VALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), bi_register(2),
-            core_id));
-   INVALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), lane_id,
-            core_id));
+                       core_id));
+   INVALID(bi_fma_f32_to(b, bi_register(1), bi_register(2), lane_id, core_id));
 }
 
 TEST_F(ValidateFau, SmokeTests)
 {
    VALID(bi_mov_i32_to(b, bi_register(1), bi_register(2)));
    VALID(bi_mov_i32_to(b, bi_register(1), unif));
-   VALID(bi_fma_f32_to(b, bi_register(1), bi_discard(bi_register(1)),
-                        unif, bi_neg(zero)));
+   VALID(bi_fma_f32_to(b, bi_register(1), bi_discard(bi_register(1)), unif,
+                       bi_neg(zero)));
 }

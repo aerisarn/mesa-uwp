@@ -39,14 +39,9 @@ TEST(Packing, PackLiteral)
 TEST(Packing, PackUpper)
 {
    struct bi_packed_tuple tuples[] = {
-      { 0, 0x3 << (75 - 64) },
-      { 0, 0x1 << (75 - 64) },
-      { 0, 0x7 << (75 - 64) },
-      { 0, 0x0 << (75 - 64) },
-      { 0, 0x2 << (75 - 64) },
-      { 0, 0x6 << (75 - 64) },
-      { 0, 0x5 << (75 - 64) },
-      { 0, 0x4 << (75 - 64) },
+      {0, 0x3 << (75 - 64)}, {0, 0x1 << (75 - 64)}, {0, 0x7 << (75 - 64)},
+      {0, 0x0 << (75 - 64)}, {0, 0x2 << (75 - 64)}, {0, 0x6 << (75 - 64)},
+      {0, 0x5 << (75 - 64)}, {0, 0x4 << (75 - 64)},
    };
 
    EXPECT_EQ(bi_pack_upper(U(0), tuples, 8), 3);
@@ -62,9 +57,9 @@ TEST(Packing, PackUpper)
 TEST(Packing, PackTupleBits)
 {
    struct bi_packed_tuple tuples[] = {
-      { 0x1234567801234567, 0x3A },
-      { 0x9876543299999999, 0x1B },
-      { 0xABCDEF0101234567, 0x7C },
+      {0x1234567801234567, 0x3A},
+      {0x9876543299999999, 0x1B},
+      {0xABCDEF0101234567, 0x7C},
    };
 
    EXPECT_EQ(bi_pack_tuple_bits(T(0), tuples, 8, 0, 30), 0x01234567);
@@ -75,19 +70,14 @@ TEST(Packing, PackTupleBits)
 TEST(Packing, PackSync)
 {
    struct bi_packed_tuple tuples[] = {
-      { 0, 0x3 << (75 - 64) },
-      { 0, 0x5 << (75 - 64) },
-      { 0, 0x7 << (75 - 64) },
-      { 0, 0x0 << (75 - 64) },
-      { 0, 0x2 << (75 - 64) },
-      { 0, 0x6 << (75 - 64) },
-      { 0, 0x5 << (75 - 64) },
-      { 0, 0x4 << (75 - 64) },
+      {0, 0x3 << (75 - 64)}, {0, 0x5 << (75 - 64)}, {0, 0x7 << (75 - 64)},
+      {0, 0x0 << (75 - 64)}, {0, 0x2 << (75 - 64)}, {0, 0x6 << (75 - 64)},
+      {0, 0x5 << (75 - 64)}, {0, 0x4 << (75 - 64)},
    };
 
    EXPECT_EQ(bi_pack_sync(L(3), L(1), L(7), tuples, 8, false), 0xCF);
    EXPECT_EQ(bi_pack_sync(L(3), L(1), U(7), tuples, 8, false), 0xCC);
    EXPECT_EQ(bi_pack_sync(L(3), U(1), U(7), tuples, 8, false), 0xEC);
-   EXPECT_EQ(bi_pack_sync(Z,    U(1), U(7), tuples, 8, false), 0x2C);
-   EXPECT_EQ(bi_pack_sync(Z,    U(1), U(7), tuples, 8, true) , 0x6C);
+   EXPECT_EQ(bi_pack_sync(Z, U(1), U(7), tuples, 8, false), 0x2C);
+   EXPECT_EQ(bi_pack_sync(Z, U(1), U(7), tuples, 8, true), 0x6C);
 }

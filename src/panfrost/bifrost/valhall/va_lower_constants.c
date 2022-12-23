@@ -21,9 +21,9 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall.h"
-#include "bi_builder.h"
 
 /* Only some special immediates are available, as specified in the Table of
  * Immediates in the specification. Other immediates must be lowered, either to
@@ -51,7 +51,7 @@ va_lut_index_32(uint32_t imm)
 static bi_index
 va_lut_index_16(uint16_t imm)
 {
-   uint16_t *arr16 = (uint16_t *) valhall_immediates;
+   uint16_t *arr16 = (uint16_t *)valhall_immediates;
 
    for (unsigned i = 0; i < (2 * ARRAY_SIZE(valhall_immediates)); ++i) {
       if (arr16[i] == imm)
@@ -64,7 +64,7 @@ va_lut_index_16(uint16_t imm)
 UNUSED static bi_index
 va_lut_index_8(uint8_t imm)
 {
-   uint8_t *arr8 = (uint8_t *) valhall_immediates;
+   uint8_t *arr8 = (uint8_t *)valhall_immediates;
 
    for (unsigned i = 0; i < (4 * ARRAY_SIZE(valhall_immediates)); ++i) {
       if (arr8[i] == imm)
@@ -109,36 +109,43 @@ is_extension_of_16(uint32_t x, bool is_signed)
 }
 
 static bi_index
-va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info, bool is_signed, bool staging)
+va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info,
+                    bool is_signed, bool staging)
 {
    /* Try the constant as-is */
    if (!staging) {
       bi_index lut = va_lut_index_32(value);
-      if (!bi_is_null(lut)) return lut;
+      if (!bi_is_null(lut))
+         return lut;
 
       /* ...or negated as a FP32 constant */
       if (info.absneg && info.size == VA_SIZE_32) {
          lut = bi_neg(va_lut_index_32(fui(-uif(value))));
-         if (!bi_is_null(lut)) return lut;
+         if (!bi_is_null(lut))
+            return lut;
       }
 
       /* ...or negated as a FP16 constant */
       if (info.absneg && info.size == VA_SIZE_16) {
          lut = bi_neg(va_lut_index_32(value ^ 0x80008000));
-         if (!bi_is_null(lut)) return lut;
+         if (!bi_is_null(lut))
+            return lut;
       }
    }
 
    /* Try using a single half of a FP16 constant */
    bool replicated_halves = (value & 0xFFFF) == (value >> 16);
-   if (!staging && info.swizzle && info.size == VA_SIZE_16 && replicated_halves) {
+   if (!staging && info.swizzle && info.size == VA_SIZE_16 &&
+       replicated_halves) {
       bi_index lut = va_lut_index_16(value & 0xFFFF);
-      if (!bi_is_null(lut)) return lut;
+      if (!bi_is_null(lut))
+         return lut;
 
       /* ...possibly negated */
       if (info.absneg) {
          lut = bi_neg(va_lut_index_16((value & 0xFFFF) ^ 0x8000));
-         if (!bi_is_null(lut)) return lut;
+         if (!bi_is_null(lut))
+            return lut;
       }
    }
 
@@ -147,25 +154,28 @@ va_resolve_constant(bi_builder *b, uint32_t value, struct va_src_info info, bool
        is_extension_of_8(value, is_signed)) {
 
       bi_index lut = va_lut_index_8(value & 0xFF);
-      if (!bi_is_null(lut)) return lut;
+      if (!bi_is_null(lut))
+         return lut;
    }
 
    /* Try extending a halfword */
-   if (!staging && info.widen &&
-       is_extension_of_16(value, is_signed)) {
+   if (!staging && info.widen && is_extension_of_16(value, is_signed)) {
 
       bi_index lut = va_lut_index_16(value & 0xFFFF);
-      if (!bi_is_null(lut)) return lut;
+      if (!bi_is_null(lut))
+         return lut;
    }
 
    /* Try demoting the constant to FP16 */
    if (!staging && info.swizzle && info.size == VA_SIZE_32) {
       bi_index lut = va_demote_constant_fp16(value);
-      if (!bi_is_null(lut)) return lut;
+      if (!bi_is_null(lut))
+         return lut;
 
       if (info.absneg) {
          bi_index lut = bi_neg(va_demote_constant_fp16(fui(-uif(value))));
-         if (!bi_is_null(lut)) return lut;
+         if (!bi_is_null(lut))
+            return lut;
       }
    }
 
@@ -218,7 +228,8 @@ va_lower_constants(bi_context *ctx, bi_instr *I)
             value = bi_apply_swizzle(value, swz);
          }
 
-         bi_index cons = va_resolve_constant(&b, value, info, is_signed, staging);
+         bi_index cons =
+            va_resolve_constant(&b, value, info, is_signed, staging);
          cons.neg ^= I->src[s].neg;
          I->src[s] = cons;
 

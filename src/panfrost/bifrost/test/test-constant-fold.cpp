@@ -21,14 +21,15 @@
  * SOFTWARE.
  */
 
-#include "compiler.h"
-#include "bi_test.h"
 #include "bi_builder.h"
+#include "bi_test.h"
+#include "compiler.h"
 
 #include <gtest/gtest.h>
 
 static std::string
-to_string(const bi_instr *I) {
+to_string(const bi_instr *I)
+{
    char *cstr = NULL;
    size_t size = 0;
    FILE *f = open_memstream(&cstr, &size);
@@ -40,30 +41,27 @@ to_string(const bi_instr *I) {
 }
 
 static testing::AssertionResult
-constant_fold_pred(const char *I_expr,
-                   const char *expected_expr,
-                   bi_instr *I,
+constant_fold_pred(const char *I_expr, const char *expected_expr, bi_instr *I,
                    uint32_t expected)
 {
    bool unsupported = false;
    uint32_t v = bi_fold_constant(I, &unsupported);
    if (unsupported) {
       return testing::AssertionFailure()
-         << "Constant fold unsupported for instruction \n\n"
-         << "  " << to_string(I);
+             << "Constant fold unsupported for instruction \n\n"
+             << "  " << to_string(I);
    } else if (v != expected) {
       return testing::AssertionFailure()
-         << "Unexpected result when constant folding instruction\n\n"
-         << "  " << to_string(I) << "\n"
-         << "  Actual: " << v << "\n"
-         << "Expected: " << expected << "\n";
+             << "Unexpected result when constant folding instruction\n\n"
+             << "  " << to_string(I) << "\n"
+             << "  Actual: " << v << "\n"
+             << "Expected: " << expected << "\n";
    } else {
       return testing::AssertionSuccess();
    }
 }
 
 #define EXPECT_FOLD(i, e) EXPECT_PRED_FORMAT2(constant_fold_pred, i, e)
-
 
 static testing::AssertionResult
 not_constant_fold_pred(const char *I_expr, bi_instr *I)
@@ -74,22 +72,23 @@ not_constant_fold_pred(const char *I_expr, bi_instr *I)
       return testing::AssertionSuccess();
    } else {
       return testing::AssertionFailure()
-         << "Instruction\n\n"
-         << "  " << to_string(I) << "\n"
-         << "shouldn't have constant folded, but folded to: " << v;
+             << "Instruction\n\n"
+             << "  " << to_string(I) << "\n"
+             << "shouldn't have constant folded, but folded to: " << v;
    }
 }
 
 #define EXPECT_NOT_FOLD(i) EXPECT_PRED_FORMAT1(not_constant_fold_pred, i)
 
-
 class ConstantFold : public testing::Test {
-protected:
-   ConstantFold() {
+ protected:
+   ConstantFold()
+   {
       mem_ctx = ralloc_context(NULL);
       b = bit_builder(mem_ctx);
    }
-   ~ConstantFold() {
+   ~ConstantFold()
+   {
       ralloc_free(mem_ctx);
    }
 
@@ -101,9 +100,7 @@ TEST_F(ConstantFold, Swizzles)
 {
    bi_index reg = bi_register(0);
 
-   EXPECT_FOLD(
-      bi_swz_v2i16_to(b, reg, bi_imm_u32(0xCAFEBABE)),
-      0xCAFEBABE);
+   EXPECT_FOLD(bi_swz_v2i16_to(b, reg, bi_imm_u32(0xCAFEBABE)), 0xCAFEBABE);
 
    EXPECT_FOLD(
       bi_swz_v2i16_to(b, reg, bi_swz_16(bi_imm_u32(0xCAFEBABE), false, false)),
@@ -123,18 +120,17 @@ TEST_F(ConstantFold, VectorConstructions2i16)
    bi_index reg = bi_register(0);
 
    EXPECT_FOLD(
-      bi_mkvec_v2i16_to(b, reg, bi_imm_u16(0xCAFE),
-                                bi_imm_u16(0xBABE)),
+      bi_mkvec_v2i16_to(b, reg, bi_imm_u16(0xCAFE), bi_imm_u16(0xBABE)),
       0xBABECAFE);
 
    EXPECT_FOLD(
       bi_mkvec_v2i16_to(b, reg, bi_swz_16(bi_imm_u32(0xCAFEBABE), true, true),
-                                bi_imm_u16(0xBABE)),
+                        bi_imm_u16(0xBABE)),
       0xBABECAFE);
 
    EXPECT_FOLD(
       bi_mkvec_v2i16_to(b, reg, bi_swz_16(bi_imm_u32(0xCAFEBABE), true, true),
-                                bi_swz_16(bi_imm_u32(0xCAFEBABE), false, false)),
+                        bi_swz_16(bi_imm_u32(0xCAFEBABE), false, false)),
       0xBABECAFE);
 }
 
@@ -173,17 +169,18 @@ TEST_F(ConstantFold, LimitedShiftsForTexturing)
 {
    bi_index reg = bi_register(0);
 
-   EXPECT_FOLD(
-      bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_imm_u32(0xA0000), bi_imm_u8(4)),
-      (0xCAFE << 4) | 0xA0000);
+   EXPECT_FOLD(bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE),
+                                   bi_imm_u32(0xA0000), bi_imm_u8(4)),
+               (0xCAFE << 4) | 0xA0000);
 
-   EXPECT_NOT_FOLD(
-      bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_not(bi_imm_u32(0xA0000)), bi_imm_u8(4)));
+   EXPECT_NOT_FOLD(bi_lshift_or_i32_to(
+      b, reg, bi_imm_u32(0xCAFE), bi_not(bi_imm_u32(0xA0000)), bi_imm_u8(4)));
 
-   EXPECT_NOT_FOLD(
-      bi_lshift_or_i32_to(b, reg, bi_not(bi_imm_u32(0xCAFE)), bi_imm_u32(0xA0000), bi_imm_u8(4)));
+   EXPECT_NOT_FOLD(bi_lshift_or_i32_to(b, reg, bi_not(bi_imm_u32(0xCAFE)),
+                                       bi_imm_u32(0xA0000), bi_imm_u8(4)));
 
-   bi_instr *I = bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_imm_u32(0xA0000), bi_imm_u8(4));
+   bi_instr *I = bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE),
+                                     bi_imm_u32(0xA0000), bi_imm_u8(4));
    I->not_result = true;
    EXPECT_NOT_FOLD(I);
 }
@@ -193,9 +190,12 @@ TEST_F(ConstantFold, NonConstantSourcesCannotBeFolded)
    bi_index reg = bi_register(0);
 
    EXPECT_NOT_FOLD(bi_swz_v2i16_to(b, reg, bi_temp(b->shader)));
-   EXPECT_NOT_FOLD(bi_mkvec_v2i16_to(b, reg, bi_temp(b->shader), bi_temp(b->shader)));
-   EXPECT_NOT_FOLD(bi_mkvec_v2i16_to(b, reg, bi_temp(b->shader), bi_imm_u32(0xDEADBEEF)));
-   EXPECT_NOT_FOLD(bi_mkvec_v2i16_to(b, reg, bi_imm_u32(0xDEADBEEF), bi_temp(b->shader)));
+   EXPECT_NOT_FOLD(
+      bi_mkvec_v2i16_to(b, reg, bi_temp(b->shader), bi_temp(b->shader)));
+   EXPECT_NOT_FOLD(
+      bi_mkvec_v2i16_to(b, reg, bi_temp(b->shader), bi_imm_u32(0xDEADBEEF)));
+   EXPECT_NOT_FOLD(
+      bi_mkvec_v2i16_to(b, reg, bi_imm_u32(0xDEADBEEF), bi_temp(b->shader)));
 }
 
 TEST_F(ConstantFold, OtherOperationsShouldNotFold)

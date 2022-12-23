@@ -22,9 +22,9 @@
  * SOFTWARE.
  */
 
+#include "bi_builder.h"
 #include "va_compiler.h"
 #include "valhall.h"
-#include "bi_builder.h"
 
 void
 va_count_instr_stats(bi_instr *I, struct va_stats *stats)
@@ -48,8 +48,8 @@ va_count_instr_stats(bi_instr *I, struct va_stats *stats)
 
    /* Varying is scaled by 16-bit components interpolated */
    case VA_UNIT_V:
-      stats->v += (I->vecsize + 1) *
-         (bi_is_regfmt_16(I->register_format) ? 1 : 2);
+      stats->v +=
+         (I->vecsize + 1) * (bi_is_regfmt_16(I->register_format) ? 1 : 2);
       return;
 
    /* We just count load/store and texturing for now */

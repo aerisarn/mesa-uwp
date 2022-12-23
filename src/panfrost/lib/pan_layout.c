@@ -35,33 +35,27 @@
 /* clang-format on */
 uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT] = {
    DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
-                           AFBC_FORMAT_MOD_TILED |
-                           AFBC_FORMAT_MOD_SC |
-                           AFBC_FORMAT_MOD_SPARSE |
-                           AFBC_FORMAT_MOD_YTR),
+                           AFBC_FORMAT_MOD_TILED | AFBC_FORMAT_MOD_SC |
+                           AFBC_FORMAT_MOD_SPARSE | AFBC_FORMAT_MOD_YTR),
 
    DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
-                           AFBC_FORMAT_MOD_TILED |
-                           AFBC_FORMAT_MOD_SC |
+                           AFBC_FORMAT_MOD_TILED | AFBC_FORMAT_MOD_SC |
                            AFBC_FORMAT_MOD_SPARSE),
 
    DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
-                           AFBC_FORMAT_MOD_SPARSE |
-                           AFBC_FORMAT_MOD_YTR),
+                           AFBC_FORMAT_MOD_SPARSE | AFBC_FORMAT_MOD_YTR),
 
    DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
                            AFBC_FORMAT_MOD_SPARSE),
 
    DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
-   DRM_FORMAT_MOD_LINEAR
-};
+   DRM_FORMAT_MOD_LINEAR};
 
 /* Table of AFBC superblock sizes */
-static const struct pan_block_size
-afbc_superblock_sizes[] = {
-   [AFBC_FORMAT_MOD_BLOCK_SIZE_16x16] = { 16, 16 },
-   [AFBC_FORMAT_MOD_BLOCK_SIZE_32x8]  = { 32,  8 },
-   [AFBC_FORMAT_MOD_BLOCK_SIZE_64x4]  = { 64,  4 },
+static const struct pan_block_size afbc_superblock_sizes[] = {
+   [AFBC_FORMAT_MOD_BLOCK_SIZE_16x16] = {16, 16},
+   [AFBC_FORMAT_MOD_BLOCK_SIZE_32x8] = {32, 8},
+   [AFBC_FORMAT_MOD_BLOCK_SIZE_64x4] = {64, 4},
 };
 /* clang-format off */
 
