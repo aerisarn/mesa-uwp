@@ -28,9 +28,10 @@
 #ifndef __PAN_BLEND_CSO_H
 #define __PAN_BLEND_CSO_H
 
-#include "pan_blend.h"
 #include "util/hash_table.h"
 #include "nir.h"
+#include "pan_blend.h"
+#include "pan_job.h"
 
 struct panfrost_bo;
 

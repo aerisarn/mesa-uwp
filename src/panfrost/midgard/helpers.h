@@ -23,9 +23,10 @@
 #ifndef __MDG_HELPERS_H
 #define __MDG_HELPERS_H
 
-#include "util/macros.h"
 #include <stdio.h>
 #include <string.h>
+#include "midgard.h"
+#include "util/macros.h"
 
 #define OP_IS_LOAD_VARY_F(op) (\
                 op == midgard_op_ld_vary_16 || \
