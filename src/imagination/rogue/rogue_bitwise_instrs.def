@@ -21,52 +21,23 @@
  * SOFTWARE.
  */
 
-#include <stddef.h>
-
-#include "compiler/glsl_types.h"
-#include "rogue_compiler.h"
-#include "util/ralloc.h"
-
 /**
- * \file rogue_compiler.c
+ * \file rogue_bitwise_instrs.def
  *
- * \brief Contains the Rogue compiler interface.
+ * \brief Contains macros defining bitwise instructions.
  */
 
-/**
- * \brief Creates and sets up a Rogue compiler context.
- *
- * \param[in] dev_info Device info pointer.
- * \return A pointer to the new compiler context, or NULL on failure.
+/*
+ * ROGUE_BUILDER_DEFINE_BITWISEds
+ *    d: Number of destinations.
+ *    s: Number of sources.
  */
-struct rogue_compiler *
-rogue_compiler_create(const struct pvr_device_info *dev_info)
-{
-   struct rogue_compiler *compiler;
 
-   compiler = rzalloc_size(NULL, sizeof(*compiler));
-   if (!compiler)
-      return NULL;
+#ifndef ROGUE_BUILDER_DEFINE_BITWISE22
+#define ROGUE_BUILDER_DEFINE_BITWISE22(...)
+#endif /* ROGUE_BUILDER_DEFINE_BITWISE22 */
 
-   compiler->dev_info = dev_info;
+ROGUE_BUILDER_DEFINE_BITWISE22(MOV2)
+ROGUE_BUILDER_DEFINE_BITWISE22(BYP)
 
-   /* TODO: Additional compiler setup (allocators? error message output
-    * location?).
-    */
-
-   glsl_type_singleton_init_or_ref();
-
-   return compiler;
-}
-
-/**
- * \brief Destroys and frees a compiler context.
- *
- * \param[in] compiler The compiler context.
- */
-void rogue_compiler_destroy(struct rogue_compiler *compiler)
-{
-   glsl_type_singleton_decref();
-
-   ralloc_free(compiler);
-}
+#undef ROGUE_BUILDER_DEFINE_BITWISE22

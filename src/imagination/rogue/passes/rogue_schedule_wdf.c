@@ -21,24 +21,53 @@
  * SOFTWARE.
  */
 
-#ifndef ROGUE_DUMP_H
-#define ROGUE_DUMP_H
-
-#include <stdbool.h>
-#include <stdio.h>
-
-#include "rogue_instr.h"
-#include "rogue_operand.h"
-#include "rogue_shader.h"
+#include "rogue.h"
+#include "rogue_builder.h"
 #include "util/macros.h"
 
-PUBLIC
-bool rogue_dump_operand(const struct rogue_operand *operand, FILE *fp);
+#include <stdbool.h>
 
-PUBLIC
-bool rogue_dump_instr(const struct rogue_instr *instr, FILE *fp);
+/**
+ * \file rogue_schedule_wdf.c
+ *
+ * \brief Contains the rogue_schedule_wdf pass.
+ */
 
-PUBLIC
-bool rogue_dump_shader(const struct rogue_shader *shader, FILE *fp);
+static bool
+rogue_insert_wdf(rogue_builder *b, rogue_drc_trxn *drc_trxn, unsigned num)
+{
+   assert(drc_trxn->acquire);
 
-#endif /* ROGUE_DUMP_H */
+   if (drc_trxn->release)
+      return false;
+
+   b->cursor = rogue_cursor_after_instr(drc_trxn->acquire);
+   drc_trxn->release = &rogue_WDF(b, rogue_ref_drc_trxn(num, drc_trxn))->instr;
+
+   return true;
+}
+
+/* Schedules WDF instructions for DRC transactions. */
+PUBLIC
+bool rogue_schedule_wdf(rogue_shader *shader, bool latency_hiding)
+{
+   if (shader->is_grouped)
+      return false;
+
+   /* TODO: Add support for delayed scheduling (latency hiding). */
+   if (latency_hiding)
+      unreachable("Latency hiding is unimplemented.");
+
+   bool progress = false;
+
+   rogue_builder b;
+   rogue_builder_init(&b, shader);
+
+   rogue_foreach_drc_trxn (drc_trxn, shader, 0)
+      progress |= rogue_insert_wdf(&b, drc_trxn, 0);
+
+   rogue_foreach_drc_trxn (drc_trxn, shader, 1)
+      progress |= rogue_insert_wdf(&b, drc_trxn, 1);
+
+   return progress;
+}

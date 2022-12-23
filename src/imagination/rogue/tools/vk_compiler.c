@@ -24,26 +24,23 @@
 #include "compiler/shader_enums.h"
 #include "nir/nir.h"
 #include "rogue.h"
-#include "rogue_build_data.h"
-#include "rogue_compiler.h"
-#include "rogue_dump.h"
+#include "util/macros.h"
 #include "util/os_file.h"
 #include "util/ralloc.h"
 
 #include <getopt.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Number of hex columns to dump before starting a new line. */
-#define ARRAY_DUMP_COLS 16
+/* Number of hex columns to print before starting a new line. */
+#define ARRAY_PRINT_COLS 16
 
 /**
- * \file compiler.c
+ * \file vk_compiler.c
  *
- * \brief Rogue offline compiler.
+ * \brief Rogue offline Vulkan shader compiler.
  */
 
 static const struct option cmdline_opts[] = {
@@ -56,28 +53,21 @@ static const struct option cmdline_opts[] = {
    { "help", no_argument, NULL, 'h' },
    { "out", required_argument, NULL, 'o' },
 
-   { "dump-c-array", no_argument, NULL, 'c' },
-   { "dump-rogue", no_argument, NULL, 'r' },
-   { "dump-nir", no_argument, NULL, 'n' },
-
    { NULL, 0, NULL, 0 },
 };
 
-struct compiler_opts {
+typedef struct compiler_opts {
    gl_shader_stage stage;
    char *file;
    char *entry;
    char *out_file;
-   bool dump_c_array;
-   bool dump_rogue;
-   bool dump_nir;
-};
+} compiler_opts;
 
 static void usage(const char *argv0)
 {
    /* clang-format off */
-   printf("Rogue offline compiler.\n");
-   printf("Usage: %s -s <stage> -f <file> [-e <entry>] [-o <file>] [-c] [-r] [-n] [-h]\n", argv0);
+   printf("Rogue offline Vulkan shader compiler.\n");
+   printf("Usage: %s -s <stage> -f <file> [-e <entry>] [-o <file>] [-h]\n", argv0);
    printf("\n");
 
    printf("Required arguments:\n");
@@ -90,11 +80,6 @@ static void usage(const char *argv0)
    printf("\t-e, --entry <entry> Overrides the shader entry-point name (default: 'main').\n");
    printf("\t-o, --out <file>    Overrides the output filename (default: 'out.bin').\n");
    printf("\n");
-
-   printf("\t-c, --dump-c-array  Print the shader binary as a C byte array.\n");
-   printf("\t-r, --dump-rogue    Prints the shader Rogue assembly.\n");
-   printf("\t-n, --dump-nir      Prints the shader NIR.\n");
-   printf("\n");
    /* clang-format on */
 }
 
@@ -104,14 +89,9 @@ static bool parse_cmdline(int argc, char *argv[], struct compiler_opts *opts)
    int longindex;
 
    while (
-      (opt =
-          getopt_long(argc, argv, "crnhs:f:e:o:", cmdline_opts, &longindex)) !=
+      (opt = getopt_long(argc, argv, "hs:f:e:o:", cmdline_opts, &longindex)) !=
       -1) {
       switch (opt) {
-      case 'c':
-         opts->dump_c_array = true;
-         break;
-
       case 'e':
          if (opts->entry)
             continue;
@@ -126,10 +106,6 @@ static bool parse_cmdline(int argc, char *argv[], struct compiler_opts *opts)
          opts->file = optarg;
          break;
 
-      case 'n':
-         opts->dump_nir = true;
-         break;
-
       case 'o':
          if (opts->out_file)
             continue;
@@ -137,17 +113,13 @@ static bool parse_cmdline(int argc, char *argv[], struct compiler_opts *opts)
          opts->out_file = optarg;
          break;
 
-      case 'r':
-         opts->dump_rogue = true;
-         break;
-
       case 's':
          if (opts->stage != MESA_SHADER_NONE)
             continue;
 
-         if (!strcmp(optarg, "frag"))
+         if (!strcmp(optarg, "frag") || !strcmp(optarg, "f"))
             opts->stage = MESA_SHADER_FRAGMENT;
-         else if (!strcmp(optarg, "vert"))
+         else if (!strcmp(optarg, "vert") || !strcmp(optarg, "v"))
             opts->stage = MESA_SHADER_VERTEX;
          else {
             fprintf(stderr, "Invalid stage \"%s\".\n", optarg);
@@ -185,7 +157,7 @@ int main(int argc, char *argv[])
 {
    /* Command-line options. */
    /* N.B. MESA_SHADER_NONE != 0 */
-   struct compiler_opts opts = { .stage = MESA_SHADER_NONE, 0 };
+   compiler_opts opts = { .stage = MESA_SHADER_NONE, 0 };
 
    /* Input file data. */
    char *input_data;
@@ -219,7 +191,8 @@ int main(int argc, char *argv[])
       goto err_free_input;
    }
 
-   ctx = rogue_create_build_context(compiler);
+   /* Create build context. */
+   ctx = rogue_build_context_create(compiler);
    if (!ctx) {
       fprintf(stderr, "Failed to set up build context.\n");
       goto err_destroy_compiler;
@@ -238,10 +211,6 @@ int main(int argc, char *argv[])
       goto err_free_build_context;
    }
 
-   /* Dump NIR shader. */
-   if (opts.dump_nir)
-      nir_print_shader(ctx->nir[opts.stage], stdout);
-
    /* NIR -> Rogue. */
    ctx->rogue[opts.stage] = rogue_nir_to_rogue(ctx, ctx->nir[opts.stage]);
    if (!ctx->rogue[opts.stage]) {
@@ -249,28 +218,7 @@ int main(int argc, char *argv[])
       goto err_free_build_context;
    }
 
-   /* Dump Rogue shader. */
-   if (opts.dump_rogue)
-      rogue_dump_shader(ctx->rogue[opts.stage], stdout);
-
-   /* Rogue -> Binary. */
-   ctx->binary[opts.stage] = rogue_to_binary(ctx, ctx->rogue[opts.stage]);
-   if (!ctx->binary[opts.stage]) {
-      fprintf(stderr, "Failed to translate Rogue to binary.\n");
-      goto err_free_build_context;
-   }
-
-   /* Dump binary as a C array. */
-   if (opts.dump_c_array) {
-      printf("uint8_t shader_bytes[%zu] = {", ctx->binary[opts.stage]->size);
-      for (size_t u = 0U; u < ctx->binary[opts.stage]->size; ++u) {
-         if (!(u % ARRAY_DUMP_COLS))
-            printf("\n\t");
-
-         printf("0x%02x, ", ctx->binary[opts.stage]->data[u]);
-      }
-      printf("\n};\n");
-   }
+   rogue_encode_shader(ctx, ctx->rogue[opts.stage], &ctx->binary[opts.stage]);
 
    /* Write shader binary to disk. */
    fp = fopen(opts.out_file, "wb");
@@ -279,24 +227,22 @@ int main(int argc, char *argv[])
       goto err_free_build_context;
    }
 
-   bytes_written = fwrite(ctx->binary[opts.stage]->data,
-                          1,
-                          ctx->binary[opts.stage]->size,
-                          fp);
-   if (bytes_written != ctx->binary[opts.stage]->size) {
+   bytes_written =
+      fwrite(ctx->binary[opts.stage].data, 1, ctx->binary[opts.stage].size, fp);
+   if (bytes_written != ctx->binary[opts.stage].size) {
       fprintf(
          stderr,
-         "Failed to write to output file \"%s\" (%zu bytes of %zu written).\n",
+         "Failed to write to output file \"%s\" (%zu bytes of %u written).\n",
          opts.out_file,
          bytes_written,
-         ctx->binary[opts.stage]->size);
+         ctx->binary[opts.stage].size);
       goto err_close_outfile;
    }
 
    /* Clean up. */
    fclose(fp);
    ralloc_free(ctx);
-   rogue_compiler_destroy(compiler);
+   ralloc_free(compiler);
    free(input_data);
 
    return 0;
@@ -306,7 +252,7 @@ err_close_outfile:
 err_free_build_context:
    ralloc_free(ctx);
 err_destroy_compiler:
-   rogue_compiler_destroy(compiler);
+   ralloc_free(compiler);
 err_free_input:
    free(input_data);
 

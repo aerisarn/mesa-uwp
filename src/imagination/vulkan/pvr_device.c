@@ -55,12 +55,13 @@
 #include "pvr_tex_state.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
-#include "rogue/rogue_compiler.h"
+#include "rogue/rogue.h"
 #include "util/build_id.h"
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/mesa-sha1.h"
 #include "util/os_misc.h"
+#include "util/u_dynarray.h"
 #include "util/u_math.h"
 #include "vk_alloc.h"
 #include "vk_log.h"
@@ -218,7 +219,7 @@ static void pvr_physical_device_finish(struct pvr_physical_device *pdevice)
     */
 
    if (pdevice->compiler)
-      rogue_compiler_destroy(pdevice->compiler);
+      ralloc_free(pdevice->compiler);
 
    pvr_wsi_finish(pdevice);
 
@@ -1349,13 +1350,14 @@ static VkResult pvr_device_init_compute_idfwdf_state(struct pvr_device *device)
 {
    uint64_t sampler_state[ROGUE_NUM_TEXSTATE_SAMPLER_WORDS];
    uint64_t image_state[ROGUE_NUM_TEXSTATE_IMAGE_WORDS];
-   const struct rogue_shader_binary *usc_program;
+   struct util_dynarray usc_program;
    struct pvr_texture_state_info tex_info;
    uint32_t *dword_ptr;
    uint32_t usc_shareds;
    uint32_t usc_temps;
    VkResult result;
 
+   util_dynarray_init(&usc_program, NULL);
    pvr_hard_code_get_idfwdf_program(&device->pdevice->dev_info,
                                     &usc_program,
                                     &usc_shareds,
@@ -1365,10 +1367,12 @@ static VkResult pvr_device_init_compute_idfwdf_state(struct pvr_device *device)
 
    /* FIXME: Figure out the define for alignment of 16. */
    result = pvr_gpu_upload_usc(device,
-                               usc_program->data,
-                               usc_program->size,
+                               usc_program.data,
+                               usc_program.size,
                                16,
                                &device->idfwdf_state.usc);
+   util_dynarray_fini(&usc_program);
+
    if (result != VK_SUCCESS)
       return result;
 

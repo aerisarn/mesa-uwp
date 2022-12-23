@@ -21,31 +21,47 @@
  * SOFTWARE.
  */
 
-#ifndef ROGUE_CONSTREGS_H
-#define ROGUE_CONSTREGS_H
-
-#include <stddef.h>
-#include <stdint.h>
-
-#include "util/macros.h"
-#include "util/u_math.h"
-
-#define ROGUE_NO_CONST_REG SIZE_MAX
-
-PUBLIC
-size_t rogue_constreg_lookup(uint32_t value);
-
 /**
- * \brief Determines whether a given floating point value exists in a constant
- * register.
+ * \file rogue_alu_instrs.def
  *
- * \param[in] value The value required.
- * \return The index of the constant register containing the value, or
- * ROGUE_NO_CONST_REG if the value is not found.
+ * \brief Contains macros defining ALU instructions.
  */
-static inline size_t rogue_constreg_lookup_float(float value)
-{
-   return rogue_constreg_lookup(fui(value));
-}
 
-#endif /* ROGUE_CONSTREGS_H */
+/*
+ * ROGUE_BUILDER_DEFINE_ALUs
+ *    s: Number of sources.
+ */
+
+#ifndef ROGUE_BUILDER_DEFINE_ALU1
+#define ROGUE_BUILDER_DEFINE_ALU1(...)
+#endif /* ROGUE_BUILDER_DEFINE_ALU1 */
+
+#ifndef ROGUE_BUILDER_DEFINE_ALU2
+#define ROGUE_BUILDER_DEFINE_ALU2(...)
+#endif /* ROGUE_BUILDER_DEFINE_ALU2 */
+
+#ifndef ROGUE_BUILDER_DEFINE_ALU3
+#define ROGUE_BUILDER_DEFINE_ALU3(...)
+#endif /* ROGUE_BUILDER_DEFINE_ALU3 */
+
+ROGUE_BUILDER_DEFINE_ALU1(MOV)
+ROGUE_BUILDER_DEFINE_ALU1(MBYP)
+
+ROGUE_BUILDER_DEFINE_ALU1(FABS)
+ROGUE_BUILDER_DEFINE_ALU1(FNEG)
+ROGUE_BUILDER_DEFINE_ALU1(FNABS)
+
+ROGUE_BUILDER_DEFINE_ALU1(PCK_U8888)
+
+ROGUE_BUILDER_DEFINE_ALU2(FADD)
+ROGUE_BUILDER_DEFINE_ALU2(FMUL)
+
+ROGUE_BUILDER_DEFINE_ALU2(FMAX)
+ROGUE_BUILDER_DEFINE_ALU2(FMIN)
+
+ROGUE_BUILDER_DEFINE_ALU3(SEL)
+ROGUE_BUILDER_DEFINE_ALU3(FMAD)
+
+#undef ROGUE_BUILDER_DEFINE_ALU3
+#undef ROGUE_BUILDER_DEFINE_ALU2
+#undef ROGUE_BUILDER_DEFINE_ALU1

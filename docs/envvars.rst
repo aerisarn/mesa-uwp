@@ -1594,6 +1594,32 @@ PowerVR driver environment variables
    A comma-separated list of debug options. Use `PVR_DEBUG=help` to
    print a list of available options.
 
+.. envvar:: ROGUE_DEBUG
+
+   a comma-separated list of named flags for the Rogue compiler,
+   which do various things:
+
+   ``nir``
+      Print the input NIR to stdout.
+   ``nir_passes``
+      Print the output of each NIR pass to stdout.
+   ``ir``
+      Print the input Rogue IR to stdout.
+   ``ir_passes``
+      Print the output of each Rogue IR pass to stdout.
+   ``ir_details``
+      Includes additional details when printing Rogue IR.
+   ``vld_skip``
+      Skips the compiler validation step.
+   ``vld_nonfatal``
+      Prints all the validation errors instead of stopping after the first.
+
+.. envvar:: ROGUE_COLOR
+
+   if set to ``auto`` Rogue IR will be colorized if stdout is not a pipe.
+   Color is forced off if set to ``off``/``0`` or on if set to ``on``/``1``.
+   Defaults to ``auto``.
+
 i915 driver environment variables
 ---------------------------------
 

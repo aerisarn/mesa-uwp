@@ -21,21 +21,41 @@
  * SOFTWARE.
  */
 
-#ifndef ROGUE_ENCODE_H
-#define ROGUE_ENCODE_H
-
-#include <stdbool.h>
-#include <stdio.h>
-
+#include "rogue.h"
 #include "util/macros.h"
 
-struct rogue_instr;
-struct rogue_shader;
+#include <stdbool.h>
 
+/**
+ * \file rogue_constreg.c
+ *
+ * \brief Contains the rogue_constreg pass.
+ */
+
+/* Converts immediate values to constant register values. */
+/* TODO: For values that aren't in constant registers, either insert a bitwise
+ * mov, or ask driver to put it into shared regs. */
 PUBLIC
-bool rogue_encode_instr(const struct rogue_instr *instr, FILE *fp);
+bool rogue_constreg(rogue_shader *shader)
+{
+   if (shader->is_grouped)
+      return false;
 
-PUBLIC
-bool rogue_encode_shader(const struct rogue_shader *shader, FILE *fp);
+   bool progress = false;
 
-#endif /* ROGUE_ENCODE_H */
+   rogue_foreach_imm_use_safe (imm_use, shader) {
+      unsigned index = rogue_constreg_lookup(*imm_use->imm);
+      if (index == ROGUE_NO_CONST_REG)
+         unreachable("Immediate value not in constant registers.");
+
+      rogue_reg *reg = rogue_const_reg(shader, index);
+
+      struct list_head imm_use_link = imm_use->link;
+      if (rogue_src_imm_replace(imm_use, reg)) {
+         list_del(&imm_use_link);
+         progress |= true;
+      }
+   }
+
+   return progress;
+}

@@ -21,54 +21,45 @@
  * SOFTWARE.
  */
 
-#ifndef ROGUE_VALIDATE_H
-#define ROGUE_VALIDATE_H
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <sys/types.h>
-
-#include "rogue_instr.h"
-#include "rogue_operand.h"
-#include "rogue_shader.h"
-#include "util/macros.h"
-
 /**
- * \brief Register rule description.
+ * \file rogue_ctrl_instrs.def
+ *
+ * \brief Contains macros defining control instructions.
  */
-struct rogue_register_rule {
-   enum rogue_register_access access;
-   size_t max;
-   enum rogue_register_modifier modifiers;
-};
 
-/**
- * \brief Instruction operand rule description.
+/*
+ * B - B: Block destination operand.
+ * XY - X: Num destinations, Y: Num sources.
  */
-struct rogue_instr_operand_rule {
-   uint64_t mask;
-   ssize_t min;
-   ssize_t max;
-   ssize_t align;
-};
 
-/**
- * \brief Instruction rule description.
+/*
+ * ROGUE_BUILDER_DEFINE_CTRLB
+ *    B: Block destination operand.
+ *
+ * ROGUE_BUILDER_DEFINE_CTRLds
+ *    d: Number of destinations.
+ *    s: Number of sources.
  */
-struct rogue_instr_rule {
-   uint64_t flags; /** A mask of #rogue_instr_flag values. */
-   size_t num_operands;
-   struct rogue_instr_operand_rule *operand_rules;
-};
 
-PUBLIC
-bool rogue_validate_operand(const struct rogue_operand *operand);
+#ifndef ROGUE_BUILDER_DEFINE_CTRLB
+#define ROGUE_BUILDER_DEFINE_CTRLB(...)
+#endif /* ROGUE_BUILDER_DEFINE_CTRLB */
 
-PUBLIC
-bool rogue_validate_instr(const struct rogue_instr *instr);
+#ifndef ROGUE_BUILDER_DEFINE_CTRL00
+#define ROGUE_BUILDER_DEFINE_CTRL00(...)
+#endif /* ROGUE_BUILDER_DEFINE_CTRL00 */
 
-PUBLIC
-bool rogue_validate_shader(const struct rogue_shader *shader);
+#ifndef ROGUE_BUILDER_DEFINE_CTRL01
+#define ROGUE_BUILDER_DEFINE_CTRL01(...)
+#endif /* ROGUE_BUILDER_DEFINE_CTRL01 */
 
-#endif /* ROGUE_VALIDATE_H */
+ROGUE_BUILDER_DEFINE_CTRLB(BA)
+
+ROGUE_BUILDER_DEFINE_CTRL00(END)
+ROGUE_BUILDER_DEFINE_CTRL00(NOP)
+
+ROGUE_BUILDER_DEFINE_CTRL01(WDF)
+
+#undef ROGUE_BUILDER_DEFINE_CTRL01
+#undef ROGUE_BUILDER_DEFINE_CTRL00
+#undef ROGUE_BUILDER_DEFINE_CTRLB

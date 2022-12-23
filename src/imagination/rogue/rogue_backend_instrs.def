@@ -21,32 +21,39 @@
  * SOFTWARE.
  */
 
-#ifndef ROGUE_NIR_H
-#define ROGUE_NIR_H
+/**
+ * \file rogue_backend_instrs.def
+ *
+ * \brief Contains macros defining backend instructions.
+ */
 
-#include "compiler/shader_enums.h"
-#include "nir/nir.h"
-#include "util/macros.h"
+/*
+ * ROGUE_BUILDER_DEFINE_BACKENDds
+ *    d: Number of destinations.
+ *    s: Number of sources.
+ */
 
-struct rogue_build_ctx;
-struct rogue_compiler;
-struct spirv_to_nir_options;
+#ifndef ROGUE_BUILDER_DEFINE_BACKEND00
+#define ROGUE_BUILDER_DEFINE_BACKEND00(...)
+#endif /* ROGUE_BUILDER_DEFINE_BACKEND00 */
 
-PUBLIC
-const struct spirv_to_nir_options *
-rogue_get_spirv_options(const struct rogue_compiler *compiler);
+#ifndef ROGUE_BUILDER_DEFINE_BACKEND11
+#define ROGUE_BUILDER_DEFINE_BACKEND11(...)
+#endif /* ROGUE_BUILDER_DEFINE_BACKEND11 */
 
-PUBLIC
-const nir_shader_compiler_options *
-rogue_get_compiler_options(const struct rogue_compiler *compiler);
+#ifndef ROGUE_BUILDER_DEFINE_BACKEND14
+#define ROGUE_BUILDER_DEFINE_BACKEND14(...)
+#endif /* ROGUE_BUILDER_DEFINE_BACKEND14 */
 
-bool rogue_nir_passes(struct rogue_build_ctx *ctx,
-                      nir_shader *nir,
-                      gl_shader_stage stage);
+ROGUE_BUILDER_DEFINE_BACKEND00(UVSW_EMIT)
+ROGUE_BUILDER_DEFINE_BACKEND00(UVSW_ENDTASK)
+ROGUE_BUILDER_DEFINE_BACKEND00(UVSW_EMITTHENENDTASK)
 
-/* Custom passes. */
-void rogue_nir_pfo(nir_shader *shader);
-void rogue_nir_constreg(nir_shader *shader);
-bool rogue_nir_lower_io(nir_shader *shader, void *layout);
+ROGUE_BUILDER_DEFINE_BACKEND11(UVSW_WRITE)
+ROGUE_BUILDER_DEFINE_BACKEND11(UVSW_WRITETHENEMITTHENENDTASK)
 
-#endif /* ROGUE_NIR_H */
+ROGUE_BUILDER_DEFINE_BACKEND14(FITRP_PIXEL)
+
+#undef ROGUE_BUILDER_DEFINE_BACKEND14
+#undef ROGUE_BUILDER_DEFINE_BACKEND11
+#undef ROGUE_BUILDER_DEFINE_BACKEND00

@@ -19,56 +19,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-with_imagination_tools = with_tools.contains('imagination')
-
-inc_rogue = include_directories([
-  '.',
-])
-
-libpowervr_rogue_files = files(
-  'nir/rogue_nir_lower_io.c',
-  'nir/rogue_nir_pfo.c',
-
-  'rogue.c',
-  'rogue_build_data.c',
-  'rogue_builder.c',
-  'rogue_compile.c',
-  'rogue_constreg.c',
-  'rogue_debug.c',
-  'rogue_encode.c',
-  'rogue_info.c',
-  'rogue_nir.c',
-  'rogue_print.c',
-  'rogue_validate.c',
-
-  'passes/rogue_constreg.c',
-  'passes/rogue_copy_prop.c',
-  'passes/rogue_dce.c',
-  'passes/rogue_lower_pseudo_ops.c',
-  'passes/rogue_regalloc.c',
-  'passes/rogue_schedule_instr_groups.c',
-  'passes/rogue_schedule_uvsw.c',
-  'passes/rogue_schedule_wdf.c',
-  'passes/rogue_trim.c',
-)
-
-libpowervr_rogue = shared_library(
-  'powervr_rogue',
-  libpowervr_rogue_files,
+rogue_compiler = executable(
+  'rogue_vk_compiler',
+  'vk_compiler.c',
+  link_with : [libpowervr_rogue],
+  dependencies : [idep_mesautil, idep_nir],
   include_directories : [
-    inc_imagination,
+    inc_mesa,
     inc_include,
-    inc_compiler,
     inc_src,
     inc_mapi,
-    inc_mesa,
     inc_gallium,
     inc_gallium_aux,
+    inc_compiler,
+    inc_rogue,
   ],
-  c_args : [no_override_init_args],
-  gnu_symbol_visibility : 'hidden',
-  dependencies : [idep_mesautil, idep_nir, dep_csbgen],
-  install : true,
+  build_by_default : with_imagination_tools,
+  install : false,
 )
-
-subdir('tools')
