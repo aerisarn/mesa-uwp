@@ -1273,38 +1273,6 @@ print_varying_parameters(FILE *fp, midgard_load_store_word *word)
         }
 }
 
-static bool
-is_op_varying(unsigned op)
-{
-        switch (op) {
-        case midgard_op_st_vary_16:
-        case midgard_op_st_vary_32:
-        case midgard_op_st_vary_32i:
-        case midgard_op_st_vary_32u:
-        case midgard_op_ld_vary_16:
-        case midgard_op_ld_vary_32:
-        case midgard_op_ld_vary_32i:
-        case midgard_op_ld_vary_32u:
-                return true;
-        }
-
-        return false;
-}
-
-static bool
-is_op_attribute(unsigned op)
-{
-        switch (op) {
-        case midgard_op_ld_attr_16:
-        case midgard_op_ld_attr_32:
-        case midgard_op_ld_attr_32i:
-        case midgard_op_ld_attr_32u:
-                return true;
-        }
-
-        return false;
-}
-
 /* Helper to print integer well-formatted, but only when non-zero. */
 static void
 midgard_print_sint(FILE *fp, int n)
@@ -1550,18 +1518,6 @@ print_texture_format(FILE *fp, int format)
 
         default:
                 unreachable("Bad format");
-        }
-}
-
-static bool
-midgard_op_has_helpers(unsigned op)
-{
-        switch (op) {
-        case midgard_tex_op_normal:
-        case midgard_tex_op_derivative:
-                return true;
-        default:
-                return false;
         }
 }
 
