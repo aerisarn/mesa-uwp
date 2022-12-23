@@ -355,25 +355,27 @@ pan_select_max_tile_size(unsigned tile_buffer_bytes, unsigned bytes_per_pixel)
 static enum mali_color_format
 pan_mfbd_raw_format(unsigned bits)
 {
-        switch (bits) {
-        case    8: return MALI_COLOR_FORMAT_RAW8;
-        case   16: return MALI_COLOR_FORMAT_RAW16;
-        case   24: return MALI_COLOR_FORMAT_RAW24;
-        case   32: return MALI_COLOR_FORMAT_RAW32;
-        case   48: return MALI_COLOR_FORMAT_RAW48;
-        case   64: return MALI_COLOR_FORMAT_RAW64;
-        case   96: return MALI_COLOR_FORMAT_RAW96;
-        case  128: return MALI_COLOR_FORMAT_RAW128;
-        case  192: return MALI_COLOR_FORMAT_RAW192;
-        case  256: return MALI_COLOR_FORMAT_RAW256;
-        case  384: return MALI_COLOR_FORMAT_RAW384;
-        case  512: return MALI_COLOR_FORMAT_RAW512;
-        case  768: return MALI_COLOR_FORMAT_RAW768;
-        case 1024: return MALI_COLOR_FORMAT_RAW1024;
-        case 1536: return MALI_COLOR_FORMAT_RAW1536;
-        case 2048: return MALI_COLOR_FORMAT_RAW2048;
-        default: unreachable("invalid raw bpp");
-        }
+   /* clang-format off */
+   switch (bits) {
+   case    8: return MALI_COLOR_FORMAT_RAW8;
+   case   16: return MALI_COLOR_FORMAT_RAW16;
+   case   24: return MALI_COLOR_FORMAT_RAW24;
+   case   32: return MALI_COLOR_FORMAT_RAW32;
+   case   48: return MALI_COLOR_FORMAT_RAW48;
+   case   64: return MALI_COLOR_FORMAT_RAW64;
+   case   96: return MALI_COLOR_FORMAT_RAW96;
+   case  128: return MALI_COLOR_FORMAT_RAW128;
+   case  192: return MALI_COLOR_FORMAT_RAW192;
+   case  256: return MALI_COLOR_FORMAT_RAW256;
+   case  384: return MALI_COLOR_FORMAT_RAW384;
+   case  512: return MALI_COLOR_FORMAT_RAW512;
+   case  768: return MALI_COLOR_FORMAT_RAW768;
+   case 1024: return MALI_COLOR_FORMAT_RAW1024;
+   case 1536: return MALI_COLOR_FORMAT_RAW1536;
+   case 2048: return MALI_COLOR_FORMAT_RAW2048;
+   default: unreachable("invalid raw bpp");
+   }
+   /* clang-format on */
 }
 
 static void
@@ -434,19 +436,21 @@ pan_afbc_compression_mode(enum pipe_format format)
          * needs to handle the subset of formats returned by
          * panfrost_afbc_format.
          */
-        switch (panfrost_afbc_format(PAN_ARCH, format)) {
-        case PAN_AFBC_MODE_R8:          return MALI_AFBC_COMPRESSION_MODE_R8;
-        case PAN_AFBC_MODE_R8G8:        return MALI_AFBC_COMPRESSION_MODE_R8G8;
-        case PAN_AFBC_MODE_R5G6B5:      return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
-        case PAN_AFBC_MODE_R4G4B4A4:    return MALI_AFBC_COMPRESSION_MODE_R4G4B4A4;
-        case PAN_AFBC_MODE_R5G5B5A1:    return MALI_AFBC_COMPRESSION_MODE_R5G5B5A1;
-        case PAN_AFBC_MODE_R8G8B8:      return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
-        case PAN_AFBC_MODE_R8G8B8A8:    return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
-        case PAN_AFBC_MODE_R10G10B10A2: return MALI_AFBC_COMPRESSION_MODE_R10G10B10A2;
-        case PAN_AFBC_MODE_R11G11B10:   return MALI_AFBC_COMPRESSION_MODE_R11G11B10;
-        case PAN_AFBC_MODE_S8:          return MALI_AFBC_COMPRESSION_MODE_S8;
-        case PAN_AFBC_MODE_INVALID:     unreachable("Invalid AFBC format");
-        }
+        /* clang-format off */
+   switch (panfrost_afbc_format(PAN_ARCH, format)) {
+   case PAN_AFBC_MODE_R8:          return MALI_AFBC_COMPRESSION_MODE_R8;
+   case PAN_AFBC_MODE_R8G8:        return MALI_AFBC_COMPRESSION_MODE_R8G8;
+   case PAN_AFBC_MODE_R5G6B5:      return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
+   case PAN_AFBC_MODE_R4G4B4A4:    return MALI_AFBC_COMPRESSION_MODE_R4G4B4A4;
+   case PAN_AFBC_MODE_R5G5B5A1:    return MALI_AFBC_COMPRESSION_MODE_R5G5B5A1;
+   case PAN_AFBC_MODE_R8G8B8:      return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
+   case PAN_AFBC_MODE_R8G8B8A8:    return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
+   case PAN_AFBC_MODE_R10G10B10A2: return MALI_AFBC_COMPRESSION_MODE_R10G10B10A2;
+   case PAN_AFBC_MODE_R11G11B10:   return MALI_AFBC_COMPRESSION_MODE_R11G11B10;
+   case PAN_AFBC_MODE_S8:          return MALI_AFBC_COMPRESSION_MODE_S8;
+   case PAN_AFBC_MODE_INVALID:     unreachable("Invalid AFBC format");
+   }
+        /* clang-format on */
 
         unreachable("all AFBC formats handled");
 }

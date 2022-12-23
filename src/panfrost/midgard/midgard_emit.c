@@ -110,7 +110,7 @@ mir_pack_scalar_source(unsigned mod, bool is_full, unsigned component)
         midgard_scalar_alu_src s = {
                 .mod = mod,
                 .full = is_full,
-                .component = component << (is_full ? 1 : 0)
+                .component = component << (is_full ? 1 : 0),
         };
 
         unsigned o;
@@ -140,7 +140,7 @@ vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
                 .src2 = packed_src[1],
                 .outmod = v.outmod,
                 .output_full = is_full,
-                .output_component = comp
+                .output_component = comp,
         };
 
         /* Full components are physically spaced out */
@@ -348,7 +348,7 @@ mir_pack_vector_srcs(midgard_instruction *ins, midgard_vector_alu *alu)
                 midgard_vector_alu_src pack = {
                         .mod = mir_pack_mod(ins, i, false),
                         .expand_mode = expand_mode,
-                        .swizzle = swizzle
+                        .swizzle = swizzle,
                 };
 
                 unsigned p = vector_alu_srco_unsigned(pack);
@@ -638,7 +638,7 @@ texture_word_from_instr(midgard_instruction *ins)
                 midgard_tex_register_select sel = {
                         .select = SSA_REG_FROM_FIXED(ins->src[2]) & 1,
                         .full = 1,
-                        .component = ins->swizzle[2][0]
+                        .component = ins->swizzle[2][0],
                 };
                 uint8_t packed;
                 memcpy(&packed, &sel, sizeof(packed));
@@ -672,7 +672,7 @@ vector_alu_from_instr(midgard_instruction *ins)
         midgard_vector_alu alu = {
                 .op = ins->op,
                 .outmod = ins->outmod,
-                .reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins))
+                .reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins)),
         };
 
         if (ins->has_inline_constant) {
@@ -714,7 +714,7 @@ midgard_create_branch_extended( midgard_condition cond,
                 .op = op,
                 .dest_tag = dest_tag,
                 .offset = quadword_offset,
-                .cond = duplicated_cond
+                .cond = duplicated_cond,
         };
 
         return branch;
@@ -803,7 +803,7 @@ emit_branch(midgard_instruction *ins,
                                 .op = op,
                                 .dest_tag = dest_tag,
                                 .offset = quadword_offset,
-                                .cond = cond
+                                .cond = cond,
                         };
                         memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);
                 } else {
@@ -812,7 +812,7 @@ emit_branch(midgard_instruction *ins,
                                 .op = op,
                                 .dest_tag = dest_tag,
                                 .offset = quadword_offset,
-                                .call_mode = midgard_call_mode_default
+                                .call_mode = midgard_call_mode_default,
                         };
                         assert(branch.offset == quadword_offset);
                         memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);
@@ -1000,7 +1000,7 @@ emit_binary_bundle(compiler_context *ctx,
                         .type = bundle->tag,
                         .next_type = next_tag,
                         .word1 = current64,
-                        .word2 = next64
+                        .word2 = next64,
                 };
 
                 util_dynarray_append(emission, midgard_load_store, instruction);

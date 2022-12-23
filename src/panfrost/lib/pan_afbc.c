@@ -142,25 +142,25 @@ panfrost_afbc_format(unsigned arch, enum pipe_format format)
         /* We handle swizzling orthogonally to AFBC */
         format = unswizzled_format(format);
 
-        switch (format) {
-        case PIPE_FORMAT_R8_UNORM:              return PAN_AFBC_MODE_R8;
-        case PIPE_FORMAT_R8G8_UNORM:            return PAN_AFBC_MODE_R8G8;
-        case PIPE_FORMAT_R8G8B8_UNORM:          return PAN_AFBC_MODE_R8G8B8;
-        case PIPE_FORMAT_R8G8B8A8_UNORM:        return PAN_AFBC_MODE_R8G8B8A8;
-        case PIPE_FORMAT_R5G6B5_UNORM:          return PAN_AFBC_MODE_R5G6B5;
-        case PIPE_FORMAT_R5G5B5A1_UNORM:        return PAN_AFBC_MODE_R5G5B5A1;
-        case PIPE_FORMAT_R10G10B10A2_UNORM:     return PAN_AFBC_MODE_R10G10B10A2;
-        case PIPE_FORMAT_R4G4B4A4_UNORM:        return PAN_AFBC_MODE_R4G4B4A4;
-        case PIPE_FORMAT_Z16_UNORM:             return PAN_AFBC_MODE_R8G8;
+   /* clang-format off */
+   switch (format) {
+   case PIPE_FORMAT_R8_UNORM:          return PAN_AFBC_MODE_R8;
+   case PIPE_FORMAT_R8G8_UNORM:        return PAN_AFBC_MODE_R8G8;
+   case PIPE_FORMAT_R8G8B8_UNORM:      return PAN_AFBC_MODE_R8G8B8;
+   case PIPE_FORMAT_R8G8B8A8_UNORM:    return PAN_AFBC_MODE_R8G8B8A8;
+   case PIPE_FORMAT_R5G6B5_UNORM:      return PAN_AFBC_MODE_R5G6B5;
+   case PIPE_FORMAT_R5G5B5A1_UNORM:    return PAN_AFBC_MODE_R5G5B5A1;
+   case PIPE_FORMAT_R10G10B10A2_UNORM: return PAN_AFBC_MODE_R10G10B10A2;
+   case PIPE_FORMAT_R4G4B4A4_UNORM:    return PAN_AFBC_MODE_R4G4B4A4;
+   case PIPE_FORMAT_Z16_UNORM:         return PAN_AFBC_MODE_R8G8;
 
-        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-        case PIPE_FORMAT_Z24X8_UNORM:
-        case PIPE_FORMAT_X24S8_UINT:
-                return PAN_AFBC_MODE_R8G8B8A8;
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT: return PAN_AFBC_MODE_R8G8B8A8;
+   case PIPE_FORMAT_Z24X8_UNORM:       return PAN_AFBC_MODE_R8G8B8A8;
+   case PIPE_FORMAT_X24S8_UINT:        return PAN_AFBC_MODE_R8G8B8A8;
 
-        default:
-                return PAN_AFBC_MODE_INVALID;
-        }
+   default:                            return PAN_AFBC_MODE_INVALID;
+   }
+   /* clang-format on */
 }
 
 /* A format may be compressed as AFBC if it has an AFBC internal format */

@@ -118,15 +118,15 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
                         .mask = ins->mask,
                         .dest = to,
                         .dest_type = nir_type_float32,
-                        .src = { frcp_from, ~0, ~0, ~0 },
-                        .src_types = { nir_type_float32 },
+                        .src = { frcp_from, ~0, ~0, ~0, },
+                        .src_types = { nir_type_float32, },
                         .swizzle = SWIZZLE_IDENTITY_4,
                         .op = frcp_component == COMPONENT_W ?
                                 midgard_op_ldst_perspective_div_w :
                                 midgard_op_ldst_perspective_div_z,
                         .load_store = {
                                 .bitsize_toggle = true,
-                        }
+                        },
                 };
 
                 mir_insert_instruction_before(ctx, ins, accel);

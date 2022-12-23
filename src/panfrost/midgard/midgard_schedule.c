@@ -824,7 +824,7 @@ mir_choose_bundle(
                 .tag = ~0,
                 .unit = ~0,
                 .destructive = false,
-                .exclude = ~0
+                .exclude = ~0,
         };
 
         midgard_instruction *chosen = mir_choose_instruction(instructions, liveness, worklist, count, &predicate);
@@ -1045,7 +1045,7 @@ mir_schedule_texture(
         struct midgard_predicate predicate = {
                 .tag = TAG_TEXTURE_4,
                 .destructive = true,
-                .exclude = ~0
+                .exclude = ~0,
         };
 
         midgard_instruction *ins =
@@ -1059,7 +1059,7 @@ mir_schedule_texture(
                         (ins->op == midgard_tex_op_fetch) || is_vertex ?
                         TAG_TEXTURE_4_VTX : TAG_TEXTURE_4,
                 .instruction_count = 1,
-                .instructions = { ins }
+                .instructions = { ins },
         };
 
         return out;
@@ -1075,7 +1075,7 @@ mir_schedule_ldst(
         struct midgard_predicate predicate = {
                 .tag = TAG_LOAD_STORE_4,
                 .destructive = true,
-                .exclude = ~0
+                .exclude = ~0,
         };
 
         /* Try to pick two load/store ops. Second not gauranteed to exist */
@@ -1091,7 +1091,7 @@ mir_schedule_ldst(
         struct midgard_bundle out = {
                 .tag = TAG_LOAD_STORE_4,
                 .instruction_count = pair ? 2 : 1,
-                .instructions = { ins, pair }
+                .instructions = { ins, pair },
         };
 
         *num_ldst -= out.instruction_count;
@@ -1188,7 +1188,7 @@ mir_schedule_alu(
                 .tag = TAG_ALU_4,
                 .destructive = true,
                 .exclude = ~0,
-                .constants = &bundle.constants
+                .constants = &bundle.constants,
         };
 
         midgard_instruction *vmul = NULL;

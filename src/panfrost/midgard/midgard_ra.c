@@ -70,7 +70,7 @@ default_phys_reg(int reg, unsigned shift)
         struct phys_reg r = {
                 .reg = reg,
                 .offset = 0,
-                .shift = shift
+                .shift = shift,
         };
 
         return r;
@@ -93,7 +93,7 @@ index_to_reg(compiler_context *ctx, struct lcra_state *l, unsigned reg, unsigned
         struct phys_reg r = {
                 .reg = l->solutions[reg] / 16,
                 .offset = l->solutions[reg] & 0xF,
-                .shift = shift
+                .shift = shift,
         };
 
         /* Report that we actually use this register, and return it */
@@ -1180,7 +1180,7 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                         .load_store = {
                                                 .index_reg = REGISTER_LDST_ZERO,
                                         },
-                                        .constants.u32[0] = ctx->info->push.words[idx].offset
+                                        .constants.u32[0] = ctx->info->push.words[idx].offset,
                                 };
 
                                 midgard_pack_ubo_index_imm(&ld.load_store,

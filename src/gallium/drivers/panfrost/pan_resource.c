@@ -121,7 +121,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 panfrost_translate_texture_dimension(templat->target);
         struct pan_image_explicit_layout explicit_layout = {
                 .offset = whandle->offset,
-                .row_stride = panfrost_from_legacy_stride(whandle->stride, templat->format, mod)
+                .row_stride = panfrost_from_legacy_stride(whandle->stride, templat->format, mod),
         };
 
         rsc->image.layout = (struct pan_image_layout) {
@@ -504,7 +504,7 @@ panfrost_resource_setup(struct panfrost_device *dev,
                 .array_size = pres->base.array_size,
                 .nr_samples = MAX2(pres->base.nr_samples, 1),
                 .nr_slices = pres->base.last_level + 1,
-                .crc = panfrost_should_checksum(dev, pres)
+                .crc = panfrost_should_checksum(dev, pres),
         };
 
         ASSERTED bool valid = pan_image_layout_init(&pres->image.layout, NULL);
@@ -1213,7 +1213,7 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
                 .src.format   = rsrc->base.format,
                 .src.box      = box,
                 .mask         = util_format_get_mask(tmp_rsrc->base.format),
-                .filter       = PIPE_TEX_FILTER_NEAREST
+                .filter       = PIPE_TEX_FILTER_NEAREST,
         };
 
         for (int i = 0; i <= rsrc->base.last_level; i++) {

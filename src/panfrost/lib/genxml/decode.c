@@ -282,7 +282,7 @@ pandecode_fbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
 
         return (struct pandecode_fbd) {
                 .rt_count = params.render_target_count,
-                .has_extra = params.has_zs_crc_extension
+                .has_extra = params.has_zs_crc_extension,
         };
 #else
         /* Dummy unpack of the padding section to make sure all words are 0.
@@ -292,7 +292,7 @@ pandecode_fbd(uint64_t gpu_va, bool is_fragment, unsigned gpu_id)
         pan_section_unpack(fb, FRAMEBUFFER, PADDING_2, padding2);
 
         return (struct pandecode_fbd) {
-                .rt_count = 1
+                .rt_count = 1,
         };
 #endif
 }

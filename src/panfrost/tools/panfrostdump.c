@@ -224,12 +224,14 @@ main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
+   /* clang-format off */
    const struct option longopts[] = {
       { "addr", no_argument, (int *) &print_addr, true },
       { "regs", no_argument, (int *) &print_reg, true },
       { "help", no_argument, NULL, 'h' },
       { NULL, 0, NULL, 0 }
    };
+   /* clang-format on */
 
    while ((c = getopt_long(argc, argv, "arh", longopts, NULL)) != -1) {
       switch(c) {

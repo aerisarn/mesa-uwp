@@ -641,7 +641,7 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
                 .logicop_enable = state->logicop_enable,
                 .logicop_func = state->logicop_func,
                 .rt[0].colormask = rt_state->equation.color_mask,
-                .format[0] = rt_state->format
+                .format[0] = rt_state->format,
         };
 
         if (!rt_state->equation.blend_enable) {

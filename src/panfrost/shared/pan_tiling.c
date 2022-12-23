@@ -52,11 +52,13 @@
  *
  */
 
-/* Given the lower 4-bits of the Y coordinate, we would like to
+/*
+ * Given the lower 4-bits of the Y coordinate, we would like to
  * duplicate every bit over. So instead of 0b1010, we would like
  * 0b11001100. The idea is that for the bits in the solely Y place, we
- * get a Y place, and the bits in the XOR place *also* get a Y. */
-
+ * get a Y place, and the bits in the XOR place *also* get a Y.
+ */
+/* clang-format off */
 const uint32_t bit_duplication[16] = {
    0b00000000,
    0b00000011,
@@ -75,9 +77,12 @@ const uint32_t bit_duplication[16] = {
    0b11111100,
    0b11111111,
 };
+/* clang-format on */
 
-/* Space the bits out of a 4-bit nibble */
-
+/*
+ * Space the bits out of a 4-bit nibble
+ */
+/* clang-format off */
 const unsigned space_4[16] = {
    0b0000000,
    0b0000001,
@@ -96,6 +101,7 @@ const unsigned space_4[16] = {
    0b1010100,
    0b1010101
 };
+/* clang-format on */
 
 /* The scheme uses 16x16 tiles */
 

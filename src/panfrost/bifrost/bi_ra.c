@@ -568,7 +568,7 @@ bi_fixup_dual_tex_register(bi_instr *I)
         assert(I->src[3].type == BI_INDEX_CONSTANT);
 
         struct bifrost_dual_texture_operation desc = {
-                .secondary_register = I->dest[1].value
+                .secondary_register = I->dest[1].value,
         };
 
         I->src[3].value |= bi_dual_tex_as_u32(desc);

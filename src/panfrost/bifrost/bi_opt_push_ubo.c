@@ -113,7 +113,7 @@ bi_pick_ubo(struct panfrost_ubo_push *push, struct bi_ubo_analysis *analysis)
                         for (unsigned offs = 0; offs < range; ++offs) {
                                 struct panfrost_ubo_word word = {
                                         .ubo = ubo,
-                                        .offset = (r + offs) * 4
+                                        .offset = (r + offs) * 4,
                                 };
 
                                 push->words[push->count++] = word;

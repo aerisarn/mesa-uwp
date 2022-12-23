@@ -75,7 +75,7 @@ panfrost_pool_take_ref(struct panfrost_pool *pool, mali_ptr ptr)
 
         return (struct panfrost_pool_ref) {
                 .bo = pool->transient_bo,
-                .gpu = ptr
+                .gpu = ptr,
         };
 }
 

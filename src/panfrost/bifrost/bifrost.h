@@ -301,22 +301,24 @@ struct bi_clause_format {
         enum bi_clause_subword s7; /* 15 bits */
 };
 
+/* clang-format off */
 static const struct bi_clause_format bi_clause_formats[] = {
-        {  0, 0, L(0), L(5), U(0), T(0), T(0), H,    H     },
-        {  0, 0, Z,    L(1), U(0), T(0), T(0), H,    H     },
-        {  1, 1, Z,    L(0), L(3), T(1), T(1), R,    U(1)  },
-        {  2, 1, L(0), L(4), U(1), T(1), T(1), T(2), T(2)  },
-        {  3, 2, Z,    L(0), L(4), EC,   M,    T(2), U(2)  },
-        {  4, 2, L(0), L(0), L(1), T(3), T(3), T(2), U(23) },
-        {  4, 2, Z,    L(0), L(5), T(3), T(3), T(2), U(23) },
-        {  5, 2, L(2), U(3), U(2), T(3), T(3), T(2), EC    },
-        {  6, 3, Z,    L(2), U(4), T(4), T(4), EC,   EC    },
-        {  7, 3, L(1), L(4), U(4), T(4), T(4), T(5), T(5)  },
-        {  8, 4, Z,    L(0), L(6), EC,   M,    T(5), U(5)  },
-        {  9, 4, Z,    L(0), L(7), T(6), T(6), T(5), U(56) },
-        { 10, 4, L(3), U(6), U(5), T(6), T(6), T(5), EC    },
-        { 11, 5, Z,    L(3), U(7), T(7), T(7), EC,   EC    },
+   {  0, 0, L(0), L(5), U(0), T(0), T(0), H,    H     },
+   {  0, 0, Z,    L(1), U(0), T(0), T(0), H,    H     },
+   {  1, 1, Z,    L(0), L(3), T(1), T(1), R,    U(1)  },
+   {  2, 1, L(0), L(4), U(1), T(1), T(1), T(2), T(2)  },
+   {  3, 2, Z,    L(0), L(4), EC,   M,    T(2), U(2)  },
+   {  4, 2, L(0), L(0), L(1), T(3), T(3), T(2), U(23) },
+   {  4, 2, Z,    L(0), L(5), T(3), T(3), T(2), U(23) },
+   {  5, 2, L(2), U(3), U(2), T(3), T(3), T(2), EC    },
+   {  6, 3, Z,    L(2), U(4), T(4), T(4), EC,   EC    },
+   {  7, 3, L(1), L(4), U(4), T(4), T(4), T(5), T(5)  },
+   {  8, 4, Z,    L(0), L(6), EC,   M,    T(5), U(5)  },
+   {  9, 4, Z,    L(0), L(7), T(6), T(6), T(5), U(56) },
+   { 10, 4, L(3), U(6), U(5), T(6), T(6), T(5), EC    },
+   { 11, 5, Z,    L(3), U(7), T(7), T(7), EC,   EC    },
 };
+/* clang-format on */
 
 #undef L
 #undef U
@@ -381,36 +383,38 @@ struct bifrost_reg_ctrl_23 {
         bool slot3_fma;
 };
 
+/* clang-format off */
 #ifndef __cplusplus
 static const struct bifrost_reg_ctrl_23 bifrost_reg_ctrl_lut[32] = {
-        [BIFROST_R_WL_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, true },
-        [BIFROST_R_WH_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, true },
-        [BIFROST_R_W_FMA]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    true },
-        [BIFROST_R_WL_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, false },
-        [BIFROST_R_WH_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, false },
-        [BIFROST_R_W_ADD]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    false },
-        [BIFROST_WL_WL_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_LO, false },
-        [BIFROST_WL_WH_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
-        [BIFROST_WL_W_ADD]  = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE,    false },
-        [BIFROST_WH_WL_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
-        [BIFROST_WH_WH_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_HI, false },
-        [BIFROST_WH_W_ADD]  = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE,    false },
-        [BIFROST_W_WL_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_LO, false },
-        [BIFROST_W_WH_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_HI, false },
-        [BIFROST_W_W_ADD]   = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE,    false },
-        [BIFROST_IDLE_1]    = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
-        [BIFROST_I_W_FMA]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    true },
-        [BIFROST_I_WL_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, true },
-        [BIFROST_I_WH_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, true },
-        [BIFROST_R_I]       = { BIFROST_OP_READ,     BIFROST_OP_IDLE,     false },
-        [BIFROST_I_W_ADD]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    false },
-        [BIFROST_I_WL_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, false },
-        [BIFROST_I_WH_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, false },
-        [BIFROST_WL_WH_MIX] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
-        [BIFROST_WH_WL_MIX] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
-        [BIFROST_IDLE]      = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
+   [BIFROST_R_WL_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, true },
+   [BIFROST_R_WH_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, true },
+   [BIFROST_R_W_FMA]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    true },
+   [BIFROST_R_WL_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, false },
+   [BIFROST_R_WH_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, false },
+   [BIFROST_R_W_ADD]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    false },
+   [BIFROST_WL_WL_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_LO, false },
+   [BIFROST_WL_WH_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
+   [BIFROST_WL_W_ADD]  = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE,    false },
+   [BIFROST_WH_WL_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
+   [BIFROST_WH_WH_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_HI, false },
+   [BIFROST_WH_W_ADD]  = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE,    false },
+   [BIFROST_W_WL_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_LO, false },
+   [BIFROST_W_WH_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_HI, false },
+   [BIFROST_W_W_ADD]   = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE,    false },
+   [BIFROST_IDLE_1]    = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
+   [BIFROST_I_W_FMA]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    true },
+   [BIFROST_I_WL_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, true },
+   [BIFROST_I_WH_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, true },
+   [BIFROST_R_I]       = { BIFROST_OP_READ,     BIFROST_OP_IDLE,     false },
+   [BIFROST_I_W_ADD]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    false },
+   [BIFROST_I_WL_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, false },
+   [BIFROST_I_WH_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, false },
+   [BIFROST_WL_WH_MIX] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
+   [BIFROST_WH_WL_MIX] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
+   [BIFROST_IDLE]      = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
 };
 #endif
+/* clang-format on */
 
 /* Texture operator descriptors in various states. Usually packed in the
  * compiler and stored as a constant */

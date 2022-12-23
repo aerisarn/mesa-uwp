@@ -53,24 +53,26 @@
         }
 
 /* Table of supported Mali GPUs */
+/* clang-format off */
 const struct panfrost_model panfrost_model_list[] = {
-        MODEL(0x620, "T620", "T62x", NO_ANISO, 8192, {}),
-        MODEL(0x720, "T720", "T72x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
-        MODEL(0x750, "T760", "T76x", NO_ANISO, 8192, {}),
-        MODEL(0x820, "T820", "T82x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
-        MODEL(0x830, "T830", "T83x", NO_ANISO, 8192, { .no_hierarchical_tiling = true }),
-        MODEL(0x860, "T860", "T86x", NO_ANISO, 8192, {}),
-        MODEL(0x880, "T880", "T88x", NO_ANISO, 8192, {}),
+        MODEL(0x620, "T620",    "T62x", NO_ANISO,          8192, {}),
+        MODEL(0x720, "T720",    "T72x", NO_ANISO,          8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x750, "T760",    "T76x", NO_ANISO,          8192, {}),
+        MODEL(0x820, "T820",    "T82x", NO_ANISO,          8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x830, "T830",    "T83x", NO_ANISO,          8192, { .no_hierarchical_tiling = true }),
+        MODEL(0x860, "T860",    "T86x", NO_ANISO,          8192, {}),
+        MODEL(0x880, "T880",    "T88x", NO_ANISO,          8192, {}),
 
-        MODEL(0x6000, "G71", "TMIx", NO_ANISO, 8192, {}),
-        MODEL(0x6221, "G72", "THEx", 0x0030 /* r0p3 */, 16384, {}),
-        MODEL(0x7090, "G51", "TSIx", 0x1010 /* r1p1 */, 16384, {}),
-        MODEL(0x7093, "G31", "TDVx", HAS_ANISO, 16384, {}),
-        MODEL(0x7211, "G76", "TNOx", HAS_ANISO, 16384, {}),
-        MODEL(0x7212, "G52", "TGOx", HAS_ANISO, 16384, {}),
-        MODEL(0x7402, "G52 r1", "TGOx", HAS_ANISO, 16384, {}),
-        MODEL(0x9093, "G57", "TNAx", HAS_ANISO, 16384, {}),
+        MODEL(0x6000, "G71",    "TMIx", NO_ANISO,          8192, {}),
+        MODEL(0x6221, "G72",    "THEx", 0x0030 /* r0p3 */, 16384, {}),
+        MODEL(0x7090, "G51",    "TSIx", 0x1010 /* r1p1 */, 16384, {}),
+        MODEL(0x7093, "G31",    "TDVx", HAS_ANISO,         16384, {}),
+        MODEL(0x7211, "G76",    "TNOx", HAS_ANISO,         16384, {}),
+        MODEL(0x7212, "G52",    "TGOx", HAS_ANISO,         16384, {}),
+        MODEL(0x7402, "G52 r1", "TGOx", HAS_ANISO,         16384, {}),
+        MODEL(0x9093, "G57",    "TNAx", HAS_ANISO,         16384, {}),
 };
+/* clang-format on */
 
 #undef NO_ANISO
 #undef HAS_ANISO
@@ -149,7 +151,7 @@ panfrost_query_tiler_features(int fd)
         /* Bin size is log2 in the first byte, max levels in the second byte */
         return (struct panfrost_tiler_features) {
                 .bin_size = (1 << (raw & BITFIELD_MASK(5))),
-                .max_levels = (raw >> 8) & BITFIELD_MASK(4)
+                .max_levels = (raw >> 8) & BITFIELD_MASK(4),
         };
 }
 

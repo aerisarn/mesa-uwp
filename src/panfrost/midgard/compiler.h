@@ -542,7 +542,7 @@ v_mov(unsigned src, unsigned dest)
                 .dest = dest,
                 .dest_type = nir_type_uint32,
                 .op = midgard_alu_op_imov,
-                .outmod = midgard_outmod_keeplo
+                .outmod = midgard_outmod_keeplo,
         };
 
         return ins;
@@ -586,7 +586,7 @@ v_load_store_scratch(
                 },
 
                 /* If we spill an unspill, RA goes into an infinite loop */
-                .no_spill = (1 << REG_CLASS_WORK)
+                .no_spill = (1 << REG_CLASS_WORK),
         };
 
         ins.constants.u32[0] = byte;

@@ -112,7 +112,7 @@ mir_pick_ubo(struct panfrost_ubo_push *push, struct mir_ubo_analysis *analysis, 
                         for (unsigned offs = 0; offs < 4; ++offs) {
                                 struct panfrost_ubo_word word = {
                                         .ubo = ubo,
-                                        .offset = (vec4 * 16) + (offs * 4)
+                                        .offset = (vec4 * 16) + (offs * 4),
                                 };
 
                                 push->words[push->count++] = word;

@@ -52,13 +52,13 @@
 #include "disassemble.h"
 
 static const struct debug_named_value midgard_debug_options[] = {
-        {"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
-        {"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
-        {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
-        {"inorder",   MIDGARD_DBG_INORDER,      "Disables out-of-order scheduling"},
-        {"verbose",   MIDGARD_DBG_VERBOSE,      "Dump shaders verbosely"},
-        {"internal",  MIDGARD_DBG_INTERNAL,     "Dump internal shaders"},
-        DEBUG_NAMED_VALUE_END
+   {"msgs",       MIDGARD_DBG_MSGS,		   "Print debug messages"},
+   {"shaders",    MIDGARD_DBG_SHADERS,	   "Dump shaders in NIR and MIR"},
+   {"shaderdb",   MIDGARD_DBG_SHADERDB,   "Prints shader-db statistics"},
+   {"inorder",    MIDGARD_DBG_INORDER,    "Disables out-of-order scheduling"},
+   {"verbose",    MIDGARD_DBG_VERBOSE,    "Dump shaders verbosely"},
+   {"internal",   MIDGARD_DBG_INTERNAL,   "Dump internal shaders"},
+   DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", midgard_debug_options, 0)
@@ -111,8 +111,8 @@ schedule_barrier(compiler_context *ctx)
                         .swizzle = SWIZZLE_IDENTITY_4, \
                         .op = midgard_op_##name, \
 			.load_store = { \
-				.signed_offset = address \
-			} \
+				.signed_offset = address, \
+			}, \
 		}; \
                 \
                 if (store) { \
@@ -192,7 +192,7 @@ v_branch(bool conditional, bool invert)
                 .compact_branch = true,
                 .branch = {
                         .conditional = conditional,
-                        .invert_conditional = invert
+                        .invert_conditional = invert,
                 },
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
@@ -1383,8 +1383,8 @@ emit_atomic(
                 .type = TAG_LOAD_STORE_4,
                 .mask = 0xF,
                 .dest = dest,
-                .src = { ~0, ~0, ~0, val },
-                .src_types = { 0, 0, 0, type | bitsize },
+                .src = { ~0, ~0, ~0, val, },
+                .src_types = { 0, 0, 0, type | bitsize, },
                 .op = op
         };
 
@@ -2443,7 +2443,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
-                        .mode = mdg_texture_mode(instr)
+                        .mode = mdg_texture_mode(instr),
                 }
         };
 

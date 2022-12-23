@@ -36,6 +36,7 @@ struct test {
    uint32_t hardware;
 };
 
+/* clang-format off */
 #define RGBA(key, value) \
    .rgb_ ## key = value, \
    .alpha_ ## key = value
@@ -290,6 +291,7 @@ static const struct test blend_tests[] = {
       .hardware = 0xC0431132 /* 0 + dest * (2*src); equivalent 0xC0431122 */
    }
 };
+/* clang-format on */
 
 #define ASSERT_EQ(x, y) do { \
    if (x == y) { \

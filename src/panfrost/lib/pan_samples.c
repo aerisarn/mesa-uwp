@@ -60,71 +60,72 @@ struct mali_sample_positions {
 #define SAMPLE8(x, y) SAMPLE16((x) * 2, (y) * 2)
 #define SAMPLE4(x, y) SAMPLE16((x) * 4, (y) * 4)
 
+/* clang-format off */
 const struct mali_sample_positions sample_position_lut[] = {
-        [MALI_SAMPLE_PATTERN_SINGLE_SAMPLED] = {
-                .positions = {
-                        SAMPLE4(0, 0)
-                },
-                .origin = SAMPLE4(0, 0)
-        },
+   [MALI_SAMPLE_PATTERN_SINGLE_SAMPLED] = {
+      .positions = {
+         SAMPLE4(0, 0)
+      },
+      .origin = SAMPLE4(0, 0)
+   },
 
-        [MALI_SAMPLE_PATTERN_ORDERED_4X_GRID] = {
-                .positions = {
-                        SAMPLE4(-1, -1),
-                        SAMPLE4( 1, -1),
-                        SAMPLE4(-1,  1),
-                        SAMPLE4( 1,  1),
-                },
-                .origin = SAMPLE4(0, 0)
-        },
+   [MALI_SAMPLE_PATTERN_ORDERED_4X_GRID] = {
+      .positions = {
+         SAMPLE4(-1, -1),
+         SAMPLE4( 1, -1),
+         SAMPLE4(-1,  1),
+         SAMPLE4( 1,  1),
+      },
+      .origin = SAMPLE4(0, 0)
+   },
 
-        [MALI_SAMPLE_PATTERN_ROTATED_4X_GRID] = {
-                .positions = {
-                        SAMPLE8(-1, -3),
-                        SAMPLE8( 3, -1),
-                        SAMPLE8(-3,  1),
-                        SAMPLE8( 1,  3),
-                },
-                .origin = SAMPLE8(0, 0)
-        },
+   [MALI_SAMPLE_PATTERN_ROTATED_4X_GRID] = {
+      .positions = {
+         SAMPLE8(-1, -3),
+         SAMPLE8( 3, -1),
+         SAMPLE8(-3,  1),
+         SAMPLE8( 1,  3),
+      },
+      .origin = SAMPLE8(0, 0)
+   },
 
-        [MALI_SAMPLE_PATTERN_D3D_8X_GRID] = {
-                .positions = {
-                        SAMPLE16( 1, -3),
-                        SAMPLE16(-1,  3),
-                        SAMPLE16( 5,  1),
-                        SAMPLE16(-3, -5),
-                        SAMPLE16(-5,  5),
-                        SAMPLE16(-7, -1),
-                        SAMPLE16( 3,  7),
-                        SAMPLE16( 7,  -7),
-                },
-                .origin = SAMPLE16(0, 0)
-        },
+   [MALI_SAMPLE_PATTERN_D3D_8X_GRID] = {
+      .positions = {
+         SAMPLE16( 1, -3),
+         SAMPLE16(-1,  3),
+         SAMPLE16( 5,  1),
+         SAMPLE16(-3, -5),
+         SAMPLE16(-5,  5),
+         SAMPLE16(-7, -1),
+         SAMPLE16( 3,  7),
+         SAMPLE16( 7,  -7),
+      },
+      .origin = SAMPLE16(0, 0)
+   },
 
-        [MALI_SAMPLE_PATTERN_D3D_16X_GRID] = {
-                .positions = {
-                        SAMPLE16( 1,  1),
-                        SAMPLE16(-1, -3),
-                        SAMPLE16(-3,  2),
-                        SAMPLE16( 4, -1),
-                        SAMPLE16(-5, -2),
-                        SAMPLE16( 2,  5),
-                        SAMPLE16( 5,  3),
-                        SAMPLE16( 3, -5),
-                        SAMPLE16(-2,  6),
-                        SAMPLE16( 0,  7),
-                        SAMPLE16(-4, -6),
-                        SAMPLE16(-6,  4),
-                        SAMPLE16(-8,  0),
-                        SAMPLE16( 7, -4),
-                        SAMPLE16( 6,  7),
-                        SAMPLE16(-7, -8),
-
-                },
-                .origin = SAMPLE16(0, 0)
-        }
+   [MALI_SAMPLE_PATTERN_D3D_16X_GRID] = {
+      .positions = {
+         SAMPLE16( 1,  1),
+         SAMPLE16(-1, -3),
+         SAMPLE16(-3,  2),
+         SAMPLE16( 4, -1),
+         SAMPLE16(-5, -2),
+         SAMPLE16( 2,  5),
+         SAMPLE16( 5,  3),
+         SAMPLE16( 3, -5),
+         SAMPLE16(-2,  6),
+         SAMPLE16( 0,  7),
+         SAMPLE16(-4, -6),
+         SAMPLE16(-6,  4),
+         SAMPLE16(-8,  0),
+         SAMPLE16( 7, -4),
+         SAMPLE16( 6,  7),
+         SAMPLE16(-7, -8),
+      },
+      .origin = SAMPLE16(0, 0)
+   }
 };
+/* clang-format on */
 
 mali_ptr
 panfrost_sample_positions(const struct panfrost_device *dev,

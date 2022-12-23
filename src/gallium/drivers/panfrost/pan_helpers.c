@@ -179,7 +179,7 @@ pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
 
         buffers[idx] = (struct pan_vertex_buffer) {
                 .vbi = vbi,
-                .divisor = divisor
+                .divisor = divisor,
         };
 
         return idx;

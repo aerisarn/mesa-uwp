@@ -58,7 +58,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2)
                 .dependency_slot = clause->scoreboard_id,
                 .message_type = clause->message_type,
                 .next_message_type = next_1 ? next_1->message_type : 0,
-                .flush_to_zero = clause->ftz ? BIFROST_FTZ_ALWAYS : BIFROST_FTZ_DISABLE
+                .flush_to_zero = clause->ftz ? BIFROST_FTZ_ALWAYS : BIFROST_FTZ_DISABLE,
         };
 
         uint64_t u = 0;
@@ -362,7 +362,7 @@ bi_pack_tuple(bi_clause *clause, bi_tuple *tuple, bi_tuple *prev, bool first_tup
 
         struct bi_packed_tuple packed = {
                 .lo = reg | (fma << 35) | ((add & 0b111111) << 58),
-                .hi = add >> 6
+                .hi = add >> 6,
         };
 
         return packed;
@@ -423,7 +423,7 @@ bi_pack_constants(unsigned tuple_count, uint64_t *constants,
                 { 4, 8 },
                 { 7, 11, 14 },
                 { 6, 10, 13 },
-                { 9, 12 }
+                { 9, 12 },
         };
 
         /* Compute the pos, and check everything is reasonable */
@@ -670,7 +670,7 @@ bi_pack_clause(bi_context *ctx, bi_clause *clause,
         unsigned m0 = (clause->pcrel_idx == 0) ? 4 : 0;
 
         unsigned counts[8] = {
-                1, 2, 3, 3, 4, 5, 5, 6
+                1, 2, 3, 3, 4, 5, 5, 6,
         };
 
         unsigned indices[8][6] = {

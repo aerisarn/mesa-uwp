@@ -105,7 +105,7 @@ bi_opt_message_preload(bi_context *ctx)
                                 .enabled = true,
                                 .varying_index = I->varying_index,
                                 .fp16 = (I->register_format == BI_REGISTER_FORMAT_F16),
-                                .num_components = I->vecsize + 1
+                                .num_components = I->vecsize + 1,
                         };
                 } else if (bi_is_var_tex(I->op)) {
                         msg = (struct bifrost_message_preload) {
@@ -115,7 +115,7 @@ bi_opt_message_preload(bi_context *ctx)
                                 .texture_index = I->texture_index,
                                 .fp16 = (I->op == BI_OPCODE_VAR_TEX_F16),
                                 .skip = I->skip,
-                                .zero_lod = I->lod_mode
+                                .zero_lod = I->lod_mode,
                         };
                 } else {
                         continue;

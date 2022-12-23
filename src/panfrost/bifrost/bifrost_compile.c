@@ -41,23 +41,25 @@
 #include "bi_builder.h"
 #include "bifrost_nir.h"
 
+/* clang-format off */
 static const struct debug_named_value bifrost_debug_options[] = {
-        {"msgs",      BIFROST_DBG_MSGS,		"Print debug messages"},
-        {"shaders",   BIFROST_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
-        {"shaderdb",  BIFROST_DBG_SHADERDB,	"Print statistics"},
-        {"verbose",   BIFROST_DBG_VERBOSE,	"Disassemble verbosely"},
-        {"internal",  BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
-        {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
-        {"nopsched",  BIFROST_DBG_NOPSCHED,     "Disable scheduling for pressure"},
-        {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
-        {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
-        {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
-        {"noidvs",    BIFROST_DBG_NOIDVS,       "Disable IDVS"},
-        {"nosb",      BIFROST_DBG_NOSB,         "Disable scoreboarding"},
-        {"nopreload", BIFROST_DBG_NOPRELOAD,    "Disable message preloading"},
-        {"spill",     BIFROST_DBG_SPILL,        "Test register spilling"},
-        DEBUG_NAMED_VALUE_END
+   {"msgs",       BIFROST_DBG_MSGS,		   "Print debug messages"},
+   {"shaders",    BIFROST_DBG_SHADERS,	   "Dump shaders in NIR and MIR"},
+   {"shaderdb",   BIFROST_DBG_SHADERDB,	"Print statistics"},
+   {"verbose",    BIFROST_DBG_VERBOSE,	   "Disassemble verbosely"},
+   {"internal",   BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
+   {"nosched",    BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
+   {"nopsched",   BIFROST_DBG_NOPSCHED,   "Disable scheduling for pressure"},
+   {"inorder",    BIFROST_DBG_INORDER, 	"Force in-order bundling"},
+   {"novalidate", BIFROST_DBG_NOVALIDATE, "Skip IR validation"},
+   {"noopt",      BIFROST_DBG_NOOPT,      "Skip optimization passes"},
+   {"noidvs",     BIFROST_DBG_NOIDVS,     "Disable IDVS"},
+   {"nosb",       BIFROST_DBG_NOSB,       "Disable scoreboarding"},
+   {"nopreload",  BIFROST_DBG_NOPRELOAD,  "Disable message preloading"},
+   {"spill",      BIFROST_DBG_SPILL,      "Test register spilling"},
+   DEBUG_NAMED_VALUE_END
 };
+/* clang-format on */
 
 DEBUG_GET_ONCE_FLAGS_OPTION(bifrost_debug, "BIFROST_MESA_DEBUG", bifrost_debug_options, 0)
 
@@ -5192,7 +5194,7 @@ bi_compile_variant(nir_shader *nir,
                 .bifrost = &info->bifrost,
                 .tls_size = info->tls_size,
                 .sysvals = &info->sysvals,
-                .push_offset = info->push.count
+                .push_offset = info->push.count,
         };
 
         unsigned offset = binary->size;

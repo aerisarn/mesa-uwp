@@ -79,14 +79,16 @@ struct mali_tib_layout {
         unsigned int_a, frac_a;
 };
 
+/* clang-format off */
 static const struct mali_tib_layout tib_layouts[] = {
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8] = { 8, 0, 8, 0, 8, 0, 8, 0 },
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R10G10B10A2] = { 10, 0, 10, 0, 10, 0, 2, 0 },
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A2] = { 8, 2, 8, 2, 8, 2, 2, 0 },
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4] = { 4, 4, 4, 4, 4, 4, 4, 4 },
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0] = { 5, 5, 6, 4, 5, 5, 0, 2 },
-        [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G5B5A1] = { 5, 5, 5, 5, 5, 5, 1, 1 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8]    = {  8, 0,  8, 0,  8, 0, 8, 0 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R10G10B10A2] = { 10, 0, 10, 0, 10, 0, 2, 0 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A2]    = {  8, 2,  8, 2,  8, 2, 2, 0 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R4G4B4A4]    = {  4, 4,  4, 4,  4, 4, 4, 4 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G6B5A0]    = {  5, 5,  6, 4,  5, 5, 0, 2 },
+   [MALI_COLOR_BUFFER_INTERNAL_FORMAT_R5G5B5A1]    = {  5, 5,  5, 5,  5, 5, 1, 1 },
 };
+/* clang-format on */
 
 /* Raw values are stored as-is but replicated for multisampling */
 

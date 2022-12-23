@@ -40,6 +40,7 @@ struct test {
 #define D (true)
 #define _ (false)
 
+/* clang-format off */
 static const struct test clear_tests[] = {
    /* Basic tests */
    { PIPE_FORMAT_R8G8B8A8_UNORM,    D, F(0.0,   0.0, 0.0, 0.0),   RRRR(0x00000000) },
@@ -137,6 +138,7 @@ static const struct test clear_tests[] = {
       UI(0xCAFEBABE, 0xABAD1DEA, 0xDEADBEEF, 0xABCDEF01),
       { 0xCAFEBABE, 0xABAD1DEA, 0xDEADBEEF, 0xABCDEF01 } },
 };
+/* clang-format on */
 
 #define ASSERT_EQ(x, y) do { \
    if ((x[0] == y[0]) && (x[1] == y[1]) && (x[2] == y[2]) && (x[3] == y[3])) { \

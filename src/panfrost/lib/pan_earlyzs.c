@@ -95,7 +95,7 @@ analyze(const struct pan_shader_info *s,
 
         return (struct pan_earlyzs_state) {
                 .update = late_update ? PAN_EARLYZS_FORCE_LATE : early_mode,
-                .kill   = late_kill   ? PAN_EARLYZS_FORCE_LATE : early_mode
+                .kill   = late_kill   ? PAN_EARLYZS_FORCE_LATE : early_mode,
         };
 }
 
