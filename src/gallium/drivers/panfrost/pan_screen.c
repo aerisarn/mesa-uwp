@@ -84,7 +84,7 @@ panfrost_get_name(struct pipe_screen *screen)
 static const char *
 panfrost_get_vendor(struct pipe_screen *screen)
 {
-        return "Panfrost";
+        return "Mesa";
 }
 
 static const char *

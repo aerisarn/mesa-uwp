@@ -1192,7 +1192,7 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
 static const char *
 agx_get_vendor(struct pipe_screen* pscreen)
 {
-   return "Asahi";
+   return "Mesa";
 }
 
 static const char *
