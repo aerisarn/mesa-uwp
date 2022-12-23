@@ -262,13 +262,6 @@ pan_pack_unorm(nir_builder *b, nir_ssa_def *v,
         return pan_pack_norm(b, v, x, y, z, w, false);
 }
 
-static nir_ssa_def *
-pan_pack_snorm(nir_builder *b, nir_ssa_def *v,
-               unsigned x, unsigned y, unsigned z, unsigned w)
-{
-        return pan_pack_norm(b, v, x, y, z, w, true);
-}
-
 /* RGB10_A2 is packed in the tilebuffer as the bottom 3 bytes being the top
  * 8-bits of RGB and the top byte being RGBA as 2-bits packed. As imirkin
  * pointed out, this means free conversion to RGBX8 */
