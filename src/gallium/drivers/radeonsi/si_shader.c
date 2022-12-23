@@ -1945,11 +1945,19 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
          opt_offsets = true;
       } else if (sel->stage == MESA_SHADER_VERTEX || sel->stage == MESA_SHADER_TESS_EVAL) {
          /* Lower last VGT none-NGG VS/TES shader stage. */
-         int primitive_id_location =
-            shader->key.ge.mono.u.vs_export_prim_id ? sel->info.num_outputs : -1;
+         unsigned clip_cull_mask =
+            (sel->info.clipdist_mask & ~key->ge.opt.kill_clip_distances) |
+            sel->info.culldist_mask;
 
-         NIR_PASS_V(nir, ac_nir_lower_legacy_vs, primitive_id_location,
-                    key->ge.opt.remove_streamout);
+         NIR_PASS_V(nir, ac_nir_lower_legacy_vs,
+                    sel->screen->info.gfx_level,
+                    clip_cull_mask,
+                    shader->info.vs_output_param_offset,
+                    shader->info.nr_param_exports,
+                    shader->key.ge.mono.u.vs_export_prim_id,
+                    key->ge.opt.remove_streamout,
+                    key->ge.opt.kill_pointsize,
+                    sel->screen->options.vrs2x2);
       }
    } else if (is_legacy_gs) {
       NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);

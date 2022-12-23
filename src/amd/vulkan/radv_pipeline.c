@@ -3305,7 +3305,12 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    if (stage->stage == last_vgt_api_stage && !lowered_ngg) {
       if (stage->stage != MESA_SHADER_GEOMETRY) {
          NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs,
-                    stage->info.outinfo.export_prim_id ? VARYING_SLOT_PRIMITIVE_ID : -1, false);
+                    gfx_level,
+                    stage->info.outinfo.clip_dist_mask | stage->info.outinfo.cull_dist_mask,
+                    stage->info.outinfo.vs_output_param_offset,
+                    stage->info.outinfo.param_exports,
+                    stage->info.outinfo.export_prim_id,
+                    false, false, false);
 
       } else {
          ac_nir_gs_output_info gs_out_info = {

@@ -238,7 +238,15 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
                              ac_nir_gs_output_info *output_info);
 
 void
-ac_nir_lower_legacy_vs(nir_shader *nir, int primitive_id_location, bool disable_streamout);
+ac_nir_lower_legacy_vs(nir_shader *nir,
+                       enum amd_gfx_level gfx_level,
+                       uint32_t clip_cull_mask,
+                       const uint8_t *param_offsets,
+                       bool has_param_exports,
+                       bool export_primitive_id,
+                       bool disable_streamout,
+                       bool kill_pointsize,
+                       bool force_vrs);
 
 bool
 ac_nir_gs_shader_query(nir_builder *b,

@@ -602,8 +602,8 @@ gather_outputs(nir_builder *b, nir_function_impl *impl, struct shader_outputs *o
     * - 64-bit outputs are lowered
     * - no indirect indexing is present
     */
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr (instr, block) {
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr_safe (instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
             continue;
 
@@ -627,12 +627,23 @@ gather_outputs(nir_builder *b, nir_function_impl *impl, struct shader_outputs *o
             if (output_type)
                output_type[comp] = type;
          }
+
+         /* remove all store output instruction */
+         nir_instr_remove(instr);
       }
    }
 }
 
 void
-ac_nir_lower_legacy_vs(nir_shader *nir, int primitive_id_location, bool disable_streamout)
+ac_nir_lower_legacy_vs(nir_shader *nir,
+                       enum amd_gfx_level gfx_level,
+                       uint32_t clip_cull_mask,
+                       const uint8_t *param_offsets,
+                       bool has_param_exports,
+                       bool export_primitive_id,
+                       bool disable_streamout,
+                       bool kill_pointsize,
+                       bool force_vrs)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    nir_metadata preserved = nir_metadata_block_index | nir_metadata_dominance;
@@ -641,43 +652,46 @@ ac_nir_lower_legacy_vs(nir_shader *nir, int primitive_id_location, bool disable_
    nir_builder_init(&b, impl);
    b.cursor = nir_after_cf_list(&impl->body);
 
-   if (primitive_id_location >= 0) {
+   nir_alu_type output_types_16bit_lo[16][4];
+   nir_alu_type output_types_16bit_hi[16][4];
+   struct shader_outputs outputs = {
+      .type_16bit_lo = output_types_16bit_lo,
+      .type_16bit_hi = output_types_16bit_hi,
+   };
+   gather_outputs(&b, impl, &outputs);
+
+   if (export_primitive_id) {
       /* When the primitive ID is read by FS, we must ensure that it's exported by the previous
        * vertex stage because it's implicit for VS or TES (but required by the Vulkan spec for GS
        * or MS).
        */
-      nir_variable *var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), NULL);
-      var->data.location = VARYING_SLOT_PRIMITIVE_ID;
-      var->data.interpolation = INTERP_MODE_NONE;
-      var->data.driver_location = primitive_id_location;
-
-      nir_store_output(
-         &b, nir_load_primitive_id(&b), nir_imm_int(&b, 0), .base = primitive_id_location,
-         .src_type = nir_type_int32,
-         .io_semantics = (nir_io_semantics){.location = var->data.location, .num_slots = 1});
+      outputs.data[VARYING_SLOT_PRIMITIVE_ID][0] = nir_load_primitive_id(&b);
 
       /* Update outputs_written to reflect that the pass added a new output. */
       nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_ID);
    }
 
    if (!disable_streamout && nir->xfb_info) {
-      /* 26.1. Transform Feedback of Vulkan 1.3.229 spec:
-       * > The size of each component of an output variable must be at least 32-bits.
-       * We lower 64-bit outputs.
-       */
-      nir_alu_type output_types_16bit_lo[16][4];
-      nir_alu_type output_types_16bit_hi[16][4];
-      struct shader_outputs outputs = {
-         .type_16bit_lo = output_types_16bit_lo,
-         .type_16bit_hi = output_types_16bit_hi,
-      };
-      gather_outputs(&b, impl, &outputs);
-
       emit_streamout(&b, 0, nir->xfb_info, &outputs);
       preserved = nir_metadata_none;
    }
 
-   nir_export_vertex_amd(&b);
+   uint64_t export_outputs = nir->info.outputs_written;
+   if (kill_pointsize)
+      export_outputs &= ~VARYING_BIT_PSIZ;
+
+   ac_nir_export_position(&b, gfx_level, clip_cull_mask, !has_param_exports,
+                          force_vrs, export_outputs, outputs.data);
+
+   if (has_param_exports) {
+      ac_nir_export_parameter(&b, param_offsets,
+                              nir->info.outputs_written,
+                              nir->info.outputs_written_16bit,
+                              outputs.data,
+                              outputs.data_16bit_lo,
+                              outputs.data_16bit_hi);
+   }
+
    nir_metadata_preserve(impl, preserved);
 }
 
