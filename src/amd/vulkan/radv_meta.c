@@ -469,11 +469,11 @@ radv_device_init_meta(struct radv_device *device)
       goto fail_resolve_fragment;
 
    if (device->physical_device->use_fmask) {
-      result = radv_device_init_meta_fmask_expand_state(device);
+      result = radv_device_init_meta_fmask_expand_state(device, on_demand);
       if (result != VK_SUCCESS)
          goto fail_fmask_expand;
 
-      result = radv_device_init_meta_fmask_copy_state(device);
+      result = radv_device_init_meta_fmask_copy_state(device, on_demand);
       if (result != VK_SUCCESS)
          goto fail_fmask_copy;
    }

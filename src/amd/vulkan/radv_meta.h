@@ -91,10 +91,10 @@ void radv_device_finish_meta_resolve_compute_state(struct radv_device *device);
 VkResult radv_device_init_meta_resolve_fragment_state(struct radv_device *device, bool on_demand);
 void radv_device_finish_meta_resolve_fragment_state(struct radv_device *device);
 
-VkResult radv_device_init_meta_fmask_copy_state(struct radv_device *device);
+VkResult radv_device_init_meta_fmask_copy_state(struct radv_device *device, bool on_demand);
 void radv_device_finish_meta_fmask_copy_state(struct radv_device *device);
 
-VkResult radv_device_init_meta_fmask_expand_state(struct radv_device *device);
+VkResult radv_device_init_meta_fmask_expand_state(struct radv_device *device, bool on_demand);
 void radv_device_finish_meta_fmask_expand_state(struct radv_device *device);
 
 void radv_device_finish_meta_dcc_retile_state(struct radv_device *device);
