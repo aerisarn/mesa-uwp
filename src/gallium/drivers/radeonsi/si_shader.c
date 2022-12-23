@@ -1769,6 +1769,32 @@ static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
    si_nir_assign_param_offsets(nir, shader, slot_remap);
 }
 
+static unsigned si_get_nr_pos_exports(const struct si_shader_selector *sel,
+                                      const union si_shader_key *key)
+{
+   const struct si_shader_info *info = &sel->info;
+
+   /* Must have a position export. */
+   unsigned nr_pos_exports = 1;
+
+   if ((info->writes_psize && !key->ge.opt.kill_pointsize) ||
+       (info->writes_edgeflag && !key->ge.as_ngg) ||
+       info->writes_viewport_index || info->writes_layer ||
+       sel->screen->options.vrs2x2) {
+      nr_pos_exports++;
+   }
+
+   unsigned clipdist_mask =
+      (info->clipdist_mask & ~key->ge.opt.kill_clip_distances) | info->culldist_mask;
+
+   for (int i = 0; i < 2; i++) {
+      if (clipdist_mask & BITFIELD_RANGE(i * 4, 4))
+         nr_pos_exports++;
+   }
+
+   return nr_pos_exports;
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                                      struct si_shader_args *args,
                                      bool *free_nir,
@@ -1910,6 +1936,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
       /* Assign param export indices. */
       si_assign_param_offsets(nir, shader);
 
+      /* Assign num of position exports. */
+      shader->info.nr_pos_exports = si_get_nr_pos_exports(sel, key);
+
       if (key->ge.as_ngg) {
          /* Lower last VGT NGG shader stage. */
          si_lower_ngg(shader, nir);
@@ -2011,6 +2040,8 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
       shader->info.vs_output_param_offset[semantic] = shader->info.nr_param_exports++;
       shader->info.vs_output_param_mask |= BITFIELD64_BIT(i);
    }
+
+   shader->info.nr_pos_exports = si_get_nr_pos_exports(gs_selector, gskey);
 
    nir_shader *nir =
       ac_nir_create_gs_copy_shader(gs_nir,

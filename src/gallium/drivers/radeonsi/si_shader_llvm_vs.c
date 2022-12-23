@@ -546,10 +546,6 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       }
    }
 
-   for (i = 0; i < 4; i++)
-      if (pos_args[i].out[0])
-         shader->info.nr_pos_exports++;
-
    /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
     * Setting valid_mask=1 prevents it and has no other effect.
     */
