@@ -21,7 +21,7 @@
 
 import argparse
 import os
-import xml.parsers.expat
+import xml.etree.ElementTree as et
 
 from mako.template import Template
 from util import *
@@ -240,43 +240,42 @@ class Field(object):
 class XmlParser(object):
 
     def __init__(self, containers):
-        self.parser = xml.parsers.expat.ParserCreate()
-        self.parser.StartElementHandler = self.start_element
-        self.parser.EndElementHandler = self.end_element
-
         self.gen = None
         self.containers = containers
         self.container_stack = []
         self.container_stack.append(None)
 
     def parse(self, filename):
-        with open(filename, 'rb') as f:
-            self.parser.ParseFile(f)
+        xml = et.parse(filename)
+        root = xml.getroot()
+        self.gen = Gen(root.attrib['gen'])
+        for item in root:
+            self.process_item(item)
 
-    def start_element(self, name, attrs):
-        if name == 'genxml':
-            self.gen = Gen(attrs['gen'])
-        elif name in ('instruction', 'struct', 'register'):
+    def process_item(self, item):
+        name = item.tag
+        attrs = item.attrib
+        if name in ('instruction', 'struct', 'register'):
             if name == 'instruction' and 'engine' in attrs:
                 engines = set(attrs['engine'].split('|'))
                 if not engines & self.engines:
                     self.container_stack.append(None)
                     return
             self.start_container(attrs)
+            for struct_item in item:
+                self.process_item(struct_item)
+            self.container_stack.pop()
         elif name == 'group':
             self.container_stack.append(None)
-        elif name == 'field':
-            self.start_field(attrs)
-        else:
-            pass
-
-    def end_element(self, name):
-        if name == 'genxml':
-            self.gen = None
-        elif name in ('instruction', 'struct', 'register', 'group'):
+            for group_item in item:
+                self.process_item(group_item)
             self.container_stack.pop()
-        else:
+        elif name == 'field':
+            self.process_field(attrs)
+        elif name == 'enum':
             pass
+        else:
+            assert False
 
     def start_container(self, attrs):
         assert self.container_stack[-1] is None
@@ -286,7 +285,7 @@ class XmlParser(object):
         self.container_stack.append(self.containers[name])
         self.container_stack[-1].add_gen(self.gen, attrs)
 
-    def start_field(self, attrs):
+    def process_field(self, attrs):
         if self.container_stack[-1] is None:
             return
 
